@@ -38,12 +38,6 @@ const (
 	ConfigServiceSetGamesEnabledProcedure = "/config_service.ConfigService/SetGamesEnabled"
 	// ConfigServiceSetFEHashProcedure is the fully-qualified name of the ConfigService's SetFEHash RPC.
 	ConfigServiceSetFEHashProcedure = "/config_service.ConfigService/SetFEHash"
-	// ConfigServiceSetUserPermissionsProcedure is the fully-qualified name of the ConfigService's
-	// SetUserPermissions RPC.
-	ConfigServiceSetUserPermissionsProcedure = "/config_service.ConfigService/SetUserPermissions"
-	// ConfigServiceGetUserDetailsProcedure is the fully-qualified name of the ConfigService's
-	// GetUserDetails RPC.
-	ConfigServiceGetUserDetailsProcedure = "/config_service.ConfigService/GetUserDetails"
 	// ConfigServiceSetAnnouncementsProcedure is the fully-qualified name of the ConfigService's
 	// SetAnnouncements RPC.
 	ConfigServiceSetAnnouncementsProcedure = "/config_service.ConfigService/SetAnnouncements"
@@ -62,8 +56,6 @@ const (
 type ConfigServiceClient interface {
 	SetGamesEnabled(context.Context, *connect.Request[config_service.EnableGamesRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	SetFEHash(context.Context, *connect.Request[config_service.SetFEHashRequest]) (*connect.Response[config_service.ConfigResponse], error)
-	SetUserPermissions(context.Context, *connect.Request[config_service.PermissionsRequest]) (*connect.Response[config_service.ConfigResponse], error)
-	GetUserDetails(context.Context, *connect.Request[config_service.UserRequest]) (*connect.Response[config_service.UserResponse], error)
 	SetAnnouncements(context.Context, *connect.Request[config_service.SetAnnouncementsRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	GetAnnouncements(context.Context, *connect.Request[config_service.GetAnnouncementsRequest]) (*connect.Response[config_service.AnnouncementsResponse], error)
 	SetSingleAnnouncement(context.Context, *connect.Request[config_service.SetSingleAnnouncementRequest]) (*connect.Response[config_service.ConfigResponse], error)
@@ -91,18 +83,6 @@ func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+ConfigServiceSetFEHashProcedure,
 			connect.WithSchema(configServiceMethods.ByName("SetFEHash")),
-			connect.WithClientOptions(opts...),
-		),
-		setUserPermissions: connect.NewClient[config_service.PermissionsRequest, config_service.ConfigResponse](
-			httpClient,
-			baseURL+ConfigServiceSetUserPermissionsProcedure,
-			connect.WithSchema(configServiceMethods.ByName("SetUserPermissions")),
-			connect.WithClientOptions(opts...),
-		),
-		getUserDetails: connect.NewClient[config_service.UserRequest, config_service.UserResponse](
-			httpClient,
-			baseURL+ConfigServiceGetUserDetailsProcedure,
-			connect.WithSchema(configServiceMethods.ByName("GetUserDetails")),
 			connect.WithClientOptions(opts...),
 		),
 		setAnnouncements: connect.NewClient[config_service.SetAnnouncementsRequest, config_service.ConfigResponse](
@@ -136,8 +116,6 @@ func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 type configServiceClient struct {
 	setGamesEnabled       *connect.Client[config_service.EnableGamesRequest, config_service.ConfigResponse]
 	setFEHash             *connect.Client[config_service.SetFEHashRequest, config_service.ConfigResponse]
-	setUserPermissions    *connect.Client[config_service.PermissionsRequest, config_service.ConfigResponse]
-	getUserDetails        *connect.Client[config_service.UserRequest, config_service.UserResponse]
 	setAnnouncements      *connect.Client[config_service.SetAnnouncementsRequest, config_service.ConfigResponse]
 	getAnnouncements      *connect.Client[config_service.GetAnnouncementsRequest, config_service.AnnouncementsResponse]
 	setSingleAnnouncement *connect.Client[config_service.SetSingleAnnouncementRequest, config_service.ConfigResponse]
@@ -152,16 +130,6 @@ func (c *configServiceClient) SetGamesEnabled(ctx context.Context, req *connect.
 // SetFEHash calls config_service.ConfigService.SetFEHash.
 func (c *configServiceClient) SetFEHash(ctx context.Context, req *connect.Request[config_service.SetFEHashRequest]) (*connect.Response[config_service.ConfigResponse], error) {
 	return c.setFEHash.CallUnary(ctx, req)
-}
-
-// SetUserPermissions calls config_service.ConfigService.SetUserPermissions.
-func (c *configServiceClient) SetUserPermissions(ctx context.Context, req *connect.Request[config_service.PermissionsRequest]) (*connect.Response[config_service.ConfigResponse], error) {
-	return c.setUserPermissions.CallUnary(ctx, req)
-}
-
-// GetUserDetails calls config_service.ConfigService.GetUserDetails.
-func (c *configServiceClient) GetUserDetails(ctx context.Context, req *connect.Request[config_service.UserRequest]) (*connect.Response[config_service.UserResponse], error) {
-	return c.getUserDetails.CallUnary(ctx, req)
 }
 
 // SetAnnouncements calls config_service.ConfigService.SetAnnouncements.
@@ -188,8 +156,6 @@ func (c *configServiceClient) SetGlobalIntegration(ctx context.Context, req *con
 type ConfigServiceHandler interface {
 	SetGamesEnabled(context.Context, *connect.Request[config_service.EnableGamesRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	SetFEHash(context.Context, *connect.Request[config_service.SetFEHashRequest]) (*connect.Response[config_service.ConfigResponse], error)
-	SetUserPermissions(context.Context, *connect.Request[config_service.PermissionsRequest]) (*connect.Response[config_service.ConfigResponse], error)
-	GetUserDetails(context.Context, *connect.Request[config_service.UserRequest]) (*connect.Response[config_service.UserResponse], error)
 	SetAnnouncements(context.Context, *connect.Request[config_service.SetAnnouncementsRequest]) (*connect.Response[config_service.ConfigResponse], error)
 	GetAnnouncements(context.Context, *connect.Request[config_service.GetAnnouncementsRequest]) (*connect.Response[config_service.AnnouncementsResponse], error)
 	SetSingleAnnouncement(context.Context, *connect.Request[config_service.SetSingleAnnouncementRequest]) (*connect.Response[config_service.ConfigResponse], error)
@@ -213,18 +179,6 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 		ConfigServiceSetFEHashProcedure,
 		svc.SetFEHash,
 		connect.WithSchema(configServiceMethods.ByName("SetFEHash")),
-		connect.WithHandlerOptions(opts...),
-	)
-	configServiceSetUserPermissionsHandler := connect.NewUnaryHandler(
-		ConfigServiceSetUserPermissionsProcedure,
-		svc.SetUserPermissions,
-		connect.WithSchema(configServiceMethods.ByName("SetUserPermissions")),
-		connect.WithHandlerOptions(opts...),
-	)
-	configServiceGetUserDetailsHandler := connect.NewUnaryHandler(
-		ConfigServiceGetUserDetailsProcedure,
-		svc.GetUserDetails,
-		connect.WithSchema(configServiceMethods.ByName("GetUserDetails")),
 		connect.WithHandlerOptions(opts...),
 	)
 	configServiceSetAnnouncementsHandler := connect.NewUnaryHandler(
@@ -257,10 +211,6 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 			configServiceSetGamesEnabledHandler.ServeHTTP(w, r)
 		case ConfigServiceSetFEHashProcedure:
 			configServiceSetFEHashHandler.ServeHTTP(w, r)
-		case ConfigServiceSetUserPermissionsProcedure:
-			configServiceSetUserPermissionsHandler.ServeHTTP(w, r)
-		case ConfigServiceGetUserDetailsProcedure:
-			configServiceGetUserDetailsHandler.ServeHTTP(w, r)
 		case ConfigServiceSetAnnouncementsProcedure:
 			configServiceSetAnnouncementsHandler.ServeHTTP(w, r)
 		case ConfigServiceGetAnnouncementsProcedure:
@@ -284,14 +234,6 @@ func (UnimplementedConfigServiceHandler) SetGamesEnabled(context.Context, *conne
 
 func (UnimplementedConfigServiceHandler) SetFEHash(context.Context, *connect.Request[config_service.SetFEHashRequest]) (*connect.Response[config_service.ConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SetFEHash is not implemented"))
-}
-
-func (UnimplementedConfigServiceHandler) SetUserPermissions(context.Context, *connect.Request[config_service.PermissionsRequest]) (*connect.Response[config_service.ConfigResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SetUserPermissions is not implemented"))
-}
-
-func (UnimplementedConfigServiceHandler) GetUserDetails(context.Context, *connect.Request[config_service.UserRequest]) (*connect.Response[config_service.UserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.GetUserDetails is not implemented"))
 }
 
 func (UnimplementedConfigServiceHandler) SetAnnouncements(context.Context, *connect.Request[config_service.SetAnnouncementsRequest]) (*connect.Response[config_service.ConfigResponse], error) {

@@ -34,6 +34,8 @@ const (
 	SocializeServiceName = "user_service.SocializeService"
 	// IntegrationServiceName is the fully-qualified name of the IntegrationService service.
 	IntegrationServiceName = "user_service.IntegrationService"
+	// AuthorizationServiceName is the fully-qualified name of the AuthorizationService service.
+	AuthorizationServiceName = "user_service.AuthorizationService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -74,9 +76,6 @@ const (
 	// AuthenticationServiceGetAPIKeyProcedure is the fully-qualified name of the
 	// AuthenticationService's GetAPIKey RPC.
 	AuthenticationServiceGetAPIKeyProcedure = "/user_service.AuthenticationService/GetAPIKey"
-	// AuthenticationServiceGetSubscriptionCriteriaProcedure is the fully-qualified name of the
-	// AuthenticationService's GetSubscriptionCriteria RPC.
-	AuthenticationServiceGetSubscriptionCriteriaProcedure = "/user_service.AuthenticationService/GetSubscriptionCriteria"
 	// RegistrationServiceRegisterProcedure is the fully-qualified name of the RegistrationService's
 	// Register RPC.
 	RegistrationServiceRegisterProcedure = "/user_service.RegistrationService/Register"
@@ -133,15 +132,36 @@ const (
 	// SocializeServiceGetChatsForChannelProcedure is the fully-qualified name of the SocializeService's
 	// GetChatsForChannel RPC.
 	SocializeServiceGetChatsForChannelProcedure = "/user_service.SocializeService/GetChatsForChannel"
-	// SocializeServiceGetModListProcedure is the fully-qualified name of the SocializeService's
-	// GetModList RPC.
-	SocializeServiceGetModListProcedure = "/user_service.SocializeService/GetModList"
 	// IntegrationServiceGetIntegrationsProcedure is the fully-qualified name of the
 	// IntegrationService's GetIntegrations RPC.
 	IntegrationServiceGetIntegrationsProcedure = "/user_service.IntegrationService/GetIntegrations"
 	// IntegrationServiceDeleteIntegrationProcedure is the fully-qualified name of the
 	// IntegrationService's DeleteIntegration RPC.
 	IntegrationServiceDeleteIntegrationProcedure = "/user_service.IntegrationService/DeleteIntegration"
+	// AuthorizationServiceGetModListProcedure is the fully-qualified name of the AuthorizationService's
+	// GetModList RPC.
+	AuthorizationServiceGetModListProcedure = "/user_service.AuthorizationService/GetModList"
+	// AuthorizationServiceGetSubscriptionCriteriaProcedure is the fully-qualified name of the
+	// AuthorizationService's GetSubscriptionCriteria RPC.
+	AuthorizationServiceGetSubscriptionCriteriaProcedure = "/user_service.AuthorizationService/GetSubscriptionCriteria"
+	// AuthorizationServiceAddRoleProcedure is the fully-qualified name of the AuthorizationService's
+	// AddRole RPC.
+	AuthorizationServiceAddRoleProcedure = "/user_service.AuthorizationService/AddRole"
+	// AuthorizationServiceAddPermissionProcedure is the fully-qualified name of the
+	// AuthorizationService's AddPermission RPC.
+	AuthorizationServiceAddPermissionProcedure = "/user_service.AuthorizationService/AddPermission"
+	// AuthorizationServiceLinkRoleAndPermissionProcedure is the fully-qualified name of the
+	// AuthorizationService's LinkRoleAndPermission RPC.
+	AuthorizationServiceLinkRoleAndPermissionProcedure = "/user_service.AuthorizationService/LinkRoleAndPermission"
+	// AuthorizationServiceAssignRoleProcedure is the fully-qualified name of the AuthorizationService's
+	// AssignRole RPC.
+	AuthorizationServiceAssignRoleProcedure = "/user_service.AuthorizationService/AssignRole"
+	// AuthorizationServiceUnassignRoleProcedure is the fully-qualified name of the
+	// AuthorizationService's UnassignRole RPC.
+	AuthorizationServiceUnassignRoleProcedure = "/user_service.AuthorizationService/UnassignRole"
+	// AuthorizationServiceGetUserRolesProcedure is the fully-qualified name of the
+	// AuthorizationService's GetUserRoles RPC.
+	AuthorizationServiceGetUserRolesProcedure = "/user_service.AuthorizationService/GetUserRoles"
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -157,7 +177,6 @@ type AuthenticationServiceClient interface {
 	GetSignedCookie(context.Context, *connect.Request[user_service.GetSignedCookieRequest]) (*connect.Response[user_service.SignedCookieResponse], error)
 	InstallSignedCookie(context.Context, *connect.Request[user_service.SignedCookieResponse]) (*connect.Response[user_service.InstallSignedCookieResponse], error)
 	GetAPIKey(context.Context, *connect.Request[user_service.GetAPIKeyRequest]) (*connect.Response[user_service.GetAPIKeyResponse], error)
-	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
 }
 
 // NewAuthenticationServiceClient constructs a client for the user_service.AuthenticationService
@@ -231,28 +250,21 @@ func NewAuthenticationServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(authenticationServiceMethods.ByName("GetAPIKey")),
 			connect.WithClientOptions(opts...),
 		),
-		getSubscriptionCriteria: connect.NewClient[user_service.GetSubscriptionCriteriaRequest, user_service.GetSubscriptionCriteriaResponse](
-			httpClient,
-			baseURL+AuthenticationServiceGetSubscriptionCriteriaProcedure,
-			connect.WithSchema(authenticationServiceMethods.ByName("GetSubscriptionCriteria")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // authenticationServiceClient implements AuthenticationServiceClient.
 type authenticationServiceClient struct {
-	login                   *connect.Client[user_service.UserLoginRequest, user_service.LoginResponse]
-	logout                  *connect.Client[user_service.UserLogoutRequest, user_service.LogoutResponse]
-	getSocketToken          *connect.Client[user_service.SocketTokenRequest, user_service.SocketTokenResponse]
-	resetPasswordStep1      *connect.Client[user_service.ResetPasswordRequestStep1, user_service.ResetPasswordResponse]
-	resetPasswordStep2      *connect.Client[user_service.ResetPasswordRequestStep2, user_service.ResetPasswordResponse]
-	changePassword          *connect.Client[user_service.ChangePasswordRequest, user_service.ChangePasswordResponse]
-	notifyAccountClosure    *connect.Client[user_service.NotifyAccountClosureRequest, user_service.NotifyAccountClosureResponse]
-	getSignedCookie         *connect.Client[user_service.GetSignedCookieRequest, user_service.SignedCookieResponse]
-	installSignedCookie     *connect.Client[user_service.SignedCookieResponse, user_service.InstallSignedCookieResponse]
-	getAPIKey               *connect.Client[user_service.GetAPIKeyRequest, user_service.GetAPIKeyResponse]
-	getSubscriptionCriteria *connect.Client[user_service.GetSubscriptionCriteriaRequest, user_service.GetSubscriptionCriteriaResponse]
+	login                *connect.Client[user_service.UserLoginRequest, user_service.LoginResponse]
+	logout               *connect.Client[user_service.UserLogoutRequest, user_service.LogoutResponse]
+	getSocketToken       *connect.Client[user_service.SocketTokenRequest, user_service.SocketTokenResponse]
+	resetPasswordStep1   *connect.Client[user_service.ResetPasswordRequestStep1, user_service.ResetPasswordResponse]
+	resetPasswordStep2   *connect.Client[user_service.ResetPasswordRequestStep2, user_service.ResetPasswordResponse]
+	changePassword       *connect.Client[user_service.ChangePasswordRequest, user_service.ChangePasswordResponse]
+	notifyAccountClosure *connect.Client[user_service.NotifyAccountClosureRequest, user_service.NotifyAccountClosureResponse]
+	getSignedCookie      *connect.Client[user_service.GetSignedCookieRequest, user_service.SignedCookieResponse]
+	installSignedCookie  *connect.Client[user_service.SignedCookieResponse, user_service.InstallSignedCookieResponse]
+	getAPIKey            *connect.Client[user_service.GetAPIKeyRequest, user_service.GetAPIKeyResponse]
 }
 
 // Login calls user_service.AuthenticationService.Login.
@@ -305,11 +317,6 @@ func (c *authenticationServiceClient) GetAPIKey(ctx context.Context, req *connec
 	return c.getAPIKey.CallUnary(ctx, req)
 }
 
-// GetSubscriptionCriteria calls user_service.AuthenticationService.GetSubscriptionCriteria.
-func (c *authenticationServiceClient) GetSubscriptionCriteria(ctx context.Context, req *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error) {
-	return c.getSubscriptionCriteria.CallUnary(ctx, req)
-}
-
 // AuthenticationServiceHandler is an implementation of the user_service.AuthenticationService
 // service.
 type AuthenticationServiceHandler interface {
@@ -324,7 +331,6 @@ type AuthenticationServiceHandler interface {
 	GetSignedCookie(context.Context, *connect.Request[user_service.GetSignedCookieRequest]) (*connect.Response[user_service.SignedCookieResponse], error)
 	InstallSignedCookie(context.Context, *connect.Request[user_service.SignedCookieResponse]) (*connect.Response[user_service.InstallSignedCookieResponse], error)
 	GetAPIKey(context.Context, *connect.Request[user_service.GetAPIKeyRequest]) (*connect.Response[user_service.GetAPIKeyResponse], error)
-	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
 }
 
 // NewAuthenticationServiceHandler builds an HTTP handler from the service implementation. It
@@ -394,12 +400,6 @@ func NewAuthenticationServiceHandler(svc AuthenticationServiceHandler, opts ...c
 		connect.WithSchema(authenticationServiceMethods.ByName("GetAPIKey")),
 		connect.WithHandlerOptions(opts...),
 	)
-	authenticationServiceGetSubscriptionCriteriaHandler := connect.NewUnaryHandler(
-		AuthenticationServiceGetSubscriptionCriteriaProcedure,
-		svc.GetSubscriptionCriteria,
-		connect.WithSchema(authenticationServiceMethods.ByName("GetSubscriptionCriteria")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/user_service.AuthenticationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthenticationServiceLoginProcedure:
@@ -422,8 +422,6 @@ func NewAuthenticationServiceHandler(svc AuthenticationServiceHandler, opts ...c
 			authenticationServiceInstallSignedCookieHandler.ServeHTTP(w, r)
 		case AuthenticationServiceGetAPIKeyProcedure:
 			authenticationServiceGetAPIKeyHandler.ServeHTTP(w, r)
-		case AuthenticationServiceGetSubscriptionCriteriaProcedure:
-			authenticationServiceGetSubscriptionCriteriaHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -471,10 +469,6 @@ func (UnimplementedAuthenticationServiceHandler) InstallSignedCookie(context.Con
 
 func (UnimplementedAuthenticationServiceHandler) GetAPIKey(context.Context, *connect.Request[user_service.GetAPIKeyRequest]) (*connect.Response[user_service.GetAPIKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthenticationService.GetAPIKey is not implemented"))
-}
-
-func (UnimplementedAuthenticationServiceHandler) GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthenticationService.GetSubscriptionCriteria is not implemented"))
 }
 
 // RegistrationServiceClient is a client for the user_service.RegistrationService service.
@@ -882,7 +876,6 @@ type SocializeServiceClient interface {
 	GetFullBlocks(context.Context, *connect.Request[user_service.GetFullBlocksRequest]) (*connect.Response[user_service.GetFullBlocksResponse], error)
 	GetActiveChatChannels(context.Context, *connect.Request[user_service.GetActiveChatChannelsRequest]) (*connect.Response[user_service.ActiveChatChannels], error)
 	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
-	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
 }
 
 // NewSocializeServiceClient constructs a client for the user_service.SocializeService service. By
@@ -950,12 +943,6 @@ func NewSocializeServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(socializeServiceMethods.ByName("GetChatsForChannel")),
 			connect.WithClientOptions(opts...),
 		),
-		getModList: connect.NewClient[user_service.GetModListRequest, user_service.GetModListResponse](
-			httpClient,
-			baseURL+SocializeServiceGetModListProcedure,
-			connect.WithSchema(socializeServiceMethods.ByName("GetModList")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
@@ -970,7 +957,6 @@ type socializeServiceClient struct {
 	getFullBlocks         *connect.Client[user_service.GetFullBlocksRequest, user_service.GetFullBlocksResponse]
 	getActiveChatChannels *connect.Client[user_service.GetActiveChatChannelsRequest, user_service.ActiveChatChannels]
 	getChatsForChannel    *connect.Client[user_service.GetChatsRequest, ipc.ChatMessages]
-	getModList            *connect.Client[user_service.GetModListRequest, user_service.GetModListResponse]
 }
 
 // AddFollow calls user_service.SocializeService.AddFollow.
@@ -1018,11 +1004,6 @@ func (c *socializeServiceClient) GetChatsForChannel(ctx context.Context, req *co
 	return c.getChatsForChannel.CallUnary(ctx, req)
 }
 
-// GetModList calls user_service.SocializeService.GetModList.
-func (c *socializeServiceClient) GetModList(ctx context.Context, req *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error) {
-	return c.getModList.CallUnary(ctx, req)
-}
-
 // SocializeServiceHandler is an implementation of the user_service.SocializeService service.
 type SocializeServiceHandler interface {
 	AddFollow(context.Context, *connect.Request[user_service.AddFollowRequest]) (*connect.Response[user_service.OKResponse], error)
@@ -1036,7 +1017,6 @@ type SocializeServiceHandler interface {
 	GetFullBlocks(context.Context, *connect.Request[user_service.GetFullBlocksRequest]) (*connect.Response[user_service.GetFullBlocksResponse], error)
 	GetActiveChatChannels(context.Context, *connect.Request[user_service.GetActiveChatChannelsRequest]) (*connect.Response[user_service.ActiveChatChannels], error)
 	GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error)
-	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
 }
 
 // NewSocializeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1100,12 +1080,6 @@ func NewSocializeServiceHandler(svc SocializeServiceHandler, opts ...connect.Han
 		connect.WithSchema(socializeServiceMethods.ByName("GetChatsForChannel")),
 		connect.WithHandlerOptions(opts...),
 	)
-	socializeServiceGetModListHandler := connect.NewUnaryHandler(
-		SocializeServiceGetModListProcedure,
-		svc.GetModList,
-		connect.WithSchema(socializeServiceMethods.ByName("GetModList")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/user_service.SocializeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SocializeServiceAddFollowProcedure:
@@ -1126,8 +1100,6 @@ func NewSocializeServiceHandler(svc SocializeServiceHandler, opts ...connect.Han
 			socializeServiceGetActiveChatChannelsHandler.ServeHTTP(w, r)
 		case SocializeServiceGetChatsForChannelProcedure:
 			socializeServiceGetChatsForChannelHandler.ServeHTTP(w, r)
-		case SocializeServiceGetModListProcedure:
-			socializeServiceGetModListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1171,10 +1143,6 @@ func (UnimplementedSocializeServiceHandler) GetActiveChatChannels(context.Contex
 
 func (UnimplementedSocializeServiceHandler) GetChatsForChannel(context.Context, *connect.Request[user_service.GetChatsRequest]) (*connect.Response[ipc.ChatMessages], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.GetChatsForChannel is not implemented"))
-}
-
-func (UnimplementedSocializeServiceHandler) GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.SocializeService.GetModList is not implemented"))
 }
 
 // IntegrationServiceClient is a client for the user_service.IntegrationService service.
@@ -1273,4 +1241,263 @@ func (UnimplementedIntegrationServiceHandler) GetIntegrations(context.Context, *
 
 func (UnimplementedIntegrationServiceHandler) DeleteIntegration(context.Context, *connect.Request[user_service.DeleteIntegrationRequest]) (*connect.Response[user_service.DeleteIntegrationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.IntegrationService.DeleteIntegration is not implemented"))
+}
+
+// AuthorizationServiceClient is a client for the user_service.AuthorizationService service.
+type AuthorizationServiceClient interface {
+	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
+	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
+	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
+	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
+	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
+	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
+	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
+	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+}
+
+// NewAuthorizationServiceClient constructs a client for the user_service.AuthorizationService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthorizationServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	authorizationServiceMethods := user_service.File_proto_user_service_user_service_proto.Services().ByName("AuthorizationService").Methods()
+	return &authorizationServiceClient{
+		getModList: connect.NewClient[user_service.GetModListRequest, user_service.GetModListResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetModListProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetModList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getSubscriptionCriteria: connect.NewClient[user_service.GetSubscriptionCriteriaRequest, user_service.GetSubscriptionCriteriaResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetSubscriptionCriteriaProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetSubscriptionCriteria")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		addRole: connect.NewClient[user_service.AddRoleRequest, user_service.AddRoleResponse](
+			httpClient,
+			baseURL+AuthorizationServiceAddRoleProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("AddRole")),
+			connect.WithClientOptions(opts...),
+		),
+		addPermission: connect.NewClient[user_service.AddPermissionRequest, user_service.AddPermissionResponse](
+			httpClient,
+			baseURL+AuthorizationServiceAddPermissionProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("AddPermission")),
+			connect.WithClientOptions(opts...),
+		),
+		linkRoleAndPermission: connect.NewClient[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse](
+			httpClient,
+			baseURL+AuthorizationServiceLinkRoleAndPermissionProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("LinkRoleAndPermission")),
+			connect.WithClientOptions(opts...),
+		),
+		assignRole: connect.NewClient[user_service.AssignRoleRequest, user_service.AssignRoleResponse](
+			httpClient,
+			baseURL+AuthorizationServiceAssignRoleProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("AssignRole")),
+			connect.WithClientOptions(opts...),
+		),
+		unassignRole: connect.NewClient[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse](
+			httpClient,
+			baseURL+AuthorizationServiceUnassignRoleProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("UnassignRole")),
+			connect.WithClientOptions(opts...),
+		),
+		getUserRoles: connect.NewClient[user_service.GetUserRolesRequest, user_service.UserRolesResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetUserRolesProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetUserRoles")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// authorizationServiceClient implements AuthorizationServiceClient.
+type authorizationServiceClient struct {
+	getModList              *connect.Client[user_service.GetModListRequest, user_service.GetModListResponse]
+	getSubscriptionCriteria *connect.Client[user_service.GetSubscriptionCriteriaRequest, user_service.GetSubscriptionCriteriaResponse]
+	addRole                 *connect.Client[user_service.AddRoleRequest, user_service.AddRoleResponse]
+	addPermission           *connect.Client[user_service.AddPermissionRequest, user_service.AddPermissionResponse]
+	linkRoleAndPermission   *connect.Client[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse]
+	assignRole              *connect.Client[user_service.AssignRoleRequest, user_service.AssignRoleResponse]
+	unassignRole            *connect.Client[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse]
+	getUserRoles            *connect.Client[user_service.GetUserRolesRequest, user_service.UserRolesResponse]
+}
+
+// GetModList calls user_service.AuthorizationService.GetModList.
+func (c *authorizationServiceClient) GetModList(ctx context.Context, req *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error) {
+	return c.getModList.CallUnary(ctx, req)
+}
+
+// GetSubscriptionCriteria calls user_service.AuthorizationService.GetSubscriptionCriteria.
+func (c *authorizationServiceClient) GetSubscriptionCriteria(ctx context.Context, req *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error) {
+	return c.getSubscriptionCriteria.CallUnary(ctx, req)
+}
+
+// AddRole calls user_service.AuthorizationService.AddRole.
+func (c *authorizationServiceClient) AddRole(ctx context.Context, req *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error) {
+	return c.addRole.CallUnary(ctx, req)
+}
+
+// AddPermission calls user_service.AuthorizationService.AddPermission.
+func (c *authorizationServiceClient) AddPermission(ctx context.Context, req *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error) {
+	return c.addPermission.CallUnary(ctx, req)
+}
+
+// LinkRoleAndPermission calls user_service.AuthorizationService.LinkRoleAndPermission.
+func (c *authorizationServiceClient) LinkRoleAndPermission(ctx context.Context, req *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error) {
+	return c.linkRoleAndPermission.CallUnary(ctx, req)
+}
+
+// AssignRole calls user_service.AuthorizationService.AssignRole.
+func (c *authorizationServiceClient) AssignRole(ctx context.Context, req *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {
+	return c.assignRole.CallUnary(ctx, req)
+}
+
+// UnassignRole calls user_service.AuthorizationService.UnassignRole.
+func (c *authorizationServiceClient) UnassignRole(ctx context.Context, req *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error) {
+	return c.unassignRole.CallUnary(ctx, req)
+}
+
+// GetUserRoles calls user_service.AuthorizationService.GetUserRoles.
+func (c *authorizationServiceClient) GetUserRoles(ctx context.Context, req *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
+	return c.getUserRoles.CallUnary(ctx, req)
+}
+
+// AuthorizationServiceHandler is an implementation of the user_service.AuthorizationService
+// service.
+type AuthorizationServiceHandler interface {
+	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
+	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
+	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
+	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
+	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
+	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
+	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
+	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+}
+
+// NewAuthorizationServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	authorizationServiceMethods := user_service.File_proto_user_service_user_service_proto.Services().ByName("AuthorizationService").Methods()
+	authorizationServiceGetModListHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetModListProcedure,
+		svc.GetModList,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetModList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceGetSubscriptionCriteriaHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetSubscriptionCriteriaProcedure,
+		svc.GetSubscriptionCriteria,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetSubscriptionCriteria")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceAddRoleHandler := connect.NewUnaryHandler(
+		AuthorizationServiceAddRoleProcedure,
+		svc.AddRole,
+		connect.WithSchema(authorizationServiceMethods.ByName("AddRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceAddPermissionHandler := connect.NewUnaryHandler(
+		AuthorizationServiceAddPermissionProcedure,
+		svc.AddPermission,
+		connect.WithSchema(authorizationServiceMethods.ByName("AddPermission")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceLinkRoleAndPermissionHandler := connect.NewUnaryHandler(
+		AuthorizationServiceLinkRoleAndPermissionProcedure,
+		svc.LinkRoleAndPermission,
+		connect.WithSchema(authorizationServiceMethods.ByName("LinkRoleAndPermission")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceAssignRoleHandler := connect.NewUnaryHandler(
+		AuthorizationServiceAssignRoleProcedure,
+		svc.AssignRole,
+		connect.WithSchema(authorizationServiceMethods.ByName("AssignRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceUnassignRoleHandler := connect.NewUnaryHandler(
+		AuthorizationServiceUnassignRoleProcedure,
+		svc.UnassignRole,
+		connect.WithSchema(authorizationServiceMethods.ByName("UnassignRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceGetUserRolesHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetUserRolesProcedure,
+		svc.GetUserRoles,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetUserRoles")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/user_service.AuthorizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AuthorizationServiceGetModListProcedure:
+			authorizationServiceGetModListHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetSubscriptionCriteriaProcedure:
+			authorizationServiceGetSubscriptionCriteriaHandler.ServeHTTP(w, r)
+		case AuthorizationServiceAddRoleProcedure:
+			authorizationServiceAddRoleHandler.ServeHTTP(w, r)
+		case AuthorizationServiceAddPermissionProcedure:
+			authorizationServiceAddPermissionHandler.ServeHTTP(w, r)
+		case AuthorizationServiceLinkRoleAndPermissionProcedure:
+			authorizationServiceLinkRoleAndPermissionHandler.ServeHTTP(w, r)
+		case AuthorizationServiceAssignRoleProcedure:
+			authorizationServiceAssignRoleHandler.ServeHTTP(w, r)
+		case AuthorizationServiceUnassignRoleProcedure:
+			authorizationServiceUnassignRoleHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetUserRolesProcedure:
+			authorizationServiceGetUserRolesHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAuthorizationServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAuthorizationServiceHandler struct{}
+
+func (UnimplementedAuthorizationServiceHandler) GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetModList is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetSubscriptionCriteria is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.AddRole is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.AddPermission is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.LinkRoleAndPermission is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.AssignRole is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.UnassignRole is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetUserRoles is not implemented"))
 }

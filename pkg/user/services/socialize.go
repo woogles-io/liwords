@@ -354,12 +354,12 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 // 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
 // }
 
-func (ss *SocializeService) GetModList(ctx context.Context, req *connect.Request[pb.GetModListRequest]) (
-	*connect.Response[pb.GetModListResponse], error) {
-	// this endpoint should work without login
-	ml, err := ss.userStore.GetModList(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(ml), nil
-}
+// func (ss *SocializeService) GetModList(ctx context.Context, req *connect.Request[pb.GetModListRequest]) (
+// 	*connect.Response[pb.GetModListResponse], error) {
+// 	// this endpoint should work without login
+// 	ml, err := ss.userStore.GetModList(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return connect.NewResponse(ml), nil
+// }

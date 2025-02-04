@@ -67,13 +67,6 @@ message SocketTokenResponse {
   string front_end_version = 3;
 }
 
-message GetSubscriptionCriteriaRequest {}
-message GetSubscriptionCriteriaResponse {
-  string tier_name = 1;
-  bool entitled_to_bot_games = 2;
-  google.protobuf.Timestamp last_charge_date = 3;
-}
-
 message UserLogoutRequest {}
 message LogoutResponse {}
 message NotifyAccountClosureRequest { string password = 1; }
@@ -98,8 +91,6 @@ service AuthenticationService {
   rpc InstallSignedCookie(SignedCookieResponse)
       returns (InstallSignedCookieResponse);
   rpc GetAPIKey(GetAPIKeyRequest) returns (GetAPIKeyResponse);
-  rpc GetSubscriptionCriteria(GetSubscriptionCriteriaRequest)
-      returns (GetSubscriptionCriteriaResponse);
 }
 
 message GetSignedCookieRequest {}
@@ -270,13 +261,6 @@ message GetBlocksResponse { repeated BasicUser users = 1; }
 // the backend but we need to write a lot of hard code for that.
 message GetFullBlocksResponse { repeated string user_ids = 1; }
 
-message GetModListRequest {}
-
-message GetModListResponse {
-  repeated string admin_user_ids = 1;
-  repeated string mod_user_ids = 2;
-}
-
 // Yeah I know
 service SocializeService {
   rpc AddFollow(AddFollowRequest) returns (OKResponse);
@@ -292,7 +276,6 @@ service SocializeService {
   rpc GetActiveChatChannels(GetActiveChatChannelsRequest)
       returns (ActiveChatChannels);
   rpc GetChatsForChannel(GetChatsRequest) returns (ipc.ChatMessages);
-  rpc GetModList(GetModListRequest) returns (GetModListResponse);
 }
 
 message Integration {
@@ -315,4 +298,74 @@ service IntegrationService {
   }
   rpc DeleteIntegration(DeleteIntegrationRequest)
       returns (DeleteIntegrationResponse);
+}
+
+message GetSubscriptionCriteriaRequest {}
+message GetSubscriptionCriteriaResponse {
+  string tier_name = 1;
+  bool entitled_to_bot_games = 2;
+  google.protobuf.Timestamp last_charge_date = 3;
+}
+
+message GetModListRequest {}
+
+message GetModListResponse {
+  repeated string admin_user_ids = 1;
+  repeated string mod_user_ids = 2;
+}
+
+message AddRoleRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message AddRoleResponse {}
+
+message AddPermissionRequest {
+  string code = 1;
+  string description = 2;
+}
+message AddPermissionResponse {}
+
+message LinkRoleAndPermissionRequest {
+  string role_name = 1;
+  string permission_code = 2;
+}
+
+message LinkRoleAndPermissionResponse {}
+
+message AssignRoleRequest {
+  string username = 1;
+  string role_name = 2;
+}
+
+message AssignRoleResponse {}
+
+message UnassignRoleRequest {
+  string username = 1;
+  string role_name = 2;
+}
+
+message UnassignRoleResponse {}
+
+message GetUserRolesRequest { string username = 1; }
+message UserRolesResponse { repeated string roles = 1; }
+
+service AuthorizationService {
+  rpc GetModList(GetModListRequest) returns (GetModListResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc GetSubscriptionCriteria(GetSubscriptionCriteriaRequest)
+      returns (GetSubscriptionCriteriaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc AddRole(AddRoleRequest) returns (AddRoleResponse);
+  rpc AddPermission(AddPermissionRequest) returns (AddPermissionResponse);
+  rpc LinkRoleAndPermission(LinkRoleAndPermissionRequest)
+      returns (LinkRoleAndPermissionResponse);
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+  rpc UnassignRole(UnassignRoleRequest) returns (UnassignRoleResponse);
+  rpc GetUserRoles(GetUserRolesRequest) returns (UserRolesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
 }

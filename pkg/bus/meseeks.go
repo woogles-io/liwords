@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entitlements"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
@@ -409,23 +410,29 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 		if err != nil {
 			return err
 		}
-
-		// Determine user tier
-		tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
+		// Some special users can just bypass the check.
+		bypassSubCheck, err := rbac.HasPermission(ctx, b.stores.Queries, reqUser.ID, rbac.CanPlayEliteBot)
 		if err != nil {
 			return err
 		}
-		log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")
-		if tierData == nil {
-			return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
-		}
+		if !bypassSubCheck {
+			// Determine user tier
+			tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
+			if err != nil {
+				return err
+			}
+			log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")
+			if tierData == nil {
+				return errors.New("You don't currently appear to have a Patreon membership. Please sign up at https://woogles.io/donate to have access to BestBot.")
+			}
 
-		entitled, err := entitlements.EntitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
-		if err != nil {
-			return err
-		}
-		if !entitled {
-			return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
+			entitled, err := entitlements.EntitledToBestBot(ctx, b.stores.Queries, tierData, reqUser.ID, time.Now())
+			if err != nil {
+				return err
+			}
+			if !entitled {
+				return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
+			}
 		}
 
 	}

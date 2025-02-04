@@ -11,13 +11,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
-	"github.com/woogles-io/liwords/pkg/entitlements"
-	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/sessions"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -164,7 +161,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 		// Continue anyway.
 	}
 
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, as.userStore)
+	u, err := apiserver.AuthUser(ctx, as.userStore)
 	if err != nil {
 		ut, err := as.unauthedToken(ctx, feHash)
 		if err != nil {
@@ -454,9 +451,9 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *co
 
 func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *connect.Request[pb.GetAPIKeyRequest],
 ) (*connect.Response[pb.GetAPIKeyResponse], error) {
-	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
+	user, err := apiserver.AuthUser(ctx, as.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated("did not authenticate")
+		return nil, err
 	}
 	var apikey string
 	if req.Msg.Reset_ {
@@ -468,32 +465,4 @@ func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *connect.Req
 		return nil, err
 	}
 	return connect.NewResponse(&pb.GetAPIKeyResponse{Key: apikey}), nil
-}
-
-func (as *AuthenticationService) GetSubscriptionCriteria(ctx context.Context, req *connect.Request[pb.GetSubscriptionCriteriaRequest],
-) (*connect.Response[pb.GetSubscriptionCriteriaResponse], error) {
-	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
-	if err != nil {
-		return nil, apiserver.Unauthenticated("did not authenticate")
-	}
-	tierData, err := integrations.DetermineUserTier(ctx, user.UUID, as.q)
-	if err != nil {
-		return nil, err
-	}
-	tierName := ""
-	entitled := false
-	lastChargeDate := timestamppb.New(time.Time{})
-	if tierData != nil {
-		tierName = tierData.TierName
-		entitled, err = entitlements.EntitledToBestBot(ctx, as.q, tierData, user.ID, time.Now())
-		if err != nil {
-			return nil, err
-		}
-		lastChargeDate = timestamppb.New(tierData.LastChargeDate)
-	}
-	return connect.NewResponse(&pb.GetSubscriptionCriteriaResponse{
-		TierName:           tierName,
-		EntitledToBotGames: entitled,
-		LastChargeDate:     lastChargeDate,
-	}), nil
 }

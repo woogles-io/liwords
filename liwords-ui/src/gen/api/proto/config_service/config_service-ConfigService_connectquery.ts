@@ -15,16 +15,6 @@ export const setGamesEnabled = ConfigService.method.setGamesEnabled;
 export const setFEHash = ConfigService.method.setFEHash;
 
 /**
- * @generated from rpc config_service.ConfigService.SetUserPermissions
- */
-export const setUserPermissions = ConfigService.method.setUserPermissions;
-
-/**
- * @generated from rpc config_service.ConfigService.GetUserDetails
- */
-export const getUserDetails = ConfigService.method.getUserDetails;
-
-/**
  * @generated from rpc config_service.ConfigService.SetAnnouncements
  */
 export const setAnnouncements = ConfigService.method.setAnnouncements;

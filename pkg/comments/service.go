@@ -33,9 +33,9 @@ func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore)
 }
 
 func (cs *CommentsService) AddGameComment(ctx context.Context, req *connect.Request[pb.AddCommentRequest]) (*connect.Response[pb.AddCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
 	if len(req.Msg.Comment) > MaxCommentLength {
 		return nil, apiserver.InvalidArg("your comment is too long")
@@ -71,9 +71,9 @@ func (cs *CommentsService) GetGameComments(ctx context.Context, req *connect.Req
 }
 
 func (cs *CommentsService) EditGameComment(ctx context.Context, req *connect.Request[pb.EditCommentRequest]) (*connect.Response[pb.EditCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
 	if len(req.Msg.Comment) > MaxCommentLength {
 		return nil, apiserver.InvalidArg("your new comment is too long")
@@ -87,9 +87,9 @@ func (cs *CommentsService) EditGameComment(ctx context.Context, req *connect.Req
 }
 
 func (cs *CommentsService) DeleteGameComment(ctx context.Context, req *connect.Request[pb.DeleteCommentRequest]) (*connect.Response[pb.DeleteCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
 
 	if u.IsAdmin || u.IsMod {

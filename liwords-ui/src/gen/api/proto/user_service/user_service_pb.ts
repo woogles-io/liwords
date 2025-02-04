@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/user_service/user_service.proto.
  */
 export const file_proto_user_service_user_service: GenFile = /*@__PURE__*/
-  fileDesc("CiVwcm90by91c2VyX3NlcnZpY2UvdXNlcl9zZXJ2aWNlLnByb3RvEgx1c2VyX3NlcnZpY2UiNgoQVXNlckxvZ2luUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSJDChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSFAoMb2xkX3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSI0Cg1Mb2dpblJlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIioKGVJlc2V0UGFzc3dvcmRSZXF1ZXN0U3RlcDESDQoFZW1haWwYASABKAkiQQoZUmVzZXRQYXNzd29yZFJlcXVlc3RTdGVwMhIQCghwYXNzd29yZBgBIAEoCRISCgpyZXNldF9jb2RlGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIoCgtDb3VudHJ5RmxhZxILCgN1cmwYASABKAkSDAoEbmFtZRgCIAEoCSIuChBLaWNrc3RhcnRlckJhZGdlEgsKA3VybBgBIAEoCRINCgV0aXRsZRgCIAEoCSK7AQoMVXNlckdhbWVJbmZvEgwKBHV1aWQYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRINCgV0aXRsZRgDIAEoCRIRCglmdWxsX25hbWUYBCABKAkSKwoEZmxhZxgFIAEoCzIZLnVzZXJfc2VydmljZS5Db3VudHJ5RmxhZ0ICGAESOgoSa2lja3N0YXJ0ZXJfYmFkZ2VzGAYgAygLMh4udXNlcl9zZXJ2aWNlLktpY2tzdGFydGVyQmFkZ2UiFAoSU29ja2V0VG9rZW5SZXF1ZXN0IkwKE1NvY2tldFRva2VuUmVzcG9uc2USDQoFdG9rZW4YASABKAkSCwoDY2lkGAIgASgJEhkKEWZyb250X2VuZF92ZXJzaW9uGAMgASgJIiAKHkdldFN1YnNjcmlwdGlvbkNyaXRlcmlhUmVxdWVzdCKJAQofR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWFSZXNwb25zZRIRCgl0aWVyX25hbWUYASABKAkSHQoVZW50aXRsZWRfdG9fYm90X2dhbWVzGAIgASgIEjQKEGxhc3RfY2hhcmdlX2RhdGUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhMKEVVzZXJMb2dvdXRSZXF1ZXN0IhAKDkxvZ291dFJlc3BvbnNlIi8KG05vdGlmeUFjY291bnRDbG9zdXJlUmVxdWVzdBIQCghwYXNzd29yZBgBIAEoCSIeChxOb3RpZnlBY2NvdW50Q2xvc3VyZVJlc3BvbnNlIiEKEEdldEFQSUtleVJlcXVlc3QSDQoFcmVzZXQYASABKAgiIAoRR2V0QVBJS2V5UmVzcG9uc2USCwoDa2V5GAEgASgJIhgKFkdldFNpZ25lZENvb2tpZVJlcXVlc3QiIwoUU2lnbmVkQ29va2llUmVzcG9uc2USCwoDand0GAEgASgJIh0KG0luc3RhbGxTaWduZWRDb29raWVSZXNwb25zZSK4AQoXVXNlclJlZ2lzdHJhdGlvblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkSDQoFZW1haWwYAyABKAkSGQoRcmVnaXN0cmF0aW9uX2NvZGUYBCABKAkSEgoKYmlydGhfZGF0ZRgFIAEoCRISCgpmaXJzdF9uYW1lGAYgASgJEhEKCWxhc3RfbmFtZRgHIAEoCRIUCgxjb3VudHJ5X2NvZGUYCCABKAkiJwoUUmVnaXN0cmF0aW9uUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCSIiCg5SYXRpbmdzUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCSIfCg9SYXRpbmdzUmVzcG9uc2USDAoEanNvbhgBIAEoCSIgCgxTdGF0c1JlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkiHQoNU3RhdHNSZXNwb25zZRIMCgRqc29uGAEgASgJIiIKDlByb2ZpbGVSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJIvwBCg9Qcm9maWxlUmVzcG9uc2USEgoKZmlyc3RfbmFtZRgBIAEoCRIRCglsYXN0X25hbWUYAiABKAkSFAoMY291bnRyeV9jb2RlGAMgASgJEg0KBXRpdGxlGAQgASgJEg0KBWFib3V0GAUgASgJEhQKDHJhdGluZ3NfanNvbhgGIAEoCRISCgpzdGF0c19qc29uGAcgASgJEg8KB3VzZXJfaWQYCCABKAkSEgoKYXZhdGFyX3VybBgJIAEoCRIRCglmdWxsX25hbWUYCiABKAkSGAoQYXZhdGFyc19lZGl0YWJsZRgLIAEoCBISCgpiaXJ0aF9kYXRlGAwgASgJIhUKE1BlcnNvbmFsSW5mb1JlcXVlc3QirAEKFFBlcnNvbmFsSW5mb1Jlc3BvbnNlEg0KBWVtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhEKCWZ1bGxfbmFtZRgGIAEoCRINCgVhYm91dBgHIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJIrEBChlVcGRhdGVQZXJzb25hbEluZm9SZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhEKCWZ1bGxfbmFtZRgGIAEoCRINCgVhYm91dBgHIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJIhwKGlVwZGF0ZVBlcnNvbmFsSW5mb1Jlc3BvbnNlIicKE1VwZGF0ZUF2YXRhclJlcXVlc3QSEAoIanBnX2RhdGEYASABKAwiKgoUVXBkYXRlQXZhdGFyUmVzcG9uc2USEgoKYXZhdGFyX3VybBgBIAEoCSIVChNSZW1vdmVBdmF0YXJSZXF1ZXN0IhYKFFJlbW92ZUF2YXRhclJlc3BvbnNlIigKFEJyaWVmUHJvZmlsZXNSZXF1ZXN0EhAKCHVzZXJfaWRzGAEgAygJIl0KDEJyaWVmUHJvZmlsZRIQCgh1c2VybmFtZRgBIAEoCRIRCglmdWxsX25hbWUYAiABKAkSFAoMY291bnRyeV9jb2RlGAMgASgJEhIKCmF2YXRhcl91cmwYCSABKAkiqQEKFUJyaWVmUHJvZmlsZXNSZXNwb25zZRJDCghyZXNwb25zZRgBIAMoCzIxLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGVzUmVzcG9uc2UuUmVzcG9uc2VFbnRyeRpLCg1SZXNwb25zZUVudHJ5EgsKA2tleRgBIAEoCRIpCgV2YWx1ZRgCIAEoCzIaLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGU6AjgBIicKFVVzZXJuYW1lU2VhcmNoUmVxdWVzdBIOCgZwcmVmaXgYASABKAkiQAoWVXNlcm5hbWVTZWFyY2hSZXNwb25zZRImCgV1c2VycxgCIAMoCzIXLnVzZXJfc2VydmljZS5CYXNpY1VzZXIiIAoQQWRkRm9sbG93UmVxdWVzdBIMCgR1dWlkGAEgASgJIiMKE1JlbW92ZUZvbGxvd1JlcXVlc3QSDAoEdXVpZBgBIAEoCSITChFHZXRGb2xsb3dzUmVxdWVzdCIfCg9BZGRCbG9ja1JlcXVlc3QSDAoEdXVpZBgBIAEoCSIiChJSZW1vdmVCbG9ja1JlcXVlc3QSDAoEdXVpZBgBIAEoCSISChBHZXRCbG9ja3NSZXF1ZXN0IhYKFEdldEZ1bGxCbG9ja3NSZXF1ZXN0IgwKCk9LUmVzcG9uc2UiKwoJQmFzaWNVc2VyEgwKBHV1aWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkiRAoRQmFzaWNGb2xsb3dlZFVzZXISDAoEdXVpZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIPCgdjaGFubmVsGAMgAygJIlUKHEdldEFjdGl2ZUNoYXRDaGFubmVsc1JlcXVlc3QSDgoGbnVtYmVyGAEgASgFEg4KBm9mZnNldBgCIAEoBRIVCg10b3VybmFtZW50X2lkGAMgASgJIr4BChJBY3RpdmVDaGF0Q2hhbm5lbHMSOgoIY2hhbm5lbHMYASADKAsyKC51c2VyX3NlcnZpY2UuQWN0aXZlQ2hhdENoYW5uZWxzLkNoYW5uZWwabAoHQ2hhbm5lbBIMCgRuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtsYXN0X3VwZGF0ZRgDIAEoAxISCgpoYXNfdXBkYXRlGAQgASgIEhQKDGxhc3RfbWVzc2FnZRgFIAEoCSIiCg9HZXRDaGF0c1JlcXVlc3QSDwoHY2hhbm5lbBgBIAEoCSJEChJHZXRGb2xsb3dzUmVzcG9uc2USLgoFdXNlcnMYASADKAsyHy51c2VyX3NlcnZpY2UuQmFzaWNGb2xsb3dlZFVzZXIiOwoRR2V0QmxvY2tzUmVzcG9uc2USJgoFdXNlcnMYASADKAsyFy51c2VyX3NlcnZpY2UuQmFzaWNVc2VyIikKFUdldEZ1bGxCbG9ja3NSZXNwb25zZRIQCgh1c2VyX2lkcxgBIAMoCSITChFHZXRNb2RMaXN0UmVxdWVzdCJCChJHZXRNb2RMaXN0UmVzcG9uc2USFgoOYWRtaW5fdXNlcl9pZHMYASADKAkSFAoMbW9kX3VzZXJfaWRzGAIgAygJIsABCgtJbnRlZ3JhdGlvbhIMCgR1dWlkGAEgASgJEhgKEGludGVncmF0aW9uX25hbWUYAiABKAkSTgoTaW50ZWdyYXRpb25fZGV0YWlscxgDIAMoCzIxLnVzZXJfc2VydmljZS5JbnRlZ3JhdGlvbi5JbnRlZ3JhdGlvbkRldGFpbHNFbnRyeRo5ChdJbnRlZ3JhdGlvbkRldGFpbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIhgKFkdldEludGVncmF0aW9uc1JlcXVlc3QiRwoUSW50ZWdyYXRpb25zUmVzcG9uc2USLwoMaW50ZWdyYXRpb25zGAEgAygLMhkudXNlcl9zZXJ2aWNlLkludGVncmF0aW9uIigKGERlbGV0ZUludGVncmF0aW9uUmVxdWVzdBIMCgR1dWlkGAEgASgJIhsKGURlbGV0ZUludGVncmF0aW9uUmVzcG9uc2UymggKFUF1dGhlbnRpY2F0aW9uU2VydmljZRJECgVMb2dpbhIeLnVzZXJfc2VydmljZS5Vc2VyTG9naW5SZXF1ZXN0GhsudXNlcl9zZXJ2aWNlLkxvZ2luUmVzcG9uc2USRwoGTG9nb3V0Eh8udXNlcl9zZXJ2aWNlLlVzZXJMb2dvdXRSZXF1ZXN0GhwudXNlcl9zZXJ2aWNlLkxvZ291dFJlc3BvbnNlElUKDkdldFNvY2tldFRva2VuEiAudXNlcl9zZXJ2aWNlLlNvY2tldFRva2VuUmVxdWVzdBohLnVzZXJfc2VydmljZS5Tb2NrZXRUb2tlblJlc3BvbnNlEmIKElJlc2V0UGFzc3dvcmRTdGVwMRInLnVzZXJfc2VydmljZS5SZXNldFBhc3N3b3JkUmVxdWVzdFN0ZXAxGiMudXNlcl9zZXJ2aWNlLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJiChJSZXNldFBhc3N3b3JkU3RlcDISJy51c2VyX3NlcnZpY2UuUmVzZXRQYXNzd29yZFJlcXVlc3RTdGVwMhojLnVzZXJfc2VydmljZS5SZXNldFBhc3N3b3JkUmVzcG9uc2USWwoOQ2hhbmdlUGFzc3dvcmQSIy51c2VyX3NlcnZpY2UuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiQudXNlcl9zZXJ2aWNlLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2USbQoUTm90aWZ5QWNjb3VudENsb3N1cmUSKS51c2VyX3NlcnZpY2UuTm90aWZ5QWNjb3VudENsb3N1cmVSZXF1ZXN0GioudXNlcl9zZXJ2aWNlLk5vdGlmeUFjY291bnRDbG9zdXJlUmVzcG9uc2USWwoPR2V0U2lnbmVkQ29va2llEiQudXNlcl9zZXJ2aWNlLkdldFNpZ25lZENvb2tpZVJlcXVlc3QaIi51c2VyX3NlcnZpY2UuU2lnbmVkQ29va2llUmVzcG9uc2USZAoTSW5zdGFsbFNpZ25lZENvb2tpZRIiLnVzZXJfc2VydmljZS5TaWduZWRDb29raWVSZXNwb25zZRopLnVzZXJfc2VydmljZS5JbnN0YWxsU2lnbmVkQ29va2llUmVzcG9uc2USTAoJR2V0QVBJS2V5Eh4udXNlcl9zZXJ2aWNlLkdldEFQSUtleVJlcXVlc3QaHy51c2VyX3NlcnZpY2UuR2V0QVBJS2V5UmVzcG9uc2USdgoXR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWESLC51c2VyX3NlcnZpY2UuR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWFSZXF1ZXN0Gi0udXNlcl9zZXJ2aWNlLkdldFN1YnNjcmlwdGlvbkNyaXRlcmlhUmVzcG9uc2UybAoTUmVnaXN0cmF0aW9uU2VydmljZRJVCghSZWdpc3RlchIlLnVzZXJfc2VydmljZS5Vc2VyUmVnaXN0cmF0aW9uUmVxdWVzdBoiLnVzZXJfc2VydmljZS5SZWdpc3RyYXRpb25SZXNwb25zZTK5BQoOUHJvZmlsZVNlcnZpY2USSQoKR2V0UmF0aW5ncxIcLnVzZXJfc2VydmljZS5SYXRpbmdzUmVxdWVzdBodLnVzZXJfc2VydmljZS5SYXRpbmdzUmVzcG9uc2USQwoIR2V0U3RhdHMSGi51c2VyX3NlcnZpY2UuU3RhdHNSZXF1ZXN0GhsudXNlcl9zZXJ2aWNlLlN0YXRzUmVzcG9uc2USSQoKR2V0UHJvZmlsZRIcLnVzZXJfc2VydmljZS5Qcm9maWxlUmVxdWVzdBodLnVzZXJfc2VydmljZS5Qcm9maWxlUmVzcG9uc2USWAoPR2V0UGVyc29uYWxJbmZvEiEudXNlcl9zZXJ2aWNlLlBlcnNvbmFsSW5mb1JlcXVlc3QaIi51c2VyX3NlcnZpY2UuUGVyc29uYWxJbmZvUmVzcG9uc2USZwoSVXBkYXRlUGVyc29uYWxJbmZvEicudXNlcl9zZXJ2aWNlLlVwZGF0ZVBlcnNvbmFsSW5mb1JlcXVlc3QaKC51c2VyX3NlcnZpY2UuVXBkYXRlUGVyc29uYWxJbmZvUmVzcG9uc2USVQoMVXBkYXRlQXZhdGFyEiEudXNlcl9zZXJ2aWNlLlVwZGF0ZUF2YXRhclJlcXVlc3QaIi51c2VyX3NlcnZpY2UuVXBkYXRlQXZhdGFyUmVzcG9uc2USVQoMUmVtb3ZlQXZhdGFyEiEudXNlcl9zZXJ2aWNlLlJlbW92ZUF2YXRhclJlcXVlc3QaIi51c2VyX3NlcnZpY2UuUmVtb3ZlQXZhdGFyUmVzcG9uc2USWwoQR2V0QnJpZWZQcm9maWxlcxIiLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGVzUmVxdWVzdBojLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGVzUmVzcG9uc2UycQoTQXV0b2NvbXBsZXRlU2VydmljZRJaCg1HZXRDb21wbGV0aW9uEiMudXNlcl9zZXJ2aWNlLlVzZXJuYW1lU2VhcmNoUmVxdWVzdBokLnVzZXJfc2VydmljZS5Vc2VybmFtZVNlYXJjaFJlc3BvbnNlMq8GChBTb2NpYWxpemVTZXJ2aWNlEkUKCUFkZEZvbGxvdxIeLnVzZXJfc2VydmljZS5BZGRGb2xsb3dSZXF1ZXN0GhgudXNlcl9zZXJ2aWNlLk9LUmVzcG9uc2USSwoMUmVtb3ZlRm9sbG93EiEudXNlcl9zZXJ2aWNlLlJlbW92ZUZvbGxvd1JlcXVlc3QaGC51c2VyX3NlcnZpY2UuT0tSZXNwb25zZRJPCgpHZXRGb2xsb3dzEh8udXNlcl9zZXJ2aWNlLkdldEZvbGxvd3NSZXF1ZXN0GiAudXNlcl9zZXJ2aWNlLkdldEZvbGxvd3NSZXNwb25zZRJDCghBZGRCbG9jaxIdLnVzZXJfc2VydmljZS5BZGRCbG9ja1JlcXVlc3QaGC51c2VyX3NlcnZpY2UuT0tSZXNwb25zZRJJCgtSZW1vdmVCbG9jaxIgLnVzZXJfc2VydmljZS5SZW1vdmVCbG9ja1JlcXVlc3QaGC51c2VyX3NlcnZpY2UuT0tSZXNwb25zZRJMCglHZXRCbG9ja3MSHi51c2VyX3NlcnZpY2UuR2V0QmxvY2tzUmVxdWVzdBofLnVzZXJfc2VydmljZS5HZXRCbG9ja3NSZXNwb25zZRJYCg1HZXRGdWxsQmxvY2tzEiIudXNlcl9zZXJ2aWNlLkdldEZ1bGxCbG9ja3NSZXF1ZXN0GiMudXNlcl9zZXJ2aWNlLkdldEZ1bGxCbG9ja3NSZXNwb25zZRJlChVHZXRBY3RpdmVDaGF0Q2hhbm5lbHMSKi51c2VyX3NlcnZpY2UuR2V0QWN0aXZlQ2hhdENoYW5uZWxzUmVxdWVzdBogLnVzZXJfc2VydmljZS5BY3RpdmVDaGF0Q2hhbm5lbHMSRgoSR2V0Q2hhdHNGb3JDaGFubmVsEh0udXNlcl9zZXJ2aWNlLkdldENoYXRzUmVxdWVzdBoRLmlwYy5DaGF0TWVzc2FnZXMSTwoKR2V0TW9kTGlzdBIfLnVzZXJfc2VydmljZS5HZXRNb2RMaXN0UmVxdWVzdBogLnVzZXJfc2VydmljZS5HZXRNb2RMaXN0UmVzcG9uc2Uy3AEKEkludGVncmF0aW9uU2VydmljZRJgCg9HZXRJbnRlZ3JhdGlvbnMSJC51c2VyX3NlcnZpY2UuR2V0SW50ZWdyYXRpb25zUmVxdWVzdBoiLnVzZXJfc2VydmljZS5JbnRlZ3JhdGlvbnNSZXNwb25zZSIDkAIBEmQKEURlbGV0ZUludGVncmF0aW9uEiYudXNlcl9zZXJ2aWNlLkRlbGV0ZUludGVncmF0aW9uUmVxdWVzdBonLnVzZXJfc2VydmljZS5EZWxldGVJbnRlZ3JhdGlvblJlc3BvbnNlQqoBChBjb20udXNlcl9zZXJ2aWNlQhBVc2VyU2VydmljZVByb3RvUAFaOGdpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vdXNlcl9zZXJ2aWNlogIDVVhYqgILVXNlclNlcnZpY2XKAgtVc2VyU2VydmljZeICF1VzZXJTZXJ2aWNlXEdQQk1ldGFkYXRh6gILVXNlclNlcnZpY2ViBnByb3RvMw", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
+  fileDesc("CiVwcm90by91c2VyX3NlcnZpY2UvdXNlcl9zZXJ2aWNlLnByb3RvEgx1c2VyX3NlcnZpY2UiNgoQVXNlckxvZ2luUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSJDChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSFAoMb2xkX3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSI0Cg1Mb2dpblJlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIioKGVJlc2V0UGFzc3dvcmRSZXF1ZXN0U3RlcDESDQoFZW1haWwYASABKAkiQQoZUmVzZXRQYXNzd29yZFJlcXVlc3RTdGVwMhIQCghwYXNzd29yZBgBIAEoCRISCgpyZXNldF9jb2RlGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIoCgtDb3VudHJ5RmxhZxILCgN1cmwYASABKAkSDAoEbmFtZRgCIAEoCSIuChBLaWNrc3RhcnRlckJhZGdlEgsKA3VybBgBIAEoCRINCgV0aXRsZRgCIAEoCSK7AQoMVXNlckdhbWVJbmZvEgwKBHV1aWQYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRINCgV0aXRsZRgDIAEoCRIRCglmdWxsX25hbWUYBCABKAkSKwoEZmxhZxgFIAEoCzIZLnVzZXJfc2VydmljZS5Db3VudHJ5RmxhZ0ICGAESOgoSa2lja3N0YXJ0ZXJfYmFkZ2VzGAYgAygLMh4udXNlcl9zZXJ2aWNlLktpY2tzdGFydGVyQmFkZ2UiFAoSU29ja2V0VG9rZW5SZXF1ZXN0IkwKE1NvY2tldFRva2VuUmVzcG9uc2USDQoFdG9rZW4YASABKAkSCwoDY2lkGAIgASgJEhkKEWZyb250X2VuZF92ZXJzaW9uGAMgASgJIhMKEVVzZXJMb2dvdXRSZXF1ZXN0IhAKDkxvZ291dFJlc3BvbnNlIi8KG05vdGlmeUFjY291bnRDbG9zdXJlUmVxdWVzdBIQCghwYXNzd29yZBgBIAEoCSIeChxOb3RpZnlBY2NvdW50Q2xvc3VyZVJlc3BvbnNlIiEKEEdldEFQSUtleVJlcXVlc3QSDQoFcmVzZXQYASABKAgiIAoRR2V0QVBJS2V5UmVzcG9uc2USCwoDa2V5GAEgASgJIhgKFkdldFNpZ25lZENvb2tpZVJlcXVlc3QiIwoUU2lnbmVkQ29va2llUmVzcG9uc2USCwoDand0GAEgASgJIh0KG0luc3RhbGxTaWduZWRDb29raWVSZXNwb25zZSK4AQoXVXNlclJlZ2lzdHJhdGlvblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkSDQoFZW1haWwYAyABKAkSGQoRcmVnaXN0cmF0aW9uX2NvZGUYBCABKAkSEgoKYmlydGhfZGF0ZRgFIAEoCRISCgpmaXJzdF9uYW1lGAYgASgJEhEKCWxhc3RfbmFtZRgHIAEoCRIUCgxjb3VudHJ5X2NvZGUYCCABKAkiJwoUUmVnaXN0cmF0aW9uUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCSIiCg5SYXRpbmdzUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCSIfCg9SYXRpbmdzUmVzcG9uc2USDAoEanNvbhgBIAEoCSIgCgxTdGF0c1JlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkiHQoNU3RhdHNSZXNwb25zZRIMCgRqc29uGAEgASgJIiIKDlByb2ZpbGVSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJIvwBCg9Qcm9maWxlUmVzcG9uc2USEgoKZmlyc3RfbmFtZRgBIAEoCRIRCglsYXN0X25hbWUYAiABKAkSFAoMY291bnRyeV9jb2RlGAMgASgJEg0KBXRpdGxlGAQgASgJEg0KBWFib3V0GAUgASgJEhQKDHJhdGluZ3NfanNvbhgGIAEoCRISCgpzdGF0c19qc29uGAcgASgJEg8KB3VzZXJfaWQYCCABKAkSEgoKYXZhdGFyX3VybBgJIAEoCRIRCglmdWxsX25hbWUYCiABKAkSGAoQYXZhdGFyc19lZGl0YWJsZRgLIAEoCBISCgpiaXJ0aF9kYXRlGAwgASgJIhUKE1BlcnNvbmFsSW5mb1JlcXVlc3QirAEKFFBlcnNvbmFsSW5mb1Jlc3BvbnNlEg0KBWVtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhEKCWZ1bGxfbmFtZRgGIAEoCRINCgVhYm91dBgHIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJIrEBChlVcGRhdGVQZXJzb25hbEluZm9SZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhEKCWZ1bGxfbmFtZRgGIAEoCRINCgVhYm91dBgHIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJIhwKGlVwZGF0ZVBlcnNvbmFsSW5mb1Jlc3BvbnNlIicKE1VwZGF0ZUF2YXRhclJlcXVlc3QSEAoIanBnX2RhdGEYASABKAwiKgoUVXBkYXRlQXZhdGFyUmVzcG9uc2USEgoKYXZhdGFyX3VybBgBIAEoCSIVChNSZW1vdmVBdmF0YXJSZXF1ZXN0IhYKFFJlbW92ZUF2YXRhclJlc3BvbnNlIigKFEJyaWVmUHJvZmlsZXNSZXF1ZXN0EhAKCHVzZXJfaWRzGAEgAygJIl0KDEJyaWVmUHJvZmlsZRIQCgh1c2VybmFtZRgBIAEoCRIRCglmdWxsX25hbWUYAiABKAkSFAoMY291bnRyeV9jb2RlGAMgASgJEhIKCmF2YXRhcl91cmwYCSABKAkiqQEKFUJyaWVmUHJvZmlsZXNSZXNwb25zZRJDCghyZXNwb25zZRgBIAMoCzIxLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGVzUmVzcG9uc2UuUmVzcG9uc2VFbnRyeRpLCg1SZXNwb25zZUVudHJ5EgsKA2tleRgBIAEoCRIpCgV2YWx1ZRgCIAEoCzIaLnVzZXJfc2VydmljZS5CcmllZlByb2ZpbGU6AjgBIicKFVVzZXJuYW1lU2VhcmNoUmVxdWVzdBIOCgZwcmVmaXgYASABKAkiQAoWVXNlcm5hbWVTZWFyY2hSZXNwb25zZRImCgV1c2VycxgCIAMoCzIXLnVzZXJfc2VydmljZS5CYXNpY1VzZXIiIAoQQWRkRm9sbG93UmVxdWVzdBIMCgR1dWlkGAEgASgJIiMKE1JlbW92ZUZvbGxvd1JlcXVlc3QSDAoEdXVpZBgBIAEoCSITChFHZXRGb2xsb3dzUmVxdWVzdCIfCg9BZGRCbG9ja1JlcXVlc3QSDAoEdXVpZBgBIAEoCSIiChJSZW1vdmVCbG9ja1JlcXVlc3QSDAoEdXVpZBgBIAEoCSISChBHZXRCbG9ja3NSZXF1ZXN0IhYKFEdldEZ1bGxCbG9ja3NSZXF1ZXN0IgwKCk9LUmVzcG9uc2UiKwoJQmFzaWNVc2VyEgwKBHV1aWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkiRAoRQmFzaWNGb2xsb3dlZFVzZXISDAoEdXVpZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIPCgdjaGFubmVsGAMgAygJIlUKHEdldEFjdGl2ZUNoYXRDaGFubmVsc1JlcXVlc3QSDgoGbnVtYmVyGAEgASgFEg4KBm9mZnNldBgCIAEoBRIVCg10b3VybmFtZW50X2lkGAMgASgJIr4BChJBY3RpdmVDaGF0Q2hhbm5lbHMSOgoIY2hhbm5lbHMYASADKAsyKC51c2VyX3NlcnZpY2UuQWN0aXZlQ2hhdENoYW5uZWxzLkNoYW5uZWwabAoHQ2hhbm5lbBIMCgRuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtsYXN0X3VwZGF0ZRgDIAEoAxISCgpoYXNfdXBkYXRlGAQgASgIEhQKDGxhc3RfbWVzc2FnZRgFIAEoCSIiCg9HZXRDaGF0c1JlcXVlc3QSDwoHY2hhbm5lbBgBIAEoCSJEChJHZXRGb2xsb3dzUmVzcG9uc2USLgoFdXNlcnMYASADKAsyHy51c2VyX3NlcnZpY2UuQmFzaWNGb2xsb3dlZFVzZXIiOwoRR2V0QmxvY2tzUmVzcG9uc2USJgoFdXNlcnMYASADKAsyFy51c2VyX3NlcnZpY2UuQmFzaWNVc2VyIikKFUdldEZ1bGxCbG9ja3NSZXNwb25zZRIQCgh1c2VyX2lkcxgBIAMoCSLAAQoLSW50ZWdyYXRpb24SDAoEdXVpZBgBIAEoCRIYChBpbnRlZ3JhdGlvbl9uYW1lGAIgASgJEk4KE2ludGVncmF0aW9uX2RldGFpbHMYAyADKAsyMS51c2VyX3NlcnZpY2UuSW50ZWdyYXRpb24uSW50ZWdyYXRpb25EZXRhaWxzRW50cnkaOQoXSW50ZWdyYXRpb25EZXRhaWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIYChZHZXRJbnRlZ3JhdGlvbnNSZXF1ZXN0IkcKFEludGVncmF0aW9uc1Jlc3BvbnNlEi8KDGludGVncmF0aW9ucxgBIAMoCzIZLnVzZXJfc2VydmljZS5JbnRlZ3JhdGlvbiIoChhEZWxldGVJbnRlZ3JhdGlvblJlcXVlc3QSDAoEdXVpZBgBIAEoCSIbChlEZWxldGVJbnRlZ3JhdGlvblJlc3BvbnNlIiAKHkdldFN1YnNjcmlwdGlvbkNyaXRlcmlhUmVxdWVzdCKJAQofR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWFSZXNwb25zZRIRCgl0aWVyX25hbWUYASABKAkSHQoVZW50aXRsZWRfdG9fYm90X2dhbWVzGAIgASgIEjQKEGxhc3RfY2hhcmdlX2RhdGUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhMKEUdldE1vZExpc3RSZXF1ZXN0IkIKEkdldE1vZExpc3RSZXNwb25zZRIWCg5hZG1pbl91c2VyX2lkcxgBIAMoCRIUCgxtb2RfdXNlcl9pZHMYAiADKAkiMwoOQWRkUm9sZVJlcXVlc3QSDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCSIRCg9BZGRSb2xlUmVzcG9uc2UiOQoUQWRkUGVybWlzc2lvblJlcXVlc3QSDAoEY29kZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCSIXChVBZGRQZXJtaXNzaW9uUmVzcG9uc2UiSgocTGlua1JvbGVBbmRQZXJtaXNzaW9uUmVxdWVzdBIRCglyb2xlX25hbWUYASABKAkSFwoPcGVybWlzc2lvbl9jb2RlGAIgASgJIh8KHUxpbmtSb2xlQW5kUGVybWlzc2lvblJlc3BvbnNlIjgKEUFzc2lnblJvbGVSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhEKCXJvbGVfbmFtZRgCIAEoCSIUChJBc3NpZ25Sb2xlUmVzcG9uc2UiOgoTVW5hc3NpZ25Sb2xlUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIRCglyb2xlX25hbWUYAiABKAkiFgoUVW5hc3NpZ25Sb2xlUmVzcG9uc2UiJwoTR2V0VXNlclJvbGVzUmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCSIiChFVc2VyUm9sZXNSZXNwb25zZRINCgVyb2xlcxgBIAMoCTKiBwoVQXV0aGVudGljYXRpb25TZXJ2aWNlEkQKBUxvZ2luEh4udXNlcl9zZXJ2aWNlLlVzZXJMb2dpblJlcXVlc3QaGy51c2VyX3NlcnZpY2UuTG9naW5SZXNwb25zZRJHCgZMb2dvdXQSHy51c2VyX3NlcnZpY2UuVXNlckxvZ291dFJlcXVlc3QaHC51c2VyX3NlcnZpY2UuTG9nb3V0UmVzcG9uc2USVQoOR2V0U29ja2V0VG9rZW4SIC51c2VyX3NlcnZpY2UuU29ja2V0VG9rZW5SZXF1ZXN0GiEudXNlcl9zZXJ2aWNlLlNvY2tldFRva2VuUmVzcG9uc2USYgoSUmVzZXRQYXNzd29yZFN0ZXAxEicudXNlcl9zZXJ2aWNlLlJlc2V0UGFzc3dvcmRSZXF1ZXN0U3RlcDEaIy51c2VyX3NlcnZpY2UuUmVzZXRQYXNzd29yZFJlc3BvbnNlEmIKElJlc2V0UGFzc3dvcmRTdGVwMhInLnVzZXJfc2VydmljZS5SZXNldFBhc3N3b3JkUmVxdWVzdFN0ZXAyGiMudXNlcl9zZXJ2aWNlLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJbCg5DaGFuZ2VQYXNzd29yZBIjLnVzZXJfc2VydmljZS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaJC51c2VyX3NlcnZpY2UuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRJtChROb3RpZnlBY2NvdW50Q2xvc3VyZRIpLnVzZXJfc2VydmljZS5Ob3RpZnlBY2NvdW50Q2xvc3VyZVJlcXVlc3QaKi51c2VyX3NlcnZpY2UuTm90aWZ5QWNjb3VudENsb3N1cmVSZXNwb25zZRJbCg9HZXRTaWduZWRDb29raWUSJC51c2VyX3NlcnZpY2UuR2V0U2lnbmVkQ29va2llUmVxdWVzdBoiLnVzZXJfc2VydmljZS5TaWduZWRDb29raWVSZXNwb25zZRJkChNJbnN0YWxsU2lnbmVkQ29va2llEiIudXNlcl9zZXJ2aWNlLlNpZ25lZENvb2tpZVJlc3BvbnNlGikudXNlcl9zZXJ2aWNlLkluc3RhbGxTaWduZWRDb29raWVSZXNwb25zZRJMCglHZXRBUElLZXkSHi51c2VyX3NlcnZpY2UuR2V0QVBJS2V5UmVxdWVzdBofLnVzZXJfc2VydmljZS5HZXRBUElLZXlSZXNwb25zZTJsChNSZWdpc3RyYXRpb25TZXJ2aWNlElUKCFJlZ2lzdGVyEiUudXNlcl9zZXJ2aWNlLlVzZXJSZWdpc3RyYXRpb25SZXF1ZXN0GiIudXNlcl9zZXJ2aWNlLlJlZ2lzdHJhdGlvblJlc3BvbnNlMrkFCg5Qcm9maWxlU2VydmljZRJJCgpHZXRSYXRpbmdzEhwudXNlcl9zZXJ2aWNlLlJhdGluZ3NSZXF1ZXN0Gh0udXNlcl9zZXJ2aWNlLlJhdGluZ3NSZXNwb25zZRJDCghHZXRTdGF0cxIaLnVzZXJfc2VydmljZS5TdGF0c1JlcXVlc3QaGy51c2VyX3NlcnZpY2UuU3RhdHNSZXNwb25zZRJJCgpHZXRQcm9maWxlEhwudXNlcl9zZXJ2aWNlLlByb2ZpbGVSZXF1ZXN0Gh0udXNlcl9zZXJ2aWNlLlByb2ZpbGVSZXNwb25zZRJYCg9HZXRQZXJzb25hbEluZm8SIS51c2VyX3NlcnZpY2UuUGVyc29uYWxJbmZvUmVxdWVzdBoiLnVzZXJfc2VydmljZS5QZXJzb25hbEluZm9SZXNwb25zZRJnChJVcGRhdGVQZXJzb25hbEluZm8SJy51c2VyX3NlcnZpY2UuVXBkYXRlUGVyc29uYWxJbmZvUmVxdWVzdBooLnVzZXJfc2VydmljZS5VcGRhdGVQZXJzb25hbEluZm9SZXNwb25zZRJVCgxVcGRhdGVBdmF0YXISIS51c2VyX3NlcnZpY2UuVXBkYXRlQXZhdGFyUmVxdWVzdBoiLnVzZXJfc2VydmljZS5VcGRhdGVBdmF0YXJSZXNwb25zZRJVCgxSZW1vdmVBdmF0YXISIS51c2VyX3NlcnZpY2UuUmVtb3ZlQXZhdGFyUmVxdWVzdBoiLnVzZXJfc2VydmljZS5SZW1vdmVBdmF0YXJSZXNwb25zZRJbChBHZXRCcmllZlByb2ZpbGVzEiIudXNlcl9zZXJ2aWNlLkJyaWVmUHJvZmlsZXNSZXF1ZXN0GiMudXNlcl9zZXJ2aWNlLkJyaWVmUHJvZmlsZXNSZXNwb25zZTJxChNBdXRvY29tcGxldGVTZXJ2aWNlEloKDUdldENvbXBsZXRpb24SIy51c2VyX3NlcnZpY2UuVXNlcm5hbWVTZWFyY2hSZXF1ZXN0GiQudXNlcl9zZXJ2aWNlLlVzZXJuYW1lU2VhcmNoUmVzcG9uc2Uy3gUKEFNvY2lhbGl6ZVNlcnZpY2USRQoJQWRkRm9sbG93Eh4udXNlcl9zZXJ2aWNlLkFkZEZvbGxvd1JlcXVlc3QaGC51c2VyX3NlcnZpY2UuT0tSZXNwb25zZRJLCgxSZW1vdmVGb2xsb3cSIS51c2VyX3NlcnZpY2UuUmVtb3ZlRm9sbG93UmVxdWVzdBoYLnVzZXJfc2VydmljZS5PS1Jlc3BvbnNlEk8KCkdldEZvbGxvd3MSHy51c2VyX3NlcnZpY2UuR2V0Rm9sbG93c1JlcXVlc3QaIC51c2VyX3NlcnZpY2UuR2V0Rm9sbG93c1Jlc3BvbnNlEkMKCEFkZEJsb2NrEh0udXNlcl9zZXJ2aWNlLkFkZEJsb2NrUmVxdWVzdBoYLnVzZXJfc2VydmljZS5PS1Jlc3BvbnNlEkkKC1JlbW92ZUJsb2NrEiAudXNlcl9zZXJ2aWNlLlJlbW92ZUJsb2NrUmVxdWVzdBoYLnVzZXJfc2VydmljZS5PS1Jlc3BvbnNlEkwKCUdldEJsb2NrcxIeLnVzZXJfc2VydmljZS5HZXRCbG9ja3NSZXF1ZXN0Gh8udXNlcl9zZXJ2aWNlLkdldEJsb2Nrc1Jlc3BvbnNlElgKDUdldEZ1bGxCbG9ja3MSIi51c2VyX3NlcnZpY2UuR2V0RnVsbEJsb2Nrc1JlcXVlc3QaIy51c2VyX3NlcnZpY2UuR2V0RnVsbEJsb2Nrc1Jlc3BvbnNlEmUKFUdldEFjdGl2ZUNoYXRDaGFubmVscxIqLnVzZXJfc2VydmljZS5HZXRBY3RpdmVDaGF0Q2hhbm5lbHNSZXF1ZXN0GiAudXNlcl9zZXJ2aWNlLkFjdGl2ZUNoYXRDaGFubmVscxJGChJHZXRDaGF0c0ZvckNoYW5uZWwSHS51c2VyX3NlcnZpY2UuR2V0Q2hhdHNSZXF1ZXN0GhEuaXBjLkNoYXRNZXNzYWdlczLcAQoSSW50ZWdyYXRpb25TZXJ2aWNlEmAKD0dldEludGVncmF0aW9ucxIkLnVzZXJfc2VydmljZS5HZXRJbnRlZ3JhdGlvbnNSZXF1ZXN0GiIudXNlcl9zZXJ2aWNlLkludGVncmF0aW9uc1Jlc3BvbnNlIgOQAgESZAoRRGVsZXRlSW50ZWdyYXRpb24SJi51c2VyX3NlcnZpY2UuRGVsZXRlSW50ZWdyYXRpb25SZXF1ZXN0GicudXNlcl9zZXJ2aWNlLkRlbGV0ZUludGVncmF0aW9uUmVzcG9uc2Uy/gUKFEF1dGhvcml6YXRpb25TZXJ2aWNlElQKCkdldE1vZExpc3QSHy51c2VyX3NlcnZpY2UuR2V0TW9kTGlzdFJlcXVlc3QaIC51c2VyX3NlcnZpY2UuR2V0TW9kTGlzdFJlc3BvbnNlIgOQAgESewoXR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWESLC51c2VyX3NlcnZpY2UuR2V0U3Vic2NyaXB0aW9uQ3JpdGVyaWFSZXF1ZXN0Gi0udXNlcl9zZXJ2aWNlLkdldFN1YnNjcmlwdGlvbkNyaXRlcmlhUmVzcG9uc2UiA5ACARJGCgdBZGRSb2xlEhwudXNlcl9zZXJ2aWNlLkFkZFJvbGVSZXF1ZXN0Gh0udXNlcl9zZXJ2aWNlLkFkZFJvbGVSZXNwb25zZRJYCg1BZGRQZXJtaXNzaW9uEiIudXNlcl9zZXJ2aWNlLkFkZFBlcm1pc3Npb25SZXF1ZXN0GiMudXNlcl9zZXJ2aWNlLkFkZFBlcm1pc3Npb25SZXNwb25zZRJwChVMaW5rUm9sZUFuZFBlcm1pc3Npb24SKi51c2VyX3NlcnZpY2UuTGlua1JvbGVBbmRQZXJtaXNzaW9uUmVxdWVzdBorLnVzZXJfc2VydmljZS5MaW5rUm9sZUFuZFBlcm1pc3Npb25SZXNwb25zZRJPCgpBc3NpZ25Sb2xlEh8udXNlcl9zZXJ2aWNlLkFzc2lnblJvbGVSZXF1ZXN0GiAudXNlcl9zZXJ2aWNlLkFzc2lnblJvbGVSZXNwb25zZRJVCgxVbmFzc2lnblJvbGUSIS51c2VyX3NlcnZpY2UuVW5hc3NpZ25Sb2xlUmVxdWVzdBoiLnVzZXJfc2VydmljZS5VbmFzc2lnblJvbGVSZXNwb25zZRJXCgxHZXRVc2VyUm9sZXMSIS51c2VyX3NlcnZpY2UuR2V0VXNlclJvbGVzUmVxdWVzdBofLnVzZXJfc2VydmljZS5Vc2VyUm9sZXNSZXNwb25zZSIDkAIBQqoBChBjb20udXNlcl9zZXJ2aWNlQhBVc2VyU2VydmljZVByb3RvUAFaOGdpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vdXNlcl9zZXJ2aWNlogIDVVhYqgILVXNlclNlcnZpY2XKAgtVc2VyU2VydmljZeICF1VzZXJTZXJ2aWNlXEdQQk1ldGFkYXRh6gILVXNlclNlcnZpY2ViBnByb3RvMw", [file_proto_ipc_chat, file_google_protobuf_timestamp]);
 
 /**
  * UserLoginRequest is used for logging in.
@@ -290,46 +290,6 @@ export const SocketTokenResponseSchema: GenMessage<SocketTokenResponse> = /*@__P
   messageDesc(file_proto_user_service_user_service, 11);
 
 /**
- * @generated from message user_service.GetSubscriptionCriteriaRequest
- */
-export type GetSubscriptionCriteriaRequest = Message<"user_service.GetSubscriptionCriteriaRequest"> & {
-};
-
-/**
- * Describes the message user_service.GetSubscriptionCriteriaRequest.
- * Use `create(GetSubscriptionCriteriaRequestSchema)` to create a new message.
- */
-export const GetSubscriptionCriteriaRequestSchema: GenMessage<GetSubscriptionCriteriaRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 12);
-
-/**
- * @generated from message user_service.GetSubscriptionCriteriaResponse
- */
-export type GetSubscriptionCriteriaResponse = Message<"user_service.GetSubscriptionCriteriaResponse"> & {
-  /**
-   * @generated from field: string tier_name = 1;
-   */
-  tierName: string;
-
-  /**
-   * @generated from field: bool entitled_to_bot_games = 2;
-   */
-  entitledToBotGames: boolean;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp last_charge_date = 3;
-   */
-  lastChargeDate?: Timestamp;
-};
-
-/**
- * Describes the message user_service.GetSubscriptionCriteriaResponse.
- * Use `create(GetSubscriptionCriteriaResponseSchema)` to create a new message.
- */
-export const GetSubscriptionCriteriaResponseSchema: GenMessage<GetSubscriptionCriteriaResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 13);
-
-/**
  * @generated from message user_service.UserLogoutRequest
  */
 export type UserLogoutRequest = Message<"user_service.UserLogoutRequest"> & {
@@ -340,7 +300,7 @@ export type UserLogoutRequest = Message<"user_service.UserLogoutRequest"> & {
  * Use `create(UserLogoutRequestSchema)` to create a new message.
  */
 export const UserLogoutRequestSchema: GenMessage<UserLogoutRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 14);
+  messageDesc(file_proto_user_service_user_service, 12);
 
 /**
  * @generated from message user_service.LogoutResponse
@@ -353,7 +313,7 @@ export type LogoutResponse = Message<"user_service.LogoutResponse"> & {
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
 export const LogoutResponseSchema: GenMessage<LogoutResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 15);
+  messageDesc(file_proto_user_service_user_service, 13);
 
 /**
  * @generated from message user_service.NotifyAccountClosureRequest
@@ -370,7 +330,7 @@ export type NotifyAccountClosureRequest = Message<"user_service.NotifyAccountClo
  * Use `create(NotifyAccountClosureRequestSchema)` to create a new message.
  */
 export const NotifyAccountClosureRequestSchema: GenMessage<NotifyAccountClosureRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 16);
+  messageDesc(file_proto_user_service_user_service, 14);
 
 /**
  * @generated from message user_service.NotifyAccountClosureResponse
@@ -383,7 +343,7 @@ export type NotifyAccountClosureResponse = Message<"user_service.NotifyAccountCl
  * Use `create(NotifyAccountClosureResponseSchema)` to create a new message.
  */
 export const NotifyAccountClosureResponseSchema: GenMessage<NotifyAccountClosureResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 17);
+  messageDesc(file_proto_user_service_user_service, 15);
 
 /**
  * @generated from message user_service.GetAPIKeyRequest
@@ -400,7 +360,7 @@ export type GetAPIKeyRequest = Message<"user_service.GetAPIKeyRequest"> & {
  * Use `create(GetAPIKeyRequestSchema)` to create a new message.
  */
 export const GetAPIKeyRequestSchema: GenMessage<GetAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 18);
+  messageDesc(file_proto_user_service_user_service, 16);
 
 /**
  * @generated from message user_service.GetAPIKeyResponse
@@ -417,7 +377,7 @@ export type GetAPIKeyResponse = Message<"user_service.GetAPIKeyResponse"> & {
  * Use `create(GetAPIKeyResponseSchema)` to create a new message.
  */
 export const GetAPIKeyResponseSchema: GenMessage<GetAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 19);
+  messageDesc(file_proto_user_service_user_service, 17);
 
 /**
  * @generated from message user_service.GetSignedCookieRequest
@@ -430,7 +390,7 @@ export type GetSignedCookieRequest = Message<"user_service.GetSignedCookieReques
  * Use `create(GetSignedCookieRequestSchema)` to create a new message.
  */
 export const GetSignedCookieRequestSchema: GenMessage<GetSignedCookieRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 20);
+  messageDesc(file_proto_user_service_user_service, 18);
 
 /**
  * @generated from message user_service.SignedCookieResponse
@@ -447,7 +407,7 @@ export type SignedCookieResponse = Message<"user_service.SignedCookieResponse"> 
  * Use `create(SignedCookieResponseSchema)` to create a new message.
  */
 export const SignedCookieResponseSchema: GenMessage<SignedCookieResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 21);
+  messageDesc(file_proto_user_service_user_service, 19);
 
 /**
  * @generated from message user_service.InstallSignedCookieResponse
@@ -460,7 +420,7 @@ export type InstallSignedCookieResponse = Message<"user_service.InstallSignedCoo
  * Use `create(InstallSignedCookieResponseSchema)` to create a new message.
  */
 export const InstallSignedCookieResponseSchema: GenMessage<InstallSignedCookieResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 22);
+  messageDesc(file_proto_user_service_user_service, 20);
 
 /**
  * @generated from message user_service.UserRegistrationRequest
@@ -512,7 +472,7 @@ export type UserRegistrationRequest = Message<"user_service.UserRegistrationRequ
  * Use `create(UserRegistrationRequestSchema)` to create a new message.
  */
 export const UserRegistrationRequestSchema: GenMessage<UserRegistrationRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 23);
+  messageDesc(file_proto_user_service_user_service, 21);
 
 /**
  * @generated from message user_service.RegistrationResponse
@@ -529,7 +489,7 @@ export type RegistrationResponse = Message<"user_service.RegistrationResponse"> 
  * Use `create(RegistrationResponseSchema)` to create a new message.
  */
 export const RegistrationResponseSchema: GenMessage<RegistrationResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 24);
+  messageDesc(file_proto_user_service_user_service, 22);
 
 /**
  * @generated from message user_service.RatingsRequest
@@ -546,7 +506,7 @@ export type RatingsRequest = Message<"user_service.RatingsRequest"> & {
  * Use `create(RatingsRequestSchema)` to create a new message.
  */
 export const RatingsRequestSchema: GenMessage<RatingsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 25);
+  messageDesc(file_proto_user_service_user_service, 23);
 
 /**
  * We just send the raw JSON from the db here for ease. Let the front-end
@@ -566,7 +526,7 @@ export type RatingsResponse = Message<"user_service.RatingsResponse"> & {
  * Use `create(RatingsResponseSchema)` to create a new message.
  */
 export const RatingsResponseSchema: GenMessage<RatingsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 26);
+  messageDesc(file_proto_user_service_user_service, 24);
 
 /**
  * @generated from message user_service.StatsRequest
@@ -583,7 +543,7 @@ export type StatsRequest = Message<"user_service.StatsRequest"> & {
  * Use `create(StatsRequestSchema)` to create a new message.
  */
 export const StatsRequestSchema: GenMessage<StatsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 27);
+  messageDesc(file_proto_user_service_user_service, 25);
 
 /**
  * See ratings JSON note above.
@@ -602,7 +562,7 @@ export type StatsResponse = Message<"user_service.StatsResponse"> & {
  * Use `create(StatsResponseSchema)` to create a new message.
  */
 export const StatsResponseSchema: GenMessage<StatsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 28);
+  messageDesc(file_proto_user_service_user_service, 26);
 
 /**
  * @generated from message user_service.ProfileRequest
@@ -619,7 +579,7 @@ export type ProfileRequest = Message<"user_service.ProfileRequest"> & {
  * Use `create(ProfileRequestSchema)` to create a new message.
  */
 export const ProfileRequestSchema: GenMessage<ProfileRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 29);
+  messageDesc(file_proto_user_service_user_service, 27);
 
 /**
  * @generated from message user_service.ProfileResponse
@@ -691,7 +651,7 @@ export type ProfileResponse = Message<"user_service.ProfileResponse"> & {
  * Use `create(ProfileResponseSchema)` to create a new message.
  */
 export const ProfileResponseSchema: GenMessage<ProfileResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 30);
+  messageDesc(file_proto_user_service_user_service, 28);
 
 /**
  * @generated from message user_service.PersonalInfoRequest
@@ -704,7 +664,7 @@ export type PersonalInfoRequest = Message<"user_service.PersonalInfoRequest"> & 
  * Use `create(PersonalInfoRequestSchema)` to create a new message.
  */
 export const PersonalInfoRequestSchema: GenMessage<PersonalInfoRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 31);
+  messageDesc(file_proto_user_service_user_service, 29);
 
 /**
  * @generated from message user_service.PersonalInfoResponse
@@ -756,7 +716,7 @@ export type PersonalInfoResponse = Message<"user_service.PersonalInfoResponse"> 
  * Use `create(PersonalInfoResponseSchema)` to create a new message.
  */
 export const PersonalInfoResponseSchema: GenMessage<PersonalInfoResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 32);
+  messageDesc(file_proto_user_service_user_service, 30);
 
 /**
  * @generated from message user_service.UpdatePersonalInfoRequest
@@ -808,7 +768,7 @@ export type UpdatePersonalInfoRequest = Message<"user_service.UpdatePersonalInfo
  * Use `create(UpdatePersonalInfoRequestSchema)` to create a new message.
  */
 export const UpdatePersonalInfoRequestSchema: GenMessage<UpdatePersonalInfoRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 33);
+  messageDesc(file_proto_user_service_user_service, 31);
 
 /**
  * @generated from message user_service.UpdatePersonalInfoResponse
@@ -821,7 +781,7 @@ export type UpdatePersonalInfoResponse = Message<"user_service.UpdatePersonalInf
  * Use `create(UpdatePersonalInfoResponseSchema)` to create a new message.
  */
 export const UpdatePersonalInfoResponseSchema: GenMessage<UpdatePersonalInfoResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 34);
+  messageDesc(file_proto_user_service_user_service, 32);
 
 /**
  * @generated from message user_service.UpdateAvatarRequest
@@ -838,7 +798,7 @@ export type UpdateAvatarRequest = Message<"user_service.UpdateAvatarRequest"> & 
  * Use `create(UpdateAvatarRequestSchema)` to create a new message.
  */
 export const UpdateAvatarRequestSchema: GenMessage<UpdateAvatarRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 35);
+  messageDesc(file_proto_user_service_user_service, 33);
 
 /**
  * @generated from message user_service.UpdateAvatarResponse
@@ -855,7 +815,7 @@ export type UpdateAvatarResponse = Message<"user_service.UpdateAvatarResponse"> 
  * Use `create(UpdateAvatarResponseSchema)` to create a new message.
  */
 export const UpdateAvatarResponseSchema: GenMessage<UpdateAvatarResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 36);
+  messageDesc(file_proto_user_service_user_service, 34);
 
 /**
  * @generated from message user_service.RemoveAvatarRequest
@@ -868,7 +828,7 @@ export type RemoveAvatarRequest = Message<"user_service.RemoveAvatarRequest"> & 
  * Use `create(RemoveAvatarRequestSchema)` to create a new message.
  */
 export const RemoveAvatarRequestSchema: GenMessage<RemoveAvatarRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 37);
+  messageDesc(file_proto_user_service_user_service, 35);
 
 /**
  * @generated from message user_service.RemoveAvatarResponse
@@ -881,7 +841,7 @@ export type RemoveAvatarResponse = Message<"user_service.RemoveAvatarResponse"> 
  * Use `create(RemoveAvatarResponseSchema)` to create a new message.
  */
 export const RemoveAvatarResponseSchema: GenMessage<RemoveAvatarResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 38);
+  messageDesc(file_proto_user_service_user_service, 36);
 
 /**
  * @generated from message user_service.BriefProfilesRequest
@@ -898,7 +858,7 @@ export type BriefProfilesRequest = Message<"user_service.BriefProfilesRequest"> 
  * Use `create(BriefProfilesRequestSchema)` to create a new message.
  */
 export const BriefProfilesRequestSchema: GenMessage<BriefProfilesRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 39);
+  messageDesc(file_proto_user_service_user_service, 37);
 
 /**
  * this is a subset of ProfileResponse
@@ -934,7 +894,7 @@ export type BriefProfile = Message<"user_service.BriefProfile"> & {
  * Use `create(BriefProfileSchema)` to create a new message.
  */
 export const BriefProfileSchema: GenMessage<BriefProfile> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 40);
+  messageDesc(file_proto_user_service_user_service, 38);
 
 /**
  * @generated from message user_service.BriefProfilesResponse
@@ -951,7 +911,7 @@ export type BriefProfilesResponse = Message<"user_service.BriefProfilesResponse"
  * Use `create(BriefProfilesResponseSchema)` to create a new message.
  */
 export const BriefProfilesResponseSchema: GenMessage<BriefProfilesResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 41);
+  messageDesc(file_proto_user_service_user_service, 39);
 
 /**
  * @generated from message user_service.UsernameSearchRequest
@@ -968,7 +928,7 @@ export type UsernameSearchRequest = Message<"user_service.UsernameSearchRequest"
  * Use `create(UsernameSearchRequestSchema)` to create a new message.
  */
 export const UsernameSearchRequestSchema: GenMessage<UsernameSearchRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 42);
+  messageDesc(file_proto_user_service_user_service, 40);
 
 /**
  * @generated from message user_service.UsernameSearchResponse
@@ -985,7 +945,7 @@ export type UsernameSearchResponse = Message<"user_service.UsernameSearchRespons
  * Use `create(UsernameSearchResponseSchema)` to create a new message.
  */
 export const UsernameSearchResponseSchema: GenMessage<UsernameSearchResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 43);
+  messageDesc(file_proto_user_service_user_service, 41);
 
 /**
  * @generated from message user_service.AddFollowRequest
@@ -1002,7 +962,7 @@ export type AddFollowRequest = Message<"user_service.AddFollowRequest"> & {
  * Use `create(AddFollowRequestSchema)` to create a new message.
  */
 export const AddFollowRequestSchema: GenMessage<AddFollowRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 44);
+  messageDesc(file_proto_user_service_user_service, 42);
 
 /**
  * @generated from message user_service.RemoveFollowRequest
@@ -1019,7 +979,7 @@ export type RemoveFollowRequest = Message<"user_service.RemoveFollowRequest"> & 
  * Use `create(RemoveFollowRequestSchema)` to create a new message.
  */
 export const RemoveFollowRequestSchema: GenMessage<RemoveFollowRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 45);
+  messageDesc(file_proto_user_service_user_service, 43);
 
 /**
  * @generated from message user_service.GetFollowsRequest
@@ -1032,7 +992,7 @@ export type GetFollowsRequest = Message<"user_service.GetFollowsRequest"> & {
  * Use `create(GetFollowsRequestSchema)` to create a new message.
  */
 export const GetFollowsRequestSchema: GenMessage<GetFollowsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 46);
+  messageDesc(file_proto_user_service_user_service, 44);
 
 /**
  * @generated from message user_service.AddBlockRequest
@@ -1049,7 +1009,7 @@ export type AddBlockRequest = Message<"user_service.AddBlockRequest"> & {
  * Use `create(AddBlockRequestSchema)` to create a new message.
  */
 export const AddBlockRequestSchema: GenMessage<AddBlockRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 47);
+  messageDesc(file_proto_user_service_user_service, 45);
 
 /**
  * @generated from message user_service.RemoveBlockRequest
@@ -1066,7 +1026,7 @@ export type RemoveBlockRequest = Message<"user_service.RemoveBlockRequest"> & {
  * Use `create(RemoveBlockRequestSchema)` to create a new message.
  */
 export const RemoveBlockRequestSchema: GenMessage<RemoveBlockRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 48);
+  messageDesc(file_proto_user_service_user_service, 46);
 
 /**
  * @generated from message user_service.GetBlocksRequest
@@ -1079,7 +1039,7 @@ export type GetBlocksRequest = Message<"user_service.GetBlocksRequest"> & {
  * Use `create(GetBlocksRequestSchema)` to create a new message.
  */
 export const GetBlocksRequestSchema: GenMessage<GetBlocksRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 49);
+  messageDesc(file_proto_user_service_user_service, 47);
 
 /**
  * @generated from message user_service.GetFullBlocksRequest
@@ -1092,7 +1052,7 @@ export type GetFullBlocksRequest = Message<"user_service.GetFullBlocksRequest"> 
  * Use `create(GetFullBlocksRequestSchema)` to create a new message.
  */
 export const GetFullBlocksRequestSchema: GenMessage<GetFullBlocksRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 50);
+  messageDesc(file_proto_user_service_user_service, 48);
 
 /**
  * @generated from message user_service.OKResponse
@@ -1105,7 +1065,7 @@ export type OKResponse = Message<"user_service.OKResponse"> & {
  * Use `create(OKResponseSchema)` to create a new message.
  */
 export const OKResponseSchema: GenMessage<OKResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 51);
+  messageDesc(file_proto_user_service_user_service, 49);
 
 /**
  * @generated from message user_service.BasicUser
@@ -1127,7 +1087,7 @@ export type BasicUser = Message<"user_service.BasicUser"> & {
  * Use `create(BasicUserSchema)` to create a new message.
  */
 export const BasicUserSchema: GenMessage<BasicUser> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 52);
+  messageDesc(file_proto_user_service_user_service, 50);
 
 /**
  * @generated from message user_service.BasicFollowedUser
@@ -1154,7 +1114,7 @@ export type BasicFollowedUser = Message<"user_service.BasicFollowedUser"> & {
  * Use `create(BasicFollowedUserSchema)` to create a new message.
  */
 export const BasicFollowedUserSchema: GenMessage<BasicFollowedUser> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 53);
+  messageDesc(file_proto_user_service_user_service, 51);
 
 /**
  * @generated from message user_service.GetActiveChatChannelsRequest
@@ -1184,7 +1144,7 @@ export type GetActiveChatChannelsRequest = Message<"user_service.GetActiveChatCh
  * Use `create(GetActiveChatChannelsRequestSchema)` to create a new message.
  */
 export const GetActiveChatChannelsRequestSchema: GenMessage<GetActiveChatChannelsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 54);
+  messageDesc(file_proto_user_service_user_service, 52);
 
 /**
  * @generated from message user_service.ActiveChatChannels
@@ -1201,7 +1161,7 @@ export type ActiveChatChannels = Message<"user_service.ActiveChatChannels"> & {
  * Use `create(ActiveChatChannelsSchema)` to create a new message.
  */
 export const ActiveChatChannelsSchema: GenMessage<ActiveChatChannels> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 55);
+  messageDesc(file_proto_user_service_user_service, 53);
 
 /**
  * @generated from message user_service.ActiveChatChannels.Channel
@@ -1240,7 +1200,7 @@ export type ActiveChatChannels_Channel = Message<"user_service.ActiveChatChannel
  * Use `create(ActiveChatChannels_ChannelSchema)` to create a new message.
  */
 export const ActiveChatChannels_ChannelSchema: GenMessage<ActiveChatChannels_Channel> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 55, 0);
+  messageDesc(file_proto_user_service_user_service, 53, 0);
 
 /**
  * @generated from message user_service.GetChatsRequest
@@ -1257,7 +1217,7 @@ export type GetChatsRequest = Message<"user_service.GetChatsRequest"> & {
  * Use `create(GetChatsRequestSchema)` to create a new message.
  */
 export const GetChatsRequestSchema: GenMessage<GetChatsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 56);
+  messageDesc(file_proto_user_service_user_service, 54);
 
 /**
  * @generated from message user_service.GetFollowsResponse
@@ -1274,7 +1234,7 @@ export type GetFollowsResponse = Message<"user_service.GetFollowsResponse"> & {
  * Use `create(GetFollowsResponseSchema)` to create a new message.
  */
 export const GetFollowsResponseSchema: GenMessage<GetFollowsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 57);
+  messageDesc(file_proto_user_service_user_service, 55);
 
 /**
  * @generated from message user_service.GetBlocksResponse
@@ -1291,7 +1251,7 @@ export type GetBlocksResponse = Message<"user_service.GetBlocksResponse"> & {
  * Use `create(GetBlocksResponseSchema)` to create a new message.
  */
 export const GetBlocksResponseSchema: GenMessage<GetBlocksResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 58);
+  messageDesc(file_proto_user_service_user_service, 56);
 
 /**
  * XXX: We should eventually obsolete this and handle blocks purely on
@@ -1311,42 +1271,7 @@ export type GetFullBlocksResponse = Message<"user_service.GetFullBlocksResponse"
  * Use `create(GetFullBlocksResponseSchema)` to create a new message.
  */
 export const GetFullBlocksResponseSchema: GenMessage<GetFullBlocksResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 59);
-
-/**
- * @generated from message user_service.GetModListRequest
- */
-export type GetModListRequest = Message<"user_service.GetModListRequest"> & {
-};
-
-/**
- * Describes the message user_service.GetModListRequest.
- * Use `create(GetModListRequestSchema)` to create a new message.
- */
-export const GetModListRequestSchema: GenMessage<GetModListRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 60);
-
-/**
- * @generated from message user_service.GetModListResponse
- */
-export type GetModListResponse = Message<"user_service.GetModListResponse"> & {
-  /**
-   * @generated from field: repeated string admin_user_ids = 1;
-   */
-  adminUserIds: string[];
-
-  /**
-   * @generated from field: repeated string mod_user_ids = 2;
-   */
-  modUserIds: string[];
-};
-
-/**
- * Describes the message user_service.GetModListResponse.
- * Use `create(GetModListResponseSchema)` to create a new message.
- */
-export const GetModListResponseSchema: GenMessage<GetModListResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 61);
+  messageDesc(file_proto_user_service_user_service, 57);
 
 /**
  * @generated from message user_service.Integration
@@ -1373,7 +1298,7 @@ export type Integration = Message<"user_service.Integration"> & {
  * Use `create(IntegrationSchema)` to create a new message.
  */
 export const IntegrationSchema: GenMessage<Integration> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 62);
+  messageDesc(file_proto_user_service_user_service, 58);
 
 /**
  * @generated from message user_service.GetIntegrationsRequest
@@ -1386,7 +1311,7 @@ export type GetIntegrationsRequest = Message<"user_service.GetIntegrationsReques
  * Use `create(GetIntegrationsRequestSchema)` to create a new message.
  */
 export const GetIntegrationsRequestSchema: GenMessage<GetIntegrationsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 63);
+  messageDesc(file_proto_user_service_user_service, 59);
 
 /**
  * @generated from message user_service.IntegrationsResponse
@@ -1403,7 +1328,7 @@ export type IntegrationsResponse = Message<"user_service.IntegrationsResponse"> 
  * Use `create(IntegrationsResponseSchema)` to create a new message.
  */
 export const IntegrationsResponseSchema: GenMessage<IntegrationsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 64);
+  messageDesc(file_proto_user_service_user_service, 60);
 
 /**
  * @generated from message user_service.DeleteIntegrationRequest
@@ -1420,7 +1345,7 @@ export type DeleteIntegrationRequest = Message<"user_service.DeleteIntegrationRe
  * Use `create(DeleteIntegrationRequestSchema)` to create a new message.
  */
 export const DeleteIntegrationRequestSchema: GenMessage<DeleteIntegrationRequest> = /*@__PURE__*/
-  messageDesc(file_proto_user_service_user_service, 65);
+  messageDesc(file_proto_user_service_user_service, 61);
 
 /**
  * @generated from message user_service.DeleteIntegrationResponse
@@ -1433,7 +1358,291 @@ export type DeleteIntegrationResponse = Message<"user_service.DeleteIntegrationR
  * Use `create(DeleteIntegrationResponseSchema)` to create a new message.
  */
 export const DeleteIntegrationResponseSchema: GenMessage<DeleteIntegrationResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 62);
+
+/**
+ * @generated from message user_service.GetSubscriptionCriteriaRequest
+ */
+export type GetSubscriptionCriteriaRequest = Message<"user_service.GetSubscriptionCriteriaRequest"> & {
+};
+
+/**
+ * Describes the message user_service.GetSubscriptionCriteriaRequest.
+ * Use `create(GetSubscriptionCriteriaRequestSchema)` to create a new message.
+ */
+export const GetSubscriptionCriteriaRequestSchema: GenMessage<GetSubscriptionCriteriaRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 63);
+
+/**
+ * @generated from message user_service.GetSubscriptionCriteriaResponse
+ */
+export type GetSubscriptionCriteriaResponse = Message<"user_service.GetSubscriptionCriteriaResponse"> & {
+  /**
+   * @generated from field: string tier_name = 1;
+   */
+  tierName: string;
+
+  /**
+   * @generated from field: bool entitled_to_bot_games = 2;
+   */
+  entitledToBotGames: boolean;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_charge_date = 3;
+   */
+  lastChargeDate?: Timestamp;
+};
+
+/**
+ * Describes the message user_service.GetSubscriptionCriteriaResponse.
+ * Use `create(GetSubscriptionCriteriaResponseSchema)` to create a new message.
+ */
+export const GetSubscriptionCriteriaResponseSchema: GenMessage<GetSubscriptionCriteriaResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 64);
+
+/**
+ * @generated from message user_service.GetModListRequest
+ */
+export type GetModListRequest = Message<"user_service.GetModListRequest"> & {
+};
+
+/**
+ * Describes the message user_service.GetModListRequest.
+ * Use `create(GetModListRequestSchema)` to create a new message.
+ */
+export const GetModListRequestSchema: GenMessage<GetModListRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 65);
+
+/**
+ * @generated from message user_service.GetModListResponse
+ */
+export type GetModListResponse = Message<"user_service.GetModListResponse"> & {
+  /**
+   * @generated from field: repeated string admin_user_ids = 1;
+   */
+  adminUserIds: string[];
+
+  /**
+   * @generated from field: repeated string mod_user_ids = 2;
+   */
+  modUserIds: string[];
+};
+
+/**
+ * Describes the message user_service.GetModListResponse.
+ * Use `create(GetModListResponseSchema)` to create a new message.
+ */
+export const GetModListResponseSchema: GenMessage<GetModListResponse> = /*@__PURE__*/
   messageDesc(file_proto_user_service_user_service, 66);
+
+/**
+ * @generated from message user_service.AddRoleRequest
+ */
+export type AddRoleRequest = Message<"user_service.AddRoleRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message user_service.AddRoleRequest.
+ * Use `create(AddRoleRequestSchema)` to create a new message.
+ */
+export const AddRoleRequestSchema: GenMessage<AddRoleRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 67);
+
+/**
+ * @generated from message user_service.AddRoleResponse
+ */
+export type AddRoleResponse = Message<"user_service.AddRoleResponse"> & {
+};
+
+/**
+ * Describes the message user_service.AddRoleResponse.
+ * Use `create(AddRoleResponseSchema)` to create a new message.
+ */
+export const AddRoleResponseSchema: GenMessage<AddRoleResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 68);
+
+/**
+ * @generated from message user_service.AddPermissionRequest
+ */
+export type AddPermissionRequest = Message<"user_service.AddPermissionRequest"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message user_service.AddPermissionRequest.
+ * Use `create(AddPermissionRequestSchema)` to create a new message.
+ */
+export const AddPermissionRequestSchema: GenMessage<AddPermissionRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 69);
+
+/**
+ * @generated from message user_service.AddPermissionResponse
+ */
+export type AddPermissionResponse = Message<"user_service.AddPermissionResponse"> & {
+};
+
+/**
+ * Describes the message user_service.AddPermissionResponse.
+ * Use `create(AddPermissionResponseSchema)` to create a new message.
+ */
+export const AddPermissionResponseSchema: GenMessage<AddPermissionResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 70);
+
+/**
+ * @generated from message user_service.LinkRoleAndPermissionRequest
+ */
+export type LinkRoleAndPermissionRequest = Message<"user_service.LinkRoleAndPermissionRequest"> & {
+  /**
+   * @generated from field: string role_name = 1;
+   */
+  roleName: string;
+
+  /**
+   * @generated from field: string permission_code = 2;
+   */
+  permissionCode: string;
+};
+
+/**
+ * Describes the message user_service.LinkRoleAndPermissionRequest.
+ * Use `create(LinkRoleAndPermissionRequestSchema)` to create a new message.
+ */
+export const LinkRoleAndPermissionRequestSchema: GenMessage<LinkRoleAndPermissionRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 71);
+
+/**
+ * @generated from message user_service.LinkRoleAndPermissionResponse
+ */
+export type LinkRoleAndPermissionResponse = Message<"user_service.LinkRoleAndPermissionResponse"> & {
+};
+
+/**
+ * Describes the message user_service.LinkRoleAndPermissionResponse.
+ * Use `create(LinkRoleAndPermissionResponseSchema)` to create a new message.
+ */
+export const LinkRoleAndPermissionResponseSchema: GenMessage<LinkRoleAndPermissionResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 72);
+
+/**
+ * @generated from message user_service.AssignRoleRequest
+ */
+export type AssignRoleRequest = Message<"user_service.AssignRoleRequest"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * @generated from field: string role_name = 2;
+   */
+  roleName: string;
+};
+
+/**
+ * Describes the message user_service.AssignRoleRequest.
+ * Use `create(AssignRoleRequestSchema)` to create a new message.
+ */
+export const AssignRoleRequestSchema: GenMessage<AssignRoleRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 73);
+
+/**
+ * @generated from message user_service.AssignRoleResponse
+ */
+export type AssignRoleResponse = Message<"user_service.AssignRoleResponse"> & {
+};
+
+/**
+ * Describes the message user_service.AssignRoleResponse.
+ * Use `create(AssignRoleResponseSchema)` to create a new message.
+ */
+export const AssignRoleResponseSchema: GenMessage<AssignRoleResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 74);
+
+/**
+ * @generated from message user_service.UnassignRoleRequest
+ */
+export type UnassignRoleRequest = Message<"user_service.UnassignRoleRequest"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * @generated from field: string role_name = 2;
+   */
+  roleName: string;
+};
+
+/**
+ * Describes the message user_service.UnassignRoleRequest.
+ * Use `create(UnassignRoleRequestSchema)` to create a new message.
+ */
+export const UnassignRoleRequestSchema: GenMessage<UnassignRoleRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 75);
+
+/**
+ * @generated from message user_service.UnassignRoleResponse
+ */
+export type UnassignRoleResponse = Message<"user_service.UnassignRoleResponse"> & {
+};
+
+/**
+ * Describes the message user_service.UnassignRoleResponse.
+ * Use `create(UnassignRoleResponseSchema)` to create a new message.
+ */
+export const UnassignRoleResponseSchema: GenMessage<UnassignRoleResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 76);
+
+/**
+ * @generated from message user_service.GetUserRolesRequest
+ */
+export type GetUserRolesRequest = Message<"user_service.GetUserRolesRequest"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+};
+
+/**
+ * Describes the message user_service.GetUserRolesRequest.
+ * Use `create(GetUserRolesRequestSchema)` to create a new message.
+ */
+export const GetUserRolesRequestSchema: GenMessage<GetUserRolesRequest> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 77);
+
+/**
+ * @generated from message user_service.UserRolesResponse
+ */
+export type UserRolesResponse = Message<"user_service.UserRolesResponse"> & {
+  /**
+   * @generated from field: repeated string roles = 1;
+   */
+  roles: string[];
+};
+
+/**
+ * Describes the message user_service.UserRolesResponse.
+ * Use `create(UserRolesResponseSchema)` to create a new message.
+ */
+export const UserRolesResponseSchema: GenMessage<UserRolesResponse> = /*@__PURE__*/
+  messageDesc(file_proto_user_service_user_service, 78);
 
 /**
  * @generated from service user_service.AuthenticationService
@@ -1520,14 +1729,6 @@ export const AuthenticationService: GenService<{
     methodKind: "unary";
     input: typeof GetAPIKeyRequestSchema;
     output: typeof GetAPIKeyResponseSchema;
-  },
-  /**
-   * @generated from rpc user_service.AuthenticationService.GetSubscriptionCriteria
-   */
-  getSubscriptionCriteria: {
-    methodKind: "unary";
-    input: typeof GetSubscriptionCriteriaRequestSchema;
-    output: typeof GetSubscriptionCriteriaResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_user_service_user_service, 0);
@@ -1714,14 +1915,6 @@ export const SocializeService: GenService<{
     input: typeof GetChatsRequestSchema;
     output: typeof ChatMessagesSchema;
   },
-  /**
-   * @generated from rpc user_service.SocializeService.GetModList
-   */
-  getModList: {
-    methodKind: "unary";
-    input: typeof GetModListRequestSchema;
-    output: typeof GetModListResponseSchema;
-  },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_user_service_user_service, 4);
 
@@ -1747,4 +1940,75 @@ export const IntegrationService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_user_service_user_service, 5);
+
+/**
+ * @generated from service user_service.AuthorizationService
+ */
+export const AuthorizationService: GenService<{
+  /**
+   * @generated from rpc user_service.AuthorizationService.GetModList
+   */
+  getModList: {
+    methodKind: "unary";
+    input: typeof GetModListRequestSchema;
+    output: typeof GetModListResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.GetSubscriptionCriteria
+   */
+  getSubscriptionCriteria: {
+    methodKind: "unary";
+    input: typeof GetSubscriptionCriteriaRequestSchema;
+    output: typeof GetSubscriptionCriteriaResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.AddRole
+   */
+  addRole: {
+    methodKind: "unary";
+    input: typeof AddRoleRequestSchema;
+    output: typeof AddRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.AddPermission
+   */
+  addPermission: {
+    methodKind: "unary";
+    input: typeof AddPermissionRequestSchema;
+    output: typeof AddPermissionResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.LinkRoleAndPermission
+   */
+  linkRoleAndPermission: {
+    methodKind: "unary";
+    input: typeof LinkRoleAndPermissionRequestSchema;
+    output: typeof LinkRoleAndPermissionResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.AssignRole
+   */
+  assignRole: {
+    methodKind: "unary";
+    input: typeof AssignRoleRequestSchema;
+    output: typeof AssignRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.UnassignRole
+   */
+  unassignRole: {
+    methodKind: "unary";
+    input: typeof UnassignRoleRequestSchema;
+    output: typeof UnassignRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc user_service.AuthorizationService.GetUserRoles
+   */
+  getUserRoles: {
+    methodKind: "unary";
+    input: typeof GetUserRolesRequestSchema;
+    output: typeof UserRolesResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_proto_user_service_user_service, 6);
 

@@ -55,8 +55,3 @@ export const installSignedCookie = AuthenticationService.method.installSignedCoo
  * @generated from rpc user_service.AuthenticationService.GetAPIKey
  */
 export const getAPIKey = AuthenticationService.method.getAPIKey;
-
-/**
- * @generated from rpc user_service.AuthenticationService.GetSubscriptionCriteria
- */
-export const getSubscriptionCriteria = AuthenticationService.method.getSubscriptionCriteria;

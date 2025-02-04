@@ -3,11 +3,10 @@ import { App, Button } from "antd";
 import { useLoginStateStoreContext } from "./store/store";
 import { LoginWithPatreonButton } from "./settings/integrations";
 import ExternalLink from "./assets/external-link.svg?react";
-import { Link } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { getIntegrations } from "./gen/api/proto/user_service/user_service-IntegrationService_connectquery";
 import { useCallback, useMemo } from "react";
-import { getSubscriptionCriteria } from "./gen/api/proto/user_service/user_service-AuthenticationService_connectquery";
+import { getSubscriptionCriteria } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 const PUBLISHABLE_KEY =
   "pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa";

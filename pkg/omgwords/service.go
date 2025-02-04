@@ -54,9 +54,9 @@ func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID st
 	if gameID == "" {
 		return apiserver.InvalidArg("game ID must be provided")
 	}
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
-		return apiserver.Unauthenticated(err.Error())
+		return err
 	}
 	owns, err := gs.metadataStore.GameOwnedBy(ctx, gameID, u.UUID)
 	if err != nil {
@@ -165,7 +165,7 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *connect.Request[pb.CreateBroadcastGameRequest],
 ) (*connect.Response[pb.CreateBroadcastGameResponse], error) {
 
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *con
 func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connect.Request[pb.GetMyUnfinishedGamesRequest]) (
 	*connect.Response[pb.BroadcastGamesResponse], error) {
 
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +520,7 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	if len(req.Msg.Gcg) > 1.28e5 {
 		return nil, apiserver.InvalidArg("gcg string is too long")
 	}
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, gs.userStore)
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
 		return nil, err
 	}

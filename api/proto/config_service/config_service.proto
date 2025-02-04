@@ -7,26 +7,6 @@ message EnableGamesRequest { bool enabled = 1; }
 
 message SetFEHashRequest { string hash = 1; }
 
-message PermissionsRequest {
-  string username = 1;
-  google.protobuf.BoolValue director = 2;
-  google.protobuf.BoolValue admin = 3;
-  google.protobuf.BoolValue mod = 4;
-  google.protobuf.BoolValue bot = 5;
-}
-
-message UserRequest { string username = 1; }
-
-message UserResponse {
-  string username = 1;
-  string uuid = 2;
-  string email = 3;
-  bool is_bot = 4;
-  bool is_director = 5;
-  bool is_mod = 6;
-  bool is_admin = 7;
-}
-
 message ConfigResponse {}
 
 message Announcement {
@@ -55,11 +35,7 @@ message SetGlobalIntegrationRequest {
 // endpoint.
 service ConfigService {
   rpc SetGamesEnabled(EnableGamesRequest) returns (ConfigResponse);
-
   rpc SetFEHash(SetFEHashRequest) returns (ConfigResponse);
-  rpc SetUserPermissions(PermissionsRequest) returns (ConfigResponse);
-  rpc GetUserDetails(UserRequest) returns (UserResponse);
-
   rpc SetAnnouncements(SetAnnouncementsRequest) returns (ConfigResponse);
   rpc GetAnnouncements(GetAnnouncementsRequest) returns (AnnouncementsResponse);
   rpc SetSingleAnnouncement(SetSingleAnnouncementRequest)

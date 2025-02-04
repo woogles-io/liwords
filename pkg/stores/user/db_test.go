@@ -12,14 +12,12 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	commontest "github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
 	"github.com/woogles-io/liwords/pkg/stores/common"
-	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -241,20 +239,6 @@ func TestSet(t *testing.T) {
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	is.Equal(cesar.Notoriety, newNotoriety)
-
-	req := &cpb.PermissionsRequest{
-		Username: "cesar",
-		Admin:    &wrapperspb.BoolValue{Value: true},
-		Mod:      &wrapperspb.BoolValue{Value: true},
-	}
-	err = ustore.SetPermissions(ctx, req)
-	is.NoErr(err)
-	cesar, err = ustore.Get(ctx, "cesar")
-	is.NoErr(err)
-	is.True(cesar.IsAdmin)
-	is.True(cesar.IsMod)
-	is.True(!cesar.IsDirector)
-	is.True(!cesar.IsBot)
 
 	newPassword := "newpassword"
 	err = ustore.SetPassword(ctx, cesar.UUID, newPassword)

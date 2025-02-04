@@ -19,7 +19,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/common"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -95,44 +94,6 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	defer tx.Rollback(ctx)
 
 	err = common.Update(ctx, tx, []string{"notoriety"}, []interface{}{notoriety}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
-	columns := []string{}
-	values := []interface{}{}
-	if req.Bot != nil {
-		columns = append(columns, "internal_bot")
-		values = append(values, req.Bot.Value)
-	}
-	if req.Admin != nil {
-		columns = append(columns, "is_admin")
-		values = append(values, req.Admin.Value)
-	}
-	if req.Director != nil {
-		columns = append(columns, "is_director")
-		values = append(values, req.Director.Value)
-	}
-	if req.Mod != nil {
-		columns = append(columns, "is_mod")
-		values = append(values, req.Mod.Value)
-	}
-
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, columns, values, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: strings.ToLower(req.Username)})
 	if err != nil {
 		return err
 	}

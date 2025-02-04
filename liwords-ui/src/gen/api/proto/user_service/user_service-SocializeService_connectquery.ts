@@ -51,8 +51,3 @@ export const getActiveChatChannels = SocializeService.method.getActiveChatChanne
  * @generated from rpc user_service.SocializeService.GetChatsForChannel
  */
 export const getChatsForChannel = SocializeService.method.getChatsForChannel;
-
-/**
- * @generated from rpc user_service.SocializeService.GetModList
- */
-export const getModList = SocializeService.method.getModList;

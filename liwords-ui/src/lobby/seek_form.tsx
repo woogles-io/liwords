@@ -41,8 +41,8 @@ import { AutocompleteService } from "../gen/api/proto/user_service/user_service_
 import { create } from "@bufbuild/protobuf";
 import BotSelector from "./bot_selector";
 import { useQuery } from "@connectrpc/connect-query";
-import { getSubscriptionCriteria } from "../gen/api/proto/user_service/user_service-AuthenticationService_connectquery";
 import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
+import { getSubscriptionCriteria } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
