@@ -34,35 +34,32 @@ VALUES
     ('can_bypass_elitebot_paywall', 'Can play EliteBot without subscription'),
     ('can_moderate_users', 'Can moderate users (mute, some bans)'),
     ('can_modify_announcements', 'Can modify announcements on the homepage'),
-    ('can_draw_more_blanks_than_average', 'This is just a joke, guys, dont at me');
+    ('can_draw_more_blanks_than_average', 'This is just a joke, guys, dont at me'),
+    ('can_manage_tournaments', 'Can manage (start, assign pairings, etc) any tournaments'),
+    ('can_create_puzzles', 'Can run puzzle generation / etc jobs'),
+    ('can_reset_and_delete_accounts', 'Can reset and delete accounts');
 
 INSERT INTO roles(name, description)
 VALUES
     ('Admin', 'Site administrator - has all access'),
     ('Moderator', 'Site moderator'),
     ('Tournament Creator', 'Tournament creator'),
-    ('Special Access Player', 'Player with special access to some features');
+    ('Special Access Player', 'Player with special access to some features'),
+    ('Tournament Manager', 'Tournament manager');
 
 INSERT INTO role_permissions (role_id, permission_id)
 VALUES
     ((SELECT id FROM roles WHERE name = 'Admin'),
-     (SELECT id FROM permissions WHERE code = 'admin_all_access'));
-
-INSERT INTO role_permissions (role_id, permission_id)
-VALUES
+     (SELECT id FROM permissions WHERE code = 'admin_all_access')),
     ((SELECT id FROM roles WHERE name = 'Moderator'),
      (SELECT id FROM permissions WHERE code = 'can_moderate_users')),
     ((SELECT id FROM roles WHERE name = 'Moderator'),
-     (SELECT id FROM permissions WHERE code = 'can_modify_announcements'));
-
-INSERT INTO role_permissions (role_id, permission_id)
-VALUES
+     (SELECT id FROM permissions WHERE code = 'can_modify_announcements')),
     ((SELECT id FROM roles WHERE name = 'Tournament Creator'),
-     (SELECT id FROM permissions WHERE code = 'can_create_tournaments'));
-
-INSERT INTO role_permissions (role_id, permission_id)
-VALUES
+     (SELECT id FROM permissions WHERE code = 'can_create_tournaments')),
     ((SELECT id FROM roles WHERE name = 'Special Access Player'),
-     (SELECT id FROM permissions WHERE code = 'can_bypass_elitebot_paywall'));
+     (SELECT id FROM permissions WHERE code = 'can_bypass_elitebot_paywall')),
+    ((SELECT id FROM roles WHERE name = 'Tournament Manager'),
+     (SELECT id FROM permissions WHERE code = 'can_manage_tournaments'));
 
 COMMIT;

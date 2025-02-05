@@ -43,3 +43,8 @@ export const unassignRole = AuthorizationService.method.unassignRole;
  * @generated from rpc user_service.AuthorizationService.GetUserRoles
  */
 export const getUserRoles = AuthorizationService.method.getUserRoles;
+
+/**
+ * @generated from rpc user_service.AuthorizationService.GetSelfRoles
+ */
+export const getSelfRoles = AuthorizationService.method.getSelfRoles;

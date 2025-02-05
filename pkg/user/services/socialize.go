@@ -10,6 +10,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
@@ -19,10 +21,11 @@ type SocializeService struct {
 	userStore     user.Store
 	chatStore     user.ChatStore
 	presenceStore user.PresenceStore
+	queries       *models.Queries
 }
 
-func NewSocializeService(u user.Store, c user.ChatStore, p user.PresenceStore) *SocializeService {
-	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
+func NewSocializeService(u user.Store, c user.ChatStore, p user.PresenceStore, q *models.Queries) *SocializeService {
+	return &SocializeService{userStore: u, chatStore: c, presenceStore: p, queries: q}
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *connect.Request[pb.AddFollowRequest],
@@ -149,8 +152,15 @@ func (ss *SocializeService) AddBlock(ctx context.Context, req *connect.Request[p
 		log.Err(err).Msg("getting-blocked")
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	if blocked.IsAdmin || blocked.IsMod {
-		log.Err(err).Msg("blocking-admin")
+	privilegedUser, err := ss.queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(blocked.ID),
+		Permission: string(rbac.CanModerateUsers),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if privilegedUser {
+		log.Error().Msg("blocking-admin-or-mod")
 		return nil, apiserver.InvalidArg("you cannot block that user")
 	}
 
@@ -326,40 +336,3 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *connect
 	}
 	return connect.NewResponse(&ipc.ChatMessages{Messages: chats}), nil
 }
-
-// func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
-// 	sess, err := apiserver.GetSession(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	user, err := ss.userStore.Get(ctx, sess.Username)
-// 	if err != nil {
-// 		log.Err(err).Msg("getting-user")
-// 		return nil, err
-// 	}
-
-// 	users, err := ss.userStore.GetBlockedBy(ctx, user.ID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	basicUsers := make([]*pb.BasicUser, len(users))
-// 	for i, u := range users {
-// 		basicUsers[i] = &pb.BasicUser{
-// 			Uuid:     u.UUID,
-// 			Username: u.Username,
-// 		}
-// 	}
-
-// 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
-// }
-
-// func (ss *SocializeService) GetModList(ctx context.Context, req *connect.Request[pb.GetModListRequest]) (
-// 	*connect.Response[pb.GetModListResponse], error) {
-// 	// this endpoint should work without login
-// 	ml, err := ss.userStore.GetModList(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return connect.NewResponse(ml), nil
-// }

@@ -14,7 +14,8 @@ import (
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
-	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -31,15 +32,17 @@ type PuzzleService struct {
 	puzzleGenSecretKey string
 	ecsCluster         string
 	puzzleGenTaskDef   string
+	queries            *models.Queries
 }
 
-func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string) *PuzzleService {
+func NewPuzzleService(ps PuzzleStore, us user.Store, k, c, td string, q *models.Queries) *PuzzleService {
 	return &PuzzleService{
 		puzzleStore:        ps,
 		userStore:          us,
 		puzzleGenSecretKey: k,
 		ecsCluster:         c,
 		puzzleGenTaskDef:   td,
+		queries:            q,
 	}
 }
 
@@ -114,7 +117,7 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *connect.Request[pb.
 }
 
 func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *connect.Request[pb.PreviousPuzzleRequest]) (*connect.Response[pb.PreviousPuzzleResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +129,7 @@ func (ps *PuzzleService) GetPreviousPuzzleId(ctx context.Context, req *connect.R
 }
 
 func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *connect.Request[pb.SubmissionRequest]) (*connect.Response[pb.SubmissionResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +166,7 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *connect.Request[
 }
 
 func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *connect.Request[pb.PuzzleRequest]) (*connect.Response[pb.AnswerResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +178,7 @@ func (ps *PuzzleService) GetPuzzleAnswer(ctx context.Context, req *connect.Reque
 }
 
 func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *connect.Request[pb.PuzzleVoteRequest]) (*connect.Response[pb.PuzzleVoteResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -187,11 +190,18 @@ func (ps *PuzzleService) SetPuzzleVote(ctx context.Context, req *connect.Request
 }
 
 func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *connect.Request[pb.APIPuzzleGenerationJobRequest]) (*connect.Response[pb.APIPuzzleGenerationJobResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
-	if !user.IsAdmin {
+	allowed, err := ps.queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(user.ID),
+		Permission: string(rbac.CanCreatePuzzles),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
 		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	log.Debug().Msgf("keys %s %s", req.Msg.SecretKey, ps.puzzleGenSecretKey)
@@ -215,11 +225,18 @@ func (ps *PuzzleService) StartPuzzleGenJob(ctx context.Context, req *connect.Req
 }
 
 func (ps *PuzzleService) GetPuzzleJobLogs(ctx context.Context, req *connect.Request[pb.PuzzleJobLogsRequest]) (*connect.Response[pb.PuzzleJobLogsResponse], error) {
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err != nil {
 		return nil, err
 	}
-	if !user.IsAdmin {
+	allowed, err := ps.queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(user.ID),
+		Permission: string(rbac.CanCreatePuzzles),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
 		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	logs, err := GetPuzzleJobLogs(ctx, ps.puzzleStore, int(req.Msg.Limit), int(req.Msg.Offset))
@@ -269,25 +286,11 @@ func invokeECSPuzzleGen(ctx context.Context, arg, cluster, taskdef string) error
 // or an empty string if the user is not logged in
 func sessionUserUUIDOption(ctx context.Context, ps *PuzzleService) string {
 	userUUID := ""
-	user, err := sessionUser(ctx, ps)
+	user, err := apiserver.AuthUser(ctx, ps.userStore)
 	if err == nil {
 		userUUID = user.UUID
 	}
 	return userUUID
-}
-
-func sessionUser(ctx context.Context, ps *PuzzleService) (*entity.User, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := ps.userStore.Get(ctx, sess.Username)
-	if err != nil {
-		log.Err(err).Msg("getting-user")
-		return nil, apiserver.InternalErr(err)
-	}
-	return user, nil
 }
 
 func boolPtrToPuzzleStatus(b *bool) pb.PuzzleStatus {

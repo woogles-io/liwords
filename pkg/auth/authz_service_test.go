@@ -103,7 +103,7 @@ func TestAssignRole(t *testing.T) {
 	// Try assigning a role to themselves, if not an admin
 	_, err := svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
 		Username: "NotAnAdmin",
-		RoleName: rbac.SpecialAccessPlayer,
+		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
 	is.Equal(err.Error(), "unauthenticated: auth-methods-failed")
 
@@ -113,7 +113,7 @@ func TestAssignRole(t *testing.T) {
 
 	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
 		Username: "NotAnAdmin",
-		RoleName: rbac.SpecialAccessPlayer,
+		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
 	is.Equal(err.Error(), "permission_denied: not an admin")
 
@@ -124,7 +124,7 @@ func TestAssignRole(t *testing.T) {
 
 	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
 		Username: "NotAnAdmin",
-		RoleName: rbac.SpecialAccessPlayer,
+		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
 	is.NoErr(err)
 
@@ -133,6 +133,12 @@ func TestAssignRole(t *testing.T) {
 	}))
 	is.NoErr(err)
 	is.Equal(resp.Msg.Roles, []string{string(rbac.SpecialAccessPlayer)})
+	// Try assigning the same role again. It should fail.
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
+		Username: "NotAnAdmin",
+		RoleName: string(rbac.SpecialAccessPlayer),
+	}))
+	is.Equal(err.Error(), "already_exists: role already assigned to user")
 }
 
 func TestGetAdminsAndMods(t *testing.T) {
@@ -164,7 +170,7 @@ func TestUnassignRole(t *testing.T) {
 
 	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UnassignRoleRequest{
 		Username: "SomeMod",
-		RoleName: rbac.Moderator,
+		RoleName: string(rbac.Moderator),
 	}))
 	is.NoErr(err)
 
@@ -176,7 +182,7 @@ func TestUnassignRole(t *testing.T) {
 
 	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UnassignRoleRequest{
 		Username: "SomeMod",
-		RoleName: rbac.Moderator,
+		RoleName: string(rbac.Moderator),
 	}))
 	is.Equal(err.Error(), "not_found: role assignment not found")
 }

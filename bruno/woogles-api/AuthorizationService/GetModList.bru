@@ -1,0 +1,15 @@
+meta {
+  name: GetModList
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/GetModList
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

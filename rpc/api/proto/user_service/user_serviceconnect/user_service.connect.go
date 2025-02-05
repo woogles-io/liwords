@@ -162,6 +162,9 @@ const (
 	// AuthorizationServiceGetUserRolesProcedure is the fully-qualified name of the
 	// AuthorizationService's GetUserRoles RPC.
 	AuthorizationServiceGetUserRolesProcedure = "/user_service.AuthorizationService/GetUserRoles"
+	// AuthorizationServiceGetSelfRolesProcedure is the fully-qualified name of the
+	// AuthorizationService's GetSelfRoles RPC.
+	AuthorizationServiceGetSelfRolesProcedure = "/user_service.AuthorizationService/GetSelfRoles"
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -1253,6 +1256,7 @@ type AuthorizationServiceClient interface {
 	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
 	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+	GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
 }
 
 // NewAuthorizationServiceClient constructs a client for the user_service.AuthorizationService
@@ -1317,6 +1321,13 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getSelfRoles: connect.NewClient[user_service.GetSelfRolesRequest, user_service.UserRolesResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetSelfRolesProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetSelfRoles")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1330,6 +1341,7 @@ type authorizationServiceClient struct {
 	assignRole              *connect.Client[user_service.AssignRoleRequest, user_service.AssignRoleResponse]
 	unassignRole            *connect.Client[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse]
 	getUserRoles            *connect.Client[user_service.GetUserRolesRequest, user_service.UserRolesResponse]
+	getSelfRoles            *connect.Client[user_service.GetSelfRolesRequest, user_service.UserRolesResponse]
 }
 
 // GetModList calls user_service.AuthorizationService.GetModList.
@@ -1372,6 +1384,11 @@ func (c *authorizationServiceClient) GetUserRoles(ctx context.Context, req *conn
 	return c.getUserRoles.CallUnary(ctx, req)
 }
 
+// GetSelfRoles calls user_service.AuthorizationService.GetSelfRoles.
+func (c *authorizationServiceClient) GetSelfRoles(ctx context.Context, req *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
+	return c.getSelfRoles.CallUnary(ctx, req)
+}
+
 // AuthorizationServiceHandler is an implementation of the user_service.AuthorizationService
 // service.
 type AuthorizationServiceHandler interface {
@@ -1383,6 +1400,7 @@ type AuthorizationServiceHandler interface {
 	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
 	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+	GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
 }
 
 // NewAuthorizationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1443,6 +1461,13 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorizationServiceGetSelfRolesHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetSelfRolesProcedure,
+		svc.GetSelfRoles,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetSelfRoles")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.AuthorizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorizationServiceGetModListProcedure:
@@ -1461,6 +1486,8 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 			authorizationServiceUnassignRoleHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetUserRolesProcedure:
 			authorizationServiceGetUserRolesHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetSelfRolesProcedure:
+			authorizationServiceGetSelfRolesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1500,4 +1527,8 @@ func (UnimplementedAuthorizationServiceHandler) UnassignRole(context.Context, *c
 
 func (UnimplementedAuthorizationServiceHandler) GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetUserRoles is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetSelfRoles is not implemented"))
 }

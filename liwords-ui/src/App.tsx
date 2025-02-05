@@ -63,6 +63,8 @@ import { BoardEditor } from "./boardwizard/editor";
 import { RootState } from "./store/redux_store";
 import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
 import { create, toBinary } from "@bufbuild/protobuf";
+import { useQuery } from "@connectrpc/connect-query";
+import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 // const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 // document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -146,14 +148,24 @@ const App = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
 
-  const { setAdmins, setModerators, setModsFetched } =
-    useModeratorStoreContext();
+  const { setAdmins, setModerators } = useModeratorStoreContext();
 
   const { setFriends, pendingFriendsRefresh, setPendingFriendsRefresh } =
     useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
+  const location = useLocation();
 
+  const isEmbeddedPath = useMemo(() => {
+    const embedPrefixes = ["/embed"];
+    return embedPrefixes.some((v) => location.pathname.startsWith(v));
+  }, [location.pathname]);
+
+  const { data: modList } = useQuery(
+    getModList,
+    {},
+    { enabled: !isEmbeddedPath },
+  );
   const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
   useEffect(() => {
     console.log("Detected useDarkMode = ", useDarkMode);
@@ -185,7 +197,6 @@ const App = React.memo(() => {
     justDisconnected: false,
   });
   const { sendMessage } = liwordsSocketValues;
-  const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
   const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
@@ -193,11 +204,6 @@ const App = React.memo(() => {
       resetStore();
     }
   }, [isCurrentLocation, resetStore]);
-
-  const isEmbeddedPath = useMemo(() => {
-    const embedPrefixes = ["/embed"];
-    return embedPrefixes.some((v) => location.pathname.startsWith(v));
-  }, [location.pathname]);
 
   const socializeClient = useClient(SocializeService);
   const getFullBlocks = useCallback(() => {
@@ -236,23 +242,10 @@ const App = React.memo(() => {
     }
   }, [getFullBlocks, pendingBlockRefresh]);
 
-  const getMods = useCallback(async () => {
-    try {
-      const resp = await socializeClient.getModList({});
-      setAdmins(new Set<string>(resp.adminUserIds));
-      setModerators(new Set<string>(resp.modUserIds));
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setModsFetched(true);
-    }
-  }, [setAdmins, setModerators, setModsFetched, socializeClient]);
-
-  useEffect(() => {
-    if (!isEmbeddedPath) {
-      getMods();
-    }
-  }, [getMods, isEmbeddedPath]);
+  const getMods = useMemo(() => {
+    setAdmins(new Set<string>(modList?.adminUserIds));
+    setModerators(new Set<string>(modList?.modUserIds));
+  }, [modList, setAdmins, setModerators]);
 
   const getFriends = useCallback(async () => {
     if (loggedIn) {

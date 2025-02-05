@@ -39,13 +39,14 @@ func recreateDB() {
 		{Username: "Cheater", Email: os.Getenv("TEST_EMAIL_USERNAME") + "@woogles.io", UUID: "Cheater"},
 		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
 		{Username: "Deleter", Email: "deleter@woogles.io", UUID: "Deleter"},
-		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
+		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator"},
 	} {
 		err = ustore.New(context.Background(), u)
 		if err != nil {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+
 	ustore.(*user.DBStore).Disconnect()
 }
 

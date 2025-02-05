@@ -52,7 +52,6 @@ type Store interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
 
-	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
 	GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)

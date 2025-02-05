@@ -200,18 +200,19 @@ func main() {
 	integrationService := integrations.NewIntegrationService(stores.Queries)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig, stores.Queries)
+	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
-	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg)
-	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client))
+	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)
+	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
 	wordService := words.NewWordService(cfg)
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
-	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
+	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore, stores.Queries)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
-	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
-	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition)
+	modService := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
+	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition, stores.Queries)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
-	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore)
+	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -292,6 +293,9 @@ func main() {
 	)
 	connectapi.Handle(
 		pair_serviceconnect.NewPairServiceHandler(pairService, options),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),
 	)
 
 	connectapichain := middlewares.Then(connectapi)

@@ -201,6 +201,22 @@ func (as *AuthorizationService) GetUserRoles(ctx context.Context, r *connect.Req
 	}), nil
 }
 
+func (as *AuthorizationService) GetSelfRoles(ctx context.Context, r *connect.Request[pb.GetSelfRolesRequest]) (
+	*connect.Response[pb.UserRolesResponse], error) {
+
+	user, err := apiserver.AuthUser(ctx, as.userStore)
+	if err != nil {
+		return nil, err
+	}
+	roles, err := rbac.UserRoles(ctx, as.q, user.Username)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pb.UserRolesResponse{
+		Roles: roles,
+	}), nil
+}
+
 // Helper functions to detect specific PostgreSQL errors
 func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError

@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -168,20 +169,26 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 			return nil, apiserver.InternalErr(err)
 		}
 		return connect.NewResponse(ut), nil
-	} else {
-		authed = true
-		uuid = u.UUID
-		unn = u.Username
+	}
+	// Otherwise, we are authenticated.
+
+	authed = true
+	uuid = u.UUID
+	unn = u.Username
+
+	roles, err := rbac.UserRoles(ctx, as.q, u.Username)
+	if err != nil {
+		return nil, err
 	}
 	perms := []string{}
-	if u.IsAdmin {
-		perms = append(perms, "adm")
-	}
-	if u.IsDirector {
-		perms = append(perms, "dir")
-	}
-	if u.IsMod {
-		perms = append(perms, "mod")
+
+	for _, r := range roles {
+		if r == string(rbac.Moderator) {
+			perms = append(perms, "mod")
+		}
+		if r == string(rbac.Admin) {
+			perms = append(perms, "adm")
+		}
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

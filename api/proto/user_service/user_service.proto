@@ -351,6 +351,8 @@ message UnassignRoleResponse {}
 message GetUserRolesRequest { string username = 1; }
 message UserRolesResponse { repeated string roles = 1; }
 
+message GetSelfRolesRequest {}
+
 service AuthorizationService {
   rpc GetModList(GetModListRequest) returns (GetModListResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -366,6 +368,9 @@ service AuthorizationService {
   rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
   rpc UnassignRole(UnassignRoleRequest) returns (UnassignRoleResponse);
   rpc GetUserRoles(GetUserRolesRequest) returns (UserRolesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc GetSelfRoles(GetSelfRolesRequest) returns (UserRolesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
 }

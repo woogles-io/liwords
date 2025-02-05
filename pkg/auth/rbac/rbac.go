@@ -12,11 +12,14 @@ import (
 type Permission string
 
 const (
-	AdminAllAccess         Permission = "admin_all_access"
-	CanCreateTournaments              = "can_create_tournaments"
-	CanPlayEliteBot                   = "can_bypass_elitebot_paywall"
-	CanModerateUsers                  = "can_moderate_users"
-	CanModifyAnnouncements            = "can_modify_announcements"
+	AdminAllAccess            Permission = "admin_all_access"
+	CanCreateTournaments      Permission = "can_create_tournaments"
+	CanManageTournaments      Permission = "can_manage_tournaments"
+	CanPlayEliteBot           Permission = "can_bypass_elitebot_paywall"
+	CanModerateUsers          Permission = "can_moderate_users"
+	CanModifyAnnouncements    Permission = "can_modify_announcements"
+	CanCreatePuzzles          Permission = "can_create_puzzles"
+	CanResetAndDeleteAccounts Permission = "can_reset_and_delete_accounts"
 )
 
 // These Roles are also defined in the database.
@@ -24,9 +27,10 @@ type Role string
 
 const (
 	Admin               Role = "Admin"
-	Moderator                = "Moderator"
-	TournamentCreator        = "Tournament Creator"
-	SpecialAccessPlayer      = "Special Access Player"
+	Moderator           Role = "Moderator"
+	TournamentCreator   Role = "Tournament Creator"
+	TournamentManager   Role = "Tournament Manager"
+	SpecialAccessPlayer Role = "Special Access Player"
 )
 
 func HasPermission(ctx context.Context, q *models.Queries, userID uint, permission Permission) (bool, error) {

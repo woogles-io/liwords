@@ -19,6 +19,8 @@ import { useTourneyMetadata } from "./utils";
 import { useSearchParams } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
+import { useQuery } from "@connectrpc/connect-query";
+import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -31,13 +33,19 @@ export const TournamentRoom = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
-  const { loggedIn, username, userID, perms } = loginState;
+  const { loggedIn, username, userID } = loginState;
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState("GAMES");
+
+  const { data: selfRoles } = useQuery(
+    getSelfRoles,
+    {},
+    { enabled: loginState.loggedIn },
+  );
 
   useTourneyMetadata(
     path,
@@ -56,9 +64,12 @@ export const TournamentRoom = (props: Props) => {
     return tournamentContext.directors.includes(username);
   }, [tournamentContext.directors, username]);
 
-  const isAdmin = useMemo(() => {
-    return perms.includes("adm");
-  }, [perms]);
+  const canManageTournaments = useMemo(() => {
+    return !!(
+      selfRoles?.roles.includes("Admin") ||
+      selfRoles?.roles.includes("Tournament Manager")
+    );
+  }, [selfRoles?.roles]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -141,7 +152,7 @@ export const TournamentRoom = (props: Props) => {
             selectedGameTab={selectedGameTab}
             setSelectedGameTab={setSelectedGameTab}
             isDirector={isDirector}
-            isAdmin={isAdmin}
+            canManageTournaments={canManageTournaments}
             tournamentID={tournamentID}
             onSeekSubmit={onSeekSubmit}
             loggedIn={loggedIn}
