@@ -57,3 +57,10 @@ VALUES (
     (SELECT id FROM roles WHERE name = @role_name),
     (SELECT id FROM permissions WHERE code = @permission_code)
 );
+
+-- name: UnlinkRoleAndPermission :execrows
+DELETE FROM role_permissions
+WHERE
+    role_id = (SELECT id FROM roles WHERE name = @role_name)
+AND
+    permission_id = (SELECT id FROM permissions WHERE code = @permission_code);

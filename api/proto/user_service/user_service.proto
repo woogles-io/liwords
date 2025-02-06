@@ -365,6 +365,8 @@ service AuthorizationService {
   rpc AddPermission(AddPermissionRequest) returns (AddPermissionResponse);
   rpc LinkRoleAndPermission(LinkRoleAndPermissionRequest)
       returns (LinkRoleAndPermissionResponse);
+  rpc UnlinkRoleAndPermission(LinkRoleAndPermissionRequest)
+      returns (LinkRoleAndPermissionResponse);
   rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
   rpc UnassignRole(UnassignRoleRequest) returns (UnassignRoleResponse);
   rpc GetUserRoles(GetUserRolesRequest) returns (UserRolesResponse) {

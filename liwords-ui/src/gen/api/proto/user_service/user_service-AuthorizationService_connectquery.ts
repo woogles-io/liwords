@@ -30,6 +30,11 @@ export const addPermission = AuthorizationService.method.addPermission;
 export const linkRoleAndPermission = AuthorizationService.method.linkRoleAndPermission;
 
 /**
+ * @generated from rpc user_service.AuthorizationService.UnlinkRoleAndPermission
+ */
+export const unlinkRoleAndPermission = AuthorizationService.method.unlinkRoleAndPermission;
+
+/**
  * @generated from rpc user_service.AuthorizationService.AssignRole
  */
 export const assignRole = AuthorizationService.method.assignRole;

@@ -53,8 +53,6 @@ VALUES
      (SELECT id FROM permissions WHERE code = 'admin_all_access')),
     ((SELECT id FROM roles WHERE name = 'Moderator'),
      (SELECT id FROM permissions WHERE code = 'can_moderate_users')),
-    ((SELECT id FROM roles WHERE name = 'Moderator'),
-     (SELECT id FROM permissions WHERE code = 'can_modify_announcements')),
     ((SELECT id FROM roles WHERE name = 'Tournament Creator'),
      (SELECT id FROM permissions WHERE code = 'can_create_tournaments')),
     ((SELECT id FROM roles WHERE name = 'Special Access Player'),

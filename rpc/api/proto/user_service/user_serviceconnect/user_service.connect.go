@@ -153,6 +153,9 @@ const (
 	// AuthorizationServiceLinkRoleAndPermissionProcedure is the fully-qualified name of the
 	// AuthorizationService's LinkRoleAndPermission RPC.
 	AuthorizationServiceLinkRoleAndPermissionProcedure = "/user_service.AuthorizationService/LinkRoleAndPermission"
+	// AuthorizationServiceUnlinkRoleAndPermissionProcedure is the fully-qualified name of the
+	// AuthorizationService's UnlinkRoleAndPermission RPC.
+	AuthorizationServiceUnlinkRoleAndPermissionProcedure = "/user_service.AuthorizationService/UnlinkRoleAndPermission"
 	// AuthorizationServiceAssignRoleProcedure is the fully-qualified name of the AuthorizationService's
 	// AssignRole RPC.
 	AuthorizationServiceAssignRoleProcedure = "/user_service.AuthorizationService/AssignRole"
@@ -1253,6 +1256,7 @@ type AuthorizationServiceClient interface {
 	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
 	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
+	UnlinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
 	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
 	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
@@ -1302,6 +1306,12 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(authorizationServiceMethods.ByName("LinkRoleAndPermission")),
 			connect.WithClientOptions(opts...),
 		),
+		unlinkRoleAndPermission: connect.NewClient[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse](
+			httpClient,
+			baseURL+AuthorizationServiceUnlinkRoleAndPermissionProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("UnlinkRoleAndPermission")),
+			connect.WithClientOptions(opts...),
+		),
 		assignRole: connect.NewClient[user_service.AssignRoleRequest, user_service.AssignRoleResponse](
 			httpClient,
 			baseURL+AuthorizationServiceAssignRoleProcedure,
@@ -1338,6 +1348,7 @@ type authorizationServiceClient struct {
 	addRole                 *connect.Client[user_service.AddRoleRequest, user_service.AddRoleResponse]
 	addPermission           *connect.Client[user_service.AddPermissionRequest, user_service.AddPermissionResponse]
 	linkRoleAndPermission   *connect.Client[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse]
+	unlinkRoleAndPermission *connect.Client[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse]
 	assignRole              *connect.Client[user_service.AssignRoleRequest, user_service.AssignRoleResponse]
 	unassignRole            *connect.Client[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse]
 	getUserRoles            *connect.Client[user_service.GetUserRolesRequest, user_service.UserRolesResponse]
@@ -1369,6 +1380,11 @@ func (c *authorizationServiceClient) LinkRoleAndPermission(ctx context.Context, 
 	return c.linkRoleAndPermission.CallUnary(ctx, req)
 }
 
+// UnlinkRoleAndPermission calls user_service.AuthorizationService.UnlinkRoleAndPermission.
+func (c *authorizationServiceClient) UnlinkRoleAndPermission(ctx context.Context, req *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error) {
+	return c.unlinkRoleAndPermission.CallUnary(ctx, req)
+}
+
 // AssignRole calls user_service.AuthorizationService.AssignRole.
 func (c *authorizationServiceClient) AssignRole(ctx context.Context, req *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {
 	return c.assignRole.CallUnary(ctx, req)
@@ -1397,6 +1413,7 @@ type AuthorizationServiceHandler interface {
 	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
 	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
+	UnlinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
 	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
 	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
@@ -1442,6 +1459,12 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithSchema(authorizationServiceMethods.ByName("LinkRoleAndPermission")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorizationServiceUnlinkRoleAndPermissionHandler := connect.NewUnaryHandler(
+		AuthorizationServiceUnlinkRoleAndPermissionProcedure,
+		svc.UnlinkRoleAndPermission,
+		connect.WithSchema(authorizationServiceMethods.ByName("UnlinkRoleAndPermission")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authorizationServiceAssignRoleHandler := connect.NewUnaryHandler(
 		AuthorizationServiceAssignRoleProcedure,
 		svc.AssignRole,
@@ -1480,6 +1503,8 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 			authorizationServiceAddPermissionHandler.ServeHTTP(w, r)
 		case AuthorizationServiceLinkRoleAndPermissionProcedure:
 			authorizationServiceLinkRoleAndPermissionHandler.ServeHTTP(w, r)
+		case AuthorizationServiceUnlinkRoleAndPermissionProcedure:
+			authorizationServiceUnlinkRoleAndPermissionHandler.ServeHTTP(w, r)
 		case AuthorizationServiceAssignRoleProcedure:
 			authorizationServiceAssignRoleHandler.ServeHTTP(w, r)
 		case AuthorizationServiceUnassignRoleProcedure:
@@ -1515,6 +1540,10 @@ func (UnimplementedAuthorizationServiceHandler) AddPermission(context.Context, *
 
 func (UnimplementedAuthorizationServiceHandler) LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.LinkRoleAndPermission is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) UnlinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.UnlinkRoleAndPermission is not implemented"))
 }
 
 func (UnimplementedAuthorizationServiceHandler) AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {

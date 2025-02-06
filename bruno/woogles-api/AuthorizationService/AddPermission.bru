@@ -1,0 +1,18 @@
+meta {
+  name: AddPermission
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/AddPermission
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": "can_moderate_users",
+    "description": "Some moderator"
+  }
+}

@@ -138,6 +138,28 @@ func (as *AuthorizationService) LinkRoleAndPermission(ctx context.Context, r *co
 	return connect.NewResponse(&pb.LinkRoleAndPermissionResponse{}), nil
 }
 
+func (as *AuthorizationService) UnlinkRoleAndPermission(ctx context.Context, r *connect.Request[pb.LinkRoleAndPermissionRequest]) (
+	*connect.Response[pb.LinkRoleAndPermissionResponse], error) {
+
+	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	if err != nil {
+		return nil, err
+	}
+
+	rowsAffected, err := as.q.UnlinkRoleAndPermission(ctx, models.UnlinkRoleAndPermissionParams{
+		RoleName:       r.Msg.RoleName,
+		PermissionCode: r.Msg.PermissionCode,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if rowsAffected == 0 {
+		return nil, apiserver.NotFound("role-permission link not found")
+	}
+	return connect.NewResponse(&pb.LinkRoleAndPermissionResponse{}), nil
+}
+
 func (as *AuthorizationService) AssignRole(ctx context.Context, r *connect.Request[pb.AssignRoleRequest]) (
 	*connect.Response[pb.AssignRoleResponse], error) {
 

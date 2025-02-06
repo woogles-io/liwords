@@ -1,0 +1,18 @@
+meta {
+  name: UnlinkRolePermission
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/UnlinkRoleAndPermission
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "permission_code": "can_modify_announcements",
+    "role_name": "Moderator"
+  }
+}

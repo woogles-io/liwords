@@ -189,3 +189,24 @@ func (q *Queries) UnassignRole(ctx context.Context, arg UnassignRoleParams) (int
 	}
 	return result.RowsAffected(), nil
 }
+
+const unlinkRoleAndPermission = `-- name: UnlinkRoleAndPermission :execrows
+DELETE FROM role_permissions
+WHERE
+    role_id = (SELECT id FROM roles WHERE name = $1)
+AND
+    permission_id = (SELECT id FROM permissions WHERE code = $2)
+`
+
+type UnlinkRoleAndPermissionParams struct {
+	RoleName       string
+	PermissionCode string
+}
+
+func (q *Queries) UnlinkRoleAndPermission(ctx context.Context, arg UnlinkRoleAndPermissionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unlinkRoleAndPermission, arg.RoleName, arg.PermissionCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

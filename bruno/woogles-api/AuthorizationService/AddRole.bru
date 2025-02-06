@@ -1,0 +1,18 @@
+meta {
+  name: AddRole
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/AddRole
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Moderator",
+    "description": "Some moderator"
+  }
+}
