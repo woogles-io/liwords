@@ -44,6 +44,7 @@ func TestAuthenticateMod(t *testing.T) {
 	})
 	is.NoErr(err)
 	us.(*user.DBStore).Disconnect()
+	pool.Close()
 }
 
 func TestAuthenticateModNoAuth(t *testing.T) {
@@ -70,4 +71,5 @@ func TestAuthenticateModNoAuth(t *testing.T) {
 	})
 	is.Equal(err, apiserver.Unauthenticated(errNotAuthorized.Error()))
 	us.(*user.DBStore).Disconnect()
+	pool.Close()
 }
