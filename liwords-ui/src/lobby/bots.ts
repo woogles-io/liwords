@@ -58,13 +58,13 @@ export const BotTypesEnumProperties = {
     description: (lexicon: string) =>
       isEnglish(lexicon)
         ? "Perfect play while still only using common words"
-        : "BetterBot. A bit better than BasicBot.",
+        : "BetterBot. A bit better than BasicBot",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL4_CEL_BOT
         : BotRequest_BotCode.LEVEL3_PROBABILISTIC,
     image: betterbot,
-    voidonly: true,
+    voidonly: false,
   },
   [BotTypesEnum.EASY]: {
     userVisible: "BasicBot",
@@ -73,13 +73,13 @@ export const BotTypesEnumProperties = {
     description: (lexicon: string) =>
       isEnglish(lexicon)
         ? "Higher scoring, but still emphasizes common English words only"
-        : "Beating BeginnerBot? Basicbot is your next frenemy, scoring more.",
+        : "Beating BeginnerBot? Basicbot is your next frenemy, scoring more",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL2_CEL_BOT
         : BotRequest_BotCode.LEVEL2_PROBABILISTIC,
     image: basicbot,
-    voidonly: true,
+    voidonly: false,
   },
   [BotTypesEnum.BEGINNER]: {
     userVisible: "BeginnerBot",
@@ -88,7 +88,7 @@ export const BotTypesEnumProperties = {
     description: (lexicon: string) =>
       isEnglish(lexicon)
         ? "New to OMGWords? Low scoring plays and common words only"
-        : "New to OMGWords? BeginnerBot sticks to lower-scoring plays.",
+        : "New to OMGWords? BeginnerBot sticks to lower-scoring plays",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL1_CEL_BOT

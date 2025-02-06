@@ -242,9 +242,11 @@ const App = React.memo(() => {
     }
   }, [getFullBlocks, pendingBlockRefresh]);
 
-  const getMods = useMemo(() => {
-    setAdmins(new Set<string>(modList?.adminUserIds));
-    setModerators(new Set<string>(modList?.modUserIds));
+  useEffect(() => {
+    if (modList) {
+      setAdmins(new Set<string>(modList?.adminUserIds));
+      setModerators(new Set<string>(modList?.modUserIds));
+    }
   }, [modList, setAdmins, setModerators]);
 
   const getFriends = useCallback(async () => {

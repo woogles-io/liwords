@@ -42,7 +42,10 @@ import { create } from "@bufbuild/protobuf";
 import BotSelector from "./bot_selector";
 import { useQuery } from "@connectrpc/connect-query";
 import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
-import { getSubscriptionCriteria } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import {
+  getSelfRoles,
+  getSubscriptionCriteria,
+} from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -175,6 +178,12 @@ export const SeekForm = (props: Props) => {
 
   const { data: userIntegrations } = useQuery(
     getIntegrations,
+    {},
+    { enabled: !!props.vsBot },
+  );
+
+  const { data: ourRoles } = useQuery(
+    getSelfRoles,
     {},
     { enabled: !!props.vsBot },
   );
@@ -503,9 +512,10 @@ export const SeekForm = (props: Props) => {
       {props.vsBot && (
         <BotSelector
           lexicon={selections?.lexicon || ""}
-          entitledToBestBot={subscriptionCriteria?.entitledToBotGames}
-          lastChargeDate={subscriptionCriteria?.lastChargeDate}
-          tierName={subscriptionCriteria?.tierName}
+          subscriptionCriteria={subscriptionCriteria}
+          specialAccessPlayer={
+            ourRoles?.roles.includes("Special Access Player") || false
+          }
           botType={initialValues.botType}
           hasPatreonIntegration={userIntegrations?.integrations.some(
             (i) => i.integrationName === "patreon",

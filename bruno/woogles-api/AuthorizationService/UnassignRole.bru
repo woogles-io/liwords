@@ -1,11 +1,11 @@
 meta {
-  name: AssignRole
+  name: UnassignRole
   type: http
-  seq: 1
+  seq: 5
 }
 
 post {
-  url: {{baseURL}}/api/user_service.AuthorizationService/AssignRole
+  url: {{baseURL}}/api/user_service.AuthorizationService/UnassignRole
   body: json
   auth: none
 }

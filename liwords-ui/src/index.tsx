@@ -22,7 +22,8 @@ declare global {
 }
 
 window.console.info(
-  "Woogles.io is open source! https://github.com/woogles-io/liwords",
+  "%c Woogles.io is open source! https://github.com/woogles-io/liwords",
+  "color: #11659e; font-size: 18px; font-weight: bold;",
 );
 
 // Scope the variables declared here.

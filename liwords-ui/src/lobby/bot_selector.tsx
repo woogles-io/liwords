@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { Timestamp, timestampDate } from "@bufbuild/protobuf/wkt";
 import { LoginWithPatreonLink } from "../settings/integrations";
 import PatreonLogo from "../assets/patreon.svg?react";
+import { GetSubscriptionCriteriaResponse } from "../gen/api/proto/user_service/user_service_pb";
 
 const botTypes = [
   BotTypesEnum.BEGINNER,
@@ -18,9 +19,8 @@ const botTypes = [
 
 interface BotSelectorProps {
   lexicon: string;
-  entitledToBestBot?: boolean;
-  lastChargeDate?: Timestamp;
-  tierName?: string;
+  specialAccessPlayer: boolean; // specialAccessPlayer has rights to paid bots.
+  subscriptionCriteria?: GetSubscriptionCriteriaResponse;
   botType: BotTypesEnum;
   hasPatreonIntegration?: boolean;
 }
@@ -49,12 +49,21 @@ const nextChargeDate = (lastChargeDate: Date) => {
 
 const BotSelector: React.FC<BotSelectorProps> = ({
   lexicon,
-  tierName,
-  lastChargeDate,
-  entitledToBestBot,
+  subscriptionCriteria,
   botType,
   hasPatreonIntegration,
+  specialAccessPlayer,
 }) => {
+  let entitledToBestBot: boolean | undefined;
+  let tierName: string | undefined;
+  let lastChargeDate: Timestamp | undefined;
+  if (subscriptionCriteria) {
+    ({
+      entitledToBotGames: entitledToBestBot,
+      tierName,
+      lastChargeDate,
+    } = subscriptionCriteria);
+  }
   // for testing
   // tierName = "Chihuahua";
   // entitledToBestBot = true;
@@ -71,12 +80,18 @@ const BotSelector: React.FC<BotSelectorProps> = ({
 
   const options = botTypes.map((k) => {
     const bestbot = k === BotTypesEnum.GRANDMASTER;
+    let displayPtCallout =
+      bestbot && (!entitledToBestBot || !tierName || !hasPatreonIntegration);
+    // Override if special player:
+    if (specialAccessPlayer) {
+      displayPtCallout = false;
+    }
     return {
       value: k,
       label: (
         <div className="bot-selector-item-holder">
           <div
-            className={`bot-selector-item ${bestbot && !entitledToBestBot ? "bot-selector-item-disabled" : ""}`}
+            className={`bot-selector-item ${displayPtCallout ? "bot-selector-item-disabled" : ""}`}
           >
             <div className="bot-selector-item-layout">
               <img
@@ -103,14 +118,13 @@ const BotSelector: React.FC<BotSelectorProps> = ({
             </div>
           </div>
           {/* display Patreon callout if not subscribed */}
-          {bestbot &&
-            (!tierName || !entitledToBestBot || !hasPatreonIntegration) && (
-              <PatreonCallout
-                tierName={tierName}
-                entitledToBestBot={entitledToBestBot}
-                hasPatreonIntegration={hasPatreonIntegration}
-              />
-            )}
+          {displayPtCallout && (
+            <PatreonCallout
+              tierName={tierName}
+              entitledToBestBot={entitledToBestBot}
+              hasPatreonIntegration={hasPatreonIntegration}
+            />
+          )}
         </div>
       ),
     };
@@ -140,7 +154,7 @@ const BotSelector: React.FC<BotSelectorProps> = ({
         <Select
           listHeight={700}
           options={options}
-          className={`bot-selector ${selectedOption === BotTypesEnum.GRANDMASTER && !entitledToBestBot ? "bot-selector-contains-patreon-callout" : ""}`}
+          className={`bot-selector ${selectedOption === BotTypesEnum.GRANDMASTER && !specialAccessPlayer && !entitledToBestBot ? "bot-selector-contains-patreon-callout" : ""}`}
           onChange={handleSelectChange}
           value={selectedOption}
         />
