@@ -435,3 +435,7 @@ func checkRowsAffected(rowsAffected int, cfg *CommonDBConfig) error {
 	}
 	return nil
 }
+
+func ToPGTypeText(str string) pgtype.Text {
+	return pgtype.Text{Valid: true, String: str}
+}
