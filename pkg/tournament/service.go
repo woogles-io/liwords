@@ -615,7 +615,7 @@ func (ts *TournamentService) UncheckIn(ctx context.Context, req *connect.Request
 func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect.Request[pb.UnstartTournamentRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
 	// but does not delete the players or divisions.
-	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
+	err := authenticateDirector(ctx, ts, req.Msg.Id, true, req.Msg)
 	if err != nil {
 		return nil, err
 	}
