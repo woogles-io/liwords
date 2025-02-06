@@ -168,40 +168,167 @@
   padding: 0 10px;
 }
 
-.ant-select-dropdown,
-.ant-select-selection-item {
-  span.level {
-    font-size: 14px;
-    font-weight: 700;
-  }
-  span.average {
-    font-size: 13px;
-    font-weight: 400;
-    &::before {
-      content: "(";
-    }
-    &::after {
-      content: ")";
-    }
-  }
-  span.description {
-    display: block;
-    font-size: 13px;
-    white-space: normal;
+.rc-virtual-list {
+  .bot-selector-item {
     @include colorModed() {
-      color: m($gray-dark);
+      border: 1px solid m($gray-subtle);
     }
   }
 }
 
-.ant-select-selection-item {
-  span.level {
-    font-weight: 400;
+.rc-virtual-list .bot-selector-patreon-callout-not-subscribed,
+.rc.virtual-list .bot-selector-patreon-callout-ran-out-of-games,
+.bot-selector-item-holder .bot-selector-patreon-callout-not-subscribed,
+.bot-selector-item-holder .bot-selector-patreon-callout-ran-out-of-games {
+  display: flex;
+  padding: 8px 16px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  @include colorModed() {
+    background-color: m($primary-dark);
   }
-  span.average {
+  .pt-callout-link {
+    width: 24px;
+    height: 24px;
+    path {
+      @include colorModed() {
+        fill: m($background);
+      }
+    }
+  }
+  .pt-callout-text {
     font-size: 14px;
-  }
-  span.description {
-    display: none;
+    font-weight: 700;
+    line-height: normal;
+    font-style: normal;
+    flex: 1 0 0;
+    @include colorModed() {
+      color: m($background);
+    }
   }
 }
+
+.bot-selector,
+.bot-selector-item-holder {
+  min-height: 102px;
+  min-width: 352px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  .bot-selector-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 10px;
+    min-height: 102px;
+
+    .bot-selector-item-layout {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      padding: 0px;
+      gap: 16px;
+      width: 320px;
+      height: 70px;
+      flex: none;
+      order: 0;
+      align-self: stretch;
+      flex-grow: 0;
+      .bot-selector-image {
+        width: 48;
+        height: 48;
+        border-radius: 50%;
+        object-fit: cover;
+        flex: none;
+        order: 0;
+        align-self: stretch;
+        flex-grow: 0;
+      }
+      .bot-selector-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 0px;
+        width: 258px;
+        height: 70px;
+        flex: none;
+        order: 0;
+        align-self: stretch;
+        flex-grow: 0;
+        .bot-selector-name-and-short-desc {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          padding: 0px;
+          width: 258;
+          height: 22;
+          flex: none;
+          order: 1;
+          flex-grow: 1;
+          .bot-selector-name {
+            width: 128px;
+            height: 22px;
+            font-size: 16px;
+            line-height: 20px;
+            font-weight: 700;
+            font-style: normal;
+            display: flex;
+            align-items: center;
+            @include colorModed() {
+              color: m($gray-extreme);
+            }
+          }
+          .bot-selector-short-desc {
+            width: 130px;
+            height: 22px;
+            font-style: italic;
+            font-weight: 400;
+            font-size: 14px;
+            line-height: 18px;
+            display: flex;
+            align-items: center;
+            text-align: right;
+            @include colorModed() {
+              color: m($gray-extreme);
+            }
+          }
+        }
+
+        .bot-selector-long-desc {
+          width: 258px;
+          height: 40px;
+          font-size: 14px;
+          line-height: 20px;
+          font-weight: 400;
+          font-style: normal;
+          flex: none;
+          order: 1;
+          align-self: stretch;
+          flex-grow: 0;
+          white-space: normal;
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+        }
+      }
+    }
+  }
+  .bot-selector-item-disabled {
+    @include colorModed() {
+      background-color: m($gray-subtle);
+    }
+  }
+}
+
+.bot-selector-contains-patreon-callout {
+  min-height: 142;
+}
+
+// .bot-selector-patreon-callout-not-subscribed {
+//   /* over-ridden by rc-virtual-list holder above */
+//   display: none;
+// }

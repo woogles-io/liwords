@@ -39,6 +39,13 @@ import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useClient } from "../utils/hooks/connect";
 import { AutocompleteService } from "../gen/api/proto/user_service/user_service_pb";
 import { create } from "@bufbuild/protobuf";
+import BotSelector from "./bot_selector";
+import { useQuery } from "@connectrpc/connect-query";
+import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
+import {
+  getSelfRoles,
+  getSubscriptionCriteria,
+} from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -163,6 +170,24 @@ export const SeekForm = (props: Props) => {
   const { tournamentID, username } = props;
   const { lobbyContext } = useLobbyStoreContext();
 
+  const { data: subscriptionCriteria } = useQuery(
+    getSubscriptionCriteria,
+    {},
+    { enabled: !!props.vsBot },
+  );
+
+  const { data: userIntegrations } = useQuery(
+    getIntegrations,
+    {},
+    { enabled: !!props.vsBot },
+  );
+
+  const { data: ourRoles } = useQuery(
+    getSelfRoles,
+    {},
+    { enabled: !!props.vsBot },
+  );
+
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem("enableAllLexicons") === "true",
     [],
@@ -175,11 +200,6 @@ export const SeekForm = (props: Props) => {
 
   const enableVariants = React.useMemo(
     () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
-
-  const enableGrandmasterBot = React.useMemo(
-    () => localStorage.getItem("enableGrandmastaP") === "true",
     [],
   );
 
@@ -331,8 +351,10 @@ export const SeekForm = (props: Props) => {
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === "overtime" ? 10 : 60,
   );
-  const [showChallengeRule, setShowChallengeRule] = useState(
-    initialValues.lexicon !== "ECWL",
+  const [hideChallengeRule, setHideChallengeRule] = useState(
+    initialValues.lexicon === "ECWL" ||
+      (props.vsBot &&
+        BotTypesEnumProperties[initialValues.botType as BotTypesEnum].voidonly),
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
   const handleDropdownVisibleChange = useCallback((open: boolean) => {
@@ -344,6 +366,15 @@ export const SeekForm = (props: Props) => {
   );
 
   const onFormChange = (val: Store, allvals: Store) => {
+    let shouldHideChallengeRule = false;
+    if (props.vsBot) {
+      const voidonly =
+        BotTypesEnumProperties[allvals.botType as BotTypesEnum].voidonly;
+      if (voidonly) {
+        shouldHideChallengeRule = true;
+        allvals.challengerule = ChallengeRule.VOID;
+      }
+    }
     if (window.localStorage) {
       localStorage.setItem(
         storageKey,
@@ -371,9 +402,7 @@ export const SeekForm = (props: Props) => {
         : Math.round(allvals.extratime as number);
     const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
     if (allvals.lexicon === "ECWL") {
-      setShowChallengeRule(false);
-    } else {
-      setShowChallengeRule(true);
+      shouldHideChallengeRule = true;
     }
     setTimectrl(tc);
     setTtag(tt);
@@ -388,6 +417,7 @@ export const SeekForm = (props: Props) => {
         allvals.lexicon,
       ),
     );
+    setHideChallengeRule(shouldHideChallengeRule);
   };
   const defaultOptions = useMemo(() => {
     let defaultPlayers: string[] = [];
@@ -466,17 +496,6 @@ export const SeekForm = (props: Props) => {
     }
   }, [defaultOptions, usernameOptions]);
 
-  const botTypes = [
-    BotTypesEnum.MASTER,
-    BotTypesEnum.EXPERT,
-    BotTypesEnum.INTERMEDIATE,
-    BotTypesEnum.EASY,
-    BotTypesEnum.BEGINNER,
-  ];
-  if (enableGrandmasterBot) {
-    botTypes.splice(0, 0, BotTypesEnum.GRANDMASTER);
-  }
-
   return (
     <Form
       id={props.id}
@@ -491,25 +510,17 @@ export const SeekForm = (props: Props) => {
     >
       {props.prefixItems || null}
       {props.vsBot && (
-        <Form.Item label="Select bot level" name="botType">
-          <Select listHeight={500}>
-            {botTypes.map((v) => (
-              <Select.Option value={v} key={v}>
-                <span className="level">
-                  {BotTypesEnumProperties[v].userVisible}{" "}
-                </span>
-                <span className="average">
-                  {BotTypesEnumProperties[v].shortDescription}
-                </span>
-                <span className="description">
-                  {BotTypesEnumProperties[v].description(
-                    selections?.lexicon || "",
-                  )}{" "}
-                </span>
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <BotSelector
+          lexicon={selections?.lexicon || ""}
+          subscriptionCriteria={subscriptionCriteria}
+          specialAccessPlayer={
+            ourRoles?.roles.includes("Special Access Player") || false
+          }
+          botType={initialValues.botType}
+          hasPatreonIntegration={userIntegrations?.integrations.some(
+            (i) => i.integrationName === "patreon",
+          )}
+        />
       )}
       {props.showFriendInput && (
         <Form.Item
@@ -562,7 +573,7 @@ export const SeekForm = (props: Props) => {
         disabled={disableLexiconControls}
         excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
       />
-      {showChallengeRule && (
+      {!hideChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
       <Form.Item

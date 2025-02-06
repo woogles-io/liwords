@@ -5,7 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 
 	"github.com/rs/zerolog/log"
@@ -35,12 +37,16 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
-
+	privilegedUser, err := b.stores.Queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(sendingUser.ID),
+		Permission: string(rbac.CanModerateUsers),
+	})
+	if err != nil {
+		return err
+	}
 	// Regulate chat only if the user is not privileged and the
 	// chat is not a private chat or a game chat
-	regulateChat := !(sendingUser.IsAdmin ||
-		sendingUser.IsMod ||
-		sendingUser.IsDirector ||
+	regulateChat := !(privilegedUser ||
 		strings.HasPrefix(evt.Channel, "chat.pm.") ||
 		strings.HasPrefix(evt.Channel, "chat.game."))
 

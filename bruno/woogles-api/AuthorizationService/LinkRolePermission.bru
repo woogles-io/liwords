@@ -1,0 +1,18 @@
+meta {
+  name: LinkRolePermission
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/LinkRoleAndPermission
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "permission_code": "can_modify_announcements",
+    "role_name": "Moderator"
+  }
+}

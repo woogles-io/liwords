@@ -1,0 +1,18 @@
+meta {
+  name: UnassignRole
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/UnassignRole
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "mina",
+    "role_name": "Special Access Player"
+  }
+}

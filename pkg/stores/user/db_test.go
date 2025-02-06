@@ -12,14 +12,12 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	commontest "github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
 	"github.com/woogles-io/liwords/pkg/stores/common"
-	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -59,10 +57,10 @@ func recreateDB() (*DBStore, *pgxpool.Pool, context.Context) {
 		{Username: "mina", Email: "mina@gmail.com", UUID: "iW7AaqNJDuaxgcYnrFfcJF"},
 		{Username: "jesse", Email: "jesse@woogles.io", UUID: "3xpEkpRAy3AizbVmDg3kdi"},
 		{Username: "HastyBot", Email: "hastybot@woogles.io", UUID: "hasty_bot_uuid", IsBot: true, Profile: &entity.Profile{BirthDate: "1400-01-01"}},
-		{Username: "adult", Email: "adult@woogles.io", UUID: "adult_uuid", IsMod: true, IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "adult_avatar_url", BirthDate: "1900-01-01", FirstName: "vincent", LastName: "adultman"}},
+		{Username: "adult", Email: "adult@woogles.io", UUID: "adult_uuid", Profile: &entity.Profile{AvatarUrl: "adult_avatar_url", BirthDate: "1900-01-01", FirstName: "vincent", LastName: "adultman"}},
 		{Username: "child", Email: "child@woogles.io", UUID: "child_uuid", Profile: &entity.Profile{AvatarUrl: "child_avatar_url", BirthDate: "2015-01-01", LastName: "kid"}},
-		{Username: "winter", Email: "winter@woogles.io", UUID: "winter_uuid", IsMod: true, Profile: &entity.Profile{AvatarUrl: "winter_avatar_url", BirthDate: "1972-03-20", FirstName: "winter"}},
-		{Username: "smith", Email: "smith@woogles.io", UUID: "smith_uuid", IsAdmin: true, Profile: &entity.Profile{AvatarUrl: "smith_avatar_url", BirthDate: "1950-07-08", LastName: "smith"}},
+		{Username: "winter", Email: "winter@woogles.io", UUID: "winter_uuid", Profile: &entity.Profile{AvatarUrl: "winter_avatar_url", BirthDate: "1972-03-20", FirstName: "winter"}},
+		{Username: "smith", Email: "smith@woogles.io", UUID: "smith_uuid", Profile: &entity.Profile{AvatarUrl: "smith_avatar_url", BirthDate: "1950-07-08", LastName: "smith"}},
 		{Username: "noprofile", Email: "noprofile@woogles.io", UUID: "noprofile_uuid", Profile: &entity.Profile{}},
 		{Username: "mo", Email: "mo@woogles.io", UUID: "mo_uuid"},
 		{Username: "mod", Email: "mod@woogles.io", UUID: "mod_uuid"},
@@ -167,12 +165,12 @@ func TestGet(t *testing.T) {
 	is.True(bot.Username == botNames[macondopb.BotRequest_HASTY_BOT] || bot.Username == "mode")
 
 	// GetModList
-	modList, err := ustore.GetModList(ctx)
-	is.NoErr(err)
-	sort.Strings(modList.AdminUserIds)
-	sort.Strings(modList.ModUserIds)
-	is.Equal(modList.AdminUserIds, []string{"adult_uuid", "smith_uuid"})
-	is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
+	// modList, err := ustore.GetModList(ctx)
+	// is.NoErr(err)
+	// sort.Strings(modList.AdminUserIds)
+	// sort.Strings(modList.ModUserIds)
+	// is.Equal(modList.AdminUserIds, []string{"adult_uuid", "smith_uuid"})
+	// is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
 	ustore.Disconnect()
 }
 
@@ -219,12 +217,12 @@ func TestGetNullValues(t *testing.T) {
 	err = common.UpdateWithPool(ctx, pool, []string{"is_mod", "is_admin"}, []interface{}{nil, true}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
 	is.NoErr(err)
 	// GetModList
-	modList, err := ustore.GetModList(ctx)
-	is.NoErr(err)
-	sort.Strings(modList.AdminUserIds)
-	sort.Strings(modList.ModUserIds)
-	is.Equal(modList.AdminUserIds, []string{"adult_uuid", cesarByUsername.UUID, "smith_uuid"})
-	is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
+	// modList, err := ustore.GetModList(ctx)
+	// is.NoErr(err)
+	// sort.Strings(modList.AdminUserIds)
+	// sort.Strings(modList.ModUserIds)
+	// is.Equal(modList.AdminUserIds, []string{"adult_uuid", cesarByUsername.UUID, "smith_uuid"})
+	// is.Equal(modList.ModUserIds, []string{"adult_uuid", "winter_uuid"})
 	ustore.Disconnect()
 }
 
@@ -241,20 +239,6 @@ func TestSet(t *testing.T) {
 	cesar, err = ustore.Get(ctx, "cesar")
 	is.NoErr(err)
 	is.Equal(cesar.Notoriety, newNotoriety)
-
-	req := &cpb.PermissionsRequest{
-		Username: "cesar",
-		Admin:    &wrapperspb.BoolValue{Value: true},
-		Mod:      &wrapperspb.BoolValue{Value: true},
-	}
-	err = ustore.SetPermissions(ctx, req)
-	is.NoErr(err)
-	cesar, err = ustore.Get(ctx, "cesar")
-	is.NoErr(err)
-	is.True(cesar.IsAdmin)
-	is.True(cesar.IsMod)
-	is.True(!cesar.IsDirector)
-	is.True(!cesar.IsBot)
 
 	newPassword := "newpassword"
 	err = ustore.SetPassword(ctx, cesar.UUID, newPassword)

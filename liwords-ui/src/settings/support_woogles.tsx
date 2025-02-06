@@ -9,7 +9,7 @@ type Props = {
 export const Support = React.memo((props: Props) => {
   return (
     <>
-      <h3>Support Woogles.io</h3>
+      <h3>Help us keep Woogles.io going!</h3>
       <div className="support-woogles">
         <img src={woogles} className="woogles" alt="Woogles" />
         <div className="right-column">

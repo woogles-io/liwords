@@ -5,12 +5,11 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
-	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
-	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
-
 	pb "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
@@ -28,10 +27,11 @@ type ModService struct {
 	chatStore      user.ChatStore
 	mailgunKey     string
 	discordToken   string
+	queries        *models.Queries
 }
 
-func NewModService(us user.Store, cs user.ChatStore) *ModService {
-	return &ModService{userStore: us, chatStore: cs}
+func NewModService(us user.Store, cs user.ChatStore, q *models.Queries) *ModService {
+	return &ModService{userStore: us, chatStore: cs, queries: q}
 }
 
 var AdminRequiredMap = map[pb.ModActionType]bool{
@@ -48,12 +48,9 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 
 func (ms *ModService) GetNotorietyReport(ctx context.Context, req *connect.Request[pb.GetNotorietyReportRequest],
 ) (*connect.Response[pb.NotorietyReport], error) {
-	user, err := sessionUser(ctx, ms)
+	_, err := authenticateMod(ctx, ms, nil)
 	if err != nil {
 		return nil, err
-	}
-	if !(user.IsAdmin || user.IsMod) {
-		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	// Default to only getting 50 notorious games, which is probably much more than
 	// needed anyway.
@@ -66,12 +63,9 @@ func (ms *ModService) GetNotorietyReport(ctx context.Context, req *connect.Reque
 
 func (ms *ModService) ResetNotoriety(ctx context.Context, req *connect.Request[pb.ResetNotorietyRequest],
 ) (*connect.Response[pb.ResetNotorietyResponse], error) {
-	user, err := sessionUser(ctx, ms)
+	_, err := authenticateMod(ctx, ms, nil)
 	if err != nil {
 		return nil, err
-	}
-	if !(user.IsAdmin || user.IsMod) {
-		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	err = ResetNotoriety(ctx, ms.userStore, ms.notorietyStore, req.Msg.UserId)
 	if err != nil {
@@ -82,12 +76,9 @@ func (ms *ModService) ResetNotoriety(ctx context.Context, req *connect.Request[p
 
 func (ms *ModService) GetActions(ctx context.Context, req *connect.Request[pb.GetActionsRequest],
 ) (*connect.Response[pb.ModActionsMap], error) {
-	user, err := sessionUser(ctx, ms)
+	_, err := authenticateMod(ctx, ms, nil)
 	if err != nil {
 		return nil, err
-	}
-	if !(user.IsAdmin || user.IsMod) {
-		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	actions, err := GetActions(ctx, ms.userStore, req.Msg.UserId)
 	if err != nil {
@@ -98,12 +89,9 @@ func (ms *ModService) GetActions(ctx context.Context, req *connect.Request[pb.Ge
 
 func (ms *ModService) GetActionHistory(ctx context.Context, req *connect.Request[pb.GetActionsRequest],
 ) (*connect.Response[pb.ModActionsList], error) {
-	user, err := sessionUser(ctx, ms)
+	_, err := authenticateMod(ctx, ms, nil)
 	if err != nil {
 		return nil, err
-	}
-	if !(user.IsAdmin || user.IsMod) {
-		return nil, apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	history, err := GetActionHistory(ctx, ms.userStore, req.Msg.UserId)
 	if err != nil {
@@ -138,35 +126,33 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *connect.Request[pb.
 	return connect.NewResponse(&pb.ModActionResponse{}), nil
 }
 
-func sessionUser(ctx context.Context, ms *ModService) (*entity.User, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := ms.userStore.Get(ctx, sess.Username)
-	if err != nil {
-		log.Err(err).Msg("getting-user")
-		return nil, apiserver.InternalErr(err)
-	}
-	return user, nil
-}
-
 func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList) (string, error) {
-	user, err := sessionUser(ctx, ms)
+	user, err := apiserver.AuthUser(ctx, ms.userStore)
 	if err != nil {
 		return "", err
 	}
 
 	isAdminRequired := false
-	for _, action := range req.Actions {
-		if AdminRequiredMap[action.Type] {
-			isAdminRequired = true
-			break
+	if req != nil {
+		for _, action := range req.Actions {
+			if AdminRequiredMap[action.Type] {
+				isAdminRequired = true
+				break
+			}
 		}
 	}
-
-	if !user.IsAdmin && (isAdminRequired || !user.IsMod) {
+	requiredPerm := rbac.CanModerateUsers
+	if isAdminRequired {
+		requiredPerm = rbac.CanResetAndDeleteAccounts
+	}
+	allowed, err := ms.queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(user.ID),
+		Permission: string(requiredPerm),
+	})
+	if err != nil {
+		return "", err
+	}
+	if !allowed {
 		return "", apiserver.Unauthenticated(errNotAuthorized.Error())
 	}
 	return user.UUID, nil

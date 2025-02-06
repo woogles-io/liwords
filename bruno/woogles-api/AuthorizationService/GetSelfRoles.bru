@@ -1,0 +1,15 @@
+meta {
+  name: GetSelfRoles
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/GetSelfRoles
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

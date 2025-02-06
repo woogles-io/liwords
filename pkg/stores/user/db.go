@@ -19,7 +19,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/common"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
@@ -95,44 +94,6 @@ func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) 
 	defer tx.Rollback(ctx)
 
 	err = common.Update(ctx, tx, []string{"notoriety"}, []interface{}{notoriety}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
-	columns := []string{}
-	values := []interface{}{}
-	if req.Bot != nil {
-		columns = append(columns, "internal_bot")
-		values = append(values, req.Bot.Value)
-	}
-	if req.Admin != nil {
-		columns = append(columns, "is_admin")
-		values = append(values, req.Admin.Value)
-	}
-	if req.Director != nil {
-		columns = append(columns, "is_director")
-		values = append(values, req.Director.Value)
-	}
-	if req.Mod != nil {
-		columns = append(columns, "is_mod")
-		values = append(values, req.Mod.Value)
-	}
-
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, columns, values, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: strings.ToLower(req.Username)})
 	if err != nil {
 		return err
 	}
@@ -223,8 +184,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	var userId uint
-	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING id`,
-		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.IsAdmin, u.IsDirector, u.IsMod, u.Notoriety).Scan(&userId)
+	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, notoriety, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
+		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.Notoriety).Scan(&userId)
 	if err != nil {
 		return err
 	}
@@ -899,46 +860,6 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
 	return 0
-}
-
-func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	rows, err := tx.Query(ctx, `SELECT uuid, is_admin, is_mod FROM users WHERE is_admin IS TRUE OR is_mod IS TRUE`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var adminUserIds []string
-	var modUserIds []string
-	var uuid string
-	var isAdmin pgtype.Bool
-	var isMod pgtype.Bool
-	for rows.Next() {
-		if err := rows.Scan(&uuid, &isAdmin, &isMod); err != nil {
-			return nil, err
-		}
-		if isAdmin.Bool {
-			adminUserIds = append(adminUserIds, uuid)
-		}
-		if isMod.Bool {
-			modUserIds = append(modUserIds, uuid)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return &pb.GetModListResponse{
-		AdminUserIds: adminUserIds,
-		ModUserIds:   modUserIds,
-	}, nil
 }
 
 func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {

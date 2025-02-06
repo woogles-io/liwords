@@ -51,17 +51,6 @@ const (
 	ModServiceResetNotorietyProcedure = "/mod_service.ModService/ResetNotoriety"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	modServiceServiceDescriptor                  = mod_service.File_proto_mod_service_mod_service_proto.Services().ByName("ModService")
-	modServiceApplyActionsMethodDescriptor       = modServiceServiceDescriptor.Methods().ByName("ApplyActions")
-	modServiceRemoveActionsMethodDescriptor      = modServiceServiceDescriptor.Methods().ByName("RemoveActions")
-	modServiceGetActionsMethodDescriptor         = modServiceServiceDescriptor.Methods().ByName("GetActions")
-	modServiceGetActionHistoryMethodDescriptor   = modServiceServiceDescriptor.Methods().ByName("GetActionHistory")
-	modServiceGetNotorietyReportMethodDescriptor = modServiceServiceDescriptor.Methods().ByName("GetNotorietyReport")
-	modServiceResetNotorietyMethodDescriptor     = modServiceServiceDescriptor.Methods().ByName("ResetNotoriety")
-)
-
 // ModServiceClient is a client for the mod_service.ModService service.
 type ModServiceClient interface {
 	ApplyActions(context.Context, *connect.Request[mod_service.ModActionsList]) (*connect.Response[mod_service.ModActionResponse], error)
@@ -81,41 +70,42 @@ type ModServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewModServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ModServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	modServiceMethods := mod_service.File_proto_mod_service_mod_service_proto.Services().ByName("ModService").Methods()
 	return &modServiceClient{
 		applyActions: connect.NewClient[mod_service.ModActionsList, mod_service.ModActionResponse](
 			httpClient,
 			baseURL+ModServiceApplyActionsProcedure,
-			connect.WithSchema(modServiceApplyActionsMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("ApplyActions")),
 			connect.WithClientOptions(opts...),
 		),
 		removeActions: connect.NewClient[mod_service.ModActionsList, mod_service.ModActionResponse](
 			httpClient,
 			baseURL+ModServiceRemoveActionsProcedure,
-			connect.WithSchema(modServiceRemoveActionsMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("RemoveActions")),
 			connect.WithClientOptions(opts...),
 		),
 		getActions: connect.NewClient[mod_service.GetActionsRequest, mod_service.ModActionsMap](
 			httpClient,
 			baseURL+ModServiceGetActionsProcedure,
-			connect.WithSchema(modServiceGetActionsMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("GetActions")),
 			connect.WithClientOptions(opts...),
 		),
 		getActionHistory: connect.NewClient[mod_service.GetActionsRequest, mod_service.ModActionsList](
 			httpClient,
 			baseURL+ModServiceGetActionHistoryProcedure,
-			connect.WithSchema(modServiceGetActionHistoryMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("GetActionHistory")),
 			connect.WithClientOptions(opts...),
 		),
 		getNotorietyReport: connect.NewClient[mod_service.GetNotorietyReportRequest, mod_service.NotorietyReport](
 			httpClient,
 			baseURL+ModServiceGetNotorietyReportProcedure,
-			connect.WithSchema(modServiceGetNotorietyReportMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("GetNotorietyReport")),
 			connect.WithClientOptions(opts...),
 		),
 		resetNotoriety: connect.NewClient[mod_service.ResetNotorietyRequest, mod_service.ResetNotorietyResponse](
 			httpClient,
 			baseURL+ModServiceResetNotorietyProcedure,
-			connect.WithSchema(modServiceResetNotorietyMethodDescriptor),
+			connect.WithSchema(modServiceMethods.ByName("ResetNotoriety")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -177,40 +167,41 @@ type ModServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewModServiceHandler(svc ModServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	modServiceMethods := mod_service.File_proto_mod_service_mod_service_proto.Services().ByName("ModService").Methods()
 	modServiceApplyActionsHandler := connect.NewUnaryHandler(
 		ModServiceApplyActionsProcedure,
 		svc.ApplyActions,
-		connect.WithSchema(modServiceApplyActionsMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("ApplyActions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	modServiceRemoveActionsHandler := connect.NewUnaryHandler(
 		ModServiceRemoveActionsProcedure,
 		svc.RemoveActions,
-		connect.WithSchema(modServiceRemoveActionsMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("RemoveActions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	modServiceGetActionsHandler := connect.NewUnaryHandler(
 		ModServiceGetActionsProcedure,
 		svc.GetActions,
-		connect.WithSchema(modServiceGetActionsMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("GetActions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	modServiceGetActionHistoryHandler := connect.NewUnaryHandler(
 		ModServiceGetActionHistoryProcedure,
 		svc.GetActionHistory,
-		connect.WithSchema(modServiceGetActionHistoryMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("GetActionHistory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	modServiceGetNotorietyReportHandler := connect.NewUnaryHandler(
 		ModServiceGetNotorietyReportProcedure,
 		svc.GetNotorietyReport,
-		connect.WithSchema(modServiceGetNotorietyReportMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("GetNotorietyReport")),
 		connect.WithHandlerOptions(opts...),
 	)
 	modServiceResetNotorietyHandler := connect.NewUnaryHandler(
 		ModServiceResetNotorietyProcedure,
 		svc.ResetNotoriety,
-		connect.WithSchema(modServiceResetNotorietyMethodDescriptor),
+		connect.WithSchema(modServiceMethods.ByName("ResetNotoriety")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/mod_service.ModService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

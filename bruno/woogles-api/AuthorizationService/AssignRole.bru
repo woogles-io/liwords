@@ -1,0 +1,18 @@
+meta {
+  name: AssignRole
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/user_service.AuthorizationService/AssignRole
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "mina",
+    "role_name": "Special Access Player"
+  }
+}

@@ -18,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -141,9 +142,17 @@ func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *conne
 }
 
 func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Request[pb.NewTournamentRequest]) (*connect.Response[pb.NewTournamentResponse], error) {
-	_, err := directorOrAdmin(ctx, ts)
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
 		return nil, err
+	}
+
+	allowed, err := rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanCreateTournaments)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, apiserver.PermissionDenied("not permitted to create tournaments")
 	}
 
 	if len(req.Msg.DirectorUsernames) < 1 {
@@ -489,49 +498,32 @@ func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *con
 	return connect.NewResponse(response), nil
 }
 
-func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := ts.userStore.Get(ctx, sess.Username)
-	if err != nil {
-		log.Err(err).Msg("getting-user")
-		return nil, apiserver.InternalErr(err)
-	}
-	return user, nil
-}
-
-func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, error) {
-
-	user, err := sessionUser(ctx, ts)
-	if err != nil {
-		return nil, err
-	}
-
-	if !user.IsDirector && !user.IsAdmin {
-		return nil, apiserver.Unauthenticated("this user is not an authorized director")
-	}
-	return user, nil
-}
-
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool, req proto.Message) error {
-	user, err := sessionUser(ctx, ts)
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
 		return err
 	}
+	// If the user has the manage_tournaments permission, they can manage any
+	// tournaments. This permission should not be given out willy-nilly.
+	allowed, err := rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanManageTournaments)
+	if err != nil {
+		return err
+	}
+
 	fullID := user.TournamentID()
 	log.Info().
 		Str("requester", fullID).
+		Str("tournament-id", id).
 		Interface("req", req).
 		Str("req-name", string(req.ProtoReflect().Type().Descriptor().FullName())).
-		Msg("authenticated-tournament-request")
+		Bool("rbac-allowed", allowed).
+		Msg("attempting-to-authenticate-tournament-request")
 
-	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
-	if user.IsAdmin {
+	if allowed {
 		return nil
 	}
+	// Otherwise check if the director is one of the listed tournament directors.
+
 	t, err := ts.tournamentStore.Get(ctx, id)
 	if err != nil {
 		return apiserver.InternalErr(err)
@@ -540,6 +532,8 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
+		log.Info().Str("tournament-id", id).
+			Str("requester", fullID).Msg("not-executive-director")
 		return apiserver.Unauthenticated("this user is not the authorized executive director for this event")
 	}
 	authorized := false
@@ -594,7 +588,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 
 // CheckIn does not require director permission.
 func (ts *TournamentService) CheckIn(ctx context.Context, req *connect.Request[pb.CheckinRequest]) (*connect.Response[pb.TournamentResponse], error) {
-	user, err := sessionUser(ctx, ts)
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +615,7 @@ func (ts *TournamentService) UncheckIn(ctx context.Context, req *connect.Request
 func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect.Request[pb.UnstartTournamentRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
 	// but does not delete the players or divisions.
-	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
+	err := authenticateDirector(ctx, ts, req.Msg.Id, true, req.Msg)
 	if err != nil {
 		return nil, err
 	}

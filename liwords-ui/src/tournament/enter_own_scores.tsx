@@ -53,7 +53,7 @@ const ShowResults = (props: ShowResultsProps) => {
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           isDirector={false}
-          isAdmin={false}
+          canManageTournaments={false}
           tournamentID={props.tournamentID}
           onSeekSubmit={() => {}}
           loggedIn={false}

@@ -102,6 +102,12 @@ type Notoriousgame struct {
 	Timestamp pgtype.Int8
 }
 
+type Permission struct {
+	ID          int32
+	Code        string
+	Description string
+}
+
 type Profile struct {
 	ID          int32
 	CreatedAt   pgtype.Timestamptz
@@ -179,6 +185,17 @@ type Registrant struct {
 	DivisionID   pgtype.Text
 }
 
+type Role struct {
+	ID          int32
+	Name        string
+	Description string
+}
+
+type RolePermission struct {
+	RoleID       int32
+	PermissionID int32
+}
+
 type Soughtgame struct {
 	CreatedAt           pgtype.Timestamptz
 	Uuid                pgtype.Text
@@ -245,4 +262,9 @@ type UserAction struct {
 	Note        pgtype.Text
 	RemovalNote pgtype.Text
 	EmailType   int32
+}
+
+type UserRole struct {
+	UserID int32
+	RoleID int32
 }

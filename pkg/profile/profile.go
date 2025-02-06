@@ -8,8 +8,10 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 
@@ -22,10 +24,11 @@ import (
 type ProfileService struct {
 	userStore     user.Store
 	avatarService userservices.UploadService
+	queries       *models.Queries
 }
 
-func NewProfileService(u user.Store, us userservices.UploadService) *ProfileService {
-	return &ProfileService{userStore: u, avatarService: us}
+func NewProfileService(u user.Store, us userservices.UploadService, q *models.Queries) *ProfileService {
+	return &ProfileService{userStore: u, avatarService: us, queries: q}
 }
 
 func modActionExistsErr(err error) error {
@@ -100,7 +103,12 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.
 			return nil, apiserver.InternalErr(err)
 		}
 
-		if !viewer.IsMod && !viewer.IsAdmin {
+		privilegedViewer, err := ps.queries.HasPermission(ctx, models.HasPermissionParams{
+			UserID:     int32(viewer.ID),
+			Permission: string(rbac.CanModerateUsers),
+		})
+
+		if !privilegedViewer {
 			// If this is the user's profile, telling them
 			// 'record not found' may make them suspicious.
 			// Instead, give a subtler message that is more

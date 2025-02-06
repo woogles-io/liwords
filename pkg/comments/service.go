@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores/comments"
@@ -23,19 +24,20 @@ type CommentsService struct {
 	userStore     user.Store
 	gameStore     gameplay.GameStore
 	commentsStore *comments.DBStore
+	queries       *models.Queries
 }
 
 const MaxCommentLength = 2048
 const MaxCommentsPerReq = 25
 
-func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore) *CommentsService {
-	return &CommentsService{u, g, c}
+func NewCommentsService(u user.Store, g gameplay.GameStore, c *comments.DBStore, q *models.Queries) *CommentsService {
+	return &CommentsService{u, g, c, q}
 }
 
 func (cs *CommentsService) AddGameComment(ctx context.Context, req *connect.Request[pb.AddCommentRequest]) (*connect.Response[pb.AddCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
 	if len(req.Msg.Comment) > MaxCommentLength {
 		return nil, apiserver.InvalidArg("your comment is too long")
@@ -71,9 +73,9 @@ func (cs *CommentsService) GetGameComments(ctx context.Context, req *connect.Req
 }
 
 func (cs *CommentsService) EditGameComment(ctx context.Context, req *connect.Request[pb.EditCommentRequest]) (*connect.Response[pb.EditCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
 	if len(req.Msg.Comment) > MaxCommentLength {
 		return nil, apiserver.InvalidArg("your new comment is too long")
@@ -87,12 +89,16 @@ func (cs *CommentsService) EditGameComment(ctx context.Context, req *connect.Req
 }
 
 func (cs *CommentsService) DeleteGameComment(ctx context.Context, req *connect.Request[pb.DeleteCommentRequest]) (*connect.Response[pb.DeleteCommentResponse], error) {
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, cs.userStore)
+	u, err := apiserver.AuthUser(ctx, cs.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated(err.Error())
+		return nil, err
 	}
+	privilegedUser, err := cs.queries.HasPermission(ctx, models.HasPermissionParams{
+		UserID:     int32(u.ID),
+		Permission: string(rbac.CanModerateUsers),
+	})
 
-	if u.IsAdmin || u.IsMod {
+	if privilegedUser {
 		err = cs.commentsStore.DeleteComment(ctx, req.Msg.CommentId, -1)
 	} else {
 		err = cs.commentsStore.DeleteComment(ctx, req.Msg.CommentId, int(u.ID))

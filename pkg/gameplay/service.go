@@ -10,10 +10,12 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	entityutils "github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
@@ -29,12 +31,13 @@ type GameService struct {
 	cfg       *config.Config
 	// New stores. These will replace the game store eventually.
 	gameDocumentStore *stores.GameDocumentStore
+	queries           *models.Queries
 }
 
 // NewGameService creates a GameService
 func NewGameService(u user.Store, gs GameStore, gds *stores.GameDocumentStore,
-	cfg *config.Config) *GameService {
-	return &GameService{u, gs, cfg, gds}
+	cfg *config.Config, q *models.Queries) *GameService {
+	return &GameService{u, gs, cfg, gds, q}
 }
 
 // GetMetadata gets metadata for the given game.
@@ -88,7 +91,13 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[
 			log.Err(err).Msg("getting-user")
 			return nil, apiserver.InternalErr(err)
 		}
-		if !viewer.IsMod && !viewer.IsAdmin {
+
+		privilegedViewer, err := gs.queries.HasPermission(ctx, models.HasPermissionParams{
+			UserID:     int32(viewer.ID),
+			Permission: string(rbac.CanModerateUsers),
+		})
+
+		if !privilegedViewer {
 			return connect.NewResponse(&ipc.GameInfoResponses{}), nil
 		}
 	}

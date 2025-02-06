@@ -6,7 +6,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	cpb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	upb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
@@ -52,9 +51,7 @@ type Store interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
-	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
-	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
 	GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)

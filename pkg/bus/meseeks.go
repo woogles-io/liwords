@@ -5,13 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/entitlements"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -401,15 +405,17 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 		if req.GameRequest.InitialTimeSeconds < 180 {
 			return errors.New("BestBot needs more time than that to play at its best.")
 		}
-		// for now, allow the BestBot game. Will check for entitlements later.
 
-		/*
-			reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
-			if err != nil {
-				return err
-			}
-
-
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, req.User.UserId)
+		if err != nil {
+			return err
+		}
+		// Some special users can just bypass the check.
+		bypassSubCheck, err := rbac.HasPermission(ctx, b.stores.Queries, reqUser.ID, rbac.CanPlayEliteBot)
+		if err != nil {
+			return err
+		}
+		if !bypassSubCheck {
 			// Determine user tier
 			tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
 			if err != nil {
@@ -427,7 +433,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 			if !entitled {
 				return errors.New("It appears you have already played your allotment of BestBot games for this period. Please upgrade your membership or wait a few days.")
 			}
-		*/
+		}
 
 	}
 

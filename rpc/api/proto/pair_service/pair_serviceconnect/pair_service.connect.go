@@ -39,12 +39,6 @@ const (
 	PairServiceHandlePairRequestProcedure = "/pair_service.PairService/HandlePairRequest"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	pairServiceServiceDescriptor                 = pair_service.File_proto_pair_service_pair_service_proto.Services().ByName("PairService")
-	pairServiceHandlePairRequestMethodDescriptor = pairServiceServiceDescriptor.Methods().ByName("HandlePairRequest")
-)
-
 // PairServiceClient is a client for the pair_service.PairService service.
 type PairServiceClient interface {
 	HandlePairRequest(context.Context, *connect.Request[ipc.PairRequest]) (*connect.Response[ipc.PairResponse], error)
@@ -59,11 +53,12 @@ type PairServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewPairServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PairServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	pairServiceMethods := pair_service.File_proto_pair_service_pair_service_proto.Services().ByName("PairService").Methods()
 	return &pairServiceClient{
 		handlePairRequest: connect.NewClient[ipc.PairRequest, ipc.PairResponse](
 			httpClient,
 			baseURL+PairServiceHandlePairRequestProcedure,
-			connect.WithSchema(pairServiceHandlePairRequestMethodDescriptor),
+			connect.WithSchema(pairServiceMethods.ByName("HandlePairRequest")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -90,10 +85,11 @@ type PairServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewPairServiceHandler(svc PairServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	pairServiceMethods := pair_service.File_proto_pair_service_pair_service_proto.Services().ByName("PairService").Methods()
 	pairServiceHandlePairRequestHandler := connect.NewUnaryHandler(
 		PairServiceHandlePairRequestProcedure,
 		svc.HandlePairRequest,
-		connect.WithSchema(pairServiceHandlePairRequestMethodDescriptor),
+		connect.WithSchema(pairServiceMethods.ByName("HandlePairRequest")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/pair_service.PairService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

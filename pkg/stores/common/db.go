@@ -295,9 +295,6 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var email pgtype.Text
 	var password pgtype.Text
 	var internal_bot pgtype.Bool
-	var is_admin pgtype.Bool
-	var is_director pgtype.Bool
-	var is_mod pgtype.Bool
 	var notoriety pgtype.Int8
 
 	placeholder := "$1"
@@ -306,8 +303,8 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		placeholder = "lower($1)"
 	}
 
-	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, is_admin, is_director, is_mod, notoriety FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
-	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &is_admin, &is_director, &is_mod, &notoriety)
+	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, notoriety FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
+	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &notoriety)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
@@ -315,17 +312,14 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	}
 
 	entu := &entity.User{
-		ID:         id,
-		Username:   username,
-		UUID:       uuid,
-		Email:      email.String,
-		Password:   password.String,
-		IsBot:      internal_bot.Bool,
-		Anonymous:  false,
-		IsAdmin:    is_admin.Bool,
-		IsDirector: is_director.Bool,
-		IsMod:      is_mod.Bool,
-		Notoriety:  int(notoriety.Int64),
+		ID:        id,
+		Username:  username,
+		UUID:      uuid,
+		Email:     email.String,
+		Password:  password.String,
+		IsBot:     internal_bot.Bool,
+		Anonymous: false,
+		Notoriety: int(notoriety.Int64),
 	}
 
 	if cfg.IncludeProfile {
@@ -440,4 +434,8 @@ func checkRowsAffected(rowsAffected int, cfg *CommonDBConfig) error {
 		}
 	}
 	return nil
+}
+
+func ToPGTypeText(str string) pgtype.Text {
+	return pgtype.Text{Valid: true, String: str}
 }

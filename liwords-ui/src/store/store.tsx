@@ -110,8 +110,6 @@ type ModeratorsStoreData = {
   setModerators: React.Dispatch<React.SetStateAction<Set<string>>>;
   admins: Set<string>;
   setAdmins: React.Dispatch<React.SetStateAction<Set<string>>>;
-  modsFetched: boolean;
-  setModsFetched: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ChallengeResultEventStoreData = {
@@ -283,8 +281,6 @@ const ModeratorsContext = createContext<ModeratorsStoreData>({
   setModerators: defaultFunction,
   admins: new Set<string>(),
   setAdmins: defaultFunction,
-  modsFetched: false,
-  setModsFetched: defaultFunction,
 });
 
 const ChallengeResultEventContext =
@@ -883,7 +879,6 @@ const RealStore = ({ children, ...props }: Props) => {
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
   const [moderators, setModerators] = useState(new Set<string>());
   const [admins, setAdmins] = useState(new Set<string>());
-  const [modsFetched, setModsFetched] = useState(false);
   const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
@@ -1078,10 +1073,8 @@ const RealStore = ({ children, ...props }: Props) => {
       setModerators,
       admins,
       setAdmins,
-      modsFetched,
-      setModsFetched,
     }),
-    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched],
+    [moderators, setModerators, admins, setAdmins],
   );
   const challengeResultEventStore = useMemo(
     () => ({

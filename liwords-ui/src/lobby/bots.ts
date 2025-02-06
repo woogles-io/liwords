@@ -1,5 +1,12 @@
 import { BotRequest_BotCode } from "../gen/api/vendor/macondo/macondo_pb";
 
+import bestbot from "../assets/bots/best.png";
+import hastybot from "../assets/bots/macondog.png";
+import steebot from "../assets/bots/stee.png";
+import betterbot from "../assets/bots/better.png";
+import basicbot from "../assets/bots/basic.png";
+import beginnerbot from "../assets/bots/beginner.png";
+
 export enum BotTypesEnum {
   MASTER,
   EXPERT,
@@ -15,70 +22,78 @@ const isEnglish = (lexicon: string) =>
 
 export const BotTypesEnumProperties = {
   [BotTypesEnum.GRANDMASTER]: {
-    userVisible: "Grandmaster",
+    userVisible: "BestBot",
     botName: "BestBot",
     shortDescription: "470 point average",
     description: (lexicon: string) =>
-      "BestBot is our best bot yet, and perhaps the strongest OMGWords AI " +
-      "ever built. It is not as fast as HastyBot, but it makes up for it by " +
-      "playing more thoughtfully. Do you have what it takes to beat it?",
+      "Our DeepBlueDog, BestBot is the best word-game AI out there",
     botCode: (lexicon: string) => BotRequest_BotCode.SIMMING_BOT,
+    image: bestbot,
+    voidonly: false,
   },
   [BotTypesEnum.MASTER]: {
-    userVisible: "Master",
+    userVisible: "HastyBot",
     botName: "HastyBot",
     shortDescription: "460 point average",
     description: (lexicon: string) =>
-      "The Bot, the myth, the legend. HastyBot always finds the best play.",
+      "Knows all the words; always makes the best play before simulation",
     botCode: (lexicon: string) => BotRequest_BotCode.HASTY_BOT,
+    image: hastybot,
+    voidonly: false,
   },
   [BotTypesEnum.EXPERT]: {
-    userVisible: "Expert",
+    userVisible: "STEEBot",
     botName: "STEEBot",
     shortDescription: "410 point average",
     description: (lexicon: string) =>
-      isEnglish(lexicon)
-        ? "Ready for the weird words? Not quite an expert, STEEBot knows all the words but will make some mistakes."
-        : "Not quite an expert, STEEBot knows all the words but will make mistakes.",
+      "Knows all the words, but will make some strategic mistakes",
     botCode: (lexicon: string) => BotRequest_BotCode.LEVEL4_PROBABILISTIC,
+    image: steebot,
+    voidonly: false,
   },
   [BotTypesEnum.INTERMEDIATE]: {
-    userVisible: "Intermediate",
+    userVisible: "BetterBot",
     botName: "BetterBot",
     shortDescription: "370 point average",
     description: (lexicon: string) =>
       isEnglish(lexicon)
-        ? "BetterBot is the best bot for common-words only, with perfect play compared to its lower-rated counterparts."
-        : "BetterBot. A bit better than BasicBot.",
+        ? "Perfect play while still only using common words"
+        : "BetterBot. A bit better than BasicBot",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL4_CEL_BOT
         : BotRequest_BotCode.LEVEL3_PROBABILISTIC,
+    image: betterbot,
+    voidonly: false,
   },
   [BotTypesEnum.EASY]: {
-    userVisible: "Basic",
+    userVisible: "BasicBot",
     botName: "BasicBot",
     shortDescription: "330 point average",
     description: (lexicon: string) =>
       isEnglish(lexicon)
-        ? "Beating BeginnerBot? Basicbot is your next frenemy, scoring more, but still emphasizing common English words."
-        : "Beating BeginnerBot? Basicbot is your next frenemy, scoring more.",
+        ? "Higher scoring, but still emphasizes common English words only"
+        : "Beating BeginnerBot? Basicbot is your next frenemy, scoring more",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL2_CEL_BOT
         : BotRequest_BotCode.LEVEL2_PROBABILISTIC,
+    image: basicbot,
+    voidonly: false,
   },
   [BotTypesEnum.BEGINNER]: {
-    userVisible: "Beginner",
+    userVisible: "BeginnerBot",
     botName: "BeginnerBot",
     shortDescription: "240 point average",
     description: (lexicon: string) =>
       isEnglish(lexicon)
-        ? "New to OMGWords? BeginnerBot sticks to lower-scoring plays and common words."
-        : "New to OMGWords? BeginnerBot sticks to lower-scoring plays.",
+        ? "New to OMGWords? Low scoring plays and common words only"
+        : "New to OMGWords? BeginnerBot sticks to lower-scoring plays",
     botCode: (lexicon: string) =>
       isEnglish(lexicon)
         ? BotRequest_BotCode.LEVEL1_CEL_BOT
         : BotRequest_BotCode.LEVEL1_PROBABILISTIC,
+    image: beginnerbot,
+    voidonly: true,
   },
 };

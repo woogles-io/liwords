@@ -10,6 +10,9 @@ import { Provider } from "react-redux";
 import "antd/dist/reset.css";
 import "./index.css";
 import { store } from "./store/redux_store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TransportProvider } from "@connectrpc/connect-query";
+import { transport } from "./utils/hooks/connect";
 
 declare global {
   interface Window {
@@ -19,7 +22,8 @@ declare global {
 }
 
 window.console.info(
-  "Woogles.io is open source! https://github.com/woogles-io/liwords",
+  "%c Woogles.io is open source! https://github.com/woogles-io/liwords",
+  "color: #11659e; font-size: 18px; font-weight: bold;",
 );
 
 // Scope the variables declared here.
@@ -59,15 +63,21 @@ window.console.info(
 const container = document.getElementById("root");
 const root = createRoot(container!);
 
+const queryClient = new QueryClient();
+
 root.render(
   <React.StrictMode>
     <BrowserRouter>
       <Provider store={store}>
         {/* legacy store will be slowly decommissioned */}
         <LegacyStore>
-          <BriefProfiles>
-            <App />
-          </BriefProfiles>
+          <TransportProvider transport={transport}>
+            <QueryClientProvider client={queryClient}>
+              <BriefProfiles>
+                <App />
+              </BriefProfiles>
+            </QueryClientProvider>
+          </TransportProvider>
         </LegacyStore>
       </Provider>
     </BrowserRouter>

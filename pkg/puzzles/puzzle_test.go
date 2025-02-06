@@ -3,8 +3,8 @@ package puzzles
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -988,9 +988,6 @@ func RecreateDB() (*DBController, int, int) {
 	}
 
 	gameStore := gamestore.NewCache(tempGameStore)
-	if err != nil {
-		panic(err)
-	}
 
 	puzzlesStore, err := puzzlesstore.NewDBStore(pool)
 	if err != nil {
@@ -1020,7 +1017,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	files, err := ioutil.ReadDir("./testdata")
+	files, err := os.ReadDir("./testdata")
 	if err != nil {
 		panic(err)
 	}

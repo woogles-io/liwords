@@ -13,10 +13,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/sessions"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -64,10 +66,12 @@ type AuthenticationService struct {
 	mailgunKey   string
 	discordToken string
 	argonConfig  config.ArgonConfig
+	q            *models.Queries
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig) *AuthenticationService {
+	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig,
+	q *models.Queries) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
@@ -75,7 +79,8 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.
 		secretKey:    secretKey,
 		mailgunKey:   mailgunKey,
 		discordToken: discordToken,
-		argonConfig:  cfg}
+		argonConfig:  cfg,
+		q:            q}
 }
 
 func modActionExistsErr(err error) error {
@@ -157,27 +162,33 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 		// Continue anyway.
 	}
 
-	u, err := apiserver.AuthUser(ctx, apiserver.CookieFirst, as.userStore)
+	u, err := apiserver.AuthUser(ctx, as.userStore)
 	if err != nil {
 		ut, err := as.unauthedToken(ctx, feHash)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
 		return connect.NewResponse(ut), nil
-	} else {
-		authed = true
-		uuid = u.UUID
-		unn = u.Username
+	}
+	// Otherwise, we are authenticated.
+
+	authed = true
+	uuid = u.UUID
+	unn = u.Username
+
+	roles, err := rbac.UserRoles(ctx, as.q, u.Username)
+	if err != nil {
+		return nil, err
 	}
 	perms := []string{}
-	if u.IsAdmin {
-		perms = append(perms, "adm")
-	}
-	if u.IsDirector {
-		perms = append(perms, "dir")
-	}
-	if u.IsMod {
-		perms = append(perms, "mod")
+
+	for _, r := range roles {
+		if r == string(rbac.Moderator) {
+			perms = append(perms, "mod")
+		}
+		if r == string(rbac.Admin) {
+			perms = append(perms, "adm")
+		}
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -447,9 +458,9 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *co
 
 func (as *AuthenticationService) GetAPIKey(ctx context.Context, req *connect.Request[pb.GetAPIKeyRequest],
 ) (*connect.Response[pb.GetAPIKeyResponse], error) {
-	user, err := apiserver.AuthUser(ctx, apiserver.CookieOnly, as.userStore)
+	user, err := apiserver.AuthUser(ctx, as.userStore)
 	if err != nil {
-		return nil, apiserver.Unauthenticated("did not authenticate")
+		return nil, err
 	}
 	var apikey string
 	if req.Msg.Reset_ {
