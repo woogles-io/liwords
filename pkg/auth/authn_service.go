@@ -182,11 +182,14 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 	perms := []string{}
 
+	moderator := string(rbac.Moderator)
+	admin := string(rbac.Admin)
+
 	for _, r := range roles {
-		if r == string(rbac.Moderator) {
+		if r == moderator {
 			perms = append(perms, "mod")
 		}
-		if r == string(rbac.Admin) {
+		if r == admin {
 			perms = append(perms, "adm")
 		}
 	}
