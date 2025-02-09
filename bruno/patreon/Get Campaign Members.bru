@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: https://www.patreon.com/api/oauth2/v2/campaigns/6109248/members?include=currently_entitled_tiers,user&fields[tier]=description,title&fields[benefit]=description,title&fields[user]=email,full_name
+  url: https://www.patreon.com/api/oauth2/v2/campaigns/6109248/members?include=currently_entitled_tiers,user&fields[tier]=description,title&fields[benefit]=description,title&fields[user]=email,full_name,url
   body: none
   auth: inherit
 }
@@ -14,7 +14,7 @@ params:query {
   include: currently_entitled_tiers,user
   fields[tier]: description,title
   fields[benefit]: description,title
-  fields[user]: email,full_name
+  fields[user]: email,full_name,url
 }
 
 headers {

@@ -20,6 +20,19 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
+const (
+	ChihuahuaTier       string = "Chihuahua"
+	DalmatianTier              = "Dalmatian"
+	GoldenRetrieverTier        = "Golden Retriever"
+)
+
+// TierIDToName is a hard-coded map specific to Woogles.io Patreon tier data.
+var TierIDToName = map[string]string{
+	"22998862": ChihuahuaTier,
+	"24128312": DalmatianTier,
+	"24128408": GoldenRetrieverTier,
+}
+
 var ErrNotSubscribed = errors.New("user not subscribed")
 
 const (
@@ -87,7 +100,7 @@ type PatreonMemberData struct {
 type PaidTierData struct {
 	LastChargeDate   time.Time
 	LastChargeStatus string
-	TierName         string
+	TierID           string
 }
 
 type PatreonTokenResponse struct {
@@ -387,16 +400,9 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		return nil, ErrNotSubscribed
 	}
 	tierID := memberData.Data.Relationships.CurrentlyEntitledTiers.Data[0].ID
-	var tierName string
-	for _, included := range memberData.Included {
-		if included.Type == "tier" && included.ID == tierID {
-			tierName = included.Attributes.Title
-			break
-		}
-	}
 
 	tierData := &PaidTierData{
-		TierName:         tierName,
+		TierID:           tierID,
 		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
 		LastChargeDate:   lastChargeDate,
 	}

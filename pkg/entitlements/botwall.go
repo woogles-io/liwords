@@ -26,11 +26,11 @@ func init() {
 
 func entitledBestBotGamesFor(tiername string) int {
 	switch tiername {
-	case "Dalmatian":
+	case integrations.DalmatianTier:
 		return 50
-	case "Chihuahua":
+	case integrations.ChihuahuaTier:
 		return 4
-	case "Golden Retriever":
+	case integrations.GoldenRetrieverTier:
 		// Still add some limit.
 		return 500
 	}
@@ -54,11 +54,15 @@ func EntitledToBestBot(ctx context.Context, queries *models.Queries, tierData *i
 	if err != nil {
 		return false, err
 	}
-	log.Info().Time("last-charge", tierData.LastChargeDate).Uint("user-id", userID).
-		Int64("bestbot-games", bbGamesPlayedThisPeriod).Msg("number-of-bot-games")
+	tiername := integrations.TierIDToName[tierData.TierID]
+	log.Info().Time("last-charge", tierData.LastChargeDate).
+		Uint("user-id", userID).
+		Str("tier-name", tiername).
+		Int64("bestbot-games", bbGamesPlayedThisPeriod).
+		Msg("number-of-bot-games")
 
-	if int(bbGamesPlayedThisPeriod) >= entitledBestBotGamesFor(tierData.TierName) {
-		log.Info().Str("tierdata", tierData.TierName).Msg("not-entitled")
+	if int(bbGamesPlayedThisPeriod) >= entitledBestBotGamesFor(tiername) {
+		log.Info().Str("tiername", tiername).Msg("not-entitled")
 		return false, nil
 	}
 
