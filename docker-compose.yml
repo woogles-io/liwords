@@ -23,8 +23,8 @@ services:
       GORACE: history_size=7
       ARGON_MEMORY: 1024
       AWS_REGION: "us-east-2"
-      AWS_ACCESS_KEY_ID: "liwords"
-      AWS_SECRET_KEY: "liwords-pass"
+      AWS_ACCESS_KEY_ID: 'liwords'
+      AWS_SECRET_KEY: 'liwords-pass'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       USE_MINIO_S3: 1
       MINIO_S3_ENDPOINT: http://minio:9000
@@ -47,7 +47,15 @@ services:
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
-    depends_on: ["db", "proxy", "nats", "socket", "redis", "minio"]
+    depends_on:
+      [
+        "db",
+        "proxy",
+        "nats",
+        "socket",
+        "redis",
+        "minio"
+      ]
     networks:
       - aeronet
     ports:
@@ -55,9 +63,8 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`, `/integrations/`)"
-      # Take priority over the root path
       - "traefik.http.routers.liwords.priority=2"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`, `/integrations/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
@@ -76,7 +83,7 @@ services:
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/bot/*.go"
-    depends_on: ["nats"]
+    depends_on: [ "nats" ]
     networks:
       - aeronet
 
@@ -94,7 +101,8 @@ services:
   #   networks:
   #     - aeronet
 
-  socket: &socketsetup
+  socket:
+    &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -104,16 +112,15 @@ services:
       NATS_URL: nats://nats:4222
     volumes:
       - ../liwords-socket:/opt/program:rw
-    command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
-    depends_on: ["nats"]
+    command: [ "go", "run", "-race", "cmd/socketsrv/main.go" ]
+    depends_on: [ "nats" ]
     networks:
       - aeronet
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords-socket.middlewares=floc"
-      - "traefik.http.routers.liwords-socket.rule=PathPrefix(`/ws`)"
-      # take priority over the root path
       - "traefik.http.routers.liwords-socket.priority=2"
+      - "traefik.http.routers.liwords-socket.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
@@ -137,6 +144,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
     ports:
       - "80:80"
       - "8080:8080"
@@ -205,6 +213,7 @@ services:
       - aeronet
 
   frontend:
+
     build:
       context: .
       dockerfile: Dockerfile-fe
@@ -220,9 +229,8 @@ services:
 
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords-fe.middlewares=floc"
-      - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
-      # lowest priority so we don't clobber the sub-routes to other services
       - "traefik.http.routers.liwords-fe.priority=1"
+      - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
       - "traefik.http.routers.liwords-fe.service=liwords-fe-service"
       - "traefik.http.routers.liwords-fe.entrypoints=web"
       - "traefik.http.services.liwords-fe-service.loadbalancer.server.port=3000"
