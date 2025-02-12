@@ -16,10 +16,10 @@ type gamesetup struct {
 	stores   *stores.Stores
 }
 
-func setupNewGame() *gamesetup {
+func setupNewGame(opts ...TestGameOption) *gamesetup {
 	_, stores, cfg := recreateDB()
 
-	g, nower, cancel, donechan, consumer := makeGame(cfg, stores)
+	g, nower, cancel, donechan, consumer := makeGame(cfg, stores, opts...)
 
 	return &gamesetup{
 		g, nower, cancel, donechan, consumer, stores,
