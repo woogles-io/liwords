@@ -536,6 +536,61 @@ func TestHandleAbortDenyThenAccept(t *testing.T) {
 // 	teardownGame(gsetup)
 // }
 
+func TestNudgeTimeRestrictions(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame(
+		WithIncrementSeconds(0),
+		WithMaxOvertimeMinutes(2),
+		WithInitialTimeSeconds(15),
+	)
+	evtID := shortuuid.New()
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ADJUDICATION,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	// No error: there are 2 minutes and 15 seconds left,
+	// accounting for overtime
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.stores)
+	is.NoErr(err)
+
+	// Jesse dismisses the nudge
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ADJUDICATION_DENIED,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.stores)
+	is.NoErr(err)
+
+	// Sleep 16 seconds, leading to 1 minute and 59 seconds left
+	// and invalidating the nudge
+	gsetup.nower.Sleep(16 * 1000)
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ADJUDICATION,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.stores)
+	is.Equal(err, gameplay.ErrPleaseWaitToEnd)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	teardownGame(gsetup)
+}
+
 // test disallow abort AND adjudication to be sent
 
 func TestDisallowAbortAndAdjudication(t *testing.T) {

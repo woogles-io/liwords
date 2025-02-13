@@ -69,7 +69,27 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
-func makeGame(cfg *config.Config, stores *stores.Stores) (
+type TestGameOption func(*pb.GameRequest)
+
+func WithIncrementSeconds(seconds int32) TestGameOption {
+	return func(gr *pb.GameRequest) {
+		gr.IncrementSeconds = seconds
+	}
+}
+
+func WithMaxOvertimeMinutes(minutes int32) TestGameOption {
+	return func(gr *pb.GameRequest) {
+		gr.MaxOvertimeMinutes = minutes
+	}
+}
+
+func WithInitialTimeSeconds(seconds int32) TestGameOption {
+	return func(gr *pb.GameRequest) {
+		gr.InitialTimeSeconds = seconds
+	}
+}
+
+func makeGame(cfg *config.Config, stores *stores.Stores, opts ...TestGameOption) (
 	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
 
 	ctx := ctxForTests()
@@ -80,6 +100,12 @@ func makeGame(cfg *config.Config, stores *stores.Stores) (
 
 	gr.IncrementSeconds = 5
 	gr.MaxOvertimeMinutes = 0
+
+	// Apply any custom options
+	for _, opt := range opts {
+		opt(gr)
+	}
+
 	g, _ := gameplay.InstantiateNewGame(ctx, stores.GameStore, cfg, [2]*entity.User{jesse, cesar},
 		gr, nil)
 

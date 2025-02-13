@@ -42,7 +42,7 @@ const (
 
 	// If receiver has this many milliseconds on their clock or fewer, we don't allow
 	// sending them requests.
-	DisallowMsecsRemaining = 30 * 1000
+	DisallowMsecsRemaining = 2 * 60 * 1000
 
 	AbortTimeout = time.Second * 60
 	NudgeTimeout = time.Second * 120
@@ -193,9 +193,12 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		// Receiver may not be the one on turn, since either player may request abort.
 		onTurn := g.Game.PlayerOnTurn()
 		timeRemaining := g.TimeRemaining(onTurn)
-		log.Debug().Int("timeRemaining", timeRemaining).Int("onturn", onTurn).Msg("timeremaining")
-		// XXX: Should time remaining include overtime?
-		if timeRemaining < DisallowMsecsRemaining {
+		overtimeMsecs := int(g.GameReq.MaxOvertimeMinutes * 60 * 1000)
+		totalTimeRemaining := timeRemaining + overtimeMsecs
+
+		log.Debug().Int("timeRemaining", timeRemaining).Int("overtimeMsecs", overtimeMsecs).Int("totalTimeRemaining", totalTimeRemaining).Int("onturn", onTurn).Msg("timeremaining")
+
+		if totalTimeRemaining < DisallowMsecsRemaining {
 			return ErrPleaseWaitToEnd
 		}
 
