@@ -388,6 +388,114 @@ func TestClassicDivisionSpreadCap(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
+func TestClassicDivisionSpreadCapOverride(t *testing.T) {
+	is := is.New(t)
+
+	roundControls := defaultRoundControls(defaultRounds)
+
+	for i := 0; i < defaultRounds; i++ {
+		roundControls[i].PairingMethod = pb.PairingMethod_KING_OF_THE_HILL
+	}
+	roundControls[0].SpreadCapOverride = 100
+	roundControls[0].SpreadCapOverrideEnabled = true
+
+	tcWithDivCap, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.True(tcWithDivCap != nil)
+
+	// Test a tournament with the same results but without a default spread cap
+	tcWithoutDivCap, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.True(tcWithoutDivCap != nil)
+
+	// Change Spread Cap
+	tcWithDivCap.DivisionControls.SpreadCap = 200
+
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
+
+	tournaments := []*ClassicDivision{tcWithDivCap, tcWithoutDivCap}
+
+	for _, tournament := range tournaments {
+		tournamentIsFinished, err := tournament.IsFinished()
+		is.NoErr(err)
+		is.True(!tournamentIsFinished)
+		err = tournament.StartRound(true)
+		is.NoErr(err)
+
+		// Submit results for the round
+		_, err = tournament.SubmitResult(0, player1, player2, 500, 401,
+			pb.TournamentGameResult_WIN,
+			pb.TournamentGameResult_LOSS,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+
+		_, err = tournament.SubmitResult(0, player3, player4, 400, 500,
+			pb.TournamentGameResult_LOSS,
+			pb.TournamentGameResult_WIN,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+	}
+
+	// Get the standingsWithDivCap for round 1
+	standingsWithDivCap, _, err := tcWithDivCap.GetStandings(0)
+	is.NoErr(err)
+
+	standingsWithoutDivCap, _, err := tcWithoutDivCap.GetStandings(0)
+	is.NoErr(err)
+
+	// Round 1 has a round-level cap, so the standings should be identical
+	expectedStandings := &pb.RoundStandings{Standings: []*pb.PlayerStanding{
+		{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 99},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -99},
+		{PlayerId: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+	}}
+
+	is.NoErr(equalStandings(expectedStandings, standingsWithDivCap))
+	is.NoErr(equalStandings(expectedStandings, standingsWithoutDivCap))
+
+	// Submit results for the next round
+	for _, tournament := range tournaments {
+		_, err = tournament.SubmitResult(1, player1, player4, 601, 400,
+			pb.TournamentGameResult_WIN,
+			pb.TournamentGameResult_LOSS,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+
+		_, err = tournament.SubmitResult(1, player3, player2, 250, 200,
+			pb.TournamentGameResult_WIN,
+			pb.TournamentGameResult_LOSS,
+			pb.GameEndReason_STANDARD, false, 0, "")
+		is.NoErr(err)
+	}
+
+	// Get the standings for round 2
+	standingsWithDivCap, _, err = tcWithDivCap.GetStandings(1)
+	is.NoErr(err)
+
+	standingsWithoutDivCap, _, err = tcWithoutDivCap.GetStandings(1)
+	is.NoErr(err)
+
+	expectedStandingsWithDivCap := &pb.RoundStandings{Standings: []*pb.PlayerStanding{
+		{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 299},
+		{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -50},
+		{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -149},
+	}}
+	expectedStandingsWithoutDivCap := &pb.RoundStandings{Standings: []*pb.PlayerStanding{
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: -101},
+		{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -50},
+		{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -149},
+	}}
+
+	is.NoErr(equalStandings(expectedStandingsWithDivCap, standingsWithDivCap))
+	is.NoErr(equalStandings(expectedStandingsWithoutDivCap, standingsWithoutDivCap))
+}
+
 func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	// This test is used to ensure that the standings are
 	// calculated correctly and that King of the Hill

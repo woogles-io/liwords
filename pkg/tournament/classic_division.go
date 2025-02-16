@@ -1177,11 +1177,15 @@ func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 							pairing.Outcomes[1] == pb.TournamentGameResult_FORFEIT_LOSS {
 							incSpread = t.DivisionControls.SuspendedSpread
 						}
-						if t.DivisionControls.SpreadCap > 0 {
-							if incSpread > t.DivisionControls.SpreadCap {
-								incSpread = t.DivisionControls.SpreadCap
-							} else if incSpread < -t.DivisionControls.SpreadCap {
-								incSpread = -t.DivisionControls.SpreadCap
+						spreadCap := t.DivisionControls.SpreadCap
+						if t.RoundControls[round].SpreadCapOverrideEnabled {
+							spreadCap = t.RoundControls[round].SpreadCapOverride
+						}
+						if spreadCap > 0 {
+							if incSpread > spreadCap {
+								incSpread = spreadCap
+							} else if incSpread < -spreadCap {
+								incSpread = -spreadCap
 							}
 						}
 						spread += incSpread
