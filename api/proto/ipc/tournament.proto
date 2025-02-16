@@ -112,7 +112,7 @@ message RoundControl {
   int32 repeat_relative_weight = 9;
   int32 win_difference_relative_weight = 10;
   bool interleave_team_round_robin = 11;
-  int32 spread_cap_override = 12;
+  uint32 spread_cap_override = 12;
   // We use this boolean to differentiate between a disabled override
   // (i.e. using the division default) and an enabled override set to 0
   // (i.e. overriding the division default to remove the cap)
@@ -126,7 +126,7 @@ message DivisionControls {
   TournamentGameResult suspended_result = 4;
   int32 suspended_spread = 5;
   bool auto_start = 6;
-  int32 spread_cap = 7;
+  uint32 spread_cap = 7;
   bool gibsonize = 8;
   int32 gibson_spread = 9;
   int32 minimum_placement = 10;
