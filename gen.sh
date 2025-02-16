@@ -5,7 +5,12 @@ set -e
 RPC_PATH="rpc"
 MODELS_PATH="pkg/stores/models"
 UI_GEN_PATH="liwords-ui/src/gen"
-USER_GROUP="unprivileged:unprivileged"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    USER_GROUP="$USER:staff"
+else
+    USER_GROUP="unprivileged:unprivileged"
+fi
 
 # Functions
 buf_generate() {
