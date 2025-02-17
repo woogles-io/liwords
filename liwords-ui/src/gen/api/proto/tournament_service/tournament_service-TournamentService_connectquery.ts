@@ -150,3 +150,8 @@ export const exportTournament = TournamentService.method.exportTournament;
  * @generated from rpc tournament_service.TournamentService.GetTournamentScorecards
  */
 export const getTournamentScorecards = TournamentService.method.getTournamentScorecards;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.GetRecentAndUpcomingTournaments
+ */
+export const getRecentAndUpcomingTournaments = TournamentService.method.getRecentAndUpcomingTournaments;

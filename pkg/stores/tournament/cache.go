@@ -27,6 +27,7 @@ type backingStore interface {
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
+	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 }
 
 const (
@@ -131,6 +132,10 @@ func (c *Cache) GetRecentGames(ctx context.Context, tourneyID string, numGames i
 
 func (c *Cache) GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error) {
 	return c.backing.GetRecentClubSessions(ctx, clubID, numSessions, offset)
+}
+
+func (c *Cache) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error) {
+	return c.backing.GetRecentAndUpcomingTournaments(ctx)
 }
 
 func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {

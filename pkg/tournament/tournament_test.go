@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -139,6 +140,8 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		entity.TypeStandard,
 		"",
 		"/tournament/slug-tourney",
+		time.Now(),
+		time.Now().Add(time.Hour*24*7),
 	)
 }
 

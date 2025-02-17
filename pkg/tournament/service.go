@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
@@ -158,6 +160,23 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	if len(req.Msg.DirectorUsernames) < 1 {
 		return nil, apiserver.InvalidArg("need at least one director id")
 	}
+
+	// TODO: ScheduledStartTime should be required after the front-end
+	// is updated to send it.
+	if req.Msg.ScheduledStartTime != nil {
+		if req.Msg.ScheduledStartTime.AsTime().Before(time.Now()) {
+			return nil, apiserver.InvalidArg("scheduled start time cannot be in the past")
+		}
+	}
+	if req.Msg.ScheduledEndTime != nil {
+		if req.Msg.ScheduledStartTime == nil {
+			return nil, apiserver.InvalidArg("scheduled start time is required when scheduled end time is provided")
+		}
+		if req.Msg.ScheduledEndTime.AsTime().Before(req.Msg.ScheduledStartTime.AsTime()) {
+			return nil, apiserver.InvalidArg("scheduled end time cannot be before the start time")
+		}
+	}
+
 	directors := &ipc.TournamentPersons{
 		Persons: []*ipc.TournamentPerson{},
 	}
@@ -176,7 +195,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		return nil, err
 	}
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Msg.Name, req.Msg.Description, directors,
-		tt, "", req.Msg.Slug)
+		tt, "", req.Msg.Slug, req.Msg.ScheduledStartTime.AsTime(), req.Msg.ScheduledEndTime.AsTime())
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -205,6 +224,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 
 	var t *entity.Tournament
 	var err error
+
 	if req.Msg.Id != "" {
 		t, err = ts.tournamentStore.Get(ctx, req.Msg.Id)
 		if err != nil {
@@ -217,8 +237,15 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 		}
 	}
 
-	directors := []string{}
+	if t == nil {
+		return nil, apiserver.InvalidArg("tournament not found")
+	}
+	metadata, err := dbTournamentToTournamentMetadataResponse(ctx, *t)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
 
+	directors := []string{}
 	for n, director := range t.Directors.Persons {
 		// Legacy "persons" are stored as just their UUIDs.
 		// We later on store them as uuid:username to speed up lookups.
@@ -245,37 +272,6 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 		} else {
 			directors = append(directors, username)
 		}
-	}
-
-	var tt pb.TType
-	switch t.Type {
-	case entity.TypeStandard:
-		tt = pb.TType_STANDARD
-	case entity.TypeChild:
-		tt = pb.TType_CHILD
-	case entity.TypeClub:
-		tt = pb.TType_CLUB
-	case entity.TypeLegacy:
-		tt = pb.TType_LEGACY
-	default:
-		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
-	}
-	metadata := &pb.TournamentMetadata{
-		Id:                        t.UUID,
-		Name:                      t.Name,
-		Description:               t.Description,
-		Slug:                      t.Slug,
-		Type:                      tt,
-		Disclaimer:                t.ExtraMeta.Disclaimer,
-		TileStyle:                 t.ExtraMeta.TileStyle,
-		BoardStyle:                t.ExtraMeta.BoardStyle,
-		DefaultClubSettings:       t.ExtraMeta.DefaultClubSettings,
-		FreeformClubSettingFields: t.ExtraMeta.FreeformClubSettingFields,
-		Password:                  t.ExtraMeta.Password,
-		Logo:                      t.ExtraMeta.Logo,
-		Color:                     t.ExtraMeta.Color,
-		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
-		IrlMode:                   t.ExtraMeta.IRLMode,
 	}
 
 	return connect.NewResponse(&pb.TournamentMetadataResponse{
@@ -477,9 +473,18 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 	sessionDate := req.Msg.Date.AsTime().Format("Mon Jan 2, 2006")
 
 	name := club.Name + " - " + sessionDate
+
+	// TODO: ScheduledStartTime should be required after the front-end
+	// is updated to send it.
+	if req.Msg.Date != nil {
+		if req.Msg.Date.AsTime().Before(time.Now()) {
+			return nil, apiserver.InvalidArg("Date cannot be in the past")
+		}
+	}
+
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeChild, club.UUID, slug)
+		entity.TypeChild, club.UUID, slug, req.Msg.Date.AsTime(), time.Time{})
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -494,6 +499,27 @@ func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *con
 	response, err := ts.tournamentStore.GetRecentClubSessions(ctx, req.Msg.Id, int(req.Msg.Count), int(req.Msg.Offset))
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
+	}
+	return connect.NewResponse(response), nil
+}
+
+func (ts *TournamentService) GetRecentAndUpcomingTournaments(ctx context.Context, req *connect.Request[pb.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[pb.GetRecentAndUpcomingTournamentsResponse], error) {
+	tournaments, err := ts.tournamentStore.GetRecentAndUpcomingTournaments(ctx)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	response := &pb.GetRecentAndUpcomingTournamentsResponse{
+		Tournaments: make([]*pb.TournamentMetadata, len(tournaments)),
+	}
+	for i, t := range tournaments {
+		if t == nil {
+			return nil, apiserver.InternalErr(errors.New("tournament is nil"))
+		}
+		tMeta, err := dbTournamentToTournamentMetadataResponse(ctx, *t)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		response.Tournaments[i] = tMeta
 	}
 	return connect.NewResponse(response), nil
 }
@@ -708,4 +734,41 @@ func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *c
 	return connect.NewResponse(&pb.TournamentScorecardResponse{
 		PdfZip: bts,
 	}), nil
+}
+
+func dbTournamentToTournamentMetadataResponse(ctx context.Context, t entity.Tournament) (*pb.TournamentMetadata, error) {
+	var tt pb.TType
+	switch t.Type {
+	case entity.TypeStandard:
+		tt = pb.TType_STANDARD
+	case entity.TypeChild:
+		tt = pb.TType_CHILD
+	case entity.TypeClub:
+		tt = pb.TType_CLUB
+	case entity.TypeLegacy:
+		tt = pb.TType_LEGACY
+	default:
+		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
+	}
+	metadata := &pb.TournamentMetadata{
+		Id:                        t.UUID,
+		Name:                      t.Name,
+		Description:               t.Description,
+		Slug:                      t.Slug,
+		Type:                      tt,
+		Disclaimer:                t.ExtraMeta.Disclaimer,
+		TileStyle:                 t.ExtraMeta.TileStyle,
+		BoardStyle:                t.ExtraMeta.BoardStyle,
+		DefaultClubSettings:       t.ExtraMeta.DefaultClubSettings,
+		FreeformClubSettingFields: t.ExtraMeta.FreeformClubSettingFields,
+		Password:                  t.ExtraMeta.Password,
+		Logo:                      t.ExtraMeta.Logo,
+		Color:                     t.ExtraMeta.Color,
+		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
+		IrlMode:                   t.ExtraMeta.IRLMode,
+		ScheduledStartTime:        timestamppb.New(t.ScheduledStartTime),
+		ScheduledEndTime:          timestamppb.New(t.ScheduledEndTime),
+	}
+
+	return metadata, nil
 }
