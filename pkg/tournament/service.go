@@ -260,8 +260,6 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 			return nil, apiserver.InvalidArg("bad userID: " + director.Id)
 		}
 
-		// TODO for code review: Will this ever happen for new tournaments?
-		// If so, need to figure out how to avoid N+1 queries.
 		if username == "" {
 			u, err := ts.userStore.Get(ctx, uuid)
 			if err != nil {
