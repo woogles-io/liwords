@@ -29,6 +29,8 @@ message NewTournamentRequest {
   repeated string director_usernames = 4;
 
   TType type = 5;
+  google.protobuf.Timestamp scheduled_start_time = 6;
+  google.protobuf.Timestamp scheduled_end_time = 7;
 }
 
 message TournamentMetadata {
@@ -68,6 +70,9 @@ message TournamentMetadata {
   // over-the-board tournament, and will not enforce that usernames
   // are registered on the site.
   bool irl_mode = 15;
+
+  google.protobuf.Timestamp scheduled_start_time = 16;
+  google.protobuf.Timestamp scheduled_end_time = 17;
 }
 
 message SetTournamentMetadataRequest {
@@ -192,6 +197,10 @@ message TournamentScorecardRequest {
 
 message TournamentScorecardResponse { bytes pdf_zip = 1; }
 
+message GetRecentAndUpcomingTournamentsRequest {}
+
+message GetRecentAndUpcomingTournamentsResponse { repeated TournamentMetadata tournaments = 1; }
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
@@ -252,6 +261,11 @@ service TournamentService {
       returns (TournamentScorecardResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  rpc GetRecentAndUpcomingTournaments(GetRecentAndUpcomingTournamentsRequest)
+      returns (GetRecentAndUpcomingTournamentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message ExportTournamentRequest {
@@ -263,6 +277,8 @@ message ExportTournamentResponse { string exported = 1; }
 
 message NewClubSessionRequest {
   // date is the date of the session
+  // This is used as scheduled_start_time for the tournament now that
+  // we store this data.
   google.protobuf.Timestamp date = 1;
   string club_id = 2;
 }

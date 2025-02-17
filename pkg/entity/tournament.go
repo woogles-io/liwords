@@ -3,6 +3,7 @@ package entity
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -93,13 +94,15 @@ type Tournament struct {
 	AliasOf string `json:"aliasOf"`
 	URL     string `json:"url"`
 	// XXX: Investigate above.
-	ExecutiveDirector string                         `json:"execDirector"`
-	Directors         *pb.TournamentPersons          `json:"directors"`
-	IsStarted         bool                           `json:"started"`
-	IsFinished        bool                           `json:"finished"`
-	Divisions         map[string]*TournamentDivision `json:"divs"`
-	Type              CompetitionType                `json:"type"`
-	ParentID          string                         `json:"parent"`
-	Slug              string                         `json:"slug"`
-	ExtraMeta         *TournamentMeta                `json:"extraMeta"`
+	ExecutiveDirector  string                         `json:"execDirector"`
+	Directors          *pb.TournamentPersons          `json:"directors"`
+	IsStarted          bool                           `json:"started"`
+	IsFinished         bool                           `json:"finished"`
+	Divisions          map[string]*TournamentDivision `json:"divs"`
+	Type               CompetitionType                `json:"type"`
+	ParentID           string                         `json:"parent"`
+	Slug               string                         `json:"slug"`
+	ExtraMeta          *TournamentMeta                `json:"extraMeta"`
+	ScheduledStartTime time.Time                      `json:"scheduledStartTime"`
+	ScheduledEndTime   time.Time                      `json:"scheduledEndTime"`
 }

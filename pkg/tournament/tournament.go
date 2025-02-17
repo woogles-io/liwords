@@ -43,7 +43,7 @@ type TournamentStore interface {
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
 	ListAllIDs(context.Context) ([]string, error)
-
+	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
@@ -93,6 +93,8 @@ func NewTournament(ctx context.Context,
 	ttype entity.CompetitionType,
 	parent string,
 	slug string,
+	scheduledStartTime time.Time,
+	scheduledEndTime time.Time,
 ) (*entity.Tournament, error) {
 
 	executiveDirector, err := getExecutiveDirector(name, directors)
@@ -103,16 +105,18 @@ func NewTournament(ctx context.Context,
 	id := shortuuid.New()
 
 	entTournament := &entity.Tournament{Name: name,
-		Description:       description,
-		Directors:         directors,
-		ExecutiveDirector: executiveDirector,
-		IsStarted:         false,
-		Divisions:         map[string]*entity.TournamentDivision{},
-		UUID:              id,
-		Type:              ttype,
-		ParentID:          parent,
-		Slug:              slug,
-		ExtraMeta:         &entity.TournamentMeta{},
+		Description:        description,
+		Directors:          directors,
+		ExecutiveDirector:  executiveDirector,
+		IsStarted:          false,
+		Divisions:          map[string]*entity.TournamentDivision{},
+		UUID:               id,
+		Type:               ttype,
+		ParentID:           parent,
+		Slug:               slug,
+		ExtraMeta:          &entity.TournamentMeta{},
+		ScheduledStartTime: scheduledStartTime,
+		ScheduledEndTime:   scheduledEndTime,
 	}
 
 	err = tournamentStore.Create(ctx, entTournament)

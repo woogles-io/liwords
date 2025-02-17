@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/datatypes"
@@ -49,7 +50,9 @@ type tournament struct {
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
-	Parent string `gorm:"index"`
+	Parent             string `gorm:"index"`
+	ScheduledStartTime time.Time
+	ScheduledEndTime   time.Time
 }
 
 type registrant struct {
@@ -104,18 +107,20 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	}
 
 	tme := &entity.Tournament{UUID: tm.UUID,
-		Name:              tm.Name,
-		Description:       tm.Description,
-		AliasOf:           tm.AliasOf,
-		Directors:         &directors,
-		ExecutiveDirector: tm.ExecutiveDirector,
-		IsStarted:         tm.IsStarted,
-		IsFinished:        tm.IsFinished,
-		Divisions:         divisions,
-		ExtraMeta:         extraMeta,
-		Type:              entity.CompetitionType(tm.Type),
-		ParentID:          tm.Parent,
-		Slug:              tm.Slug,
+		Name:               tm.Name,
+		Description:        tm.Description,
+		AliasOf:            tm.AliasOf,
+		Directors:          &directors,
+		ExecutiveDirector:  tm.ExecutiveDirector,
+		IsStarted:          tm.IsStarted,
+		IsFinished:         tm.IsFinished,
+		Divisions:          divisions,
+		ExtraMeta:          extraMeta,
+		Type:               entity.CompetitionType(tm.Type),
+		ParentID:           tm.Parent,
+		Slug:               tm.Slug,
+		ScheduledStartTime: tm.ScheduledStartTime,
+		ScheduledEndTime:   tm.ScheduledEndTime,
 	}
 	log.Debug().Msg("return-full")
 
@@ -298,6 +303,33 @@ func (s *DBStore) GetRecentClubSessions(ctx context.Context, id string, count in
 		}
 	}
 	return &pb.ClubSessionsResponse{Sessions: csrs}, nil
+}
+
+func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error) {
+	var tournaments []*tournament
+	ctxDB := s.db.WithContext(ctx)
+	oneWeekAgo := time.Now().AddDate(0, 0, -7)
+	oneWeekFromNow := time.Now().AddDate(0, 0, 7)
+
+	result := ctxDB.Where("scheduled_start_time BETWEEN ? AND ? OR scheduled_end_time BETWEEN ? AND ?",
+		oneWeekAgo, oneWeekFromNow, oneWeekAgo, oneWeekFromNow).
+		Find(&tournaments)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	tourneyList := make([]*entity.Tournament, len(tournaments))
+	for i, t := range tournaments {
+		t, err := s.dbObjToEntity(t)
+		if err != nil {
+			return nil, err
+		}
+		tourneyList[i] = t
+	}
+
+	return tourneyList, nil
+
 }
 
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
