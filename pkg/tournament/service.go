@@ -261,7 +261,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 		}
 
 		if username == "" {
-			u, err := ts.userStore.Get(ctx, uuid)
+			u, err := ts.userStore.GetByUUID(ctx, uuid)
 			if err != nil {
 				return nil, apiserver.InvalidArg(err.Error())
 			}
