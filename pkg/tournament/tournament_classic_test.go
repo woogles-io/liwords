@@ -399,8 +399,8 @@ func TestClassicDivisionWithSpreadCapAndOverride(t *testing.T) {
 		roundControls[i].PairingMethod = pb.PairingMethod_KING_OF_THE_HILL
 	}
 
-	roundControls[0].SpreadCapOverride = 100
-	roundControls[0].SpreadCapOverrideEnabled = true
+	spreadCapOverride := uint32(100)
+	roundControls[0].SpreadCapOverride = &spreadCapOverride
 
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
@@ -482,8 +482,8 @@ func TestClassicDivisionSpreadCapOverrideWithoutDivisionalCap(t *testing.T) {
 	for i := 0; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = pb.PairingMethod_KING_OF_THE_HILL
 	}
-	roundControls[0].SpreadCapOverride = 100
-	roundControls[0].SpreadCapOverrideEnabled = true
+	spreadCapOverride := uint32(100)
+	roundControls[0].SpreadCapOverride = &spreadCapOverride
 
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)

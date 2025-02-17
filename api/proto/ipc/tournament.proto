@@ -112,11 +112,11 @@ message RoundControl {
   int32 repeat_relative_weight = 9;
   int32 win_difference_relative_weight = 10;
   bool interleave_team_round_robin = 11;
-  uint32 spread_cap_override = 12;
-  // We use this boolean to differentiate between a disabled override
-  // (i.e. using the division default) and an enabled override set to 0
-  // (i.e. overriding the division default to remove the cap)
-  bool spread_cap_override_enabled = 13;
+  // Optional is needed to represent:
+  // - `nil` for no override at all
+  // - `0` overriding the default to disable the spread cap
+  // Without an optional, these two cases would be indistinguishable.
+  optional uint32 spread_cap_override = 12;
 }
 
 message DivisionControls {

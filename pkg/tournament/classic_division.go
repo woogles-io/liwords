@@ -1178,8 +1178,8 @@ func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 							incSpread = t.DivisionControls.SuspendedSpread
 						}
 						spreadCap := int32(t.DivisionControls.SpreadCap)
-						if t.RoundControls[round].SpreadCapOverrideEnabled {
-							spreadCap = int32(t.RoundControls[round].SpreadCapOverride)
+						if t.RoundControls[round].SpreadCapOverride != nil {
+							spreadCap = int32(*t.RoundControls[round].SpreadCapOverride)
 						}
 						if spreadCap > 0 {
 							if incSpread > spreadCap {
