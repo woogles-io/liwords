@@ -2132,7 +2132,6 @@ const EditDescription = (props: { tournamentID: string }) => {
           <Input />
         </Form.Item>
         <Form.Item label="Tournament Start and End Times">
-          {/* Need a wrapping  */}
           <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
             Use your local time zone. Times are used for tournament listing. The
             tournament will still only start/end when the director does so
