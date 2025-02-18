@@ -445,7 +445,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
       division: vals.division,
       persons: players,
     };
-    console.log(obj);
 
     try {
       await tClient.addPlayers(obj);
@@ -529,7 +528,6 @@ const RemovePlayer = (props: { tournamentID: string }) => {
         },
       ],
     };
-    console.log(obj);
     try {
       await tClient.removePlayers(obj);
       message.info({
@@ -2083,12 +2081,6 @@ const EditDescription = (props: { tournamentID: string }) => {
       ? protobufTimestampToDayjsIgnoringNanos(metadata.scheduledEndTime)
       : null;
 
-    console.log("useEffect triggered!", {
-      metadata,
-      scheduledStartTime,
-      scheduledEndTime,
-    });
-
     form.setFieldsValue({
       name: metadata.name,
       description: metadata.description,
@@ -2101,7 +2093,6 @@ const EditDescription = (props: { tournamentID: string }) => {
   }, [form, tournamentContext.metadata]);
 
   const onSubmit = async (vals: Store) => {
-    console.log("vals", vals);
     const [scheduledStartTime, scheduledEndTime] = vals.scheduledTime
       ?.range ?? [null, null];
     const obj = {

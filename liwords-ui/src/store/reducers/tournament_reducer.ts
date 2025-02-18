@@ -485,18 +485,12 @@ export function TournamentReducer(
     }
   }
 
-  console.log("TournamentReducer action received:", action, action.payload);
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata: {
-      console.log("SetTourneyMetadata action received:", action.payload);
       const m = action.payload as {
         directors: Array<string>;
         metadata: TournamentMetadata;
       };
-      console.log("SetTourneyMetadata action processed:", {
-        directors: m.directors,
-        metadata: m.metadata,
-      });
       return {
         ...state,
         directors: m.directors,

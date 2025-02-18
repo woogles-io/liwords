@@ -15,7 +15,6 @@ export const doesCurrentUserUse24HourTime = () => {
 };
 
 export const protobufTimestampToDayjsIgnoringNanos = (timestamp: Timestamp) => {
-  console.log("timestamp", timestamp.seconds);
   const date = dayjs.unix(Number(timestamp.seconds));
   return date;
 };
