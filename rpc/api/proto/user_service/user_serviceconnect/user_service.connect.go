@@ -102,6 +102,9 @@ const (
 	// ProfileServiceGetBriefProfilesProcedure is the fully-qualified name of the ProfileService's
 	// GetBriefProfiles RPC.
 	ProfileServiceGetBriefProfilesProcedure = "/user_service.ProfileService/GetBriefProfiles"
+	// ProfileServiceGetBadgesMetadataProcedure is the fully-qualified name of the ProfileService's
+	// GetBadgesMetadata RPC.
+	ProfileServiceGetBadgesMetadataProcedure = "/user_service.ProfileService/GetBadgesMetadata"
 	// AutocompleteServiceGetCompletionProcedure is the fully-qualified name of the
 	// AutocompleteService's GetCompletion RPC.
 	AutocompleteServiceGetCompletionProcedure = "/user_service.AutocompleteService/GetCompletion"
@@ -168,6 +171,12 @@ const (
 	// AuthorizationServiceGetSelfRolesProcedure is the fully-qualified name of the
 	// AuthorizationService's GetSelfRoles RPC.
 	AuthorizationServiceGetSelfRolesProcedure = "/user_service.AuthorizationService/GetSelfRoles"
+	// AuthorizationServiceGetUsersWithRolesProcedure is the fully-qualified name of the
+	// AuthorizationService's GetUsersWithRoles RPC.
+	AuthorizationServiceGetUsersWithRolesProcedure = "/user_service.AuthorizationService/GetUsersWithRoles"
+	// AuthorizationServiceGetRoleMetadataProcedure is the fully-qualified name of the
+	// AuthorizationService's GetRoleMetadata RPC.
+	AuthorizationServiceGetRoleMetadataProcedure = "/user_service.AuthorizationService/GetRoleMetadata"
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -557,6 +566,7 @@ type ProfileServiceClient interface {
 	UpdateAvatar(context.Context, *connect.Request[user_service.UpdateAvatarRequest]) (*connect.Response[user_service.UpdateAvatarResponse], error)
 	RemoveAvatar(context.Context, *connect.Request[user_service.RemoveAvatarRequest]) (*connect.Response[user_service.RemoveAvatarResponse], error)
 	GetBriefProfiles(context.Context, *connect.Request[user_service.BriefProfilesRequest]) (*connect.Response[user_service.BriefProfilesResponse], error)
+	GetBadgesMetadata(context.Context, *connect.Request[user_service.BadgeMetadataRequest]) (*connect.Response[user_service.BadgeMetadataResponse], error)
 }
 
 // NewProfileServiceClient constructs a client for the user_service.ProfileService service. By
@@ -618,6 +628,12 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("GetBriefProfiles")),
 			connect.WithClientOptions(opts...),
 		),
+		getBadgesMetadata: connect.NewClient[user_service.BadgeMetadataRequest, user_service.BadgeMetadataResponse](
+			httpClient,
+			baseURL+ProfileServiceGetBadgesMetadataProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetBadgesMetadata")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -631,6 +647,7 @@ type profileServiceClient struct {
 	updateAvatar       *connect.Client[user_service.UpdateAvatarRequest, user_service.UpdateAvatarResponse]
 	removeAvatar       *connect.Client[user_service.RemoveAvatarRequest, user_service.RemoveAvatarResponse]
 	getBriefProfiles   *connect.Client[user_service.BriefProfilesRequest, user_service.BriefProfilesResponse]
+	getBadgesMetadata  *connect.Client[user_service.BadgeMetadataRequest, user_service.BadgeMetadataResponse]
 }
 
 // GetRatings calls user_service.ProfileService.GetRatings.
@@ -673,6 +690,11 @@ func (c *profileServiceClient) GetBriefProfiles(ctx context.Context, req *connec
 	return c.getBriefProfiles.CallUnary(ctx, req)
 }
 
+// GetBadgesMetadata calls user_service.ProfileService.GetBadgesMetadata.
+func (c *profileServiceClient) GetBadgesMetadata(ctx context.Context, req *connect.Request[user_service.BadgeMetadataRequest]) (*connect.Response[user_service.BadgeMetadataResponse], error) {
+	return c.getBadgesMetadata.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the user_service.ProfileService service.
 type ProfileServiceHandler interface {
 	GetRatings(context.Context, *connect.Request[user_service.RatingsRequest]) (*connect.Response[user_service.RatingsResponse], error)
@@ -683,6 +705,7 @@ type ProfileServiceHandler interface {
 	UpdateAvatar(context.Context, *connect.Request[user_service.UpdateAvatarRequest]) (*connect.Response[user_service.UpdateAvatarResponse], error)
 	RemoveAvatar(context.Context, *connect.Request[user_service.RemoveAvatarRequest]) (*connect.Response[user_service.RemoveAvatarResponse], error)
 	GetBriefProfiles(context.Context, *connect.Request[user_service.BriefProfilesRequest]) (*connect.Response[user_service.BriefProfilesResponse], error)
+	GetBadgesMetadata(context.Context, *connect.Request[user_service.BadgeMetadataRequest]) (*connect.Response[user_service.BadgeMetadataResponse], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -740,6 +763,12 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("GetBriefProfiles")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceGetBadgesMetadataHandler := connect.NewUnaryHandler(
+		ProfileServiceGetBadgesMetadataProcedure,
+		svc.GetBadgesMetadata,
+		connect.WithSchema(profileServiceMethods.ByName("GetBadgesMetadata")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetRatingsProcedure:
@@ -758,6 +787,8 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceRemoveAvatarHandler.ServeHTTP(w, r)
 		case ProfileServiceGetBriefProfilesProcedure:
 			profileServiceGetBriefProfilesHandler.ServeHTTP(w, r)
+		case ProfileServiceGetBadgesMetadataProcedure:
+			profileServiceGetBadgesMetadataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -797,6 +828,10 @@ func (UnimplementedProfileServiceHandler) RemoveAvatar(context.Context, *connect
 
 func (UnimplementedProfileServiceHandler) GetBriefProfiles(context.Context, *connect.Request[user_service.BriefProfilesRequest]) (*connect.Response[user_service.BriefProfilesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.ProfileService.GetBriefProfiles is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetBadgesMetadata(context.Context, *connect.Request[user_service.BadgeMetadataRequest]) (*connect.Response[user_service.BadgeMetadataResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.ProfileService.GetBadgesMetadata is not implemented"))
 }
 
 // AutocompleteServiceClient is a client for the user_service.AutocompleteService service.
@@ -1257,10 +1292,12 @@ type AuthorizationServiceClient interface {
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
 	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
 	UnlinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
-	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
-	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
+	AssignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.AssignRoleResponse], error)
+	UnassignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
 	GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+	GetUsersWithRoles(context.Context, *connect.Request[user_service.GetUsersWithRolesRequest]) (*connect.Response[user_service.GetUsersWithRolesResponse], error)
+	GetRoleMetadata(context.Context, *connect.Request[user_service.GetRoleMetadataRequest]) (*connect.Response[user_service.RoleMetadataResponse], error)
 }
 
 // NewAuthorizationServiceClient constructs a client for the user_service.AuthorizationService
@@ -1312,13 +1349,13 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(authorizationServiceMethods.ByName("UnlinkRoleAndPermission")),
 			connect.WithClientOptions(opts...),
 		),
-		assignRole: connect.NewClient[user_service.AssignRoleRequest, user_service.AssignRoleResponse](
+		assignRole: connect.NewClient[user_service.UserAndRole, user_service.AssignRoleResponse](
 			httpClient,
 			baseURL+AuthorizationServiceAssignRoleProcedure,
 			connect.WithSchema(authorizationServiceMethods.ByName("AssignRole")),
 			connect.WithClientOptions(opts...),
 		),
-		unassignRole: connect.NewClient[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse](
+		unassignRole: connect.NewClient[user_service.UserAndRole, user_service.UnassignRoleResponse](
 			httpClient,
 			baseURL+AuthorizationServiceUnassignRoleProcedure,
 			connect.WithSchema(authorizationServiceMethods.ByName("UnassignRole")),
@@ -1338,6 +1375,20 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getUsersWithRoles: connect.NewClient[user_service.GetUsersWithRolesRequest, user_service.GetUsersWithRolesResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetUsersWithRolesProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetUsersWithRoles")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getRoleMetadata: connect.NewClient[user_service.GetRoleMetadataRequest, user_service.RoleMetadataResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetRoleMetadataProcedure,
+			connect.WithSchema(authorizationServiceMethods.ByName("GetRoleMetadata")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1349,10 +1400,12 @@ type authorizationServiceClient struct {
 	addPermission           *connect.Client[user_service.AddPermissionRequest, user_service.AddPermissionResponse]
 	linkRoleAndPermission   *connect.Client[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse]
 	unlinkRoleAndPermission *connect.Client[user_service.LinkRoleAndPermissionRequest, user_service.LinkRoleAndPermissionResponse]
-	assignRole              *connect.Client[user_service.AssignRoleRequest, user_service.AssignRoleResponse]
-	unassignRole            *connect.Client[user_service.UnassignRoleRequest, user_service.UnassignRoleResponse]
+	assignRole              *connect.Client[user_service.UserAndRole, user_service.AssignRoleResponse]
+	unassignRole            *connect.Client[user_service.UserAndRole, user_service.UnassignRoleResponse]
 	getUserRoles            *connect.Client[user_service.GetUserRolesRequest, user_service.UserRolesResponse]
 	getSelfRoles            *connect.Client[user_service.GetSelfRolesRequest, user_service.UserRolesResponse]
+	getUsersWithRoles       *connect.Client[user_service.GetUsersWithRolesRequest, user_service.GetUsersWithRolesResponse]
+	getRoleMetadata         *connect.Client[user_service.GetRoleMetadataRequest, user_service.RoleMetadataResponse]
 }
 
 // GetModList calls user_service.AuthorizationService.GetModList.
@@ -1386,12 +1439,12 @@ func (c *authorizationServiceClient) UnlinkRoleAndPermission(ctx context.Context
 }
 
 // AssignRole calls user_service.AuthorizationService.AssignRole.
-func (c *authorizationServiceClient) AssignRole(ctx context.Context, req *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {
+func (c *authorizationServiceClient) AssignRole(ctx context.Context, req *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.AssignRoleResponse], error) {
 	return c.assignRole.CallUnary(ctx, req)
 }
 
 // UnassignRole calls user_service.AuthorizationService.UnassignRole.
-func (c *authorizationServiceClient) UnassignRole(ctx context.Context, req *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error) {
+func (c *authorizationServiceClient) UnassignRole(ctx context.Context, req *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.UnassignRoleResponse], error) {
 	return c.unassignRole.CallUnary(ctx, req)
 }
 
@@ -1405,6 +1458,16 @@ func (c *authorizationServiceClient) GetSelfRoles(ctx context.Context, req *conn
 	return c.getSelfRoles.CallUnary(ctx, req)
 }
 
+// GetUsersWithRoles calls user_service.AuthorizationService.GetUsersWithRoles.
+func (c *authorizationServiceClient) GetUsersWithRoles(ctx context.Context, req *connect.Request[user_service.GetUsersWithRolesRequest]) (*connect.Response[user_service.GetUsersWithRolesResponse], error) {
+	return c.getUsersWithRoles.CallUnary(ctx, req)
+}
+
+// GetRoleMetadata calls user_service.AuthorizationService.GetRoleMetadata.
+func (c *authorizationServiceClient) GetRoleMetadata(ctx context.Context, req *connect.Request[user_service.GetRoleMetadataRequest]) (*connect.Response[user_service.RoleMetadataResponse], error) {
+	return c.getRoleMetadata.CallUnary(ctx, req)
+}
+
 // AuthorizationServiceHandler is an implementation of the user_service.AuthorizationService
 // service.
 type AuthorizationServiceHandler interface {
@@ -1414,10 +1477,12 @@ type AuthorizationServiceHandler interface {
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
 	LinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
 	UnlinkRoleAndPermission(context.Context, *connect.Request[user_service.LinkRoleAndPermissionRequest]) (*connect.Response[user_service.LinkRoleAndPermissionResponse], error)
-	AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error)
-	UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error)
+	AssignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.AssignRoleResponse], error)
+	UnassignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.UnassignRoleResponse], error)
 	GetUserRoles(context.Context, *connect.Request[user_service.GetUserRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
 	GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error)
+	GetUsersWithRoles(context.Context, *connect.Request[user_service.GetUsersWithRolesRequest]) (*connect.Response[user_service.GetUsersWithRolesResponse], error)
+	GetRoleMetadata(context.Context, *connect.Request[user_service.GetRoleMetadataRequest]) (*connect.Response[user_service.RoleMetadataResponse], error)
 }
 
 // NewAuthorizationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1491,6 +1556,20 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorizationServiceGetUsersWithRolesHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetUsersWithRolesProcedure,
+		svc.GetUsersWithRoles,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetUsersWithRoles")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorizationServiceGetRoleMetadataHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetRoleMetadataProcedure,
+		svc.GetRoleMetadata,
+		connect.WithSchema(authorizationServiceMethods.ByName("GetRoleMetadata")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.AuthorizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorizationServiceGetModListProcedure:
@@ -1513,6 +1592,10 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 			authorizationServiceGetUserRolesHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetSelfRolesProcedure:
 			authorizationServiceGetSelfRolesHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetUsersWithRolesProcedure:
+			authorizationServiceGetUsersWithRolesHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetRoleMetadataProcedure:
+			authorizationServiceGetRoleMetadataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1546,11 +1629,11 @@ func (UnimplementedAuthorizationServiceHandler) UnlinkRoleAndPermission(context.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.UnlinkRoleAndPermission is not implemented"))
 }
 
-func (UnimplementedAuthorizationServiceHandler) AssignRole(context.Context, *connect.Request[user_service.AssignRoleRequest]) (*connect.Response[user_service.AssignRoleResponse], error) {
+func (UnimplementedAuthorizationServiceHandler) AssignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.AssignRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.AssignRole is not implemented"))
 }
 
-func (UnimplementedAuthorizationServiceHandler) UnassignRole(context.Context, *connect.Request[user_service.UnassignRoleRequest]) (*connect.Response[user_service.UnassignRoleResponse], error) {
+func (UnimplementedAuthorizationServiceHandler) UnassignRole(context.Context, *connect.Request[user_service.UserAndRole]) (*connect.Response[user_service.UnassignRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.UnassignRole is not implemented"))
 }
 
@@ -1560,4 +1643,12 @@ func (UnimplementedAuthorizationServiceHandler) GetUserRoles(context.Context, *c
 
 func (UnimplementedAuthorizationServiceHandler) GetSelfRoles(context.Context, *connect.Request[user_service.GetSelfRolesRequest]) (*connect.Response[user_service.UserRolesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetSelfRoles is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetUsersWithRoles(context.Context, *connect.Request[user_service.GetUsersWithRolesRequest]) (*connect.Response[user_service.GetUsersWithRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetUsersWithRoles is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetRoleMetadata(context.Context, *connect.Request[user_service.GetRoleMetadataRequest]) (*connect.Response[user_service.RoleMetadataResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetRoleMetadata is not implemented"))
 }

@@ -31,6 +31,8 @@ import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import variables from "../base.module.scss";
+import { useQuery } from "@connectrpc/connect-query";
+import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -225,6 +227,7 @@ export const PlayerProfile = React.memo(() => {
   const [showGameTable, setShowGameTable] = useState(false);
   const [countryCode, setCountryCode] = useState("");
   const [bioLoaded, setBioLoaded] = useState(false);
+  const [badges, setBadges] = useState<string[]>([]);
   const [recentGames, setRecentGames] = useState<{
     numGames: number;
     offset: number;
@@ -240,6 +243,7 @@ export const PlayerProfile = React.memo(() => {
   const profileClient = useClient(ProfileService);
   const gameMetadataClient = useClient(GameMetadataService);
   const gameEventClient = useClient(GameEventService);
+  const { data: badgeMetadata } = useQuery(getBadgesMetadata);
 
   const checkWide = useMemo(
     () => window.matchMedia(`(min-width: ${screenSizeTablet}px)`),
@@ -276,6 +280,7 @@ export const PlayerProfile = React.memo(() => {
         setAvatarsEditable(resp.avatarsEditable);
         setBio(resp.about);
         setBioLoaded(true);
+        setBadges(resp.badgeCodes);
       } catch (e) {
         setUserFetched(true);
         flashError(e);

@@ -3,8 +3,8 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -47,20 +47,19 @@ func AuthUser(ctx context.Context, userStore user.Store) (*entity.User, error) {
 	return nil, Unauthenticated(ErrAuthFailed.Error())
 }
 
-func AuthenticateAdmin(ctx context.Context, userStore user.Store, q *models.Queries) error {
+func AuthenticateWithPermission(ctx context.Context, userStore user.Store, q *models.Queries,
+	permission rbac.Permission) (*entity.User, error) {
 	u, err := AuthUser(ctx, userStore)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	roles, err := q.GetUserRoles(ctx, pgtype.Text{Valid: true, String: u.Username})
+	p, err := rbac.HasPermission(ctx, q, u.ID, permission)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	for _, r := range roles {
-		if r.Name == string(rbac.Admin) {
-			log.Info().Str("username", u.Username).Msg("admin-authenticated")
-			return nil
-		}
+	if !p {
+		return nil, PermissionDenied(fmt.Sprintf("user does not have the %s permission", permission))
 	}
-	return PermissionDenied("not an admin")
+	log.Info().Str("username", u.Username).Str("permission", string(permission)).Msg("authenticate-with-permission")
+	return u, nil
 }

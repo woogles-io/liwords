@@ -73,6 +73,15 @@ func RecreateDB() *DBController {
 		panic(err)
 	}
 
+	err = userStore.New(context.Background(), &entity.User{Username: "SomeManager", Email: "manager@woogles.io", UUID: "somemanager"})
+	if err != nil {
+		panic(err)
+	}
+	_, err = userStore.ResetAPIKey(ctx, "somemanager")
+	if err != nil {
+		panic(err)
+	}
+
 	q := models.New(pool)
 	err = q.AssignRole(ctx, models.AssignRoleParams{
 		Username: pgtype.Text{String: "SomeAdmin", Valid: true},
@@ -84,6 +93,13 @@ func RecreateDB() *DBController {
 	err = q.AssignRole(ctx, models.AssignRoleParams{
 		Username: pgtype.Text{String: "SomeMod", Valid: true},
 		RoleName: string(rbac.Moderator),
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = q.AssignRole(ctx, models.AssignRoleParams{
+		Username: pgtype.Text{String: "SomeManager", Valid: true},
+		RoleName: string(rbac.Manager),
 	})
 	if err != nil {
 		panic(err)
@@ -101,7 +117,7 @@ func TestAssignRole(t *testing.T) {
 	svc := NewAuthorizationService(dbc.us, dbc.q)
 
 	// Try assigning a role to themselves, if not an admin
-	_, err := svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
+	_, err := svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "NotAnAdmin",
 		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
@@ -111,18 +127,18 @@ func TestAssignRole(t *testing.T) {
 	is.NoErr(err)
 	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
 
-	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "NotAnAdmin",
 		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
-	is.Equal(err.Error(), "permission_denied: not an admin")
+	is.Equal(err.Error(), "permission_denied: user does not have the can_assign_user_roles permission")
 
 	// Now try it with the admin.
 	apikey, err = dbc.us.GetAPIKey(context.Background(), "someadmin")
 	is.NoErr(err)
 	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
 
-	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "NotAnAdmin",
 		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
@@ -134,11 +150,57 @@ func TestAssignRole(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(resp.Msg.Roles, []string{string(rbac.SpecialAccessPlayer)})
 	// Try assigning the same role again. It should fail.
-	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.AssignRoleRequest{
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "NotAnAdmin",
 		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
 	is.Equal(err.Error(), "already_exists: role already assigned to user")
+}
+
+func TestDisallowedPrivilegeEscalation(t *testing.T) {
+	is := is.New(t)
+	dbc := RecreateDB()
+	defer func() {
+		dbc.cleanup()
+	}()
+	ctx := context.Background()
+	svc := NewAuthorizationService(dbc.us, dbc.q)
+
+	apikey, err := dbc.us.GetAPIKey(context.Background(), "somemanager")
+	is.NoErr(err)
+	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
+
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
+		Username: "NotAnAdmin",
+		RoleName: string(rbac.SpecialAccessPlayer),
+	}))
+	is.NoErr(err)
+
+	resp, err := svc.GetUserRoles(ctx, connect.NewRequest(&pb.GetUserRolesRequest{
+		Username: "NotAnAdmin",
+	}))
+	is.NoErr(err)
+	is.Equal(resp.Msg.Roles, []string{string(rbac.SpecialAccessPlayer)})
+
+	// Now try assigning Manager role or Admin role
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
+		Username: "NotAnAdmin",
+		RoleName: string(rbac.Manager),
+	}))
+	is.Equal(err.Error(), "permission_denied: privilege escalation")
+
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
+		Username: "NotAnAdmin",
+		RoleName: string(rbac.Admin),
+	}))
+	is.Equal(err.Error(), "permission_denied: privilege escalation")
+
+	// But can assign moderator
+	_, err = svc.AssignRole(ctx, connect.NewRequest(&pb.UserAndRole{
+		Username: "NotAnAdmin",
+		RoleName: string(rbac.Moderator),
+	}))
+	is.NoErr(err)
 }
 
 func TestGetAdminsAndMods(t *testing.T) {
@@ -168,7 +230,7 @@ func TestUnassignRole(t *testing.T) {
 	is.NoErr(err)
 	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
 
-	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UnassignRoleRequest{
+	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "SomeMod",
 		RoleName: string(rbac.Moderator),
 	}))
@@ -180,7 +242,7 @@ func TestUnassignRole(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(resp.Msg.Roles, []string{})
 
-	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UnassignRoleRequest{
+	_, err = svc.UnassignRole(ctx, connect.NewRequest(&pb.UserAndRole{
 		Username: "SomeMod",
 		RoleName: string(rbac.Moderator),
 	}))

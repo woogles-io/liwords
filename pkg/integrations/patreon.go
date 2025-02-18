@@ -21,19 +21,22 @@ import (
 )
 
 const (
-	ChihuahuaTier       string = "Chihuahua"
+	FreeTier            string = "Free"
+	ChihuahuaTier              = "Chihuahua"
 	DalmatianTier              = "Dalmatian"
 	GoldenRetrieverTier        = "Golden Retriever"
 )
 
 // TierIDToName is a hard-coded map specific to Woogles.io Patreon tier data.
 var TierIDToName = map[string]string{
+	"10805942": FreeTier,
 	"22998862": ChihuahuaTier,
 	"24128312": DalmatianTier,
 	"24128408": GoldenRetrieverTier,
 }
 
 var ErrNotSubscribed = errors.New("user not subscribed")
+var ErrNotPaidTier = errors.New("user not subscribed on paid tier")
 
 const (
 	ChargeStatusPaid = "Paid"
@@ -389,17 +392,21 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		return nil, errors.New("missing-member-data")
 	}
 
-	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(memberData.Data.Relationships.CurrentlyEntitledTiers.Data) == 0 {
 		log.Info().Str("userID", userID).Msg("no-currently-entitled-tiers")
 		PatreonAPICache.Add(userID, nil)
 		return nil, ErrNotSubscribed
 	}
 	tierID := memberData.Data.Relationships.CurrentlyEntitledTiers.Data[0].ID
+	if TierIDToName[tierID] == FreeTier {
+		log.Info().Str("userID", userID).Msg("on-free-tier")
+		PatreonAPICache.Add(userID, nil)
+		return nil, ErrNotPaidTier
+	}
+	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
+	if err != nil {
+		return nil, err
+	}
 
 	tierData := &PaidTierData{
 		TierID:           tierID,

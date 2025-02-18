@@ -28,5 +28,8 @@ VALUES
     ('Dalmatian', 'Dalmatian tier subscriber on Patreon'),
     ('Golden Retriever', 'Golden Retriever tier subscriber on Patreon'),
     ('Cevapcici', 'Played CEVAPCICI in only a semi-contrived fashion. See https://woogles.io/game/87L8WVUb'),
-    ('Most Social', 'Winner of the Most Social Dog award during the early Launch Parties');
+    ('Most Social', 'Winner of the Most Social Dog award during the early Launch Parties'),
+    ('OG Team', 'Original Woogles.io founders and team members'),
+    ('Friend of Woogles', 'For those who have helped shape Woogles by contributing code, content, and more. We appreciate you! ❤️'),
+    ('Dogshit', 'This venerated badge, our rarest, is reserved for very special Wooglers.');
 COMMIT;

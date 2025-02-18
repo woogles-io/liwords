@@ -53,3 +53,13 @@ export const getUserRoles = AuthorizationService.method.getUserRoles;
  * @generated from rpc user_service.AuthorizationService.GetSelfRoles
  */
 export const getSelfRoles = AuthorizationService.method.getSelfRoles;
+
+/**
+ * @generated from rpc user_service.AuthorizationService.GetUsersWithRoles
+ */
+export const getUsersWithRoles = AuthorizationService.method.getUsersWithRoles;
+
+/**
+ * @generated from rpc user_service.AuthorizationService.GetRoleMetadata
+ */
+export const getRoleMetadata = AuthorizationService.method.getRoleMetadata;

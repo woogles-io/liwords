@@ -33,3 +33,33 @@ export const setSingleAnnouncement = ConfigService.method.setSingleAnnouncement;
  * @generated from rpc config_service.ConfigService.SetGlobalIntegration
  */
 export const setGlobalIntegration = ConfigService.method.setGlobalIntegration;
+
+/**
+ * @generated from rpc config_service.ConfigService.AddBadge
+ */
+export const addBadge = ConfigService.method.addBadge;
+
+/**
+ * @generated from rpc config_service.ConfigService.AssignBadge
+ */
+export const assignBadge = ConfigService.method.assignBadge;
+
+/**
+ * @generated from rpc config_service.ConfigService.UnassignBadge
+ */
+export const unassignBadge = ConfigService.method.unassignBadge;
+
+/**
+ * @generated from rpc config_service.ConfigService.GetUsersForBadge
+ */
+export const getUsersForBadge = ConfigService.method.getUsersForBadge;
+
+/**
+ * @generated from rpc config_service.ConfigService.GetUserDetails
+ */
+export const getUserDetails = ConfigService.method.getUserDetails;
+
+/**
+ * @generated from rpc config_service.ConfigService.SearchEmail
+ */
+export const searchEmail = ConfigService.method.searchEmail;
