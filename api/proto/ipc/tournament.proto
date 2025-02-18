@@ -215,7 +215,10 @@ message TournamentDataResponse {
   string executive_director = 4;
   TournamentPersons directors = 5;
   bool is_started = 6;
+  // Note: this field seems totally unused
   google.protobuf.Timestamp start_time = 7;
+  google.protobuf.Timestamp scheduled_start_time = 8;
+  google.protobuf.Timestamp scheduled_end_time = 9;
 }
 
 message TournamentDivisionDeletedResponse {

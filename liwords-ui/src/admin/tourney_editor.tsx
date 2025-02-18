@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Col,
+  DatePicker,
   Divider,
   Form,
   Input,
@@ -34,6 +35,14 @@ import { GameRequest } from "../gen/api/proto/ipc/omgwords_pb";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { create } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { useWatch } from "antd/es/form/Form";
+import {
+  dayjsToProtobufTimestampIgnoringNanos,
+  doesCurrentUserUse24HourTime,
+  protobufTimestampToDayjsIgnoringNanos,
+} from "../utils/datetime";
+import { dayjs } from "../utils/datetime";
 
 type DProps = {
   description: string;
@@ -121,17 +130,20 @@ const SettingsModalForm = (mprops: {
 };
 
 export const TourneyEditor = (props: Props) => {
-  const [description, setDescription] = useState("");
-  const [disclaimer, setDisclaimer] = useState("");
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("");
-  const [logo, setLogo] = useState("");
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [selectedGameRequest, setSelectedGameRequest] = useState<
     GameRequest | undefined
   >(undefined);
   const [form] = Form.useForm();
+
+  const description = useWatch("description", form);
+  const disclaimer = useWatch("disclaimer", form);
+  const name = useWatch("name", form);
+  const color = useWatch("color", form);
+  const logo = useWatch("logo", form);
+
   const tournamentClient = useClient(TournamentService);
+  const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
 
   const onSearch = async (val: string) => {
     const tmreq = create(GetTournamentMetadataRequestSchema, {});
@@ -145,12 +157,14 @@ export const TourneyEditor = (props: Props) => {
         throw new Error("undefined tournament metadata");
       }
 
-      setDescription(metadata.description);
-      setDisclaimer(metadata.disclaimer || "");
-      setName(metadata.name);
-      setColor(metadata.color || "");
-      setLogo(metadata.logo || "");
-      setSelectedGameRequest(metadata.defaultClubSettings || undefined);
+      const scheduledStartTime = metadata.scheduledStartTime
+        ? protobufTimestampToDayjsIgnoringNanos(metadata.scheduledStartTime)
+        : null;
+      const scheduledEndTime = metadata.scheduledEndTime
+        ? protobufTimestampToDayjsIgnoringNanos(metadata.scheduledEndTime)
+        : null;
+
+      setSelectedGameRequest(metadata.defaultClubSettings ?? undefined);
       form.setFieldsValue({
         name: metadata.name,
         description: metadata.description,
@@ -166,6 +180,9 @@ export const TourneyEditor = (props: Props) => {
         color: metadata.color,
         privateAnalysis: metadata.privateAnalysis || false,
         irlMode: metadata.irlMode || false,
+        scheduledTime: {
+          range: [scheduledStartTime, scheduledEndTime],
+        },
       });
     } catch (e) {
       flashError(e);
@@ -180,6 +197,8 @@ export const TourneyEditor = (props: Props) => {
       const directors = (vals.directors as string)
         .split(",")
         .map((u) => u.trim());
+      const [scheduledStartTime, scheduledEndTime] = vals.scheduledTime
+        ?.range ?? [null, null];
 
       obj = {
         name: vals.name,
@@ -189,9 +208,18 @@ export const TourneyEditor = (props: Props) => {
         directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
+        // TODO: make this field required after one deploy
+        scheduledStartTime: timestampFromMs(
+          scheduledStartTime ? scheduledStartTime.unix() * 1000 : 0,
+        ),
+        scheduledEndTime: timestampFromMs(
+          scheduledEndTime ? scheduledEndTime.unix() * 1000 : 0,
+        ),
       };
     } else if (props.mode === "edit") {
       apicall = "setTournamentMetadata";
+      const [scheduledStartTime, scheduledEndTime] = vals.scheduledTime
+        ?.range ?? [null, null];
       obj = {
         metadata: {
           id: vals.id,
@@ -208,6 +236,10 @@ export const TourneyEditor = (props: Props) => {
           color: vals.color,
           privateAnalysis: vals.privateAnalysis,
           irlMode: vals.irlMode,
+          scheduledStartTime:
+            dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime),
+          scheduledEndTime:
+            dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime),
         },
       };
     }
@@ -220,21 +252,6 @@ export const TourneyEditor = (props: Props) => {
     } catch (err) {
       flashError(err);
     }
-  };
-  const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDescription(evt.target.value);
-  };
-  const onDisclaimerChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDisclaimer(evt.target.value);
-  };
-  const onNameChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setName(evt.target.value);
-  };
-  const onColorChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setColor(evt.target.value);
-  };
-  const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    setLogo(evt.target.value);
   };
 
   const addDirector = async () => {
@@ -295,11 +312,24 @@ export const TourneyEditor = (props: Props) => {
         <Col span={12}>
           <Form {...layout} form={form} layout="horizontal" onFinish={onFinish}>
             <Form.Item name="name" label="Tournament Name">
-              <Input onChange={onNameChange} />
+              <Input />
             </Form.Item>
 
             <Form.Item name="slug" label="Tournament Slug (URL)">
               <Input />
+            </Form.Item>
+
+            <Form.Item
+              name={["scheduledTime", "range"]}
+              label="Tournament Start and End Times"
+              help="Use your local time zone. Times are used for tournament listing. The tournament will still only start/end when the director does so manually."
+            >
+              <DatePicker.RangePicker
+                showTime={{ format: timeFormat }}
+                format={`YYYY-MM-DD ${timeFormat}`}
+                style={{ width: "100%" }}
+                showNow={false}
+              />
             </Form.Item>
 
             <Form.Item
@@ -341,7 +371,7 @@ export const TourneyEditor = (props: Props) => {
               </Select>
             </Form.Item>
             <Form.Item name="description" label="Description">
-              <Input.TextArea onChange={onDescriptionChange} rows={20} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <h3 hidden={props.mode === "new"}>
               The following applies only to clubs and tournaments in clubhouse
@@ -410,21 +440,21 @@ export const TourneyEditor = (props: Props) => {
               label="Disclaimer (optional)"
               hidden={props.mode === "new"}
             >
-              <Input.TextArea onChange={onDisclaimerChange} rows={20} />
+              <Input.TextArea rows={20} />
             </Form.Item>
             <Form.Item
               name="logo"
               label="Logo URL (optional)"
               hidden={props.mode === "new"}
             >
-              <Input onChange={onLogoChange} />
+              <Input />
             </Form.Item>
             <Form.Item
               name="color"
               label="Hex Color (optional)"
               hidden={props.mode === "new"}
             >
-              <Input onChange={onColorChange} />
+              <Input />
             </Form.Item>
 
             <Form.Item

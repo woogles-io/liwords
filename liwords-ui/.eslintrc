@@ -46,6 +46,13 @@
         "ignoreComments": true
       }
     ],
+    "no-restricted-imports": ["error", {
+      "paths": [{
+        "name": "dayjs",
+        "importNames": ["default"],
+        "message": "Please import dayjs from src/utils/datetime instead"
+      }]
+    }],
     "no-plusplus": "off",
     "react/react-in-jsx-scope": "off",
     "react/jsx-key": "error",
