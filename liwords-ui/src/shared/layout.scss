@@ -105,6 +105,7 @@ span.user-context-menu.ant-dropdown-trigger {
         font-size: 18px;
       }
     }
+
     .ant-card.chat {
       margin-bottom: 9px;
       height: calc(
@@ -152,23 +153,10 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 
   .chat-area {
-    display: flex;
-    gap: 12px;
     width: 100%;
     min-width: auto;
     max-width: none;
     margin: 12px;
-
-    .ant-card.tournaments-preview,
-    .ant-card.chat {
-      flex: 1;
-      margin: 0;
-      height: calc(base.$main-container-width-tablet + 60px);
-      .ant-card-body {
-        height: calc(base.$main-container-width-tablet + 8px);
-        max-height: calc(base.$main-container-width-tablet + 8px);
-      }
-    }
   }
   .lobby.competitor {
     .tournament-info .ant-card.tournament {
