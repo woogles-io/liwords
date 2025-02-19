@@ -1,5 +1,5 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { Button, Form, Input, message, Switch, Table, Typography } from "antd";
+import { Button, Form, Input, message, Switch, Table } from "antd";
 import {
   getUserDetails,
   searchEmail,

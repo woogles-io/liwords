@@ -17,7 +17,6 @@ import {
   unassignRole,
 } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { useMemo, useState } from "react";
-import { L } from "vitest/dist/chunks/reporters.D7Jzd9GS";
 import { useQueryClient } from "@tanstack/react-query";
 
 const layout = {
@@ -62,7 +61,7 @@ export const PermsAndRoles = () => {
     });
 
     return Object.entries(m)
-      .map(([username, roleName]) => ({ username, roleName }))
+      .map(([username, roleName]) => ({ username, roleName, key: username }))
       .sort((a, b) => a.username.localeCompare(b.username));
   }, [usersWithRoles]);
 
@@ -138,7 +137,10 @@ export const PermsAndRoles = () => {
       />
       <List
         header={<h3>Roles with permissions</h3>}
-        dataSource={roleMetadata?.rolesWithPermissions}
+        dataSource={roleMetadata?.rolesWithPermissions.map((r) => ({
+          ...r,
+          key: r.roleName,
+        }))}
         renderItem={(item) => (
           <List.Item>
             <Typography.Text strong style={{ marginRight: 24 }}>

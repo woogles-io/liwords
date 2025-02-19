@@ -17,6 +17,7 @@ import { GameInfoResponse, PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { MachineLetter } from "../utils/cwgame/common";
 
 import variables from "../base.module.scss";
+import { DisplayUserBadges } from "../profile/badge";
 const { colorPrimary } = variables;
 
 type CardProps = {
@@ -67,9 +68,10 @@ const PlayerCard = React.memo((props: CardProps) => {
         <div className="player-info">
           <p className="player-name">
             {briefProfile?.fullName || meta?.fullName || meta?.nickname}
+            <DisplayUserBadges uuid={props.player.userID} />
           </p>
           <div className="player-details">
-            <DisplayUserFlag uuid={props.player?.userID} />
+            <DisplayUserFlag uuid={props.player.userID} />
             {meta?.rating || "Unrated"}
             {props.hideProfileLink ? null : (
               <>

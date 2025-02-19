@@ -33,6 +33,7 @@ import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
+import { Badge } from "./badge";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -529,6 +530,7 @@ export const PlayerProfile = React.memo(() => {
                         userID={userID}
                         showModTools
                         moderate={moderateUser}
+                        omitBadges
                       />
                     ) : (
                       <span className="user">
@@ -542,6 +544,14 @@ export const PlayerProfile = React.memo(() => {
               {!(missingBirthdate && viewer === username) && (
                 <BioCard bio={bio} bioLoaded={bioLoaded} />
               )}
+              {badges.map((b) => (
+                <div key={b} style={{ marginBottom: 16 }}>
+                  <Badge name={b} width={36} />
+                  <span style={{ marginLeft: 8 }}>
+                    {badgeMetadata?.badges[b]}
+                  </span>
+                </div>
+              ))}
               {missingBirthdate && viewer === username && (
                 <div className="bio">
                   <Link to={"/settings/personal"}>

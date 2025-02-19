@@ -21,16 +21,16 @@ SELECT
     p.first_name,
     p.last_name,
     p.birth_date,
-    (COALESCE(b.badge_codes, '{}'::text[]))::text[] AS badge_codes
+    COALESCE(b.badge_codes, '{}'::text[]) AS badge_codes
 FROM users u
 LEFT JOIN profiles p ON u.id = p.user_id
-LEFT JOIN (
-    SELECT ub.user_id, array_agg(b.code ORDER BY b.code) AS badge_codes
+LEFT JOIN LATERAL (
+    SELECT array_agg(b.code ORDER BY b.code) AS badge_codes
     FROM user_badges ub
     JOIN badges b ON ub.badge_id = b.id
-    GROUP BY ub.user_id
-) b ON u.id = b.user_id
-WHERE u.uuid = ANY($1::string[])
+    WHERE ub.user_id = u.id
+) b ON TRUE
+WHERE u.uuid = ANY($1::text[])
 `
 
 type GetBriefProfilesRow struct {
@@ -42,7 +42,7 @@ type GetBriefProfilesRow struct {
 	FirstName   pgtype.Text
 	LastName    pgtype.Text
 	BirthDate   pgtype.Text
-	BadgeCodes  []string
+	BadgeCodes  interface{}
 }
 
 func (q *Queries) GetBriefProfiles(ctx context.Context, userUuids []string) ([]GetBriefProfilesRow, error) {

@@ -6,8 +6,8 @@ import {
   getUsersForBadge,
   unassignBadge,
 } from "../gen/api/proto/config_service/config_service-ConfigService_connectquery";
-import { Button, Form, Input, message, Select } from "antd";
-import { useQueryClient } from "@tanstack/react-query";
+import { Button, Form, Input, message, Select, Tooltip } from "antd";
+import { Badge } from "../profile/badge";
 
 const layout = {
   labelCol: {
@@ -32,13 +32,20 @@ export const UserBadges = () => {
   );
   const addBadge = useMutation(assignBadge);
   const removeBadge = useMutation(unassignBadge);
-  const queryClient = useQueryClient();
 
   return (
     <>
       <h3>Get users for a badge</h3>
-      <Form {...layout} style={{ marginBottom: 60 }}>
-        <Form.Item label="Badge Code" name="badge">
+      {badgeCode !== "" && (
+        <Tooltip title={badgeMetadata?.badges[badgeCode]} placement="top">
+          <span>
+            {/* need a wrapper span or div after tooltip or it doesn't work. antd bug */}
+            <Badge name={badgeCode} width={96} />
+          </span>
+        </Tooltip>
+      )}
+      <Form {...layout} style={{ marginBottom: 60, marginTop: 60 }}>
+        <Form.Item label="Badge" name="badge">
           <Select onChange={(e) => setBadgeCode(e)}>
             {badgeMetadata ? (
               Object.keys(badgeMetadata.badges).map((b) => (
@@ -96,7 +103,7 @@ export const UserBadges = () => {
                 await refetchUsersForBadge({ throwOnError: true });
               } catch (error) {
                 message.error({
-                  content: "Error removing role: " + String(error),
+                  content: "Error removing badge: " + String(error),
                 });
               }
             }}

@@ -12,6 +12,7 @@ import { SettingOutlined } from "@ant-design/icons";
 import { FollowerHandle, TheFollower } from "./follower";
 import { PettableContext } from "./player_avatar";
 import { HookAPI } from "antd/lib/modal/useModal";
+import { DisplayUserBadges } from "../profile/badge";
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -36,6 +37,7 @@ type UsernameWithContextProps = {
   currentEditingGames?: Array<string>;
   currentWatchedAnnoGames?: Array<string>;
   currentlyPuzzling?: boolean;
+  omitBadges?: boolean;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
@@ -251,6 +253,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           <>
             {props.fullName || props.username}
             {props.includeFlag && <DisplayUserFlag uuid={props.userID} />}
+            {!props.omitBadges && <DisplayUserBadges uuid={props.userID} />}
           </>
         )}
       </span>
