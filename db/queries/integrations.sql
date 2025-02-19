@@ -47,3 +47,10 @@ WHERE uuid = $2;
 -- name: DeleteIntegration :exec
 DELETE FROM integrations
 WHERE integrations.uuid = @integration_uuid and user_id = (SELECT id FROM users WHERE users.uuid = @user_uuid);
+
+-- name: GetPatreonIntegrations :many
+SELECT integrations.uuid as integ_uuid, integration_name, data, users.uuid as user_uuid,
+    users.username as username
+FROM integrations
+JOIN users on users.id = integrations.user_id
+WHERE integration_name = 'patreon';

@@ -176,6 +176,48 @@ func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]
 	return items, nil
 }
 
+const getPatreonIntegrations = `-- name: GetPatreonIntegrations :many
+SELECT integrations.uuid as integ_uuid, integration_name, data, users.uuid as user_uuid,
+    users.username as username
+FROM integrations
+JOIN users on users.id = integrations.user_id
+WHERE integration_name = 'patreon'
+`
+
+type GetPatreonIntegrationsRow struct {
+	IntegUuid       uuid.UUID
+	IntegrationName string
+	Data            []byte
+	UserUuid        pgtype.Text
+	Username        pgtype.Text
+}
+
+func (q *Queries) GetPatreonIntegrations(ctx context.Context) ([]GetPatreonIntegrationsRow, error) {
+	rows, err := q.db.Query(ctx, getPatreonIntegrations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPatreonIntegrationsRow
+	for rows.Next() {
+		var i GetPatreonIntegrationsRow
+		if err := rows.Scan(
+			&i.IntegUuid,
+			&i.IntegrationName,
+			&i.Data,
+			&i.UserUuid,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateIntegrationData = `-- name: UpdateIntegrationData :exec
 UPDATE integrations
 SET data = $1, last_updated = CURRENT_TIMESTAMP
