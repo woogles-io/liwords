@@ -11,6 +11,7 @@ import { AnnouncementsWidget } from "./announcements";
 import { sendAccept, sendSeek } from "./sought_game_interactions";
 import { PuzzlePreview } from "../puzzles/puzzle_preview";
 import { Card, ConfigProvider } from "antd";
+import { TournamentsPreview } from "../tournament/tournaments_preview";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -57,9 +58,7 @@ export const Lobby = (props: Props) => {
             defaultDescription="Help chat"
             DISCONNECT={props.DISCONNECT}
           />
-          <Card className="tournaments-preview" title="Tournaments">
-            <span>Tournament preview...</span>
-          </Card>
+          <TournamentsPreview />
         </div>
         <ConfigProvider
           theme={{
