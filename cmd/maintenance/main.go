@@ -14,7 +14,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/samber/lo"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -199,7 +198,7 @@ func SubBadgeUpdater() error {
 	}
 	q := models.New(dbPool)
 
-	return updateBadges(q)
+	return updateBadges(q, dbPool)
 }
 
 func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc *integrations.OAuthIntegrationService) {
@@ -278,96 +277,76 @@ func refreshPatreonToken(ctx context.Context, q *models.Queries, integration mod
 	}
 }
 
-// luckily these tier names are the same as the badge codes:
-var paidBadges = []string{
-	integrations.ChihuahuaTier,
-	integrations.DalmatianTier,
-	integrations.GoldenRetrieverTier,
+type PatreonBadge struct {
+	PatreonUserID string `json:"patreon_user_id"`
+	BadgeCode     string `json:"badge_code"`
 }
 
-func updateBadges(q *models.Queries) error {
+func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {
 	ctx := context.Background()
 
-	integs, err := q.GetPatreonIntegrations(ctx)
+	data, err := q.GetGlobalIntegrationData(ctx, integrations.PatreonIntegrationName)
 	if err != nil {
 		return err
 	}
 
-	for idx := range integs {
-		tier, err := integrations.DetermineUserTier(ctx, integs[idx].UserUuid.String, q)
-		if err != nil {
-			// Actually take away any paid badges.
-			log.Info().AnErr("err-determining-user-tier", err).Str("username", integs[idx].Username.String).Msg("look-up-patreon")
-			badges, err := q.GetBadgesForUser(ctx, integs[idx].UserUuid)
-			if err != nil {
-				return err
-			}
-			takeaway := []string{}
-			for _, badge := range badges {
-				if lo.Contains(paidBadges, badge) {
-					takeaway = append(takeaway, badge)
-				}
-			}
-			for _, badge := range takeaway {
-				log.Info().Str("badge", badge).Str("username", integs[idx].Username.String).Msg("remove-badge")
-				err = q.RemoveUserBadge(ctx, models.RemoveUserBadgeParams{
-					Username: integs[idx].Username,
-					Code:     badge,
-				})
-				if err != nil {
-					log.Err(err).Msg("error taking away badge")
-				}
-			}
-			return nil
-		}
-
-		// Otherwise, this user is on a tier.
-		tierName := integrations.TierIDToName[tier.TierID]
-		// This is the only badge they should have that is paid.
-		badges, err := q.GetBadgesForUser(ctx, integs[idx].UserUuid)
-		if err != nil {
-			return err
-		}
-		log.Info().Str("tierName", tierName).Msg("user-tier-name")
-		takeaway := []string{}
-		add := []string{tierName}
-		for _, badge := range badges {
-			if lo.Contains(paidBadges, badge) {
-				if badge != tierName {
-					takeaway = append(takeaway, badge)
-				} else {
-					// the user already has this badge, no need to add it.
-					add = []string{}
-				}
-			}
-		}
-		log.Info().Str("username", integs[idx].Username.String).
-			Interface("remove", takeaway).
-			Interface("add", add).
-			Msg("badge-assignations")
-		for _, badge := range takeaway {
-			log.Info().Str("username", integs[idx].Username.String).Msg("remove-badge")
-			err = q.RemoveUserBadge(ctx, models.RemoveUserBadgeParams{
-				Username: integs[idx].Username,
-				Code:     badge,
-			})
-			if err != nil {
-				log.Err(err).Msg("error taking away badge")
-			}
-		}
-		for _, badge := range add {
-			log.Info().Str("username", integs[idx].Username.String).Msg("add-badge")
-			err = q.AddUserBadge(ctx, models.AddUserBadgeParams{
-				Username: integs[idx].Username,
-				Code:     badge,
-			})
-			if err != nil {
-				log.Err(err).Msg("error taking away badge")
-			}
-		}
-
-		time.Sleep(5 * time.Second)
+	// Get all currently entitled users according to Patreon.
+	var integrationData integrations.PatreonTokenResponse
+	if err := json.Unmarshal(data, &integrationData); err != nil {
+		return err
 	}
 
-	return nil
+	subscribers, err := integrations.GetCampaignSubscribers(ctx, integrationData.AccessToken)
+	if err != nil {
+		return err
+	}
+
+	subsWithTier := map[string]integrations.Tier{}
+	for _, sub := range subscribers.Data {
+		if len(sub.Relationships.CurrentlyEntitledTiers.Data) > 0 {
+			tier := integrations.HighestTier(&sub)
+			if tier != integrations.TierNone && tier != integrations.TierFree {
+				subsWithTier[sub.Relationships.User.Data.ID] = tier
+			}
+		}
+	}
+
+	log.Debug().Int("num-paid-subscriptions", len(subsWithTier)).
+		Interface("subs-with-tier", subsWithTier).Msg("subscribers")
+
+	badges := make([]PatreonBadge, 0, len(subsWithTier))
+
+	for patreonUserID, tierID := range subsWithTier {
+		badgeCode := integrations.Tier(tierID).String()
+		badges = append(badges, PatreonBadge{
+			PatreonUserID: patreonUserID,
+			BadgeCode:     badgeCode,
+		})
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	badgesBts, err := json.Marshal(badges)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+	qtx := q.WithTx(tx)
+
+	err = qtx.BulkRemoveBadges(ctx, []string{"Chihuahua", "Dalmatian", "Golden Retriever"})
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := qtx.UpsertPatreonBadges(ctx, badgesBts)
+	if err != nil {
+		return err
+	}
+	log.Info().Int64("rowsAffected", rowsAffected).Msg("affected-rows")
+
+	return tx.Commit(ctx)
 }

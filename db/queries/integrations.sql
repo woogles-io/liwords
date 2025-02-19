@@ -14,7 +14,7 @@ SELECT uuid, integration_name, data FROM integrations
 WHERE user_id = (SELECT id from users where users.uuid = @user_uuid);
 
 -- name: GetIntegrationData :one
-SELECT data FROM integrations
+SELECT uuid, data FROM integrations
 WHERE user_id = (SELECT id from users where users.uuid = @user_uuid)
 AND integration_name = $1;
 
@@ -41,8 +41,8 @@ AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds
 
 -- name: UpdateIntegrationData :exec
 UPDATE integrations
-SET data = $1, last_updated = CURRENT_TIMESTAMP
-WHERE uuid = $2;
+SET data = data || @data::jsonb, last_updated = CURRENT_TIMESTAMP
+WHERE uuid = $1;
 
 -- name: DeleteIntegration :exec
 DELETE FROM integrations

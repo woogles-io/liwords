@@ -10,6 +10,9 @@ import { AuthorizationService } from "./user_service_pb";
 export const getModList = AuthorizationService.method.getModList;
 
 /**
+ * GetSubscriptionCriteria DOES have side effects because it can
+ * update the Patreon token.
+ *
  * @generated from rpc user_service.AuthorizationService.GetSubscriptionCriteria
  */
 export const getSubscriptionCriteria = AuthorizationService.method.getSubscriptionCriteria;

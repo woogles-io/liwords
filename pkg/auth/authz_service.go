@@ -67,7 +67,7 @@ func (as *AuthorizationService) GetSubscriptionCriteria(ctx context.Context, r *
 	entitled := false
 	lastChargeDate := timestamppb.New(time.Time{})
 	if tierData != nil {
-		tierName = integrations.TierIDToName[tierData.TierID]
+		tierName = tierData.Tier.String()
 		entitled, err = entitlements.EntitledToBestBot(ctx, as.q, tierData, user.ID, time.Now())
 		if err != nil {
 			return nil, err

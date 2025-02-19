@@ -41,6 +41,20 @@ func (q *Queries) AddUserBadge(ctx context.Context, arg AddUserBadgeParams) erro
 	return err
 }
 
+const bulkRemoveBadges = `-- name: BulkRemoveBadges :exec
+DELETE FROM user_badges
+WHERE badge_id IN (
+  SELECT id
+  FROM badges
+  WHERE code = ANY($1::text[])
+)
+`
+
+func (q *Queries) BulkRemoveBadges(ctx context.Context, badgeCodes []string) error {
+	_, err := q.db.Exec(ctx, bulkRemoveBadges, badgeCodes)
+	return err
+}
+
 const getBadgeDescription = `-- name: GetBadgeDescription :one
 SELECT description FROM badges
 WHERE code = $1
@@ -149,4 +163,28 @@ type RemoveUserBadgeParams struct {
 func (q *Queries) RemoveUserBadge(ctx context.Context, arg RemoveUserBadgeParams) error {
 	_, err := q.db.Exec(ctx, removeUserBadge, arg.Username, arg.Code)
 	return err
+}
+
+const upsertPatreonBadges = `-- name: UpsertPatreonBadges :execrows
+WITH patreon_map AS (
+  SELECT
+    elem->>'patreon_user_id' AS patreon_user_id,
+    elem->>'badge_code' AS badge_code
+  FROM jsonb_array_elements($1::jsonb) AS elem
+)
+INSERT INTO user_badges (user_id, badge_id)
+SELECT i.user_id, b.id  -- Fetch badge_id using badge_code
+FROM integrations i
+JOIN patreon_map m
+  ON i.data->>'patreon_user_id' = m.patreon_user_id
+JOIN badges b
+  ON b.code = m.badge_code
+`
+
+func (q *Queries) UpsertPatreonBadges(ctx context.Context, dollar_1 []byte) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertPatreonBadges, dollar_1)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

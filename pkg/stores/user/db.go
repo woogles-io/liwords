@@ -270,8 +270,8 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 
 	for pi := range profiles {
 		username := profiles[pi].Username.String
-		avatarUrl := ""
-		if profiles[pi].AvatarUrl.String == "" && profiles[pi].InternalBot.Bool {
+		avatarUrl := profiles[pi].AvatarUrl.String
+		if avatarUrl == "" && profiles[pi].InternalBot.Bool {
 			// see entity/user.go
 			log.Debug().Str("username", username).Msg("using-default-bot-avatar")
 			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"

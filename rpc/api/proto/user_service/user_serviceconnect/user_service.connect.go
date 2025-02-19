@@ -1287,6 +1287,8 @@ func (UnimplementedIntegrationServiceHandler) DeleteIntegration(context.Context,
 // AuthorizationServiceClient is a client for the user_service.AuthorizationService service.
 type AuthorizationServiceClient interface {
 	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
+	// GetSubscriptionCriteria DOES have side effects because it can
+	// update the Patreon token.
 	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
 	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
@@ -1322,7 +1324,6 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			httpClient,
 			baseURL+AuthorizationServiceGetSubscriptionCriteriaProcedure,
 			connect.WithSchema(authorizationServiceMethods.ByName("GetSubscriptionCriteria")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		addRole: connect.NewClient[user_service.AddRoleRequest, user_service.AddRoleResponse](
@@ -1472,6 +1473,8 @@ func (c *authorizationServiceClient) GetRoleMetadata(ctx context.Context, req *c
 // service.
 type AuthorizationServiceHandler interface {
 	GetModList(context.Context, *connect.Request[user_service.GetModListRequest]) (*connect.Response[user_service.GetModListResponse], error)
+	// GetSubscriptionCriteria DOES have side effects because it can
+	// update the Patreon token.
 	GetSubscriptionCriteria(context.Context, *connect.Request[user_service.GetSubscriptionCriteriaRequest]) (*connect.Response[user_service.GetSubscriptionCriteriaResponse], error)
 	AddRole(context.Context, *connect.Request[user_service.AddRoleRequest]) (*connect.Response[user_service.AddRoleResponse], error)
 	AddPermission(context.Context, *connect.Request[user_service.AddPermissionRequest]) (*connect.Response[user_service.AddPermissionResponse], error)
@@ -1503,7 +1506,6 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		AuthorizationServiceGetSubscriptionCriteriaProcedure,
 		svc.GetSubscriptionCriteria,
 		connect.WithSchema(authorizationServiceMethods.ByName("GetSubscriptionCriteria")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	authorizationServiceAddRoleHandler := connect.NewUnaryHandler(

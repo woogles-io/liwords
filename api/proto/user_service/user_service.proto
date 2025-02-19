@@ -356,10 +356,10 @@ service AuthorizationService {
   rpc GetModList(GetModListRequest) returns (GetModListResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  // GetSubscriptionCriteria DOES have side effects because it can
+  // update the Patreon token.
   rpc GetSubscriptionCriteria(GetSubscriptionCriteriaRequest)
-      returns (GetSubscriptionCriteriaResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
+      returns (GetSubscriptionCriteriaResponse);
   rpc AddRole(AddRoleRequest) returns (AddRoleResponse);
   rpc AddPermission(AddPermissionRequest) returns (AddPermissionResponse);
   rpc LinkRoleAndPermission(LinkRoleAndPermissionRequest)

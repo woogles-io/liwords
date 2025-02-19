@@ -131,7 +131,7 @@ func TestAssignRole(t *testing.T) {
 		Username: "NotAnAdmin",
 		RoleName: string(rbac.SpecialAccessPlayer),
 	}))
-	is.Equal(err.Error(), "permission_denied: user does not have the can_assign_user_roles permission")
+	is.Equal(err.Error(), "permission_denied: user does not have the can_manage_user_roles permission")
 
 	// Now try it with the admin.
 	apikey, err = dbc.us.GetAPIKey(context.Background(), "someadmin")
