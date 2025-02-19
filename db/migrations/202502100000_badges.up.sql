@@ -31,5 +31,5 @@ VALUES
     ('Most Social', 'Winner of the Most Social Dog award during the early Launch Parties'),
     ('OG Team', 'Original Woogles.io founders and team members'),
     ('Friend of Woogles', 'For those who have helped shape Woogles by contributing code, content, and more. We appreciate you! ❤️'),
-    ('Dogsh*t', 'This venerated badge, our rarest, is reserved for very special Wooglers.');
+    ('DGHIOST', 'This venerated badge, our rarest, is reserved for very special Wooglers.');
 COMMIT;
