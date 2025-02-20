@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
@@ -159,7 +160,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	var err error
 	var ttype entity.CompetitionType
 	if meta.Slug != "" {
-		ttype, err = validateTournamentMeta(meta.Type, meta.Slug)
+		ttype, err = validateTournamentTypeMatchesSlug(meta.Type, meta.Slug)
 		if err != nil {
 			return err
 		}
@@ -205,6 +206,17 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		IRLMode: ternary(merge && !meta.IrlMode && t.ExtraMeta != nil,
 			t.ExtraMeta.IRLMode, meta.IrlMode),
 	}
+
+	t.ScheduledStartTime = ternary(merge && meta.ScheduledStartTime == nil,
+		t.ScheduledStartTime, meta.ScheduledStartTime.AsTime())
+	t.ScheduledEndTime = ternary(merge && meta.ScheduledEndTime == nil,
+		t.ScheduledEndTime, meta.ScheduledEndTime.AsTime())
+
+	// TODO: Require the scheduled start time is set
+	if t.ScheduledStartTime.After(t.ScheduledEndTime) {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SCHEDULED_START_AFTER_END, t.Name)
+	}
+
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
@@ -1384,11 +1396,14 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 	}
 	// no lock needed; only gets called while already locked.
 	return &ipc.TournamentDataResponse{Id: t.UUID,
-		Name:              t.Name,
-		Description:       t.Description,
-		ExecutiveDirector: t.ExecutiveDirector,
-		Directors:         t.Directors,
-		IsStarted:         t.IsStarted}, nil
+		Name:               t.Name,
+		Description:        t.Description,
+		ExecutiveDirector:  t.ExecutiveDirector,
+		Directors:          t.Directors,
+		IsStarted:          t.IsStarted,
+		ScheduledStartTime: timestamppb.New(t.ScheduledStartTime),
+		ScheduledEndTime:   timestamppb.New(t.ScheduledEndTime),
+	}, nil
 }
 
 func PairingsToResponse(id string, division string, pairings []*ipc.Pairing, standings map[int32]*ipc.RoundStandings) *ipc.DivisionPairingsResponse {
@@ -1448,7 +1463,7 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 	return persons, nil
 }
 
-func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType, error) {
+func validateTournamentTypeMatchesSlug(ttype pb.TType, slug string) (entity.CompetitionType, error) {
 	var tt entity.CompetitionType
 	switch ttype {
 	case pb.TType_CLUB:

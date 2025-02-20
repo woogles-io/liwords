@@ -212,19 +212,21 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 	}
 
 	dbt := &tournament{
-		UUID:              t.UUID,
-		Name:              t.Name,
-		Description:       t.Description,
-		AliasOf:           t.AliasOf,
-		Directors:         directors,
-		ExecutiveDirector: t.ExecutiveDirector,
-		IsStarted:         t.IsStarted,
-		IsFinished:        t.IsFinished,
-		Divisions:         divisions,
-		ExtraMeta:         extraMeta,
-		Type:              string(t.Type),
-		Parent:            t.ParentID,
-		Slug:              t.Slug,
+		UUID:               t.UUID,
+		Name:               t.Name,
+		Description:        t.Description,
+		AliasOf:            t.AliasOf,
+		Directors:          directors,
+		ExecutiveDirector:  t.ExecutiveDirector,
+		IsStarted:          t.IsStarted,
+		IsFinished:         t.IsFinished,
+		Divisions:          divisions,
+		ExtraMeta:          extraMeta,
+		Type:               string(t.Type),
+		Parent:             t.ParentID,
+		Slug:               t.Slug,
+		ScheduledStartTime: t.ScheduledStartTime,
+		ScheduledEndTime:   t.ScheduledEndTime,
 	}
 	return dbt, nil
 }

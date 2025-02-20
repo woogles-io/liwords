@@ -502,6 +502,8 @@ export function TournamentReducer(
       const newMetadata = clone(TournamentMetadataSchema, state.metadata);
       newMetadata.name = m.name;
       newMetadata.description = m.description;
+      newMetadata.scheduledStartTime = m.scheduledStartTime;
+      newMetadata.scheduledEndTime = m.scheduledEndTime;
       return {
         ...state,
         metadata: newMetadata,

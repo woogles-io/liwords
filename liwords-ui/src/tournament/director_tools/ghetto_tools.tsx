@@ -5,6 +5,7 @@ import {
   AutoComplete,
   Button,
   Collapse,
+  DatePicker,
   Divider,
   Form,
   Input,
@@ -51,6 +52,13 @@ import { flashError, useClient } from "../../utils/hooks/connect";
 import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import { create, clone } from "@bufbuild/protobuf";
 import { getEnumValue } from "../../utils/protobuf";
+import { timeFormat } from "../../lobby/sought_games";
+import {
+  dayjsToProtobufTimestampIgnoringNanos,
+  doesCurrentUserUse24HourTime,
+  protobufTimestampToDayjsIgnoringNanos,
+} from "../../utils/datetime";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 
 type ModalProps = {
   title: string;
@@ -437,7 +445,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
       division: vals.division,
       persons: players,
     };
-    console.log(obj);
 
     try {
       await tClient.addPlayers(obj);
@@ -521,7 +528,6 @@ const RemovePlayer = (props: { tournamentID: string }) => {
         },
       ],
     };
-    console.log(obj);
     try {
       await tClient.removePlayers(obj);
       message.info({
@@ -2064,20 +2070,31 @@ const UnstartTournament = (props: { tournamentID: string }) => {
 const EditDescription = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
   const tClient = useClient(TournamentService);
-
   const [form] = Form.useForm();
 
   useEffect(() => {
     const metadata = tournamentContext.metadata;
+    const scheduledStartTime = metadata.scheduledStartTime
+      ? protobufTimestampToDayjsIgnoringNanos(metadata.scheduledStartTime)
+      : null;
+    const scheduledEndTime = metadata.scheduledEndTime
+      ? protobufTimestampToDayjsIgnoringNanos(metadata.scheduledEndTime)
+      : null;
+
     form.setFieldsValue({
       name: metadata.name,
       description: metadata.description,
       logo: metadata.logo,
       color: metadata.color,
+      scheduledTime: {
+        range: [scheduledStartTime, scheduledEndTime],
+      },
     });
   }, [form, tournamentContext.metadata]);
 
   const onSubmit = async (vals: Store) => {
+    const [scheduledStartTime, scheduledEndTime] = vals.scheduledTime
+      ?.range ?? [null, null];
     const obj = {
       metadata: {
         name: vals.name,
@@ -2085,6 +2102,13 @@ const EditDescription = (props: { tournamentID: string }) => {
         logo: vals.logo,
         color: vals.color,
         id: props.tournamentID,
+        // TODO: make this field required after one deploy
+        scheduledStartTime: scheduledStartTime
+          ? dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime)
+          : undefined,
+        scheduledEndTime: scheduledEndTime
+          ? dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime)
+          : undefined,
       },
       setOnlySpecified: true,
     };
@@ -2099,20 +2123,48 @@ const EditDescription = (props: { tournamentID: string }) => {
     }
   };
 
+  const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
+
   return (
     <>
-      <Form form={form} onFinish={onSubmit}>
+      <Form form={form} onFinish={onSubmit} layout="vertical">
         <Form.Item name="name" label="Club or tournament name">
           <Input />
         </Form.Item>
+        <Form.Item label="Tournament Start and End Times">
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            Use your local time zone. Times are used for tournament listing. The
+            tournament will still only start/end when the director does so
+            manually.
+          </div>
+          <Form.Item name={["scheduledTime", "range"]} noStyle>
+            <DatePicker.RangePicker
+              style={{ width: "100%" }}
+              showTime={{ format: timeFormat }}
+              format={`YYYY-MM-DD ${timeFormat}`}
+              showNow={false}
+            />
+          </Form.Item>
+        </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea rows={20} />
+          <Input.TextArea rows={12} />
         </Form.Item>
-        <Form.Item name="logo" label="Logo URL (optional, requires refresh)">
-          <Input />
+        <Form.Item label="Logo URL">
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            Optional, requires refresh
+          </div>
+          <Form.Item name="logo" noStyle>
+            <Input />
+          </Form.Item>
         </Form.Item>
-        <Form.Item name="color" label="Hex Color (optional, requires refresh)">
-          <Input placeholder="#00bdff" />
+        <Form.Item label="Hex Color">
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            Optional, requires refresh
+          </div>
+
+          <Form.Item name="color" noStyle>
+            <Input placeholder="#00bdff" />
+          </Form.Item>
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit">

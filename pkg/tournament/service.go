@@ -190,7 +190,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 
 	log.Debug().Interface("directors", directors).Msg("directors")
 
-	tt, err := validateTournamentMeta(req.Msg.Type, req.Msg.Slug)
+	tt, err := validateTournamentTypeMatchesSlug(req.Msg.Type, req.Msg.Slug)
 	if err != nil {
 		return nil, err
 	}
