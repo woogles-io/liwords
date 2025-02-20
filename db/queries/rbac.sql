@@ -64,3 +64,13 @@ WHERE
     role_id = (SELECT id FROM roles WHERE name = @role_name)
 AND
     permission_id = (SELECT id FROM permissions WHERE code = @permission_code);
+
+-- name: GetRolesWithPermissions :many
+SELECT
+    r.name,
+    COALESCE(array_agg(p.code) FILTER (WHERE p.code IS NOT NULL), '{}')::text[] AS permissions
+FROM roles r
+LEFT JOIN role_permissions rp ON r.id = rp.role_id
+LEFT JOIN permissions p ON p.id = rp.permission_id
+GROUP BY r.name
+ORDER BY r.name;

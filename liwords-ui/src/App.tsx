@@ -65,6 +65,7 @@ import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/cal
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
 import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { getBadgesMetadata } from "./gen/api/proto/user_service/user_service-ProfileService_connectquery";
 
 // const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 // document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -166,6 +167,9 @@ const App = React.memo(() => {
     {},
     { enabled: !isEmbeddedPath },
   );
+  // get badge metadata into internal cache.
+  useQuery(getBadgesMetadata, {}, { enabled: !isEmbeddedPath });
+
   const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
   useEffect(() => {
     console.log("Detected useDarkMode = ", useDarkMode);

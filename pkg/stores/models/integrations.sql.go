@@ -128,7 +128,7 @@ func (q *Queries) GetGlobalIntegrationData(ctx context.Context, integrationName 
 }
 
 const getIntegrationData = `-- name: GetIntegrationData :one
-SELECT data FROM integrations
+SELECT uuid, data FROM integrations
 WHERE user_id = (SELECT id from users where users.uuid = $2)
 AND integration_name = $1
 `
@@ -138,11 +138,16 @@ type GetIntegrationDataParams struct {
 	UserUuid        pgtype.Text
 }
 
-func (q *Queries) GetIntegrationData(ctx context.Context, arg GetIntegrationDataParams) ([]byte, error) {
+type GetIntegrationDataRow struct {
+	Uuid uuid.UUID
+	Data []byte
+}
+
+func (q *Queries) GetIntegrationData(ctx context.Context, arg GetIntegrationDataParams) (GetIntegrationDataRow, error) {
 	row := q.db.QueryRow(ctx, getIntegrationData, arg.IntegrationName, arg.UserUuid)
-	var data []byte
-	err := row.Scan(&data)
-	return data, err
+	var i GetIntegrationDataRow
+	err := row.Scan(&i.Uuid, &i.Data)
+	return i, err
 }
 
 const getIntegrations = `-- name: GetIntegrations :many
@@ -176,18 +181,60 @@ func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]
 	return items, nil
 }
 
+const getPatreonIntegrations = `-- name: GetPatreonIntegrations :many
+SELECT integrations.uuid as integ_uuid, integration_name, data, users.uuid as user_uuid,
+    users.username as username
+FROM integrations
+JOIN users on users.id = integrations.user_id
+WHERE integration_name = 'patreon'
+`
+
+type GetPatreonIntegrationsRow struct {
+	IntegUuid       uuid.UUID
+	IntegrationName string
+	Data            []byte
+	UserUuid        pgtype.Text
+	Username        pgtype.Text
+}
+
+func (q *Queries) GetPatreonIntegrations(ctx context.Context) ([]GetPatreonIntegrationsRow, error) {
+	rows, err := q.db.Query(ctx, getPatreonIntegrations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPatreonIntegrationsRow
+	for rows.Next() {
+		var i GetPatreonIntegrationsRow
+		if err := rows.Scan(
+			&i.IntegUuid,
+			&i.IntegrationName,
+			&i.Data,
+			&i.UserUuid,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateIntegrationData = `-- name: UpdateIntegrationData :exec
 UPDATE integrations
-SET data = $1, last_updated = CURRENT_TIMESTAMP
-WHERE uuid = $2
+SET data = data || $2::jsonb, last_updated = CURRENT_TIMESTAMP
+WHERE uuid = $1
 `
 
 type UpdateIntegrationDataParams struct {
-	Data []byte
 	Uuid uuid.UUID
+	Data []byte
 }
 
 func (q *Queries) UpdateIntegrationData(ctx context.Context, arg UpdateIntegrationDataParams) error {
-	_, err := q.db.Exec(ctx, updateIntegrationData, arg.Data, arg.Uuid)
+	_, err := q.db.Exec(ctx, updateIntegrationData, arg.Uuid, arg.Data)
 	return err
 }

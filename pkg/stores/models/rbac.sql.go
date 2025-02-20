@@ -57,6 +57,42 @@ func (q *Queries) AssignRole(ctx context.Context, arg AssignRoleParams) error {
 	return err
 }
 
+const getRolesWithPermissions = `-- name: GetRolesWithPermissions :many
+SELECT
+    r.name,
+    COALESCE(array_agg(p.code) FILTER (WHERE p.code IS NOT NULL), '{}')::text[] AS permissions
+FROM roles r
+LEFT JOIN role_permissions rp ON r.id = rp.role_id
+LEFT JOIN permissions p ON p.id = rp.permission_id
+GROUP BY r.name
+ORDER BY r.name
+`
+
+type GetRolesWithPermissionsRow struct {
+	Name        string
+	Permissions []string
+}
+
+func (q *Queries) GetRolesWithPermissions(ctx context.Context) ([]GetRolesWithPermissionsRow, error) {
+	rows, err := q.db.Query(ctx, getRolesWithPermissions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRolesWithPermissionsRow
+	for rows.Next() {
+		var i GetRolesWithPermissionsRow
+		if err := rows.Scan(&i.Name, &i.Permissions); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserRoles = `-- name: GetUserRoles :many
 SELECT r.id, r.name, r.description
 FROM roles r

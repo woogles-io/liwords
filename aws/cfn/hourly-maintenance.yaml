@@ -24,7 +24,7 @@ Resources:
                         "name": "maintenance",
                         "command": [
                             "/opt/maintenance",
-                            "blogrss-updater"
+                            "blogrss-updater,sub-badge-updater"
                         ]
                     }
                 ]

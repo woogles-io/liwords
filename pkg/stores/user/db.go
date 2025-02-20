@@ -17,6 +17,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -55,11 +56,13 @@ type DBUniqueValues struct {
 
 // DBStore is a postgres-backed store for users.
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	q := models.New(p)
+	return &DBStore{dbPool: p, queries: q}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -256,77 +259,46 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
 	ctx, span := tracer.Start(ctx, "backing.GetBriefProfiles")
 	defer span.End()
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+
+	profiles, err := s.queries.GetBriefProfiles(ctx, uuids)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-	span.AddEvent("got-tx-conn")
-
-	query := fmt.Sprintf(`SELECT uuid, username, internal_bot, country_code, avatar_url, first_name, last_name, birth_date
-		FROM users LEFT JOIN profiles ON users.id = profiles.user_id
-		WHERE uuid IN (%s)`, common.BuildIn(len(uuids), 1))
-
-	args := make([]interface{}, len(uuids))
-	for i := range uuids {
-		args[i] = uuids[i]
-	}
-
-	rows, err := tx.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 
 	response := make(map[string]*pb.BriefProfile)
 	now := time.Now()
 
-	for rows.Next() {
-		var UUID string
-		var username string
-		var internalBotOption pgtype.Bool
-		var countryCodeOption pgtype.Text
-		var avatarUrlOption pgtype.Text
-		var firstNameOption pgtype.Text
-		var lastNameOption pgtype.Text
-		var birthDateOption pgtype.Text
-		if err := rows.Scan(&UUID, &username, &internalBotOption, &countryCodeOption, &avatarUrlOption, &firstNameOption, &lastNameOption, &birthDateOption); err != nil {
-			return nil, err
-		}
-
-		avatarUrl := avatarUrlOption.String
-		if avatarUrl == "" && internalBotOption.Bool {
+	for pi := range profiles {
+		username := profiles[pi].Username.String
+		avatarUrl := profiles[pi].AvatarUrl.String
+		if avatarUrl == "" && profiles[pi].InternalBot.Bool {
 			// see entity/user.go
 			log.Debug().Str("username", username).Msg("using-default-bot-avatar")
 			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
-		subjectIsAdult := entity.IsAdult(birthDateOption.String, now)
-		log.Debug().Str("birthdate", birthDateOption.String).Bool("adult", subjectIsAdult).Msg("is-adult?")
+		subjectIsAdult := entity.IsAdult(profiles[pi].BirthDate.String, now)
 		censoredAvatarUrl := ""
 		censoredFullName := ""
 		if subjectIsAdult {
 			censoredAvatarUrl = avatarUrl
 			// see entity/user.go RealName()
-			if firstNameOption.String != "" {
-				if lastNameOption.String != "" {
-					censoredFullName = firstNameOption.String + " " + lastNameOption.String
+			if profiles[pi].FirstName.String != "" {
+				if profiles[pi].LastName.String != "" {
+					censoredFullName = profiles[pi].FirstName.String + " " + profiles[pi].LastName.String
 				} else {
-					censoredFullName = firstNameOption.String
+					censoredFullName = profiles[pi].FirstName.String
 				}
 			} else {
-				censoredFullName = lastNameOption.String
+				censoredFullName = profiles[pi].LastName.String
 			}
 		}
-		response[UUID] = &pb.BriefProfile{
+		response[profiles[pi].Uuid.String] = &pb.BriefProfile{
 			Username:    username,
-			CountryCode: countryCodeOption.String,
+			CountryCode: profiles[pi].CountryCode.String,
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
+			BadgeCodes:  profiles[pi].BadgeCodes,
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
 	}
 
 	return response, nil

@@ -42,22 +42,6 @@ message CountryFlag {
   string name = 2;
 }
 
-message KickstarterBadge {
-  string url = 1;
-  string title = 2;
-}
-
-// Information require to display a user in a game.
-message UserGameInfo {
-  string uuid = 1;
-  string avatar_url = 2;
-  string title = 3;
-  string full_name = 4;
-  // CountryFlag appears to be obsolete; we fetch these using BriefProfiles
-  CountryFlag flag = 5 [ deprecated = true ];
-  repeated KickstarterBadge kickstarter_badges = 6;
-}
-
 // SocketTokenRequest requests a token in order to authenticate with the
 // socket server
 message SocketTokenRequest {}
@@ -141,6 +125,7 @@ message ProfileResponse {
   string full_name = 10;
   bool avatars_editable = 11;
   string birth_date = 12;
+  repeated string badge_codes = 13;
 }
 
 message PersonalInfoRequest {}
@@ -185,9 +170,13 @@ message BriefProfile {
   string full_name = 2; // omitted for non-adults
   string country_code = 3;
   string avatar_url = 9;
+  repeated string badge_codes = 13;
 }
 
 message BriefProfilesResponse { map<string, BriefProfile> response = 1; }
+
+message BadgeMetadataRequest {}
+message BadgeMetadataResponse { map<string, string> badges = 1; }
 
 service ProfileService {
   rpc GetRatings(RatingsRequest) returns (RatingsResponse);
@@ -199,6 +188,7 @@ service ProfileService {
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
   rpc RemoveAvatar(RemoveAvatarRequest) returns (RemoveAvatarResponse);
   rpc GetBriefProfiles(BriefProfilesRequest) returns (BriefProfilesResponse);
+  rpc GetBadgesMetadata(BadgeMetadataRequest) returns (BadgeMetadataResponse);
 }
 
 // Autocomplete
@@ -334,14 +324,9 @@ message LinkRoleAndPermissionRequest {
 
 message LinkRoleAndPermissionResponse {}
 
-message AssignRoleRequest {
-  string username = 1;
-  string role_name = 2;
-}
-
 message AssignRoleResponse {}
 
-message UnassignRoleRequest {
+message UserAndRole {
   string username = 1;
   string role_name = 2;
 }
@@ -353,26 +338,47 @@ message UserRolesResponse { repeated string roles = 1; }
 
 message GetSelfRolesRequest {}
 
+message GetUsersWithRolesRequest { repeated string roles = 1; }
+message GetUsersWithRolesResponse {
+  repeated UserAndRole user_and_role_objs = 1;
+}
+
+message GetRoleMetadataRequest {}
+message RoleWithPermissions {
+  string role_name = 1;
+  repeated string permissions = 2;
+}
+message RoleMetadataResponse {
+  repeated RoleWithPermissions roles_with_permissions = 1;
+}
+
 service AuthorizationService {
   rpc GetModList(GetModListRequest) returns (GetModListResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  // GetSubscriptionCriteria DOES have side effects because it can
+  // update the Patreon token.
   rpc GetSubscriptionCriteria(GetSubscriptionCriteriaRequest)
-      returns (GetSubscriptionCriteriaResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
+      returns (GetSubscriptionCriteriaResponse);
   rpc AddRole(AddRoleRequest) returns (AddRoleResponse);
   rpc AddPermission(AddPermissionRequest) returns (AddPermissionResponse);
   rpc LinkRoleAndPermission(LinkRoleAndPermissionRequest)
       returns (LinkRoleAndPermissionResponse);
   rpc UnlinkRoleAndPermission(LinkRoleAndPermissionRequest)
       returns (LinkRoleAndPermissionResponse);
-  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
-  rpc UnassignRole(UnassignRoleRequest) returns (UnassignRoleResponse);
+  rpc AssignRole(UserAndRole) returns (AssignRoleResponse);
+  rpc UnassignRole(UserAndRole) returns (UnassignRoleResponse);
   rpc GetUserRoles(GetUserRolesRequest) returns (UserRolesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
   rpc GetSelfRoles(GetSelfRolesRequest) returns (UserRolesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  rpc GetUsersWithRoles(GetUsersWithRolesRequest)
+      returns (GetUsersWithRolesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetRoleMetadata(GetRoleMetadataRequest) returns (RoleMetadataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }

@@ -16,6 +16,12 @@ type AnnotatedGameMetadatum struct {
 	Done             bool
 }
 
+type Badge struct {
+	ID          int16
+	Code        string
+	Description string
+}
+
 type Blocking struct {
 	UserID    pgtype.Int4
 	BlockerID pgtype.Int4
@@ -264,6 +270,11 @@ type UserAction struct {
 	Note        pgtype.Text
 	RemovalNote pgtype.Text
 	EmailType   int32
+}
+
+type UserBadge struct {
+	UserID  int32
+	BadgeID int32
 }
 
 type UserRole struct {

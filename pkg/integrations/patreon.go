@@ -20,20 +20,32 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
+//go:generate stringer -type=Tier -linecomment
+type Tier int
+
+// Comments below are the user-readable names of these tiers. See
+// -linecomment flag above.
 const (
-	ChihuahuaTier       string = "Chihuahua"
-	DalmatianTier              = "Dalmatian"
-	GoldenRetrieverTier        = "Golden Retriever"
+	TierNone            Tier = iota
+	TierFree                 // Free
+	TierChihuahua            // Chihuahua
+	TierDalmatian            // Dalmatian
+	TierGoldenRetriever      // Golden Retriever
 )
 
-// TierIDToName is a hard-coded map specific to Woogles.io Patreon tier data.
-var TierIDToName = map[string]string{
-	"22998862": ChihuahuaTier,
-	"24128312": DalmatianTier,
-	"24128408": GoldenRetrieverTier,
+// This is specific to Woogles.io Patreon tier data.
+var PatreonTierIDs = map[string]Tier{
+	"10805942": TierFree,
+	"22998862": TierChihuahua,
+	"24128312": TierDalmatian,
+	"24128408": TierGoldenRetriever,
 }
 
+// CampaignID is a hard-coded id for our specific Woogles.io Patreon campaign.
+var CampaignID = 6109248
+
 var ErrNotSubscribed = errors.New("user not subscribed")
+var ErrNotPaidTier = errors.New("user not subscribed on paid tier")
 
 const (
 	ChargeStatusPaid = "Paid"
@@ -67,26 +79,41 @@ type PatreonUserData struct {
 	} `json:"data"`
 }
 
+type PatreonMemberAttributes struct {
+	Email            string `json:"email"`
+	FullName         string `json:"full_name"`
+	IsFollower       bool   `json:"is_follower"`
+	LastChargeDate   string `json:"last_charge_date"`
+	LastChargeStatus string `json:"last_charge_status"`
+}
+
+type PatreonRelationship struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+}
+
+type EntitledTiersRelationship struct {
+	Data []PatreonRelationship `json:"data"`
+}
+
+type UserRelationship struct {
+	Data PatreonRelationship `json:"data"`
+}
+
+type PatreonRelationships struct {
+	CurrentlyEntitledTiers EntitledTiersRelationship `json:"currently_entitled_tiers"`
+	User                   UserRelationship          `json:"user"`
+}
+
+type PatreonMemberDatum struct {
+	Attributes    PatreonMemberAttributes `json:"attributes"`
+	ID            string                  `json:"id"`
+	Relationships PatreonRelationships    `json:"relationships"`
+	Type          string                  `json:"type"`
+}
+
 type PatreonMemberData struct {
-	Data struct {
-		Attributes struct {
-			Email            string `json:"email"`
-			FullName         string `json:"full_name"`
-			IsFollower       bool   `json:"is_follower"`
-			LastChargeDate   string `json:"last_charge_date"`
-			LastChargeStatus string `json:"last_charge_status"`
-		} `json:"attributes"`
-		ID            string `json:"id"`
-		Relationships struct {
-			CurrentlyEntitledTiers struct {
-				Data []struct {
-					ID   string `json:"id"`
-					Type string `json:"type"`
-				} `json:"data"`
-			} `json:"currently_entitled_tiers"`
-		} `json:"relationships"`
-		Type string `json:"type"`
-	} `json:"data"`
+	Data     PatreonMemberDatum `json:"data"`
 	Included []struct {
 		Attributes struct {
 			Description string `json:"description"`
@@ -97,17 +124,25 @@ type PatreonMemberData struct {
 	} `json:"included"`
 }
 
+type MultiplePatreonMemberData struct {
+	Data  []PatreonMemberDatum `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+	} `json:"links"`
+}
+
 type PaidTierData struct {
 	LastChargeDate   time.Time
 	LastChargeStatus string
-	TierID           string
+	Tier             Tier
 }
 
 type PatreonTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	Scope        string `json:"scope"`
+	AccessToken   string `json:"access_token"`
+	RefreshToken  string `json:"refresh_token"`
+	ExpiresIn     int    `json:"expires_in"`
+	Scope         string `json:"scope"`
+	PatreonUserID string `json:"patreon_user_id"`
 }
 
 type PatreonError struct {
@@ -175,7 +210,7 @@ func (s *OAuthIntegrationService) patreonCallback(w http.ResponseWriter, r *http
 	}
 
 	log.Info().Interface("ud", userData).Msg("userData")
-
+	token.PatreonUserID = userData.Data.ID
 	// re-dump token data for saving into table
 	td, err := json.Marshal(token)
 	if err != nil {
@@ -327,6 +362,66 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 
 }
 
+func GetCampaignSubscribers(ctx context.Context, globalToken string) (*MultiplePatreonMemberData, error) {
+	apiURL := fmt.Sprintf(
+		"https://www.patreon.com/api/oauth2/v2/campaigns/%d/members", CampaignID)
+
+	paginating := true
+
+	members := &MultiplePatreonMemberData{}
+	page1 := true
+	for paginating {
+
+		req, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		// Set the Authorization header
+		req.Header.Set("Authorization", "Bearer "+globalToken)
+		if page1 {
+			query := req.URL.Query() // Get a copy of the query parameters
+			query.Set("include", "currently_entitled_tiers,user")
+			req.URL.RawQuery = query.Encode()
+		}
+		page1 = false
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+
+		bts, err := io.ReadAll(resp.Body)
+		if err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, &PatreonError{resp.StatusCode, string(bts)}
+		}
+		thispage := &MultiplePatreonMemberData{}
+		err = json.Unmarshal(bts, thispage)
+		if err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		members.Data = append(members.Data, thispage.Data...)
+		if thispage.Links.Next != "" {
+			apiURL = thispage.Links.Next
+			log.Info().Str("nextURL", apiURL).Msg("paginating...")
+			time.Sleep(2 * time.Second)
+		} else {
+			paginating = false
+			log.Info().Msg("pagination ending")
+		}
+		resp.Body.Close()
+	}
+	return members, nil
+}
+
 // DetermineUserTier determines what tier the user is in.
 func DetermineUserTier(ctx context.Context, userID string, queries *models.Queries) (*PaidTierData, error) {
 	// This function uses the cache.
@@ -336,7 +431,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		return res, nil
 	}
 
-	bts, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
+	row, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
 		IntegrationName: PatreonIntegrationName,
 		UserUuid:        pgtype.Text{String: userID, Valid: true},
 	})
@@ -350,7 +445,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		return nil, err
 	}
 	ptoken := PatreonTokenResponse{}
-	err = json.Unmarshal(bts, &ptoken)
+	err = json.Unmarshal(row.Data, &ptoken)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal data into token: %w", err)
 	}
@@ -358,6 +453,19 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch user data: %w", err)
 	}
+	// Update integration rows that had no patreon_user_id
+	// XXX: For now. Remove when all Patreon rows have a patreon_user_id
+	if ptoken.PatreonUserID == "" {
+		tokenUpdate := []byte(fmt.Sprintf(`{"patreon_user_id": "%s"}`, userData.Data.ID))
+		err = queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+			Uuid: row.Uuid,
+			Data: tokenUpdate,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to update user data: %w", err)
+		}
+	}
+
 	memberships := userData.Data.Relationships.Memberships.Data
 	if len(memberships) == 0 {
 		// Not subscribed.
@@ -373,7 +481,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		}
 	}
 	// Now look up the ID in the members endpoint, using the global/creator token.
-	bts, err = queries.GetGlobalIntegrationData(ctx, PatreonIntegrationName)
+	bts, err := queries.GetGlobalIntegrationData(ctx, PatreonIntegrationName)
 	if err != nil {
 		return nil, err
 	}
@@ -389,24 +497,39 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		return nil, errors.New("missing-member-data")
 	}
 
-	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(memberData.Data.Relationships.CurrentlyEntitledTiers.Data) == 0 {
 		log.Info().Str("userID", userID).Msg("no-currently-entitled-tiers")
 		PatreonAPICache.Add(userID, nil)
 		return nil, ErrNotSubscribed
 	}
-	tierID := memberData.Data.Relationships.CurrentlyEntitledTiers.Data[0].ID
+	tier := HighestTier(&memberData.Data)
+	if tier == TierFree {
+		log.Info().Str("userID", userID).Msg("on-free-tier")
+		PatreonAPICache.Add(userID, nil)
+		return nil, ErrNotPaidTier
+	}
+	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
+	if err != nil {
+		return nil, err
+	}
 
 	tierData := &PaidTierData{
-		TierID:           tierID,
+		Tier:             tier,
 		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
 		LastChargeDate:   lastChargeDate,
 	}
 	evicted := PatreonAPICache.Add(userID, tierData)
 	log.Debug().Bool("evicted", evicted).Str("userID", userID).Msg("added-to-cache")
 	return tierData, nil
+}
+
+func HighestTier(pm *PatreonMemberDatum) Tier {
+	highestTier := TierNone
+	for _, t := range pm.Relationships.CurrentlyEntitledTiers.Data {
+		tn := PatreonTierIDs[t.ID]
+		if tn > highestTier {
+			highestTier = tn
+		}
+	}
+	return highestTier
 }
