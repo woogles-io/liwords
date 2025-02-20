@@ -214,8 +214,6 @@ func TestGetNullValues(t *testing.T) {
 	is.Equal(profiles[cesarByUsername.UUID].CountryCode, "")
 	is.Equal(profiles[cesarByUsername.UUID].AvatarUrl, "")
 
-	err = common.UpdateWithPool(ctx, pool, []string{"is_mod", "is_admin"}, []interface{}{nil, true}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
-	is.NoErr(err)
 	// GetModList
 	// modList, err := ustore.GetModList(ctx)
 	// is.NoErr(err)
@@ -698,7 +696,7 @@ func setNullValues(ctx context.Context, pool *pgxpool.Pool, uuid string) {
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx, `UPDATE users SET password = NULL, internal_bot = NULL, is_admin = NULL, api_key = NULL, is_director = NULL, is_mod = NULL, actions = NULL, notoriety = NULL WHERE uuid = $1`, uuid)
+	_, err = tx.Exec(ctx, `UPDATE users SET password = NULL, internal_bot = NULL, api_key = NULL, actions = NULL, notoriety = NULL WHERE uuid = $1`, uuid)
 	if err != nil {
 		panic(err)
 	}
