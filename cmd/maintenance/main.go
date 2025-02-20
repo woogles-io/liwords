@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -52,6 +53,9 @@ func main() {
 		case "integrations-refresher":
 			err := IntegrationsRefresher()
 			log.Err(err).Msg("ran integrationsRefresher")
+		case "sub-badge-updater":
+			err := SubBadgeUpdater()
+			log.Err(err).Msg("ran subBadgeUpdater")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -168,6 +172,35 @@ func IntegrationsRefresher() error {
 	return nil
 }
 
+func SubBadgeUpdater() error {
+	log.Info().Msg("before load")
+	cfg := &config.Config{}
+	log.Info().Msg("after cfg")
+	cfg.Load(os.Args[1:])
+	log.Info().Msg("after load")
+	log.Info().Interface("config", cfg).Msg("started")
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	log.Debug().Msg("debug log is on")
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		panic(err)
+	}
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		panic(err)
+	}
+	q := models.New(dbPool)
+
+	return updateBadges(q, dbPool)
+}
+
 func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc *integrations.OAuthIntegrationService) {
 	expiringIntegrations, err := q.GetExpiringPatreonIntegrations(ctx)
 	if err != nil {
@@ -175,6 +208,7 @@ func refreshPatreonIntegrationTokens(ctx context.Context, q *models.Queries, svc
 	}
 	for _, integration := range expiringIntegrations {
 		refreshPatreonToken(ctx, q, integration, svc)
+		time.Sleep(2 * time.Second)
 	}
 	bts, err := q.GetExpiringGlobalPatreonIntegration(ctx)
 	if err != nil {
@@ -241,4 +275,78 @@ func refreshPatreonToken(ctx context.Context, q *models.Queries, integration mod
 	} else {
 		log.Info().Str("integration-uuid", integration.Uuid.String()).Msg("refreshed and saved token")
 	}
+}
+
+type PatreonBadge struct {
+	PatreonUserID string `json:"patreon_user_id"`
+	BadgeCode     string `json:"badge_code"`
+}
+
+func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {
+	ctx := context.Background()
+
+	data, err := q.GetGlobalIntegrationData(ctx, integrations.PatreonIntegrationName)
+	if err != nil {
+		return err
+	}
+
+	// Get all currently entitled users according to Patreon.
+	var integrationData integrations.PatreonTokenResponse
+	if err := json.Unmarshal(data, &integrationData); err != nil {
+		return err
+	}
+
+	subscribers, err := integrations.GetCampaignSubscribers(ctx, integrationData.AccessToken)
+	if err != nil {
+		return err
+	}
+
+	subsWithTier := map[string]integrations.Tier{}
+	for _, sub := range subscribers.Data {
+		if len(sub.Relationships.CurrentlyEntitledTiers.Data) > 0 {
+			tier := integrations.HighestTier(&sub)
+			if tier != integrations.TierNone && tier != integrations.TierFree {
+				subsWithTier[sub.Relationships.User.Data.ID] = tier
+			}
+		}
+	}
+
+	log.Debug().Int("num-paid-subscriptions", len(subsWithTier)).
+		Interface("subs-with-tier", subsWithTier).Msg("subscribers")
+
+	badges := make([]PatreonBadge, 0, len(subsWithTier))
+
+	for patreonUserID, tierID := range subsWithTier {
+		badgeCode := integrations.Tier(tierID).String()
+		badges = append(badges, PatreonBadge{
+			PatreonUserID: patreonUserID,
+			BadgeCode:     badgeCode,
+		})
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	badgesBts, err := json.Marshal(badges)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+	qtx := q.WithTx(tx)
+
+	err = qtx.BulkRemoveBadges(ctx, []string{"Chihuahua", "Dalmatian", "Golden Retriever"})
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := qtx.UpsertPatreonBadges(ctx, badgesBts)
+	if err != nil {
+		return err
+	}
+	log.Info().Int64("rowsAffected", rowsAffected).Msg("affected-rows")
+
+	return tx.Commit(ctx)
 }

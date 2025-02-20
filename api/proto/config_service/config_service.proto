@@ -1,7 +1,6 @@
 syntax = "proto3";
 package config_service;
-
-import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
 
 message EnableGamesRequest { bool enabled = 1; }
 
@@ -31,15 +30,53 @@ message SetGlobalIntegrationRequest {
   string json_data = 2;
 }
 
+message AddBadgeRequest {
+  string code = 1;
+  string description = 2;
+}
+
+message AssignBadgeRequest {
+  string username = 1;
+  string code = 2;
+}
+
+message GetUsersForBadgeRequest { string code = 1; }
+
+message GetUserDetailsRequest { string username = 1; }
+message UserDetailsResponse {
+  string uuid = 1;
+  string email = 2;
+  google.protobuf.Timestamp created = 3;
+  string birth_date = 4;
+  string username = 5;
+}
+message SearchEmailRequest { string partial_email = 1; }
+message SearchEmailResponse { repeated UserDetailsResponse users = 1; }
+message Usernames { repeated string usernames = 1; }
 // ConfigService requires admin authentication, except for the GetAnnouncements
 // endpoint.
 service ConfigService {
   rpc SetGamesEnabled(EnableGamesRequest) returns (ConfigResponse);
   rpc SetFEHash(SetFEHashRequest) returns (ConfigResponse);
   rpc SetAnnouncements(SetAnnouncementsRequest) returns (ConfigResponse);
-  rpc GetAnnouncements(GetAnnouncementsRequest) returns (AnnouncementsResponse);
+  rpc GetAnnouncements(GetAnnouncementsRequest)
+      returns (AnnouncementsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SetSingleAnnouncement(SetSingleAnnouncementRequest)
       returns (ConfigResponse);
   rpc SetGlobalIntegration(SetGlobalIntegrationRequest)
       returns (ConfigResponse);
+  rpc AddBadge(AddBadgeRequest) returns (ConfigResponse);
+  rpc AssignBadge(AssignBadgeRequest) returns (ConfigResponse);
+  rpc UnassignBadge(AssignBadgeRequest) returns (ConfigResponse);
+  rpc GetUsersForBadge(GetUsersForBadgeRequest) returns (Usernames) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetUserDetails(GetUserDetailsRequest) returns (UserDetailsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SearchEmail(SearchEmailRequest) returns (SearchEmailResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }

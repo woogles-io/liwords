@@ -43,3 +43,8 @@ export const removeAvatar = ProfileService.method.removeAvatar;
  * @generated from rpc user_service.ProfileService.GetBriefProfiles
  */
 export const getBriefProfiles = ProfileService.method.getBriefProfiles;
+
+/**
+ * @generated from rpc user_service.ProfileService.GetBadgesMetadata
+ */
+export const getBadgesMetadata = ProfileService.method.getBadgesMetadata;

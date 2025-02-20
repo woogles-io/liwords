@@ -25,6 +25,7 @@ import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
+import { DisplayUserBadges } from "../profile/badge";
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -68,6 +69,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
       />
       <span className="player-name">{props.username}</span>
       <DisplayUserFlag uuid={props.userID} />
+      <DisplayUserBadges uuid={props.userID} />
     </div>
   );
 };

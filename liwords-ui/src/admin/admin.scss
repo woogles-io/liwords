@@ -4,7 +4,12 @@
   h3 {
     font-family: "Mulish", sans-serif;
     font-size: 15px;
-    font-width: bold;
     margin: 96px 24px 18px;
   }
+}
+
+.ant-layout {
+    @include colorModed() {
+        background-color: m($background);
+      }
 }

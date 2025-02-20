@@ -11,6 +11,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
@@ -143,6 +144,11 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.
 	}
 	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
 
+	badges, err := ps.queries.GetBadgesForUser(ctx, common.ToPGTypeText(user.UUID))
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
 	return connect.NewResponse(&pb.ProfileResponse{
 		FirstName:       childProof(user.Profile.FirstName),
 		LastName:        childProof(user.Profile.LastName),
@@ -156,6 +162,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.
 		UserId:          user.UUID,
 		AvatarUrl:       childProof(user.AvatarUrl()),
 		AvatarsEditable: ps.avatarService != nil,
+		BadgeCodes:      badges,
 	}), nil
 }
 
@@ -327,4 +334,21 @@ func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Reque
 	// span.AddEvent("got-profiles")
 
 	return connect.NewResponse(&pb.BriefProfilesResponse{Response: response}), nil
+}
+
+func (ps *ProfileService) GetBadgesMetadata(ctx context.Context, r *connect.Request[pb.BadgeMetadataRequest],
+) (*connect.Response[pb.BadgeMetadataResponse], error) {
+
+	allbadges, err := ps.queries.GetBadgesMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pbbadges := map[string]string{}
+	for i := range allbadges {
+		pbbadges[allbadges[i].Code] = allbadges[i].Description
+	}
+
+	return connect.NewResponse(&pb.BadgeMetadataResponse{
+		Badges: pbbadges,
+	}), nil
 }

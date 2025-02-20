@@ -5,15 +5,15 @@ meta {
 }
 
 get {
-  url: https://www.patreon.com/api/oauth2/v2/identity?fields[user]=email,first_name,last_name&include=memberships
+  url: https://www.patreon.com/api/oauth2/v2/identity?include=memberships&fields[campaign]=summary,is_monthly
   body: none
   auth: inherit
 }
 
 params:query {
-  fields[user]: email,first_name,last_name
   include: memberships
-  ~fields[campaign]: summary,is_monthly
+  fields[campaign]: summary,is_monthly
+  ~fields[user]: email,first_name,last_name
   ~fields[member]: full_name,is_follower,last_charge_date,last_charge_status,lifetime_support_cents,currently_entitled_amount_cents,patron_status,next_charge_date,will_pay_amount_cents
   ~fields[tier]: amount_cents,created_at,description,discord_role_ids,edited_at,patron_count,published,published_at,requires_shipping,title,url
 }

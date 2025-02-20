@@ -16,7 +16,7 @@ select count(id) from games where
 (
     (player0_id = $1 and player1_id = $2) or
     (player1_id = $1 and player0_id = $2)
-) and created_at > $3
+) and created_at >= $3
 and game_end_reason not in (5, 7)
 `
 

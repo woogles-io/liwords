@@ -61,13 +61,13 @@ func (as *AuthorizationService) GetSubscriptionCriteria(ctx context.Context, r *
 	}
 	tierData, err := integrations.DetermineUserTier(ctx, user.UUID, as.q)
 	if err != nil {
-		return nil, err
+		return nil, apiserver.PermissionDenied(err.Error())
 	}
 	tierName := ""
 	entitled := false
 	lastChargeDate := timestamppb.New(time.Time{})
 	if tierData != nil {
-		tierName = integrations.TierIDToName[tierData.TierID]
+		tierName = tierData.Tier.String()
 		entitled, err = entitlements.EntitledToBestBot(ctx, as.q, tierData, user.ID, time.Now())
 		if err != nil {
 			return nil, err
@@ -84,7 +84,7 @@ func (as *AuthorizationService) GetSubscriptionCriteria(ctx context.Context, r *
 func (as *AuthorizationService) AddRole(ctx context.Context, r *connect.Request[pb.AddRoleRequest]) (
 	*connect.Response[pb.AddRoleResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageAppRolesAndPermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (as *AuthorizationService) AddRole(ctx context.Context, r *connect.Request[
 func (as *AuthorizationService) AddPermission(ctx context.Context, r *connect.Request[pb.AddPermissionRequest]) (
 	*connect.Response[pb.AddPermissionResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageAppRolesAndPermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (as *AuthorizationService) AddPermission(ctx context.Context, r *connect.Re
 func (as *AuthorizationService) LinkRoleAndPermission(ctx context.Context, r *connect.Request[pb.LinkRoleAndPermissionRequest]) (
 	*connect.Response[pb.LinkRoleAndPermissionResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageAppRolesAndPermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (as *AuthorizationService) LinkRoleAndPermission(ctx context.Context, r *co
 func (as *AuthorizationService) UnlinkRoleAndPermission(ctx context.Context, r *connect.Request[pb.LinkRoleAndPermissionRequest]) (
 	*connect.Response[pb.LinkRoleAndPermissionResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageAppRolesAndPermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -160,12 +160,29 @@ func (as *AuthorizationService) UnlinkRoleAndPermission(ctx context.Context, r *
 	return connect.NewResponse(&pb.LinkRoleAndPermissionResponse{}), nil
 }
 
-func (as *AuthorizationService) AssignRole(ctx context.Context, r *connect.Request[pb.AssignRoleRequest]) (
+func (as *AuthorizationService) AssignRole(ctx context.Context, r *connect.Request[pb.UserAndRole]) (
 	*connect.Response[pb.AssignRoleResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	u, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageUserRoles)
 	if err != nil {
 		return nil, err
+	}
+
+	// disallow privilege escalation. Cannot assign any roles that are at the same
+	// or higher level than our own role.
+
+	ourRoles, err := rbac.UserRoles(ctx, as.q, u.Username)
+	if err != nil {
+		return nil, err
+	}
+	highestRole := rbac.LowHierarchyRoleValue
+	for _, role := range ourRoles {
+		if rbac.RoleHierarchyMap[rbac.Role(role)] > highestRole {
+			highestRole = rbac.RoleHierarchyMap[rbac.Role(role)]
+		}
+	}
+	if rbac.RoleHierarchyMap[rbac.Role(r.Msg.RoleName)] >= highestRole {
+		return nil, apiserver.PermissionDenied("privilege escalation")
 	}
 
 	err = as.q.AssignRole(ctx, models.AssignRoleParams{
@@ -184,10 +201,10 @@ func (as *AuthorizationService) AssignRole(ctx context.Context, r *connect.Reque
 	return connect.NewResponse(&pb.AssignRoleResponse{}), nil
 }
 
-func (as *AuthorizationService) UnassignRole(ctx context.Context, r *connect.Request[pb.UnassignRoleRequest]) (
+func (as *AuthorizationService) UnassignRole(ctx context.Context, r *connect.Request[pb.UserAndRole]) (
 	*connect.Response[pb.UnassignRoleResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanManageUserRoles)
 	if err != nil {
 		return nil, err
 	}
@@ -210,10 +227,11 @@ func (as *AuthorizationService) UnassignRole(ctx context.Context, r *connect.Req
 func (as *AuthorizationService) GetUserRoles(ctx context.Context, r *connect.Request[pb.GetUserRolesRequest]) (
 	*connect.Response[pb.UserRolesResponse], error) {
 
-	err := apiserver.AuthenticateAdmin(ctx, as.userStore, as.q)
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanViewUserRoles)
 	if err != nil {
 		return nil, err
 	}
+
 	roles, err := rbac.UserRoles(ctx, as.q, r.Msg.Username)
 	if err != nil {
 		return nil, err
@@ -236,6 +254,54 @@ func (as *AuthorizationService) GetSelfRoles(ctx context.Context, r *connect.Req
 	}
 	return connect.NewResponse(&pb.UserRolesResponse{
 		Roles: roles,
+	}), nil
+}
+
+func (as *AuthorizationService) GetUsersWithRoles(ctx context.Context, r *connect.Request[pb.GetUsersWithRolesRequest]) (
+	*connect.Response[pb.GetUsersWithRolesResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanViewUserRoles)
+	if err != nil {
+		return nil, err
+	}
+
+	urs, err := as.q.GetUsersWithRoles(ctx, r.Msg.Roles)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*pb.UserAndRole, len(urs))
+	for idx := range urs {
+		resp[idx] = &pb.UserAndRole{
+			Username: urs[idx].Username.String,
+			RoleName: urs[idx].RoleName,
+		}
+	}
+	return connect.NewResponse(&pb.GetUsersWithRolesResponse{
+		UserAndRoleObjs: resp,
+	}), nil
+}
+
+func (as *AuthorizationService) GetRoleMetadata(ctx context.Context, r *connect.Request[pb.GetRoleMetadataRequest]) (
+	*connect.Response[pb.RoleMetadataResponse], error) {
+	// We could make this endpoint open as it's just metadata, but meh.
+	_, err := apiserver.AuthenticateWithPermission(ctx, as.userStore, as.q, rbac.CanViewUserRoles)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := as.q.GetRolesWithPermissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pbroles := make([]*pb.RoleWithPermissions, len(rows))
+	for i := range rows {
+		pbroles[i] = &pb.RoleWithPermissions{
+			RoleName:    rows[i].Name,
+			Permissions: rows[i].Permissions,
+		}
+	}
+	return connect.NewResponse(&pb.RoleMetadataResponse{
+		RolesWithPermissions: pbroles,
 	}), nil
 }
 

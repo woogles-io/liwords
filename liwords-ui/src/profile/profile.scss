@@ -416,3 +416,20 @@
   align-items: center;
   justify-content: center;
 }
+
+.userbadge-tooltip {
+  display: flex;
+  width: 360;
+  padding: 16;
+  align-items: center;
+  gap: 16;
+  border-radius: 16;
+  border: 2px solid #419adb;
+  background: #fff;
+  color: #414141;
+  font-weight: 700;
+  line-height: normal;
+  font-size: 16;
+  font-family: Mulish;
+  font-style: normal;
+}

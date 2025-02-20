@@ -31,6 +31,9 @@ import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import variables from "../base.module.scss";
+import { useQuery } from "@connectrpc/connect-query";
+import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
+import { Badge } from "./badge";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -225,6 +228,7 @@ export const PlayerProfile = React.memo(() => {
   const [showGameTable, setShowGameTable] = useState(false);
   const [countryCode, setCountryCode] = useState("");
   const [bioLoaded, setBioLoaded] = useState(false);
+  const [badges, setBadges] = useState<string[]>([]);
   const [recentGames, setRecentGames] = useState<{
     numGames: number;
     offset: number;
@@ -240,6 +244,7 @@ export const PlayerProfile = React.memo(() => {
   const profileClient = useClient(ProfileService);
   const gameMetadataClient = useClient(GameMetadataService);
   const gameEventClient = useClient(GameEventService);
+  const { data: badgeMetadata } = useQuery(getBadgesMetadata);
 
   const checkWide = useMemo(
     () => window.matchMedia(`(min-width: ${screenSizeTablet}px)`),
@@ -276,6 +281,7 @@ export const PlayerProfile = React.memo(() => {
         setAvatarsEditable(resp.avatarsEditable);
         setBio(resp.about);
         setBioLoaded(true);
+        setBadges(resp.badgeCodes);
       } catch (e) {
         setUserFetched(true);
         flashError(e);
@@ -524,6 +530,7 @@ export const PlayerProfile = React.memo(() => {
                         userID={userID}
                         showModTools
                         moderate={moderateUser}
+                        omitBadges
                       />
                     ) : (
                       <span className="user">
@@ -537,6 +544,14 @@ export const PlayerProfile = React.memo(() => {
               {!(missingBirthdate && viewer === username) && (
                 <BioCard bio={bio} bioLoaded={bioLoaded} />
               )}
+              {badges.map((b) => (
+                <div key={b} style={{ marginBottom: 16 }}>
+                  <Badge name={b} width={36} />
+                  <span style={{ marginLeft: 8 }}>
+                    {badgeMetadata?.badges[b]}
+                  </span>
+                </div>
+              ))}
               {missingBirthdate && viewer === username && (
                 <div className="bio">
                   <Link to={"/settings/personal"}>
