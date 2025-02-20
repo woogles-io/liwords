@@ -30,19 +30,19 @@ ORDER BY u.username, r.name;
 SELECT r.id, r.name, r.description
 FROM roles r
 JOIN user_roles ur ON ur.role_id = r.id
-WHERE ur.user_id = (SELECT id FROM users where username = @username)
+WHERE ur.user_id = (SELECT id FROM users where lower(username) = lower(@username))
 ORDER BY r.name ASC;
 
 -- name: AssignRole :exec
 INSERT INTO user_roles (user_id, role_id)
 VALUES (
-    (SELECT id FROM users where username = @username),
+    (SELECT id FROM users where lower(username) = lower(@username)),
     (SELECT id FROM roles WHERE name = @role_name LIMIT 1)
 );
 
 -- name: UnassignRole :execrows
 DELETE FROM user_roles WHERE
-  user_id = (SELECT id FROM users where username = @username)
+  user_id = (SELECT id FROM users where lower(username) = lower(@username))
   AND role_id = (SELECT id from roles WHERE name = @role_name LIMIT 1);
 
 -- name: AddRole :exec
