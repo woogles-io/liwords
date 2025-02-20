@@ -3,7 +3,6 @@ package rbac
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/samber/lo"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -72,7 +71,7 @@ func HasPermission(ctx context.Context, q *models.Queries, userID uint, permissi
 }
 
 func UserRoles(ctx context.Context, q *models.Queries, username string) ([]string, error) {
-	roles, err := q.GetUserRoles(ctx, pgtype.Text{Valid: true, String: username})
+	roles, err := q.GetUserRoles(ctx, username)
 	if err != nil {
 		return nil, err
 	}

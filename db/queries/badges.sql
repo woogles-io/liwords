@@ -15,11 +15,11 @@ WHERE code = @code;
 
 -- name: AddUserBadge :exec
 INSERT INTO user_badges (user_id, badge_id)
-VALUES ((SELECT id FROM users where username = @username), (SELECT id from badges where code = @code));
+VALUES ((SELECT id FROM users where lower(username) = lower(@username)), (SELECT id from badges where code = @code));
 
 -- name: RemoveUserBadge :exec
 DELETE FROM user_badges
-WHERE user_id = (SELECT id from users where username = @username)
+WHERE user_id = (SELECT id from users where lower(username) = lower(@username))
 AND badge_id = (SELECT id from badges where code = @code);
 
 -- name: AddBadge :exec

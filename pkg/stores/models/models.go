@@ -248,10 +248,7 @@ type User struct {
 	Email       pgtype.Text
 	Password    pgtype.Text
 	InternalBot pgtype.Bool
-	IsAdmin     pgtype.Bool
 	ApiKey      pgtype.Text
-	IsDirector  pgtype.Bool
-	IsMod       pgtype.Bool
 	Actions     []byte
 	Notoriety   pgtype.Int4
 }

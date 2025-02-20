@@ -28,11 +28,11 @@ func (q *Queries) AddBadge(ctx context.Context, arg AddBadgeParams) error {
 
 const addUserBadge = `-- name: AddUserBadge :exec
 INSERT INTO user_badges (user_id, badge_id)
-VALUES ((SELECT id FROM users where username = $1), (SELECT id from badges where code = $2))
+VALUES ((SELECT id FROM users where lower(username) = lower($1)), (SELECT id from badges where code = $2))
 `
 
 type AddUserBadgeParams struct {
-	Username pgtype.Text
+	Username string
 	Code     string
 }
 
@@ -151,12 +151,12 @@ func (q *Queries) GetUsersForBadge(ctx context.Context, code string) ([]pgtype.T
 
 const removeUserBadge = `-- name: RemoveUserBadge :exec
 DELETE FROM user_badges
-WHERE user_id = (SELECT id from users where username = $1)
+WHERE user_id = (SELECT id from users where lower(username) = lower($1))
 AND badge_id = (SELECT id from badges where code = $2)
 `
 
 type RemoveUserBadgeParams struct {
-	Username pgtype.Text
+	Username string
 	Code     string
 }
 

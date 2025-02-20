@@ -42,13 +42,13 @@ func (q *Queries) AddRole(ctx context.Context, arg AddRoleParams) error {
 const assignRole = `-- name: AssignRole :exec
 INSERT INTO user_roles (user_id, role_id)
 VALUES (
-    (SELECT id FROM users where username = $1),
+    (SELECT id FROM users where lower(username) = lower($1)),
     (SELECT id FROM roles WHERE name = $2 LIMIT 1)
 )
 `
 
 type AssignRoleParams struct {
-	Username pgtype.Text
+	Username string
 	RoleName string
 }
 
@@ -97,11 +97,11 @@ const getUserRoles = `-- name: GetUserRoles :many
 SELECT r.id, r.name, r.description
 FROM roles r
 JOIN user_roles ur ON ur.role_id = r.id
-WHERE ur.user_id = (SELECT id FROM users where username = $1)
+WHERE ur.user_id = (SELECT id FROM users where lower(username) = lower($1))
 ORDER BY r.name ASC
 `
 
-func (q *Queries) GetUserRoles(ctx context.Context, username pgtype.Text) ([]Role, error) {
+func (q *Queries) GetUserRoles(ctx context.Context, username string) ([]Role, error) {
 	rows, err := q.db.Query(ctx, getUserRoles, username)
 	if err != nil {
 		return nil, err
@@ -209,12 +209,12 @@ func (q *Queries) LinkRoleAndPermission(ctx context.Context, arg LinkRoleAndPerm
 
 const unassignRole = `-- name: UnassignRole :execrows
 DELETE FROM user_roles WHERE
-  user_id = (SELECT id FROM users where username = $1)
+  user_id = (SELECT id FROM users where lower(username) = lower($1))
   AND role_id = (SELECT id from roles WHERE name = $2 LIMIT 1)
 `
 
 type UnassignRoleParams struct {
-	Username pgtype.Text
+	Username string
 	RoleName string
 }
 

@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entitlements"
@@ -186,7 +185,7 @@ func (as *AuthorizationService) AssignRole(ctx context.Context, r *connect.Reque
 	}
 
 	err = as.q.AssignRole(ctx, models.AssignRoleParams{
-		Username: pgtype.Text{Valid: true, String: r.Msg.Username},
+		Username: r.Msg.Username,
 		RoleName: r.Msg.RoleName,
 	})
 	if err != nil {
@@ -210,7 +209,7 @@ func (as *AuthorizationService) UnassignRole(ctx context.Context, r *connect.Req
 	}
 
 	rowsAffected, err := as.q.UnassignRole(ctx, models.UnassignRoleParams{
-		Username: pgtype.Text{Valid: true, String: r.Msg.Username},
+		Username: r.Msg.Username,
 		RoleName: r.Msg.RoleName,
 	})
 	if err != nil {

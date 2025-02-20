@@ -152,7 +152,7 @@ func (cs *ConfigService) AssignBadge(ctx context.Context, req *connect.Request[p
 	}
 	err = cs.q.AddUserBadge(ctx, models.AddUserBadgeParams{
 		Code:     req.Msg.Code,
-		Username: common.ToPGTypeText(req.Msg.Username),
+		Username: req.Msg.Username,
 	})
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ func (cs *ConfigService) UnassignBadge(ctx context.Context, req *connect.Request
 	}
 	err = cs.q.RemoveUserBadge(ctx, models.RemoveUserBadgeParams{
 		Code:     req.Msg.Code,
-		Username: common.ToPGTypeText(req.Msg.Username),
+		Username: req.Msg.Username,
 	})
 	if err != nil {
 		return nil, err

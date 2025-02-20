@@ -414,7 +414,7 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 	username := botNames[botType]
 
 	var botUsername string
-	err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE AND username = $1`, username).Scan(&botUsername)
+	err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE AND lower(username) = lower($1)`, username).Scan(&botUsername)
 	if err == pgx.ErrNoRows {
 		// Just pick any random bot. This should not be done on prod.
 		log.Warn().Msg("picking-random-bot")
