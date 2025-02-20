@@ -34,7 +34,7 @@ func TestAuthenticateMod(t *testing.T) {
 	q := models.New(pool)
 	ms := &ModService{userStore: us, queries: q}
 	err = q.AssignRole(ctx, models.AssignRoleParams{
-		Username: common.ToPGTypeText("Moderator"),
+		Username: "Moderator",
 		RoleName: string(rbac.Moderator),
 	})
 	is.NoErr(err)
