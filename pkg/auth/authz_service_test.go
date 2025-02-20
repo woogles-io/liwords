@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 
@@ -84,21 +83,21 @@ func RecreateDB() *DBController {
 
 	q := models.New(pool)
 	err = q.AssignRole(ctx, models.AssignRoleParams{
-		Username: pgtype.Text{String: "SomeAdmin", Valid: true},
+		Username: "SomeAdmin",
 		RoleName: string(rbac.Admin),
 	})
 	if err != nil {
 		panic(err)
 	}
 	err = q.AssignRole(ctx, models.AssignRoleParams{
-		Username: pgtype.Text{String: "SomeMod", Valid: true},
+		Username: "SomeMod",
 		RoleName: string(rbac.Moderator),
 	})
 	if err != nil {
 		panic(err)
 	}
 	err = q.AssignRole(ctx, models.AssignRoleParams{
-		Username: pgtype.Text{String: "SomeManager", Valid: true},
+		Username: "SomeManager",
 		RoleName: string(rbac.Manager),
 	})
 	if err != nil {
