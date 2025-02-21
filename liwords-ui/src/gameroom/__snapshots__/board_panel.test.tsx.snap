@@ -2377,7 +2377,8 @@ exports[`renders a game board panel 1`] = `
           class="rack-container"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
             type="button"
           >
             <span
@@ -2417,7 +2418,8 @@ exports[`renders a game board panel 1`] = `
             />
           </div>
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
             type="button"
           >
             <span
@@ -2457,7 +2459,7 @@ exports[`renders a game board panel 1`] = `
           class="secondary-controls"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-dropdown-trigger"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-dropdown-trigger"
             disabled=""
             type="button"
           >
@@ -2466,7 +2468,8 @@ exports[`renders a game board panel 1`] = `
             </span>
           </button>
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
             disabled=""
             type="button"
           >
@@ -2484,7 +2487,8 @@ exports[`renders a game board panel 1`] = `
           class="secondary-controls"
         >
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
             disabled=""
             type="button"
           >
@@ -2498,7 +2502,7 @@ exports[`renders a game board panel 1`] = `
             </span>
           </button>
           <button
-            class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
             disabled=""
             type="button"
           >
@@ -2513,7 +2517,7 @@ exports[`renders a game board panel 1`] = `
           </button>
         </div>
         <button
-          class="ant-btn css-dev-only-do-not-override-142vneq ant-btn-primary ant-btn-color-primary ant-btn-variant-solid play"
+          class="ant-btn css-dev-only-do-not-override-19lec04 ant-btn-primary ant-btn-color-primary ant-btn-variant-solid play"
           disabled=""
           type="button"
         >
