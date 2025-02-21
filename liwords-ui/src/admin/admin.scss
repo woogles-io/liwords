@@ -9,7 +9,7 @@
 }
 
 .ant-layout {
-    @include colorModed() {
-        background-color: m($background);
-      }
+  @include colorModed() {
+    background-color: m($background);
+  }
 }
