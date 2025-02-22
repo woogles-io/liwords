@@ -92,7 +92,9 @@ export const useDrawing = (dim: number) => {
   const [drawMode, setDrawMode] = useState("freehand");
   const [snapEnabled, setSnapEnabled] = useState(true);
   const boardResizedSinceLastPaintRef = React.useRef(true);
-  const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>(undefined);
+  const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>(
+    undefined,
+  );
   const strokesRef = React.useRef<
     Array<{
       points: Array<{ x: number; y: number }>; // scaled to [0,1)
