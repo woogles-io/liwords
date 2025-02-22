@@ -102,7 +102,7 @@ export const useDrawing = (dim: number) => {
       pen: string; // "red"
       mode: string; // "freehand"
       snap: boolean;
-      elt: React.ReactElement<any> | undefined;
+      elt: React.ReactElement<Element> | undefined;
     }>
   >([]);
   const [currentDrawing, setCurrentDrawing] = useState<JSX.Element | undefined>(
@@ -246,9 +246,9 @@ export const useDrawing = (dim: number) => {
       }
     }
 
-    let toDraw: Array<React.ReactElement<any>> = [];
-    let toErase: Array<React.ReactElement<any>> = [];
-    const eraseMasks: Array<React.ReactElement<any>> = [];
+    let toDraw: Array<React.ReactElement<Element>> = [];
+    let toErase: Array<React.ReactElement<Element>> = [];
+    const eraseMasks: Array<React.ReactElement<Element>> = [];
     let numMasks = 0;
     for (let i = 0; i < strokesRef.current.length; ) {
       for (

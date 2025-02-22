@@ -21,7 +21,7 @@ export const MetaEventControl = (props: Props) => {
   const { sendSocketMsg, gameID } = props;
   // can't get this to work with types:
   const [activeNotif, setActiveNotif] =
-    useState<React.ReactElement<any> | null>(null);
+    useState<React.ReactElement<Element> | null>(null);
 
   const denyAbort = useCallback(
     (evtid: string) => {
