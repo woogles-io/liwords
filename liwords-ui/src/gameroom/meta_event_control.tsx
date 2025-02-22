@@ -20,7 +20,7 @@ export const MetaEventControl = (props: Props) => {
   const { gameMetaEventContext } = useGameMetaEventContext();
   const { sendSocketMsg, gameID } = props;
   // can't get this to work with types:
-  const [activeNotif, setActiveNotif] = useState<React.ReactElement | null>(
+  const [activeNotif, setActiveNotif] = useState<React.ReactElement<any> | null>(
     null,
   );
 

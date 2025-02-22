@@ -233,7 +233,7 @@ export const Preferences = React.memo(() => {
   );
   const tileOrderOptions = React.useMemo(() => {
     void reevaluateTileOrderOptions;
-    const ret: Array<{ name: React.ReactElement; value: string }> = [];
+    const ret: Array<{ name: React.ReactElement<any>; value: string }> = [];
     const pushTileOrder = (
       name: string,
       value: string,

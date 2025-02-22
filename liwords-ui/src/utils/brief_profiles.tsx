@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type JSX,
 } from "react";
 import { Unrace } from "./unrace";
 import {

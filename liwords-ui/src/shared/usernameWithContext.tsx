@@ -53,8 +53,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
 
-  const followerRef = useRef<FollowerHandle>();
-  const blockerRef = useRef<BlockerHandle>();
+  const followerRef = useRef<FollowerHandle>(undefined);
+  const blockerRef = useRef<BlockerHandle>(undefined);
 
   const contextItem = React.useMemo(() => {
     if (currentActiveGames && currentActiveGames.length > 0) {
@@ -202,7 +202,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { modal } = App.useApp();
   // const userMenu = <ul>{userMenuOptions}</ul>;
   return (
-    <Dropdown
+    (<Dropdown
       overlayClassName="user-menu"
       destroyPopupOnHide
       menu={{
@@ -248,7 +248,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         }`}
       >
         {props.iconOnly ? ( // Not yet used
-          <SettingOutlined />
+          (<SettingOutlined />)
         ) : (
           <>
             {props.fullName || props.username}
@@ -257,6 +257,6 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </>
         )}
       </span>
-    </Dropdown>
+    </Dropdown>)
   );
 };

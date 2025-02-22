@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type JSX } from "react";
 import { Link } from "react-router";
 import moment from "moment";
 import { Button, Table, Tag, Tooltip } from "antd";
