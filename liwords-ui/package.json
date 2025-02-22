@@ -6,6 +6,7 @@
   "dependencies": {
     "@ant-design/compatible": "^5.1.4",
     "@ant-design/icons": "^5.6.1",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@bufbuild/protobuf": "^2.2.3",
     "@connectrpc/connect": "^2.0.1",
     "@connectrpc/connect-query": "^2.0.1",
