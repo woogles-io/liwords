@@ -2,11 +2,13 @@ package entity
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/woogles-io/liwords/pkg/glicko"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -37,9 +39,10 @@ type User struct {
 	Anonymous bool
 	// ID is the database ID. Since this increases monotonically, we should
 	// not expose it to the user
-	ID uint
+	ID         uint
+	EntityUUID uuid.UUID
 	// UUID is the "user-exposed" ID, in any APIs.
-	UUID     string
+	UUID     string // DEPRECATED: use EntityUUID in next release
 	Username string
 	Password string
 	Email    string
@@ -192,7 +195,8 @@ func (u *User) AvatarUrl() string {
 // TournamentID returns the "player ID" of a user. UUID:username is probably not
 // a good design, but let's at least narrow it down to this function.
 func (u *User) TournamentID() string {
-	return u.UUID + ":" + u.Username
+	return fmt.Sprintf("%s:%s", u.UUID, u.Username)
+	// return fmt.Sprintf("%s:%s", shortuuid.DefaultEncoder.Encode(u.UUID), u.Username)
 }
 
 func InferChildStatus(dob string, now time.Time) pb.ChildStatus {

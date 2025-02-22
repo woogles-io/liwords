@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -183,7 +184,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	defer tx.Rollback(ctx)
 
 	if u.UUID == "" {
-		u.UUID = shortuuid.New()
+		u.EntityUUID = uuid.New()
+		u.UUID = shortuuid.DefaultEncoder.Encode(u.EntityUUID)
 	}
 
 	var userId uint
