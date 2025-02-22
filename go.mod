@@ -24,7 +24,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.1
 	github.com/justinas/alice v1.2.0
 	github.com/lithammer/shortuuid/v4 v4.2.0
 	github.com/mailgun/mailgun-go/v4 v4.22.1
