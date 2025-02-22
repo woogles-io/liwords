@@ -42,7 +42,6 @@ import {
   doesCurrentUserUse24HourTime,
   protobufTimestampToDayjsIgnoringNanos,
 } from "../utils/datetime";
-import { dayjs } from "../utils/datetime";
 
 type DProps = {
   description: string;

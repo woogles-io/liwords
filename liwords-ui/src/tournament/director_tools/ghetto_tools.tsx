@@ -52,13 +52,11 @@ import { flashError, useClient } from "../../utils/hooks/connect";
 import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import { create, clone } from "@bufbuild/protobuf";
 import { getEnumValue } from "../../utils/protobuf";
-import { timeFormat } from "../../lobby/sought_games";
 import {
   dayjsToProtobufTimestampIgnoringNanos,
   doesCurrentUserUse24HourTime,
   protobufTimestampToDayjsIgnoringNanos,
 } from "../../utils/datetime";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 
 type ModalProps = {
   title: string;
