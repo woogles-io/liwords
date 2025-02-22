@@ -1,5 +1,5 @@
 BEGIN;
 
-ALTER TABLE users ADD COLUMN entity_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL UNIQUE;
+ALTER TABLE users ADD COLUMN entity_uuid uuid DEFAULT gen_random_uuid() NOT NULL UNIQUE;
 
 COMMIT;
