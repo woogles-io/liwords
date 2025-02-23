@@ -11,7 +11,7 @@ Example usage may be found in Liwords project.
 
 ## License
 
-Copyright (C) 2020-2024 Andy Kurnia.\
+Copyright (C) 2020-2025 Andy Kurnia.\
 Released under the MIT license.
 
 ## Related Projects

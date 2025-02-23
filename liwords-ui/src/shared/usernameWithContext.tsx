@@ -53,8 +53,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
 
-  const followerRef = useRef<FollowerHandle>();
-  const blockerRef = useRef<BlockerHandle>();
+  const followerRef = useRef<FollowerHandle>(undefined);
+  const blockerRef = useRef<BlockerHandle>(undefined);
 
   const contextItem = React.useMemo(() => {
     if (currentActiveGames && currentActiveGames.length > 0) {

@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 // https://www.matthewgerstman.com/tech/throttle-and-debounce/
 
 export function useDebounce(func: (...args: any[]) => void, timeout: number) {
-  const timer = useRef<NodeJS.Timeout>();
+  const timer = useRef<NodeJS.Timeout>(undefined);
   const debounced = useCallback(
     (...args: any[]) => {
       if (timer.current != null) clearTimeout(timer.current);

@@ -293,7 +293,7 @@ export const PlayerProfile = React.memo(() => {
 
   const [queriedRecentGamesOffset, setQueriedRecentGamesOffset] =
     useState(recentGamesOffset);
-  const reentrancyCheck = useRef<Record<string, never>>();
+  const reentrancyCheck = useRef<Record<string, never>>(undefined);
 
   useEffect(() => {
     if (!username) {

@@ -3,7 +3,7 @@ import { Tooltip } from "antd";
 import React from "react";
 
 type Props = {
-  help: React.ReactElement | string;
+  help: React.ReactElement<Element> | string;
   labelText: string;
 };
 

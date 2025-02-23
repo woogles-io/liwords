@@ -47,7 +47,7 @@ type Props = {
   board: Board;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerInfo>;
-  gameEpilog?: React.ReactElement;
+  gameEpilog?: React.ReactElement<Element>;
   hideExtraInteractions?: boolean;
   showComments?: boolean;
 };

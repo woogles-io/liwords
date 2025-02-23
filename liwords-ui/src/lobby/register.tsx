@@ -69,7 +69,7 @@ const determineLocalDateSequence = () => {
 };
 
 type Option = {
-  label?: string | React.ReactElement;
+  label?: string;
   value: string;
 };
 

@@ -573,9 +573,9 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [setDisplayedRack, displayedRack]);
 
   const clearBackupRef = useRef<boolean>(false);
-  const lastLettersRef = useRef<Array<MachineLetter>>();
-  const lastRackRef = useRef<Array<MachineLetter>>();
-  const lastIsExaminingRef = useRef<boolean>();
+  const lastLettersRef = useRef<Array<MachineLetter>>(undefined);
+  const lastRackRef = useRef<Array<MachineLetter>>(undefined);
+  const lastIsExaminingRef = useRef<boolean>(undefined);
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: Array<MachineLetter>;
     isMyTurn: boolean;
@@ -588,7 +588,7 @@ export const BoardPanel = React.memo((props: Props) => {
       show: boolean;
     };
     placedTilesTempScore: number | undefined;
-  }>();
+  }>(undefined);
   readOnlyEffectDependenciesRef.current = {
     displayedRack,
     isMyTurn,

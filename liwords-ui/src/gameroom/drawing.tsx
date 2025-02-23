@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, type JSX } from "react";
 
 // Feature flag.
 const drawingCanBeEnabled =
@@ -37,7 +37,7 @@ export const useDrawing = (dim: number) => {
   const [isEnabledState, setIsEnabled] = useState(false);
   const isEnabled = canBeEnabled && isEnabledState;
 
-  const boardEltRef = React.useRef<HTMLElement | null>();
+  const boardEltRef = React.useRef<HTMLElement | null>(undefined);
   const [boardSize, setBoardSize] = useState({
     left: 0,
     top: 0,
@@ -92,7 +92,9 @@ export const useDrawing = (dim: number) => {
   const [drawMode, setDrawMode] = useState("freehand");
   const [snapEnabled, setSnapEnabled] = useState(true);
   const boardResizedSinceLastPaintRef = React.useRef(true);
-  const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>();
+  const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>(
+    undefined,
+  );
   const strokesRef = React.useRef<
     Array<{
       points: Array<{ x: number; y: number }>; // scaled to [0,1)
@@ -100,13 +102,13 @@ export const useDrawing = (dim: number) => {
       pen: string; // "red"
       mode: string; // "freehand"
       snap: boolean;
-      elt: React.ReactElement | undefined;
+      elt: React.ReactElement<Element> | undefined;
     }>
   >([]);
   const [currentDrawing, setCurrentDrawing] = useState<JSX.Element | undefined>(
     undefined,
   );
-  const plannedRepaintRef = React.useRef<number>();
+  const plannedRepaintRef = React.useRef<number>(undefined);
 
   // For hopefully-unique id generation.
   const imagePrefixRef = React.useRef(`img${Date.now() + Math.random()}`);
@@ -244,9 +246,9 @@ export const useDrawing = (dim: number) => {
       }
     }
 
-    let toDraw: Array<React.ReactElement> = [];
-    let toErase: Array<React.ReactElement> = [];
-    const eraseMasks: Array<React.ReactElement> = [];
+    let toDraw: Array<React.ReactElement<Element>> = [];
+    let toErase: Array<React.ReactElement<Element>> = [];
+    const eraseMasks: Array<React.ReactElement<Element>> = [];
     let numMasks = 0;
     for (let i = 0; i < strokesRef.current.length; ) {
       for (
