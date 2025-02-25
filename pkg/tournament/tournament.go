@@ -217,11 +217,9 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	}
 
 	if !merge && meta.ScheduledStartTime == nil {
-		log.Info().Str("tid", meta.Id).Msg("setting scheduled start time to nil")
 		t.ScheduledStartTime = nil
 	}
 	if !merge && meta.ScheduledEndTime == nil {
-		log.Info().Str("tid", meta.Id).Msg("setting scheduled end time to nil")
 		t.ScheduledEndTime = nil
 	}
 
