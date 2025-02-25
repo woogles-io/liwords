@@ -50,9 +50,9 @@ type tournament struct {
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
-	Parent             string `gorm:"index"`
-	ScheduledStartTime time.Time
-	ScheduledEndTime   time.Time
+	Parent             string     `gorm:"index"`
+	ScheduledStartTime *time.Time `gorm:"default:null"`
+	ScheduledEndTime   *time.Time `gorm:"default:null"`
 }
 
 type registrant struct {
@@ -159,7 +159,7 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("uuid = ?", tm.UUID).Updates(dbt)
+		Select("*").Where("uuid = ?", tm.UUID).Updates(dbt)
 
 	return result.Error
 }
