@@ -313,7 +313,11 @@ func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entit
 	oneWeekAgo := time.Now().AddDate(0, 0, -7)
 	oneWeekFromNow := time.Now().AddDate(0, 0, 7)
 
-	result := ctxDB.Where("scheduled_start_time BETWEEN ? AND ? OR scheduled_end_time BETWEEN ? AND ?",
+	result := ctxDB.Where(`
+		(scheduled_start_time IS NOT NULL AND scheduled_start_time BETWEEN ? AND ?)
+		OR 
+		(scheduled_end_time IS NOT NULL AND scheduled_end_time BETWEEN ? AND ?)
+		`,
 		oneWeekAgo, oneWeekFromNow, oneWeekAgo, oneWeekFromNow).
 		Find(&tournaments)
 
