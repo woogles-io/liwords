@@ -89,8 +89,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/domino14/macondo v0.10.2 h1:7wbn0c+oldAXZUocprd64jJmeClg46X7XFPIZNnBrUg=
 github.com/domino14/macondo v0.10.2/go.mod h1:rbFKw9fRMrF8VifH9nhLKXgzG5FAie/4fQ0SRu+qB8Q=
-github.com/domino14/word-golib v0.2.5 h1:BiZPlRmzpJMFLgMcsesr5A1q+CZ8DEsYBJ8l/mYVL94=
-github.com/domino14/word-golib v0.2.5/go.mod h1:p3J+APKtDktBo6LuytRg6t5+zuwyQTfYBhI5MrqmjbQ=
+github.com/domino14/word-golib v0.2.6 h1:rUFr6ygyooIohqLhUB9HNi/0vQAKfyAAWHd7evzkYoE=
+github.com/domino14/word-golib v0.2.6/go.mod h1:jMCDzZSsxBZMa3JB/FwiZCXXCv52S2X6dL5UinW8V1I=
 github.com/exaring/otelpgx v0.9.0 h1:Bo0RIhBNrzLlVzih46qBy/KQRvRs9vwRbgT/fE363NM=
 github.com/exaring/otelpgx v0.9.0/go.mod h1:ANkRZDfgfmN6yJS1xKMkshbnsHO8at5sYwtVEYOX8hc=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
