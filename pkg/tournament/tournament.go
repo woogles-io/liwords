@@ -124,6 +124,28 @@ func NewTournament(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	// Send a TournamentCreated event to the lobby
+	tournamentCreated := &ipc.TournamentCreated{
+		Id:                 id,
+		Name:               name,
+		Description:        description,
+		ScheduledStartTime: timestamppb.New(scheduledStartTime),
+		ScheduledEndTime:   timestamppb.New(scheduledEndTime),
+		Slug:               slug,
+	}
+
+	wrapped := entity.WrapEvent(tournamentCreated, ipc.MessageType_TOURNAMENT_CREATED)
+	// Send only to the lobby channel, not to the tournament channel
+	wrapped.AddAudience(entity.AudLobby, "")
+	
+	eventChannel := tournamentStore.TournamentEventChan()
+	if eventChannel != nil {
+		eventChannel <- wrapped
+	} else {
+		log.Error().Msg("tournament-created-event-chan-nil")
+	}
+	
 	return entTournament, nil
 }
 
@@ -138,6 +160,12 @@ func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, w
 	eventChannel := ts.TournamentEventChan()
 
 	wrapped.AddAudience(entity.AudTournament, id)
+	
+	// Also send TOURNAMENT_FINISHED_MESSAGE events to the lobby
+	if wrapped.Type == ipc.MessageType_TOURNAMENT_FINISHED_MESSAGE {
+		wrapped.AddAudience(entity.AudLobby, "")
+	}
+	
 	if eventChannel != nil {
 		eventChannel <- wrapped
 	} else {
@@ -1047,6 +1075,8 @@ func sendDivisionStart(ts TournamentStore, tuuid string, division string, round 
 	wrapped.AddAudience(entity.AudChannel, DivisionChannelName(tuuid, division))
 	// Also send it to the tournament realm.
 	wrapped.AddAudience(entity.AudTournament, tuuid)
+	// Also send it to the lobby realm.
+	wrapped.AddAudience(entity.AudLobby, "")
 	if eventChannel != nil {
 		eventChannel <- wrapped
 	} else {

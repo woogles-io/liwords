@@ -53,6 +53,16 @@ message ReadyForTournamentGame {
   bool unready = 6;     // if true, this is a NOT-ready message.
 }
 
+// TournamentCreated is sent when a new tournament is created
+message TournamentCreated {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  google.protobuf.Timestamp scheduled_start_time = 4;
+  google.protobuf.Timestamp scheduled_end_time = 5;
+  string slug = 6;
+}
+
 enum TournamentGameResult {
   // NO_RESULT: the game is not over
   NO_RESULT = 0;
