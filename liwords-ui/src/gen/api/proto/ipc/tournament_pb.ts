@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/tournament.proto.
  */
 export const file_proto_ipc_tournament: GenFile = /*@__PURE__*/
-  fileDesc("Chpwcm90by9pcGMvdG91cm5hbWVudC5wcm90bxIDaXBjIqMCChhUb3VybmFtZW50R2FtZUVuZGVkRXZlbnQSDwoHZ2FtZV9pZBgBIAEoCRI1CgdwbGF5ZXJzGAIgAygLMiQuaXBjLlRvdXJuYW1lbnRHYW1lRW5kZWRFdmVudC5QbGF5ZXISJgoKZW5kX3JlYXNvbhgDIAEoDjISLmlwYy5HYW1lRW5kUmVhc29uEgwKBHRpbWUYBCABKAMSDQoFcm91bmQYBSABKAUSEAoIZGl2aXNpb24YBiABKAkSEgoKZ2FtZV9pbmRleBgHIAEoBRpUCgZQbGF5ZXISEAoIdXNlcm5hbWUYASABKAkSDQoFc2NvcmUYAiABKAUSKQoGcmVzdWx0GAMgASgOMhkuaXBjLlRvdXJuYW1lbnRHYW1lUmVzdWx0IpIBChZUb3VybmFtZW50Um91bmRTdGFydGVkEhUKDXRvdXJuYW1lbnRfaWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkSDQoFcm91bmQYAyABKAUSEgoKZ2FtZV9pbmRleBgEIAEoBRIsCghkZWFkbGluZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiiAEKFlJlYWR5Rm9yVG91cm5hbWVudEdhbWUSFQoNdG91cm5hbWVudF9pZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRINCgVyb3VuZBgDIAEoBRIRCglwbGF5ZXJfaWQYBCABKAkSEgoKZ2FtZV9pbmRleBgFIAEoBRIPCgd1bnJlYWR5GAYgASgIIkEKEFRvdXJuYW1lbnRQZXJzb24SCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgFEhEKCXN1c3BlbmRlZBgDIAEoCCJZChFUb3VybmFtZW50UGVyc29ucxIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRImCgdwZXJzb25zGAMgAygLMhUuaXBjLlRvdXJuYW1lbnRQZXJzb24ijgMKDFJvdW5kQ29udHJvbBIqCg5wYWlyaW5nX21ldGhvZBgBIAEoDjISLmlwYy5QYWlyaW5nTWV0aG9kEiYKDGZpcnN0X21ldGhvZBgCIAEoDjIQLmlwYy5GaXJzdE1ldGhvZBIXCg9nYW1lc19wZXJfcm91bmQYAyABKAUSDQoFcm91bmQYBCABKAUSDgoGZmFjdG9yGAUgASgFEhYKDmluaXRpYWxfZm9udGVzGAYgASgFEhMKC21heF9yZXBlYXRzGAcgASgFEh4KFmFsbG93X292ZXJfbWF4X3JlcGVhdHMYCCABKAgSHgoWcmVwZWF0X3JlbGF0aXZlX3dlaWdodBgJIAEoBRImCh53aW5fZGlmZmVyZW5jZV9yZWxhdGl2ZV93ZWlnaHQYCiABKAUSIwobaW50ZXJsZWF2ZV90ZWFtX3JvdW5kX3JvYmluGAsgASgIEiAKE3NwcmVhZF9jYXBfb3ZlcnJpZGUYDCABKA1IAIgBAUIWChRfc3ByZWFkX2NhcF9vdmVycmlkZSKzAgoQRGl2aXNpb25Db250cm9scxIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRImCgxnYW1lX3JlcXVlc3QYAyABKAsyEC5pcGMuR2FtZVJlcXVlc3QSMwoQc3VzcGVuZGVkX3Jlc3VsdBgEIAEoDjIZLmlwYy5Ub3VybmFtZW50R2FtZVJlc3VsdBIYChBzdXNwZW5kZWRfc3ByZWFkGAUgASgFEhIKCmF1dG9fc3RhcnQYBiABKAgSEgoKc3ByZWFkX2NhcBgHIAEoDRIRCglnaWJzb25pemUYCCABKAgSFQoNZ2lic29uX3NwcmVhZBgJIAEoBRIZChFtaW5pbXVtX3BsYWNlbWVudBgKIAEoBRIdChVtYXhpbXVtX2J5ZV9wbGFjZW1lbnQYCyABKAUihQEKDlRvdXJuYW1lbnRHYW1lEg4KBnNjb3JlcxgBIAMoBRIqCgdyZXN1bHRzGAIgAygOMhkuaXBjLlRvdXJuYW1lbnRHYW1lUmVzdWx0EisKD2dhbWVfZW5kX3JlYXNvbhgDIAEoDjISLmlwYy5HYW1lRW5kUmVhc29uEgoKAmlkGAQgASgJIpABCgdQYWlyaW5nEg8KB3BsYXllcnMYASADKAUSDQoFcm91bmQYAiABKAUSIgoFZ2FtZXMYAyADKAsyEy5pcGMuVG91cm5hbWVudEdhbWUSKwoIb3V0Y29tZXMYBCADKA4yGS5pcGMuVG91cm5hbWVudEdhbWVSZXN1bHQSFAoMcmVhZHlfc3RhdGVzGAUgAygJInQKDlBsYXllclN0YW5kaW5nEhEKCXBsYXllcl9pZBgBIAEoCRIMCgR3aW5zGAIgASgFEg4KBmxvc3NlcxgDIAEoBRINCgVkcmF3cxgEIAEoBRIOCgZzcHJlYWQYBSABKAUSEgoKZ2lic29uaXplZBgGIAEoCCI4Cg5Sb3VuZFN0YW5kaW5ncxImCglzdGFuZGluZ3MYASADKAsyEy5pcGMuUGxheWVyU3RhbmRpbmciggIKGERpdmlzaW9uUGFpcmluZ3NSZXNwb25zZRIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRInChFkaXZpc2lvbl9wYWlyaW5ncxgDIAMoCzIMLmlwYy5QYWlyaW5nElAKEmRpdmlzaW9uX3N0YW5kaW5ncxgEIAMoCzI0LmlwYy5EaXZpc2lvblBhaXJpbmdzUmVzcG9uc2UuRGl2aXNpb25TdGFuZGluZ3NFbnRyeRpNChZEaXZpc2lvblN0YW5kaW5nc0VudHJ5EgsKA2tleRgBIAEoBRIiCgV2YWx1ZRgCIAEoCzITLmlwYy5Sb3VuZFN0YW5kaW5nczoCOAEiTgofRGl2aXNpb25QYWlyaW5nc0RlbGV0ZWRSZXNwb25zZRIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRINCgVyb3VuZBgDIAEoBSK1AgodUGxheWVyc0FkZGVkT3JSZW1vdmVkUmVzcG9uc2USCgoCaWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkSJwoHcGxheWVycxgDIAEoCzIWLmlwYy5Ub3VybmFtZW50UGVyc29ucxInChFkaXZpc2lvbl9wYWlyaW5ncxgEIAMoCzIMLmlwYy5QYWlyaW5nElUKEmRpdmlzaW9uX3N0YW5kaW5ncxgFIAMoCzI5LmlwYy5QbGF5ZXJzQWRkZWRPclJlbW92ZWRSZXNwb25zZS5EaXZpc2lvblN0YW5kaW5nc0VudHJ5Gk0KFkRpdmlzaW9uU3RhbmRpbmdzRW50cnkSCwoDa2V5GAEgASgFEiIKBXZhbHVlGAIgASgLMhMuaXBjLlJvdW5kU3RhbmRpbmdzOgI4ASKnAgoVRGl2aXNpb25Sb3VuZENvbnRyb2xzEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEikKDnJvdW5kX2NvbnRyb2xzGAMgAygLMhEuaXBjLlJvdW5kQ29udHJvbBInChFkaXZpc2lvbl9wYWlyaW5ncxgEIAMoCzIMLmlwYy5QYWlyaW5nEk0KEmRpdmlzaW9uX3N0YW5kaW5ncxgFIAMoCzIxLmlwYy5EaXZpc2lvblJvdW5kQ29udHJvbHMuRGl2aXNpb25TdGFuZGluZ3NFbnRyeRpNChZEaXZpc2lvblN0YW5kaW5nc0VudHJ5EgsKA2tleRgBIAEoBRIiCgV2YWx1ZRgCIAEoCzITLmlwYy5Sb3VuZFN0YW5kaW5nczoCOAEiiwIKGERpdmlzaW9uQ29udHJvbHNSZXNwb25zZRIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRIwChFkaXZpc2lvbl9jb250cm9scxgDIAEoCzIVLmlwYy5EaXZpc2lvbkNvbnRyb2xzElAKEmRpdmlzaW9uX3N0YW5kaW5ncxgEIAMoCzI0LmlwYy5EaXZpc2lvbkNvbnRyb2xzUmVzcG9uc2UuRGl2aXNpb25TdGFuZGluZ3NFbnRyeRpNChZEaXZpc2lvblN0YW5kaW5nc0VudHJ5EgsKA2tleRgBIAEoBRIiCgV2YWx1ZRgCIAEoCzITLmlwYy5Sb3VuZFN0YW5kaW5nczoCOAEi6wMKHlRvdXJuYW1lbnREaXZpc2lvbkRhdGFSZXNwb25zZRIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRInCgdwbGF5ZXJzGAMgASgLMhYuaXBjLlRvdXJuYW1lbnRQZXJzb25zEkUKCXN0YW5kaW5ncxgEIAMoCzIyLmlwYy5Ub3VybmFtZW50RGl2aXNpb25EYXRhUmVzcG9uc2UuU3RhbmRpbmdzRW50cnkSSAoLcGFpcmluZ19tYXAYBSADKAsyMy5pcGMuVG91cm5hbWVudERpdmlzaW9uRGF0YVJlc3BvbnNlLlBhaXJpbmdNYXBFbnRyeRInCghjb250cm9scxgGIAEoCzIVLmlwYy5EaXZpc2lvbkNvbnRyb2xzEikKDnJvdW5kX2NvbnRyb2xzGAcgAygLMhEuaXBjLlJvdW5kQ29udHJvbBIVCg1jdXJyZW50X3JvdW5kGAggASgFGkUKDlN0YW5kaW5nc0VudHJ5EgsKA2tleRgBIAEoBRIiCgV2YWx1ZRgCIAEoCzITLmlwYy5Sb3VuZFN0YW5kaW5nczoCOAEaPwoPUGFpcmluZ01hcEVudHJ5EgsKA2tleRgBIAEoCRIbCgV2YWx1ZRgCIAEoCzIMLmlwYy5QYWlyaW5nOgI4ASLBAQoXRnVsbFRvdXJuYW1lbnREaXZpc2lvbnMSPgoJZGl2aXNpb25zGAEgAygLMisuaXBjLkZ1bGxUb3VybmFtZW50RGl2aXNpb25zLkRpdmlzaW9uc0VudHJ5Eg8KB3N0YXJ0ZWQYAiABKAgaVQoORGl2aXNpb25zRW50cnkSCwoDa2V5GAEgASgJEjIKBXZhbHVlGAIgASgLMiMuaXBjLlRvdXJuYW1lbnREaXZpc2lvbkRhdGFSZXNwb25zZToCOAEiKAoaVG91cm5hbWVudEZpbmlzaGVkUmVzcG9uc2USCgoCaWQYASABKAkixAIKFlRvdXJuYW1lbnREYXRhUmVzcG9uc2USCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIaChJleGVjdXRpdmVfZGlyZWN0b3IYBCABKAkSKQoJZGlyZWN0b3JzGAUgASgLMhYuaXBjLlRvdXJuYW1lbnRQZXJzb25zEhIKCmlzX3N0YXJ0ZWQYBiABKAgSLgoKc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASOAoUc2NoZWR1bGVkX3N0YXJ0X3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjYKEnNjaGVkdWxlZF9lbmRfdGltZRgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiQQohVG91cm5hbWVudERpdmlzaW9uRGVsZXRlZFJlc3BvbnNlEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJKogBChRUb3VybmFtZW50R2FtZVJlc3VsdBINCglOT19SRVNVTFQQABIHCgNXSU4QARIICgRMT1NTEAISCAoERFJBVxADEgcKA0JZRRAEEg8KC0ZPUkZFSVRfV0lOEAUSEAoMRk9SRkVJVF9MT1NTEAYSDgoKRUxJTUlOQVRFRBAHEggKBFZPSUQQCCqvAQoNUGFpcmluZ01ldGhvZBIKCgZSQU5ET00QABIPCgtST1VORF9ST0JJThABEhQKEEtJTkdfT0ZfVEhFX0hJTEwQAhIPCgtFTElNSU5BVElPThADEgoKBkZBQ1RPUhAEEhIKDklOSVRJQUxfRk9OVEVTEAUSCQoFU1dJU1MQBhINCglRVUlDS1BBSVIQBxIKCgZNQU5VQUwQCBIUChBURUFNX1JPVU5EX1JPQklOEAkqRgoLRmlyc3RNZXRob2QSEAoMTUFOVUFMX0ZJUlNUEAASEAoMUkFORE9NX0ZJUlNUEAESEwoPQVVUT01BVElDX0ZJUlNUEAJCdwoHY29tLmlwY0IPVG91cm5hbWVudFByb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_ipc_omgwords]);
+  fileDesc("Chpwcm90by9pcGMvdG91cm5hbWVudC5wcm90bxIDaXBjIqMCChhUb3VybmFtZW50R2FtZUVuZGVkRXZlbnQSDwoHZ2FtZV9pZBgBIAEoCRI1CgdwbGF5ZXJzGAIgAygLMiQuaXBjLlRvdXJuYW1lbnRHYW1lRW5kZWRFdmVudC5QbGF5ZXISJgoKZW5kX3JlYXNvbhgDIAEoDjISLmlwYy5HYW1lRW5kUmVhc29uEgwKBHRpbWUYBCABKAMSDQoFcm91bmQYBSABKAUSEAoIZGl2aXNpb24YBiABKAkSEgoKZ2FtZV9pbmRleBgHIAEoBRpUCgZQbGF5ZXISEAoIdXNlcm5hbWUYASABKAkSDQoFc2NvcmUYAiABKAUSKQoGcmVzdWx0GAMgASgOMhkuaXBjLlRvdXJuYW1lbnRHYW1lUmVzdWx0IpIBChZUb3VybmFtZW50Um91bmRTdGFydGVkEhUKDXRvdXJuYW1lbnRfaWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkSDQoFcm91bmQYAyABKAUSEgoKZ2FtZV9pbmRleBgEIAEoBRIsCghkZWFkbGluZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiiAEKFlJlYWR5Rm9yVG91cm5hbWVudEdhbWUSFQoNdG91cm5hbWVudF9pZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRINCgVyb3VuZBgDIAEoBRIRCglwbGF5ZXJfaWQYBCABKAkSEgoKZ2FtZV9pbmRleBgFIAEoBRIPCgd1bnJlYWR5GAYgASgIIsIBChFUb3VybmFtZW50Q3JlYXRlZBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjgKFHNjaGVkdWxlZF9zdGFydF90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI2ChJzY2hlZHVsZWRfZW5kX3RpbWUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHNsdWcYBiABKAkiQQoQVG91cm5hbWVudFBlcnNvbhIKCgJpZBgBIAEoCRIOCgZyYXRpbmcYAiABKAUSEQoJc3VzcGVuZGVkGAMgASgIIlkKEVRvdXJuYW1lbnRQZXJzb25zEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEiYKB3BlcnNvbnMYAyADKAsyFS5pcGMuVG91cm5hbWVudFBlcnNvbiKOAwoMUm91bmRDb250cm9sEioKDnBhaXJpbmdfbWV0aG9kGAEgASgOMhIuaXBjLlBhaXJpbmdNZXRob2QSJgoMZmlyc3RfbWV0aG9kGAIgASgOMhAuaXBjLkZpcnN0TWV0aG9kEhcKD2dhbWVzX3Blcl9yb3VuZBgDIAEoBRINCgVyb3VuZBgEIAEoBRIOCgZmYWN0b3IYBSABKAUSFgoOaW5pdGlhbF9mb250ZXMYBiABKAUSEwoLbWF4X3JlcGVhdHMYByABKAUSHgoWYWxsb3dfb3Zlcl9tYXhfcmVwZWF0cxgIIAEoCBIeChZyZXBlYXRfcmVsYXRpdmVfd2VpZ2h0GAkgASgFEiYKHndpbl9kaWZmZXJlbmNlX3JlbGF0aXZlX3dlaWdodBgKIAEoBRIjChtpbnRlcmxlYXZlX3RlYW1fcm91bmRfcm9iaW4YCyABKAgSIAoTc3ByZWFkX2NhcF9vdmVycmlkZRgMIAEoDUgAiAEBQhYKFF9zcHJlYWRfY2FwX292ZXJyaWRlIrMCChBEaXZpc2lvbkNvbnRyb2xzEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEiYKDGdhbWVfcmVxdWVzdBgDIAEoCzIQLmlwYy5HYW1lUmVxdWVzdBIzChBzdXNwZW5kZWRfcmVzdWx0GAQgASgOMhkuaXBjLlRvdXJuYW1lbnRHYW1lUmVzdWx0EhgKEHN1c3BlbmRlZF9zcHJlYWQYBSABKAUSEgoKYXV0b19zdGFydBgGIAEoCBISCgpzcHJlYWRfY2FwGAcgASgNEhEKCWdpYnNvbml6ZRgIIAEoCBIVCg1naWJzb25fc3ByZWFkGAkgASgFEhkKEW1pbmltdW1fcGxhY2VtZW50GAogASgFEh0KFW1heGltdW1fYnllX3BsYWNlbWVudBgLIAEoBSKFAQoOVG91cm5hbWVudEdhbWUSDgoGc2NvcmVzGAEgAygFEioKB3Jlc3VsdHMYAiADKA4yGS5pcGMuVG91cm5hbWVudEdhbWVSZXN1bHQSKwoPZ2FtZV9lbmRfcmVhc29uGAMgASgOMhIuaXBjLkdhbWVFbmRSZWFzb24SCgoCaWQYBCABKAkikAEKB1BhaXJpbmcSDwoHcGxheWVycxgBIAMoBRINCgVyb3VuZBgCIAEoBRIiCgVnYW1lcxgDIAMoCzITLmlwYy5Ub3VybmFtZW50R2FtZRIrCghvdXRjb21lcxgEIAMoDjIZLmlwYy5Ub3VybmFtZW50R2FtZVJlc3VsdBIUCgxyZWFkeV9zdGF0ZXMYBSADKAkidAoOUGxheWVyU3RhbmRpbmcSEQoJcGxheWVyX2lkGAEgASgJEgwKBHdpbnMYAiABKAUSDgoGbG9zc2VzGAMgASgFEg0KBWRyYXdzGAQgASgFEg4KBnNwcmVhZBgFIAEoBRISCgpnaWJzb25pemVkGAYgASgIIjgKDlJvdW5kU3RhbmRpbmdzEiYKCXN0YW5kaW5ncxgBIAMoCzITLmlwYy5QbGF5ZXJTdGFuZGluZyKCAgoYRGl2aXNpb25QYWlyaW5nc1Jlc3BvbnNlEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEicKEWRpdmlzaW9uX3BhaXJpbmdzGAMgAygLMgwuaXBjLlBhaXJpbmcSUAoSZGl2aXNpb25fc3RhbmRpbmdzGAQgAygLMjQuaXBjLkRpdmlzaW9uUGFpcmluZ3NSZXNwb25zZS5EaXZpc2lvblN0YW5kaW5nc0VudHJ5Gk0KFkRpdmlzaW9uU3RhbmRpbmdzRW50cnkSCwoDa2V5GAEgASgFEiIKBXZhbHVlGAIgASgLMhMuaXBjLlJvdW5kU3RhbmRpbmdzOgI4ASJOCh9EaXZpc2lvblBhaXJpbmdzRGVsZXRlZFJlc3BvbnNlEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEg0KBXJvdW5kGAMgASgFIrUCCh1QbGF5ZXJzQWRkZWRPclJlbW92ZWRSZXNwb25zZRIKCgJpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRInCgdwbGF5ZXJzGAMgASgLMhYuaXBjLlRvdXJuYW1lbnRQZXJzb25zEicKEWRpdmlzaW9uX3BhaXJpbmdzGAQgAygLMgwuaXBjLlBhaXJpbmcSVQoSZGl2aXNpb25fc3RhbmRpbmdzGAUgAygLMjkuaXBjLlBsYXllcnNBZGRlZE9yUmVtb3ZlZFJlc3BvbnNlLkRpdmlzaW9uU3RhbmRpbmdzRW50cnkaTQoWRGl2aXNpb25TdGFuZGluZ3NFbnRyeRILCgNrZXkYASABKAUSIgoFdmFsdWUYAiABKAsyEy5pcGMuUm91bmRTdGFuZGluZ3M6AjgBIqcCChVEaXZpc2lvblJvdW5kQ29udHJvbHMSCgoCaWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkSKQoOcm91bmRfY29udHJvbHMYAyADKAsyES5pcGMuUm91bmRDb250cm9sEicKEWRpdmlzaW9uX3BhaXJpbmdzGAQgAygLMgwuaXBjLlBhaXJpbmcSTQoSZGl2aXNpb25fc3RhbmRpbmdzGAUgAygLMjEuaXBjLkRpdmlzaW9uUm91bmRDb250cm9scy5EaXZpc2lvblN0YW5kaW5nc0VudHJ5Gk0KFkRpdmlzaW9uU3RhbmRpbmdzRW50cnkSCwoDa2V5GAEgASgFEiIKBXZhbHVlGAIgASgLMhMuaXBjLlJvdW5kU3RhbmRpbmdzOgI4ASKLAgoYRGl2aXNpb25Db250cm9sc1Jlc3BvbnNlEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEjAKEWRpdmlzaW9uX2NvbnRyb2xzGAMgASgLMhUuaXBjLkRpdmlzaW9uQ29udHJvbHMSUAoSZGl2aXNpb25fc3RhbmRpbmdzGAQgAygLMjQuaXBjLkRpdmlzaW9uQ29udHJvbHNSZXNwb25zZS5EaXZpc2lvblN0YW5kaW5nc0VudHJ5Gk0KFkRpdmlzaW9uU3RhbmRpbmdzRW50cnkSCwoDa2V5GAEgASgFEiIKBXZhbHVlGAIgASgLMhMuaXBjLlJvdW5kU3RhbmRpbmdzOgI4ASLrAwoeVG91cm5hbWVudERpdmlzaW9uRGF0YVJlc3BvbnNlEgoKAmlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEicKB3BsYXllcnMYAyABKAsyFi5pcGMuVG91cm5hbWVudFBlcnNvbnMSRQoJc3RhbmRpbmdzGAQgAygLMjIuaXBjLlRvdXJuYW1lbnREaXZpc2lvbkRhdGFSZXNwb25zZS5TdGFuZGluZ3NFbnRyeRJICgtwYWlyaW5nX21hcBgFIAMoCzIzLmlwYy5Ub3VybmFtZW50RGl2aXNpb25EYXRhUmVzcG9uc2UuUGFpcmluZ01hcEVudHJ5EicKCGNvbnRyb2xzGAYgASgLMhUuaXBjLkRpdmlzaW9uQ29udHJvbHMSKQoOcm91bmRfY29udHJvbHMYByADKAsyES5pcGMuUm91bmRDb250cm9sEhUKDWN1cnJlbnRfcm91bmQYCCABKAUaRQoOU3RhbmRpbmdzRW50cnkSCwoDa2V5GAEgASgFEiIKBXZhbHVlGAIgASgLMhMuaXBjLlJvdW5kU3RhbmRpbmdzOgI4ARo/Cg9QYWlyaW5nTWFwRW50cnkSCwoDa2V5GAEgASgJEhsKBXZhbHVlGAIgASgLMgwuaXBjLlBhaXJpbmc6AjgBIsEBChdGdWxsVG91cm5hbWVudERpdmlzaW9ucxI+CglkaXZpc2lvbnMYASADKAsyKy5pcGMuRnVsbFRvdXJuYW1lbnREaXZpc2lvbnMuRGl2aXNpb25zRW50cnkSDwoHc3RhcnRlZBgCIAEoCBpVCg5EaXZpc2lvbnNFbnRyeRILCgNrZXkYASABKAkSMgoFdmFsdWUYAiABKAsyIy5pcGMuVG91cm5hbWVudERpdmlzaW9uRGF0YVJlc3BvbnNlOgI4ASIoChpUb3VybmFtZW50RmluaXNoZWRSZXNwb25zZRIKCgJpZBgBIAEoCSLEAgoWVG91cm5hbWVudERhdGFSZXNwb25zZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhoKEmV4ZWN1dGl2ZV9kaXJlY3RvchgEIAEoCRIpCglkaXJlY3RvcnMYBSABKAsyFi5pcGMuVG91cm5hbWVudFBlcnNvbnMSEgoKaXNfc3RhcnRlZBgGIAEoCBIuCgpzdGFydF90aW1lGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI4ChRzY2hlZHVsZWRfc3RhcnRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNgoSc2NoZWR1bGVkX2VuZF90aW1lGAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJBCiFUb3VybmFtZW50RGl2aXNpb25EZWxldGVkUmVzcG9uc2USCgoCaWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkqiAEKFFRvdXJuYW1lbnRHYW1lUmVzdWx0Eg0KCU5PX1JFU1VMVBAAEgcKA1dJThABEggKBExPU1MQAhIICgREUkFXEAMSBwoDQllFEAQSDwoLRk9SRkVJVF9XSU4QBRIQCgxGT1JGRUlUX0xPU1MQBhIOCgpFTElNSU5BVEVEEAcSCAoEVk9JRBAIKq8BCg1QYWlyaW5nTWV0aG9kEgoKBlJBTkRPTRAAEg8KC1JPVU5EX1JPQklOEAESFAoQS0lOR19PRl9USEVfSElMTBACEg8KC0VMSU1JTkFUSU9OEAMSCgoGRkFDVE9SEAQSEgoOSU5JVElBTF9GT05URVMQBRIJCgVTV0lTUxAGEg0KCVFVSUNLUEFJUhAHEgoKBk1BTlVBTBAIEhQKEFRFQU1fUk9VTkRfUk9CSU4QCSpGCgtGaXJzdE1ldGhvZBIQCgxNQU5VQUxfRklSU1QQABIQCgxSQU5ET01fRklSU1QQARITCg9BVVRPTUFUSUNfRklSU1QQAkJ3Cgdjb20uaXBjQg9Ub3VybmFtZW50UHJvdG9QAVovZ2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9pcGOiAgNJWFiqAgNJcGPKAgNJcGPiAg9JcGNcR1BCTWV0YWRhdGHqAgNJcGNiBnByb3RvMw", [file_google_protobuf_timestamp, file_proto_ipc_omgwords]);
 
 /**
  * New tournaments will use full tournament
@@ -191,6 +191,50 @@ export const ReadyForTournamentGameSchema: GenMessage<ReadyForTournamentGame> = 
   messageDesc(file_proto_ipc_tournament, 2);
 
 /**
+ * TournamentCreated is sent when a new tournament is created
+ *
+ * @generated from message ipc.TournamentCreated
+ */
+export type TournamentCreated = Message<"ipc.TournamentCreated"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp scheduled_start_time = 4;
+   */
+  scheduledStartTime?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp scheduled_end_time = 5;
+   */
+  scheduledEndTime?: Timestamp;
+
+  /**
+   * @generated from field: string slug = 6;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message ipc.TournamentCreated.
+ * Use `create(TournamentCreatedSchema)` to create a new message.
+ */
+export const TournamentCreatedSchema: GenMessage<TournamentCreated> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_tournament, 3);
+
+/**
  * @generated from message ipc.TournamentPerson
  */
 export type TournamentPerson = Message<"ipc.TournamentPerson"> & {
@@ -215,7 +259,7 @@ export type TournamentPerson = Message<"ipc.TournamentPerson"> & {
  * Use `create(TournamentPersonSchema)` to create a new message.
  */
 export const TournamentPersonSchema: GenMessage<TournamentPerson> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 3);
+  messageDesc(file_proto_ipc_tournament, 4);
 
 /**
  * @generated from message ipc.TournamentPersons
@@ -242,7 +286,7 @@ export type TournamentPersons = Message<"ipc.TournamentPersons"> & {
  * Use `create(TournamentPersonsSchema)` to create a new message.
  */
 export const TournamentPersonsSchema: GenMessage<TournamentPersons> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 4);
+  messageDesc(file_proto_ipc_tournament, 5);
 
 /**
  * @generated from message ipc.RoundControl
@@ -319,7 +363,7 @@ export type RoundControl = Message<"ipc.RoundControl"> & {
  * Use `create(RoundControlSchema)` to create a new message.
  */
 export const RoundControlSchema: GenMessage<RoundControl> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 5);
+  messageDesc(file_proto_ipc_tournament, 6);
 
 /**
  * @generated from message ipc.DivisionControls
@@ -386,7 +430,7 @@ export type DivisionControls = Message<"ipc.DivisionControls"> & {
  * Use `create(DivisionControlsSchema)` to create a new message.
  */
 export const DivisionControlsSchema: GenMessage<DivisionControls> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 6);
+  messageDesc(file_proto_ipc_tournament, 7);
 
 /**
  * @generated from message ipc.TournamentGame
@@ -418,7 +462,7 @@ export type TournamentGame = Message<"ipc.TournamentGame"> & {
  * Use `create(TournamentGameSchema)` to create a new message.
  */
 export const TournamentGameSchema: GenMessage<TournamentGame> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 7);
+  messageDesc(file_proto_ipc_tournament, 8);
 
 /**
  * @generated from message ipc.Pairing
@@ -457,7 +501,7 @@ export type Pairing = Message<"ipc.Pairing"> & {
  * Use `create(PairingSchema)` to create a new message.
  */
 export const PairingSchema: GenMessage<Pairing> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 8);
+  messageDesc(file_proto_ipc_tournament, 9);
 
 /**
  * @generated from message ipc.PlayerStanding
@@ -499,7 +543,7 @@ export type PlayerStanding = Message<"ipc.PlayerStanding"> & {
  * Use `create(PlayerStandingSchema)` to create a new message.
  */
 export const PlayerStandingSchema: GenMessage<PlayerStanding> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 9);
+  messageDesc(file_proto_ipc_tournament, 10);
 
 /**
  * @generated from message ipc.RoundStandings
@@ -516,7 +560,7 @@ export type RoundStandings = Message<"ipc.RoundStandings"> & {
  * Use `create(RoundStandingsSchema)` to create a new message.
  */
 export const RoundStandingsSchema: GenMessage<RoundStandings> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 10);
+  messageDesc(file_proto_ipc_tournament, 11);
 
 /**
  * @generated from message ipc.DivisionPairingsResponse
@@ -548,7 +592,7 @@ export type DivisionPairingsResponse = Message<"ipc.DivisionPairingsResponse"> &
  * Use `create(DivisionPairingsResponseSchema)` to create a new message.
  */
 export const DivisionPairingsResponseSchema: GenMessage<DivisionPairingsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 11);
+  messageDesc(file_proto_ipc_tournament, 12);
 
 /**
  * @generated from message ipc.DivisionPairingsDeletedResponse
@@ -575,7 +619,7 @@ export type DivisionPairingsDeletedResponse = Message<"ipc.DivisionPairingsDelet
  * Use `create(DivisionPairingsDeletedResponseSchema)` to create a new message.
  */
 export const DivisionPairingsDeletedResponseSchema: GenMessage<DivisionPairingsDeletedResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 12);
+  messageDesc(file_proto_ipc_tournament, 13);
 
 /**
  * @generated from message ipc.PlayersAddedOrRemovedResponse
@@ -612,7 +656,7 @@ export type PlayersAddedOrRemovedResponse = Message<"ipc.PlayersAddedOrRemovedRe
  * Use `create(PlayersAddedOrRemovedResponseSchema)` to create a new message.
  */
 export const PlayersAddedOrRemovedResponseSchema: GenMessage<PlayersAddedOrRemovedResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 13);
+  messageDesc(file_proto_ipc_tournament, 14);
 
 /**
  * @generated from message ipc.DivisionRoundControls
@@ -649,7 +693,7 @@ export type DivisionRoundControls = Message<"ipc.DivisionRoundControls"> & {
  * Use `create(DivisionRoundControlsSchema)` to create a new message.
  */
 export const DivisionRoundControlsSchema: GenMessage<DivisionRoundControls> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 14);
+  messageDesc(file_proto_ipc_tournament, 15);
 
 /**
  * @generated from message ipc.DivisionControlsResponse
@@ -681,7 +725,7 @@ export type DivisionControlsResponse = Message<"ipc.DivisionControlsResponse"> &
  * Use `create(DivisionControlsResponseSchema)` to create a new message.
  */
 export const DivisionControlsResponseSchema: GenMessage<DivisionControlsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 15);
+  messageDesc(file_proto_ipc_tournament, 16);
 
 /**
  * @generated from message ipc.TournamentDivisionDataResponse
@@ -733,7 +777,7 @@ export type TournamentDivisionDataResponse = Message<"ipc.TournamentDivisionData
  * Use `create(TournamentDivisionDataResponseSchema)` to create a new message.
  */
 export const TournamentDivisionDataResponseSchema: GenMessage<TournamentDivisionDataResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 16);
+  messageDesc(file_proto_ipc_tournament, 17);
 
 /**
  * @generated from message ipc.FullTournamentDivisions
@@ -755,7 +799,7 @@ export type FullTournamentDivisions = Message<"ipc.FullTournamentDivisions"> & {
  * Use `create(FullTournamentDivisionsSchema)` to create a new message.
  */
 export const FullTournamentDivisionsSchema: GenMessage<FullTournamentDivisions> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 17);
+  messageDesc(file_proto_ipc_tournament, 18);
 
 /**
  * @generated from message ipc.TournamentFinishedResponse
@@ -772,7 +816,7 @@ export type TournamentFinishedResponse = Message<"ipc.TournamentFinishedResponse
  * Use `create(TournamentFinishedResponseSchema)` to create a new message.
  */
 export const TournamentFinishedResponseSchema: GenMessage<TournamentFinishedResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 18);
+  messageDesc(file_proto_ipc_tournament, 19);
 
 /**
  * @generated from message ipc.TournamentDataResponse
@@ -831,7 +875,7 @@ export type TournamentDataResponse = Message<"ipc.TournamentDataResponse"> & {
  * Use `create(TournamentDataResponseSchema)` to create a new message.
  */
 export const TournamentDataResponseSchema: GenMessage<TournamentDataResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 19);
+  messageDesc(file_proto_ipc_tournament, 20);
 
 /**
  * @generated from message ipc.TournamentDivisionDeletedResponse
@@ -853,7 +897,7 @@ export type TournamentDivisionDeletedResponse = Message<"ipc.TournamentDivisionD
  * Use `create(TournamentDivisionDeletedResponseSchema)` to create a new message.
  */
 export const TournamentDivisionDeletedResponseSchema: GenMessage<TournamentDivisionDeletedResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_tournament, 20);
+  messageDesc(file_proto_ipc_tournament, 21);
 
 /**
  * @generated from enum ipc.TournamentGameResult
