@@ -57,6 +57,7 @@ import {
   doesCurrentUserUse24HourTime,
   protobufTimestampToDayjsIgnoringNanos,
 } from "../../utils/datetime";
+import { isClubType } from "../../store/constants";
 
 type ModalProps = {
   title: string;
@@ -94,7 +95,9 @@ const FormModal = (props: ModalProps) => {
       <CreatePrintableScorecards tournamentID={props.tournamentID} />
     ),
     "export-tournament": <ExportTournament tournamentID={props.tournamentID} />,
-    "edit-description": <EditDescription tournamentID={props.tournamentID} />,
+    "edit-description-and-other-settings": (
+      <EditDescription tournamentID={props.tournamentID} />
+    ),
     "unstart-tournament": (
       <UnstartTournament tournamentID={props.tournamentID} />
     ),
@@ -144,7 +147,7 @@ export const GhettoTools = (props: Props) => {
     setModalTitle(title);
   };
 
-  const metadataTypes = ["Edit description"];
+  const metadataTypes = ["Edit description and other settings"];
 
   const preTournamentTypes = [
     "Add division",
@@ -2087,6 +2090,7 @@ const EditDescription = (props: { tournamentID: string }) => {
       scheduledTime: {
         range: [scheduledStartTime, scheduledEndTime],
       },
+      irlMode: metadata.irlMode,
     });
   }, [form, tournamentContext.metadata]);
 
@@ -2106,6 +2110,7 @@ const EditDescription = (props: { tournamentID: string }) => {
         scheduledEndTime: scheduledEndTime
           ? dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime)
           : undefined,
+        irlMode: vals.irlMode,
       },
       setOnlySpecified: true,
     };
@@ -2164,6 +2169,21 @@ const EditDescription = (props: { tournamentID: string }) => {
           </Form.Item>
         </Form.Item>
         <Form.Item>
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            IRL (In-Real-Life) Mode is used for real-life tournaments - games
+            being played with a physical board and tiles. Once you turn this
+            mode on, and click Submit, <em>you cannot turn it off</em>.
+          </div>
+          <Form.Item name="irlMode" label="IRL Mode">
+            <Switch
+              disabled={
+                tournamentContext.metadata.irlMode ||
+                isClubType(tournamentContext.metadata.type)
+              }
+            />
+          </Form.Item>
+        </Form.Item>
+        <Form.Item style={{ paddingBottom: 20 }}>
           <Button type="primary" htmlType="submit">
             Submit
           </Button>

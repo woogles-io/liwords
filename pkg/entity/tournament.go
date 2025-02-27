@@ -105,4 +105,5 @@ type Tournament struct {
 	ExtraMeta          *TournamentMeta                `json:"extraMeta"`
 	ScheduledStartTime *time.Time                     `json:"scheduledStartTime"`
 	ScheduledEndTime   *time.Time                     `json:"scheduledEndTime"`
+	CreatedBy          uint
 }
