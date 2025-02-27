@@ -94,8 +94,8 @@ func NewTournament(ctx context.Context,
 	ttype entity.CompetitionType,
 	parent string,
 	slug string,
-	scheduledStartTime time.Time,
-	scheduledEndTime time.Time,
+	scheduledStartTime *time.Time,
+	scheduledEndTime *time.Time,
 ) (*entity.Tournament, error) {
 
 	executiveDirector, err := getExecutiveDirector(name, directors)
@@ -177,7 +177,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	if name == "" && !merge {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EMPTY_NAME, t.Name)
 	}
-	log.Info().Interface("t", t).Msg("tournament-before-set-meta")
+	log.Info().Interface("t", t).Bool("merge", merge).Interface("meta", meta).Msg("tournament-before-set-meta")
 
 	// Not all fields need to be specified if we're merging.
 	t.Name = ternary(merge && name == "", t.Name, name)
@@ -207,13 +207,23 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 			t.ExtraMeta.IRLMode, meta.IrlMode),
 	}
 
-	t.ScheduledStartTime = ternary(merge && meta.ScheduledStartTime == nil,
-		t.ScheduledStartTime, meta.ScheduledStartTime.AsTime())
-	t.ScheduledEndTime = ternary(merge && meta.ScheduledEndTime == nil,
-		t.ScheduledEndTime, meta.ScheduledEndTime.AsTime())
+	if meta.ScheduledStartTime != nil {
+		startTime := meta.ScheduledStartTime.AsTime()
+		t.ScheduledStartTime = &startTime
+	}
+	if meta.ScheduledEndTime != nil {
+		endTime := meta.ScheduledEndTime.AsTime()
+		t.ScheduledEndTime = &endTime
+	}
 
-	// TODO: Require the scheduled start time is set
-	if t.ScheduledStartTime.After(t.ScheduledEndTime) {
+	if !merge && meta.ScheduledStartTime == nil {
+		t.ScheduledStartTime = nil
+	}
+	if !merge && meta.ScheduledEndTime == nil {
+		t.ScheduledEndTime = nil
+	}
+
+	if (t.ScheduledStartTime != nil && t.ScheduledEndTime == nil) || (t.ScheduledEndTime != nil && t.ScheduledStartTime != nil && t.ScheduledStartTime.After(*t.ScheduledEndTime)) {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_SCHEDULED_START_AFTER_END, t.Name)
 	}
 
@@ -1394,6 +1404,14 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 	if err != nil {
 		return nil, err
 	}
+	var scheduledStartTime *timestamppb.Timestamp
+	if t.ScheduledStartTime != nil {
+		scheduledStartTime = timestamppb.New(*t.ScheduledStartTime)
+	}
+	var scheduledEndTime *timestamppb.Timestamp
+	if t.ScheduledEndTime != nil {
+		scheduledEndTime = timestamppb.New(*t.ScheduledEndTime)
+	}
 	// no lock needed; only gets called while already locked.
 	return &ipc.TournamentDataResponse{Id: t.UUID,
 		Name:               t.Name,
@@ -1401,8 +1419,8 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		ExecutiveDirector:  t.ExecutiveDirector,
 		Directors:          t.Directors,
 		IsStarted:          t.IsStarted,
-		ScheduledStartTime: timestamppb.New(t.ScheduledStartTime),
-		ScheduledEndTime:   timestamppb.New(t.ScheduledEndTime),
+		ScheduledStartTime: scheduledStartTime,
+		ScheduledEndTime:   scheduledEndTime,
 	}, nil
 }
 

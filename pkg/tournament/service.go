@@ -161,15 +161,16 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		return nil, apiserver.InvalidArg("need at least one director id")
 	}
 
-	// TODO: ScheduledStartTime should be required after the front-end
-	// is updated to send it.
+	startTimeExists := req.Msg.ScheduledStartTime != nil && req.Msg.ScheduledStartTime.Seconds != 0
+	endTimeExists := req.Msg.ScheduledEndTime != nil && req.Msg.ScheduledEndTime.Seconds != 0
+
 	if req.Msg.ScheduledStartTime != nil {
 		if req.Msg.ScheduledStartTime.AsTime().Before(time.Now()) {
 			return nil, apiserver.InvalidArg("scheduled start time cannot be in the past")
 		}
 	}
-	if req.Msg.ScheduledEndTime != nil {
-		if req.Msg.ScheduledStartTime == nil {
+	if endTimeExists {
+		if !startTimeExists {
 			return nil, apiserver.InvalidArg("scheduled start time is required when scheduled end time is provided")
 		}
 		if req.Msg.ScheduledEndTime.AsTime().Before(req.Msg.ScheduledStartTime.AsTime()) {
@@ -194,8 +195,21 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	if err != nil {
 		return nil, err
 	}
+
+	var scheduledStartTime *time.Time
+	var scheduledEndTime *time.Time
+
+	if startTimeExists {
+		startTime := req.Msg.ScheduledStartTime.AsTime()
+		scheduledStartTime = &startTime
+	}
+	if endTimeExists {
+		endTime := req.Msg.ScheduledEndTime.AsTime()
+		scheduledEndTime = &endTime
+	}
+
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Msg.Name, req.Msg.Description, directors,
-		tt, "", req.Msg.Slug, req.Msg.ScheduledStartTime.AsTime(), req.Msg.ScheduledEndTime.AsTime())
+		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -482,9 +496,15 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 		}
 	}
 
+	var scheduledStartTime *time.Time
+	if req.Msg.Date != nil && req.Msg.Date.Seconds != 0 {
+		startTime := req.Msg.Date.AsTime()
+		scheduledStartTime = &startTime
+	}
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeChild, club.UUID, slug, req.Msg.Date.AsTime(), time.Time{})
+		entity.TypeChild, club.UUID, slug, scheduledStartTime, nil)
+
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -750,6 +770,16 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t entity.Tour
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
+
+	var scheduledStartTime *timestamppb.Timestamp
+	if t.ScheduledStartTime != nil {
+		scheduledStartTime = timestamppb.New(*t.ScheduledStartTime)
+	}
+	var scheduledEndTime *timestamppb.Timestamp
+	if t.ScheduledEndTime != nil {
+		scheduledEndTime = timestamppb.New(*t.ScheduledEndTime)
+	}
+
 	metadata := &pb.TournamentMetadata{
 		Id:                        t.UUID,
 		Name:                      t.Name,
@@ -766,8 +796,8 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t entity.Tour
 		Color:                     t.ExtraMeta.Color,
 		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
 		IrlMode:                   t.ExtraMeta.IRLMode,
-		ScheduledStartTime:        timestamppb.New(t.ScheduledStartTime),
-		ScheduledEndTime:          timestamppb.New(t.ScheduledEndTime),
+		ScheduledStartTime:        scheduledStartTime,
+		ScheduledEndTime:          scheduledEndTime,
 	}
 
 	return metadata, nil

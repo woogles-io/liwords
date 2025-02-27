@@ -207,13 +207,12 @@ export const TourneyEditor = (props: Props) => {
         directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
-        // TODO: make this field required after one deploy
-        scheduledStartTime: timestampFromMs(
-          scheduledStartTime ? scheduledStartTime.unix() * 1000 : 0,
-        ),
-        scheduledEndTime: timestampFromMs(
-          scheduledEndTime ? scheduledEndTime.unix() * 1000 : 0,
-        ),
+        scheduledStartTime: scheduledStartTime
+          ? timestampFromMs(scheduledStartTime.unix() * 1000)
+          : undefined,
+        scheduledEndTime: scheduledEndTime
+          ? timestampFromMs(scheduledEndTime.unix() * 1000)
+          : undefined,
       };
     } else if (props.mode === "edit") {
       apicall = "setTournamentMetadata";
@@ -235,10 +234,12 @@ export const TourneyEditor = (props: Props) => {
           color: vals.color,
           privateAnalysis: vals.privateAnalysis,
           irlMode: vals.irlMode,
-          scheduledStartTime:
-            dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime),
-          scheduledEndTime:
-            dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime),
+          scheduledStartTime: scheduledStartTime
+            ? dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime)
+            : undefined,
+          scheduledEndTime: scheduledEndTime
+            ? dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime)
+            : undefined,
         },
       };
     }

@@ -103,6 +103,6 @@ type Tournament struct {
 	ParentID           string                         `json:"parent"`
 	Slug               string                         `json:"slug"`
 	ExtraMeta          *TournamentMeta                `json:"extraMeta"`
-	ScheduledStartTime time.Time                      `json:"scheduledStartTime"`
-	ScheduledEndTime   time.Time                      `json:"scheduledEndTime"`
+	ScheduledStartTime *time.Time                     `json:"scheduledStartTime"`
+	ScheduledEndTime   *time.Time                     `json:"scheduledEndTime"`
 }

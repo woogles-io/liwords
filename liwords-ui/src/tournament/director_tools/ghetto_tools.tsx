@@ -2100,7 +2100,6 @@ const EditDescription = (props: { tournamentID: string }) => {
         logo: vals.logo,
         color: vals.color,
         id: props.tournamentID,
-        // TODO: make this field required after one deploy
         scheduledStartTime: scheduledStartTime
           ? dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime)
           : undefined,

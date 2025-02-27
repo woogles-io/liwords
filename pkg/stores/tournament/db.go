@@ -50,9 +50,9 @@ type tournament struct {
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
-	Parent             string `gorm:"index"`
-	ScheduledStartTime time.Time
-	ScheduledEndTime   time.Time
+	Parent             string     `gorm:"index"`
+	ScheduledStartTime *time.Time `gorm:"default:null"`
+	ScheduledEndTime   *time.Time `gorm:"default:null"`
 }
 
 type registrant struct {
@@ -159,7 +159,7 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("uuid = ?", tm.UUID).Updates(dbt)
+		Select("*").Where("uuid = ?", tm.UUID).Updates(dbt)
 
 	return result.Error
 }
@@ -313,7 +313,11 @@ func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entit
 	oneWeekAgo := time.Now().AddDate(0, 0, -7)
 	oneWeekFromNow := time.Now().AddDate(0, 0, 7)
 
-	result := ctxDB.Where("scheduled_start_time BETWEEN ? AND ? OR scheduled_end_time BETWEEN ? AND ?",
+	result := ctxDB.Where(`
+		(scheduled_start_time IS NOT NULL AND scheduled_start_time BETWEEN ? AND ?)
+		OR 
+		(scheduled_end_time IS NOT NULL AND scheduled_end_time BETWEEN ? AND ?)
+		`,
 		oneWeekAgo, oneWeekFromNow, oneWeekAgo, oneWeekFromNow).
 		Find(&tournaments)
 
