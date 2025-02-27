@@ -53,7 +53,7 @@ type tournament struct {
 	Parent             string     `gorm:"index"`
 	ScheduledStartTime *time.Time `gorm:"default:null"`
 	ScheduledEndTime   *time.Time `gorm:"default:null"`
-	CreatedBy          uint
+	CreatedBy          *uint
 }
 
 type registrant struct {
@@ -211,6 +211,10 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 	if err != nil {
 		return nil, err
 	}
+	createdBy := &(t.CreatedBy)
+	if t.CreatedBy == 0 {
+		createdBy = nil
+	}
 
 	dbt := &tournament{
 		UUID:               t.UUID,
@@ -228,7 +232,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		Slug:               t.Slug,
 		ScheduledStartTime: t.ScheduledStartTime,
 		ScheduledEndTime:   t.ScheduledEndTime,
-		CreatedBy:          t.CreatedBy,
+		CreatedBy:          createdBy,
 	}
 	return dbt, nil
 }
