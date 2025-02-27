@@ -96,6 +96,7 @@ func NewTournament(ctx context.Context,
 	slug string,
 	scheduledStartTime *time.Time,
 	scheduledEndTime *time.Time,
+	createdBy uint,
 ) (*entity.Tournament, error) {
 
 	executiveDirector, err := getExecutiveDirector(name, directors)
@@ -118,6 +119,7 @@ func NewTournament(ctx context.Context,
 		ExtraMeta:          &entity.TournamentMeta{},
 		ScheduledStartTime: scheduledStartTime,
 		ScheduledEndTime:   scheduledEndTime,
+		CreatedBy:          createdBy,
 	}
 
 	err = tournamentStore.Create(ctx, entTournament)

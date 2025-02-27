@@ -1,11 +1,17 @@
 import React, { ReactNode } from "react";
-import { Card } from "antd";
+import { Card, Tooltip } from "antd";
 import ReactMarkdown from "react-markdown";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
 import { isClubType } from "../store/constants";
+import {
+  ShopFilled,
+  ShopOutlined,
+  SunOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -49,7 +55,19 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           }
         />
       )}
-      <Card title={title} className="tournament">
+      <Card
+        title={title}
+        className="tournament"
+        extra={
+          tournamentContext.metadata.irlMode ? (
+            <Tooltip title="In Real Life Mode">
+              <TeamOutlined style={{ color: "#955f9a" }} />
+              <TeamOutlined style={{ color: "#955f9a" }} />
+              <TeamOutlined style={{ color: "#955f9a" }} />
+            </Tooltip>
+          ) : null
+        }
+      >
         {tournamentContext.metadata.logo && (
           <img
             src={tournamentContext.metadata.logo}

@@ -24,6 +24,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	"github.com/woogles-io/liwords/pkg/utilities"
@@ -209,10 +210,21 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	}
 
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Msg.Name, req.Msg.Description, directors,
-		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime)
+		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime, user.ID)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+
+	config, err := config.Ctx(ctx)
+	if err != nil {
+		log.Err(err).Str("userID", user.UUID).Msg("notification-nil-config")
+		return nil, err
+	}
+	if config.DiscordToken != "" {
+		notify.Post(fmt.Sprintf("A new tournament has been created by %s: %s (%s)",
+			user.Username, t.Name, t.Slug), config.DiscordToken)
+	}
+
 	return connect.NewResponse(&pb.NewTournamentResponse{
 		Id:   t.UUID,
 		Slug: t.Slug,
@@ -503,7 +515,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 	}
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeChild, club.UUID, slug, scheduledStartTime, nil)
+		entity.TypeChild, club.UUID, slug, scheduledStartTime, nil, 0 /*fix me when we ever have club sessions*/)
 
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())

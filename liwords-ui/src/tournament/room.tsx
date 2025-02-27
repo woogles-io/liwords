@@ -166,6 +166,7 @@ export const TournamentRoom = (props: Props) => {
                 competitorContext,
               )
             }
+            showFirst={tournamentContext.metadata.irlMode}
           />
         </ConfigProvider>
         <TournamentInfo
