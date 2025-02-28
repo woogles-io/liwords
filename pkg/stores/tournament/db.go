@@ -160,7 +160,7 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
-		Select("*").Where("uuid = ?", tm.UUID).Updates(dbt)
+		Where("uuid = ?", tm.UUID).Updates(dbt)
 
 	return result.Error
 }
