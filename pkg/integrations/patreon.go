@@ -142,7 +142,7 @@ type PatreonTokenResponse struct {
 	RefreshToken  string `json:"refresh_token"`
 	ExpiresIn     int    `json:"expires_in"`
 	Scope         string `json:"scope"`
-	PatreonUserID string `json:"patreon_user_id"`
+	PatreonUserID string `json:"patreon_user_id,omitempty"` // Don't overwrite with blank ID on refresh.
 }
 
 type PatreonError struct {
