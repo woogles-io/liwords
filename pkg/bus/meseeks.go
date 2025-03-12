@@ -419,9 +419,15 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 			// Determine user tier
 			tierData, err := integrations.DetermineUserTier(ctx, req.User.UserId, b.stores.Queries)
 			if err != nil {
-				if err == integrations.ErrNotPaidTier || err == integrations.ErrNotSubscribed {
+				if errors.Is(err, integrations.ErrNotPaidTier) || errors.Is(err, integrations.ErrNotSubscribed) {
 					return errors.New("You don't currently appear to be subscribed to a paid Patreon tier. Please sign up at https://woogles.io/donate to have access to BestBot.")
 				}
+				var papierr *integrations.PatreonAPIError
+				if errors.As(err, &papierr) {
+					log.Err(papierr).Msg("patreon-api-error")
+					return errors.New("There was an error with your connection to the Patreon API. Please go to your Settings -> Integrations and reconnect with Patreon.")
+				}
+
 				return err
 			}
 			log.Info().Interface("tierData", tierData).Msg("tier-for-bestbot-game")

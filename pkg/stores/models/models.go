@@ -236,6 +236,7 @@ type Tournament struct {
 	ExtraMeta          []byte
 	ScheduledStartTime pgtype.Timestamptz
 	ScheduledEndTime   pgtype.Timestamptz
+	CreatedBy          pgtype.Int4
 }
 
 type User struct {

@@ -31,13 +31,13 @@ DO UPDATE SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP;
 SELECT uuid, integration_name, data
 FROM integrations
 WHERE integration_name = 'patreon'
-AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days';
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '14 days';
 
 -- name: GetExpiringGlobalPatreonIntegration :one
 SELECT data
 FROM integrations_global
 WHERE integration_name = 'patreon'
-AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '3 days';
+AND last_updated + COALESCE((data->>'expires_in')::interval, INTERVAL '0 seconds') <= CURRENT_TIMESTAMP + INTERVAL '14 days';
 
 -- name: UpdateIntegrationData :exec
 UPDATE integrations
