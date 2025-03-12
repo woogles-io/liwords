@@ -145,12 +145,12 @@ type PatreonTokenResponse struct {
 	PatreonUserID string `json:"patreon_user_id,omitempty"` // Don't overwrite with blank ID on refresh.
 }
 
-type PatreonError struct {
+type PatreonAPIError struct {
 	code     int
 	errorMsg string
 }
 
-func (p *PatreonError) Error() string {
+func (p *PatreonAPIError) Error() string {
 	return fmt.Sprintf("patreon error: %s (code %d)", p.errorMsg, p.code)
 }
 
@@ -271,6 +271,9 @@ func (s *OAuthIntegrationService) RefreshPatreonToken(refreshToken string) (*Pat
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
 	var tokenResp PatreonTokenResponse
@@ -311,7 +314,7 @@ func fetchPatreonUserData(accessToken string) (*PatreonUserData, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &PatreonError{resp.StatusCode, string(bts)}
+		return nil, &PatreonAPIError{resp.StatusCode, string(bts)}
 	}
 
 	var userResp PatreonUserData
@@ -350,7 +353,7 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &PatreonError{resp.StatusCode, string(bts)}
+		return nil, &PatreonAPIError{resp.StatusCode, string(bts)}
 	}
 
 	var memberResp PatreonMemberData
@@ -400,7 +403,7 @@ func GetCampaignSubscribers(ctx context.Context, globalToken string) (*MultipleP
 
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return nil, &PatreonError{resp.StatusCode, string(bts)}
+			return nil, &PatreonAPIError{resp.StatusCode, string(bts)}
 		}
 		thispage := &MultiplePatreonMemberData{}
 		err = json.Unmarshal(bts, thispage)
