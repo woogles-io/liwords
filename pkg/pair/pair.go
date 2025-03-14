@@ -415,6 +415,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		if err != nil {
 			return nil, err
 		}
+		log.Info().Str("groupPairings", fmt.Sprint(groupPairings)).Msg("initial-fontes-group-pairings")
 		for j := 0; j < groupSize; j++ {
 			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
 		}
