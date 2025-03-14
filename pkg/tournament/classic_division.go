@@ -621,9 +621,10 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return pmessage, nil
 }
 
-func isRoundRobin(pm pb.PairingMethod) bool {
+func isRoundDependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
-		pm == pb.PairingMethod_TEAM_ROUND_ROBIN
+		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
 func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i int, j int) (bool, error) {
@@ -705,7 +706,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 
 	// Round Robin must have the same ordering for each round
 	playerOrder := []*pb.PlayerStanding{}
-	if isRoundRobin(pairingMethod) {
+	if isRoundDependent(pairingMethod) {
 		for i := 0; i < len(t.Players.Persons); i++ {
 			playerOrder = append(playerOrder, &pb.PlayerStanding{PlayerId: t.Players.Persons[i].Id})
 		}
@@ -838,7 +839,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 	}
 
 	// Only the round robin pairing methods should assign byes
-	if !isRoundRobin(pairingMethod) {
+	if !isRoundDependent(pairingMethod) {
 		for i := 0; i < len(pairings); i++ {
 			if pairings[i] < 0 {
 				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PAIRINGS_ASSIGNED_BYE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), poolMembers[i].Id, strconv.Itoa(pairings[i]))
@@ -856,7 +857,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		if roundPairings[playerIndex] == "" {
 
 			var opponentIndex int32
-			if pairings[i] < 0 && isRoundRobin(pairingMethod) {
+			if pairings[i] < 0 && isRoundDependent(pairingMethod) {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
 				return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PAIRING_INDEX_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(pairings[i]))
