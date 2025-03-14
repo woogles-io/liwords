@@ -1822,6 +1822,36 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 	is.NoErr(validatePairings(tc, 0))
 	is.NoErr(validatePairings(tc, 1))
 	is.NoErr(validatePairings(tc, 2))
+
+	oddFontesPlayers := makeTournamentPersons(map[string]int32{"Will": 10000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Tim": 2000, "Ben": 1900, "Matt": 200, "Naveen": 100, "Alice": 7, "Bob": 6, "Charlie": 5, "Dolly": 4, "Eve": 3, "Frank": 2, "Grace": 1})
+
+	oddNumRounds := 14
+	oddRoundControls := defaultRoundControls(oddNumRounds)
+	numInitFontesRounds := 5
+	for i := 0; i < numInitFontesRounds; i++ {
+		oddRoundControls[i].PairingMethod = pb.PairingMethod_INITIAL_FONTES
+	}
+	oddtc, err := compactNewClassicDivision(oddFontesPlayers, oddRoundControls, true)
+	is.NoErr(err)
+	for pidx := range oddFontesPlayers.Persons {
+		opps := map[int]bool{}
+		for round := 0; round < numInitFontesRounds; round++ {
+			pairing, err := oddtc.getPairing(oddFontesPlayers.Persons[pidx].Id, round)
+			is.NoErr(err)
+			player := int(pairing.Players[0])
+			opp := int(pairing.Players[1])
+			if pidx != player {
+				player, opp = opp, player
+			}
+			_, exists := opps[opp]
+			is.True(!exists)
+			opps[opp] = true
+		}
+	}
+
+	for i := 0; i < numInitFontesRounds; i++ {
+		is.NoErr(validatePairings(oddtc, i))
+	}
 }
 
 func TestClassicDivisionManual(t *testing.T) {

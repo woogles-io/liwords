@@ -623,7 +623,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 func isRoundRobin(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
-		pm == pb.PairingMethod_TEAM_ROUND_ROBIN
+		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_INITIAL_FONTES
 }
 
 func (t *ClassicDivision) canCatch(records []*pb.PlayerStanding, round int, i int, j int) (bool, error) {
