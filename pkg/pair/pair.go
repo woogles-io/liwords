@@ -347,7 +347,7 @@ func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
 }
 
 func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int) ([]int, error) {
-
+	log.Info().Int("players", numberOfPlayers).Int("ntiles", numberOfNtiles).Int("round", round).Msg("initial-fontes-params")
 	// If there are more Ntiles than players, InitialFontes is not valid
 	// Return all byes
 	// In practice this should never be true, since it is usually undesirable
@@ -381,6 +381,8 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		remainderSpacing = numberOfPlayers / numberOfRemainingPlayers
 	}
 
+	log.Info().Int("remainderOffset", remainderOffset).Int("remainderSpacing", remainderSpacing).Msg("initial-fontes-remainder")
+
 	pairings := []int{}
 	groupings := [][]int{}
 
@@ -401,6 +403,8 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		pairings = append(pairings, -2)
 	}
 
+	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")
+
 	for i := 0; i < len(groupings); i++ {
 		groupSize := len(groupings[i])
 		if groupSize%2 == 1 {
@@ -419,10 +423,14 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	// Convert the "bye player" to the bye representation
 	// which is an opponent index value of -1
 
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings")
+
 	if addBye {
 		pairings[pairings[numberOfPlayers-1]] = -1
 		pairings = pairings[:numberOfPlayers-1]
 	}
+
+	log.Info().Str("pairings", fmt.Sprint(pairings)).Msg("initial-fontes-pairings-bye-correction")
 
 	for i := 0; i < len(pairings); i++ {
 		if pairings[i] < -1 {

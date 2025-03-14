@@ -823,7 +823,9 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		PoolMembers: poolMembers,
 		Repeats:     repeats}
 
+	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Int("numPoolMembers", len(poolMembers)).Msg("pairing-round")
 	pairings, err := pair.Pair(upm)
+	log.Info().Str("pairings", fmt.Sprintf("%v", pairings)).Msg("pairing-results")
 
 	if err != nil {
 		return nil, err
