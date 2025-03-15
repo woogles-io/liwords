@@ -187,8 +187,6 @@ func TestInitialFontes(t *testing.T) {
 	_, err = getInitialFontesPairings(9, 4, 2, 0)
 	is.NoErr(err)
 
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
 	initialNumberOfPlayers := 16
 	for i := 0; i < 2; i++ {
 		initialNumberOfFontesRounds := 3 + (i * 2)
