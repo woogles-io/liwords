@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/utilities"
 )
@@ -20,36 +21,50 @@ func TestRoundRobin(t *testing.T) {
 	// Test Round Robin with only two players.
 	// This should obviously never be used
 	// but it shouldn't throw any errors.
-	pairings, err := getRoundRobinPairings(2, 0)
+	pairings, err := getRoundRobinPairings(2, 0, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings, err = getRoundRobinPairings(2, 1)
+	pairings, err = getRoundRobinPairings(2, 1, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings, err = getRoundRobinPairings(2, 2)
+	pairings, err = getRoundRobinPairings(2, 2, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	numberOfPlayers := 8
-
-	roundToPairingsMap := map[int][]int{
-		getRoundRobinRotation(numberOfPlayers, 0): {7, 6, 5, 4, 3, 2, 1, 0},
-		getRoundRobinRotation(numberOfPlayers, 1): {2, 3, 0, 1, 7, 6, 5, 4},
-		getRoundRobinRotation(numberOfPlayers, 2): {4, 7, 6, 5, 0, 3, 2, 1},
-		getRoundRobinRotation(numberOfPlayers, 3): {6, 4, 3, 2, 1, 7, 0, 5},
-		getRoundRobinRotation(numberOfPlayers, 4): {1, 0, 7, 6, 5, 4, 3, 2},
-		getRoundRobinRotation(numberOfPlayers, 5): {3, 5, 4, 0, 2, 1, 7, 6},
-		getRoundRobinRotation(numberOfPlayers, 6): {5, 2, 1, 7, 6, 0, 4, 3}}
-
-	// Modulus operation should repeat the pairings past the first round robin
-	// Test first pairing of third round robin just to be sure
-
-	for i := 0; i < 15; i++ {
-		pairings, err := getRoundRobinPairings(numberOfPlayers, i)
-		is.NoErr(err)
-		is.NoErr(equalPairings(roundToPairingsMap[getRoundRobinRotation(numberOfPlayers, i)], pairings))
+	zerolog.SetGlobalLevel(zerolog.Disabled)
+	for seed := int64(10); seed < 14; seed++ {
+		for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
+			phasePairings := map[string]bool{}
+			pairingsStr := ""
+			prevPairingsStr := ""
+			for round := 0; round < 60; round++ {
+				pairings, err := getRoundRobinPairings(numberOfPlayers, round, seed)
+				is.NoErr(err)
+				pairingsStr += fmt.Sprintf(">%v<\n", pairings)
+				for player, opponent := range pairings {
+					if opponent == -1 {
+						opponent = player
+					} else if player > opponent {
+						continue
+					}
+					key := fmt.Sprintf("%d-%d", player, opponent)
+					is.True(!phasePairings[key])
+					phasePairings[key] = true
+				}
+				if (round+1)%(numberOfPlayers-(1-(numberOfPlayers%2))) == 0 {
+					if prevPairingsStr != "" {
+						is.Equal(prevPairingsStr, pairingsStr)
+					}
+					n := numberOfPlayers + (numberOfPlayers % 2)
+					is.Equal(len(phasePairings), (n*(n-1))/2)
+					prevPairingsStr = pairingsStr
+					pairingsStr = ""
+					phasePairings = map[string]bool{}
+				}
+			}
+		}
 	}
 }
 
@@ -150,78 +165,53 @@ func TestTeamRoundRobinInterleave(t *testing.T) {
 func TestInitialFontes(t *testing.T) {
 	is := is.New(t)
 
-	allByes, err := getInitialFontesPairings(6, 7, 0)
+	allByes, err := getInitialFontesPairings(6, 7, 0, 0)
 	is.NoErr(err)
 	for i := 0; i < len(allByes); i++ {
 		is.True(allByes[i] == -1)
 	}
 
-	_, err = getInitialFontesPairings(18, 8, 0)
+	_, err = getInitialFontesPairings(18, 8, 0, 0)
 	is.NoErr(err)
 
-	_, err = getInitialFontesPairings(18, 3, 0)
+	_, err = getInitialFontesPairings(18, 3, 0, 0)
 	is.Equal(err.Error(), "initial fontes pairing failure for 18 players, have odd group size of 3")
 
-	_, err = getInitialFontesPairings(18, 10, 0)
+	_, err = getInitialFontesPairings(18, 10, 0, 0)
 	is.Equal(err.Error(), "number of initial fontes rounds (9) should be less than half the number of players (18)")
 
-	_, err = getInitialFontesPairings(9, 4, 0)
+	_, err = getInitialFontesPairings(9, 4, 0, 0)
 	is.NoErr(err)
-	_, err = getInitialFontesPairings(9, 4, 1)
+	_, err = getInitialFontesPairings(9, 4, 1, 0)
 	is.NoErr(err)
-	_, err = getInitialFontesPairings(9, 4, 2)
+	_, err = getInitialFontesPairings(9, 4, 2, 0)
 	is.NoErr(err)
+
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 
 	initialNumberOfPlayers := 16
-	roundToPairingsMap := map[string][]int{
-		"3:16:0": {12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3},
-		"3:16:1": {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7},
-		"3:16:2": {4, 5, 6, 7, 0, 1, 2, 3, 12, 13, 14, 15, 8, 9, 10, 11},
-		"3:17:0": {13, 14, 16, -1, 9, 10, 15, 11, 12, 4, 5, 7, 8, 0, 1, 6, 2},
-		"3:17:1": {9, 10, 11, 8, 13, 14, 12, 16, 3, 0, 1, 2, 6, 4, 5, -1, 7},
-		"3:17:2": {4, 5, 7, 15, 0, 1, 8, 2, 6, 13, 14, 16, -1, 9, 10, 3, 11},
-		"3:18:0": {13, 14, 16, 17, 9, 10, 15, 11, 12, 4, 5, 7, 8, 0, 1, 6, 2, 3},
-		"3:18:1": {9, 10, 11, 8, 13, 14, 12, 16, 3, 0, 1, 2, 6, 4, 5, 17, 7, 15},
-		"3:18:2": {4, 5, 7, 15, 0, 1, 8, 2, 6, 13, 14, 16, 17, 9, 10, 3, 11, 12},
-		"3:19:0": {15, 16, 17, 18, -1, 10, 11, 12, 13, 14, 5, 6, 7, 8, 9, 0, 1, 2, 3},
-		"3:19:1": {10, 11, 12, 13, 14, 15, 16, 17, 18, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8},
-		"3:19:2": {5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 15, 16, 17, 18, -1, 10, 11, 12, 13},
-		"5:16:0": {13, 15, 10, 14, 12, 8, 11, 9, 5, 7, 2, 6, 4, 0, 3, 1},
-		"5:16:1": {5, 4, 8, 6, 1, 0, 3, 15, 2, 14, 13, 12, 11, 10, 9, 7},
-		"5:16:2": {10, 7, 5, 12, 11, 2, 9, 1, 13, 6, 0, 4, 3, 8, 15, 14},
-		"5:16:3": {2, 11, 0, 4, 3, 13, 15, 14, 10, 12, 8, 1, 9, 5, 7, 6},
-		"5:16:4": {8, 14, 13, 11, 9, 10, 7, 6, 0, 4, 5, 3, 15, 2, 1, 12},
-		"5:17:0": {15, 16, -1, 12, 13, 14, 9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1},
-		"5:17:1": {6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 15, 16, -1, 12, 13},
-		"5:17:2": {12, 13, 14, 6, 7, 8, 3, 4, 5, 15, 16, -1, 0, 1, 2, 9, 10},
-		"5:17:3": {3, 4, 5, 0, 1, 2, 15, 16, -1, 12, 13, 14, 9, 10, 11, 6, 7},
-		"5:17:4": {9, 10, 11, 15, 16, -1, 12, 13, 14, 0, 1, 2, 6, 7, 8, 3, 4},
-		"5:18:0": {15, 16, 17, 12, 13, 14, 9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2},
-		"5:18:1": {6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 15, 16, 17, 12, 13, 14},
-		"5:18:2": {12, 13, 14, 6, 7, 8, 3, 4, 5, 15, 16, 17, 0, 1, 2, 9, 10, 11},
-		"5:18:3": {3, 4, 5, 0, 1, 2, 15, 16, 17, 12, 13, 14, 9, 10, 11, 6, 7, 8},
-		"5:18:4": {9, 10, 11, 15, 16, 17, 12, 13, 14, 0, 1, 2, 6, 7, 8, 3, 4, 5},
-		"5:19:0": {17, 18, -1, 13, 14, 16, 15, 10, 11, 12, 7, 8, 9, 3, 4, 6, 5, 0, 1},
-		"5:19:1": {7, 8, 6, 10, 11, 9, 2, 0, 1, 5, 3, 4, -1, 17, 18, 16, 15, 13, 14},
-		"5:19:2": {13, 14, 12, 7, 8, -1, 16, 3, 4, 15, 17, 18, 2, 0, 1, 9, 6, 10, 11},
-		"5:19:3": {3, 4, 16, 0, 1, 12, 9, 17, 18, 6, 13, 14, 5, 10, 11, -1, 2, 7, 8},
-		"5:19:4": {10, 11, 5, 17, 18, 2, -1, 13, 14, 16, 0, 1, 15, 7, 8, 12, 9, 3, 4}}
-
 	for i := 0; i < 2; i++ {
 		initialNumberOfFontesRounds := 3 + (i * 2)
 		for j := 0; j < 4; j++ {
 			numberOfPlayers := initialNumberOfPlayers + j
-
+			allPairings := map[string]bool{}
 			for k := 0; k < initialNumberOfFontesRounds; k++ {
-				pairings, err := getInitialFontesPairings(numberOfPlayers, initialNumberOfFontesRounds+1, k)
+				pairings, err := getInitialFontesPairings(numberOfPlayers, initialNumberOfFontesRounds+1, k, 10)
 				is.NoErr(err)
-				pairingsString := ""
-				for _, value := range pairings {
-					pairingsString += fmt.Sprintf("%2d, ", value)
+				fmt.Printf("pairings: %v\n", pairings)
+				for player, opponent := range pairings {
+					if opponent == -1 {
+						opponent = player
+					} else if player > opponent {
+						continue
+					}
+					key := fmt.Sprintf("%d-%d", player, opponent)
+					is.True(!allPairings[key])
+					allPairings[key] = true
 				}
-				key := fmt.Sprintf("%d:%d:%d", initialNumberOfFontesRounds, numberOfPlayers, k)
-				is.NoErr(equalPairings(roundToPairingsMap[key], pairings))
 			}
+			fmt.Printf("numberOfPlayers: %d, initialNumberOfFontesRounds: %d, allPairings: %d\n", numberOfPlayers, initialNumberOfFontesRounds, len(allPairings))
+			is.Equal(len(allPairings), ((numberOfPlayers+numberOfPlayers%2)*initialNumberOfFontesRounds)/2)
 		}
 	}
 }

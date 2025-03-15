@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
@@ -34,6 +35,7 @@ type ClassicDivision struct {
 	DivisionControls *pb.DivisionControls         `json:"divisionControls"`
 	CurrentRound     int32                        `json:"currentRound"`
 	PairingKeyInt    int                          `json:"pairingKeyInt"`
+	Seed             int64                        `json:"seed"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -47,7 +49,8 @@ func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivi
 		RoundControls:    []*pb.RoundControl{},
 		DivisionControls: &pb.DivisionControls{},
 		CurrentRound:     -1,
-		PairingKeyInt:    0}
+		PairingKeyInt:    0,
+		Seed:             time.Unix()}
 }
 
 func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
@@ -56,6 +59,10 @@ func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
 
 func (t *ClassicDivision) ChangeName(newName string) {
 	t.DivisionName = newName
+}
+
+func (t *ClassicDivision) SetSeed(seed int64) {
+	t.Seed = seed
 }
 
 func (t *ClassicDivision) SetDivisionControls(divisionControls *pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error) {
@@ -822,7 +829,8 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 
 	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
 		PoolMembers: poolMembers,
-		Repeats:     repeats}
+		Repeats:     repeats,
+		Seed:        t.Seed}
 
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Int("numPoolMembers", len(poolMembers)).Msg("pairing-round")
 	pairings, err := pair.Pair(upm)
@@ -838,7 +846,6 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INCORRECT_PAIRINGS_LENGTH, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), strconv.Itoa(l), strconv.Itoa(len(poolMembers)))
 	}
 
-	// Only the round robin pairing methods should assign byes
 	if !isRoundDependent(pairingMethod) {
 		for i := 0; i < len(pairings); i++ {
 			if pairings[i] < 0 {
