@@ -59,7 +59,9 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i, _ := range members.PoolMembers {
 		playerIndexes = append(playerIndexes, i)
 	}
-	rand.Shuffle(len(playerIndexes),
+	source := rand.NewSource(members.Seed)
+	rng := rand.New(source)
+	rng.Shuffle(len(playerIndexes),
 		func(i, j int) {
 			playerIndexes[i], playerIndexes[j] = playerIndexes[j], playerIndexes[i]
 		})
@@ -77,7 +79,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round))
+	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), members.Seed)
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -137,7 +139,7 @@ func pairInitialFontes(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfNtiles := int(members.RoundControls.InitialFontes) + 1
 	round := int(members.RoundControls.Round)
 	// This function was created to make testing easier
-	return getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round)
+	return getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round, members.Seed)
 }
 
 func splitMembers(members *entity.UnpairedPoolMembers, i int) (*entity.UnpairedPoolMembers, *entity.UnpairedPoolMembers, error) {
@@ -346,7 +348,7 @@ func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
 	return factorPairings, nil
 }
 
-func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int) ([]int, error) {
+func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int, seed int64) ([]int, error) {
 	log.Info().Int("players", numberOfPlayers).Int("ntiles", numberOfNtiles).Int("round", round).Msg("initial-fontes-params")
 	// If there are more Ntiles than players, InitialFontes is not valid
 	// Return all byes
@@ -411,7 +413,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
 				"have odd group size of %d", numberOfPlayers, groupSize)
 		}
-		groupPairings, err := getRoundRobinPairings(groupSize, round)
+		groupPairings, err := getRoundRobinPairings(groupSize, round, seed)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +443,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	return pairings, nil
 }
 
-func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
+func getRoundRobinPairings(numberOfPlayers int, round int, seed int64) ([]int, error) {
 
 	/* Round Robin pairing algorithm:
 
@@ -486,11 +488,18 @@ func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 		players = append(players, numberOfPlayers)
 	}
 
+	source := rand.NewSource(seed)
+	rng := rand.New(source)
+	rng.Shuffle(len(players),
+		func(i, j int) {
+			players[i], players[j] = players[j], players[i]
+		})
+
 	rotatedPlayers := players[1:]
 
 	l := len(rotatedPlayers)
 
-	rotationIndex := l - getRoundRobinRotation(len(players), round)
+	rotationIndex := round % l
 
 	rotatedPlayers = append(rotatedPlayers[rotationIndex:l], rotatedPlayers[0:rotationIndex]...)
 	rotatedPlayers = append([]int{players[0]}, rotatedPlayers...)
@@ -530,36 +539,6 @@ func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 		}
 	}
 	return pairings, nil
-}
-
-func getRoundRobinRotation(numberOfPlayers int, round int) int {
-	// This has been made a separate function
-	// for ease of testing and future improvements
-
-	// We rotate by different value instead of just the round here
-	// so that incomplete round robins will have slightly more
-	// equitable pairings. If we rotated by round only, the
-	// rotationIndex would only change by 1 each round, which means
-	// player 1 in the round robin would play significantly weaker
-	// players than the rest of the field. This solution is
-	// relatively weak as there are probably stronger algorithmic
-	// methods that could be used to address the problem. However,
-	// this way is by far the most simple.
-
-	// This solution of the form round * x requires that x and (numberOfPlayers - 1)
-	// be coprime, or, in other words, that:
-	//
-	// GCD(x, numberOfPlayers - 1) = 1
-	//
-	// If this does not hold, the round robin will not be complete.
-	//
-	// In this case, it is guaranteed to hold since
-	//
-	// GCD(x, numberOfPlayers - 1) = GCD(2n - 3, 2n - 1) = 1
-	//
-	// We can use 2n for the above equation since the number of players is
-	// always even
-	return (round * (numberOfPlayers - 3)) % (numberOfPlayers - 1)
 }
 
 func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup int) int {
