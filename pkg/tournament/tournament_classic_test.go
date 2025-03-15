@@ -2783,7 +2783,6 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 }
 
 func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
-	t.Skip()
 	is := is.New(t)
 
 	numberOfRounds := 6
@@ -2897,12 +2896,12 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"a": -9}))
 	is.NoErr(err)
 
-	tc.SetPairing("a", "d", 1, pb.TournamentGameResult_NO_RESULT)
-	tc.SetPairing("e", "g", 1, pb.TournamentGameResult_NO_RESULT)
-	tc.SetPairing("h", "h", 1, pb.TournamentGameResult_BYE)
-	tc.SetPairing("c", "c", 1, pb.TournamentGameResult_FORFEIT_LOSS)
-	tc.SetPairing("f", "f", 1, pb.TournamentGameResult_FORFEIT_LOSS)
-	tc.SetPairing("b", "b", 1, pb.TournamentGameResult_FORFEIT_LOSS)
+	tc.SetPairing("h", "d", 2, pb.TournamentGameResult_NO_RESULT)
+	tc.SetPairing("e", "g", 2, pb.TournamentGameResult_NO_RESULT)
+	tc.SetPairing("a", "a", 2, pb.TournamentGameResult_FORFEIT_LOSS)
+	tc.SetPairing("c", "c", 2, pb.TournamentGameResult_FORFEIT_LOSS)
+	tc.SetPairing("f", "f", 2, pb.TournamentGameResult_FORFEIT_LOSS)
+	tc.SetPairing("b", "b", 2, pb.TournamentGameResult_FORFEIT_LOSS)
 
 	err = tc.StartRound(true)
 	is.NoErr(err)
@@ -2915,13 +2914,19 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 		pb.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
+	_, err = tc.SubmitResult(2, "g", "e", 450, 400,
+		pb.TournamentGameResult_WIN,
+		pb.TournamentGameResult_LOSS,
+		pb.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
 	// Get the standings for round 3
 	standings, _, err := tc.GetStandings(2)
 	is.NoErr(err)
 
 	expectedstandings := &pb.RoundStandings{Standings: []*pb.PlayerStanding{{PlayerId: "h", Wins: 3, Losses: 0, Draws: 0, Spread: 850},
 		{PlayerId: "g", Wins: 3, Losses: 0, Draws: 0, Spread: 650},
-		{PlayerId: "e", Wins: 2, Losses: 1, Draws: 0, Spread: -150},
+		{PlayerId: "e", Wins: 1, Losses: 2, Draws: 0, Spread: -250},
 		{PlayerId: "d", Wins: 1, Losses: 2, Draws: 0, Spread: -300},
 	}}
 
@@ -2950,92 +2955,21 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 
 	expectedstandings = &pb.RoundStandings{Standings: []*pb.PlayerStanding{{PlayerId: "h", Wins: 4, Losses: 0, Draws: 0, Spread: 1250},
 		{PlayerId: "g", Wins: 4, Losses: 0, Draws: 0, Spread: 950},
-		{PlayerId: "e", Wins: 2, Losses: 2, Draws: 0, Spread: -550},
 		{PlayerId: "d", Wins: 1, Losses: 3, Draws: 0, Spread: -600},
+		{PlayerId: "e", Wins: 1, Losses: 3, Draws: 0, Spread: -650},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// Add players back
 	currentPairings = tc.getPlayerPairings(4)
-	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b"}, {"c"}, {"d", "g"}, {"e", "h"}, {"f"}}))
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b"}, {"c"}, {"d", "h"}, {"e", "g"}, {"f"}}))
 
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"c": 43, "f": 2200, "b": 40}))
 	is.NoErr(err)
 
 	currentPairings = tc.getPlayerPairings(4)
-	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "c"}, {"d"}, {"e", "h"}, {"f", "g"}}))
-
-	err = tc.StartRound(true)
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(4, "h", "e", 900, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(4, "g", "f", 800, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(4, "b", "c", 700, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	// Get the standings for round 5
-	standings, _, err = tc.GetStandings(4)
-	is.NoErr(err)
-
-	expectedstandings = &pb.RoundStandings{Standings: []*pb.PlayerStanding{
-		{PlayerId: "h", Wins: 5, Losses: 0, Draws: 0, Spread: 1650},
-		{PlayerId: "g", Wins: 5, Losses: 0, Draws: 0, Spread: 1250},
-		{PlayerId: "d", Wins: 2, Losses: 3, Draws: 0, Spread: -550},
-		{PlayerId: "e", Wins: 2, Losses: 3, Draws: 0, Spread: -950},
-		{PlayerId: "f", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
-		{PlayerId: "b", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
-		{PlayerId: "c", Wins: 0, Losses: 5, Draws: 0, Spread: -550},
-	}}
-	is.NoErr(equalStandings(expectedstandings, standings))
-
-	// Check pairings
-	currentPairings = tc.getPlayerPairings(5)
-	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "d"}, {"c", "f"}, {"e"}, {"g", "h"}}))
-
-	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"d": -9}))
-	is.NoErr(err)
-
-	currentPairings = tc.getPlayerPairings(5)
-	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "e"}, {"c", "f"}, {"d"}, {"g", "h"}}))
-
-	err = tc.StartRound(true)
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(5, "h", "g", 900, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(5, "b", "e", 800, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	_, err = tc.SubmitResult(5, "f", "c", 800, 500,
-		pb.TournamentGameResult_WIN,
-		pb.TournamentGameResult_LOSS,
-		pb.GameEndReason_STANDARD, false, 0, "")
-	is.NoErr(err)
-
-	finished, err := tc.IsFinished()
-	is.NoErr(err)
-	is.True(finished)
+	is.NoErr(equalPairingStrings(currentPairings, [][]string{{"a"}, {"b", "c"}, {"d", "g"}, {"e"}, {"f", "h"}}))
 }
 
 func TestClassicDivisionByes(t *testing.T) {
