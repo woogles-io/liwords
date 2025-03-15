@@ -196,7 +196,6 @@ func TestInitialFontes(t *testing.T) {
 			for k := 0; k < initialNumberOfFontesRounds; k++ {
 				pairings, err := getInitialFontesPairings(numberOfPlayers, initialNumberOfFontesRounds+1, k, 10)
 				is.NoErr(err)
-				fmt.Printf("pairings: %v\n", pairings)
 				for player, opponent := range pairings {
 					if opponent == -1 {
 						opponent = player
@@ -208,7 +207,6 @@ func TestInitialFontes(t *testing.T) {
 					allPairings[key] = true
 				}
 			}
-			fmt.Printf("numberOfPlayers: %d, initialNumberOfFontesRounds: %d, allPairings: %d\n", numberOfPlayers, initialNumberOfFontesRounds, len(allPairings))
 			is.Equal(len(allPairings), ((numberOfPlayers+numberOfPlayers%2)*initialNumberOfFontesRounds)/2)
 		}
 	}

@@ -50,7 +50,7 @@ func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivi
 		DivisionControls: &pb.DivisionControls{},
 		CurrentRound:     -1,
 		PairingKeyInt:    0,
-		Seed:             time.Unix()}
+		Seed:             time.Now().Unix()}
 }
 
 func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
@@ -59,10 +59,6 @@ func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
 
 func (t *ClassicDivision) ChangeName(newName string) {
 	t.DivisionName = newName
-}
-
-func (t *ClassicDivision) SetSeed(seed int64) {
-	t.Seed = seed
 }
 
 func (t *ClassicDivision) SetDivisionControls(divisionControls *pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error) {
