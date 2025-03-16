@@ -80,6 +80,9 @@ var StatNameToAddFunction = map[string]func(*IncrementInfo) error{
 	entity.ONE_PLAYER_PLAYS_EVERY_E_STAT:          addEveryE,
 	entity.MANY_CHALLENGES_STAT:                   addManyChallenges,
 	entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT:   addConsecutiveBingos,
+	entity.HIGH_LOSS_STAT:                         setHighLoss,
+	entity.LOW_WIN_STAT:                           setLowWin,
+	entity.UPSET_WIN_STAT:                         setUpsetWin,
 }
 
 var StatNameToDataType = map[string]entity.StatItemType{
@@ -121,6 +124,9 @@ var StatNameToDataType = map[string]entity.StatItemType{
 	entity.ONE_PLAYER_PLAYS_EVERY_E_STAT:          entity.ListType,
 	entity.MANY_CHALLENGES_STAT:                   entity.ListType,
 	entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT:   entity.ListType,
+	entity.HIGH_LOSS_STAT:                         entity.MaximumType,
+	entity.LOW_WIN_STAT:                           entity.MinimumType,
+	entity.UPSET_WIN_STAT:                         entity.MaximumType,
 }
 
 // InstantiateNewStats instantiates a new stats object. playerOneId MUST
@@ -364,6 +370,9 @@ func combineItems(statItem *entity.StatItem, otherStatItem *entity.StatItem) {
 			otherStatItem.Total < statItem.Total) {
 		statItem.Total = otherStatItem.Total
 		statItem.List = otherStatItem.List
+	} else if otherStatItem.Total == statItem.Total &&
+		(StatNameToDataType[statItem.Name] == entity.MaximumType || StatNameToDataType[statItem.Name] == entity.MinimumType) {
+		statItem.List = append(statItem.List, otherStatItem.List...)
 	}
 
 	if statItem.Subitems != nil {
@@ -871,7 +880,7 @@ func setHighGame(info *IncrementInfo) error {
 	}
 	if playerScore > info.StatItem.Total {
 		info.StatItem.Total = playerScore
-		info.StatItem.List = []*entity.ListItem{&entity.ListItem{GameId: info.GameId,
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
 			PlayerId: info.PlayerId,
 			Time:     info.Evt.Time,
 			Item:     entity.ListDatum{Score: playerScore}}}
@@ -886,7 +895,7 @@ func setLowGame(info *IncrementInfo) error {
 	}
 	if playerScore < info.StatItem.Total {
 		info.StatItem.Total = playerScore
-		info.StatItem.List = []*entity.ListItem{&entity.ListItem{GameId: info.GameId,
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
 			PlayerId: info.PlayerId,
 			Time:     info.Evt.Time,
 			Item:     entity.ListDatum{Score: playerScore}}}
@@ -900,10 +909,75 @@ func setHighTurn(info *IncrementInfo) error {
 	score := int(event.Score)
 	if score > info.StatItem.Total {
 		info.StatItem.Total = score
-		info.StatItem.List = []*entity.ListItem{&entity.ListItem{GameId: info.GameId,
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
 			PlayerId: info.PlayerId,
 			Time:     info.Evt.Time,
 			Item:     entity.ListDatum{Score: score}}}
+	}
+	return nil
+}
+
+func setHighLoss(info *IncrementInfo) error {
+	playerScore := int(info.History.FinalScores[0])
+	isWin := info.History.Winner == 0
+	if !info.IsPlayerOne {
+		playerScore = int(info.History.FinalScores[1])
+		isWin = info.History.Winner == 1
+	}
+
+	if !isWin && playerScore > info.StatItem.Total {
+		info.StatItem.Total = playerScore
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
+			PlayerId: info.PlayerId,
+			Time:     info.Evt.Time,
+			Item:     entity.ListDatum{Score: playerScore}}}
+	}
+	return nil
+}
+
+func setLowWin(info *IncrementInfo) error {
+	playerScore := int(info.History.FinalScores[0])
+	isWin := info.History.Winner == 0
+	if !info.IsPlayerOne {
+		playerScore = int(info.History.FinalScores[1])
+		isWin = info.History.Winner == 1
+	}
+
+	if isWin && playerScore < info.StatItem.Total {
+		info.StatItem.Total = playerScore
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
+			PlayerId: info.PlayerId,
+			Time:     info.Evt.Time,
+			Item:     entity.ListDatum{Score: playerScore}}}
+	}
+	return nil
+}
+
+func setUpsetWin(info *IncrementInfo) error {
+	isWin := info.History.Winner == 0
+	oldRatings := map[string]int{}
+
+	for p := range info.Evt.NewRatings {
+		oldRatings[p] = int(info.Evt.NewRatings[p] - info.Evt.RatingDeltas[p])
+	}
+
+	winnerRatDiff := 0
+	if info.History.Winner != -1 {
+		// A winner is set; i.e. it's not a tie.
+		winnerRatDiff = oldRatings[info.History.Players[info.History.Winner].Nickname] -
+			oldRatings[info.History.Players[1-info.History.Winner].Nickname]
+	}
+
+	if !info.IsPlayerOne {
+		isWin = info.History.Winner == 1
+	}
+
+	if isWin && winnerRatDiff < 0 && (-winnerRatDiff) > info.StatItem.Total {
+		info.StatItem.Total = -winnerRatDiff
+		info.StatItem.List = []*entity.ListItem{{GameId: info.GameId,
+			PlayerId: info.PlayerId,
+			Time:     info.Evt.Time,
+			Item:     entity.ListDatum{Score: -winnerRatDiff}}}
 	}
 	return nil
 }
@@ -1138,6 +1212,21 @@ func instantiatePlayerData() map[string]*entity.StatItem {
 		Total:         0,
 		IncrementType: entity.GameType}
 
+	highLossStat := &entity.StatItem{Name: entity.HIGH_LOSS_STAT,
+		Total:         0,
+		IncrementType: entity.GameType,
+		List:          []*entity.ListItem{}}
+
+	lowWinStat := &entity.StatItem{Name: entity.LOW_WIN_STAT,
+		Total:         entity.MaxNotableInt,
+		IncrementType: entity.GameType,
+		List:          []*entity.ListItem{}}
+
+	upsetWinStat := &entity.StatItem{Name: entity.UPSET_WIN_STAT,
+		Total:         0,
+		IncrementType: entity.GameType,
+		List:          []*entity.ListItem{}}
+
 	return map[string]*entity.StatItem{entity.BINGOS_STAT: bingosStat,
 		entity.CHALLENGED_PHONIES_STAT:               challengedPhoniesStat,
 		entity.CHALLENGES_LOST_STAT:                  challengesLostStat,
@@ -1164,6 +1253,9 @@ func instantiatePlayerData() map[string]*entity.StatItem {
 		entity.UNCHALLENGED_PHONIES_STAT:             unchallengedPhoniesStat,
 		entity.VERTICAL_OPENINGS_STAT:                verticalOpeningsStat,
 		entity.WINS_STAT:                             winsStat,
+		entity.HIGH_LOSS_STAT:                        highLossStat,
+		entity.LOW_WIN_STAT:                          lowWinStat,
+		entity.UPSET_WIN_STAT:                        upsetWinStat,
 	}
 	/*
 		Missing stats:
@@ -1179,69 +1271,69 @@ func instantiatePlayerData() map[string]*entity.StatItem {
 
 func instantiateNotableData() map[string]*entity.StatItem {
 
-	return map[string]*entity.StatItem{entity.NO_BLANKS_PLAYED_STAT: &entity.StatItem{Name: entity.NO_BLANKS_PLAYED_STAT,
+	return map[string]*entity.StatItem{entity.NO_BLANKS_PLAYED_STAT: {Name: entity.NO_BLANKS_PLAYED_STAT,
 		Minimum:       0,
 		Maximum:       0,
 		Total:         0,
 		IncrementType: entity.EventType},
 
 		// All is 24
-		entity.MANY_DOUBLE_LETTERS_COVERED_STAT: &entity.StatItem{Name: entity.MANY_DOUBLE_LETTERS_COVERED_STAT,
+		entity.MANY_DOUBLE_LETTERS_COVERED_STAT: {Name: entity.MANY_DOUBLE_LETTERS_COVERED_STAT,
 			Minimum:       20,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.EventType},
 
 		// All is 17
-		entity.MANY_DOUBLE_WORDS_COVERED_STAT: &entity.StatItem{Name: entity.MANY_DOUBLE_WORDS_COVERED_STAT,
+		entity.MANY_DOUBLE_WORDS_COVERED_STAT: {Name: entity.MANY_DOUBLE_WORDS_COVERED_STAT,
 			Minimum:       15,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.ALL_TRIPLE_LETTERS_COVERED_STAT: &entity.StatItem{Name: entity.ALL_TRIPLE_LETTERS_COVERED_STAT,
+		entity.ALL_TRIPLE_LETTERS_COVERED_STAT: {Name: entity.ALL_TRIPLE_LETTERS_COVERED_STAT,
 			Minimum:       12,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.ALL_TRIPLE_WORDS_COVERED_STAT: &entity.StatItem{Name: entity.ALL_TRIPLE_WORDS_COVERED_STAT,
+		entity.ALL_TRIPLE_WORDS_COVERED_STAT: {Name: entity.ALL_TRIPLE_WORDS_COVERED_STAT,
 			Minimum:       8,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.COMBINED_HIGH_SCORING_STAT: &entity.StatItem{Name: entity.COMBINED_HIGH_SCORING_STAT,
+		entity.COMBINED_HIGH_SCORING_STAT: {Name: entity.COMBINED_HIGH_SCORING_STAT,
 			Minimum:       1100,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.GameType},
 
-		entity.COMBINED_LOW_SCORING_STAT: &entity.StatItem{Name: entity.COMBINED_LOW_SCORING_STAT,
+		entity.COMBINED_LOW_SCORING_STAT: {Name: entity.COMBINED_LOW_SCORING_STAT,
 			Minimum:       0,
 			Maximum:       200,
 			Total:         0,
 			IncrementType: entity.GameType},
 
-		entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT: &entity.StatItem{Name: entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT,
+		entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT: {Name: entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT,
 			Minimum:       10,
 			Maximum:       10,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.ONE_PLAYER_PLAYS_EVERY_E_STAT: &entity.StatItem{Name: entity.ONE_PLAYER_PLAYS_EVERY_E_STAT,
+		entity.ONE_PLAYER_PLAYS_EVERY_E_STAT: {Name: entity.ONE_PLAYER_PLAYS_EVERY_E_STAT,
 			Minimum:       12,
 			Maximum:       12,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.MANY_CHALLENGES_STAT: &entity.StatItem{Name: entity.MANY_CHALLENGES_STAT,
+		entity.MANY_CHALLENGES_STAT: {Name: entity.MANY_CHALLENGES_STAT,
 			Minimum:       5,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
 			IncrementType: entity.EventType},
 
-		entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT: &entity.StatItem{Name: entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT,
+		entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT: {Name: entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT,
 			Minimum:       4,
 			Maximum:       entity.MaxNotableInt,
 			Total:         0,
