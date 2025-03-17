@@ -513,7 +513,9 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 	}
 	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
 	if err != nil {
-		return nil, err
+		// Note: this is not necessarily an error. If you get gifted a Patreon
+		// membership, you don't have a charge date.
+		log.Err(err).Str("lcd", memberData.Data.Attributes.LastChargeDate).Msg("parsing-last-charge-date")
 	}
 
 	tierData := &PaidTierData{

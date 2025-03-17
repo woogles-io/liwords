@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: https://www.patreon.com/api/oauth2/v2/members/2f583c00-96aa-4f98-bb1f-c55a23245c33?fields[member]=full_name,is_follower,last_charge_date,email&include=currently_entitled_tiers&fields[tier]=title,description
+  url: https://www.patreon.com/api/oauth2/v2/members/7b5f4dbf-fd09-48df-a480-f02ae498acc0?fields[member]=full_name,is_follower,is_gifted,last_charge_date,last_charge_status,email,next_charge_date,patron_status,pledge_cadence,pledge_relationship_start&include=currently_entitled_tiers&fields[tier]=title,description
   body: none
   auth: inherit
 }
 
 params:query {
-  fields[member]: full_name,is_follower,last_charge_date,email
+  fields[member]: full_name,is_follower,is_gifted,last_charge_date,last_charge_status,email,next_charge_date,patron_status,pledge_cadence,pledge_relationship_start
   include: currently_entitled_tiers
   fields[tier]: title,description
   ~fields[address]: line_1,line_2,addressee,postal_code,city
