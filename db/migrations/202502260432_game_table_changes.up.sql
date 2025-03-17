@@ -9,7 +9,7 @@ CREATE TABLE game_players (
     player_index SMALLINT, -- 0 or 1 for first or second
     FOREIGN KEY (game_id) REFERENCES games (id),
     FOREIGN KEY (player_id) REFERENCES users (id),
-    PRIMARY KEY (game_id, player_id);
+    PRIMARY KEY (game_id, player_id)
 );
 
 CREATE TABLE active_game_events (

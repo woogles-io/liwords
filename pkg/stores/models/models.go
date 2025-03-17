@@ -7,7 +7,14 @@ package models
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
+
+type ActiveGameEvent struct {
+	GameID   int32
+	EventIdx int32
+	Event    []byte
+}
 
 type AnnotatedGameMetadatum struct {
 	GameUuid         string
@@ -46,20 +53,22 @@ type Game struct {
 	Uuid           pgtype.Text
 	Player0ID      pgtype.Int4
 	Player1ID      pgtype.Int4
-	Timers         []byte
+	Timers         entity.Timers
 	Started        pgtype.Bool
 	GameEndReason  pgtype.Int4
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
-	Request        []byte
+	Request        entity.GameRequest
 	History        []byte
-	Stats          []byte
-	Quickdata      []byte
-	TournamentData []byte
+	Stats          entity.Stats
+	Quickdata      entity.Quickdata
+	TournamentData entity.TournamentData
 	TournamentID   pgtype.Text
 	ReadyFlag      pgtype.Int8
-	MetaEvents     []byte
+	MetaEvents     entity.MetaEventData
 	Type           pgtype.Int4
+	GameRequest    []byte
+	HistoryInS3    bool
 }
 
 type GameComment struct {
@@ -75,6 +84,12 @@ type GameComment struct {
 type GameDocument struct {
 	GameID   string
 	Document []byte
+}
+
+type GamePlayer struct {
+	GameID      int32
+	PlayerID    int32
+	PlayerIndex pgtype.Int2
 }
 
 type Integration struct {

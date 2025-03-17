@@ -10,3 +10,28 @@ sql:
       overrides:
       - db_type: "uuid"
         go_type: "github.com/google/uuid.UUID"
+      - column: "games.timers"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Timers"
+      - column: "games.stats"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Stats"
+      - column: "games.quickdata"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Quickdata"
+      - column: "games.tournament_data"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "TournamentData"
+      - column: "games.meta_events"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "MetaEventData"
+      - column: "games.request"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "GameRequest"
+

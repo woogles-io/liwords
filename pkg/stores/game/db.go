@@ -23,6 +23,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -37,8 +38,9 @@ const (
 
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
-	cfg *config.Config
-	db  *gorm.DB
+	cfg     *config.Config
+	db      *gorm.DB
+	queries *models.Queries
 
 	userStore pkguser.Store
 
@@ -85,7 +87,7 @@ type game struct {
 }
 
 // NewDBStore creates a new DB store for games.
-func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
+func NewDBStore(config *config.Config, userStore pkguser.Store, queries *models.Queries) (*DBStore, error) {
 
 	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
@@ -99,7 +101,7 @@ func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function
 	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore}, nil
+	return &DBStore{db: db, cfg: config, userStore: userStore, queries: queries}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
@@ -116,52 +118,32 @@ func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
 // This function should almost never be called during a live game.
 // The db store should be wrapped with a cache.
 // Only API nodes that have this game in its cache should respond to requests.
+// XXX: The above comment is obsolete and we will likely redo the way we do caches in the future.
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
-	g := &game{}
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("uuid = ?", id).First(g); result.Error != nil {
-		return nil, result.Error
-	}
 
-	var tdata entity.Timers
-	err := json.Unmarshal(g.Timers, &tdata)
+	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("timers", g.Timers).Msg("TIMERS")
-
-	var sdata entity.Stats
-	err = json.Unmarshal(g.Stats, &sdata)
-	if err != nil {
-		// it could be that the stats are empty, so don't worry.
-		// return nil, err
+	// convert to an entity.Game
+	entGame := &entity.Game{
+		Started:        g.Started.Bool,
+		Timers:         g.Timers,
+		GameEndReason:  pb.GameEndReason(g.GameEndReason.Int32),
+		WinnerIdx:      int(g.WinnerIdx.Int32),
+		LoserIdx:       int(g.LoserIdx.Int32),
+		ChangeHook:     s.gameEventChan,
+		PlayerDBIDs:    [2]uint{uint(g.Player0ID.Int32), uint(g.Player1ID.Int32)},
+		Stats:          &g.Stats,
+		MetaEvents:     &g.MetaEvents,
+		Quickdata:      &g.Quickdata,
+		CreatedAt:      g.CreatedAt.Time,
+		Type:           pb.GameType(g.Type.Int32),
+		DBID:           uint(g.ID),
+		TournamentData: &g.TournamentData,
+		GameReq:        g.GameRequest,
 	}
-
-	var qdata entity.Quickdata
-	err = json.Unmarshal(g.Quickdata, &qdata)
-	if err != nil {
-		return nil, err
-	}
-
-	var mdata entity.MetaEventData
-	err = json.Unmarshal(g.MetaEvents, &mdata)
-	if err != nil {
-		// Ignore this error; meta events could be nil.
-	}
-
-	entGame, err := fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, &mdata, s.gameEventChan, s.cfg, g.CreatedAt, g.Type, g.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	var trdata entity.TournamentData
-	err = json.Unmarshal(g.TournamentData, &trdata)
-	if err == nil {
-		// however, it's ok for a game to not have tournament data
-		entGame.TournamentData = &trdata
-		entGame.TournamentData.Id = g.TournamentID
-	}
+	entGame.SetTimerModule(&entity.GameTimer{})
 	return entGame, nil
 }
 

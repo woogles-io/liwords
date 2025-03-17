@@ -136,11 +136,11 @@ func (h *GameHistory) Scan(value interface{}) error {
 }
 
 type GameRequest struct {
-	pb.GameRequest
+	*pb.GameRequest
 }
 
 func (g *GameRequest) Value() (driver.Value, error) {
-	return proto.Marshal(&g.GameRequest)
+	return proto.Marshal(g.GameRequest)
 }
 
 func (g *GameRequest) Scan(value interface{}) error {
@@ -148,7 +148,7 @@ func (g *GameRequest) Scan(value interface{}) error {
 	if !ok {
 		return errors.New("type assertion to []byte failed")
 	}
-	return proto.Unmarshal(b, &g.GameRequest)
+	return proto.Unmarshal(b, g.GameRequest)
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -162,7 +162,7 @@ type Game struct {
 	Type        pb.GameType
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
-	GameReq *pb.GameRequest
+	GameReq *GameRequest
 	// started is set when the game actually starts (when the game timers start).
 	// Note that the internal game.Game may have started a few seconds before,
 	// but there should be no information about it given until _this_ started
@@ -213,7 +213,7 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 			TimeRemaining: []int{ms, ms},
 			MaxOvertime:   mom,
 		},
-		GameReq:   req,
+		GameReq:   &GameRequest{req},
 		nower:     &GameTimer{},
 		Quickdata: &Quickdata{},
 	}
@@ -239,8 +239,8 @@ func (g *Game) ResetTimersAndStart() {
 }
 
 func (g *Game) RatingKey() (VariantKey, error) {
-	req := g.CreationRequest()
-	timefmt, variant, err := VariantFromGameReq(req)
+	req := g.GameReq
+	timefmt, variant, err := VariantFromGameReq(req.GameRequest)
 	if err != nil {
 		return "", err
 	}
@@ -408,10 +408,6 @@ func (g *Game) ChallengeRule() macondopb.ChallengeRule {
 
 func (g *Game) RatingMode() pb.RatingMode {
 	return g.GameReq.RatingMode
-}
-
-func (g *Game) CreationRequest() *pb.GameRequest {
-	return g.GameReq
 }
 
 // RegisterChangeHook registers a channel with the game. Events will

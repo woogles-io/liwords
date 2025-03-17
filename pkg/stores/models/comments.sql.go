@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 const addComment = `-- name: AddComment :one
@@ -85,7 +86,7 @@ type GetCommentsForAllGamesRow struct {
 	Username    pgtype.Text
 	EventNumber int32
 	EditedAt    pgtype.Timestamptz
-	Quickdata   []byte
+	Quickdata   entity.Quickdata
 }
 
 func (q *Queries) GetCommentsForAllGames(ctx context.Context, arg GetCommentsForAllGamesParams) ([]GetCommentsForAllGamesRow, error) {
