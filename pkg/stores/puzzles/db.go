@@ -6,19 +6,21 @@ import (
 	"fmt"
 	"time"
 
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	macondogame "github.com/domino14/macondo/game"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	commontest "github.com/woogles-io/liwords/pkg/common"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type DBStore struct {
@@ -751,18 +753,26 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 		ids, err := s.queries.GetPotentialPuzzleGamesAvoidBots(ctx, models.GetPotentialPuzzleGamesAvoidBotsParams{
 			CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 			CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-			Request:     []byte(`%` + lexicon + `%`),
-			Limit:       int32(limit),
-			Offset:      0,
+			Request: entity.GameRequest{GameRequest: &ipc.GameRequest{
+				Lexicon: lexicon,
+				Rules: &ipc.GameRules{
+					VariantName: string(macondogame.VarClassic),
+				}}},
+			Limit:  int32(limit),
+			Offset: 0,
 		})
 		return ids, err
 	}
 	ids, err := s.queries.GetPotentialPuzzleGames(ctx, models.GetPotentialPuzzleGamesParams{
 		CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 		CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-		Request:     []byte(`%` + lexicon + `%`),
-		Limit:       int32(limit),
-		Offset:      0,
+		Request: entity.GameRequest{GameRequest: &ipc.GameRequest{
+			Lexicon: lexicon,
+			Rules: &ipc.GameRules{
+				VariantName: string(macondogame.VarClassic),
+			}}},
+		Limit:  int32(limit),
+		Offset: 0,
 	})
 	return ids, err
 }

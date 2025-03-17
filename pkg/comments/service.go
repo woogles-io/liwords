@@ -2,7 +2,6 @@ package comments
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
-	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores/comments"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -120,11 +118,9 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 
 	return connect.NewResponse(&pb.GetCommentsResponse{
 		Comments: lo.Map(comments, func(c models.GetCommentsForAllGamesRow, idx int) *pb.GameComment {
-			qd := &entity.Quickdata{}
-			err := json.Unmarshal(c.Quickdata, qd)
 			gameMeta := map[string]string{}
 			if err == nil {
-				playerNames := lo.Map(qd.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
+				playerNames := lo.Map(c.Quickdata.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
 					return p.FullName
 				})
 				gameMeta["players"] = strings.Join(playerNames, " vs ")

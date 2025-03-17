@@ -56,7 +56,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 
-	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore)
+	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore, dbPool)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +103,6 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
-	stores.Queries = models.New(dbPool)
+
 	return stores, nil
 }

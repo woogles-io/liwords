@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	"google.golang.org/protobuf/proto"
@@ -87,7 +87,7 @@ type game struct {
 }
 
 // NewDBStore creates a new DB store for games.
-func NewDBStore(config *config.Config, userStore pkguser.Store, queries *models.Queries) (*DBStore, error) {
+func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool) (*DBStore, error) {
 
 	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
@@ -101,7 +101,7 @@ func NewDBStore(config *config.Config, userStore pkguser.Store, queries *models.
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function
 	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore, queries: queries}, nil
+	return &DBStore{db: db, cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
@@ -123,6 +123,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
+		log.Err(err).Msg("error-get-game")
 		return nil, err
 	}
 	// convert to an entity.Game
@@ -141,9 +142,58 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		Type:           pb.GameType(g.Type.Int32),
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
-		GameReq:        g.GameRequest,
+		GameReq:        &g.Request, // move to g.GameRequest after JSON migration
+
 	}
 	entGame.SetTimerModule(&entity.GameTimer{})
+
+	// Then unmarshal the history and start a game from it.
+	hist := &macondopb.GameHistory{}
+	err = proto.Unmarshal(g.History, hist)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+
+	lexicon := hist.Lexicon
+	if lexicon == "" {
+		// This can happen for some early games where we didn't migrate this.
+		lexicon = g.Request.Lexicon
+	}
+
+	rules, err := macondogame.NewBasicGameRules(
+		s.cfg.MacondoConfig(), lexicon, g.Request.Rules.BoardLayoutName,
+		g.Request.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(g.Request.Rules.VariantName))
+	if err != nil {
+		return nil, err
+	}
+
+	// There's a chance the game is over, so we want to get that state before
+	// the following function modifies it.
+	histPlayState := hist.GetPlayState()
+	log.Debug().Interface("old-play-state", histPlayState).Msg("play-state-loading-hist")
+	// This function modifies the history. (XXX it probably shouldn't)
+	// It modifies the play state as it plays the game from the beginning.
+	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
+	if err != nil {
+		return nil, err
+	}
+	// XXX: We should probably move this to `NewFromHistory`:
+	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	// Note: we don't need to set the stack length here, as NewFromHistory
+	// above does it.
+
+	entGame.Game = *mcg
+	log.Debug().Interface("history", entGame.History()).Msg("from-state")
+	// Finally, restore the play state from the passed-in history. This
+	// might immediately end the game (for example, the game could have timed
+	// out, but the NewFromHistory function doesn't actually handle that).
+	// We could consider changing NewFromHistory, but we want it to be as
+	// flexible as possible for things like analysis mode.
+	entGame.SetPlaying(histPlayState)
+	entGame.History().PlayState = histPlayState
+
 	return entGame, nil
 }
 
@@ -391,86 +441,6 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 		Type:                g.Type,
 	}
 	return info, nil
-}
-
-// fromState returns an entity.Game from a DB State.
-func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
-	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
-	stats *entity.Stats, mdata *entity.MetaEventData,
-	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time, gameType pb.GameType, DBID uint) (*entity.Game, error) {
-
-	g := &entity.Game{
-		Started:       Started,
-		Timers:        timers,
-		GameEndReason: pb.GameEndReason(GameEndReason),
-		WinnerIdx:     WinnerIdx,
-		LoserIdx:      LoserIdx,
-		ChangeHook:    gameEventChan,
-		PlayerDBIDs:   [2]uint{p0id, p1id},
-		Stats:         stats,
-		MetaEvents:    mdata,
-		Quickdata:     qdata,
-		CreatedAt:     createdAt,
-		Type:          gameType,
-		DBID:          DBID,
-	}
-	g.SetTimerModule(&entity.GameTimer{})
-
-	// Now copy the request
-	req := &pb.GameRequest{}
-	err := proto.Unmarshal(reqBytes, req)
-	if err != nil {
-		return nil, err
-	}
-	g.GameReq = req
-	log.Debug().Interface("req", req).Msg("req-unmarshal")
-	// Then unmarshal the history and start a game from it.
-	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(histBytes, hist)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
-
-	lexicon := hist.Lexicon
-	if lexicon == "" {
-		// This can happen for some early games where we didn't migrate this.
-		lexicon = req.Lexicon
-	}
-
-	rules, err := macondogame.NewBasicGameRules(
-		cfg.MacondoConfig(), lexicon, req.Rules.BoardLayoutName,
-		req.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(req.Rules.VariantName))
-	if err != nil {
-		return nil, err
-	}
-
-	// There's a chance the game is over, so we want to get that state before
-	// the following function modifies it.
-	histPlayState := hist.GetPlayState()
-	log.Debug().Interface("old-play-state", histPlayState).Msg("play-state-loading-hist")
-	// This function modifies the history. (XXX it probably shouldn't)
-	// It modifies the play state as it plays the game from the beginning.
-	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
-	if err != nil {
-		return nil, err
-	}
-	// XXX: We should probably move this to `NewFromHistory`:
-	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
-	// Note: we don't need to set the stack length here, as NewFromHistory
-	// above does it.
-
-	g.Game = *mcg
-	log.Debug().Interface("history", g.History()).Msg("from-state")
-	// Finally, restore the play state from the passed-in history. This
-	// might immediately end the game (for example, the game could have timed
-	// out, but the NewFromHistory function doesn't actually handle that).
-	// We could consider changing NewFromHistory, but we want it to be as
-	// flexible as possible for things like analysis mode.
-	g.SetPlaying(histPlayState)
-	g.History().PlayState = histPlayState
-	return g, nil
 }
 
 // Set takes in a game entity that _already exists_ in the DB, and writes it to

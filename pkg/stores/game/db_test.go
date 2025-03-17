@@ -3,10 +3,10 @@ package game
 import (
 	"context"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -57,11 +57,7 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	return mcg
 }
 
-func userStore() pkguser.Store {
-	pool, err := common.OpenTestingDB(pkg)
-	if err != nil {
-		panic(err)
-	}
+func userStore(pool *pgxpool.Pool) pkguser.Store {
 	ustore, err := user.NewDBStore(pool)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
@@ -69,14 +65,19 @@ func userStore() pkguser.Store {
 	return ustore
 }
 
-func recreateDB() pkguser.Store {
+func recreateDB() (pkguser.Store, *DBStore) {
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
 	}
 
+	pool, err := common.OpenTestingDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+
 	// Crete a user table. Initialize the user store.
-	ustore := userStore()
+	ustore := userStore(pool)
 	// Insert a couple of users into the table.
 
 	for _, u := range []*entity.User{
@@ -90,12 +91,20 @@ func recreateDB() pkguser.Store {
 		}
 	}
 
-	addfakeGames(ustore)
-	return ustore
+	cfg := DefaultConfig
+	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
+
+	gstore, err := NewDBStore(cfg, ustore, pool)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+
+	addfakeGames(gstore)
+	return ustore, gstore
 }
 
-func addfakeGames(ustore pkguser.Store) {
-	protocts, err := ioutil.ReadFile("./testdata/game1/history.json")
+func addfakeGames(gstore *DBStore) {
+	protocts, err := os.ReadFile("./testdata/game1/history.json")
 	if err != nil {
 		panic(err)
 	}
@@ -113,13 +122,8 @@ func addfakeGames(ustore pkguser.Store) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-	// Add some fake games to the table
-	store, err := NewDBStore(&config.Config{
-		DBConnDSN: common.TestingPostgresConnDSN(pkg)}, ustore)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
+
+	db := gstore.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
@@ -131,31 +135,9 @@ func addfakeGames(ustore pkguser.Store) {
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
 	}
-	store.Disconnect()
-	ustore.(*user.DBStore).Disconnect()
-
 }
 
-func teardown() {
-	err := common.TeardownTestDB(pkg)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func TestMain(m *testing.M) {
-
-	code := m.Run()
-	//teardown()
-	os.Exit(code)
-}
-
-func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
-	ustore := userStore()
-	store, err := NewDBStore(&config.Config{
-		DBConnDSN: common.TestingPostgresConnDSN(pkg)}, ustore)
-	is.NoErr(err)
-
+func createGame(ustore pkguser.Store, gstore *DBStore, p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	u1, err := ustore.Get(context.Background(), p0)
 	is.NoErr(err)
 
@@ -187,50 +169,41 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	}
 	entGame.ResetTimersAndStart()
 
-	err = store.Create(context.Background(), entGame)
+	err = gstore.Create(context.Background(), entGame)
 	is.NoErr(err)
-
-	// Clean up connections
-	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
-
 	return entGame
 }
 
 func TestCreate(t *testing.T) {
 	log.Info().Msg("TestCreate")
-	recreateDB()
 	is := is.New(t)
-	entGame := createGame("cesar", "mina", int32(60), is)
+
+	ustore, gstore := recreateDB()
+
+	entGame := createGame(ustore, gstore, "cesar", "mina", int32(60), is)
 
 	is.True(entGame.Quickdata != nil)
 
-	ustore := userStore()
-	store, err := NewDBStore(DefaultConfig, ustore)
-	is.NoErr(err)
 	// Make sure we can fetch the game from the DB.
 	log.Debug().Str("entGameID", entGame.GameID()).Msg("trying-to-fetch")
-	cpy, err := store.Get(context.Background(), entGame.GameID())
+	cpy, err := gstore.Get(context.Background(), entGame.GameID())
 	is.NoErr(err)
 	is.True(cpy.Quickdata != nil)
 
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
+	gstore.Disconnect()
 
 }
 
 func TestSet(t *testing.T) {
 	log.Info().Msg("TestSet")
-	recreateDB()
+	ustore, gstore := recreateDB()
 
 	is := is.New(t)
-	ustore := userStore()
-	store, err := NewDBStore(DefaultConfig, ustore)
-	is.NoErr(err)
 
 	// Fetch the game from the backend.
-	entGame, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
+	entGame, err := gstore.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
 	is.NoErr(err)
 	// Make some modification.
 
@@ -242,11 +215,11 @@ func TestSet(t *testing.T) {
 	_, err = entGame.PlayScoringMove("8E", "AGUE", true)
 	is.NoErr(err)
 	// Save it back
-	err = store.Set(context.Background(), entGame)
+	err = gstore.Set(context.Background(), entGame)
 	is.NoErr(err)
 
 	// Now, fetch the game again and see if things have updated.
-	g, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
+	g, err := gstore.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
 	is.NoErr(err)
 	is.Equal(g.Turn(), 1)
 	is.Equal(g.NickOnTurn(), "cesar")
@@ -256,20 +229,15 @@ func TestSet(t *testing.T) {
 
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
+	gstore.Disconnect()
 }
 
 func TestGet(t *testing.T) {
 	log.Info().Msg("TestGet")
-	recreateDB()
-
+	ustore, gstore := recreateDB()
 	is := is.New(t)
 
-	ustore := userStore()
-	store, err := NewDBStore(DefaultConfig, ustore)
-	is.NoErr(err)
-
-	entGame, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
+	entGame, err := gstore.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
 	is.NoErr(err)
 	log.Info().Interface("entGame history", entGame.History()).Msg("history")
 
@@ -286,23 +254,21 @@ func TestGet(t *testing.T) {
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
+	gstore.Disconnect()
 }
 
 func TestListActive(t *testing.T) {
 	log.Info().Msg("TestListActive")
-	recreateDB()
+	ustore, gstore := recreateDB()
 	is := is.New(t)
-	createGame("cesar", "jesse", int32(120), is)
-	createGame("jesse", "mina", int32(240), is)
-	ustore := userStore()
+
+	createGame(ustore, gstore, "cesar", "jesse", int32(120), is)
+	createGame(ustore, gstore, "jesse", "mina", int32(240), is)
 
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
-	store, err := NewDBStore(DefaultConfig, ustore)
-	is.NoErr(err)
 
-	games, err := store.ListActive(context.Background(), "")
+	games, err := gstore.ListActive(context.Background(), "")
 	is.NoErr(err)
 	is.Equal(len(games.GameInfo), 3)
 	is.Equal(games.GameInfo[0].Players, []*pb.PlayerInfo{
@@ -325,5 +291,5 @@ func TestListActive(t *testing.T) {
 		LetterDistributionName: "english",
 	})
 	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
+	gstore.Disconnect()
 }

@@ -12,6 +12,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -114,9 +115,51 @@ type TournamentData struct {
 	GameIndex int    `json:"i"`
 }
 
+func (t *TournamentData) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+func (t *TournamentData) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*t = TournamentData{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for tournament-data", value)
+	}
+
+	return json.Unmarshal(b, &t)
+}
+
 // MetaEventData holds a list of meta events, such as requesting aborts, adjourns, etc.
 type MetaEventData struct {
 	Events []*pb.GameMetaEvent `json:"events"`
+}
+
+func (m *MetaEventData) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *MetaEventData) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*m = MetaEventData{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for tournament-data", value)
+	}
+
+	return json.Unmarshal(b, &m)
 }
 
 type GameHistory struct {
@@ -148,7 +191,14 @@ func (g *GameRequest) Scan(value interface{}) error {
 	if !ok {
 		return errors.New("type assertion to []byte failed")
 	}
-	return proto.Unmarshal(b, g.GameRequest)
+	g.GameRequest = &pb.GameRequest{}
+	// XXX: Remove the proto unmarshal once we've migrated all game requests
+	// to be saved as JSONB.
+	err := proto.Unmarshal(b, g.GameRequest)
+	if err != nil {
+		err = protojson.Unmarshal(b, g.GameRequest)
+	}
+	return err
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
