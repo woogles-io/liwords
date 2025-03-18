@@ -103,6 +103,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
+	stores.Queries = models.New(dbPool)
 
 	return stores, nil
 }

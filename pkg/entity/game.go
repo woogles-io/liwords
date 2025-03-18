@@ -187,10 +187,16 @@ func (g *GameRequest) Value() (driver.Value, error) {
 }
 
 func (g *GameRequest) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case nil:
+		*g = GameRequest{GameRequest: &pb.GameRequest{}}
+		return nil
 	}
+
 	g.GameRequest = &pb.GameRequest{}
 	// XXX: Remove the proto unmarshal once we've migrated all game requests
 	// to be saved as JSONB.
