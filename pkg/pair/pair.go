@@ -3,7 +3,7 @@ package pair
 import (
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/rs/zerolog/log"
 
@@ -59,7 +59,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i, _ := range members.PoolMembers {
 		playerIndexes = append(playerIndexes, i)
 	}
-	source := rand.NewSource(members.Seed)
+	source := rand.NewPCG(members.Seed, 0)
 	rng := rand.New(source)
 	rng.Shuffle(len(playerIndexes),
 		func(i, j int) {
@@ -348,7 +348,7 @@ func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
 	return factorPairings, nil
 }
 
-func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int, seed int64) ([]int, error) {
+func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int, seed uint64) ([]int, error) {
 	log.Info().Int("players", numberOfPlayers).Int("ntiles", numberOfNtiles).Int("round", round).Msg("initial-fontes-params")
 	// If there are more Ntiles than players, InitialFontes is not valid
 	// Return all byes
@@ -443,7 +443,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	return pairings, nil
 }
 
-func getRoundRobinPairings(numberOfPlayers int, round int, seed int64) ([]int, error) {
+func getRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, error) {
 
 	/* Round Robin pairing algorithm:
 
@@ -488,7 +488,7 @@ func getRoundRobinPairings(numberOfPlayers int, round int, seed int64) ([]int, e
 		players = append(players, numberOfPlayers)
 	}
 
-	source := rand.NewSource(seed)
+	source := rand.NewPCG(seed, 0)
 	rng := rand.New(source)
 	rng.Shuffle(len(players),
 		func(i, j int) {

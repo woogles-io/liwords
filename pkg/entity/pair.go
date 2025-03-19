@@ -32,5 +32,5 @@ type UnpairedPoolMembers struct {
 	PoolMembers   []*PoolMember
 	RoundControls *ipc.RoundControl
 	Repeats       map[string]int
-	Seed          int64
+	Seed          uint64
 }

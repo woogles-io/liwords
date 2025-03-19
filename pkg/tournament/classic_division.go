@@ -35,7 +35,7 @@ type ClassicDivision struct {
 	DivisionControls *pb.DivisionControls         `json:"divisionControls"`
 	CurrentRound     int32                        `json:"currentRound"`
 	PairingKeyInt    int                          `json:"pairingKeyInt"`
-	Seed             int64                        `json:"seed"`
+	Seed             uint64                       `json:"seed"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -50,7 +50,7 @@ func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivi
 		DivisionControls: &pb.DivisionControls{},
 		CurrentRound:     -1,
 		PairingKeyInt:    0,
-		Seed:             time.Now().Unix()}
+		Seed:             uint64(time.Now().UnixNano())}
 }
 
 func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {

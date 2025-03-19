@@ -60,7 +60,7 @@ func TestRoundRobin(t *testing.T) {
 	is.True(equalPairings(pairings20, pairings18) != nil)
 
 	zerolog.SetGlobalLevel(zerolog.Disabled)
-	for seed := int64(10); seed < 14; seed++ {
+	for seed := uint64(10); seed < 14; seed++ {
 		for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
 			phasePairings := map[string]bool{}
 			pairingsStr := ""
