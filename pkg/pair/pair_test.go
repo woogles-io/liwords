@@ -33,6 +33,32 @@ func TestRoundRobin(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
+	pairings0_1, err := getRoundRobinPairings(10, 0, 3)
+	is.NoErr(err)
+	is.NoErr(equalPairings([]int{1, 0}, pairings))
+
+	pairings0_2, err := getRoundRobinPairings(10, 0, 3)
+	is.NoErr(err)
+	is.NoErr(equalPairings([]int{1, 0}, pairings))
+
+	pairings9, err := getRoundRobinPairings(10, 9, 3)
+	is.NoErr(err)
+	is.NoErr(equalPairings([]int{1, 0}, pairings))
+
+	pairings18, err := getRoundRobinPairings(10, 18, 3)
+	is.NoErr(err)
+	is.NoErr(equalPairings([]int{1, 0}, pairings))
+
+	pairings20, err := getRoundRobinPairings(10, 20, 3)
+	is.NoErr(err)
+	is.NoErr(equalPairings([]int{1, 0}, pairings))
+
+	is.NoErr(equalPairings(pairings0_1, pairings0_2))
+	is.NoErr(equalPairings(pairings0_1, pairings9))
+	is.NoErr(equalPairings(pairings9, pairings18))
+	is.True(equalPairings(pairings20, pairings9) != nil)
+	is.True(equalPairings(pairings20, pairings18) != nil)
+
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	for seed := int64(10); seed < 14; seed++ {
 		for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
