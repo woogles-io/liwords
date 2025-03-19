@@ -127,7 +127,7 @@ func makeControls() *ipc.DivisionControls {
 	return &ipc.DivisionControls{
 		SuspendedResult: ipc.TournamentGameResult_BYE,
 		GameRequest:     gameReq,
-		AutoStart:       true}
+		AutoStart:       false}
 }
 
 func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *ipc.TournamentPersons) (*entity.Tournament, error) {
@@ -472,6 +472,22 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(isRoundComplete)
 
+	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, []*pb.TournamentPairingRequest{
+		{
+			PlayerOneId: "Josh:Josh",
+			PlayerTwoId: "Jesse:Jesse",
+			Round:       1,
+		},
+		{
+			PlayerOneId: "Will:Will",
+			PlayerTwoId: "Conrad:Conrad",
+			Round:       1,
+		},
+	})
+	is.NoErr(err)
+
+	err = tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 1)
+	is.NoErr(err)
 	// Complete another round to test PairRound
 
 	// Complete the round
@@ -514,6 +530,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 1)
 	is.NoErr(err)
 	is.True(isRoundComplete)
+
+	err = tournament.StartRoundCountdown(ctx, tstore, ty.UUID, divOneName, 2)
+	is.NoErr(err)
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1, true)
 	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PAIR_NON_FUTURE_ROUND, tournamentName, divOneName, "0", "3").Error())
