@@ -94,98 +94,53 @@ func TestRoundRobin(t *testing.T) {
 	}
 }
 
-func getRRPairingsOrDie(numberOfPlayers, round, gamesPerMatchup int, interleave bool) []int {
-	pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, interleave)
-	if err != nil {
-		panic(err)
-	}
-	// pairings are index vs value
-	// so e.g. [1, 0, 3, 2] means 0v1, 1v0, 2v3, 3v2
-	return pairings
-}
-
 func TestTeamRoundRobin(t *testing.T) {
-	// This test is used to ensure that team round robin
-	// pairings work correctly.
-
 	is := is.New(t)
-
-	numberOfPlayers := 2
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, false), []int{1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, false), []int{1, 0}))
-
-	numberOfPlayers = 4
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, false), []int{3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, false), []int{2, 3, 0, 1}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, false), []int{3, 2, 1, 0}))
-	numberOfPlayers = 10
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, false), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, false), []int{5, 9, 8, 7, 6, 0, 4, 3, 2, 1}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, false), []int{6, 5, 9, 8, 7, 1, 0, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 3, 1, false), []int{7, 6, 5, 9, 8, 2, 1, 0, 4, 3}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 4, 1, false), []int{8, 7, 6, 5, 9, 3, 2, 1, 0, 4}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 5, 1, false), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 6, 1, false), []int{5, 9, 8, 7, 6, 0, 4, 3, 2, 1}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 7, 1, false), []int{6, 5, 9, 8, 7, 1, 0, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 8, 1, false), []int{7, 6, 5, 9, 8, 2, 1, 0, 4, 3}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 9, 1, false), []int{8, 7, 6, 5, 9, 3, 2, 1, 0, 4}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 10, 1, false), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-
-	numberOfPlayers = 8
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, false), []int{7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, false), []int{4, 7, 6, 5, 0, 3, 2, 1}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, false), []int{5, 4, 7, 6, 1, 0, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 3, 1, false), []int{6, 5, 4, 7, 2, 1, 0, 3}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 4, 1, false), []int{7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 5, 1, false), []int{4, 7, 6, 5, 0, 3, 2, 1}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 6, 1, false), []int{5, 4, 7, 6, 1, 0, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 7, 1, false), []int{6, 5, 4, 7, 2, 1, 0, 3}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 8, 1, false), []int{7, 6, 5, 4, 3, 2, 1, 0}))
-
-}
-
-func TestTeamRoundRobinInterleave(t *testing.T) {
-	is := is.New(t)
-
-	numberOfPlayers := 2
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, true), []int{1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, true), []int{1, 0}))
-
-	numberOfPlayers = 4
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, true), []int{3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, true), []int{1, 0, 3, 2}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, true), []int{3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 3, 1, true), []int{1, 0, 3, 2}))
-
-	numberOfPlayers = 10
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, true), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, true), []int{1, 0, 9, 8, 7, 6, 5, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, true), []int{3, 2, 1, 0, 9, 8, 7, 6, 5, 4}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 3, 1, true), []int{5, 4, 3, 2, 1, 0, 9, 8, 7, 6}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 4, 1, true), []int{7, 6, 5, 4, 3, 2, 1, 0, 9, 8}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 5, 1, true), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 6, 1, true), []int{1, 0, 9, 8, 7, 6, 5, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 7, 1, true), []int{3, 2, 1, 0, 9, 8, 7, 6, 5, 4}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 8, 1, true), []int{5, 4, 3, 2, 1, 0, 9, 8, 7, 6}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 9, 1, true), []int{7, 6, 5, 4, 3, 2, 1, 0, 9, 8}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 10, 1, true), []int{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}))
-
-	numberOfPlayers = 8
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 0, 1, true), []int{7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 1, 1, true), []int{1, 0, 7, 6, 5, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 2, 1, true), []int{3, 2, 1, 0, 7, 6, 5, 4}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 3, 1, true), []int{5, 4, 3, 2, 1, 0, 7, 6}))
-	// Ensure the pattern restarts
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 4, 1, true), []int{7, 6, 5, 4, 3, 2, 1, 0}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 5, 1, true), []int{1, 0, 7, 6, 5, 4, 3, 2}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 6, 1, true), []int{3, 2, 1, 0, 7, 6, 5, 4}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 7, 1, true), []int{5, 4, 3, 2, 1, 0, 7, 6}))
-	is.NoErr(equalPairings(getRRPairingsOrDie(numberOfPlayers, 8, 1, true), []int{7, 6, 5, 4, 3, 2, 1, 0}))
+	for interleave := false; interleave != true; interleave = !interleave {
+		for seed := uint64(10); seed < 14; seed++ {
+			for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
+				phasePairings := map[string]bool{}
+				pairingsStr := ""
+				prevPairingsStr := ""
+				halfNoP := numberOfPlayers / 2
+				evenedNoP := numberOfPlayers + (numberOfPlayers % 2)
+				halfEvenedNoP := evenedNoP / 2
+				for round := 0; round < 60; round++ {
+					pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, 1, interleave, seed)
+					if numberOfPlayers%2 == 1 && !interleave {
+						is.True(err != nil)
+						continue
+					}
+					is.NoErr(err)
+					pairingsStr += fmt.Sprintf(">%v<\n", pairings)
+					for player, opponent := range pairings {
+						if opponent == -1 {
+							opponent = player
+						} else if player > opponent {
+							continue
+						}
+						key := fmt.Sprintf("%d-%d", player, opponent)
+						is.True(!phasePairings[key])
+						phasePairings[key] = true
+						if interleave {
+							is.Equal((opponent-player)%2, 0)
+						} else {
+							is.True((opponent < halfNoP && player >= halfNoP) || (player < halfNoP && opponent >= halfNoP))
+						}
+					}
+					if (round+1)%halfEvenedNoP == 0 {
+						if prevPairingsStr != "" {
+							is.Equal(prevPairingsStr, pairingsStr)
+						}
+						is.Equal(len(phasePairings), halfEvenedNoP*halfEvenedNoP)
+						prevPairingsStr = pairingsStr
+						pairingsStr = ""
+						phasePairings = map[string]bool{}
+					}
+				}
+			}
+		}
+	}
 }
 
 func TestInitialFontes(t *testing.T) {
