@@ -12,6 +12,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -114,9 +115,51 @@ type TournamentData struct {
 	GameIndex int    `json:"i"`
 }
 
+func (t *TournamentData) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+func (t *TournamentData) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*t = TournamentData{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for tournament-data", value)
+	}
+
+	return json.Unmarshal(b, &t)
+}
+
 // MetaEventData holds a list of meta events, such as requesting aborts, adjourns, etc.
 type MetaEventData struct {
 	Events []*pb.GameMetaEvent `json:"events"`
+}
+
+func (m *MetaEventData) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *MetaEventData) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*m = MetaEventData{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for tournament-data", value)
+	}
+
+	return json.Unmarshal(b, &m)
 }
 
 type GameHistory struct {
@@ -136,19 +179,32 @@ func (h *GameHistory) Scan(value interface{}) error {
 }
 
 type GameRequest struct {
-	pb.GameRequest
+	*pb.GameRequest
 }
 
 func (g *GameRequest) Value() (driver.Value, error) {
-	return proto.Marshal(&g.GameRequest)
+	return proto.Marshal(g.GameRequest)
 }
 
 func (g *GameRequest) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case nil:
+		*g = GameRequest{GameRequest: &pb.GameRequest{}}
+		return nil
 	}
-	return proto.Unmarshal(b, &g.GameRequest)
+
+	g.GameRequest = &pb.GameRequest{}
+	// XXX: Remove the proto unmarshal once we've migrated all game requests
+	// to be saved as JSONB.
+	err := proto.Unmarshal(b, g.GameRequest)
+	if err != nil {
+		err = protojson.Unmarshal(b, g.GameRequest)
+	}
+	return err
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -162,7 +218,7 @@ type Game struct {
 	Type        pb.GameType
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
-	GameReq *pb.GameRequest
+	GameReq *GameRequest
 	// started is set when the game actually starts (when the game timers start).
 	// Note that the internal game.Game may have started a few seconds before,
 	// but there should be no information about it given until _this_ started
@@ -213,7 +269,7 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 			TimeRemaining: []int{ms, ms},
 			MaxOvertime:   mom,
 		},
-		GameReq:   req,
+		GameReq:   &GameRequest{req},
 		nower:     &GameTimer{},
 		Quickdata: &Quickdata{},
 	}
@@ -239,8 +295,8 @@ func (g *Game) ResetTimersAndStart() {
 }
 
 func (g *Game) RatingKey() (VariantKey, error) {
-	req := g.CreationRequest()
-	timefmt, variant, err := VariantFromGameReq(req)
+	req := g.GameReq
+	timefmt, variant, err := VariantFromGameReq(req.GameRequest)
 	if err != nil {
 		return "", err
 	}
@@ -408,10 +464,6 @@ func (g *Game) ChallengeRule() macondopb.ChallengeRule {
 
 func (g *Game) RatingMode() pb.RatingMode {
 	return g.GameReq.RatingMode
-}
-
-func (g *Game) CreationRequest() *pb.GameRequest {
-	return g.GameReq
 }
 
 // RegisterChangeHook registers a channel with the game. Events will

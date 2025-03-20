@@ -130,8 +130,6 @@ services:
     ports:
       - "16686:16686"
       - "4318:4318"
-    environment:
-      - LOG_LEVEL=debug
     networks:
       - aeronet
 

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 const getPotentialPuzzleGames = `-- name: GetPotentialPuzzleGames :many
@@ -34,7 +35,7 @@ WHERE puzzles.id IS NULL
 type GetPotentialPuzzleGamesParams struct {
 	CreatedAt   pgtype.Timestamptz
 	CreatedAt_2 pgtype.Timestamptz
-	Request     []byte
+	Request     entity.GameRequest
 	Limit       int32
 	Offset      int32
 }
@@ -90,7 +91,7 @@ WHERE puzzles.id IS NULL
 type GetPotentialPuzzleGamesAvoidBotsParams struct {
 	CreatedAt   pgtype.Timestamptz
 	CreatedAt_2 pgtype.Timestamptz
-	Request     []byte
+	Request     entity.GameRequest
 	Limit       int32
 	Offset      int32
 }

@@ -34,7 +34,7 @@ func main() {
 		panic(err)
 	}
 
-	tmp, err := game.NewDBStore(cfg, userStore)
+	tmp, err := game.NewDBStore(cfg, userStore, pool)
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,53 @@
+digraph RedoGameModel {
+    Goal [label="Redo game model to support\n1) more simultaneous games\n2) less downtime between deploys\n3) make DB faster to back up and query";
+    shape=oval, peripheries=2, style=bold];
+
+    // Define a reusable style for "checked nodes"  ✅
+    node [shape=box, color=gray, fontcolor=gray, style=dashed];
+    DBGet [label="Rewrite DB Get to use sqlc ✅"];
+    AddOtherTables [label="Add many2many and turns tables ✅"];
+
+    // Reset to default for other uncompleted nodes
+    node [shape=box, color=black, fontcolor=black, style=solid];
+
+    MoreSimultaneousGames [label="Allow for more simultaneous games than cache limit"];
+    LessDowntimeBetweenDeploys [label="Allow for less downtime between deploys"];
+    MakeDBFaster [label="Make DB faster to query"];
+
+
+    OnlyUseOtherTables [label="Only use new tables"];
+    MigrateToNewTables [label="Migrate to new tables"];
+    UseOtherTables [label="Transparently use new many2many and turns tables"];
+    RemoveGameCache [label="Remove game cache"];
+    EfficientTable [label="Make game DB model more efficient"];
+    OldGamesInS3 [label="Move old games to S3"];
+    TranslateToGameDocument [label="Translate S3 games to GameDocument"];
+    FixGameDocumentBugs [label="Fix and test GameDocument bugs"];
+    SQLCDBStore [label="Rewrite DB store to use sqlc"];
+    SQLCOtherFuncs [label="Rewrite all others to use sqlc"];
+    DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
+
+    // Arrows
+    Goal -> MoreSimultaneousGames;
+    Goal -> LessDowntimeBetweenDeploys;
+    Goal -> MakeDBFaster;
+
+    MoreSimultaneousGames -> RemoveGameCache;
+    LessDowntimeBetweenDeploys -> RemoveGameCache;
+    MakeDBFaster -> EfficientTable;
+
+    RemoveGameCache -> EfficientTable;
+    EfficientTable-> OnlyUseOtherTables;
+    OnlyUseOtherTables -> MigrateToNewTables;
+    MigrateToNewTables -> UseOtherTables;
+    EfficientTable -> SQLCDBStore;
+    EfficientTable -> OldGamesInS3;
+    OldGamesInS3 -> TranslateToGameDocument;
+    TranslateToGameDocument -> FixGameDocumentBugs;
+    UseOtherTables -> AddOtherTables;
+    SQLCDBStore -> DBGet;
+    SQLCDBStore -> DBSetSplit;
+    SQLCDBStore -> SQLCOtherFuncs;
+
+}
+

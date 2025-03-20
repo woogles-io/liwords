@@ -667,7 +667,7 @@ func (b *Bus) sendReceiverAbsent(ctx context.Context, req *entity.SoughtGame) er
 }
 
 func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
-	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq)
+	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq.GameRequest)
 	if err != nil {
 		return err
 	}
@@ -682,7 +682,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	}
 
 	gameInfo := &pb.GameInfoResponse{Players: players,
-		GameRequest: g.GameReq, GameId: g.GameID()}
+		GameRequest: g.GameReq.GameRequest, GameId: g.GameID()}
 
 	if g.TournamentData != nil {
 		gameInfo.TournamentDivision = g.TournamentData.Division

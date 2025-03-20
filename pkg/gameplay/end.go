@@ -161,7 +161,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq, variantKey,
+		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
 			evt, stores)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
@@ -418,7 +418,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	newRatings := map[string]int32{}
 	var err error
 	var now = time.Now().Unix()
-	if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
+	if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
 		if err != nil {
 			log.Err(err).Msg("rating-error")

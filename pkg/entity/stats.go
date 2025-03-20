@@ -121,6 +121,27 @@ type Stats struct {
 	NotableData   map[string]*StatItem `json:"n"`
 }
 
+func (s *Stats) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
+func (s *Stats) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*s = Stats{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for stats", value)
+	}
+
+	return json.Unmarshal(b, &s)
+}
+
 type ProfileStats struct {
 	Data map[VariantKey]*Stats
 }

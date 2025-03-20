@@ -33,7 +33,7 @@ func main() {
 		panic(err)
 	}
 
-	gameStore, err := game.NewDBStore(cfg, userStore)
+	gameStore, err := game.NewDBStore(cfg, userStore, pool)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func main() {
 			g.History().Players[0].Nickname: int32(g.PointsFor(0)),
 			g.History().Players[1].Nickname: int32(g.PointsFor(1))}
 		ratings := map[string][2]int32{}
-		if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
+		if g.GameReq.RatingMode == pb.RatingMode_RATED {
 			timeStarted := g.Timers.TimeStarted / 1000
 			ratings, err = gameplay.Rate(ctx, scores, g, winner, userStore, timeStarted)
 			if err != nil {
