@@ -627,6 +627,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 func isRoundDependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INITIAL_FONTES
 }
 

@@ -19,8 +19,7 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.maxRepeats === s2.maxRepeats &&
     s1.allowOverMaxRepeats === s2.allowOverMaxRepeats &&
     s1.repeatRelativeWeight === s2.repeatRelativeWeight &&
-    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight &&
-    s1.interleaveTeamRoundRobin === s2.interleaveTeamRoundRobin
+    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight
   );
 };
 
@@ -35,6 +34,7 @@ export const fieldsForMethod = (
     PairingMethod.ROUND_ROBIN,
     PairingMethod.KING_OF_THE_HILL,
     PairingMethod.MANUAL,
+    PairingMethod.INTERLEAVED_ROUND_ROBIN,
     PairingMethod.INITIAL_FONTES):
       return [];
     // @ts-expect-error fallthrough is purposeful:
@@ -70,20 +70,12 @@ export const fieldsForMethod = (
       break;
 
     case PairingMethod.TEAM_ROUND_ROBIN:
-      fields.push(
-        [
-          "number",
-          "gamesPerRound",
-          "Games per Round",
-          "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
-        ],
-        [
-          "boolean",
-          "interleaveTeamRoundRobin",
-          "Interleave pairings (shirts and skins)",
-          "Select this to use shirts and skins pairings. The default is top half vs bottom half.",
-        ],
-      );
+      fields.push([
+        "number",
+        "gamesPerRound",
+        "Games per Round",
+        "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
+      ]);
       break;
   }
 
