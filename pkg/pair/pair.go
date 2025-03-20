@@ -83,7 +83,7 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound), members.RoundControls.InterleaveTeamRoundRobin)
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound), members.RoundControls.InterleaveTeamRoundRobin, members.Seed)
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -541,15 +541,11 @@ func getRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 	return pairings, nil
 }
 
-func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup int) int {
-	return ((round / gamesPerMatchup) * (numberOfPlayers/2 - 1)) % (numberOfPlayers / 2)
-}
-
-func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool) ([]int, error) {
+func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool, seed uint64) ([]int, error) {
 	// A team round robin contains two teams: A and B
 	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
-	if numberOfPlayers%2 == 1 {
-		return nil, errors.New("cannot have an odd number of players with team round robin pairings")
+	if numberOfPlayers%2 == 1 && !interleave {
+		return nil, errors.New("cannot have an odd number of players without interleaving team round robin pairings")
 	}
 
 	players := []int{}
@@ -566,12 +562,25 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, inte
 		}
 	}
 
+	bye := numberOfPlayers%2 == 1
+	// If there are an odd number of players add a bye
+	if bye {
+		players = append(players, numberOfPlayers)
+	}
+
 	l := len(players)
 
 	lbh := l / 2
 	rotatedBottomPlayers := players[lbh:l]
 
-	rotationIndex := lbh - getTeamRoundRobinRotation(l, round, gamesPerMatchup)
+	source := rand.NewPCG(seed, 0)
+	rng := rand.New(source)
+	rng.Shuffle(len(rotatedBottomPlayers),
+		func(i, j int) {
+			rotatedBottomPlayers[i], rotatedBottomPlayers[j] = rotatedBottomPlayers[j], rotatedBottomPlayers[i]
+		})
+
+	rotationIndex := round % lbh
 	rotatedBottomPlayers = append(rotatedBottomPlayers[rotationIndex:lbh], rotatedBottomPlayers[0:rotationIndex]...)
 
 	firstSeg := rotatedBottomPlayers[0 : lbh/2]
@@ -599,11 +608,17 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, inte
 		pairings[bottomHalf[i]] = topHalf[i]
 	}
 
-	for i := 0; i < len(pairings); i++ {
-		if pairings[i] < -1 {
-			return nil, fmt.Errorf("team round robin pairing failure for %d players", l)
+	// Convert the bye from l to -1 because it's easier
+	// on the Round Robin pairing algorithm
+	if bye {
+		for i := 0; i < len(pairings); i++ {
+			if pairings[i] == numberOfPlayers {
+				pairings[i] = -1
+			}
 		}
+		pairings = pairings[0 : len(pairings)-1]
 	}
+
 	log.Debug().Interface("pairings", pairings).Int("numPlayers", numberOfPlayers).Int("round", round).
 		Int("gamesPerMatchup", gamesPerMatchup).Msg("final pairings")
 	return pairings, nil
