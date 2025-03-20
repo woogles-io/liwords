@@ -10,6 +10,11 @@ digraph RedoGameModel {
     // Reset to default for other uncompleted nodes
     node [shape=box, color=black, fontcolor=black, style=solid];
 
+    MoreSimultaneousGames [label="Allow for more simultaneous games than cache limit"];
+    LessDowntimeBetweenDeploys [label="Allow for less downtime between deploys"];
+    MakeDBFaster [label="Make DB faster to query"];
+
+
     OnlyUseOtherTables [label="Only use new tables"];
     MigrateToNewTables [label="Migrate to new tables"];
     UseOtherTables [label="Transparently use new many2many and turns tables"];
@@ -23,7 +28,14 @@ digraph RedoGameModel {
     DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
 
     // Arrows
-    Goal -> RemoveGameCache;
+    Goal -> MoreSimultaneousGames;
+    Goal -> LessDowntimeBetweenDeploys;
+    Goal -> MakeDBFaster;
+
+    MoreSimultaneousGames -> RemoveGameCache;
+    LessDowntimeBetweenDeploys -> RemoveGameCache;
+    MakeDBFaster -> EfficientTable;
+
     RemoveGameCache -> EfficientTable;
     EfficientTable-> OnlyUseOtherTables;
     OnlyUseOtherTables -> MigrateToNewTables;
