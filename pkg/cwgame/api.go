@@ -492,7 +492,7 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		_, err = Leave(rackmw, mw)
+		_, err = tilemapping.Leave(rackmw, mw, false)
 		if err != nil {
 			return nil, err
 		}
@@ -524,7 +524,7 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		_, err = Leave(rackmw, mw)
+		_, err = tilemapping.Leave(rackmw, mw, true)
 		if err != nil {
 			return nil, err
 		}

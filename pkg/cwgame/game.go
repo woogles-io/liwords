@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/domino14/word-golib/kwg"
@@ -109,8 +108,8 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		if err != nil {
 			return err
 		}
-		leave, err := Leave(tilemapping.FromByteArr(gevt.Rack),
-			tilemapping.FromByteArr(gevt.Exchanged))
+		leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack),
+			tilemapping.FromByteArr(gevt.Exchanged), true)
 		if err != nil {
 			return err
 		}
@@ -196,7 +195,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 		return err
 	}
 
-	leave, err := Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed)
+	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, false)
 	if err != nil {
 		return err
 	}
@@ -351,45 +350,6 @@ func endRackPenaltyEvt(gdoc *ipc.GameDocument, pidx uint32, penalty int) *ipc.Ga
 		LostScore:   int32(penalty),
 		Type:        ipc.GameEvent_END_RACK_PENALTY,
 	}
-}
-
-// Leave returns the leave after playing or using `tiles` in `rack`.
-// It returns an error if the tile is in the play but not in the rack
-// XXX: This function needs to allocate less.
-func Leave(rack, tilesUsed []tilemapping.MachineLetter) ([]tilemapping.MachineLetter, error) {
-	rackletters := map[tilemapping.MachineLetter]int{}
-	for _, l := range rack {
-		rackletters[l]++
-	}
-	leave := make([]tilemapping.MachineLetter, 0)
-
-	for _, t := range tilesUsed {
-		if t == 0 {
-			// play-through
-			continue
-		}
-		if t.IsBlanked() {
-			// it's a blank
-			t = 0
-		}
-		if rackletters[t] != 0 {
-			rackletters[t]--
-		} else {
-			return nil, fmt.Errorf("tile in play but not in rack: %v", t)
-		}
-	}
-
-	for k, v := range rackletters {
-		if v > 0 {
-			for i := 0; i < v; i++ {
-				leave = append(leave, k)
-			}
-		}
-	}
-	sort.Slice(leave, func(i, j int) bool {
-		return leave[i] < leave[j]
-	})
-	return leave, nil
 }
 
 func endRackCalcs(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
@@ -637,14 +597,14 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemappi
 		return err
 	}
 
-	leaveAfterPhony, err := Leave(
-		tilemapping.FromByteArr(originalEvent.Rack), mw)
+	leaveAfterPhony, err := tilemapping.Leave(
+		tilemapping.FromByteArr(originalEvent.Rack), mw, false)
 	if err != nil {
 		return err
 	}
 
-	drewPostPhony, err := Leave(tilemapping.FromByteArr(postPhonyRack),
-		leaveAfterPhony)
+	drewPostPhony, err := tilemapping.Leave(tilemapping.FromByteArr(postPhonyRack),
+		leaveAfterPhony, false)
 	if err != nil {
 		return err
 	}
