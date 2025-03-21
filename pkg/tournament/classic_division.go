@@ -1590,15 +1590,20 @@ func newClassicPairing(t *ClassicDivision,
 		// to give some initial variety to the pairings so that a given player
 		// doesn't go first every game in the first phase and second every
 		// game in the second phase.
-		var roundRobinPhase int
+		var sum int
 		numPlayers := len(t.Players.Persons)
+		playerIndexSum := int(playerOne + playerTwo)
 		if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
-			roundRobinPhase = round / (numPlayers - 1)
+			sum = round/(numPlayers-1) + playerIndexSum
 		} else {
-			roundRobinPhase = round / ((numPlayers + 1) / 2)
+			sum = round/((numPlayers+1)/2) + (round % ((numPlayers + 1) / 2))
 		}
-		playersIndexSum := playerOne + playerTwo
-		switchFirst = ((roundRobinPhase + int(playersIndexSum)) % 2) == 1
+		if t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+			sum += playerIndexSum
+		} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN && playerIndexSum%4 == 3 {
+			sum++
+		}
+		switchFirst = (sum % 2) == 1
 	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
