@@ -580,7 +580,7 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, inte
 			rotatedBottomPlayers[i], rotatedBottomPlayers[j] = rotatedBottomPlayers[j], rotatedBottomPlayers[i]
 		})
 
-	rotationIndex := round % lbh
+	rotationIndex := (round / gamesPerMatchup) % lbh
 	rotatedBottomPlayers = append(rotatedBottomPlayers[rotationIndex:lbh], rotatedBottomPlayers[0:rotationIndex]...)
 
 	firstSeg := rotatedBottomPlayers[0 : lbh/2]

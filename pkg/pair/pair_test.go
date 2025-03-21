@@ -99,43 +99,67 @@ func TestTeamRoundRobin(t *testing.T) {
 	for interleave := false; interleave != true; interleave = !interleave {
 		for seed := uint64(10); seed < 14; seed++ {
 			for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
-				phasePairings := map[string]bool{}
-				pairingsStr := ""
-				prevPairingsStr := ""
 				halfNoP := numberOfPlayers / 2
 				evenedNoP := numberOfPlayers + (numberOfPlayers % 2)
 				halfEvenedNoP := evenedNoP / 2
-				for round := 0; round < 60; round++ {
-					pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, 1, interleave, seed)
-					if numberOfPlayers%2 == 1 && !interleave {
-						is.True(err != nil)
-						continue
-					}
-					is.NoErr(err)
-					pairingsStr += fmt.Sprintf(">%v<\n", pairings)
-					for player, opponent := range pairings {
-						if opponent == -1 {
-							opponent = player
-						} else if player > opponent {
-							continue
+				for gamesPerMatchup := 1; gamesPerMatchup <= 4; gamesPerMatchup++ {
+					for matchups := halfEvenedNoP; matchups <= halfEvenedNoP*3; matchups++ {
+						maxRound := matchups * gamesPerMatchup
+						pairingsStr := ""
+						prevPairingsStr := ""
+						phasePairingsStr := ""
+						prevPhasePairingsStr := ""
+						phasePairings := map[string]int{}
+						for round := range maxRound {
+							pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, interleave, seed)
+							if numberOfPlayers%2 == 1 && !interleave {
+								is.True(err != nil)
+								continue
+							}
+							is.NoErr(err)
+							pairingsStr = fmt.Sprintf(">%v<", pairings)
+							if round > 0 && numberOfPlayers > 2 {
+								if round%gamesPerMatchup == 0 {
+									is.True(pairingsStr != prevPairingsStr)
+								} else {
+									is.Equal(pairingsStr, prevPairingsStr)
+								}
+							}
+							prevPairingsStr = pairingsStr
+							phasePairingsStr += pairingsStr
+							for player, opponent := range pairings {
+								if opponent == -1 {
+									opponent = player
+								} else if player > opponent {
+									continue
+								}
+								key := fmt.Sprintf("%d-%d", player, opponent)
+								_, exists := phasePairings[key]
+								if exists {
+									phasePairings[key]++
+								} else {
+									phasePairings[key] = 1
+								}
+								if interleave {
+									is.Equal((opponent-player)%2, 0)
+								} else {
+									is.True((opponent < halfNoP && player >= halfNoP) || (player < halfNoP && opponent >= halfNoP))
+								}
+							}
+							if (round+1)%(halfEvenedNoP*gamesPerMatchup) == 0 {
+								if prevPhasePairingsStr != "" {
+									is.Equal(prevPhasePairingsStr, phasePairingsStr)
+								}
+								phasePairingsSum := 0
+								for _, v := range phasePairings {
+									phasePairingsSum += v
+								}
+								is.Equal(phasePairingsSum, halfEvenedNoP*halfEvenedNoP*gamesPerMatchup)
+								prevPhasePairingsStr = phasePairingsStr
+								phasePairingsStr = ""
+								phasePairings = map[string]int{}
+							}
 						}
-						key := fmt.Sprintf("%d-%d", player, opponent)
-						is.True(!phasePairings[key])
-						phasePairings[key] = true
-						if interleave {
-							is.Equal((opponent-player)%2, 0)
-						} else {
-							is.True((opponent < halfNoP && player >= halfNoP) || (player < halfNoP && opponent >= halfNoP))
-						}
-					}
-					if (round+1)%halfEvenedNoP == 0 {
-						if prevPairingsStr != "" {
-							is.Equal(prevPairingsStr, pairingsStr)
-						}
-						is.Equal(len(phasePairings), halfEvenedNoP*halfEvenedNoP)
-						prevPairingsStr = pairingsStr
-						pairingsStr = ""
-						phasePairings = map[string]bool{}
 					}
 				}
 			}
