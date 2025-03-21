@@ -1582,7 +1582,8 @@ func newClassicPairing(t *ClassicDivision,
 	firstMethod := t.RoundControls[round].FirstMethod
 
 	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN ||
-		t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+		t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
 		// Use the round robin phase to consistently switch who is going
 		// first between the first, second, third, etc. round robins phases.
 		// Use the playersIndexSum to determine who is going first initially
