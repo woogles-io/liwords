@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 
+	wglconfig "github.com/domino14/word-golib/config"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -44,6 +46,58 @@ func loadGDoc(testfilename string) *ipc.GameDocument {
 		panic(err)
 	}
 	return gdoc
+}
+
+// ReconcileAllTiles returns an error if the tiles on the board and on
+// player racks do not match the letter distribution. It is not meant to
+// be used in production, but for debugging purposes only.
+func ReconcileAllTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument) error {
+	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
+	if err != nil {
+		return err
+	}
+
+	bag := tiles.TileBag(dist)
+
+	for _, t := range gdoc.Board.Tiles {
+		toRm := []byte{t}
+		if int8(t) < 0 {
+			toRm = []byte{0}
+		} else if t == 0 {
+			continue
+		}
+		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(toRm))
+		if err != nil {
+			return fmt.Errorf("removing-from-board error: %w", err)
+		}
+	}
+	for idx, rack := range gdoc.Racks {
+		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(rack))
+		if err != nil {
+			return fmt.Errorf("removing-from-rack-%d error: %w", idx, err)
+		}
+	}
+	if len(gdoc.Bag.Tiles) != len(bag.Tiles) {
+		return fmt.Errorf("lengths dont match %d %d", len(gdoc.Bag.Tiles), len(bag.Tiles))
+	}
+
+	// No error if both bags are empty
+	if len(bag.Tiles) == 0 && len(gdoc.Bag.Tiles) == 0 {
+		return nil
+	}
+	// Otherwise sort and check the tile bags.
+
+	sort.Slice(gdoc.Bag.Tiles, func(i, j int) bool {
+		return gdoc.Bag.Tiles[i] < gdoc.Bag.Tiles[j]
+	})
+	sort.Slice(bag.Tiles, func(i, j int) bool {
+		return bag.Tiles[i] < bag.Tiles[j]
+	})
+
+	if !reflect.DeepEqual(bag.Tiles, gdoc.Bag.Tiles) {
+		return fmt.Errorf("bags aren't equal: (%v) (%v)", bag.Tiles, gdoc.Bag.Tiles)
+	}
+	return nil
 }
 
 func TestNewGame(t *testing.T) {
@@ -1308,6 +1362,42 @@ func TestExchangePartialRack(t *testing.T) {
 		Type:            ipc.GameEvent_EXCHANGE,
 		Cumulative:      62,
 		Exchanged:       []byte{9, 9, 9, 9, 9},
+		MillisRemaining: 883808,
+	}))
+	err = ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc)
+	is.NoErr(err)
+}
+
+func TestExchangeBlank(t *testing.T) {
+	is := is.New(t)
+	documentfile := "document-earlygame.json"
+	gdoc := loadGDoc(documentfile)
+	// use a timestamp that's a little bit later than the
+	// time_of_last_update in the doc.
+	globalNower = &FakeNower{
+		fakeMeow: gdoc.Timers.TimeOfLastUpdate + 5000}
+	defer restoreGlobalNower()
+	ctx := ctxForTests()
+
+	err := AssignRacks(gdoc, [][]byte{{0, 1, 2, 3, 4, 5}, nil}, NeverAssignEmpty)
+	is.NoErr(err)
+
+	// This player's rack is ?ABCDE
+	cge := &ipc.ClientGameplayEvent{
+		Type:           ipc.ClientGameplayEvent_EXCHANGE,
+		GameId:         "9aK3YgVk",
+		MachineLetters: englishBytes("?CE"),
+	}
+	userID := "2gJGaYnchL6LbQVTNQ6mjT"
+
+	err = ProcessGameplayEvent(ctx, DefaultConfig.WGLConfig(), cge, userID, gdoc)
+	is.NoErr(err)
+	fmt.Println(gdoc.Events[len(gdoc.Events)-1])
+	is.True(proto.Equal(gdoc.Events[len(gdoc.Events)-1], &ipc.GameEvent{
+		Rack:            []byte{0, 1, 2, 3, 4, 5},
+		Type:            ipc.GameEvent_EXCHANGE,
+		Cumulative:      62,
+		Exchanged:       []byte{0, 3, 5},
 		MillisRemaining: 883808,
 	}))
 	err = ReconcileAllTiles(DefaultConfig.WGLConfig(), gdoc)

@@ -3,10 +3,7 @@ package cwgame
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -190,58 +187,6 @@ func AssignRacks(gdoc *ipc.GameDocument, racks [][]byte, assignEmpty RackAssignB
 			drawn := placeholder[:drew]
 			gdoc.Racks[i] = tilemapping.MachineWord(drawn).ToByteArr()
 		}
-	}
-	return nil
-}
-
-// ReconcileAllTiles returns an error if the tiles on the board and on
-// player racks do not match the letter distribution. It is not meant to
-// be used in production, but for debugging purposes only.
-func ReconcileAllTiles(cfg *wglconfig.Config, gdoc *ipc.GameDocument) error {
-	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
-	if err != nil {
-		return err
-	}
-
-	bag := tiles.TileBag(dist)
-
-	for _, t := range gdoc.Board.Tiles {
-		toRm := []byte{t}
-		if int8(t) < 0 {
-			toRm = []byte{0}
-		} else if t == 0 {
-			continue
-		}
-		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(toRm))
-		if err != nil {
-			return fmt.Errorf("removing-from-board error: %w", err)
-		}
-	}
-	for idx, rack := range gdoc.Racks {
-		err := tiles.RemoveTiles(bag, tilemapping.FromByteArr(rack))
-		if err != nil {
-			return fmt.Errorf("removing-from-rack-%d error: %w", idx, err)
-		}
-	}
-	if len(gdoc.Bag.Tiles) != len(bag.Tiles) {
-		return fmt.Errorf("lengths dont match %d %d", len(gdoc.Bag.Tiles), len(bag.Tiles))
-	}
-
-	// No error if both bags are empty
-	if len(bag.Tiles) == 0 && len(gdoc.Bag.Tiles) == 0 {
-		return nil
-	}
-	// Otherwise sort and check the tile bags.
-
-	sort.Slice(gdoc.Bag.Tiles, func(i, j int) bool {
-		return gdoc.Bag.Tiles[i] < gdoc.Bag.Tiles[j]
-	})
-	sort.Slice(bag.Tiles, func(i, j int) bool {
-		return bag.Tiles[i] < bag.Tiles[j]
-	})
-
-	if !reflect.DeepEqual(bag.Tiles, gdoc.Bag.Tiles) {
-		return fmt.Errorf("bags aren't equal: (%v) (%v)", bag.Tiles, gdoc.Bag.Tiles)
 	}
 	return nil
 }
@@ -547,7 +492,7 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		_, err = Leave(rackmw, mw)
+		_, err = tilemapping.Leave(rackmw, mw, false)
 		if err != nil {
 			return nil, err
 		}
@@ -579,7 +524,7 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		_, err = Leave(rackmw, mw)
+		_, err = tilemapping.Leave(rackmw, mw, true)
 		if err != nil {
 			return nil, err
 		}
