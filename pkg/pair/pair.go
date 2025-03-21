@@ -36,6 +36,8 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairInitialFontes(members)
 	} else if pm == pb.PairingMethod_TEAM_ROUND_ROBIN {
 		pairings, err = pairTeamRoundRobin(members)
+	} else if pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
+		pairings, err = pairInterleavedRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -83,7 +85,16 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound), members.RoundControls.InterleaveTeamRoundRobin, members.Seed)
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
+		int(members.RoundControls.GamesPerRound), false, members.Seed)
+}
+
+func pairInterleavedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
+	// This is a special case of the team round robin function. Perhaps the function
+	// should be renamed slightly.
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
+		1, true, members.Seed)
+
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -627,6 +638,7 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, inte
 func IsStandingsIndependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
+		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_RANDOM ||
 		pm == pb.PairingMethod_INITIAL_FONTES ||
 		pm == pb.PairingMethod_MANUAL

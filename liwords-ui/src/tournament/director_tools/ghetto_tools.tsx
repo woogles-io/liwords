@@ -1364,6 +1364,11 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           be used at the beginning of a tournament.
         </li>
         <li>
+          - <strong>Shirts and Skins:</strong> These pairings split the division
+          into two halves, by alternating seeds. Each player in one half plays a
+          round robin against every player in the other half.
+        </li>
+        <li>
           - <strong>King of the hill:</strong> These pairings pair 1v2, 3v4,
           5v6, and so forth. It is a good format for the very last round of a
           tournament.
@@ -1381,9 +1386,8 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         <li>
           - <strong>Team Round Robin:</strong> Set up a round robin where each
           "team" member plays each other team member some set number of times in
-          a row. You can divide the teams into top and bottom halves, or
-          interleave them (shirts and skins), by using the "rating" of each
-          player to separate them into teams.
+          a row. You must divide teams into top and bottom halves, by "rating",
+          and you must have an even number of players.
         </li>
       </ul>
     </>
@@ -1415,6 +1419,9 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           </Select.Option>
           <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
             King of the Hill
+          </Select.Option>
+          <Select.Option value={PairingMethod.INTERLEAVED_ROUND_ROBIN}>
+            Shirts and Skins
           </Select.Option>
           <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
@@ -1553,7 +1560,6 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 
     case PairingMethod.TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
-      rdCtrl.interleaveTeamRoundRobin = rdSetting.interleaveTeamRoundRobin;
       break;
   }
   // Other cases don't matter, we've already set the pairing method.
@@ -1683,7 +1689,6 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           allowOverMaxRepeats: v.allowOverMaxRepeats,
           repeatRelativeWeight: v.repeatRelativeWeight,
           winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
-          interleaveTeamRoundRobin: v.interleaveTeamRoundRobin,
         });
         if (lastSetting !== null) {
           if (settingsEqual(lastSetting, thisSetting)) {
