@@ -882,12 +882,7 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 				roundPairings[playerIndex] = pairingKey
 				nextPairingResponse = []*pb.Pairing{pairing}
 			} else {
-				p1 := playerId
-				p2 := opponentId
-				if opponentIndex < playerIndex {
-					p1, p2 = p2, p1
-				}
-				newPairingMessage, err := t.SetPairing(p1, p2, round, pb.TournamentGameResult_NO_RESULT)
+				newPairingMessage, err := t.SetPairing(playerId, opponentId, round, pb.TournamentGameResult_NO_RESULT)
 				if err != nil {
 					return nil, err
 				}
@@ -1583,6 +1578,9 @@ func newClassicPairing(t *ClassicDivision,
 
 	playerGoingFirst := playerOne
 	playerGoingSecond := playerTwo
+	if playerGoingSecond < playerGoingFirst {
+		playerGoingFirst, playerGoingSecond = playerGoingSecond, playerGoingFirst
+	}
 	switchFirst := false
 	firstMethod := t.RoundControls[round].FirstMethod
 
