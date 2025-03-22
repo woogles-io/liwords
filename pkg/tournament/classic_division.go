@@ -1612,7 +1612,9 @@ func newClassicPairing(t *ClassicDivision,
 		} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN && playerIndexSum%4 == 3 {
 			sum++
 		}
-		switchFirst = (sum % 2) == 1
+		if sum%2 == 1 {
+			switchFirst = !switchFirst
+		}
 	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
