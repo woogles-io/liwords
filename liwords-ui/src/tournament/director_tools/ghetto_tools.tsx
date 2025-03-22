@@ -101,6 +101,9 @@ const FormModal = (props: ModalProps) => {
     "unstart-tournament": (
       <UnstartTournament tournamentID={props.tournamentID} />
     ),
+    "unfinish-tournament": (
+      <UnfinishTournament tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -169,7 +172,7 @@ export const GhettoTools = (props: Props) => {
     // 'Clear checked in',
   ];
 
-  const postTournamentTypes = ["Export tournament"];
+  const postTournamentTypes = ["Export tournament", "Unfinish tournament"];
 
   const dangerousTypes = ["Unstart tournament"];
 
@@ -2060,13 +2063,42 @@ const UnstartTournament = (props: { tournamentID: string }) => {
   return (
     <Form form={form} onFinish={onSubmit}>
       <div className="readable-text-color">
-        This button will DELETE all tournament game results. It is as if it had
-        never started. IT IS NOT UNDOABLE. Once you click it, the tournament
-        will RESET!
+        This button will <strong style={{ color: "red" }}>DELETE</strong> all
+        tournament game results. It is as if it had never started. IT IS NOT
+        UNDOABLE. Once you click it, the tournament will RESET!
       </div>
+
       <Form.Item>
         <Button htmlType="submit" type="primary" danger>
           Unstart this tournament
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const UnfinishTournament = (props: { tournamentID: string }) => {
+  const tClient = useClient(TournamentService);
+  const [form] = Form.useForm();
+
+  const onSubmit = async (vals: Store) => {
+    try {
+      await tClient.unfinishTournament({ id: props.tournamentID });
+      window.location.reload();
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  return (
+    <Form form={form} onFinish={onSubmit}>
+      <div className="readable-text-color">
+        This button will unfinish a tournament that has already finished. This
+        allows you to edit scores or even more.
+      </div>
+      <Form.Item>
+        <Button htmlType="submit" type="primary">
+          Unfinish this tournament
         </Button>
       </Form.Item>
     </Form>

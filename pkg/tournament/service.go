@@ -460,6 +460,18 @@ func (ts *TournamentService) FinishTournament(ctx context.Context, req *connect.
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
+func (ts *TournamentService) UnfinishTournament(ctx context.Context, req *connect.Request[pb.UnfinishTournamentRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, true, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	err = SetUnfinished(ctx, ts.tournamentStore, req.Msg.Id)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
 func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *connect.Request[pb.TournamentStartRoundCountdownRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, false, req.Msg)
 	if err != nil {
