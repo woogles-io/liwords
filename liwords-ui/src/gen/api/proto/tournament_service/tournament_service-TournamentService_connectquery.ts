@@ -20,6 +20,11 @@ export const getTournamentMetadata = TournamentService.method.getTournamentMetad
 export const getTournament = TournamentService.method.getTournament;
 
 /**
+ * @generated from rpc tournament_service.TournamentService.UnfinishTournament
+ */
+export const unfinishTournament = TournamentService.method.unfinishTournament;
+
+/**
  * @generated from rpc tournament_service.TournamentService.FinishTournament
  */
 export const finishTournament = TournamentService.method.finishTournament;

@@ -43,6 +43,9 @@ const (
 	// TournamentServiceGetTournamentProcedure is the fully-qualified name of the TournamentService's
 	// GetTournament RPC.
 	TournamentServiceGetTournamentProcedure = "/tournament_service.TournamentService/GetTournament"
+	// TournamentServiceUnfinishTournamentProcedure is the fully-qualified name of the
+	// TournamentService's UnfinishTournament RPC.
+	TournamentServiceUnfinishTournamentProcedure = "/tournament_service.TournamentService/UnfinishTournament"
 	// TournamentServiceFinishTournamentProcedure is the fully-qualified name of the TournamentService's
 	// FinishTournament RPC.
 	TournamentServiceFinishTournamentProcedure = "/tournament_service.TournamentService/FinishTournament"
@@ -125,6 +128,7 @@ type TournamentServiceClient interface {
 	NewTournament(context.Context, *connect.Request[tournament_service.NewTournamentRequest]) (*connect.Response[tournament_service.NewTournamentResponse], error)
 	GetTournamentMetadata(context.Context, *connect.Request[tournament_service.GetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentMetadataResponse], error)
 	GetTournament(context.Context, *connect.Request[tournament_service.GetTournamentRequest]) (*connect.Response[ipc.FullTournamentDivisions], error)
+	UnfinishTournament(context.Context, *connect.Request[tournament_service.UnfinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	FinishTournament(context.Context, *connect.Request[tournament_service.FinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetTournamentMetadata(context.Context, *connect.Request[tournament_service.SetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	PairRound(context.Context, *connect.Request[tournament_service.PairRoundRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -187,6 +191,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			baseURL+TournamentServiceGetTournamentProcedure,
 			connect.WithSchema(tournamentServiceMethods.ByName("GetTournament")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		unfinishTournament: connect.NewClient[tournament_service.UnfinishTournamentRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceUnfinishTournamentProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("UnfinishTournament")),
 			connect.WithClientOptions(opts...),
 		),
 		finishTournament: connect.NewClient[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse](
@@ -352,6 +362,7 @@ type tournamentServiceClient struct {
 	newTournament                   *connect.Client[tournament_service.NewTournamentRequest, tournament_service.NewTournamentResponse]
 	getTournamentMetadata           *connect.Client[tournament_service.GetTournamentMetadataRequest, tournament_service.TournamentMetadataResponse]
 	getTournament                   *connect.Client[tournament_service.GetTournamentRequest, ipc.FullTournamentDivisions]
+	unfinishTournament              *connect.Client[tournament_service.UnfinishTournamentRequest, tournament_service.TournamentResponse]
 	finishTournament                *connect.Client[tournament_service.FinishTournamentRequest, tournament_service.TournamentResponse]
 	setTournamentMetadata           *connect.Client[tournament_service.SetTournamentMetadataRequest, tournament_service.TournamentResponse]
 	pairRound                       *connect.Client[tournament_service.PairRoundRequest, tournament_service.TournamentResponse]
@@ -392,6 +403,11 @@ func (c *tournamentServiceClient) GetTournamentMetadata(ctx context.Context, req
 // GetTournament calls tournament_service.TournamentService.GetTournament.
 func (c *tournamentServiceClient) GetTournament(ctx context.Context, req *connect.Request[tournament_service.GetTournamentRequest]) (*connect.Response[ipc.FullTournamentDivisions], error) {
 	return c.getTournament.CallUnary(ctx, req)
+}
+
+// UnfinishTournament calls tournament_service.TournamentService.UnfinishTournament.
+func (c *tournamentServiceClient) UnfinishTournament(ctx context.Context, req *connect.Request[tournament_service.UnfinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.unfinishTournament.CallUnary(ctx, req)
 }
 
 // FinishTournament calls tournament_service.TournamentService.FinishTournament.
@@ -526,6 +542,7 @@ type TournamentServiceHandler interface {
 	NewTournament(context.Context, *connect.Request[tournament_service.NewTournamentRequest]) (*connect.Response[tournament_service.NewTournamentResponse], error)
 	GetTournamentMetadata(context.Context, *connect.Request[tournament_service.GetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentMetadataResponse], error)
 	GetTournament(context.Context, *connect.Request[tournament_service.GetTournamentRequest]) (*connect.Response[ipc.FullTournamentDivisions], error)
+	UnfinishTournament(context.Context, *connect.Request[tournament_service.UnfinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	FinishTournament(context.Context, *connect.Request[tournament_service.FinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetTournamentMetadata(context.Context, *connect.Request[tournament_service.SetTournamentMetadataRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	PairRound(context.Context, *connect.Request[tournament_service.PairRoundRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -584,6 +601,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		svc.GetTournament,
 		connect.WithSchema(tournamentServiceMethods.ByName("GetTournament")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceUnfinishTournamentHandler := connect.NewUnaryHandler(
+		TournamentServiceUnfinishTournamentProcedure,
+		svc.UnfinishTournament,
+		connect.WithSchema(tournamentServiceMethods.ByName("UnfinishTournament")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceFinishTournamentHandler := connect.NewUnaryHandler(
@@ -749,6 +772,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetTournamentMetadataHandler.ServeHTTP(w, r)
 		case TournamentServiceGetTournamentProcedure:
 			tournamentServiceGetTournamentHandler.ServeHTTP(w, r)
+		case TournamentServiceUnfinishTournamentProcedure:
+			tournamentServiceUnfinishTournamentHandler.ServeHTTP(w, r)
 		case TournamentServiceFinishTournamentProcedure:
 			tournamentServiceFinishTournamentHandler.ServeHTTP(w, r)
 		case TournamentServiceSetTournamentMetadataProcedure:
@@ -818,6 +843,10 @@ func (UnimplementedTournamentServiceHandler) GetTournamentMetadata(context.Conte
 
 func (UnimplementedTournamentServiceHandler) GetTournament(context.Context, *connect.Request[tournament_service.GetTournamentRequest]) (*connect.Response[ipc.FullTournamentDivisions], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetTournament is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) UnfinishTournament(context.Context, *connect.Request[tournament_service.UnfinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.UnfinishTournament is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) FinishTournament(context.Context, *connect.Request[tournament_service.FinishTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
