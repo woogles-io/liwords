@@ -145,8 +145,26 @@ func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHist
 	}
 
 	eventConverter := func(evt *ipc.GameEvent, index int) *macondo.GameEvent {
+		// macondo GameHistory expects the rack for challenge bonus events to be
+		// the next rack for the player who was challenged. So we need to pull this
+		// from the history.
+
+		rack := evt.Rack
+		if evt.Type == ipc.GameEvent_CHALLENGE_BONUS {
+			// find the next rack; loop through doc.Racks from the current
+			// index until the next event with the same player index, or until
+			// we get to the end of the list.
+			for index+1 < len(doc.Events) && doc.Events[index+1].PlayerIndex != evt.PlayerIndex {
+				index++
+			}
+
+			if index+1 < len(doc.Events) {
+				rack = doc.Events[index+1].Rack
+			}
+		}
+
 		cvt := &macondo.GameEvent{
-			Rack:            rackConverter(evt.Rack, 0),
+			Rack:            rackConverter(rack, 0),
 			Type:            macondo.GameEvent_Type(evt.Type),
 			Cumulative:      evt.Cumulative,
 			Row:             evt.Row,
