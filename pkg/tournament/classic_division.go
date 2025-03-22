@@ -1582,6 +1582,12 @@ func newClassicPairing(t *ClassicDivision,
 		playerGoingFirst, playerGoingSecond = playerGoingSecond, playerGoingFirst
 	}
 	switchFirst := false
+	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN || t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+		switchFirst = playerTwo < playerOne
+	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
+		switchFirst = playerTwo%2 == 0
+	}
+
 	firstMethod := t.RoundControls[round].FirstMethod
 
 	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN ||
