@@ -1,0 +1,17 @@
+meta {
+  name: GetGameDocument
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/omgwords_service.GameEventService/GetGameDocument
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "game_id": "cHxDZV9a6fhTB4KknGKUma"
+  }
+}
