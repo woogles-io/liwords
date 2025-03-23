@@ -826,7 +826,7 @@ func SetResult(ctx context.Context,
 	ctx, span := tracer.Start(ctx, "set-result")
 	defer span.End()
 
-	log.Debug().Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
+	log.Info().Str("tid", id).Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -839,6 +839,7 @@ func SetResult(ctx context.Context,
 	span.AddEvent("lock", trace.WithAttributes(attribute.String("tid", id)))
 
 	if t.IsFinished {
+		log.Error().Str("tid", id).Msg("cant-set-score-tournament-finished")
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, division)
 	}
 	testMode := false
@@ -993,6 +994,8 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 	if allended {
 		t.IsFinished = true
 		err := ts.RemoveRegistrantsForTournament(ctx, t.UUID)
+		log.Err(err).Str("tid", t.UUID).Msg("finishing-tourney")
+
 		if err != nil {
 			return err
 		}
@@ -1302,7 +1305,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_NOT_FINISHED, t.Name, d)
 		}
 	}
-
+	log.Info().Str("tid", id).Msg("tourney-set-is-finished")
 	t.IsFinished = true
 
 	err = ts.Set(ctx, t)
@@ -1311,6 +1314,21 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	}
 	wrapped := entity.WrapEvent(&ipc.TournamentFinishedResponse{Id: id}, ipc.MessageType_TOURNAMENT_FINISHED_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+func SetUnfinished(ctx context.Context, ts TournamentStore, id string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if !t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_FINISHED, t.Name, "")
+	}
+
+	t.IsFinished = false
+	// Don't bother sending an event at this time; this is mostly a debug operation.
+	return ts.Set(ctx, t)
 }
 
 func IsFinished(ctx context.Context, ts TournamentStore, id string) (bool, error) {

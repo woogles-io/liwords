@@ -165,6 +165,7 @@ message GetTournamentMetadataRequest {
 message GetTournamentRequest { string id = 1; }
 
 message FinishTournamentRequest { string id = 1; }
+message UnfinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
   TournamentMetadata metadata = 1;
@@ -199,7 +200,9 @@ message TournamentScorecardResponse { bytes pdf_zip = 1; }
 
 message GetRecentAndUpcomingTournamentsRequest {}
 
-message GetRecentAndUpcomingTournamentsResponse { repeated TournamentMetadata tournaments = 1; }
+message GetRecentAndUpcomingTournamentsResponse {
+  repeated TournamentMetadata tournaments = 1;
+}
 
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
@@ -211,6 +214,8 @@ service TournamentService {
       returns (ipc.FullTournamentDivisions) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc UnfinishTournament(UnfinishTournamentRequest)
+      returns (TournamentResponse);
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);

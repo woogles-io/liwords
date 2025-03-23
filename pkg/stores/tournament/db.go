@@ -134,6 +134,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	if result := ctxDB.Where("uuid = ?", id).First(tm); result.Error != nil {
 		return nil, result.Error
 	}
+	log.Info().Str("tid", id).Bool("finished", tm.IsFinished).Msg("db-get-tournament")
 
 	return s.dbObjToEntity(tm)
 }
@@ -157,6 +158,7 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 	if err != nil {
 		return err
 	}
+	log.Info().Str("tid", tm.UUID).Bool("finished", tm.IsFinished).Msg("db-set-tournament")
 
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
