@@ -1580,29 +1580,25 @@ func newClassicPairing(t *ClassicDivision,
 	playerGoingSecond := playerTwo
 	switchFirst := false
 	firstMethod := t.RoundControls[round].FirstMethod
+	numPlayers := len(t.Players.Persons)
+	playerIndexSum := int(playerOne + playerTwo)
 
-	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN ||
-		t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN ||
-		t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
+	if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
 		// Use the round robin phase to consistently switch who is going
 		// first between the first, second, third, etc. round robins phases.
 		// Use the playersIndexSum to determine who is going first initially
 		// to give some initial variety to the pairings so that a given player
 		// doesn't go first every game in the first phase and second every
 		// game in the second phase.
-		var sum int
-		numPlayers := len(t.Players.Persons)
-		playerIndexSum := int(playerOne + playerTwo)
-		if t.RoundControls[round].PairingMethod == pb.PairingMethod_ROUND_ROBIN {
-			sum = round/(numPlayers-1) + playerIndexSum
-		} else {
-			sum = round/((numPlayers+1)/2) + (round % ((numPlayers + 1) / 2))
-		}
-		if t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
-			sum += playerIndexSum
-		} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN && playerIndexSum%4 == 3 {
-			sum++
-		}
+		sum := round/(numPlayers+(numPlayers%2)-1) + playerIndexSum
+		switchFirst = (sum % 2) == 1
+	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
+		sum := round/((numPlayers+1)/2) + playerIndexSum
+		switchFirst = (sum % 2) == 1
+	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
+		sum := round / ((numPlayers + 1) / 2)
+		sum += (playerIndexSum % 4) % 3
+		sum += int(playerOne % 2)
 		switchFirst = (sum % 2) == 1
 	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)

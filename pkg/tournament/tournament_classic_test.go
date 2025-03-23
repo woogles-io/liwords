@@ -1760,6 +1760,175 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 }
 
+func TestClassicDivisionInterleavedRoundRobin(t *testing.T) {
+	is := is.New(t)
+	totalPlayers := 20
+	for numPlayers := 2; numPlayers <= totalPlayers; numPlayers++ {
+		playerNames := make(map[string]int32)
+		for k := range numPlayers {
+			playerNames[fmt.Sprintf("Player %d", k)] = int32(k)
+		}
+		interleavedPlayers := makeTournamentPersons(playerNames)
+		roundControls := []*pb.RoundControl{}
+		numPhaseRounds := ((numPlayers + 1) / 2)
+		for phase := 1; phase <= 3; phase++ {
+			numberOfRounds := numPhaseRounds * phase
+			for round := range numberOfRounds {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod:               pb.PairingMethod_INTERLEAVED_ROUND_ROBIN,
+					GamesPerRound:               1,
+					Round:                       int32(round),
+					Factor:                      1,
+					MaxRepeats:                  1,
+					AllowOverMaxRepeats:         true,
+					RepeatRelativeWeight:        1,
+					WinDifferenceRelativeWeight: 1})
+			}
+
+			itc, err := compactNewClassicDivision(interleavedPlayers, roundControls, true)
+			is.NoErr(err)
+			is.True(itc != nil)
+			itc.Seed = 10
+
+			for playerIndex := range numPlayers {
+				playerName := interleavedPlayers.Persons[playerIndex].Id
+				fs := getPlayerFirstsAndSeconds(itc, itc.PlayerIndexMap[playerName], numberOfRounds-1)
+				if numPlayers%2 == 0 && numberOfRounds%2 == 0 {
+					is.Equal(fs[0], fs[1])
+				} else {
+					diff := fs[0] - fs[1]
+					diff = diff * diff
+					is.True(diff == 1 || diff == 0)
+				}
+			}
+			if phase > 1 {
+				pairingsStrs := make([]string, numPhaseRounds)
+				for round := range numPhaseRounds {
+					pairingsStrs[round] = fmt.Sprintf("%v", itc.getPlayerPairings(round))
+				}
+				for numFollowingPhases := 1; numFollowingPhases <= phase-1; numFollowingPhases++ {
+					for round := range numPhaseRounds {
+						is.Equal(pairingsStrs[round], fmt.Sprintf("%v", itc.getPlayerPairings(round+numPhaseRounds*numFollowingPhases)))
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestClassicDivisionTeamRoundRobin(t *testing.T) {
+	is := is.New(t)
+	totalPlayers := 20
+	for numPlayers := 2; numPlayers <= totalPlayers; numPlayers += 2 {
+		playerNames := make(map[string]int32)
+		for k := range numPlayers {
+			playerNames[fmt.Sprintf("Player %d", k)] = int32(k)
+		}
+		trrPlayers := makeTournamentPersons(playerNames)
+		roundControls := []*pb.RoundControl{}
+		numPhaseRounds := ((numPlayers + 1) / 2)
+		for phase := 1; phase <= 3; phase++ {
+			numberOfRounds := numPhaseRounds * phase
+			for round := range numberOfRounds {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod:               pb.PairingMethod_TEAM_ROUND_ROBIN,
+					GamesPerRound:               1,
+					Round:                       int32(round),
+					Factor:                      1,
+					MaxRepeats:                  1,
+					AllowOverMaxRepeats:         true,
+					RepeatRelativeWeight:        1,
+					WinDifferenceRelativeWeight: 1})
+			}
+
+			itc, err := compactNewClassicDivision(trrPlayers, roundControls, true)
+			is.NoErr(err)
+			is.True(itc != nil)
+			itc.Seed = 10
+
+			for playerIndex := range numPlayers {
+				playerName := trrPlayers.Persons[playerIndex].Id
+				fs := getPlayerFirstsAndSeconds(itc, itc.PlayerIndexMap[playerName], numberOfRounds-1)
+				if numPlayers%2 == 0 && numberOfRounds%2 == 0 {
+					is.Equal(fs[0], fs[1])
+				} else {
+					diff := fs[0] - fs[1]
+					diff = diff * diff
+					is.True(diff == 1 || diff == 0)
+				}
+			}
+			if phase > 1 {
+				pairingsStrs := make([]string, numPhaseRounds)
+				for round := range numPhaseRounds {
+					pairingsStrs[round] = fmt.Sprintf("%v", itc.getPlayerPairings(round))
+				}
+				for numFollowingPhases := 1; numFollowingPhases <= phase-1; numFollowingPhases++ {
+					for round := range numPhaseRounds {
+						is.Equal(pairingsStrs[round], fmt.Sprintf("%v", itc.getPlayerPairings(round+numPhaseRounds*numFollowingPhases)))
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestClassicDivisionNormalRoundRobin(t *testing.T) {
+	is := is.New(t)
+	totalPlayers := 20
+	for numPlayers := 2; numPlayers <= totalPlayers; numPlayers++ {
+		playerNames := make(map[string]int32)
+		for k := range numPlayers {
+			playerNames[fmt.Sprintf("Player %d", k)] = int32(k)
+		}
+		rrPlayers := makeTournamentPersons(playerNames)
+		roundControls := []*pb.RoundControl{}
+		numPhaseRounds := numPlayers + (numPlayers % 2) - 1
+		for phase := 1; phase <= 3; phase++ {
+			numberOfRounds := numPhaseRounds * phase
+			for round := range numberOfRounds {
+				roundControls = append(roundControls, &pb.RoundControl{FirstMethod: pb.FirstMethod_MANUAL_FIRST,
+					PairingMethod:               pb.PairingMethod_ROUND_ROBIN,
+					GamesPerRound:               1,
+					Round:                       int32(round),
+					Factor:                      1,
+					MaxRepeats:                  1,
+					AllowOverMaxRepeats:         true,
+					RepeatRelativeWeight:        1,
+					WinDifferenceRelativeWeight: 1})
+			}
+
+			itc, err := compactNewClassicDivision(rrPlayers, roundControls, true)
+			is.NoErr(err)
+			is.True(itc != nil)
+			itc.Seed = 10
+			for playerIndex := range numPlayers {
+				playerName := rrPlayers.Persons[playerIndex].Id
+				fs := getPlayerFirstsAndSeconds(itc, itc.PlayerIndexMap[playerName], numberOfRounds-1)
+				if numPlayers%2 == 0 && numberOfRounds%2 == 0 {
+					is.Equal(fs[0], fs[1])
+				} else {
+					diff := fs[0] - fs[1]
+					diff = diff * diff
+					is.True(diff == 1 || diff == 0)
+				}
+			}
+			if phase > 1 {
+				pairingsStrs := make([]string, numPhaseRounds)
+				for round := range numPhaseRounds {
+					pairingsStrs[round] = fmt.Sprintf("%v", itc.getPlayerPairings(round))
+				}
+				for numFollowingPhases := 1; numFollowingPhases <= phase-1; numFollowingPhases++ {
+					for round := range numPhaseRounds {
+						firstPhaseRound := round
+						followingPhaseRound := round + numPhaseRounds*numFollowingPhases
+						is.Equal(pairingsStrs[firstPhaseRound], fmt.Sprintf("%v", itc.getPlayerPairings(followingPhaseRound)))
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestClassicDivisionInitialFontes(t *testing.T) {
 	// This test only covers InitialFontes error conditions
 	// and a single nonerror case. More tests can be
@@ -3849,7 +4018,6 @@ func (tc *ClassicDivision) getPlayerPairings(round int) [][]string {
 		func(i, j int) bool {
 			return playerPairings[i][0] < playerPairings[j][0]
 		})
-	fmt.Println(playerPairings)
 	return playerPairings
 }
 
