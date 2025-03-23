@@ -400,7 +400,7 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Req
 			if derr != nil {
 				return nil, derr
 			}
-			return nil, apiserver.NotFound(err.Error())
+			return nil, apiserver.InvalidArg("game does not exist")
 		}
 		return nil, err
 	}
