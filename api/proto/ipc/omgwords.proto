@@ -458,10 +458,10 @@ message GameDocument {
   string lexicon = 4;
   string uid = 5;
   string description = 6;
-  repeated bytes racks = 7;
+  repeated bytes racks = 7 [ deprecated = true ];
   ChallengeRule challenge_rule = 8;
   PlayState play_state = 9;
-  repeated int32 current_scores = 10;
+  repeated int32 current_scores = 10 [ deprecated = true ];
   string variant = 11;
   // The index of the player who won, or -1 if it was a tie.
   int32 winner = 12;
@@ -479,11 +479,11 @@ message GameDocument {
 
   // gameplay-specific structures:
   // board is the current state of the board
-  GameBoard board = 20;
+  GameBoard board = 20 [ deprecated = true ];
   // bag is the current tiles in the bag.
-  Bag bag = 21;
-  uint32 scoreless_turns = 22;
+  Bag bag = 21 [ deprecated = true ];
+  uint32 scoreless_turns = 22 [ deprecated = true ];
   // The index of the player on turn
-  uint32 player_on_turn = 23;
+  uint32 player_on_turn = 23 [ deprecated = true ];
   Timers timers = 24;
 }

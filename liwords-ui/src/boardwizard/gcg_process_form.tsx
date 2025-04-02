@@ -119,7 +119,7 @@ export const GCGProcessForm = (props: Props) => {
 
       <LexiconFormItem
         excludedLexica={new Set(["ECWL"])}
-        additionalLexica={["NWL20", "NWL18", "CSW19"]}
+        additionalLexica={["NWL20", "NWL18", "CSW19", "CSW21"]}
       />
 
       <Form.Item
