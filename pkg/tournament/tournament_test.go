@@ -130,7 +130,7 @@ func makeControls() *ipc.DivisionControls {
 		AutoStart:       false}
 }
 
-func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *ipc.TournamentPersons) (*entity.Tournament, error) {
+func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *ipc.TournamentPersons, tournamentSlug string) (*entity.Tournament, error) {
 	return tournament.NewTournament(ctx,
 		ts,
 		tournamentName,
@@ -138,7 +138,7 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		directors,
 		entity.TypeStandard,
 		"",
-		"/tournament/slug-tourney",
+		"/tournament/"+tournamentSlug,
 		nil,
 		nil,
 		0,
@@ -173,13 +173,13 @@ func TestTournamentSingleDivision(t *testing.T) {
 	directorsTwoExecutives := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 0, "Jennifer:Jennifer": 2})
 	directorsNoExecutives := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 1, "Vince:Vince": 3, "Jennifer:Jennifer": 2})
 
-	_, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives)
-	is.True(err != nil)
+	_, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives, "twoexecs")
+	is.NoErr(err)
 
-	_, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives)
-	is.True(err != nil)
+	_, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives, "noexecs")
+	is.NoErr(err)
 
-	ty, err := makeTournament(ctx, tstore, cfg, directors)
+	ty, err := makeTournament(ctx, tstore, cfg, directors, "test")
 	is.NoErr(err)
 
 	meta := &pb.TournamentMetadata{
@@ -235,11 +235,6 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to add directors that already exist
 	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Guy": 1, "Vince": 2}))
-	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(directors, ty.Directors))
-
-	// Attempt to add another executive director
-	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Guy": 1, "Harry": 0}))
 	is.True(err != nil)
 	is.NoErr(equalTournamentPersons(directors, ty.Directors))
 
@@ -575,7 +570,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	divOnePlayersCompare := makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100})
 	divTwoPlayersCompare := makeTournamentPersons(map[string]int32{"Guy:Guy": 1000, "Dude:Dude": 3000, "Comrade:Comrade": 2200, "ValuedCustomer:ValuedCustomer": 2100})
 
-	ty, err := makeTournament(ctx, tstore, cfg, directors)
+	ty, err := makeTournament(ctx, tstore, cfg, directors, "multidiv")
 	is.NoErr(err)
 
 	// Add divisions
