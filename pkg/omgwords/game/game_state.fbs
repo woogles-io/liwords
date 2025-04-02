@@ -1,0 +1,36 @@
+namespace gamestate;
+
+enum BoardType:byte { CrosswordGame = 1, SuperCrosswordGame }
+
+table TileBag {
+    // The bag is a collection of tiles, which are represented as bytes.
+    // The bag is a fixed size, and the number of tiles in the bag is
+    // represented by the num_tiles_in_bag field.
+    // The bag is not resized as tiles are drawn from it. Instead, we use
+    // a variable num_tiles_in_bag to keep track of how many tiles are left.
+    num_tiles_in_bag:byte;
+    bag:[ubyte]; // use MachineLetter semantics
+    rand_state:[ubyte];
+}
+
+// GameState represents the state of the game board, racks, and scores. Timers and
+// anything else can be part of the game document, elsewhere.
+
+table GameState {
+    board_type:BoardType = CrosswordGame;
+    board_is_empty:bool = true;
+    num_players:byte = 2;
+    max_tiles_on_rack:byte = 7;
+    num_board_rows:byte = 15;
+    num_board_cols:byte = 15;
+    board:[ubyte]; // use MachineLetter semantics
+    racks:[ubyte]; // racks will be right next to each other in the array,
+                    // which is of size num_players * num_tiles. A "gap" letter will be
+                    // represented by 0x80.
+    consecutive_scoreless_turns:byte;
+    player_scores:[int];
+    player_on_turn:byte;
+    bag:TileBag;
+}
+
+root_type GameState;
