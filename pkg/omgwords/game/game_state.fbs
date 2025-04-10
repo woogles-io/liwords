@@ -8,29 +8,55 @@ table TileBag {
     // represented by the num_tiles_in_bag field.
     // The bag is not resized as tiles are drawn from it. Instead, we use
     // a variable num_tiles_in_bag to keep track of how many tiles are left.
-    num_tiles_in_bag:byte;
+    num_tiles_in_bag:ubyte;
     bag:[ubyte]; // use MachineLetter semantics
     rand_state:[ubyte];
 }
 
-// GameState represents the state of the game board, racks, and scores. Timers and
-// anything else can be part of the game document, elsewhere.
+table Timers {
+    time_of_last_update_ms:ulong; // time of the last timer update, as a unix timestamp in milliseconds.
+    // if no update has been made, this defaults to time_started.
+    time_started_ms:ulong; // time when the game started, as a unix timestamp in milliseconds
+    time_remaining_ms:[long]; // time remaining for each player. can be negative if overtime is > 0
+    max_overtime_minutes:int; // max overtime in number of minutes that the game is allowed to go overtime.
+    increment_seconds:int; // amount of seconds added to the timer after every move.
+    reset_to_increment_after_turn:bool; // if true, the timer is reset to increment_seconds after every turn.
+    // this can be used for correspondence games; for example,
+	// time_remaining and increment_seconds can be set to the same number of
+	// seconds (let's say 5 days) at the beginning, and this flag can be set to
+	// on. Then we should always have 5 days to make any move.
+    time_bank_seconds:ulong; // time bank in seconds. If a player runs out of time for a turn,
+                        // the time bank is used to pay for the turn. If the time bank
+                        // runs out, the player loses the game. Mostly for
+                        // correspondence games.
+}
 
-table GameState {
+table Rack {
+    rack:[ubyte]; // use MachineLetter semantics
+    num_tiles:ubyte;
+}
+
+table Board {
     board_type:BoardType = CrosswordGame;
-    board_is_empty:bool = true;
-    num_players:byte = 2;
-    max_tiles_on_rack:byte = 7;
-    num_board_rows:byte = 15;
-    num_board_cols:byte = 15;
-    board:[ubyte]; // use MachineLetter semantics
-    racks:[ubyte]; // racks will be right next to each other in the array,
-                    // which is of size num_players * num_tiles. A "gap" letter will be
-                    // represented by 0x80.
-    consecutive_scoreless_turns:byte;
+    is_empty:bool = true;
+    tiles:[ubyte]; // use MachineLetter semantics
+    num_rows:ubyte = 15;
+    num_cols:ubyte = 15;
+}
+
+// GameState represents the immediate state of the game:
+// board, racks, scores, bag, and timers.
+table GameState {
+    num_players:ubyte = 2;
+    max_tiles_on_rack:ubyte = 7;
+    consecutive_scoreless_turns:ubyte;
+    player_on_turn:ubyte;
+
+    board:Board;
+    racks:[Rack];  // The player who goes first is always first in the array. This array is num_players long.
     player_scores:[int];
-    player_on_turn:byte;
     bag:TileBag;
+    timers:Timers;
 }
 
 root_type GameState;

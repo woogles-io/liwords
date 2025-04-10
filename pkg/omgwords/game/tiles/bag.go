@@ -95,7 +95,7 @@ func BuildTileBag(builder *flatbuffers.Builder, d *tilemapping.LetterDistributio
 
 	gamestate.TileBagStart(builder)
 	gamestate.TileBagAddBag(builder, bagVector)
-	gamestate.TileBagAddNumTilesInBag(builder, int8(idx))
+	gamestate.TileBagAddNumTilesInBag(builder, uint8(idx))
 	gamestate.TileBagAddRandState(builder, randStateVector)
 
 	return gamestate.TileBagEnd(builder)
@@ -136,7 +136,7 @@ func Draw(bag *gamestate.TileBag, n int, ml []tilemapping.MachineLetter) error {
 	for i := k; i < int(l); i++ {
 		ml[i-k] = tilemapping.MachineLetter(bbts[i])
 	}
-	bag.MutateNumTilesInBag(l - int8(n))
+	bag.MutateNumTilesInBag(l - uint8(n))
 
 	// re-marshal randomizer bytes and copy directly into memory location of
 	// old bagstate bytes. This better all work.
@@ -184,7 +184,7 @@ func PutBack(bag *gamestate.TileBag, letters []tilemapping.MachineLetter) {
 	for i := 0; i < len(letters); i++ {
 		bbts[i+int(nt)] = byte(letters[i])
 	}
-	bag.MutateNumTilesInBag(nt + int8(len(letters)))
+	bag.MutateNumTilesInBag(nt + uint8(len(letters)))
 }
 
 func RemoveTiles(bag *gamestate.TileBag, letters []tilemapping.MachineLetter) error {
@@ -214,7 +214,7 @@ func RemoveTiles(bag *gamestate.TileBag, letters []tilemapping.MachineLetter) er
 		}
 	}
 	// Set the number of tiles in the bag to the new size.
-	bag.MutateNumTilesInBag(int8(ntiles - len(letters)))
+	bag.MutateNumTilesInBag(uint8(ntiles - len(letters)))
 
 	return nil
 }

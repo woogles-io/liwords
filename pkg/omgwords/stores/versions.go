@@ -9,6 +9,7 @@ import (
 )
 
 const CurrentGameDocumentVersion = 2
+const CurrentGameRecordVersion = 1
 
 var norwayMap map[byte]byte
 

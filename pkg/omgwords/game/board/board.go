@@ -124,20 +124,20 @@ func GetBoardLayout(name string) (*BoardLayout, error) {
 	return ret, nil
 }
 
-func GetLetter(st *gamestate.GameState, row, col int) tilemapping.MachineLetter {
-	idx := row*int(st.NumBoardRows()) + col
-	return tilemapping.MachineLetter(st.Board(idx))
+func GetLetter(bd *gamestate.Board, row, col int) tilemapping.MachineLetter {
+	idx := row*int(bd.NumRows()) + col
+	return tilemapping.MachineLetter(bd.Tiles(idx))
 }
 
-func PosExists(st *gamestate.GameState, row, col int) bool {
-	return row >= 0 && row < int(st.NumBoardRows()) && col >= 0 && col < int(st.NumBoardCols())
+func PosExists(bd *gamestate.Board, row, col int) bool {
+	return row >= 0 && row < int(bd.NumRows()) && col >= 0 && col < int(bd.NumCols())
 }
 
-func HasLetter(st *gamestate.GameState, row, col int) bool {
-	return GetLetter(st, row, col) != 0
+func HasLetter(bd *gamestate.Board, row, col int) bool {
+	return GetLetter(bd, row, col) != 0
 }
 
-func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
+func ErrorIfIllegalPlay(bd *gamestate.Board, row, col int, vertical bool,
 	word []tilemapping.MachineLetter) error {
 
 	ri, ci := 0, 1
@@ -151,24 +151,24 @@ func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
 	for idx, ml := range word {
 		newrow, newcol := row+(ri*idx), col+(ci*idx)
 
-		if st.BoardIsEmpty() && newrow == int(st.NumBoardRows())>>1 && newcol == int(st.NumBoardCols())>>1 {
+		if bd.IsEmpty() && newrow == int(bd.NumRows())>>1 && newcol == int(bd.NumCols())>>1 {
 			touchesCenterSquare = true
 		}
 
-		if newrow < 0 || newrow >= int(st.NumBoardRows()) || newcol < 0 || newcol >= int(st.NumBoardCols()) {
+		if newrow < 0 || newrow >= int(bd.NumRows()) || newcol < 0 || newcol >= int(bd.NumCols()) {
 			return errors.New("play extends off of the board")
 		}
 
 		// 0 is played-through (or blank, but that shouldn't happen here)
 		if ml == 0 {
-			ml = GetLetter(st, newrow, newcol)
+			ml = GetLetter(bd, newrow, newcol)
 			if ml == 0 {
 				return errors.New("a played-through marker was specified, but " +
 					"there is no tile at the given location")
 			}
 			bordersATile = true
 		} else {
-			ml = GetLetter(st, newrow, newcol)
+			ml = GetLetter(bd, newrow, newcol)
 			if ml != 0 {
 				return fmt.Errorf("tried to play through a letter already on "+
 					"the board; please use the played-through marker (.) instead "+
@@ -181,7 +181,7 @@ func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
 			for d := -1; d <= 1; d += 2 {
 				// only check perpendicular hooks
 				checkrow, checkcol := newrow+ci*d, newcol+ri*d
-				if PosExists(st, checkrow, checkcol) && GetLetter(st, checkrow, checkcol) != 0 {
+				if PosExists(bd, checkrow, checkcol) && GetLetter(bd, checkrow, checkcol) != 0 {
 					bordersATile = true
 				}
 			}
@@ -190,10 +190,10 @@ func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
 		}
 	}
 
-	if st.BoardIsEmpty() && !touchesCenterSquare {
+	if bd.IsEmpty() && !touchesCenterSquare {
 		return errors.New("the first play must touch the center square")
 	}
-	if !st.BoardIsEmpty() && !bordersATile {
+	if !bd.IsEmpty() && !bordersATile {
 		return errors.New("your play must border a tile already on the board")
 	}
 	if !placedATile {
@@ -204,13 +204,13 @@ func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
 	}
 	{
 		checkrow, checkcol := row-ri, col-ci
-		if PosExists(st, checkrow, checkcol) && GetLetter(st, checkrow, checkcol) != 0 {
+		if PosExists(bd, checkrow, checkcol) && GetLetter(bd, checkrow, checkcol) != 0 {
 			return errors.New("your play must include the whole word")
 		}
 	}
 	{
 		checkrow, checkcol := row+ri*len(word), col+ci*len(word)
-		if PosExists(st, checkrow, checkcol) && GetLetter(st, checkrow, checkcol) != 0 {
+		if PosExists(bd, checkrow, checkcol) && GetLetter(bd, checkrow, checkcol) != 0 {
 			return errors.New("your play must include the whole word")
 		}
 	}
@@ -219,7 +219,7 @@ func ErrorIfIllegalPlay(st *gamestate.GameState, row, col int, vertical bool,
 
 // FormedWords returns an array of all machine words formed by this move.
 // The move is assumed to be of type Play
-func FormedWords(st *gamestate.GameState, row, col int, vertical bool, mls []tilemapping.MachineLetter) ([]tilemapping.MachineWord, error) {
+func FormedWords(bd *gamestate.Board, row, col int, vertical bool, mls []tilemapping.MachineLetter) ([]tilemapping.MachineWord, error) {
 	// Reserve space for main word.
 	words := []tilemapping.MachineWord{nil}
 	mainWord := []tilemapping.MachineLetter{}
@@ -240,12 +240,12 @@ func FormedWords(st *gamestate.GameState, row, col int, vertical bool, mls []til
 
 		// This is the main word.
 		if letter == 0 {
-			letter = GetLetter(st, newrow, newcol).Unblank()
+			letter = GetLetter(bd, newrow, newcol).Unblank()
 			mainWord = append(mainWord, letter)
 			continue
 		}
 		mainWord = append(mainWord, letter)
-		crossWord := formedCrossWord(st, !vertical, letter, newrow, newcol)
+		crossWord := formedCrossWord(bd, !vertical, letter, newrow, newcol)
 		if crossWord != nil {
 			words = append(words, crossWord)
 		}
@@ -258,7 +258,7 @@ func FormedWords(st *gamestate.GameState, row, col int, vertical bool, mls []til
 	return words, nil
 }
 
-func formedCrossWord(st *gamestate.GameState, crossVertical bool, letter tilemapping.MachineLetter,
+func formedCrossWord(bd *gamestate.Board, crossVertical bool, letter tilemapping.MachineLetter,
 	row, col int) tilemapping.MachineWord {
 
 	ri, ci := 0, 1
@@ -277,7 +277,7 @@ func formedCrossWord(st *gamestate.GameState, crossVertical bool, letter tilemap
 	var tlr, tlc, brr, brc int
 
 	// Find the top or left edge.
-	for PosExists(st, newrow, newcol) && HasLetter(st, newrow, newcol) {
+	for PosExists(bd, newrow, newcol) && HasLetter(bd, newrow, newcol) {
 		newrow -= ri
 		newcol -= ci
 	}
@@ -290,7 +290,7 @@ func formedCrossWord(st *gamestate.GameState, crossVertical bool, letter tilemap
 	newrow, newcol = row, col
 	newrow += ri
 	newcol += ci
-	for PosExists(st, newrow, newcol) && HasLetter(st, newrow, newcol) {
+	for PosExists(bd, newrow, newcol) && HasLetter(bd, newrow, newcol) {
 		newrow += ri
 		newcol += ci
 	}
@@ -304,7 +304,7 @@ func formedCrossWord(st *gamestate.GameState, crossVertical bool, letter tilemap
 		if rowiter == row && coliter == col {
 			crossword = append(crossword, letter.Unblank())
 		} else {
-			crossword = append(crossword, GetLetter(st, rowiter, coliter).Unblank())
+			crossword = append(crossword, GetLetter(bd, rowiter, coliter).Unblank())
 		}
 	}
 	if len(crossword) < 2 {
@@ -315,7 +315,7 @@ func formedCrossWord(st *gamestate.GameState, crossVertical bool, letter tilemap
 }
 
 // PlayMove plays the move on the board and returns the score of the move.
-func PlayMove(st *gamestate.GameState, layoutName string, dist *tilemapping.LetterDistribution,
+func PlayMove(bd *gamestate.Board, layoutName string, dist *tilemapping.LetterDistribution,
 	mls []tilemapping.MachineLetter, row, col int, vertical bool) (int32, error) {
 
 	layout, err := GetBoardLayout(layoutName)
@@ -323,12 +323,12 @@ func PlayMove(st *gamestate.GameState, layoutName string, dist *tilemapping.Lett
 		return 0, err
 	}
 
-	score := placeMoveTiles(st, layout, dist, mls, row, col, vertical)
+	score := placeMoveTiles(bd, layout, dist, mls, row, col, vertical)
 	return score, nil
 
 }
 
-func placeMoveTiles(st *gamestate.GameState, layout *BoardLayout, dist *tilemapping.LetterDistribution,
+func placeMoveTiles(bd *gamestate.Board, layout *BoardLayout, dist *tilemapping.LetterDistribution,
 	mls []tilemapping.MachineLetter, row, col int, vertical bool) int32 {
 
 	ri, ci := 0, 1
@@ -349,16 +349,16 @@ func placeMoveTiles(st *gamestate.GameState, layout *BoardLayout, dist *tilemapp
 		freshTile := false
 		newrow, newcol := row+(ri*idx), col+(ci*idx)
 
-		sqIdx := (newrow * int(st.NumBoardCols())) + newcol
+		sqIdx := (newrow * int(bd.NumCols())) + newcol
 		letterMultiplier := 1
 		thisWordMultiplier := 1
 		if tile == 0 {
 			// a play-through marker, hopefully.
-			tile = tilemapping.MachineLetter(st.Board(sqIdx))
+			tile = tilemapping.MachineLetter(bd.Tiles(sqIdx))
 		} else {
 			freshTile = true
 			tilesUsed++
-			st.MutateBoard(sqIdx, byte(tile))
+			bd.MutateTiles(sqIdx, byte(tile))
 
 			bonusSq := BonusSquare(layout.Layout[sqIdx])
 			switch bonusSq {
@@ -380,10 +380,10 @@ func placeMoveTiles(st *gamestate.GameState, layout *BoardLayout, dist *tilemapp
 			}
 		}
 		// else all the multipliers are 1.
-		if freshTile && st.BoardIsEmpty() {
-			st.MutateBoardIsEmpty(false)
+		if freshTile && bd.IsEmpty() {
+			bd.MutateIsEmpty(false)
 		}
-		cs := getCrossScore(st, dist, newrow, newcol, csDirection)
+		cs := getCrossScore(bd, dist, newrow, newcol, csDirection)
 		ls := 0
 		if tile > 0 {
 			// Count the score of a tile, even if it's a played-through one
@@ -394,10 +394,10 @@ func placeMoveTiles(st *gamestate.GameState, layout *BoardLayout, dist *tilemapp
 		// We only add cross scores if we are making an "across" word).
 		actualCrossWord := false
 		if !vertical {
-			actualCrossWord = (newrow > 0 && HasLetter(st, newrow-1, newcol)) || (newrow < layout.Rows-1 && HasLetter(st, newrow+1, newcol))
+			actualCrossWord = (newrow > 0 && HasLetter(bd, newrow-1, newcol)) || (newrow < layout.Rows-1 && HasLetter(bd, newrow+1, newcol))
 		} else {
 			// fmt.Println("col", col, "row", row, "idx", idx, "layout", layout.Rows, layout.Cols)
-			actualCrossWord = (newcol > 0 && HasLetter(st, newrow, newcol-1)) || (newcol < layout.Cols-1 && HasLetter(st, newrow, newcol+1))
+			actualCrossWord = (newcol > 0 && HasLetter(bd, newrow, newcol-1)) || (newcol < layout.Cols-1 && HasLetter(bd, newrow, newcol+1))
 		}
 
 		if freshTile && actualCrossWord {
@@ -412,7 +412,7 @@ func placeMoveTiles(st *gamestate.GameState, layout *BoardLayout, dist *tilemapp
 }
 
 // UnplaceMoveTiles unplaces the tiles -- that is, removes them from the board
-func UnplaceMoveTiles(st *gamestate.GameState, mls []tilemapping.MachineLetter, row, col int, vertical bool) error {
+func UnplaceMoveTiles(bd *gamestate.Board, mls []tilemapping.MachineLetter, row, col int, vertical bool) error {
 	ri, ci := 0, 1
 	if vertical {
 		ri, ci = ci, ri
@@ -420,27 +420,27 @@ func UnplaceMoveTiles(st *gamestate.GameState, mls []tilemapping.MachineLetter, 
 	for idx, tile := range mls {
 		newrow, newcol := row+(ri*idx), col+(ci*idx)
 
-		sqIdx := (newrow * int(st.NumBoardCols())) + newcol
+		sqIdx := (newrow * int(bd.NumCols())) + newcol
 
 		if tile == 0 {
 			// nothing to unplace, tile was already there.
-			if st.Board(sqIdx) == byte(0) {
+			if bd.Tiles(sqIdx) == byte(0) {
 				return errors.New("mismatch with played-through marker")
 			}
 			continue
 		} else {
-			st.MutateBoard(sqIdx, byte(0))
-			if newrow == int(st.NumBoardRows())>>1 && newcol == int(st.NumBoardCols())>>1 {
+			bd.MutateTiles(sqIdx, byte(0))
+			if newrow == int(bd.NumRows())>>1 && newcol == int(bd.NumCols())>>1 {
 				// If we are unplaying a tile that was in the center square,
 				// that is a good proxy for whether the board is now empty.
-				st.MutateBoardIsEmpty(true)
+				bd.MutateIsEmpty(true)
 			}
 		}
 	}
 	return nil
 }
 
-func getCrossScore(st *gamestate.GameState, dist *tilemapping.LetterDistribution,
+func getCrossScore(bd *gamestate.Board, dist *tilemapping.LetterDistribution,
 	row, col int, direction ipc.GameEvent_Direction) int {
 	// look both ways along direction from row, col
 	ri, ci := 0, 1
@@ -449,8 +449,8 @@ func getCrossScore(st *gamestate.GameState, dist *tilemapping.LetterDistribution
 	}
 
 	cs := 0
-	for rit, cit := row+ri, col+ci; rit < int(st.NumBoardRows()) && cit < int(st.NumBoardCols()); rit, cit = rit+ri, cit+ci {
-		l := GetLetter(st, rit, cit)
+	for rit, cit := row+ri, col+ci; rit < int(bd.NumRows()) && cit < int(bd.NumCols()); rit, cit = rit+ri, cit+ci {
+		l := GetLetter(bd, rit, cit)
 		if l == 0 {
 			break
 		}
@@ -458,7 +458,7 @@ func getCrossScore(st *gamestate.GameState, dist *tilemapping.LetterDistribution
 	}
 	// look the other way
 	for rit, cit := row-ri, col-ci; rit >= 0 && cit >= 0; rit, cit = rit-ri, cit-ci {
-		l := GetLetter(st, rit, cit)
+		l := GetLetter(bd, rit, cit)
 		if l == 0 {
 			break
 		}
@@ -468,15 +468,15 @@ func getCrossScore(st *gamestate.GameState, dist *tilemapping.LetterDistribution
 }
 
 // XXX: Check this function for how it works with Spanish which already has [ ] for its tiles.
-func ToFEN(st *gamestate.GameState, dist *tilemapping.LetterDistribution) string {
-	var bd strings.Builder
+func ToFEN(bd *gamestate.Board, dist *tilemapping.LetterDistribution) string {
+	var bdstr strings.Builder
 	alph := dist.TileMapping()
 
-	for i := 0; i < int(st.NumBoardRows()); i++ {
+	for i := 0; i < int(bd.NumRows()); i++ {
 		var r strings.Builder
 		zeroCt := 0
-		for j := 0; j < int(st.NumBoardCols()); j++ {
-			l := GetLetter(st, i, j)
+		for j := 0; j < int(bd.NumCols()); j++ {
+			l := GetLetter(bd, i, j)
 			if l == 0 {
 				zeroCt++
 				continue
@@ -499,10 +499,10 @@ func ToFEN(st *gamestate.GameState, dist *tilemapping.LetterDistribution) string
 		if zeroCt > 0 {
 			r.WriteString(strconv.Itoa(zeroCt))
 		}
-		bd.WriteString(r.String())
-		if i != int(st.NumBoardRows())-1 {
-			bd.WriteString("/")
+		bdstr.WriteString(r.String())
+		if i != int(bd.NumRows())-1 {
+			bdstr.WriteString("/")
 		}
 	}
-	return bd.String()
+	return bdstr.String()
 }
