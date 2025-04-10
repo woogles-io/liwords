@@ -41,16 +41,16 @@ func (rcv *TileBag) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *TileBag) NumTilesInBag() int8 {
+func (rcv *TileBag) NumTilesInBag() byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
 	}
 	return 0
 }
 
-func (rcv *TileBag) MutateNumTilesInBag(n int8) bool {
-	return rcv._tab.MutateInt8Slot(4, n)
+func (rcv *TileBag) MutateNumTilesInBag(n byte) bool {
+	return rcv._tab.MutateByteSlot(4, n)
 }
 
 func (rcv *TileBag) Bag(j int) byte {
@@ -124,8 +124,8 @@ func (rcv *TileBag) MutateRandState(j int, n byte) bool {
 func TileBagStart(builder *flatbuffers.Builder) {
 	builder.StartObject(3)
 }
-func TileBagAddNumTilesInBag(builder *flatbuffers.Builder, numTilesInBag int8) {
-	builder.PrependInt8Slot(0, numTilesInBag, 0)
+func TileBagAddNumTilesInBag(builder *flatbuffers.Builder, numTilesInBag byte) {
+	builder.PrependByteSlot(0, numTilesInBag, 0)
 }
 func TileBagAddBag(builder *flatbuffers.Builder, bag flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(bag), 0)

@@ -2403,6 +2403,8 @@ type GameEvent struct {
 	// be the index in GameDocument.players.
 	PlayerIndex         uint32   `protobuf:"varint,19,opt,name=player_index,json=playerIndex,proto3" json:"player_index,omitempty"`
 	WordsFormedFriendly []string `protobuf:"bytes,20,rep,name=words_formed_friendly,json=wordsFormedFriendly,proto3" json:"words_formed_friendly,omitempty"`
+	RackFriendly        string   `protobuf:"bytes,21,opt,name=rack_friendly,json=rackFriendly,proto3" json:"rack_friendly,omitempty"`
+	ExchangedFriendly   string   `protobuf:"bytes,22,opt,name=exchanged_friendly,json=exchangedFriendly,proto3" json:"exchanged_friendly,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2568,6 +2570,20 @@ func (x *GameEvent) GetWordsFormedFriendly() []string {
 		return x.WordsFormedFriendly
 	}
 	return nil
+}
+
+func (x *GameEvent) GetRackFriendly() string {
+	if x != nil {
+		return x.RackFriendly
+	}
+	return ""
+}
+
+func (x *GameEvent) GetExchangedFriendly() string {
+	if x != nil {
+		return x.ExchangedFriendly
+	}
+	return ""
 }
 
 type Timers struct {
@@ -2833,24 +2849,36 @@ func (x *Bag) GetTiles() []byte {
 	return nil
 }
 
-// A GameDocument encodes the entire state of a game. It includes a history
-// of events, as well as information about the current state of the bag,
-// timers, etc. It should be possible to recreate an entire omgwords game
-// from a GameDocument state at any given time.
+// A GameDocument is mostly a data transfer object for an omgwords game. It
+// should be used to contain mostly metadata about the game - players, rules,
+// whether the game is ongoing, etc. The GameDocument should not contain the
+// game state itself, which is contained in GameRecord. The events should also
+// be kept in a separate object, GameRecord.events. Our main goal for this
+// message is to be lightweight. This layout should reflect the database a bit.
+// Events are kept in a separate table, and the game state is kept in a separate
+// flatbuffer object in its own column in the DB.
+//
+// GameDocument should be thought of as _mostly_ constant once the game has
+// started. The only things that would change would be the GameEndReason, the
+// play_state, and the meta_event_data.
 type GameDocument struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// players are in order of who went first.
-	Players       []*GameDocument_MinimalPlayerInfo `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
-	Events        []*GameEvent                      `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
-	Version       uint32                            `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	Lexicon       string                            `protobuf:"bytes,4,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
-	Uid           string                            `protobuf:"bytes,5,opt,name=uid,proto3" json:"uid,omitempty"`
-	Description   string                            `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
-	Racks         [][]byte                          `protobuf:"bytes,7,rep,name=racks,proto3" json:"racks,omitempty"`
-	ChallengeRule ChallengeRule                     `protobuf:"varint,8,opt,name=challenge_rule,json=challengeRule,proto3,enum=ipc.ChallengeRule" json:"challenge_rule,omitempty"`
-	PlayState     PlayState                         `protobuf:"varint,9,opt,name=play_state,json=playState,proto3,enum=ipc.PlayState" json:"play_state,omitempty"`
-	CurrentScores []int32                           `protobuf:"varint,10,rep,packed,name=current_scores,json=currentScores,proto3" json:"current_scores,omitempty"`
-	Variant       string                            `protobuf:"bytes,11,opt,name=variant,proto3" json:"variant,omitempty"`
+	Players []*GameDocument_MinimalPlayerInfo `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	Events []*GameEvent `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	Version     uint32 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Lexicon     string `protobuf:"bytes,4,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+	Uid         string `protobuf:"bytes,5,opt,name=uid,proto3" json:"uid,omitempty"`
+	Description string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	Racks         [][]byte      `protobuf:"bytes,7,rep,name=racks,proto3" json:"racks,omitempty"`
+	ChallengeRule ChallengeRule `protobuf:"varint,8,opt,name=challenge_rule,json=challengeRule,proto3,enum=ipc.ChallengeRule" json:"challenge_rule,omitempty"`
+	PlayState     PlayState     `protobuf:"varint,9,opt,name=play_state,json=playState,proto3,enum=ipc.PlayState" json:"play_state,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	CurrentScores []int32 `protobuf:"varint,10,rep,packed,name=current_scores,json=currentScores,proto3" json:"current_scores,omitempty"`
+	Variant       string  `protobuf:"bytes,11,opt,name=variant,proto3" json:"variant,omitempty"`
 	// The index of the player who won, or -1 if it was a tie.
 	Winner int32 `protobuf:"varint,12,opt,name=winner,proto3" json:"winner,omitempty"`
 	// The board layout is just the name for the layout of the board.
@@ -2866,12 +2894,20 @@ type GameDocument struct {
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// gameplay-specific structures:
 	// board is the current state of the board
+	//
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 	Board *GameBoard `protobuf:"bytes,20,opt,name=board,proto3" json:"board,omitempty"`
 	// bag is the current tiles in the bag.
-	Bag            *Bag   `protobuf:"bytes,21,opt,name=bag,proto3" json:"bag,omitempty"`
+	//
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	Bag *Bag `protobuf:"bytes,21,opt,name=bag,proto3" json:"bag,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 	ScorelessTurns uint32 `protobuf:"varint,22,opt,name=scoreless_turns,json=scorelessTurns,proto3" json:"scoreless_turns,omitempty"`
 	// The index of the player on turn
-	PlayerOnTurn  uint32  `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	//
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
+	PlayerOnTurn uint32 `protobuf:"varint,23,opt,name=player_on_turn,json=playerOnTurn,proto3" json:"player_on_turn,omitempty"`
+	// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 	Timers        *Timers `protobuf:"bytes,24,opt,name=timers,proto3" json:"timers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2914,6 +2950,7 @@ func (x *GameDocument) GetPlayers() []*GameDocument_MinimalPlayerInfo {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetEvents() []*GameEvent {
 	if x != nil {
 		return x.Events
@@ -2921,6 +2958,7 @@ func (x *GameDocument) GetEvents() []*GameEvent {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetVersion() uint32 {
 	if x != nil {
 		return x.Version
@@ -2949,6 +2987,7 @@ func (x *GameDocument) GetDescription() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetRacks() [][]byte {
 	if x != nil {
 		return x.Racks
@@ -2970,6 +3009,7 @@ func (x *GameDocument) GetPlayState() PlayState {
 	return PlayState_PLAYING
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetCurrentScores() []int32 {
 	if x != nil {
 		return x.CurrentScores
@@ -3040,6 +3080,7 @@ func (x *GameDocument) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetBoard() *GameBoard {
 	if x != nil {
 		return x.Board
@@ -3047,6 +3088,7 @@ func (x *GameDocument) GetBoard() *GameBoard {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetBag() *Bag {
 	if x != nil {
 		return x.Bag
@@ -3054,6 +3096,7 @@ func (x *GameDocument) GetBag() *Bag {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetScorelessTurns() uint32 {
 	if x != nil {
 		return x.ScorelessTurns
@@ -3061,6 +3104,7 @@ func (x *GameDocument) GetScorelessTurns() uint32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetPlayerOnTurn() uint32 {
 	if x != nil {
 		return x.PlayerOnTurn
@@ -3068,11 +3112,250 @@ func (x *GameDocument) GetPlayerOnTurn() uint32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in proto/ipc/omgwords.proto.
 func (x *GameDocument) GetTimers() *Timers {
 	if x != nil {
 		return x.Timers
 	}
 	return nil
+}
+
+// GameMetadata is a metadata object for a game. It is used to transfer
+// metadata about a game to the frontend clients. This should consist largely
+// (but not completely) of information that is constant about a game once it has
+// started.
+type GameMetadata struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Uid   string                 `protobuf:"bytes,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	// players are in order of who went first.
+	Players       []*GameMetadata_MinimalPlayerInfo `protobuf:"bytes,2,rep,name=players,proto3" json:"players,omitempty"`
+	Lexicon       string                            `protobuf:"bytes,3,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+	Description   string                            `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	ChallengeRule ChallengeRule                     `protobuf:"varint,5,opt,name=challenge_rule,json=challengeRule,proto3,enum=ipc.ChallengeRule" json:"challenge_rule,omitempty"`
+	PlayState     PlayState                         `protobuf:"varint,6,opt,name=play_state,json=playState,proto3,enum=ipc.PlayState" json:"play_state,omitempty"`
+	Variant       string                            `protobuf:"bytes,7,opt,name=variant,proto3" json:"variant,omitempty"`
+	// The index of the player who won, or -1 if it was a tie.
+	Winner int32 `protobuf:"varint,8,opt,name=winner,proto3" json:"winner,omitempty"`
+	// The board layout is just the name for the layout of the board.
+	// It should have a sensible default, if blank.
+	BoardLayout string `protobuf:"bytes,9,opt,name=board_layout,json=boardLayout,proto3" json:"board_layout,omitempty"`
+	// The letter distribution is the name of the distribution of tiles used for
+	// this game. If blank, should default to "english".
+	LetterDistribution string                 `protobuf:"bytes,10,opt,name=letter_distribution,json=letterDistribution,proto3" json:"letter_distribution,omitempty"`
+	Type               GameType               `protobuf:"varint,11,opt,name=type,proto3,enum=ipc.GameType" json:"type,omitempty"`
+	TimersStarted      bool                   `protobuf:"varint,12,opt,name=timers_started,json=timersStarted,proto3" json:"timers_started,omitempty"`
+	EndReason          GameEndReason          `protobuf:"varint,13,opt,name=end_reason,json=endReason,proto3,enum=ipc.GameEndReason" json:"end_reason,omitempty"`
+	MetaEventData      *MetaEventData         `protobuf:"bytes,14,opt,name=meta_event_data,json=metaEventData,proto3" json:"meta_event_data,omitempty"`
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GameMetadata) Reset() {
+	*x = GameMetadata{}
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameMetadata) ProtoMessage() {}
+
+func (x *GameMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameMetadata.ProtoReflect.Descriptor instead.
+func (*GameMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_omgwords_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GameMetadata) GetUid() string {
+	if x != nil {
+		return x.Uid
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetPlayers() []*GameMetadata_MinimalPlayerInfo {
+	if x != nil {
+		return x.Players
+	}
+	return nil
+}
+
+func (x *GameMetadata) GetLexicon() string {
+	if x != nil {
+		return x.Lexicon
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetChallengeRule() ChallengeRule {
+	if x != nil {
+		return x.ChallengeRule
+	}
+	return ChallengeRule_ChallengeRule_VOID
+}
+
+func (x *GameMetadata) GetPlayState() PlayState {
+	if x != nil {
+		return x.PlayState
+	}
+	return PlayState_PLAYING
+}
+
+func (x *GameMetadata) GetVariant() string {
+	if x != nil {
+		return x.Variant
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetWinner() int32 {
+	if x != nil {
+		return x.Winner
+	}
+	return 0
+}
+
+func (x *GameMetadata) GetBoardLayout() string {
+	if x != nil {
+		return x.BoardLayout
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetLetterDistribution() string {
+	if x != nil {
+		return x.LetterDistribution
+	}
+	return ""
+}
+
+func (x *GameMetadata) GetType() GameType {
+	if x != nil {
+		return x.Type
+	}
+	return GameType_NATIVE
+}
+
+func (x *GameMetadata) GetTimersStarted() bool {
+	if x != nil {
+		return x.TimersStarted
+	}
+	return false
+}
+
+func (x *GameMetadata) GetEndReason() GameEndReason {
+	if x != nil {
+		return x.EndReason
+	}
+	return GameEndReason_NONE
+}
+
+func (x *GameMetadata) GetMetaEventData() *MetaEventData {
+	if x != nil {
+		return x.MetaEventData
+	}
+	return nil
+}
+
+func (x *GameMetadata) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+// GameRecord is a record of a game. It should be used for
+// serialization/deserialization of an entire game data into long-term storage.
+// It can also be used for transferring ongoing data to frontend clients.
+type GameRecord struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	GameMetadata *GameMetadata          `protobuf:"bytes,1,opt,name=game_metadata,json=gameMetadata,proto3" json:"game_metadata,omitempty"`
+	Events       []*GameEvent           `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
+	// The flatbuffer GameState object.
+	GameState     []byte `protobuf:"bytes,3,opt,name=game_state,json=gameState,proto3" json:"game_state,omitempty"`
+	Version       uint32 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameRecord) Reset() {
+	*x = GameRecord{}
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameRecord) ProtoMessage() {}
+
+func (x *GameRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameRecord.ProtoReflect.Descriptor instead.
+func (*GameRecord) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_omgwords_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GameRecord) GetGameMetadata() *GameMetadata {
+	if x != nil {
+		return x.GameMetadata
+	}
+	return nil
+}
+
+func (x *GameRecord) GetEvents() []*GameEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *GameRecord) GetGameState() []byte {
+	if x != nil {
+		return x.GameState
+	}
+	return nil
+}
+
+func (x *GameRecord) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
 }
 
 type GameDocument_MinimalPlayerInfo struct {
@@ -3089,7 +3372,7 @@ type GameDocument_MinimalPlayerInfo struct {
 
 func (x *GameDocument_MinimalPlayerInfo) Reset() {
 	*x = GameDocument_MinimalPlayerInfo{}
-	mi := &file_proto_ipc_omgwords_proto_msgTypes[32]
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3101,7 +3384,7 @@ func (x *GameDocument_MinimalPlayerInfo) String() string {
 func (*GameDocument_MinimalPlayerInfo) ProtoMessage() {}
 
 func (x *GameDocument_MinimalPlayerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_omgwords_proto_msgTypes[32]
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3139,6 +3422,76 @@ func (x *GameDocument_MinimalPlayerInfo) GetUserId() string {
 }
 
 func (x *GameDocument_MinimalPlayerInfo) GetQuit() bool {
+	if x != nil {
+		return x.Quit
+	}
+	return false
+}
+
+type GameMetadata_MinimalPlayerInfo struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Nickname string                 `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	RealName string                 `protobuf:"bytes,2,opt,name=real_name,json=realName,proto3" json:"real_name,omitempty"`
+	// user_id is an internal, unchangeable user ID, whereas the other two user
+	// identifiers might possibly be mutable.
+	UserId        string `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Quit          bool   `protobuf:"varint,4,opt,name=quit,proto3" json:"quit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) Reset() {
+	*x = GameMetadata_MinimalPlayerInfo{}
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameMetadata_MinimalPlayerInfo) ProtoMessage() {}
+
+func (x *GameMetadata_MinimalPlayerInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_omgwords_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameMetadata_MinimalPlayerInfo.ProtoReflect.Descriptor instead.
+func (*GameMetadata_MinimalPlayerInfo) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_omgwords_proto_rawDescGZIP(), []int{29, 0}
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) GetRealName() string {
+	if x != nil {
+		return x.RealName
+	}
+	return ""
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GameMetadata_MinimalPlayerInfo) GetQuit() bool {
 	if x != nil {
 		return x.Quit
 	}
@@ -3320,7 +3673,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\faccepter_cid\x18\x03 \x01(\tR\vaccepterCid\"<\n" +
 	"\bTimedOut\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x8e\a\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xe2\a\n" +
 	"\tGameEvent\x12\x12\n" +
 	"\x04note\x18\x02 \x01(\tR\x04note\x12\x12\n" +
 	"\x04rack\x18\x03 \x01(\fR\x04rack\x12'\n" +
@@ -3344,7 +3697,9 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\fwords_formed\x18\x11 \x03(\fR\vwordsFormed\x12)\n" +
 	"\x10millis_remaining\x18\x12 \x01(\x05R\x0fmillisRemaining\x12!\n" +
 	"\fplayer_index\x18\x13 \x01(\rR\vplayerIndex\x122\n" +
-	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\"\xf2\x01\n" +
+	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\x12#\n" +
+	"\rrack_friendly\x18\x15 \x01(\tR\frackFriendly\x12-\n" +
+	"\x12exchanged_friendly\x18\x16 \x01(\tR\x11exchangedFriendly\"\xf2\x01\n" +
 	"\x04Type\x12\x17\n" +
 	"\x13TILE_PLACEMENT_MOVE\x10\x00\x12\x18\n" +
 	"\x14PHONY_TILES_RETURNED\x10\x01\x12\b\n" +
@@ -3379,20 +3734,20 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x05tiles\x18\x03 \x01(\fR\x05tiles\x12\x19\n" +
 	"\bis_empty\x18\x04 \x01(\bR\aisEmpty\"\x1b\n" +
 	"\x03Bag\x12\x14\n" +
-	"\x05tiles\x18\x01 \x01(\fR\x05tiles\"\xaf\b\n" +
+	"\x05tiles\x18\x01 \x01(\fR\x05tiles\"\xd3\b\n" +
 	"\fGameDocument\x12=\n" +
-	"\aplayers\x18\x01 \x03(\v2#.ipc.GameDocument.MinimalPlayerInfoR\aplayers\x12&\n" +
-	"\x06events\x18\x02 \x03(\v2\x0e.ipc.GameEventR\x06events\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\rR\aversion\x12\x18\n" +
+	"\aplayers\x18\x01 \x03(\v2#.ipc.GameDocument.MinimalPlayerInfoR\aplayers\x12*\n" +
+	"\x06events\x18\x02 \x03(\v2\x0e.ipc.GameEventB\x02\x18\x01R\x06events\x12\x1c\n" +
+	"\aversion\x18\x03 \x01(\rB\x02\x18\x01R\aversion\x12\x18\n" +
 	"\alexicon\x18\x04 \x01(\tR\alexicon\x12\x10\n" +
 	"\x03uid\x18\x05 \x01(\tR\x03uid\x12 \n" +
-	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x14\n" +
-	"\x05racks\x18\a \x03(\fR\x05racks\x129\n" +
+	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x18\n" +
+	"\x05racks\x18\a \x03(\fB\x02\x18\x01R\x05racks\x129\n" +
 	"\x0echallenge_rule\x18\b \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\x12-\n" +
 	"\n" +
-	"play_state\x18\t \x01(\x0e2\x0e.ipc.PlayStateR\tplayState\x12%\n" +
+	"play_state\x18\t \x01(\x0e2\x0e.ipc.PlayStateR\tplayState\x12)\n" +
 	"\x0ecurrent_scores\x18\n" +
-	" \x03(\x05R\rcurrentScores\x12\x18\n" +
+	" \x03(\x05B\x02\x18\x01R\rcurrentScores\x12\x18\n" +
 	"\avariant\x18\v \x01(\tR\avariant\x12\x16\n" +
 	"\x06winner\x18\f \x01(\x05R\x06winner\x12!\n" +
 	"\fboard_layout\x18\r \x01(\tR\vboardLayout\x12/\n" +
@@ -3403,17 +3758,49 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"end_reason\x18\x11 \x01(\x0e2\x12.ipc.GameEndReasonR\tendReason\x12:\n" +
 	"\x0fmeta_event_data\x18\x12 \x01(\v2\x12.ipc.MetaEventDataR\rmetaEventData\x129\n" +
 	"\n" +
-	"created_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12$\n" +
-	"\x05board\x18\x14 \x01(\v2\x0e.ipc.GameBoardR\x05board\x12\x1a\n" +
-	"\x03bag\x18\x15 \x01(\v2\b.ipc.BagR\x03bag\x12'\n" +
-	"\x0fscoreless_turns\x18\x16 \x01(\rR\x0escorelessTurns\x12$\n" +
-	"\x0eplayer_on_turn\x18\x17 \x01(\rR\fplayerOnTurn\x12#\n" +
-	"\x06timers\x18\x18 \x01(\v2\v.ipc.TimersR\x06timers\x1ay\n" +
+	"created_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12(\n" +
+	"\x05board\x18\x14 \x01(\v2\x0e.ipc.GameBoardB\x02\x18\x01R\x05board\x12\x1e\n" +
+	"\x03bag\x18\x15 \x01(\v2\b.ipc.BagB\x02\x18\x01R\x03bag\x12+\n" +
+	"\x0fscoreless_turns\x18\x16 \x01(\rB\x02\x18\x01R\x0escorelessTurns\x12(\n" +
+	"\x0eplayer_on_turn\x18\x17 \x01(\rB\x02\x18\x01R\fplayerOnTurn\x12'\n" +
+	"\x06timers\x18\x18 \x01(\v2\v.ipc.TimersB\x02\x18\x01R\x06timers\x1ay\n" +
 	"\x11MinimalPlayerInfo\x12\x1a\n" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1b\n" +
 	"\treal_name\x18\x02 \x01(\tR\brealName\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04quit\x18\x04 \x01(\bR\x04quit*\x9c\x01\n" +
+	"\x04quit\x18\x04 \x01(\bR\x04quit\"\xfa\x05\n" +
+	"\fGameMetadata\x12\x10\n" +
+	"\x03uid\x18\x01 \x01(\tR\x03uid\x12=\n" +
+	"\aplayers\x18\x02 \x03(\v2#.ipc.GameMetadata.MinimalPlayerInfoR\aplayers\x12\x18\n" +
+	"\alexicon\x18\x03 \x01(\tR\alexicon\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x129\n" +
+	"\x0echallenge_rule\x18\x05 \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\x12-\n" +
+	"\n" +
+	"play_state\x18\x06 \x01(\x0e2\x0e.ipc.PlayStateR\tplayState\x12\x18\n" +
+	"\avariant\x18\a \x01(\tR\avariant\x12\x16\n" +
+	"\x06winner\x18\b \x01(\x05R\x06winner\x12!\n" +
+	"\fboard_layout\x18\t \x01(\tR\vboardLayout\x12/\n" +
+	"\x13letter_distribution\x18\n" +
+	" \x01(\tR\x12letterDistribution\x12!\n" +
+	"\x04type\x18\v \x01(\x0e2\r.ipc.GameTypeR\x04type\x12%\n" +
+	"\x0etimers_started\x18\f \x01(\bR\rtimersStarted\x121\n" +
+	"\n" +
+	"end_reason\x18\r \x01(\x0e2\x12.ipc.GameEndReasonR\tendReason\x12:\n" +
+	"\x0fmeta_event_data\x18\x0e \x01(\v2\x12.ipc.MetaEventDataR\rmetaEventData\x129\n" +
+	"\n" +
+	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1ay\n" +
+	"\x11MinimalPlayerInfo\x12\x1a\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1b\n" +
+	"\treal_name\x18\x02 \x01(\tR\brealName\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04quit\x18\x04 \x01(\bR\x04quit\"\xa5\x01\n" +
+	"\n" +
+	"GameRecord\x126\n" +
+	"\rgame_metadata\x18\x01 \x01(\v2\x11.ipc.GameMetadataR\fgameMetadata\x12&\n" +
+	"\x06events\x18\x02 \x03(\v2\x0e.ipc.GameEventR\x06events\x12\x1d\n" +
+	"\n" +
+	"game_state\x18\x03 \x01(\fR\tgameState\x12\x18\n" +
+	"\aversion\x18\x04 \x01(\rR\aversion*\x9c\x01\n" +
 	"\rGameEndReason\x12\b\n" +
 	"\x04NONE\x10\x00\x12\b\n" +
 	"\x04TIME\x10\x01\x12\f\n" +
@@ -3465,7 +3852,7 @@ func file_proto_ipc_omgwords_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_omgwords_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_proto_ipc_omgwords_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_proto_ipc_omgwords_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_proto_ipc_omgwords_proto_goTypes = []any{
 	(GameEndReason)(0),                     // 0: ipc.GameEndReason
 	(GameMode)(0),                          // 1: ipc.GameMode
@@ -3506,69 +3893,81 @@ var file_proto_ipc_omgwords_proto_goTypes = []any{
 	(*GameBoard)(nil),                      // 36: ipc.GameBoard
 	(*Bag)(nil),                            // 37: ipc.Bag
 	(*GameDocument)(nil),                   // 38: ipc.GameDocument
-	nil,                                    // 39: ipc.GameEndedEvent.ScoresEntry
-	nil,                                    // 40: ipc.GameEndedEvent.NewRatingsEntry
-	nil,                                    // 41: ipc.GameEndedEvent.RatingDeltasEntry
-	(*GameDocument_MinimalPlayerInfo)(nil), // 42: ipc.GameDocument.MinimalPlayerInfo
-	(macondo.ChallengeRule)(0),             // 43: macondo.ChallengeRule
-	(macondo.BotRequest_BotCode)(0),        // 44: macondo.BotRequest.BotCode
-	(*timestamppb.Timestamp)(nil),          // 45: google.protobuf.Timestamp
-	(*macondo.GameHistory)(nil),            // 46: macondo.GameHistory
-	(*macondo.GameEvent)(nil),              // 47: macondo.GameEvent
-	(macondo.PlayState)(0),                 // 48: macondo.PlayState
+	(*GameMetadata)(nil),                   // 39: ipc.GameMetadata
+	(*GameRecord)(nil),                     // 40: ipc.GameRecord
+	nil,                                    // 41: ipc.GameEndedEvent.ScoresEntry
+	nil,                                    // 42: ipc.GameEndedEvent.NewRatingsEntry
+	nil,                                    // 43: ipc.GameEndedEvent.RatingDeltasEntry
+	(*GameDocument_MinimalPlayerInfo)(nil), // 44: ipc.GameDocument.MinimalPlayerInfo
+	(*GameMetadata_MinimalPlayerInfo)(nil), // 45: ipc.GameMetadata.MinimalPlayerInfo
+	(macondo.ChallengeRule)(0),             // 46: macondo.ChallengeRule
+	(macondo.BotRequest_BotCode)(0),        // 47: macondo.BotRequest.BotCode
+	(*timestamppb.Timestamp)(nil),          // 48: google.protobuf.Timestamp
+	(*macondo.GameHistory)(nil),            // 49: macondo.GameHistory
+	(*macondo.GameEvent)(nil),              // 50: macondo.GameEvent
+	(macondo.PlayState)(0),                 // 51: macondo.PlayState
 }
 var file_proto_ipc_omgwords_proto_depIdxs = []int32{
 	6,  // 0: ipc.ClientGameplayEvent.type:type_name -> ipc.ClientGameplayEvent.EventType
 	11, // 1: ipc.GameRequest.rules:type_name -> ipc.GameRules
-	43, // 2: ipc.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	46, // 2: ipc.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	1,  // 3: ipc.GameRequest.game_mode:type_name -> ipc.GameMode
 	2,  // 4: ipc.GameRequest.rating_mode:type_name -> ipc.RatingMode
-	44, // 5: ipc.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
-	45, // 6: ipc.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
+	47, // 5: ipc.GameRequest.bot_type:type_name -> macondo.BotRequest.BotCode
+	48, // 6: ipc.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
 	7,  // 7: ipc.GameMetaEvent.type:type_name -> ipc.GameMetaEvent.EventType
-	46, // 8: ipc.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	49, // 8: ipc.GameHistoryRefresher.history:type_name -> macondo.GameHistory
 	13, // 9: ipc.GameHistoryRefresher.outstanding_event:type_name -> ipc.GameMetaEvent
 	38, // 10: ipc.GameDocumentEvent.doc:type_name -> ipc.GameDocument
 	17, // 11: ipc.GameInfoResponse.players:type_name -> ipc.PlayerInfo
 	0,  // 12: ipc.GameInfoResponse.game_end_reason:type_name -> ipc.GameEndReason
-	45, // 13: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
-	45, // 14: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
+	48, // 13: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
+	48, // 14: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
 	12, // 15: ipc.GameInfoResponse.game_request:type_name -> ipc.GameRequest
 	3,  // 16: ipc.GameInfoResponse.type:type_name -> ipc.GameType
 	18, // 17: ipc.GameInfoResponses.game_info:type_name -> ipc.GameInfoResponse
 	12, // 18: ipc.InstantiateGame.game_request:type_name -> ipc.GameRequest
 	16, // 19: ipc.InstantiateGame.tournament_data:type_name -> ipc.TournamentDataForGame
 	22, // 20: ipc.ActiveGameEntry.player:type_name -> ipc.ActiveGamePlayer
-	47, // 21: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	48, // 22: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	50, // 21: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	51, // 22: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
 	33, // 23: ipc.ServerOMGWordsEvent.event:type_name -> ipc.GameEvent
 	4,  // 24: ipc.ServerOMGWordsEvent.playing:type_name -> ipc.PlayState
-	43, // 25: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	46, // 25: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
 	5,  // 26: ipc.OMGWordsChallengeResultEvent.challenge_rule:type_name -> ipc.ChallengeRule
-	39, // 27: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
-	40, // 28: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
+	41, // 27: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
+	42, // 28: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
 	0,  // 29: ipc.GameEndedEvent.end_reason:type_name -> ipc.GameEndReason
-	41, // 30: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
-	46, // 31: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
+	43, // 30: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
+	49, // 31: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
 	8,  // 32: ipc.GameEvent.type:type_name -> ipc.GameEvent.Type
 	9,  // 33: ipc.GameEvent.direction:type_name -> ipc.GameEvent.Direction
 	13, // 34: ipc.MetaEventData.events:type_name -> ipc.GameMetaEvent
-	42, // 35: ipc.GameDocument.players:type_name -> ipc.GameDocument.MinimalPlayerInfo
+	44, // 35: ipc.GameDocument.players:type_name -> ipc.GameDocument.MinimalPlayerInfo
 	33, // 36: ipc.GameDocument.events:type_name -> ipc.GameEvent
 	5,  // 37: ipc.GameDocument.challenge_rule:type_name -> ipc.ChallengeRule
 	4,  // 38: ipc.GameDocument.play_state:type_name -> ipc.PlayState
 	3,  // 39: ipc.GameDocument.type:type_name -> ipc.GameType
 	0,  // 40: ipc.GameDocument.end_reason:type_name -> ipc.GameEndReason
 	35, // 41: ipc.GameDocument.meta_event_data:type_name -> ipc.MetaEventData
-	45, // 42: ipc.GameDocument.created_at:type_name -> google.protobuf.Timestamp
+	48, // 42: ipc.GameDocument.created_at:type_name -> google.protobuf.Timestamp
 	36, // 43: ipc.GameDocument.board:type_name -> ipc.GameBoard
 	37, // 44: ipc.GameDocument.bag:type_name -> ipc.Bag
 	34, // 45: ipc.GameDocument.timers:type_name -> ipc.Timers
-	46, // [46:46] is the sub-list for method output_type
-	46, // [46:46] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	45, // 46: ipc.GameMetadata.players:type_name -> ipc.GameMetadata.MinimalPlayerInfo
+	5,  // 47: ipc.GameMetadata.challenge_rule:type_name -> ipc.ChallengeRule
+	4,  // 48: ipc.GameMetadata.play_state:type_name -> ipc.PlayState
+	3,  // 49: ipc.GameMetadata.type:type_name -> ipc.GameType
+	0,  // 50: ipc.GameMetadata.end_reason:type_name -> ipc.GameEndReason
+	35, // 51: ipc.GameMetadata.meta_event_data:type_name -> ipc.MetaEventData
+	48, // 52: ipc.GameMetadata.created_at:type_name -> google.protobuf.Timestamp
+	39, // 53: ipc.GameRecord.game_metadata:type_name -> ipc.GameMetadata
+	33, // 54: ipc.GameRecord.events:type_name -> ipc.GameEvent
+	55, // [55:55] is the sub-list for method output_type
+	55, // [55:55] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_omgwords_proto_init() }
@@ -3582,7 +3981,7 @@ func file_proto_ipc_omgwords_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_omgwords_proto_rawDesc), len(file_proto_ipc_omgwords_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   33,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

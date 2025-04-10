@@ -13,7 +13,7 @@ var userRackRegex = regexp.MustCompile(`(?U).+\s+([A-Z\?]*)\s+-?[0-9]+`)
 // SetFromPlaintext sets the board from the given plaintext board.
 // It returns a list of all played machine letters (tiles) so that the
 // caller can reconcile the tile bag appropriately.
-func setFromPlaintext(st *gamestate.GameState, qText string,
+func setFromPlaintext(bd *gamestate.Board, qText string,
 	rm *tilemapping.TileMapping) {
 
 	// Take a Quackle Plaintext Board and turn it into an internal structure.
@@ -37,10 +37,10 @@ func setFromPlaintext(st *gamestate.GameState, qText string,
 			if err != nil {
 				// Ignore the error; we are passing in a space or another
 				// board marker.
-				st.MutateBoard(pos, 0)
+				bd.MutateTiles(pos, 0)
 			} else {
-				st.MutateBoard(pos, byte(letter))
-				st.MutateBoardIsEmpty(false)
+				bd.MutateTiles(pos, byte(letter))
+				bd.MutateIsEmpty(false)
 				// playedTiles = append(playedTiles, letter)
 			}
 		}

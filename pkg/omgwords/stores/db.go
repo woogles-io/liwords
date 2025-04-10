@@ -108,8 +108,6 @@ func (s *DBStore) DeleteAnnotatedGame(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	// All other fields are blank. We will update the quickdata field with
-	// necessary metadata
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}

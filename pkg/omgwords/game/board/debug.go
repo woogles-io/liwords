@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/word-golib/tilemapping"
 	flatbuffers "github.com/google/flatbuffers/go"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
 	"github.com/woogles-io/liwords/pkg/omgwords/game/gamestate"
 )
 
@@ -14,10 +15,10 @@ var (
 	ColorSupport = os.Getenv("LIWORDS_DISABLE_COLOR") != "on"
 )
 
-func sqDisplayStr(st *gamestate.GameState, layout *BoardLayout, i, j int, rm *tilemapping.TileMapping) string {
-	idx := i*int(st.NumBoardCols()) + j
-	if st.Board(idx) != 0 {
-		return string(rm.Letter(tilemapping.MachineLetter(st.Board(idx))))
+func sqDisplayStr(bd *gamestate.Board, layout *BoardLayout, i, j int, rm *tilemapping.TileMapping) string {
+	idx := i*int(bd.NumCols()) + j
+	if bd.Tiles(idx) != 0 {
+		return string(rm.Letter(tilemapping.MachineLetter(bd.Tiles(idx))))
 	}
 	repr := string(enumToBonus(BonusSquare(layout.Layout[idx])))
 	if !ColorSupport {
@@ -43,7 +44,7 @@ func sqDisplayStr(st *gamestate.GameState, layout *BoardLayout, i, j int, rm *ti
 	}
 }
 
-func ToUserVisibleString(st *gamestate.GameState, layoutName string, rm *tilemapping.TileMapping) (string, error) {
+func ToUserVisibleString(bd *gamestate.Board, layoutName string, rm *tilemapping.TileMapping) (string, error) {
 	layout, err := GetBoardLayout(layoutName)
 	if err != nil {
 		return "", err
@@ -52,34 +53,45 @@ func ToUserVisibleString(st *gamestate.GameState, layoutName string, rm *tilemap
 	var str strings.Builder
 	paddingStr := "   "
 	row := paddingStr
-	for i := 0; i < int(st.NumBoardCols()); i++ {
+	for i := 0; i < int(bd.NumCols()); i++ {
 		row = row + fmt.Sprintf("%c", 'A'+i) + " "
 	}
 	str.WriteString(row + "\n")
-	str.WriteString(paddingStr + strings.Repeat("-", int(st.NumBoardCols())*2) + "\n")
-	for i := 0; i < int(st.NumBoardRows()); i++ {
+	str.WriteString(paddingStr + strings.Repeat("-", int(bd.NumCols())*2) + "\n")
+	for i := 0; i < int(bd.NumRows()); i++ {
 		row := fmt.Sprintf("%2d|", i+1)
-		for j := 0; j < int(st.NumBoardCols()); j++ {
-			row = row + sqDisplayStr(st, layout, i, j, rm) + " "
+		for j := 0; j < int(bd.NumCols()); j++ {
+			row = row + sqDisplayStr(bd, layout, i, j, rm) + " "
 		}
 		row += "|"
 		str.WriteString(row)
 		str.WriteString("\n")
 	}
-	str.WriteString(paddingStr + strings.Repeat("-", int(st.NumBoardCols())*2) + "\n")
+	str.WriteString(paddingStr + strings.Repeat("-", int(bd.NumCols())*2) + "\n")
 	str.WriteString("\n")
 	return str.String(), nil
 }
 
-func cwGameStateWithBoard() *gamestate.GameState {
-	builder := flatbuffers.NewBuilder(512)
-	boardVector := builder.CreateByteVector(make([]byte, 15*15))
+func BuildBoard(builder *flatbuffers.Builder, layoutName string) (flatbuffers.UOffsetT, error) {
 
-	gamestate.GameStateStart(builder)
-	gamestate.GameStateAddBoard(builder, boardVector)
-	tt := gamestate.GameStateEnd(builder)
-	builder.Finish(tt)
+	var enVal gamestate.BoardType
+	rows, cols := 15, 15
+	switch layoutName {
+	case board.CrosswordGameLayout, "":
+		enVal = gamestate.BoardTypeCrosswordGame
+	case board.SuperCrosswordGameLayout:
+		enVal = gamestate.BoardTypeSuperCrosswordGame
+		rows, cols = 21, 21
+	default:
+		return 0, fmt.Errorf("unsupported board layout: %s", layoutName)
+	}
 
-	st := gamestate.GetRootAsGameState(builder.FinishedBytes(), 0)
-	return st
+	boardVector := builder.CreateByteVector(make([]byte, rows*cols))
+
+	gamestate.BoardStart(builder)
+	gamestate.BoardAddTiles(builder, boardVector)
+	gamestate.BoardAddBoardType(builder, enVal)
+	gamestate.BoardAddNumRows(builder, uint8(rows))
+	gamestate.BoardAddNumCols(builder, uint8(cols))
+	return gamestate.BoardEnd(builder), nil
 }

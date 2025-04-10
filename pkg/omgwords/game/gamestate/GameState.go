@@ -41,160 +41,89 @@ func (rcv *GameState) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *GameState) BoardType() BoardType {
+func (rcv *GameState) NumPlayers() byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		return BoardType(rcv._tab.GetInt8(o + rcv._tab.Pos))
-	}
-	return 1
-}
-
-func (rcv *GameState) MutateBoardType(n BoardType) bool {
-	return rcv._tab.MutateInt8Slot(4, int8(n))
-}
-
-func (rcv *GameState) BoardIsEmpty() bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		return rcv._tab.GetBool(o + rcv._tab.Pos)
-	}
-	return true
-}
-
-func (rcv *GameState) MutateBoardIsEmpty(n bool) bool {
-	return rcv._tab.MutateBoolSlot(6, n)
-}
-
-func (rcv *GameState) NumPlayers() int8 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
-	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
 	}
 	return 2
 }
 
-func (rcv *GameState) MutateNumPlayers(n int8) bool {
-	return rcv._tab.MutateInt8Slot(8, n)
+func (rcv *GameState) MutateNumPlayers(n byte) bool {
+	return rcv._tab.MutateByteSlot(4, n)
 }
 
-func (rcv *GameState) MaxTilesOnRack() int8 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+func (rcv *GameState) MaxTilesOnRack() byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
 	}
 	return 7
 }
 
-func (rcv *GameState) MutateMaxTilesOnRack(n int8) bool {
-	return rcv._tab.MutateInt8Slot(10, n)
+func (rcv *GameState) MutateMaxTilesOnRack(n byte) bool {
+	return rcv._tab.MutateByteSlot(6, n)
 }
 
-func (rcv *GameState) NumBoardRows() int8 {
+func (rcv *GameState) ConsecutiveScorelessTurns() byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *GameState) MutateConsecutiveScorelessTurns(n byte) bool {
+	return rcv._tab.MutateByteSlot(8, n)
+}
+
+func (rcv *GameState) PlayerOnTurn() byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.GetByte(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *GameState) MutatePlayerOnTurn(n byte) bool {
+	return rcv._tab.MutateByteSlot(10, n)
+}
+
+func (rcv *GameState) Board(obj *Board) *Board {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
 	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
-	}
-	return 15
-}
-
-func (rcv *GameState) MutateNumBoardRows(n int8) bool {
-	return rcv._tab.MutateInt8Slot(12, n)
-}
-
-func (rcv *GameState) NumBoardCols() int8 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
-	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
-	}
-	return 15
-}
-
-func (rcv *GameState) MutateNumBoardCols(n int8) bool {
-	return rcv._tab.MutateInt8Slot(14, n)
-}
-
-func (rcv *GameState) Board(j int) byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.GetByte(a + flatbuffers.UOffsetT(j*1))
-	}
-	return 0
-}
-
-func (rcv *GameState) BoardLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
-	if o != 0 {
-		return rcv._tab.VectorLen(o)
-	}
-	return 0
-}
-
-func (rcv *GameState) BoardBytes() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(Board)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
 	}
 	return nil
 }
 
-func (rcv *GameState) MutateBoard(j int, n byte) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+func (rcv *GameState) Racks(obj *Rack, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.MutateByte(a+flatbuffers.UOffsetT(j*1), n)
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
 	}
 	return false
-}
-
-func (rcv *GameState) Racks(j int) byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.GetByte(a + flatbuffers.UOffsetT(j*1))
-	}
-	return 0
 }
 
 func (rcv *GameState) RacksLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
 		return rcv._tab.VectorLen(o)
 	}
 	return 0
 }
 
-func (rcv *GameState) RacksBytes() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
-	}
-	return nil
-}
-
-func (rcv *GameState) MutateRacks(j int, n byte) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
-	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.MutateByte(a+flatbuffers.UOffsetT(j*1), n)
-	}
-	return false
-}
-
-func (rcv *GameState) ConsecutiveScorelessTurns() int8 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
-	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
-	}
-	return 0
-}
-
-func (rcv *GameState) MutateConsecutiveScorelessTurns(n int8) bool {
-	return rcv._tab.MutateInt8Slot(20, n)
-}
-
 func (rcv *GameState) PlayerScores(j int) int32 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
@@ -203,7 +132,7 @@ func (rcv *GameState) PlayerScores(j int) int32 {
 }
 
 func (rcv *GameState) PlayerScoresLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
 	if o != 0 {
 		return rcv._tab.VectorLen(o)
 	}
@@ -211,7 +140,7 @@ func (rcv *GameState) PlayerScoresLength() int {
 }
 
 func (rcv *GameState) MutatePlayerScores(j int, n int32) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
@@ -219,20 +148,8 @@ func (rcv *GameState) MutatePlayerScores(j int, n int32) bool {
 	return false
 }
 
-func (rcv *GameState) PlayerOnTurn() int8 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(24))
-	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
-	}
-	return 0
-}
-
-func (rcv *GameState) MutatePlayerOnTurn(n int8) bool {
-	return rcv._tab.MutateInt8Slot(24, n)
-}
-
 func (rcv *GameState) Bag(obj *TileBag) *TileBag {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(26))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
 	if o != 0 {
 		x := rcv._tab.Indirect(o + rcv._tab.Pos)
 		if obj == nil {
@@ -244,53 +161,54 @@ func (rcv *GameState) Bag(obj *TileBag) *TileBag {
 	return nil
 }
 
+func (rcv *GameState) Timers(obj *Timers) *Timers {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(Timers)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
+	}
+	return nil
+}
+
 func GameStateStart(builder *flatbuffers.Builder) {
-	builder.StartObject(12)
+	builder.StartObject(9)
 }
-func GameStateAddBoardType(builder *flatbuffers.Builder, boardType BoardType) {
-	builder.PrependInt8Slot(0, int8(boardType), 1)
+func GameStateAddNumPlayers(builder *flatbuffers.Builder, numPlayers byte) {
+	builder.PrependByteSlot(0, numPlayers, 2)
 }
-func GameStateAddBoardIsEmpty(builder *flatbuffers.Builder, boardIsEmpty bool) {
-	builder.PrependBoolSlot(1, boardIsEmpty, true)
+func GameStateAddMaxTilesOnRack(builder *flatbuffers.Builder, maxTilesOnRack byte) {
+	builder.PrependByteSlot(1, maxTilesOnRack, 7)
 }
-func GameStateAddNumPlayers(builder *flatbuffers.Builder, numPlayers int8) {
-	builder.PrependInt8Slot(2, numPlayers, 2)
+func GameStateAddConsecutiveScorelessTurns(builder *flatbuffers.Builder, consecutiveScorelessTurns byte) {
+	builder.PrependByteSlot(2, consecutiveScorelessTurns, 0)
 }
-func GameStateAddMaxTilesOnRack(builder *flatbuffers.Builder, maxTilesOnRack int8) {
-	builder.PrependInt8Slot(3, maxTilesOnRack, 7)
-}
-func GameStateAddNumBoardRows(builder *flatbuffers.Builder, numBoardRows int8) {
-	builder.PrependInt8Slot(4, numBoardRows, 15)
-}
-func GameStateAddNumBoardCols(builder *flatbuffers.Builder, numBoardCols int8) {
-	builder.PrependInt8Slot(5, numBoardCols, 15)
+func GameStateAddPlayerOnTurn(builder *flatbuffers.Builder, playerOnTurn byte) {
+	builder.PrependByteSlot(3, playerOnTurn, 0)
 }
 func GameStateAddBoard(builder *flatbuffers.Builder, board flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(6, flatbuffers.UOffsetT(board), 0)
-}
-func GameStateStartBoardVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(1, numElems, 1)
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(board), 0)
 }
 func GameStateAddRacks(builder *flatbuffers.Builder, racks flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(racks), 0)
+	builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(racks), 0)
 }
 func GameStateStartRacksVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
-	return builder.StartVector(1, numElems, 1)
-}
-func GameStateAddConsecutiveScorelessTurns(builder *flatbuffers.Builder, consecutiveScorelessTurns int8) {
-	builder.PrependInt8Slot(8, consecutiveScorelessTurns, 0)
+	return builder.StartVector(4, numElems, 4)
 }
 func GameStateAddPlayerScores(builder *flatbuffers.Builder, playerScores flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(9, flatbuffers.UOffsetT(playerScores), 0)
+	builder.PrependUOffsetTSlot(6, flatbuffers.UOffsetT(playerScores), 0)
 }
 func GameStateStartPlayerScoresVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
-func GameStateAddPlayerOnTurn(builder *flatbuffers.Builder, playerOnTurn int8) {
-	builder.PrependInt8Slot(10, playerOnTurn, 0)
-}
 func GameStateAddBag(builder *flatbuffers.Builder, bag flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(11, flatbuffers.UOffsetT(bag), 0)
+	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(bag), 0)
+}
+func GameStateAddTimers(builder *flatbuffers.Builder, timers flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(timers), 0)
 }
 func GameStateEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

@@ -288,21 +288,21 @@ func TestPutBack(t *testing.T) {
 	is.Equal(bag.BagBytes(), newBag.BagBytes())
 }
 
-// func BenchmarkRemoveTiles(b *testing.B) {
-// 	ld, _ := tilemapping.EnglishLetterDistribution(DefaultConfig.WGLConfig())
-// 	// remove 14 tiles
-// 	toRemove := []tilemapping.MachineLetter{
-// 		10, 15, 25, 5, 4, 21, 5, 12, 22, 7, 23, 15, 9, 1}
-// 	b.ResetTimer()
-// 	// 4473 ns/op on themonolith
-// 	for i := 0; i < b.N; i++ {
-// 		b.StopTimer()
-// 		st := cwGameStateWithBag(ld)
-// 		bag := st.Bag(nil)
-// 		b.StartTimer()
-// 		RemoveTiles(bag, toRemove)
-// 	}
-// }
+func BenchmarkRemoveTiles(b *testing.B) {
+	ld, _ := tilemapping.EnglishLetterDistribution(DefaultConfig.WGLConfig())
+	// remove 14 tiles
+	toRemove := []tilemapping.MachineLetter{
+		10, 15, 25, 5, 4, 21, 5, 12, 22, 7, 23, 15, 9, 1}
+	b.ResetTimer()
+	// 4473 ns/op on themonolith
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		st := cwGameStateWithBag(ld)
+		bag := st.Bag(nil)
+		b.StartTimer()
+		RemoveTiles(bag, toRemove)
+	}
+}
 
 func BenchmarkDraw(b *testing.B) {
 	ld, _ := tilemapping.EnglishLetterDistribution(DefaultConfig.WGLConfig())
