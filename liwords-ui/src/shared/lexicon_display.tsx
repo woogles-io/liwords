@@ -39,7 +39,7 @@ export const lexiconOrder = [
   "CSW24",
   "NWL23",
   "ECWL",
-  "RD28",
+  "RD29",
   "FRA24",
   "FILE2017",
   "NSF23",
@@ -48,7 +48,7 @@ export const lexiconOrder = [
   "OSPS50",
 ];
 
-export const puzzleLexica = ["CSW24", "NWL23", "RD28", "FRA24"];
+export const puzzleLexica = ["CSW24", "NWL23", "RD29", "FRA24"];
 
 export const LexiconFormItem = React.memo((props: Props) => {
   const options = lexiconOrder

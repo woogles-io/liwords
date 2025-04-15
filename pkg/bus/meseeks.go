@@ -348,23 +348,26 @@ func (b *Bus) gameRequestForSeek(ctx context.Context, req *pb.SeekRequest,
 	return gameRequest, lastOpp, nil
 }
 
-func validateCELLexicon(lexicon string, botType macondopb.BotRequest_BotCode) error {
-	// If the lexicon is not an english-language one, it is not compatible with CEL.
+func validateCommonWordLexicon(lexicon string, botType macondopb.BotRequest_BotCode) error {
+	// validate that the lexicon is compatible with the bot type, if the user has
+	// selected a common-word bot
 	if strings.HasPrefix(lexicon, "NWL") ||
-		strings.HasPrefix(lexicon, "CSW") {
+		strings.HasPrefix(lexicon, "CSW") ||
+		strings.HasPrefix(lexicon, "RD") {
 
-		// Ironically, the CEL lexicon itself is not compatible with CEL bots,
-		// because CEL bots work on a word list that is a subset of the actual
+		// Ironically, the CEL lexicon itself is not compatible with Common Word bots,
+		// because Common Word bots work on a word list that is a subset of the actual
 		// list. Just use the regular probability bots if the user is using the
-		// CEL lexicon.
+		// CEL lexicon. Similarly for the CGL lexicon (if we ever support selecting that
+		// directly in liwords).
 		return nil
 	}
-	if botType == macondopb.BotRequest_LEVEL1_CEL_BOT ||
-		botType == macondopb.BotRequest_LEVEL2_CEL_BOT ||
-		botType == macondopb.BotRequest_LEVEL3_CEL_BOT ||
-		botType == macondopb.BotRequest_LEVEL4_CEL_BOT {
+	if botType == macondopb.BotRequest_LEVEL1_COMMON_WORD_BOT ||
+		botType == macondopb.BotRequest_LEVEL2_COMMON_WORD_BOT ||
+		botType == macondopb.BotRequest_LEVEL3_COMMON_WORD_BOT ||
+		botType == macondopb.BotRequest_LEVEL4_COMMON_WORD_BOT {
 
-		return errors.New("CEL bots are not compatible with this lexicon")
+		return errors.New("Common word bots are not compatible with this lexicon")
 	}
 
 	return nil
@@ -393,7 +396,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.SeekRequest, botUserID str
 		return err
 	}
 
-	err = validateCELLexicon(req.GameRequest.Lexicon, req.GameRequest.BotType)
+	err = validateCommonWordLexicon(req.GameRequest.Lexicon, req.GameRequest.BotType)
 	if err != nil {
 		return err
 	}

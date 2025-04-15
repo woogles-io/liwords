@@ -116,7 +116,7 @@ export const SoughtGames = (props: Props) => {
         "CSW24",
         "NWL23",
         "ECWL",
-        "RD28",
+        "RD29",
         "FRA24",
         "FILE2017",
         "NSF23",

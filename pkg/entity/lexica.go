@@ -12,7 +12,7 @@ func init() {
 		"NSF23",
 		"NSWL20",
 		"NWL23",
-		"RD28",
+		"RD29",
 		"DISC2",
 		"OSPS50",
 	)

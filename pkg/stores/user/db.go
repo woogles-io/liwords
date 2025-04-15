@@ -36,10 +36,10 @@ var botNames = map[macondopb.BotRequest_BotCode]string{
 	macondopb.BotRequest_LEVEL3_PROBABILISTIC: "BetterBot",
 	macondopb.BotRequest_LEVEL4_PROBABILISTIC: "STEEBot",
 
-	// For english. Reuse level1-3 names from above.
-	macondopb.BotRequest_LEVEL1_CEL_BOT: "BeginnerBot",
-	macondopb.BotRequest_LEVEL2_CEL_BOT: "BasicBot",
-	macondopb.BotRequest_LEVEL4_CEL_BOT: "BetterBot",
+	// For dictionaries with common-word. Reuse level1-3 names from above.
+	macondopb.BotRequest_LEVEL1_COMMON_WORD_BOT: "BeginnerBot",
+	macondopb.BotRequest_LEVEL2_COMMON_WORD_BOT: "BasicBot",
+	macondopb.BotRequest_LEVEL4_COMMON_WORD_BOT: "BetterBot",
 
 	macondopb.BotRequest_SIMMING_BOT: "BestBot",
 }
