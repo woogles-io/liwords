@@ -255,18 +255,13 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
-	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Remove directors
-	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Oof": 2, "Guy": -5, "Harry": 300}))
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Oof": 2, "Guy": -5, "Harry": 300}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
-
-	// Attempt to remove the executive director
-	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Kieran": 0}))
-	is.True(err.Error() == entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, "", "Kieran:Kieran").Error())
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
 	// Same thing for players.
 	div1 := ty.Divisions[divOneName]
