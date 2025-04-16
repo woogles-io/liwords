@@ -435,7 +435,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
       }
       players.push({
         id: username,
-        rating: Number(vals.players[i].rating) || 1,
+        rating: Number(vals.players[i].rating) || 0,
       });
     }
 

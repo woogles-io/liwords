@@ -37,7 +37,7 @@ func TestExport(t *testing.T) {
 	}
 	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2})
 
-	ty, err := makeTournament(ctx, tstore, cfg, directors)
+	ty, err := makeTournament(ctx, tstore, cfg, directors, "export")
 	is.NoErr(err)
 
 	for _, tc := range testcases {

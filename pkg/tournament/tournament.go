@@ -98,18 +98,12 @@ func NewTournament(ctx context.Context,
 	scheduledEndTime *time.Time,
 	createdBy uint,
 ) (*entity.Tournament, error) {
-
-	executiveDirector, err := getExecutiveDirector(name, directors)
-	if err != nil {
-		return nil, err
-	}
-
 	id := shortuuid.New()
 
 	entTournament := &entity.Tournament{Name: name,
 		Description:        description,
 		Directors:          directors,
-		ExecutiveDirector:  executiveDirector,
+		ExecutiveDirector:  "",
 		IsStarted:          false,
 		Divisions:          map[string]*entity.TournamentDivision{},
 		UUID:               id,
@@ -122,7 +116,7 @@ func NewTournament(ctx context.Context,
 		CreatedBy:          createdBy,
 	}
 
-	err = tournamentStore.Create(ctx, entTournament)
+	err := tournamentStore.Create(ctx, entTournament)
 	if err != nil {
 		return nil, err
 	}
@@ -530,9 +524,6 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	// a maximum of maybe 10 existing directors
 
 	for _, newDirector := range directors.Persons {
-		if newDirector.Id == t.ExecutiveDirector || newDirector.Rating == 0 {
-			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
-		}
 		for _, existingDirector := range t.Directors.Persons {
 			if newDirector.Id == existingDirector.Id {
 				return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIRECTOR_EXISTS, t.Name, "", newDirector.Id)
@@ -1454,33 +1445,12 @@ func PairingsToResponse(id string, division string, pairings []*ipc.Pairing, sta
 		DivisionStandings: standings}
 }
 
-func getExecutiveDirector(tournamentName string, directors *ipc.TournamentPersons) (string, error) {
-	err := entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_EXACTLY_ONE_EXECUTIVE_DIRECTOR, tournamentName, "")
-	executiveDirector := ""
-	for _, director := range directors.Persons {
-		if director.Rating == 0 {
-			if executiveDirector != "" {
-				return "", err
-			} else {
-				executiveDirector = director.Id
-			}
-		}
-	}
-	if executiveDirector == "" {
-		return "", err
-	}
-	return executiveDirector, nil
-}
-
 func removeTournamentPersons(tournamentName string, divisionName string, persons *ipc.TournamentPersons, personsToRemove *ipc.TournamentPersons, areDirectors bool) (*ipc.TournamentPersons, error) {
 	indexesToRemove := []int{}
 	for _, personToRemove := range personsToRemove.Persons {
 		present := false
 		for index, person := range persons.Persons {
 			if personToRemove.Id == person.Id {
-				if person.Rating == 0 && areDirectors {
-					return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, divisionName, person.Id)
-				}
 				present = true
 				indexesToRemove = append(indexesToRemove, index)
 				break
