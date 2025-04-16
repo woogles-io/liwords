@@ -43,7 +43,7 @@ import {
 } from "../../constants/board_layout";
 import { clone, create } from "@bufbuild/protobuf";
 
-type TileDistribution = { [ml: MachineLetter]: number };
+export type TileDistribution = { [ml: MachineLetter]: number };
 
 export type RawPlayerInfo = {
   userID: string;
