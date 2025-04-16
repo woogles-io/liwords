@@ -564,3 +564,21 @@ export const useDrawing = (dim: number) => {
   );
   return ret;
 };
+
+export const consoleInstructions =
+  "You pressed 0. Now press one of these keys:" +
+  "\n0 = Toggle drawing" +
+  "\nU = Undo" +
+  "\nW = Wipe" +
+  "\nF = Freehand mode" +
+  "\nL = Line mode" +
+  "\nA = Arrow mode" +
+  "\nQ = Quadrangle mode" +
+  "\nC = Circle mode" +
+  "\nS = Snap (does not affect freehand)" +
+  "\nD = Do not snap" +
+  "\nR = Red pen" +
+  "\nG = Green pen" +
+  "\nB = Blue pen" +
+  "\nY = Yellow pen" +
+  "\nE = Eraser";

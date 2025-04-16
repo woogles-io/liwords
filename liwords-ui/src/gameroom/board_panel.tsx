@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { Button, Tooltip, Affix, App } from "antd";
 import { Modal } from "../utils/focus_modal";
@@ -26,7 +20,6 @@ import {
 } from "../utils/cwgame/common";
 
 import GameBoard from "./board";
-import { DrawingHandlersSetterContext } from "./drawing";
 import GameControls from "./game_controls";
 import { Rack } from "./rack";
 import { ExchangeTiles } from "./exchange_tiles";
@@ -37,7 +30,6 @@ import {
   handleTileDeletion,
   returnTileToRack,
   designateBlank,
-  stableInsertRack,
   nextArrowStateAfterTilePlacement,
 } from "../utils/cwgame/tile_placement";
 
@@ -51,15 +43,6 @@ import {
 } from "../utils/cwgame/game_event";
 import { Board } from "../utils/cwgame/board";
 import { encodeToSocketFmt } from "../utils/protobuf";
-import {
-  useExaminableGameContextStoreContext,
-  useExaminableGameEndMessageStoreContext,
-  useExaminableTimerStoreContext,
-  useExamineStoreContext,
-  useGameContextStoreContext,
-  useTentativeTileContext,
-  useTimerStoreContext,
-} from "../store/store";
 import { isSpanish, sharedEnableAutoShuffle } from "../store/constants";
 import { BlankSelector } from "./blank_selector";
 import { GameMetaMessage } from "./game_meta_message";
@@ -70,12 +53,7 @@ import {
   PlayState,
 } from "../gen/api/vendor/macondo/macondo_pb";
 import { TilePreview } from "./tile";
-import {
-  Alphabet,
-  machineLetterToRune,
-  machineWordToRunes,
-  runesToMachineWord,
-} from "../constants/alphabets";
+import { Alphabet } from "../constants/alphabets";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   MatchUserSchema,
@@ -89,20 +67,21 @@ import {
   PlayerInfo,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
-import { flashError, useClient } from "../utils/hooks/connect";
+import { useClient } from "../utils/hooks/connect";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 import { RackEditor } from "./rack_editor";
 import { shuffleLetters, gcgExport, backupKey } from "./board_panel_utils";
 import { handleBlindfoldKeydown } from "./blindfold_mode";
 import { useBoardPanelState } from "./useBoardPanelState";
+import { useTilePlacement } from "./useTilePlacement";
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = "Enter";
 import variables from "../base.module.scss";
-import { Client } from "@connectrpc/connect";
 import { create, toBinary } from "@bufbuild/protobuf";
+import { consoleInstructions as drawingConsoleInstructions } from "./drawing";
 const { colorPrimary } = variables;
 
 type Props = {
@@ -186,6 +165,19 @@ export const BoardPanel = React.memo((props: Props) => {
     currentRack: props.currentRack,
     puzzleMode: props.puzzleMode,
     boardEditingMode: props.boardEditingMode,
+  });
+
+  const { recallTiles, shuffleTiles, moveRackTile } = useTilePlacement({
+    arrowProperties,
+    setArrowProperties,
+    placedTiles,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+    displayedRack,
+    setDisplayedRack,
+    board: props.board,
+    currentRack: props.currentRack,
+    alphabet: props.alphabet,
   });
 
   const {
@@ -339,90 +331,6 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore,
     ],
   );
-
-  const recallTiles = useCallback(() => {
-    if (arrowProperties.show) {
-      let { row, col } = arrowProperties;
-      const { horizontal } = arrowProperties;
-      const matchesLocation = ({
-        row: tentativeRow,
-        col: tentativeCol,
-      }: {
-        row: number;
-        col: number;
-      }) => row === tentativeRow && col === tentativeCol;
-      if (
-        horizontal &&
-        row >= 0 &&
-        row < props.board.dim &&
-        col > 0 &&
-        col <= props.board.dim
-      ) {
-        // Inefficient way to get around TypeScript restriction.
-        const placedTilesArray = Array.from(placedTiles);
-        let best = col;
-        while (col > 0) {
-          --col;
-          if (
-            props.board.letters[row * props.board.dim + col] !==
-            EmptyBoardSpaceMachineLetter
-          ) {
-            // continue
-          } else if (placedTilesArray.some(matchesLocation)) {
-            best = col;
-          } else {
-            break;
-          }
-        }
-        if (best !== arrowProperties.col) {
-          setArrowProperties({ ...arrowProperties, col: best });
-        }
-      } else if (
-        !horizontal &&
-        col >= 0 &&
-        col < props.board.dim &&
-        row > 0 &&
-        row <= props.board.dim
-      ) {
-        // Inefficient way to get around TypeScript restriction.
-        const placedTilesArray = Array.from(placedTiles);
-        let best = row;
-        while (row > 0) {
-          --row;
-          if (
-            props.board.letters[row * props.board.dim + col] !==
-            EmptyBoardSpaceMachineLetter
-          ) {
-            // continue
-          } else if (placedTilesArray.some(matchesLocation)) {
-            best = row;
-          } else {
-            break;
-          }
-        }
-        if (best !== arrowProperties.row) {
-          setArrowProperties({ ...arrowProperties, row: best });
-        }
-      }
-    }
-
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(props.currentRack);
-  }, [
-    arrowProperties,
-    placedTiles,
-    props.board.dim,
-    props.board.letters,
-    props.currentRack,
-    setPlacedTilesTempScore,
-    setPlacedTiles,
-    setDisplayedRack,
-  ]);
-
-  const shuffleTiles = useCallback(() => {
-    setDisplayedRack(shuffleLetters(displayedRack));
-  }, [setDisplayedRack, displayedRack]);
 
   const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<Array<MachineLetter>>(undefined);
@@ -1035,33 +943,6 @@ export const BoardPanel = React.memo((props: Props) => {
     ],
   );
 
-  const moveRackTile = useCallback(
-    (newIndex: number | undefined, oldIndex: number | undefined) => {
-      if (typeof newIndex === "number" && typeof oldIndex === "number") {
-        const leftIndex = Math.min(oldIndex, newIndex);
-        const rightIndex = Math.max(oldIndex, newIndex) + 1;
-        // Within only the affected area, replace oldIndex with empty,
-        // and then insert that removed tile at the desired place.
-        setDisplayedRack(
-          displayedRack
-            .slice(0, leftIndex)
-            .concat(
-              stableInsertRack(
-                displayedRack
-                  .slice(leftIndex, oldIndex)
-                  .concat(EmptyRackSpaceMachineLetter)
-                  .concat(displayedRack.slice(oldIndex + 1, rightIndex)),
-                newIndex - leftIndex,
-                displayedRack[oldIndex],
-              ),
-            )
-            .concat(displayedRack.slice(rightIndex)),
-        );
-      }
-    },
-    [displayedRack, setDisplayedRack],
-  );
-
   const showExchangeModal = useCallback(() => {
     setCurrentMode("EXCHANGE_MODAL");
   }, []);
@@ -1136,24 +1017,7 @@ export const BoardPanel = React.memo((props: Props) => {
             if (e.key === "0") {
               e.preventDefault();
               setCurrentMode("DRAWING_HOTKEY");
-              console.log(
-                "You pressed 0. Now press one of these keys:" +
-                  "\n0 = Toggle drawing" +
-                  "\nU = Undo" +
-                  "\nW = Wipe" +
-                  "\nF = Freehand mode" +
-                  "\nL = Line mode" +
-                  "\nA = Arrow mode" +
-                  "\nQ = Quadrangle mode" +
-                  "\nC = Circle mode" +
-                  "\nS = Snap (does not affect freehand)" +
-                  "\nD = Do not snap" +
-                  "\nR = Red pen" +
-                  "\nG = Green pen" +
-                  "\nB = Blue pen" +
-                  "\nY = Yellow pen" +
-                  "\nE = Eraser",
-              );
+              console.log(drawingConsoleInstructions);
               return;
             }
           }
