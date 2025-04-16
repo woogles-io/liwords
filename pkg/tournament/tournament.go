@@ -1451,9 +1451,6 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 		present := false
 		for index, person := range persons.Persons {
 			if personToRemove.Id == person.Id {
-				if person.Rating == 0 && areDirectors {
-					return nil, entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_EXECUTIVE_DIRECTOR_REMOVAL, tournamentName, divisionName, person.Id)
-				}
 				present = true
 				indexesToRemove = append(indexesToRemove, index)
 				break
