@@ -17,5 +17,11 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "typings"]
+  "include": [
+    "src",
+    "eslint.config.mjs",
+    "rsbuild.config.ts",
+    "typings",
+    "vitest.config.ts"
+  ]
 }

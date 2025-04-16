@@ -6,12 +6,7 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
 import { isClubType } from "../store/constants";
-import {
-  ShopFilled,
-  ShopOutlined,
-  SunOutlined,
-  TeamOutlined,
-} from "@ant-design/icons";
+import { TeamOutlined } from "@ant-design/icons";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;

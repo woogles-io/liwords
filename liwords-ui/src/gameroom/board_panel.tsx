@@ -177,7 +177,6 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack,
     board: props.board,
     currentRack: props.currentRack,
-    alphabet: props.alphabet,
   });
 
   const {
@@ -254,6 +253,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       gameContext.alphabet,
       gameContext.nickToPlayerOrder,
+      boardContainer,
       boardEditingMode,
       examinableGameContext.onturn,
       isExamining,
@@ -494,6 +494,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.boardEditingMode,
     props.currentRack,
     props.puzzleMode,
+    setArrowProperties,
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
@@ -531,6 +532,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.currentRack,
     props.boardEditingMode,
     props.lexicon,
+    setExchangeAllowed,
   ]);
 
   useEffect(() => {
@@ -619,7 +621,7 @@ export const BoardPanel = React.memo((props: Props) => {
     if (props.boardEditingMode) {
       setCurrentMode("NORMAL");
     }
-  }, [numTurns, props.boardEditingMode]);
+  }, [numTurns, props.boardEditingMode, setCurrentMode]);
 
   const squareClicked = useCallback(
     (row: number, col: number) => {
@@ -630,7 +632,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
       handleUnsetHover?.();
     },
-    [arrowProperties, board, handleUnsetHover],
+    [arrowProperties, board, handleUnsetHover, setArrowProperties],
   );
 
   const keydown = useCallback(
@@ -659,18 +661,24 @@ export const BoardPanel = React.memo((props: Props) => {
           blindfoldUseNPA,
           setBlindfoldUseNPA,
           isMyTurn,
-          gameContext,
-          examinableGameContext,
-          examinableTimerContext,
-          playerMeta: props.playerMeta,
-          username: props.username,
+          pool: gameContext.pool,
+          players: gameContext.players,
+          board: gameContext.board,
+          turns: gameContext.turns,
+          playState: examinableGameContext.playState,
+          p0Time: examinableTimerContext.p0,
+          p1Time: examinableTimerContext.p1,
+          playerMeta,
+          username,
           exchangeAllowed,
           setCurrentMode,
           makeMove,
-          props,
+          gameDone: props.gameDone,
           handleNeitherShortcut,
           setArrowProperties,
           nicknameFromEvt,
+          currentRack: props.currentRack,
+          alphabet: props.alphabet,
         });
       } else if (currentMode === "NORMAL") {
         if (
@@ -759,17 +767,16 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties,
       blindfoldCommand,
       blindfoldUseNPA,
-      gameContext.pool,
-      gameContext.board,
       examinableGameContext.playState,
       examinableTimerContext.p0,
       examinableTimerContext.p1,
+      gameContext.pool,
+      gameContext.board,
       gameContext.players,
       gameContext.turns,
-      isExamining,
       props.alphabet,
-      props.playerMeta,
-      props.username,
+      playerMeta,
+      username,
       currentMode,
       displayedRack,
       exchangeAllowed,
@@ -786,6 +793,11 @@ export const BoardPanel = React.memo((props: Props) => {
       props.gameDone,
       recallTiles,
       shuffleTiles,
+      setCurrentMode,
+      setArrowProperties,
+      handlePassShortcut,
+      handleNeitherShortcut,
+      handleChallengeShortcut,
     ],
   );
 
@@ -820,6 +832,8 @@ export const BoardPanel = React.memo((props: Props) => {
       setDisplayedRack,
       setPlacedTilesTempScore,
       setPlacedTiles,
+      setArrowProperties,
+      setCurrentMode,
     ],
   );
 
@@ -875,14 +889,19 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles,
       setPlacedTilesTempScore,
       props.board,
+      setArrowProperties,
+      setCurrentMode,
     ],
   );
 
-  const handleBoardTileClick = useCallback((ml: MachineLetter) => {
-    if (ml === BlankMachineLetter) {
-      setCurrentMode("BLANK_MODAL");
-    }
-  }, []);
+  const handleBoardTileClick = useCallback(
+    (ml: MachineLetter) => {
+      if (ml === BlankMachineLetter) {
+        setCurrentMode("BLANK_MODAL");
+      }
+    },
+    [setCurrentMode],
+  );
 
   const handleBlankSelection = useCallback(
     (letter: MachineLetter) => {
@@ -907,12 +926,13 @@ export const BoardPanel = React.memo((props: Props) => {
       props.board,
       setPlacedTiles,
       setPlacedTilesTempScore,
+      setCurrentMode,
     ],
   );
 
   const handleBlankModalCancel = useCallback(() => {
     setCurrentMode("NORMAL");
-  }, []);
+  }, [setCurrentMode]);
 
   const returnToRack = useCallback(
     (rackIndex: number | undefined, tileIndex: number | undefined) => {
@@ -940,19 +960,20 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles,
       props.alphabet,
       props.board,
+      setArrowProperties,
     ],
   );
 
   const showExchangeModal = useCallback(() => {
     setCurrentMode("EXCHANGE_MODAL");
-  }, []);
+  }, [setCurrentMode]);
 
   const handleExchangeModalOk = useCallback(
     (exchangedTiles: Array<MachineLetter>) => {
       setCurrentMode("NORMAL");
       makeMove("exchange", exchangedTiles);
     },
-    [makeMove],
+    [makeMove, setCurrentMode],
   );
 
   const rematch = useCallback(() => {
@@ -1033,7 +1054,13 @@ export const BoardPanel = React.memo((props: Props) => {
       }
       keydown(e);
     },
-    [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown],
+    [
+      currentMode,
+      drawingCanBeEnabled,
+      handleDrawingKeyDown,
+      keydown,
+      setCurrentMode,
+    ],
   );
 
   useEffect(() => {
@@ -1046,7 +1073,7 @@ export const BoardPanel = React.memo((props: Props) => {
     ) {
       setCurrentMode("EDITING_RACK");
     }
-  }, [currentMode, props.boardEditingMode, props.currentRack]);
+  }, [currentMode, props.boardEditingMode, props.currentRack, setCurrentMode]);
 
   useEffect(() => {
     if (
@@ -1056,7 +1083,7 @@ export const BoardPanel = React.memo((props: Props) => {
     ) {
       setCurrentMode("NORMAL");
     }
-  }, [currentMode, props.currentRack]);
+  }, [currentMode, props.currentRack, setCurrentMode]);
 
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
@@ -1081,7 +1108,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode("NORMAL");
-  }, []);
+  }, [setCurrentMode]);
   const handleRequestAbort = useCallback(() => {
     sendMetaEvent(GameMetaEvent_EventType.REQUEST_ABORT);
   }, [sendMetaEvent]);

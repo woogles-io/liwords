@@ -9,14 +9,9 @@ import {
   useTentativeTileContext,
   useTimerStoreContext,
 } from "../store/store";
-import {
-  MachineLetter,
-  EphemeralTile,
-  EmptyRackSpaceMachineLetter,
-} from "../utils/cwgame/common";
+import { MachineLetter } from "../utils/cwgame/common";
 import { Board } from "../utils/cwgame/board";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
-import { GameEvent } from "../gen/api/vendor/macondo/macondo_pb";
 
 type UseBoardPanelStateProps = {
   playerMeta: Array<PlayerInfo>;

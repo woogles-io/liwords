@@ -4,7 +4,6 @@ import {
   EphemeralTile,
   EmptyBoardSpaceMachineLetter,
   EmptyRackSpaceMachineLetter,
-  MachineWord,
 } from "../utils/cwgame/common";
 import { Board } from "../utils/cwgame/board";
 import { stableInsertRack } from "../utils/cwgame/tile_placement";
@@ -29,7 +28,6 @@ type UseTilePlacementParams = {
   setDisplayedRack: (rack: Array<MachineLetter>) => void;
   board: Board;
   currentRack: Array<MachineLetter>;
-  alphabet: any;
 };
 
 export function useTilePlacement(params: UseTilePlacementParams) {
@@ -43,7 +41,6 @@ export function useTilePlacement(params: UseTilePlacementParams) {
     setDisplayedRack,
     board,
     currentRack,
-    alphabet,
   } = params;
 
   // Recall all tiles to rack

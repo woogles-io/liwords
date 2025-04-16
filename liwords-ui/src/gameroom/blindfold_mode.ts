@@ -11,13 +11,17 @@ import {
 } from "../utils/cwgame/blindfold";
 import { singularCount } from "../utils/plural";
 import {
+  Alphabet,
   machineLetterToRune,
   machineWordToRunes,
   runesToMachineWord,
 } from "../constants/alphabets";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
-import { GameState } from "../store/reducers/game_reducer";
-import { Times } from "../store/timer_controller";
+import {
+  RawPlayerInfo,
+  TileDistribution,
+} from "../store/reducers/game_reducer";
+import { Board } from "../utils/cwgame/board";
 
 type BlindfoldParams = {
   key: string;
@@ -26,9 +30,13 @@ type BlindfoldParams = {
   blindfoldUseNPA: boolean;
   setBlindfoldUseNPA: (val: boolean) => void;
   isMyTurn: boolean;
-  gameContext: GameState;
-  examinableGameContext: GameState;
-  examinableTimerContext: Times;
+  pool: TileDistribution;
+  board: Board;
+  turns: Array<GameEvent>;
+  players: Array<RawPlayerInfo>;
+  playState: number;
+  p0Time: number;
+  p1Time: number;
   playerMeta: Array<PlayerInfo>;
   username: string;
   exchangeAllowed: boolean;
@@ -44,7 +52,7 @@ type BlindfoldParams = {
     >
   >;
   makeMove: (move: string, addl?: Array<MachineLetter>) => void;
-  props: any;
+  gameDone: boolean;
   handleNeitherShortcut: { current: (() => void) | null };
   setArrowProperties: (props: {
     row: number;
@@ -52,7 +60,9 @@ type BlindfoldParams = {
     horizontal: boolean;
     show: boolean;
   }) => void;
-  nicknameFromEvt: (evt: any, playerMeta: Array<PlayerInfo>) => string;
+  nicknameFromEvt: (evt: GameEvent, playerMeta: Array<PlayerInfo>) => string;
+  currentRack: MachineWord;
+  alphabet: Alphabet;
 };
 
 export function handleBlindfoldKeydown(
@@ -66,16 +76,22 @@ export function handleBlindfoldKeydown(
     blindfoldUseNPA,
     setBlindfoldUseNPA,
     isMyTurn,
-    gameContext,
-    examinableGameContext,
-    examinableTimerContext,
+    pool,
+    players,
+    board,
+    turns,
+    playState,
+    p0Time,
+    p1Time,
     playerMeta,
     username,
     exchangeAllowed,
     setCurrentMode,
     makeMove,
-    props,
+    gameDone,
     handleNeitherShortcut,
+    currentRack,
+    alphabet,
   } = params;
 
   function PlayerScoresAndTimes(): [
@@ -92,41 +108,40 @@ export function handleBlindfoldKeydown(
       return minsOvertime * 10;
     };
 
-    let p0 = gameContext.players[0];
-    let p1 = gameContext.players[1];
-
-    let p0Time = examinableTimerContext.p0;
-    let p1Time = examinableTimerContext.p1;
+    let p0 = players[0];
+    let p1 = players[1];
+    let p0TimeU = p0Time;
+    let p1TimeU = p1Time;
 
     if (playerMeta[0].userId === p1.userID) {
       [p0, p1] = [p1, p0];
-      [p0Time, p1Time] = [p1Time, p0Time];
+      [p0TimeU, p1TimeU] = [p1Time, p0Time];
     }
 
-    const playing = examinableGameContext.playState !== PlayState.GAME_OVER;
+    const playing = playState !== PlayState.GAME_OVER;
     const applyTimePenalty = playing;
     let p0Score = p0?.score ?? 0;
-    if (applyTimePenalty) p0Score -= timepenalty(p0Time);
+    if (applyTimePenalty) p0Score -= timepenalty(p0TimeU);
     let p1Score = p1?.score ?? 0;
-    if (applyTimePenalty) p1Score -= timepenalty(p1Time);
+    if (applyTimePenalty) p1Score -= timepenalty(p1TimeU);
 
     if (playerMeta[1].nickname === username) {
       return [
         "you",
         p1Score,
-        playerTimeToText(p1Time),
+        playerTimeToText(p1TimeU),
         "opponent",
         p0Score,
-        playerTimeToText(p0Time),
+        playerTimeToText(p0TimeU),
       ];
     }
     return [
       "you",
       p0Score,
-      playerTimeToText(p0Time),
+      playerTimeToText(p0TimeU),
       "opponent",
       p1Score,
-      playerTimeToText(p1Time),
+      playerTimeToText(p1TimeU),
     ];
   }
 
@@ -192,16 +207,16 @@ export function handleBlindfoldKeydown(
   let newBlindfoldCommand = blindfoldCommand;
   if (key === "Enter") {
     if (blindfoldCommand.toUpperCase() === "P") {
-      if (gameContext.turns.length < 2) {
+      if (turns.length < 2) {
         say("no previous play", "");
       } else {
-        sayGameEvent(gameContext.turns[gameContext.turns.length - 2]);
+        sayGameEvent(turns[turns.length - 2]);
       }
     } else if (blindfoldCommand.toUpperCase() === "C") {
-      if (gameContext.turns.length < 1) {
+      if (turns.length < 1) {
         say("no current play", "");
       } else {
-        sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
+        sayGameEvent(turns[turns.length - 1]);
       }
     } else if (blindfoldCommand.toUpperCase() === "S") {
       const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
@@ -210,7 +225,7 @@ export function handleBlindfoldKeydown(
     } else if (
       blindfoldCommand.toUpperCase() === "E" &&
       exchangeAllowed &&
-      !props.gameDone
+      !gameDone
     ) {
       evt.preventDefault();
       if (handleNeitherShortcut.current) handleNeitherShortcut.current();
@@ -218,10 +233,10 @@ export function handleBlindfoldKeydown(
       setBlindfoldCommand("");
       say("exchange modal opened", "");
       return;
-    } else if (blindfoldCommand.toUpperCase() === "PASS" && !props.gameDone) {
+    } else if (blindfoldCommand.toUpperCase() === "PASS" && !gameDone) {
       makeMove("pass");
       setCurrentMode("NORMAL");
-    } else if (blindfoldCommand.toUpperCase() === "CHAL" && !props.gameDone) {
+    } else if (blindfoldCommand.toUpperCase() === "CHAL" && !gameDone) {
       makeMove("challenge");
       setCurrentMode("NORMAL");
       return;
@@ -232,22 +247,21 @@ export function handleBlindfoldKeydown(
     } else if (blindfoldCommand.toUpperCase() === "R") {
       say(
         wordToSayString(
-          machineWordToRunes(props.currentRack, props.alphabet),
+          machineWordToRunes(currentRack, alphabet),
           blindfoldUseNPA,
         ),
         "",
       );
     } else if (blindfoldCommand.toUpperCase() === "B") {
-      const bag = { ...gameContext.pool };
-      for (let i = 0; i < props.currentRack.length; i += 1) {
-        bag[props.currentRack[i]] -= 1;
+      const bag = { ...pool };
+      for (let i = 0; i < currentRack.length; i += 1) {
+        bag[currentRack[i]] -= 1;
       }
       let numTilesRemaining = 0;
       let tilesRemaining = "";
       let blankString = " ";
       for (const [key, value] of Object.entries(bag)) {
-        const letter =
-          machineLetterToRune(parseInt(key, 10), props.alphabet) + ". ";
+        const letter = machineLetterToRune(parseInt(key, 10), alphabet) + ". ";
         const numValue = value as number;
         if (numValue > 0) {
           numTilesRemaining += numValue;
@@ -269,13 +283,13 @@ export function handleBlindfoldKeydown(
       blindfoldCommand.length === 2 &&
       blindfoldCommand.charAt(1).match(/[a-z.]/i)
     ) {
-      const bag = { ...gameContext.pool };
-      for (let i = 0; i < props.currentRack.length; i += 1) {
-        bag[props.currentRack[i]] -= 1;
+      const bag = { ...pool };
+      for (let i = 0; i < currentRack.length; i += 1) {
+        bag[currentRack[i]] -= 1;
       }
       let tile = blindfoldCommand.charAt(1).toUpperCase();
       try {
-        const letter = runesToMachineWord(tile, props.alphabet)[0];
+        const letter = runesToMachineWord(tile, alphabet)[0];
         let numTiles = bag[letter];
         if (tile === ".") {
           tile = "?";
@@ -313,7 +327,6 @@ export function handleBlindfoldKeydown(
       const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCommand);
       if (blindfoldCoordinates !== undefined) {
         say(wordToSayString(blindfoldCommand, blindfoldUseNPA), "");
-        const board = gameContext.board;
         const existingTile = board.letterAt(
           blindfoldCoordinates.row,
           blindfoldCoordinates.col,
