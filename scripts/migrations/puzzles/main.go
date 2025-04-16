@@ -83,10 +83,14 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, oldLex, newLex string) erro
 		}
 		mcg, err := game.NewFromHistory(ghist, rules, turn)
 		if err != nil {
-			return err
+			log.Err(err).Str("pzl", puuid).Msg("trying-to-create-game-from-history")
+			// If there's an error loading the game, log and continue. This is the case
+			// for some corrupted German games (see https://github.com/woogles-io/liwords/issues/1475)
+			continue
 		}
 		valid, err := puzzles.IsEquityPuzzleStillValid(cfg.MacondoConfig(), mcg, turn, gevt, newLex)
 		if err != nil {
+			log.Err(err).Msg("trying-to-check-puzzle-validity")
 			return err
 		}
 		if !valid {
