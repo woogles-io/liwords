@@ -42,13 +42,6 @@ import {
 } from "../utils/cwgame/tile_placement";
 
 import {
-  parseBlindfoldCoordinates,
-  say,
-  wordToSayString,
-} from "../utils/cwgame/blindfold";
-import { singularCount } from "../utils/plural";
-
-import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
   passMoveEvent,
@@ -101,6 +94,7 @@ import { GameMetadataService } from "../gen/api/proto/game_service/game_service_
 
 import { RackEditor } from "./rack_editor";
 import { shuffleLetters, gcgExport, backupKey } from "./board_panel_utils";
+import { handleBlindfoldKeydown } from "./blindfold_mode";
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -814,295 +808,26 @@ export const BoardPanel = React.memo((props: Props) => {
       }
 
       if (currentMode === "BLIND") {
-        const PlayerScoresAndTimes = (): [
-          string,
-          number,
-          string,
-          string,
-          number,
-          string,
-        ] => {
-          const timepenalty = (time: number) => {
-            // Calculate a timepenalty for speech purposes only. The backend will
-            // also properly calculate this.
-
-            if (time >= 0) {
-              return 0;
-            }
-
-            const minsOvertime = Math.ceil(Math.abs(time) / 60000);
-            return minsOvertime * 10;
-          };
-
-          let p0 = gameContext.players[0];
-          let p1 = gameContext.players[1];
-
-          let p0Time = examinableTimerContext.p0;
-          let p1Time = examinableTimerContext.p1;
-
-          if (props.playerMeta[0].userId === p1.userID) {
-            [p0, p1] = [p1, p0];
-            [p0Time, p1Time] = [p1Time, p0Time];
-          }
-
-          const playing =
-            examinableGameContext.playState !== PlayState.GAME_OVER;
-          const applyTimePenalty = !isExamining && playing;
-          let p0Score = p0?.score ?? 0;
-          if (applyTimePenalty) p0Score -= timepenalty(p0Time);
-          let p1Score = p1?.score ?? 0;
-          if (applyTimePenalty) p1Score -= timepenalty(p1Time);
-
-          // Always list the player scores and times first
-          if (props.playerMeta[1].nickname === props.username) {
-            return [
-              "you",
-              p1Score,
-              playerTimeToText(p1Time),
-              "opponent",
-              p0Score,
-              playerTimeToText(p0Time),
-            ];
-          }
-          return [
-            "you",
-            p0Score,
-            playerTimeToText(p0Time),
-            "opponent",
-            p1Score,
-            playerTimeToText(p1Time),
-          ];
-        };
-
-        const sayGameEvent = (ge: GameEvent) => {
-          const type = ge.type;
-          let nickname = "opponent.";
-          const evtNickname = nicknameFromEvt(ge, props.playerMeta);
-          if (evtNickname === props.username) {
-            nickname = "you.";
-          }
-          const playedTiles = ge.playedTiles;
-          const mainWord = ge.wordsFormed[0];
-          let blankAwareWord = "";
-          for (let i = 0; i < playedTiles.length; i++) {
-            const tile = playedTiles[i];
-            if (tile >= "a" && tile <= "z") {
-              blankAwareWord += tile;
-            } else {
-              blankAwareWord += mainWord[i];
-            }
-          }
-          if (type === GameEvent_Type.TILE_PLACEMENT_MOVE) {
-            say(
-              nickname + " " + wordToSayString(ge.position, blindfoldUseNPA),
-              wordToSayString(blankAwareWord, blindfoldUseNPA) +
-                " " +
-                ge.score.toString(),
-            );
-          } else if (type === GameEvent_Type.PHONY_TILES_RETURNED) {
-            say(nickname + " lost challenge", "");
-          } else if (type === GameEvent_Type.EXCHANGE) {
-            say(nickname + " exchanged " + ge.exchanged, "");
-          } else if (type === GameEvent_Type.PASS) {
-            say(nickname + " passed", "");
-          } else if (type === GameEvent_Type.CHALLENGE) {
-            say(nickname + " challenged", "");
-          } else if (type === GameEvent_Type.CHALLENGE_BONUS) {
-            say(nickname + " challenge bonus", "");
-          } else {
-            // This is a bum way to deal with all other events
-            // but I am holding out for a better solution to saying events altogether
-            say(nickname + " 5 point challenge or outplay", "");
-          }
-        };
-
-        const playerTimeToText = (ms: number): string => {
-          const neg = ms < 0;
-          const absms = Math.abs(ms);
-          // const mins = Math.floor(ms / 60000);
-          let totalSecs;
-          if (!neg) {
-            totalSecs = Math.ceil(absms / 1000);
-          } else {
-            totalSecs = Math.floor(absms / 1000);
-          }
-          const secs = totalSecs % 60;
-          const mins = Math.floor(totalSecs / 60);
-
-          let negative = "";
-          if (neg) {
-            negative = "negative ";
-          }
-          let minutes = "";
-          if (mins) {
-            minutes = singularCount(mins, "minute", "minutes") + " and ";
-          }
-          return negative + minutes + singularCount(secs, "second", "seconds");
-        };
-
-        let newBlindfoldCommand = blindfoldCommand;
-        if (key === EnterKey) {
-          // There is a better way to do this
-          // This should be done like the Scorecards
-          // are. It should access the Scorecard info somehow
-          // but I is of the not knowing.
-          if (blindfoldCommand.toUpperCase() === "P") {
-            if (gameContext.turns.length < 2) {
-              say("no previous play", "");
-            } else {
-              sayGameEvent(gameContext.turns[gameContext.turns.length - 2]);
-            }
-          } else if (blindfoldCommand.toUpperCase() === "C") {
-            if (gameContext.turns.length < 1) {
-              say("no current play", "");
-            } else {
-              sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
-            }
-          } else if (blindfoldCommand.toUpperCase() === "S") {
-            const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
-            const scoresay = `${p0Score} to ${p1Score}`;
-            say(scoresay, "");
-          } else if (
-            blindfoldCommand.toUpperCase() === "E" &&
-            exchangeAllowed &&
-            !props.gameDone
-          ) {
-            evt.preventDefault();
-            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
-            setCurrentMode("EXCHANGE_MODAL");
-            setBlindfoldCommand("");
-            say("exchange modal opened", "");
-            return;
-          } else if (
-            blindfoldCommand.toUpperCase() === "PASS" &&
-            !props.gameDone
-          ) {
-            makeMove("pass");
-            setCurrentMode("NORMAL");
-          } else if (
-            blindfoldCommand.toUpperCase() === "CHAL" &&
-            !props.gameDone
-          ) {
-            makeMove("challenge");
-            setCurrentMode("NORMAL");
-            return;
-          } else if (blindfoldCommand.toUpperCase() === "T") {
-            const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
-            const timesay = `${p0Time} to ${p1Time}.`;
-            say(timesay, "");
-          } else if (blindfoldCommand.toUpperCase() === "R") {
-            say(
-              wordToSayString(
-                machineWordToRunes(props.currentRack, props.alphabet),
-                blindfoldUseNPA,
-              ),
-              "",
-            );
-          } else if (blindfoldCommand.toUpperCase() === "B") {
-            const bag = { ...gameContext.pool };
-            for (let i = 0; i < props.currentRack.length; i += 1) {
-              bag[props.currentRack[i]] -= 1;
-            }
-            let numTilesRemaining = 0;
-            let tilesRemaining = "";
-            let blankString = " ";
-            for (const [key, value] of Object.entries(bag)) {
-              const letter =
-                machineLetterToRune(parseInt(key, 10), props.alphabet) + ". ";
-              if (value > 0) {
-                numTilesRemaining += value;
-                if (key === "0") {
-                  blankString = `${value}, blank`;
-                } else {
-                  tilesRemaining += `${value}, ${letter}`;
-                }
-              }
-            }
-            say(
-              `${numTilesRemaining} tiles unseen, ` +
-                wordToSayString(tilesRemaining, blindfoldUseNPA) +
-                blankString,
-              "",
-            );
-          } else if (
-            blindfoldCommand.charAt(0).toUpperCase() === "B" &&
-            blindfoldCommand.length === 2 &&
-            blindfoldCommand.charAt(1).match(/[a-z.]/i)
-          ) {
-            const bag = { ...gameContext.pool };
-            for (let i = 0; i < props.currentRack.length; i += 1) {
-              bag[props.currentRack[i]] -= 1;
-            }
-            let tile = blindfoldCommand.charAt(1).toUpperCase();
-            try {
-              const letter = runesToMachineWord(tile, props.alphabet)[0];
-              let numTiles = bag[letter];
-              if (tile === ".") {
-                tile = "?";
-                numTiles = bag[letter];
-                say(`${numTiles}, blank`, "");
-              } else {
-                say(
-                  wordToSayString(`${numTiles}, ${tile}`, blindfoldUseNPA),
-                  "",
-                );
-              }
-            } catch {
-              // do nothing.
-            }
-          } else if (blindfoldCommand.toUpperCase() === "N") {
-            setBlindfoldUseNPA(!blindfoldUseNPA);
-            say(
-              "NATO Phonetic Alphabet is " +
-                (!blindfoldUseNPA ? " enabled." : " disabled."),
-              "",
-            );
-          } else if (blindfoldCommand.toUpperCase() === "W") {
-            if (isMyTurn) {
-              say("It is your turn.", "");
-            } else {
-              say("It is your opponent's turn", "");
-            }
-          } else if (blindfoldCommand.toUpperCase() === "L") {
-            say(
-              "B for bag. C for current play. " +
-                "E for exchange. N for NATO pronunciations. " +
-                "P for the previous play. R for rack. " +
-                "S for score. T for time. W for turn. " +
-                "P, A, S, S, for pass. C, H, A, L, for challenge.",
-              "",
-            );
-          } else {
-            const blindfoldCoordinates =
-              parseBlindfoldCoordinates(blindfoldCommand);
-            if (blindfoldCoordinates !== undefined) {
-              // Valid coordinates, place the arrow
-              say(wordToSayString(blindfoldCommand, blindfoldUseNPA), "");
-              const board = gameContext.board;
-              const existingTile = board.letterAt(
-                blindfoldCoordinates.row,
-                blindfoldCoordinates.col,
-              );
-              if (existingTile === EmptyBoardSpaceMachineLetter) {
-                setArrowProperties({
-                  row: blindfoldCoordinates.row,
-                  col: blindfoldCoordinates.col,
-                  horizontal: blindfoldCoordinates.horizontal,
-                  show: true,
-                });
-              }
-            } else {
-              console.log("invalid command: ", blindfoldCommand);
-              say("invalid command", "");
-            }
-          }
-
-          newBlindfoldCommand = "";
-          setCurrentMode("NORMAL");
-        } else {
-          newBlindfoldCommand = blindfoldCommand + key.toUpperCase();
-        }
-        setBlindfoldCommand(newBlindfoldCommand);
+        handleBlindfoldKeydown(evt, {
+          key,
+          blindfoldCommand,
+          setBlindfoldCommand,
+          blindfoldUseNPA,
+          setBlindfoldUseNPA,
+          isMyTurn,
+          gameContext,
+          examinableGameContext,
+          examinableTimerContext,
+          playerMeta: props.playerMeta,
+          username: props.username,
+          exchangeAllowed,
+          setCurrentMode,
+          makeMove,
+          props,
+          handleNeitherShortcut,
+          setArrowProperties,
+          nicknameFromEvt,
+        });
       } else if (currentMode === "NORMAL") {
         if (
           key.toUpperCase() === ";" &&
