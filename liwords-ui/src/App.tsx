@@ -93,6 +93,12 @@ switch (puzzleLexicon) {
   case "FRA20":
     localStorage.setItem("puzzleLexicon", "FRA24");
     break;
+  case "RD28":
+    localStorage.setItem("puzzleLexicon", "RD29");
+    break;
+  case "CSW21":
+    localStorage.setItem("puzzleLexicon", "CSW24");
+    break;
 }
 
 // A temporary component until we auto-redirect with Cloudfront
