@@ -134,10 +134,10 @@ message BotRequest {
 
   enum BotCode {
     HASTY_BOT = 0;
-    LEVEL1_CEL_BOT = 1;
-    LEVEL2_CEL_BOT = 2;
-    LEVEL3_CEL_BOT = 3;
-    LEVEL4_CEL_BOT = 4;
+    LEVEL1_COMMON_WORD_BOT = 1;
+    LEVEL2_COMMON_WORD_BOT = 2;
+    LEVEL3_COMMON_WORD_BOT = 3;
+    LEVEL4_COMMON_WORD_BOT = 4;
     LEVEL1_PROBABILISTIC = 5;
     LEVEL2_PROBABILISTIC = 6;
     LEVEL3_PROBABILISTIC = 7;
@@ -155,6 +155,7 @@ message BotRequest {
   }
 
   BotCode bot_type = 3;
+  int32 millis_remaining = 4;
 }
 
 message EvaluationRequest {

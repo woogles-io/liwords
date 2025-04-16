@@ -160,7 +160,7 @@ func TestGet(t *testing.T) {
 	// This bot will not be found, so GetBot should pick a random bot
 	// Since there is only one bot in the db, it will pick that bot,
 	// which is HastyBot.
-	bot, err = ustore.GetBot(ctx, macondopb.BotRequest_LEVEL2_CEL_BOT)
+	bot, err = ustore.GetBot(ctx, macondopb.BotRequest_LEVEL2_COMMON_WORD_BOT)
 	is.NoErr(err)
 	is.True(bot.Username == botNames[macondopb.BotRequest_HASTY_BOT] || bot.Username == "mode")
 

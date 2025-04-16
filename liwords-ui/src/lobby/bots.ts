@@ -16,9 +16,10 @@ export enum BotTypesEnum {
   GRANDMASTER,
 }
 
-// isEnglish (but not CEL, that is handled separately)
-const isEnglish = (lexicon: string) =>
-  lexicon.startsWith("CSW") || lexicon.startsWith("NWL");
+const hasCommonWordSublexicon = (lexicon: string) =>
+  lexicon.startsWith("CSW") ||
+  lexicon.startsWith("NWL") ||
+  lexicon.startsWith("RD");
 
 export const BotTypesEnumProperties = {
   [BotTypesEnum.GRANDMASTER]: {
@@ -56,12 +57,12 @@ export const BotTypesEnumProperties = {
     botName: "BetterBot",
     shortDescription: "370 point average",
     description: (lexicon: string) =>
-      isEnglish(lexicon)
+      hasCommonWordSublexicon(lexicon)
         ? "Perfect play while still only using common words"
         : "BetterBot. A bit better than BasicBot",
     botCode: (lexicon: string) =>
-      isEnglish(lexicon)
-        ? BotRequest_BotCode.LEVEL4_CEL_BOT
+      hasCommonWordSublexicon(lexicon)
+        ? BotRequest_BotCode.LEVEL4_COMMON_WORD_BOT
         : BotRequest_BotCode.LEVEL3_PROBABILISTIC,
     image: betterbot,
     voidonly: false,
@@ -71,12 +72,14 @@ export const BotTypesEnumProperties = {
     botName: "BasicBot",
     shortDescription: "330 point average",
     description: (lexicon: string) =>
-      isEnglish(lexicon)
-        ? "Higher scoring, but still emphasizes common English words only"
+      hasCommonWordSublexicon(lexicon)
+        ? lexicon.startsWith("RD")
+          ? "Higher scoring, but still emphasizes common German words only"
+          : "Higher scoring, but still emphasizes common English words only"
         : "Beating BeginnerBot? Basicbot is your next frenemy, scoring more",
     botCode: (lexicon: string) =>
-      isEnglish(lexicon)
-        ? BotRequest_BotCode.LEVEL2_CEL_BOT
+      hasCommonWordSublexicon(lexicon)
+        ? BotRequest_BotCode.LEVEL2_COMMON_WORD_BOT
         : BotRequest_BotCode.LEVEL2_PROBABILISTIC,
     image: basicbot,
     voidonly: false,
@@ -86,12 +89,12 @@ export const BotTypesEnumProperties = {
     botName: "BeginnerBot",
     shortDescription: "240 point average",
     description: (lexicon: string) =>
-      isEnglish(lexicon)
+      hasCommonWordSublexicon(lexicon)
         ? "New to OMGWords? Low scoring plays and common words only"
         : "New to OMGWords? BeginnerBot sticks to lower-scoring plays",
     botCode: (lexicon: string) =>
-      isEnglish(lexicon)
-        ? BotRequest_BotCode.LEVEL1_CEL_BOT
+      hasCommonWordSublexicon(lexicon)
+        ? BotRequest_BotCode.LEVEL1_COMMON_WORD_BOT
         : BotRequest_BotCode.LEVEL1_PROBABILISTIC,
     image: beginnerbot,
     voidonly: true,

@@ -82,8 +82,8 @@ export const AllLexica: { [code: string]: Lexicon } = {
     longDescription:
       "Common English Lexicon, Copyright (c) 2021-2022 Fj00. Used with permission",
   },
-  RD28: {
-    code: "RD28",
+  RD29: {
+    code: "RD29",
     shortDescription: "Deutsch (German)",
     matchName: "Deutsch",
     longDescription:
