@@ -42,24 +42,7 @@ const BoardSpaces = React.memo((props: Props) => {
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
             clicked={() => squareClicked(y, x)}
-            handleTileDrop={(e: React.DragEvent) => {
-              if (handleTileDrop) {
-                let dragData: { rackIndex?: number; tileIndex?: number } = {};
-                try {
-                  dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
-                } catch {}
-                handleTileDrop(
-                  y,
-                  x,
-                  typeof dragData.rackIndex === "number"
-                    ? dragData.rackIndex
-                    : undefined,
-                  typeof dragData.tileIndex === "number"
-                    ? dragData.tileIndex
-                    : undefined,
-                );
-              }
-            }}
+            handleTileDrop={() => {}}
           />,
         );
       }
@@ -74,8 +57,48 @@ const BoardSpaces = React.memo((props: Props) => {
     handleTileDrop,
   ]);
 
+  const handleBoardDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!handleTileDrop) return;
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch {}
+    const boardElement = boardRef.current as HTMLDivElement;
+    if (!boardElement) return;
+    const rect = boardElement.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const tileSize = rect.width / gridDim;
+    const col = Math.floor(x / tileSize);
+    const row = Math.floor(y / tileSize);
+    if (row >= 0 && row < gridDim && col >= 0 && col < gridDim) {
+      handleTileDrop(
+        row,
+        col,
+        typeof dragData.rackIndex === "number" ? dragData.rackIndex : undefined,
+        typeof dragData.tileIndex === "number" ? dragData.tileIndex : undefined,
+      );
+    }
+  };
+
+  const handleBoardDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleBoardDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
   return (
-    <div className="board-spaces" ref={boardRef} id="board-spaces">
+    <div
+      className="board-spaces"
+      ref={boardRef}
+      id="board-spaces"
+      onDrop={handleBoardDrop}
+      onDragOver={handleBoardDragOver}
+      onDragEnter={handleBoardDragEnter}
+    >
       {spaces}
     </div>
   );
