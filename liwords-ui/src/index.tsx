@@ -1,3 +1,14 @@
+import { polyfill } from "mobile-drag-drop";
+import "mobile-drag-drop/default.css";
+polyfill();
+
+// iOS Safari 10+ passive event workaround for mobile-drag-drop polyfill
+try {
+  window.addEventListener("touchmove", function () {}, { passive: false });
+} catch (e) {
+  // Ignore if passive option is not supported
+}
+
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";

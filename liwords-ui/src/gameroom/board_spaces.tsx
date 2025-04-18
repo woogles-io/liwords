@@ -44,11 +44,19 @@ const BoardSpaces = React.memo((props: Props) => {
             clicked={() => squareClicked(y, x)}
             handleTileDrop={(e: React.DragEvent) => {
               if (handleTileDrop) {
+                let dragData: { rackIndex?: number; tileIndex?: number } = {};
+                try {
+                  dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+                } catch {}
                 handleTileDrop(
                   y,
                   x,
-                  parseInt(e.dataTransfer.getData("rackIndex"), 10),
-                  parseInt(e.dataTransfer.getData("tileIndex"), 10),
+                  typeof dragData.rackIndex === "number"
+                    ? dragData.rackIndex
+                    : undefined,
+                  typeof dragData.tileIndex === "number"
+                    ? dragData.tileIndex
+                    : undefined,
                 );
               }
             }}

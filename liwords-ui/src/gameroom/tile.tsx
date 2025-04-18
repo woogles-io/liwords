@@ -96,18 +96,17 @@ const Tile = React.memo((props: TileProps) => {
   const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
     setIsMouseDragging(true);
     e.dataTransfer.dropEffect = "move";
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
     if (
       props.tentative &&
       typeof props.x == "number" &&
       typeof props.y == "number"
     ) {
-      e.dataTransfer.setData(
-        "tileIndex",
-        uniqueTileIdx(props.y, props.x).toString(),
-      );
-    } else {
-      e.dataTransfer.setData("rackIndex", props.rackIndex?.toString() || "");
+      dragData.tileIndex = uniqueTileIdx(props.y, props.x);
+    } else if (typeof props.rackIndex === "number") {
+      dragData.rackIndex = props.rackIndex;
     }
+    e.dataTransfer.setData("text/plain", JSON.stringify(dragData));
   };
 
   const handleEndDrag = () => {
@@ -115,27 +114,23 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch {}
     if (props.handleTileDrop && props.y != null && props.x != null) {
       props.handleTileDrop(
         props.y,
         props.x,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
+        typeof dragData.rackIndex === "number" ? dragData.rackIndex : undefined,
+        typeof dragData.tileIndex === "number" ? dragData.tileIndex : undefined,
       );
       return;
     }
-    if (props.moveRackTile && e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        props.rackIndex,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else {
-      if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-        props.returnToRack(
-          props.rackIndex,
-          parseInt(e.dataTransfer.getData("tileIndex"), 10),
-        );
-      }
+    if (props.moveRackTile && typeof dragData.rackIndex === "number") {
+      props.moveRackTile(props.rackIndex, dragData.rackIndex);
+    } else if (props.returnToRack && typeof dragData.tileIndex === "number") {
+      props.returnToRack(props.rackIndex, dragData.tileIndex);
     }
   };
 

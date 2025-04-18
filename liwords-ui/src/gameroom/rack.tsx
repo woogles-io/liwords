@@ -45,16 +45,14 @@ export const Rack = React.memo((props: Props) => {
     e.stopPropagation();
   };
   const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
-    if (e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        index,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-      props.returnToRack(
-        index,
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
-      );
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch {}
+    if (typeof dragData.rackIndex === "number") {
+      props.moveRackTile(index, dragData.rackIndex);
+    } else if (props.returnToRack && typeof dragData.tileIndex === "number") {
+      props.returnToRack(index, dragData.tileIndex);
     }
   };
   const rackRef = useRef(null);
@@ -91,11 +89,15 @@ export const Rack = React.memo((props: Props) => {
     return <>{tiles}</>;
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
   return (
     <div className="rack" ref={rackRef} id="rack">
       <div
         className="empty-rack droppable"
         id="left-empty"
+        onDragEnter={handleDragEnter}
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, 0);
@@ -104,6 +106,7 @@ export const Rack = React.memo((props: Props) => {
       {renderTiles()}
       <div
         className="empty-rack droppable"
+        onDragEnter={handleDragEnter}
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, props.letters.length);
