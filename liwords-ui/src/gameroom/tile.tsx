@@ -153,8 +153,16 @@ const Tile = React.memo((props: TileProps) => {
   }${props.playerOfTile ? " tile-p1" : " tile-p0"}${
     (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
   }`;
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
   let ret = (
-    <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
+    <div
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDropOver}
+      onDrop={handleDrop}
+      ref={tileRef}
+    >
       <div
         className={computedClassName}
         data-letter={props.letter}
