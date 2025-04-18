@@ -1,8 +1,6 @@
 import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { MachineLetter } from "../utils/cwgame/common";
-import { DndProvider } from "react-dnd";
-import { TouchBackend } from "react-dnd-touch-backend";
 import { BlankSelector } from "./blank_selector";
 import {
   Alphabet,
@@ -16,13 +14,11 @@ function renderSelectTiles(
   callback: (letter: MachineLetter) => void,
 ) {
   return render(
-    <DndProvider backend={TouchBackend}>
-      <BlankSelector
-        tileColorId={1}
-        handleSelection={callback}
-        alphabet={alphabet}
-      />
-    </DndProvider>,
+    <BlankSelector
+      tileColorId={1}
+      handleSelection={callback}
+      alphabet={alphabet}
+    />,
   );
 }
 

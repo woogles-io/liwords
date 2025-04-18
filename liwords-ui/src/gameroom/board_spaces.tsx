@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import BoardSpace from "./board_space";
 import { PlacementArrow } from "../utils/cwgame/tile_placement";
 import { BonusType } from "../constants/board_layout";
-import { isTouchDevice } from "../utils/cwgame/common";
-import { useDrop, XYCoord } from "react-dnd";
 import { TILE_TYPE } from "./tile";
 
 type Props = {
@@ -18,57 +16,11 @@ type Props = {
   placementArrow: PlacementArrow;
   squareClicked: (row: number, col: number) => void;
 };
-const calculatePosition = (
-  position: XYCoord,
-  boardElement: HTMLElement,
-  gridSize: number,
-) => {
-  const boardTop = boardElement.getBoundingClientRect().top;
-  const boardLeft = boardElement.getBoundingClientRect().left;
-  const tileSize = boardElement.clientHeight / gridSize;
-  return {
-    col: Math.floor((position.x - boardLeft) / tileSize),
-    row: Math.floor((position.y - boardTop) / tileSize),
-  };
-};
-
 const BoardSpaces = React.memo((props: Props) => {
   const { gridDim, gridLayout, placementArrow, squareClicked, handleTileDrop } =
     props;
 
-  const boardRef = useRef(null);
-
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: string }, monitor) => {
-      const clientOffset = monitor.getClientOffset();
-      const boardElement = document.getElementById("board");
-      if (clientOffset && handleTileDrop && boardElement) {
-        const { row, col } = calculatePosition(
-          clientOffset,
-          boardElement,
-          gridDim,
-        );
-        handleTileDrop(
-          row,
-          col,
-          parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10),
-        );
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
-
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(boardRef);
-    }
-  }, [isTouchDeviceResult, drop]);
+  const boardRef = useRef<HTMLDivElement>(null);
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 
@@ -90,32 +42,56 @@ const BoardSpaces = React.memo((props: Props) => {
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
             clicked={() => squareClicked(y, x)}
-            handleTileDrop={(e: React.DragEvent) => {
-              if (handleTileDrop) {
-                handleTileDrop(
-                  y,
-                  x,
-                  parseInt(e.dataTransfer.getData("rackIndex"), 10),
-                  parseInt(e.dataTransfer.getData("tileIndex"), 10),
-                );
-              }
-            }}
+            handleTileDrop={() => {}}
           />,
         );
       }
     }
     return spaces;
-  }, [
-    midway,
-    gridDim,
-    gridLayout,
-    placementArrow,
-    squareClicked,
-    handleTileDrop,
-  ]);
+  }, [midway, gridDim, gridLayout, placementArrow, squareClicked]);
+
+  const handleBoardDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!handleTileDrop) return;
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch {}
+    if (!boardRef.current) return;
+    const boardElement = boardRef.current;
+    const rect = boardElement.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const tileSize = rect.width / gridDim;
+    const col = Math.floor(x / tileSize);
+    const row = Math.floor(y / tileSize);
+    if (row >= 0 && row < gridDim && col >= 0 && col < gridDim) {
+      handleTileDrop(
+        row,
+        col,
+        typeof dragData.rackIndex === "number" ? dragData.rackIndex : undefined,
+        typeof dragData.tileIndex === "number" ? dragData.tileIndex : undefined,
+      );
+    }
+  };
+
+  const handleBoardDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleBoardDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
 
   return (
-    <div className="board-spaces" ref={boardRef} id="board-spaces">
+    <div
+      className="board-spaces"
+      ref={boardRef}
+      id="board-spaces"
+      onDrop={handleBoardDrop}
+      onDragOver={handleBoardDragOver}
+      onDragEnter={handleBoardDragEnter}
+    >
       {spaces}
     </div>
   );

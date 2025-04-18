@@ -1,9 +1,9 @@
-import React, { DragEvent, useEffect, useRef } from "react";
-import { useDrop, XYCoord } from "react-dnd";
+import React, { DragEvent, useRef } from "react";
 import Tile, { TILE_TYPE } from "./tile";
-import { MachineWord, isTouchDevice } from "../utils/cwgame/common";
+import { MachineWord } from "../utils/cwgame/common";
 import { Alphabet, scoreFor } from "../constants/alphabets";
 
+type XYCoord = { x: number; y: number };
 // const TileSpacing = 6;
 
 const calculatePosition = (
@@ -45,52 +45,17 @@ export const Rack = React.memo((props: Props) => {
     e.stopPropagation();
   };
   const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
-    if (e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        index,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-      props.returnToRack(
-        index,
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
-      );
+    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
+    } catch {}
+    if (typeof dragData.rackIndex === "number") {
+      props.moveRackTile(index, dragData.rackIndex);
+    } else if (props.returnToRack && typeof dragData.tileIndex === "number") {
+      props.returnToRack(index, dragData.tileIndex);
     }
   };
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: number }, monitor) => {
-      const clientOffset = monitor.getClientOffset();
-      const rackElement = document.getElementById("rack");
-      const rackEmptyElement = document.getElementById("left-empty");
-      let rackPosition = 0;
-      if (clientOffset && rackElement && rackEmptyElement) {
-        rackPosition = calculatePosition(
-          clientOffset,
-          rackElement,
-          rackEmptyElement,
-          props.letters.length,
-        );
-      }
-      if (item.rackIndex) {
-        props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
-      }
-      if (props.returnToRack && item.tileIndex) {
-        props.returnToRack(rackPosition, item.tileIndex);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
   const rackRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(rackRef);
-    }
-  }, [isTouchDeviceResult, drop]);
 
   const renderTiles = () => {
     const tiles = [];
@@ -124,11 +89,15 @@ export const Rack = React.memo((props: Props) => {
     return <>{tiles}</>;
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
   return (
     <div className="rack" ref={rackRef} id="rack">
       <div
         className="empty-rack droppable"
         id="left-empty"
+        onDragEnter={handleDragEnter}
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, 0);
@@ -137,6 +106,7 @@ export const Rack = React.memo((props: Props) => {
       {renderTiles()}
       <div
         className="empty-rack droppable"
+        onDragEnter={handleDragEnter}
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, props.letters.length);

@@ -1,6 +1,4 @@
 import React from "react";
-import { DndProvider } from "react-dnd";
-import { TouchBackend } from "react-dnd-touch-backend";
 import { useParams } from "react-router";
 import BoardSpace from "./board_space";
 import Tile from "./tile";
@@ -188,113 +186,111 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
   console.log(golang.join("\n"));
 
   return (
-    <DndProvider backend={TouchBackend}>
+    <div
+      style={{
+        alignItems: "center",
+        background: "#ffffff",
+        display: "flex",
+        height: "100vh",
+        justifyContent: "center",
+      }}
+    >
       <div
+        className="CAPTURE-NODE-SCREENSHOT" // To help find this node in Inspector.
         style={{
-          alignItems: "center",
-          background: "#ffffff",
+          background: "#000000",
           display: "flex",
-          height: "100vh",
-          justifyContent: "center",
+          flexDirection: "column",
+          width: `${expectedWidth / retina}px`,
         }}
       >
         <div
-          className="CAPTURE-NODE-SCREENSHOT" // To help find this node in Inspector.
           style={{
-            background: "#000000",
-            display: "flex",
-            flexDirection: "column",
-            width: `${expectedWidth / retina}px`,
+            display: "grid",
+            gridTemplateColumns: `repeat(${numTileCols}, ${eachWidth}px)`,
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${numTileCols}, ${eachWidth}px)`,
-            }}
-          >
-            {Array.from(
-              [{ lastPlayed: false }, { lastPlayed: true }],
-              (things, idx) => (
-                <React.Fragment key={idx}>
-                  {Array.from(shownLetters, (letter) => {
-                    return (
-                      <div key={letter}>
-                        <Tile
-                          letter={letter}
-                          alphabet={alphabet}
-                          value={scoreFor(alphabet, letter)}
-                          playerOfTile={0}
-                          key={letter}
-                          grabbable={false}
-                          {...things}
-                        />
-                      </div>
-                    );
-                  })}
-                </React.Fragment>
-              ),
-            )}
-            {bonusTypes.map((bonusType) => (
-              <div style={{ minWidth: `${eachWidth}px` }} key={bonusType}>
-                <BoardSpace
-                  bonusType={
-                    bonusType === BonusType.StartingSquare
-                      ? BonusType.DoubleWord
-                      : bonusType
-                  }
-                  key={bonusType}
-                  arrow={false}
-                  arrowHoriz={false}
-                  startingSquare={bonusType === BonusType.StartingSquare}
-                  clicked={() => {}}
-                  handleTileDrop={(e: React.DragEvent) => {}}
-                />
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${numTextCols}, ${monospacedFontWidth}px)`,
-            }}
-          >
-            {Array.from(
-              [
-                {
-                  className: "tile-images chars",
-                },
-                {
-                  className: "tile-images chars p0",
-                },
-                {
-                  className: "tile-images chars p1",
-                },
-              ],
-              (things, idx) => (
-                <React.Fragment key={idx}>
-                  {Array.from(textChars, (c, i) => (
-                    <React.Fragment key={i}>
-                      <div
-                        style={{
-                          fontSize: `${fontSize}px`,
-                          fontWeight: "normal",
-                          lineHeight: `${lineHeight}`,
-                          whiteSpace: "pre",
-                        }}
+          {Array.from(
+            [{ lastPlayed: false }, { lastPlayed: true }],
+            (things, idx) => (
+              <React.Fragment key={idx}>
+                {Array.from(shownLetters, (letter) => {
+                  return (
+                    <div key={letter}>
+                      <Tile
+                        letter={letter}
+                        alphabet={alphabet}
+                        value={scoreFor(alphabet, letter)}
+                        playerOfTile={0}
+                        key={letter}
+                        grabbable={false}
                         {...things}
-                      >
-                        {c}
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </React.Fragment>
-              ),
-            )}
-          </div>
+                      />
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ),
+          )}
+          {bonusTypes.map((bonusType) => (
+            <div style={{ minWidth: `${eachWidth}px` }} key={bonusType}>
+              <BoardSpace
+                bonusType={
+                  bonusType === BonusType.StartingSquare
+                    ? BonusType.DoubleWord
+                    : bonusType
+                }
+                key={bonusType}
+                arrow={false}
+                arrowHoriz={false}
+                startingSquare={bonusType === BonusType.StartingSquare}
+                clicked={() => {}}
+                handleTileDrop={(e: React.DragEvent) => {}}
+              />
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${numTextCols}, ${monospacedFontWidth}px)`,
+          }}
+        >
+          {Array.from(
+            [
+              {
+                className: "tile-images chars",
+              },
+              {
+                className: "tile-images chars p0",
+              },
+              {
+                className: "tile-images chars p1",
+              },
+            ],
+            (things, idx) => (
+              <React.Fragment key={idx}>
+                {Array.from(textChars, (c, i) => (
+                  <React.Fragment key={i}>
+                    <div
+                      style={{
+                        fontSize: `${fontSize}px`,
+                        fontWeight: "normal",
+                        lineHeight: `${lineHeight}`,
+                        whiteSpace: "pre",
+                      }}
+                      {...things}
+                    >
+                      {c}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </React.Fragment>
+            ),
+          )}
         </div>
       </div>
-    </DndProvider>
+    </div>
   );
 });
 

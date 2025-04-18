@@ -60,12 +60,16 @@ const BoardSpace = React.memo((props: Props) => {
     e.preventDefault();
     e.stopPropagation();
   };
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
   return (
     <div
       className={`board-space droppable ${
         props.arrow ? "selected" : ""
       } bonus-${bonusClass ? bonusClass : "none"}`}
       onClick={props.clicked}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDropOver}
       onDrop={props.handleTileDrop}
     >
