@@ -20,7 +20,7 @@ const BoardSpaces = React.memo((props: Props) => {
   const { gridDim, gridLayout, placementArrow, squareClicked, handleTileDrop } =
     props;
 
-  const boardRef = useRef(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 
@@ -48,14 +48,7 @@ const BoardSpaces = React.memo((props: Props) => {
       }
     }
     return spaces;
-  }, [
-    midway,
-    gridDim,
-    gridLayout,
-    placementArrow,
-    squareClicked,
-    handleTileDrop,
-  ]);
+  }, [midway, gridDim, gridLayout, placementArrow, squareClicked]);
 
   const handleBoardDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -64,8 +57,8 @@ const BoardSpaces = React.memo((props: Props) => {
     try {
       dragData = JSON.parse(e.dataTransfer.getData("text/plain"));
     } catch {}
-    const boardElement = boardRef.current as HTMLDivElement;
-    if (!boardElement) return;
+    if (!boardRef.current) return;
+    const boardElement = boardRef.current;
     const rect = boardElement.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;

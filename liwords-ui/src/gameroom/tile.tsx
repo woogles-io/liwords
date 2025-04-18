@@ -96,7 +96,7 @@ const Tile = React.memo((props: TileProps) => {
   const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
     setIsMouseDragging(true);
     e.dataTransfer.dropEffect = "move";
-    let dragData: { rackIndex?: number; tileIndex?: number } = {};
+    const dragData: { rackIndex?: number; tileIndex?: number } = {};
     if (
       props.tentative &&
       typeof props.x == "number" &&
