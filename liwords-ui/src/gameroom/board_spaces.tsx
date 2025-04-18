@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import BoardSpace from "./board_space";
 import { PlacementArrow } from "../utils/cwgame/tile_placement";
 import { BonusType } from "../constants/board_layout";
-import { isTouchDevice } from "../utils/cwgame/common";
-import { useDrop, XYCoord } from "react-dnd";
 import { TILE_TYPE } from "./tile";
 
 type Props = {
@@ -18,57 +16,11 @@ type Props = {
   placementArrow: PlacementArrow;
   squareClicked: (row: number, col: number) => void;
 };
-const calculatePosition = (
-  position: XYCoord,
-  boardElement: HTMLElement,
-  gridSize: number,
-) => {
-  const boardTop = boardElement.getBoundingClientRect().top;
-  const boardLeft = boardElement.getBoundingClientRect().left;
-  const tileSize = boardElement.clientHeight / gridSize;
-  return {
-    col: Math.floor((position.x - boardLeft) / tileSize),
-    row: Math.floor((position.y - boardTop) / tileSize),
-  };
-};
-
 const BoardSpaces = React.memo((props: Props) => {
   const { gridDim, gridLayout, placementArrow, squareClicked, handleTileDrop } =
     props;
 
   const boardRef = useRef(null);
-
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: string }, monitor) => {
-      const clientOffset = monitor.getClientOffset();
-      const boardElement = document.getElementById("board");
-      if (clientOffset && handleTileDrop && boardElement) {
-        const { row, col } = calculatePosition(
-          clientOffset,
-          boardElement,
-          gridDim,
-        );
-        handleTileDrop(
-          row,
-          col,
-          parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10),
-        );
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
-
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(boardRef);
-    }
-  }, [isTouchDeviceResult, drop]);
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 

@@ -1,9 +1,9 @@
-import React, { DragEvent, useEffect, useRef } from "react";
-import { useDrop, XYCoord } from "react-dnd";
+import React, { DragEvent, useRef } from "react";
 import Tile, { TILE_TYPE } from "./tile";
-import { MachineWord, isTouchDevice } from "../utils/cwgame/common";
+import { MachineWord } from "../utils/cwgame/common";
 import { Alphabet, scoreFor } from "../constants/alphabets";
 
+type XYCoord = { x: number; y: number };
 // const TileSpacing = 6;
 
 const calculatePosition = (
@@ -57,40 +57,7 @@ export const Rack = React.memo((props: Props) => {
       );
     }
   };
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: number }, monitor) => {
-      const clientOffset = monitor.getClientOffset();
-      const rackElement = document.getElementById("rack");
-      const rackEmptyElement = document.getElementById("left-empty");
-      let rackPosition = 0;
-      if (clientOffset && rackElement && rackEmptyElement) {
-        rackPosition = calculatePosition(
-          clientOffset,
-          rackElement,
-          rackEmptyElement,
-          props.letters.length,
-        );
-      }
-      if (item.rackIndex) {
-        props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
-      }
-      if (props.returnToRack && item.tileIndex) {
-        props.returnToRack(rackPosition, item.tileIndex);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
   const rackRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(rackRef);
-    }
-  }, [isTouchDeviceResult, drop]);
 
   const renderTiles = () => {
     const tiles = [];

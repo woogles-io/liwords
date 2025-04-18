@@ -7,23 +7,19 @@ import {
   StandardCatalanAlphabet,
   StandardEnglishAlphabet,
 } from "../constants/alphabets";
-import { DndProvider } from "react-dnd";
-import { TouchBackend } from "react-dnd-touch-backend";
 import { act } from "react-dom/test-utils";
 
 function renderExchangeTiles(callback: (t: MachineWord) => void) {
   vi.useFakeTimers();
   const ret = render(
-    <DndProvider backend={TouchBackend}>
-      <ExchangeTiles
-        tileColorId={1}
-        rack={[1, 2, 5, 8, 12, 12, 12]} // abehlll
-        alphabet={StandardEnglishAlphabet}
-        onOk={callback}
-        onCancel={() => {}}
-        modalVisible={true}
-      />
-    </DndProvider>,
+    <ExchangeTiles
+      tileColorId={1}
+      rack={[1, 2, 5, 8, 12, 12, 12]} // abehlll
+      alphabet={StandardEnglishAlphabet}
+      onOk={callback}
+      onCancel={() => {}}
+      modalVisible={true}
+    />,
   );
   // there's a delay in ExchangeTiles before it becomes interactive.
   // simulate that here.
@@ -36,16 +32,14 @@ function renderExchangeTiles(callback: (t: MachineWord) => void) {
 function renderExchangeCatalanTiles(callback: (t: MachineWord) => void) {
   vi.useFakeTimers();
   const ret = render(
-    <DndProvider backend={TouchBackend}>
-      <ExchangeTiles
-        tileColorId={1}
-        rack={[1, 13, 19, 6, 21, 17, 10]} // A L·L QU E S O I
-        alphabet={StandardCatalanAlphabet}
-        onOk={callback}
-        onCancel={() => {}}
-        modalVisible={true}
-      />
-    </DndProvider>,
+    <ExchangeTiles
+      tileColorId={1}
+      rack={[1, 13, 19, 6, 21, 17, 10]} // A L·L QU E S O I
+      alphabet={StandardCatalanAlphabet}
+      onOk={callback}
+      onCancel={() => {}}
+      modalVisible={true}
+    />,
   );
   act(() => {
     vi.advanceTimersByTime(500);

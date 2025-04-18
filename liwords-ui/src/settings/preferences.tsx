@@ -9,8 +9,6 @@ import {
 import "../gameroom/scss/gameroom.scss";
 import { BoardPreview } from "./board_preview";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
-import { TouchBackend } from "react-dnd-touch-backend";
-import { DndProvider } from "react-dnd";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store/redux_store";
 import { setDarkMode } from "../store/theme";
@@ -358,16 +356,14 @@ export const Preferences = React.memo(() => {
             </Select>
           </div>
           <div className="previewer">
-            <DndProvider backend={TouchBackend}>
-              <BoardPreview
-                tilesLayout={previewTilesLayout}
-                lastPlayedTiles={{
-                  R7C10: true,
-                  R7C11: true,
-                  R7C12: true,
-                }}
-              />
-            </DndProvider>
+            <BoardPreview
+              tilesLayout={previewTilesLayout}
+              lastPlayedTiles={{
+                R7C10: true,
+                R7C11: true,
+                R7C12: true,
+              }}
+            />
           </div>
         </Col>
       </Row>

@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useRef, DragEvent, useState } from "react";
-import { useDrag, useDragLayer, useDrop } from "react-dnd";
+import React, { useMemo, useRef, DragEvent, useState } from "react";
 import TentativeScore from "./tentative_score";
 import {
   Blank,
@@ -45,64 +44,6 @@ export const PointValue = React.memo((props: PointValueProps) => {
     return null;
   }
   return <p className="point-value">{props.value}</p>;
-});
-
-type TilePreviewProps = {
-  gridDim: number;
-};
-
-export const TilePreview = React.memo((props: TilePreviewProps) => {
-  const {
-    isDragging,
-    xyPosition: position,
-    letter,
-    alphabet,
-    value,
-    playerOfTile,
-  } = useDragLayer((monitor) => ({
-    xyPosition: monitor.getClientOffset(),
-    initialPosition: monitor.getInitialClientOffset(),
-    isDragging: monitor.isDragging(),
-    letter: monitor.getItem()?.letter as MachineLetter,
-    alphabet: monitor.getItem()?.alphabet as Alphabet,
-    value: monitor.getItem()?.value,
-    playerOfTile: monitor.getItem()?.playerOfTile,
-  }));
-  const boardElement = document.getElementById("board-spaces");
-  if (isDragging && boardElement && position) {
-    const boardTop = boardElement.getBoundingClientRect().top;
-    const boardLeft = boardElement.getBoundingClientRect().left;
-    const boardWidth = boardElement.getBoundingClientRect().width;
-    let top = position.y - boardTop;
-    let left = position.x - boardLeft;
-    const overBoard =
-      boardWidth > position?.y - boardTop &&
-      position?.y > boardTop &&
-      boardWidth > position?.x - boardLeft &&
-      position?.x > boardLeft;
-    const tileSize = boardWidth / props.gridDim;
-    if (overBoard) {
-      const col = Math.floor((position.x - boardLeft) / tileSize);
-      const row = Math.floor((position.y - boardTop) / tileSize);
-      left = col * tileSize + 6;
-      top = row * tileSize + 23;
-    }
-    const computedStyle = {
-      top,
-      left,
-    };
-    const computedClass = `tile preview${overBoard ? " over-board" : ""}${
-      letter && isDesignatedBlankMachineLetter(letter) ? " blank" : ""
-    }${playerOfTile ? " tile-p1" : " tile-p0"}`;
-    return (
-      <div className={computedClass} style={computedStyle}>
-        <TileLetter letter={letter} alphabet={alphabet} />
-        <PointValue value={value} />
-      </div>
-    );
-  }
-
-  return null;
 });
 
 type TileProps = {
@@ -205,66 +146,11 @@ const Tile = React.memo((props: TileProps) => {
 
   const canDrag =
     props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
-  const [{ isDragging }, drag, preview] = useDrag({
-    item: {
-      rackIndex:
-        typeof props.rackIndex === "number"
-          ? props.rackIndex.toString()
-          : undefined,
-      tileIndex:
-        typeof props.x === "number" && typeof props.y === "number"
-          ? uniqueTileIdx(props.y, props.x).toString()
-          : undefined,
-      letter: props.letter,
-      alphabet: props.alphabet,
-      value: props.value,
-      playerOfTile: props.playerOfTile,
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-    canDrag: (monitor) => canDrag,
-    type: TILE_TYPE,
-  });
-
-  useEffect(() => {
-    preview(<div></div>);
-  }, [preview]);
-
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: string }) => {
-      if (props.handleTileDrop && props.y != null && props.x != null) {
-        props.handleTileDrop(
-          props.y,
-          props.x,
-          parseInt(item.rackIndex, 10),
-          parseInt(item.tileIndex, 10),
-        );
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
 
   const tileRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (canDrag && isTouchDeviceResult) {
-      drag(tileRef);
-    }
-  }, [canDrag, isTouchDeviceResult, drag]);
-  const canDrop = props.handleTileDrop && props.y != null && props.x != null;
-  useEffect(() => {
-    if (canDrop && isTouchDeviceResult) {
-      drop(tileRef);
-    }
-  }, [canDrop, isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
-    isDragging || isMouseDragging ? " dragging" : ""
+    isMouseDragging ? " dragging" : ""
   }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
     props.tentative ? " tentative" : ""
   }${props.lastPlayed ? " last-played" : ""}${

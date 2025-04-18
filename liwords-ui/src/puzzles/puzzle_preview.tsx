@@ -14,8 +14,6 @@ import {
   scoreFor,
   StandardEnglishAlphabet,
 } from "../constants/alphabets";
-import { TouchBackend } from "react-dnd-touch-backend";
-import { DndProvider } from "react-dnd";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { RatingBadge } from "../lobby/rating_badge";
 import { flashError, useClient } from "../utils/hooks/connect";
@@ -140,12 +138,10 @@ export const PuzzlePreview = React.memo(() => {
       className={`puzzle-preview ${!puzzleID ? "tease" : ""}`}
     >
       <div className="puzzle-container">
-        <DndProvider backend={TouchBackend}>
-          <a href="/puzzle">
-            <BoardPreview board={gameContext.board} alphabet={alphabet} />
-            <div className="puzzle-rack">{renderTiles}</div>
-          </a>
-        </DndProvider>
+        <a href="/puzzle">
+          <BoardPreview board={gameContext.board} alphabet={alphabet} />
+          <div className="puzzle-rack">{renderTiles}</div>
+        </a>
       </div>
       {loggedIn && !!userRating ? (
         <div className="rating-info">
