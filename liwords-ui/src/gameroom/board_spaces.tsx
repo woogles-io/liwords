@@ -63,12 +63,8 @@ const BoardSpaces = React.memo((props: Props) => {
     }),
   });
 
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(boardRef);
-    }
-  }, [isTouchDeviceResult, drop]);
+  // Always attach the drop ref, regardless of device
+  drop(boardRef);
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 
@@ -90,29 +86,12 @@ const BoardSpaces = React.memo((props: Props) => {
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
             clicked={() => squareClicked(y, x)}
-            handleTileDrop={(e: React.DragEvent) => {
-              if (handleTileDrop) {
-                handleTileDrop(
-                  y,
-                  x,
-                  parseInt(e.dataTransfer.getData("rackIndex"), 10),
-                  parseInt(e.dataTransfer.getData("tileIndex"), 10),
-                );
-              }
-            }}
           />,
         );
       }
     }
     return spaces;
-  }, [
-    midway,
-    gridDim,
-    gridLayout,
-    placementArrow,
-    squareClicked,
-    handleTileDrop,
-  ]);
+  }, [midway, gridDim, gridLayout, placementArrow, squareClicked]);
 
   return (
     <div className="board-spaces" ref={boardRef} id="board-spaces">

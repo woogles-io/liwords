@@ -248,7 +248,6 @@ const TileImagesSingle = React.memo((props: { letterDistribution: string }) => {
                   arrowHoriz={false}
                   startingSquare={bonusType === BonusType.StartingSquare}
                   clicked={() => {}}
-                  handleTileDrop={(e: React.DragEvent) => {}}
                 />
               </div>
             ))}
