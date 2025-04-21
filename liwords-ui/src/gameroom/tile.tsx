@@ -168,7 +168,7 @@ const Tile = React.memo((props: TileProps) => {
       playerOfTile: props.playerOfTile,
     },
     collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
+      isDragging: !!monitor.isDragging(),
     }),
     canDrag: (monitor) => canDrag,
   });
