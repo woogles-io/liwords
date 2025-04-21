@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, DragEvent, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 import TentativeScore from "./tentative_score";
 import {
@@ -6,7 +6,6 @@ import {
   EmptyRackSpaceMachineLetter,
   MachineLetter,
   isDesignatedBlankMachineLetter,
-  isTouchDevice,
   uniqueTileIdx,
 } from "../utils/cwgame/common";
 import { Popover } from "antd";
@@ -171,7 +170,7 @@ const Tile = React.memo((props: TileProps) => {
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-    canDrag: canDrag,
+    canDrag: (monitor) => canDrag,
   });
 
   useEffect(() => {
@@ -196,10 +195,6 @@ const Tile = React.memo((props: TileProps) => {
     }),
   });
 
-  const tileRef = useRef(null);
-  // Always attach drag and drop refs, regardless of device
-  drag(drop(tileRef));
-
   const computedClassName = `tile${
     isDragging ? " dragging" : ""
   }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
@@ -210,7 +205,7 @@ const Tile = React.memo((props: TileProps) => {
     (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
   }`;
   let ret = (
-    <div ref={tileRef}>
+    <div ref={(node) => drag(drop(node))}>
       <div
         className={computedClassName}
         data-letter={props.letter}

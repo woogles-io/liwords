@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { useDrop, XYCoord } from "react-dnd";
 import Tile, { TILE_TYPE } from "./tile";
-import { MachineWord, isTouchDevice } from "../utils/cwgame/common";
+import { MachineWord } from "../utils/cwgame/common";
 import { Alphabet, scoreFor } from "../constants/alphabets";
 
 // const TileSpacing = 6;
@@ -47,6 +47,7 @@ export const Rack = React.memo((props: Props) => {
       const rackElement = document.getElementById("rack");
       const rackEmptyElement = document.getElementById("left-empty");
       let rackPosition = 0;
+      console.log("clientOffset", clientOffset, "item", item);
       if (clientOffset && rackElement && rackEmptyElement) {
         rackPosition = calculatePosition(
           clientOffset,
@@ -62,14 +63,16 @@ export const Rack = React.memo((props: Props) => {
         props.returnToRack(rackPosition, item.tileIndex);
       }
     },
+    hover: (item, monitor) => {
+      const clientOffset = monitor.getClientOffset();
+      console.log("hover clientOffset", clientOffset);
+      // You can store this in state if needed for use in drop
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
     }),
   });
-  const rackRef = useRef(null);
-  // Always attach the drop ref, regardless of device
-  drop(rackRef);
 
   const renderTiles = () => {
     const tiles = [];
@@ -104,7 +107,7 @@ export const Rack = React.memo((props: Props) => {
   };
 
   return (
-    <div className="rack" ref={rackRef} id="rack">
+    <div className="rack" ref={(node) => drop(node)} id="rack">
       <div className="empty-rack droppable" id="left-empty" />
       {renderTiles()}
       <div className="empty-rack droppable" />
