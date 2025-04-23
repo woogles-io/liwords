@@ -79,8 +79,9 @@ const (
 	// We should definitely not be using anywhere close to 255 events, and
 	// in order to enforce that I'll be forcing the event type header to just be
 	// a byte long.
-	MessageType_OMGWORDS_GAMEPLAY_EVENT MessageType = 44
-	MessageType_OMGWORDS_GAMEDOCUMENT   MessageType = 45
+	MessageType_OMGWORDS_GAMEPLAY_EVENT   MessageType = 44
+	MessageType_OMGWORDS_GAMEDOCUMENT     MessageType = 45
+	MessageType_TOURNAMENT_PLAYER_CHECKIN MessageType = 46
 )
 
 // Enum value maps for MessageType.
@@ -130,6 +131,7 @@ var (
 		43: "PROFILE_UPDATE_EVENT",
 		44: "OMGWORDS_GAMEPLAY_EVENT",
 		45: "OMGWORDS_GAMEDOCUMENT",
+		46: "TOURNAMENT_PLAYER_CHECKIN",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                                 0,
@@ -176,6 +178,7 @@ var (
 		"PROFILE_UPDATE_EVENT":                         43,
 		"OMGWORDS_GAMEPLAY_EVENT":                      44,
 		"OMGWORDS_GAMEDOCUMENT":                        45,
+		"TOURNAMENT_PLAYER_CHECKIN":                    46,
 	}
 )
 
@@ -595,7 +598,7 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\r\n" +
-	"\vUnjoinRealm*\xb5\t\n" +
+	"\vUnjoinRealm*\xd4\t\n" +
 	"\vMessageType\x12\x10\n" +
 	"\fSEEK_REQUEST\x10\x00\x12\x11\n" +
 	"\rMATCH_REQUEST\x10\x01\x12\x1d\n" +
@@ -641,7 +644,8 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x0fGAME_META_EVENT\x10*\x12\x18\n" +
 	"\x14PROFILE_UPDATE_EVENT\x10+\x12\x1b\n" +
 	"\x17OMGWORDS_GAMEPLAY_EVENT\x10,\x12\x19\n" +
-	"\x15OMGWORDS_GAMEDOCUMENT\x10-Bp\n" +
+	"\x15OMGWORDS_GAMEDOCUMENT\x10-\x12\x1d\n" +
+	"\x19TOURNAMENT_PLAYER_CHECKIN\x10.Bp\n" +
 	"\acom.ipcB\bIpcProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (

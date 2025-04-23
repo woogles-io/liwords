@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"io"
 	"os"
 	"sort"
@@ -201,6 +200,10 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 			t.ExtraMeta.PrivateAnalysis, meta.PrivateAnalysis),
 		IRLMode: ternary(merge && !meta.IrlMode && t.ExtraMeta != nil,
 			t.ExtraMeta.IRLMode, meta.IrlMode),
+		CheckinsOpen: ternary(merge && !meta.CheckinsOpen && t.ExtraMeta != nil,
+			t.ExtraMeta.CheckinsOpen, meta.CheckinsOpen),
+		RegistrationOpen: ternary(merge && !meta.RegistrationOpen && t.ExtraMeta != nil,
+			t.ExtraMeta.RegistrationOpen, meta.RegistrationOpen),
 	}
 
 	if meta.ScheduledStartTime != nil {
@@ -1432,6 +1435,8 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		IsStarted:          t.IsStarted,
 		ScheduledStartTime: scheduledStartTime,
 		ScheduledEndTime:   scheduledEndTime,
+		CheckinsOpen:       t.ExtraMeta.CheckinsOpen,
+		RegistrationOpen:   t.ExtraMeta.RegistrationOpen,
 	}, nil
 }
 
@@ -1501,12 +1506,315 @@ func validateTournamentTypeMatchesSlug(ttype pb.TType, slug string) (entity.Comp
 	return tt, nil
 }
 
-func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
-	return errors.New("not implemented")
+func Register(ctx context.Context, ts TournamentStore, tid, division, playerid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if !t.ExtraMeta.RegistrationOpen {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_REGISTRATIONS_CLOSED, t.Name)
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ALREADY_STARTED, t.Name)
+	}
+
+	// If the tournament is open for checkins and allows new registrants,
+	// we can add the player to the tournament (and check them in).
+	var mgr entity.DivisionManager
+	for dname, d := range t.Divisions {
+		if dname == division {
+			mgr = d.DivisionManager
+			break
+		}
+	}
+	if mgr == nil {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+	players := &ipc.TournamentPersons{Id: tid, Division: division,
+		// XXX The rating doesn't matter right now. Fix this.
+		Persons: []*ipc.TournamentPerson{
+			// Make tournament registration NOT checkin player by default.
+			// Player should check in before the tournament begins, even
+			// if they just registered for it.
+			{Id: playerid, Rating: 1, CheckedIn: false},
+		}}
+
+	pairingsResp, err := mgr.AddPlayers(players)
+	if err != nil {
+		return err
+	}
+
+	allCurrentPlayers := mgr.GetPlayers()
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	pairingsResp.Id = tid
+	pairingsResp.Division = division
+
+	addPlayersMessage := &ipc.PlayersAddedOrRemovedResponse{Id: tid,
+		Division:          division,
+		Players:           allCurrentPlayers,
+		DivisionPairings:  pairingsResp.DivisionPairings,
+		DivisionStandings: pairingsResp.DivisionStandings}
+	wrapped := entity.WrapEvent(addPlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+
 }
 
-func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
-	return errors.New("not implemented")
+func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if !t.ExtraMeta.CheckinsOpen {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CHECKINS_CLOSED, t.Name)
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ALREADY_STARTED, t.Name)
+	}
+	var divisionFound string
+
+	for dname, d := range t.Divisions {
+		if divisionFound != "" {
+			break
+		}
+		mgr := d.DivisionManager
+		if mgr == nil {
+			log.Error().Str("division", dname).Msg("division manager is nil")
+			continue
+		}
+		players := mgr.GetPlayers()
+		for _, p := range players.Persons {
+			if p.Id == playerid {
+				err = mgr.SetCheckedIn(playerid)
+				if err != nil {
+					return err
+				}
+				divisionFound = dname
+				break
+			}
+		}
+	}
+	if divisionFound == "" {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_REGISTERED, t.Name)
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	// Send the message to the division
+	checkinMessage := &ipc.PlayerCheckinResponse{
+		Id:       tid,
+		Division: divisionFound,
+		Player:   &ipc.TournamentPerson{Id: playerid, CheckedIn: true},
+	}
+	wrapped := entity.WrapEvent(checkinMessage, ipc.MessageType_TOURNAMENT_PLAYER_CHECKIN)
+
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if !t.ExtraMeta.CheckinsOpen {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CHECKINS_CLOSED, t.Name)
+	}
+	var divisionFound string
+
+	for dname, d := range t.Divisions {
+		if divisionFound != "" {
+			break
+		}
+		mgr := d.DivisionManager
+		if mgr == nil {
+			log.Error().Str("division", dname).Msg("division manager is nil")
+			continue
+		}
+		players := mgr.GetPlayers()
+		for _, p := range players.Persons {
+			if p.Id == playerid {
+				err = mgr.ClearCheckedIn(playerid)
+				if err != nil {
+					return err
+				}
+				divisionFound = dname
+				break
+			}
+		}
+	}
+	if divisionFound == "" {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NOT_REGISTERED, t.Name)
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	// Send the message to the division
+	checkinMessage := &ipc.PlayerCheckinResponse{
+		Id:       tid,
+		Division: divisionFound,
+		Player:   &ipc.TournamentPerson{Id: playerid, CheckedIn: false},
+	}
+	wrapped := entity.WrapEvent(checkinMessage, ipc.MessageType_TOURNAMENT_PLAYER_CHECKIN)
+
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+func UncheckAllIn(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	for dname, d := range t.Divisions {
+		mgr := d.DivisionManager
+		if mgr == nil {
+			log.Error().Str("division", dname).Msg("division manager is nil")
+			continue
+		}
+		err := mgr.ClearAllCheckedIn()
+		if err != nil {
+			return err
+		}
+
+		tdevt, err := mgr.GetXHRResponse()
+		if err != nil {
+			return err
+		}
+		tdevt.Id = tid
+		tdevt.Division = dname
+		wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+		err = SendTournamentMessage(ctx, ts, tid, wrapped)
+		if err != nil {
+			log.Err(err).Msg("sending-tournament-division-msg")
+		}
+
+	}
+
+	return ts.Set(ctx, t)
+}
+
+func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_OPENCHECKINS_AFTER_START, t.Name, "")
+	}
+	t.ExtraMeta.CheckinsOpen = true
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	tdevt, err := TournamentDataResponse(ctx, ts, tid)
+	if err != nil {
+		return err
+	}
+
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+func CloseCheckins(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+	}
+
+	t.ExtraMeta.CheckinsOpen = false
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tdevt, err := TournamentDataResponse(ctx, ts, tid)
+	if err != nil {
+		return err
+	}
+
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_OPENREGISTRATIONS_AFTER_START, t.Name)
+	}
+	t.ExtraMeta.RegistrationOpen = true
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	tdevt, err := TournamentDataResponse(ctx, ts, tid)
+	if err != nil {
+		return err
+	}
+
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name)
+	}
+
+	t.ExtraMeta.RegistrationOpen = false
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tdevt, err := TournamentDataResponse(ctx, ts, tid)
+	if err != nil {
+		return err
+	}
+
+	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
 /*

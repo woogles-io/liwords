@@ -104,6 +104,9 @@ const FormModal = (props: ModalProps) => {
     "unfinish-tournament": (
       <UnfinishTournament tournamentID={props.tournamentID} />
     ),
+    "manage-check-ins-and-registrations": (
+      <ManageCheckIns tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -158,6 +161,7 @@ export const GhettoTools = (props: Props) => {
     "Remove division",
     "Set tournament controls",
     "Set round controls",
+    "Manage check-ins and registrations",
     "Create printable scorecards",
   ];
 
@@ -2099,6 +2103,137 @@ const UnfinishTournament = (props: { tournamentID: string }) => {
       <Form.Item>
         <Button htmlType="submit" type="primary">
           Unfinish this tournament
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const ManageCheckIns = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+
+  const tClient = useClient(TournamentService);
+  const [form] = Form.useForm();
+  const [checkinsOpen, setCheckinsOpen] = useState(false); // Actual state from metadata
+  const [desiredCheckinsState, setDesiredCheckinsState] = useState(false); // Desired state for the button
+  const [registrationsOpen, setRegistrationsOpen] = useState(false); // Actual state from metadata
+  const [desiredRegistrationsState, setDesiredRegistrationsState] =
+    useState(false); // Desired state for the button
+
+  const setCheckinsState = async (vals: Store) => {
+    if (!vals.checkinsOpen) {
+      try {
+        await tClient.closeCheckins({
+          id: props.tournamentID,
+        });
+        message.info({
+          content:
+            "Closed check-ins successfully. If you would like to delete players who have not checked in, please click the Delete Unchecked-In Players button.",
+          duration: 10,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    } else {
+      try {
+        await tClient.openCheckins({
+          id: props.tournamentID,
+        });
+        message.info({
+          content: "Opened check-ins successfully.",
+          duration: 3,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    }
+  };
+
+  const setRegistrationState = async (vals: Store) => {
+    if (!vals.registrationOpen) {
+      try {
+        await tClient.closeRegistration({
+          id: props.tournamentID,
+        });
+        message.info({
+          content: "Closed registration successfully.",
+          duration: 3,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    } else {
+      try {
+        await tClient.openRegistration({
+          id: props.tournamentID,
+        });
+        message.info({
+          content: "Opened registration successfully.",
+          duration: 3,
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const metadata = tournamentContext.metadata;
+    setCheckinsOpen(metadata.checkinsOpen);
+    setDesiredCheckinsState(metadata.checkinsOpen); // Initialize desired state to match actual state
+    setRegistrationsOpen(metadata.registrationOpen);
+    setDesiredRegistrationsState(metadata.registrationOpen); // Initialize desired state to match actual state
+    form.setFieldsValue({
+      checkinsOpen: metadata.checkinsOpen,
+      registrationOpen: metadata.registrationOpen,
+    });
+    console.log("editing");
+  }, [form, tournamentContext.metadata]);
+
+  return (
+    <Form form={form}>
+      <div>Check-ins are currently: {checkinsOpen ? "Open" : "Closed"}</div>
+      <Form.Item name="checkinsOpen" label="Toggle check-ins">
+        <Switch
+          checked={desiredCheckinsState}
+          onChange={(checked) => setDesiredCheckinsState(checked)}
+        />
+      </Form.Item>
+
+      <Form.Item>
+        <Button
+          type="primary"
+          onClick={() => setCheckinsState(form.getFieldsValue())}
+          disabled={checkinsOpen === desiredCheckinsState}
+        >
+          {desiredCheckinsState ? "Open" : "Close"} check-ins
+        </Button>
+      </Form.Item>
+
+      <Divider />
+
+      <div>
+        Registration is currently: {registrationsOpen ? "Open" : "Closed"}
+      </div>
+
+      <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+        If self-register is on, players can register themselves for the
+        tournament and choose their division. Otherwise, you have to add players
+        before they can check in.
+      </div>
+      <Form.Item name="registrationOpen" label="Allow users to self-register">
+        <Switch
+          checked={desiredRegistrationsState}
+          onChange={(checked) => setDesiredRegistrationsState(checked)}
+        />
+      </Form.Item>
+      <Form.Item>
+        <Button
+          type="primary"
+          onClick={() => setRegistrationState(form.getFieldsValue())}
+          disabled={registrationsOpen === desiredRegistrationsState}
+        >
+          {desiredRegistrationsState ? "Open" : "Close"} registration
         </Button>
       </Form.Item>
     </Form>

@@ -266,7 +266,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 	if t == nil {
 		return nil, apiserver.InvalidArg("tournament not found")
 	}
-	metadata, err := dbTournamentToTournamentMetadataResponse(ctx, *t)
+	metadata, err := dbTournamentToTournamentMetadataResponse(ctx, t)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -559,7 +559,7 @@ func (ts *TournamentService) GetRecentAndUpcomingTournaments(ctx context.Context
 		if t == nil {
 			return nil, apiserver.InternalErr(errors.New("tournament is nil"))
 		}
-		tMeta, err := dbTournamentToTournamentMetadataResponse(ctx, *t)
+		tMeta, err := dbTournamentToTournamentMetadataResponse(ctx, t)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
@@ -651,26 +651,89 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 	return nil
 }
 
-// CheckIn does not require director permission.
-func (ts *TournamentService) CheckIn(ctx context.Context, req *connect.Request[pb.CheckinRequest]) (*connect.Response[pb.TournamentResponse], error) {
-	user, err := apiserver.AuthUser(ctx, ts.userStore)
+func (ts *TournamentService) OpenRegistration(ctx context.Context, req *connect.Request[pb.OpenRegistrationRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-
-	err = CheckIn(ctx, ts.tournamentStore, req.Msg.Id, user.TournamentID())
+	err = OpenRegistration(ctx, ts.tournamentStore, req.Msg.Id)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-func (ts *TournamentService) UncheckIn(ctx context.Context, req *connect.Request[pb.UncheckInRequest]) (*connect.Response[pb.TournamentResponse], error) {
+func (ts *TournamentService) CloseRegistration(ctx context.Context, req *connect.Request[pb.CloseRegistrationRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	err = UncheckIn(ctx, ts.tournamentStore, req.Msg.Id)
+	err = CloseRegistration(ctx, ts.tournamentStore, req.Msg.Id)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) Register(ctx context.Context, req *connect.Request[pb.RegisterRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+	err = Register(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, user.TournamentID())
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+// CheckIn does not require director permission.
+func (ts *TournamentService) CheckIn(ctx context.Context, req *connect.Request[pb.CheckinRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.Checkin {
+		err = CheckIn(ctx, ts.tournamentStore, req.Msg.Id, user.TournamentID())
+	} else {
+		err = UncheckIn(ctx, ts.tournamentStore, req.Msg.Id, user.TournamentID())
+	}
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) UncheckAllIn(ctx context.Context, req *connect.Request[pb.UncheckAllInRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	err = UncheckAllIn(ctx, ts.tournamentStore, req.Msg.Id)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) OpenCheckins(ctx context.Context, req *connect.Request[pb.OpenCheckinsRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	err = OpenCheckins(ctx, ts.tournamentStore, req.Msg.Id)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) CloseCheckins(ctx context.Context, req *connect.Request[pb.CloseCheckinsRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	err = CloseCheckins(ctx, ts.tournamentStore, req.Msg.Id)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -775,7 +838,7 @@ func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *c
 	}), nil
 }
 
-func dbTournamentToTournamentMetadataResponse(ctx context.Context, t entity.Tournament) (*pb.TournamentMetadata, error) {
+func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
 	var tt pb.TType
 	switch t.Type {
 	case entity.TypeStandard:
@@ -817,6 +880,8 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t entity.Tour
 		IrlMode:                   t.ExtraMeta.IRLMode,
 		ScheduledStartTime:        scheduledStartTime,
 		ScheduledEndTime:          scheduledEndTime,
+		CheckinsOpen:              t.ExtraMeta.CheckinsOpen,
+		RegistrationOpen:          t.ExtraMeta.RegistrationOpen,
 	}
 
 	return metadata, nil

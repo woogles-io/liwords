@@ -514,7 +514,52 @@ export const ActionsPanel = React.memo((props: Props) => {
             selectedGameTab === "DIRECTOR TOOLS" &&
             renderDirectorTools()}
           {matchModal}
-          {renderGamesTab()}
+          {!tournamentContext.competitorState.isRegistered &&
+          tournamentContext.metadata.registrationOpen &&
+          !tournamentContext.started ? (
+            <>
+              <center>
+                <div style={{ marginTop: 80 }}>
+                  Registration for {tournamentContext.metadata.name} is now
+                  open.
+                </div>
+              </center>
+              <center>
+                {renderDivisionSelector ? (
+                  <div style={{ marginTop: 20 }}>
+                    Select division: {renderDivisionSelector}
+                  </div>
+                ) : null}
+
+                <Button size="large" type="primary" style={{ marginTop: 40 }}>
+                  Register for this tournament
+                </Button>
+              </center>
+            </>
+          ) : tournamentContext.competitorState.isRegistered &&
+            tournamentContext.metadata.checkinsOpen &&
+            !tournamentContext.started ? (
+            <>
+              <center>
+                <div style={{ marginTop: 80, marginLeft: 20, marginRight: 20 }}>
+                  Check-ins for {tournamentContext.metadata.name} are now open.
+                  You must check in before the tournament starts if you do not
+                  want to be dropped. <br />
+                  <br />
+                  Please ensure you can play the tournament in its entirety
+                  before checking in.
+                </div>
+              </center>
+              <center>
+                <Button size="large" style={{ marginTop: 40 }}>
+                  Check into this tournament (division&nbsp;
+                  {tournamentContext.competitorState.division})
+                </Button>
+              </center>
+            </>
+          ) : (
+            renderGamesTab()
+          )}
         </div>
       </Card>
     </div>

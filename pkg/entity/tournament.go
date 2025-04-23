@@ -34,10 +34,10 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
 	ChangeName(string)
+	SetCheckedIn(userID string) error
+	ClearCheckedIn(userID string) error
+	ClearAllCheckedIn() error
 }
-
-/**	SetCheckedIn(userID string) error
-ClearCheckedIn()*/
 
 type CompetitionType string
 
@@ -83,6 +83,8 @@ type TournamentMeta struct {
 	Color                     string          `json:"color"`
 	PrivateAnalysis           bool            `json:"privateAnalysis"`
 	IRLMode                   bool            `json:"irlMode"`
+	CheckinsOpen              bool            `json:"checkinsOpen"`
+	RegistrationOpen          bool            `json:"registrationOpen"`
 }
 
 type Tournament struct {

@@ -2031,20 +2031,29 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
 	return nil
 }
 
-/**
 func (t *ClassicDivision) SetCheckedIn(playerID string) error {
-	for idx, v := range t.Players {
-		if v == playerID {
-			t.PlayersProperties[idx].CheckedIn = true
-			return t.writeResponse(0)
+	for _, v := range t.Players.Persons {
+		if v.Id == playerID {
+			v.CheckedIn = true
+			return nil
 		}
 	}
 	return fmt.Errorf("player %v not found", playerID)
 }
 
-func (t *ClassicDivision) ClearCheckedIn() {
-	for idx := range t.Players {
-		t.PlayersProperties[idx].CheckedIn = false
+func (t *ClassicDivision) ClearCheckedIn(playerID string) error {
+	for _, v := range t.Players.Persons {
+		if v.Id == playerID {
+			v.CheckedIn = false
+			return nil
+		}
 	}
-	t.writeResponse(0)
-*/
+	return fmt.Errorf("player %v not found", playerID)
+}
+
+func (t *ClassicDivision) ClearAllCheckedIn() error {
+	for _, v := range t.Players.Persons {
+		v.CheckedIn = false
+	}
+	return nil
+}

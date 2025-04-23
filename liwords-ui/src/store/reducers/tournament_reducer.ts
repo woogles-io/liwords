@@ -504,6 +504,8 @@ export function TournamentReducer(
       newMetadata.description = m.description;
       newMetadata.scheduledStartTime = m.scheduledStartTime;
       newMetadata.scheduledEndTime = m.scheduledEndTime;
+      newMetadata.checkinsOpen = m.checkinsOpen;
+      newMetadata.registrationOpen = m.registrationOpen;
       return {
         ...state,
         metadata: newMetadata,
