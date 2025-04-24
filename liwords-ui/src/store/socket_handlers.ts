@@ -129,6 +129,7 @@ import { ServerOMGWordsEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameDocumentEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { App } from "antd";
 import { fromBinary } from "@bufbuild/protobuf";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem("enableShowSocket") === "true";
@@ -260,6 +261,7 @@ export const useOnSocketMsg = () => {
 
   const navigate = useNavigate();
   const { message, notification } = App.useApp();
+  const tourneyCompetitorState = useTournamentCompetitorState();
 
   return useCallback(
     (reader: FileReader) => {
@@ -597,7 +599,7 @@ export const useOnSocketMsg = () => {
                 loginState,
               },
             });
-            if (tournamentContext.competitorState?.division === trs.division) {
+            if (tourneyCompetitorState.division === trs.division) {
               BoopSounds.playSound("startTourneyRoundSound");
             }
             break;
@@ -1003,6 +1005,7 @@ export const useOnSocketMsg = () => {
       isExamining,
       message,
       notification,
+      tourneyCompetitorState.division,
     ],
   );
 };

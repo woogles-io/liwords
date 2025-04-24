@@ -27,6 +27,7 @@ import { DirectorTools } from "./director_tools/director_tools";
 import { useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { flashTournamentError } from "./tournament_error";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -70,14 +71,15 @@ export const ActionsPanel = React.memo((props: Props) => {
     [tournamentContext],
   );
   const { divisions } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const [competitorStatusLoaded, setCompetitorStatusLoaded] = useState(
-    tournamentContext.competitorState.isRegistered,
+    competitorState.isRegistered,
   );
   let initialRound = 0;
   let initialDivision = "";
-  if (tournamentContext.competitorState.division) {
-    initialDivision = tournamentContext.competitorState.division;
-    initialRound = tournamentContext.competitorState.currentRound;
+  if (competitorState.division) {
+    initialDivision = competitorState.division;
+    initialRound = competitorState.currentRound;
   }
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
@@ -514,7 +516,7 @@ export const ActionsPanel = React.memo((props: Props) => {
             selectedGameTab === "DIRECTOR TOOLS" &&
             renderDirectorTools()}
           {matchModal}
-          {!tournamentContext.competitorState.isRegistered &&
+          {!competitorState.isRegistered &&
           tournamentContext.metadata.registrationOpen &&
           !tournamentContext.started ? (
             <>
@@ -555,9 +557,9 @@ export const ActionsPanel = React.memo((props: Props) => {
                 </Button>
               </center>
             </>
-          ) : tournamentContext.competitorState.isRegistered &&
+          ) : competitorState.isRegistered &&
             tournamentContext.metadata.checkinsOpen &&
-            !tournamentContext.competitorState.isCheckedIn &&
+            !competitorState.isCheckedIn &&
             !tournamentContext.started ? (
             <>
               <center>
@@ -587,7 +589,7 @@ export const ActionsPanel = React.memo((props: Props) => {
                   }}
                 >
                   Check into this tournament (division&nbsp;
-                  {tournamentContext.competitorState.division})
+                  {competitorState.division})
                 </Button>
               </center>
             </>

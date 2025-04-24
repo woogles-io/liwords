@@ -30,6 +30,7 @@ import {
   GameRequestSchema,
   GameRulesSchema,
 } from "../../gen/api/proto/ipc/omgwords_pb";
+import { getCompetitorState } from "../selectors/tournament_selectors";
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
@@ -106,26 +107,31 @@ const fullDivisionsState = () => {
 
 it("tests initial fulldivisions message", () => {
   const state = defaultTournamentState;
+  const loginState = {
+    username: "mina",
+    userID: "MoczSz5dksZuKMnxcH6yVT",
+    loggedIn: true,
+    connID: "conn-123",
+    path: "/foo",
+    perms: [],
+    connectedToSocket: true,
+  };
   const newState = TournamentReducer(state, {
     actionType: ActionType.SetDivisionsData,
     payload: {
       fullDivisions: initialTourneyXHRMessage(),
-      loginState: {
-        username: "mina",
-        userID: "MoczSz5dksZuKMnxcH6yVT",
-        loggedIn: true,
-        connId: "conn-123",
-        connectedToSocket: true,
-      },
+      loginState,
     },
   });
+  const competitorState = getCompetitorState(newState, loginState);
 
   expect(newState.started).toBe(false);
   expect(newState.divisions["CSW"]).toBeTruthy();
   expect(newState.divisions["NWL"]).toBeTruthy();
   expect(newState.divisions["TWL"]).toBeFalsy();
-  expect(newState.competitorState).toEqual({
+  expect(competitorState).toEqual({
     isRegistered: true,
+    isCheckedIn: false,
     currentRound: -1,
     division: "CSW",
     status: "PRETOURNEY",

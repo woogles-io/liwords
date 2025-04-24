@@ -39,7 +39,7 @@ import { endGameMessageFromGameInfo } from "../store/end_of_game";
 import { Notepad, NotepadContextProvider } from "./notepad";
 import { Analyzer, AnalyzerContextProvider } from "./analyzer";
 import { isClubType, isPairedMode, sortTiles } from "../store/constants";
-import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
+import { readyForTournamentGame } from "../tournament/ready";
 import { CompetitorStatus } from "../tournament/competitor_status";
 import { MetaEventControl } from "./meta_event_control";
 import { useTourneyMetadata } from "../tournament/utils";
@@ -70,6 +70,7 @@ import { ActionType } from "../actions/actions";
 import { syntheticGameInfo } from "../boardwizard/synthetic_game_info";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create, toBinary } from "@bufbuild/protobuf";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -206,7 +207,7 @@ export const Table = React.memo((props: Props) => {
   const { username, userID, loggedIn } = loginState;
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
-  const competitorState = tournamentContext.competitorState;
+  const competitorState = useTournamentCompetitorState();
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;

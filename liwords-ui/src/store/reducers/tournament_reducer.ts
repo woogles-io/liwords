@@ -1,6 +1,5 @@
-import { clone, create, toBinary } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import { Action, ActionType } from "../../actions/actions";
-import { MessageType } from "../../gen/api/proto/ipc/ipc_pb";
 import { GameEndReason } from "../../gen/api/proto/ipc/omgwords_pb";
 import {
   DivisionControls,
@@ -13,7 +12,6 @@ import {
   PlayerCheckinResponse,
   PlayersAddedOrRemovedResponse,
   ReadyForTournamentGame,
-  ReadyForTournamentGameSchema,
   RoundControl,
   RoundControlSchema,
   RoundStandings,
@@ -32,7 +30,6 @@ import {
   TournamentMetadataSchema,
   TType,
 } from "../../gen/api/proto/tournament_service/tournament_service_pb";
-import { encodeToSocketFmt } from "../../utils/protobuf";
 import { LoginState } from "../login_state";
 import { ActiveGame } from "./lobby_reducer";
 
@@ -70,16 +67,9 @@ export type Division = {
   // checkedInPlayers: Set<string>;
 };
 
-export type CompetitorState = {
-  isRegistered: boolean;
-  isCheckedIn: boolean;
-  division?: string;
-  status?: TourneyStatus;
-  currentRound: number;
-};
-
 export const defaultCompetitorState = {
   isRegistered: false,
+  isCheckedIn: false,
   currentRound: -1,
 };
 
@@ -89,7 +79,6 @@ export type TournamentState = {
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
   divisions: { [name: string]: Division };
-  competitorState: CompetitorState;
 
   // activeGames in this tournament.
   activeGames: Array<ActiveGame>;
@@ -110,50 +99,12 @@ export const defaultTournamentState = {
   directors: new Array<string>(),
   started: false,
   divisions: {},
-  competitorState: defaultCompetitorState,
   activeGames: new Array<ActiveGame>(),
   finishedTourneyGames: new Array<TournamentGameEndedEvent>(),
   gamesPageSize: 20,
   gamesOffset: 0,
   finished: false,
   initializedFromXHR: false,
-};
-
-export enum TourneyStatus {
-  PRETOURNEY = "PRETOURNEY",
-  NOT_CHECKED_IN = "NOT_CHECKED_IN",
-  ROUND_BYE = "ROUND_BYE",
-  ROUND_OPEN = "ROUND_OPEN",
-  ROUND_GAME_FINISHED = "ROUND_GAME_FINISHED",
-  ROUND_READY = "ROUND_READY", // waiting for your opponent
-  ROUND_OPPONENT_WAITING = "ROUND_OPPONENT_WAITING",
-  ROUND_LATE = "ROUND_LATE", // expect this to override opponent waiting
-  ROUND_GAME_ACTIVE = "ROUND_GAME_ACTIVE",
-  ROUND_FORFEIT_LOSS = "ROUND_FORFEIT_LOSS",
-  ROUND_FORFEIT_WIN = "ROUND_FORFEIT_WIN",
-  POSTTOURNEY = "POSTTOURNEY",
-}
-
-export const readyForTournamentGame = (
-  sendSocketMsg: (msg: Uint8Array) => void,
-  tournamentID: string,
-  competitorState: CompetitorState,
-) => {
-  const evt = create(ReadyForTournamentGameSchema, {});
-  const division = competitorState.division;
-  if (!division) {
-    return;
-  }
-  const round = competitorState.currentRound;
-  evt.division = division;
-  evt.tournamentId = tournamentID;
-  evt.round = round;
-  sendSocketMsg(
-    encodeToSocketFmt(
-      MessageType.READY_FOR_TOURNAMENT_GAME,
-      toBinary(ReadyForTournamentGameSchema, evt),
-    ),
-  );
 };
 
 const findOpponentIdx = (
@@ -363,7 +314,7 @@ const divisionDataResponseToObj = (
   return ret;
 };
 
-const getPairing = (
+export const getPairing = (
   round: number,
   fullPlayerID: string,
   division: Division,
@@ -380,93 +331,6 @@ const getPairing = (
   return division.pairings[round].roundPairings[
     division.playerIndexMap[fullPlayerID]
   ];
-};
-
-// The "Ready" button and pairings should be displayed based on:
-//    - the tournament having started
-//    - player not having yet started the current round's game
-//      (how do we determine that? a combination of the live games
-//       currently ongoing and a game result already being in for this game?)
-const tourneyStatus = (
-  division: Division,
-  activeGames: Array<ActiveGame>,
-  loginContext: LoginState,
-  checkinsOpen: boolean,
-): TourneyStatus => {
-  if (!division) {
-    return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
-  }
-
-  const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
-
-  if (
-    checkinsOpen &&
-    !division.players.find((p) => p.id === fullPlayerID)?.checkedIn
-  ) {
-    return TourneyStatus.NOT_CHECKED_IN;
-  }
-
-  const pairing = getPairing(division.currentRound, fullPlayerID, division);
-
-  if (!pairing || !pairing.players) {
-    return TourneyStatus.PRETOURNEY;
-  }
-
-  const playerIdx = pairing.players.map((v) => v.id).indexOf(fullPlayerID);
-  if (playerIdx === undefined) {
-    return TourneyStatus.PRETOURNEY;
-  }
-  if (pairing.players[0] === pairing.players[1]) {
-    switch (pairing.outcomes[0]) {
-      case TournamentGameResult.BYE:
-        return TourneyStatus.ROUND_BYE;
-      case TournamentGameResult.FORFEIT_LOSS:
-        return TourneyStatus.ROUND_FORFEIT_LOSS;
-      case TournamentGameResult.FORFEIT_WIN:
-        return TourneyStatus.ROUND_FORFEIT_WIN;
-    }
-    return TourneyStatus.PRETOURNEY;
-  }
-  if (pairing.games[0] && pairing.games[0].gameEndReason) {
-    if (division.currentRound === division.numRounds - 1) {
-      return TourneyStatus.POSTTOURNEY;
-    }
-    // Game already finished
-    return TourneyStatus.ROUND_GAME_FINISHED;
-  }
-  if (
-    activeGames.find((ag) => {
-      return (
-        ag.players[0].displayName === loginContext.username ||
-        ag.players[1].displayName === loginContext.username
-      );
-    })
-  ) {
-    return TourneyStatus.ROUND_GAME_ACTIVE;
-  }
-  if (
-    pairing.readyStates[playerIdx] === "" &&
-    pairing.readyStates[1 - playerIdx] !== ""
-  ) {
-    // Our opponent is ready
-    return TourneyStatus.ROUND_OPPONENT_WAITING;
-  } else if (
-    pairing.readyStates[1 - playerIdx] === "" &&
-    pairing.readyStates[playerIdx] !== ""
-  ) {
-    // We're ready
-    return TourneyStatus.ROUND_READY;
-  }
-
-  if (
-    pairing.readyStates[playerIdx] === "" &&
-    pairing.readyStates[1 - playerIdx] === ""
-  ) {
-    return TourneyStatus.ROUND_OPEN;
-  }
-
-  // Otherwise just return generic pre-tourney
-  return TourneyStatus.PRETOURNEY;
 };
 
 export function TournamentReducer(
@@ -643,32 +507,6 @@ export function TournamentReducer(
         dp.dpr.divisionStandings,
       );
 
-      const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
-      const userIndex =
-        state.divisions[division].playerIndexMap[fullLoggedInID];
-      let newStatus = state.competitorState.status;
-      if (userIndex != null) {
-        dp.dpr.divisionPairings.forEach((pairing: Pairing) => {
-          if (pairing.round === state.divisions[division].currentRound) {
-            const pairingPlayers = pairing.players;
-            if (
-              pairingPlayers &&
-              (pairingPlayers[0] === userIndex ||
-                pairingPlayers[1] === userIndex)
-            ) {
-              let playerIndex = 0;
-              if (pairingPlayers[1] === userIndex) {
-                playerIndex = 1;
-              }
-              const outcome = pairing.outcomes[playerIndex];
-              if (outcome !== TournamentGameResult.NO_RESULT) {
-                newStatus = TourneyStatus.ROUND_GAME_FINISHED;
-              }
-            }
-          }
-        });
-      }
-
       const finishedGamesMap: { [id: string]: boolean } = {};
       dp.dpr.divisionPairings.forEach((p) => {
         p.games.forEach((tg) => {
@@ -684,9 +522,6 @@ export function TournamentReducer(
       );
 
       const newState = Object.assign({}, state, {
-        competitorState: Object.assign({}, state.competitorState, {
-          status: newStatus,
-        }),
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             pairings: newPairings,
@@ -756,42 +591,7 @@ export function TournamentReducer(
       );
       newStandings = reduceStandings(newStandings, dp.parr.divisionStandings);
 
-      const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
-      const myPreviousDivision = state.competitorState.division;
-      let myRegisteredDivision: Division | undefined;
-      if (fullLoggedInID in newPlayerIndexMap) {
-        myRegisteredDivision = state.divisions[division];
-      }
-
-      let competitorState: CompetitorState = state.competitorState;
-
-      if (myRegisteredDivision) {
-        competitorState = {
-          isRegistered: true,
-          isCheckedIn:
-            myRegisteredDivision.players.find((p) => p.id === fullLoggedInID)
-              ?.checkedIn || false,
-          division: myRegisteredDivision.divisionID,
-          currentRound: myRegisteredDivision.currentRound,
-          status: tourneyStatus(
-            myRegisteredDivision,
-            state.activeGames,
-            dp.loginState,
-            state.metadata.checkinsOpen,
-          ),
-        };
-      } else {
-        competitorState = {
-          ...competitorState,
-          isRegistered:
-            // we're only still registered if we were already registered,
-            // and the division we were registered in is not the division that came in
-            // (otherwise, it would have listed us as a player)
-            myPreviousDivision !== undefined && myPreviousDivision !== division,
-        };
-      }
       const newState = Object.assign({}, state, {
-        competitorState,
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             pairings: newPairings,
@@ -818,30 +618,8 @@ export function TournamentReducer(
         loginState: LoginState;
       };
       const divData = divisionDataResponseToObj(dd.divisionMessage);
-      const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
-      let registeredDivision: Division | undefined;
-      if (fullLoggedInID in divData.playerIndexMap) {
-        registeredDivision = divData;
-      }
-      let competitorState: CompetitorState = state.competitorState;
-      if (registeredDivision) {
-        competitorState = {
-          isRegistered: true,
-          isCheckedIn:
-            registeredDivision.players.find((p) => p.id === fullLoggedInID)
-              ?.checkedIn || false,
-          division: registeredDivision.divisionID,
-          currentRound: registeredDivision.currentRound,
-          status: tourneyStatus(
-            registeredDivision,
-            state.activeGames,
-            dd.loginState,
-            state.metadata.checkinsOpen,
-          ),
-        };
-      }
+
       return Object.assign({}, state, {
-        competitorState,
         divisions: Object.assign({}, state.divisions, {
           [dd.divisionMessage.division]: divData,
         }),
@@ -871,39 +649,15 @@ export function TournamentReducer(
 
       const divisions: { [name: string]: Division } = {};
       const divisionsMap = dd.fullDivisions.divisions;
-      const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
-      let registeredDivision: Division | undefined;
 
       for (const [k, v] of Object.entries(divisionsMap)) {
         divisions[k] = divisionDataResponseToObj(v);
-        if (fullLoggedInID in divisions[k].playerIndexMap) {
-          registeredDivision = divisions[k];
-        }
-      }
-
-      let competitorState: CompetitorState = state.competitorState;
-      if (registeredDivision) {
-        competitorState = {
-          isRegistered: true,
-          isCheckedIn:
-            registeredDivision.players.find((p) => p.id === fullLoggedInID)
-              ?.checkedIn || false,
-          division: registeredDivision.divisionID,
-          currentRound: registeredDivision.currentRound,
-          status: tourneyStatus(
-            registeredDivision,
-            state.activeGames,
-            dd.loginState,
-            state.metadata.checkinsOpen,
-          ),
-        };
       }
 
       return {
         ...state,
         started: dd.fullDivisions.started,
         divisions,
-        competitorState,
         initializedFromXHR: true,
       };
     }
@@ -926,26 +680,9 @@ export function TournamentReducer(
         }),
       });
 
-      const newStatus =
-        state.competitorState.division === division
-          ? tourneyStatus(
-              newDivisions[division],
-              state.activeGames,
-              m.loginState,
-              state.metadata.checkinsOpen,
-            )
-          : state.competitorState.status;
-
       return Object.assign({}, state, {
         started: true,
         divisions: newDivisions,
-        competitorState: Object.assign({}, state.competitorState, {
-          currentRound:
-            state.competitorState.division === division
-              ? m.trs.round
-              : state.competitorState.currentRound,
-          status: newStatus,
-        }),
       });
     }
 
@@ -955,13 +692,7 @@ export function TournamentReducer(
         loginState: LoginState;
       };
 
-      const registeredDivision = state.competitorState.division;
-      if (!registeredDivision) {
-        // this should not happen, we should not get a ready state if we
-        // are not in some division
-        return state;
-      }
-      const division = state.divisions[registeredDivision];
+      const division = state.divisions[m.ready.division];
       const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
       if (m.ready.round !== division.currentRound) {
         // this should not happen, the ready state should always be for the
@@ -969,12 +700,7 @@ export function TournamentReducer(
         console.error("ready state current round does not match");
         return state;
       }
-      if (m.ready.division !== registeredDivision) {
-        // this should not happen, the ready state should always be for the
-        // current division.
-        console.error("ready state current division does not match");
-        return state;
-      }
+
       const pairing = getPairing(m.ready.round, fullPlayerID, division);
       if (!pairing) {
         return state;
@@ -1014,27 +740,16 @@ export function TournamentReducer(
 
       const newRegisteredDiv = Object.assign(
         {},
-        state.divisions[registeredDivision],
+        state.divisions[m.ready.division],
         {
           pairings: updatedPairings,
         },
       );
 
-      const newCompetitorState = {
-        ...state.competitorState,
-        status: tourneyStatus(
-          newRegisteredDiv,
-          state.activeGames,
-          m.loginState,
-          state.metadata.checkinsOpen,
-        ),
-      };
-
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
-          [registeredDivision]: newRegisteredDiv,
+          [m.ready.division]: newRegisteredDiv,
         }),
-        competitorState: newCompetitorState,
       });
     }
 
@@ -1046,24 +761,10 @@ export function TournamentReducer(
         activeGames: Array<ActiveGame>;
         loginState: LoginState;
       };
-      const registeredDivision = state.competitorState.division;
-      let newCompetitorState = state.competitorState;
-      if (registeredDivision) {
-        newCompetitorState = {
-          ...state.competitorState,
-          status: tourneyStatus(
-            state.divisions[registeredDivision],
-            g.activeGames,
-            g.loginState,
-            state.metadata.checkinsOpen,
-          ),
-        };
-      }
 
       return {
         ...state,
         activeGames: g.activeGames,
-        competitorState: newCompetitorState,
       };
     }
 
@@ -1073,24 +774,10 @@ export function TournamentReducer(
         activeGame: ActiveGame;
         loginState: LoginState;
       };
-      const registeredDivision = state.competitorState.division;
-      let newCompetitorState = state.competitorState;
-      if (registeredDivision) {
-        newCompetitorState = {
-          ...state.competitorState,
-          status: tourneyStatus(
-            state.divisions[registeredDivision],
-            [...state.activeGames, g.activeGame],
-            g.loginState,
-            state.metadata.checkinsOpen,
-          ),
-        };
-      }
 
       return {
         ...state,
         activeGames: [...activeGames, g.activeGame],
-        competitorState: newCompetitorState,
       };
     }
 

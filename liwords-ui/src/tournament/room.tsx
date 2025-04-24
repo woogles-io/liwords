@@ -13,7 +13,6 @@ import { sendAccept, sendSeek } from "../lobby/sought_game_interactions";
 import { SoughtGame } from "../store/reducers/lobby_reducer";
 import { ActionsPanel } from "./actions_panel";
 import { CompetitorStatus } from "./competitor_status";
-import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
 import "./room.scss";
 import { useTourneyMetadata } from "./utils";
 import { useSearchParams } from "react-router";
@@ -21,6 +20,8 @@ import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { readyForTournamentGame } from "./ready";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -34,8 +35,8 @@ export const TournamentRoom = (props: Props) => {
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
   const { loggedIn, username, userID } = loginState;
-  const { competitorState: competitorContext } = tournamentContext;
-  const { isRegistered } = competitorContext;
+  const competitorState = useTournamentCompetitorState();
+  const { isRegistered } = competitorState;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
@@ -131,7 +132,7 @@ export const TournamentRoom = (props: Props) => {
                 readyForTournamentGame(
                   sendSocketMsg,
                   tournamentContext.metadata.id,
-                  competitorContext,
+                  competitorState,
                 )
               }
             />
@@ -163,7 +164,7 @@ export const TournamentRoom = (props: Props) => {
               readyForTournamentGame(
                 sendSocketMsg,
                 tournamentContext.metadata.id,
-                competitorContext,
+                competitorState,
               )
             }
             showFirst={tournamentContext.metadata.irlMode}
