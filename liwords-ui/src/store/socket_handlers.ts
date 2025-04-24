@@ -117,6 +117,8 @@ import {
   DivisionPairingsDeletedResponseSchema,
   TournamentDataResponseSchema,
   TournamentDivisionDataResponseSchema,
+  PlayerCheckinResponseSchema,
+  PlayerCheckinResponse,
 } from "../gen/api/proto/ipc/tournament_pb";
 import {
   ProfileUpdate,
@@ -184,6 +186,7 @@ const MsgTypesMap = {
   [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdateSchema,
   [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEventSchema,
   [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEventSchema,
+  [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
 };
 
 export const parseMsgs = (
@@ -942,6 +945,15 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.DeleteDivision,
               payload: tdd,
+            });
+            break;
+          }
+
+          case MessageType.TOURNAMENT_PLAYER_CHECKIN: {
+            const tpc = parsedMsg as PlayerCheckinResponse;
+            dispatchTournamentContext({
+              actionType: ActionType.SetTourneyPlayerCheckin,
+              payload: tpc,
             });
             break;
           }

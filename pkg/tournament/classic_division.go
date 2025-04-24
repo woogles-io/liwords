@@ -1128,6 +1128,7 @@ func (t *ClassicDivision) ResetToBeginning() error {
 
 	for _, p := range t.Players.Persons {
 		p.Suspended = false
+		p.CheckedIn = false
 	}
 
 	_, err := t.prepair()
@@ -2029,26 +2030,6 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
 		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
 	}
 	return nil
-}
-
-func (t *ClassicDivision) SetCheckedIn(playerID string) error {
-	for _, v := range t.Players.Persons {
-		if v.Id == playerID {
-			v.CheckedIn = true
-			return nil
-		}
-	}
-	return fmt.Errorf("player %v not found", playerID)
-}
-
-func (t *ClassicDivision) ClearCheckedIn(playerID string) error {
-	for _, v := range t.Players.Persons {
-		if v.Id == playerID {
-			v.CheckedIn = false
-			return nil
-		}
-	}
-	return fmt.Errorf("player %v not found", playerID)
 }
 
 func (t *ClassicDivision) ClearAllCheckedIn() error {

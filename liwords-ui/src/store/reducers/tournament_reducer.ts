@@ -10,6 +10,7 @@ import {
   DivisionRoundControls,
   FullTournamentDivisions,
   Pairing,
+  PlayerCheckinResponse,
   PlayersAddedOrRemovedResponse,
   ReadyForTournamentGame,
   ReadyForTournamentGameSchema,
@@ -71,6 +72,7 @@ export type Division = {
 
 export type CompetitorState = {
   isRegistered: boolean;
+  isCheckedIn: boolean;
   division?: string;
   status?: TourneyStatus;
   currentRound: number;
@@ -119,6 +121,7 @@ export const defaultTournamentState = {
 
 export enum TourneyStatus {
   PRETOURNEY = "PRETOURNEY",
+  NOT_CHECKED_IN = "NOT_CHECKED_IN",
   ROUND_BYE = "ROUND_BYE",
   ROUND_OPEN = "ROUND_OPEN",
   ROUND_GAME_FINISHED = "ROUND_GAME_FINISHED",
@@ -388,12 +391,21 @@ const tourneyStatus = (
   division: Division,
   activeGames: Array<ActiveGame>,
   loginContext: LoginState,
+  checkinsOpen: boolean,
 ): TourneyStatus => {
   if (!division) {
     return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
   }
 
   const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
+
+  if (
+    checkinsOpen &&
+    !division.players.find((p) => p.id === fullPlayerID)?.checkedIn
+  ) {
+    return TourneyStatus.NOT_CHECKED_IN;
+  }
+
   const pairing = getPairing(division.currentRound, fullPlayerID, division);
 
   if (!pairing || !pairing.players) {
@@ -473,6 +485,7 @@ export function TournamentReducer(
         ActionType.SetTourneyReducedMetadata,
         ActionType.AddActiveGames,
         ActionType.AddActiveGame,
+        ActionType.SetTourneyPlayerCheckin,
         // These are legacy events for CLUB/LEGACY tournament types
 
         ActionType.RemoveActiveGame,
@@ -755,12 +768,16 @@ export function TournamentReducer(
       if (myRegisteredDivision) {
         competitorState = {
           isRegistered: true,
+          isCheckedIn:
+            myRegisteredDivision.players.find((p) => p.id === fullLoggedInID)
+              ?.checkedIn || false,
           division: myRegisteredDivision.divisionID,
           currentRound: myRegisteredDivision.currentRound,
           status: tourneyStatus(
             myRegisteredDivision,
             state.activeGames,
             dp.loginState,
+            state.metadata.checkinsOpen,
           ),
         };
       } else {
@@ -810,12 +827,16 @@ export function TournamentReducer(
       if (registeredDivision) {
         competitorState = {
           isRegistered: true,
+          isCheckedIn:
+            registeredDivision.players.find((p) => p.id === fullLoggedInID)
+              ?.checkedIn || false,
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
             registeredDivision,
             state.activeGames,
             dd.loginState,
+            state.metadata.checkinsOpen,
           ),
         };
       }
@@ -864,12 +885,16 @@ export function TournamentReducer(
       if (registeredDivision) {
         competitorState = {
           isRegistered: true,
+          isCheckedIn:
+            registeredDivision.players.find((p) => p.id === fullLoggedInID)
+              ?.checkedIn || false,
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
             registeredDivision,
             state.activeGames,
             dd.loginState,
+            state.metadata.checkinsOpen,
           ),
         };
       }
@@ -907,6 +932,7 @@ export function TournamentReducer(
               newDivisions[division],
               state.activeGames,
               m.loginState,
+              state.metadata.checkinsOpen,
             )
           : state.competitorState.status;
 
@@ -1000,6 +1026,7 @@ export function TournamentReducer(
           newRegisteredDiv,
           state.activeGames,
           m.loginState,
+          state.metadata.checkinsOpen,
         ),
       };
 
@@ -1028,6 +1055,7 @@ export function TournamentReducer(
             state.divisions[registeredDivision],
             g.activeGames,
             g.loginState,
+            state.metadata.checkinsOpen,
           ),
         };
       }
@@ -1054,6 +1082,7 @@ export function TournamentReducer(
             state.divisions[registeredDivision],
             [...state.activeGames, g.activeGame],
             g.loginState,
+            state.metadata.checkinsOpen,
           ),
         };
       }
@@ -1116,6 +1145,31 @@ export function TournamentReducer(
         ...state,
         gamesOffset: offset,
       };
+    }
+
+    case ActionType.SetTourneyPlayerCheckin: {
+      const checkin = action.payload as PlayerCheckinResponse;
+      const division = state.divisions[checkin.division];
+      if (division && checkin.player) {
+        const newPlayers = [...division.players];
+        const playerIndex = newPlayers.findIndex(
+          (p) => p.id === checkin.player?.id,
+        );
+        if (playerIndex !== -1) {
+          newPlayers[playerIndex].checkedIn = checkin.player.checkedIn;
+        }
+        return {
+          ...state,
+          divisions: {
+            ...state.divisions,
+            [checkin.division]: {
+              ...division,
+              players: newPlayers,
+            },
+          },
+        };
+      }
+      return state;
     }
   }
   throw new Error(`unhandled action type ${action.actionType}`);

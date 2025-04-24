@@ -1,7 +1,10 @@
 import React, { useCallback } from "react";
 import { Card, Button } from "antd";
 import { useTournamentStoreContext } from "../store/store";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import {
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import "./competitor_status.scss";
 import { TourneyStatus } from "../store/reducers/tournament_reducer";
 import { ReadyButton } from "./ready_button";
@@ -38,6 +41,16 @@ export const CompetitorStatus = (props: Props) => {
       : false;
 
     switch (competitorContext.status) {
+      case TourneyStatus.NOT_CHECKED_IN:
+        return (
+          <>
+            <ExclamationCircleOutlined />
+            <p>
+              Check-ins are now open for the {tournamentContext.metadata.name}.
+              Please check in as soon as you can!
+            </p>
+          </>
+        );
       case TourneyStatus.PRETOURNEY:
         // TODO: This one should specify tournament start date or time when we have that
         // Round 1 of the [tourney name] starts at [time].

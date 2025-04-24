@@ -531,27 +531,61 @@ export const ActionsPanel = React.memo((props: Props) => {
                   </div>
                 ) : null}
 
-                <Button size="large" type="primary" style={{ marginTop: 40 }}>
+                <Button
+                  size="large"
+                  type="primary"
+                  style={{ marginTop: 40 }}
+                  onClick={async () => {
+                    try {
+                      await tournamentClient.register({
+                        id: tournamentContext.metadata.id,
+                        division: selectedDivision,
+                      });
+                    } catch (e) {
+                      flashTournamentError(
+                        message,
+                        notification,
+                        e,
+                        tournamentContext,
+                      );
+                    }
+                  }}
+                >
                   Register for this tournament
                 </Button>
               </center>
             </>
           ) : tournamentContext.competitorState.isRegistered &&
             tournamentContext.metadata.checkinsOpen &&
+            !tournamentContext.competitorState.isCheckedIn &&
             !tournamentContext.started ? (
             <>
               <center>
                 <div style={{ marginTop: 80, marginLeft: 20, marginRight: 20 }}>
-                  Check-ins for {tournamentContext.metadata.name} are now open.
-                  You must check in before the tournament starts if you do not
-                  want to be dropped. <br />
-                  <br />
                   Please ensure you can play the tournament in its entirety
                   before checking in.
                 </div>
               </center>
               <center>
-                <Button size="large" style={{ marginTop: 40 }}>
+                <Button
+                  size="large"
+                  style={{ marginTop: 40 }}
+                  onClick={async () => {
+                    try {
+                      await tournamentClient.checkIn({
+                        id: tournamentContext.metadata.id,
+                        checkin: true,
+                      });
+                    } catch (e) {
+                      flashTournamentError(
+                        message,
+                        notification,
+                        e,
+                        tournamentContext,
+                      );
+                    }
+                  }}
+                >
                   Check into this tournament (division&nbsp;
                   {tournamentContext.competitorState.division})
                 </Button>

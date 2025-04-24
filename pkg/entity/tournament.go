@@ -34,8 +34,6 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) ([]*pb.Pairing, error)
 	ResetToBeginning() error
 	ChangeName(string)
-	SetCheckedIn(userID string) error
-	ClearCheckedIn(userID string) error
 	ClearAllCheckedIn() error
 }
 

@@ -1093,6 +1093,8 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 		}
 	}
 	t.IsStarted = true
+	t.ExtraMeta.CheckinsOpen = false
+	t.ExtraMeta.RegistrationOpen = false
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
@@ -1593,11 +1595,9 @@ func CheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) erro
 		players := mgr.GetPlayers()
 		for _, p := range players.Persons {
 			if p.Id == playerid {
-				err = mgr.SetCheckedIn(playerid)
-				if err != nil {
-					return err
-				}
+				p.CheckedIn = true
 				divisionFound = dname
+				log.Info().Str("tid", tid).Str("pid", playerid).Msg("checking-in")
 				break
 			}
 		}
@@ -1646,11 +1646,9 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid, playerid string) er
 		players := mgr.GetPlayers()
 		for _, p := range players.Persons {
 			if p.Id == playerid {
-				err = mgr.ClearCheckedIn(playerid)
-				if err != nil {
-					return err
-				}
+				p.CheckedIn = false
 				divisionFound = dname
+				log.Info().Str("tid", tid).Str("pid", playerid).Msg("unchecking-in")
 				break
 			}
 		}
@@ -1816,64 +1814,3 @@ func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) erro
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
-
-/*
-func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
-	t, err := ts.Get(ctx, tid)
-	if err != nil {
-		return err
-	}
-	t.Lock()
-	defer t.Unlock()
-
-	found := false
-	// really a player should only be in one division but we allow this so let's
-	// make it correct for now
-	divisionsFound := []string{}
-	for dname, d := range t.Divisions {
-		if _, ok := d.Players.Persons[playerid]; ok {
-			err := d.DivisionManager.SetCheckedIn(playerid)
-			if err != nil {
-				return err
-			}
-			found = true
-			divisionsFound = append(divisionsFound, dname)
-		}
-	}
-	if !found {
-		return errors.New("user not in this tournament")
-	}
-	err = ts.Set(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	for _, d := range divisionsFound {
-		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, d)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
-	t, err := ts.Get(ctx, tid)
-	if err != nil {
-		return err
-	}
-	t.Lock()
-	defer t.Unlock()
-
-	for dname, d := range t.Divisions {
-		d.DivisionManager.ClearCheckedIn()
-		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, dname)
-		if err != nil {
-			return err
-		}
-	}
-	return ts.Set(ctx, t)
-}
-
-*/
