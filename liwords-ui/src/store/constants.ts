@@ -451,6 +451,18 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1072, "You cannot remove the executive director."],
   [1073, "You must select one of the options for Suspended game result"],
   [
+    WooglesError.TOURNAMENT_OPENCHECKINS_AFTER_START,
+    "You cannot open check-ins after the tournament has started.",
+  ],
+  [
+    WooglesError.TOURNAMENT_OPENREGISTRATIONS_AFTER_START,
+    "You cannot open registrations after the tournament has started.",
+  ],
+  [
+    WooglesError.TOURNAMENT_ALREADY_STARTED,
+    "The tournament has already started, so you can't do that.",
+  ],
+  [
     WooglesError.TOURNAMENT_CANNOT_START_CHECKINS_OR_REGISTRATIONS_OPEN,
     "You cannot start a tournament with check-ins or registrations open. Please close these first.",
   ],
