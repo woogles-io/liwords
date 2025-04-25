@@ -282,6 +282,9 @@ service TournamentService {
   // Uncheck everyone in. Use this some time before the beginning of a session.
   rpc UncheckAllIn(UncheckAllInRequest) returns (TournamentResponse);
 
+  rpc RemoveAllPlayersNotCheckedIn(RemoveAllPlayersNotCheckedInRequest)
+      returns (TournamentResponse);
+
   // CheckIn allows players to check themselves in.
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
   rpc Register(RegisterRequest) returns (TournamentResponse);

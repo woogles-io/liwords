@@ -2610,7 +2610,7 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x04CLUB\x10\x01\x12\t\n" +
 	"\x05CHILD\x10\x02\x12\n" +
 	"\n" +
-	"\x06LEGACY\x10\x032\xc9\x1b\n" +
+	"\x06LEGACY\x10\x032\xca\x1c\n" +
 	"\x11TournamentService\x12d\n" +
 	"\rNewTournament\x12(.tournament_service.NewTournamentRequest\x1a).tournament_service.NewTournamentResponse\x12~\n" +
 	"\x15GetTournamentMetadata\x120.tournament_service.GetTournamentMetadataRequest\x1a..tournament_service.TournamentMetadataResponse\"\x03\x90\x02\x01\x12\\\n" +
@@ -2642,7 +2642,8 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x11CloseRegistration\x12,.tournament_service.CloseRegistrationRequest\x1a&.tournament_service.TournamentResponse\x12_\n" +
 	"\fOpenCheckins\x12'.tournament_service.OpenCheckinsRequest\x1a&.tournament_service.TournamentResponse\x12a\n" +
 	"\rCloseCheckins\x12(.tournament_service.CloseCheckinsRequest\x1a&.tournament_service.TournamentResponse\x12_\n" +
-	"\fUncheckAllIn\x12'.tournament_service.UncheckAllInRequest\x1a&.tournament_service.TournamentResponse\x12U\n" +
+	"\fUncheckAllIn\x12'.tournament_service.UncheckAllInRequest\x1a&.tournament_service.TournamentResponse\x12\x7f\n" +
+	"\x1cRemoveAllPlayersNotCheckedIn\x127.tournament_service.RemoveAllPlayersNotCheckedInRequest\x1a&.tournament_service.TournamentResponse\x12U\n" +
 	"\aCheckIn\x12\".tournament_service.CheckinRequest\x1a&.tournament_service.TournamentResponse\x12W\n" +
 	"\bRegister\x12#.tournament_service.RegisterRequest\x1a&.tournament_service.TournamentResponse\x12r\n" +
 	"\x10ExportTournament\x12+.tournament_service.ExportTournamentRequest\x1a,.tournament_service.ExportTournamentResponse\"\x03\x90\x02\x01\x12\x7f\n" +
@@ -2766,47 +2767,49 @@ var file_proto_tournament_service_tournament_service_proto_depIdxs = []int32{
 	29, // 45: tournament_service.TournamentService.OpenCheckins:input_type -> tournament_service.OpenCheckinsRequest
 	30, // 46: tournament_service.TournamentService.CloseCheckins:input_type -> tournament_service.CloseCheckinsRequest
 	23, // 47: tournament_service.TournamentService.UncheckAllIn:input_type -> tournament_service.UncheckAllInRequest
-	25, // 48: tournament_service.TournamentService.CheckIn:input_type -> tournament_service.CheckinRequest
-	26, // 49: tournament_service.TournamentService.Register:input_type -> tournament_service.RegisterRequest
-	35, // 50: tournament_service.TournamentService.ExportTournament:input_type -> tournament_service.ExportTournamentRequest
-	31, // 51: tournament_service.TournamentService.GetTournamentScorecards:input_type -> tournament_service.TournamentScorecardRequest
-	33, // 52: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:input_type -> tournament_service.GetRecentAndUpcomingTournamentsRequest
-	14, // 53: tournament_service.TournamentService.NewTournament:output_type -> tournament_service.NewTournamentResponse
-	19, // 54: tournament_service.TournamentService.GetTournamentMetadata:output_type -> tournament_service.TournamentMetadataResponse
-	50, // 55: tournament_service.TournamentService.GetTournament:output_type -> ipc.FullTournamentDivisions
-	13, // 56: tournament_service.TournamentService.UnfinishTournament:output_type -> tournament_service.TournamentResponse
-	13, // 57: tournament_service.TournamentService.FinishTournament:output_type -> tournament_service.TournamentResponse
-	13, // 58: tournament_service.TournamentService.SetTournamentMetadata:output_type -> tournament_service.TournamentResponse
-	13, // 59: tournament_service.TournamentService.PairRound:output_type -> tournament_service.TournamentResponse
-	13, // 60: tournament_service.TournamentService.SetSingleRoundControls:output_type -> tournament_service.TournamentResponse
-	13, // 61: tournament_service.TournamentService.SetRoundControls:output_type -> tournament_service.TournamentResponse
-	13, // 62: tournament_service.TournamentService.SetDivisionControls:output_type -> tournament_service.TournamentResponse
-	13, // 63: tournament_service.TournamentService.AddDirectors:output_type -> tournament_service.TournamentResponse
-	13, // 64: tournament_service.TournamentService.RemoveDirectors:output_type -> tournament_service.TournamentResponse
-	13, // 65: tournament_service.TournamentService.AddDivision:output_type -> tournament_service.TournamentResponse
-	13, // 66: tournament_service.TournamentService.RenameDivision:output_type -> tournament_service.TournamentResponse
-	13, // 67: tournament_service.TournamentService.RemoveDivision:output_type -> tournament_service.TournamentResponse
-	13, // 68: tournament_service.TournamentService.AddPlayers:output_type -> tournament_service.TournamentResponse
-	13, // 69: tournament_service.TournamentService.RemovePlayers:output_type -> tournament_service.TournamentResponse
-	13, // 70: tournament_service.TournamentService.SetPairing:output_type -> tournament_service.TournamentResponse
-	13, // 71: tournament_service.TournamentService.SetResult:output_type -> tournament_service.TournamentResponse
-	13, // 72: tournament_service.TournamentService.StartRoundCountdown:output_type -> tournament_service.TournamentResponse
-	21, // 73: tournament_service.TournamentService.RecentGames:output_type -> tournament_service.RecentGamesResponse
-	38, // 74: tournament_service.TournamentService.CreateClubSession:output_type -> tournament_service.ClubSessionResponse
-	40, // 75: tournament_service.TournamentService.GetRecentClubSessions:output_type -> tournament_service.ClubSessionsResponse
-	13, // 76: tournament_service.TournamentService.UnstartTournament:output_type -> tournament_service.TournamentResponse
-	13, // 77: tournament_service.TournamentService.OpenRegistration:output_type -> tournament_service.TournamentResponse
-	13, // 78: tournament_service.TournamentService.CloseRegistration:output_type -> tournament_service.TournamentResponse
-	13, // 79: tournament_service.TournamentService.OpenCheckins:output_type -> tournament_service.TournamentResponse
-	13, // 80: tournament_service.TournamentService.CloseCheckins:output_type -> tournament_service.TournamentResponse
-	13, // 81: tournament_service.TournamentService.UncheckAllIn:output_type -> tournament_service.TournamentResponse
-	13, // 82: tournament_service.TournamentService.CheckIn:output_type -> tournament_service.TournamentResponse
-	13, // 83: tournament_service.TournamentService.Register:output_type -> tournament_service.TournamentResponse
-	36, // 84: tournament_service.TournamentService.ExportTournament:output_type -> tournament_service.ExportTournamentResponse
-	32, // 85: tournament_service.TournamentService.GetTournamentScorecards:output_type -> tournament_service.TournamentScorecardResponse
-	34, // 86: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:output_type -> tournament_service.GetRecentAndUpcomingTournamentsResponse
-	53, // [53:87] is the sub-list for method output_type
-	19, // [19:53] is the sub-list for method input_type
+	24, // 48: tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn:input_type -> tournament_service.RemoveAllPlayersNotCheckedInRequest
+	25, // 49: tournament_service.TournamentService.CheckIn:input_type -> tournament_service.CheckinRequest
+	26, // 50: tournament_service.TournamentService.Register:input_type -> tournament_service.RegisterRequest
+	35, // 51: tournament_service.TournamentService.ExportTournament:input_type -> tournament_service.ExportTournamentRequest
+	31, // 52: tournament_service.TournamentService.GetTournamentScorecards:input_type -> tournament_service.TournamentScorecardRequest
+	33, // 53: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:input_type -> tournament_service.GetRecentAndUpcomingTournamentsRequest
+	14, // 54: tournament_service.TournamentService.NewTournament:output_type -> tournament_service.NewTournamentResponse
+	19, // 55: tournament_service.TournamentService.GetTournamentMetadata:output_type -> tournament_service.TournamentMetadataResponse
+	50, // 56: tournament_service.TournamentService.GetTournament:output_type -> ipc.FullTournamentDivisions
+	13, // 57: tournament_service.TournamentService.UnfinishTournament:output_type -> tournament_service.TournamentResponse
+	13, // 58: tournament_service.TournamentService.FinishTournament:output_type -> tournament_service.TournamentResponse
+	13, // 59: tournament_service.TournamentService.SetTournamentMetadata:output_type -> tournament_service.TournamentResponse
+	13, // 60: tournament_service.TournamentService.PairRound:output_type -> tournament_service.TournamentResponse
+	13, // 61: tournament_service.TournamentService.SetSingleRoundControls:output_type -> tournament_service.TournamentResponse
+	13, // 62: tournament_service.TournamentService.SetRoundControls:output_type -> tournament_service.TournamentResponse
+	13, // 63: tournament_service.TournamentService.SetDivisionControls:output_type -> tournament_service.TournamentResponse
+	13, // 64: tournament_service.TournamentService.AddDirectors:output_type -> tournament_service.TournamentResponse
+	13, // 65: tournament_service.TournamentService.RemoveDirectors:output_type -> tournament_service.TournamentResponse
+	13, // 66: tournament_service.TournamentService.AddDivision:output_type -> tournament_service.TournamentResponse
+	13, // 67: tournament_service.TournamentService.RenameDivision:output_type -> tournament_service.TournamentResponse
+	13, // 68: tournament_service.TournamentService.RemoveDivision:output_type -> tournament_service.TournamentResponse
+	13, // 69: tournament_service.TournamentService.AddPlayers:output_type -> tournament_service.TournamentResponse
+	13, // 70: tournament_service.TournamentService.RemovePlayers:output_type -> tournament_service.TournamentResponse
+	13, // 71: tournament_service.TournamentService.SetPairing:output_type -> tournament_service.TournamentResponse
+	13, // 72: tournament_service.TournamentService.SetResult:output_type -> tournament_service.TournamentResponse
+	13, // 73: tournament_service.TournamentService.StartRoundCountdown:output_type -> tournament_service.TournamentResponse
+	21, // 74: tournament_service.TournamentService.RecentGames:output_type -> tournament_service.RecentGamesResponse
+	38, // 75: tournament_service.TournamentService.CreateClubSession:output_type -> tournament_service.ClubSessionResponse
+	40, // 76: tournament_service.TournamentService.GetRecentClubSessions:output_type -> tournament_service.ClubSessionsResponse
+	13, // 77: tournament_service.TournamentService.UnstartTournament:output_type -> tournament_service.TournamentResponse
+	13, // 78: tournament_service.TournamentService.OpenRegistration:output_type -> tournament_service.TournamentResponse
+	13, // 79: tournament_service.TournamentService.CloseRegistration:output_type -> tournament_service.TournamentResponse
+	13, // 80: tournament_service.TournamentService.OpenCheckins:output_type -> tournament_service.TournamentResponse
+	13, // 81: tournament_service.TournamentService.CloseCheckins:output_type -> tournament_service.TournamentResponse
+	13, // 82: tournament_service.TournamentService.UncheckAllIn:output_type -> tournament_service.TournamentResponse
+	13, // 83: tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn:output_type -> tournament_service.TournamentResponse
+	13, // 84: tournament_service.TournamentService.CheckIn:output_type -> tournament_service.TournamentResponse
+	13, // 85: tournament_service.TournamentService.Register:output_type -> tournament_service.TournamentResponse
+	36, // 86: tournament_service.TournamentService.ExportTournament:output_type -> tournament_service.ExportTournamentResponse
+	32, // 87: tournament_service.TournamentService.GetTournamentScorecards:output_type -> tournament_service.TournamentScorecardResponse
+	34, // 88: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:output_type -> tournament_service.GetRecentAndUpcomingTournamentsResponse
+	54, // [54:89] is the sub-list for method output_type
+	19, // [19:54] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name

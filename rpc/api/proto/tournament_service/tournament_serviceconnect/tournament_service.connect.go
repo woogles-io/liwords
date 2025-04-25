@@ -121,6 +121,9 @@ const (
 	// TournamentServiceUncheckAllInProcedure is the fully-qualified name of the TournamentService's
 	// UncheckAllIn RPC.
 	TournamentServiceUncheckAllInProcedure = "/tournament_service.TournamentService/UncheckAllIn"
+	// TournamentServiceRemoveAllPlayersNotCheckedInProcedure is the fully-qualified name of the
+	// TournamentService's RemoveAllPlayersNotCheckedIn RPC.
+	TournamentServiceRemoveAllPlayersNotCheckedInProcedure = "/tournament_service.TournamentService/RemoveAllPlayersNotCheckedIn"
 	// TournamentServiceCheckInProcedure is the fully-qualified name of the TournamentService's CheckIn
 	// RPC.
 	TournamentServiceCheckInProcedure = "/tournament_service.TournamentService/CheckIn"
@@ -174,6 +177,7 @@ type TournamentServiceClient interface {
 	CloseCheckins(context.Context, *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Uncheck everyone in. Use this some time before the beginning of a session.
 	UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	Register(context.Context, *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -371,6 +375,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(tournamentServiceMethods.ByName("UncheckAllIn")),
 			connect.WithClientOptions(opts...),
 		),
+		removeAllPlayersNotCheckedIn: connect.NewClient[tournament_service.RemoveAllPlayersNotCheckedInRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceRemoveAllPlayersNotCheckedInProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("RemoveAllPlayersNotCheckedIn")),
+			connect.WithClientOptions(opts...),
+		),
 		checkIn: connect.NewClient[tournament_service.CheckinRequest, tournament_service.TournamentResponse](
 			httpClient,
 			baseURL+TournamentServiceCheckInProcedure,
@@ -438,6 +448,7 @@ type tournamentServiceClient struct {
 	openCheckins                    *connect.Client[tournament_service.OpenCheckinsRequest, tournament_service.TournamentResponse]
 	closeCheckins                   *connect.Client[tournament_service.CloseCheckinsRequest, tournament_service.TournamentResponse]
 	uncheckAllIn                    *connect.Client[tournament_service.UncheckAllInRequest, tournament_service.TournamentResponse]
+	removeAllPlayersNotCheckedIn    *connect.Client[tournament_service.RemoveAllPlayersNotCheckedInRequest, tournament_service.TournamentResponse]
 	checkIn                         *connect.Client[tournament_service.CheckinRequest, tournament_service.TournamentResponse]
 	register                        *connect.Client[tournament_service.RegisterRequest, tournament_service.TournamentResponse]
 	exportTournament                *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
@@ -590,6 +601,12 @@ func (c *tournamentServiceClient) UncheckAllIn(ctx context.Context, req *connect
 	return c.uncheckAllIn.CallUnary(ctx, req)
 }
 
+// RemoveAllPlayersNotCheckedIn calls
+// tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn.
+func (c *tournamentServiceClient) RemoveAllPlayersNotCheckedIn(ctx context.Context, req *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.removeAllPlayersNotCheckedIn.CallUnary(ctx, req)
+}
+
 // CheckIn calls tournament_service.TournamentService.CheckIn.
 func (c *tournamentServiceClient) CheckIn(ctx context.Context, req *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return c.checkIn.CallUnary(ctx, req)
@@ -653,6 +670,7 @@ type TournamentServiceHandler interface {
 	CloseCheckins(context.Context, *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Uncheck everyone in. Use this some time before the beginning of a session.
 	UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	Register(context.Context, *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -846,6 +864,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithSchema(tournamentServiceMethods.ByName("UncheckAllIn")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServiceRemoveAllPlayersNotCheckedInHandler := connect.NewUnaryHandler(
+		TournamentServiceRemoveAllPlayersNotCheckedInProcedure,
+		svc.RemoveAllPlayersNotCheckedIn,
+		connect.WithSchema(tournamentServiceMethods.ByName("RemoveAllPlayersNotCheckedIn")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tournamentServiceCheckInHandler := connect.NewUnaryHandler(
 		TournamentServiceCheckInProcedure,
 		svc.CheckIn,
@@ -939,6 +963,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceCloseCheckinsHandler.ServeHTTP(w, r)
 		case TournamentServiceUncheckAllInProcedure:
 			tournamentServiceUncheckAllInHandler.ServeHTTP(w, r)
+		case TournamentServiceRemoveAllPlayersNotCheckedInProcedure:
+			tournamentServiceRemoveAllPlayersNotCheckedInHandler.ServeHTTP(w, r)
 		case TournamentServiceCheckInProcedure:
 			tournamentServiceCheckInHandler.ServeHTTP(w, r)
 		case TournamentServiceRegisterProcedure:
@@ -1072,6 +1098,10 @@ func (UnimplementedTournamentServiceHandler) CloseCheckins(context.Context, *con
 
 func (UnimplementedTournamentServiceHandler) UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.UncheckAllIn is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {

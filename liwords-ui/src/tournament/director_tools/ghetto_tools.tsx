@@ -1,6 +1,10 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import {
   AutoComplete,
   Button,
@@ -11,6 +15,7 @@ import {
   Input,
   InputNumber,
   message,
+  Popconfirm,
   Select,
   Space,
   Switch,
@@ -58,6 +63,7 @@ import {
   protobufTimestampToDayjsIgnoringNanos,
 } from "../../utils/datetime";
 import { isClubType } from "../../store/constants";
+import { singularCount } from "../../utils/plural";
 
 type ModalProps = {
   title: string;
@@ -2187,13 +2193,84 @@ const ManageCheckIns = (props: { tournamentID: string }) => {
       checkinsOpen: metadata.checkinsOpen,
       registrationOpen: metadata.registrationOpen,
     });
-    console.log("editing");
   }, [form, tournamentContext.metadata]);
+
+  const uncheckedText = useMemo(() => {
+    const uncheckedInPlayers = Object.values(
+      tournamentContext.divisions,
+    ).flatMap((division) =>
+      division.players.filter((player) => !player.checkedIn),
+    );
+
+    const uncheckedInCount = uncheckedInPlayers.length;
+
+    if (uncheckedInCount > 0) {
+      const uncheckedInNames = uncheckedInPlayers
+        .slice(0, 3)
+        .map((player) => username(player.id))
+        .join(", ");
+
+      const remainingCount = uncheckedInCount - 3;
+
+      return (
+        <>
+          <div>
+            <strong>
+              Players who have not checked in:{" "}
+              {remainingCount > 0
+                ? `${uncheckedInNames}, and ${remainingCount} more...`
+                : uncheckedInNames}
+            </strong>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            To delete these players from the tournament, click this button,
+            after closing check-ins:
+          </div>
+          <div>
+            <Popconfirm
+              title="Are you sure you want to delete these players from the tournament? This cannot be undone."
+              onConfirm={async () => {
+                try {
+                  await tClient.removeAllPlayersNotCheckedIn({
+                    id: props.tournamentID,
+                  });
+                  message.info({
+                    content: "Deleted unchecked-in players successfully.",
+                    duration: 3,
+                  });
+                } catch (e) {
+                  flashError(e);
+                }
+              }}
+            >
+              <Button
+                type="primary"
+                danger
+                disabled={tournamentContext.metadata.checkinsOpen}
+              >
+                <DeleteOutlined />
+                Delete&nbsp;
+                {singularCount(uncheckedInCount, "player", "players")}
+              </Button>
+            </Popconfirm>
+          </div>
+        </>
+      );
+    } else {
+      return <div>All players have checked in.</div>;
+    }
+  }, [
+    tournamentContext.divisions,
+    tournamentContext.metadata.checkinsOpen,
+    tClient,
+    props.tournamentID,
+  ]);
 
   return (
     <Form form={form}>
+      <h3>Check-ins</h3>
       <div>Check-ins are currently: {checkinsOpen ? "Open" : "Closed"}</div>
-      <Form.Item name="checkinsOpen" label="Toggle check-ins">
+      <Form.Item name="checkinsOpen" label="Allow players to check in">
         <Switch
           checked={desiredCheckinsState}
           onChange={(checked) => setDesiredCheckinsState(checked)}
@@ -2209,19 +2286,24 @@ const ManageCheckIns = (props: { tournamentID: string }) => {
           {desiredCheckinsState ? "Open" : "Close"} check-ins
         </Button>
       </Form.Item>
-
+      <div style={{ fontSize: "12px", marginBottom: "8px" }}>
+        If check-ins are on, players can check in to the tournament. If they
+        don't check in, they can be removed from the tournament.
+      </div>
+      {uncheckedText}
       <Divider />
+      <h3>Registrations</h3>
 
       <div>
         Registration is currently: {registrationsOpen ? "Open" : "Closed"}
       </div>
 
-      <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+      <div style={{ fontSize: "12px", marginBottom: "8px" }}>
         If self-register is on, players can register themselves for the
         tournament and choose their division. Otherwise, you have to add players
         before they can check in.
       </div>
-      <Form.Item name="registrationOpen" label="Allow users to self-register">
+      <Form.Item name="registrationOpen" label="Allow players to self-register">
         <Switch
           checked={desiredRegistrationsState}
           onChange={(checked) => setDesiredRegistrationsState(checked)}

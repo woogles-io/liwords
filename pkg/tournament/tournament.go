@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"sort"
@@ -624,7 +625,6 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	// Only perform the add operation if all persons can be added.
 
-	userUUIDs := []string{}
 	for _, player := range players.Persons {
 		var UUID string
 		var fullID string
@@ -634,7 +634,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 			UUID = md5hash(player.Id)
 			fullID = UUID + ":" + player.Id
 		} else {
-			fullID, UUID, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
 			if err != nil {
 				return err
 			}
@@ -643,7 +643,6 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 			return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_PLAYER_ALREADY_EXISTS, t.Name, dname, fullID)
 		}
 		player.Id = fullID
-		userUUIDs = append(userUUIDs, UUID)
 	}
 
 	pairingsResp, err := divisionObject.DivisionManager.AddPlayers(players)
@@ -653,12 +652,12 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
 
-	if !t.ExtraMeta.IRLMode {
-		err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
-		if err != nil {
-			return err
-		}
-	}
+	// if !t.ExtraMeta.IRLMode {
+	// 	err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -700,7 +699,6 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	}
 
 	// Only perform the remove operation if all persons can be removed.
-	userUUIDs := []string{}
 	for _, player := range players.Persons {
 		var UUID string
 		var fullID string
@@ -709,13 +707,12 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 			UUID = md5hash(player.Id)
 			fullID = UUID + ":" + player.Id
 		} else {
-			fullID, UUID, err = constructFullID(t.Name, division, ctx, us, player.Id)
+			fullID, _, err = constructFullID(t.Name, division, ctx, us, player.Id)
 			if err != nil {
 				return err
 			}
 		}
 		player.Id = fullID
-		userUUIDs = append(userUUIDs, UUID)
 	}
 
 	pairingsResp, err := divisionObject.DivisionManager.RemovePlayers(players)
@@ -725,12 +722,12 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
 
-	if !t.ExtraMeta.IRLMode {
-		err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
-		if err != nil {
-			return err
-		}
-	}
+	// if !t.ExtraMeta.IRLMode {
+	// 	err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -987,12 +984,12 @@ func possiblyEndTournament(ctx context.Context, ts TournamentStore, t *entity.To
 	}
 	if allended {
 		t.IsFinished = true
-		err := ts.RemoveRegistrantsForTournament(ctx, t.UUID)
-		log.Err(err).Str("tid", t.UUID).Msg("finishing-tourney")
+		// err := ts.RemoveRegistrantsForTournament(ctx, t.UUID)
+		// log.Err(err).Str("tid", t.UUID).Msg("finishing-tourney")
 
-		if err != nil {
-			return err
-		}
+		// if err != nil {
+		// 	return err
+		// }
 	}
 	return nil
 }
@@ -1004,6 +1001,9 @@ func startTournamentChecks(t *entity.Tournament) error {
 
 	if len(t.Divisions) == 0 {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NO_DIVISIONS, t.Name, "")
+	}
+	if t.ExtraMeta.CheckinsOpen || t.ExtraMeta.RegistrationOpen {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CANNOT_START_CHECKINS_OR_REGISTRATIONS_OPEN, t.Name)
 	}
 
 	return nil
@@ -1722,6 +1722,9 @@ func OpenCheckins(ctx context.Context, ts TournamentStore, tid string) error {
 	if t.IsStarted {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_OPENCHECKINS_AFTER_START, t.Name, "")
 	}
+	if t.ExtraMeta.IRLMode {
+		return errors.New("cannot open checkins for IRL tournaments")
+	}
 	t.ExtraMeta.CheckinsOpen = true
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -1762,6 +1765,57 @@ func CloseCheckins(ctx context.Context, ts TournamentStore, tid string) error {
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
+func RemoveAllPlayersNotCheckedIn(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, "")
+	}
+	if t.IsStarted {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ALREADY_STARTED, t.Name, "")
+	}
+	if t.ExtraMeta.IRLMode {
+		return errors.New("cannot remove unchecked in players for IRL tournaments")
+	}
+	if t.ExtraMeta.CheckinsOpen {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_CANNOT_REMOVE_UNCHECKED_IN_IF_CHECKINS_OPEN, t.Name)
+	}
+
+	for dname, v := range t.Divisions {
+		players := &ipc.TournamentPersons{Persons: []*ipc.TournamentPerson{}}
+		dp := v.DivisionManager.GetPlayers()
+		for _, p := range dp.Persons {
+			if !p.CheckedIn {
+				players.Persons = append(players.Persons, p)
+			}
+		}
+		pairingsResp, err := v.DivisionManager.RemovePlayers(players)
+		if err != nil {
+			return err
+		}
+		allCurrentPlayers := v.DivisionManager.GetPlayers()
+		pairingsResp.Id = tid
+		pairingsResp.Division = dname
+
+		removePlayersMessage := &ipc.PlayersAddedOrRemovedResponse{Id: tid,
+			Division:          dname,
+			Players:           allCurrentPlayers,
+			DivisionPairings:  pairingsResp.DivisionPairings,
+			DivisionStandings: pairingsResp.DivisionStandings}
+		wrapped := entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+		err = SendTournamentMessage(ctx, ts, tid, wrapped)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ts.Set(ctx, t)
+}
+
 func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error {
 	t, err := ts.Get(ctx, tid)
 	if err != nil {
@@ -1774,6 +1828,9 @@ func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error
 	}
 	if t.IsStarted {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_OPENREGISTRATIONS_AFTER_START, t.Name)
+	}
+	if t.ExtraMeta.IRLMode {
+		return errors.New("cannot open registrations for IRL tournaments")
 	}
 	t.ExtraMeta.RegistrationOpen = true
 	err = ts.Set(ctx, t)

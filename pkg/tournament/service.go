@@ -740,6 +740,18 @@ func (ts *TournamentService) CloseCheckins(ctx context.Context, req *connect.Req
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
+func (ts *TournamentService) RemoveAllPlayersNotCheckedIn(ctx context.Context, req *connect.Request[pb.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	err = RemoveAllPlayersNotCheckedIn(ctx, ts.tournamentStore, req.Msg.Id)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
 func (ts *TournamentService) UnstartTournament(ctx context.Context, req *connect.Request[pb.UnstartTournamentRequest]) (*connect.Response[pb.TournamentResponse], error) {
 	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
 	// but does not delete the players or divisions.

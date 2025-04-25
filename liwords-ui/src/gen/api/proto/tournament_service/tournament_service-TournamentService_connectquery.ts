@@ -160,6 +160,11 @@ export const closeCheckins = TournamentService.method.closeCheckins;
 export const uncheckAllIn = TournamentService.method.uncheckAllIn;
 
 /**
+ * @generated from rpc tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn
+ */
+export const removeAllPlayersNotCheckedIn = TournamentService.method.removeAllPlayersNotCheckedIn;
+
+/**
  * CheckIn allows players to check themselves in.
  *
  * @generated from rpc tournament_service.TournamentService.CheckIn
