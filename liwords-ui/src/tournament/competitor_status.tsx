@@ -1,10 +1,14 @@
 import React, { useCallback } from "react";
 import { Card, Button } from "antd";
 import { useTournamentStoreContext } from "../store/store";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import {
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import "./competitor_status.scss";
-import { TourneyStatus } from "../store/reducers/tournament_reducer";
 import { ReadyButton } from "./ready_button";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { TourneyStatus } from "../store/selectors/tournament_selectors";
 
 type Props = {
   sendReady: () => void;
@@ -12,7 +16,7 @@ type Props = {
 
 export const CompetitorStatus = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
-  const { competitorState: competitorContext } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const renderStatus = useCallback(() => {
     //TODO: If they're playing the right game, this should be true.
     // If they've wandered off, we'll render the backToGamePrompt instead
@@ -27,17 +31,27 @@ export const CompetitorStatus = (props: Props) => {
       <>
         <ClockCircleOutlined />
         <p>
-          Your round {competitorContext.currentRound + 1} game is in progress.
+          Your round {competitorState.currentRound + 1} game is in progress.
         </p>
         <Button className="primary">Return</Button>
       </>
     );
-    const isLastRound = competitorContext.division
-      ? competitorContext.currentRound ===
-        tournamentContext.divisions[competitorContext.division]?.numRounds - 1
+    const isLastRound = competitorState.division
+      ? competitorState.currentRound ===
+        tournamentContext.divisions[competitorState.division]?.numRounds - 1
       : false;
 
-    switch (competitorContext.status) {
+    switch (competitorState.status) {
+      case TourneyStatus.NOT_CHECKED_IN:
+        return (
+          <>
+            <ExclamationCircleOutlined />
+            <p>
+              Check-ins are now open for the {tournamentContext.metadata.name}.
+              Please check in as soon as you can!
+            </p>
+          </>
+        );
       case TourneyStatus.PRETOURNEY:
         // TODO: This one should specify tournament start date or time when we have that
         // Round 1 of the [tourney name] starts at [time].
@@ -54,8 +68,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              You forfeited your Round {competitorContext.currentRound + 1}{" "}
-              game.
+              You forfeited your Round {competitorState.currentRound + 1} game.
               <span className="optional">
                 Please check in with the director.
               </span>
@@ -68,7 +81,7 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               Your opponent forfeited their Round{" "}
-              {competitorContext.currentRound + 1} game.{" "}
+              {competitorState.currentRound + 1} game.{" "}
               <span className="optional">
                 Please check in with the director.
               </span>
@@ -82,11 +95,11 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              You have a bye for round {competitorContext.currentRound + 1}.
+              You have a bye for round {competitorState.currentRound + 1}.
               {!isLastRound && (
                 <span className="secondary-message">
                   Please return in time for round{" "}
-                  {competitorContext.currentRound + 2}.
+                  {competitorState.currentRound + 2}.
                 </span>
               )}
             </p>
@@ -96,7 +109,7 @@ export const CompetitorStatus = (props: Props) => {
       case TourneyStatus.ROUND_OPEN: {
         return (
           <>
-            <p>Time to start round {competitorContext.currentRound + 1}!</p>
+            <p>Time to start round {competitorState.currentRound + 1}!</p>
             <ReadyButton sendReady={props.sendReady} />
           </>
         );
@@ -153,7 +166,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Good luck in your round {competitorContext.currentRound + 1} game!
+              Good luck in your round {competitorState.currentRound + 1} game!
             </p>
           </>
         );
@@ -163,7 +176,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Your round {competitorContext.currentRound + 1} score has been
+              Your round {competitorState.currentRound + 1} score has been
               recorded.
               <span className="optional">
                 {!isLastRound ? " Good luck in your next game!" : ""}
@@ -194,9 +207,9 @@ export const CompetitorStatus = (props: Props) => {
         );
     }
     // Missing status or
-  }, [tournamentContext, competitorContext, props.sendReady]);
+  }, [tournamentContext, competitorState, props.sendReady]);
   return (
-    <Card className={`competitor-status ${competitorContext.status}`}>
+    <Card className={`competitor-status ${competitorState.status}`}>
       {renderStatus()}
     </Card>
   );

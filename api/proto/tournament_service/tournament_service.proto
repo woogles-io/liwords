@@ -73,6 +73,8 @@ message TournamentMetadata {
 
   google.protobuf.Timestamp scheduled_start_time = 16;
   google.protobuf.Timestamp scheduled_end_time = 17;
+  bool checkins_open = 18;
+  bool registration_open = 19;
 }
 
 message SetTournamentMetadataRequest {
@@ -185,9 +187,29 @@ message RecentGamesResponse { repeated ipc.TournamentGameEndedEvent games = 1; }
 
 message UnstartTournamentRequest { string id = 1; }
 
-message UncheckInRequest { string id = 1; }
+message UncheckAllInRequest { string id = 1; }
 
-message CheckinRequest { string id = 1; }
+message RemoveAllPlayersNotCheckedInRequest { string id = 1; }
+
+message CheckinRequest {
+  string id = 1;
+  bool checkin = 2;
+}
+
+message RegisterRequest {
+  string id = 1;
+  string division = 2;
+  bool register = 3;
+}
+
+message OpenRegistrationRequest { string id = 1; }
+message CloseRegistrationRequest { string id = 1; }
+message OpenCheckinsRequest { string id = 1; }
+
+message CloseCheckinsRequest {
+  string id = 1;
+  bool delete_non_checked_in = 2;
+}
 
 message TournamentScorecardRequest {
   string id = 1;
@@ -252,10 +274,20 @@ service TournamentService {
 
   rpc UnstartTournament(UnstartTournamentRequest) returns (TournamentResponse);
 
+  rpc OpenRegistration(OpenRegistrationRequest) returns (TournamentResponse);
+  rpc CloseRegistration(CloseRegistrationRequest) returns (TournamentResponse);
+
+  rpc OpenCheckins(OpenCheckinsRequest) returns (TournamentResponse);
+  rpc CloseCheckins(CloseCheckinsRequest) returns (TournamentResponse);
   // Uncheck everyone in. Use this some time before the beginning of a session.
-  rpc UncheckIn(UncheckInRequest) returns (TournamentResponse);
+  rpc UncheckAllIn(UncheckAllInRequest) returns (TournamentResponse);
+
+  rpc RemoveAllPlayersNotCheckedIn(RemoveAllPlayersNotCheckedInRequest)
+      returns (TournamentResponse);
+
   // CheckIn allows players to check themselves in.
   rpc CheckIn(CheckinRequest) returns (TournamentResponse);
+  rpc Register(RegisterRequest) returns (TournamentResponse);
 
   rpc ExportTournament(ExportTournamentRequest)
       returns (ExportTournamentResponse) {

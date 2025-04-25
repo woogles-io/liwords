@@ -1,11 +1,7 @@
 import React, { ReactNode, useMemo } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { Button, List, Table, Tag } from "antd";
-import {
-  Division,
-  SinglePairing,
-  TourneyStatus,
-} from "../store/reducers/tournament_reducer";
+import { Division, SinglePairing } from "../store/reducers/tournament_reducer";
 
 import { useNavigate } from "react-router";
 import { ReadyButton } from "./ready_button";
@@ -13,6 +9,8 @@ import {
   TournamentPerson,
   TournamentGameResult,
 } from "../gen/api/proto/ipc/tournament_pb";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { TourneyStatus } from "../store/selectors/tournament_selectors";
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
@@ -153,13 +151,14 @@ type PairingTableData = {
 export const Pairings = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const navigate = useNavigate();
   const currentRound = useMemo(
     () =>
       props.selectedDivision && divisions[props.selectedDivision]
         ? divisions[props.selectedDivision].currentRound
-        : tournamentContext.competitorState.currentRound,
-    [props.selectedDivision, divisions, tournamentContext.competitorState],
+        : competitorState.currentRound,
+    [props.selectedDivision, divisions, competitorState],
   );
 
   if (!props.selectedDivision) {
@@ -183,7 +182,7 @@ export const Pairings = React.memo((props: Props) => {
     if (currentRound === -1 && !props.isDirector) {
       return new Array<PairingTableData>();
     }
-    const { status } = tournamentContext.competitorState;
+    const { status } = competitorState;
 
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
@@ -501,7 +500,7 @@ export const Pairings = React.memo((props: Props) => {
         }}
         dataSource={tableData}
         rowClassName={(record) => {
-          let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
+          let computedClass = `single-pairing ${competitorState.status}`;
           if (record.isMine) {
             computedClass += " mine";
           }

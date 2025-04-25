@@ -482,6 +482,7 @@ type TournamentPerson struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Rating        int32                  `protobuf:"varint,2,opt,name=rating,proto3" json:"rating,omitempty"`
 	Suspended     bool                   `protobuf:"varint,3,opt,name=suspended,proto3" json:"suspended,omitempty"`
+	CheckedIn     bool                   `protobuf:"varint,4,opt,name=checked_in,json=checkedIn,proto3" json:"checked_in,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -533,6 +534,13 @@ func (x *TournamentPerson) GetRating() int32 {
 func (x *TournamentPerson) GetSuspended() bool {
 	if x != nil {
 		return x.Suspended
+	}
+	return false
+}
+
+func (x *TournamentPerson) GetCheckedIn() bool {
+	if x != nil {
+		return x.CheckedIn
 	}
 	return false
 }
@@ -1677,6 +1685,8 @@ type TournamentDataResponse struct {
 	StartTime          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
 	ScheduledStartTime *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=scheduled_start_time,json=scheduledStartTime,proto3" json:"scheduled_start_time,omitempty"`
 	ScheduledEndTime   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=scheduled_end_time,json=scheduledEndTime,proto3" json:"scheduled_end_time,omitempty"`
+	CheckinsOpen       bool                   `protobuf:"varint,10,opt,name=checkins_open,json=checkinsOpen,proto3" json:"checkins_open,omitempty"`
+	RegistrationOpen   bool                   `protobuf:"varint,11,opt,name=registration_open,json=registrationOpen,proto3" json:"registration_open,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1774,6 +1784,20 @@ func (x *TournamentDataResponse) GetScheduledEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *TournamentDataResponse) GetCheckinsOpen() bool {
+	if x != nil {
+		return x.CheckinsOpen
+	}
+	return false
+}
+
+func (x *TournamentDataResponse) GetRegistrationOpen() bool {
+	if x != nil {
+		return x.RegistrationOpen
+	}
+	return false
+}
+
 type TournamentDivisionDeletedResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1826,6 +1850,66 @@ func (x *TournamentDivisionDeletedResponse) GetDivision() string {
 	return ""
 }
 
+type PlayerCheckinResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Division      string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
+	Player        *TournamentPerson      `protobuf:"bytes,3,opt,name=player,proto3" json:"player,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayerCheckinResponse) Reset() {
+	*x = PlayerCheckinResponse{}
+	mi := &file_proto_ipc_tournament_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerCheckinResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerCheckinResponse) ProtoMessage() {}
+
+func (x *PlayerCheckinResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_tournament_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerCheckinResponse.ProtoReflect.Descriptor instead.
+func (*PlayerCheckinResponse) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_tournament_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *PlayerCheckinResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PlayerCheckinResponse) GetDivision() string {
+	if x != nil {
+		return x.Division
+	}
+	return ""
+}
+
+func (x *PlayerCheckinResponse) GetPlayer() *TournamentPerson {
+	if x != nil {
+		return x.Player
+	}
+	return nil
+}
+
 type TournamentGameEndedEvent_Player struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -1837,7 +1921,7 @@ type TournamentGameEndedEvent_Player struct {
 
 func (x *TournamentGameEndedEvent_Player) Reset() {
 	*x = TournamentGameEndedEvent_Player{}
-	mi := &file_proto_ipc_tournament_proto_msgTypes[21]
+	mi := &file_proto_ipc_tournament_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1849,7 +1933,7 @@ func (x *TournamentGameEndedEvent_Player) String() string {
 func (*TournamentGameEndedEvent_Player) ProtoMessage() {}
 
 func (x *TournamentGameEndedEvent_Player) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_tournament_proto_msgTypes[21]
+	mi := &file_proto_ipc_tournament_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1919,11 +2003,13 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\tplayer_id\x18\x04 \x01(\tR\bplayerId\x12\x1d\n" +
 	"\n" +
 	"game_index\x18\x05 \x01(\x05R\tgameIndex\x12\x18\n" +
-	"\aunready\x18\x06 \x01(\bR\aunready\"X\n" +
+	"\aunready\x18\x06 \x01(\bR\aunready\"w\n" +
 	"\x10TournamentPerson\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x1c\n" +
-	"\tsuspended\x18\x03 \x01(\bR\tsuspended\"p\n" +
+	"\tsuspended\x18\x03 \x01(\bR\tsuspended\x12\x1d\n" +
+	"\n" +
+	"checked_in\x18\x04 \x01(\bR\tcheckedIn\"p\n" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
@@ -2041,7 +2127,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x129\n" +
 	"\x05value\x18\x02 \x01(\v2#.ipc.TournamentDivisionDataResponseR\x05value:\x028\x01\",\n" +
 	"\x1aTournamentFinishedResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xb5\x03\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x87\x04\n" +
 	"\x16TournamentDataResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -2053,10 +2139,17 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\n" +
 	"start_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x12L\n" +
 	"\x14scheduled_start_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x12scheduledStartTime\x12H\n" +
-	"\x12scheduled_end_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10scheduledEndTime\"O\n" +
+	"\x12scheduled_end_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10scheduledEndTime\x12#\n" +
+	"\rcheckins_open\x18\n" +
+	" \x01(\bR\fcheckinsOpen\x12+\n" +
+	"\x11registration_open\x18\v \x01(\bR\x10registrationOpen\"O\n" +
 	"!TournamentDivisionDeletedResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\bdivision\x18\x02 \x01(\tR\bdivision*\x88\x01\n" +
+	"\bdivision\x18\x02 \x01(\tR\bdivision\"r\n" +
+	"\x15PlayerCheckinResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
+	"\bdivision\x18\x02 \x01(\tR\bdivision\x12-\n" +
+	"\x06player\x18\x03 \x01(\v2\x15.ipc.TournamentPersonR\x06player*\x88\x01\n" +
 	"\x14TournamentGameResult\x12\r\n" +
 	"\tNO_RESULT\x10\x00\x12\a\n" +
 	"\x03WIN\x10\x01\x12\b\n" +
@@ -2103,7 +2196,7 @@ func file_proto_ipc_tournament_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_tournament_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_ipc_tournament_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_proto_ipc_tournament_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_proto_ipc_tournament_proto_goTypes = []any{
 	(TournamentGameResult)(0),                 // 0: ipc.TournamentGameResult
 	(PairingMethod)(0),                        // 1: ipc.PairingMethod
@@ -2129,65 +2222,67 @@ var file_proto_ipc_tournament_proto_goTypes = []any{
 	(*TournamentFinishedResponse)(nil),        // 21: ipc.TournamentFinishedResponse
 	(*TournamentDataResponse)(nil),            // 22: ipc.TournamentDataResponse
 	(*TournamentDivisionDeletedResponse)(nil), // 23: ipc.TournamentDivisionDeletedResponse
-	(*TournamentGameEndedEvent_Player)(nil),   // 24: ipc.TournamentGameEndedEvent.Player
-	nil,                                       // 25: ipc.DivisionPairingsResponse.DivisionStandingsEntry
-	nil,                                       // 26: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
-	nil,                                       // 27: ipc.DivisionRoundControls.DivisionStandingsEntry
-	nil,                                       // 28: ipc.DivisionControlsResponse.DivisionStandingsEntry
-	nil,                                       // 29: ipc.TournamentDivisionDataResponse.StandingsEntry
-	nil,                                       // 30: ipc.TournamentDivisionDataResponse.PairingMapEntry
-	nil,                                       // 31: ipc.FullTournamentDivisions.DivisionsEntry
-	(GameEndReason)(0),                        // 32: ipc.GameEndReason
-	(*timestamppb.Timestamp)(nil),             // 33: google.protobuf.Timestamp
-	(*GameRequest)(nil),                       // 34: ipc.GameRequest
+	(*PlayerCheckinResponse)(nil),             // 24: ipc.PlayerCheckinResponse
+	(*TournamentGameEndedEvent_Player)(nil),   // 25: ipc.TournamentGameEndedEvent.Player
+	nil,                                       // 26: ipc.DivisionPairingsResponse.DivisionStandingsEntry
+	nil,                                       // 27: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	nil,                                       // 28: ipc.DivisionRoundControls.DivisionStandingsEntry
+	nil,                                       // 29: ipc.DivisionControlsResponse.DivisionStandingsEntry
+	nil,                                       // 30: ipc.TournamentDivisionDataResponse.StandingsEntry
+	nil,                                       // 31: ipc.TournamentDivisionDataResponse.PairingMapEntry
+	nil,                                       // 32: ipc.FullTournamentDivisions.DivisionsEntry
+	(GameEndReason)(0),                        // 33: ipc.GameEndReason
+	(*timestamppb.Timestamp)(nil),             // 34: google.protobuf.Timestamp
+	(*GameRequest)(nil),                       // 35: ipc.GameRequest
 }
 var file_proto_ipc_tournament_proto_depIdxs = []int32{
-	24, // 0: ipc.TournamentGameEndedEvent.players:type_name -> ipc.TournamentGameEndedEvent.Player
-	32, // 1: ipc.TournamentGameEndedEvent.end_reason:type_name -> ipc.GameEndReason
-	33, // 2: ipc.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
+	25, // 0: ipc.TournamentGameEndedEvent.players:type_name -> ipc.TournamentGameEndedEvent.Player
+	33, // 1: ipc.TournamentGameEndedEvent.end_reason:type_name -> ipc.GameEndReason
+	34, // 2: ipc.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
 	6,  // 3: ipc.TournamentPersons.persons:type_name -> ipc.TournamentPerson
 	1,  // 4: ipc.RoundControl.pairing_method:type_name -> ipc.PairingMethod
 	2,  // 5: ipc.RoundControl.first_method:type_name -> ipc.FirstMethod
-	34, // 6: ipc.DivisionControls.game_request:type_name -> ipc.GameRequest
+	35, // 6: ipc.DivisionControls.game_request:type_name -> ipc.GameRequest
 	0,  // 7: ipc.DivisionControls.suspended_result:type_name -> ipc.TournamentGameResult
 	0,  // 8: ipc.TournamentGame.results:type_name -> ipc.TournamentGameResult
-	32, // 9: ipc.TournamentGame.game_end_reason:type_name -> ipc.GameEndReason
+	33, // 9: ipc.TournamentGame.game_end_reason:type_name -> ipc.GameEndReason
 	10, // 10: ipc.Pairing.games:type_name -> ipc.TournamentGame
 	0,  // 11: ipc.Pairing.outcomes:type_name -> ipc.TournamentGameResult
 	12, // 12: ipc.RoundStandings.standings:type_name -> ipc.PlayerStanding
 	11, // 13: ipc.DivisionPairingsResponse.division_pairings:type_name -> ipc.Pairing
-	25, // 14: ipc.DivisionPairingsResponse.division_standings:type_name -> ipc.DivisionPairingsResponse.DivisionStandingsEntry
+	26, // 14: ipc.DivisionPairingsResponse.division_standings:type_name -> ipc.DivisionPairingsResponse.DivisionStandingsEntry
 	7,  // 15: ipc.PlayersAddedOrRemovedResponse.players:type_name -> ipc.TournamentPersons
 	11, // 16: ipc.PlayersAddedOrRemovedResponse.division_pairings:type_name -> ipc.Pairing
-	26, // 17: ipc.PlayersAddedOrRemovedResponse.division_standings:type_name -> ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
+	27, // 17: ipc.PlayersAddedOrRemovedResponse.division_standings:type_name -> ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry
 	8,  // 18: ipc.DivisionRoundControls.round_controls:type_name -> ipc.RoundControl
 	11, // 19: ipc.DivisionRoundControls.division_pairings:type_name -> ipc.Pairing
-	27, // 20: ipc.DivisionRoundControls.division_standings:type_name -> ipc.DivisionRoundControls.DivisionStandingsEntry
+	28, // 20: ipc.DivisionRoundControls.division_standings:type_name -> ipc.DivisionRoundControls.DivisionStandingsEntry
 	9,  // 21: ipc.DivisionControlsResponse.division_controls:type_name -> ipc.DivisionControls
-	28, // 22: ipc.DivisionControlsResponse.division_standings:type_name -> ipc.DivisionControlsResponse.DivisionStandingsEntry
+	29, // 22: ipc.DivisionControlsResponse.division_standings:type_name -> ipc.DivisionControlsResponse.DivisionStandingsEntry
 	7,  // 23: ipc.TournamentDivisionDataResponse.players:type_name -> ipc.TournamentPersons
-	29, // 24: ipc.TournamentDivisionDataResponse.standings:type_name -> ipc.TournamentDivisionDataResponse.StandingsEntry
-	30, // 25: ipc.TournamentDivisionDataResponse.pairing_map:type_name -> ipc.TournamentDivisionDataResponse.PairingMapEntry
+	30, // 24: ipc.TournamentDivisionDataResponse.standings:type_name -> ipc.TournamentDivisionDataResponse.StandingsEntry
+	31, // 25: ipc.TournamentDivisionDataResponse.pairing_map:type_name -> ipc.TournamentDivisionDataResponse.PairingMapEntry
 	9,  // 26: ipc.TournamentDivisionDataResponse.controls:type_name -> ipc.DivisionControls
 	8,  // 27: ipc.TournamentDivisionDataResponse.round_controls:type_name -> ipc.RoundControl
-	31, // 28: ipc.FullTournamentDivisions.divisions:type_name -> ipc.FullTournamentDivisions.DivisionsEntry
+	32, // 28: ipc.FullTournamentDivisions.divisions:type_name -> ipc.FullTournamentDivisions.DivisionsEntry
 	7,  // 29: ipc.TournamentDataResponse.directors:type_name -> ipc.TournamentPersons
-	33, // 30: ipc.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
-	33, // 31: ipc.TournamentDataResponse.scheduled_start_time:type_name -> google.protobuf.Timestamp
-	33, // 32: ipc.TournamentDataResponse.scheduled_end_time:type_name -> google.protobuf.Timestamp
-	0,  // 33: ipc.TournamentGameEndedEvent.Player.result:type_name -> ipc.TournamentGameResult
-	13, // 34: ipc.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 35: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 36: ipc.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 37: ipc.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
-	13, // 38: ipc.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> ipc.RoundStandings
-	11, // 39: ipc.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> ipc.Pairing
-	19, // 40: ipc.FullTournamentDivisions.DivisionsEntry.value:type_name -> ipc.TournamentDivisionDataResponse
-	41, // [41:41] is the sub-list for method output_type
-	41, // [41:41] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	34, // 30: ipc.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
+	34, // 31: ipc.TournamentDataResponse.scheduled_start_time:type_name -> google.protobuf.Timestamp
+	34, // 32: ipc.TournamentDataResponse.scheduled_end_time:type_name -> google.protobuf.Timestamp
+	6,  // 33: ipc.PlayerCheckinResponse.player:type_name -> ipc.TournamentPerson
+	0,  // 34: ipc.TournamentGameEndedEvent.Player.result:type_name -> ipc.TournamentGameResult
+	13, // 35: ipc.DivisionPairingsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	13, // 36: ipc.PlayersAddedOrRemovedResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	13, // 37: ipc.DivisionRoundControls.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	13, // 38: ipc.DivisionControlsResponse.DivisionStandingsEntry.value:type_name -> ipc.RoundStandings
+	13, // 39: ipc.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> ipc.RoundStandings
+	11, // 40: ipc.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> ipc.Pairing
+	19, // 41: ipc.FullTournamentDivisions.DivisionsEntry.value:type_name -> ipc.TournamentDivisionDataResponse
+	42, // [42:42] is the sub-list for method output_type
+	42, // [42:42] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_tournament_proto_init() }
@@ -2203,7 +2298,7 @@ func file_proto_ipc_tournament_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_tournament_proto_rawDesc), len(file_proto_ipc_tournament_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   29,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

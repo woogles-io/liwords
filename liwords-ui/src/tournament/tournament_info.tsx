@@ -4,9 +4,10 @@ import ReactMarkdown from "react-markdown";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
-import { readyForTournamentGame } from "../store/reducers/tournament_reducer";
+import { readyForTournamentGame } from "../tournament/ready";
 import { isClubType } from "../store/constants";
 import { TeamOutlined } from "@ant-design/icons";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -23,7 +24,8 @@ function LinkRenderer(props: { href?: string; children?: ReactNode }) {
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
-  const { competitorState: competitorContext, metadata } = tournamentContext;
+  const { metadata } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const directors = tournamentContext.directors.map((username, i) => (
     <span className="director" key={username}>
       {i > 0 && ", "}
@@ -39,13 +41,13 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
   return (
     <div className="tournament-info">
       {/* Mobile version of the status widget, hidden by css elsewhere */}
-      {competitorContext.isRegistered && (
+      {competitorState.isRegistered && (
         <CompetitorStatus
           sendReady={() =>
             readyForTournamentGame(
               props.sendSocketMsg,
               tournamentContext.metadata.id,
-              competitorContext,
+              competitorState,
             )
           }
         />

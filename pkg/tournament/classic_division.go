@@ -1128,6 +1128,7 @@ func (t *ClassicDivision) ResetToBeginning() error {
 
 	for _, p := range t.Players.Persons {
 		p.Suspended = false
+		p.CheckedIn = false
 	}
 
 	_, err := t.prepair()
@@ -2031,20 +2032,9 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
 	return nil
 }
 
-/**
-func (t *ClassicDivision) SetCheckedIn(playerID string) error {
-	for idx, v := range t.Players {
-		if v == playerID {
-			t.PlayersProperties[idx].CheckedIn = true
-			return t.writeResponse(0)
-		}
+func (t *ClassicDivision) ClearAllCheckedIn() error {
+	for _, v := range t.Players.Persons {
+		v.CheckedIn = false
 	}
-	return fmt.Errorf("player %v not found", playerID)
+	return nil
 }
-
-func (t *ClassicDivision) ClearCheckedIn() {
-	for idx := range t.Players {
-		t.PlayersProperties[idx].CheckedIn = false
-	}
-	t.writeResponse(0)
-*/

@@ -13,7 +13,6 @@ import {
   useChatStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
-  useTournamentStoreContext,
 } from "../store/store";
 import "./chat.scss";
 import { Presences } from "./presences";
@@ -27,6 +26,7 @@ import { Players } from "./players";
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -46,8 +46,7 @@ let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 
 export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
-  const { tournamentContext } = useTournamentStoreContext();
-  const { competitorState } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const { loggedIn, userID } = loginState;
   const [hasScroll, setHasScroll] = useState(false);
   const [channelsFetched, setChannelsFetched] = useState(false);

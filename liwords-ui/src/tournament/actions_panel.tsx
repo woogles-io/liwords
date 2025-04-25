@@ -27,6 +27,7 @@ import { DirectorTools } from "./director_tools/director_tools";
 import { useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { flashTournamentError } from "./tournament_error";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -70,14 +71,15 @@ export const ActionsPanel = React.memo((props: Props) => {
     [tournamentContext],
   );
   const { divisions } = tournamentContext;
+  const competitorState = useTournamentCompetitorState();
   const [competitorStatusLoaded, setCompetitorStatusLoaded] = useState(
-    tournamentContext.competitorState.isRegistered,
+    competitorState.isRegistered,
   );
   let initialRound = 0;
   let initialDivision = "";
-  if (tournamentContext.competitorState.division) {
-    initialDivision = tournamentContext.competitorState.division;
-    initialRound = tournamentContext.competitorState.currentRound;
+  if (competitorState.division) {
+    initialDivision = competitorState.division;
+    initialRound = competitorState.currentRound;
   }
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
@@ -514,7 +516,86 @@ export const ActionsPanel = React.memo((props: Props) => {
             selectedGameTab === "DIRECTOR TOOLS" &&
             renderDirectorTools()}
           {matchModal}
-          {renderGamesTab()}
+          {!competitorState.isRegistered &&
+          tournamentContext.metadata.registrationOpen &&
+          !tournamentContext.started ? (
+            <>
+              <center>
+                <div style={{ marginTop: 80 }}>
+                  Registration for {tournamentContext.metadata.name} is now
+                  open.
+                </div>
+              </center>
+              <center>
+                {renderDivisionSelector ? (
+                  <div style={{ marginTop: 20 }}>
+                    Select division: {renderDivisionSelector}
+                  </div>
+                ) : null}
+
+                <Button
+                  size="large"
+                  type="primary"
+                  style={{ marginTop: 40 }}
+                  onClick={async () => {
+                    try {
+                      await tournamentClient.register({
+                        id: tournamentContext.metadata.id,
+                        division: selectedDivision,
+                      });
+                    } catch (e) {
+                      flashTournamentError(
+                        message,
+                        notification,
+                        e,
+                        tournamentContext,
+                      );
+                    }
+                  }}
+                >
+                  Register for this tournament
+                </Button>
+              </center>
+            </>
+          ) : competitorState.isRegistered &&
+            tournamentContext.metadata.checkinsOpen &&
+            !competitorState.isCheckedIn &&
+            !tournamentContext.started ? (
+            <>
+              <center>
+                <div style={{ marginTop: 80, marginLeft: 20, marginRight: 20 }}>
+                  Please ensure you can play the tournament in its entirety
+                  before checking in.
+                </div>
+              </center>
+              <center>
+                <Button
+                  size="large"
+                  style={{ marginTop: 40 }}
+                  onClick={async () => {
+                    try {
+                      await tournamentClient.checkIn({
+                        id: tournamentContext.metadata.id,
+                        checkin: true,
+                      });
+                    } catch (e) {
+                      flashTournamentError(
+                        message,
+                        notification,
+                        e,
+                        tournamentContext,
+                      );
+                    }
+                  }}
+                >
+                  Check into this tournament (division&nbsp;
+                  {competitorState.division})
+                </Button>
+              </center>
+            </>
+          ) : (
+            renderGamesTab()
+          )}
         </div>
       </Card>
     </div>

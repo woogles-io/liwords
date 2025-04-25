@@ -133,11 +133,36 @@ export const getRecentClubSessions = TournamentService.method.getRecentClubSessi
 export const unstartTournament = TournamentService.method.unstartTournament;
 
 /**
+ * @generated from rpc tournament_service.TournamentService.OpenRegistration
+ */
+export const openRegistration = TournamentService.method.openRegistration;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.CloseRegistration
+ */
+export const closeRegistration = TournamentService.method.closeRegistration;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.OpenCheckins
+ */
+export const openCheckins = TournamentService.method.openCheckins;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.CloseCheckins
+ */
+export const closeCheckins = TournamentService.method.closeCheckins;
+
+/**
  * Uncheck everyone in. Use this some time before the beginning of a session.
  *
- * @generated from rpc tournament_service.TournamentService.UncheckIn
+ * @generated from rpc tournament_service.TournamentService.UncheckAllIn
  */
-export const uncheckIn = TournamentService.method.uncheckIn;
+export const uncheckAllIn = TournamentService.method.uncheckAllIn;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn
+ */
+export const removeAllPlayersNotCheckedIn = TournamentService.method.removeAllPlayersNotCheckedIn;
 
 /**
  * CheckIn allows players to check themselves in.
@@ -145,6 +170,11 @@ export const uncheckIn = TournamentService.method.uncheckIn;
  * @generated from rpc tournament_service.TournamentService.CheckIn
  */
 export const checkIn = TournamentService.method.checkIn;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.Register
+ */
+export const register = TournamentService.method.register;
 
 /**
  * @generated from rpc tournament_service.TournamentService.ExportTournament

@@ -38,8 +38,8 @@ type tournament struct {
 	AliasOf           string
 	Directors         datatypes.JSON
 	ExecutiveDirector string
-	IsStarted         bool
-	IsFinished        bool
+	IsStarted         *bool
+	IsFinished        *bool
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
@@ -113,8 +113,8 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		AliasOf:            tm.AliasOf,
 		Directors:          &directors,
 		ExecutiveDirector:  tm.ExecutiveDirector,
-		IsStarted:          tm.IsStarted,
-		IsFinished:         tm.IsFinished,
+		IsStarted:          tm.IsStarted != nil && *tm.IsStarted,
+		IsFinished:         tm.IsFinished != nil && *tm.IsFinished,
 		Divisions:          divisions,
 		ExtraMeta:          extraMeta,
 		Type:               entity.CompetitionType(tm.Type),
@@ -134,7 +134,6 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	if result := ctxDB.Where("uuid = ?", id).First(tm); result.Error != nil {
 		return nil, result.Error
 	}
-	log.Info().Str("tid", id).Bool("finished", tm.IsFinished).Msg("db-get-tournament")
 
 	return s.dbObjToEntity(tm)
 }
@@ -225,8 +224,8 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		AliasOf:            t.AliasOf,
 		Directors:          directors,
 		ExecutiveDirector:  t.ExecutiveDirector,
-		IsStarted:          t.IsStarted,
-		IsFinished:         t.IsFinished,
+		IsStarted:          &t.IsStarted,
+		IsFinished:         &t.IsFinished,
 		Divisions:          divisions,
 		ExtraMeta:          extraMeta,
 		Type:               string(t.Type),

@@ -106,12 +106,30 @@ const (
 	// TournamentServiceUnstartTournamentProcedure is the fully-qualified name of the
 	// TournamentService's UnstartTournament RPC.
 	TournamentServiceUnstartTournamentProcedure = "/tournament_service.TournamentService/UnstartTournament"
-	// TournamentServiceUncheckInProcedure is the fully-qualified name of the TournamentService's
-	// UncheckIn RPC.
-	TournamentServiceUncheckInProcedure = "/tournament_service.TournamentService/UncheckIn"
+	// TournamentServiceOpenRegistrationProcedure is the fully-qualified name of the TournamentService's
+	// OpenRegistration RPC.
+	TournamentServiceOpenRegistrationProcedure = "/tournament_service.TournamentService/OpenRegistration"
+	// TournamentServiceCloseRegistrationProcedure is the fully-qualified name of the
+	// TournamentService's CloseRegistration RPC.
+	TournamentServiceCloseRegistrationProcedure = "/tournament_service.TournamentService/CloseRegistration"
+	// TournamentServiceOpenCheckinsProcedure is the fully-qualified name of the TournamentService's
+	// OpenCheckins RPC.
+	TournamentServiceOpenCheckinsProcedure = "/tournament_service.TournamentService/OpenCheckins"
+	// TournamentServiceCloseCheckinsProcedure is the fully-qualified name of the TournamentService's
+	// CloseCheckins RPC.
+	TournamentServiceCloseCheckinsProcedure = "/tournament_service.TournamentService/CloseCheckins"
+	// TournamentServiceUncheckAllInProcedure is the fully-qualified name of the TournamentService's
+	// UncheckAllIn RPC.
+	TournamentServiceUncheckAllInProcedure = "/tournament_service.TournamentService/UncheckAllIn"
+	// TournamentServiceRemoveAllPlayersNotCheckedInProcedure is the fully-qualified name of the
+	// TournamentService's RemoveAllPlayersNotCheckedIn RPC.
+	TournamentServiceRemoveAllPlayersNotCheckedInProcedure = "/tournament_service.TournamentService/RemoveAllPlayersNotCheckedIn"
 	// TournamentServiceCheckInProcedure is the fully-qualified name of the TournamentService's CheckIn
 	// RPC.
 	TournamentServiceCheckInProcedure = "/tournament_service.TournamentService/CheckIn"
+	// TournamentServiceRegisterProcedure is the fully-qualified name of the TournamentService's
+	// Register RPC.
+	TournamentServiceRegisterProcedure = "/tournament_service.TournamentService/Register"
 	// TournamentServiceExportTournamentProcedure is the fully-qualified name of the TournamentService's
 	// ExportTournament RPC.
 	TournamentServiceExportTournamentProcedure = "/tournament_service.TournamentService/ExportTournament"
@@ -153,10 +171,16 @@ type TournamentServiceClient interface {
 	CreateClubSession(context.Context, *connect.Request[tournament_service.NewClubSessionRequest]) (*connect.Response[tournament_service.ClubSessionResponse], error)
 	GetRecentClubSessions(context.Context, *connect.Request[tournament_service.RecentClubSessionsRequest]) (*connect.Response[tournament_service.ClubSessionsResponse], error)
 	UnstartTournament(context.Context, *connect.Request[tournament_service.UnstartTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	OpenRegistration(context.Context, *connect.Request[tournament_service.OpenRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	CloseRegistration(context.Context, *connect.Request[tournament_service.CloseRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	OpenCheckins(context.Context, *connect.Request[tournament_service.OpenCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	CloseCheckins(context.Context, *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Uncheck everyone in. Use this some time before the beginning of a session.
-	UncheckIn(context.Context, *connect.Request[tournament_service.UncheckInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	Register(context.Context, *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
@@ -321,16 +345,52 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(tournamentServiceMethods.ByName("UnstartTournament")),
 			connect.WithClientOptions(opts...),
 		),
-		uncheckIn: connect.NewClient[tournament_service.UncheckInRequest, tournament_service.TournamentResponse](
+		openRegistration: connect.NewClient[tournament_service.OpenRegistrationRequest, tournament_service.TournamentResponse](
 			httpClient,
-			baseURL+TournamentServiceUncheckInProcedure,
-			connect.WithSchema(tournamentServiceMethods.ByName("UncheckIn")),
+			baseURL+TournamentServiceOpenRegistrationProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("OpenRegistration")),
+			connect.WithClientOptions(opts...),
+		),
+		closeRegistration: connect.NewClient[tournament_service.CloseRegistrationRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceCloseRegistrationProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("CloseRegistration")),
+			connect.WithClientOptions(opts...),
+		),
+		openCheckins: connect.NewClient[tournament_service.OpenCheckinsRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceOpenCheckinsProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("OpenCheckins")),
+			connect.WithClientOptions(opts...),
+		),
+		closeCheckins: connect.NewClient[tournament_service.CloseCheckinsRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceCloseCheckinsProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("CloseCheckins")),
+			connect.WithClientOptions(opts...),
+		),
+		uncheckAllIn: connect.NewClient[tournament_service.UncheckAllInRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceUncheckAllInProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("UncheckAllIn")),
+			connect.WithClientOptions(opts...),
+		),
+		removeAllPlayersNotCheckedIn: connect.NewClient[tournament_service.RemoveAllPlayersNotCheckedInRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceRemoveAllPlayersNotCheckedInProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("RemoveAllPlayersNotCheckedIn")),
 			connect.WithClientOptions(opts...),
 		),
 		checkIn: connect.NewClient[tournament_service.CheckinRequest, tournament_service.TournamentResponse](
 			httpClient,
 			baseURL+TournamentServiceCheckInProcedure,
 			connect.WithSchema(tournamentServiceMethods.ByName("CheckIn")),
+			connect.WithClientOptions(opts...),
+		),
+		register: connect.NewClient[tournament_service.RegisterRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceRegisterProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("Register")),
 			connect.WithClientOptions(opts...),
 		),
 		exportTournament: connect.NewClient[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse](
@@ -383,8 +443,14 @@ type tournamentServiceClient struct {
 	createClubSession               *connect.Client[tournament_service.NewClubSessionRequest, tournament_service.ClubSessionResponse]
 	getRecentClubSessions           *connect.Client[tournament_service.RecentClubSessionsRequest, tournament_service.ClubSessionsResponse]
 	unstartTournament               *connect.Client[tournament_service.UnstartTournamentRequest, tournament_service.TournamentResponse]
-	uncheckIn                       *connect.Client[tournament_service.UncheckInRequest, tournament_service.TournamentResponse]
+	openRegistration                *connect.Client[tournament_service.OpenRegistrationRequest, tournament_service.TournamentResponse]
+	closeRegistration               *connect.Client[tournament_service.CloseRegistrationRequest, tournament_service.TournamentResponse]
+	openCheckins                    *connect.Client[tournament_service.OpenCheckinsRequest, tournament_service.TournamentResponse]
+	closeCheckins                   *connect.Client[tournament_service.CloseCheckinsRequest, tournament_service.TournamentResponse]
+	uncheckAllIn                    *connect.Client[tournament_service.UncheckAllInRequest, tournament_service.TournamentResponse]
+	removeAllPlayersNotCheckedIn    *connect.Client[tournament_service.RemoveAllPlayersNotCheckedInRequest, tournament_service.TournamentResponse]
 	checkIn                         *connect.Client[tournament_service.CheckinRequest, tournament_service.TournamentResponse]
+	register                        *connect.Client[tournament_service.RegisterRequest, tournament_service.TournamentResponse]
 	exportTournament                *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
 	getTournamentScorecards         *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 	getRecentAndUpcomingTournaments *connect.Client[tournament_service.GetRecentAndUpcomingTournamentsRequest, tournament_service.GetRecentAndUpcomingTournamentsResponse]
@@ -510,14 +576,45 @@ func (c *tournamentServiceClient) UnstartTournament(ctx context.Context, req *co
 	return c.unstartTournament.CallUnary(ctx, req)
 }
 
-// UncheckIn calls tournament_service.TournamentService.UncheckIn.
-func (c *tournamentServiceClient) UncheckIn(ctx context.Context, req *connect.Request[tournament_service.UncheckInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return c.uncheckIn.CallUnary(ctx, req)
+// OpenRegistration calls tournament_service.TournamentService.OpenRegistration.
+func (c *tournamentServiceClient) OpenRegistration(ctx context.Context, req *connect.Request[tournament_service.OpenRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.openRegistration.CallUnary(ctx, req)
+}
+
+// CloseRegistration calls tournament_service.TournamentService.CloseRegistration.
+func (c *tournamentServiceClient) CloseRegistration(ctx context.Context, req *connect.Request[tournament_service.CloseRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.closeRegistration.CallUnary(ctx, req)
+}
+
+// OpenCheckins calls tournament_service.TournamentService.OpenCheckins.
+func (c *tournamentServiceClient) OpenCheckins(ctx context.Context, req *connect.Request[tournament_service.OpenCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.openCheckins.CallUnary(ctx, req)
+}
+
+// CloseCheckins calls tournament_service.TournamentService.CloseCheckins.
+func (c *tournamentServiceClient) CloseCheckins(ctx context.Context, req *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.closeCheckins.CallUnary(ctx, req)
+}
+
+// UncheckAllIn calls tournament_service.TournamentService.UncheckAllIn.
+func (c *tournamentServiceClient) UncheckAllIn(ctx context.Context, req *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.uncheckAllIn.CallUnary(ctx, req)
+}
+
+// RemoveAllPlayersNotCheckedIn calls
+// tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn.
+func (c *tournamentServiceClient) RemoveAllPlayersNotCheckedIn(ctx context.Context, req *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.removeAllPlayersNotCheckedIn.CallUnary(ctx, req)
 }
 
 // CheckIn calls tournament_service.TournamentService.CheckIn.
 func (c *tournamentServiceClient) CheckIn(ctx context.Context, req *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return c.checkIn.CallUnary(ctx, req)
+}
+
+// Register calls tournament_service.TournamentService.Register.
+func (c *tournamentServiceClient) Register(ctx context.Context, req *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.register.CallUnary(ctx, req)
 }
 
 // ExportTournament calls tournament_service.TournamentService.ExportTournament.
@@ -567,10 +664,16 @@ type TournamentServiceHandler interface {
 	CreateClubSession(context.Context, *connect.Request[tournament_service.NewClubSessionRequest]) (*connect.Response[tournament_service.ClubSessionResponse], error)
 	GetRecentClubSessions(context.Context, *connect.Request[tournament_service.RecentClubSessionsRequest]) (*connect.Response[tournament_service.ClubSessionsResponse], error)
 	UnstartTournament(context.Context, *connect.Request[tournament_service.UnstartTournamentRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	OpenRegistration(context.Context, *connect.Request[tournament_service.OpenRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	CloseRegistration(context.Context, *connect.Request[tournament_service.CloseRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	OpenCheckins(context.Context, *connect.Request[tournament_service.OpenCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	CloseCheckins(context.Context, *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Uncheck everyone in. Use this some time before the beginning of a session.
-	UncheckIn(context.Context, *connect.Request[tournament_service.UncheckInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// CheckIn allows players to check themselves in.
 	CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	Register(context.Context, *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
@@ -731,16 +834,52 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithSchema(tournamentServiceMethods.ByName("UnstartTournament")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tournamentServiceUncheckInHandler := connect.NewUnaryHandler(
-		TournamentServiceUncheckInProcedure,
-		svc.UncheckIn,
-		connect.WithSchema(tournamentServiceMethods.ByName("UncheckIn")),
+	tournamentServiceOpenRegistrationHandler := connect.NewUnaryHandler(
+		TournamentServiceOpenRegistrationProcedure,
+		svc.OpenRegistration,
+		connect.WithSchema(tournamentServiceMethods.ByName("OpenRegistration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceCloseRegistrationHandler := connect.NewUnaryHandler(
+		TournamentServiceCloseRegistrationProcedure,
+		svc.CloseRegistration,
+		connect.WithSchema(tournamentServiceMethods.ByName("CloseRegistration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceOpenCheckinsHandler := connect.NewUnaryHandler(
+		TournamentServiceOpenCheckinsProcedure,
+		svc.OpenCheckins,
+		connect.WithSchema(tournamentServiceMethods.ByName("OpenCheckins")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceCloseCheckinsHandler := connect.NewUnaryHandler(
+		TournamentServiceCloseCheckinsProcedure,
+		svc.CloseCheckins,
+		connect.WithSchema(tournamentServiceMethods.ByName("CloseCheckins")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceUncheckAllInHandler := connect.NewUnaryHandler(
+		TournamentServiceUncheckAllInProcedure,
+		svc.UncheckAllIn,
+		connect.WithSchema(tournamentServiceMethods.ByName("UncheckAllIn")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceRemoveAllPlayersNotCheckedInHandler := connect.NewUnaryHandler(
+		TournamentServiceRemoveAllPlayersNotCheckedInProcedure,
+		svc.RemoveAllPlayersNotCheckedIn,
+		connect.WithSchema(tournamentServiceMethods.ByName("RemoveAllPlayersNotCheckedIn")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceCheckInHandler := connect.NewUnaryHandler(
 		TournamentServiceCheckInProcedure,
 		svc.CheckIn,
 		connect.WithSchema(tournamentServiceMethods.ByName("CheckIn")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceRegisterHandler := connect.NewUnaryHandler(
+		TournamentServiceRegisterProcedure,
+		svc.Register,
+		connect.WithSchema(tournamentServiceMethods.ByName("Register")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceExportTournamentHandler := connect.NewUnaryHandler(
@@ -814,10 +953,22 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetRecentClubSessionsHandler.ServeHTTP(w, r)
 		case TournamentServiceUnstartTournamentProcedure:
 			tournamentServiceUnstartTournamentHandler.ServeHTTP(w, r)
-		case TournamentServiceUncheckInProcedure:
-			tournamentServiceUncheckInHandler.ServeHTTP(w, r)
+		case TournamentServiceOpenRegistrationProcedure:
+			tournamentServiceOpenRegistrationHandler.ServeHTTP(w, r)
+		case TournamentServiceCloseRegistrationProcedure:
+			tournamentServiceCloseRegistrationHandler.ServeHTTP(w, r)
+		case TournamentServiceOpenCheckinsProcedure:
+			tournamentServiceOpenCheckinsHandler.ServeHTTP(w, r)
+		case TournamentServiceCloseCheckinsProcedure:
+			tournamentServiceCloseCheckinsHandler.ServeHTTP(w, r)
+		case TournamentServiceUncheckAllInProcedure:
+			tournamentServiceUncheckAllInHandler.ServeHTTP(w, r)
+		case TournamentServiceRemoveAllPlayersNotCheckedInProcedure:
+			tournamentServiceRemoveAllPlayersNotCheckedInHandler.ServeHTTP(w, r)
 		case TournamentServiceCheckInProcedure:
 			tournamentServiceCheckInHandler.ServeHTTP(w, r)
+		case TournamentServiceRegisterProcedure:
+			tournamentServiceRegisterHandler.ServeHTTP(w, r)
 		case TournamentServiceExportTournamentProcedure:
 			tournamentServiceExportTournamentHandler.ServeHTTP(w, r)
 		case TournamentServiceGetTournamentScorecardsProcedure:
@@ -929,12 +1080,36 @@ func (UnimplementedTournamentServiceHandler) UnstartTournament(context.Context, 
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.UnstartTournament is not implemented"))
 }
 
-func (UnimplementedTournamentServiceHandler) UncheckIn(context.Context, *connect.Request[tournament_service.UncheckInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.UncheckIn is not implemented"))
+func (UnimplementedTournamentServiceHandler) OpenRegistration(context.Context, *connect.Request[tournament_service.OpenRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.OpenRegistration is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) CloseRegistration(context.Context, *connect.Request[tournament_service.CloseRegistrationRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.CloseRegistration is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) OpenCheckins(context.Context, *connect.Request[tournament_service.OpenCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.OpenCheckins is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) CloseCheckins(context.Context, *connect.Request[tournament_service.CloseCheckinsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.CloseCheckins is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) UncheckAllIn(context.Context, *connect.Request[tournament_service.UncheckAllInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.UncheckAllIn is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) RemoveAllPlayersNotCheckedIn(context.Context, *connect.Request[tournament_service.RemoveAllPlayersNotCheckedInRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) CheckIn(context.Context, *connect.Request[tournament_service.CheckinRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.CheckIn is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) Register(context.Context, *connect.Request[tournament_service.RegisterRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.Register is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error) {

@@ -450,7 +450,14 @@ export const errorMap: Map<number, string> = new Map<number, string>([
   [1071, "Your tournament can only have exactly one executive director."],
   [1072, "You cannot remove the executive director."],
   [1073, "You must select one of the options for Suspended game result"],
-
+  [
+    WooglesError.TOURNAMENT_CANNOT_START_CHECKINS_OR_REGISTRATIONS_OPEN,
+    "You cannot start a tournament with check-ins or registrations open. Please close these first.",
+  ],
+  [
+    WooglesError.TOURNAMENT_CANNOT_REMOVE_UNCHECKED_IN_IF_CHECKINS_OPEN,
+    "You cannot remove players who are not checked in while check-ins are open. Please close check-ins first.",
+  ],
   // Puzzle errors
   [
     1074,

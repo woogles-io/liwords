@@ -117,6 +117,8 @@ import {
   DivisionPairingsDeletedResponseSchema,
   TournamentDataResponseSchema,
   TournamentDivisionDataResponseSchema,
+  PlayerCheckinResponseSchema,
+  PlayerCheckinResponse,
 } from "../gen/api/proto/ipc/tournament_pb";
 import {
   ProfileUpdate,
@@ -127,6 +129,7 @@ import { ServerOMGWordsEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameDocumentEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { App } from "antd";
 import { fromBinary } from "@bufbuild/protobuf";
+import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 // Feature flag.
 export const enableShowSocket =
   localStorage?.getItem("enableShowSocket") === "true";
@@ -184,6 +187,7 @@ const MsgTypesMap = {
   [MessageType.PROFILE_UPDATE_EVENT]: ProfileUpdateSchema,
   [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEventSchema,
   [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEventSchema,
+  [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
 };
 
 export const parseMsgs = (
@@ -257,6 +261,7 @@ export const useOnSocketMsg = () => {
 
   const navigate = useNavigate();
   const { message, notification } = App.useApp();
+  const tourneyCompetitorState = useTournamentCompetitorState();
 
   return useCallback(
     (reader: FileReader) => {
@@ -594,7 +599,7 @@ export const useOnSocketMsg = () => {
                 loginState,
               },
             });
-            if (tournamentContext.competitorState?.division === trs.division) {
+            if (tourneyCompetitorState.division === trs.division) {
               BoopSounds.playSound("startTourneyRoundSound");
             }
             break;
@@ -946,6 +951,15 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_PLAYER_CHECKIN: {
+            const tpc = parsedMsg as PlayerCheckinResponse;
+            dispatchTournamentContext({
+              actionType: ActionType.SetTourneyPlayerCheckin,
+              payload: tpc,
+            });
+            break;
+          }
+
           case MessageType.PROFILE_UPDATE_EVENT: {
             const pue = parsedMsg as ProfileUpdate;
             dispatchLobbyContext({
@@ -991,6 +1005,7 @@ export const useOnSocketMsg = () => {
       isExamining,
       message,
       notification,
+      tourneyCompetitorState.division,
     ],
   );
 };
