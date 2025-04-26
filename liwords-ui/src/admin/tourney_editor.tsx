@@ -42,6 +42,7 @@ import {
   doesCurrentUserUse24HourTime,
   protobufTimestampToDayjsIgnoringNanos,
 } from "../utils/datetime";
+import { check } from "prettier";
 
 type DProps = {
   description: string;
@@ -182,6 +183,8 @@ export const TourneyEditor = (props: Props) => {
         scheduledTime: {
           range: [scheduledStartTime, scheduledEndTime],
         },
+        checkinsOpen: metadata.checkinsOpen,
+        registrationOpen: metadata.registrationOpen,
       });
     } catch (e) {
       flashError(e);
@@ -240,6 +243,8 @@ export const TourneyEditor = (props: Props) => {
           scheduledEndTime: scheduledEndTime
             ? dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime)
             : undefined,
+          checkinsOpen: vals.checkinsOpen,
+          registrationOpen: vals.registrationOpen,
         },
       };
     }
@@ -469,6 +474,23 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item
               name="irlMode"
               label="Use tournament mode for IRL games"
+              hidden={props.mode === "new"}
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              name="checkinsOpen"
+              label="Check-ins open"
+              hidden={props.mode === "new"}
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              name="registrationOpen"
+              label="Registration open"
               hidden={props.mode === "new"}
               valuePropName="checked"
             >
