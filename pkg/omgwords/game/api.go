@@ -217,18 +217,17 @@ func EditOldRack(ctx context.Context, cfg *wglconfig.Config, gmeta *ipc.GameMeta
 
 	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
 	// First clone and truncate the document.
-	gc := proto.Clone(gdoc).(*ipc.GameDocument)
-	evt := gdoc.Events[evtNumber]
+	evt := evts[evtNumber]
 
 	// replay until the event before evt.
-	err := ReplayEvents(ctx, cfg, gc, gc.Events[:evtNumber], false)
+	err := ReplayEvents(ctx, cfg, st, gmeta, evts[:evtNumber], false)
 	if err != nil {
 		return err
 	}
 	evtTurn := evt.PlayerIndex
-	racks := make([][]byte, len(gdoc.Players))
+	racks := make([][]byte, len(gmeta.Players))
 	racks[evtTurn] = rack
-	err = AssignRacks(gc, racks, AssignEmptyIfUnambiguous)
+	err = AssignRacks(st, racks, AssignEmptyIfUnambiguous)
 	if err != nil {
 		return err
 	}
@@ -242,13 +241,15 @@ func EditOldRack(ctx context.Context, cfg *wglconfig.Config, gmeta *ipc.GameMeta
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
-func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument, evts []*ipc.GameEvent, rememberRacks bool) error {
-	dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
+func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, st *gamestate.GameState, gmeta *ipc.GameMetadata,
+	evts []*ipc.GameEvent, rememberRacks bool) error {
+
+	dist, err := tilemapping.GetDistribution(cfg, gmeta.LetterDistribution)
 	if err != nil {
 		return err
 	}
 
-	layout, err := board.GetBoardLayout(gdoc.BoardLayout)
+	layout, err := board.GetBoardLayout(gmeta.BoardLayout)
 	if err != nil {
 		return err
 	}
