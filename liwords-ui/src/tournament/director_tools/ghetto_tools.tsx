@@ -1453,7 +1453,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             return (
               <Form.Item
                 {...formItemLayout}
-                labelCol={{ span: 12, offset: 1 }}
+                labelCol={{ span: 16, offset: 1 }}
                 label={<HelptipLabel labelText={displayName} help={help} />}
                 key={`${idx}-${fieldName}`}
               >
@@ -1553,7 +1553,7 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 
       if (rdCtrl.maxRepeats <= 0) {
         throw new Error(
-          'Max repeats should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.',
+          'Max Pairings Between Any Two Players should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.',
         );
       }
 
@@ -1566,6 +1566,18 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
       if (rdCtrl.winDifferenceRelativeWeight <= 0) {
         throw new Error(
           "Win difference relative weight should be at least 1. Please hover on the question mark to see more info about what this means.",
+        );
+      }
+
+      if (rdCtrl.repeatRelativeWeight > 100) {
+        throw new Error(
+          "Repeat relative weight should be at most 100. Please hover on the question mark to see more info about what this means.",
+        );
+      }
+
+      if (rdCtrl.winDifferenceRelativeWeight > 100) {
+        throw new Error(
+          "Win difference relative weight should be at most 100. Please hover on the question mark to see more info about what this means.",
         );
       }
 

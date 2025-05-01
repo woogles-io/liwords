@@ -50,7 +50,7 @@ export const fieldsForMethod = (
         [
           "number",
           "maxRepeats",
-          "Max Desirable Repeats",
+          "Max Pairings Between \nAny Two Players",
           'Use "1" for no repeats, "2" for 1 max repeat, and so on. ' +
             "The pairing system will try to meet your requirement, but it is not guaranteed.",
         ],
@@ -58,13 +58,13 @@ export const fieldsForMethod = (
           "number",
           "repeatRelativeWeight",
           "Repeat Relative Weight",
-          "The larger this number relative to other weights, the less likely a repeat will be.",
+          "The larger this number relative to other weights, the less likely a repeat will be. Choose a whole number between 1 and 100.",
         ],
         [
           "number",
           "winDifferenceRelativeWeight",
           "Win Difference Relative Weight",
-          "The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference.",
+          "The smaller this number relative to other weights, the more mismatched your pairings will be, in terms of win difference. Choose a whole number between 1 and 100.",
         ],
       );
       break;
