@@ -330,7 +330,7 @@ func getRoundInfo(oldLogFile string) (int, int, int) {
 	return numPairings, numResults, roundsRemaining
 }
 
-func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pairForRound int, oldLogFile string) *pb.PairRequest {
+func createPairRequest(players []Player, totalRounds int, config *TSHConfig, oldLogFile string) *pb.PairRequest {
 	var playerNames []string
 	var playerClasses []int32
 	var removedPlayers []int32
@@ -453,15 +453,6 @@ func parseOldPairings(filepath string) (map[int32]int32, error) {
 	return pairings, nil
 }
 
-// Helper function to extract a player's ID from a log line.
-func extractPlayerID(playerString string) int32 {
-	// Example input: "(#9)"
-	playerString = strings.Trim(playerString, "(#)")
-	var id int32
-	fmt.Sscanf(playerString, "%d", &id)
-	return id
-}
-
 func TestCompare(t *testing.T) {
 	if os.Getenv("COP_CMP") == "" {
 		t.Skip("Skipping COP comparison test. Use 'COP_CMP=1 go test -run Compare' to run it.")
@@ -526,7 +517,7 @@ func TestCompare(t *testing.T) {
 		// }
 
 		// Construct the new PairRequest
-		req := createPairRequest(players, totalRounds, config, round, oldLogFile)
+		req := createPairRequest(players, totalRounds, config, oldLogFile)
 
 		// Call the COPPair function to generate new pairings
 		resp := cop.COPPair(ctx, req)

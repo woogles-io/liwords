@@ -709,7 +709,83 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
+
+	// This is the first round that control loss is active, so first will
+	// be force paired with the lowest contender. Therefore, prepairing the lowest
+	// contender with someone else will result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.ControlLossActivationRound = 21
+	req.Seed = 1
+	pairings := make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
 	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+
+	// This is the second round that control loss is active, so first will
+	// be force paired with the 2 lowest contenders. Therefore, prepairing the lowest
+	// contender with someone else should not result in any errors.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 26
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Ben should be playing Wellington, the 2nd lowest contender
+	is.Equal(resp.Pairings[0], int32(10))
+	is.Equal(resp.Pairings[10], int32(0))
+
+	// With only 4 rounds to go, first will again be paired with only the lowest contender.
+	// Therefore, prepairing the lowest contender with someone else should result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 25
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+
+	// With only 2 rounds to go, first will again be paired with only the lowest contender.
+	// Therefore, prepairing the lowest contender with someone else should result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 23
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[4] = 25
+	pairings[25] = 4
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
 
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()

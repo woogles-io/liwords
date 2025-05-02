@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	timeFormat    = "2006-01-02T15:04:05.000Z"
-	majorPenalty  = 1e9
-	minorPenalty  = majorPenalty / 1e3
-	byePlayerName = "BYE"
+	timeFormat                           = "2006-01-02T15:04:05.000Z"
+	majorPenalty                         = 1e9
+	minorPenalty                         = majorPenalty / 1e3
+	byePlayerName                        = "BYE"
+	controlLossLowestContenderOnlyRounds = 4
 )
 
 type policyArgs struct {
@@ -167,7 +168,17 @@ var constraintPolicies = []constraintPolicy{
 			disallowedPairings := [][2]int{}
 			numPlayers := len(pargs.playerNodes)
 			for playerRankIdx := 1; playerRankIdx < numPlayers; playerRankIdx++ {
-				if playerRankIdx == pargs.copdata.DestinysChild || (pargs.roundsRemaining > 2 && playerRankIdx == pargs.copdata.DestinysChild-1) {
+				// This if statement implements the following logic:
+				//
+				// Force pair the player in first with the bottom contender if:
+				//  - There are controlLossLowestContenderOnlyRounds or fewer rounds remaining, OR
+				//  - This is the first round where control loss is active
+				// Force pair the player in first with the bottom 2 contenders:
+				//  - otherwise
+				if playerRankIdx == pargs.copdata.DestinysChild ||
+					(pargs.roundsRemaining > controlLossLowestContenderOnlyRounds && int(pargs.req.ControlLossActivationRound) != pargs.copdata.CompletePairings &&
+						playerRankIdx == pargs.copdata.DestinysChild-1) {
+					fmt.Printf("allowing CL (%d, %d, %d, %d): %d\n", pargs.roundsRemaining, controlLossLowestContenderOnlyRounds, int(pargs.req.ControlLossActivationRound), pargs.copdata.CompletePairings, playerRankIdx)
 					continue
 				}
 				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[0], pargs.playerNodes[playerRankIdx]})
@@ -297,16 +308,16 @@ var weightPolicies = []weightPolicy{
 			if ri <= pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			prevRound := len(pargs.req.DivisionPairings) - 1
+			mostRecentCompletedRound := pargs.copdata.CompletePairings - 1
 			if pargs.prepairedRoundIdx >= 0 {
-				prevRound = pargs.prepairedRoundIdx - 1
+				mostRecentCompletedRound = pargs.prepairedRoundIdx - 1
 			}
-			if prevRound < 0 {
+			if mostRecentCompletedRound < 0 {
 				return 0
 			}
 			pi := pargs.playerNodes[ri]
 			pj := pargs.playerNodes[rj]
-			if int(pargs.req.DivisionPairings[prevRound].Pairings[pi]) != pj {
+			if int(pargs.req.DivisionPairings[mostRecentCompletedRound].Pairings[pi]) != pj {
 				return 0
 			}
 			return minorPenalty
@@ -468,6 +479,8 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			}
 		}
 	}
+
+	logsb.WriteString(fmt.Sprintf("\nHave %d player nodes\n\n", len(playerNodes)))
 
 	pargs := &policyArgs{
 		req:                      req,
