@@ -341,8 +341,6 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pai
 		playerClasses = append(playerClasses, player.Class)
 	}
 
-	useControlLoss := pairForRound >= int(config.ControlLossActivationRound-1)
-
 	numPairings, numResults, roundsRemaining := getRoundInfo(oldLogFile)
 
 	// Division pairings and results
@@ -383,25 +381,25 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pai
 	}
 
 	return &pb.PairRequest{
-		PairMethod:           pb.PairMethod_COP,
-		PlayerNames:          playerNames,
-		PlayerClasses:        playerClasses,
-		DivisionPairings:     divisionPairings,
-		DivisionResults:      divisionResults,
-		ClassPrizes:          config.ClassPrizes,
-		GibsonSpread:         apiGibsonSpread,
-		ControlLossThreshold: apiControlLossThreshold,
-		HopefulnessThreshold: apiHopefulness,
-		AllPlayers:           int32(len(players)),
-		ValidPlayers:         int32(len(players)) - int32(len(removedPlayers)),
-		Rounds:               int32(totalRounds),
-		PlacePrizes:          config.NumPlacePrizes,
-		DivisionSims:         config.Simulations,
-		ControlLossSims:      config.AlwaysWinsSimulations,
-		UseControlLoss:       useControlLoss,
-		AllowRepeatByes:      false, // Example default
-		RemovedPlayers:       removedPlayers,
-		Seed:                 0,
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                playerNames,
+		PlayerClasses:              playerClasses,
+		DivisionPairings:           divisionPairings,
+		DivisionResults:            divisionResults,
+		ClassPrizes:                config.ClassPrizes,
+		GibsonSpread:               apiGibsonSpread,
+		ControlLossThreshold:       apiControlLossThreshold,
+		HopefulnessThreshold:       apiHopefulness,
+		AllPlayers:                 int32(len(players)),
+		ValidPlayers:               int32(len(players)) - int32(len(removedPlayers)),
+		Rounds:                     int32(totalRounds),
+		PlacePrizes:                config.NumPlacePrizes,
+		DivisionSims:               config.Simulations,
+		ControlLossSims:            config.AlwaysWinsSimulations,
+		ControlLossActivationRound: config.ControlLossActivationRound - 1,
+		AllowRepeatByes:            false, // Example default
+		RemovedPlayers:             removedPlayers,
+		Seed:                       0,
 	}
 }
 

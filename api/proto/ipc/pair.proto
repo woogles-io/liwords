@@ -30,10 +30,11 @@ message PairRequest {
   int32 place_prizes = 13;
   int32 division_sims = 14;
   int32 control_loss_sims = 15;
-  bool use_control_loss = 16;
+  int32 control_loss_activation_round = 16;
   bool allow_repeat_byes = 17;
   repeated int32 removed_players = 18;
   int64 seed = 19;
+  bool top_down_byes = 20;
 }
 
 enum PairError {

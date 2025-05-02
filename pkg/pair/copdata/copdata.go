@@ -170,7 +170,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	var controlLossSimResults *pkgstnd.SimResults
 	var allControlLosses map[int]int
 	destinysChild := -1
-	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
+	if len(req.DivisionPairings) >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
 		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr

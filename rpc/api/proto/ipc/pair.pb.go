@@ -288,28 +288,29 @@ func (x *RoundResults) GetResults() []int32 {
 }
 
 type PairRequest struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	PairMethod           PairMethod             `protobuf:"varint,1,opt,name=pair_method,json=pairMethod,proto3,enum=ipc.PairMethod" json:"pair_method,omitempty"`
-	PlayerNames          []string               `protobuf:"bytes,2,rep,name=player_names,json=playerNames,proto3" json:"player_names,omitempty"`
-	PlayerClasses        []int32                `protobuf:"varint,3,rep,packed,name=player_classes,json=playerClasses,proto3" json:"player_classes,omitempty"`
-	DivisionPairings     []*RoundPairings       `protobuf:"bytes,4,rep,name=division_pairings,json=divisionPairings,proto3" json:"division_pairings,omitempty"`
-	DivisionResults      []*RoundResults        `protobuf:"bytes,5,rep,name=division_results,json=divisionResults,proto3" json:"division_results,omitempty"`
-	ClassPrizes          []int32                `protobuf:"varint,6,rep,packed,name=class_prizes,json=classPrizes,proto3" json:"class_prizes,omitempty"`
-	GibsonSpread         int32                  `protobuf:"varint,7,opt,name=gibson_spread,json=gibsonSpread,proto3" json:"gibson_spread,omitempty"`
-	ControlLossThreshold float64                `protobuf:"fixed64,8,opt,name=control_loss_threshold,json=controlLossThreshold,proto3" json:"control_loss_threshold,omitempty"`
-	HopefulnessThreshold float64                `protobuf:"fixed64,9,opt,name=hopefulness_threshold,json=hopefulnessThreshold,proto3" json:"hopefulness_threshold,omitempty"`
-	AllPlayers           int32                  `protobuf:"varint,10,opt,name=all_players,json=allPlayers,proto3" json:"all_players,omitempty"`
-	ValidPlayers         int32                  `protobuf:"varint,11,opt,name=valid_players,json=validPlayers,proto3" json:"valid_players,omitempty"`
-	Rounds               int32                  `protobuf:"varint,12,opt,name=rounds,proto3" json:"rounds,omitempty"`
-	PlacePrizes          int32                  `protobuf:"varint,13,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
-	DivisionSims         int32                  `protobuf:"varint,14,opt,name=division_sims,json=divisionSims,proto3" json:"division_sims,omitempty"`
-	ControlLossSims      int32                  `protobuf:"varint,15,opt,name=control_loss_sims,json=controlLossSims,proto3" json:"control_loss_sims,omitempty"`
-	UseControlLoss       bool                   `protobuf:"varint,16,opt,name=use_control_loss,json=useControlLoss,proto3" json:"use_control_loss,omitempty"`
-	AllowRepeatByes      bool                   `protobuf:"varint,17,opt,name=allow_repeat_byes,json=allowRepeatByes,proto3" json:"allow_repeat_byes,omitempty"`
-	RemovedPlayers       []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
-	Seed                 int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	PairMethod                 PairMethod             `protobuf:"varint,1,opt,name=pair_method,json=pairMethod,proto3,enum=ipc.PairMethod" json:"pair_method,omitempty"`
+	PlayerNames                []string               `protobuf:"bytes,2,rep,name=player_names,json=playerNames,proto3" json:"player_names,omitempty"`
+	PlayerClasses              []int32                `protobuf:"varint,3,rep,packed,name=player_classes,json=playerClasses,proto3" json:"player_classes,omitempty"`
+	DivisionPairings           []*RoundPairings       `protobuf:"bytes,4,rep,name=division_pairings,json=divisionPairings,proto3" json:"division_pairings,omitempty"`
+	DivisionResults            []*RoundResults        `protobuf:"bytes,5,rep,name=division_results,json=divisionResults,proto3" json:"division_results,omitempty"`
+	ClassPrizes                []int32                `protobuf:"varint,6,rep,packed,name=class_prizes,json=classPrizes,proto3" json:"class_prizes,omitempty"`
+	GibsonSpread               int32                  `protobuf:"varint,7,opt,name=gibson_spread,json=gibsonSpread,proto3" json:"gibson_spread,omitempty"`
+	ControlLossThreshold       float64                `protobuf:"fixed64,8,opt,name=control_loss_threshold,json=controlLossThreshold,proto3" json:"control_loss_threshold,omitempty"`
+	HopefulnessThreshold       float64                `protobuf:"fixed64,9,opt,name=hopefulness_threshold,json=hopefulnessThreshold,proto3" json:"hopefulness_threshold,omitempty"`
+	AllPlayers                 int32                  `protobuf:"varint,10,opt,name=all_players,json=allPlayers,proto3" json:"all_players,omitempty"`
+	ValidPlayers               int32                  `protobuf:"varint,11,opt,name=valid_players,json=validPlayers,proto3" json:"valid_players,omitempty"`
+	Rounds                     int32                  `protobuf:"varint,12,opt,name=rounds,proto3" json:"rounds,omitempty"`
+	PlacePrizes                int32                  `protobuf:"varint,13,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
+	DivisionSims               int32                  `protobuf:"varint,14,opt,name=division_sims,json=divisionSims,proto3" json:"division_sims,omitempty"`
+	ControlLossSims            int32                  `protobuf:"varint,15,opt,name=control_loss_sims,json=controlLossSims,proto3" json:"control_loss_sims,omitempty"`
+	ControlLossActivationRound int32                  `protobuf:"varint,16,opt,name=control_loss_activation_round,json=controlLossActivationRound,proto3" json:"control_loss_activation_round,omitempty"`
+	AllowRepeatByes            bool                   `protobuf:"varint,17,opt,name=allow_repeat_byes,json=allowRepeatByes,proto3" json:"allow_repeat_byes,omitempty"`
+	RemovedPlayers             []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
+	Seed                       int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
+	TopDownByes                bool                   `protobuf:"varint,20,opt,name=top_down_byes,json=topDownByes,proto3" json:"top_down_byes,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *PairRequest) Reset() {
@@ -447,11 +448,11 @@ func (x *PairRequest) GetControlLossSims() int32 {
 	return 0
 }
 
-func (x *PairRequest) GetUseControlLoss() bool {
+func (x *PairRequest) GetControlLossActivationRound() int32 {
 	if x != nil {
-		return x.UseControlLoss
+		return x.ControlLossActivationRound
 	}
-	return false
+	return 0
 }
 
 func (x *PairRequest) GetAllowRepeatByes() bool {
@@ -473,6 +474,13 @@ func (x *PairRequest) GetSeed() int64 {
 		return x.Seed
 	}
 	return 0
+}
+
+func (x *PairRequest) GetTopDownByes() bool {
+	if x != nil {
+		return x.TopDownByes
+	}
+	return false
 }
 
 type PairResponse struct {
@@ -551,7 +559,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\rRoundPairings\x12\x1a\n" +
 	"\bpairings\x18\x01 \x03(\x05R\bpairings\"(\n" +
 	"\fRoundResults\x12\x18\n" +
-	"\aresults\x18\x01 \x03(\x05R\aresults\"\xa0\x06\n" +
+	"\aresults\x18\x01 \x03(\x05R\aresults\"\xdd\x06\n" +
 	"\vPairRequest\x120\n" +
 	"\vpair_method\x18\x01 \x01(\x0e2\x0f.ipc.PairMethodR\n" +
 	"pairMethod\x12!\n" +
@@ -570,11 +578,12 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x06rounds\x18\f \x01(\x05R\x06rounds\x12!\n" +
 	"\fplace_prizes\x18\r \x01(\x05R\vplacePrizes\x12#\n" +
 	"\rdivision_sims\x18\x0e \x01(\x05R\fdivisionSims\x12*\n" +
-	"\x11control_loss_sims\x18\x0f \x01(\x05R\x0fcontrolLossSims\x12(\n" +
-	"\x10use_control_loss\x18\x10 \x01(\bR\x0euseControlLoss\x12*\n" +
+	"\x11control_loss_sims\x18\x0f \x01(\x05R\x0fcontrolLossSims\x12A\n" +
+	"\x1dcontrol_loss_activation_round\x18\x10 \x01(\x05R\x1acontrolLossActivationRound\x12*\n" +
 	"\x11allow_repeat_byes\x18\x11 \x01(\bR\x0fallowRepeatByes\x12'\n" +
 	"\x0fremoved_players\x18\x12 \x03(\x05R\x0eremovedPlayers\x12\x12\n" +
-	"\x04seed\x18\x13 \x01(\x03R\x04seed\"\x90\x01\n" +
+	"\x04seed\x18\x13 \x01(\x03R\x04seed\x12\"\n" +
+	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\"\x90\x01\n" +
 	"\fPairResponse\x12-\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x0e2\x0e.ipc.PairErrorR\terrorCode\x12#\n" +

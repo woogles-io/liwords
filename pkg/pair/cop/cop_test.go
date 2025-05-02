@@ -656,7 +656,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 2nd
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 12
 	req.Seed = 2
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(3))
@@ -664,7 +664,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 4th
 	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 11
 	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	// The control loss should force 1st to play either 2nd or 3rd since 4th
@@ -673,7 +673,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 4th
 	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 11
 	req.Seed = 1
 	req.HopefulnessThreshold = 0.01
 	resp = cop.COPPair(ctx, req)
@@ -714,7 +714,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 16
 	req.DivisionSims = 1000000000
 	req.ControlLossSims = 1000000000
 	ctx, cancelFn := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -782,7 +782,7 @@ func TestCOPProf(t *testing.T) {
 
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 15
 	req.DivisionSims = 1000000
 	req.ControlLossSims = 1000000
 	pprof.StartCPUProfile(f)
@@ -803,7 +803,7 @@ func TestCOPTime(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 15
 	req.DivisionSims = 200000
 	req.ControlLossSims = 200000
 	is.Equal(verifyreq.Verify(req), nil)
