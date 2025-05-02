@@ -227,6 +227,29 @@ var constraintPolicies = []constraintPolicy{
 			return [][2]int{}, disallowedPairings
 		},
 	},
+	{
+		// Top Down Byes
+		name: "TB",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			numPlayers := len(pargs.playerNodes)
+			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex {
+				return [][2]int{}, [][2]int{}
+			}
+			forcedBye := [][2]int{{-1, pkgstnd.ByePlayerIndex}}
+			leastByes := int(pargs.req.Rounds + 1)
+			// Use numPlayers - 1 to exclude the bye
+			for playerRankIdx := range numPlayers - 1 {
+				pi := pargs.playerNodes[playerRankIdx]
+				pairingKey := copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)
+				numByes := pargs.copdata.PairingCounts[pairingKey]
+				if numByes < leastByes {
+					leastByes = numByes
+					forcedBye[0][0] = pi
+				}
+			}
+			return forcedBye, [][2]int{}
+		},
+	},
 }
 
 var weightPolicies = []weightPolicy{

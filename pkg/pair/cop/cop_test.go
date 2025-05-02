@@ -791,6 +791,53 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
 
+	// Check that top down byes work
+	req = pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	// The last pairings array in this request prepairs certain players, which
+	// we need to remove for this test.
+	req.DivisionPairings = req.DivisionPairings[:len(req.DivisionPairings)-1]
+	req.TopDownByes = true
+	req.AllowRepeatByes = false
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Chris Sykes should have the bye
+	is.Equal(resp.Pairings[1], int32(1))
+
+	// Run the next round with the given pairings and check
+	// that the next lowest player receives a bye.
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	// Add a pairing for the removed player so the pairings are regarded
+	// as complete
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Zach should have the bye
+	is.Equal(resp.Pairings[4], int32(4))
+
+	// Run another round
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Andy should have the bye
+	is.Equal(resp.Pairings[2], int32(2))
+
+	// Run another round
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Billy should get the bye since Eric already received a bye
+	is.Equal(resp.Pairings[5], int32(5))
+
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
