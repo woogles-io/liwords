@@ -177,6 +177,13 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 
+	if req.ControlLossActivationRound < 0 {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND,
+			ErrorMessage: fmt.Sprintf("invalid control loss activation round %d (must be nonnegative)", req.ControlLossActivationRound),
+		}
+	}
+
 	// Verify gibsons
 	if req.GibsonSpread < 0 {
 		return &pb.PairResponse{

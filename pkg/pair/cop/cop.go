@@ -178,7 +178,6 @@ var constraintPolicies = []constraintPolicy{
 				if playerRankIdx == pargs.copdata.DestinysChild ||
 					(pargs.roundsRemaining > controlLossLowestContenderOnlyRounds && int(pargs.req.ControlLossActivationRound) != pargs.copdata.CompletePairings &&
 						playerRankIdx == pargs.copdata.DestinysChild-1) {
-					fmt.Printf("allowing CL (%d, %d, %d, %d): %d\n", pargs.roundsRemaining, controlLossLowestContenderOnlyRounds, int(pargs.req.ControlLossActivationRound), pargs.copdata.CompletePairings, playerRankIdx)
 					continue
 				}
 				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[0], pargs.playerNodes[playerRankIdx]})

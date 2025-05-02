@@ -265,6 +265,11 @@ func TestCOPErrors(t *testing.T) {
 	req.RemovedPlayers = []int32{0, -1}
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.ControlLossActivationRound = -1
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND)
 }
 
 func TestCOPConstraintPolicies(t *testing.T) {
@@ -766,7 +771,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 		Pairings: pairings,
 	})
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
 
 	// With only 2 rounds to go, first will again be paired with only the lowest contender.
