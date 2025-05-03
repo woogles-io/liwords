@@ -217,7 +217,7 @@ func parseConfigFile(filepath string) (*TSHConfig, error) {
 				config.Hopefulness = parseFloat64List(value)
 			case "control_loss_activation_round":
 				if v, err := strconv.Atoi(value); err == nil {
-					config.ControlLossActivationRound = int32(v)
+					config.ControlLossActivationRound = int32(v - 1)
 				}
 			}
 		} else {
@@ -396,7 +396,7 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, old
 		PlacePrizes:                config.NumPlacePrizes,
 		DivisionSims:               config.Simulations,
 		ControlLossSims:            config.AlwaysWinsSimulations,
-		ControlLossActivationRound: config.ControlLossActivationRound - 1,
+		ControlLossActivationRound: config.ControlLossActivationRound,
 		AllowRepeatByes:            false, // Example default
 		RemovedPlayers:             removedPlayers,
 		Seed:                       0,
