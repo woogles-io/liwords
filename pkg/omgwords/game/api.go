@@ -213,14 +213,13 @@ func AssignRacks(st *gamestate.GameState, racks [][]byte, assignEmpty RackAssign
 }
 
 func EditOldRack(ctx context.Context, cfg *wglconfig.Config, gmeta *ipc.GameMetadata,
-	st *gamestate.GameState, evts []*ipc.GameEvent, evtNumber uint32, rack []byte) error {
+	evts []*ipc.GameEvent, evtNumber uint32, rack []byte) (*gamestate.GameState, error) {
 
 	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
-	// First clone and truncate the document.
 	evt := evts[evtNumber]
 
-	// replay until the event before evt.
-	err := ReplayEvents(ctx, cfg, st, gmeta, evts[:evtNumber], false)
+	// replay until the event before evt. Return a brand new state.
+	st, err := ReplayEvents(ctx, cfg, gmeta, evts[:evtNumber], false)
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,7 @@ func ReplayEvents(ctx context.Context, cfg *wglconfig.Config, st *gamestate.Game
 		return err
 	}
 
-	gdoc.PlayState = ipc.PlayState_PLAYING
+	gmeta.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores = make([]int32, len(gdoc.Players))
 	gdoc.Events = []*ipc.GameEvent{}
 	gdoc.Board = board.NewBoard(layout)
