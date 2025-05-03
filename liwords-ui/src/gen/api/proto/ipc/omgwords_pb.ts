@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/omgwords.proto.
  */
 export const file_proto_ipc_omgwords: GenFile = /*@__PURE__*/
-  fileDesc("Chhwcm90by9pcGMvb21nd29yZHMucHJvdG8SA2lwYyL2AQoTQ2xpZW50R2FtZXBsYXlFdmVudBIwCgR0eXBlGAEgASgOMiIuaXBjLkNsaWVudEdhbWVwbGF5RXZlbnQuRXZlbnRUeXBlEg8KB2dhbWVfaWQYAiABKAkSFwoPcG9zaXRpb25fY29vcmRzGAMgASgJEhEKBXRpbGVzGAQgASgJQgIYARIXCg9tYWNoaW5lX2xldHRlcnMYBSABKAwiVwoJRXZlbnRUeXBlEhIKDlRJTEVfUExBQ0VNRU5UEAASCAoEUEFTUxABEgwKCEVYQ0hBTkdFEAISEgoOQ0hBTExFTkdFX1BMQVkQAxIKCgZSRVNJR04QBCJeCglHYW1lUnVsZXMSGQoRYm9hcmRfbGF5b3V0X25hbWUYASABKAkSIAoYbGV0dGVyX2Rpc3RyaWJ1dGlvbl9uYW1lGAIgASgJEhQKDHZhcmlhbnRfbmFtZRgDIAEoCSKDAwoLR2FtZVJlcXVlc3QSDwoHbGV4aWNvbhgBIAEoCRIdCgVydWxlcxgCIAEoCzIOLmlwYy5HYW1lUnVsZXMSHAoUaW5pdGlhbF90aW1lX3NlY29uZHMYAyABKAUSGQoRaW5jcmVtZW50X3NlY29uZHMYBCABKAUSLgoOY2hhbGxlbmdlX3J1bGUYBSABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSIAoJZ2FtZV9tb2RlGAYgASgOMg0uaXBjLkdhbWVNb2RlEiQKC3JhdGluZ19tb2RlGAcgASgOMg8uaXBjLlJhdGluZ01vZGUSEgoKcmVxdWVzdF9pZBgIIAEoCRIcChRtYXhfb3ZlcnRpbWVfbWludXRlcxgJIAEoBRIVCg1wbGF5ZXJfdnNfYm90GAogASgIEhsKE29yaWdpbmFsX3JlcXVlc3RfaWQYCyABKAkSLQoIYm90X3R5cGUYDCABKA4yGy5tYWNvbmRvLkJvdFJlcXVlc3QuQm90Q29kZSK2AwoNR2FtZU1ldGFFdmVudBIVCg1vcmlnX2V2ZW50X2lkGAEgASgJEi0KCXRpbWVzdGFtcBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoEdHlwZRgDIAEoDjIcLmlwYy5HYW1lTWV0YUV2ZW50LkV2ZW50VHlwZRIRCglwbGF5ZXJfaWQYBCABKAkSDwoHZ2FtZV9pZBgFIAEoCRIOCgZleHBpcnkYBiABKAUi/gEKCUV2ZW50VHlwZRIRCg1SRVFVRVNUX0FCT1JUEAASGAoUUkVRVUVTVF9BREpVRElDQVRJT04QARIQCgxSRVFVRVNUX1VORE8QAhITCg9SRVFVRVNUX0FESk9VUk4QAxISCg5BQk9SVF9BQ0NFUFRFRBAEEhAKDEFCT1JUX0RFTklFRBAFEhkKFUFESlVESUNBVElPTl9BQ0NFUFRFRBAGEhcKE0FESlVESUNBVElPTl9ERU5JRUQQBxIRCg1VTkRPX0FDQ0VQVEVEEAgSDwoLVU5ET19ERU5JRUQQCRIMCghBRERfVElNRRAKEhEKDVRJTUVSX0VYUElSRUQQCyK2AQoUR2FtZUhpc3RvcnlSZWZyZXNoZXISJQoHaGlzdG9yeRgBIAEoCzIULm1hY29uZG8uR2FtZUhpc3RvcnkSFAoMdGltZV9wbGF5ZXIxGAIgASgFEhQKDHRpbWVfcGxheWVyMhgDIAEoBRIcChRtYXhfb3ZlcnRpbWVfbWludXRlcxgEIAEoBRItChFvdXRzdGFuZGluZ19ldmVudBgFIAEoCzISLmlwYy5HYW1lTWV0YUV2ZW50IjMKEUdhbWVEb2N1bWVudEV2ZW50Eh4KA2RvYxgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiWQoVVG91cm5hbWVudERhdGFGb3JHYW1lEgsKA3RpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRINCgVyb3VuZBgDIAEoBRISCgpnYW1lX2luZGV4GAQgASgFIpoBCgpQbGF5ZXJJbmZvEg8KB3VzZXJfaWQYASABKAkSEAoIbmlja25hbWUYAiABKAkSEQoJZnVsbF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRIOCgZyYXRpbmcYBSABKAkSDQoFdGl0bGUYBiABKAkSDgoGaXNfYm90GAggASgIEhEKBWZpcnN0GAkgASgIQgIYASLAAwoQR2FtZUluZm9SZXNwb25zZRIgCgdwbGF5ZXJzGAEgAygLMg8uaXBjLlBsYXllckluZm8SGQoRdGltZV9jb250cm9sX25hbWUYBCABKAkSFQoNdG91cm5hbWVudF9pZBgGIAEoCRIrCg9nYW1lX2VuZF9yZWFzb24YCyABKA4yEi5pcGMuR2FtZUVuZFJlYXNvbhIOCgZzY29yZXMYDSADKAUSDgoGd2lubmVyGA4gASgFEi4KCmNyZWF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2dhbWVfaWQYECABKAkSLwoLbGFzdF91cGRhdGUYEiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiYKDGdhbWVfcmVxdWVzdBgTIAEoCzIQLmlwYy5HYW1lUmVxdWVzdBIbChN0b3VybmFtZW50X2RpdmlzaW9uGBQgASgJEhgKEHRvdXJuYW1lbnRfcm91bmQYFSABKAUSHQoVdG91cm5hbWVudF9nYW1lX2luZGV4GBYgASgFEhsKBHR5cGUYFyABKA4yDS5pcGMuR2FtZVR5cGUiPQoRR2FtZUluZm9SZXNwb25zZXMSKAoJZ2FtZV9pbmZvGAEgAygLMhUuaXBjLkdhbWVJbmZvUmVzcG9uc2UimAEKD0luc3RhbnRpYXRlR2FtZRIQCgh1c2VyX2lkcxgBIAMoCRImCgxnYW1lX3JlcXVlc3QYAiABKAsyEC5pcGMuR2FtZVJlcXVlc3QSFgoOYXNzaWduZWRfZmlyc3QYAyABKAUSMwoPdG91cm5hbWVudF9kYXRhGAQgASgLMhouaXBjLlRvdXJuYW1lbnREYXRhRm9yR2FtZSIaCgxHYW1lRGVsZXRpb24SCgoCaWQYASABKAkiNQoQQWN0aXZlR2FtZVBsYXllchIQCgh1c2VybmFtZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIlEKD0FjdGl2ZUdhbWVFbnRyeRIKCgJpZBgBIAEoCRIlCgZwbGF5ZXIYAiADKAsyFS5pcGMuQWN0aXZlR2FtZVBsYXllchILCgN0dGwYAyABKAMiHwoMUmVhZHlGb3JHYW1lEg8KB2dhbWVfaWQYASABKAkiqQEKE1NlcnZlckdhbWVwbGF5RXZlbnQSIQoFZXZlbnQYASABKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIPCgdnYW1lX2lkGAIgASgJEhAKCG5ld19yYWNrGAMgASgJEhYKDnRpbWVfcmVtYWluaW5nGAQgASgFEiMKB3BsYXlpbmcYBSABKA4yEi5tYWNvbmRvLlBsYXlTdGF0ZRIPCgd1c2VyX2lkGAYgASgJIqEBChNTZXJ2ZXJPTUdXb3Jkc0V2ZW50Eh0KBWV2ZW50GAEgASgLMg4uaXBjLkdhbWVFdmVudBIPCgdnYW1lX2lkGAIgASgJEhAKCG5ld19yYWNrGAMgASgMEhYKDnRpbWVfcmVtYWluaW5nGAQgASgFEh8KB3BsYXlpbmcYBSABKA4yDi5pcGMuUGxheVN0YXRlEg8KB3VzZXJfaWQYBiABKAkihwEKGlNlcnZlckNoYWxsZW5nZVJlc3VsdEV2ZW50Eg0KBXZhbGlkGAEgASgIEhIKCmNoYWxsZW5nZXIYAiABKAkSLgoOY2hhbGxlbmdlX3J1bGUYAyABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSFgoOcmV0dXJuZWRfdGlsZXMYBCABKAkihQEKHE9NR1dvcmRzQ2hhbGxlbmdlUmVzdWx0RXZlbnQSDQoFdmFsaWQYASABKAgSEgoKY2hhbGxlbmdlchgCIAEoCRIqCg5jaGFsbGVuZ2VfcnVsZRgDIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEhYKDnJldHVybmVkX3RpbGVzGAQgASgMItkDCg5HYW1lRW5kZWRFdmVudBIvCgZzY29yZXMYASADKAsyHy5pcGMuR2FtZUVuZGVkRXZlbnQuU2NvcmVzRW50cnkSOAoLbmV3X3JhdGluZ3MYAiADKAsyIy5pcGMuR2FtZUVuZGVkRXZlbnQuTmV3UmF0aW5nc0VudHJ5EiYKCmVuZF9yZWFzb24YAyABKA4yEi5pcGMuR2FtZUVuZFJlYXNvbhIOCgZ3aW5uZXIYBCABKAkSDQoFbG9zZXIYBSABKAkSCwoDdGllGAYgASgIEgwKBHRpbWUYByABKAMSPAoNcmF0aW5nX2RlbHRhcxgIIAMoCzIlLmlwYy5HYW1lRW5kZWRFdmVudC5SYXRpbmdEZWx0YXNFbnRyeRIlCgdoaXN0b3J5GAkgASgLMhQubWFjb25kby5HYW1lSGlzdG9yeRotCgtTY29yZXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBGjEKD05ld1JhdGluZ3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBGjMKEVJhdGluZ0RlbHRhc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoBToCOAEiLgoTUmVtYXRjaFN0YXJ0ZWRFdmVudBIXCg9yZW1hdGNoX2dhbWVfaWQYASABKAkiTAoMTmV3R2FtZUV2ZW50Eg8KB2dhbWVfaWQYASABKAkSFQoNcmVxdWVzdGVyX2NpZBgCIAEoCRIUCgxhY2NlcHRlcl9jaWQYAyABKAkiLAoIVGltZWRPdXQSDwoHZ2FtZV9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIsUFCglHYW1lRXZlbnQSDAoEbm90ZRgCIAEoCRIMCgRyYWNrGAMgASgMEiEKBHR5cGUYBCABKA4yEy5pcGMuR2FtZUV2ZW50LlR5cGUSEgoKY3VtdWxhdGl2ZRgFIAEoBRILCgNyb3cYBiABKAUSDgoGY29sdW1uGAcgASgFEisKCWRpcmVjdGlvbhgIIAEoDjIYLmlwYy5HYW1lRXZlbnQuRGlyZWN0aW9uEhAKCHBvc2l0aW9uGAkgASgJEhQKDHBsYXllZF90aWxlcxgKIAEoDBIRCglleGNoYW5nZWQYCyABKAwSDQoFc2NvcmUYDCABKAUSDQoFYm9udXMYDSABKAUSFwoPZW5kX3JhY2tfcG9pbnRzGA4gASgFEhIKCmxvc3Rfc2NvcmUYDyABKAUSEAoIaXNfYmluZ28YECABKAgSFAoMd29yZHNfZm9ybWVkGBEgAygMEhgKEG1pbGxpc19yZW1haW5pbmcYEiABKAUSFAoMcGxheWVyX2luZGV4GBMgASgNEh0KFXdvcmRzX2Zvcm1lZF9mcmllbmRseRgUIAMoCSLyAQoEVHlwZRIXChNUSUxFX1BMQUNFTUVOVF9NT1ZFEAASGAoUUEhPTllfVElMRVNfUkVUVVJORUQQARIICgRQQVNTEAISEwoPQ0hBTExFTkdFX0JPTlVTEAMSDAoIRVhDSEFOR0UQBBIQCgxFTkRfUkFDS19QVFMQBRIQCgxUSU1FX1BFTkFMVFkQBhIUChBFTkRfUkFDS19QRU5BTFRZEAcSJAogVU5TVUNDRVNTRlVMX0NIQUxMRU5HRV9UVVJOX0xPU1MQCBINCglDSEFMTEVOR0UQCRINCglUSU1FRF9PVVQQChIMCghSRVNJR05FRBALIikKCURpcmVjdGlvbhIOCgpIT1JJWk9OVEFMEAASDAoIVkVSVElDQUwQASK8AQoGVGltZXJzEhsKE3RpbWVfb2ZfbGFzdF91cGRhdGUYASABKAMSFAoMdGltZV9zdGFydGVkGAIgASgDEhYKDnRpbWVfcmVtYWluaW5nGAMgAygDEhQKDG1heF9vdmVydGltZRgEIAEoBRIZChFpbmNyZW1lbnRfc2Vjb25kcxgFIAEoBRIlCh1yZXNldF90b19pbmNyZW1lbnRfYWZ0ZXJfdHVybhgGIAEoCBIPCgd1bnRpbWVkGAcgASgIIjMKDU1ldGFFdmVudERhdGESIgoGZXZlbnRzGAEgAygLMhIuaXBjLkdhbWVNZXRhRXZlbnQiUAoJR2FtZUJvYXJkEhAKCG51bV9yb3dzGAEgASgFEhAKCG51bV9jb2xzGAIgASgFEg0KBXRpbGVzGAMgASgMEhAKCGlzX2VtcHR5GAQgASgIIhQKA0JhZxINCgV0aWxlcxgBIAEoDCKKBgoMR2FtZURvY3VtZW50EjQKB3BsYXllcnMYASADKAsyIy5pcGMuR2FtZURvY3VtZW50Lk1pbmltYWxQbGF5ZXJJbmZvEh4KBmV2ZW50cxgCIAMoCzIOLmlwYy5HYW1lRXZlbnQSDwoHdmVyc2lvbhgDIAEoDRIPCgdsZXhpY29uGAQgASgJEgsKA3VpZBgFIAEoCRITCgtkZXNjcmlwdGlvbhgGIAEoCRINCgVyYWNrcxgHIAMoDBIqCg5jaGFsbGVuZ2VfcnVsZRgIIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEiIKCnBsYXlfc3RhdGUYCSABKA4yDi5pcGMuUGxheVN0YXRlEhYKDmN1cnJlbnRfc2NvcmVzGAogAygFEg8KB3ZhcmlhbnQYCyABKAkSDgoGd2lubmVyGAwgASgFEhQKDGJvYXJkX2xheW91dBgNIAEoCRIbChNsZXR0ZXJfZGlzdHJpYnV0aW9uGA4gASgJEhsKBHR5cGUYDyABKA4yDS5pcGMuR2FtZVR5cGUSFgoOdGltZXJzX3N0YXJ0ZWQYECABKAgSJgoKZW5kX3JlYXNvbhgRIAEoDjISLmlwYy5HYW1lRW5kUmVhc29uEisKD21ldGFfZXZlbnRfZGF0YRgSIAEoCzISLmlwYy5NZXRhRXZlbnREYXRhEi4KCmNyZWF0ZWRfYXQYEyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KBWJvYXJkGBQgASgLMg4uaXBjLkdhbWVCb2FyZBIVCgNiYWcYFSABKAsyCC5pcGMuQmFnEhcKD3Njb3JlbGVzc190dXJucxgWIAEoDRIWCg5wbGF5ZXJfb25fdHVybhgXIAEoDRIbCgZ0aW1lcnMYGCABKAsyCy5pcGMuVGltZXJzGlcKEU1pbmltYWxQbGF5ZXJJbmZvEhAKCG5pY2tuYW1lGAEgASgJEhEKCXJlYWxfbmFtZRgCIAEoCRIPCgd1c2VyX2lkGAMgASgJEgwKBHF1aXQYBCABKAgqnAEKDUdhbWVFbmRSZWFzb24SCAoETk9ORRAAEggKBFRJTUUQARIMCghTVEFOREFSRBACEhYKEkNPTlNFQ1VUSVZFX1pFUk9FUxADEgwKCFJFU0lHTkVEEAQSCwoHQUJPUlRFRBAFEhQKEFRSSVBMRV9DSEFMTEVOR0UQBhINCglDQU5DRUxMRUQQBxIRCg1GT1JDRV9GT1JGRUlUEAgqLQoIR2FtZU1vZGUSDQoJUkVBTF9USU1FEAASEgoOQ09SUkVTUE9OREVOQ0UQASojCgpSYXRpbmdNb2RlEgkKBVJBVEVEEAASCgoGQ0FTVUFMEAEqNQoIR2FtZVR5cGUSCgoGTkFUSVZFEAASDQoJQU5OT1RBVEVEEAESDgoKQk9UX1ZTX0JPVBACKlIKCVBsYXlTdGF0ZRILCgdQTEFZSU5HEAASGgoWV0FJVElOR19GT1JfRklOQUxfUEFTUxABEg0KCUdBTUVfT1ZFUhACEg0KCVVOU1RBUlRFRBADKrABCg1DaGFsbGVuZ2VSdWxlEhYKEkNoYWxsZW5nZVJ1bGVfVk9JRBAAEhgKFENoYWxsZW5nZVJ1bGVfU0lOR0xFEAESGAoUQ2hhbGxlbmdlUnVsZV9ET1VCTEUQAhIcChhDaGFsbGVuZ2VSdWxlX0ZJVkVfUE9JTlQQAxIbChdDaGFsbGVuZ2VSdWxlX1RFTl9QT0lOVBAEEhgKFENoYWxsZW5nZVJ1bGVfVFJJUExFEAVCdQoHY29tLmlwY0INT21nd29yZHNQcm90b1ABWi9naXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2lwY6ICA0lYWKoCA0lwY8oCA0lwY+ICD0lwY1xHUEJNZXRhZGF0YeoCA0lwY2IGcHJvdG8z", [file_vendor_macondo_macondo, file_google_protobuf_timestamp]);
+  fileDesc("Chhwcm90by9pcGMvb21nd29yZHMucHJvdG8SA2lwYyL2AQoTQ2xpZW50R2FtZXBsYXlFdmVudBIwCgR0eXBlGAEgASgOMiIuaXBjLkNsaWVudEdhbWVwbGF5RXZlbnQuRXZlbnRUeXBlEg8KB2dhbWVfaWQYAiABKAkSFwoPcG9zaXRpb25fY29vcmRzGAMgASgJEhEKBXRpbGVzGAQgASgJQgIYARIXCg9tYWNoaW5lX2xldHRlcnMYBSABKAwiVwoJRXZlbnRUeXBlEhIKDlRJTEVfUExBQ0VNRU5UEAASCAoEUEFTUxABEgwKCEVYQ0hBTkdFEAISEgoOQ0hBTExFTkdFX1BMQVkQAxIKCgZSRVNJR04QBCJeCglHYW1lUnVsZXMSGQoRYm9hcmRfbGF5b3V0X25hbWUYASABKAkSIAoYbGV0dGVyX2Rpc3RyaWJ1dGlvbl9uYW1lGAIgASgJEhQKDHZhcmlhbnRfbmFtZRgDIAEoCSKDAwoLR2FtZVJlcXVlc3QSDwoHbGV4aWNvbhgBIAEoCRIdCgVydWxlcxgCIAEoCzIOLmlwYy5HYW1lUnVsZXMSHAoUaW5pdGlhbF90aW1lX3NlY29uZHMYAyABKAUSGQoRaW5jcmVtZW50X3NlY29uZHMYBCABKAUSLgoOY2hhbGxlbmdlX3J1bGUYBSABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSIAoJZ2FtZV9tb2RlGAYgASgOMg0uaXBjLkdhbWVNb2RlEiQKC3JhdGluZ19tb2RlGAcgASgOMg8uaXBjLlJhdGluZ01vZGUSEgoKcmVxdWVzdF9pZBgIIAEoCRIcChRtYXhfb3ZlcnRpbWVfbWludXRlcxgJIAEoBRIVCg1wbGF5ZXJfdnNfYm90GAogASgIEhsKE29yaWdpbmFsX3JlcXVlc3RfaWQYCyABKAkSLQoIYm90X3R5cGUYDCABKA4yGy5tYWNvbmRvLkJvdFJlcXVlc3QuQm90Q29kZSK2AwoNR2FtZU1ldGFFdmVudBIVCg1vcmlnX2V2ZW50X2lkGAEgASgJEi0KCXRpbWVzdGFtcBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoEdHlwZRgDIAEoDjIcLmlwYy5HYW1lTWV0YUV2ZW50LkV2ZW50VHlwZRIRCglwbGF5ZXJfaWQYBCABKAkSDwoHZ2FtZV9pZBgFIAEoCRIOCgZleHBpcnkYBiABKAUi/gEKCUV2ZW50VHlwZRIRCg1SRVFVRVNUX0FCT1JUEAASGAoUUkVRVUVTVF9BREpVRElDQVRJT04QARIQCgxSRVFVRVNUX1VORE8QAhITCg9SRVFVRVNUX0FESk9VUk4QAxISCg5BQk9SVF9BQ0NFUFRFRBAEEhAKDEFCT1JUX0RFTklFRBAFEhkKFUFESlVESUNBVElPTl9BQ0NFUFRFRBAGEhcKE0FESlVESUNBVElPTl9ERU5JRUQQBxIRCg1VTkRPX0FDQ0VQVEVEEAgSDwoLVU5ET19ERU5JRUQQCRIMCghBRERfVElNRRAKEhEKDVRJTUVSX0VYUElSRUQQCyK2AQoUR2FtZUhpc3RvcnlSZWZyZXNoZXISJQoHaGlzdG9yeRgBIAEoCzIULm1hY29uZG8uR2FtZUhpc3RvcnkSFAoMdGltZV9wbGF5ZXIxGAIgASgFEhQKDHRpbWVfcGxheWVyMhgDIAEoBRIcChRtYXhfb3ZlcnRpbWVfbWludXRlcxgEIAEoBRItChFvdXRzdGFuZGluZ19ldmVudBgFIAEoCzISLmlwYy5HYW1lTWV0YUV2ZW50IjMKEUdhbWVEb2N1bWVudEV2ZW50Eh4KA2RvYxgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiWQoVVG91cm5hbWVudERhdGFGb3JHYW1lEgsKA3RpZBgBIAEoCRIQCghkaXZpc2lvbhgCIAEoCRINCgVyb3VuZBgDIAEoBRISCgpnYW1lX2luZGV4GAQgASgFIpoBCgpQbGF5ZXJJbmZvEg8KB3VzZXJfaWQYASABKAkSEAoIbmlja25hbWUYAiABKAkSEQoJZnVsbF9uYW1lGAMgASgJEhQKDGNvdW50cnlfY29kZRgEIAEoCRIOCgZyYXRpbmcYBSABKAkSDQoFdGl0bGUYBiABKAkSDgoGaXNfYm90GAggASgIEhEKBWZpcnN0GAkgASgIQgIYASLAAwoQR2FtZUluZm9SZXNwb25zZRIgCgdwbGF5ZXJzGAEgAygLMg8uaXBjLlBsYXllckluZm8SGQoRdGltZV9jb250cm9sX25hbWUYBCABKAkSFQoNdG91cm5hbWVudF9pZBgGIAEoCRIrCg9nYW1lX2VuZF9yZWFzb24YCyABKA4yEi5pcGMuR2FtZUVuZFJlYXNvbhIOCgZzY29yZXMYDSADKAUSDgoGd2lubmVyGA4gASgFEi4KCmNyZWF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2dhbWVfaWQYECABKAkSLwoLbGFzdF91cGRhdGUYEiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiYKDGdhbWVfcmVxdWVzdBgTIAEoCzIQLmlwYy5HYW1lUmVxdWVzdBIbChN0b3VybmFtZW50X2RpdmlzaW9uGBQgASgJEhgKEHRvdXJuYW1lbnRfcm91bmQYFSABKAUSHQoVdG91cm5hbWVudF9nYW1lX2luZGV4GBYgASgFEhsKBHR5cGUYFyABKA4yDS5pcGMuR2FtZVR5cGUiPQoRR2FtZUluZm9SZXNwb25zZXMSKAoJZ2FtZV9pbmZvGAEgAygLMhUuaXBjLkdhbWVJbmZvUmVzcG9uc2UimAEKD0luc3RhbnRpYXRlR2FtZRIQCgh1c2VyX2lkcxgBIAMoCRImCgxnYW1lX3JlcXVlc3QYAiABKAsyEC5pcGMuR2FtZVJlcXVlc3QSFgoOYXNzaWduZWRfZmlyc3QYAyABKAUSMwoPdG91cm5hbWVudF9kYXRhGAQgASgLMhouaXBjLlRvdXJuYW1lbnREYXRhRm9yR2FtZSIaCgxHYW1lRGVsZXRpb24SCgoCaWQYASABKAkiNQoQQWN0aXZlR2FtZVBsYXllchIQCgh1c2VybmFtZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIlEKD0FjdGl2ZUdhbWVFbnRyeRIKCgJpZBgBIAEoCRIlCgZwbGF5ZXIYAiADKAsyFS5pcGMuQWN0aXZlR2FtZVBsYXllchILCgN0dGwYAyABKAMiHwoMUmVhZHlGb3JHYW1lEg8KB2dhbWVfaWQYASABKAkiqQEKE1NlcnZlckdhbWVwbGF5RXZlbnQSIQoFZXZlbnQYASABKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIPCgdnYW1lX2lkGAIgASgJEhAKCG5ld19yYWNrGAMgASgJEhYKDnRpbWVfcmVtYWluaW5nGAQgASgFEiMKB3BsYXlpbmcYBSABKA4yEi5tYWNvbmRvLlBsYXlTdGF0ZRIPCgd1c2VyX2lkGAYgASgJIqEBChNTZXJ2ZXJPTUdXb3Jkc0V2ZW50Eh0KBWV2ZW50GAEgASgLMg4uaXBjLkdhbWVFdmVudBIPCgdnYW1lX2lkGAIgASgJEhAKCG5ld19yYWNrGAMgASgMEhYKDnRpbWVfcmVtYWluaW5nGAQgASgFEh8KB3BsYXlpbmcYBSABKA4yDi5pcGMuUGxheVN0YXRlEg8KB3VzZXJfaWQYBiABKAkihwEKGlNlcnZlckNoYWxsZW5nZVJlc3VsdEV2ZW50Eg0KBXZhbGlkGAEgASgIEhIKCmNoYWxsZW5nZXIYAiABKAkSLgoOY2hhbGxlbmdlX3J1bGUYAyABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSFgoOcmV0dXJuZWRfdGlsZXMYBCABKAkihQEKHE9NR1dvcmRzQ2hhbGxlbmdlUmVzdWx0RXZlbnQSDQoFdmFsaWQYASABKAgSEgoKY2hhbGxlbmdlchgCIAEoCRIqCg5jaGFsbGVuZ2VfcnVsZRgDIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEhYKDnJldHVybmVkX3RpbGVzGAQgASgMItkDCg5HYW1lRW5kZWRFdmVudBIvCgZzY29yZXMYASADKAsyHy5pcGMuR2FtZUVuZGVkRXZlbnQuU2NvcmVzRW50cnkSOAoLbmV3X3JhdGluZ3MYAiADKAsyIy5pcGMuR2FtZUVuZGVkRXZlbnQuTmV3UmF0aW5nc0VudHJ5EiYKCmVuZF9yZWFzb24YAyABKA4yEi5pcGMuR2FtZUVuZFJlYXNvbhIOCgZ3aW5uZXIYBCABKAkSDQoFbG9zZXIYBSABKAkSCwoDdGllGAYgASgIEgwKBHRpbWUYByABKAMSPAoNcmF0aW5nX2RlbHRhcxgIIAMoCzIlLmlwYy5HYW1lRW5kZWRFdmVudC5SYXRpbmdEZWx0YXNFbnRyeRIlCgdoaXN0b3J5GAkgASgLMhQubWFjb25kby5HYW1lSGlzdG9yeRotCgtTY29yZXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBGjEKD05ld1JhdGluZ3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBGjMKEVJhdGluZ0RlbHRhc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoBToCOAEiLgoTUmVtYXRjaFN0YXJ0ZWRFdmVudBIXCg9yZW1hdGNoX2dhbWVfaWQYASABKAkiTAoMTmV3R2FtZUV2ZW50Eg8KB2dhbWVfaWQYASABKAkSFQoNcmVxdWVzdGVyX2NpZBgCIAEoCRIUCgxhY2NlcHRlcl9jaWQYAyABKAkiLAoIVGltZWRPdXQSDwoHZ2FtZV9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIvgFCglHYW1lRXZlbnQSDAoEbm90ZRgCIAEoCRIMCgRyYWNrGAMgASgMEiEKBHR5cGUYBCABKA4yEy5pcGMuR2FtZUV2ZW50LlR5cGUSEgoKY3VtdWxhdGl2ZRgFIAEoBRILCgNyb3cYBiABKAUSDgoGY29sdW1uGAcgASgFEisKCWRpcmVjdGlvbhgIIAEoDjIYLmlwYy5HYW1lRXZlbnQuRGlyZWN0aW9uEhAKCHBvc2l0aW9uGAkgASgJEhQKDHBsYXllZF90aWxlcxgKIAEoDBIRCglleGNoYW5nZWQYCyABKAwSDQoFc2NvcmUYDCABKAUSDQoFYm9udXMYDSABKAUSFwoPZW5kX3JhY2tfcG9pbnRzGA4gASgFEhIKCmxvc3Rfc2NvcmUYDyABKAUSEAoIaXNfYmluZ28YECABKAgSFAoMd29yZHNfZm9ybWVkGBEgAygMEhgKEG1pbGxpc19yZW1haW5pbmcYEiABKAUSFAoMcGxheWVyX2luZGV4GBMgASgNEh0KFXdvcmRzX2Zvcm1lZF9mcmllbmRseRgUIAMoCRIVCg1yYWNrX2ZyaWVuZGx5GBUgASgJEhoKEmV4Y2hhbmdlZF9mcmllbmRseRgWIAEoCSLyAQoEVHlwZRIXChNUSUxFX1BMQUNFTUVOVF9NT1ZFEAASGAoUUEhPTllfVElMRVNfUkVUVVJORUQQARIICgRQQVNTEAISEwoPQ0hBTExFTkdFX0JPTlVTEAMSDAoIRVhDSEFOR0UQBBIQCgxFTkRfUkFDS19QVFMQBRIQCgxUSU1FX1BFTkFMVFkQBhIUChBFTkRfUkFDS19QRU5BTFRZEAcSJAogVU5TVUNDRVNTRlVMX0NIQUxMRU5HRV9UVVJOX0xPU1MQCBINCglDSEFMTEVOR0UQCRINCglUSU1FRF9PVVQQChIMCghSRVNJR05FRBALIikKCURpcmVjdGlvbhIOCgpIT1JJWk9OVEFMEAASDAoIVkVSVElDQUwQASK8AQoGVGltZXJzEhsKE3RpbWVfb2ZfbGFzdF91cGRhdGUYASABKAMSFAoMdGltZV9zdGFydGVkGAIgASgDEhYKDnRpbWVfcmVtYWluaW5nGAMgAygDEhQKDG1heF9vdmVydGltZRgEIAEoBRIZChFpbmNyZW1lbnRfc2Vjb25kcxgFIAEoBRIlCh1yZXNldF90b19pbmNyZW1lbnRfYWZ0ZXJfdHVybhgGIAEoCBIPCgd1bnRpbWVkGAcgASgIIjMKDU1ldGFFdmVudERhdGESIgoGZXZlbnRzGAEgAygLMhIuaXBjLkdhbWVNZXRhRXZlbnQiUAoJR2FtZUJvYXJkEhAKCG51bV9yb3dzGAEgASgFEhAKCG51bV9jb2xzGAIgASgFEg0KBXRpbGVzGAMgASgMEhAKCGlzX2VtcHR5GAQgASgIIhQKA0JhZxINCgV0aWxlcxgBIAEoDCKuBgoMR2FtZURvY3VtZW50EjQKB3BsYXllcnMYASADKAsyIy5pcGMuR2FtZURvY3VtZW50Lk1pbmltYWxQbGF5ZXJJbmZvEiIKBmV2ZW50cxgCIAMoCzIOLmlwYy5HYW1lRXZlbnRCAhgBEhMKB3ZlcnNpb24YAyABKA1CAhgBEg8KB2xleGljb24YBCABKAkSCwoDdWlkGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEhEKBXJhY2tzGAcgAygMQgIYARIqCg5jaGFsbGVuZ2VfcnVsZRgIIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEiIKCnBsYXlfc3RhdGUYCSABKA4yDi5pcGMuUGxheVN0YXRlEhoKDmN1cnJlbnRfc2NvcmVzGAogAygFQgIYARIPCgd2YXJpYW50GAsgASgJEg4KBndpbm5lchgMIAEoBRIUCgxib2FyZF9sYXlvdXQYDSABKAkSGwoTbGV0dGVyX2Rpc3RyaWJ1dGlvbhgOIAEoCRIbCgR0eXBlGA8gASgOMg0uaXBjLkdhbWVUeXBlEhYKDnRpbWVyc19zdGFydGVkGBAgASgIEiYKCmVuZF9yZWFzb24YESABKA4yEi5pcGMuR2FtZUVuZFJlYXNvbhIrCg9tZXRhX2V2ZW50X2RhdGEYEiABKAsyEi5pcGMuTWV0YUV2ZW50RGF0YRIuCgpjcmVhdGVkX2F0GBMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIhCgVib2FyZBgUIAEoCzIOLmlwYy5HYW1lQm9hcmRCAhgBEhkKA2JhZxgVIAEoCzIILmlwYy5CYWdCAhgBEhsKD3Njb3JlbGVzc190dXJucxgWIAEoDUICGAESGgoOcGxheWVyX29uX3R1cm4YFyABKA1CAhgBEh8KBnRpbWVycxgYIAEoCzILLmlwYy5UaW1lcnNCAhgBGlcKEU1pbmltYWxQbGF5ZXJJbmZvEhAKCG5pY2tuYW1lGAEgASgJEhEKCXJlYWxfbmFtZRgCIAEoCRIPCgd1c2VyX2lkGAMgASgJEgwKBHF1aXQYBCABKAgirgQKDEdhbWVNZXRhZGF0YRILCgN1aWQYASABKAkSNAoHcGxheWVycxgCIAMoCzIjLmlwYy5HYW1lTWV0YWRhdGEuTWluaW1hbFBsYXllckluZm8SDwoHbGV4aWNvbhgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIqCg5jaGFsbGVuZ2VfcnVsZRgFIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEiIKCnBsYXlfc3RhdGUYBiABKA4yDi5pcGMuUGxheVN0YXRlEg8KB3ZhcmlhbnQYByABKAkSDgoGd2lubmVyGAggASgFEhQKDGJvYXJkX2xheW91dBgJIAEoCRIbChNsZXR0ZXJfZGlzdHJpYnV0aW9uGAogASgJEhsKBHR5cGUYCyABKA4yDS5pcGMuR2FtZVR5cGUSFgoOdGltZXJzX3N0YXJ0ZWQYDCABKAgSJgoKZW5kX3JlYXNvbhgNIAEoDjISLmlwYy5HYW1lRW5kUmVhc29uEisKD21ldGFfZXZlbnRfZGF0YRgOIAEoCzISLmlwYy5NZXRhRXZlbnREYXRhEi4KCmNyZWF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGlcKEU1pbmltYWxQbGF5ZXJJbmZvEhAKCG5pY2tuYW1lGAEgASgJEhEKCXJlYWxfbmFtZRgCIAEoCRIPCgd1c2VyX2lkGAMgASgJEgwKBHF1aXQYBCABKAgiewoKR2FtZVJlY29yZBIoCg1nYW1lX21ldGFkYXRhGAEgASgLMhEuaXBjLkdhbWVNZXRhZGF0YRIeCgZldmVudHMYAiADKAsyDi5pcGMuR2FtZUV2ZW50EhIKCmdhbWVfc3RhdGUYAyABKAwSDwoHdmVyc2lvbhgEIAEoDSqcAQoNR2FtZUVuZFJlYXNvbhIICgROT05FEAASCAoEVElNRRABEgwKCFNUQU5EQVJEEAISFgoSQ09OU0VDVVRJVkVfWkVST0VTEAMSDAoIUkVTSUdORUQQBBILCgdBQk9SVEVEEAUSFAoQVFJJUExFX0NIQUxMRU5HRRAGEg0KCUNBTkNFTExFRBAHEhEKDUZPUkNFX0ZPUkZFSVQQCCotCghHYW1lTW9kZRINCglSRUFMX1RJTUUQABISCg5DT1JSRVNQT05ERU5DRRABKiMKClJhdGluZ01vZGUSCQoFUkFURUQQABIKCgZDQVNVQUwQASo1CghHYW1lVHlwZRIKCgZOQVRJVkUQABINCglBTk5PVEFURUQQARIOCgpCT1RfVlNfQk9UEAIqUgoJUGxheVN0YXRlEgsKB1BMQVlJTkcQABIaChZXQUlUSU5HX0ZPUl9GSU5BTF9QQVNTEAESDQoJR0FNRV9PVkVSEAISDQoJVU5TVEFSVEVEEAMqsAEKDUNoYWxsZW5nZVJ1bGUSFgoSQ2hhbGxlbmdlUnVsZV9WT0lEEAASGAoUQ2hhbGxlbmdlUnVsZV9TSU5HTEUQARIYChRDaGFsbGVuZ2VSdWxlX0RPVUJMRRACEhwKGENoYWxsZW5nZVJ1bGVfRklWRV9QT0lOVBADEhsKF0NoYWxsZW5nZVJ1bGVfVEVOX1BPSU5UEAQSGAoUQ2hhbGxlbmdlUnVsZV9UUklQTEUQBUJ1Cgdjb20uaXBjQg1PbWd3b3Jkc1Byb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM", [file_vendor_macondo_macondo, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message ipc.ClientGameplayEvent
@@ -1180,6 +1180,16 @@ export type GameEvent = Message<"ipc.GameEvent"> & {
    * @generated from field: repeated string words_formed_friendly = 20;
    */
   wordsFormedFriendly: string[];
+
+  /**
+   * @generated from field: string rack_friendly = 21;
+   */
+  rackFriendly: string;
+
+  /**
+   * @generated from field: string exchanged_friendly = 22;
+   */
+  exchangedFriendly: string;
 };
 
 /**
@@ -1428,10 +1438,18 @@ export const BagSchema: GenMessage<Bag> = /*@__PURE__*/
   messageDesc(file_proto_ipc_omgwords, 27);
 
 /**
- * A GameDocument encodes the entire state of a game. It includes a history
- * of events, as well as information about the current state of the bag,
- * timers, etc. It should be possible to recreate an entire omgwords game
- * from a GameDocument state at any given time.
+ * A GameDocument is mostly a data transfer object for an omgwords game. It
+ * should be used to contain mostly metadata about the game - players, rules,
+ * whether the game is ongoing, etc. The GameDocument should not contain the
+ * game state itself, which is contained in GameRecord. The events should also
+ * be kept in a separate object, GameRecord.events. Our main goal for this
+ * message is to be lightweight. This layout should reflect the database a bit.
+ * Events are kept in a separate table, and the game state is kept in a separate
+ * flatbuffer object in its own column in the DB.
+ *
+ * GameDocument should be thought of as _mostly_ constant once the game has
+ * started. The only things that would change would be the GameEndReason, the
+ * play_state, and the meta_event_data.
  *
  * @generated from message ipc.GameDocument
  */
@@ -1444,12 +1462,14 @@ export type GameDocument = Message<"ipc.GameDocument"> & {
   players: GameDocument_MinimalPlayerInfo[];
 
   /**
-   * @generated from field: repeated ipc.GameEvent events = 2;
+   * @generated from field: repeated ipc.GameEvent events = 2 [deprecated = true];
+   * @deprecated
    */
   events: GameEvent[];
 
   /**
-   * @generated from field: uint32 version = 3;
+   * @generated from field: uint32 version = 3 [deprecated = true];
+   * @deprecated
    */
   version: number;
 
@@ -1469,7 +1489,8 @@ export type GameDocument = Message<"ipc.GameDocument"> & {
   description: string;
 
   /**
-   * @generated from field: repeated bytes racks = 7;
+   * @generated from field: repeated bytes racks = 7 [deprecated = true];
+   * @deprecated
    */
   racks: Uint8Array[];
 
@@ -1484,7 +1505,8 @@ export type GameDocument = Message<"ipc.GameDocument"> & {
   playState: PlayState;
 
   /**
-   * @generated from field: repeated int32 current_scores = 10;
+   * @generated from field: repeated int32 current_scores = 10 [deprecated = true];
+   * @deprecated
    */
   currentScores: number[];
 
@@ -1545,31 +1567,36 @@ export type GameDocument = Message<"ipc.GameDocument"> & {
    * gameplay-specific structures:
    * board is the current state of the board
    *
-   * @generated from field: ipc.GameBoard board = 20;
+   * @generated from field: ipc.GameBoard board = 20 [deprecated = true];
+   * @deprecated
    */
   board?: GameBoard;
 
   /**
    * bag is the current tiles in the bag.
    *
-   * @generated from field: ipc.Bag bag = 21;
+   * @generated from field: ipc.Bag bag = 21 [deprecated = true];
+   * @deprecated
    */
   bag?: Bag;
 
   /**
-   * @generated from field: uint32 scoreless_turns = 22;
+   * @generated from field: uint32 scoreless_turns = 22 [deprecated = true];
+   * @deprecated
    */
   scorelessTurns: number;
 
   /**
    * The index of the player on turn
    *
-   * @generated from field: uint32 player_on_turn = 23;
+   * @generated from field: uint32 player_on_turn = 23 [deprecated = true];
+   * @deprecated
    */
   playerOnTurn: number;
 
   /**
-   * @generated from field: ipc.Timers timers = 24;
+   * @generated from field: ipc.Timers timers = 24 [deprecated = true];
+   * @deprecated
    */
   timers?: Timers;
 };
@@ -1615,6 +1642,181 @@ export type GameDocument_MinimalPlayerInfo = Message<"ipc.GameDocument.MinimalPl
  */
 export const GameDocument_MinimalPlayerInfoSchema: GenMessage<GameDocument_MinimalPlayerInfo> = /*@__PURE__*/
   messageDesc(file_proto_ipc_omgwords, 28, 0);
+
+/**
+ * GameMetadata is a metadata object for a game. It is used to transfer
+ * metadata about a game to the frontend clients. This should consist largely
+ * (but not completely) of information that is constant about a game once it has
+ * started.
+ *
+ * @generated from message ipc.GameMetadata
+ */
+export type GameMetadata = Message<"ipc.GameMetadata"> & {
+  /**
+   * @generated from field: string uid = 1;
+   */
+  uid: string;
+
+  /**
+   * players are in order of who went first.
+   *
+   * @generated from field: repeated ipc.GameMetadata.MinimalPlayerInfo players = 2;
+   */
+  players: GameMetadata_MinimalPlayerInfo[];
+
+  /**
+   * @generated from field: string lexicon = 3;
+   */
+  lexicon: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * @generated from field: ipc.ChallengeRule challenge_rule = 5;
+   */
+  challengeRule: ChallengeRule;
+
+  /**
+   * @generated from field: ipc.PlayState play_state = 6;
+   */
+  playState: PlayState;
+
+  /**
+   * @generated from field: string variant = 7;
+   */
+  variant: string;
+
+  /**
+   * The index of the player who won, or -1 if it was a tie.
+   *
+   * @generated from field: int32 winner = 8;
+   */
+  winner: number;
+
+  /**
+   * The board layout is just the name for the layout of the board.
+   * It should have a sensible default, if blank.
+   *
+   * @generated from field: string board_layout = 9;
+   */
+  boardLayout: string;
+
+  /**
+   * The letter distribution is the name of the distribution of tiles used for
+   * this game. If blank, should default to "english".
+   *
+   * @generated from field: string letter_distribution = 10;
+   */
+  letterDistribution: string;
+
+  /**
+   * @generated from field: ipc.GameType type = 11;
+   */
+  type: GameType;
+
+  /**
+   * @generated from field: bool timers_started = 12;
+   */
+  timersStarted: boolean;
+
+  /**
+   * @generated from field: ipc.GameEndReason end_reason = 13;
+   */
+  endReason: GameEndReason;
+
+  /**
+   * @generated from field: ipc.MetaEventData meta_event_data = 14;
+   */
+  metaEventData?: MetaEventData;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 15;
+   */
+  createdAt?: Timestamp;
+};
+
+/**
+ * Describes the message ipc.GameMetadata.
+ * Use `create(GameMetadataSchema)` to create a new message.
+ */
+export const GameMetadataSchema: GenMessage<GameMetadata> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_omgwords, 29);
+
+/**
+ * @generated from message ipc.GameMetadata.MinimalPlayerInfo
+ */
+export type GameMetadata_MinimalPlayerInfo = Message<"ipc.GameMetadata.MinimalPlayerInfo"> & {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string real_name = 2;
+   */
+  realName: string;
+
+  /**
+   * user_id is an internal, unchangeable user ID, whereas the other two user
+   * identifiers might possibly be mutable.
+   *
+   * @generated from field: string user_id = 3;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: bool quit = 4;
+   */
+  quit: boolean;
+};
+
+/**
+ * Describes the message ipc.GameMetadata.MinimalPlayerInfo.
+ * Use `create(GameMetadata_MinimalPlayerInfoSchema)` to create a new message.
+ */
+export const GameMetadata_MinimalPlayerInfoSchema: GenMessage<GameMetadata_MinimalPlayerInfo> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_omgwords, 29, 0);
+
+/**
+ * GameRecord is a record of a game. It should be used for
+ * serialization/deserialization of an entire game data into long-term storage.
+ * It can also be used for transferring ongoing data to frontend clients.
+ *
+ * @generated from message ipc.GameRecord
+ */
+export type GameRecord = Message<"ipc.GameRecord"> & {
+  /**
+   * @generated from field: ipc.GameMetadata game_metadata = 1;
+   */
+  gameMetadata?: GameMetadata;
+
+  /**
+   * @generated from field: repeated ipc.GameEvent events = 2;
+   */
+  events: GameEvent[];
+
+  /**
+   * The flatbuffer GameState object.
+   *
+   * @generated from field: bytes game_state = 3;
+   */
+  gameState: Uint8Array;
+
+  /**
+   * @generated from field: uint32 version = 4;
+   */
+  version: number;
+};
+
+/**
+ * Describes the message ipc.GameRecord.
+ * Use `create(GameRecordSchema)` to create a new message.
+ */
+export const GameRecordSchema: GenMessage<GameRecord> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_omgwords, 30);
 
 /**
  * @generated from enum ipc.GameEndReason

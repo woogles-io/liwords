@@ -17,16 +17,21 @@ digraph RedoGameModel {
 
     OnlyUseOtherTables [label="Only use new tables"];
     MigrateToNewTables [label="Migrate to new tables"];
-    UseOtherTables [label="Transparently use new many2many and turns tables"];
+    UseOtherTables [label="Transparently use new columns and tables"];
     RemoveGameCache [label="Remove game cache"];
     EfficientTable [label="Make game DB model more efficient"];
+    EfficientGameMemoryModel [label="Make game in-memory model more efficient"];
+    FlatBuffersForGames [label="Create flatbuffer-based game logic"];
     OldGamesInS3 [label="Move old games to S3"];
     TranslateToGameDocument [label="Translate S3 games to GameDocument"];
-    FixGameDocumentBugs [label="Fix and test GameDocument bugs"];
     SQLCDBStore [label="Rewrite DB store to use sqlc"];
     SQLCOtherFuncs [label="Rewrite all others to use sqlc"];
     DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
-
+    FixAnnotatorToUseNewGameDocument [label="Fix annotator to use new GameDocument version" ];
+    FixGameStateToUseGameDocument [label="Fix game state to use GameDocument\n + new metadata columns"];
+    AddColumnsForFBAndOtherMetadata [label="Add columns for flatbuffers and other metadata"];
+    UpdateGameDocumentProto [label="Update GameDocument proto\nwith flatbuffers + original metadata"];
+    RemoveCacheFromAnnotator [label="Remove cache from annotator"];
     // Arrows
     Goal -> MoreSimultaneousGames;
     Goal -> LessDowntimeBetweenDeploys;
@@ -37,17 +42,24 @@ digraph RedoGameModel {
     MakeDBFaster -> EfficientTable;
 
     RemoveGameCache -> EfficientTable;
+    RemoveGameCache -> EfficientGameMemoryModel;
+    EfficientGameMemoryModel -> FixGameStateToUseGameDocument;
     EfficientTable-> OnlyUseOtherTables;
+    FixGameStateToUseGameDocument -> AddColumnsForFBAndOtherMetadata;
+    UpdateGameDocumentProto -> FlatBuffersForGames;
     OnlyUseOtherTables -> MigrateToNewTables;
     MigrateToNewTables -> UseOtherTables;
     EfficientTable -> SQLCDBStore;
     EfficientTable -> OldGamesInS3;
     OldGamesInS3 -> TranslateToGameDocument;
-    TranslateToGameDocument -> FixGameDocumentBugs;
+    TranslateToGameDocument -> UpdateGameDocumentProto;
     UseOtherTables -> AddOtherTables;
+    UseOtherTables -> FixGameStateToUseGameDocument;
+    AddColumnsForFBAndOtherMetadata -> UpdateGameDocumentProto;
     SQLCDBStore -> DBGet;
     SQLCDBStore -> DBSetSplit;
     SQLCDBStore -> SQLCOtherFuncs;
-
+    FixAnnotatorToUseNewGameDocument -> UpdateGameDocumentProto;
+    FixAnnotatorToUseNewGameDocument -> RemoveCacheFromAnnotator;
 }
 

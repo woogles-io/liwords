@@ -380,6 +380,8 @@ message GameEvent {
   // be the index in GameDocument.players.
   uint32 player_index = 19;
   repeated string words_formed_friendly = 20;
+  string rack_friendly = 21;
+  string exchanged_friendly = 22;
 }
 
 enum PlayState {
@@ -436,10 +438,18 @@ message GameBoard {
 
 message Bag { bytes tiles = 1; }
 
-// A GameDocument encodes the entire state of a game. It includes a history
-// of events, as well as information about the current state of the bag,
-// timers, etc. It should be possible to recreate an entire omgwords game
-// from a GameDocument state at any given time.
+// A GameDocument is mostly a data transfer object for an omgwords game. It
+// should be used to contain mostly metadata about the game - players, rules,
+// whether the game is ongoing, etc. The GameDocument should not contain the
+// game state itself, which is contained in GameRecord. The events should also
+// be kept in a separate object, GameRecord.events. Our main goal for this
+// message is to be lightweight. This layout should reflect the database a bit.
+// Events are kept in a separate table, and the game state is kept in a separate
+// flatbuffer object in its own column in the DB.
+//
+// GameDocument should be thought of as _mostly_ constant once the game has
+// started. The only things that would change would be the GameEndReason, the
+// play_state, and the meta_event_data.
 message GameDocument {
   message MinimalPlayerInfo {
     string nickname = 1;
@@ -452,16 +462,16 @@ message GameDocument {
   // players are in order of who went first.
   repeated MinimalPlayerInfo players = 1;
 
-  repeated GameEvent events = 2;
+  repeated GameEvent events = 2 [ deprecated = true ];
 
-  uint32 version = 3;
+  uint32 version = 3 [ deprecated = true ];
   string lexicon = 4;
   string uid = 5;
   string description = 6;
-  repeated bytes racks = 7;
+  repeated bytes racks = 7 [ deprecated = true ];
   ChallengeRule challenge_rule = 8;
   PlayState play_state = 9;
-  repeated int32 current_scores = 10;
+  repeated int32 current_scores = 10 [ deprecated = true ];
   string variant = 11;
   // The index of the player who won, or -1 if it was a tie.
   int32 winner = 12;
@@ -479,11 +489,59 @@ message GameDocument {
 
   // gameplay-specific structures:
   // board is the current state of the board
-  GameBoard board = 20;
+  GameBoard board = 20 [ deprecated = true ];
   // bag is the current tiles in the bag.
-  Bag bag = 21;
-  uint32 scoreless_turns = 22;
+  Bag bag = 21 [ deprecated = true ];
+  uint32 scoreless_turns = 22 [ deprecated = true ];
   // The index of the player on turn
-  uint32 player_on_turn = 23;
-  Timers timers = 24;
+  uint32 player_on_turn = 23 [ deprecated = true ];
+  Timers timers = 24 [ deprecated = true ];
+}
+
+// GameMetadata is a metadata object for a game. It is used to transfer
+// metadata about a game to the frontend clients. This should consist largely
+// (but not completely) of information that is constant about a game once it has
+// started.
+message GameMetadata {
+  message MinimalPlayerInfo {
+    string nickname = 1;
+    string real_name = 2;
+    // user_id is an internal, unchangeable user ID, whereas the other two user
+    // identifiers might possibly be mutable.
+    string user_id = 3;
+    bool quit = 4;
+  }
+
+  string uid = 1;
+  // players are in order of who went first.
+  repeated MinimalPlayerInfo players = 2;
+  string lexicon = 3;
+  string description = 4;
+  ChallengeRule challenge_rule = 5;
+  PlayState play_state = 6;
+  string variant = 7;
+  // The index of the player who won, or -1 if it was a tie.
+  int32 winner = 8;
+  // The board layout is just the name for the layout of the board.
+  // It should have a sensible default, if blank.
+  string board_layout = 9;
+  // The letter distribution is the name of the distribution of tiles used for
+  // this game. If blank, should default to "english".
+  string letter_distribution = 10;
+  GameType type = 11;
+  bool timers_started = 12;
+  GameEndReason end_reason = 13;
+  MetaEventData meta_event_data = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// GameRecord is a record of a game. It should be used for
+// serialization/deserialization of an entire game data into long-term storage.
+// It can also be used for transferring ongoing data to frontend clients.
+message GameRecord {
+  GameMetadata game_metadata = 1;
+  repeated GameEvent events = 2;
+  // The flatbuffer GameState object.
+  bytes game_state = 3;
+  uint32 version = 4;
 }

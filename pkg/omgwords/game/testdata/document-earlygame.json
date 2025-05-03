@@ -1,0 +1,123 @@
+{
+    "players": [
+        {
+            "nickname": "cesar",
+            "userId": "2gJGaYnchL6LbQVTNQ6mjT"
+        },
+        {
+            "nickname": "botty",
+            "userId": "FDHvxexaC5QNMfiJnpcnUZ"
+        }
+    ],
+    "events": [
+        {
+            "rack": "AQYJDA8TEw==",
+            "cumulative": 26,
+            "row": 7,
+            "column": 3,
+            "position": "8D",
+            "playedTiles": "Bg8TEwkM",
+            "score": 26,
+            "wordsFormed": [
+                "Bg8TEwkM"
+            ],
+            "millisRemaining": 896991,
+            "wordsFormedFriendly": [
+                "FOSSIL"
+            ]
+        },
+        {
+            "rack": "AQUGCQwSFA==",
+            "cumulative": 72,
+            "row": 5,
+            "column": 4,
+            "direction": "VERTICAL",
+            "position": "E6",
+            "playedTiles": "BgwAARQJBRI=",
+            "score": 72,
+            "isBingo": true,
+            "wordsFormed": [
+                "BgwPARQJBRI="
+            ],
+            "millisRemaining": 899965,
+            "playerIndex": 1,
+            "wordsFormedFriendly": [
+                "FLOATIER"
+            ]
+        },
+        {
+            "rack": "AQUJDhAVGQ==",
+            "cumulative": 62,
+            "row": 11,
+            "column": 3,
+            "direction": "VERTICAL",
+            "position": "D12",
+            "playedTiles": "GQEVEA==",
+            "score": 36,
+            "wordsFormed": [
+                "GQEVEA==",
+                "GQU=",
+                "ARI="
+            ],
+            "millisRemaining": 893992,
+            "wordsFormedFriendly": [
+                "YAUP",
+                "YE",
+                "AR"
+            ]
+        },
+        {
+            "rack": "AAUJDw8WFg==",
+            "cumulative": 137,
+            "column": 6,
+            "direction": "VERTICAL",
+            "position": "G1",
+            "playedTiles": "Fg8JFg+EBQA=",
+            "score": 65,
+            "isBingo": true,
+            "wordsFormed": [
+                "Fg8JFg8EBRM="
+            ],
+            "millisRemaining": 899914,
+            "playerIndex": 1,
+            "wordsFormedFriendly": [
+                "VOIVODES"
+            ]
+        }
+    ],
+    "version": 2,
+    "lexicon": "CSW21",
+    "uid": "9aK3YgVk",
+    "racks": [
+        "BQUJCw4UFw==",
+        "BAUICQ8SEw=="
+    ],
+    "challengeRule": "ChallengeRule_SINGLE",
+    "currentScores": [
+        62,
+        137
+    ],
+    "variant": "classic",
+    "boardLayout": "CrosswordGame",
+    "letterDistribution": "english",
+    "timersStarted": true,
+    "metaEventData": {},
+    "createdAt": "2022-11-12T03:24:16.389775Z",
+    "board": {
+        "numRows": 15,
+        "numCols": 15,
+        "tiles": "AAAAAAAAFgAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAAACQAAAAAAAAAAAAAAAAAAFgAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAYAhAAAAAAAAAAAAAAAAAwABQAAAAAAAAAAAAAABg8TEwkMAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAAAAGQUAAAAAAAAAAAAAAAAAARIAAAAAAAAAAAAAAAAAFQAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA"
+    },
+    "bag": {
+        "tiles": "AwQNDhIBABEBBAkJBRQHFBgUDBUFDRQJDw8XAg4FBRkIEgoBARUBBRUHDhoJDhIFBwwEDxIFEw8QAwIOAQE="
+    },
+    "timers": {
+        "timeOfLastUpdate": "1668223467851",
+        "timeStarted": "1668223456573",
+        "timeRemaining": [
+            "888808",
+            "899914"
+        ],
+        "maxOvertime": 1
+    }
+}
