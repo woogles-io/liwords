@@ -502,8 +502,6 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	logsb.WriteString(fmt.Sprintf("\nHave %d player nodes\n\n", len(playerNodes)))
-
 	pargs := &policyArgs{
 		req:                      req,
 		copdata:                  copdata,
