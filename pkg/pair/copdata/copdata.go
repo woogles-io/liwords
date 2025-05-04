@@ -34,6 +34,7 @@ type PrecompData struct {
 	DestinysChild         int
 	GibsonGroups          []int
 	GibsonizedPlayers     []bool
+	CompletePairings      int
 }
 
 func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -150,9 +151,22 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 
 	pairingCounts := make(map[string]int)
 	repeatCounts := make([]int, int(req.AllPlayers))
+	numCompletePairings := 0
+divisionPairingLoop:
 	for _, roundPairings := range req.DivisionPairings {
-		for playerIdx := 0; playerIdx < len(roundPairings.Pairings); playerIdx++ {
+		for playerIdx := range roundPairings.Pairings {
 			oppIdx := int(roundPairings.Pairings[playerIdx])
+			if oppIdx == -1 {
+				break divisionPairingLoop
+			}
+		}
+		numCompletePairings++
+	}
+	for roundIdx := range numCompletePairings {
+		roundPairings := req.DivisionPairings[roundIdx]
+		for playerIdx := range roundPairings.Pairings {
+			oppIdx := int(roundPairings.Pairings[playerIdx])
+
 			if oppIdx > playerIdx {
 				continue
 			}
@@ -170,7 +184,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	var controlLossSimResults *pkgstnd.SimResults
 	var allControlLosses map[int]int
 	destinysChild := -1
-	if req.UseControlLoss && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
+	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
 		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
@@ -197,6 +211,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		DestinysChild:         destinysChild,
 		GibsonGroups:          improvedFactorSimResults.GibsonGroups,
 		GibsonizedPlayers:     improvedFactorSimResults.GibsonizedPlayers,
+		CompletePairings:      numCompletePairings,
 	}, pb.PairError_SUCCESS
 }
 

@@ -265,6 +265,11 @@ func TestCOPErrors(t *testing.T) {
 	req.RemovedPlayers = []int32{0, -1}
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_REMOVED_PLAYER)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.ControlLossActivationRound = -1
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND)
 }
 
 func TestCOPConstraintPolicies(t *testing.T) {
@@ -656,7 +661,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 2nd
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 12
 	req.Seed = 2
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.Pairings[0], int32(3))
@@ -664,7 +669,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 4th
 	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 11
 	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	// The control loss should force 1st to play either 2nd or 3rd since 4th
@@ -673,7 +678,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// Control loss with player in 4th
 	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 11
 	req.Seed = 1
 	req.HopefulnessThreshold = 0.01
 	resp = cop.COPPair(ctx, req)
@@ -709,12 +714,134 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
+
+	// This is the first round that control loss is active, so first will
+	// be force paired with the lowest contender. Therefore, prepairing the lowest
+	// contender with someone else will result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.ControlLossActivationRound = 21
+	req.Seed = 1
+	pairings := make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
 	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+
+	// This is the second round that control loss is active, so first will
+	// be force paired with the 2 lowest contenders. Therefore, prepairing the lowest
+	// contender with someone else should not result in any errors.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 26
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Ben should be playing Wellington, the 2nd lowest contender
+	is.Equal(resp.Pairings[0], int32(10))
+	is.Equal(resp.Pairings[10], int32(0))
+
+	// With only 4 rounds to go, first will again be paired with only the lowest contender.
+	// Therefore, prepairing the lowest contender with someone else should result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 25
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[6] = 25
+	pairings[25] = 6
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+
+	// With only 2 rounds to go, first will again be paired with only the lowest contender.
+	// Therefore, prepairing the lowest contender with someone else should result in an overconstrained error.
+	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
+	req.Rounds = 23
+	req.ControlLossActivationRound = 20
+	req.Seed = 1
+	pairings = make([]int32, req.AllPlayers)
+	for i := range pairings {
+		pairings[i] = -1
+	}
+	pairings[4] = 25
+	pairings[25] = 4
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: pairings,
+	})
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+
+	// Check that top down byes work
+	req = pairtestutils.CreateAlbanyAfterRound16PairRequest()
+	// The last pairings array in this request prepairs certain players, which
+	// we need to remove for this test.
+	req.DivisionPairings = req.DivisionPairings[:len(req.DivisionPairings)-1]
+	req.TopDownByes = true
+	req.AllowRepeatByes = false
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Chris Sykes should have the bye
+	is.Equal(resp.Pairings[1], int32(1))
+
+	// Run the next round with the given pairings and check
+	// that the next lowest player receives a bye.
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	// Add a pairing for the removed player so the pairings are regarded
+	// as complete
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Zach should have the bye
+	is.Equal(resp.Pairings[4], int32(4))
+
+	// Run another round
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Andy should have the bye
+	is.Equal(resp.Pairings[2], int32(2))
+
+	// Run another round
+	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
+		Pairings: resp.Pairings,
+	})
+	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
+	resp = cop.COPPair(ctx, req)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Billy should get the bye since Eric already received a bye
+	is.Equal(resp.Pairings[5], int32(5))
 
 	// Check that timeouts work
 	req = pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 16
 	req.DivisionSims = 1000000000
 	req.ControlLossSims = 1000000000
 	ctx, cancelFn := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -782,7 +909,7 @@ func TestCOPProf(t *testing.T) {
 
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 15
 	req.DivisionSims = 1000000
 	req.ControlLossSims = 1000000
 	pprof.StartCPUProfile(f)
@@ -803,7 +930,7 @@ func TestCOPTime(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	req := pairtestutils.CreateAlbanyAfterRound15PairRequest()
-	req.UseControlLoss = true
+	req.ControlLossActivationRound = 15
 	req.DivisionSims = 200000
 	req.ControlLossSims = 200000
 	is.Equal(verifyreq.Verify(req), nil)

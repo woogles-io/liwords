@@ -69,37 +69,38 @@ func (PairMethod) EnumDescriptor() ([]byte, []int) {
 type PairError int32
 
 const (
-	PairError_SUCCESS                        PairError = 0
-	PairError_PLAYER_COUNT_INSUFFICIENT      PairError = 1
-	PairError_ROUND_COUNT_INSUFFICIENT       PairError = 2
-	PairError_PLAYER_COUNT_TOO_LARGE         PairError = 3
-	PairError_PLAYER_NAME_COUNT_INSUFFICIENT PairError = 4
-	PairError_PLAYER_NAME_EMPTY              PairError = 5
-	PairError_MORE_PAIRINGS_THAN_ROUNDS      PairError = 6
-	PairError_ALL_ROUNDS_PAIRED              PairError = 7
-	PairError_INVALID_ROUND_PAIRINGS_COUNT   PairError = 8
-	PairError_PLAYER_INDEX_OUT_OF_BOUNDS     PairError = 9
-	PairError_UNPAIRED_PLAYER                PairError = 10
-	PairError_INVALID_PAIRING                PairError = 11
-	PairError_MORE_RESULTS_THAN_ROUNDS       PairError = 12
-	PairError_MORE_RESULTS_THAN_PAIRINGS     PairError = 13
-	PairError_INVALID_ROUND_RESULTS_COUNT    PairError = 14
-	PairError_INVALID_PLAYER_CLASS_COUNT     PairError = 15
-	PairError_INVALID_PLAYER_CLASS           PairError = 16
-	PairError_INVALID_CLASS_PRIZE            PairError = 17
-	PairError_INVALID_GIBSON_SPREAD          PairError = 18
-	PairError_INVALID_CONTROL_LOSS_THRESHOLD PairError = 19
-	PairError_INVALID_HOPEFULNESS_THRESHOLD  PairError = 20
-	PairError_INVALID_DIVISION_SIMS          PairError = 21
-	PairError_INVALID_CONTROL_LOSS_SIMS      PairError = 22
-	PairError_INVALID_PLACE_PRIZES           PairError = 23
-	PairError_INVALID_REMOVED_PLAYER         PairError = 24
-	PairError_INVALID_VALID_PLAYER_COUNT     PairError = 25
-	PairError_MIN_WEIGHT_MATCHING            PairError = 26
-	PairError_INVALID_PAIRINGS_LENGTH        PairError = 27
-	PairError_OVERCONSTRAINED                PairError = 28
-	PairError_REQUEST_TO_JSON_FAILED         PairError = 29
-	PairError_TIMEOUT                        PairError = 30
+	PairError_SUCCESS                               PairError = 0
+	PairError_PLAYER_COUNT_INSUFFICIENT             PairError = 1
+	PairError_ROUND_COUNT_INSUFFICIENT              PairError = 2
+	PairError_PLAYER_COUNT_TOO_LARGE                PairError = 3
+	PairError_PLAYER_NAME_COUNT_INSUFFICIENT        PairError = 4
+	PairError_PLAYER_NAME_EMPTY                     PairError = 5
+	PairError_MORE_PAIRINGS_THAN_ROUNDS             PairError = 6
+	PairError_ALL_ROUNDS_PAIRED                     PairError = 7
+	PairError_INVALID_ROUND_PAIRINGS_COUNT          PairError = 8
+	PairError_PLAYER_INDEX_OUT_OF_BOUNDS            PairError = 9
+	PairError_UNPAIRED_PLAYER                       PairError = 10
+	PairError_INVALID_PAIRING                       PairError = 11
+	PairError_MORE_RESULTS_THAN_ROUNDS              PairError = 12
+	PairError_MORE_RESULTS_THAN_PAIRINGS            PairError = 13
+	PairError_INVALID_ROUND_RESULTS_COUNT           PairError = 14
+	PairError_INVALID_PLAYER_CLASS_COUNT            PairError = 15
+	PairError_INVALID_PLAYER_CLASS                  PairError = 16
+	PairError_INVALID_CLASS_PRIZE                   PairError = 17
+	PairError_INVALID_GIBSON_SPREAD                 PairError = 18
+	PairError_INVALID_CONTROL_LOSS_THRESHOLD        PairError = 19
+	PairError_INVALID_HOPEFULNESS_THRESHOLD         PairError = 20
+	PairError_INVALID_DIVISION_SIMS                 PairError = 21
+	PairError_INVALID_CONTROL_LOSS_SIMS             PairError = 22
+	PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND PairError = 23
+	PairError_INVALID_PLACE_PRIZES                  PairError = 24
+	PairError_INVALID_REMOVED_PLAYER                PairError = 25
+	PairError_INVALID_VALID_PLAYER_COUNT            PairError = 26
+	PairError_MIN_WEIGHT_MATCHING                   PairError = 27
+	PairError_INVALID_PAIRINGS_LENGTH               PairError = 28
+	PairError_OVERCONSTRAINED                       PairError = 29
+	PairError_REQUEST_TO_JSON_FAILED                PairError = 30
+	PairError_TIMEOUT                               PairError = 31
 )
 
 // Enum value maps for PairError.
@@ -128,47 +129,49 @@ var (
 		20: "INVALID_HOPEFULNESS_THRESHOLD",
 		21: "INVALID_DIVISION_SIMS",
 		22: "INVALID_CONTROL_LOSS_SIMS",
-		23: "INVALID_PLACE_PRIZES",
-		24: "INVALID_REMOVED_PLAYER",
-		25: "INVALID_VALID_PLAYER_COUNT",
-		26: "MIN_WEIGHT_MATCHING",
-		27: "INVALID_PAIRINGS_LENGTH",
-		28: "OVERCONSTRAINED",
-		29: "REQUEST_TO_JSON_FAILED",
-		30: "TIMEOUT",
+		23: "INVALID_CONTROL_LOSS_ACTIVATION_ROUND",
+		24: "INVALID_PLACE_PRIZES",
+		25: "INVALID_REMOVED_PLAYER",
+		26: "INVALID_VALID_PLAYER_COUNT",
+		27: "MIN_WEIGHT_MATCHING",
+		28: "INVALID_PAIRINGS_LENGTH",
+		29: "OVERCONSTRAINED",
+		30: "REQUEST_TO_JSON_FAILED",
+		31: "TIMEOUT",
 	}
 	PairError_value = map[string]int32{
-		"SUCCESS":                        0,
-		"PLAYER_COUNT_INSUFFICIENT":      1,
-		"ROUND_COUNT_INSUFFICIENT":       2,
-		"PLAYER_COUNT_TOO_LARGE":         3,
-		"PLAYER_NAME_COUNT_INSUFFICIENT": 4,
-		"PLAYER_NAME_EMPTY":              5,
-		"MORE_PAIRINGS_THAN_ROUNDS":      6,
-		"ALL_ROUNDS_PAIRED":              7,
-		"INVALID_ROUND_PAIRINGS_COUNT":   8,
-		"PLAYER_INDEX_OUT_OF_BOUNDS":     9,
-		"UNPAIRED_PLAYER":                10,
-		"INVALID_PAIRING":                11,
-		"MORE_RESULTS_THAN_ROUNDS":       12,
-		"MORE_RESULTS_THAN_PAIRINGS":     13,
-		"INVALID_ROUND_RESULTS_COUNT":    14,
-		"INVALID_PLAYER_CLASS_COUNT":     15,
-		"INVALID_PLAYER_CLASS":           16,
-		"INVALID_CLASS_PRIZE":            17,
-		"INVALID_GIBSON_SPREAD":          18,
-		"INVALID_CONTROL_LOSS_THRESHOLD": 19,
-		"INVALID_HOPEFULNESS_THRESHOLD":  20,
-		"INVALID_DIVISION_SIMS":          21,
-		"INVALID_CONTROL_LOSS_SIMS":      22,
-		"INVALID_PLACE_PRIZES":           23,
-		"INVALID_REMOVED_PLAYER":         24,
-		"INVALID_VALID_PLAYER_COUNT":     25,
-		"MIN_WEIGHT_MATCHING":            26,
-		"INVALID_PAIRINGS_LENGTH":        27,
-		"OVERCONSTRAINED":                28,
-		"REQUEST_TO_JSON_FAILED":         29,
-		"TIMEOUT":                        30,
+		"SUCCESS":                               0,
+		"PLAYER_COUNT_INSUFFICIENT":             1,
+		"ROUND_COUNT_INSUFFICIENT":              2,
+		"PLAYER_COUNT_TOO_LARGE":                3,
+		"PLAYER_NAME_COUNT_INSUFFICIENT":        4,
+		"PLAYER_NAME_EMPTY":                     5,
+		"MORE_PAIRINGS_THAN_ROUNDS":             6,
+		"ALL_ROUNDS_PAIRED":                     7,
+		"INVALID_ROUND_PAIRINGS_COUNT":          8,
+		"PLAYER_INDEX_OUT_OF_BOUNDS":            9,
+		"UNPAIRED_PLAYER":                       10,
+		"INVALID_PAIRING":                       11,
+		"MORE_RESULTS_THAN_ROUNDS":              12,
+		"MORE_RESULTS_THAN_PAIRINGS":            13,
+		"INVALID_ROUND_RESULTS_COUNT":           14,
+		"INVALID_PLAYER_CLASS_COUNT":            15,
+		"INVALID_PLAYER_CLASS":                  16,
+		"INVALID_CLASS_PRIZE":                   17,
+		"INVALID_GIBSON_SPREAD":                 18,
+		"INVALID_CONTROL_LOSS_THRESHOLD":        19,
+		"INVALID_HOPEFULNESS_THRESHOLD":         20,
+		"INVALID_DIVISION_SIMS":                 21,
+		"INVALID_CONTROL_LOSS_SIMS":             22,
+		"INVALID_CONTROL_LOSS_ACTIVATION_ROUND": 23,
+		"INVALID_PLACE_PRIZES":                  24,
+		"INVALID_REMOVED_PLAYER":                25,
+		"INVALID_VALID_PLAYER_COUNT":            26,
+		"MIN_WEIGHT_MATCHING":                   27,
+		"INVALID_PAIRINGS_LENGTH":               28,
+		"OVERCONSTRAINED":                       29,
+		"REQUEST_TO_JSON_FAILED":                30,
+		"TIMEOUT":                               31,
 	}
 )
 
@@ -288,28 +291,29 @@ func (x *RoundResults) GetResults() []int32 {
 }
 
 type PairRequest struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	PairMethod           PairMethod             `protobuf:"varint,1,opt,name=pair_method,json=pairMethod,proto3,enum=ipc.PairMethod" json:"pair_method,omitempty"`
-	PlayerNames          []string               `protobuf:"bytes,2,rep,name=player_names,json=playerNames,proto3" json:"player_names,omitempty"`
-	PlayerClasses        []int32                `protobuf:"varint,3,rep,packed,name=player_classes,json=playerClasses,proto3" json:"player_classes,omitempty"`
-	DivisionPairings     []*RoundPairings       `protobuf:"bytes,4,rep,name=division_pairings,json=divisionPairings,proto3" json:"division_pairings,omitempty"`
-	DivisionResults      []*RoundResults        `protobuf:"bytes,5,rep,name=division_results,json=divisionResults,proto3" json:"division_results,omitempty"`
-	ClassPrizes          []int32                `protobuf:"varint,6,rep,packed,name=class_prizes,json=classPrizes,proto3" json:"class_prizes,omitempty"`
-	GibsonSpread         int32                  `protobuf:"varint,7,opt,name=gibson_spread,json=gibsonSpread,proto3" json:"gibson_spread,omitempty"`
-	ControlLossThreshold float64                `protobuf:"fixed64,8,opt,name=control_loss_threshold,json=controlLossThreshold,proto3" json:"control_loss_threshold,omitempty"`
-	HopefulnessThreshold float64                `protobuf:"fixed64,9,opt,name=hopefulness_threshold,json=hopefulnessThreshold,proto3" json:"hopefulness_threshold,omitempty"`
-	AllPlayers           int32                  `protobuf:"varint,10,opt,name=all_players,json=allPlayers,proto3" json:"all_players,omitempty"`
-	ValidPlayers         int32                  `protobuf:"varint,11,opt,name=valid_players,json=validPlayers,proto3" json:"valid_players,omitempty"`
-	Rounds               int32                  `protobuf:"varint,12,opt,name=rounds,proto3" json:"rounds,omitempty"`
-	PlacePrizes          int32                  `protobuf:"varint,13,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
-	DivisionSims         int32                  `protobuf:"varint,14,opt,name=division_sims,json=divisionSims,proto3" json:"division_sims,omitempty"`
-	ControlLossSims      int32                  `protobuf:"varint,15,opt,name=control_loss_sims,json=controlLossSims,proto3" json:"control_loss_sims,omitempty"`
-	UseControlLoss       bool                   `protobuf:"varint,16,opt,name=use_control_loss,json=useControlLoss,proto3" json:"use_control_loss,omitempty"`
-	AllowRepeatByes      bool                   `protobuf:"varint,17,opt,name=allow_repeat_byes,json=allowRepeatByes,proto3" json:"allow_repeat_byes,omitempty"`
-	RemovedPlayers       []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
-	Seed                 int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	PairMethod                 PairMethod             `protobuf:"varint,1,opt,name=pair_method,json=pairMethod,proto3,enum=ipc.PairMethod" json:"pair_method,omitempty"`
+	PlayerNames                []string               `protobuf:"bytes,2,rep,name=player_names,json=playerNames,proto3" json:"player_names,omitempty"`
+	PlayerClasses              []int32                `protobuf:"varint,3,rep,packed,name=player_classes,json=playerClasses,proto3" json:"player_classes,omitempty"`
+	DivisionPairings           []*RoundPairings       `protobuf:"bytes,4,rep,name=division_pairings,json=divisionPairings,proto3" json:"division_pairings,omitempty"`
+	DivisionResults            []*RoundResults        `protobuf:"bytes,5,rep,name=division_results,json=divisionResults,proto3" json:"division_results,omitempty"`
+	ClassPrizes                []int32                `protobuf:"varint,6,rep,packed,name=class_prizes,json=classPrizes,proto3" json:"class_prizes,omitempty"`
+	GibsonSpread               int32                  `protobuf:"varint,7,opt,name=gibson_spread,json=gibsonSpread,proto3" json:"gibson_spread,omitempty"`
+	ControlLossThreshold       float64                `protobuf:"fixed64,8,opt,name=control_loss_threshold,json=controlLossThreshold,proto3" json:"control_loss_threshold,omitempty"`
+	HopefulnessThreshold       float64                `protobuf:"fixed64,9,opt,name=hopefulness_threshold,json=hopefulnessThreshold,proto3" json:"hopefulness_threshold,omitempty"`
+	AllPlayers                 int32                  `protobuf:"varint,10,opt,name=all_players,json=allPlayers,proto3" json:"all_players,omitempty"`
+	ValidPlayers               int32                  `protobuf:"varint,11,opt,name=valid_players,json=validPlayers,proto3" json:"valid_players,omitempty"`
+	Rounds                     int32                  `protobuf:"varint,12,opt,name=rounds,proto3" json:"rounds,omitempty"`
+	PlacePrizes                int32                  `protobuf:"varint,13,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
+	DivisionSims               int32                  `protobuf:"varint,14,opt,name=division_sims,json=divisionSims,proto3" json:"division_sims,omitempty"`
+	ControlLossSims            int32                  `protobuf:"varint,15,opt,name=control_loss_sims,json=controlLossSims,proto3" json:"control_loss_sims,omitempty"`
+	ControlLossActivationRound int32                  `protobuf:"varint,16,opt,name=control_loss_activation_round,json=controlLossActivationRound,proto3" json:"control_loss_activation_round,omitempty"`
+	AllowRepeatByes            bool                   `protobuf:"varint,17,opt,name=allow_repeat_byes,json=allowRepeatByes,proto3" json:"allow_repeat_byes,omitempty"`
+	RemovedPlayers             []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
+	Seed                       int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
+	TopDownByes                bool                   `protobuf:"varint,20,opt,name=top_down_byes,json=topDownByes,proto3" json:"top_down_byes,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *PairRequest) Reset() {
@@ -447,11 +451,11 @@ func (x *PairRequest) GetControlLossSims() int32 {
 	return 0
 }
 
-func (x *PairRequest) GetUseControlLoss() bool {
+func (x *PairRequest) GetControlLossActivationRound() int32 {
 	if x != nil {
-		return x.UseControlLoss
+		return x.ControlLossActivationRound
 	}
-	return false
+	return 0
 }
 
 func (x *PairRequest) GetAllowRepeatByes() bool {
@@ -473,6 +477,13 @@ func (x *PairRequest) GetSeed() int64 {
 		return x.Seed
 	}
 	return 0
+}
+
+func (x *PairRequest) GetTopDownByes() bool {
+	if x != nil {
+		return x.TopDownByes
+	}
+	return false
 }
 
 type PairResponse struct {
@@ -551,7 +562,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\rRoundPairings\x12\x1a\n" +
 	"\bpairings\x18\x01 \x03(\x05R\bpairings\"(\n" +
 	"\fRoundResults\x12\x18\n" +
-	"\aresults\x18\x01 \x03(\x05R\aresults\"\xa0\x06\n" +
+	"\aresults\x18\x01 \x03(\x05R\aresults\"\xdd\x06\n" +
 	"\vPairRequest\x120\n" +
 	"\vpair_method\x18\x01 \x01(\x0e2\x0f.ipc.PairMethodR\n" +
 	"pairMethod\x12!\n" +
@@ -570,11 +581,12 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x06rounds\x18\f \x01(\x05R\x06rounds\x12!\n" +
 	"\fplace_prizes\x18\r \x01(\x05R\vplacePrizes\x12#\n" +
 	"\rdivision_sims\x18\x0e \x01(\x05R\fdivisionSims\x12*\n" +
-	"\x11control_loss_sims\x18\x0f \x01(\x05R\x0fcontrolLossSims\x12(\n" +
-	"\x10use_control_loss\x18\x10 \x01(\bR\x0euseControlLoss\x12*\n" +
+	"\x11control_loss_sims\x18\x0f \x01(\x05R\x0fcontrolLossSims\x12A\n" +
+	"\x1dcontrol_loss_activation_round\x18\x10 \x01(\x05R\x1acontrolLossActivationRound\x12*\n" +
 	"\x11allow_repeat_byes\x18\x11 \x01(\bR\x0fallowRepeatByes\x12'\n" +
 	"\x0fremoved_players\x18\x12 \x03(\x05R\x0eremovedPlayers\x12\x12\n" +
-	"\x04seed\x18\x13 \x01(\x03R\x04seed\"\x90\x01\n" +
+	"\x04seed\x18\x13 \x01(\x03R\x04seed\x12\"\n" +
+	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\"\x90\x01\n" +
 	"\fPairResponse\x12-\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x0e2\x0e.ipc.PairErrorR\terrorCode\x12#\n" +
@@ -583,7 +595,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\bpairings\x18\x04 \x03(\x05R\bpairings*\x15\n" +
 	"\n" +
 	"PairMethod\x12\a\n" +
-	"\x03COP\x10\x00*\xe6\x06\n" +
+	"\x03COP\x10\x00*\x91\a\n" +
 	"\tPairError\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\x1d\n" +
 	"\x19PLAYER_COUNT_INSUFFICIENT\x10\x01\x12\x1c\n" +
@@ -608,15 +620,16 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x1eINVALID_CONTROL_LOSS_THRESHOLD\x10\x13\x12!\n" +
 	"\x1dINVALID_HOPEFULNESS_THRESHOLD\x10\x14\x12\x19\n" +
 	"\x15INVALID_DIVISION_SIMS\x10\x15\x12\x1d\n" +
-	"\x19INVALID_CONTROL_LOSS_SIMS\x10\x16\x12\x18\n" +
-	"\x14INVALID_PLACE_PRIZES\x10\x17\x12\x1a\n" +
-	"\x16INVALID_REMOVED_PLAYER\x10\x18\x12\x1e\n" +
-	"\x1aINVALID_VALID_PLAYER_COUNT\x10\x19\x12\x17\n" +
-	"\x13MIN_WEIGHT_MATCHING\x10\x1a\x12\x1b\n" +
-	"\x17INVALID_PAIRINGS_LENGTH\x10\x1b\x12\x13\n" +
-	"\x0fOVERCONSTRAINED\x10\x1c\x12\x1a\n" +
-	"\x16REQUEST_TO_JSON_FAILED\x10\x1d\x12\v\n" +
-	"\aTIMEOUT\x10\x1eBq\n" +
+	"\x19INVALID_CONTROL_LOSS_SIMS\x10\x16\x12)\n" +
+	"%INVALID_CONTROL_LOSS_ACTIVATION_ROUND\x10\x17\x12\x18\n" +
+	"\x14INVALID_PLACE_PRIZES\x10\x18\x12\x1a\n" +
+	"\x16INVALID_REMOVED_PLAYER\x10\x19\x12\x1e\n" +
+	"\x1aINVALID_VALID_PLAYER_COUNT\x10\x1a\x12\x17\n" +
+	"\x13MIN_WEIGHT_MATCHING\x10\x1b\x12\x1b\n" +
+	"\x17INVALID_PAIRINGS_LENGTH\x10\x1c\x12\x13\n" +
+	"\x0fOVERCONSTRAINED\x10\x1d\x12\x1a\n" +
+	"\x16REQUEST_TO_JSON_FAILED\x10\x1e\x12\v\n" +
+	"\aTIMEOUT\x10\x1fBq\n" +
 	"\acom.ipcB\tPairProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (

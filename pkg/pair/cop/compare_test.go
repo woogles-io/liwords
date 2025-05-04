@@ -217,7 +217,7 @@ func parseConfigFile(filepath string) (*TSHConfig, error) {
 				config.Hopefulness = parseFloat64List(value)
 			case "control_loss_activation_round":
 				if v, err := strconv.Atoi(value); err == nil {
-					config.ControlLossActivationRound = int32(v)
+					config.ControlLossActivationRound = int32(v - 1)
 				}
 			}
 		} else {
@@ -330,7 +330,7 @@ func getRoundInfo(oldLogFile string) (int, int, int) {
 	return numPairings, numResults, roundsRemaining
 }
 
-func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pairForRound int, oldLogFile string) *pb.PairRequest {
+func createPairRequest(players []Player, totalRounds int, config *TSHConfig, oldLogFile string) *pb.PairRequest {
 	var playerNames []string
 	var playerClasses []int32
 	var removedPlayers []int32
@@ -340,8 +340,6 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pai
 		playerNames = append(playerNames, player.Name)
 		playerClasses = append(playerClasses, player.Class)
 	}
-
-	useControlLoss := pairForRound >= int(config.ControlLossActivationRound-1)
 
 	numPairings, numResults, roundsRemaining := getRoundInfo(oldLogFile)
 
@@ -383,25 +381,25 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, pai
 	}
 
 	return &pb.PairRequest{
-		PairMethod:           pb.PairMethod_COP,
-		PlayerNames:          playerNames,
-		PlayerClasses:        playerClasses,
-		DivisionPairings:     divisionPairings,
-		DivisionResults:      divisionResults,
-		ClassPrizes:          config.ClassPrizes,
-		GibsonSpread:         apiGibsonSpread,
-		ControlLossThreshold: apiControlLossThreshold,
-		HopefulnessThreshold: apiHopefulness,
-		AllPlayers:           int32(len(players)),
-		ValidPlayers:         int32(len(players)) - int32(len(removedPlayers)),
-		Rounds:               int32(totalRounds),
-		PlacePrizes:          config.NumPlacePrizes,
-		DivisionSims:         config.Simulations,
-		ControlLossSims:      config.AlwaysWinsSimulations,
-		UseControlLoss:       useControlLoss,
-		AllowRepeatByes:      false, // Example default
-		RemovedPlayers:       removedPlayers,
-		Seed:                 0,
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                playerNames,
+		PlayerClasses:              playerClasses,
+		DivisionPairings:           divisionPairings,
+		DivisionResults:            divisionResults,
+		ClassPrizes:                config.ClassPrizes,
+		GibsonSpread:               apiGibsonSpread,
+		ControlLossThreshold:       apiControlLossThreshold,
+		HopefulnessThreshold:       apiHopefulness,
+		AllPlayers:                 int32(len(players)),
+		ValidPlayers:               int32(len(players)) - int32(len(removedPlayers)),
+		Rounds:                     int32(totalRounds),
+		PlacePrizes:                config.NumPlacePrizes,
+		DivisionSims:               config.Simulations,
+		ControlLossSims:            config.AlwaysWinsSimulations,
+		ControlLossActivationRound: config.ControlLossActivationRound,
+		AllowRepeatByes:            false, // Example default
+		RemovedPlayers:             removedPlayers,
+		Seed:                       0,
 	}
 }
 
@@ -453,15 +451,6 @@ func parseOldPairings(filepath string) (map[int32]int32, error) {
 	}
 
 	return pairings, nil
-}
-
-// Helper function to extract a player's ID from a log line.
-func extractPlayerID(playerString string) int32 {
-	// Example input: "(#9)"
-	playerString = strings.Trim(playerString, "(#)")
-	var id int32
-	fmt.Sscanf(playerString, "%d", &id)
-	return id
 }
 
 func TestCompare(t *testing.T) {
@@ -528,7 +517,7 @@ func TestCompare(t *testing.T) {
 		// }
 
 		// Construct the new PairRequest
-		req := createPairRequest(players, totalRounds, config, round, oldLogFile)
+		req := createPairRequest(players, totalRounds, config, oldLogFile)
 
 		// Call the COPPair function to generate new pairings
 		resp := cop.COPPair(ctx, req)
