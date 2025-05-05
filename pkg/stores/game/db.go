@@ -172,7 +172,17 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	// There's a chance the game is over, so we want to get that state before
 	// the following function modifies it.
 	histPlayState := hist.GetPlayState()
+	// We also want to back up the challenge rule.
+	histChallRule := hist.GetChallengeRule()
+	// Temporarily set the challenge rule to SINGLE if it was VOID.
+	// We want to avoid situations where dictionaries may have been mistakenly
+	// updated in place to make some words phonies.
+	// (See RD28, which did not stay constant over time)
+	if histChallRule == macondopb.ChallengeRule_VOID {
+		hist.ChallengeRule = macondopb.ChallengeRule_SINGLE
+	}
 	log.Debug().Interface("old-play-state", histPlayState).Msg("play-state-loading-hist")
+
 	// This function modifies the history. (XXX it probably shouldn't)
 	// It modifies the play state as it plays the game from the beginning.
 	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
@@ -192,6 +202,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	// We could consider changing NewFromHistory, but we want it to be as
 	// flexible as possible for things like analysis mode.
 	entGame.SetPlaying(histPlayState)
+	hist.ChallengeRule = histChallRule
 	entGame.History().PlayState = histPlayState
 
 	return entGame, nil
