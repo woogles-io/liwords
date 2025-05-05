@@ -1,0 +1,21 @@
+meta {
+  name: GetGameDocument
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/game_service.GameMetadataService/GetGameDocument
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "game_id": "6SNa85yM"
+  }
+}
+
+docs {
+  Only used for non-annotated games.
+}

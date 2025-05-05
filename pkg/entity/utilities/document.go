@@ -102,6 +102,7 @@ func ToGameDocument(g *entity.Game, cfg *config.Config) (*ipc.GameDocument, erro
 			MaxOvertime:      int32(g.Timers.MaxOvertime),
 			IncrementSeconds: g.GameReq.IncrementSeconds,
 		},
+		Description: g.History().Description,
 	}
 
 	populateBoard(g, gdoc)
@@ -144,6 +145,19 @@ func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHist
 		return mw.UserVisiblePlayedTiles(letterdist.TileMapping())
 	}
 
+	rackConverterForExchange := func(bts []byte, idx int) string {
+		mw := tilemapping.FromByteArr(bts)
+		return mw.UserVisible(letterdist.TileMapping())
+	}
+	var finalScores []int32
+	if doc.EndReason != ipc.GameEndReason_ABORTED && doc.EndReason != ipc.GameEndReason_CANCELLED {
+		// compute final scores from the doc's events:
+		finalScores = make([]int32, len(doc.Players))
+		for _, event := range doc.Events {
+			finalScores[event.PlayerIndex] = event.Cumulative
+		}
+	}
+
 	eventConverter := func(evt *ipc.GameEvent, index int) *macondo.GameEvent {
 		// macondo GameHistory expects the rack for challenge bonus events to be
 		// the next rack for the player who was challenged. So we need to pull this
@@ -158,29 +172,45 @@ func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHist
 				index++
 			}
 
-			if index+1 < len(doc.Events) {
+			if index+1 < len(doc.Events) &&
+				doc.Events[index+1].PlayerIndex == evt.PlayerIndex &&
+				doc.Events[index+1].Type != ipc.GameEvent_END_RACK_PTS {
+				// Check to make sure the rack we found actually belongs to this
+				// player, and is not the "rack" from the END_RACK_PTS event.
 				rack = doc.Events[index+1].Rack
+			}
+			// Otherwise keep whatever rack was in the event.
+		}
+		var tilesFromRack int
+		if evt.Type == ipc.GameEvent_EXCHANGE {
+			tilesFromRack = len(evt.Exchanged)
+		} else if evt.Type == ipc.GameEvent_TILE_PLACEMENT_MOVE {
+			for _, tile := range evt.PlayedTiles {
+				if tile != 0 {
+					tilesFromRack++
+				}
 			}
 		}
 
 		cvt := &macondo.GameEvent{
-			Rack:            rackConverter(rack, 0),
-			Type:            macondo.GameEvent_Type(evt.Type),
-			Cumulative:      evt.Cumulative,
-			Row:             evt.Row,
-			Column:          evt.Column,
-			Direction:       macondo.GameEvent_Direction(evt.Direction),
-			Position:        evt.Position,
-			PlayedTiles:     rackConverterForPlay(evt.PlayedTiles, 0),
-			Exchanged:       rackConverterForPlay(evt.Exchanged, 0),
-			Score:           evt.Score,
-			Bonus:           evt.Bonus,
-			EndRackPoints:   evt.EndRackPoints,
-			LostScore:       evt.LostScore,
-			IsBingo:         evt.IsBingo,
-			WordsFormed:     lo.Map(evt.WordsFormed, rackConverter),
-			MillisRemaining: evt.MillisRemaining,
-			PlayerIndex:     evt.PlayerIndex,
+			Rack:             rackConverter(rack, 0),
+			Type:             macondo.GameEvent_Type(evt.Type),
+			Cumulative:       evt.Cumulative,
+			Row:              evt.Row,
+			Column:           evt.Column,
+			Direction:        macondo.GameEvent_Direction(evt.Direction),
+			Position:         evt.Position,
+			PlayedTiles:      rackConverterForPlay(evt.PlayedTiles, 0),
+			Exchanged:        rackConverterForExchange(evt.Exchanged, 0),
+			Score:            evt.Score,
+			Bonus:            evt.Bonus,
+			EndRackPoints:    evt.EndRackPoints,
+			LostScore:        evt.LostScore,
+			IsBingo:          evt.IsBingo,
+			WordsFormed:      lo.Map(evt.WordsFormed, rackConverter),
+			MillisRemaining:  evt.MillisRemaining,
+			PlayerIndex:      evt.PlayerIndex,
+			NumTilesFromRack: uint32(tilesFromRack),
 		}
 
 		return cvt
@@ -206,6 +236,9 @@ func ToGameHistory(doc *ipc.GameDocument, cfg *config.Config) (*macondo.GameHist
 		Winner:             doc.Winner,
 		BoardLayout:        doc.BoardLayout,
 		LetterDistribution: doc.LetterDistribution,
+		Description:        doc.Description,
+		IdAuth:             "io.woogles", // hardcoded for now
+		FinalScores:        finalScores,
 	}
 	return history, nil
 
