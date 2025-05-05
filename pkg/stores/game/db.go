@@ -202,7 +202,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	// We could consider changing NewFromHistory, but we want it to be as
 	// flexible as possible for things like analysis mode.
 	entGame.SetPlaying(histPlayState)
-	hist.ChallengeRule = histChallRule
+	entGame.History().ChallengeRule = histChallRule
 	entGame.History().PlayState = histPlayState
 
 	return entGame, nil
