@@ -26,6 +26,7 @@ services:
       AWS_ACCESS_KEY_ID: 'liwords'
       AWS_SECRET_KEY: 'liwords-pass'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
+      PAST_GAMES_BUCKET: woogles-past-games
       USE_MINIO_S3: 1
       MINIO_S3_ENDPOINT: http://minio:9000
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
@@ -202,6 +203,8 @@ services:
       /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass;
       /usr/bin/mc mb myminio/woogles-uploads;
       /usr/bin/mc anonymous set public myminio/woogles-uploads;
+      /usr/bin/mc mb myminio/woogles-past-games;
+      /usr/bin/mc anonymous set public myminio/woogles-past-games;
       exit 0;
       "
     networks:

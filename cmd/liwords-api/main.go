@@ -157,8 +157,18 @@ func main() {
 	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithIncludeQueryParameters())
 	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 
+	// s3 config
+	awscfg, err := awsconfig.LoadDefaultConfig(
+		context.Background(), awsconfig.WithEndpointResolverWithOptions(
+			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+	if err != nil {
+		panic(err)
+	}
+	otelaws.AppendMiddlewares(&awscfg.APIOptions)
+	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
+
 	router := http.NewServeMux()
-	stores, err := stores.NewInitializedStores(dbPool, redisPool, cfg)
+	stores, err := stores.NewInitializedStores(dbPool, redisPool, s3Client, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -182,16 +192,6 @@ func main() {
 		ErrorReqResLoggingMiddleware,
 	)
 
-	// s3 config
-
-	awscfg, err := awsconfig.LoadDefaultConfig(
-		context.Background(), awsconfig.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
-	if err != nil {
-		panic(err)
-	}
-	otelaws.AppendMiddlewares(&awscfg.APIOptions)
-	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 	lambdaClient := lambda.NewFromConfig(awscfg)
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,

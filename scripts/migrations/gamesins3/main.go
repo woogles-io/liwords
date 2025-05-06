@@ -44,7 +44,7 @@ func testGDocMigration(cfg *config.Config, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	gameStore, err := game.NewDBStore(cfg, ustore, pool)
+	gameStore, err := game.NewDBAndS3Store(cfg, ustore, pool, nil, "")
 	if err != nil {
 		return err
 	}

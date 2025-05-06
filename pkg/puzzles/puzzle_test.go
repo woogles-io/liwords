@@ -982,7 +982,7 @@ func RecreateDB() (*DBController, int, int) {
 		panic(err)
 	}
 
-	tempGameStore, err := gamestore.NewDBStore(cfg, userStore, pool)
+	tempGameStore, err := gamestore.NewDBAndS3Store(cfg, userStore, pool, nil, "")
 	if err != nil {
 		panic(err)
 	}

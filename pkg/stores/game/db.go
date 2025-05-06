@@ -1,16 +1,20 @@
 package game
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -22,6 +26,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 
@@ -29,6 +34,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pkguser "github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -36,13 +42,15 @@ const (
 	MaxRecentGames = 1000
 )
 
-// DBStore is a postgres-backed store for games.
-type DBStore struct {
+// DBAndS3Store is a postgres and S3-backed store for games.
+type DBAndS3Store struct {
 	cfg     *config.Config
 	db      *gorm.DB
 	queries *models.Queries
 
-	userStore pkguser.Store
+	userStore       pkguser.Store
+	s3Client        *s3.Client
+	pastGamesBucket string
 
 	// This reference is here so we can copy it to every game we pull
 	// from the database.
@@ -69,6 +77,7 @@ type game struct {
 	GameEndReason int `gorm:"index"`
 	WinnerIdx     int
 	LoserIdx      int
+	HistoryInS3   bool // Whether the history is in S3 or not.
 
 	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
 
@@ -87,7 +96,8 @@ type game struct {
 }
 
 // NewDBStore creates a new DB store for games.
-func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool) (*DBStore, error) {
+func NewDBAndS3Store(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool,
+	s3Client *s3.Client, pastGamesBucket string) (*DBAndS3Store, error) {
 
 	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
 	if err != nil {
@@ -101,16 +111,17 @@ func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.
 	// I don't know how to do this with GORM. This makes the GetRematchStreak function
 	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
+	return &DBAndS3Store{db: db, cfg: config, userStore: userStore,
+		queries: models.New(dbPool), s3Client: s3Client, pastGamesBucket: pastGamesBucket}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
-func (s *DBStore) SetGameEventChan(c chan<- *entity.EventWrapper) {
+func (s *DBAndS3Store) SetGameEventChan(c chan<- *entity.EventWrapper) {
 	s.gameEventChan = c
 }
 
 // GameEventChan returns the game event channel for all games.
-func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
+func (s *DBAndS3Store) GameEventChan() chan<- *entity.EventWrapper {
 	return s.gameEventChan
 }
 
@@ -119,7 +130,7 @@ func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
 // The db store should be wrapped with a cache.
 // Only API nodes that have this game in its cache should respond to requests.
 // XXX: The above comment is obsolete and we will likely redo the way we do caches in the future.
-func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
+func (s *DBAndS3Store) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
@@ -143,18 +154,49 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
 		GameReq:        &g.Request, // move to g.GameRequest after JSON migration
-
+		HistoryInS3:    g.HistoryInS3,
 	}
 	entGame.SetTimerModule(&entity.GameTimer{})
 
-	// Then unmarshal the history and start a game from it.
 	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(g.History, hist)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
 
+	if g.HistoryInS3 {
+		result, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
+			Bucket: &s.pastGamesBucket,
+			Key:    &id,
+		})
+		if err != nil {
+			log.Err(err).Msg("error-getting-history-from-s3")
+			return nil, err
+		}
+		defer result.Body.Close()
+		bts, err := io.ReadAll(result.Body)
+		if err != nil {
+			log.Err(err).Msg("error-reading-history-from-s3")
+			return nil, err
+		}
+		doc := &ipc.GameDocument{}
+		err = protojson.Unmarshal(bts, doc)
+		if err != nil {
+			log.Err(err).Msg("error-unmarshalling-gdoc-from-s3")
+			return nil, err
+		}
+
+		hist, err = utilities.ToGameHistory(doc, s.cfg)
+		if err != nil {
+			log.Err(err).Msg("error-converting-gdoc-to-history")
+			return nil, err
+		}
+		log.Debug().Interface("hist", hist).Msg("hist-convert")
+	} else {
+		// Then unmarshal the history and start a game from it.
+
+		err = proto.Unmarshal(g.History, hist)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+	}
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
@@ -209,7 +251,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
-func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
+func (s *DBAndS3Store) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
 	g := &game{}
 
 	result := s.db.Where("uuid = ?", id).First(g)
@@ -221,7 +263,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 
 }
 
-func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
+func (s *DBAndS3Store) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Raw(`SELECT uuid, winner_idx, quickdata FROM games where quickdata->>'o' = ?
@@ -275,7 +317,7 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 	return resp, nil
 }
 
-func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
+func (s *DBAndS3Store) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
@@ -340,7 +382,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	return convertGamesToInfoResponses(games)
 }
 
-func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
+func (s *DBAndS3Store) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
@@ -456,16 +498,44 @@ func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
 
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
-func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
+func (s *DBAndS3Store) Set(ctx context.Context, g *entity.Game) error {
 	// s.db.LogMode(true)
 	dbg, err := s.toDBObj(g)
 	if err != nil {
 		return err
 	}
-	th := &macondopb.GameHistory{}
-	err = proto.Unmarshal(dbg.History, th)
-	if err != nil {
-		return err
+	if g.GameEndReason != pb.GameEndReason_NONE &&
+		g.GameEndReason != pb.GameEndReason_CANCELLED &&
+		!g.HistoryInS3 && s.s3Client != nil {
+		// This game is over, one way or another. Save gdoc in S3.
+		log.Info().Str("id", g.GameID()).Msg("uploading finished game to S3")
+		gdoc, err := utilities.ToGameDocument(g, s.cfg)
+		if err != nil {
+			// this is bad!
+			log.Err(err).Msg("error-converting-gdoc")
+		} else {
+			gdocbts, err := protojson.Marshal(gdoc)
+			if err != nil {
+				return err
+			}
+			gid := g.GameID()
+			_, err = s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+				Bucket: &s.pastGamesBucket,
+				Key:    &gid,
+				Body:   bytes.NewReader(gdocbts),
+			})
+			if err != nil {
+				log.Err(err).Msg("error-putting-gdoc-to-s3")
+			} else {
+				// only delete history from DB if we successfully
+				// put it in S3.
+				dbg.HistoryInS3 = true
+				// Annoyingly we can't set it to null with gorm.
+				dbg.History = []byte{'.'}
+				g.HistoryInS3 = true
+			}
+		}
+
 	}
 
 	// result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
@@ -478,10 +548,14 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	result := ctxDB.Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("uuid = ?", g.GameID()).Updates(dbg)
 
-	return result.Error
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
 }
 
-func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
+func (s *DBAndS3Store) Exists(ctx context.Context, id string) (bool, error) {
 
 	var count int64
 	result := s.db.Model(&game{}).Where("uuid = ?", id).Count(&count)
@@ -495,7 +569,7 @@ func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
 }
 
 // Create saves a brand new entity to the database
-func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
+func (s *DBAndS3Store) Create(ctx context.Context, g *entity.Game) error {
 	dbg, err := s.toDBObj(g)
 	if err != nil {
 		return err
@@ -506,7 +580,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType) error {
+func (s *DBAndS3Store) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType) error {
 	if gt == pb.GameType_NATIVE {
 		return fmt.Errorf("this game already exists: %s", g.Uid())
 	}
@@ -528,7 +602,7 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error) {
+func (s *DBAndS3Store) ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
@@ -548,7 +622,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 	return convertGamesToInfoResponses(games)
 }
 
-func (s *DBStore) Count(ctx context.Context) (int64, error) {
+func (s *DBAndS3Store) Count(ctx context.Context) (int64, error) {
 	var count int64
 	result := s.db.Model(&game{}).Count(&count)
 	if result.Error != nil {
@@ -559,7 +633,7 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 
 // List all game IDs, ordered by date played. Should not be used by anything
 // other than debug or migration code when the db is still small.
-func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
+func (s *DBAndS3Store) ListAllIDs(ctx context.Context) ([]string, error) {
 	var gids []struct{ Uuid string }
 	result := s.db.Table("games").Select("uuid").Order("created_at").Scan(&gids)
 
@@ -571,7 +645,7 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return ids, result.Error
 }
 
-func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+func (s *DBAndS3Store) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
 	var rf struct {
 		ReadyFlag int
 	}
@@ -585,7 +659,7 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 	return rf.ReadyFlag, result.Error
 }
 
-func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
+func (s *DBAndS3Store) toDBObj(g *entity.Game) (*game, error) {
 	timers, err := json.Marshal(g.Timers)
 	if err != nil {
 		return nil, err
@@ -640,7 +714,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 	return dbg, nil
 }
 
-func (s *DBStore) Disconnect() {
+func (s *DBAndS3Store) Disconnect() {
 	dbSQL, err := s.db.DB()
 	if err == nil {
 		log.Info().Msg("disconnecting SQL db")
@@ -650,11 +724,11 @@ func (s *DBStore) Disconnect() {
 	log.Err(err).Msg("unable to disconnect")
 }
 
-func (s *DBStore) CachedCount(ctx context.Context) int {
+func (s *DBAndS3Store) CachedCount(ctx context.Context) int {
 	return 0
 }
 
-func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+func (s *DBAndS3Store) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
 	g := &game{}
 
 	ctxDB := s.db.WithContext(ctx)

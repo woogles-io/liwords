@@ -89,6 +89,7 @@ func NewCache(backing backingStore) *Cache {
 // Unload unloads the game from the cache
 func (c *Cache) Unload(ctx context.Context, id string) {
 	c.cache.Remove(id)
+	log.Info().Str("gameid", id).Msg("unloading-game-from-cache")
 	// Let's also expire the active games cache. The only time we ever
 	// call Unload is when a game is over - so we don't want to go back
 	// to the lobby and still show our game as active.

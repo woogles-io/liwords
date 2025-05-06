@@ -241,6 +241,8 @@ type Game struct {
 	TournamentData *TournamentData
 	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
+
+	HistoryInS3 bool
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time
