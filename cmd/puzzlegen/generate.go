@@ -50,7 +50,7 @@ func main() {
 		panic(err)
 	}
 
-	tempgs, err := gamestore.NewDBStore(cfg, us, pool)
+	tempgs, err := gamestore.NewDBAndS3Store(cfg, us, pool, nil, "")
 	if err != nil {
 		panic(err)
 	}

@@ -1,6 +1,9 @@
 package stores
 
 import (
+	"os"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	redigoredis "github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -43,7 +46,7 @@ type Stores struct {
 	Queries *models.Queries
 }
 
-func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg *cfg.Config) (*Stores, error) {
+func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, s3Client *s3.Client, cfg *cfg.Config) (*Stores, error) {
 	stores := &Stores{}
 	var err error
 	stores.UserStore, err = user.NewDBStore(dbPool)
@@ -56,7 +59,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 
-	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore, dbPool)
+	tmpGameStore, err := game.NewDBAndS3Store(cfg, stores.UserStore, dbPool, s3Client, os.Getenv("PAST_GAMES_BUCKET"))
 	if err != nil {
 		return nil, err
 	}

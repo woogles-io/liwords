@@ -65,7 +65,7 @@ func userStore(pool *pgxpool.Pool) pkguser.Store {
 	return ustore
 }
 
-func recreateDB() (pkguser.Store, *DBStore) {
+func recreateDB() (pkguser.Store, *DBAndS3Store) {
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		panic(err)
@@ -94,7 +94,7 @@ func recreateDB() (pkguser.Store, *DBStore) {
 	cfg := DefaultConfig
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
-	gstore, err := NewDBStore(cfg, ustore, pool)
+	gstore, err := NewDBAndS3Store(cfg, ustore, pool, nil, "")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -103,7 +103,7 @@ func recreateDB() (pkguser.Store, *DBStore) {
 	return ustore, gstore
 }
 
-func addfakeGames(gstore *DBStore) {
+func addfakeGames(gstore *DBAndS3Store) {
 	protocts, err := os.ReadFile("./testdata/game1/history.json")
 	if err != nil {
 		panic(err)
@@ -137,7 +137,7 @@ func addfakeGames(gstore *DBStore) {
 	}
 }
 
-func createGame(ustore pkguser.Store, gstore *DBStore, p0, p1 string, initTime int32, is *is.I) *entity.Game {
+func createGame(ustore pkguser.Store, gstore *DBAndS3Store, p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	u1, err := ustore.Get(context.Background(), p0)
 	is.NoErr(err)
 
