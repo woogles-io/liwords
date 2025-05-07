@@ -2,6 +2,7 @@ package game
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -161,20 +162,37 @@ func (s *DBAndS3Store) Get(ctx context.Context, id string) (*entity.Game, error)
 	hist := &macondopb.GameHistory{}
 
 	if g.HistoryInS3 {
+		year, month, _ := g.CreatedAt.Time.Date()
+		key := fmt.Sprintf("%d/%02d/%s.gz", year, month, id)
+
 		result, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: &s.pastGamesBucket,
-			Key:    &id,
+			Key:    &key,
 		})
 		if err != nil {
 			log.Err(err).Msg("error-getting-history-from-s3")
 			return nil, err
 		}
 		defer result.Body.Close()
-		bts, err := io.ReadAll(result.Body)
+		rawbts, err := io.ReadAll(result.Body)
 		if err != nil {
 			log.Err(err).Msg("error-reading-history-from-s3")
 			return nil, err
 		}
+
+		gzipReader, err := gzip.NewReader(bytes.NewReader(rawbts))
+		if err != nil {
+			log.Err(err).Msg("error-creating-gzip-reader")
+			return nil, err
+		}
+		defer gzipReader.Close()
+
+		bts, err := io.ReadAll(gzipReader)
+		if err != nil {
+			log.Err(err).Msg("error-reading-gzipped-data")
+			return nil, err
+		}
+
 		doc := &ipc.GameDocument{}
 		err = protojson.Unmarshal(bts, doc)
 		if err != nil {
@@ -518,11 +536,23 @@ func (s *DBAndS3Store) Set(ctx context.Context, g *entity.Game) error {
 			if err != nil {
 				return err
 			}
-			gid := g.GameID()
+			var gzippedGdocbts bytes.Buffer
+			gzipWriter := gzip.NewWriter(&gzippedGdocbts)
+			if _, err = gzipWriter.Write(gdocbts); err != nil {
+				return err
+			}
+			if err = gzipWriter.Close(); err != nil {
+				return err
+			}
+
+			year, month, _ := g.CreatedAt.Date()
+			key := fmt.Sprintf("%d/%02d/%s.gz", year, month, g.GameID())
+			body := bytes.NewReader(gzippedGdocbts.Bytes())
+
 			_, err = s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 				Bucket: &s.pastGamesBucket,
-				Key:    &gid,
-				Body:   bytes.NewReader(gdocbts),
+				Key:    &key,
+				Body:   body,
 			})
 			if err != nil {
 				log.Err(err).Msg("error-putting-gdoc-to-s3")

@@ -383,6 +383,7 @@ func CancelledGameDeleter() error {
 		DELETE FROM games
 		WHERE game_end_reason = 7 -- cancelled games
 		AND created_at < NOW() - INTERVAL '1 day'
+		AND created_at > NOW() - INTERVAL '7 days'
 		RETURNING id;
 	`
 
