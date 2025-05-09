@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, DragEvent, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 import TentativeScore from "./tentative_score";
 import {
@@ -6,7 +6,6 @@ import {
   EmptyRackSpaceMachineLetter,
   MachineLetter,
   isDesignatedBlankMachineLetter,
-  isTouchDevice,
   uniqueTileIdx,
 } from "../utils/cwgame/common";
 import { Popover } from "antd";
@@ -150,62 +149,10 @@ const Tile = React.memo((props: TileProps) => {
     return props.alphabet.letterMap[rune.toUpperCase()]?.bnjyable;
   }, [props.alphabet, rune]);
 
-  const [isMouseDragging, setIsMouseDragging] = useState(false);
-
-  const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
-    setIsMouseDragging(true);
-    e.dataTransfer.dropEffect = "move";
-    if (
-      props.tentative &&
-      typeof props.x == "number" &&
-      typeof props.y == "number"
-    ) {
-      e.dataTransfer.setData(
-        "tileIndex",
-        uniqueTileIdx(props.y, props.x).toString(),
-      );
-    } else {
-      e.dataTransfer.setData("rackIndex", props.rackIndex?.toString() || "");
-    }
-  };
-
-  const handleEndDrag = () => {
-    setIsMouseDragging(false);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    if (props.handleTileDrop && props.y != null && props.x != null) {
-      props.handleTileDrop(
-        props.y,
-        props.x,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
-      );
-      return;
-    }
-    if (props.moveRackTile && e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        props.rackIndex,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else {
-      if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-        props.returnToRack(
-          props.rackIndex,
-          parseInt(e.dataTransfer.getData("tileIndex"), 10),
-        );
-      }
-    }
-  };
-
-  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   const canDrag =
     props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
+    type: TILE_TYPE,
     item: {
       rackIndex:
         typeof props.rackIndex === "number"
@@ -221,10 +168,9 @@ const Tile = React.memo((props: TileProps) => {
       playerOfTile: props.playerOfTile,
     },
     collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
+      isDragging: !!monitor.isDragging(),
     }),
     canDrag: (monitor) => canDrag,
-    type: TILE_TYPE,
   });
 
   useEffect(() => {
@@ -249,22 +195,8 @@ const Tile = React.memo((props: TileProps) => {
     }),
   });
 
-  const tileRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
-  useEffect(() => {
-    if (canDrag && isTouchDeviceResult) {
-      drag(tileRef);
-    }
-  }, [canDrag, isTouchDeviceResult, drag]);
-  const canDrop = props.handleTileDrop && props.y != null && props.x != null;
-  useEffect(() => {
-    if (canDrop && isTouchDeviceResult) {
-      drop(tileRef);
-    }
-  }, [canDrop, isTouchDeviceResult, drop]);
-
   const computedClassName = `tile${
-    isDragging || isMouseDragging ? " dragging" : ""
+    isDragging ? " dragging" : ""
   }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
     props.tentative ? " tentative" : ""
   }${props.lastPlayed ? " last-played" : ""}${
@@ -273,7 +205,7 @@ const Tile = React.memo((props: TileProps) => {
     (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
   }`;
   let ret = (
-    <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
+    <div ref={(node) => drag(drop(node))}>
       <div
         className={computedClassName}
         data-letter={props.letter}
@@ -289,9 +221,6 @@ const Tile = React.memo((props: TileProps) => {
         onContextMenu={props.onContextMenu}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
-        onDragStart={canDrag ? handleStartDrag : undefined}
-        onDragEnd={handleEndDrag}
-        draggable={canDrag}
       >
         {props.letter !== EmptyRackSpaceMachineLetter && (
           <React.Fragment>

@@ -1,7 +1,7 @@
-import React, { DragEvent, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { useDrop, XYCoord } from "react-dnd";
 import Tile, { TILE_TYPE } from "./tile";
-import { MachineWord, isTouchDevice } from "../utils/cwgame/common";
+import { MachineWord } from "../utils/cwgame/common";
 import { Alphabet, scoreFor } from "../constants/alphabets";
 
 // const TileSpacing = 6;
@@ -40,58 +40,55 @@ type Props = {
 };
 
 export const Rack = React.memo((props: Props) => {
-  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  const handleDrop = (e: DragEvent<HTMLDivElement>, index: number) => {
-    if (e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        index,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-      props.returnToRack(
-        index,
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
-      );
-    }
-  };
-  const [, drop] = useDrop({
-    accept: TILE_TYPE,
-    drop: (item: { rackIndex: string; tileIndex: number }, monitor) => {
-      const clientOffset = monitor.getClientOffset();
-      const rackElement = document.getElementById("rack");
-      const rackEmptyElement = document.getElementById("left-empty");
-      let rackPosition = 0;
-      if (clientOffset && rackElement && rackEmptyElement) {
-        rackPosition = calculatePosition(
+  const [, drop] = useDrop(
+    {
+      accept: TILE_TYPE,
+      drop: (item: { rackIndex: string; tileIndex: number }, monitor) => {
+        const clientOffset = monitor.getClientOffset();
+        const rackElement = document.getElementById("rack");
+        const rackEmptyElement = document.getElementById("left-empty");
+        let rackPosition = 0;
+        console.log(
+          "clientOffset",
           clientOffset,
-          rackElement,
-          rackEmptyElement,
-          props.letters.length,
+          "item",
+          item,
+          monitor.getItemType(),
+          monitor.getSourceClientOffset(),
+          monitor.getInitialClientOffset(),
+          monitor.getInitialSourceClientOffset(),
         );
-      }
-      if (item.rackIndex) {
-        props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
-      }
-      if (props.returnToRack && item.tileIndex) {
-        props.returnToRack(rackPosition, item.tileIndex);
-      }
+        if (clientOffset && rackElement && rackEmptyElement) {
+          rackPosition = calculatePosition(
+            clientOffset,
+            rackElement,
+            rackEmptyElement,
+            props.letters.length,
+          );
+        }
+        if (item.rackIndex) {
+          props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
+        }
+        if (props.returnToRack && item.tileIndex) {
+          props.returnToRack(rackPosition, item.tileIndex);
+        }
+      },
+      hover: (item, monitor) => {
+        const clientOffset = monitor.getClientOffset();
+        console.log("hover clientOffset", clientOffset);
+        // You can store this in state if needed for use in drop
+      },
+      collect: (monitor) => ({
+        isOver: !!monitor.isOver(),
+        canDrop: !!monitor.canDrop(),
+      }),
     },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop(),
-    }),
-  });
+    [props.letters.length, props.moveRackTile, props.returnToRack],
+  );
   const rackRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
   useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(rackRef);
-    }
-  }, [isTouchDeviceResult, drop]);
-
+    drop(rackRef);
+  }, [drop]);
   const renderTiles = () => {
     const tiles = [];
     if (props.letters.length === 0) {
@@ -126,22 +123,9 @@ export const Rack = React.memo((props: Props) => {
 
   return (
     <div className="rack" ref={rackRef} id="rack">
-      <div
-        className="empty-rack droppable"
-        id="left-empty"
-        onDragOver={handleDropOver}
-        onDrop={(e) => {
-          handleDrop(e, 0);
-        }}
-      />
+      <div className="empty-rack droppable" id="left-empty" />
       {renderTiles()}
-      <div
-        className="empty-rack droppable"
-        onDragOver={handleDropOver}
-        onDrop={(e) => {
-          handleDrop(e, props.letters.length);
-        }}
-      />
+      <div className="empty-rack droppable" />
     </div>
   );
 });

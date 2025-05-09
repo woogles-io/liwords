@@ -1,4 +1,4 @@
-import React, { DragEvent } from "react";
+import React from "react";
 import { BonusType } from "../constants/board_layout";
 import {
   ArrowRightOutlined,
@@ -30,7 +30,6 @@ function getBonusProperties(bt: BonusType): BonusProperties {
 
 type Props = {
   bonusType: BonusType;
-  handleTileDrop: (e: DragEvent<HTMLDivElement>) => void;
   startingSquare: boolean;
   arrow: boolean;
   arrowHoriz: boolean;
@@ -56,18 +55,12 @@ const BoardSpace = React.memo((props: Props) => {
     }
   }
 
-  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
   return (
     <div
       className={`board-space droppable ${
         props.arrow ? "selected" : ""
       } bonus-${bonusClass ? bonusClass : "none"}`}
       onClick={props.clicked}
-      onDragOver={handleDropOver}
-      onDrop={props.handleTileDrop}
     >
       {bonusLabel}
       {startingSquare}
