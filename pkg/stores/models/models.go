@@ -88,7 +88,7 @@ type Game struct {
 	ReadyFlag      pgtype.Int8
 	MetaEvents     entity.MetaEventData
 	Type           pgtype.Int4
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 	HistoryInS3    bool
 }
 
@@ -142,6 +142,19 @@ type Notoriousgame struct {
 	PlayerID  pgtype.Text
 	Type      pgtype.Int4
 	Timestamp pgtype.Int8
+}
+
+type PastGame struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    entity.GameRequest
+	GameDocument   []byte
+	Stats          entity.Stats
+	Quickdata      entity.Quickdata
+	Type           int16
+	TournamentData *entity.TournamentData
 }
 
 type Permission struct {

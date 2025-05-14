@@ -1,0 +1,5 @@
+BEGIN;
+
+DROP TABLE past_games;
+
+COMMIT;

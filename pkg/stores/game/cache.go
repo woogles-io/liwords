@@ -26,7 +26,6 @@ type backingStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error)
-	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
@@ -215,10 +214,6 @@ func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error
 		c.Unlock()
 	}
 	return games, err
-}
-
-func (c *Cache) Count(ctx context.Context) (int64, error) {
-	return c.backing.Count(ctx)
 }
 
 func (c *Cache) CachedCount(ctx context.Context) int {
