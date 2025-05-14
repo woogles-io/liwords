@@ -18,7 +18,15 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "Stats"
+      - column: "past_games.stats"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Stats"
       - column: "games.quickdata"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Quickdata"
+      - column: "past_games.quickdata"
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "Quickdata"
@@ -26,6 +34,11 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "TournamentData"
+      - column: "past_games.tournament_data"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "TournamentData"
+          pointer: true
       - column: "games.meta_events"
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
@@ -34,7 +47,7 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "GameRequest"
-      - column: "games.game_request"
+      - column: "past_games.game_request"
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
-          type: "GameRequest"
+          type: "GameRequest" # this is just a wrapper on top of the pb \object
