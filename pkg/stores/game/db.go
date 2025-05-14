@@ -11,17 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 
@@ -29,6 +28,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	pkguser "github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -39,7 +39,6 @@ const (
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
 	cfg     *config.Config
-	db      *gorm.DB
 	queries *models.Queries
 
 	userStore pkguser.Store
@@ -50,58 +49,48 @@ type DBStore struct {
 	gameEventChan chan<- *entity.EventWrapper
 }
 
-type game struct {
-	gorm.Model
-	UUID string `gorm:"type:varchar(24);index"`
+// type game struct {
+// 	gorm.Model
+// 	UUID string `gorm:"type:varchar(24);index"`
 
-	Type      pb.GameType
-	Player0ID uint `gorm:"foreignKey;index"`
-	// Player0   user.User
+// 	Type      pb.GameType
+// 	Player0ID uint `gorm:"foreignKey;index"`
+// 	// Player0   user.User
 
-	Player1ID uint `gorm:"foreignKey;index"`
-	// Player1   user.User
+// 	Player1ID uint `gorm:"foreignKey;index"`
+// 	// Player1   user.User
 
-	ReadyFlag uint // When both players are ready, this game starts.
+// 	ReadyFlag uint // When both players are ready, this game starts.
 
-	Timers datatypes.JSON // A JSON blob containing the game timers.
+// 	Timers datatypes.JSON // A JSON blob containing the game timers.
 
-	Started       bool
-	GameEndReason int `gorm:"index"`
-	WinnerIdx     int
-	LoserIdx      int
+// 	Started       bool
+// 	GameEndReason int `gorm:"index"`
+// 	WinnerIdx     int
+// 	LoserIdx      int
 
-	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
+// 	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
 
-	// Protobuf representations of the game request and history.
-	Request []byte
-	History []byte
-	// Meta Events (abort, adjourn, adjudicate, etc requests)
-	MetaEvents datatypes.JSON
+// 	// Protobuf representations of the game request and history.
+// 	Request []byte
+// 	History []byte
+// 	// Meta Events (abort, adjourn, adjudicate, etc requests)
+// 	MetaEvents datatypes.JSON
 
-	Stats datatypes.JSON
+// 	Stats datatypes.JSON
 
-	// This is purposefully not a foreign key. It can be empty/NULL for
-	// most games.
-	TournamentID   string `gorm:"index"`
-	TournamentData datatypes.JSON
-}
+// 	// This is purposefully not a foreign key. It can be empty/NULL for
+// 	// most games.
+// 	TournamentID   string `gorm:"index"`
+// 	TournamentData datatypes.JSON
+// }
 
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool) (*DBStore, error) {
-
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Use(tracing.NewPlugin()); err != nil {
-		return nil, err
-	}
 	// Note: We need to manually add the following index on production:
 	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
-	// I don't know how to do this with GORM. This makes the GetRematchStreak function
-	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
+	return &DBStore{cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
@@ -121,11 +110,20 @@ func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
 // XXX: The above comment is obsolete and we will likely redo the way we do caches in the future.
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
-	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
+	g, err := s.queries.GetLiveGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		log.Err(err).Msg("error-get-game")
 		return nil, err
 	}
+	if g.GameEndReason.Int32 == int32(pb.GameEndReason_NONE) && g.GameEndReason.Valid {
+		// This is a game that is still in progress.
+		return s.inProgressGame(g, true)
+	} else {
+		return s.pastGame(g, true)
+	}
+}
+
+func (s *DBStore) inProgressGame(g models.Game, playTurns bool) (*entity.Game, error) {
 	// convert to an entity.Game
 	entGame := &entity.Game{
 		Started:        g.Started.Bool,
@@ -142,29 +140,33 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		Type:           pb.GameType(g.Type.Int32),
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
-		GameReq:        &g.Request, // move to g.GameRequest after JSON migration
-
+		GameReq:        &g.Request,
 	}
 	entGame.SetTimerModule(&entity.GameTimer{})
-
-	// Then unmarshal the history and start a game from it.
-	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(g.History, hist)
-	if err != nil {
-		return nil, err
+	if playTurns {
+		// Then unmarshal the history and start a game from it.
+		hist := &macondopb.GameHistory{}
+		err := proto.Unmarshal(g.History, hist)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+		return s.playHistory(entGame, hist)
 	}
-	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+	return entGame, nil
+}
 
+func (s *DBStore) playHistory(entGame *entity.Game, hist *macondopb.GameHistory) (*entity.Game, error) {
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
-		lexicon = g.Request.Lexicon
+		lexicon = entGame.GameReq.Lexicon
 	}
 
 	rules, err := macondogame.NewBasicGameRules(
-		s.cfg.MacondoConfig(), lexicon, g.Request.Rules.BoardLayoutName,
-		g.Request.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(g.Request.Rules.VariantName))
+		s.cfg.MacondoConfig(), lexicon, entGame.GameReq.Rules.BoardLayoutName,
+		entGame.GameReq.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(entGame.GameReq.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
@@ -208,18 +210,81 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	return entGame, nil
 }
 
+func (s *DBStore) pastGame(g models.Game, playTurns bool) (*entity.Game, error) {
+	gid := g.Uuid.String
+
+	pastgame, err := s.queries.GetPastGame(context.Background(), gid)
+	if err != nil {
+		log.Err(err).Msg("error-get-past-game")
+		return nil, err
+	}
+	// convert to an entity.Game
+	entGame := &entity.Game{
+		CreatedAt:      pastgame.CreatedAt.Time,
+		GameEndReason:  pb.GameEndReason(pastgame.GameEndReason),
+		GameReq:        &pastgame.GameRequest,
+		Stats:          &pastgame.Stats,
+		Quickdata:      &pastgame.Quickdata,
+		Type:           pb.GameType(pastgame.Type),
+		TournamentData: pastgame.TournamentData, // could be null
+	}
+	winnerIdx := pastgame.WinnerIdx
+	if winnerIdx.Valid {
+		entGame.WinnerIdx = int(winnerIdx.Int16)
+		switch entGame.WinnerIdx {
+		case 0:
+			entGame.LoserIdx = 1
+		case 1:
+			entGame.LoserIdx = 0
+		case -1:
+			entGame.LoserIdx = -1
+		default:
+			log.Err(fmt.Errorf("invalid winner index: %d", entGame.WinnerIdx)).Msg("invalid-winner-index")
+			return nil, fmt.Errorf("invalid winner index: %d", entGame.WinnerIdx)
+		}
+	}
+	if playTurns {
+		docbts := pastgame.GameDocument
+		if docbts != nil {
+			doc := &ipc.GameDocument{}
+			err = protojson.Unmarshal(docbts, doc)
+			if err != nil {
+				log.Err(err).Msg("error-unmarshalling-game-document")
+				return nil, err
+			}
+			gh, err := utilities.ToGameHistory(doc, s.cfg)
+			if err != nil {
+				log.Err(err).Msg("error-converting-game-document")
+				return nil, err
+			}
+			return s.playHistory(entGame, gh)
+		}
+		return nil, fmt.Errorf("game document is nil")
+	}
+
+	return entGame, nil
+}
+
 // GetMetadata gets metadata about the game, but does not actually play the game.
 func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
-	g := &game{}
 
-	result := s.db.Where("uuid = ?", id).First(g)
-	if result.Error != nil {
-		return nil, result.Error
+	g, err := s.queries.GetLiveGameMetadata(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		log.Err(err).Msg("error-get-game")
+		return nil, err
+	}
+	if g.GameEndReason.Int32 == int32(pb.GameEndReason_NONE) && g.GameEndReason.Valid {
+		// This is a game that is still in progress.
+		return s.inProgressMetadata(g)
+	} else {
+		return s.pastGameMetadata(g)
 	}
 
 	return convertGameToInfoResponse(g)
 
 }
+
+// func (s *DBStore)
 
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
@@ -548,41 +613,29 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 	return convertGamesToInfoResponses(games)
 }
 
-func (s *DBStore) Count(ctx context.Context) (int64, error) {
-	var count int64
-	result := s.db.Model(&game{}).Count(&count)
-	if result.Error != nil {
-		return 0, result.Error
-	}
-	return count, nil
-}
-
 // List all game IDs, ordered by date played. Should not be used by anything
 // other than debug or migration code when the db is still small.
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
-	var gids []struct{ Uuid string }
-	result := s.db.Table("games").Select("uuid").Order("created_at").Scan(&gids)
 
-	ids := make([]string, len(gids))
-	for idx, gid := range gids {
-		ids[idx] = gid.Uuid
+	ids, err := s.queries.ListAllIDs(ctx)
+	if err != nil {
+		log.Err(err).Msg("error-listing-all-ids")
+		return nil, err
 	}
-
-	return ids, result.Error
+	gameIDs := make([]string, len(ids))
+	for i, id := range ids {
+		gameIDs[i] = id.String
+	}
+	return gameIDs, nil
 }
 
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
-	var rf struct {
-		ReadyFlag int
-	}
-	ctxDB := s.db.WithContext(ctx)
+	readyRes, err := s.queries.SetReady(ctx, models.SetReadyParams{
+		PlayerIdx: int32(pidx),
+		Uuid:      common.ToPGTypeText(gid),
+	})
 
-	// If the game is already ready and this gets called again, this function
-	// returns 0 rows, which means rf.ReadyFlag == 0 and the game won't start again.
-	result := ctxDB.Raw(`update games set ready_flag = ready_flag | (1 << ?) where uuid = ?
-		and ready_flag & (1 << ?) = 0 returning ready_flag`, pidx, gid, pidx).Scan(&rf)
-
-	return rf.ReadyFlag, result.Error
+	return int(readyRes.Int64), err
 }
 
 func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
@@ -641,13 +694,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 }
 
 func (s *DBStore) Disconnect() {
-	dbSQL, err := s.db.DB()
-	if err == nil {
-		log.Info().Msg("disconnecting SQL db")
-		dbSQL.Close()
-		return
-	}
-	log.Err(err).Msg("unable to disconnect")
+	log.Warn().Msg("game-store-disconnect-not-implemented")
 }
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
@@ -655,15 +702,14 @@ func (s *DBStore) CachedCount(ctx context.Context) int {
 }
 
 func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
-	g := &game{}
-
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Select("history").Where("uuid = ?", id).First(g); result.Error != nil {
-		return nil, result.Error
+	bts, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		log.Err(err).Msg("error-get-history")
+		return nil, err
 	}
 
 	hist := &macondopb.GameHistory{}
-	err := proto.Unmarshal(g.History, hist)
+	err = proto.Unmarshal(bts, hist)
 	if err != nil {
 		return nil, err
 	}
