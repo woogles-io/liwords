@@ -1,6 +1,6 @@
 import React, { ReactNode, useMemo } from "react";
 import { useTournamentStoreContext } from "../store/store";
-import { Button, List, Table, Tag } from "antd";
+import { Affix, Alert, Button, List, Table, Tag } from "antd";
 import { Division, SinglePairing } from "../store/reducers/tournament_reducer";
 
 import { useNavigate } from "react-router";
@@ -135,6 +135,7 @@ type Props = {
   sendReady: () => void;
   isDirector: boolean;
   showFirst?: boolean;
+  tentative: boolean;
 };
 
 type PairingTableData = {
@@ -482,6 +483,43 @@ export const Pairings = React.memo((props: Props) => {
 
   return (
     <>
+      {props.tentative && tableData.length > 0 && (
+        <Affix offsetTop={10}>
+          <Alert
+            style={{ marginBottom: 0, marginTop: 10 }}
+            type="error"
+            message={`Round ${props.selectedRound + 1} is not open yet. Please do not start playing as these pairings may still be tentative.`}
+          ></Alert>
+        </Affix>
+      )}
+      {props.tentative && tableData.length > 0 && !props.isDirector && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "75%",
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "5rem",
+              fontWeight: "bold",
+              color: "#a92e2e",
+              letterSpacing: "0.2em",
+              opacity: 0.8,
+            }}
+          >
+            TENTATIVE
+          </span>
+        </div>
+      )}
       <Table
         className={`pairings ${
           currentRound < props.selectedRound
@@ -510,6 +548,12 @@ export const Pairings = React.memo((props: Props) => {
           return computedClass;
         }}
       />
+      {props.tentative && tableData.length > 0 && (
+        <Alert
+          type="error"
+          message={`Round ${props.selectedRound + 1} is not open yet. Please do not start playing as these pairings may still be tentative.`}
+        ></Alert>
+      )}
       {unpairedPlayers.size && tableData.length ? (
         <>
           <h5 style={{ marginTop: 10 }}>Unpaired players</h5>
