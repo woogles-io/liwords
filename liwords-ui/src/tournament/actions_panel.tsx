@@ -28,6 +28,7 @@ import { useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { flashTournamentError } from "./tournament_error";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { PairingMethod } from "../gen/api/proto/ipc/tournament_pb";
 // import { CheckIn } from './check_in';
 
 const PAGE_SIZE = 30;
@@ -224,6 +225,52 @@ export const ActionsPanel = React.memo((props: Props) => {
       </Button>
     );
   };
+
+  const pairingsTentative = useMemo(() => {
+    // Only IRL mode can have tentative pairings.
+    if (!tournamentContext.metadata.irlMode) {
+      return false;
+    }
+    if (!tournamentContext.divisions[selectedDivision]) {
+      return false;
+    }
+    if (!tournamentContext.divisions[selectedDivision].roundControls) {
+      return false;
+    }
+    if (
+      !tournamentContext.divisions[selectedDivision].roundControls[
+        selectedRound
+      ]
+    ) {
+      return false;
+    }
+    const pairingMethod =
+      tournamentContext.divisions[selectedDivision].roundControls[selectedRound]
+        .pairingMethod;
+    // These pairing methods could potentially be manually edited by the director.
+    // Actually, they all could be, but these are the ones that are most likely to be.
+    const potentiallyTentative = [
+      PairingMethod.KING_OF_THE_HILL,
+      PairingMethod.SWISS,
+      PairingMethod.MANUAL,
+      PairingMethod.FACTOR,
+    ].includes(pairingMethod);
+
+    if (selectedRound > -1 && tournamentContext.divisions[selectedDivision]) {
+      return (
+        selectedRound >
+          tournamentContext.divisions[selectedDivision].currentRound &&
+        potentiallyTentative
+      );
+    }
+    return false;
+  }, [
+    selectedRound,
+    selectedDivision,
+    tournamentContext.divisions,
+    tournamentContext.metadata.irlMode,
+  ]);
+
   const renderGamesTab = () => {
     if (selectedGameTab === "GAMES") {
       if (itIsPairedMode) {
@@ -241,6 +288,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               sendReady={props.sendReady}
               isDirector={isDirector}
               showFirst={props.showFirst}
+              tentative={pairingsTentative}
             />
           </div>
         );

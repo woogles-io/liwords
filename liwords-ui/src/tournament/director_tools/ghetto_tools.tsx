@@ -1553,7 +1553,7 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
 
       if (rdCtrl.maxRepeats <= 0) {
         throw new Error(
-          'Max Pairings Between Any Two Players should be at least 1. A "repeat" in this case is just a single game; 0 will allow no pairings to occur.',
+          "Max Pairings Between Any Two Players should be at least 1. Setting it to 0 will allow no pairings to occur.",
         );
       }
 
