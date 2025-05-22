@@ -1358,10 +1358,6 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     <>
       <ul>
         <li>
-          - <strong>Random:</strong> Pairings are random. This is only
-          recommended for the very first round.
-        </li>
-        <li>
           - <strong>Swiss:</strong> Swiss pairings by default try to match
           players who are performing similarly.
         </li>
@@ -1369,6 +1365,13 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           - <strong>Round Robin:</strong> These pairings match everyone in the
           division against each other. If there are fewer rounds than players,
           it will do a partial round robin.
+        </li>
+        <li>
+          - <strong>COP:</strong> Castellano-O'Connor Pairings (COP) is a
+          complex pairing system that has been used in multiple real-life
+          tournaments. It runs simulations to figure out the mathematically best
+          pairings. It is recommended to be used for all Woogles tournaments,
+          but is currently only available for the second half of a tournament.
         </li>
         <li>
           - <strong>Initial Fontes:</strong> These pairings split up the field
@@ -1402,6 +1405,10 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           a row. You must divide teams into top and bottom halves, by "rating",
           and you must have an even number of players.
         </li>
+        <li>
+          - <strong>Random:</strong> Pairings are random. This is only
+          recommended for the very first round.
+        </li>
       </ul>
     </>
   );
@@ -1421,11 +1428,13 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             // Show more fields potentially.
           }}
         >
-          <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
           <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
 
           <Select.Option value={PairingMethod.ROUND_ROBIN}>
             Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.CASTELLANO_OCONNOR}>
+            COP
           </Select.Option>
           <Select.Option value={PairingMethod.INITIAL_FONTES}>
             Initial Fontes
@@ -1441,6 +1450,7 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
             Team Round Robin
           </Select.Option>
+          <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
         </Select>
       </Form.Item>
       <p></p>
@@ -1714,6 +1724,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           allowOverMaxRepeats: v.allowOverMaxRepeats,
           repeatRelativeWeight: v.repeatRelativeWeight,
           winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
+          copControlLossThreshold: v.copControlLossThreshold,
+          copHopefulnessThreshold: v.copHopefulnessThreshold,
+          copDivisionSims: v.copDivisionSims,
+          copControlLossSims: v.copControlLossSims,
+          copControlLossActivationRound: v.copControlLossActivationRound,
+          copAllowRepeatByes: v.copAllowRepeatByes,
+          copTopDownByes: v.copTopDownByes,
         });
         if (lastSetting !== null) {
           if (settingsEqual(lastSetting, thisSetting)) {

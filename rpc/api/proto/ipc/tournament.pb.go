@@ -107,6 +107,7 @@ const (
 	PairingMethod_MANUAL                  PairingMethod = 8
 	PairingMethod_TEAM_ROUND_ROBIN        PairingMethod = 9
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
+	PairingMethod_CASTELLANO_OCONNOR      PairingMethod = 11
 )
 
 // Enum value maps for PairingMethod.
@@ -123,6 +124,7 @@ var (
 		8:  "MANUAL",
 		9:  "TEAM_ROUND_ROBIN",
 		10: "INTERLEAVED_ROUND_ROBIN",
+		11: "CASTELLANO_OCONNOR",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -136,6 +138,7 @@ var (
 		"MANUAL":                  8,
 		"TEAM_ROUND_ROBIN":        9,
 		"INTERLEAVED_ROUND_ROBIN": 10,
+		"CASTELLANO_OCONNOR":      11,
 	}
 )
 
@@ -622,8 +625,18 @@ type RoundControl struct {
 	// - `0` overriding the default to disable the spread cap
 	// Without an optional, these two cases would be indistinguishable.
 	SpreadCapOverride *uint32 `protobuf:"varint,12,opt,name=spread_cap_override,json=spreadCapOverride,proto3,oneof" json:"spread_cap_override,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// COP-specific controls
+	// Things like class prizes, classes, gibson spread, etc should be set up
+	// under a global tournament setting.
+	CopControlLossActivationRound int32 `protobuf:"varint,13,opt,name=cop_control_loss_activation_round,json=copControlLossActivationRound,proto3" json:"cop_control_loss_activation_round,omitempty"`
+	CopControlLossThreshold       int32 `protobuf:"varint,14,opt,name=cop_control_loss_threshold,json=copControlLossThreshold,proto3" json:"cop_control_loss_threshold,omitempty"`
+	CopHopefulnessThreshold       int32 `protobuf:"varint,15,opt,name=cop_hopefulness_threshold,json=copHopefulnessThreshold,proto3" json:"cop_hopefulness_threshold,omitempty"`
+	CopDivisionSims               int32 `protobuf:"varint,16,opt,name=cop_division_sims,json=copDivisionSims,proto3" json:"cop_division_sims,omitempty"`
+	CopControlLossSims            int32 `protobuf:"varint,17,opt,name=cop_control_loss_sims,json=copControlLossSims,proto3" json:"cop_control_loss_sims,omitempty"`
+	CopAllowRepeatByes            bool  `protobuf:"varint,18,opt,name=cop_allow_repeat_byes,json=copAllowRepeatByes,proto3" json:"cop_allow_repeat_byes,omitempty"`
+	CopTopDownByes                bool  `protobuf:"varint,19,opt,name=cop_top_down_byes,json=copTopDownByes,proto3" json:"cop_top_down_byes,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *RoundControl) Reset() {
@@ -731,6 +744,55 @@ func (x *RoundControl) GetSpreadCapOverride() uint32 {
 		return *x.SpreadCapOverride
 	}
 	return 0
+}
+
+func (x *RoundControl) GetCopControlLossActivationRound() int32 {
+	if x != nil {
+		return x.CopControlLossActivationRound
+	}
+	return 0
+}
+
+func (x *RoundControl) GetCopControlLossThreshold() int32 {
+	if x != nil {
+		return x.CopControlLossThreshold
+	}
+	return 0
+}
+
+func (x *RoundControl) GetCopHopefulnessThreshold() int32 {
+	if x != nil {
+		return x.CopHopefulnessThreshold
+	}
+	return 0
+}
+
+func (x *RoundControl) GetCopDivisionSims() int32 {
+	if x != nil {
+		return x.CopDivisionSims
+	}
+	return 0
+}
+
+func (x *RoundControl) GetCopControlLossSims() int32 {
+	if x != nil {
+		return x.CopControlLossSims
+	}
+	return 0
+}
+
+func (x *RoundControl) GetCopAllowRepeatByes() bool {
+	if x != nil {
+		return x.CopAllowRepeatByes
+	}
+	return false
+}
+
+func (x *RoundControl) GetCopTopDownByes() bool {
+	if x != nil {
+		return x.CopTopDownByes
+	}
+	return false
 }
 
 type DivisionControls struct {
@@ -2013,7 +2075,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x9f\x04\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x9f\a\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2027,7 +2089,14 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x16repeat_relative_weight\x18\t \x01(\x05R\x14repeatRelativeWeight\x12C\n" +
 	"\x1ewin_difference_relative_weight\x18\n" +
 	" \x01(\x05R\x1bwinDifferenceRelativeWeight\x123\n" +
-	"\x13spread_cap_override\x18\f \x01(\rH\x00R\x11spreadCapOverride\x88\x01\x01B\x16\n" +
+	"\x13spread_cap_override\x18\f \x01(\rH\x00R\x11spreadCapOverride\x88\x01\x01\x12H\n" +
+	"!cop_control_loss_activation_round\x18\r \x01(\x05R\x1dcopControlLossActivationRound\x12;\n" +
+	"\x1acop_control_loss_threshold\x18\x0e \x01(\x05R\x17copControlLossThreshold\x12:\n" +
+	"\x19cop_hopefulness_threshold\x18\x0f \x01(\x05R\x17copHopefulnessThreshold\x12*\n" +
+	"\x11cop_division_sims\x18\x10 \x01(\x05R\x0fcopDivisionSims\x121\n" +
+	"\x15cop_control_loss_sims\x18\x11 \x01(\x05R\x12copControlLossSims\x121\n" +
+	"\x15cop_allow_repeat_byes\x18\x12 \x01(\bR\x12copAllowRepeatByes\x12)\n" +
+	"\x11cop_top_down_byes\x18\x13 \x01(\bR\x0ecopTopDownByesB\x16\n" +
 	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2160,7 +2229,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xcc\x01\n" +
+	"\x04VOID\x10\b*\xe4\x01\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2176,7 +2245,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x06MANUAL\x10\b\x12\x14\n" +
 	"\x10TEAM_ROUND_ROBIN\x10\t\x12\x1b\n" +
 	"\x17INTERLEAVED_ROUND_ROBIN\x10\n" +
-	"*F\n" +
+	"\x12\x16\n" +
+	"\x12CASTELLANO_OCONNOR\x10\v*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +

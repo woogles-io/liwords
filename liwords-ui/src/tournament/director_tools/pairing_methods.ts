@@ -19,7 +19,14 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.maxRepeats === s2.maxRepeats &&
     s1.allowOverMaxRepeats === s2.allowOverMaxRepeats &&
     s1.repeatRelativeWeight === s2.repeatRelativeWeight &&
-    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight
+    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight &&
+    s1.copControlLossThreshold === s2.copControlLossThreshold &&
+    s1.copHopefulnessThreshold === s2.copHopefulnessThreshold &&
+    s1.copDivisionSims === s2.copDivisionSims &&
+    s1.copControlLossSims === s2.copControlLossSims &&
+    s1.copControlLossActivationRound === s2.copControlLossActivationRound &&
+    s1.copAllowRepeatByes === s2.copAllowRepeatByes &&
+    s1.copTopDownByes === s2.copTopDownByes
   );
 };
 
@@ -77,6 +84,49 @@ export const fieldsForMethod = (
         "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
       ]);
       break;
+    case PairingMethod.CASTELLANO_OCONNOR:
+      fields.push([
+        "number",
+        "copControlLossThreshold",
+        "Control Loss Threshold",
+        "The minimum fraction of tournament simulations that a player has to NOT win to be considered as the control loss candidate.",
+      ]);
+      fields.push([
+        "number",
+        "copControlLossActivationRound",
+        "Control Loss Activation Round",
+        "The round in which we want to start considering control loss candidates. Use a large number >= number of rounds to disable control loss calculations.",
+      ]);
+      fields.push([
+        "number",
+        "copControlLossSims",
+        "Control Loss Sims",
+        "The number of control loss simulations to run to determine control loss candidates. The more sims, the more accurate the results, but the longer it will take.",
+      ]);
+      fields.push([
+        "number",
+        "copDivisionSims",
+        "Division Sims",
+        "The number of division simulations to run.",
+      ]);
+      fields.push([
+        "number",
+        "copHopefulnessThreshold",
+        "Hopefulness Threshold",
+        "This field specifies the minimum fraction of tournament simulations that a player must finish at or above to be considered as having a reasonable chance of reaching that rank.",
+      ]);
+      fields.push([
+        "boolean",
+        "copAllowRepeatByes",
+        "Allow Repeat Byes",
+        "This field allows players to receive a bye more than once if set to true.",
+      ]);
+      fields.push([
+        "boolean",
+        "copTopDownByes",
+        "Top Down Byes",
+        "This field assigns byes in descending order starting from the highest ranked player if set to true.",
+      ]);
   }
 
   return fields;

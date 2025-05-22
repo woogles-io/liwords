@@ -81,6 +81,7 @@ enum PairingMethod {
   MANUAL = 8;
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
+  CASTELLANO_OCONNOR = 11;
 }
 
 enum FirstMethod {
@@ -119,6 +120,16 @@ message RoundControl {
   // - `0` overriding the default to disable the spread cap
   // Without an optional, these two cases would be indistinguishable.
   optional uint32 spread_cap_override = 12;
+  // COP-specific controls
+  // Things like class prizes, classes, gibson spread, etc should be set up
+  // under a global tournament setting.
+  int32 cop_control_loss_activation_round = 13;
+  int32 cop_control_loss_threshold = 14;
+  int32 cop_hopefulness_threshold = 15;
+  int32 cop_division_sims = 16;
+  int32 cop_control_loss_sims = 17;
+  bool cop_allow_repeat_byes = 18;
+  bool cop_top_down_byes = 19;
 }
 
 message DivisionControls {
