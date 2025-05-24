@@ -25,7 +25,6 @@ import {
 } from "../../constants/alphabets";
 import { create } from "@bufbuild/protobuf";
 
-export const ThroughTileMarker = ".";
 // convert a set of ephemeral tiles to a protobuf game event.
 export const tilesetToMoveEvent = (
   tiles: Set<EphemeralTile>,
