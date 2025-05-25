@@ -139,6 +139,9 @@ const (
 	// TournamentServiceGetRecentAndUpcomingTournamentsProcedure is the fully-qualified name of the
 	// TournamentService's GetRecentAndUpcomingTournaments RPC.
 	TournamentServiceGetRecentAndUpcomingTournamentsProcedure = "/tournament_service.TournamentService/GetRecentAndUpcomingTournaments"
+	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
+	// RPC.
+	TournamentServiceRunCOPProcedure = "/tournament_service.TournamentService/RunCOP"
 )
 
 // TournamentServiceClient is a client for the tournament_service.TournamentService service.
@@ -184,6 +187,7 @@ type TournamentServiceClient interface {
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
+	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 }
 
 // NewTournamentServiceClient constructs a client for the tournament_service.TournamentService
@@ -414,6 +418,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		runCOP: connect.NewClient[tournament_service.RunCopRequest, ipc.PairResponse](
+			httpClient,
+			baseURL+TournamentServiceRunCOPProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -454,6 +464,7 @@ type tournamentServiceClient struct {
 	exportTournament                *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
 	getTournamentScorecards         *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 	getRecentAndUpcomingTournaments *connect.Client[tournament_service.GetRecentAndUpcomingTournamentsRequest, tournament_service.GetRecentAndUpcomingTournamentsResponse]
+	runCOP                          *connect.Client[tournament_service.RunCopRequest, ipc.PairResponse]
 }
 
 // NewTournament calls tournament_service.TournamentService.NewTournament.
@@ -633,6 +644,11 @@ func (c *tournamentServiceClient) GetRecentAndUpcomingTournaments(ctx context.Co
 	return c.getRecentAndUpcomingTournaments.CallUnary(ctx, req)
 }
 
+// RunCOP calls tournament_service.TournamentService.RunCOP.
+func (c *tournamentServiceClient) RunCOP(ctx context.Context, req *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {
+	return c.runCOP.CallUnary(ctx, req)
+}
+
 // TournamentServiceHandler is an implementation of the tournament_service.TournamentService
 // service.
 type TournamentServiceHandler interface {
@@ -677,6 +693,7 @@ type TournamentServiceHandler interface {
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
+	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 }
 
 // NewTournamentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -903,6 +920,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServiceRunCOPHandler := connect.NewUnaryHandler(
+		TournamentServiceRunCOPProcedure,
+		svc.RunCOP,
+		connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tournament_service.TournamentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TournamentServiceNewTournamentProcedure:
@@ -975,6 +998,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetTournamentScorecardsHandler.ServeHTTP(w, r)
 		case TournamentServiceGetRecentAndUpcomingTournamentsProcedure:
 			tournamentServiceGetRecentAndUpcomingTournamentsHandler.ServeHTTP(w, r)
+		case TournamentServiceRunCOPProcedure:
+			tournamentServiceRunCOPHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1122,4 +1147,8 @@ func (UnimplementedTournamentServiceHandler) GetTournamentScorecards(context.Con
 
 func (UnimplementedTournamentServiceHandler) GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetRecentAndUpcomingTournaments is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RunCOP is not implemented"))
 }
