@@ -249,10 +249,11 @@ export const ActionsPanel = React.memo((props: Props) => {
         .pairingMethod;
     // These pairing methods could potentially be manually edited by the director.
     // Actually, they all could be, but these are the ones that are most likely to be.
+    // We don't put "MANUAL" here because that is presumed to be actually chosen
+    // by the director.
     const potentiallyTentative = [
       PairingMethod.KING_OF_THE_HILL,
       PairingMethod.SWISS,
-      PairingMethod.MANUAL,
       PairingMethod.FACTOR,
     ].includes(pairingMethod);
 
