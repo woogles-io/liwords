@@ -60,7 +60,7 @@ func {function_name}() *pb.PairRequest {{
         PlacePrizes:          {place_prizes},
         DivisionSims:         {division_sims},
         ControlLossSims:      {control_loss_sims},
-        UseControlLoss:       {control_loss_activation_round},
+        ControlLossActivationRound:       {control_loss_activation_round},
         AllowRepeatByes:      {str(allow_repeat_byes).lower()},
         RemovedPlayers:       []int32{{{", ".join(map(str, removed_players))}}},
         Seed:                 {seed},
