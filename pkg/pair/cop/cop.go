@@ -2,7 +2,6 @@ package cop
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 
@@ -368,32 +367,24 @@ var weightPolicies = []weightPolicy{
 }
 
 func addPairRequestAsJSONToLog(req *pb.PairRequest, logsb *strings.Builder, includeResultsAndPairings bool) {
+	divisionPairings := req.DivisionPairings
+	divisionResults := req.DivisionResults
+	playerClasses := req.PlayerClasses
+	playerNames := req.PlayerNames
+	if !includeResultsAndPairings {
+		req.DivisionPairings = nil
+		req.DivisionResults = nil
+		req.PlayerClasses = nil
+		req.PlayerNames = nil
+	}
 	marshaler := protojson.MarshalOptions{
-		Multiline:     true,
-		Indent:        "  ",
-		AllowPartial:  true,
-		UseProtoNames: true,
+		Multiline:    true, // Enables pretty printing
+		Indent:       "  ", // Sets the indentation level
+		AllowPartial: true,
 	}
 	jsonData, err := marshaler.Marshal(req)
 	if err != nil {
-		logsb.WriteString("error converting pair request to JSON: " + err.Error() + "\n\n")
-		return
-	}
-	var jsonMap map[string]any
-	err = json.Unmarshal(jsonData, &jsonMap)
-	if err != nil {
-		logsb.WriteString("error converting JSON to map: " + err.Error() + "\n\n")
-		return
-	}
-	if !includeResultsAndPairings {
-		delete(jsonMap, "division_results")
-		delete(jsonMap, "division_pairings")
-		delete(jsonMap, "player_classes")
-		delete(jsonMap, "player_names")
-	}
-	jsonData, err = json.MarshalIndent(jsonMap, "", "  ")
-	if err != nil {
-		logsb.WriteString("error converting map back to JSON: " + err.Error() + "\n\n")
+		logsb.WriteString("error writing pair request to log: " + err.Error() + "\n\n")
 		return
 	}
 	if !includeResultsAndPairings {
@@ -403,6 +394,10 @@ func addPairRequestAsJSONToLog(req *pb.PairRequest, logsb *strings.Builder, incl
 	}
 	logsb.Write(jsonData)
 	logsb.WriteString("\n\n")
+	req.DivisionPairings = divisionPairings
+	req.DivisionResults = divisionResults
+	req.PlayerClasses = playerClasses
+	req.PlayerNames = playerNames
 }
 
 func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
