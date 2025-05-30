@@ -852,6 +852,17 @@ func (ts *TournamentService) GetTournamentScorecards(ctx context.Context, req *c
 	}), nil
 }
 
+func (ts *TournamentService) RunCOP(ctx context.Context, req *connect.Request[pb.RunCopRequest],
+) (*connect.Response[ipc.PairResponse], error) {
+
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&ipc.PairResponse{}), nil
+}
+
 func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
 	var tt pb.TType
 	switch t.Type {

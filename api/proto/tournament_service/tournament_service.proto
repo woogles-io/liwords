@@ -4,6 +4,7 @@ package tournament_service;
 import "proto/ipc/omgwords.proto";
 import "proto/ipc/tournament.proto";
 import "google/protobuf/timestamp.proto";
+import "proto/ipc/pair.proto";
 
 message StartRoundRequest {
   string tournament_id = 1;
@@ -226,6 +227,22 @@ message GetRecentAndUpcomingTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
 }
 
+message RunCopRequest {
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
+  repeated int32 player_classes = 4;
+  repeated int32 class_prizes = 5;
+  double control_loss_threshold = 6;
+  double hopefulness_threshold = 7;
+  int32 place_prizes = 8;
+  int32 division_sims = 9;
+  int32 control_loss_sims = 10;
+  int32 control_loss_activation_round = 11;
+  bool allow_repeat_byes = 12;
+  int32 gibson_spread = 13;
+}
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
@@ -303,6 +320,7 @@ service TournamentService {
       returns (GetRecentAndUpcomingTournamentsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);
 }
 
 message ExportTournamentRequest {

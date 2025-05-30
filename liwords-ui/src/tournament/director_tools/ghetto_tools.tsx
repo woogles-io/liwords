@@ -113,6 +113,7 @@ const FormModal = (props: ModalProps) => {
     "manage-check-ins-and-registrations": (
       <ManageCheckIns tournamentID={props.tournamentID} />
     ),
+    // "run-cop": <RunCOP tournamentID={props.tournamentID} />,
   };
 
   type FormKeys = keyof typeof forms;
@@ -179,6 +180,7 @@ export const GhettoTools = (props: Props) => {
     "Pair entire round", // Pair a whole round
     "Set game result", // Set a single result
     "Unpair entire round", // Unpair a whole round
+    // "Run COP", // experimental run COP (new pairing method)
     // 'Clear checked in',
   ];
 
@@ -2333,6 +2335,87 @@ const ManageCheckIns = (props: { tournamentID: string }) => {
     </Form>
   );
 };
+
+// const RunCOP = (props: { tournamentID: string }) => {
+//   const { tournamentContext } = useTournamentStoreContext();
+//   const [division, setDivision] = useState("");
+//   const tClient = useClient(TournamentService);
+//   const [form] = Form.useForm();
+
+//   useEffect(() => {
+//     form.setFieldsValue({
+//       controlLossActivationRound: Math.max(
+//         (tournamentContext.divisions[division]?.numRounds ?? 0) - 3,
+//         1,
+//       ),
+//     });
+//   }, [division, tournamentContext.divisions[division]?.numRounds]);
+
+//   return (
+//     <Form
+//       form={form}
+//       initialValues={{
+//         gibsonSpreads: "250, 200",
+//         placePrizes: 5,
+//         divisionSims: 100000,
+//         controlLossSims: 10000,
+//         roundNumber: 0,
+//       }}
+//     >
+//       <h3>(Experimental) Run COP for one round</h3>
+//       <Form.Item label="Division">
+//         <DivisionSelector
+//           value={division}
+//           onChange={(value: string) => setDivision(value)}
+//         />
+//       </Form.Item>
+//       <div style={{ fontSize: "12px", marginBottom: "8px" }}>
+//         Comma-separated Gibson game spreads per round. Ordered from last round
+//         to first round.
+//       </div>
+//       <Form.Item name="gibsonSpreads" label="Gibsonization spreads">
+//         <Input />
+//       </Form.Item>
+
+//       <Form.Item name="placePrizes" label="Number of place prizes">
+//         <InputNumber inputMode="numeric" min={1} required />
+//       </Form.Item>
+
+//       <div style={{ fontSize: "12px", marginBottom: "8px" }}>
+//         The "Control Loss Activation Round" is the round at which the control
+//         loss simulation is activated. You want this to be towards the end of the
+//         tournament, where there are a few people in contention. A good number is
+//         number of rounds minus 3 (so, the last 4 rounds would use this sim).
+//       </div>
+
+//       <Form.Item
+//         name="controlLossActivationRound"
+//         label="Control Loss Activation Round"
+//       >
+//         <InputNumber inputMode="numeric" min={1} required />
+//       </Form.Item>
+
+//       <Form.Item name="divisionSims" label="Division sims">
+//         <InputNumber inputMode="numeric" min={1} required />
+//       </Form.Item>
+
+//       <Form.Item name="controlLossSims" label="Control loss sims">
+//         <InputNumber inputMode="numeric" min={1} required />
+//       </Form.Item>
+
+//       <div style={{ fontSize: "12px", marginBottom: "8px" }}>
+//         The round number is not required for COP, as it always tries to create
+//         pairings for the next round. However, you can specify it here to see
+//         what the pairings would have been for some round in the past. Keep it at
+//         "0" to pair the next round.
+//       </div>
+
+//       <Form.Item name="roundNumber" label="Round number">
+//         <InputNumber inputMode="numeric" min={0} required />
+//       </Form.Item>
+//     </Form>
+//   );
+// };
 
 const EditDescription = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
