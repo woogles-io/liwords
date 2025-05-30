@@ -892,6 +892,15 @@ func TestCOPProdBugs(t *testing.T) {
 	req.Seed = 1
 	resp = cop.COPPair(ctx, req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// whatnoloan is not gibsonized and is the only player who can hopefully win
+	// Therefore, whatnoloan needs to play condorave since condorave is the player ranked just below whatnoloan
+	is.Equal(resp.Pairings[1], int32(3))
+	is.Equal(resp.Pairings[3], int32(1))
 }
 
 func TestCOPProf(t *testing.T) {
@@ -939,4 +948,20 @@ func TestCOPTime(t *testing.T) {
 	elapsed := time.Since(start)                               // Calculate elapsed time
 	fmt.Printf("COPPair took %v ms\n", elapsed.Milliseconds()) // Print elapsed time in ms
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+func TestCOPDebug(t *testing.T) {
+	if os.Getenv("COP_DEBUG") == "" {
+		t.Skip("Skipping COP debug test. Use 'COP_DEBUG=1 go test -run COPDebug' to run it.")
+	}
+	is := is.New(t)
+	ctx := context.Background()
+	req := pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// whatnoloan is not gibsonized and is the only player who can hopefully win
+	// Therefore, whatnoloan needs to play condorave since condorave is the player ranked just below whatnoloan
+	is.Equal(resp.Pairings[1], int32(3))
+	is.Equal(resp.Pairings[3], int32(1))
 }

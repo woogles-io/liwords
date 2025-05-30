@@ -1059,3 +1059,32 @@ func CreateAlbanyCSWNewYearsRound25PartiallyPairedPairRequest() *pb.PairRequest 
 	}
 	return request
 }
+
+func CreateAlmostGibsonizedPairRequest() *pb.PairRequest {
+	request := &pb.PairRequest{
+		PairMethod:    pb.PairMethod_COP,
+		PlayerNames:   []string{"JDH", "whatnoloan", "awesomeusername", "condorave", "Brainiac_614", "ArcG3", "CavemenRoad", "zman", "equilibria", "ElishasDad", "bynak", "aboocher", "Parkereon", "June9437", "k8e", "Smochi", "Seahawk12", "mmmmice", "Merris"},
+		PlayerClasses: []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		DivisionPairings: []*pb.RoundPairings{
+			{Pairings: []int32{17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 18}}, {Pairings: []int32{2, 12, 0, 7, 11, 8, 13, 3, 5, 15, 14, 4, 1, 6, 10, 9, 16, 18, 17}}, {Pairings: []int32{13, 15, 6, 16, 18, 10, 2, 9, 17, 7, 5, 12, 11, 0, 14, 1, 3, 8, 4}}, {Pairings: []int32{3, 7, 14, 0, 17, 6, 5, 1, 8, 10, 9, 18, 15, 16, 2, 12, 13, 4, 11}}, {Pairings: []int32{5, 18, 11, 9, 16, 0, 6, 17, 14, 3, 15, 2, 13, 12, 8, 10, 4, 7, 1}}, {Pairings: []int32{14, 9, 3, 2, 15, 17, 12, 18, 13, 1, 16, 11, 6, 8, 0, 4, 10, 5, 7}}, {Pairings: []int32{16, 5, 10, 18, 7, 1, 14, 4, 12, 17, 2, 11, 8, 15, 6, 13, 0, 9, 3}}, {Pairings: []int32{4, 7, 5, 17, 0, 2, 8, 1, 6, 13, 18, 11, 16, 9, 15, 14, 12, 3, 10}},
+		},
+		DivisionResults: []*pb.RoundResults{
+			{Results: []int32{307, 525, 360, 463, 451, 276, 346, 516, 303, 409, 457, 429, 377, 343, 312, 431, 285, 457, 50}}, {Results: []int32{459, 418, 191, 362, 378, 286, 314, 388, 220, 277, 452, 349, 287, 387, 304, 227, 50, 381, 400}}, {Results: []int32{350, 498, 414, 432, 352, 284, 299, 414, 305, 360, 383, 448, 238, 331, 50, 340, 393, 462, 443}}, {Results: []int32{374, 500, 364, 401, 425, 349, 334, 438, 50, 397, 317, 240, 285, 231, 285, 407, 330, 460, 594}}, {Results: []int32{310, 458, 406, 358, 448, 324, 50, 442, 156, 359, 368, 224, 297, 552, 206, 388, 297, 295, 419}}, {Results: []int32{409, 499, 268, 430, 461, 332, 411, 430, 277, 326, 352, -50, 311, 352, 331, 455, 277, 394, 307}}, {Results: []int32{329, 475, 293, 461, 388, 308, 322, 443, 287, 341, 430, -50, 290, 445, 363, 425, 209, 385, 359}}, {Results: []int32{350, 496, 320, 352, 355, 396, 387, 382, 292, 417, 280, -50, 390, 327, 366, 367, 284, 329, 401}},
+		},
+
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.1,
+		AllPlayers:                 19,
+		ValidPlayers:               18,
+		Rounds:                     10,
+		PlacePrizes:                4,
+		DivisionSims:               100000,
+		ControlLossSims:            10000,
+		ControlLossActivationRound: 7,
+		AllowRepeatByes:            false,
+		RemovedPlayers:             []int32{11},
+		Seed:                       0,
+	}
+	return request
+}

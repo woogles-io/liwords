@@ -366,9 +366,47 @@ var weightPolicies = []weightPolicy{
 	},
 }
 
+func addPairRequestAsJSONToLog(req *pb.PairRequest, logsb *strings.Builder, includeResultsAndPairings bool) {
+	divisionPairings := req.DivisionPairings
+	divisionResults := req.DivisionResults
+	playerClasses := req.PlayerClasses
+	playerNames := req.PlayerNames
+	if !includeResultsAndPairings {
+		req.DivisionPairings = nil
+		req.DivisionResults = nil
+		req.PlayerClasses = nil
+		req.PlayerNames = nil
+	}
+	marshaler := protojson.MarshalOptions{
+		Multiline:    true, // Enables pretty printing
+		Indent:       "  ", // Sets the indentation level
+		AllowPartial: true,
+	}
+	jsonData, err := marshaler.Marshal(req)
+	if err != nil {
+		logsb.WriteString("error writing pair request to log: " + err.Error() + "\n\n")
+		return
+	}
+	if !includeResultsAndPairings {
+		logsb.WriteString("Abridged pair request:\n\n")
+	} else {
+		logsb.WriteString("\n\nPair request:\n\n")
+	}
+	logsb.Write(jsonData)
+	logsb.WriteString("\n\n")
+	req.DivisionPairings = divisionPairings
+	req.DivisionResults = divisionResults
+	req.PlayerClasses = playerClasses
+	req.PlayerNames = playerNames
+}
+
 func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 	logsb := &strings.Builder{}
 	starttime := time.Now()
+	if req.Seed == 0 {
+		req.Seed = time.Now().Unix()
+	}
+	addPairRequestAsJSONToLog(req, logsb, false)
 	resp := copPairWithLog(ctx, req, logsb)
 	endtime := time.Now()
 	duration := endtime.Sub(starttime)
@@ -379,29 +417,12 @@ func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 	}
 	logsb.WriteString(fmt.Sprintf("Started:  %s\nFinished: %s\nDuration: %s",
 		starttime.Format(timeFormat), endtime.Format(timeFormat), duration))
+	addPairRequestAsJSONToLog(req, logsb, true)
 	resp.Log = logsb.String()
 	return resp
 }
 
 func copPairWithLog(ctx context.Context, req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	if req.Seed == 0 {
-		req.Seed = time.Now().Unix()
-	}
-	marshaler := protojson.MarshalOptions{
-		Multiline:    true, // Enables pretty printing
-		Indent:       "  ", // Sets the indentation level
-		AllowPartial: true,
-	}
-	jsonData, err := marshaler.Marshal(req)
-	if err != nil {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_REQUEST_TO_JSON_FAILED,
-			ErrorMessage: err.Error(),
-		}
-	}
-
-	logsb.WriteString("Pairings Request:\n\n" + string(jsonData) + "\n\n")
-
 	resp := verifyreq.Verify(req)
 	if resp != nil {
 		return resp

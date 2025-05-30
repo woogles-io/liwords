@@ -20,7 +20,6 @@ player_names = request_data["playerNames"]
 player_classes = request_data["playerClasses"]
 division_pairings = request_data["divisionPairings"]
 division_results = request_data["divisionResults"]
-class_prizes = request_data["classPrizes"]
 gibson_spread = request_data["gibsonSpread"]
 control_loss_threshold = request_data["controlLossThreshold"]
 hopefulness_threshold = request_data["hopefulnessThreshold"]
@@ -30,10 +29,10 @@ rounds = request_data["rounds"]
 place_prizes = request_data["placePrizes"]
 division_sims = request_data["divisionSims"]
 control_loss_sims = request_data["controlLossSims"]
-use_control_loss = request_data["useControlLoss"]
-allow_repeat_byes = request_data["allowRepeatByes"]
+control_loss_activation_round = request_data["controlLossActivationRound"]
+allow_repeat_byes = request_data.get("allowRepeatByes", False)  # Default to false if not in JSON
 removed_players = request_data.get("removedPlayers", [])
-seed = request_data["seed"]
+seed = request_data.get("seed", 0)
 
 # Function name based on JSON content
 function_name = "CreateCustomPairRequest"
@@ -51,7 +50,7 @@ func {function_name}() *pb.PairRequest {{
         DivisionResults: []*pb.RoundResults{{
             {", ".join(f"{{Results: []int32{{{', '.join(map(str, round['results']))}}}}}" for round in division_results)},
         }},
-        ClassPrizes:          []int32{{{", ".join(map(str, class_prizes))}}},
+        {"ClassPrizes: []int32{" + ", ".join(map(str, request_data['classPrizes'])) + "}," if "classPrizes" in request_data else ""}
         GibsonSpread:         {gibson_spread},
         ControlLossThreshold: {control_loss_threshold},
         HopefulnessThreshold: {hopefulness_threshold},
@@ -61,7 +60,7 @@ func {function_name}() *pb.PairRequest {{
         PlacePrizes:          {place_prizes},
         DivisionSims:         {division_sims},
         ControlLossSims:      {control_loss_sims},
-        UseControlLoss:       {str(use_control_loss).lower()},
+        ControlLossActivationRound:       {control_loss_activation_round},
         AllowRepeatByes:      {str(allow_repeat_byes).lower()},
         RemovedPlayers:       []int32{{{", ".join(map(str, removed_players))}}},
         Seed:                 {seed},
