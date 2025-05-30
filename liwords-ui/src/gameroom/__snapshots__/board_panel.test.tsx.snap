@@ -2530,3 +2530,2534 @@ exports[`renders a game board panel 1`] = `
   </div>
 </div>
 `;
+
+exports[`renders a game board panel 2`] = `
+<div>
+  <div
+    class="board-container"
+    id="board-container"
+    role="textbox"
+    tabindex="-1"
+  >
+    <div
+      class="board"
+    >
+      <div
+        class="coord-labels horiz"
+      >
+        <p
+          class="coord-label"
+        >
+          A
+        </p>
+        <p
+          class="coord-label"
+        >
+          B
+        </p>
+        <p
+          class="coord-label"
+        >
+          C
+        </p>
+        <p
+          class="coord-label"
+        >
+          D
+        </p>
+        <p
+          class="coord-label"
+        >
+          E
+        </p>
+        <p
+          class="coord-label"
+        >
+          F
+        </p>
+        <p
+          class="coord-label"
+        >
+          G
+        </p>
+        <p
+          class="coord-label"
+        >
+          H
+        </p>
+        <p
+          class="coord-label"
+        >
+          I
+        </p>
+        <p
+          class="coord-label"
+        >
+          J
+        </p>
+        <p
+          class="coord-label"
+        >
+          K
+        </p>
+        <p
+          class="coord-label"
+        >
+          L
+        </p>
+        <p
+          class="coord-label"
+        >
+          M
+        </p>
+        <p
+          class="coord-label"
+        >
+          N
+        </p>
+        <p
+          class="coord-label"
+        >
+          O
+        </p>
+      </div>
+      <div
+        class="coord-labels vert"
+      >
+        <p
+          class="coord-label"
+        >
+          1
+        </p>
+        <p
+          class="coord-label"
+        >
+          2
+        </p>
+        <p
+          class="coord-label"
+        >
+          3
+        </p>
+        <p
+          class="coord-label"
+        >
+          4
+        </p>
+        <p
+          class="coord-label"
+        >
+          5
+        </p>
+        <p
+          class="coord-label"
+        >
+          6
+        </p>
+        <p
+          class="coord-label"
+        >
+          7
+        </p>
+        <p
+          class="coord-label"
+        >
+          8
+        </p>
+        <p
+          class="coord-label"
+        >
+          9
+        </p>
+        <p
+          class="coord-label"
+        >
+          10
+        </p>
+        <p
+          class="coord-label"
+        >
+          11
+        </p>
+        <p
+          class="coord-label"
+        >
+          12
+        </p>
+        <p
+          class="coord-label"
+        >
+          13
+        </p>
+        <p
+          class="coord-label"
+        >
+          14
+        </p>
+        <p
+          class="coord-label"
+        >
+          15
+        </p>
+      </div>
+      <div
+        class="board-spaces-container"
+        id="board"
+      >
+        <div
+          class="board-spaces"
+          id="board-spaces"
+        >
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <span
+              aria-label="star"
+              class="anticon anticon-star center-square"
+              role="img"
+            >
+              <svg
+                aria-hidden="true"
+                data-icon="star"
+                fill="currentColor"
+                focusable="false"
+                height="1em"
+                viewBox="64 64 896 896"
+                width="1em"
+              >
+                <path
+                  d="M908.1 353.1l-253.9-36.9L540.7 86.1c-3.1-6.3-8.2-11.4-14.5-14.5-15.8-7.8-35-1.3-42.9 14.5L369.8 316.2l-253.9 36.9c-7 1-13.4 4.3-18.3 9.3a32.05 32.05 0 00.6 45.3l183.7 179.1-43.4 252.9a31.95 31.95 0 0046.4 33.7L512 754l227.1 119.4c6.2 3.3 13.4 4.4 20.3 3.2 17.4-3 29.1-19.5 26.1-36.9l-43.4-252.9 183.7-179.1c5-4.9 8.3-11.3 9.3-18.3 2.7-17.5-9.5-33.7-27-36.3zM664.8 561.6l36.1 210.3L512 672.7 323.1 772l36.1-210.3-152.8-149L417.6 382 512 190.7 606.4 382l211.2 30.7-152.8 148.9z"
+                />
+              </svg>
+            </span>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-2LS"
+          >
+            <p
+              class="bonus-label"
+            >
+              2x letter
+            </p>
+          </div>
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-none"
+          />
+          <div
+            class="board-space droppable  bonus-3WS"
+          >
+            <p
+              class="bonus-label"
+            >
+              3x word
+            </p>
+          </div>
+        </div>
+        <div
+          class="learn-spaces board-spaces"
+        />
+        <div
+          class="tiles"
+        >
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+          <div
+            class="empty-space"
+          >
+             
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="rack-affix"
+    >
+      <div
+        class=""
+      >
+        <div
+          class="rack-container"
+        >
+          <button
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
+            type="button"
+          >
+            <span
+              class="ant-btn-icon"
+            >
+              <span
+                aria-label="arrow-down"
+                class="anticon anticon-arrow-down"
+                role="img"
+              >
+                <svg
+                  aria-hidden="true"
+                  data-icon="arrow-down"
+                  fill="currentColor"
+                  focusable="false"
+                  height="1em"
+                  viewBox="64 64 896 896"
+                  width="1em"
+                >
+                  <path
+                    d="M862 465.3h-81c-4.6 0-9 2-12.1 5.5L550 723.1V160c0-4.4-3.6-8-8-8h-60c-4.4 0-8 3.6-8 8v563.1L255.1 470.8c-3-3.5-7.4-5.5-12.1-5.5h-81c-6.8 0-10.5 8.1-6 13.2L487.9 861a31.96 31.96 0 0048.3 0L868 478.5c4.5-5.2.8-13.2-6-13.2z"
+                  />
+                </svg>
+              </span>
+            </span>
+          </button>
+          <div
+            class="rack"
+            id="rack"
+          >
+            <div
+              class="empty-rack droppable"
+              id="left-empty"
+            />
+            <div
+              class="empty-rack droppable"
+            />
+          </div>
+          <button
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-circle ant-btn-primary ant-btn-color-primary ant-btn-variant-solid ant-btn-icon-only"
+            type="button"
+          >
+            <span
+              class="ant-btn-icon"
+            >
+              <span
+                aria-label="sync"
+                class="anticon anticon-sync"
+                role="img"
+              >
+                <svg
+                  aria-hidden="true"
+                  data-icon="sync"
+                  fill="currentColor"
+                  focusable="false"
+                  height="1em"
+                  viewBox="64 64 896 896"
+                  width="1em"
+                >
+                  <path
+                    d="M168 504.2c1-43.7 10-86.1 26.9-126 17.3-41 42.1-77.7 73.7-109.4S337 212.3 378 195c42.4-17.9 87.4-27 133.9-27s91.5 9.1 133.8 27A341.5 341.5 0 01755 268.8c9.9 9.9 19.2 20.4 27.8 31.4l-60.2 47a8 8 0 003 14.1l175.7 43c5 1.2 9.9-2.6 9.9-7.7l.8-180.9c0-6.7-7.7-10.5-12.9-6.3l-56.4 44.1C765.8 155.1 646.2 92 511.8 92 282.7 92 96.3 275.6 92 503.8a8 8 0 008 8.2h60c4.4 0 7.9-3.5 8-7.8zm756 7.8h-60c-4.4 0-7.9 3.5-8 7.8-1 43.7-10 86.1-26.9 126-17.3 41-42.1 77.8-73.7 109.4A342.45 342.45 0 01512.1 856a342.24 342.24 0 01-243.2-100.8c-9.9-9.9-19.2-20.4-27.8-31.4l60.2-47a8 8 0 00-3-14.1l-175.7-43c-5-1.2-9.9 2.6-9.9 7.7l-.7 181c0 6.7 7.7 10.5 12.9 6.3l56.4-44.1C258.2 868.9 377.8 932 512.2 932c229.2 0 415.5-183.7 419.8-411.8a8 8 0 00-8-8.2z"
+                  />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class=""
+    >
+      <div
+        class="game-controls"
+      >
+        <div
+          class="secondary-controls"
+        >
+          <button
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-dropdown-trigger"
+            disabled=""
+            type="button"
+          >
+            <span>
+              Options
+            </span>
+          </button>
+          <button
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            disabled=""
+            type="button"
+          >
+            <span>
+              Pass
+            </span>
+            <span
+              class="key-command"
+            >
+              2
+            </span>
+          </button>
+        </div>
+        <div
+          class="secondary-controls"
+        >
+          <button
+            aria-describedby="test-id"
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            disabled=""
+            type="button"
+          >
+            <span>
+              Challenge
+            </span>
+            <span
+              class="key-command"
+            >
+              3
+            </span>
+          </button>
+          <button
+            class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-default ant-btn-color-default ant-btn-variant-outlined"
+            disabled=""
+            type="button"
+          >
+            <span>
+              Exchange
+            </span>
+            <span
+              class="key-command"
+            >
+              4
+            </span>
+          </button>
+        </div>
+        <button
+          class="ant-btn css-dev-only-do-not-override-vrrzze ant-btn-primary ant-btn-color-primary ant-btn-variant-solid play"
+          disabled=""
+          type="button"
+        >
+          <span>
+            Play
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
