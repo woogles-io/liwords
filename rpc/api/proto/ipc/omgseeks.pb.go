@@ -301,8 +301,8 @@ func (x *SeekRequest) GetRatingKey() string {
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
-// get accepted (from client to server), or canceled -- when sent from server to
-// client.
+// get accepted (from client to server), or cancelled -- when sent from server
+// to client.
 type SoughtGameProcessEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
