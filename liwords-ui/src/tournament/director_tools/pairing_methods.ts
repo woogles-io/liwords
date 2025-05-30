@@ -34,7 +34,6 @@ export const fieldsForMethod = (
     PairingMethod.ROUND_ROBIN,
     PairingMethod.KING_OF_THE_HILL,
     PairingMethod.MANUAL,
-    PairingMethod.INTERLEAVED_ROUND_ROBIN,
     PairingMethod.INITIAL_FONTES):
       return [];
     // @ts-expect-error fallthrough is purposeful:
@@ -75,6 +74,17 @@ export const fieldsForMethod = (
         "gamesPerRound",
         "Games per Round",
         "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
+      ]);
+      break;
+    case (PairingMethod.INTERLEAVED_ROUND_ROBIN,
+    PairingMethod.SNAKED_ROUND_ROBIN):
+      fields.push([
+        "boolean",
+        "playWithinTeam",
+        "Play Within Team",
+        "This pairing system divides players into two 'teams'. If this option is selected, " +
+          "players will play a round robin within their own team. If false, players will play " +
+          "against players from the other team.",
       ]);
       break;
   }

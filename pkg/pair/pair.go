@@ -38,6 +38,8 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairTeamRoundRobin(members)
 	} else if pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
 		pairings, err = pairInterleavedRoundRobin(members)
+	} else if pm == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		pairings, err = pairSnakedRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -86,15 +88,21 @@ func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		int(members.RoundControls.GamesPerRound), false, members.Seed)
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_TEAM_ROUND_ROBIN, false, members.Seed)
 }
 
 func pairInterleavedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	// This is a special case of the team round robin function. Perhaps the function
 	// should be renamed slightly.
 	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
-		1, true, members.Seed)
+		1, pb.PairingMethod_INTERLEAVED_ROUND_ROBIN, members.RoundControls.PlayWithinTeam, members.Seed)
 
+}
+
+func pairSnakedRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round),
+		int(members.RoundControls.GamesPerRound), pb.PairingMethod_SNAKED_ROUND_ROBIN,
+		members.RoundControls.PlayWithinTeam, members.Seed)
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -552,25 +560,55 @@ func getRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, 
 	return pairings, nil
 }
 
-func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, interleave bool, seed uint64) ([]int, error) {
+func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int, method pb.PairingMethod, playWithinTeam bool,
+	seed uint64) ([]int, error) {
 	// A team round robin contains two teams: A and B
 	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
-	if numberOfPlayers%2 == 1 && !interleave {
+	if numberOfPlayers%2 == 1 && method == pb.PairingMethod_TEAM_ROUND_ROBIN {
 		return nil, errors.New("cannot have an odd number of players without interleaving team round robin pairings")
 	}
 
 	players := []int{}
-	if !interleave {
+	if method == pb.PairingMethod_TEAM_ROUND_ROBIN {
+		if playWithinTeam {
+			return nil, errors.New("cannot play within team in team round robin pairings")
+		}
 		for i := 0; i < numberOfPlayers; i++ {
 			players = append(players, i)
 		}
-	} else {
+	} else if method == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
 		for i := 0; i < numberOfPlayers; i += 2 {
 			players = append(players, i)
 		}
 		for i := 1; i < numberOfPlayers; i += 2 {
 			players = append(players, i)
 		}
+	} else if method == pb.PairingMethod_SNAKED_ROUND_ROBIN {
+		// "Snaked" (boustrophedonic) ordering:
+		// For every block of 4, take [i], [i+3], [i+4], [i+7], ... for first half,
+		// and [i+1], [i+2], [i+5], [i+6], ... for second half.
+		// Generalized: alternate direction every block of 2.
+		blockSize := 4
+		firstHalf := []int{}
+		secondHalf := []int{}
+		for i := 0; i < numberOfPlayers; i += blockSize {
+			// Forward direction
+			if i+0 < numberOfPlayers {
+				firstHalf = append(firstHalf, i+0)
+			}
+			if i+1 < numberOfPlayers {
+				secondHalf = append(secondHalf, i+1)
+			}
+			if i+2 < numberOfPlayers {
+				secondHalf = append(secondHalf, i+2)
+			}
+			if i+3 < numberOfPlayers {
+				firstHalf = append(firstHalf, i+3)
+			}
+		}
+		players = append(firstHalf, secondHalf...)
+	} else {
+		return nil, fmt.Errorf("pairing method %s is not a team round robin pairing method", method.String())
 	}
 
 	bye := numberOfPlayers%2 == 1
@@ -639,6 +677,7 @@ func IsStandingsIndependent(pm pb.PairingMethod) bool {
 	return pm == pb.PairingMethod_ROUND_ROBIN ||
 		pm == pb.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
+		pm == pb.PairingMethod_SNAKED_ROUND_ROBIN ||
 		pm == pb.PairingMethod_RANDOM ||
 		pm == pb.PairingMethod_INITIAL_FONTES ||
 		pm == pb.PairingMethod_MANUAL

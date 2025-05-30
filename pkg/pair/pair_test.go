@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/utilities"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // The vast majority of pairing tests are in the tournament package
@@ -96,7 +97,7 @@ func TestRoundRobin(t *testing.T) {
 
 func TestTeamRoundRobin(t *testing.T) {
 	is := is.New(t)
-	for interleave := false; interleave != true; interleave = !interleave {
+	for _, pmethod := range []pb.PairingMethod{pb.PairingMethod_TEAM_ROUND_ROBIN, pb.PairingMethod_INTERLEAVED_ROUND_ROBIN} {
 		for seed := uint64(10); seed < 14; seed++ {
 			for numberOfPlayers := 2; numberOfPlayers <= 25; numberOfPlayers++ {
 				halfNoP := numberOfPlayers / 2
@@ -111,8 +112,8 @@ func TestTeamRoundRobin(t *testing.T) {
 						prevPhasePairingsStr := ""
 						phasePairings := map[string]int{}
 						for round := range maxRound {
-							pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, interleave, seed)
-							if numberOfPlayers%2 == 1 && !interleave {
+							pairings, err := getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup, pmethod, false, seed)
+							if numberOfPlayers%2 == 1 && pmethod == pb.PairingMethod_TEAM_ROUND_ROBIN {
 								is.True(err != nil)
 								continue
 							}
@@ -140,8 +141,10 @@ func TestTeamRoundRobin(t *testing.T) {
 								} else {
 									phasePairings[key] = 1
 								}
-								if interleave {
-									is.Equal((opponent-player)%2, 0)
+								if pmethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
+									if opponent != player {
+										is.Equal((opponent-player)%2, 1)
+									}
 								} else {
 									is.True((opponent < halfNoP && player >= halfNoP) || (player < halfNoP && opponent >= halfNoP))
 								}

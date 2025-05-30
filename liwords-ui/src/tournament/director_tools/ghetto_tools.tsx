@@ -1436,12 +1436,15 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             King of the Hill
           </Select.Option>
           <Select.Option value={PairingMethod.INTERLEAVED_ROUND_ROBIN}>
-            Shirts and Skins
+            Shirts and Skins Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.SNAKED_ROUND_ROBIN}>
+            Snaked (Boustrophedonic) Round Robin
           </Select.Option>
           <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
-            Team Round Robin
+            Team (Top vs Bottom) Round Robin
           </Select.Option>
         </Select>
       </Form.Item>

@@ -81,6 +81,7 @@ enum PairingMethod {
   MANUAL = 8;
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
+  SNAKED_ROUND_ROBIN = 11;
 }
 
 enum FirstMethod {
@@ -113,7 +114,7 @@ message RoundControl {
   bool allow_over_max_repeats = 8;
   int32 repeat_relative_weight = 9;
   int32 win_difference_relative_weight = 10;
-  reserved 11;
+  bool play_within_team = 11;
   // Optional is needed to represent:
   // - `nil` for no override at all
   // - `0` overriding the default to disable the spread cap
