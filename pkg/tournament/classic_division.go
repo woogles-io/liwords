@@ -1599,10 +1599,21 @@ func newClassicPairing(t *ClassicDivision,
 		switchFirst = (sum % 2) == 1
 	} else if t.RoundControls[round].PairingMethod == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN ||
 		t.RoundControls[round].PairingMethod == pb.PairingMethod_SNAKED_ROUND_ROBIN {
-		sum := round / ((numPlayers + 1) / 2)
-		sum += (playerIndexSum % 4) % 3
-		sum += int(playerOne % 2)
-		switchFirst = (sum % 2) == 1
+		if t.RoundControls[round].PlayWithinTeam {
+			sum := round / ((numPlayers+1)/2 - 1)
+			sum += (playerIndexSum % 4) / 2
+			if playerOne%2 == 0 {
+				sum += int(playerOne%4) / 2
+			} else {
+				sum += int(playerOne % 2)
+			}
+			switchFirst = (sum % 2) == 1
+		} else {
+			sum := round / ((numPlayers + 1) / 2)
+			sum += (playerIndexSum % 4) % 3
+			sum += int(playerOne % 2)
+			switchFirst = (sum % 2) == 1
+		}
 	} else if firstMethod != pb.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFirstsAndSeconds(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFirstsAndSeconds(t, playerGoingSecond, round-1)
