@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { TouchBackend } from "react-dnd-touch-backend";
+import { DndProvider } from "react-dnd-multi-backend";
+import { HTML5toTouch } from "rdndmb-html5-to-touch";
 import { Button, Tooltip, Affix, App } from "antd";
 import { Modal } from "../utils/focus_modal";
-import { DndProvider } from "react-dnd";
 import {
   ArrowDownOutlined,
   EditOutlined,
@@ -1358,5 +1358,5 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
-  return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
+  return <DndProvider options={HTML5toTouch}>{gameBoard}</DndProvider>;
 });
