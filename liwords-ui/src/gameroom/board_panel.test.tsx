@@ -53,15 +53,15 @@ function renderBoardPanel() {
 afterEach(cleanup);
 
 it("renders a game board panel", async () => {
-  let container: HTMLElement;
-  // act so that we can wait for useEffect hooks to run:
-  await act(async () => {
-    container = renderBoardPanel().container;
+  // Simplify by combining the rendering and waiting in one step
+  const { container } = renderBoardPanel();
+
+  // Wait for any async effects to complete
+  await waitFor(() => {
+    // Optional: Add a specific condition that indicates the component is fully rendered
+    expect(container.querySelector(".board-container")).toBeInTheDocument();
   });
-  await waitFor(async () => {
-    // XXX this test is actually broken. the snapshot is wrong.
-    // expect(container.querySelector('.tile-p0')).not.toBeNull();
-    // console.log('ok', container.querySelector('.tile-p0'));
-    expect(container).toMatchSnapshot();
-  });
+
+  // Take a single snapshot after the component is stable
+  expect(container).toMatchSnapshot();
 });

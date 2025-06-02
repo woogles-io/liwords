@@ -1211,13 +1211,7 @@ export const BoardPanel = React.memo((props: Props) => {
       />
     );
   }
-  if (authedSolvingPuzzle) {
-    gameControls = (
-      <Affix offsetTop={126} className="rack-affix">
-        {gameControls}
-      </Affix>
-    );
-  }
+
   const gameBoard = (
     <div
       id="board-container"

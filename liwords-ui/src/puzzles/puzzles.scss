@@ -219,8 +219,8 @@
     }
   }
   .ant-affix {
-    position: static !important;
-    height: auto !important;
+    // position: static !important;
+    // height: auto !important;
     @include colorModed() {
       border-bottom: 0;
     }
