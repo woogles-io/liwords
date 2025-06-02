@@ -1,4 +1,3 @@
-import { defaultTheme, darkTheme } from "@ant-design/compatible";
 import { theme } from "antd";
 
 // We should migrate to using antd component tokens as much as possible,
@@ -76,19 +75,17 @@ const darkComponentOverrides = {
 };
 
 export const liwordsDefaultTheme = {
-  ...defaultTheme,
+  ...theme.defaultAlgorithm,
   token: {
-    ...defaultTheme.token,
     ...tokenoverrides,
   },
   components: { ...componentOverrides, ...lightComponentOverrides },
 };
 
 export const liwordsDarkTheme = {
-  ...darkTheme,
+  ...theme.darkAlgorithm,
   algorithm: theme.darkAlgorithm,
   token: {
-    ...darkTheme.token,
     ...tokenoverrides,
   },
   components: { ...componentOverrides, ...darkComponentOverrides },

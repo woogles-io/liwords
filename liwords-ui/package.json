@@ -4,7 +4,6 @@
     "type": "module",
     "private": true,
     "dependencies": {
-        "@ant-design/compatible": "^5.1.4",
         "@ant-design/icons": "^6.0.0",
         "@ant-design/v5-patch-for-react-19": "^1.0.3",
         "@bufbuild/protobuf": "^2.5.1",
