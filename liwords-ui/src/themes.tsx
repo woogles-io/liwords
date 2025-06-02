@@ -20,6 +20,9 @@ const componentOverrides = {
   Checkbox: {
     colorBgContainer: "#ffffff",
   },
+  Button: {
+    borderRadius: 0,
+  },
 };
 
 const lightComponentOverrides = {
