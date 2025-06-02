@@ -66,7 +66,7 @@ func NewGame(cfg *wglconfig.Config, rules *GameRules, playerinfo []*ipc.GameDocu
 	if err != nil {
 		return nil, err
 	}
-	_, err = kwg.Get(cfg, rules.lexicon)
+	_, err = kwg.GetKWG(cfg, rules.lexicon)
 	if err != nil {
 		return nil, err
 	}
