@@ -158,7 +158,7 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	}
 
 	// validate the tile play move
-	gd, err := kwg.Get(cfg.WGLConfig(), gdoc.Lexicon)
+	gd, err := kwg.GetKWG(cfg.WGLConfig(), gdoc.Lexicon)
 	if err != nil {
 		return err
 	}
@@ -418,7 +418,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	if err != nil {
 		return err
 	}
-	gd, err := kwg.Get(cfg.WGLConfig(), gdoc.Lexicon)
+	gd, err := kwg.GetKWG(cfg.WGLConfig(), gdoc.Lexicon)
 	if err != nil {
 		return err
 	}

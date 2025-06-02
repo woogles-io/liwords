@@ -989,7 +989,7 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	cfg *wglconfig.Config) (bool, error) {
 	phony := false
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
-		kwg, err := kwg.Get(cfg, history.Lexicon)
+		kwg, err := kwg.GetKWG(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}

@@ -309,7 +309,7 @@ func isPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *wglconfig.Config) (bool, error) {
 	phony := false
-	gd, err := kwg.Get(cfg, history.Lexicon)
+	gd, err := kwg.GetKWG(cfg, history.Lexicon)
 	if err != nil {
 		return phony, err
 	}

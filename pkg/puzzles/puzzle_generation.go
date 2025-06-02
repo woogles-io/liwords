@@ -98,7 +98,7 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	// For non-bot-v-bot games we need to "hydrate" the game we get back
 	// from the database with the right data structures in order for it
 	// to generate moves properly.
-	gd, err := kwg.Get(cfg.WGLConfig(), req.Lexicon)
+	gd, err := kwg.GetKWG(cfg.WGLConfig(), req.Lexicon)
 	if err != nil {
 		return false, err
 	}

@@ -82,7 +82,7 @@ func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.
 	hasDefiner = definer != nil
 
 	// we have checked Lexicon is not "../etc/passwd".
-	gd, err := kwg.Get(ws.cfg.WGLConfig(), req.Msg.Lexicon)
+	gd, err := kwg.GetKWG(ws.cfg.WGLConfig(), req.Msg.Lexicon)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
