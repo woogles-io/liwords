@@ -152,8 +152,8 @@ export const SeekRequestSchema: GenMessage<SeekRequest> = /*@__PURE__*/
 
 /**
  * A SoughtGameProcessEvent gets sent when a match request (or seek request)
- * get accepted (from client to server), or canceled -- when sent from server to
- * client.
+ * get accepted (from client to server), or cancelled -- when sent from server
+ * to client.
  *
  * @generated from message ipc.SoughtGameProcessEvent
  */
