@@ -169,11 +169,10 @@ class ScorecardCreator:
             ctx.move_to(xidx, 56)
             ctx.show_text(str(pidx + 1))
             player_name_x = 80
-        if len(tourney_name) > 10:
-            ctx.set_font_size(12)
-            ctx.move_to(player_name_x, 76)
-        else:
-            ctx.move_to(360, 56)
+
+        # Show tournament name
+        ctx.set_font_size(12)
+        ctx.move_to(player_name_x, 76)
         ctx.show_text(tourney_name)
 
         if self.show_qrcode and not tourney_logo:
@@ -218,17 +217,28 @@ class ScorecardCreator:
 
             logo_surface = self.cached_logo
 
-            ctx.save()
-            ctx.translate(350, 10)
-
+            # Calculate safe width to avoid QR code overlap
             logo_height = logo_surface.get_height()
             logo_width = logo_surface.get_width()
-            scale_factor = 70 / logo_height
-            ctx.scale(scale_factor, scale_factor)
 
+            # QR code starts at x=490, logo starts at x=375
+            # Safe width = space between logo start and QR code start = 490-375 = 115
+            max_safe_width = 105  # Leave 10pt margin
+
+            # Calculate scale based on both height and width constraints
+            height_scale_factor = 70 / logo_height
+            width_scale_factor = max_safe_width / logo_width
+
+            # Use the smaller scale factor to ensure logo fits in both dimensions
+            scale_factor = min(height_scale_factor, width_scale_factor)
+
+            ctx.save()
+            ctx.translate(375, 10)
+            ctx.scale(scale_factor, scale_factor)
             ctx.set_source_surface(logo_surface, 0, 0)
             ctx.paint()
             ctx.restore()
+
         # line for player and name
         ctx.set_font_size(20)
         ctx.move_to(player_name_x, 56)
