@@ -1,9 +1,13 @@
 import base64
 import json
 import os
+import sys
 import tempfile
 import zipfile
 import traceback
+
+os.makedirs("/tmp/fontconfig", exist_ok=True)
+os.environ["FONTCONFIG_CACHE"] = "/tmp/fontconfig"
 
 from generator import ScorecardCreator
 from fetch_tourney import get_tournament

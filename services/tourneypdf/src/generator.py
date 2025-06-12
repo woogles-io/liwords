@@ -2,6 +2,24 @@ import json
 import math
 import os
 import qrcode
+import sys
+
+try:
+    # Debug info
+    print("LD_LIBRARY_PATH:", os.environ.get("LD_LIBRARY_PATH"))
+    print("FONTCONFIG_PATH:", os.environ.get("FONTCONFIG_PATH"))
+    print("Python path:", sys.path)
+
+    # Try loading cairo
+    import cairo
+
+    print("Cairo version:", cairo.version)
+except Exception as e:
+    import traceback
+
+    error_details = traceback.format_exc()
+    print(f"ERROR: {error_details}")
+
 
 import cairo
 import webcolors
@@ -164,15 +182,44 @@ class ScorecardCreator:
             ctx.show_text("Enter scores and view standings:")
 
         if tourney_logo:
+            print("Using tourney logo:", tourney_logo)
             if not hasattr(self, "cached_logo"):
                 response = requests.get(tourney_logo)
-                self.cached_logo = cairo.ImageSurface.create_from_png(
-                    BytesIO(response.content)
-                )
+                # Check PNG signature bytes
+                is_png = response.content.startswith(b"\x89PNG\r\n\x1a\n")
+                if not is_png:
+                    print(f"Logo is not a PNG file. URL: {tourney_logo}")
+                    from PIL import Image
+
+                    img = Image.open(BytesIO(response.content))
+
+                    # Resize to reasonable dimensions to avoid memory issues
+                    img.thumbnail((300, 300))
+                    output = BytesIO()
+                    img.save(output, format="PNG")
+                    output.seek(0)
+
+                    self.cached_logo = cairo.ImageSurface.create_from_png(output)
+                    print(f"Converted image to PNG")
+                else:
+                    # It's a PNG, proceed with caution
+                    try:
+                        # Set a reasonable size limit (e.g., 1MB)
+                        if len(response.content) > 1024 * 1024:
+                            print(
+                                f"Logo too large ({len(response.content)} bytes), skipping"
+                            )
+                        else:
+                            self.cached_logo = cairo.ImageSurface.create_from_png(
+                                BytesIO(response.content)
+                            )
+                    except Exception as e:
+                        print(f"Error loading PNG: {str(e)}")
+
             logo_surface = self.cached_logo
 
             ctx.save()
-            ctx.translate(290, 10)
+            ctx.translate(350, 10)
 
             logo_height = logo_surface.get_height()
             logo_width = logo_surface.get_width()
