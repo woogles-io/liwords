@@ -1,9 +1,13 @@
 import base64
 import json
 import os
+import sys
 import tempfile
 import zipfile
+import traceback
 
+os.makedirs("/tmp/fontconfig", exist_ok=True)
+os.environ["FONTCONFIG_CACHE"] = "/tmp/fontconfig"
 
 from generator import ScorecardCreator
 from fetch_tourney import get_tournament
@@ -22,7 +26,8 @@ def message_handler(msg):
         msg.get("showSeeds", False),
         msg.get("showQrCode", False),
     )
-
+    print("Got tournament with id:", msg.get("id"))
+    print("Tournament slug:", t["meta"]["metadata"]["slug"])
     with tempfile.TemporaryDirectory() as temp_dir:
         print("Using temp_dir to save files:", temp_dir)
 
@@ -31,6 +36,7 @@ def message_handler(msg):
             creator.gen_scorecards()
         except Exception as e:
             print("Failed to generate scorecards", e)
+            traceback.print_exc()
             raise
 
         # Zipping the PDF files in the temporary directory

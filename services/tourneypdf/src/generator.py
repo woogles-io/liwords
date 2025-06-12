@@ -2,6 +2,24 @@ import json
 import math
 import os
 import qrcode
+import sys
+
+try:
+    # Debug info
+    print("LD_LIBRARY_PATH:", os.environ.get("LD_LIBRARY_PATH"))
+    print("FONTCONFIG_PATH:", os.environ.get("FONTCONFIG_PATH"))
+    print("Python path:", sys.path)
+
+    # Try loading cairo
+    import cairo
+
+    print("Cairo version:", cairo.version)
+except Exception as e:
+    import traceback
+
+    error_details = traceback.format_exc()
+    print(f"ERROR: {error_details}")
+
 
 import cairo
 import webcolors
@@ -151,11 +169,10 @@ class ScorecardCreator:
             ctx.move_to(xidx, 56)
             ctx.show_text(str(pidx + 1))
             player_name_x = 80
-        if len(tourney_name) > 10:
-            ctx.set_font_size(12)
-            ctx.move_to(player_name_x, 76)
-        else:
-            ctx.move_to(360, 56)
+
+        # Show tournament name
+        ctx.set_font_size(12)
+        ctx.move_to(player_name_x, 76)
         ctx.show_text(tourney_name)
 
         if self.show_qrcode and not tourney_logo:
@@ -164,24 +181,64 @@ class ScorecardCreator:
             ctx.show_text("Enter scores and view standings:")
 
         if tourney_logo:
+            print("Using tourney logo:", tourney_logo)
             if not hasattr(self, "cached_logo"):
                 response = requests.get(tourney_logo)
-                self.cached_logo = cairo.ImageSurface.create_from_png(
-                    BytesIO(response.content)
-                )
+                # Check PNG signature bytes
+                is_png = response.content.startswith(b"\x89PNG\r\n\x1a\n")
+                if not is_png:
+                    print(f"Logo is not a PNG file. URL: {tourney_logo}")
+                    from PIL import Image
+
+                    img = Image.open(BytesIO(response.content))
+
+                    # Resize to reasonable dimensions to avoid memory issues
+                    img.thumbnail((300, 300))
+                    output = BytesIO()
+                    img.save(output, format="PNG")
+                    output.seek(0)
+
+                    self.cached_logo = cairo.ImageSurface.create_from_png(output)
+                    print(f"Converted image to PNG")
+                else:
+                    # It's a PNG, proceed with caution
+                    try:
+                        # Set a reasonable size limit (e.g., 1MB)
+                        if len(response.content) > 1024 * 1024:
+                            print(
+                                f"Logo too large ({len(response.content)} bytes), skipping"
+                            )
+                        else:
+                            self.cached_logo = cairo.ImageSurface.create_from_png(
+                                BytesIO(response.content)
+                            )
+                    except Exception as e:
+                        print(f"Error loading PNG: {str(e)}")
+
             logo_surface = self.cached_logo
 
-            ctx.save()
-            ctx.translate(290, 10)
-
+            # Calculate safe width to avoid QR code overlap
             logo_height = logo_surface.get_height()
             logo_width = logo_surface.get_width()
-            scale_factor = 70 / logo_height
-            ctx.scale(scale_factor, scale_factor)
 
+            # QR code starts at x=490, logo starts at x=375
+            # Safe width = space between logo start and QR code start = 490-375 = 115
+            max_safe_width = 105  # Leave 10pt margin
+
+            # Calculate scale based on both height and width constraints
+            height_scale_factor = 70 / logo_height
+            width_scale_factor = max_safe_width / logo_width
+
+            # Use the smaller scale factor to ensure logo fits in both dimensions
+            scale_factor = min(height_scale_factor, width_scale_factor)
+
+            ctx.save()
+            ctx.translate(375, 10)
+            ctx.scale(scale_factor, scale_factor)
             ctx.set_source_surface(logo_surface, 0, 0)
             ctx.paint()
             ctx.restore()
+
         # line for player and name
         ctx.set_font_size(20)
         ctx.move_to(player_name_x, 56)
@@ -408,8 +465,9 @@ class ScorecardCreator:
             # 8.5 x 11 inches in points (612 x 792)
             surface = cairo.PDFSurface(fname, 612, 792)
             ctx = cairo.Context(surface)
+
             ctx.select_font_face(
-                "Open Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+                "Noto Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
             )
             for i in range(0, len(div["players"]["persons"]), skip):
                 end = i + skip - 1
