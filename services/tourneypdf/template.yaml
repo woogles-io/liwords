@@ -18,9 +18,11 @@ Resources:
       FunctionName: "TourneyPDFFunction"
       CodeUri: src/
       Handler: main.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
+      EphemeralStorage:
+        Size: 1024  # 1GB of ephemeral storage
       Layers:
-        - arn:aws:lambda:us-east-2:509130939211:layer:tourneypdf-lambda-layer:12
+        - arn:aws:lambda:us-east-2:509130939211:layer:tourneypdf-lambda-layer:13
       Architectures:
         - x86_64
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
