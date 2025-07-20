@@ -851,6 +851,21 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	cancelFn()
 }
 
+func TestCOPWeights(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	req := pairtestutils.CreateBLSRound32PairRequest()
+	req.Seed = 0
+	is.Equal(verifyreq.Verify(req), nil)
+	resp := cop.COPPair(ctx, req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Matt T should be playing Michael F, since rank differences
+	// for pairings with a gibsonized player are not cubed.
+	is.Equal(resp.Pairings[9], int32(46))
+	is.Equal(resp.Pairings[46], int32(9))
+}
+
 func TestCOPSuccess(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
