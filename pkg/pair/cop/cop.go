@@ -3,6 +3,7 @@ package cop
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"math"
 
 	"golang.org/x/exp/rand"
@@ -258,7 +259,21 @@ var weightPolicies = []weightPolicy{
 		name: "RD",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
 			diff := int64(rj - ri)
-			if ri > pargs.lowestPossibleAbsCasher {
+			// rj might be the Bye, which is out of range for this array
+			rjGibsonized := false
+			if rj < len(pargs.copdata.GibsonizedPlayers) {
+				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
+			}
+			// If
+			//
+			// - either play is gibsonized, or
+			// - neither player cashed even once in the simulation, then
+			//
+			// the rank difference should only act as a tie breaker
+			// for minimizing repeats, which means we leave the diff
+			// as is instead of cubed so it doesn't overwhelm the repeat penalty.
+			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
+				ri > pargs.lowestPossibleAbsCasher {
 				return diff
 			}
 			return diff * diff * diff
@@ -268,7 +283,7 @@ var weightPolicies = []weightPolicy{
 		// Pair with Casher
 		name: "PC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			// rj might be the Bye, which is out of range for this arrays
+			// rj might be the Bye, which is out of range for this array
 			rjGibsonized := false
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
@@ -404,7 +419,12 @@ func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 	logsb := &strings.Builder{}
 	starttime := time.Now()
 	if req.Seed == 0 {
-		req.Seed = time.Now().Unix()
+		// Create a seed from the player names and the length of the pairings
+		hash := fnv.New64()
+		for _, name := range req.PlayerNames {
+			_, _ = hash.Write([]byte(name))
+		}
+		req.Seed = int64(hash.Sum64()) + int64(len(req.DivisionPairings))
 	}
 	addPairRequestAsJSONToLog(req, logsb, false)
 	resp := copPairWithLog(ctx, req, logsb)
