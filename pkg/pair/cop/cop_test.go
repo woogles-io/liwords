@@ -698,7 +698,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	resp.Pairings[11] = 11
 	pairtestutils.AddRoundPairings(req, resp.Pairings)
 	resp = cop.COPPair(ctx, req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
 	is.Equal(resp.Pairings[1], int32(1))
