@@ -270,7 +270,8 @@ var weightPolicies = []weightPolicy{
 			// - neither player cashed even once in the simulation, then
 			//
 			// the rank difference should only act as a tie breaker
-			// for minimizing repeats.
+			// for minimizing repeats, which means we leave the diff
+			// as is instead of cubed so it doesn't overwhelm the repeat penalty.
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
 				ri > pargs.lowestPossibleAbsCasher {
 				return diff
