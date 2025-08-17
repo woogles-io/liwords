@@ -39,6 +39,7 @@
         "analyze": "source-map-explorer 'build/static/js/*.js'",
         "start": "rsbuild dev",
         "build": "tsc && rsbuild build --env-mode production",
+        "build:embed": "rsbuild build --env-mode production --config rsbuild.embed.config.ts",
         "preview": "rsbuild preview",
         "test": "vitest",
         "lint": "eslint --ext .js,.jsx,.ts,.tsx src --color",

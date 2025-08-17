@@ -2021,6 +2021,7 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
 
     try {
       const resp = await tClient.getTournamentScorecards(obj);
+      // @ts-expect-error - TypeScript issue with Uint8Array type
       const url = window.URL.createObjectURL(new Blob([resp.pdfZip]));
       const link = document.createElement("a");
       link.href = url;
