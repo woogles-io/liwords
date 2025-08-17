@@ -46,6 +46,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/comments"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/embed"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/integrations"
 	"github.com/woogles-io/liwords/pkg/memento"
@@ -196,6 +197,7 @@ func main() {
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
 		stores.GameDocumentStore, cfg)
+	embedService := embed.NewEmbedService(stores.GameDocumentStore)
 	oauthIntegrationService := integrations.NewOAuthIntegrationService(stores.SessionStore, stores.Queries, cfg)
 	integrationService := integrations.NewIntegrationService(stores.Queries)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
@@ -228,6 +230,11 @@ func main() {
 	router.Handle(memento.GameimgPrefix, otelhttp.WithRouteTag(memento.GameimgPrefix, otelhttp.NewHandler(
 		middlewares.Then(mementoService),
 		"memento-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
+	router.Handle(embed.EmbedServicePrefix, otelhttp.WithRouteTag(embed.EmbedServicePrefix, otelhttp.NewHandler(
+		middlewares.Then(embedService),
+		"embed-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 	)))
 	router.Handle(integrations.OAuthIntegrationServicePrefix,
