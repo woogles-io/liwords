@@ -45,6 +45,7 @@ type SimpleGameEvent = {
 };
 
 // Convert OMGWords GameEvent to simple format for board operations
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const convertToSimpleEvt = (oevt: any): SimpleGameEvent => {
   // The JSON uses lowercase field names
   // Determine event type based on fields present
@@ -56,10 +57,10 @@ const convertToSimpleEvt = (oevt: any): SimpleGameEvent => {
   } else if (oevt.challengedPhony !== undefined) {
     type = OMGWordsGameEventType.PHONY_TILES_RETURNED;
   }
-  
+
   // Parse playedTiles from base64 if it's a string
   let playedTiles = oevt.playedTiles;
-  if (typeof playedTiles === 'string') {
+  if (typeof playedTiles === "string") {
     // Decode base64 to Uint8Array
     const binaryString = atob(playedTiles);
     playedTiles = new Uint8Array(binaryString.length);
@@ -67,12 +68,12 @@ const convertToSimpleEvt = (oevt: any): SimpleGameEvent => {
       playedTiles[i] = binaryString.charCodeAt(i);
     }
   }
-  
+
   // Parse direction
-  const direction = oevt.direction === 'VERTICAL' ? 1 : 0;
-  
+  const direction = oevt.direction === "VERTICAL" ? 1 : 0;
+
   // console.log("Converting event - type:", type, "player:", oevt.playerIndex ?? 0, "cumulative:", oevt.cumulative, "tiles:", playedTiles?.length);
-  
+
   return {
     type,
     row: oevt.row ?? 0,
@@ -239,7 +240,7 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
             break;
         }
       }
-      
+
       // console.log("Board state after replay:", {
       //   currentEventIndex,
       //   boardLetters: board.letters.filter(l => l !== 0).length,
@@ -322,25 +323,27 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
     <DndProvider backend={TouchBackend}>
       <div
         className={`standalone-embed standalone-embed--${theme}`}
-        style={{ 
-          width, 
-          maxWidth: "100%", 
+        style={{
+          width,
+          maxWidth: "100%",
           height,
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid #e0e0e0',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          backgroundColor: theme === 'dark' ? '#1a1a1a' : '#fff'
+          display: "flex",
+          flexDirection: "column",
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          overflow: "hidden",
+          backgroundColor: theme === "dark" ? "#1a1a1a" : "#fff",
         }}
       >
         {/* Player scores at the top */}
         {showScores && (
-          <div style={{
-            padding: '8px',
-            borderBottom: '1px solid #e0e0e0',
-            backgroundColor: theme === 'dark' ? '#2a2a2a' : '#f5f5f5'
-          }}>
+          <div
+            style={{
+              padding: "8px",
+              borderBottom: "1px solid #e0e0e0",
+              backgroundColor: theme === "dark" ? "#2a2a2a" : "#f5f5f5",
+            }}
+          >
             <StaticPlayerCards
               p0Score={currentScores[0]}
               p1Score={currentScores[1]}
@@ -352,40 +355,44 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
         {/* Board in the middle */}
         <div className="standalone-embed__board-container">
           {/* Board placeholder - need to implement without store dependency */}
-          <div style={{ 
-            width: '400px', 
-            height: '400px', 
-            background: '#f0f0f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
+          <div
+            style={{
+              width: "400px",
+              height: "400px",
+              background: "#f0f0f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             Board requires store context - see comment
           </div>
         </div>
 
         {/* Controls at the bottom */}
         {showControls && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            padding: '12px',
-            borderTop: '1px solid #e0e0e0',
-            backgroundColor: theme === 'dark' ? '#2a2a2a' : '#f5f5f5'
-          }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              padding: "12px",
+              borderTop: "1px solid #e0e0e0",
+              backgroundColor: theme === "dark" ? "#2a2a2a" : "#f5f5f5",
+            }}
+          >
             <button
               onClick={handleFirstEvent}
               disabled={currentEventIndex === 0}
               style={{
-                width: '36px',
-                height: '36px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
-                backgroundColor: '#fff',
-                cursor: currentEventIndex === 0 ? 'not-allowed' : 'pointer',
-                opacity: currentEventIndex === 0 ? 0.4 : 1
+                width: "36px",
+                height: "36px",
+                border: "1px solid #d0d0d0",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                cursor: currentEventIndex === 0 ? "not-allowed" : "pointer",
+                opacity: currentEventIndex === 0 ? 0.4 : 1,
               }}
               title="Go to beginning"
             >
@@ -395,37 +402,43 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
               onClick={handlePrevEvent}
               disabled={currentEventIndex === 0}
               style={{
-                width: '36px',
-                height: '36px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
-                backgroundColor: '#fff',
-                cursor: currentEventIndex === 0 ? 'not-allowed' : 'pointer',
-                opacity: currentEventIndex === 0 ? 0.4 : 1
+                width: "36px",
+                height: "36px",
+                border: "1px solid #d0d0d0",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                cursor: currentEventIndex === 0 ? "not-allowed" : "pointer",
+                opacity: currentEventIndex === 0 ? 0.4 : 1,
               }}
               title="Previous move"
             >
               ◀
             </button>
-            <div style={{
-              padding: '0 16px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: theme === 'dark' ? '#aaa' : '#666'
-            }}>
+            <div
+              style={{
+                padding: "0 16px",
+                fontSize: "14px",
+                fontWeight: 500,
+                color: theme === "dark" ? "#aaa" : "#666",
+              }}
+            >
               Move {currentEventIndex} / {gameDocument.events.length}
             </div>
             <button
               onClick={handleNextEvent}
               disabled={currentEventIndex >= gameDocument.events.length}
               style={{
-                width: '36px',
-                height: '36px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
-                backgroundColor: '#fff',
-                cursor: currentEventIndex >= gameDocument.events.length ? 'not-allowed' : 'pointer',
-                opacity: currentEventIndex >= gameDocument.events.length ? 0.4 : 1
+                width: "36px",
+                height: "36px",
+                border: "1px solid #d0d0d0",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                cursor:
+                  currentEventIndex >= gameDocument.events.length
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  currentEventIndex >= gameDocument.events.length ? 0.4 : 1,
               }}
               title="Next move"
             >
@@ -435,13 +448,17 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
               onClick={handleLastEvent}
               disabled={currentEventIndex >= gameDocument.events.length}
               style={{
-                width: '36px',
-                height: '36px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
-                backgroundColor: '#fff',
-                cursor: currentEventIndex >= gameDocument.events.length ? 'not-allowed' : 'pointer',
-                opacity: currentEventIndex >= gameDocument.events.length ? 0.4 : 1
+                width: "36px",
+                height: "36px",
+                border: "1px solid #d0d0d0",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                cursor:
+                  currentEventIndex >= gameDocument.events.length
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  currentEventIndex >= gameDocument.events.length ? 0.4 : 1,
               }}
               title="Go to end"
             >
@@ -452,22 +469,28 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
 
         {/* Move details (optional) */}
         {showMoveList && currentEvent && (
-          <div style={{
-            padding: '12px',
-            borderTop: '1px solid #e0e0e0',
-            backgroundColor: theme === 'dark' ? '#252525' : '#fafafa'
-          }}>
-            <div style={{
-              fontWeight: 600,
-              marginBottom: '4px',
-              color: theme === 'dark' ? '#fff' : '#333'
-            }}>
+          <div
+            style={{
+              padding: "12px",
+              borderTop: "1px solid #e0e0e0",
+              backgroundColor: theme === "dark" ? "#252525" : "#fafafa",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                marginBottom: "4px",
+                color: theme === "dark" ? "#fff" : "#333",
+              }}
+            >
               {gameDocument.players[currentEvent.playerIndex].nickname}
             </div>
-            <div style={{
-              fontSize: '14px',
-              color: theme === 'dark' ? '#bbb' : '#666'
-            }}>
+            <div
+              style={{
+                fontSize: "14px",
+                color: theme === "dark" ? "#bbb" : "#666",
+              }}
+            >
               {formatEvent(currentEvent)}
             </div>
           </div>

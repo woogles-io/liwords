@@ -17,7 +17,7 @@ export default {
   source: {
     entry: {
       index: "./src/index.tsx",
-      embed: "./src/embed/embed-entry.tsx",
+      //   embed: "./src/embed/embed-entry.tsx",
     },
   },
 };
