@@ -319,13 +319,17 @@ export const Chat = React.memo((props: Props) => {
     };
 
     // Check if context actually changed
-    const contextChanged = 
+    const contextChanged =
       prevContext.tournamentID !== currentContext.tournamentID ||
       prevContext.channelType !== currentContext.channelType ||
       prevContext.hasCollection !== currentContext.hasCollection;
 
     if (contextChanged) {
-      if (props.tournamentID || channelType === "game" || channelType === "gametv") {
+      if (
+        props.tournamentID ||
+        channelType === "game" ||
+        channelType === "gametv"
+      ) {
         setSelectedChatTab("CHAT");
       } else if (collectionContext) {
         setSelectedChatTab("COLLECTION");
@@ -832,13 +836,12 @@ export const Chat = React.memo((props: Props) => {
 
   // Ensure selected tab is valid when tabItems change
   useEffect(() => {
-    const availableKeys = tabItems.map(item => item.key);
+    const availableKeys = tabItems.map((item) => item.key);
     if (!availableKeys.includes(selectedChatTab)) {
       // If current selected tab is not available, pick first available tab
       setSelectedChatTab(availableKeys[0] || "CHAT");
     }
   }, [tabItems, selectedChatTab]);
-
 
   return (
     <Card className="chat" id="chat">

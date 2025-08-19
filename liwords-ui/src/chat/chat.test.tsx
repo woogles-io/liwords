@@ -14,6 +14,10 @@ vi.mock("../utils/hooks/connect", async () => {
   };
 });
 
+vi.mock("../collections/useCollectionContext", () => ({
+  useCollectionContext: () => null, // Return null for tests (no collection context)
+}));
+
 function renderChat(props: Partial<Props> = {}) {
   const dummyFunction = () => {
     return;

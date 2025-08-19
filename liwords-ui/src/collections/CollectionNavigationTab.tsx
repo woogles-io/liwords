@@ -59,7 +59,7 @@ export const CollectionNavigationTab: React.FC = () => {
   }
 
   return (
-    <div 
+    <div
       className="collection-navigation-tab"
       style={
         maxHeight
@@ -104,18 +104,19 @@ export const CollectionNavigationTab: React.FC = () => {
             renderItem={(game, index) => {
               const chapterNum = index + 1;
               const isActive = chapterNum === currentChapter;
-              
+
               return (
                 <List.Item
-                  className={`chapter-list-item ${isActive ? 'active' : ''}`}
+                  className={`chapter-list-item ${isActive ? "active" : ""}`}
                   onClick={() => goToChapter && goToChapter(chapterNum)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                 >
                   <div className="chapter-item-content">
                     <div className="chapter-item-header">
                       <PlayCircleOutlined className="chapter-icon" />
                       <Text strong={isActive} className="chapter-title">
-                        Ch. {chapterNum}: {game.chapterTitle || `Chapter ${chapterNum}`}
+                        Ch. {chapterNum}:{" "}
+                        {game.chapterTitle || `Chapter ${chapterNum}`}
                       </Text>
                     </div>
                     <Text type="secondary" className="chapter-type">
