@@ -62,6 +62,7 @@ import {
 import { BoardEditor } from "./boardwizard/editor";
 import { RootState } from "./store/redux_store";
 import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
+import { CollectionViewer } from "./collections/CollectionViewer";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
 import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
@@ -407,6 +408,12 @@ const App = React.memo(() => {
             <Route path="embed/game/:gameID" element={<Embed />} />
             <Route path="editor" element={<BoardEditor />}>
               <Route path=":gameID" element={<BoardEditor />} />
+            </Route>
+            <Route path="collections/:uuid" element={<CollectionViewer />}>
+              <Route
+                path="chapter/:chapterNumber"
+                element={<CollectionViewer />}
+              />
             </Route>
             <Route
               path="scrabblecam/callback"

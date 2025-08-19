@@ -14,6 +14,7 @@ import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
 import { TopBar } from "../navigation/topbar";
 import { Chat } from "../chat/chat";
+import { CollectionNavigationHeader } from "../collections/CollectionNavigationHeader";
 import {
   useChatStoreContext,
   useExaminableGameContextStoreContext,
@@ -544,9 +545,15 @@ export const Table = React.memo((props: Props) => {
       : null;
     if (turnParamShouldBe !== searchedTurn) {
       if (turnParamShouldBe == null) {
-        setSearchParams({}, { replace: true });
+        // Remove turn parameter while preserving other parameters
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("turn");
+        setSearchParams(newParams, { replace: true });
       } else {
-        setSearchParams({ turn: turnParamShouldBe }, { replace: true });
+        // Update turn parameter while preserving other parameters
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("turn", turnParamShouldBe);
+        setSearchParams(newParams, { replace: true });
       }
     }
   }, [
@@ -621,6 +628,7 @@ export const Table = React.memo((props: Props) => {
     <div className={`game-container${isRegistered ? " competitor" : ""}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournamentId} />
+      <CollectionNavigationHeader />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${

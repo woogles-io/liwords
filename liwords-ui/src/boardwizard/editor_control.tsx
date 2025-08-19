@@ -1,12 +1,29 @@
 // Control the editor
 
-import { Button, Form, Input, Popconfirm, Select, Typography } from "antd";
+import {
+  Button,
+  Form,
+  Input,
+  Popconfirm,
+  Select,
+  Typography,
+  Card,
+  Space,
+  Tag,
+} from "antd";
+import { BookOutlined, FolderOutlined } from "@ant-design/icons";
 import { Store } from "antd/lib/form/interface";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { LexiconFormItem } from "../shared/lexicon_display";
 import { useGameContextStoreContext } from "../store/store";
-import { baseURL } from "../utils/hooks/connect";
+import { baseURL, useClient } from "../utils/hooks/connect";
+import { AddToCollectionModal } from "../collections/AddToCollectionModal";
+import {
+  CollectionsService,
+  Collection,
+} from "../gen/api/proto/collections_service/collections_service_pb";
+import { Link } from "react-router";
 
 type Props = {
   gameID?: string;
@@ -36,6 +53,34 @@ export const EditorControl = (props: Props) => {
   }
 
   const [confirmDelVisible, setConfirmDelVisible] = useState(false);
+  const [collectionModalVisible, setCollectionModalVisible] = useState(false);
+  const [gameCollections, setGameCollections] = useState<Collection[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+
+  const collectionsClient = useClient(CollectionsService);
+
+  const fetchGameCollections = useCallback(async () => {
+    if (!props.gameID) return;
+
+    setLoadingCollections(true);
+    try {
+      const response = await collectionsClient.getCollectionsForGame({
+        gameId: props.gameID,
+      });
+      setGameCollections(response.collections || []);
+    } catch (err) {
+      console.error("Failed to fetch collections for game:", err);
+    } finally {
+      setLoadingCollections(false);
+    }
+  }, [props.gameID, collectionsClient]);
+
+  // Fetch collections that contain this game
+  useEffect(() => {
+    if (props.gameID) {
+      fetchGameCollections();
+    }
+  }, [props.gameID, fetchGameCollections]);
 
   return (
     <div className="editor-control">
@@ -46,6 +91,44 @@ export const EditorControl = (props: Props) => {
           <Typography.Paragraph copyable className="readable-text-color">
             {gameURL}
           </Typography.Paragraph>
+          {gameCollections.length > 0 && (
+            <Card
+              size="small"
+              title={
+                <>
+                  <FolderOutlined /> In Collections
+                </>
+              }
+              style={{ marginBottom: 16 }}
+            >
+              <Space wrap>
+                {gameCollections.map((collection) => (
+                  <Link
+                    key={collection.uuid}
+                    to={`/collections/${collection.uuid}`}
+                  >
+                    <Tag color="blue" style={{ cursor: "pointer" }}>
+                      {collection.title}
+                      {collection.games &&
+                        collection.games[0] &&
+                        collection.games[0].chapterTitle &&
+                        ` (Ch. ${collection.games[0].chapterNumber})`}
+                    </Tag>
+                  </Link>
+                ))}
+              </Space>
+            </Card>
+          )}
+          <p>
+            <Button
+              onClick={() => setCollectionModalVisible(true)}
+              type="default"
+              icon={<BookOutlined />}
+              style={{ marginBottom: 8, marginRight: 8 }}
+            >
+              Add to Collection
+            </Button>
+          </p>
           <p>
             <Popconfirm
               title="Are you sure you wish to delete this game? This action can not be undone!"
@@ -67,6 +150,17 @@ export const EditorControl = (props: Props) => {
               </Button>
             </Popconfirm>
           </p>
+          <AddToCollectionModal
+            visible={collectionModalVisible}
+            gameId={props.gameID}
+            isAnnotated={true}
+            onClose={() => setCollectionModalVisible(false)}
+            onSuccess={(collectionUuid) => {
+              // Refresh the collections list
+              fetchGameCollections();
+              console.log("Game added to collection:", collectionUuid);
+            }}
+          />
         </>
       )}
     </div>

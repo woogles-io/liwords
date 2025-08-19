@@ -44,6 +44,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/bus"
+	"github.com/woogles-io/liwords/pkg/collections"
 	"github.com/woogles-io/liwords/pkg/comments"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/embed"
@@ -61,6 +62,7 @@ import (
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	"github.com/woogles-io/liwords/pkg/words"
+	"github.com/woogles-io/liwords/rpc/api/proto/collections_service/collections_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
@@ -215,6 +217,7 @@ func main() {
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition, stores.Queries)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
+	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -294,6 +297,9 @@ func main() {
 	)
 	connectapi.Handle(
 		comments_serviceconnect.NewGameCommentServiceHandler(commentService, options),
+	)
+	connectapi.Handle(
+		collections_serviceconnect.NewCollectionsServiceHandler(collectionsService, options),
 	)
 	connectapi.Handle(
 		user_serviceconnect.NewIntegrationServiceHandler(integrationService, options),
