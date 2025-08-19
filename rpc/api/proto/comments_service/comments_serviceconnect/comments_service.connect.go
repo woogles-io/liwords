@@ -48,6 +48,9 @@ const (
 	// GameCommentServiceGetCommentsForAllGamesProcedure is the fully-qualified name of the
 	// GameCommentService's GetCommentsForAllGames RPC.
 	GameCommentServiceGetCommentsForAllGamesProcedure = "/comments_service.GameCommentService/GetCommentsForAllGames"
+	// GameCommentServiceGetCollectionCommentsProcedure is the fully-qualified name of the
+	// GameCommentService's GetCollectionComments RPC.
+	GameCommentServiceGetCollectionCommentsProcedure = "/comments_service.GameCommentService/GetCollectionComments"
 )
 
 // GameCommentServiceClient is a client for the comments_service.GameCommentService service.
@@ -57,6 +60,7 @@ type GameCommentServiceClient interface {
 	EditGameComment(context.Context, *connect.Request[comments_service.EditCommentRequest]) (*connect.Response[comments_service.EditCommentResponse], error)
 	DeleteGameComment(context.Context, *connect.Request[comments_service.DeleteCommentRequest]) (*connect.Response[comments_service.DeleteCommentResponse], error)
 	GetCommentsForAllGames(context.Context, *connect.Request[comments_service.GetCommentsAllGamesRequest]) (*connect.Response[comments_service.GetCommentsResponse], error)
+	GetCollectionComments(context.Context, *connect.Request[comments_service.GetCollectionCommentsRequest]) (*connect.Response[comments_service.GetCommentsResponse], error)
 }
 
 // NewGameCommentServiceClient constructs a client for the comments_service.GameCommentService
@@ -100,6 +104,12 @@ func NewGameCommentServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(gameCommentServiceMethods.ByName("GetCommentsForAllGames")),
 			connect.WithClientOptions(opts...),
 		),
+		getCollectionComments: connect.NewClient[comments_service.GetCollectionCommentsRequest, comments_service.GetCommentsResponse](
+			httpClient,
+			baseURL+GameCommentServiceGetCollectionCommentsProcedure,
+			connect.WithSchema(gameCommentServiceMethods.ByName("GetCollectionComments")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -110,6 +120,7 @@ type gameCommentServiceClient struct {
 	editGameComment        *connect.Client[comments_service.EditCommentRequest, comments_service.EditCommentResponse]
 	deleteGameComment      *connect.Client[comments_service.DeleteCommentRequest, comments_service.DeleteCommentResponse]
 	getCommentsForAllGames *connect.Client[comments_service.GetCommentsAllGamesRequest, comments_service.GetCommentsResponse]
+	getCollectionComments  *connect.Client[comments_service.GetCollectionCommentsRequest, comments_service.GetCommentsResponse]
 }
 
 // AddGameComment calls comments_service.GameCommentService.AddGameComment.
@@ -137,6 +148,11 @@ func (c *gameCommentServiceClient) GetCommentsForAllGames(ctx context.Context, r
 	return c.getCommentsForAllGames.CallUnary(ctx, req)
 }
 
+// GetCollectionComments calls comments_service.GameCommentService.GetCollectionComments.
+func (c *gameCommentServiceClient) GetCollectionComments(ctx context.Context, req *connect.Request[comments_service.GetCollectionCommentsRequest]) (*connect.Response[comments_service.GetCommentsResponse], error) {
+	return c.getCollectionComments.CallUnary(ctx, req)
+}
+
 // GameCommentServiceHandler is an implementation of the comments_service.GameCommentService
 // service.
 type GameCommentServiceHandler interface {
@@ -145,6 +161,7 @@ type GameCommentServiceHandler interface {
 	EditGameComment(context.Context, *connect.Request[comments_service.EditCommentRequest]) (*connect.Response[comments_service.EditCommentResponse], error)
 	DeleteGameComment(context.Context, *connect.Request[comments_service.DeleteCommentRequest]) (*connect.Response[comments_service.DeleteCommentResponse], error)
 	GetCommentsForAllGames(context.Context, *connect.Request[comments_service.GetCommentsAllGamesRequest]) (*connect.Response[comments_service.GetCommentsResponse], error)
+	GetCollectionComments(context.Context, *connect.Request[comments_service.GetCollectionCommentsRequest]) (*connect.Response[comments_service.GetCommentsResponse], error)
 }
 
 // NewGameCommentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -184,6 +201,12 @@ func NewGameCommentServiceHandler(svc GameCommentServiceHandler, opts ...connect
 		connect.WithSchema(gameCommentServiceMethods.ByName("GetCommentsForAllGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	gameCommentServiceGetCollectionCommentsHandler := connect.NewUnaryHandler(
+		GameCommentServiceGetCollectionCommentsProcedure,
+		svc.GetCollectionComments,
+		connect.WithSchema(gameCommentServiceMethods.ByName("GetCollectionComments")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/comments_service.GameCommentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GameCommentServiceAddGameCommentProcedure:
@@ -196,6 +219,8 @@ func NewGameCommentServiceHandler(svc GameCommentServiceHandler, opts ...connect
 			gameCommentServiceDeleteGameCommentHandler.ServeHTTP(w, r)
 		case GameCommentServiceGetCommentsForAllGamesProcedure:
 			gameCommentServiceGetCommentsForAllGamesHandler.ServeHTTP(w, r)
+		case GameCommentServiceGetCollectionCommentsProcedure:
+			gameCommentServiceGetCollectionCommentsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -223,4 +248,8 @@ func (UnimplementedGameCommentServiceHandler) DeleteGameComment(context.Context,
 
 func (UnimplementedGameCommentServiceHandler) GetCommentsForAllGames(context.Context, *connect.Request[comments_service.GetCommentsAllGamesRequest]) (*connect.Response[comments_service.GetCommentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("comments_service.GameCommentService.GetCommentsForAllGames is not implemented"))
+}
+
+func (UnimplementedGameCommentServiceHandler) GetCollectionComments(context.Context, *connect.Request[comments_service.GetCollectionCommentsRequest]) (*connect.Response[comments_service.GetCommentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("comments_service.GameCommentService.GetCollectionComments is not implemented"))
 }

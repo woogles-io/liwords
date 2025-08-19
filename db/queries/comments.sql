@@ -27,9 +27,21 @@ WHERE id = $2 and author_id = $3;
 
 -- name: GetCommentsForAllGames :many
 SELECT game_comments.id, games.uuid as game_uuid, users.uuid as user_uuid,
-    users.username, event_number, edited_at, quickdata
+    users.username, event_number, edited_at, comment, quickdata
 FROM game_comments
 JOIN games on game_comments.game_id = games.id
 JOIN users on game_comments.author_id = users.id
 ORDER BY game_comments.created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: GetCommentsForCollectionGames :many
+SELECT game_comments.id, games.uuid as game_uuid, users.uuid as user_uuid,
+    users.username, event_number, edited_at, comment, quickdata
+FROM game_comments
+JOIN games on game_comments.game_id = games.id
+JOIN users on game_comments.author_id = users.id
+JOIN collection_games cg on games.uuid = cg.game_id
+JOIN collections c on cg.collection_id = c.id
+WHERE c.uuid = $1
+ORDER BY game_comments.created_at DESC
+LIMIT $2 OFFSET $3;

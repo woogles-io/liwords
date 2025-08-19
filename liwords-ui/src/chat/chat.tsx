@@ -27,6 +27,8 @@ import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { useCollectionContext } from "../collections/useCollectionContext";
+import { CollectionNavigationTab } from "../collections/CollectionNavigationTab";
 
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -48,6 +50,7 @@ export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const competitorState = useTournamentCompetitorState();
   const { loggedIn, userID } = loginState;
+  const collectionContext = useCollectionContext();
   const [hasScroll, setHasScroll] = useState(false);
   const [channelsFetched, setChannelsFetched] = useState(false);
   const [presenceVisible, setPresenceVisible] = useState(false);
@@ -57,9 +60,11 @@ export const Chat = React.memo((props: Props) => {
   const { defaultChannel, defaultDescription } = props;
   const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
-  const [selectedChatTab, setSelectedChatTab] = useState(
-    props.suppressDefault || !loggedIn ? "CHAT" : "PLAYERS",
-  );
+  const [selectedChatTab, setSelectedChatTab] = useState(() => {
+    if (props.suppressDefault || !loggedIn) return "CHAT";
+    if (collectionContext) return "COLLECTION";
+    return "PLAYERS";
+  });
   const chatTab = selectedChatTab === "CHAT" ? tabContainerElement : null;
   const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
@@ -298,15 +303,37 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
 
+  // Track context to detect actual changes (not just re-renders)
+  const [prevContext, setPrevContext] = useState({
+    tournamentID: props.tournamentID,
+    channelType,
+    hasCollection: !!collectionContext,
+  });
+
+  // Only auto-switch tabs when context actually changes
   useEffect(() => {
-    if (
-      props.tournamentID ||
-      channelType === "game" ||
-      channelType === "gametv"
-    ) {
-      setSelectedChatTab("CHAT");
+    const currentContext = {
+      tournamentID: props.tournamentID,
+      channelType,
+      hasCollection: !!collectionContext,
+    };
+
+    // Check if context actually changed
+    const contextChanged = 
+      prevContext.tournamentID !== currentContext.tournamentID ||
+      prevContext.channelType !== currentContext.channelType ||
+      prevContext.hasCollection !== currentContext.hasCollection;
+
+    if (contextChanged) {
+      if (props.tournamentID || channelType === "game" || channelType === "gametv") {
+        setSelectedChatTab("CHAT");
+      } else if (collectionContext) {
+        setSelectedChatTab("COLLECTION");
+      }
+      setPrevContext(currentContext);
     }
-  }, [props.tournamentID, channelType]);
+  }, [props.tournamentID, channelType, collectionContext, prevContext]);
+
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
       case "game":
@@ -638,6 +665,19 @@ export const Chat = React.memo((props: Props) => {
   );
 
   const tabItems = [
+    ...(collectionContext
+      ? [
+          {
+            label: "Collection",
+            key: "COLLECTION",
+            children: (
+              <div className="collection-pane">
+                <CollectionNavigationTab />
+              </div>
+            ),
+          },
+        ]
+      : []),
     {
       label: "Players",
       key: "PLAYERS",
@@ -790,6 +830,16 @@ export const Chat = React.memo((props: Props) => {
     },
   ];
 
+  // Ensure selected tab is valid when tabItems change
+  useEffect(() => {
+    const availableKeys = tabItems.map(item => item.key);
+    if (!availableKeys.includes(selectedChatTab)) {
+      // If current selected tab is not available, pick first available tab
+      setSelectedChatTab(availableKeys[0] || "CHAT");
+    }
+  }, [tabItems, selectedChatTab]);
+
+
   return (
     <Card className="chat" id="chat">
       <Tabs
@@ -798,6 +848,7 @@ export const Chat = React.memo((props: Props) => {
         onTabClick={handleTabClick}
         animated={false}
         items={tabItems}
+        destroyInactiveTabPane={false} // Keep all tab content rendered
       />
     </Card>
   );

@@ -101,3 +101,7 @@ JOIN collection_games cg ON c.id = cg.collection_id
 JOIN users u ON c.creator_id = u.id
 WHERE cg.game_id = $1
 ORDER BY c.created_at DESC;
+
+-- name: RemoveGameFromAllCollections :exec
+DELETE FROM collection_games 
+WHERE game_id = $1;

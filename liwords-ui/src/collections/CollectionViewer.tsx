@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Spin, message, Card, Button } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
@@ -8,7 +8,12 @@ import {
   Collection,
   CollectionGame,
 } from "../gen/api/proto/collections_service/collections_service_pb";
+import {
+  GameComment,
+  GameCommentService,
+} from "../gen/api/proto/comments_service/comments_service_pb";
 import { CollectionNavigation } from "./CollectionNavigation";
+import { RecentCommentsCard } from "../components/RecentCommentsCard";
 import "./collections.scss";
 
 export const CollectionViewer: React.FC = () => {
@@ -18,13 +23,25 @@ export const CollectionViewer: React.FC = () => {
   }>();
   const navigate = useNavigate();
   const collectionsClient = useClient(CollectionsService);
+  const commentsClient = useClient(GameCommentService);
 
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentComments, setRecentComments] = useState<Array<GameComment>>([]);
+  const [commentsOffset, setCommentsOffset] = useState(0);
 
   // Parse chapter number, default to 1
   const currentChapter = parseInt(chapterNumber || "1", 10);
+  const commentsPageSize = 10;
+
+  const fetchPrevComments = useCallback(() => {
+    setCommentsOffset((r) => Math.max(r - commentsPageSize, 0));
+  }, []);
+
+  const fetchNextComments = useCallback(() => {
+    setCommentsOffset((r) => r + commentsPageSize);
+  }, []);
 
   useEffect(() => {
     const fetchCollection = async () => {
@@ -54,6 +71,25 @@ export const CollectionViewer: React.FC = () => {
 
     fetchCollection();
   }, [uuid, chapterNumber, collectionsClient, navigate]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!uuid) return;
+
+      try {
+        const response = await commentsClient.getCollectionComments({
+          collectionUuid: uuid,
+          limit: commentsPageSize,
+          offset: commentsOffset,
+        });
+        setRecentComments(response.comments);
+      } catch (err) {
+        console.error("Failed to fetch collection comments:", err);
+      }
+    };
+
+    fetchComments();
+  }, [uuid, commentsOffset, commentsClient]);
 
   const handleChapterChange = (newChapter: number) => {
     if (!uuid) return;
@@ -103,7 +139,7 @@ export const CollectionViewer: React.FC = () => {
         />
       </div>
       <div className="collection-content">
-        <Card className="chapter-card">
+        <Card className="chapter-card" style={{ marginBottom: "24px" }}>
           <div className="chapter-header">
             <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
             <p className="chapter-type">
@@ -121,6 +157,7 @@ export const CollectionViewer: React.FC = () => {
                   ? `/anno/${currentGame.gameId}`
                   : `/game/${currentGame.gameId}`;
                 const params = new URLSearchParams({
+                  turn: "1",
                   collection: uuid!,
                   chapter: currentChapter.toString(),
                   total: collection.games.length.toString(),
@@ -141,6 +178,12 @@ export const CollectionViewer: React.FC = () => {
             </p>
           </div>
         </Card>
+
+        <RecentCommentsCard
+          comments={recentComments}
+          fetchPrev={fetchPrevComments}
+          fetchNext={fetchNextComments}
+        />
       </div>
     </div>
   );

@@ -14,7 +14,6 @@ import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
 import { TopBar } from "../navigation/topbar";
 import { Chat } from "../chat/chat";
-import { CollectionNavigationHeader } from "../collections/CollectionNavigationHeader";
 import {
   useChatStoreContext,
   useExaminableGameContextStoreContext,
@@ -628,7 +627,6 @@ export const Table = React.memo((props: Props) => {
     <div className={`game-container${isRegistered ? " competitor" : ""}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournamentId} />
-      <CollectionNavigationHeader />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
@@ -778,6 +776,7 @@ export const Table = React.memo((props: Props) => {
             tournamentName={tournamentContext.metadata?.name}
             colorOverride={tournamentContext.metadata?.color}
             logoUrl={tournamentContext.metadata?.logo}
+            description={gameContext.gameDocument?.description}
           />
           <Pool
             pool={examinableGameContext?.pool}

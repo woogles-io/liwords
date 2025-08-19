@@ -1,5 +1,6 @@
 import React from "react";
 import { Card } from "antd";
+import ReactMarkdown from "react-markdown";
 import { timeCtrlToDisplayName, timeToString } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";
 import { MatchLexiconDisplay } from "../shared/lexicon_display";
@@ -47,6 +48,7 @@ type Props = {
   tournamentName: string;
   colorOverride?: string;
   logoUrl?: string;
+  description?: string;
 };
 
 export const GameInfo = React.memo((props: Props) => {
@@ -101,6 +103,11 @@ export const GameInfo = React.memo((props: Props) => {
         <p>
           {challenge} challenge • {rated}
         </p>
+        {props.description && (
+          <div className="game-description">
+            <ReactMarkdown>{props.description}</ReactMarkdown>
+          </div>
+        )}
       </div>
       {props.logoUrl && (
         <div className="logo-container">

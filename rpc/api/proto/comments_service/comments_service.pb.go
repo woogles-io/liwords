@@ -535,6 +535,66 @@ func (x *GetCommentsAllGamesRequest) GetOffset() uint32 {
 	return 0
 }
 
+type GetCollectionCommentsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CollectionUuid string                 `protobuf:"bytes,1,opt,name=collection_uuid,json=collectionUuid,proto3" json:"collection_uuid,omitempty"`
+	Limit          uint32                 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset         uint32                 `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetCollectionCommentsRequest) Reset() {
+	*x = GetCollectionCommentsRequest{}
+	mi := &file_proto_comments_service_comments_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCollectionCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCollectionCommentsRequest) ProtoMessage() {}
+
+func (x *GetCollectionCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_comments_service_comments_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCollectionCommentsRequest.ProtoReflect.Descriptor instead.
+func (*GetCollectionCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_comments_service_comments_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetCollectionCommentsRequest) GetCollectionUuid() string {
+	if x != nil {
+		return x.CollectionUuid
+	}
+	return ""
+}
+
+func (x *GetCollectionCommentsRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetCollectionCommentsRequest) GetOffset() uint32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 var File_proto_comments_service_comments_service_proto protoreflect.FileDescriptor
 
 const file_proto_comments_service_comments_service_proto_rawDesc = "" +
@@ -576,13 +636,18 @@ const file_proto_comments_service_comments_service_proto_rawDesc = "" +
 	"\x15DeleteCommentResponse\"J\n" +
 	"\x1aGetCommentsAllGamesRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\rR\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\rR\x06offset2\x86\x04\n" +
+	"\x06offset\x18\x02 \x01(\rR\x06offset\"u\n" +
+	"\x1cGetCollectionCommentsRequest\x12'\n" +
+	"\x0fcollection_uuid\x18\x01 \x01(\tR\x0ecollectionUuid\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\rR\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\rR\x06offset2\xf6\x04\n" +
 	"\x12GameCommentService\x12[\n" +
 	"\x0eAddGameComment\x12#.comments_service.AddCommentRequest\x1a$.comments_service.AddCommentResponse\x12^\n" +
 	"\x0fGetGameComments\x12$.comments_service.GetCommentsRequest\x1a%.comments_service.GetCommentsResponse\x12^\n" +
 	"\x0fEditGameComment\x12$.comments_service.EditCommentRequest\x1a%.comments_service.EditCommentResponse\x12d\n" +
 	"\x11DeleteGameComment\x12&.comments_service.DeleteCommentRequest\x1a'.comments_service.DeleteCommentResponse\x12m\n" +
-	"\x16GetCommentsForAllGames\x12,.comments_service.GetCommentsAllGamesRequest\x1a%.comments_service.GetCommentsResponseB\xc6\x01\n" +
+	"\x16GetCommentsForAllGames\x12,.comments_service.GetCommentsAllGamesRequest\x1a%.comments_service.GetCommentsResponse\x12n\n" +
+	"\x15GetCollectionComments\x12..comments_service.GetCollectionCommentsRequest\x1a%.comments_service.GetCommentsResponseB\xc6\x01\n" +
 	"\x14com.comments_serviceB\x14CommentsServiceProtoP\x01Z<github.com/woogles-io/liwords/rpc/api/proto/comments_service\xa2\x02\x03CXX\xaa\x02\x0fCommentsService\xca\x02\x0fCommentsService\xe2\x02\x1bCommentsService\\GPBMetadata\xea\x02\x0fCommentsServiceb\x06proto3"
 
 var (
@@ -597,37 +662,40 @@ func file_proto_comments_service_comments_service_proto_rawDescGZIP() []byte {
 	return file_proto_comments_service_comments_service_proto_rawDescData
 }
 
-var file_proto_comments_service_comments_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_comments_service_comments_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_comments_service_comments_service_proto_goTypes = []any{
-	(*GameComment)(nil),                // 0: comments_service.GameComment
-	(*AddCommentRequest)(nil),          // 1: comments_service.AddCommentRequest
-	(*AddCommentResponse)(nil),         // 2: comments_service.AddCommentResponse
-	(*GetCommentsRequest)(nil),         // 3: comments_service.GetCommentsRequest
-	(*GetCommentsResponse)(nil),        // 4: comments_service.GetCommentsResponse
-	(*EditCommentRequest)(nil),         // 5: comments_service.EditCommentRequest
-	(*EditCommentResponse)(nil),        // 6: comments_service.EditCommentResponse
-	(*DeleteCommentRequest)(nil),       // 7: comments_service.DeleteCommentRequest
-	(*DeleteCommentResponse)(nil),      // 8: comments_service.DeleteCommentResponse
-	(*GetCommentsAllGamesRequest)(nil), // 9: comments_service.GetCommentsAllGamesRequest
-	nil,                                // 10: comments_service.GameComment.GameMetaEntry
-	(*timestamppb.Timestamp)(nil),      // 11: google.protobuf.Timestamp
+	(*GameComment)(nil),                  // 0: comments_service.GameComment
+	(*AddCommentRequest)(nil),            // 1: comments_service.AddCommentRequest
+	(*AddCommentResponse)(nil),           // 2: comments_service.AddCommentResponse
+	(*GetCommentsRequest)(nil),           // 3: comments_service.GetCommentsRequest
+	(*GetCommentsResponse)(nil),          // 4: comments_service.GetCommentsResponse
+	(*EditCommentRequest)(nil),           // 5: comments_service.EditCommentRequest
+	(*EditCommentResponse)(nil),          // 6: comments_service.EditCommentResponse
+	(*DeleteCommentRequest)(nil),         // 7: comments_service.DeleteCommentRequest
+	(*DeleteCommentResponse)(nil),        // 8: comments_service.DeleteCommentResponse
+	(*GetCommentsAllGamesRequest)(nil),   // 9: comments_service.GetCommentsAllGamesRequest
+	(*GetCollectionCommentsRequest)(nil), // 10: comments_service.GetCollectionCommentsRequest
+	nil,                                  // 11: comments_service.GameComment.GameMetaEntry
+	(*timestamppb.Timestamp)(nil),        // 12: google.protobuf.Timestamp
 }
 var file_proto_comments_service_comments_service_proto_depIdxs = []int32{
-	11, // 0: comments_service.GameComment.last_edited:type_name -> google.protobuf.Timestamp
-	10, // 1: comments_service.GameComment.game_meta:type_name -> comments_service.GameComment.GameMetaEntry
+	12, // 0: comments_service.GameComment.last_edited:type_name -> google.protobuf.Timestamp
+	11, // 1: comments_service.GameComment.game_meta:type_name -> comments_service.GameComment.GameMetaEntry
 	0,  // 2: comments_service.GetCommentsResponse.comments:type_name -> comments_service.GameComment
 	1,  // 3: comments_service.GameCommentService.AddGameComment:input_type -> comments_service.AddCommentRequest
 	3,  // 4: comments_service.GameCommentService.GetGameComments:input_type -> comments_service.GetCommentsRequest
 	5,  // 5: comments_service.GameCommentService.EditGameComment:input_type -> comments_service.EditCommentRequest
 	7,  // 6: comments_service.GameCommentService.DeleteGameComment:input_type -> comments_service.DeleteCommentRequest
 	9,  // 7: comments_service.GameCommentService.GetCommentsForAllGames:input_type -> comments_service.GetCommentsAllGamesRequest
-	2,  // 8: comments_service.GameCommentService.AddGameComment:output_type -> comments_service.AddCommentResponse
-	4,  // 9: comments_service.GameCommentService.GetGameComments:output_type -> comments_service.GetCommentsResponse
-	6,  // 10: comments_service.GameCommentService.EditGameComment:output_type -> comments_service.EditCommentResponse
-	8,  // 11: comments_service.GameCommentService.DeleteGameComment:output_type -> comments_service.DeleteCommentResponse
-	4,  // 12: comments_service.GameCommentService.GetCommentsForAllGames:output_type -> comments_service.GetCommentsResponse
-	8,  // [8:13] is the sub-list for method output_type
-	3,  // [3:8] is the sub-list for method input_type
+	10, // 8: comments_service.GameCommentService.GetCollectionComments:input_type -> comments_service.GetCollectionCommentsRequest
+	2,  // 9: comments_service.GameCommentService.AddGameComment:output_type -> comments_service.AddCommentResponse
+	4,  // 10: comments_service.GameCommentService.GetGameComments:output_type -> comments_service.GetCommentsResponse
+	6,  // 11: comments_service.GameCommentService.EditGameComment:output_type -> comments_service.EditCommentResponse
+	8,  // 12: comments_service.GameCommentService.DeleteGameComment:output_type -> comments_service.DeleteCommentResponse
+	4,  // 13: comments_service.GameCommentService.GetCommentsForAllGames:output_type -> comments_service.GetCommentsResponse
+	4,  // 14: comments_service.GameCommentService.GetCollectionComments:output_type -> comments_service.GetCommentsResponse
+	9,  // [9:15] is the sub-list for method output_type
+	3,  // [3:9] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -644,7 +712,7 @@ func file_proto_comments_service_comments_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_comments_service_comments_service_proto_rawDesc), len(file_proto_comments_service_comments_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

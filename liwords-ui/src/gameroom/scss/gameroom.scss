@@ -1642,6 +1642,16 @@ p.rune {
   .turn-comments {
     font-size: 0.9em;
     padding: 12px;
+    
+    // ReactMarkdown paragraph spacing fix
+    p {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
     .ant-card {
       .ant-card-head {
         .ant-card-head-title {

@@ -67,6 +67,14 @@ p {
     .ant-tabs-content {
       position: static;
     }
+    .ant-tabs-content-holder {
+      height: calc(100% - 48px); // Subtract tab nav height
+      overflow: hidden;
+    }
+    .ant-tabs-tabpane {
+      height: 100%;
+      overflow-y: auto;
+    }
   }
 
   p.disabled-message {
@@ -82,6 +90,10 @@ p {
   .channel-list {
     overflow-y: auto;
     max-height: $main-container-width-tablet;
+  }
+  
+  .collection-pane {
+    padding: 12px 24px 0 24px;
   }
   .chat-context,
   .channel-list {

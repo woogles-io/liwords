@@ -388,6 +388,16 @@ func (q *Queries) GetUserCollections(ctx context.Context, arg GetUserCollections
 	return items, nil
 }
 
+const removeGameFromAllCollections = `-- name: RemoveGameFromAllCollections :exec
+DELETE FROM collection_games 
+WHERE game_id = $1
+`
+
+func (q *Queries) RemoveGameFromAllCollections(ctx context.Context, gameID string) error {
+	_, err := q.db.Exec(ctx, removeGameFromAllCollections, gameID)
+	return err
+}
+
 const removeGameFromCollection = `-- name: RemoveGameFromCollection :exec
 DELETE FROM collection_games 
 WHERE collection_id = $1 AND game_id = $2

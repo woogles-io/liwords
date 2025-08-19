@@ -41,8 +41,12 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(game.chapterTitle || `Chapter ${chapterNum}`);
-  const [originalTitle, setOriginalTitle] = useState(game.chapterTitle || `Chapter ${chapterNum}`);
+  const [editingTitle, setEditingTitle] = useState(
+    game.chapterTitle || `Chapter ${chapterNum}`,
+  );
+  const [originalTitle, setOriginalTitle] = useState(
+    game.chapterTitle || `Chapter ${chapterNum}`,
+  );
   const collectionsClient = useClient(CollectionsService);
 
   const [{ isDragging }, drag] = useDrag({
@@ -87,7 +91,7 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
 
   const handleSaveTitle = useCallback(async () => {
     const trimmedTitle = editingTitle.trim();
-    
+
     if (!trimmedTitle) {
       message.error("Chapter title cannot be empty");
       return;
@@ -106,16 +110,23 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
         gameId: game.gameId,
         chapterTitle: trimmedTitle,
       });
-      
+
       setIsEditing(false);
-      setOriginalTitle(trimmedTitle);  // Update the original title for future comparisons
+      setOriginalTitle(trimmedTitle); // Update the original title for future comparisons
       onChapterUpdate?.();
       message.success("Chapter title updated");
     } catch (err) {
       console.error("Failed to update chapter title:", err);
       message.error("Failed to update chapter title");
     }
-  }, [collectionsClient, collectionUuid, game.gameId, editingTitle, originalTitle, onChapterUpdate]);
+  }, [
+    collectionsClient,
+    collectionUuid,
+    game.gameId,
+    editingTitle,
+    originalTitle,
+    onChapterUpdate,
+  ]);
 
   const handleCancelEdit = () => {
     setIsEditing(false);
@@ -131,9 +142,9 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSaveTitle();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancelEdit();
     }
   };
@@ -179,7 +190,14 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
                 placeholder={`Chapter ${chapterNum}`}
               />
             ) : (
-              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "4px" }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
                 <Text strong={isActive} style={{ flex: 1 }}>
                   {chapterNum}. {game.chapterTitle || `Chapter ${chapterNum}`}
                 </Text>

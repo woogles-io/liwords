@@ -28,3 +28,8 @@ export const deleteGameComment = GameCommentService.method.deleteGameComment;
  * @generated from rpc comments_service.GameCommentService.GetCommentsForAllGames
  */
 export const getCommentsForAllGames = GameCommentService.method.getCommentsForAllGames;
+
+/**
+ * @generated from rpc comments_service.GameCommentService.GetCollectionComments
+ */
+export const getCollectionComments = GameCommentService.method.getCollectionComments;

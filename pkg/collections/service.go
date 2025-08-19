@@ -2,18 +2,22 @@ package collections
 
 import (
 	"context"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/collections_service"
+	commentspb "github.com/woogles-io/liwords/rpc/api/proto/comments_service"
+	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type CollectionsService struct {
@@ -480,5 +484,36 @@ func (cs *CollectionsService) GetCollectionsForGame(ctx context.Context, req *co
 
 	return connect.NewResponse(&pb.GetCollectionsForGameResponse{
 		Collections: pbCollections,
+	}), nil
+}
+
+func (cs *CollectionsService) GetCommentsForCollectionGames(ctx context.Context, collectionUUID string, limit, offset int) ([]*commentspb.GameComment, error) {
+	comments, err := cs.queries.GetCommentsForCollectionGames(ctx, models.GetCommentsForCollectionGamesParams{
+		Uuid:   uuid.MustParse(collectionUUID),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return lo.Map(comments, func(c models.GetCommentsForCollectionGamesRow, idx int) *commentspb.GameComment {
+		gameMeta := map[string]string{}
+		if c.Quickdata.PlayerInfo != nil {
+			playerNames := lo.Map(c.Quickdata.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
+				return p.FullName
+			})
+			gameMeta["players"] = strings.Join(playerNames, " vs ")
+		}
+		return &commentspb.GameComment{
+			CommentId:   c.ID.String(),
+			GameId:      c.GameUuid.String,
+			UserId:      c.UserUuid.String,
+			Username:    c.Username.String,
+			EventNumber: uint32(c.EventNumber),
+			Comment:     c.Comment,
+			LastEdited:  timestamppb.New(c.EditedAt.Time),
+			GameMeta:    gameMeta,
+		}
 	}), nil
 }

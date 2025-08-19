@@ -507,6 +507,11 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *connect
 	if err != nil {
 		return nil, err
 	}
+	// Clean up collection_games entries for this game
+	err = gs.metadataStore.RemoveGameFromAllCollections(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
 	err = gs.gameStore.DeleteDocument(ctx, gid)
 	if err != nil {
 		return nil, err
