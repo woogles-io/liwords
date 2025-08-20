@@ -30,6 +30,7 @@ import { GameMetadataService } from "../gen/api/proto/game_service/game_service_
 import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
+import { UserCollectionsCard } from "./user_collections";
 import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
@@ -237,6 +238,7 @@ export const PlayerProfile = React.memo(() => {
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
     Array<BroadcastGamesResponse_BroadcastGame>
   >([]);
+  const [hasMoreAnnotatedGames, setHasMoreAnnotatedGames] = useState(true);
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   const [recentAnnotatedGamesOffset, setRecentAnnotatedGamesOffset] =
     useState(0);
@@ -419,6 +421,8 @@ export const PlayerProfile = React.memo(() => {
           offset: recentAnnotatedGamesOffset,
         });
         setRecentAnnotatedGames(resp.games);
+        // If we got fewer games than requested, there are no more
+        setHasMoreAnnotatedGames(resp.games.length === annotatedPageSize);
       } catch (e) {
         console.log(e);
       }
@@ -651,14 +655,27 @@ export const PlayerProfile = React.memo(() => {
             />
           )}
 
+          {username && userID && (
+            <UserCollectionsCard
+              userUuid={userID}
+              isOwnProfile={loginState.userID === userID}
+            />
+          )}
+
           {username &&
             !(
               recentAnnotatedGamesOffset === 0 && !recentAnnotatedGames?.length
             ) && (
               <AnnotatedGamesHistoryCard
                 games={recentAnnotatedGames}
-                fetchPrev={fetchPrevAnnotatedGames}
-                fetchNext={fetchNextAnnotatedGames}
+                fetchPrev={
+                  recentAnnotatedGamesOffset > 0
+                    ? fetchPrevAnnotatedGames
+                    : undefined
+                }
+                fetchNext={
+                  hasMoreAnnotatedGames ? fetchNextAnnotatedGames : undefined
+                }
                 loggedInUserID={loginState.userID}
                 showAnnotator={false}
               />

@@ -72,6 +72,9 @@ const (
 	// GameEventServiceImportGCGProcedure is the fully-qualified name of the GameEventService's
 	// ImportGCG RPC.
 	GameEventServiceImportGCGProcedure = "/omgwords_service.GameEventService/ImportGCG"
+	// GameEventServiceGetGameOwnerProcedure is the fully-qualified name of the GameEventService's
+	// GetGameOwner RPC.
+	GameEventServiceGetGameOwnerProcedure = "/omgwords_service.GameEventService/GetGameOwner"
 )
 
 // GameEventServiceClient is a client for the omgwords_service.GameEventService service.
@@ -96,6 +99,8 @@ type GameEventServiceClient interface {
 	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
 	GetCGP(context.Context, *connect.Request[omgwords_service.GetCGPRequest]) (*connect.Response[omgwords_service.CGPResponse], error)
 	ImportGCG(context.Context, *connect.Request[omgwords_service.ImportGCGRequest]) (*connect.Response[omgwords_service.ImportGCGResponse], error)
+	// GetGameOwner returns the creator information for an annotated game
+	GetGameOwner(context.Context, *connect.Request[omgwords_service.GetGameOwnerRequest]) (*connect.Response[omgwords_service.GetGameOwnerResponse], error)
 }
 
 // NewGameEventServiceClient constructs a client for the omgwords_service.GameEventService service.
@@ -187,6 +192,12 @@ func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(gameEventServiceMethods.ByName("ImportGCG")),
 			connect.WithClientOptions(opts...),
 		),
+		getGameOwner: connect.NewClient[omgwords_service.GetGameOwnerRequest, omgwords_service.GetGameOwnerResponse](
+			httpClient,
+			baseURL+GameEventServiceGetGameOwnerProcedure,
+			connect.WithSchema(gameEventServiceMethods.ByName("GetGameOwner")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -205,6 +216,7 @@ type gameEventServiceClient struct {
 	getRecentAnnotatedGames *connect.Client[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.BroadcastGamesResponse]
 	getCGP                  *connect.Client[omgwords_service.GetCGPRequest, omgwords_service.CGPResponse]
 	importGCG               *connect.Client[omgwords_service.ImportGCGRequest, omgwords_service.ImportGCGResponse]
+	getGameOwner            *connect.Client[omgwords_service.GetGameOwnerRequest, omgwords_service.GetGameOwnerResponse]
 }
 
 // CreateBroadcastGame calls omgwords_service.GameEventService.CreateBroadcastGame.
@@ -272,6 +284,11 @@ func (c *gameEventServiceClient) ImportGCG(ctx context.Context, req *connect.Req
 	return c.importGCG.CallUnary(ctx, req)
 }
 
+// GetGameOwner calls omgwords_service.GameEventService.GetGameOwner.
+func (c *gameEventServiceClient) GetGameOwner(ctx context.Context, req *connect.Request[omgwords_service.GetGameOwnerRequest]) (*connect.Response[omgwords_service.GetGameOwnerResponse], error) {
+	return c.getGameOwner.CallUnary(ctx, req)
+}
+
 // GameEventServiceHandler is an implementation of the omgwords_service.GameEventService service.
 type GameEventServiceHandler interface {
 	// CreateBroadcastGame will create a game for Woogles broadcast
@@ -294,6 +311,8 @@ type GameEventServiceHandler interface {
 	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
 	GetCGP(context.Context, *connect.Request[omgwords_service.GetCGPRequest]) (*connect.Response[omgwords_service.CGPResponse], error)
 	ImportGCG(context.Context, *connect.Request[omgwords_service.ImportGCGRequest]) (*connect.Response[omgwords_service.ImportGCGResponse], error)
+	// GetGameOwner returns the creator information for an annotated game
+	GetGameOwner(context.Context, *connect.Request[omgwords_service.GetGameOwnerRequest]) (*connect.Response[omgwords_service.GetGameOwnerResponse], error)
 }
 
 // NewGameEventServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -381,6 +400,12 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 		connect.WithSchema(gameEventServiceMethods.ByName("ImportGCG")),
 		connect.WithHandlerOptions(opts...),
 	)
+	gameEventServiceGetGameOwnerHandler := connect.NewUnaryHandler(
+		GameEventServiceGetGameOwnerProcedure,
+		svc.GetGameOwner,
+		connect.WithSchema(gameEventServiceMethods.ByName("GetGameOwner")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/omgwords_service.GameEventService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GameEventServiceCreateBroadcastGameProcedure:
@@ -409,6 +434,8 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 			gameEventServiceGetCGPHandler.ServeHTTP(w, r)
 		case GameEventServiceImportGCGProcedure:
 			gameEventServiceImportGCGHandler.ServeHTTP(w, r)
+		case GameEventServiceGetGameOwnerProcedure:
+			gameEventServiceGetGameOwnerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -468,4 +495,8 @@ func (UnimplementedGameEventServiceHandler) GetCGP(context.Context, *connect.Req
 
 func (UnimplementedGameEventServiceHandler) ImportGCG(context.Context, *connect.Request[omgwords_service.ImportGCGRequest]) (*connect.Response[omgwords_service.ImportGCGResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.ImportGCG is not implemented"))
+}
+
+func (UnimplementedGameEventServiceHandler) GetGameOwner(context.Context, *connect.Request[omgwords_service.GetGameOwnerRequest]) (*connect.Response[omgwords_service.GetGameOwnerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.GetGameOwner is not implemented"))
 }

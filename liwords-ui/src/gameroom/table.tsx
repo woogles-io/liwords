@@ -30,7 +30,7 @@ import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import "./scss/gameroom.scss";
-import { ScoreCard } from "./scorecard";
+import { ScoreCard, ScoreCardRef } from "./scorecard";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { BoopSounds } from "../sound/boop";
 import { StreakWidget } from "./streak_widget";
@@ -194,6 +194,15 @@ const getChatTitle = (
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const { addChat } = useChatStoreContext();
+  const scoreCardRef = useRef<ScoreCardRef>(null);
+  const [pendingScrollToTurn, setPendingScrollToTurn] = useState<number | null>(
+    null,
+  );
+
+  const clearPendingScroll = useCallback(() => {
+    setPendingScrollToTurn(null);
+  }, []);
+
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
   const { isExamining, handleExamineStart, handleExamineGoTo } =
@@ -255,8 +264,6 @@ export const Table = React.memo((props: Props) => {
     // Request game API to get info about the game at the beginning.
 
     const fetchGameMetadata = async () => {
-      console.log("gonna fetch metadata, game id is", gameID);
-
       try {
         const resp = await gmClient.getMetadata({ gameId: gameID });
 
@@ -509,11 +516,32 @@ export const Table = React.memo((props: Props) => {
   // At that point gameID will be filled in.
 
   useEffect(() => {
-    // Don't play when loading from history
-    if (!gameDone) {
+    // Only play the start sound when:
+    // 1. The game is not done
+    // 2. We are a player (not an observer)
+    // 3. The game is just starting (no turns yet)
+    // 4. The game hasn't ended already
+    // 5. This is not an annotated game
+    // 6. The game context has been initialized (gameContext.gameID matches the route gameID)
+    if (
+      !gameDone &&
+      !isObserver &&
+      !props.annotated &&
+      gameContext.turns.length === 0 &&
+      gameInfo.gameEndReason === GameEndReason.NONE &&
+      gameContext.gameID === gameID
+    ) {
       BoopSounds.playSound("startgameSound");
     }
-  }, [gameID, gameDone]);
+  }, [
+    gameID,
+    gameDone,
+    isObserver,
+    gameContext.turns.length,
+    gameInfo.gameEndReason,
+    props.annotated,
+    gameContext.gameID,
+  ]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
@@ -528,11 +556,25 @@ export const Table = React.memo((props: Props) => {
         if (isFinite(turnAsInt) && turnAsStr === String(turnAsInt)) {
           handleExamineStart();
           handleExamineGoTo(turnAsInt - 1); // ?turn= should start from one.
+
+          // If this is an annotated game and we're navigating to a specific turn,
+          // set pending scroll and wait for comments to render
+          // The URL turn is eventNumber + 2, so we need to subtract 2 to get the turn index
+          if (props.annotated) {
+            const targetTurnIndex = turnAsInt - 2;
+            setPendingScrollToTurn(targetTurnIndex);
+          }
         }
         setAutocorrectURL(true); // Trigger rerender.
       }
     }
-  }, [gameContext.gameID, turnAsStr, handleExamineStart, handleExamineGoTo]);
+  }, [
+    gameContext.gameID,
+    turnAsStr,
+    handleExamineStart,
+    handleExamineGoTo,
+    props.annotated,
+  ]);
 
   // Autocorrect the turn on the URL.
   // Do not autocorrect when NEW_GAME_EVENT redirects to a rematch.
@@ -544,9 +586,15 @@ export const Table = React.memo((props: Props) => {
       : null;
     if (turnParamShouldBe !== searchedTurn) {
       if (turnParamShouldBe == null) {
-        setSearchParams({}, { replace: true });
+        // Remove turn parameter while preserving other parameters
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("turn");
+        setSearchParams(newParams, { replace: true });
       } else {
-        setSearchParams({ turn: turnParamShouldBe }, { replace: true });
+        // Update turn parameter while preserving other parameters
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("turn", turnParamShouldBe);
+        setSearchParams(newParams, { replace: true });
       }
     }
   }, [
@@ -770,6 +818,9 @@ export const Table = React.memo((props: Props) => {
             tournamentName={tournamentContext.metadata?.name}
             colorOverride={tournamentContext.metadata?.color}
             logoUrl={tournamentContext.metadata?.logo}
+            description={gameContext.gameDocument?.description}
+            gameDocument={gameContext.gameDocument}
+            currentUserId={userID}
           />
           <Pool
             pool={examinableGameContext?.pool}
@@ -787,6 +838,7 @@ export const Table = React.memo((props: Props) => {
             cancelText="Decline"
           />
           <ScoreCard
+            ref={scoreCardRef}
             isExamining={isExamining}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
@@ -794,6 +846,8 @@ export const Table = React.memo((props: Props) => {
             poolFormat={poolFormat}
             gameEpilog={gameEpilog}
             showComments={props.annotated ?? false}
+            pendingScrollToTurn={pendingScrollToTurn}
+            onScrollComplete={clearPendingScroll}
           />
         </div>
       </div>

@@ -45,3 +45,26 @@ func (q *Queries) GetGame(ctx context.Context, uuid pgtype.Text) (Game, error) {
 	)
 	return i, err
 }
+
+const getGameOwner = `-- name: GetGameOwner :one
+
+SELECT 
+    agm.creator_uuid,
+    u.username 
+FROM annotated_game_metadata agm
+JOIN users u ON agm.creator_uuid = u.uuid
+WHERE agm.game_uuid = $1
+`
+
+type GetGameOwnerRow struct {
+	CreatorUuid string
+	Username    pgtype.Text
+}
+
+// this is not even a uuid, sigh.
+func (q *Queries) GetGameOwner(ctx context.Context, gameUuid string) (GetGameOwnerRow, error) {
+	row := q.db.QueryRow(ctx, getGameOwner, gameUuid)
+	var i GetGameOwnerRow
+	err := row.Scan(&i.CreatorUuid, &i.Username)
+	return i, err
+}

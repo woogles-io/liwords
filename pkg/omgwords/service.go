@@ -507,6 +507,11 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *connect
 	if err != nil {
 		return nil, err
 	}
+	// Clean up collection_games entries for this game
+	err = gs.metadataStore.RemoveGameFromAllCollections(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
 	err = gs.gameStore.DeleteDocument(ctx, gid)
 	if err != nil {
 		return nil, err
@@ -609,4 +614,28 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	}
 
 	return connect.NewResponse(&pb.ImportGCGResponse{GameId: gdoc.Uid}), nil
+}
+
+func (gs *OMGWordsService) GetGameOwner(ctx context.Context, req *connect.Request[pb.GetGameOwnerRequest]) (
+	*connect.Response[pb.GetGameOwnerResponse], error) {
+	
+	if req.Msg.GameId == "" {
+		return nil, apiserver.InvalidArg("game ID is required")
+	}
+	
+	owner, err := gs.metadataStore.GetGameOwner(ctx, req.Msg.GameId)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return connect.NewResponse(&pb.GetGameOwnerResponse{
+				Found: false,
+			}), nil
+		}
+		return nil, err
+	}
+	
+	return connect.NewResponse(&pb.GetGameOwnerResponse{
+		CreatorId:       owner.CreatorUuid,
+		CreatorUsername: owner.Username.String,
+		Found:           true,
+	}), nil
 }

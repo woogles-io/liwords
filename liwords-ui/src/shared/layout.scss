@@ -211,14 +211,32 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 }
 
-@media (min-height: base.$screen-min-height-desktop-max) and (min-width: base.$screen-desktop-min) {
-  .lobby,
-  .game-table {
-    padding-top: 0px;
+@media (min-width: base.$screen-tablet-min) {
+  .game-container.editor {
+    .top-header {
+      display: flex;
+    }
   }
+}
+
+@media (min-height: base.$screen-min-height-desktop-max) and (min-width: base.$screen-desktop-min) {
   .game-container {
     .top-header {
       display: flex;
     }
+  }
+  
+  // But keep the main editor page showing at tablet breakpoint
+  .game-container.editor {
+    .top-header {
+      display: flex;
+    }
+  }
+}
+
+@media (min-height: base.$screen-min-height-desktop-max) and (min-width: base.$screen-desktop-min) {
+  .lobby,
+  .game-table {
+    padding-top: 0px;
   }
 }

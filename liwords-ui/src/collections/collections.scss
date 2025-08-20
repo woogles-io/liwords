@@ -1,0 +1,544 @@
+@import "../base.scss";
+
+.collection-viewer {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+
+  .collection-sidebar {
+    width: 320px;
+    overflow-y: auto;
+    @include colorModed() {
+      background: m($off-background);
+      border-right: 1px solid m($gray-subtle);
+    }
+
+    .collection-navigation {
+      height: 100%;
+      border-radius: 0;
+
+      .collection-header {
+        text-align: center;
+        padding-bottom: 16px;
+
+        .ant-typography {
+          margin-bottom: 8px;
+        }
+      }
+
+      .chapter-controls {
+        padding: 8px 0;
+
+        .chapter-nav-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+
+          .chapter-text {
+            flex-shrink: 0;
+            font-size: 12px;
+            white-space: nowrap;
+            min-width: fit-content;
+          }
+
+          .ant-btn {
+            flex-shrink: 0;
+            min-width: auto;
+            padding: 4px 8px;
+          }
+        }
+      }
+
+      .chapter-list {
+        .chapter-items {
+          .chapter-item {
+            transition: all 0.2s ease;
+            margin-bottom: 4px;
+
+            &:hover {
+              @include colorModed() {
+                background-color: m($gray-subtle);
+              }
+
+              .drag-handle {
+                opacity: 1 !important;
+              }
+
+              .anticon-edit {
+                opacity: 1 !important;
+              }
+            }
+
+            &.active {
+              @include colorModed() {
+                background-color: m($primary-light);
+                border-left: 3px solid m($primary-dark);
+              }
+              margin-left: -12px;
+              padding-left: 9px;
+            }
+
+            &.dragging {
+              opacity: 0.5;
+              transform: rotate(5deg);
+              z-index: 1000;
+
+              @include colorModed() {
+                background-color: m($primary-light);
+                border: 2px dashed m($primary-dark);
+              }
+            }
+          }
+
+          .drag-handle {
+            transition: opacity 0.2s ease, color 0.2s ease;
+
+            &:hover {
+              @include colorModed() {
+                color: m($primary-dark);
+              }
+            }
+          }
+        }
+
+        // Legacy support for non-draggable lists
+        .ant-list {
+          .chapter-item {
+            transition: all 0.2s ease;
+            margin-bottom: 4px;
+
+            &:hover {
+              @include colorModed() {
+                background-color: m($gray-subtle);
+              }
+            }
+
+            &.active {
+              @include colorModed() {
+                background-color: m($primary-light);
+                border-left: 3px solid m($primary-dark);
+              }
+              margin-left: -12px;
+              padding-left: 9px;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .collection-content {
+    flex: 1;
+    overflow: auto;
+    padding: 24px;
+
+    .chapter-card {
+      max-width: 600px;
+      margin: 0 auto;
+
+      .chapter-header {
+        text-align: center;
+        margin-bottom: 24px;
+
+        h2 {
+          margin-bottom: 8px;
+          @include colorModed() {
+            color: m($primary-dark);
+          }
+        }
+
+        .chapter-type {
+          @include colorModed() {
+            color: m($gray-medium);
+          }
+          font-size: 14px;
+          margin: 0;
+        }
+      }
+
+      .chapter-actions {
+        text-align: center;
+        margin-bottom: 24px;
+
+        .ant-btn {
+          min-width: 140px;
+        }
+      }
+
+      .chapter-info {
+        text-align: center;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+        font-size: 14px;
+
+        p {
+          margin: 0;
+          line-height: 1.5;
+        }
+      }
+    }
+  }
+
+  &-loading,
+  &-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+
+    h2 {
+      margin-bottom: 16px;
+    }
+  }
+}
+
+// Mobile responsive design
+@media (max-width: 768px) {
+  .collection-viewer {
+    flex-direction: column;
+
+    .collection-sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 40vh;
+      border-right: none;
+      @include colorModed() {
+        border-bottom: 1px solid m($gray-subtle);
+      }
+    }
+  }
+}
+
+// Collection Navigation Header (for game view)
+.collection-navigation-header {
+  @include colorModed() {
+    background: m($off-background);
+    border-bottom: 1px solid m($gray-subtle);
+  }
+  padding: 8px 16px;
+  display: flex;
+  justify-content: center;
+
+  .collection-nav-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    gap: 16px;
+
+    .back-button {
+      flex-shrink: 0;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+
+      &:hover {
+        @include colorModed() {
+          background: m($gray-subtle);
+        }
+      }
+    }
+
+    .collection-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0; // Allow flex shrinking
+
+      .collection-icon {
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      .collection-title {
+        font-weight: 500;
+        max-width: 200px;
+      }
+
+      .chapter-indicator {
+        font-size: 12px;
+        flex-shrink: 0;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+    }
+
+    .chapter-navigation {
+      flex-shrink: 0;
+
+      .ant-btn {
+        min-width: auto;
+
+        &:not(.ant-btn-primary) {
+          @include colorModed() {
+            color: m($primary-dark);
+          }
+
+          &:hover:not(:disabled) {
+            @include colorModed() {
+              background: m($gray-subtle);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive adjustments for collection header
+@media (max-width: 768px) {
+  .collection-navigation-header {
+    padding: 6px 12px;
+
+    .collection-nav-content {
+      gap: 8px;
+
+      .collection-info {
+        .collection-title {
+          max-width: 120px;
+        }
+      }
+
+      .back-button {
+        min-width: 32px; // Ensure button has minimum size
+        padding: 4px 8px;
+
+        .ant-btn-icon {
+          margin-right: 0; // Remove margin when text is hidden
+        }
+
+        .anticon {
+          font-size: 14px; // Ensure icon is visible
+        }
+
+        span:not(.anticon) {
+          display: none; // Hide text on mobile, keep icon
+        }
+      }
+    }
+  }
+}
+
+// Collection Navigation Tab (for left sidebar)
+.collection-navigation-tab {
+  padding: 16px 0;
+
+  .collection-info-section {
+    margin-bottom: 16px;
+
+    .collection-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+
+      .collection-icon {
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .collection-details {
+        flex: 1;
+        min-width: 0;
+
+        .collection-title {
+          display: block;
+          font-weight: 500;
+          font-size: 15px;
+          line-height: 1.3;
+          margin-bottom: 4px;
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+        }
+
+        .chapter-indicator {
+          font-size: 12px;
+          @include colorModed() {
+            color: m($gray-medium);
+          }
+        }
+      }
+    }
+  }
+
+  .chapter-list-section {
+    margin-bottom: 16px;
+
+    .ant-list {
+      .chapter-list-item {
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-bottom: 2px;
+        transition: all 0.2s ease;
+
+        @include colorModed() {
+          border: 1px solid transparent;
+        }
+
+        &:hover {
+          @include colorModed() {
+            background: m($gray-subtle);
+            border-color: m($primary-dark);
+          }
+        }
+
+        &.active {
+          @include colorModed() {
+            background: m($primary-light);
+            border-color: m($primary-dark);
+          }
+        }
+
+        .chapter-item-content {
+          width: 100%;
+
+          .chapter-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+
+            .chapter-icon {
+              @include colorModed() {
+                color: m($primary-dark);
+              }
+              font-size: 12px;
+              flex-shrink: 0;
+            }
+
+            .chapter-title {
+              font-size: 13px;
+              line-height: 1.3;
+              @include colorModed() {
+                color: m($gray-extreme);
+              }
+            }
+          }
+
+          .chapter-type {
+            font-size: 11px;
+            margin-left: 20px; // Align with chapter title (icon + gap)
+            @include colorModed() {
+              color: m($gray-medium);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .collection-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+
+    .back-button {
+      max-width: 200px;
+      @include colorModed() {
+        color: m($primary-dark);
+        border-color: m($gray-subtle);
+      }
+
+      &:hover:not(:disabled) {
+        @include colorModed() {
+          background: m($gray-subtle);
+          border-color: m($primary-dark);
+        }
+      }
+    }
+
+    .chapter-navigation {
+      .button-group {
+        display: flex;
+        max-width: 200px;
+        gap: 0;
+
+        .nav-button {
+          flex: 1;
+          min-width: 90px;
+          height: 36px !important;
+          min-height: 36px !important;
+          max-height: 36px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 0 !important;
+          line-height: 1 !important;
+          padding: 8px 15px !important;
+          margin: 0 !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+
+          // Override any Ant Design spacing that might cause misalignment
+          &.ant-btn {
+            height: 36px !important;
+            min-height: 36px !important;
+            padding: 8px 15px !important;
+            margin: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+
+            &::before {
+              display: none !important; // Remove any pseudo-elements that might affect alignment
+            }
+          }
+
+          // Ensure icon and text are properly aligned
+          .anticon {
+            vertical-align: middle !important;
+            line-height: 1 !important;
+          }
+
+          &:first-child {
+            border-top-left-radius: 6px !important;
+            border-bottom-left-radius: 6px !important;
+            border-right: none !important;
+          }
+
+          &:last-child {
+            border-top-right-radius: 6px !important;
+            border-bottom-right-radius: 6px !important;
+          }
+
+          &:not(.ant-btn-primary) {
+            @include colorModed() {
+              color: m($gray-extreme);
+              border-color: m($gray-subtle);
+            }
+
+            &:hover:not(:disabled) {
+              @include colorModed() {
+                background: m($gray-subtle);
+                border-color: m($primary-dark);
+              }
+            }
+
+            &:disabled {
+              @include colorModed() {
+                color: m($gray-medium) !important;
+                background: m($gray-subtle) !important;
+                border-color: m($gray-subtle) !important;
+              }
+              cursor: not-allowed !important;
+              opacity: 0.6 !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}

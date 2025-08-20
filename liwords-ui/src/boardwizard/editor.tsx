@@ -321,7 +321,7 @@ export const BoardEditor = () => {
   }
 
   let ret = (
-    <div className="game-container">
+    <div className="game-container editor-subpage">
       <TopBar />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">

@@ -51,6 +51,18 @@ func (s *DBStore) GetCommentsForAllGames(ctx context.Context, limit, offset int)
 	})
 }
 
+func (s *DBStore) GetCommentsForCollectionGames(ctx context.Context, collectionUUID string, limit, offset int) ([]models.GetCommentsForCollectionGamesRow, error) {
+	uuid, err := uuid.Parse(collectionUUID)
+	if err != nil {
+		return nil, err
+	}
+	return s.queries.GetCommentsForCollectionGames(ctx, models.GetCommentsForCollectionGamesParams{
+		Uuid:   uuid,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+}
+
 func (s *DBStore) UpdateComment(ctx context.Context, authorID int, commentID, comment string) error {
 	uuid, err := uuid.Parse(commentID)
 	if err != nil {

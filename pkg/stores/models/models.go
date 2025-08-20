@@ -34,6 +34,27 @@ type Blocking struct {
 	BlockerID pgtype.Int4
 }
 
+type Collection struct {
+	ID          int32
+	Uuid        uuid.UUID
+	Title       string
+	Description pgtype.Text
+	CreatorID   int32
+	Public      pgtype.Bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type CollectionGame struct {
+	ID            int32
+	CollectionID  int32
+	GameID        string
+	ChapterNumber int32
+	ChapterTitle  pgtype.Text
+	IsAnnotated   pgtype.Bool
+	AddedAt       pgtype.Timestamptz
+}
+
 type DbSession struct {
 	Uuid      string
 	ExpiresAt pgtype.Timestamptz

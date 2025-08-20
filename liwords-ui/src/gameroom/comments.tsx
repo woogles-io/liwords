@@ -2,6 +2,7 @@ import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Card, Input, Popconfirm } from "antd";
 import moment from "moment";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { canMod } from "../mod/perms";
 import { useLoginStateStoreContext } from "../store/store";
@@ -12,6 +13,7 @@ type Props = {
   deleteComment: (commentID: string) => void;
   editComment: (commentID: string, comment: string) => void;
   addComment: (comment: string) => void;
+  commentsRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 type SingleCommentProps = {
@@ -33,7 +35,6 @@ export const CommentEditor = (props: EditProps) => {
   const myRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    console.log(myRef.current);
     myRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
   const [inputValue, setInputValue] = useState(props.initialValue);
@@ -65,7 +66,7 @@ export const CommentEditor = (props: EditProps) => {
 export const Comment = (props: SingleCommentProps) => {
   const [popupOpen, setPopupOpen] = useState(false);
   const initialCommentDisplay = useMemo(
-    () => <p>{props.comment.comment}</p>,
+    () => <ReactMarkdown>{props.comment.comment}</ReactMarkdown>,
     [props.comment.comment],
   );
   const [commentDisplay, setCommentDisplay] = useState(initialCommentDisplay);
@@ -174,7 +175,7 @@ export const Comments = (props: Props) => {
   }
 
   return (
-    <div className="turn-comments">
+    <div className="turn-comments" ref={props.commentsRef}>
       {props.comments.map((c) => {
         return (
           <Comment

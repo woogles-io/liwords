@@ -1,0 +1,6 @@
+BEGIN;
+
+DROP TABLE IF EXISTS collection_games;
+DROP TABLE IF EXISTS collections;
+
+COMMIT;

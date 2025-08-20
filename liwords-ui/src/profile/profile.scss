@@ -14,7 +14,8 @@
     align-items: center;
     justify-content: flex-start;
   }
-  h2 {
+  // Profile section headers (exclude bio content)
+  h2:not(.bio *) {
     margin: 48px 0 18px 9px;
     text-transform: uppercase;
     letter-spacing: 0.16em;
@@ -26,6 +27,64 @@
     padding-left: 9px;
     @include colorModed() {
       color: m($gray-extreme);
+    }
+    
+    // ReactMarkdown paragraph spacing fix for user profile bios
+    p {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    // ReactMarkdown header styling for user profile bios
+    h1 {
+      font-size: 2em;
+      font-weight: 700;
+      margin: 0.67em 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    h2 {
+      font-size: 1.5em;
+      font-weight: 700;
+      margin: 0.75em 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    h3 {
+      font-size: 1.17em;
+      font-weight: 700;
+      margin: 0.83em 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    h4 {
+      font-size: 1em;
+      font-weight: 700;
+      margin: 1.12em 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    h5 {
+      font-size: 0.83em;
+      font-weight: 700;
+      margin: 1.5em 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    h6 {
+      font-size: 0.75em;
+      font-weight: 700;
+      margin: 1.67em 0;
+      text-transform: none;
+      letter-spacing: normal;
     }
   }
 

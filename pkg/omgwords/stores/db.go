@@ -9,12 +9,14 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
 
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 type BroadcastGame struct {
@@ -29,7 +31,7 @@ type BroadcastGame struct {
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	return &DBStore{dbPool: p, queries: models.New(p)}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -275,4 +277,12 @@ func (s *DBStore) GameIsDone(ctx context.Context, gid string) (bool, error) {
 		return false, err
 	}
 	return done, nil
+}
+
+func (s *DBStore) RemoveGameFromAllCollections(ctx context.Context, gameID string) error {
+	return s.queries.RemoveGameFromAllCollections(ctx, gameID)
+}
+
+func (s *DBStore) GetGameOwner(ctx context.Context, gameUUID string) (models.GetGameOwnerRow, error) {
+	return s.queries.GetGameOwner(ctx, gameUUID)
 }

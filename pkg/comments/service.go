@@ -119,7 +119,7 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 	return connect.NewResponse(&pb.GetCommentsResponse{
 		Comments: lo.Map(comments, func(c models.GetCommentsForAllGamesRow, idx int) *pb.GameComment {
 			gameMeta := map[string]string{}
-			if err == nil {
+			if c.Quickdata.PlayerInfo != nil {
 				playerNames := lo.Map(c.Quickdata.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
 					return p.FullName
 				})
@@ -131,6 +131,40 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 				UserId:      c.UserUuid.String,
 				Username:    c.Username.String,
 				EventNumber: uint32(c.EventNumber),
+				Comment:     c.Comment,
+				LastEdited:  timestamppb.New(c.EditedAt.Time),
+				GameMeta:    gameMeta,
+			}
+		}),
+	}), nil
+}
+
+func (cs *CommentsService) GetCollectionComments(ctx context.Context, req *connect.Request[pb.GetCollectionCommentsRequest]) (*connect.Response[pb.GetCommentsResponse], error) {
+	if req.Msg.Limit > MaxCommentsPerReq {
+		return nil, apiserver.InvalidArg("too many comments")
+	}
+	
+	comments, err := cs.commentsStore.GetCommentsForCollectionGames(ctx, req.Msg.CollectionUuid, int(req.Msg.Limit), int(req.Msg.Offset))
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&pb.GetCommentsResponse{
+		Comments: lo.Map(comments, func(c models.GetCommentsForCollectionGamesRow, idx int) *pb.GameComment {
+			gameMeta := map[string]string{}
+			if c.Quickdata.PlayerInfo != nil {
+				playerNames := lo.Map(c.Quickdata.PlayerInfo, func(p *ipc.PlayerInfo, idx int) string {
+					return p.FullName
+				})
+				gameMeta["players"] = strings.Join(playerNames, " vs ")
+			}
+			return &pb.GameComment{
+				CommentId:   c.ID.String(),
+				GameId:      c.GameUuid.String,
+				UserId:      c.UserUuid.String,
+				Username:    c.Username.String,
+				EventNumber: uint32(c.EventNumber),
+				Comment:     c.Comment,
 				LastEdited:  timestamppb.New(c.EditedAt.Time),
 				GameMeta:    gameMeta,
 			}

@@ -27,6 +27,8 @@ import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { useCollectionContext } from "../collections/useCollectionContext";
+import { CollectionNavigationTab } from "../collections/CollectionNavigationTab";
 
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -48,6 +50,7 @@ export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const competitorState = useTournamentCompetitorState();
   const { loggedIn, userID } = loginState;
+  const collectionContext = useCollectionContext();
   const [hasScroll, setHasScroll] = useState(false);
   const [channelsFetched, setChannelsFetched] = useState(false);
   const [presenceVisible, setPresenceVisible] = useState(false);
@@ -57,9 +60,15 @@ export const Chat = React.memo((props: Props) => {
   const { defaultChannel, defaultDescription } = props;
   const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
-  const [selectedChatTab, setSelectedChatTab] = useState(
-    props.suppressDefault || !loggedIn ? "CHAT" : "PLAYERS",
-  );
+  const [selectedChatTab, setSelectedChatTab] = useState(() => {
+    if (props.suppressDefault || !loggedIn) return "CHAT";
+    // Collection takes precedence over game chat
+    if (collectionContext) return "COLLECTION";
+    // Check if we're in a game or gametv channel
+    const channelType = defaultChannel?.split(".")[1];
+    if (channelType === "game" || channelType === "gametv") return "CHAT";
+    return "PLAYERS";
+  });
   const chatTab = selectedChatTab === "CHAT" ? tabContainerElement : null;
   const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
@@ -298,15 +307,41 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
 
+  // Track context to detect actual changes (not just re-renders)
+  const [prevContext, setPrevContext] = useState({
+    tournamentID: props.tournamentID,
+    channelType,
+    hasCollection: !!collectionContext,
+  });
+
+  // Only auto-switch tabs when context actually changes
   useEffect(() => {
-    if (
-      props.tournamentID ||
-      channelType === "game" ||
-      channelType === "gametv"
-    ) {
-      setSelectedChatTab("CHAT");
+    const currentContext = {
+      tournamentID: props.tournamentID,
+      channelType,
+      hasCollection: !!collectionContext,
+    };
+
+    // Check if context actually changed
+    const contextChanged =
+      prevContext.tournamentID !== currentContext.tournamentID ||
+      prevContext.channelType !== currentContext.channelType ||
+      prevContext.hasCollection !== currentContext.hasCollection;
+
+    if (contextChanged) {
+      if (
+        props.tournamentID ||
+        channelType === "game" ||
+        channelType === "gametv"
+      ) {
+        setSelectedChatTab("CHAT");
+      } else if (collectionContext) {
+        setSelectedChatTab("COLLECTION");
+      }
+      setPrevContext(currentContext);
     }
-  }, [props.tournamentID, channelType]);
+  }, [props.tournamentID, channelType, collectionContext, prevContext]);
+
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
       case "game":
@@ -637,22 +672,23 @@ export const Chat = React.memo((props: Props) => {
     [channel, presenceCount],
   );
 
-  const tabItems = [
-    {
+  // Memoize just the tab keys/labels structure, render content inline
+  const tabItems = useMemo(() => {
+    const items = [];
+
+    if (collectionContext) {
+      items.push({
+        label: "Collection",
+        key: "COLLECTION",
+      });
+    }
+
+    items.push({
       label: "Players",
       key: "PLAYERS",
-      children: (
-        <div className="player-pane">
-          <Players
-            sendMessage={sendNewMessage}
-            defaultChannelType={
-              props.channelTypeOverride || defaultChannel.split(".")[1] || ""
-            }
-          />
-        </div>
-      ),
-    },
-    {
+    });
+
+    items.push({
       label: (
         <>
           Chat
@@ -664,131 +700,180 @@ export const Chat = React.memo((props: Props) => {
         </>
       ),
       key: "CHAT",
-      children: showChannels ? (
-        <ChatChannels
-          defaultChannel={defaultChannel}
-          defaultDescription={defaultDescription}
-          defaultLastMessage={defaultLastMessage}
-          updatedChannels={updatedChannels}
-          unseenMessages={unseenMessages}
-          onChannelSelect={(ch: string, desc: string) => {
-            if (channel !== ch) {
-              setChannel(ch);
-              setDescription(desc);
-            }
-            setShowChannels(false);
-          }}
-          sendMessage={sendNewMessage}
-          suppressDefault={props.suppressDefault}
-          tournamentID={props.tournamentID}
-        />
-      ) : (
-        channel && (
-          <>
-            <div
-              id="chat-context"
-              className={`chat-context${hasScroll ? " scrolling" : ""}`}
-            >
-              {loggedIn ? (
-                <p
-                  className={`breadcrumb clickable${
-                    (updatedChannels && updatedChannels.size > 0) ||
-                    unseenMessages.length > 0
-                      ? " unread"
-                      : ""
-                  }`}
-                  onClick={() => {
-                    setChannel(undefined);
-                    setChannelSelectedTime(Date.now());
-                    setShowChannels(true);
-                    fetchChannels();
-                  }}
-                >
-                  <LeftOutlined /> All chats
-                  {((updatedChannels && updatedChannels.size > 0) ||
-                    unseenMessages.length > 0) && (
-                    <span className="unread-marker">•</span>
-                  )}
-                </p>
-              ) : null}
-              <p data-testid="description" className="description">
-                {decoratedDescription}
-                {hasUnreadChat && (
-                  <span className="unread-marker" data-testid="description">
-                    •
-                  </span>
-                )}
-              </p>
-              {presenceCount && !channel.startsWith("chat.pm.") ? (
-                <>
-                  <p className="presence-count">
-                    <span>{peopleOnlineCounter}</span>
-                    {presenceVisible ? (
-                      <span className="list-trigger" onClick={handleHideList}>
-                        Hide list
-                      </span>
-                    ) : (
-                      <span className="list-trigger" onClick={handleShowList}>
-                        Show list
-                      </span>
+    });
+
+    return items;
+  }, [collectionContext, notificationCount]);
+
+  // Add children based on selected tab to avoid re-rendering all tabs
+  const tabItemsWithChildren = tabItems.map((item) => {
+    if (item.key === "COLLECTION") {
+      return {
+        ...item,
+        children: (
+          <div className="collection-pane">
+            <CollectionNavigationTab />
+          </div>
+        ),
+      };
+    }
+
+    if (item.key === "PLAYERS") {
+      return {
+        ...item,
+        children: (
+          <div className="player-pane">
+            <Players
+              sendMessage={sendNewMessage}
+              defaultChannelType={
+                props.channelTypeOverride || defaultChannel.split(".")[1] || ""
+              }
+            />
+          </div>
+        ),
+      };
+    }
+
+    if (item.key === "CHAT") {
+      return {
+        ...item,
+        children: showChannels ? (
+          <ChatChannels
+            defaultChannel={defaultChannel}
+            defaultDescription={defaultDescription}
+            defaultLastMessage={defaultLastMessage}
+            updatedChannels={updatedChannels}
+            unseenMessages={unseenMessages}
+            onChannelSelect={(ch: string, desc: string) => {
+              if (channel !== ch) {
+                setChannel(ch);
+                setDescription(desc);
+              }
+              setShowChannels(false);
+            }}
+            sendMessage={sendNewMessage}
+            suppressDefault={props.suppressDefault}
+            tournamentID={props.tournamentID}
+          />
+        ) : (
+          channel && (
+            <>
+              <div
+                id="chat-context"
+                className={`chat-context${hasScroll ? " scrolling" : ""}`}
+              >
+                {loggedIn ? (
+                  <p
+                    className={`breadcrumb clickable${
+                      (updatedChannels && updatedChannels.size > 0) ||
+                      unseenMessages.length > 0
+                        ? " unread"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setChannel(undefined);
+                      setChannelSelectedTime(Date.now());
+                      setShowChannels(true);
+                      fetchChannels();
+                    }}
+                  >
+                    <LeftOutlined /> All chats
+                    {((updatedChannels && updatedChannels.size > 0) ||
+                      unseenMessages.length > 0) && (
+                      <span className="unread-marker">•</span>
                     )}
                   </p>
-                  {presenceVisible ? (
-                    <p className="presence">
-                      <Presences
-                        players={presences}
-                        channel={channel}
-                        sendMessage={sendNewMessage}
-                      />
+                ) : null}
+                <p data-testid="description" className="description">
+                  {decoratedDescription}
+                  {hasUnreadChat && (
+                    <span className="unread-marker" data-testid="description">
+                      •
+                    </span>
+                  )}
+                </p>
+                {presenceCount && !channel.startsWith("chat.pm.") ? (
+                  <>
+                    <p className="presence-count">
+                      <span>{peopleOnlineCounter}</span>
+                      {presenceVisible ? (
+                        <span className="list-trigger" onClick={handleHideList}>
+                          Hide list
+                        </span>
+                      ) : (
+                        <span className="list-trigger" onClick={handleShowList}>
+                          Show list
+                        </span>
+                      )}
                     </p>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-            {defaultChannel === "chat.lobby" && channel === "chat.lobby" ? (
-              <React.Fragment key="chat-disabled">
-                <p className="disabled-message">Help chat is disabled.</p>
-              </React.Fragment>
-            ) : (
-              <React.Fragment key="chat-enabled">
-                <div
-                  className={`entities ${channelType}`}
-                  style={
-                    maxEntitiesHeight
-                      ? {
-                          maxHeight: maxEntitiesHeight,
-                        }
-                      : undefined
-                  }
-                  ref={setTabContainerElement}
-                  onScroll={handleChatScrolled}
-                >
-                  {entities}
-                </div>
-                <form>
-                  <Input
-                    autoFocus={!defaultChannel.startsWith("chat.game")}
-                    autoComplete="off"
-                    placeholder={
-                      channel === "chat.lobby"
-                        ? "Ask or answer question..."
-                        : "chat..."
+                    {presenceVisible ? (
+                      <p className="presence">
+                        <Presences
+                          players={presences}
+                          channel={channel}
+                          sendMessage={sendNewMessage}
+                        />
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+              {defaultChannel === "chat.lobby" && channel === "chat.lobby" ? (
+                <React.Fragment key="chat-disabled">
+                  <p className="disabled-message">Help chat is disabled.</p>
+                </React.Fragment>
+              ) : (
+                <React.Fragment key="chat-enabled">
+                  <div
+                    className={`entities ${channelType}`}
+                    style={
+                      maxEntitiesHeight
+                        ? {
+                            maxHeight: maxEntitiesHeight,
+                          }
+                        : undefined
                     }
-                    name="chat-input"
-                    disabled={!loggedIn}
-                    onKeyDown={onKeyDown}
-                    onChange={onChange}
-                    value={curMsg}
-                    spellCheck={false}
-                  />
-                </form>
-              </React.Fragment>
-            )}
-          </>
-        )
-      ),
-    },
-  ];
+                    ref={setTabContainerElement}
+                    onScroll={handleChatScrolled}
+                  >
+                    {entities}
+                  </div>
+                  <form>
+                    <Input
+                      autoFocus={!defaultChannel.startsWith("chat.game")}
+                      autoComplete="off"
+                      placeholder={
+                        channel === "chat.lobby"
+                          ? "Ask or answer question..."
+                          : "chat..."
+                      }
+                      name="chat-input"
+                      disabled={!loggedIn}
+                      onKeyDown={onKeyDown}
+                      onChange={onChange}
+                      value={curMsg}
+                      spellCheck={false}
+                    />
+                  </form>
+                </React.Fragment>
+              )}
+            </>
+          )
+        ),
+      };
+    }
+
+    return item;
+  });
+
+  // Ensure selected tab is valid when tabItems change
+  useEffect(() => {
+    const availableKeys = tabItems.map((item) => item.key);
+    if (!availableKeys.includes(selectedChatTab)) {
+      // If current selected tab is not available, pick first available tab
+      setSelectedChatTab(availableKeys[0] || "CHAT");
+    }
+  }, [tabItems, selectedChatTab]);
 
   return (
     <Card className="chat" id="chat">
@@ -797,7 +882,8 @@ export const Chat = React.memo((props: Props) => {
         centered
         onTabClick={handleTabClick}
         animated={false}
-        items={tabItems}
+        items={tabItemsWithChildren}
+        destroyInactiveTabPane={false} // Keep all tab content rendered
       />
     </Card>
   );

@@ -1,0 +1,142 @@
+syntax = "proto3";
+package collections_service;
+
+import "google/protobuf/timestamp.proto";
+
+message Collection {
+  string uuid = 1; // UUID as string in protobuf (converted to proper UUID in Go)
+  string title = 2;
+  string description = 3;
+  string creator_uuid = 4;
+  string creator_username = 5;
+  bool public = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  repeated CollectionGame games = 9;
+  uint32 game_count = 10; // Number of games in the collection
+}
+
+message CollectionGame {
+  string game_id = 1;
+  uint32 chapter_number = 2;
+  string chapter_title = 3;
+  bool is_annotated = 4;
+  google.protobuf.Timestamp added_at = 5;
+}
+
+// Request/Response messages
+message CreateCollectionRequest {
+  string title = 1;
+  string description = 2;
+  bool public = 3;
+}
+
+message CreateCollectionResponse {
+  string collection_uuid = 1;
+}
+
+message GetCollectionRequest {
+  string collection_uuid = 1;
+}
+
+message GetCollectionResponse {
+  Collection collection = 1;
+}
+
+message UpdateCollectionRequest {
+  string collection_uuid = 1;
+  string title = 2;
+  string description = 3;
+  bool public = 4;
+}
+
+message UpdateCollectionResponse {}
+
+message DeleteCollectionRequest {
+  string collection_uuid = 1;
+}
+
+message DeleteCollectionResponse {}
+
+message AddGameToCollectionRequest {
+  string collection_uuid = 1;
+  string game_id = 2;
+  string chapter_title = 3;
+  bool is_annotated = 4;
+}
+
+message AddGameToCollectionResponse {}
+
+message RemoveGameFromCollectionRequest {
+  string collection_uuid = 1;
+  string game_id = 2;
+}
+
+message RemoveGameFromCollectionResponse {}
+
+message ReorderGamesRequest {
+  string collection_uuid = 1;
+  repeated string game_ids = 2; // in desired order
+}
+
+message ReorderGamesResponse {}
+
+message UpdateChapterTitleRequest {
+  string collection_uuid = 1;
+  string game_id = 2;
+  string chapter_title = 3;
+}
+
+message UpdateChapterTitleResponse {}
+
+message GetUserCollectionsRequest {
+  string user_uuid = 1; // If empty, returns collections for the authenticated user
+  uint32 limit = 2;
+  uint32 offset = 3;
+}
+
+message GetUserCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+message GetPublicCollectionsRequest {
+  uint32 limit = 1;
+  uint32 offset = 2;
+}
+
+message GetPublicCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+message GetCollectionsForGameRequest {
+  string game_id = 1;
+}
+
+message GetCollectionsForGameResponse {
+  repeated Collection collections = 1;
+}
+
+message GetRecentlyUpdatedCollectionsRequest {
+  uint32 limit = 1;
+  uint32 offset = 2;
+  string user_uuid = 3; // Optional: if provided, includes private collections for this user
+}
+
+message GetRecentlyUpdatedCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+service CollectionsService {
+  rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse);
+  rpc GetCollection(GetCollectionRequest) returns (GetCollectionResponse);
+  rpc UpdateCollection(UpdateCollectionRequest) returns (UpdateCollectionResponse);
+  rpc DeleteCollection(DeleteCollectionRequest) returns (DeleteCollectionResponse);
+  rpc AddGameToCollection(AddGameToCollectionRequest) returns (AddGameToCollectionResponse);
+  rpc RemoveGameFromCollection(RemoveGameFromCollectionRequest) returns (RemoveGameFromCollectionResponse);
+  rpc ReorderGames(ReorderGamesRequest) returns (ReorderGamesResponse);
+  rpc UpdateChapterTitle(UpdateChapterTitleRequest) returns (UpdateChapterTitleResponse);
+  rpc GetUserCollections(GetUserCollectionsRequest) returns (GetUserCollectionsResponse);
+  rpc GetPublicCollections(GetPublicCollectionsRequest) returns (GetPublicCollectionsResponse);
+  rpc GetCollectionsForGame(GetCollectionsForGameRequest) returns (GetCollectionsForGameResponse);
+  rpc GetRecentlyUpdatedCollections(GetRecentlyUpdatedCollectionsRequest) returns (GetRecentlyUpdatedCollectionsResponse);
+}

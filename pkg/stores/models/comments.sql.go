@@ -66,7 +66,7 @@ func (q *Queries) DeleteCommentNoAuthorSpecified(ctx context.Context, id uuid.UU
 
 const getCommentsForAllGames = `-- name: GetCommentsForAllGames :many
 SELECT game_comments.id, games.uuid as game_uuid, users.uuid as user_uuid,
-    users.username, event_number, edited_at, quickdata
+    users.username, event_number, edited_at, comment, quickdata
 FROM game_comments
 JOIN games on game_comments.game_id = games.id
 JOIN users on game_comments.author_id = users.id
@@ -86,6 +86,7 @@ type GetCommentsForAllGamesRow struct {
 	Username    pgtype.Text
 	EventNumber int32
 	EditedAt    pgtype.Timestamptz
+	Comment     string
 	Quickdata   entity.Quickdata
 }
 
@@ -105,6 +106,66 @@ func (q *Queries) GetCommentsForAllGames(ctx context.Context, arg GetCommentsFor
 			&i.Username,
 			&i.EventNumber,
 			&i.EditedAt,
+			&i.Comment,
+			&i.Quickdata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCommentsForCollectionGames = `-- name: GetCommentsForCollectionGames :many
+SELECT game_comments.id, games.uuid as game_uuid, users.uuid as user_uuid,
+    users.username, event_number, edited_at, comment, quickdata
+FROM game_comments
+JOIN games on game_comments.game_id = games.id
+JOIN users on game_comments.author_id = users.id
+JOIN collection_games cg on games.uuid = cg.game_id
+JOIN collections c on cg.collection_id = c.id
+WHERE c.uuid = $1
+ORDER BY game_comments.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetCommentsForCollectionGamesParams struct {
+	Uuid   uuid.UUID
+	Limit  int32
+	Offset int32
+}
+
+type GetCommentsForCollectionGamesRow struct {
+	ID          uuid.UUID
+	GameUuid    pgtype.Text
+	UserUuid    pgtype.Text
+	Username    pgtype.Text
+	EventNumber int32
+	EditedAt    pgtype.Timestamptz
+	Comment     string
+	Quickdata   entity.Quickdata
+}
+
+func (q *Queries) GetCommentsForCollectionGames(ctx context.Context, arg GetCommentsForCollectionGamesParams) ([]GetCommentsForCollectionGamesRow, error) {
+	rows, err := q.db.Query(ctx, getCommentsForCollectionGames, arg.Uuid, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCommentsForCollectionGamesRow
+	for rows.Next() {
+		var i GetCommentsForCollectionGamesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameUuid,
+			&i.UserUuid,
+			&i.Username,
+			&i.EventNumber,
+			&i.EditedAt,
+			&i.Comment,
 			&i.Quickdata,
 		); err != nil {
 			return nil, err
