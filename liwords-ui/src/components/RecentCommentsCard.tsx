@@ -12,6 +12,7 @@ type Props = {
   comments: Array<GameComment>;
   fetchPrev?: () => void;
   fetchNext?: () => void;
+  titleOverride?: string;
   collection?: Collection;
 };
 
@@ -23,12 +24,14 @@ export const RecentCommentsCard = React.memo((props: Props) => {
     // Get game info from gameMeta if available
     const players = comment.gameMeta?.players || "Unknown players";
 
-    // Create URL with proper turn numbering and optional collection context
-    // Why + 2? 1 is because the turns are 1-indexed, and 1 more because the comment
-    // on a turn shows up _after_ the turn is played.
-    const turnNumber = comment.eventNumber + 2;
+    // Create URL with both turn and comments parameters for full context
+    // turn shows the board position AFTER the move (eventNumber + 2)
+    // comments opens the drawer for the specific event (eventNumber + 1)
+    const commentEventNumber = comment.eventNumber + 1;
+    const turnPositionNumber = comment.eventNumber + 2;
     const params = new URLSearchParams();
-    params.set("turn", turnNumber.toString());
+    params.set("turn", turnPositionNumber.toString());
+    params.set("comments", commentEventNumber.toString());
 
     // If collection prop is provided, use it to find the chapter
     if (props.collection) {
@@ -109,7 +112,7 @@ export const RecentCommentsCard = React.memo((props: Props) => {
 
   return (
     <Card
-      title="Recent Comments"
+      title={props.titleOverride || "Recent Comments"}
       className="game-history-card"
       style={{ marginBottom: "24px" }}
     >

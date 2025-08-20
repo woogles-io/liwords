@@ -2,8 +2,8 @@
 
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
-import { useCallback, useEffect, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionType } from "../actions/actions";
 import { alphabetFromName } from "../constants/alphabets";
 import { Analyzer, AnalyzerContextProvider } from "../gameroom/analyzer";
@@ -11,6 +11,7 @@ import { BoardPanel } from "../gameroom/board_panel";
 import { PlayerCards } from "../gameroom/player_cards";
 import Pool from "../gameroom/pool";
 import { ScoreCard } from "../gameroom/scorecard";
+import { CommentsDrawer } from "../gameroom/CommentsDrawer";
 import { GameInfo } from "../gameroom/game_info";
 
 import {
@@ -39,6 +40,9 @@ import { syntheticGameInfo } from "./synthetic_game_info";
 import { EditorLandingPage } from "./new_game";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create } from "@bufbuild/protobuf";
+import { useComments } from "../utils/hooks/comments";
+import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
+import { Turn, gameEventsToTurns } from "../store/reducers/turns";
 
 const doNothing = () => {};
 
@@ -84,6 +88,19 @@ export const BoardEditor = () => {
     });
 
   const eventClient = useClient(GameEventService);
+  const commentsClient = useClient(GameCommentService);
+
+  // Comments system
+  const { comments, editComment, addNewComment, deleteComment } = useComments(
+    commentsClient,
+    true, // Editor always shows comments
+  );
+
+  // Comments drawer state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [commentsDrawerVisible, setCommentsDrawerVisible] = useState(false);
+  const [commentsDrawerEventNumber, setCommentsDrawerEventNumber] =
+    useState<number>(0);
 
   useEffect(() => {
     if (gameContext.gameID) {
@@ -97,6 +114,86 @@ export const BoardEditor = () => {
     handleExamineDisableShortcuts,
     gameContext.gameID,
   ]);
+
+  // Convert GameEvents to Turn objects
+  const turns = useMemo(
+    () => gameEventsToTurns(examinableGameContext.turns),
+    [examinableGameContext.turns],
+  );
+
+  // Comments drawer handlers
+  const handleOpenCommentsDrawerForEvent = useCallback(
+    (eventNumber: number) => {
+      setCommentsDrawerEventNumber(eventNumber);
+      setCommentsDrawerVisible(true);
+
+      // Update URL with only comments parameter - don't activate analyzer from bubble clicks
+      const newParams = new URLSearchParams(searchParams);
+      const commentEventNumber = eventNumber + 1;
+      newParams.set("comments", commentEventNumber.toString());
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleOpenCommentsDrawerForTurn = useCallback(
+    (turnIndex: number) => {
+      if (turnIndex >= 0 && turnIndex < turns.length) {
+        const turn = turns[turnIndex];
+        // Use the last event of the turn as the representative event (the actual move)
+        const representativeEventNumber =
+          turn.firstEvtIdx + turn.events.length - 1;
+        handleOpenCommentsDrawerForEvent(representativeEventNumber);
+      }
+    },
+    [turns, handleOpenCommentsDrawerForEvent],
+  );
+
+  const handleCloseCommentsDrawer = useCallback(() => {
+    setCommentsDrawerVisible(false);
+
+    // Update URL - remove comments parameter
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("comments");
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
+  // Handle URL parameters for comments drawer - run when turns are loaded
+  useEffect(() => {
+    if (turns.length === 0) return;
+
+    const commentsParam = searchParams.get("comments");
+
+    if (commentsParam && commentsParam !== "true") {
+      // Parse comments={eventNumber} (1-based)
+      const eventNumber = parseInt(commentsParam) - 1; // Convert to 0-based event number
+
+      // Validate that this event number exists in the turns
+      let eventExists = false;
+      for (const turn of turns) {
+        if (
+          eventNumber >= turn.firstEvtIdx &&
+          eventNumber < turn.firstEvtIdx + turn.events.length
+        ) {
+          eventExists = true;
+          break;
+        }
+      }
+
+      if (eventExists) {
+        setCommentsDrawerEventNumber(eventNumber);
+        setCommentsDrawerVisible(true);
+      }
+    }
+  }, [turns, searchParams]);
+
+  // Comment handlers for drawer
+  const handleAddCommentInDrawer = useCallback(
+    (comment: string) => {
+      addNewComment(gameID || "", commentsDrawerEventNumber, comment);
+    },
+    [commentsDrawerEventNumber, addNewComment, gameID],
+  );
 
   const fetchAndDispatchDocument = useCallback(
     async (gid: string, redirect: boolean) => {
@@ -413,9 +510,27 @@ export const BoardEditor = () => {
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
             showComments={true}
+            onOpenCommentsDrawer={handleOpenCommentsDrawerForTurn}
+            comments={comments}
+            editComment={editComment}
           />
         </div>
       </div>
+      <CommentsDrawer
+        visible={commentsDrawerVisible}
+        onClose={handleCloseCommentsDrawer}
+        eventNumber={commentsDrawerEventNumber}
+        comments={comments || []}
+        turns={turns}
+        board={examinableGameContext.board}
+        alphabet={alphabet}
+        players={gameInfo.players}
+        onAddComment={handleAddCommentInDrawer}
+        onEditComment={editComment}
+        onDeleteComment={deleteComment}
+        gameId={gameID || ""}
+        baseUrl={`${window.location.origin}/anno/${encodeURIComponent(gameID || "")}`}
+      />
     </div>
   );
   ret = (

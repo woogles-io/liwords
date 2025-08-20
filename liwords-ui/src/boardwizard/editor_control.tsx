@@ -10,8 +10,9 @@ import {
   Card,
   Space,
   Tag,
+  message,
 } from "antd";
-import { BookOutlined, FolderOutlined } from "@ant-design/icons";
+import { BookOutlined, CloseOutlined, FolderOutlined } from "@ant-design/icons";
 import { Store } from "antd/lib/form/interface";
 import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
@@ -55,6 +56,9 @@ export const EditorControl = (props: Props) => {
   const [confirmDelVisible, setConfirmDelVisible] = useState(false);
   const [collectionModalVisible, setCollectionModalVisible] = useState(false);
   const [gameCollections, setGameCollections] = useState<Collection[]>([]);
+  const [removingCollectionId, setRemovingCollectionId] = useState<
+    string | null
+  >(null);
 
   const collectionsClient = useClient(CollectionsService);
 
@@ -70,6 +74,34 @@ export const EditorControl = (props: Props) => {
       console.error("Failed to fetch collections for game:", err);
     }
   }, [props.gameID, collectionsClient]);
+
+  const removeGameFromCollection = useCallback(
+    async (collectionUuid: string, collectionTitle: string) => {
+      if (!props.gameID) return;
+
+      setRemovingCollectionId(collectionUuid);
+      try {
+        await collectionsClient.removeGameFromCollection({
+          collectionUuid,
+          gameId: props.gameID,
+        });
+
+        // Refresh the collections list
+        await fetchGameCollections();
+
+        // Show success message
+        message.success(`Game removed from "${collectionTitle}"`);
+      } catch (err) {
+        console.error("Failed to remove game from collection:", err);
+        message.error(
+          "Failed to remove game from collection. Please try again.",
+        );
+      } finally {
+        setRemovingCollectionId(null);
+      }
+    },
+    [props.gameID, collectionsClient, fetchGameCollections],
+  );
 
   // Fetch collections that contain this game
   useEffect(() => {
@@ -99,18 +131,65 @@ export const EditorControl = (props: Props) => {
             >
               <Space wrap style={{ paddingLeft: 4, paddingBottom: 4 }}>
                 {gameCollections.map((collection) => (
-                  <Link
+                  <div
                     key={collection.uuid}
-                    to={`/collections/${collection.uuid}`}
+                    style={{ display: "inline-block" }}
                   >
-                    <Tag color="blue" style={{ cursor: "pointer" }}>
-                      {collection.title}
-                      {collection.games &&
-                        collection.games[0] &&
-                        collection.games[0].chapterTitle &&
-                        ` (Ch. ${collection.games[0].chapterNumber})`}
+                    <Tag
+                      color="blue"
+                      style={{
+                        margin: "2px",
+                        cursor: "default",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <Link
+                        to={`/collections/${collection.uuid}`}
+                        style={{ color: "inherit", textDecoration: "none" }}
+                      >
+                        <span style={{ cursor: "pointer" }}>
+                          {collection.title}
+                          {collection.games &&
+                            collection.games[0] &&
+                            collection.games[0].chapterTitle &&
+                            ` (Ch. ${collection.games[0].chapterNumber})`}
+                        </span>
+                      </Link>
+                      <Popconfirm
+                        title={`Remove game from "${collection.title}"?`}
+                        description="This will remove the game from this collection."
+                        onConfirm={() =>
+                          removeGameFromCollection(
+                            collection.uuid,
+                            collection.title,
+                          )
+                        }
+                        okText="Remove"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CloseOutlined />}
+                          loading={removingCollectionId === collection.uuid}
+                          style={{
+                            padding: "0 4px",
+                            height: "16px",
+                            minWidth: "16px",
+                            fontSize: "10px",
+                            color: "rgba(255, 255, 255, 0.7)",
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </Popconfirm>
                     </Tag>
-                  </Link>
+                  </div>
                 ))}
               </Space>
             </Card>

@@ -1,5 +1,4 @@
 import React, {
-  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
@@ -30,9 +29,7 @@ import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { useGameContextStoreContext } from "../store/store";
 import { Comments } from "./comments";
-import { useClient } from "../utils/hooks/connect";
-import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
-import { useComments } from "../utils/hooks/comments";
+import { TurnCommentPreview } from "./TurnCommentPreview";
 import {
   Alphabet,
   machineWordToRunes,
@@ -50,12 +47,15 @@ type Props = {
   gameEpilog?: React.ReactElement<Element>;
   hideExtraInteractions?: boolean;
   showComments?: boolean;
-  pendingScrollToTurn?: number | null;
-  onScrollComplete?: () => void;
-};
-
-export type ScoreCardRef = {
-  scrollToCommentsForTurn: (turnIndex: number) => void;
+  onOpenCommentsDrawer?: (turnIndex: number) => void;
+  comments?: Array<GameComment>;
+  editComment?: (cid: string, comment: string) => Promise<void>;
+  addNewComment?: (
+    gameID: string,
+    eventNumber: number,
+    comment: string,
+  ) => Promise<void>;
+  deleteComment?: (cid: string) => Promise<void>;
 };
 
 type turnProps = {
@@ -71,10 +71,7 @@ type turnProps = {
   commentEditorVisible: boolean;
   alphabet: Alphabet;
   turnIndex: number;
-  onCommentsRefReady?: (
-    turnIndex: number,
-    ref: React.RefObject<HTMLDivElement | null>,
-  ) => void;
+  onOpenCommentsDrawer?: (turnIndex: number) => void;
 };
 
 type MoveEntityObj = {
@@ -150,14 +147,8 @@ const displayType = (evt: GameEvent) => {
 
 const ScorecardTurn = (props: turnProps) => {
   const commentsRef = useRef<HTMLDivElement>(null);
-  const { onCommentsRefReady, turnIndex, comments } = props;
 
-  // Notify parent when comments ref is ready
-  useEffect(() => {
-    if (onCommentsRefReady && comments.length > 0) {
-      onCommentsRefReady(turnIndex, commentsRef);
-    }
-  }, [onCommentsRefReady, turnIndex, comments.length]);
+  // Comments ref ready notification removed - autoscroll no longer needed
 
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
@@ -266,14 +257,9 @@ const ScorecardTurn = (props: turnProps) => {
 
   const divProps: {
     className: string;
-    onClick?: MouseEventHandler<HTMLDivElement>;
   } = {
     className: `turn${memoizedTurn.isBingo ? " bingo" : ""}`,
   };
-
-  if (props.showComments) {
-    divProps["onClick"] = () => props.toggleCommentEditorVisible();
-  }
 
   return (
     <>
@@ -298,9 +284,47 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
+        {props.showComments && (
+          <TurnCommentPreview
+            comments={props.comments}
+            onExpandComments={() => {
+              if (props.onOpenCommentsDrawer) {
+                props.onOpenCommentsDrawer(props.turnIndex);
+              } else {
+                props.toggleCommentEditorVisible();
+              }
+            }}
+            className={`inline-comment-bubble ${
+              props.comments.length > 0 ? "invisible-placeholder" : ""
+            }`}
+          />
+        )}
       </div>
+      {props.showComments && props.comments.length > 0 && (
+        <div className="turn-comment-row">
+          <TurnCommentPreview
+            comments={props.comments}
+            onExpandComments={() => {
+              if (props.onOpenCommentsDrawer) {
+                props.onOpenCommentsDrawer(props.turnIndex);
+              } else {
+                // Fallback to old behavior if no drawer handler
+                props.toggleCommentEditorVisible();
+              }
+            }}
+          />
+          <div className="comment-preview-text">
+            "
+            {props.comments[props.comments.length - 1].comment.length > 40
+              ? `${props.comments[props.comments.length - 1].comment.substring(0, 40)}...`
+              : props.comments[props.comments.length - 1].comment}
+            "
+          </div>
+        </div>
+      )}
       {props.showComments &&
-      (props.comments.length || props.commentEditorVisible) ? (
+      props.commentEditorVisible &&
+      !props.onOpenCommentsDrawer ? (
         <Comments
           comments={props.comments}
           deleteComment={props.deleteComment}
@@ -313,253 +337,185 @@ const ScorecardTurn = (props: turnProps) => {
   );
 };
 
-export const ScoreCard = React.memo(
-  React.forwardRef<ScoreCardRef, Props>((props, ref) => {
-    const el = useRef<HTMLDivElement>(null);
-    const [cardHeight, setCardHeight] = useState(0);
-    const [flipHidden, setFlipHidden] = useState(true);
-    const [flipEnabled, setEnableFlip] = useState(isTablet());
-    const [commentRefs, setCommentRefs] = useState<
-      Map<number, React.RefObject<HTMLDivElement | null>>
-    >(new Map());
+export const ScoreCard = React.memo((props: Props) => {
+  const el = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(0);
+  const [flipHidden, setFlipHidden] = useState(true);
+  const [flipEnabled, setEnableFlip] = useState(isTablet());
+  // Autoscroll code removed - comments now use drawer
 
-    const { onScrollComplete } = props;
-
-    const handleCommentsRefReady = useCallback(
-      (turnIndex: number, ref: React.RefObject<HTMLDivElement | null>) => {
-        setCommentRefs((prev) => new Map(prev.set(turnIndex, ref)));
-      },
-      [],
-    );
-
-    const scrollToCommentsForTurn = useCallback(
-      (turnIndex: number) => {
-        const commentRef = commentRefs.get(turnIndex);
-        if (commentRef?.current && el.current) {
-          const container = el.current;
-          const target = commentRef.current;
-
-          // Calculate the position of the comments relative to the container
-          const containerRect = container.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const scrollTop =
-            container.scrollTop + (targetRect.top - containerRect.top);
-
-          // Scroll the container to the target position
-          container.scrollTo({
-            top: scrollTop,
-            behavior: "smooth",
-          });
-
-          // Call completion callback
-          onScrollComplete?.();
-        }
-      },
-      [commentRefs, onScrollComplete],
-    );
-
-    // Handle pending scroll from props
-    useEffect(() => {
-      if (
-        props.pendingScrollToTurn !== null &&
-        props.pendingScrollToTurn !== undefined
-      ) {
-        // Wait a moment for refs to be available
-        const timeoutId = setTimeout(() => {
-          scrollToCommentsForTurn(props.pendingScrollToTurn!);
-        }, 100);
-        return () => clearTimeout(timeoutId);
-      }
-    }, [props.pendingScrollToTurn, scrollToCommentsForTurn]);
-
-    React.useImperativeHandle(
-      ref,
-      () => ({
-        scrollToCommentsForTurn,
-      }),
-      [scrollToCommentsForTurn],
-    );
-
-    const toggleFlipVisibility = useCallback(() => {
-      setFlipHidden((x) => !x);
-    }, []);
-    const resizeListener = useCallback(() => {
-      const currentEl = el.current;
-      if (isTablet() && !props.hideExtraInteractions) {
-        setEnableFlip(true);
-      } else {
-        setEnableFlip(false);
-        setFlipHidden(true);
-      }
-      if (currentEl) {
-        currentEl.scrollTop = currentEl.scrollHeight || 0;
-        const boardHeight =
-          document.getElementById("board-container")?.clientHeight;
-        const poolTop = document.getElementById("pool")?.clientHeight || 0;
-        const playerCardTop =
-          document.getElementById("player-cards-vertical")?.clientHeight || 0;
-        const navHeight =
-          document.getElementById("main-nav")?.clientHeight || 0;
-        let offset = 0;
-        if (getVW() > parseInt(screenSizeLaptop)) {
-          offset = 45;
-        }
-        if (getVW() > parseInt(screenSizeDesktop)) {
-          offset = 25;
-        }
-        if (boardHeight && getVW() >= parseInt(screenSizeTablet, 10)) {
-          setCardHeight(
-            boardHeight +
-              offset -
-              currentEl?.getBoundingClientRect().top -
-              window.pageYOffset -
-              poolTop -
-              playerCardTop -
-              15 +
-              navHeight,
-          );
-        } else {
-          setCardHeight(0);
-        }
-      }
-    }, [props.hideExtraInteractions]);
-    useEffect(() => {
-      resizeListener();
-    }, [props.events, props.poolFormat, resizeListener]);
-    useEffect(() => {
-      window.addEventListener("resize", resizeListener);
-      return () => {
-        window.removeEventListener("resize", resizeListener);
-      };
-    }, [resizeListener]);
-
-    const turns = useMemo(
-      () => gameEventsToTurns(props.events),
-      [props.events],
-    );
-    const cardStyle = useMemo(
-      () =>
-        cardHeight
-          ? {
-              maxHeight: cardHeight,
-              minHeight: cardHeight,
-            }
-          : undefined,
-      [cardHeight],
-    );
-    const notepadStyle = useMemo(
-      () =>
-        cardHeight
-          ? {
-              height: cardHeight - 24,
-              display: flipHidden ? "none" : "flex",
-            }
-          : undefined,
-      [cardHeight, flipHidden],
-    );
-    const analyzerStyle = useMemo(
-      () =>
-        cardHeight
-          ? {
-              height: cardHeight,
-              display: flipHidden ? "none" : "flex",
-            }
-          : undefined,
-      [cardHeight, flipHidden],
-    );
-    let title = `Turn ${turns.length + 1}`;
-    let extra = null;
-    if (flipEnabled) {
-      if (props.isExamining) {
-        title = !flipHidden ? "Analyzer" : `Turn ${turns.length + 1}`;
-        extra = !flipHidden ? "View Scorecard" : "View Analyzer";
-      } else {
-        title = !flipHidden ? "Notepad" : `Turn ${turns.length + 1}`;
-        extra = !flipHidden ? "View Scorecard" : "View Notepad";
-      }
+  const toggleFlipVisibility = useCallback(() => {
+    setFlipHidden((x) => !x);
+  }, []);
+  const resizeListener = useCallback(() => {
+    const currentEl = el.current;
+    if (isTablet() && !props.hideExtraInteractions) {
+      setEnableFlip(true);
+    } else {
+      setEnableFlip(false);
+      setFlipHidden(true);
     }
-    let contents = null;
-    const { gameContext } = useGameContextStoreContext();
-
-    const commentsClient = useClient(GameCommentService);
-    const { comments, editComment, addNewComment, deleteComment } = useComments(
-      commentsClient,
-      props.showComments ?? false,
-    );
-    const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
-      useState<number | undefined>(undefined);
-
-    if (flipHidden) {
-      const turnDisplay = (t: Turn, idx: number) => {
-        if (t.events.length === 0) {
-          return null;
-        }
-        // for each turn, show only the relevant comments - comments for
-        // event indexes encompassed by those turns.
-        return (
-          <ScorecardTurn
-            turn={t}
-            board={props.board}
-            key={`t_${idx + 0}`}
-            playerMeta={props.playerMeta}
-            showComments={props.showComments ?? false}
-            comments={
-              comments
-                ? comments.filter(
-                    (c) =>
-                      c.eventNumber >= t.firstEvtIdx &&
-                      c.eventNumber < t.firstEvtIdx + t.events.length,
-                  )
-                : []
-            }
-            commentEditorVisible={commentEditorVisibleForTurn === idx}
-            toggleCommentEditorVisible={() => {
-              setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
-            }}
-            editComment={editComment}
-            deleteComment={deleteComment}
-            addComment={(comment: string) =>
-              addNewComment(
-                gameContext.gameID,
-                t.firstEvtIdx + t.events.length - 1,
-                comment,
-              )
-            }
-            alphabet={gameContext.alphabet}
-            turnIndex={idx}
-            onCommentsRefReady={handleCommentsRefReady}
-          />
+    if (currentEl) {
+      currentEl.scrollTop = currentEl.scrollHeight || 0;
+      const boardHeight =
+        document.getElementById("board-container")?.clientHeight;
+      const poolTop = document.getElementById("pool")?.clientHeight || 0;
+      const playerCardTop =
+        document.getElementById("player-cards-vertical")?.clientHeight || 0;
+      const navHeight = document.getElementById("main-nav")?.clientHeight || 0;
+      let offset = 0;
+      if (getVW() > parseInt(screenSizeLaptop)) {
+        offset = 45;
+      }
+      if (getVW() > parseInt(screenSizeDesktop)) {
+        offset = 25;
+      }
+      if (boardHeight && getVW() >= parseInt(screenSizeTablet, 10)) {
+        setCardHeight(
+          boardHeight +
+            offset -
+            currentEl?.getBoundingClientRect().top -
+            window.pageYOffset -
+            poolTop -
+            playerCardTop -
+            15 +
+            navHeight,
         );
-      };
-      contents = (
-        <>
-          {turns.map(turnDisplay)}
-          {props.gameEpilog}
-        </>
-      );
+      } else {
+        setCardHeight(0);
+      }
     }
+  }, [props.hideExtraInteractions]);
+  useEffect(() => {
+    resizeListener();
+  }, [props.events, props.poolFormat, resizeListener]);
+  useEffect(() => {
+    window.addEventListener("resize", resizeListener);
+    return () => {
+      window.removeEventListener("resize", resizeListener);
+    };
+  }, [resizeListener]);
 
-    return (
-      <Card
-        className={`score-card${flipHidden ? "" : " flipped"}`}
-        title={title}
-        extra={
-          isTablet() ? (
-            <button className="link" onClick={toggleFlipVisibility}>
-              {extra}
-            </button>
-          ) : null
-        }
-      >
-        <div ref={el} style={cardStyle}>
-          {props.isExamining ? (
-            <Analyzer style={analyzerStyle} />
-          ) : (
-            <Notepad style={notepadStyle} />
-          )}
-          {contents}
-        </div>
-      </Card>
+  const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
+  const cardStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            maxHeight: cardHeight,
+            minHeight: cardHeight,
+          }
+        : undefined,
+    [cardHeight],
+  );
+  const notepadStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight - 24,
+            display: flipHidden ? "none" : "flex",
+          }
+        : undefined,
+    [cardHeight, flipHidden],
+  );
+  const analyzerStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight,
+            display: flipHidden ? "none" : "flex",
+          }
+        : undefined,
+    [cardHeight, flipHidden],
+  );
+  let title = `Turn ${turns.length + 1}`;
+  let extra = null;
+  if (flipEnabled) {
+    if (props.isExamining) {
+      title = !flipHidden ? "Analyzer" : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? "View Scorecard" : "View Analyzer";
+    } else {
+      title = !flipHidden ? "Notepad" : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? "View Scorecard" : "View Notepad";
+    }
+  }
+  let contents = null;
+  const { gameContext } = useGameContextStoreContext();
+
+  const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
+    useState<number | undefined>(undefined);
+
+  if (flipHidden) {
+    const turnDisplay = (t: Turn, idx: number) => {
+      if (t.events.length === 0) {
+        return null;
+      }
+      // for each turn, show only the relevant comments - comments for
+      // event indexes encompassed by those turns.
+      return (
+        <ScorecardTurn
+          turn={t}
+          board={props.board}
+          key={`t_${idx + 0}`}
+          playerMeta={props.playerMeta}
+          showComments={props.showComments ?? false}
+          comments={
+            props.comments
+              ? props.comments.filter(
+                  (c) =>
+                    c.eventNumber >= t.firstEvtIdx &&
+                    c.eventNumber < t.firstEvtIdx + t.events.length,
+                )
+              : []
+          }
+          commentEditorVisible={commentEditorVisibleForTurn === idx}
+          toggleCommentEditorVisible={() => {
+            setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
+          }}
+          editComment={props.editComment || (() => Promise.resolve())}
+          deleteComment={props.deleteComment || (() => Promise.resolve())}
+          addComment={(comment: string) =>
+            props.addNewComment
+              ? props.addNewComment(
+                  gameContext.gameID,
+                  t.firstEvtIdx + t.events.length - 1,
+                  comment,
+                )
+              : Promise.resolve()
+          }
+          alphabet={gameContext.alphabet}
+          turnIndex={idx}
+          onOpenCommentsDrawer={props.onOpenCommentsDrawer}
+        />
+      );
+    };
+    contents = (
+      <>
+        {turns.map(turnDisplay)}
+        {props.gameEpilog}
+      </>
     );
-  }),
-);
+  }
+
+  return (
+    <Card
+      className={`score-card${flipHidden ? "" : " flipped"}`}
+      title={title}
+      extra={
+        isTablet() ? (
+          <button className="link" onClick={toggleFlipVisibility}>
+            {extra}
+          </button>
+        ) : null
+      }
+    >
+      <div ref={el} style={cardStyle}>
+        {props.isExamining ? (
+          <Analyzer style={analyzerStyle} />
+        ) : (
+          <Notepad style={notepadStyle} />
+        )}
+        {contents}
+      </div>
+    </Card>
+  );
+});

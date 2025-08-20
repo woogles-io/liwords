@@ -184,6 +184,7 @@ export const CollectionViewer: React.FC = () => {
           fetchPrev={fetchPrevComments}
           fetchNext={fetchNextComments}
           collection={collection}
+          titleOverride="Recent comments for this collection"
         />
       </div>
     </div>
