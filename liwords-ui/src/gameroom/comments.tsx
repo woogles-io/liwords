@@ -13,6 +13,7 @@ type Props = {
   deleteComment: (commentID: string) => void;
   editComment: (commentID: string, comment: string) => void;
   addComment: (comment: string) => void;
+  commentsRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 type SingleCommentProps = {
@@ -34,7 +35,6 @@ export const CommentEditor = (props: EditProps) => {
   const myRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    console.log(myRef.current);
     myRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
   const [inputValue, setInputValue] = useState(props.initialValue);
@@ -175,7 +175,7 @@ export const Comments = (props: Props) => {
   }
 
   return (
-    <div className="turn-comments">
+    <div className="turn-comments" ref={props.commentsRef}>
       {props.comments.map((c) => {
         return (
           <Comment

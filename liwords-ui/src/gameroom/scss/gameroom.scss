@@ -1653,33 +1653,109 @@ p.rune {
     }
     
     .ant-card {
+      margin-bottom: 8px;
+      border-radius: 6px;
+      
       .ant-card-head {
-        .ant-card-head-title {
-          padding: 6px 0px 0px 0px;
+        min-height: 36px;
+        padding: 0 8px;
+        
+        .mode--default & {
+          background-color: #11659e; // primary-dark in light mode (consonants)
+          border-bottom: 1px solid #11659e;
         }
+        
+        .mode--dark & {
+          background-color: #135380; // primary-light in dark mode (vowels)
+          border-bottom: 1px solid #135380;
+        }
+        
+        .ant-card-head-title {
+          padding: 3px 0px;
+          font-size: 13px;
+          font-weight: 600;
+          
+          @include colorModed() {
+            color: m($background);
+          }
+          
+          a {
+            .mode--default & {
+              color: #ffffff; // white in light mode
+            }
+            
+            .mode--dark & {
+              color: #c9f0ff; // light blue in dark mode for better contrast
+            }
+            
+            &:hover {
+              .mode--default & {
+                color: rgba(255, 255, 255, 0.9);
+              }
+              
+              .mode--dark & {
+                color: #ffffff;
+              }
+            }
+          }
+        }
+        
+        .ant-card-extra {
+          padding: 3px 0px;
+        }
+        
         .timeago {
           @include colorModed() {
-            color: m($gray-subtle);
+            color: rgba(255, 255, 255, 0.8);
           }
           & {
-            padding-left: 12px;
+            padding-left: 8px;
+            font-size: 12px;
+            font-weight: normal;
           }
         }
+        
+        .anticon-edit,
         .anticon-delete {
-          padding-left: 12px;
+          padding-left: 6px;
+          font-size: 14px;
+          
+          @include colorModed() {
+            color: rgba(255, 255, 255, 0.7);
+          }
+          
+          &:hover {
+            @include colorModed() {
+              color: rgba(255, 255, 255, 1);
+            }
+          }
         }
       }
+      
       .ant-card-body {
-        padding: 0px 12px 12px 12px;
+        padding: 8px 12px 12px 12px;
       }
     }
+    
     .add-cmt-pseudo-btn {
       cursor: pointer;
       margin-left: 6px;
       margin-top: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      
       @include colorModed() {
         color: m($button);
         background-color: m($card-background);
+        border: 1px solid m($gray-subtle);
+      }
+      
+      &:hover {
+        @include colorModed() {
+          background-color: m($off-background);
+          border-color: m($gray-medium);
+        }
       }
     }
   }

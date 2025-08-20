@@ -183,6 +183,7 @@ export const CollectionViewer: React.FC = () => {
           comments={recentComments}
           fetchPrev={fetchPrevComments}
           fetchNext={fetchNextComments}
+          collection={collection}
         />
       </div>
     </div>

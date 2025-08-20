@@ -6,11 +6,13 @@ import { GameComment } from "../gen/api/proto/comments_service/comments_service_
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 import { useCollectionContext } from "../collections/useCollectionContext";
+import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
 
 type Props = {
   comments: Array<GameComment>;
   fetchPrev?: () => void;
   fetchNext?: () => void;
+  collection?: Collection;
 };
 
 export const RecentCommentsCard = React.memo((props: Props) => {
@@ -22,13 +24,27 @@ export const RecentCommentsCard = React.memo((props: Props) => {
     const players = comment.gameMeta?.players || "Unknown players";
 
     // Create URL with proper turn numbering and optional collection context
-    const turnNumber = comment.eventNumber + 1;
+    // Why + 2? 1 is because the turns are 1-indexed, and 1 more because the comment
+    // on a turn shows up _after_ the turn is played.
+    const turnNumber = comment.eventNumber + 2;
     const baseUrl = `/anno/${encodeURIComponent(comment.gameId)}?turn=${turnNumber}`;
 
-    // Add collection context if available
-    const url = collectionContext
-      ? `${baseUrl}&collection=${collectionContext.collectionUuid}`
-      : baseUrl;
+    // Build URL with collection context
+    let url = baseUrl;
+
+    // If collection prop is provided, use it to find the chapter
+    if (props.collection) {
+      const chapterIndex = props.collection.games.findIndex(
+        (game) => game.gameId === comment.gameId,
+      );
+      if (chapterIndex !== -1) {
+        const chapterNumber = chapterIndex + 1;
+        url = `${baseUrl}&collection=${props.collection.uuid}&chapter=${chapterNumber}&total=${props.collection.games.length}`;
+      }
+    } else if (collectionContext) {
+      // Fall back to using collection context if available (when not in collection viewer)
+      url = `${baseUrl}&collection=${collectionContext.collectionUuid}&chapter=${collectionContext.currentChapter}&total=${collectionContext.totalChapters}`;
+    }
 
     const whenMoment = moment(
       comment.lastEdited ? timestampDate(comment.lastEdited) : "",
