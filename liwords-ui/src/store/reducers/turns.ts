@@ -41,3 +41,19 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
   }
   return turns;
 };
+
+export const eventIndexToTurnIndex = (
+  eventIndex: number,
+  turns: Array<Turn>,
+): number => {
+  // Convert a 0-based event index to a 0-based turn index
+  // Returns -1 if the event index is not found in any turn
+  for (let i = 0; i < turns.length; i++) {
+    const turn = turns[i];
+    const turnEndIdx = turn.firstEvtIdx + turn.events.length - 1;
+    if (eventIndex >= turn.firstEvtIdx && eventIndex <= turnEndIdx) {
+      return i;
+    }
+  }
+  return -1;
+};

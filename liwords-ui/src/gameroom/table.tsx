@@ -31,7 +31,11 @@ import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import "./scss/gameroom.scss";
 import { ScoreCard, ScoreCardRef } from "./scorecard";
+import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
+import { useComments } from "../utils/hooks/comments";
+import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
+import { Turn, gameEventsToTurns } from "../store/reducers/turns";
 import { BoopSounds } from "../sound/boop";
 import { StreakWidget } from "./streak_widget";
 import { ChallengeRule, PlayState } from "../gen/api/vendor/macondo/macondo_pb";
@@ -195,13 +199,6 @@ export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const { addChat } = useChatStoreContext();
   const scoreCardRef = useRef<ScoreCardRef>(null);
-  const [pendingScrollToTurn, setPendingScrollToTurn] = useState<number | null>(
-    null,
-  );
-
-  const clearPendingScroll = useCallback(() => {
-    setPendingScrollToTurn(null);
-  }, []);
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -228,6 +225,118 @@ export const Table = React.memo((props: Props) => {
     }),
   );
   const [isObserver, setIsObserver] = useState(false);
+
+  // Comments functionality
+  const commentsClient = useClient(GameCommentService);
+  const { comments, editComment, addNewComment, deleteComment } = useComments(
+    commentsClient,
+    props.annotated ?? false,
+  );
+
+  // Comments drawer state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [commentsDrawerVisible, setCommentsDrawerVisible] = useState(false);
+  const [commentsDrawerEventNumber, setCommentsDrawerEventNumber] =
+    useState<number>(0);
+
+  const handleOpenCommentsDrawerForEvent = useCallback(
+    (eventNumber: number) => {
+      setCommentsDrawerEventNumber(eventNumber);
+      setCommentsDrawerVisible(true);
+
+      // Update URL with only comments parameter - don't activate analyzer from bubble clicks
+      const newParams = new URLSearchParams(searchParams);
+      const commentEventNumber = eventNumber + 1;
+      newParams.set("comments", commentEventNumber.toString());
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleCloseCommentsDrawer = useCallback(() => {
+    setCommentsDrawerVisible(false);
+
+    // Update URL - remove comments parameter
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("comments");
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
+  // Navigation removed - comments are now event-specific
+
+  // Convert GameEvents to Turn objects
+  const turns = useMemo(
+    () => gameEventsToTurns(examinableGameContext.turns),
+    [examinableGameContext.turns],
+  );
+
+  // Wrapper for scorecard to convert turnIndex to eventNumber
+  const handleOpenCommentsDrawerForTurn = useCallback(
+    (turnIndex: number) => {
+      if (turnIndex >= 0 && turnIndex < turns.length) {
+        const turn = turns[turnIndex];
+        // Use the last event of the turn as the representative event (the actual move)
+        const representativeEventNumber =
+          turn.firstEvtIdx + turn.events.length - 1;
+        handleOpenCommentsDrawerForEvent(representativeEventNumber);
+      }
+    },
+    [turns, handleOpenCommentsDrawerForEvent],
+  );
+
+  // Handle URL parameters for comments drawer - run when turns are loaded
+  useEffect(() => {
+    if (!props.annotated || turns.length === 0) return;
+
+    const commentsParam = searchParams.get("comments");
+
+    if (commentsParam && commentsParam !== "true") {
+      // Parse comments={eventNumber} (1-based)
+      const eventNumber = parseInt(commentsParam) - 1; // Convert to 0-based event number
+
+      // Validate that this event number exists in the turns
+      let eventExists = false;
+      for (const turn of turns) {
+        if (
+          eventNumber >= turn.firstEvtIdx &&
+          eventNumber < turn.firstEvtIdx + turn.events.length
+        ) {
+          eventExists = true;
+          break;
+        }
+      }
+
+      if (eventExists) {
+        setCommentsDrawerEventNumber(eventNumber);
+        setCommentsDrawerVisible(true);
+      }
+    }
+  }, [turns, props.annotated, searchParams]);
+
+  // Comments are now filtered inside CommentsDrawer by eventNumber
+
+  // Comment handlers for drawer
+  const handleAddCommentInDrawer = useCallback(
+    (comment: string) => {
+      addNewComment(gameID || "", commentsDrawerEventNumber, comment);
+    },
+    [commentsDrawerEventNumber, addNewComment, gameID],
+  );
+
+  const handleEditCommentInDrawer = useCallback(
+    (commentId: string, comment: string) => {
+      editComment(commentId, comment);
+    },
+    [editComment],
+  );
+
+  const handleDeleteCommentInDrawer = useCallback(
+    (commentId: string) => {
+      deleteComment(commentId);
+    },
+    [deleteComment],
+  );
+
   const tournamentNonDirectorObserver = useMemo(() => {
     return (
       isObserver &&
@@ -543,7 +652,6 @@ export const Table = React.memo((props: Props) => {
     gameContext.gameID,
   ]);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
   const turnAsStr = us && !gameDone ? "" : (searchedTurn ?? ""); // Do not examine our current games.
   const hasActivatedExamineRef = useRef(false);
@@ -557,13 +665,7 @@ export const Table = React.memo((props: Props) => {
           handleExamineStart();
           handleExamineGoTo(turnAsInt - 1); // ?turn= should start from one.
 
-          // If this is an annotated game and we're navigating to a specific turn,
-          // set pending scroll and wait for comments to render
-          // The URL turn is eventNumber + 2, so we need to subtract 2 to get the turn index
-          if (props.annotated) {
-            const targetTurnIndex = turnAsInt - 2;
-            setPendingScrollToTurn(targetTurnIndex);
-          }
+          // Autoscroll removed - comments now use drawer
         }
         setAutocorrectURL(true); // Trigger rerender.
       }
@@ -666,7 +768,11 @@ export const Table = React.memo((props: Props) => {
     );
   }
   let ret = (
-    <div className={`game-container${isRegistered ? " competitor" : ""}`}>
+    <div
+      className={`game-container${isRegistered ? " competitor" : ""}${
+        commentsDrawerVisible ? " comments-drawer-open" : ""
+      }`}
+    >
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournamentId} />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
@@ -846,13 +952,38 @@ export const Table = React.memo((props: Props) => {
             poolFormat={poolFormat}
             gameEpilog={gameEpilog}
             showComments={props.annotated ?? false}
-            pendingScrollToTurn={pendingScrollToTurn}
-            onScrollComplete={clearPendingScroll}
+            onOpenCommentsDrawer={
+              props.annotated ? handleOpenCommentsDrawerForTurn : undefined
+            }
           />
         </div>
       </div>
     </div>
   );
+
+  // Add the CommentsDrawer
+  ret = (
+    <>
+      {ret}
+      {props.annotated && (
+        <CommentsDrawer
+          visible={commentsDrawerVisible}
+          onClose={handleCloseCommentsDrawer}
+          eventNumber={commentsDrawerEventNumber}
+          comments={comments || []}
+          turns={turns}
+          board={examinableGameContext.board}
+          alphabet={gameContext.alphabet}
+          players={gameInfo.players}
+          onAddComment={handleAddCommentInDrawer}
+          onEditComment={handleEditCommentInDrawer}
+          onDeleteComment={handleDeleteCommentInDrawer}
+          gameId={gameID || ""}
+        />
+      )}
+    </>
+  );
+
   ret = <NotepadContextProvider children={ret} feRackInfo={feRackInfo} />;
   ret = (
     <AnalyzerContextProvider

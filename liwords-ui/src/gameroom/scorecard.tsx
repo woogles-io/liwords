@@ -30,6 +30,7 @@ import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { useGameContextStoreContext } from "../store/store";
 import { Comments } from "./comments";
+import { TurnCommentPreview } from "./TurnCommentPreview";
 import { useClient } from "../utils/hooks/connect";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
 import { useComments } from "../utils/hooks/comments";
@@ -50,12 +51,11 @@ type Props = {
   gameEpilog?: React.ReactElement<Element>;
   hideExtraInteractions?: boolean;
   showComments?: boolean;
-  pendingScrollToTurn?: number | null;
-  onScrollComplete?: () => void;
+  onOpenCommentsDrawer?: (turnIndex: number) => void;
 };
 
 export type ScoreCardRef = {
-  scrollToCommentsForTurn: (turnIndex: number) => void;
+  // Ref interface kept for compatibility, but scrollToCommentsForTurn removed
 };
 
 type turnProps = {
@@ -71,10 +71,7 @@ type turnProps = {
   commentEditorVisible: boolean;
   alphabet: Alphabet;
   turnIndex: number;
-  onCommentsRefReady?: (
-    turnIndex: number,
-    ref: React.RefObject<HTMLDivElement | null>,
-  ) => void;
+  onOpenCommentsDrawer?: (turnIndex: number) => void;
 };
 
 type MoveEntityObj = {
@@ -150,14 +147,9 @@ const displayType = (evt: GameEvent) => {
 
 const ScorecardTurn = (props: turnProps) => {
   const commentsRef = useRef<HTMLDivElement>(null);
-  const { onCommentsRefReady, turnIndex, comments } = props;
+  const { turnIndex, comments } = props;
 
-  // Notify parent when comments ref is ready
-  useEffect(() => {
-    if (onCommentsRefReady && comments.length > 0) {
-      onCommentsRefReady(turnIndex, commentsRef);
-    }
-  }, [onCommentsRefReady, turnIndex, comments.length]);
+  // Comments ref ready notification removed - autoscroll no longer needed
 
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
@@ -266,14 +258,9 @@ const ScorecardTurn = (props: turnProps) => {
 
   const divProps: {
     className: string;
-    onClick?: MouseEventHandler<HTMLDivElement>;
   } = {
     className: `turn${memoizedTurn.isBingo ? " bingo" : ""}`,
   };
-
-  if (props.showComments) {
-    divProps["onClick"] = () => props.toggleCommentEditorVisible();
-  }
 
   return (
     <>
@@ -298,9 +285,47 @@ const ScorecardTurn = (props: turnProps) => {
           <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
+        {props.showComments && (
+          <TurnCommentPreview
+            comments={props.comments}
+            onExpandComments={() => {
+              if (props.onOpenCommentsDrawer) {
+                props.onOpenCommentsDrawer(props.turnIndex);
+              } else {
+                props.toggleCommentEditorVisible();
+              }
+            }}
+            className={`inline-comment-bubble ${
+              props.comments.length > 0 ? "invisible-placeholder" : ""
+            }`}
+          />
+        )}
       </div>
+      {props.showComments && props.comments.length > 0 && (
+        <div className="turn-comment-row">
+          <TurnCommentPreview
+            comments={props.comments}
+            onExpandComments={() => {
+              if (props.onOpenCommentsDrawer) {
+                props.onOpenCommentsDrawer(props.turnIndex);
+              } else {
+                // Fallback to old behavior if no drawer handler
+                props.toggleCommentEditorVisible();
+              }
+            }}
+          />
+          <div className="comment-preview-text">
+            "
+            {props.comments[props.comments.length - 1].comment.length > 40
+              ? `${props.comments[props.comments.length - 1].comment.substring(0, 40)}...`
+              : props.comments[props.comments.length - 1].comment}
+            "
+          </div>
+        </div>
+      )}
       {props.showComments &&
-      (props.comments.length || props.commentEditorVisible) ? (
+      props.commentEditorVisible &&
+      !props.onOpenCommentsDrawer ? (
         <Comments
           comments={props.comments}
           deleteComment={props.deleteComment}
@@ -319,66 +344,7 @@ export const ScoreCard = React.memo(
     const [cardHeight, setCardHeight] = useState(0);
     const [flipHidden, setFlipHidden] = useState(true);
     const [flipEnabled, setEnableFlip] = useState(isTablet());
-    const [commentRefs, setCommentRefs] = useState<
-      Map<number, React.RefObject<HTMLDivElement | null>>
-    >(new Map());
-
-    const { onScrollComplete } = props;
-
-    const handleCommentsRefReady = useCallback(
-      (turnIndex: number, ref: React.RefObject<HTMLDivElement | null>) => {
-        setCommentRefs((prev) => new Map(prev.set(turnIndex, ref)));
-      },
-      [],
-    );
-
-    const scrollToCommentsForTurn = useCallback(
-      (turnIndex: number) => {
-        const commentRef = commentRefs.get(turnIndex);
-        if (commentRef?.current && el.current) {
-          const container = el.current;
-          const target = commentRef.current;
-
-          // Calculate the position of the comments relative to the container
-          const containerRect = container.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const scrollTop =
-            container.scrollTop + (targetRect.top - containerRect.top);
-
-          // Scroll the container to the target position
-          container.scrollTo({
-            top: scrollTop,
-            behavior: "smooth",
-          });
-
-          // Call completion callback
-          onScrollComplete?.();
-        }
-      },
-      [commentRefs, onScrollComplete],
-    );
-
-    // Handle pending scroll from props
-    useEffect(() => {
-      if (
-        props.pendingScrollToTurn !== null &&
-        props.pendingScrollToTurn !== undefined
-      ) {
-        // Wait a moment for refs to be available
-        const timeoutId = setTimeout(() => {
-          scrollToCommentsForTurn(props.pendingScrollToTurn!);
-        }, 100);
-        return () => clearTimeout(timeoutId);
-      }
-    }, [props.pendingScrollToTurn, scrollToCommentsForTurn]);
-
-    React.useImperativeHandle(
-      ref,
-      () => ({
-        scrollToCommentsForTurn,
-      }),
-      [scrollToCommentsForTurn],
-    );
+    // Autoscroll code removed - comments now use drawer
 
     const toggleFlipVisibility = useCallback(() => {
       setFlipHidden((x) => !x);
@@ -527,7 +493,7 @@ export const ScoreCard = React.memo(
             }
             alphabet={gameContext.alphabet}
             turnIndex={idx}
-            onCommentsRefReady={handleCommentsRefReady}
+            onOpenCommentsDrawer={props.onOpenCommentsDrawer}
           />
         );
       };

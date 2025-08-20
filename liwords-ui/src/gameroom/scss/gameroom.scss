@@ -1,4 +1,5 @@
 @use "sass:color";
+@use "sass:map";
 @use "../../base.scss" as *;
 @use "../../color_modes" as *;
 @use "../../tile_modes" as *;
@@ -1753,6 +1754,13 @@ p.rune {
       }
     }
     
+    .comment-editor-buttons {
+      margin-left: 6px;
+      margin-top: 6px;
+      display: flex;
+      gap: 8px;
+    }
+    
     .add-cmt-pseudo-btn {
       cursor: pointer;
       margin-left: 6px;
@@ -1771,6 +1779,369 @@ p.rune {
         @include colorModed() {
           background-color: m($off-background);
           border-color: m($gray-medium);
+        }
+      }
+      
+      // When inside button container, remove individual margins
+      .comment-editor-buttons & {
+        margin-left: 0;
+        margin-top: 0;
+      }
+      
+      &.cancel-btn {
+        @include colorModed() {
+          color: m($gray-extreme);
+          background-color: transparent;
+          border: 1px solid m($gray-subtle);
+        }
+        
+        &:hover {
+          @include colorModed() {
+            background-color: m($gray-subtle);
+            color: m($gray-extreme);
+            border-color: m($gray-medium);
+          }
+        }
+      }
+    }
+  }
+
+  // Turn Comment Row (under turn)
+  .turn-comment-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    margin-top: 4px;
+    
+    .comment-preview-text {
+      font-size: 12px;
+      font-style: italic;
+      flex: 1;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+  }
+
+  // Turn Comment Preview (subtle bubble)
+  .turn-comment-preview {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    
+    // When shown inline next to turn (for empty comments)
+    &.inline-comment-bubble {
+      margin-left: 8px;
+      
+      &.no-comments {
+        @include colorModed() {
+          color: m($gray-medium);
+          background-color: transparent;
+          border: none; // Remove outline
+        }
+      }
+      
+      // Invisible placeholder for turns with comments (maintains spacing)
+      &.invisible-placeholder {
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+    
+    &.no-comments:not(.inline-comment-bubble) {
+      @include colorModed() {
+        color: m($gray-medium);
+        background-color: transparent;
+        border: 1px solid m($gray-subtle);
+      }
+      
+      &:hover {
+        @include colorModed() {
+          background-color: m($gray-subtle);
+          color: m($gray-extreme);
+        }
+      }
+      
+      .comment-icon-subtle {
+        font-size: 11px;
+      }
+    }
+    
+    &.has-comments {
+      // Use proper color variables - different ones for light vs dark mode
+      .mode--default & {
+        background-color: map.get(map.get($modes, default), color-primary-dark); // #11659e in light mode
+        color: white;
+      }
+      
+      .mode--dark & {
+        background-color: map.get(map.get($modes, dark), color-primary-middle); // #2786cb in dark mode
+        color: white;
+      }
+      
+      &:hover {
+        @include colorModed() {
+          background-color: m($primary-dark);
+        }
+      }
+      
+      .comment-icon {
+        font-size: 11px;
+      }
+      
+      .comment-count {
+        font-weight: 600;
+        min-width: 12px;
+        text-align: center;
+        font-size: 10px;
+      }
+    }
+  }
+}
+
+// Comments Drawer Styles
+.comments-drawer {
+  .comments-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .turn-context {
+    margin-bottom: 20px;
+    padding: 16px;
+    border-radius: 6px;
+    
+    @include colorModed() {
+      background-color: m($off-background);
+      border: 1px solid m($gray-subtle);
+    }
+    
+    .turn-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      
+      .play-info {
+        font-family: monospace;
+        font-size: 14px;
+        font-weight: 600;
+        
+        // Use proper color variables - different ones for light vs dark mode
+        .mode--default & {
+          color: map.get(map.get($modes, default), color-primary-dark); // #11659e in light mode
+        }
+        
+        .mode--dark & {
+          color: map.get(map.get($modes, dark), color-primary-middle); // #2786cb in dark mode
+        }
+      }
+      
+      .score-info {
+        font-size: 12px;
+        
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+    }
+  }
+  
+  .comments-section {
+    flex: 1;
+    margin-bottom: 20px;
+    
+    .no-comments {
+      text-align: center;
+      padding: 40px 20px;
+      
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+    
+    // Create proper context for comments in drawer (mimic game-table context)
+    .comments-wrapper {
+      // This wrapper provides the same context as .game-table for comment styling
+      // Copy the necessary styles from .game-table .turn-comments
+      
+      .turn-comments {
+        font-size: 0.9em;
+        padding: 16px 16px 16px 0; // Match turn-context: less left padding
+        
+        // ReactMarkdown paragraph spacing fix
+        p {
+          margin-bottom: 16px;
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+        
+        .ant-card {
+          margin-bottom: 8px;
+          border-radius: 6px;
+          
+          .ant-card-head {
+            min-height: 36px;
+            padding: 0 8px;
+            
+            .mode--default & {
+              background-color: #11659e; // primary-dark in light mode (consonants)
+              border-bottom: 1px solid #11659e;
+            }
+            
+            .mode--dark & {
+              background-color: #135380; // primary-light in dark mode (vowels)
+              border-bottom: 1px solid #135380;
+            }
+            
+            .ant-card-head-title {
+              padding: 3px 0px;
+              font-size: 13px;
+              font-weight: 600;
+              
+              @include colorModed() {
+                color: m($background);
+              }
+              
+              a {
+                .mode--default & {
+                  color: #ffffff; // white in light mode
+                }
+                
+                .mode--dark & {
+                  color: #c9f0ff; // light blue in dark mode for better contrast
+                }
+                
+                &:hover {
+                  .mode--default & {
+                    color: #c9f0ff;
+                  }
+                  .mode--dark & {
+                    color: #ffffff;
+                  }
+                }
+              }
+            }
+            
+            .ant-card-extra {
+              padding: 3px 0px;
+            }
+            
+            .timeago {
+              @include colorModed() {
+                color: rgba(255, 255, 255, 0.8);
+              }
+              & {
+                padding-left: 8px;
+                font-size: 12px;
+                font-weight: normal;
+              }
+            }
+            
+            .anticon-edit,
+            .anticon-delete {
+              @include colorModed() {
+                color: rgba(255, 255, 255, 0.8);
+              }
+              & {
+                cursor: pointer;
+                margin-left: 8px;
+                
+                &:hover {
+                  @include colorModed() {
+                    color: rgba(255, 255, 255, 1.0);
+                  }
+                }
+              }
+            }
+          }
+          
+          .ant-card-body {
+            padding: 8px 12px 12px 12px;
+          }
+        }
+        
+        .comment-editor-buttons {
+          margin-top: 16px;
+          display: flex;
+          gap: 8px;
+        }
+        
+        .add-cmt-pseudo-btn {
+          cursor: pointer;
+          margin-left: 0; // Remove left margin in drawer
+          margin-top: 0; // Reset margin since we use flex gap now
+          display: inline-block; // Ensure proper spacing
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 13px;
+          
+          @include colorModed() {
+            color: m($button);
+            background-color: m($card-background);
+            border: 1px solid m($gray-subtle);
+          }
+          
+          &:hover {
+            @include colorModed() {
+              background-color: m($primary-middle);
+              color: m($background);
+              border-color: m($primary-middle);
+            }
+          }
+          
+          &.cancel-btn {
+            @include colorModed() {
+              color: m($gray-extreme);
+              background-color: transparent;
+              border: 1px solid m($gray-subtle);
+            }
+            
+            &:hover {
+              @include colorModed() {
+                background-color: m($gray-subtle);
+                color: m($gray-extreme);
+                border-color: m($gray-medium);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .drawer-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 16px 0;
+    margin-top: auto;
+    
+    @include colorModed() {
+      background-color: m($background);
+      border-top: 1px solid m($gray-subtle);
+    }
+    
+    .turn-navigation {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      
+      .turn-indicator {
+        font-size: 13px;
+        font-weight: 500;
+        
+        @include colorModed() {
+          color: m($gray-extreme);
         }
       }
     }
@@ -2452,5 +2823,13 @@ p.rune {
     @include colorModed() {
       color: m($gray-extreme);
     }
+  }
+}
+
+// Comments Drawer Sliding Board Effect
+.game-container.comments-drawer-open {
+  .game-table {
+    transition: transform 0.3s ease-out;
+    transform: translateX(-300px); // Slide left by half the drawer width
   }
 }

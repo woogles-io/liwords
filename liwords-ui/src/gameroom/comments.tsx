@@ -46,17 +46,27 @@ export const CommentEditor = (props: EditProps) => {
         rows={4}
         autoFocus
       ></Input.TextArea>
-      <span
-        className="add-cmt-pseudo-btn"
-        onClick={() => {
-          if (inputValue.trim() !== props.initialValue.trim()) {
-            props.updateComment(inputValue.trim());
-          }
-          props.setNotEditing();
-        }}
-      >
-        {props.buttonCaption}
-      </span>
+      <div className="comment-editor-buttons">
+        <span
+          className="add-cmt-pseudo-btn"
+          onClick={() => {
+            if (inputValue.trim() !== props.initialValue.trim()) {
+              props.updateComment(inputValue.trim());
+            }
+            props.setNotEditing();
+          }}
+        >
+          {props.buttonCaption}
+        </span>
+        <span
+          className="add-cmt-pseudo-btn cancel-btn"
+          onClick={() => {
+            props.setNotEditing();
+          }}
+        >
+          Cancel
+        </span>
+      </div>
       {/* a lil hack for scrolling into view */}
       <div style={{ position: "relative", top: 80 }} ref={myRef} />
     </div>
