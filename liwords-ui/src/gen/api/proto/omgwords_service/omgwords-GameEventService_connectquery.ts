@@ -81,3 +81,10 @@ export const getCGP = GameEventService.method.getCGP;
  * @generated from rpc omgwords_service.GameEventService.ImportGCG
  */
 export const importGCG = GameEventService.method.importGCG;
+
+/**
+ * GetGameOwner returns the creator information for an annotated game
+ *
+ * @generated from rpc omgwords_service.GameEventService.GetGameOwner
+ */
+export const getGameOwner = GameEventService.method.getGameOwner;

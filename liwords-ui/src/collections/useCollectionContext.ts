@@ -1,10 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router";
-import { useClient } from "../utils/hooks/connect";
-import {
-  CollectionsService,
-  Collection,
-} from "../gen/api/proto/collections_service/collections_service_pb";
+import { useQuery } from "@connectrpc/connect-query";
+import { getCollection } from "../gen/api/proto/collections_service/collections_service-CollectionsService_connectquery";
+import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
 
 export interface CollectionContext {
   collectionUuid: string;
@@ -28,11 +26,6 @@ export interface CollectionContext {
 export const useCollectionContext = (): CollectionContext | null => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const collectionsClient = useClient(CollectionsService);
-
-  const [collection, setCollection] = useState<Collection | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Parse collection context from URL
   const collectionUuid = searchParams.get("collection");
@@ -45,35 +38,19 @@ export const useCollectionContext = (): CollectionContext | null => {
   // Check if we have collection context
   const hasCollectionContext = !!(collectionUuid && chapterParam && totalParam);
 
-  // Fetch collection data
-  const fetchCollection = useCallback(async () => {
-    if (!collectionUuid || !hasCollectionContext) return;
+  // Fetch collection data using useQuery with built-in caching
+  const {
+    data: response,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery(
+    getCollection,
+    { collectionUuid: collectionUuid || "" },
+    { enabled: hasCollectionContext && !!collectionUuid },
+  );
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await collectionsClient.getCollection({
-        collectionUuid,
-      });
-      setCollection(response.collection || null);
-    } catch (err) {
-      console.error("Failed to fetch collection:", err);
-      setError("Failed to load collection");
-    } finally {
-      setLoading(false);
-    }
-  }, [collectionUuid, collectionsClient, hasCollectionContext]);
-
-  useEffect(() => {
-    if (hasCollectionContext) {
-      fetchCollection();
-    } else {
-      setCollection(null);
-      setLoading(false);
-      setError(null);
-    }
-  }, [fetchCollection, hasCollectionContext]);
+  const collection = response?.collection || null;
+  const error = queryError ? "Failed to load collection" : null;
 
   // Navigation functions
   const goToChapter = useCallback(

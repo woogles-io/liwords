@@ -55,14 +55,12 @@ export const EditorControl = (props: Props) => {
   const [confirmDelVisible, setConfirmDelVisible] = useState(false);
   const [collectionModalVisible, setCollectionModalVisible] = useState(false);
   const [gameCollections, setGameCollections] = useState<Collection[]>([]);
-  const [loadingCollections, setLoadingCollections] = useState(false);
 
   const collectionsClient = useClient(CollectionsService);
 
   const fetchGameCollections = useCallback(async () => {
     if (!props.gameID) return;
 
-    setLoadingCollections(true);
     try {
       const response = await collectionsClient.getCollectionsForGame({
         gameId: props.gameID,
@@ -70,8 +68,6 @@ export const EditorControl = (props: Props) => {
       setGameCollections(response.collections || []);
     } catch (err) {
       console.error("Failed to fetch collections for game:", err);
-    } finally {
-      setLoadingCollections(false);
     }
   }, [props.gameID, collectionsClient]);
 
@@ -101,7 +97,7 @@ export const EditorControl = (props: Props) => {
               }
               style={{ marginBottom: 16 }}
             >
-              <Space wrap>
+              <Space wrap style={{ paddingLeft: 4, paddingBottom: 4 }}>
                 {gameCollections.map((collection) => (
                   <Link
                     key={collection.uuid}

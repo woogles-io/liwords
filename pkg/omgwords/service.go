@@ -615,3 +615,27 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 
 	return connect.NewResponse(&pb.ImportGCGResponse{GameId: gdoc.Uid}), nil
 }
+
+func (gs *OMGWordsService) GetGameOwner(ctx context.Context, req *connect.Request[pb.GetGameOwnerRequest]) (
+	*connect.Response[pb.GetGameOwnerResponse], error) {
+	
+	if req.Msg.GameId == "" {
+		return nil, apiserver.InvalidArg("game ID is required")
+	}
+	
+	owner, err := gs.metadataStore.GetGameOwner(ctx, req.Msg.GameId)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return connect.NewResponse(&pb.GetGameOwnerResponse{
+				Found: false,
+			}), nil
+		}
+		return nil, err
+	}
+	
+	return connect.NewResponse(&pb.GetGameOwnerResponse{
+		CreatorId:       owner.CreatorUuid,
+		CreatorUsername: owner.Username.String,
+		Found:           true,
+	}), nil
+}

@@ -106,6 +106,14 @@ message GetCGPRequest { string game_id = 1; }
 
 message CGPResponse { string cgp = 1; }
 
+message GetGameOwnerRequest { string game_id = 1; }
+
+message GetGameOwnerResponse {
+  string creator_id = 1;
+  string creator_username = 2;
+  bool found = 3;
+}
+
 // SetRacksEvent is the event used for sending player racks.
 message SetRacksEvent {
   string game_id = 1;
@@ -156,4 +164,7 @@ service GameEventService {
 
   rpc GetCGP(GetCGPRequest) returns (CGPResponse);
   rpc ImportGCG(ImportGCGRequest) returns (ImportGCGResponse);
+  
+  // GetGameOwner returns the creator information for an annotated game
+  rpc GetGameOwner(GetGameOwnerRequest) returns (GetGameOwnerResponse);
 }

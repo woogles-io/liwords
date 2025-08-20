@@ -819,6 +819,8 @@ export const Table = React.memo((props: Props) => {
             colorOverride={tournamentContext.metadata?.color}
             logoUrl={tournamentContext.metadata?.logo}
             description={gameContext.gameDocument?.description}
+            gameDocument={gameContext.gameDocument}
+            currentUserId={userID}
           />
           <Pool
             pool={examinableGameContext?.pool}

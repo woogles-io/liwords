@@ -282,3 +282,7 @@ func (s *DBStore) GameIsDone(ctx context.Context, gid string) (bool, error) {
 func (s *DBStore) RemoveGameFromAllCollections(ctx context.Context, gameID string) error {
 	return s.queries.RemoveGameFromAllCollections(ctx, gameID)
 }
+
+func (s *DBStore) GetGameOwner(ctx context.Context, gameUUID string) (models.GetGameOwnerRow, error) {
+	return s.queries.GetGameOwner(ctx, gameUUID)
+}

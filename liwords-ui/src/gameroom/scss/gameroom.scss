@@ -1499,6 +1499,22 @@ p.rune {
     justify-content: space-around;
   }
 
+  .ant-card-extra {
+    .ant-btn {
+      @include colorModed() {
+        border-color: m($primary-dark);
+        color: m($primary-dark);
+      }
+      
+      &:hover {
+        @include colorModed() {
+          border-color: m($primary-midDark);
+          color: m($primary-midDark);
+        }
+      }
+    }
+  }
+
   .variant {
     font-weight: 600;
     font-size: 16px;
