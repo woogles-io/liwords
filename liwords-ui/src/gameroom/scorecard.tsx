@@ -1,5 +1,4 @@
 import React, {
-  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
@@ -51,7 +50,11 @@ type Props = {
   onOpenCommentsDrawer?: (turnIndex: number) => void;
   comments?: Array<GameComment>;
   editComment?: (cid: string, comment: string) => Promise<void>;
-  addNewComment?: (gameID: string, eventNumber: number, comment: string) => Promise<void>;
+  addNewComment?: (
+    gameID: string,
+    eventNumber: number,
+    comment: string,
+  ) => Promise<void>;
   deleteComment?: (cid: string) => Promise<void>;
 };
 
@@ -144,7 +147,6 @@ const displayType = (evt: GameEvent) => {
 
 const ScorecardTurn = (props: turnProps) => {
   const commentsRef = useRef<HTMLDivElement>(null);
-  const { turnIndex, comments } = props;
 
   // Comments ref ready notification removed - autoscroll no longer needed
 
