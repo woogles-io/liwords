@@ -139,7 +139,7 @@ export const EditorLandingPage = (props: Props) => {
   };
 
   return (
-    <div className="game-container">
+    <div className="game-container editor">
       <TopBar />
 
       <Layout>

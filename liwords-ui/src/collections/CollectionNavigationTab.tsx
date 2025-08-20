@@ -159,7 +159,6 @@ export const CollectionNavigationTab: React.FC = () => {
           icon={<ArrowLeftOutlined />}
           onClick={goBackToCollection}
           className="back-button"
-          block
         >
           Back to Collection
         </Button>

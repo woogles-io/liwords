@@ -509,11 +509,32 @@ export const Table = React.memo((props: Props) => {
   // At that point gameID will be filled in.
 
   useEffect(() => {
-    // Don't play when loading from history
-    if (!gameDone) {
+    // Only play the start sound when:
+    // 1. The game is not done
+    // 2. We are a player (not an observer)
+    // 3. The game is just starting (no turns yet)
+    // 4. The game hasn't ended already
+    // 5. This is not an annotated game
+    // 6. The game context has been initialized (gameContext.gameID matches the route gameID)
+    if (
+      !gameDone &&
+      !isObserver &&
+      !props.annotated &&
+      gameContext.turns.length === 0 &&
+      gameInfo.gameEndReason === GameEndReason.NONE &&
+      gameContext.gameID === gameID
+    ) {
       BoopSounds.playSound("startgameSound");
     }
-  }, [gameID, gameDone]);
+  }, [
+    gameID,
+    gameDone,
+    isObserver,
+    gameContext.turns.length,
+    gameInfo.gameEndReason,
+    props.annotated,
+    gameContext.gameID,
+  ]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const searchedTurn = useMemo(() => searchParams.get("turn"), [searchParams]);
