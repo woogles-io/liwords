@@ -154,11 +154,17 @@ export const Chat = React.memo((props: Props) => {
     [setCurMsg],
   );
 
+  const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const doChatAutoScroll = useCallback(
     (force = false) => {
       if ((chatAutoScroll || force) && chatTab) {
+        // Clear any existing timeout
+        if (autoScrollTimeoutRef.current) {
+          clearTimeout(autoScrollTimeoutRef.current);
+        }
         // Slight delay on this to let entities load, now that they're xhr
-        setTimeout(() => {
+        autoScrollTimeoutRef.current = setTimeout(() => {
           if (chatTab.scrollHeight > chatTab.clientHeight) {
             setHasScroll(true);
           }
@@ -169,6 +175,7 @@ export const Chat = React.memo((props: Props) => {
             chatTab.scrollTop = desiredScrollTop;
           }
           setHasUnreadChat(false);
+          autoScrollTimeoutRef.current = null;
         }, 100);
       }
     },
@@ -483,6 +490,15 @@ export const Chat = React.memo((props: Props) => {
       window.removeEventListener("resize", enableChatAutoScroll);
     };
   }, [enableChatAutoScroll]);
+
+  // Cleanup timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // If we actually changed the channel, get the new messages
