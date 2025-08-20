@@ -31,9 +31,6 @@ import { GameComment } from "../gen/api/proto/comments_service/comments_service_
 import { useGameContextStoreContext } from "../store/store";
 import { Comments } from "./comments";
 import { TurnCommentPreview } from "./TurnCommentPreview";
-import { useClient } from "../utils/hooks/connect";
-import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
-import { useComments } from "../utils/hooks/comments";
 import {
   Alphabet,
   machineWordToRunes,
@@ -52,6 +49,10 @@ type Props = {
   hideExtraInteractions?: boolean;
   showComments?: boolean;
   onOpenCommentsDrawer?: (turnIndex: number) => void;
+  comments?: Array<GameComment>;
+  editComment?: (cid: string, comment: string) => Promise<void>;
+  addNewComment?: (gameID: string, eventNumber: number, comment: string) => Promise<void>;
+  deleteComment?: (cid: string) => Promise<void>;
 };
 
 type turnProps = {
@@ -438,11 +439,6 @@ export const ScoreCard = React.memo((props: Props) => {
   let contents = null;
   const { gameContext } = useGameContextStoreContext();
 
-  const commentsClient = useClient(GameCommentService);
-  const { comments, editComment, addNewComment, deleteComment } = useComments(
-    commentsClient,
-    props.showComments ?? false,
-  );
   const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
     useState<number | undefined>(undefined);
 
@@ -461,8 +457,8 @@ export const ScoreCard = React.memo((props: Props) => {
           playerMeta={props.playerMeta}
           showComments={props.showComments ?? false}
           comments={
-            comments
-              ? comments.filter(
+            props.comments
+              ? props.comments.filter(
                   (c) =>
                     c.eventNumber >= t.firstEvtIdx &&
                     c.eventNumber < t.firstEvtIdx + t.events.length,
@@ -473,14 +469,16 @@ export const ScoreCard = React.memo((props: Props) => {
           toggleCommentEditorVisible={() => {
             setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
           }}
-          editComment={editComment}
-          deleteComment={deleteComment}
+          editComment={props.editComment || (() => Promise.resolve())}
+          deleteComment={props.deleteComment || (() => Promise.resolve())}
           addComment={(comment: string) =>
-            addNewComment(
-              gameContext.gameID,
-              t.firstEvtIdx + t.events.length - 1,
-              comment,
-            )
+            props.addNewComment
+              ? props.addNewComment(
+                  gameContext.gameID,
+                  t.firstEvtIdx + t.events.length - 1,
+                  comment,
+                )
+              : Promise.resolve()
           }
           alphabet={gameContext.alphabet}
           turnIndex={idx}

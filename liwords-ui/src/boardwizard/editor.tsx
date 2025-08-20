@@ -511,6 +511,8 @@ export const BoardEditor = () => {
             poolFormat={poolFormat}
             showComments={true}
             onOpenCommentsDrawer={handleOpenCommentsDrawerForTurn}
+            comments={comments}
+            editComment={editComment}
           />
         </div>
       </div>

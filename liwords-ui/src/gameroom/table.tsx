@@ -953,6 +953,10 @@ export const Table = React.memo((props: Props) => {
             onOpenCommentsDrawer={
               props.annotated ? handleOpenCommentsDrawerForTurn : undefined
             }
+            comments={comments || []}
+            editComment={editComment}
+            addNewComment={addNewComment}
+            deleteComment={deleteComment}
           />
         </div>
       </div>
