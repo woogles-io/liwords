@@ -321,18 +321,83 @@ func (q *Queries) GetPublicCollections(ctx context.Context, arg GetPublicCollect
 	return items, nil
 }
 
-const getUserCollections = `-- name: GetUserCollections :many
+const getRecentlyUpdatedCollections = `-- name: GetRecentlyUpdatedCollections :many
 SELECT c.id, c.uuid, c.title, c.description, c.creator_id, c.public, c.created_at, c.updated_at, u.uuid as creator_uuid, u.username as creator_username,
-       COALESCE(game_counts.game_count, 0) as game_count
+       COALESCE((
+           SELECT COUNT(*) 
+           FROM collection_games cg 
+           WHERE cg.collection_id = c.id
+       ), 0) as game_count
 FROM collections c
 JOIN users u ON c.creator_id = u.id
-LEFT JOIN (
-    SELECT collection_id, COUNT(*) as game_count
-    FROM collection_games
-    GROUP BY collection_id
-) game_counts ON c.id = game_counts.collection_id
+WHERE c.public = true OR c.creator_id = COALESCE((SELECT id FROM users WHERE users.uuid = $3), 0)
+ORDER BY c.updated_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetRecentlyUpdatedCollectionsParams struct {
+	Limit    int32
+	Offset   int32
+	UserUuid pgtype.Text
+}
+
+type GetRecentlyUpdatedCollectionsRow struct {
+	ID              int32
+	Uuid            uuid.UUID
+	Title           string
+	Description     pgtype.Text
+	CreatorID       int32
+	Public          pgtype.Bool
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	CreatorUuid     pgtype.Text
+	CreatorUsername pgtype.Text
+	GameCount       interface{}
+}
+
+func (q *Queries) GetRecentlyUpdatedCollections(ctx context.Context, arg GetRecentlyUpdatedCollectionsParams) ([]GetRecentlyUpdatedCollectionsRow, error) {
+	rows, err := q.db.Query(ctx, getRecentlyUpdatedCollections, arg.Limit, arg.Offset, arg.UserUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentlyUpdatedCollectionsRow
+	for rows.Next() {
+		var i GetRecentlyUpdatedCollectionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Title,
+			&i.Description,
+			&i.CreatorID,
+			&i.Public,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatorUuid,
+			&i.CreatorUsername,
+			&i.GameCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserCollections = `-- name: GetUserCollections :many
+SELECT c.id, c.uuid, c.title, c.description, c.creator_id, c.public, c.created_at, c.updated_at, u.uuid as creator_uuid, u.username as creator_username,
+       COALESCE((
+           SELECT COUNT(*) 
+           FROM collection_games cg 
+           WHERE cg.collection_id = c.id
+       ), 0) as game_count
+FROM collections c
+JOIN users u ON c.creator_id = u.id
 WHERE c.creator_id = (SELECT id FROM users WHERE users.uuid = $1)
-ORDER BY c.created_at DESC
+ORDER BY c.updated_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -353,7 +418,7 @@ type GetUserCollectionsRow struct {
 	UpdatedAt       pgtype.Timestamptz
 	CreatorUuid     pgtype.Text
 	CreatorUsername pgtype.Text
-	GameCount       int64
+	GameCount       interface{}
 }
 
 func (q *Queries) GetUserCollections(ctx context.Context, arg GetUserCollectionsParams) ([]GetUserCollectionsRow, error) {
@@ -489,5 +554,16 @@ func (q *Queries) UpdateCollection(ctx context.Context, arg UpdateCollectionPara
 		arg.Description,
 		arg.Public,
 	)
+	return err
+}
+
+const updateCollectionTimestamp = `-- name: UpdateCollectionTimestamp :exec
+UPDATE collections 
+SET updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateCollectionTimestamp(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, updateCollectionTimestamp, id)
 	return err
 }

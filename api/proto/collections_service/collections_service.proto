@@ -116,6 +116,16 @@ message GetCollectionsForGameResponse {
   repeated Collection collections = 1;
 }
 
+message GetRecentlyUpdatedCollectionsRequest {
+  uint32 limit = 1;
+  uint32 offset = 2;
+  string user_uuid = 3; // Optional: if provided, includes private collections for this user
+}
+
+message GetRecentlyUpdatedCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
 service CollectionsService {
   rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse);
   rpc GetCollection(GetCollectionRequest) returns (GetCollectionResponse);
@@ -128,4 +138,5 @@ service CollectionsService {
   rpc GetUserCollections(GetUserCollectionsRequest) returns (GetUserCollectionsResponse);
   rpc GetPublicCollections(GetPublicCollectionsRequest) returns (GetPublicCollectionsResponse);
   rpc GetCollectionsForGame(GetCollectionsForGameRequest) returns (GetCollectionsForGameResponse);
+  rpc GetRecentlyUpdatedCollections(GetRecentlyUpdatedCollectionsRequest) returns (GetRecentlyUpdatedCollectionsResponse);
 }

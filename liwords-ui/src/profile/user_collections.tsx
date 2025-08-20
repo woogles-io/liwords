@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Card, List, Tag, Typography, Space } from "antd";
+import { Button, Card, List, Tag, Typography, Space, Tooltip } from "antd";
 import { FolderOutlined, BookOutlined } from "@ant-design/icons";
+import moment from "moment";
 import { Link } from "react-router";
 import { useClient } from "../utils/hooks/connect";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import {
   CollectionsService,
   Collection,
@@ -15,12 +17,16 @@ interface UserCollectionsCardProps {
   isOwnProfile: boolean;
 }
 
+const collectionsPageSize = 20;
+
 export const UserCollectionsCard: React.FC<UserCollectionsCardProps> = ({
   userUuid,
   isOwnProfile,
 }) => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const collectionsClient = useClient(CollectionsService);
 
   const fetchUserCollections = useCallback(async () => {
@@ -28,16 +34,27 @@ export const UserCollectionsCard: React.FC<UserCollectionsCardProps> = ({
     try {
       const response = await collectionsClient.getUserCollections({
         userUuid,
-        limit: 20,
-        offset: 0,
+        limit: collectionsPageSize,
+        offset,
       });
-      setCollections(response.collections || []);
+      const fetchedCollections = response.collections || [];
+      setCollections(fetchedCollections);
+      // If we got fewer collections than requested, there are no more
+      setHasMore(fetchedCollections.length === collectionsPageSize);
     } catch (err) {
       console.error("Failed to fetch user collections:", err);
     } finally {
       setLoading(false);
     }
-  }, [collectionsClient, userUuid]);
+  }, [collectionsClient, userUuid, offset]);
+
+  const fetchPrev = useCallback(() => {
+    setOffset((prev) => Math.max(0, prev - collectionsPageSize));
+  }, []);
+
+  const fetchNext = useCallback(() => {
+    setOffset((prev) => prev + collectionsPageSize);
+  }, []);
 
   useEffect(() => {
     fetchUserCollections();
@@ -84,12 +101,28 @@ export const UserCollectionsCard: React.FC<UserCollectionsCardProps> = ({
                     <Text type="secondary">{collection.description}</Text>
                   )}
                   <Space>
-                    {/* <Tag color={collection.public ? "green" : "orange"}>
-                      {collection.public ? "Public" : "Private"}
-                    </Tag> */}
                     <Text type="secondary">
                       {collection.gameCount || 0} game(s)
                     </Text>
+                    <Text type="secondary">•</Text>
+                    <Tooltip
+                      title={
+                        collection.updatedAt
+                          ? moment(timestampDate(collection.updatedAt)).format(
+                              "LLL",
+                            )
+                          : ""
+                      }
+                    >
+                      <Text type="secondary">
+                        Updated{" "}
+                        {collection.updatedAt
+                          ? moment(
+                              timestampDate(collection.updatedAt),
+                            ).fromNow()
+                          : "never"}
+                      </Text>
+                    </Tooltip>
                   </Space>
                 </Space>
               }
@@ -97,6 +130,14 @@ export const UserCollectionsCard: React.FC<UserCollectionsCardProps> = ({
           </List.Item>
         )}
       />
+      <div className="game-history-controls" style={{ marginTop: 16 }}>
+        <Button disabled={offset === 0} onClick={fetchPrev}>
+          Prev
+        </Button>
+        <Button disabled={!hasMore} onClick={fetchNext}>
+          Next
+        </Button>
+      </div>
     </Card>
   );
 };

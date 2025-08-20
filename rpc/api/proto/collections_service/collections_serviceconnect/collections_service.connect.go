@@ -66,6 +66,9 @@ const (
 	// CollectionsServiceGetCollectionsForGameProcedure is the fully-qualified name of the
 	// CollectionsService's GetCollectionsForGame RPC.
 	CollectionsServiceGetCollectionsForGameProcedure = "/collections_service.CollectionsService/GetCollectionsForGame"
+	// CollectionsServiceGetRecentlyUpdatedCollectionsProcedure is the fully-qualified name of the
+	// CollectionsService's GetRecentlyUpdatedCollections RPC.
+	CollectionsServiceGetRecentlyUpdatedCollectionsProcedure = "/collections_service.CollectionsService/GetRecentlyUpdatedCollections"
 )
 
 // CollectionsServiceClient is a client for the collections_service.CollectionsService service.
@@ -81,6 +84,7 @@ type CollectionsServiceClient interface {
 	GetUserCollections(context.Context, *connect.Request[collections_service.GetUserCollectionsRequest]) (*connect.Response[collections_service.GetUserCollectionsResponse], error)
 	GetPublicCollections(context.Context, *connect.Request[collections_service.GetPublicCollectionsRequest]) (*connect.Response[collections_service.GetPublicCollectionsResponse], error)
 	GetCollectionsForGame(context.Context, *connect.Request[collections_service.GetCollectionsForGameRequest]) (*connect.Response[collections_service.GetCollectionsForGameResponse], error)
+	GetRecentlyUpdatedCollections(context.Context, *connect.Request[collections_service.GetRecentlyUpdatedCollectionsRequest]) (*connect.Response[collections_service.GetRecentlyUpdatedCollectionsResponse], error)
 }
 
 // NewCollectionsServiceClient constructs a client for the collections_service.CollectionsService
@@ -160,22 +164,29 @@ func NewCollectionsServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(collectionsServiceMethods.ByName("GetCollectionsForGame")),
 			connect.WithClientOptions(opts...),
 		),
+		getRecentlyUpdatedCollections: connect.NewClient[collections_service.GetRecentlyUpdatedCollectionsRequest, collections_service.GetRecentlyUpdatedCollectionsResponse](
+			httpClient,
+			baseURL+CollectionsServiceGetRecentlyUpdatedCollectionsProcedure,
+			connect.WithSchema(collectionsServiceMethods.ByName("GetRecentlyUpdatedCollections")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // collectionsServiceClient implements CollectionsServiceClient.
 type collectionsServiceClient struct {
-	createCollection         *connect.Client[collections_service.CreateCollectionRequest, collections_service.CreateCollectionResponse]
-	getCollection            *connect.Client[collections_service.GetCollectionRequest, collections_service.GetCollectionResponse]
-	updateCollection         *connect.Client[collections_service.UpdateCollectionRequest, collections_service.UpdateCollectionResponse]
-	deleteCollection         *connect.Client[collections_service.DeleteCollectionRequest, collections_service.DeleteCollectionResponse]
-	addGameToCollection      *connect.Client[collections_service.AddGameToCollectionRequest, collections_service.AddGameToCollectionResponse]
-	removeGameFromCollection *connect.Client[collections_service.RemoveGameFromCollectionRequest, collections_service.RemoveGameFromCollectionResponse]
-	reorderGames             *connect.Client[collections_service.ReorderGamesRequest, collections_service.ReorderGamesResponse]
-	updateChapterTitle       *connect.Client[collections_service.UpdateChapterTitleRequest, collections_service.UpdateChapterTitleResponse]
-	getUserCollections       *connect.Client[collections_service.GetUserCollectionsRequest, collections_service.GetUserCollectionsResponse]
-	getPublicCollections     *connect.Client[collections_service.GetPublicCollectionsRequest, collections_service.GetPublicCollectionsResponse]
-	getCollectionsForGame    *connect.Client[collections_service.GetCollectionsForGameRequest, collections_service.GetCollectionsForGameResponse]
+	createCollection              *connect.Client[collections_service.CreateCollectionRequest, collections_service.CreateCollectionResponse]
+	getCollection                 *connect.Client[collections_service.GetCollectionRequest, collections_service.GetCollectionResponse]
+	updateCollection              *connect.Client[collections_service.UpdateCollectionRequest, collections_service.UpdateCollectionResponse]
+	deleteCollection              *connect.Client[collections_service.DeleteCollectionRequest, collections_service.DeleteCollectionResponse]
+	addGameToCollection           *connect.Client[collections_service.AddGameToCollectionRequest, collections_service.AddGameToCollectionResponse]
+	removeGameFromCollection      *connect.Client[collections_service.RemoveGameFromCollectionRequest, collections_service.RemoveGameFromCollectionResponse]
+	reorderGames                  *connect.Client[collections_service.ReorderGamesRequest, collections_service.ReorderGamesResponse]
+	updateChapterTitle            *connect.Client[collections_service.UpdateChapterTitleRequest, collections_service.UpdateChapterTitleResponse]
+	getUserCollections            *connect.Client[collections_service.GetUserCollectionsRequest, collections_service.GetUserCollectionsResponse]
+	getPublicCollections          *connect.Client[collections_service.GetPublicCollectionsRequest, collections_service.GetPublicCollectionsResponse]
+	getCollectionsForGame         *connect.Client[collections_service.GetCollectionsForGameRequest, collections_service.GetCollectionsForGameResponse]
+	getRecentlyUpdatedCollections *connect.Client[collections_service.GetRecentlyUpdatedCollectionsRequest, collections_service.GetRecentlyUpdatedCollectionsResponse]
 }
 
 // CreateCollection calls collections_service.CollectionsService.CreateCollection.
@@ -233,6 +244,12 @@ func (c *collectionsServiceClient) GetCollectionsForGame(ctx context.Context, re
 	return c.getCollectionsForGame.CallUnary(ctx, req)
 }
 
+// GetRecentlyUpdatedCollections calls
+// collections_service.CollectionsService.GetRecentlyUpdatedCollections.
+func (c *collectionsServiceClient) GetRecentlyUpdatedCollections(ctx context.Context, req *connect.Request[collections_service.GetRecentlyUpdatedCollectionsRequest]) (*connect.Response[collections_service.GetRecentlyUpdatedCollectionsResponse], error) {
+	return c.getRecentlyUpdatedCollections.CallUnary(ctx, req)
+}
+
 // CollectionsServiceHandler is an implementation of the collections_service.CollectionsService
 // service.
 type CollectionsServiceHandler interface {
@@ -247,6 +264,7 @@ type CollectionsServiceHandler interface {
 	GetUserCollections(context.Context, *connect.Request[collections_service.GetUserCollectionsRequest]) (*connect.Response[collections_service.GetUserCollectionsResponse], error)
 	GetPublicCollections(context.Context, *connect.Request[collections_service.GetPublicCollectionsRequest]) (*connect.Response[collections_service.GetPublicCollectionsResponse], error)
 	GetCollectionsForGame(context.Context, *connect.Request[collections_service.GetCollectionsForGameRequest]) (*connect.Response[collections_service.GetCollectionsForGameResponse], error)
+	GetRecentlyUpdatedCollections(context.Context, *connect.Request[collections_service.GetRecentlyUpdatedCollectionsRequest]) (*connect.Response[collections_service.GetRecentlyUpdatedCollectionsResponse], error)
 }
 
 // NewCollectionsServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -322,6 +340,12 @@ func NewCollectionsServiceHandler(svc CollectionsServiceHandler, opts ...connect
 		connect.WithSchema(collectionsServiceMethods.ByName("GetCollectionsForGame")),
 		connect.WithHandlerOptions(opts...),
 	)
+	collectionsServiceGetRecentlyUpdatedCollectionsHandler := connect.NewUnaryHandler(
+		CollectionsServiceGetRecentlyUpdatedCollectionsProcedure,
+		svc.GetRecentlyUpdatedCollections,
+		connect.WithSchema(collectionsServiceMethods.ByName("GetRecentlyUpdatedCollections")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/collections_service.CollectionsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CollectionsServiceCreateCollectionProcedure:
@@ -346,6 +370,8 @@ func NewCollectionsServiceHandler(svc CollectionsServiceHandler, opts ...connect
 			collectionsServiceGetPublicCollectionsHandler.ServeHTTP(w, r)
 		case CollectionsServiceGetCollectionsForGameProcedure:
 			collectionsServiceGetCollectionsForGameHandler.ServeHTTP(w, r)
+		case CollectionsServiceGetRecentlyUpdatedCollectionsProcedure:
+			collectionsServiceGetRecentlyUpdatedCollectionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -397,4 +423,8 @@ func (UnimplementedCollectionsServiceHandler) GetPublicCollections(context.Conte
 
 func (UnimplementedCollectionsServiceHandler) GetCollectionsForGame(context.Context, *connect.Request[collections_service.GetCollectionsForGameRequest]) (*connect.Response[collections_service.GetCollectionsForGameResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("collections_service.CollectionsService.GetCollectionsForGame is not implemented"))
+}
+
+func (UnimplementedCollectionsServiceHandler) GetRecentlyUpdatedCollections(context.Context, *connect.Request[collections_service.GetRecentlyUpdatedCollectionsRequest]) (*connect.Response[collections_service.GetRecentlyUpdatedCollectionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("collections_service.CollectionsService.GetRecentlyUpdatedCollections is not implemented"))
 }

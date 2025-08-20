@@ -27,10 +27,8 @@ export const RecentCommentsCard = React.memo((props: Props) => {
     // Why + 2? 1 is because the turns are 1-indexed, and 1 more because the comment
     // on a turn shows up _after_ the turn is played.
     const turnNumber = comment.eventNumber + 2;
-    const baseUrl = `/anno/${encodeURIComponent(comment.gameId)}?turn=${turnNumber}`;
-
-    // Build URL with collection context
-    let url = baseUrl;
+    const params = new URLSearchParams();
+    params.set("turn", turnNumber.toString());
 
     // If collection prop is provided, use it to find the chapter
     if (props.collection) {
@@ -39,12 +37,18 @@ export const RecentCommentsCard = React.memo((props: Props) => {
       );
       if (chapterIndex !== -1) {
         const chapterNumber = chapterIndex + 1;
-        url = `${baseUrl}&collection=${props.collection.uuid}&chapter=${chapterNumber}&total=${props.collection.games.length}`;
+        params.set("collection", props.collection.uuid);
+        params.set("chapter", chapterNumber.toString());
+        params.set("total", props.collection.games.length.toString());
       }
     } else if (collectionContext) {
       // Fall back to using collection context if available (when not in collection viewer)
-      url = `${baseUrl}&collection=${collectionContext.collectionUuid}&chapter=${collectionContext.currentChapter}&total=${collectionContext.totalChapters}`;
+      params.set("collection", collectionContext.collectionUuid);
+      params.set("chapter", collectionContext.currentChapter.toString());
+      params.set("total", collectionContext.totalChapters.toString());
     }
+
+    const url = `/anno/${encodeURIComponent(comment.gameId)}?${params.toString()}`;
 
     const whenMoment = moment(
       comment.lastEdited ? timestampDate(comment.lastEdited) : "",

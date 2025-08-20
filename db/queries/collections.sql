@@ -23,22 +23,26 @@ DELETE FROM collections WHERE uuid = $1;
 INSERT INTO collection_games (collection_id, game_id, chapter_number, chapter_title, is_annotated)
 VALUES ($1, $2, $3, $4, $5);
 
+-- name: UpdateCollectionTimestamp :exec
+UPDATE collections 
+SET updated_at = NOW()
+WHERE id = $1;
+
 -- name: RemoveGameFromCollection :exec
 DELETE FROM collection_games 
 WHERE collection_id = $1 AND game_id = $2;
 
 -- name: GetUserCollections :many
 SELECT c.*, u.uuid as creator_uuid, u.username as creator_username,
-       COALESCE(game_counts.game_count, 0) as game_count
+       COALESCE((
+           SELECT COUNT(*) 
+           FROM collection_games cg 
+           WHERE cg.collection_id = c.id
+       ), 0) as game_count
 FROM collections c
 JOIN users u ON c.creator_id = u.id
-LEFT JOIN (
-    SELECT collection_id, COUNT(*) as game_count
-    FROM collection_games
-    GROUP BY collection_id
-) game_counts ON c.id = game_counts.collection_id
 WHERE c.creator_id = (SELECT id FROM users WHERE users.uuid = $1)
-ORDER BY c.created_at DESC
+ORDER BY c.updated_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetPublicCollections :many
@@ -105,3 +109,16 @@ ORDER BY c.created_at DESC;
 -- name: RemoveGameFromAllCollections :exec
 DELETE FROM collection_games 
 WHERE game_id = $1;
+
+-- name: GetRecentlyUpdatedCollections :many
+SELECT c.*, u.uuid as creator_uuid, u.username as creator_username,
+       COALESCE((
+           SELECT COUNT(*) 
+           FROM collection_games cg 
+           WHERE cg.collection_id = c.id
+       ), 0) as game_count
+FROM collections c
+JOIN users u ON c.creator_id = u.id
+WHERE c.public = true OR c.creator_id = COALESCE((SELECT id FROM users WHERE users.uuid = sqlc.narg('user_uuid')), 0)
+ORDER BY c.updated_at DESC
+LIMIT $1 OFFSET $2;

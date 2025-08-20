@@ -230,6 +230,13 @@ func (cs *CollectionsService) AddGameToCollection(ctx context.Context, req *conn
 		return nil, apiserver.InternalErr(err)
 	}
 
+	// Update collection timestamp
+	err = cs.queries.UpdateCollectionTimestamp(ctx, collection.ID)
+	if err != nil {
+		log.Error().Err(err).Str("collection_uuid", req.Msg.CollectionUuid).Msg("failed to update collection timestamp")
+		// Don't fail the operation, just log the error
+	}
+
 	return connect.NewResponse(&pb.AddGameToCollectionResponse{}), nil
 }
 
@@ -317,6 +324,13 @@ func (cs *CollectionsService) ReorderGames(ctx context.Context, req *connect.Req
 		}
 	}
 
+	// Update collection timestamp
+	err = qtx.UpdateCollectionTimestamp(ctx, collection.ID)
+	if err != nil {
+		log.Error().Err(err).Str("collection_uuid", req.Msg.CollectionUuid).Msg("failed to update collection timestamp")
+		// Don't fail the operation, just log the error
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		log.Error().Err(err).Str("collection_uuid", req.Msg.CollectionUuid).Msg("failed to commit transaction")
@@ -357,6 +371,13 @@ func (cs *CollectionsService) UpdateChapterTitle(ctx context.Context, req *conne
 		return nil, apiserver.InternalErr(err)
 	}
 
+	// Update collection timestamp
+	err = cs.queries.UpdateCollectionTimestamp(ctx, collection.ID)
+	if err != nil {
+		log.Error().Err(err).Str("collection_uuid", req.Msg.CollectionUuid).Msg("failed to update collection timestamp")
+		// Don't fail the operation, just log the error
+	}
+
 	return connect.NewResponse(&pb.UpdateChapterTitleResponse{}), nil
 }
 
@@ -391,6 +412,14 @@ func (cs *CollectionsService) GetUserCollections(ctx context.Context, req *conne
 
 	pbCollections := make([]*pb.Collection, len(collections))
 	for i, collection := range collections {
+		// Convert GameCount from interface{} to uint32
+		var gameCount uint32
+		if gc, ok := collection.GameCount.(int64); ok {
+			gameCount = uint32(gc)
+		} else if gc, ok := collection.GameCount.(int32); ok {
+			gameCount = uint32(gc)
+		}
+		
 		pbCollections[i] = &pb.Collection{
 			Uuid:            collection.Uuid.String(),
 			Title:           collection.Title,
@@ -400,7 +429,7 @@ func (cs *CollectionsService) GetUserCollections(ctx context.Context, req *conne
 			Public:          collection.Public.Bool,
 			CreatedAt:       timestamppb.New(collection.CreatedAt.Time),
 			UpdatedAt:       timestamppb.New(collection.UpdatedAt.Time),
-			GameCount:       uint32(collection.GameCount),
+			GameCount:       gameCount,
 		}
 	}
 
@@ -483,6 +512,65 @@ func (cs *CollectionsService) GetCollectionsForGame(ctx context.Context, req *co
 	}
 
 	return connect.NewResponse(&pb.GetCollectionsForGameResponse{
+		Collections: pbCollections,
+	}), nil
+}
+
+func (cs *CollectionsService) GetRecentlyUpdatedCollections(ctx context.Context, req *connect.Request[pb.GetRecentlyUpdatedCollectionsRequest]) (*connect.Response[pb.GetRecentlyUpdatedCollectionsResponse], error) {
+	limit := req.Msg.Limit
+	if limit == 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	// Build parameters for the query
+	params := models.GetRecentlyUpdatedCollectionsParams{
+		Limit:  int32(limit),
+		Offset: int32(req.Msg.Offset),
+	}
+
+	// If user UUID is provided, include it for private collections
+	if req.Msg.UserUuid != "" {
+		// Validate that it's a valid UUID
+		_, err := uuid.Parse(req.Msg.UserUuid)
+		if err != nil {
+			return nil, apiserver.InvalidArg("invalid user UUID")
+		}
+		params.UserUuid = pgtype.Text{String: req.Msg.UserUuid, Valid: true}
+	}
+
+	collections, err := cs.queries.GetRecentlyUpdatedCollections(ctx, params)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get recently updated collections")
+		return nil, apiserver.InternalErr(err)
+	}
+
+	pbCollections := make([]*pb.Collection, len(collections))
+	for i, collection := range collections {
+		// Convert GameCount from interface{} to uint32
+		var gameCount uint32
+		if gc, ok := collection.GameCount.(int64); ok {
+			gameCount = uint32(gc)
+		} else if gc, ok := collection.GameCount.(int32); ok {
+			gameCount = uint32(gc)
+		}
+		
+		pbCollections[i] = &pb.Collection{
+			Uuid:            collection.Uuid.String(),
+			Title:           collection.Title,
+			Description:     collection.Description.String,
+			CreatorUuid:     collection.CreatorUuid.String,
+			CreatorUsername: collection.CreatorUsername.String,
+			Public:          collection.Public.Bool,
+			CreatedAt:       timestamppb.New(collection.CreatedAt.Time),
+			UpdatedAt:       timestamppb.New(collection.UpdatedAt.Time),
+			GameCount:       gameCount,
+		}
+	}
+
+	return connect.NewResponse(&pb.GetRecentlyUpdatedCollectionsResponse{
 		Collections: pbCollections,
 	}), nil
 }

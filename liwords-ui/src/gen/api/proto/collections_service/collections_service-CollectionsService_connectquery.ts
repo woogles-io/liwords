@@ -58,3 +58,8 @@ export const getPublicCollections = CollectionsService.method.getPublicCollectio
  * @generated from rpc collections_service.CollectionsService.GetCollectionsForGame
  */
 export const getCollectionsForGame = CollectionsService.method.getCollectionsForGame;
+
+/**
+ * @generated from rpc collections_service.CollectionsService.GetRecentlyUpdatedCollections
+ */
+export const getRecentlyUpdatedCollections = CollectionsService.method.getRecentlyUpdatedCollections;

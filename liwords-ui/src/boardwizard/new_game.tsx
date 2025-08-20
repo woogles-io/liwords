@@ -12,6 +12,11 @@ import { useLoginStateStoreContext } from "../store/store";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
 import { RecentCommentsCard } from "../components/RecentCommentsCard";
+import { RecentCollectionsCard } from "../components/RecentCollectionsCard";
+import {
+  CollectionsService,
+  Collection,
+} from "../gen/api/proto/collections_service/collections_service_pb";
 import { Content } from "antd/lib/layout/layout";
 import {
   EditOutlined,
@@ -34,16 +39,22 @@ type Props = {
 
 const annotatedPageSize = 40;
 const commentsPageSize = 10;
+const collectionsPageSize = 10;
 
 export const EditorLandingPage = (props: Props) => {
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
     Array<BroadcastGamesResponse_BroadcastGame>
   >([]);
+  const [hasMoreAnnotatedGames, setHasMoreAnnotatedGames] = useState(true);
   const [recentComments, setRecentComments] = useState<Array<GameComment>>([]);
+  const [recentCollections, setRecentCollections] = useState<Array<Collection>>(
+    [],
+  );
   const { loginState } = useLoginStateStoreContext();
   const [recentAnnotatedGamesOffset, setRecentAnnotatedGamesOffset] =
     useState(0);
   const [recentCommentsOffset, setRecentCommentsOffset] = useState(0);
+  const [recentCollectionsOffset, setRecentCollectionsOffset] = useState(0);
   const [selectedMenu, setSelectedMenu] = useState("");
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
 
@@ -59,8 +70,15 @@ export const EditorLandingPage = (props: Props) => {
   const fetchNextComments = useCallback(() => {
     setRecentCommentsOffset((r) => r + commentsPageSize);
   }, []);
+  const fetchPrevCollections = useCallback(() => {
+    setRecentCollectionsOffset((r) => Math.max(r - collectionsPageSize, 0));
+  }, []);
+  const fetchNextCollections = useCallback(() => {
+    setRecentCollectionsOffset((r) => r + collectionsPageSize);
+  }, []);
   const gameEventClient = useClient(GameEventService);
   const commentsClient = useClient(GameCommentService);
+  const collectionsClient = useClient(CollectionsService);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +88,8 @@ export const EditorLandingPage = (props: Props) => {
           offset: recentAnnotatedGamesOffset,
         });
         setRecentAnnotatedGames(resp.games);
+        // If we got fewer games than requested, there are no more
+        setHasMoreAnnotatedGames(resp.games.length === annotatedPageSize);
       } catch (e) {
         console.log(e);
       }
@@ -89,6 +109,21 @@ export const EditorLandingPage = (props: Props) => {
       }
     })();
   }, [commentsClient, recentCommentsOffset]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await collectionsClient.getRecentlyUpdatedCollections({
+          limit: collectionsPageSize,
+          offset: recentCollectionsOffset,
+          userUuid: loginState.userID || "",
+        });
+        setRecentCollections(resp.collections);
+      } catch (e) {
+        console.log(e);
+      }
+    })();
+  }, [collectionsClient, recentCollectionsOffset, loginState.userID]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -203,8 +238,14 @@ export const EditorLandingPage = (props: Props) => {
             >
               <AnnotatedGamesHistoryCard
                 games={recentAnnotatedGames}
-                fetchPrev={fetchPrevAnnotatedGames}
-                fetchNext={fetchNextAnnotatedGames}
+                fetchPrev={
+                  recentAnnotatedGamesOffset > 0
+                    ? fetchPrevAnnotatedGames
+                    : undefined
+                }
+                fetchNext={
+                  hasMoreAnnotatedGames ? fetchNextAnnotatedGames : undefined
+                }
                 loggedInUserID={loginState.userID}
                 showAnnotator
               />
@@ -223,6 +264,20 @@ export const EditorLandingPage = (props: Props) => {
                 fetchNext={fetchNextComments}
               />
             </div>
+          </div>
+
+          <div
+            className="collections-section"
+            style={{
+              padding: "24px",
+            }}
+          >
+            <RecentCollectionsCard
+              collections={recentCollections}
+              fetchPrev={fetchPrevCollections}
+              fetchNext={fetchNextCollections}
+              loggedInUserUuid={loginState.userID}
+            />
           </div>
         </Content>
       </Layout>

@@ -1255,6 +1255,110 @@ func (x *GetCollectionsForGameResponse) GetCollections() []*Collection {
 	return nil
 }
 
+type GetRecentlyUpdatedCollectionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         uint32                 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        uint32                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	UserUuid      string                 `protobuf:"bytes,3,opt,name=user_uuid,json=userUuid,proto3" json:"user_uuid,omitempty"` // Optional: if provided, includes private collections for this user
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) Reset() {
+	*x = GetRecentlyUpdatedCollectionsRequest{}
+	mi := &file_proto_collections_service_collections_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecentlyUpdatedCollectionsRequest) ProtoMessage() {}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_collections_service_collections_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecentlyUpdatedCollectionsRequest.ProtoReflect.Descriptor instead.
+func (*GetRecentlyUpdatedCollectionsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_collections_service_collections_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) GetOffset() uint32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *GetRecentlyUpdatedCollectionsRequest) GetUserUuid() string {
+	if x != nil {
+		return x.UserUuid
+	}
+	return ""
+}
+
+type GetRecentlyUpdatedCollectionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Collections   []*Collection          `protobuf:"bytes,1,rep,name=collections,proto3" json:"collections,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecentlyUpdatedCollectionsResponse) Reset() {
+	*x = GetRecentlyUpdatedCollectionsResponse{}
+	mi := &file_proto_collections_service_collections_service_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecentlyUpdatedCollectionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecentlyUpdatedCollectionsResponse) ProtoMessage() {}
+
+func (x *GetRecentlyUpdatedCollectionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_collections_service_collections_service_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecentlyUpdatedCollectionsResponse.ProtoReflect.Descriptor instead.
+func (*GetRecentlyUpdatedCollectionsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_collections_service_collections_service_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetRecentlyUpdatedCollectionsResponse) GetCollections() []*Collection {
+	if x != nil {
+		return x.Collections
+	}
+	return nil
+}
+
 var File_proto_collections_service_collections_service_proto protoreflect.FileDescriptor
 
 const file_proto_collections_service_collections_service_proto_rawDesc = "" +
@@ -1336,8 +1440,13 @@ const file_proto_collections_service_collections_service_proto_rawDesc = "" +
 	"\x1cGetCollectionsForGameRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"b\n" +
 	"\x1dGetCollectionsForGameResponse\x12A\n" +
-	"\vcollections\x18\x01 \x03(\v2\x1f.collections_service.CollectionR\vcollections2\xa3\n" +
-	"\n" +
+	"\vcollections\x18\x01 \x03(\v2\x1f.collections_service.CollectionR\vcollections\"q\n" +
+	"$GetRecentlyUpdatedCollectionsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\rR\x05limit\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\rR\x06offset\x12\x1b\n" +
+	"\tuser_uuid\x18\x03 \x01(\tR\buserUuid\"j\n" +
+	"%GetRecentlyUpdatedCollectionsResponse\x12A\n" +
+	"\vcollections\x18\x01 \x03(\v2\x1f.collections_service.CollectionR\vcollections2\xbc\v\n" +
 	"\x12CollectionsService\x12o\n" +
 	"\x10CreateCollection\x12,.collections_service.CreateCollectionRequest\x1a-.collections_service.CreateCollectionResponse\x12f\n" +
 	"\rGetCollection\x12).collections_service.GetCollectionRequest\x1a*.collections_service.GetCollectionResponse\x12o\n" +
@@ -1349,7 +1458,8 @@ const file_proto_collections_service_collections_service_proto_rawDesc = "" +
 	"\x12UpdateChapterTitle\x12..collections_service.UpdateChapterTitleRequest\x1a/.collections_service.UpdateChapterTitleResponse\x12u\n" +
 	"\x12GetUserCollections\x12..collections_service.GetUserCollectionsRequest\x1a/.collections_service.GetUserCollectionsResponse\x12{\n" +
 	"\x14GetPublicCollections\x120.collections_service.GetPublicCollectionsRequest\x1a1.collections_service.GetPublicCollectionsResponse\x12~\n" +
-	"\x15GetCollectionsForGame\x121.collections_service.GetCollectionsForGameRequest\x1a2.collections_service.GetCollectionsForGameResponseB\xdb\x01\n" +
+	"\x15GetCollectionsForGame\x121.collections_service.GetCollectionsForGameRequest\x1a2.collections_service.GetCollectionsForGameResponse\x12\x96\x01\n" +
+	"\x1dGetRecentlyUpdatedCollections\x129.collections_service.GetRecentlyUpdatedCollectionsRequest\x1a:.collections_service.GetRecentlyUpdatedCollectionsResponseB\xdb\x01\n" +
 	"\x17com.collections_serviceB\x17CollectionsServiceProtoP\x01Z?github.com/woogles-io/liwords/rpc/api/proto/collections_service\xa2\x02\x03CXX\xaa\x02\x12CollectionsService\xca\x02\x12CollectionsService\xe2\x02\x1eCollectionsService\\GPBMetadata\xea\x02\x12CollectionsServiceb\x06proto3"
 
 var (
@@ -1364,70 +1474,75 @@ func file_proto_collections_service_collections_service_proto_rawDescGZIP() []by
 	return file_proto_collections_service_collections_service_proto_rawDescData
 }
 
-var file_proto_collections_service_collections_service_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_proto_collections_service_collections_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_proto_collections_service_collections_service_proto_goTypes = []any{
-	(*Collection)(nil),                       // 0: collections_service.Collection
-	(*CollectionGame)(nil),                   // 1: collections_service.CollectionGame
-	(*CreateCollectionRequest)(nil),          // 2: collections_service.CreateCollectionRequest
-	(*CreateCollectionResponse)(nil),         // 3: collections_service.CreateCollectionResponse
-	(*GetCollectionRequest)(nil),             // 4: collections_service.GetCollectionRequest
-	(*GetCollectionResponse)(nil),            // 5: collections_service.GetCollectionResponse
-	(*UpdateCollectionRequest)(nil),          // 6: collections_service.UpdateCollectionRequest
-	(*UpdateCollectionResponse)(nil),         // 7: collections_service.UpdateCollectionResponse
-	(*DeleteCollectionRequest)(nil),          // 8: collections_service.DeleteCollectionRequest
-	(*DeleteCollectionResponse)(nil),         // 9: collections_service.DeleteCollectionResponse
-	(*AddGameToCollectionRequest)(nil),       // 10: collections_service.AddGameToCollectionRequest
-	(*AddGameToCollectionResponse)(nil),      // 11: collections_service.AddGameToCollectionResponse
-	(*RemoveGameFromCollectionRequest)(nil),  // 12: collections_service.RemoveGameFromCollectionRequest
-	(*RemoveGameFromCollectionResponse)(nil), // 13: collections_service.RemoveGameFromCollectionResponse
-	(*ReorderGamesRequest)(nil),              // 14: collections_service.ReorderGamesRequest
-	(*ReorderGamesResponse)(nil),             // 15: collections_service.ReorderGamesResponse
-	(*UpdateChapterTitleRequest)(nil),        // 16: collections_service.UpdateChapterTitleRequest
-	(*UpdateChapterTitleResponse)(nil),       // 17: collections_service.UpdateChapterTitleResponse
-	(*GetUserCollectionsRequest)(nil),        // 18: collections_service.GetUserCollectionsRequest
-	(*GetUserCollectionsResponse)(nil),       // 19: collections_service.GetUserCollectionsResponse
-	(*GetPublicCollectionsRequest)(nil),      // 20: collections_service.GetPublicCollectionsRequest
-	(*GetPublicCollectionsResponse)(nil),     // 21: collections_service.GetPublicCollectionsResponse
-	(*GetCollectionsForGameRequest)(nil),     // 22: collections_service.GetCollectionsForGameRequest
-	(*GetCollectionsForGameResponse)(nil),    // 23: collections_service.GetCollectionsForGameResponse
-	(*timestamppb.Timestamp)(nil),            // 24: google.protobuf.Timestamp
+	(*Collection)(nil),                            // 0: collections_service.Collection
+	(*CollectionGame)(nil),                        // 1: collections_service.CollectionGame
+	(*CreateCollectionRequest)(nil),               // 2: collections_service.CreateCollectionRequest
+	(*CreateCollectionResponse)(nil),              // 3: collections_service.CreateCollectionResponse
+	(*GetCollectionRequest)(nil),                  // 4: collections_service.GetCollectionRequest
+	(*GetCollectionResponse)(nil),                 // 5: collections_service.GetCollectionResponse
+	(*UpdateCollectionRequest)(nil),               // 6: collections_service.UpdateCollectionRequest
+	(*UpdateCollectionResponse)(nil),              // 7: collections_service.UpdateCollectionResponse
+	(*DeleteCollectionRequest)(nil),               // 8: collections_service.DeleteCollectionRequest
+	(*DeleteCollectionResponse)(nil),              // 9: collections_service.DeleteCollectionResponse
+	(*AddGameToCollectionRequest)(nil),            // 10: collections_service.AddGameToCollectionRequest
+	(*AddGameToCollectionResponse)(nil),           // 11: collections_service.AddGameToCollectionResponse
+	(*RemoveGameFromCollectionRequest)(nil),       // 12: collections_service.RemoveGameFromCollectionRequest
+	(*RemoveGameFromCollectionResponse)(nil),      // 13: collections_service.RemoveGameFromCollectionResponse
+	(*ReorderGamesRequest)(nil),                   // 14: collections_service.ReorderGamesRequest
+	(*ReorderGamesResponse)(nil),                  // 15: collections_service.ReorderGamesResponse
+	(*UpdateChapterTitleRequest)(nil),             // 16: collections_service.UpdateChapterTitleRequest
+	(*UpdateChapterTitleResponse)(nil),            // 17: collections_service.UpdateChapterTitleResponse
+	(*GetUserCollectionsRequest)(nil),             // 18: collections_service.GetUserCollectionsRequest
+	(*GetUserCollectionsResponse)(nil),            // 19: collections_service.GetUserCollectionsResponse
+	(*GetPublicCollectionsRequest)(nil),           // 20: collections_service.GetPublicCollectionsRequest
+	(*GetPublicCollectionsResponse)(nil),          // 21: collections_service.GetPublicCollectionsResponse
+	(*GetCollectionsForGameRequest)(nil),          // 22: collections_service.GetCollectionsForGameRequest
+	(*GetCollectionsForGameResponse)(nil),         // 23: collections_service.GetCollectionsForGameResponse
+	(*GetRecentlyUpdatedCollectionsRequest)(nil),  // 24: collections_service.GetRecentlyUpdatedCollectionsRequest
+	(*GetRecentlyUpdatedCollectionsResponse)(nil), // 25: collections_service.GetRecentlyUpdatedCollectionsResponse
+	(*timestamppb.Timestamp)(nil),                 // 26: google.protobuf.Timestamp
 }
 var file_proto_collections_service_collections_service_proto_depIdxs = []int32{
-	24, // 0: collections_service.Collection.created_at:type_name -> google.protobuf.Timestamp
-	24, // 1: collections_service.Collection.updated_at:type_name -> google.protobuf.Timestamp
+	26, // 0: collections_service.Collection.created_at:type_name -> google.protobuf.Timestamp
+	26, // 1: collections_service.Collection.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 2: collections_service.Collection.games:type_name -> collections_service.CollectionGame
-	24, // 3: collections_service.CollectionGame.added_at:type_name -> google.protobuf.Timestamp
+	26, // 3: collections_service.CollectionGame.added_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: collections_service.GetCollectionResponse.collection:type_name -> collections_service.Collection
 	0,  // 5: collections_service.GetUserCollectionsResponse.collections:type_name -> collections_service.Collection
 	0,  // 6: collections_service.GetPublicCollectionsResponse.collections:type_name -> collections_service.Collection
 	0,  // 7: collections_service.GetCollectionsForGameResponse.collections:type_name -> collections_service.Collection
-	2,  // 8: collections_service.CollectionsService.CreateCollection:input_type -> collections_service.CreateCollectionRequest
-	4,  // 9: collections_service.CollectionsService.GetCollection:input_type -> collections_service.GetCollectionRequest
-	6,  // 10: collections_service.CollectionsService.UpdateCollection:input_type -> collections_service.UpdateCollectionRequest
-	8,  // 11: collections_service.CollectionsService.DeleteCollection:input_type -> collections_service.DeleteCollectionRequest
-	10, // 12: collections_service.CollectionsService.AddGameToCollection:input_type -> collections_service.AddGameToCollectionRequest
-	12, // 13: collections_service.CollectionsService.RemoveGameFromCollection:input_type -> collections_service.RemoveGameFromCollectionRequest
-	14, // 14: collections_service.CollectionsService.ReorderGames:input_type -> collections_service.ReorderGamesRequest
-	16, // 15: collections_service.CollectionsService.UpdateChapterTitle:input_type -> collections_service.UpdateChapterTitleRequest
-	18, // 16: collections_service.CollectionsService.GetUserCollections:input_type -> collections_service.GetUserCollectionsRequest
-	20, // 17: collections_service.CollectionsService.GetPublicCollections:input_type -> collections_service.GetPublicCollectionsRequest
-	22, // 18: collections_service.CollectionsService.GetCollectionsForGame:input_type -> collections_service.GetCollectionsForGameRequest
-	3,  // 19: collections_service.CollectionsService.CreateCollection:output_type -> collections_service.CreateCollectionResponse
-	5,  // 20: collections_service.CollectionsService.GetCollection:output_type -> collections_service.GetCollectionResponse
-	7,  // 21: collections_service.CollectionsService.UpdateCollection:output_type -> collections_service.UpdateCollectionResponse
-	9,  // 22: collections_service.CollectionsService.DeleteCollection:output_type -> collections_service.DeleteCollectionResponse
-	11, // 23: collections_service.CollectionsService.AddGameToCollection:output_type -> collections_service.AddGameToCollectionResponse
-	13, // 24: collections_service.CollectionsService.RemoveGameFromCollection:output_type -> collections_service.RemoveGameFromCollectionResponse
-	15, // 25: collections_service.CollectionsService.ReorderGames:output_type -> collections_service.ReorderGamesResponse
-	17, // 26: collections_service.CollectionsService.UpdateChapterTitle:output_type -> collections_service.UpdateChapterTitleResponse
-	19, // 27: collections_service.CollectionsService.GetUserCollections:output_type -> collections_service.GetUserCollectionsResponse
-	21, // 28: collections_service.CollectionsService.GetPublicCollections:output_type -> collections_service.GetPublicCollectionsResponse
-	23, // 29: collections_service.CollectionsService.GetCollectionsForGame:output_type -> collections_service.GetCollectionsForGameResponse
-	19, // [19:30] is the sub-list for method output_type
-	8,  // [8:19] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 8: collections_service.GetRecentlyUpdatedCollectionsResponse.collections:type_name -> collections_service.Collection
+	2,  // 9: collections_service.CollectionsService.CreateCollection:input_type -> collections_service.CreateCollectionRequest
+	4,  // 10: collections_service.CollectionsService.GetCollection:input_type -> collections_service.GetCollectionRequest
+	6,  // 11: collections_service.CollectionsService.UpdateCollection:input_type -> collections_service.UpdateCollectionRequest
+	8,  // 12: collections_service.CollectionsService.DeleteCollection:input_type -> collections_service.DeleteCollectionRequest
+	10, // 13: collections_service.CollectionsService.AddGameToCollection:input_type -> collections_service.AddGameToCollectionRequest
+	12, // 14: collections_service.CollectionsService.RemoveGameFromCollection:input_type -> collections_service.RemoveGameFromCollectionRequest
+	14, // 15: collections_service.CollectionsService.ReorderGames:input_type -> collections_service.ReorderGamesRequest
+	16, // 16: collections_service.CollectionsService.UpdateChapterTitle:input_type -> collections_service.UpdateChapterTitleRequest
+	18, // 17: collections_service.CollectionsService.GetUserCollections:input_type -> collections_service.GetUserCollectionsRequest
+	20, // 18: collections_service.CollectionsService.GetPublicCollections:input_type -> collections_service.GetPublicCollectionsRequest
+	22, // 19: collections_service.CollectionsService.GetCollectionsForGame:input_type -> collections_service.GetCollectionsForGameRequest
+	24, // 20: collections_service.CollectionsService.GetRecentlyUpdatedCollections:input_type -> collections_service.GetRecentlyUpdatedCollectionsRequest
+	3,  // 21: collections_service.CollectionsService.CreateCollection:output_type -> collections_service.CreateCollectionResponse
+	5,  // 22: collections_service.CollectionsService.GetCollection:output_type -> collections_service.GetCollectionResponse
+	7,  // 23: collections_service.CollectionsService.UpdateCollection:output_type -> collections_service.UpdateCollectionResponse
+	9,  // 24: collections_service.CollectionsService.DeleteCollection:output_type -> collections_service.DeleteCollectionResponse
+	11, // 25: collections_service.CollectionsService.AddGameToCollection:output_type -> collections_service.AddGameToCollectionResponse
+	13, // 26: collections_service.CollectionsService.RemoveGameFromCollection:output_type -> collections_service.RemoveGameFromCollectionResponse
+	15, // 27: collections_service.CollectionsService.ReorderGames:output_type -> collections_service.ReorderGamesResponse
+	17, // 28: collections_service.CollectionsService.UpdateChapterTitle:output_type -> collections_service.UpdateChapterTitleResponse
+	19, // 29: collections_service.CollectionsService.GetUserCollections:output_type -> collections_service.GetUserCollectionsResponse
+	21, // 30: collections_service.CollectionsService.GetPublicCollections:output_type -> collections_service.GetPublicCollectionsResponse
+	23, // 31: collections_service.CollectionsService.GetCollectionsForGame:output_type -> collections_service.GetCollectionsForGameResponse
+	25, // 32: collections_service.CollectionsService.GetRecentlyUpdatedCollections:output_type -> collections_service.GetRecentlyUpdatedCollectionsResponse
+	21, // [21:33] is the sub-list for method output_type
+	9,  // [9:21] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_collections_service_collections_service_proto_init() }
@@ -1441,7 +1556,7 @@ func file_proto_collections_service_collections_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_collections_service_collections_service_proto_rawDesc), len(file_proto_collections_service_collections_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
