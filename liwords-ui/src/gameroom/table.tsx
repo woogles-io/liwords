@@ -30,7 +30,7 @@ import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
 import "./scss/gameroom.scss";
-import { ScoreCard, ScoreCardRef } from "./scorecard";
+import { ScoreCard } from "./scorecard";
 import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { useComments } from "../utils/hooks/comments";
@@ -198,7 +198,6 @@ const getChatTitle = (
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const { addChat } = useChatStoreContext();
-  const scoreCardRef = useRef<ScoreCardRef>(null);
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -944,7 +943,6 @@ export const Table = React.memo((props: Props) => {
             cancelText="Decline"
           />
           <ScoreCard
-            ref={scoreCardRef}
             isExamining={isExamining}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
