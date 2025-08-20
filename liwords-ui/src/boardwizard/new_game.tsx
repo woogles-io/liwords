@@ -178,7 +178,7 @@ export const EditorLandingPage = (props: Props) => {
       <TopBar />
 
       <Layout>
-        <Content>
+        <Content style={{ minHeight: "100vh" }}>
           <div
             style={{
               display: "flex",
@@ -224,8 +224,7 @@ export const EditorLandingPage = (props: Props) => {
             style={{
               display: "flex",
               gap: "24px",
-              padding: "24px",
-              height: "calc(100vh - 200px)", // Adjust height to fill available space
+              padding: "0 24px 24px 24px",
               flexDirection: isDesktop ? "row" : "column",
             }}
           >
@@ -234,6 +233,7 @@ export const EditorLandingPage = (props: Props) => {
               style={{
                 flex: isDesktop ? "1 1 70%" : "1",
                 minWidth: "0", // Allow flex item to shrink
+                overflow: "auto",
               }}
             >
               <AnnotatedGamesHistoryCard
@@ -256,6 +256,7 @@ export const EditorLandingPage = (props: Props) => {
                 flex: isDesktop ? "0 0 30%" : "1",
                 maxWidth: isDesktop ? "400px" : "none",
                 minWidth: isDesktop ? "300px" : "0",
+                overflow: "auto",
               }}
             >
               <RecentCommentsCard
@@ -269,7 +270,7 @@ export const EditorLandingPage = (props: Props) => {
           <div
             className="collections-section"
             style={{
-              padding: "24px",
+              padding: "0 24px 24px 24px",
             }}
           >
             <RecentCollectionsCard
