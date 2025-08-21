@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useRef, DragEvent, useState } from "react";
-import { useDrag, useDragLayer, useDrop } from "react-dnd";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useDrag, useDragLayer, useDrop, useDragDropManager } from "react-dnd";
+import { getEmptyImage } from "react-dnd-html5-backend";
 import TentativeScore from "./tentative_score";
 import {
   Blank,
   EmptyRackSpaceMachineLetter,
   MachineLetter,
   isDesignatedBlankMachineLetter,
-  isTouchDevice,
   uniqueTileIdx,
 } from "../utils/cwgame/common";
 import { Popover } from "antd";
@@ -59,6 +59,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     alphabet,
     value,
     playerOfTile,
+    item,
   } = useDragLayer((monitor) => ({
     xyPosition: monitor.getClientOffset(),
     initialPosition: monitor.getInitialClientOffset(),
@@ -67,25 +68,42 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     alphabet: monitor.getItem()?.alphabet as Alphabet,
     value: monitor.getItem()?.value,
     playerOfTile: monitor.getItem()?.playerOfTile,
+    item: monitor.getItem(),
   }));
+
+  // Only show preview while actively dragging
+  if (!isDragging || !position || !item) {
+    return null;
+  }
   const boardElement = document.getElementById("board-spaces");
-  if (isDragging && boardElement && position) {
+  const boardContainer = document.getElementById("board-container");
+
+  if (boardElement && boardContainer) {
     const boardTop = boardElement.getBoundingClientRect().top;
     const boardLeft = boardElement.getBoundingClientRect().left;
     const boardWidth = boardElement.getBoundingClientRect().width;
+    const boardHeight = boardElement.getBoundingClientRect().height;
+    const containerTop = boardContainer.getBoundingClientRect().top;
+    const containerLeft = boardContainer.getBoundingClientRect().left;
+
     let top = position.y - boardTop;
     let left = position.x - boardLeft;
     const overBoard =
-      boardWidth > position?.y - boardTop &&
-      position?.y > boardTop &&
-      boardWidth > position?.x - boardLeft &&
-      position?.x > boardLeft;
+      position.x >= boardLeft &&
+      position.x <= boardLeft + boardWidth &&
+      position.y >= boardTop &&
+      position.y <= boardTop + boardHeight;
     const tileSize = boardWidth / props.gridDim;
     if (overBoard) {
       const col = Math.floor((position.x - boardLeft) / tileSize);
       const row = Math.floor((position.y - boardTop) / tileSize);
-      left = col * tileSize + 6;
-      top = row * tileSize + 23;
+      // Position relative to the board container
+      left = boardLeft - containerLeft + col * tileSize;
+      top = boardTop - containerTop + row * tileSize;
+    } else {
+      // When not over board, position relative to cursor but within container
+      left = position.x - containerLeft;
+      top = position.y - containerTop;
     }
     const computedStyle = {
       top,
@@ -150,59 +168,6 @@ const Tile = React.memo((props: TileProps) => {
     return props.alphabet.letterMap[rune.toUpperCase()]?.bnjyable;
   }, [props.alphabet, rune]);
 
-  const [isMouseDragging, setIsMouseDragging] = useState(false);
-
-  const handleStartDrag = (e: DragEvent<HTMLDivElement>) => {
-    setIsMouseDragging(true);
-    e.dataTransfer.dropEffect = "move";
-    if (
-      props.tentative &&
-      typeof props.x == "number" &&
-      typeof props.y == "number"
-    ) {
-      e.dataTransfer.setData(
-        "tileIndex",
-        uniqueTileIdx(props.y, props.x).toString(),
-      );
-    } else {
-      e.dataTransfer.setData("rackIndex", props.rackIndex?.toString() || "");
-    }
-  };
-
-  const handleEndDrag = () => {
-    setIsMouseDragging(false);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    if (props.handleTileDrop && props.y != null && props.x != null) {
-      props.handleTileDrop(
-        props.y,
-        props.x,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-        parseInt(e.dataTransfer.getData("tileIndex"), 10),
-      );
-      return;
-    }
-    if (props.moveRackTile && e.dataTransfer.getData("rackIndex")) {
-      props.moveRackTile(
-        props.rackIndex,
-        parseInt(e.dataTransfer.getData("rackIndex"), 10),
-      );
-    } else {
-      if (props.returnToRack && e.dataTransfer.getData("tileIndex")) {
-        props.returnToRack(
-          props.rackIndex,
-          parseInt(e.dataTransfer.getData("tileIndex"), 10),
-        );
-      }
-    }
-  };
-
-  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   const canDrag =
     props.grabbable && props.letter !== EmptyRackSpaceMachineLetter;
   const [{ isDragging }, drag, preview] = useDrag({
@@ -225,10 +190,19 @@ const Tile = React.memo((props: TileProps) => {
     }),
     canDrag: (monitor) => canDrag,
     type: TILE_TYPE,
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult();
+      if (!dropResult) {
+        // Item was dropped outside a valid target
+        // React-dnd will handle returning to source, but this fires immediately
+        // when the drag ends, which should make the tile selectable faster
+      }
+    },
   });
 
   useEffect(() => {
-    preview(<div></div>);
+    // Disable native drag preview for HTML5Backend by using empty image
+    preview(getEmptyImage(), { captureDraggingState: true });
   }, [preview]);
 
   const [, drop] = useDrop({
@@ -241,6 +215,12 @@ const Tile = React.memo((props: TileProps) => {
           parseInt(item.rackIndex, 10),
           parseInt(item.tileIndex, 10),
         );
+        return;
+      }
+      if (props.moveRackTile && item.rackIndex) {
+        props.moveRackTile(props.rackIndex, parseInt(item.rackIndex, 10));
+      } else if (props.returnToRack && item.tileIndex) {
+        props.returnToRack(props.rackIndex, parseInt(item.tileIndex, 10));
       }
     },
     collect: (monitor) => ({
@@ -250,21 +230,23 @@ const Tile = React.memo((props: TileProps) => {
   });
 
   const tileRef = useRef(null);
-  const isTouchDeviceResult = isTouchDevice();
+
+  // Always apply drag and drop refs, multi-backend will handle device detection
   useEffect(() => {
-    if (canDrag && isTouchDeviceResult) {
+    if (canDrag) {
       drag(tileRef);
     }
-  }, [canDrag, isTouchDeviceResult, drag]);
+  }, [canDrag, drag]);
+
   const canDrop = props.handleTileDrop && props.y != null && props.x != null;
   useEffect(() => {
-    if (canDrop && isTouchDeviceResult) {
+    if (canDrop) {
       drop(tileRef);
     }
-  }, [canDrop, isTouchDeviceResult, drop]);
+  }, [canDrop, drop]);
 
   const computedClassName = `tile${
-    isDragging || isMouseDragging ? " dragging" : ""
+    isDragging ? " dragging" : ""
   }${canDrag ? " droppable" : ""}${props.selected ? " selected" : ""}${
     props.tentative ? " tentative" : ""
   }${props.lastPlayed ? " last-played" : ""}${
@@ -273,7 +255,7 @@ const Tile = React.memo((props: TileProps) => {
     (bicolorMode ? props.playerOfTile : props.lastPlayed) ? " second-color" : ""
   }`;
   let ret = (
-    <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
+    <div ref={tileRef}>
       <div
         className={computedClassName}
         data-letter={props.letter}
@@ -289,9 +271,6 @@ const Tile = React.memo((props: TileProps) => {
         onContextMenu={props.onContextMenu}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
-        onDragStart={canDrag ? handleStartDrag : undefined}
-        onDragEnd={handleEndDrag}
-        draggable={canDrag}
       >
         {props.letter !== EmptyRackSpaceMachineLetter && (
           <React.Fragment>

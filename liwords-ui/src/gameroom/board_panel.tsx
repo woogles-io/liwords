@@ -1,15 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { TouchBackend } from "react-dnd-touch-backend";
 import { Button, Tooltip, Affix, App } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { DndProvider } from "react-dnd";
+import MultiBackend, { MultiBackendOptions } from "./dnd-backend";
 import {
   ArrowDownOutlined,
   EditOutlined,
   SyncOutlined,
 } from "@ant-design/icons";
 import {
-  isTouchDevice,
   uniqueTileIdx,
   EphemeralTile,
   EmptyRackSpaceMachineLetter,
@@ -1326,7 +1325,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {gameMetaMessage && props.puzzleMode && (
         <GameMetaMessage message={gameMetaMessage} />
       )}
-      {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
+      <TilePreview gridDim={props.board.dim} />
       {gameControls}
       <ExchangeTiles
         tileColorId={tileColorId}
@@ -1352,5 +1351,9 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
-  return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
+  return (
+    <DndProvider backend={MultiBackend} options={MultiBackendOptions}>
+      {gameBoard}
+    </DndProvider>
+  );
 });

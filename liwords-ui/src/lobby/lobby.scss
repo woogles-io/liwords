@@ -96,12 +96,12 @@
   // ReactMarkdown paragraph spacing fix for tournament descriptions
   p {
     margin-bottom: 16px;
-    
+
     &:last-child {
       margin-bottom: 0;
     }
   }
-  
+
   h4 {
     span.director {
       @include colorModed() {

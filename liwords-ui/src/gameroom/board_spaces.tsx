@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef } from "react";
 import BoardSpace from "./board_space";
 import { PlacementArrow } from "../utils/cwgame/tile_placement";
 import { BonusType } from "../constants/board_layout";
-import { isTouchDevice } from "../utils/cwgame/common";
 import { useDrop, XYCoord } from "react-dnd";
 import { TILE_TYPE } from "./tile";
 
@@ -63,12 +62,10 @@ const BoardSpaces = React.memo((props: Props) => {
     }),
   });
 
-  const isTouchDeviceResult = isTouchDevice();
+  // Always apply drop zone, multi-backend will handle device detection
   useEffect(() => {
-    if (isTouchDeviceResult) {
-      drop(boardRef);
-    }
-  }, [isTouchDeviceResult, drop]);
+    drop(boardRef);
+  }, [drop]);
   // y row, x col
   const midway = Math.trunc(gridDim / 2);
 
@@ -90,14 +87,9 @@ const BoardSpaces = React.memo((props: Props) => {
             arrowHoriz={placementArrow.horizontal}
             startingSquare={startingSquare}
             clicked={() => squareClicked(y, x)}
-            handleTileDrop={(e: React.DragEvent) => {
+            handleTileDrop={(rackIndex, tileIndex) => {
               if (handleTileDrop) {
-                handleTileDrop(
-                  y,
-                  x,
-                  parseInt(e.dataTransfer.getData("rackIndex"), 10),
-                  parseInt(e.dataTransfer.getData("tileIndex"), 10),
-                );
+                handleTileDrop(y, x, rackIndex, tileIndex);
               }
             }}
           />,

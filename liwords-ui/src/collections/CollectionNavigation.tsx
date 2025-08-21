@@ -7,9 +7,32 @@ import { useLoginStateStoreContext } from "../store/store";
 import { useClient } from "../utils/hooks/connect";
 import { CollectionsService } from "../gen/api/proto/collections_service/collections_service_pb";
 import { DraggableChapterItem } from "./DraggableChapterItem";
+import { MultiBackend } from "react-dnd-multi-backend";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { TouchTransition, MouseTransition } from "react-dnd-multi-backend";
 
 const { Title, Text, Paragraph } = Typography;
+
+// Multi-backend configuration for drag and drop
+const multiBackendOptions = {
+  backends: [
+    {
+      id: "html5",
+      backend: HTML5Backend,
+      transition: MouseTransition,
+    },
+    {
+      id: "touch",
+      backend: TouchBackend,
+      options: {
+        enableMouseEvents: true,
+        delayTouchStart: 200,
+      },
+      transition: TouchTransition,
+    },
+  ],
+};
 
 interface CollectionNavigationProps {
   collection: Collection;
@@ -156,7 +179,7 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
             </Text>
           )}
         </Title>
-        <DndProvider backend={HTML5Backend}>
+        <DndProvider backend={MultiBackend} options={multiBackendOptions}>
           <div className="chapter-items">
             {collection.games.map((game, index) => {
               const chapterNum = index + 1;
