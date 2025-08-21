@@ -1,4 +1,6 @@
-import React, { DragEvent } from "react";
+import React, { useRef, useEffect } from "react";
+import { useDrop } from "react-dnd";
+import { TILE_TYPE } from "./tile";
 import { BonusType } from "../constants/board_layout";
 import {
   ArrowRightOutlined,
@@ -30,7 +32,10 @@ function getBonusProperties(bt: BonusType): BonusProperties {
 
 type Props = {
   bonusType: BonusType;
-  handleTileDrop: (e: DragEvent<HTMLDivElement>) => void;
+  handleTileDrop: (
+    rackIndex: number | undefined,
+    tileIndex: number | undefined,
+  ) => void;
   startingSquare: boolean;
   arrow: boolean;
   arrowHoriz: boolean;
@@ -56,18 +61,33 @@ const BoardSpace = React.memo((props: Props) => {
     }
   }
 
-  const handleDropOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
+  const spaceRef = useRef(null);
+
+  const [, drop] = useDrop({
+    accept: TILE_TYPE,
+    drop: (item: { rackIndex: string; tileIndex: string }) => {
+      props.handleTileDrop(
+        item.rackIndex ? parseInt(item.rackIndex, 10) : undefined,
+        item.tileIndex ? parseInt(item.tileIndex, 10) : undefined,
+      );
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+
+  useEffect(() => {
+    drop(spaceRef);
+  }, [drop]);
+
   return (
     <div
+      ref={spaceRef}
       className={`board-space droppable ${
         props.arrow ? "selected" : ""
       } bonus-${bonusClass ? bonusClass : "none"}`}
       onClick={props.clicked}
-      onDragOver={handleDropOver}
-      onDrop={props.handleTileDrop}
     >
       {bonusLabel}
       {startingSquare}

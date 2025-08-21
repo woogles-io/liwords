@@ -28,16 +28,16 @@
     @include colorModed() {
       color: m($gray-extreme);
     }
-    
+
     // ReactMarkdown paragraph spacing fix for user profile bios
     p {
       margin-bottom: 16px;
-      
+
       &:last-child {
         margin-bottom: 0;
       }
     }
-    
+
     // ReactMarkdown header styling for user profile bios
     h1 {
       font-size: 2em;
@@ -46,7 +46,7 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    
+
     h2 {
       font-size: 1.5em;
       font-weight: 700;
@@ -54,7 +54,7 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    
+
     h3 {
       font-size: 1.17em;
       font-weight: 700;
@@ -62,7 +62,7 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    
+
     h4 {
       font-size: 1em;
       font-weight: 700;
@@ -70,7 +70,7 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    
+
     h5 {
       font-size: 0.83em;
       font-weight: 700;
@@ -78,7 +78,7 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    
+
     h6 {
       font-size: 0.75em;
       font-weight: 700;
