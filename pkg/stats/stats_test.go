@@ -1,10 +1,13 @@
 package stats
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	macondoconfig "github.com/domino14/macondo/config"
@@ -51,12 +54,15 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 	if err != nil {
 		panic(err)
 	}
+	us, them := 0, 1
+
 	// For these tests, ensure "jvc" and "Josh" always have a player id of 1
 	playerOneId := "1"
 	playerTwoId := "2"
 	if history.Players[1].Nickname == "jvc" || history.Players[1].Nickname == "Josh" {
 		playerOneId = "2"
 		playerTwoId = "1"
+		us, them = them, us
 	}
 	stats := InstantiateNewStats(playerOneId, playerTwoId)
 	if err != nil {
@@ -76,16 +82,44 @@ func InstantiateNewStatsWithHistory(ctx context.Context, filename string, listSt
 		RequestId:          "yeet",
 		MaxOvertimeMinutes: 10}
 
+	ourRating, theirRating := 1500, 1400
+	if strings.HasPrefix(filename, "./testdata/josh_nationals_round_") {
+		bts, err := os.ReadFile("./testdata/josh_nationals_ratings.txt")
+		if err != nil {
+			return nil, err
+		}
+		rows := bytes.Split(bts, []byte("\n"))
+
+		// Use real rating data
+		rdgcg := strings.TrimPrefix(filename, "./testdata/josh_nationals_round_")
+		rdgcg = strings.TrimSuffix(rdgcg, ".gcg")
+		rdnum, err := strconv.Atoi(rdgcg)
+		if err != nil {
+			return nil, err
+		}
+		row := rows[rdnum-1]
+		rsplit := bytes.Split(row, []byte(","))
+		ourRating, err = strconv.Atoi(string(rsplit[0]))
+		if err != nil {
+			return nil, err
+		}
+		theirRating, err = strconv.Atoi(string(rsplit[1]))
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
 	// Just dummy info to test that rating stats work
 	gameEndedEvent := &ipc.GameEndedEvent{
 		Scores: map[string]int32{history.Players[0].Nickname: history.FinalScores[0],
 			history.Players[1].Nickname: history.FinalScores[1]},
-		NewRatings: map[string]int32{history.Players[0].Nickname: int32(1500),
-			history.Players[1].Nickname: int32(1400)},
+		NewRatings: map[string]int32{history.Players[us].Nickname: int32(ourRating),
+			history.Players[them].Nickname: int32(theirRating)},
 		EndReason: ipc.GameEndReason_STANDARD,
 		Winner:    history.Players[0].Nickname,
 		Loser:     history.Players[1].Nickname,
-		Tie:       history.FinalScores[0] != history.FinalScores[1],
+		Tie:       history.FinalScores[0] == history.FinalScores[1],
 	}
 
 	AddGame(ctx, stats, listStatStore, history, req, DefaultConfig.WGLConfig(), gameEndedEvent, filename)
@@ -227,6 +261,17 @@ func TestStats(t *testing.T) {
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 0)
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 0)
 	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 0)
+
+	is.True(stats.PlayerOneData[entity.LOW_WIN_STAT].Total == 397)
+	is.True(stats.PlayerOneData[entity.HIGH_LOSS_STAT].Total == 459)
+	// 189 rating upset (jvc over wiegand)
+	is.True(stats.PlayerOneData[entity.UPSET_WIN_STAT].Total == 189)
+	is.True(stats.PlayerOneData[entity.UPSET_WIN_STAT].List[0].GameId == "./testdata/josh_nationals_round_22.gcg")
+	// 110 pt rating upset (leah and curley over jvc)
+	is.True(stats.PlayerTwoData[entity.UPSET_WIN_STAT].Total == 110)
+	is.True(stats.PlayerTwoData[entity.UPSET_WIN_STAT].List[0].GameId == "./testdata/josh_nationals_round_25.gcg")
+	is.True(stats.PlayerTwoData[entity.UPSET_WIN_STAT].List[1].GameId == "./testdata/josh_nationals_round_26.gcg")
+
 	listStatStore.Disconnect()
 }
 
