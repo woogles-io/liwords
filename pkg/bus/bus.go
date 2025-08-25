@@ -1,6 +1,6 @@
 // Package bus is the message bus. This package listens on various NATS channels
 // for requests and publishes back responses to the same, or other channels.
-// Responsible for talking to the liwords-socket server.
+// Responsible for talking to the services/socketsrv server.
 package bus
 
 import (
@@ -123,7 +123,7 @@ func (b *Bus) EventAPIServerInstance() *EventAPIServer {
 	return b.gameEventAPIServer
 }
 
-// ProcessMessages is very similar to the PubsubProcess in liwords-socket,
+// ProcessMessages is very similar to the PubsubProcess in services/socketsrv,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
 	ctx = b.config.WithContext(ctx)
@@ -606,7 +606,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
-	// The messages after this are internal messages sent only from liwords-socket
+	// The messages after this are internal messages sent only from services/socketsrv
 	// to liwords, so there are no MessageType enums for these. It's ok:
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}

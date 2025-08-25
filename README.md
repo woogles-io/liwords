@@ -8,8 +8,8 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 - liwords (this repo) is an API server, written in Go.
   - liwords-ui (inside this repo) is a TypeScript front-end, built using `create-react-app`
-- liwords-socket is a socket server, written in Go. It handles all the real-time communication. It resides at https://github.com/woogles-io/liwords-socket.
-- NATS for pubsub / req-response functionality between liwords, liwords-socket, and the user.
+  - services/socketsrv (inside this repo) is a socket server, written in Go. It handles all the real-time communication.
+- NATS for pubsub / req-response functionality between liwords, socketsrv, and the user.
 - PostgreSQL
 
 ### How to develop locally
@@ -26,15 +26,14 @@ You have two options for developing locally.
 #### Using the full stack on Docker:
 
 1. Download Docker for your operating system
-2. Clone the `liwords-socket` repository from `https://github.com/woogles-io/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
-3. Clone the `macondo` repository from `https://github.com/domino14/macondo`, and place it at the same level as this repo.
-4. `cd` to this directory
+2. Clone the `macondo` repository from `https://github.com/domino14/macondo`, and place it at the same level as this repo.
+3. `cd` to this directory
 
-5. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
+4. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
 
 `docker compose up`
 
-6. Edit your `hosts` file, typically `/etc/hosts`, by adding this line:
+5. Edit your `hosts` file, typically `/etc/hosts`, by adding this line:
 
 ```
 127.0.0.1	liwords.localhost
@@ -42,13 +41,13 @@ You have two options for developing locally.
 
 (If you are on Windows and you want to use Chrome, you cannot use `.localhost`. Use `liwords.local` in your `C:\Windows\System32\drivers\etc\hosts`.)
 
-7. Access the app at http://liwords.localhost
-8. If you wish to add a new front-end package, you need to run `npm i` INSIDE the Docker container. You can do this like: `docker compose exec frontend npm i` when the docker compose is up.
-9. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
+6. Access the app at http://liwords.localhost
+7. If you wish to add a new front-end package, you need to run `npm i` INSIDE the Docker container. You can do this like: `docker compose exec frontend npm i` when the docker compose is up.
+8. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-10. To register a bot, run the script in `scripts/utilities/register-bot.sh`. You can run it like this:
+9. To register a bot, run the script in `scripts/utilities/register-bot.sh`. You can run it like this:
 
 `./scripts/utilities/register-bot.sh BotUsername`, replacing BotUsername with your desired bot username.
 
@@ -73,7 +72,7 @@ You can do `docker compose up app` and `docker compose up frontend` in two diffe
 6. Bring up the `dc-local-services.yml` file with `docker compose -f dc-local-services.yml up` in one tab.
 7. You can bring up the other services in your other tabs:
 - For the api server, do `go run cmd/liwords-api/*.go`
-- For the socket server, do `go run cmd/socketsrv/main.go` in the `liwords-socket` repo.
+- For the socket server, do `go run cmd/socketsrv/main.go`
 - For the frontend, do `npm start` in the `liwords-ui` directory.
 - For the bot, do `go run cmd/bot/*.go` in the `macondo` directory.
 
@@ -97,10 +96,6 @@ the web app logic to allow two players to play against each other, or against
 a computer, etc.
 
 `macondo` also provides a bot.
-
-### socket
-
-The app requires `liwords-socket` as a socket server. See the instructions above for how to run it alongside this api server.
 
 ### protoc
 
