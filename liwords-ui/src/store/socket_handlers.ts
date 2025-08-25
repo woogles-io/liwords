@@ -214,7 +214,7 @@ export const parseMsgs = (
     // Parse the message using the appropriate schema
     const schema = MsgTypesMap[msgType];
     if (!schema) {
-      throw new Error(`No schema found for message type: ${msgType}`);
+      throw new Error(`No schema found for message type: ${msgType} (${msg})`);
     }
 
     const parsedMsg = fromBinary(schema, msgBytes);

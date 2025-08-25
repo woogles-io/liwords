@@ -462,47 +462,47 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		b.natsconn.Publish(replyTopic, retdata)
 		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).Interface("realms", resp.Realms).
 			Msg("published response")
-	
+
 	case "getFollowers":
 		msg := &pb.GetFollowersRequest{}
 		err := proto.Unmarshal(data, msg)
 		if err != nil {
 			return err
 		}
-		
+
 		log.Debug().Str("userID", msg.UserId).Msg("received-get-followers-request")
-		
+
 		// Get user by UUID
 		user, err := b.stores.UserStore.GetByUUID(ctx, msg.UserId)
 		if err != nil {
 			return err
 		}
-		
-		// Get all followers  
+
+		// Get all followers
 		followerUsers, err := b.stores.UserStore.GetFollowedBy(ctx, user.ID)
 		if err != nil {
 			return err
 		}
-		
+
 		// Convert to user IDs
 		followerIDs := make([]string, len(followerUsers))
 		for i, fu := range followerUsers {
 			followerIDs[i] = fu.UUID
 		}
-		
+
 		resp := &pb.GetFollowersResponse{
 			FollowerUserIds: followerIDs,
 		}
-		
+
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
 			return err
 		}
-		
+
 		b.natsconn.Publish(replyTopic, retdata)
 		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follower_count", len(followerIDs)).
 			Msg("published get-followers response")
-	
+
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}
@@ -792,17 +792,18 @@ func (b *Bus) broadcastPresenceChanged(userID, username string, channels []strin
 		UserId:   userID,
 		Channel:  channels,
 	}
-	
+
 	data, err := proto.Marshal(presenceEntry)
 	if err != nil {
 		return err
 	}
-	
+
 	// Single publish regardless of follower count - this is the key efficiency gain
 	topic := "presence.changed." + userID
 	err = b.natsconn.Publish(topic, data)
 	if err == nil {
 		log.Debug().Str("userID", userID).Str("topic", topic).
+			Interface("channels", channels).
 			Msg("published-new-presence-notification")
 	}
 	return err
