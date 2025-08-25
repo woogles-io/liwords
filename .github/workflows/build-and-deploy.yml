@@ -237,7 +237,7 @@ jobs:
           go-version: ">=1.24"
 
       - name: Build
-        run: cd services/socketsrv/cmd && go build
+        run: cd cmd/socketsrv && go build
 
   deploy_socket_docker:
     runs-on: ubuntu-latest
