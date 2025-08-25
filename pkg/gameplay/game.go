@@ -54,13 +54,13 @@ type GameStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
-	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
+	MigrateGameToPastGames(ctx context.Context, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error
 }
 
 // InstantiateNewGame instantiates a game and returns it.
