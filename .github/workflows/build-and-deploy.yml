@@ -224,3 +224,57 @@ jobs:
         with:
           args: "liwords front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
         continue-on-error: true
+
+  build_socket:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.24"
+
+      - name: Build
+        run: cd cmd/socketsrv && go build
+
+  deploy_socket_docker:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: build_socket
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: domino14
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Tag Docker Image
+        run: >
+          docker build --build-arg BUILD_HASH=${GITHUB_SHA}
+          --build-arg BUILD_DATE=$(date -Iseconds -u)
+          -t ghcr.io/woogles-io/liwords-socket:${GITHUB_REF_NAME}-gh${GITHUB_RUN_NUMBER}
+          services/socketsrv
+
+      - name: Push Docker Image to registry
+        run: docker push ghcr.io/woogles-io/liwords-socket:${GITHUB_REF_NAME}-gh${GITHUB_RUN_NUMBER}
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_EMBEDS: '[    {
+            "fields": [
+            { "name": "Repository", "value": "[${{github.event.repository.name}}](${{github.event.repository.clone_url}})", "inline": true },
+            { "name": "Branch", "value": "[${{github.ref_name}}](https://github.com/${{github.repository}}/tree/${{github.ref_name}})", "inline": true },
+            { "name": "Tag", "value": "ghcr.io/woogles-io/liwords-socket:${{github.ref_name}}-gh${{github.run_number}}"}
+            ],
+            "color":1127128
+            }    ]'
+        uses: Ilshidur/action-discord@master
+        with:
+          args: ""

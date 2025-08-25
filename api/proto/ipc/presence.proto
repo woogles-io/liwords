@@ -17,3 +17,13 @@ message PresenceEntry {
   string user_id = 2;
   repeated string channel = 3;
 }
+
+// Request for getting followers of a user  
+message GetFollowersRequest {
+  string user_id = 1;
+}
+
+// Response containing list of follower user IDs
+message GetFollowersResponse {
+  repeated string follower_user_ids = 1;
+}

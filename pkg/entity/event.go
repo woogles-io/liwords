@@ -185,3 +185,15 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 
 	return WrapEvent(message, msgType), nil
 }
+
+// BytesFromSerializedEvent takes in a serialized event (without header) and
+// adds a header to it, returning the new byte array.
+// XXX: Using this function is a bit of a code smell / hack and we need
+// to refactor the code that uses it in the future.
+func BytesFromSerializedEvent(evt []byte, evtType byte) []byte {
+	var b bytes.Buffer
+	binary.Write(&b, binary.BigEndian, int16(len(evt)+1))
+	binary.Write(&b, binary.BigEndian, int8(evtType))
+	b.Write(evt)
+	return b.Bytes()
+}

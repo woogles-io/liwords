@@ -462,6 +462,47 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		b.natsconn.Publish(replyTopic, retdata)
 		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).Interface("realms", resp.Realms).
 			Msg("published response")
+
+	case "getFollowers":
+		msg := &pb.GetFollowersRequest{}
+		err := proto.Unmarshal(data, msg)
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Str("userID", msg.UserId).Msg("received-get-followers-request")
+
+		// Get user by UUID
+		user, err := b.stores.UserStore.GetByUUID(ctx, msg.UserId)
+		if err != nil {
+			return err
+		}
+
+		// Get all followers
+		followerUsers, err := b.stores.UserStore.GetFollowedBy(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+
+		// Convert to user IDs
+		followerIDs := make([]string, len(followerUsers))
+		for i, fu := range followerUsers {
+			followerIDs[i] = fu.UUID
+		}
+
+		resp := &pb.GetFollowersResponse{
+			FollowerUserIds: followerIDs,
+		}
+
+		retdata, err := proto.Marshal(resp)
+		if err != nil {
+			return err
+		}
+
+		b.natsconn.Publish(replyTopic, retdata)
+		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follower_count", len(followerIDs)).
+			Msg("published get-followers response")
+
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}
@@ -689,6 +730,19 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 		return nil
 	}
 
+	// Try new system first, fall back to old system
+	if b.config.NewPresenceSystem {
+		log.Debug().Str("userID", userID).Str("username", username).
+			Interface("channels", newChannels).
+			Msg("using-new-presence-system")
+		return b.broadcastPresenceChanged(userID, username, newChannels)
+	}
+
+	log.Debug().Str("userID", userID).Str("username", username).
+		Interface("channels", newChannels).
+		Msg("using-old-presence-system")
+
+	// OLD SYSTEM: Keep for backward compatibility
 	// Courtesy note: followee* is not acceptable in csw19.
 	followee, err := b.stores.UserStore.GetByUUID(ctx, userID)
 	if err != nil {
@@ -713,6 +767,8 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 		}
 
 		b.genericEventChan <- wrapped
+		log.Debug().Str("userID", userID).Int("follower_count", len(followerUsers)).
+			Msg("sent-old-presence-notifications")
 	}
 	// for _, c := range newChannels {
 	// 	if strings.HasPrefix(c, "tournament.") {
@@ -727,6 +783,30 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 	// }
 
 	return nil
+}
+
+// NEW SYSTEM: Single efficient presence notification
+func (b *Bus) broadcastPresenceChanged(userID, username string, channels []string) error {
+	presenceEntry := &pb.PresenceEntry{
+		Username: username,
+		UserId:   userID,
+		Channel:  channels,
+	}
+
+	data, err := proto.Marshal(presenceEntry)
+	if err != nil {
+		return err
+	}
+
+	// Single publish regardless of follower count - this is the key efficiency gain
+	topic := "presence.changed." + userID
+	err = b.natsconn.Publish(topic, data)
+	if err == nil {
+		log.Debug().Str("userID", userID).Str("topic", topic).
+			Interface("channels", channels).
+			Msg("published-new-presence-notification")
+	}
+	return err
 }
 
 func userIsAnon(userID string) bool {

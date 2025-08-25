@@ -57,6 +57,9 @@ type Config struct {
 	TwitchClientSecret string
 	TwitchRedirectURI  string
 
+	// Feature flags
+	NewPresenceSystem bool
+
 	Debug bool
 }
 
@@ -100,6 +103,9 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.TwitchClientID, "twitch-client-id", "", "The Twitch Integration Client ID")
 	fs.StringVar(&c.TwitchClientSecret, "twitch-client-secret", "", "The Twitch Integration Client secret")
 	fs.StringVar(&c.TwitchRedirectURI, "twitch-redirect-uri", "", "The Twitch redirect URI")
+
+	// Feature flags
+	fs.BoolVar(&c.NewPresenceSystem, "new-presence-system", false, "Enable new efficient presence notification system")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
