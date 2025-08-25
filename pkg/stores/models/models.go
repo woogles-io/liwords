@@ -67,29 +67,30 @@ type Following struct {
 }
 
 type Game struct {
-	ID             int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	DeletedAt      pgtype.Timestamptz
-	Uuid           pgtype.Text
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Request        entity.GameRequest
-	History        []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	ReadyFlag      pgtype.Int8
-	MetaEvents     entity.MetaEventData
-	Type           pgtype.Int4
-	GameRequest    []byte
-	HistoryInS3    bool
+	ID              int32
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	DeletedAt       pgtype.Timestamptz
+	Uuid            pgtype.Text
+	Player0ID       pgtype.Int4
+	Player1ID       pgtype.Int4
+	Timers          entity.Timers
+	Started         pgtype.Bool
+	GameEndReason   pgtype.Int4
+	WinnerIdx       pgtype.Int4
+	LoserIdx        pgtype.Int4
+	Request         entity.GameRequest
+	History         []byte
+	Stats           entity.Stats
+	Quickdata       entity.Quickdata
+	TournamentData  entity.TournamentData
+	TournamentID    pgtype.Text
+	ReadyFlag       pgtype.Int8
+	MetaEvents      entity.MetaEventData
+	Type            pgtype.Int4
+	GameRequest     []byte
+	HistoryInS3     bool
+	MigrationStatus pgtype.Int2
 }
 
 type GameComment struct {
@@ -108,9 +109,19 @@ type GameDocument struct {
 }
 
 type GamePlayer struct {
-	GameID      int32
-	PlayerID    int32
-	PlayerIndex pgtype.Int2
+	GameUuid      string
+	PlayerID      int32
+	PlayerIndex   int16
+	Score         int32
+	Won           pgtype.Bool
+	GameEndReason int16
+	RatingBefore  pgtype.Int4
+	RatingAfter   pgtype.Int4
+	RatingDelta   pgtype.Int4
+	CreatedAt     pgtype.Timestamptz
+	GameType      int16
+	OpponentID    int32
+	OpponentScore int32
 }
 
 type Integration struct {

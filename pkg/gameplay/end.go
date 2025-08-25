@@ -202,6 +202,25 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		return err
 	}
 
+	// Migrate the completed game to past_games and game_players tables
+	// Extract rating data from the evt we already computed
+	ratingsBefore := make(map[string]int32)
+	ratingsAfter := make(map[string]int32)
+	if evt.NewRatings != nil {
+		for player, newRating := range evt.NewRatings {
+			ratingsAfter[player] = newRating
+			if delta, ok := evt.RatingDeltas[player]; ok {
+				ratingsBefore[player] = newRating - delta
+			}
+		}
+	}
+
+	err = stores.GameStore.MigrateGameToPastGames(ctx, g, ratingsBefore, ratingsAfter)
+	if err != nil {
+		// Log the error but don't fail the entire operation
+		log.Err(err).Str("gameID", g.GameID()).Msg("failed to migrate game to past_games")
+	}
+
 	log.Info().Msg("game-ended-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
