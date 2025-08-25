@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -26,6 +27,14 @@ const NullRealm Realm = ""
 const LobbyRealm Realm = "lobby"
 
 const ConnPollPeriod = 60 * time.Second
+
+// Metrics tracking for getFollowers API requests
+var (
+	getFollowersRequestCount   int64 // Total API requests made
+	getFollowersDataBytes      int64 // Total bytes received from API responses
+	lastReportedRequestCount   int64 // For calculating per-minute rate
+	lastReportedDataBytes      int64 // For calculating per-minute data volume
+)
 
 // A RealmMessage is a message that should be sent to a socket Realm.
 type RealmMessage struct {
@@ -79,6 +88,9 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize followers cache
+	InitFollowersCache(cfg.FollowersCacheSize, cfg.FollowersCacheTTL)
 
 	return &Hub{
 		// broadcast:         make(chan []byte),
@@ -283,9 +295,24 @@ func (h *Hub) Run() {
 			}
 
 		case <-ticker.C:
+			// Calculate per-minute rates for getFollowers API
+			currentRequests := atomic.LoadInt64(&getFollowersRequestCount)
+			currentDataBytes := atomic.LoadInt64(&getFollowersDataBytes)
+			requestsPerMin := currentRequests - atomic.LoadInt64(&lastReportedRequestCount)
+			dataBytesPerMin := currentDataBytes - atomic.LoadInt64(&lastReportedDataBytes)
+			
+			// Update last reported values
+			atomic.StoreInt64(&lastReportedRequestCount, currentRequests)
+			atomic.StoreInt64(&lastReportedDataBytes, currentDataBytes)
+			
+			cacheLen := GetCacheStats()
 			log.Info().Int("num-conns", len(h.clients)).
 				Int("num-users", len(h.clientsByUserID)).
-				Int("num-realms", len(h.realms)).Msg("conn-stats")
+				Int("num-realms", len(h.realms)).
+				Int("cache-entries", cacheLen).
+				Int64("followers-api-requests-per-min", requestsPerMin).
+				Int64("followers-api-bytes-per-min", dataBytesPerMin).
+				Msg("conn-stats")
 		}
 	}
 }
@@ -425,32 +452,50 @@ func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 
 	log.Debug().Str("userID", userID).Msg("handling-presence-changed")
 
-	// Request followers from main service
-	req := &pb.GetFollowersRequest{
-		UserId: userID,
-	}
-	reqData, err := proto.Marshal(req)
-	if err != nil {
-		log.Err(err).Msg("marshal-get-followers-request")
-		return
+	// Try to get followers from cache first
+	followers, found := GetFollowers(userID)
+	var cacheHit bool
+	
+	if !found {
+		// Cache miss - request followers from main service
+		req := &pb.GetFollowersRequest{
+			UserId: userID,
+		}
+		reqData, err := proto.Marshal(req)
+		if err != nil {
+			log.Err(err).Msg("marshal-get-followers-request")
+			return
+		}
+
+		resp, err := h.pubsub.natsconn.Request("ipc.request.getFollowers", reqData, ipcTimeout)
+		if err != nil {
+			log.Err(err).Str("userID", userID).Msg("get-followers-request-failed")
+			return
+		}
+
+		// Track successful API request
+		atomic.AddInt64(&getFollowersRequestCount, 1)
+		atomic.AddInt64(&getFollowersDataBytes, int64(len(resp.Data)))
+
+		followersResp := &pb.GetFollowersResponse{}
+		err = proto.Unmarshal(resp.Data, followersResp)
+		if err != nil {
+			log.Err(err).Msg("unmarshal-get-followers-response")
+			return
+		}
+
+		followers = followersResp.FollowerUserIds
+		// Cache the result for future requests
+		CacheFollowers(userID, followers)
+		cacheHit = false
+	} else {
+		cacheHit = true
 	}
 
-	resp, err := h.pubsub.natsconn.Request("ipc.request.getFollowers", reqData, ipcTimeout)
-	if err != nil {
-		log.Err(err).Str("userID", userID).Msg("get-followers-request-failed")
-		return
-	}
-
-	followersResp := &pb.GetFollowersResponse{}
-	err = proto.Unmarshal(resp.Data, followersResp)
-	if err != nil {
-		log.Err(err).Msg("unmarshal-get-followers-response")
-		return
-	}
 	btsToSend := entity.BytesFromSerializedEvent(data, byte(pb.MessageType_PRESENCE_ENTRY))
 	// Send presence notification only to followers connected to this socket
 	sentCount := 0
-	for _, followerID := range followersResp.FollowerUserIds {
+	for _, followerID := range followers {
 		if h.isUserConnected(followerID) {
 			h.sendToUser(followerID, btsToSend)
 			sentCount++
@@ -458,7 +503,8 @@ func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 	}
 
 	log.Debug().Str("userID", userID).
-		Int("total_followers", len(followersResp.FollowerUserIds)).
+		Int("total_followers", len(followers)).
 		Int("sent_to", sentCount).
+		Bool("cache_hit", cacheHit).
 		Msg("presence-changed-processed")
 }
