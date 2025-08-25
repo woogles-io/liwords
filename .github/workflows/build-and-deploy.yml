@@ -242,6 +242,7 @@ jobs:
   deploy_socket_docker:
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/master' }}
+    needs: build_socket
     steps:
       - name: Checkout
         uses: actions/checkout@v4
