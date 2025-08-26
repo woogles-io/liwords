@@ -85,14 +85,8 @@ jobs:
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "liwords backend built successfully for branch {{GITHUB_REF_NAME}}."
+        run: ./scripts/utilities/notify-discord.sh "liwords backend built successfully for branch {{GITHUB_REF_NAME}}."
         continue-on-error: true
-
-      - name: Check Discord notification status
-        if: ${{ failure() }}
-        run: echo "Discord notification failed, but the workflow will continue."
 
   deploy_api_docker:
     runs-on: ubuntu-latest
@@ -115,17 +109,18 @@ jobs:
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          DISCORD_EMBEDS: '[    {
-            "fields": [
-            { "name": "Repository", "value": "[${{github.event.repository.name}}](${{github.event.repository.clone_url}})", "inline": true },
-            { "name": "Branch", "value": "[${{github.ref_name}}](https://github.com/${{github.repository}}/tree/${{github.ref_name}})", "inline": true },
-            { "name": "Tag", "value": "ghcr.io/woogles-io/liwords-api:${{github.ref_name}}-gh${{github.run_number}}"}
-            ],
-            "color":1127128
-            }    ]'
-        uses: Ilshidur/action-discord@master
-        with:
-          args: ""
+          DISCORD_EMBEDS: |
+            [{
+              "title": "🎉 Docker Images Built & Tagged",
+              "fields": [
+                { "name": "Repository", "value": "[${{github.event.repository.name}}](${{github.event.repository.clone_url}})", "inline": true },
+                { "name": "Branch", "value": "[${{github.ref_name}}](https://github.com/${{github.repository}}/tree/${{github.ref_name}})", "inline": true },
+                { "name": "APITag", "value": "ghcr.io/woogles-io/liwords-api:${{github.ref_name}}-gh${{github.run_number}}"},
+                { "name": "SocketTag", "value": "ghcr.io/woogles-io/liwords-socket:${{github.ref_name}}-gh${{github.run_number}}"}
+              ],
+              "color": 1127128
+            }]
+        run: ./scripts/utilities/notify-discord.sh
         continue-on-error: true
 
   build_fe:
@@ -157,14 +152,8 @@ jobs:
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "liwords front-end built successfully for branch {{GITHUB_REF_NAME}}."
+        run: ./scripts/utilities/notify-discord.sh "liwords front-end built successfully for branch {{GITHUB_REF_NAME}}."
         continue-on-error: true
-
-      - name: Check Discord notification status
-        if: ${{ failure() }}
-        run: echo "Discord notification failed, but the workflow will continue."
 
   deploy_fe:
     runs-on: ubuntu-latest
@@ -223,7 +212,5 @@ jobs:
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "liwords front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
+        run: ./scripts/utilities/notify-discord.sh "liwords front-end deployed successfully for branch {{GITHUB_REF_NAME}}."
         continue-on-error: true
