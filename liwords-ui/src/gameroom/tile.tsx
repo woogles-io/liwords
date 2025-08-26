@@ -102,8 +102,12 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       top = boardTop - containerTop + row * tileSize;
     } else {
       // When not over board, position relative to cursor but within container
-      left = position.x - containerLeft;
-      top = position.y - containerTop;
+      // Center the tile under the cursor by offsetting by half the tile size
+      // Calculate actual tile size based on grid dimensions (44px base for 15x15 board)
+      const actualTileSize = (44 * 15) / props.gridDim;
+      const tileOffsetSize = actualTileSize / 2;
+      left = position.x - containerLeft - tileOffsetSize;
+      top = position.y - containerTop - tileOffsetSize;
     }
     const computedStyle = {
       top,
