@@ -40,6 +40,7 @@ const (
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
 	cfg     *config.Config
+	dbPool  *pgxpool.Pool
 	queries *models.Queries
 
 	userStore pkguser.Store
@@ -91,7 +92,12 @@ func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.
 	// Note: We need to manually add the following index on production:
 	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
 
-	return &DBStore{cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
+	return &DBStore{
+		cfg:       config,
+		dbPool:    dbPool,
+		userStore: userStore,
+		queries:   models.New(dbPool),
+	}, nil
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.

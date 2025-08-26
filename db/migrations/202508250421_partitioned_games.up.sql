@@ -16,7 +16,7 @@ CREATE TABLE past_games (
 
 CREATE INDEX idx_past_games_tournament_id
     ON public.past_games USING hash(((tournament_data ->>'Id'::text)));
-CREATE INDEX idx_past_games_gid ON public.games USING btree (gid);
+CREATE INDEX idx_past_games_gid ON public.past_games USING btree (gid);
 CREATE INDEX idx_past_games_rematch_req_idx
     ON public.past_games USING hash (((quickdata ->> 'o'::text)));
 CREATE INDEX idx_past_games_created_at

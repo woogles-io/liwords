@@ -27,9 +27,18 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 		return fmt.Errorf("marshaling game document: %w", err)
 	}
 
+	// Start transaction for all migration operations
+	tx, err := s.dbPool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("starting transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Create queries with transaction
+	txQueries := s.queries.WithTx(tx)
 
 	// Insert into past_games
-	err = s.queries.InsertPastGame(ctx, models.InsertPastGameParams{
+	err = txQueries.InsertPastGame(ctx, models.InsertPastGameParams{
 		Gid:            g.GameID(),
 		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		GameEndReason:  int16(g.GameEndReason),
@@ -45,14 +54,14 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 		return fmt.Errorf("inserting into past_games: %w", err)
 	}
 
-	// Insert game_players records
-	err = s.insertGamePlayers(ctx, g, ratingsBefore, ratingsAfter)
+	// Insert game_players records (using transaction)
+	err = s.insertGamePlayersWithTx(ctx, txQueries, g, ratingsBefore, ratingsAfter)
 	if err != nil {
 		return fmt.Errorf("inserting game players: %w", err)
 	}
 
 	// Update migration status
-	err = s.queries.UpdateGameMigrationStatus(ctx, models.UpdateGameMigrationStatusParams{
+	err = txQueries.UpdateGameMigrationStatus(ctx, models.UpdateGameMigrationStatusParams{
 		MigrationStatus: pgtype.Int2{Int16: MigrationStatusMigrated, Valid: true},
 		Uuid:            common.ToPGTypeText(g.GameID()),
 	})
@@ -61,20 +70,26 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 	}
 
 	// Clear data from games table
-	err = s.queries.ClearGameDataAfterMigration(ctx, common.ToPGTypeText(g.GameID()))
+	err = txQueries.ClearGameDataAfterMigration(ctx, common.ToPGTypeText(g.GameID()))
 	if err != nil {
 		return fmt.Errorf("clearing game data: %w", err)
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
 	}
 
 	log.Info().Str("gameID", g.GameID()).Msg("game migrated to past_games")
 	return nil
 }
 
-func (s *DBStore) insertGamePlayers(ctx context.Context, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error {
+// insertGamePlayersWithTx inserts game_players records within a transaction
+func (s *DBStore) insertGamePlayersWithTx(ctx context.Context, queries *models.Queries, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error {
 	for pidx := 0; pidx < 2; pidx++ {
 		opponentIdx := 1 - pidx
 		playerNick := g.History().Players[pidx].Nickname
-		
+
 		params := models.InsertGamePlayerParams{
 			GameUuid:      g.GameID(),
 			PlayerID:      int32(g.PlayerDBIDs[pidx]),
@@ -109,8 +124,7 @@ func (s *DBStore) insertGamePlayers(ctx context.Context, g *entity.Game, ratings
 			}
 		}
 
-
-		err := s.queries.InsertGamePlayer(ctx, params)
+		err := queries.InsertGamePlayer(ctx, params)
 		if err != nil {
 			return fmt.Errorf("inserting player %d: %w", pidx, err)
 		}
