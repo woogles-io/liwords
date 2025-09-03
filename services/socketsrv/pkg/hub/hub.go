@@ -30,10 +30,10 @@ const ConnPollPeriod = 60 * time.Second
 
 // Metrics tracking for getFollowers API requests
 var (
-	getFollowersRequestCount   int64 // Total API requests made
-	getFollowersDataBytes      int64 // Total bytes received from API responses
-	lastReportedRequestCount   int64 // For calculating per-minute rate
-	lastReportedDataBytes      int64 // For calculating per-minute data volume
+	getFollowersRequestCount int64 // Total API requests made
+	getFollowersDataBytes    int64 // Total bytes received from API responses
+	lastReportedRequestCount int64 // For calculating per-minute rate
+	lastReportedDataBytes    int64 // For calculating per-minute data volume
 )
 
 // A RealmMessage is a message that should be sent to a socket Realm.
@@ -300,11 +300,11 @@ func (h *Hub) Run() {
 			currentDataBytes := atomic.LoadInt64(&getFollowersDataBytes)
 			requestsPerMin := currentRequests - atomic.LoadInt64(&lastReportedRequestCount)
 			dataBytesPerMin := currentDataBytes - atomic.LoadInt64(&lastReportedDataBytes)
-			
+
 			// Update last reported values
 			atomic.StoreInt64(&lastReportedRequestCount, currentRequests)
 			atomic.StoreInt64(&lastReportedDataBytes, currentDataBytes)
-			
+
 			cacheLen := GetCacheStats()
 			log.Info().Int("num-conns", len(h.clients)).
 				Int("num-users", len(h.clientsByUserID)).
@@ -437,12 +437,6 @@ func (h *Hub) sendRealmInitInfo(c *Client) error {
 
 }
 
-// isUserConnected checks if a user is connected to this socket instance
-func (h *Hub) isUserConnected(userID string) bool {
-	_, exists := h.clientsByUserID[userID]
-	return exists
-}
-
 // handlePresenceChanged processes new-style efficient presence notifications
 func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 	// Only process if new presence system is enabled
@@ -455,7 +449,7 @@ func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 	// Try to get followers from cache first
 	followers, found := GetFollowers(userID)
 	var cacheHit bool
-	
+
 	if !found {
 		// Cache miss - request followers from main service
 		req := &pb.GetFollowersRequest{
@@ -493,18 +487,13 @@ func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 	}
 
 	btsToSend := entity.BytesFromSerializedEvent(data, byte(pb.MessageType_PRESENCE_ENTRY))
-	// Send presence notification only to followers connected to this socket
-	sentCount := 0
+	// Send presence notification to all followers (Run() will handle if not connected)
 	for _, followerID := range followers {
-		if h.isUserConnected(followerID) {
-			h.sendToUser(followerID, btsToSend)
-			sentCount++
-		}
+		h.sendToUser(followerID, btsToSend)
 	}
 
 	log.Debug().Str("userID", userID).
 		Int("total_followers", len(followers)).
-		Int("sent_to", sentCount).
 		Bool("cache_hit", cacheHit).
 		Msg("presence-changed-processed")
 }
