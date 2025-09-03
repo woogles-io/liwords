@@ -373,6 +373,17 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	log.Info().Msg("game-aborted-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
 
+	if gameEndReason == pb.GameEndReason_ABORTED {
+		// Aborted games still get migrated to past games table in order to keep
+		// some history for audit purposes. But CANCELLED games should not be
+		// migrated and eventually thrown away.
+		err = stores.GameStore.MigrateGameToPastGames(ctx, g, nil, nil)
+		if err != nil {
+			// Log the error but don't fail the entire operation
+			log.Err(err).Str("gameID", g.GameID()).Msg("failed to migrate game to past_games")
+		}
+	}
+
 	// We use this instead of the game's event channel directly because there's
 	// a possibility that a game that never got started never got its channel
 	// registered.

@@ -10,7 +10,7 @@ The migration process moves completed games (games with `game_end_reason != 0`) 
 
 ## Files
 
-- `migrate_historical_games.go`: Main migration tool written in Go
+- `main.go`: Main migration tool written in Go
 - `run_historical_migration.sh`: Shell script wrapper for easy execution
 - `README.md`: This documentation
 
@@ -74,7 +74,7 @@ For each completed game, the tool:
 
 ## Post-Migration Cleanup
 
-The migration tool includes commented code to clear migrated data from the `games` table to save space. Uncomment the cleanup section in `migrate_historical_games.go` if you want to remove the original data after migration.
+The migration tool includes commented code to clear migrated data from the `games` table to save space. Uncomment the cleanup section in `main.go` if you want to remove the original data after migration.
 
 ## Monitoring
 

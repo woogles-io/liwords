@@ -1,4 +1,8 @@
--- name: GetLiveGame :one
+-- name: GetGameBasicInfo :one
+SELECT id, uuid, game_end_reason, migration_status, created_at, updated_at, type
+FROM games WHERE uuid = @uuid;
+
+-- name: GetGameFullData :one
 SELECT * FROM games WHERE uuid = @uuid;
 
 -- name: GetGameOwner :one
@@ -24,12 +28,29 @@ FROM past_games
 WHERE gid = @gid AND created_at = @created_at;
 
 -- name: GetRematchStreak :many
-SELECT gid, winner_idx, quickdata FROM past_games
-    WHERE quickdata->>'o' = @orig_req_id::text
-	AND game_end_reason <> 5  -- no aborted games
+SELECT DISTINCT game_uuid as gid,
+       CASE WHEN won = true THEN player_index
+            WHEN won = false THEN (1 - player_index)
+            ELSE -1 END as winner_idx,
+       created_at
+FROM game_players
+WHERE original_request_id = @orig_req_id::text
+    AND game_end_reason <> 5  -- no aborted games
     -- note that cancelled games aren't saved in this table
     -- and neither are ongoing games.
-    ORDER BY created_at desc;
+ORDER BY created_at DESC;
+
+-- name: GetRematchStreakOld :many
+-- Backward-compatible query that reads from games table instead of game_players
+SELECT DISTINCT uuid as gid,
+       winner_idx,
+       created_at
+FROM games
+WHERE quickdata->>'o' = @orig_req_id::text
+    AND game_end_reason <> 5  -- no aborted games
+    AND game_end_reason <> 3  -- no cancelled games
+    AND game_end_reason > 0   -- only ended games
+ORDER BY created_at DESC;
 
 -- name: CreateGame :exec
 INSERT INTO games (
@@ -85,7 +106,6 @@ AND tournament_id = @tournament_id;
 -- name: SetReady :one
 UPDATE games SET ready_flag = ready_flag | (1 << @player_idx::integer)
 WHERE uuid = @uuid
-AND ready_flag & (1 << @player_idx::integer) = 0
 RETURNING ready_flag;
 
 -- name: ListAllIDs :many
@@ -109,15 +129,15 @@ INSERT INTO past_games (
 INSERT INTO game_players (
     game_uuid, player_id, player_index, score, won, game_end_reason,
     rating_before, rating_after, rating_delta, created_at, game_type,
-    opponent_id, opponent_score
+    opponent_id, opponent_score, original_request_id
 ) VALUES (
     @game_uuid, @player_id, @player_index, @score, @won, @game_end_reason,
     @rating_before, @rating_after, @rating_delta, @created_at, @game_type,
-    @opponent_id, @opponent_score
+    @opponent_id, @opponent_score, @original_request_id
 );
 
 -- name: UpdateGameMigrationStatus :exec
-UPDATE games 
+UPDATE games
 SET migration_status = @migration_status,
     updated_at = NOW()
 WHERE uuid = @uuid;
@@ -143,11 +163,11 @@ WHERE game_uuid = @game_uuid
 ORDER BY player_index;
 
 -- name: GetRecentGamesByUsername :many
-SELECT gp.game_uuid, gp.score, gp.opponent_score, gp.won, gp.game_end_reason, 
+SELECT gp.game_uuid, gp.score, gp.opponent_score, gp.won, gp.game_end_reason,
        gp.created_at, gp.game_type, u.username as opponent_username,
        COALESCE(pg.quickdata, '{}') as quickdata,
        COALESCE(pg.game_request, '{}') as game_request,
-       COALESCE(pg.winner_idx, CASE WHEN gp.won = true THEN gp.player_index 
+       COALESCE(pg.winner_idx, CASE WHEN gp.won = true THEN gp.player_index
                                    WHEN gp.won = false THEN (1 - gp.player_index)
                                    ELSE -1 END) as winner_idx
 FROM game_players gp
@@ -158,6 +178,33 @@ WHERE LOWER(player.username) = LOWER(@username)
 ORDER BY gp.created_at DESC
 LIMIT @num_games OFFSET @offset_games;
 
+-- name: GetRecentGamesByUsernameOld :many
+-- Backward-compatible query that reads from games table
+SELECT g.uuid as game_uuid,
+       CASE WHEN u1.username = @username THEN (g.quickdata->'finalScores'->>0)::int 
+            ELSE (g.quickdata->'finalScores'->>1)::int END as score,
+       CASE WHEN u1.username = @username THEN (g.quickdata->'finalScores'->>1)::int 
+            ELSE (g.quickdata->'finalScores'->>0)::int END as opponent_score,
+       CASE WHEN g.winner_idx = 0 AND u1.username = @username THEN true
+            WHEN g.winner_idx = 1 AND u2.username = @username THEN true
+            WHEN g.winner_idx = -1 THEN NULL
+            ELSE false END as won,
+       g.game_end_reason,
+       g.created_at,
+       g.type as game_type,
+       CASE WHEN u1.username = @username THEN u2.username 
+            ELSE u1.username END as opponent_username,
+       g.quickdata,
+       g.request as game_request,
+       g.winner_idx
+FROM games g
+LEFT JOIN users u1 ON g.player0_id = u1.id
+LEFT JOIN users u2 ON g.player1_id = u2.id
+WHERE (LOWER(u1.username) = LOWER(@username) OR LOWER(u2.username) = LOWER(@username))
+  AND g.game_end_reason > 0  -- only ended games
+ORDER BY g.created_at DESC
+LIMIT @num_games OFFSET @offset_games;
+
 -- name: GetRecentTourneyGames :many
 SELECT pg.gid, pg.quickdata, pg.game_request, pg.winner_idx, pg.game_end_reason,
        pg.created_at, pg.type, pg.tournament_data
@@ -165,3 +212,18 @@ FROM past_games pg
 WHERE pg.tournament_data->>'Id' = @tourney_id::text
 ORDER BY pg.created_at DESC
 LIMIT @num_games OFFSET @offset_games;
+
+-- name: GetRecentTourneyGamesOld :many
+-- Backward-compatible query that reads from games table
+SELECT g.uuid as gid, g.quickdata, g.request as game_request, g.winner_idx, g.game_end_reason,
+       g.created_at, g.type, g.tournament_data
+FROM games g
+WHERE g.tournament_id = @tourney_id::text
+  AND g.game_end_reason > 0  -- only ended games
+ORDER BY g.created_at DESC
+LIMIT @num_games OFFSET @offset_games;
+
+-- name: GameExists :one
+SELECT EXISTS (
+    SELECT 1 FROM games WHERE uuid = @uuid
+) AS exists;

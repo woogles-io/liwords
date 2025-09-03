@@ -24,12 +24,45 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// GameRequest utility functions for handling both proto and protojson formats
+
+// ParseGameRequest parses GameRequest from bytes, trying proto format first, then protojson
+func ParseGameRequest(data []byte) (*pb.GameRequest, error) {
+	if len(data) == 0 {
+		return &pb.GameRequest{}, nil
+	}
+
+	gr := &pb.GameRequest{}
+	
+	// Try proto format first (binary data from live games)
+	err := proto.Unmarshal(data, gr)
+	if err == nil {
+		return gr, nil
+	}
+	
+	// Fall back to protojson format (from past games)
+	err = protojson.Unmarshal(data, gr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse GameRequest as both proto and protojson: %w", err)
+	}
+	
+	return gr, nil
+}
+
+// MarshalGameRequestAsJSON marshals GameRequest as protojson for past games table
+func MarshalGameRequestAsJSON(gr *pb.GameRequest) ([]byte, error) {
+	if gr == nil {
+		return nil, fmt.Errorf("GameRequest is nil")
+	}
+	return protojson.Marshal(gr)
+}
+
 type GameRow struct {
 	UUID           string
 	CreatedAt      time.Time
 	GameEndReason  int
 	WinnerIdx      int
-	GameRequest    json.RawMessage
+	GameRequest    []byte // Binary proto data from games.request
 	History        []byte
 	Stats          json.RawMessage
 	Quickdata      json.RawMessage
@@ -159,10 +192,19 @@ func migrateGame(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, game
 		return fmt.Errorf("failed to unmarshal history: %v", err)
 	}
 
-	// Parse game request
-	var gameReq entity.GameRequest
-	if err := json.Unmarshal(game.GameRequest, &gameReq); err != nil {
+	// Parse game request using utility function
+	grproto, err := ParseGameRequest(game.GameRequest)
+	if err != nil {
 		return fmt.Errorf("failed to parse game request: %v", err)
+	}
+	
+	// Create entity.GameRequest wrapper for compatibility
+	gameReq := entity.GameRequest{GameRequest: grproto}
+	
+	// Marshal as JSON for past_games table
+	grprotoJson, err := MarshalGameRequestAsJSON(grproto)
+	if err != nil {
+		return fmt.Errorf("failed to marshal game request: %v", err)
 	}
 
 	// Parse other data
@@ -186,13 +228,13 @@ func migrateGame(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, game
 	// Create macondo rules from game request
 	lexicon := hist.Lexicon
 	if lexicon == "" {
-		lexicon = gameReq.Lexicon
+		lexicon = gameReq.GameRequest.Lexicon
 	}
 
 	rules, err := macondogame.NewBasicGameRules(
-		cfg.MacondoConfig(), lexicon, gameReq.Rules.BoardLayoutName,
-		gameReq.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(gameReq.Rules.VariantName))
+		cfg.MacondoConfig(), lexicon, gameReq.GameRequest.Rules.BoardLayoutName,
+		gameReq.GameRequest.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(gameReq.GameRequest.Rules.VariantName))
 	if err != nil {
 		return fmt.Errorf("failed to create game rules: %v", err)
 	}
@@ -253,35 +295,44 @@ func migrateGame(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, game
 			game_request, game_document, stats, quickdata, type, tournament_data
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`, game.UUID, game.CreatedAt, game.GameEndReason, game.WinnerIdx,
-		game.GameRequest, docBytes, game.Stats, game.Quickdata, game.Type, game.TournamentData)
+		grprotoJson, docBytes, game.Stats, game.Quickdata, game.Type, game.TournamentData)
 	if err != nil {
 		return fmt.Errorf("failed to insert into past_games: %v", err)
 	}
 
 	// Insert into game_players for each player
 	if game.Player0ID.Valid && game.Player1ID.Valid {
+		// Extract common data for both players
+		originalRequestID := extractOriginalRequestID(game.Quickdata)
+		
 		// Player 0
+		ratingBefore0, ratingAfter0, ratingDelta0 := extractRatingData(game.Quickdata, 0)
 		_, err = tx.Exec(ctx, `
 			INSERT INTO game_players (
 				game_uuid, player_id, player_index, score, won, game_end_reason,
-				created_at, game_type, opponent_id, opponent_score
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				rating_before, rating_after, rating_delta, created_at, game_type,
+				opponent_id, opponent_score, original_request_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		`, game.UUID, game.Player0ID.Int32, 0,
 			getScore(finalScores, 0), getWon(game.WinnerIdx, 0), game.GameEndReason,
-			game.CreatedAt, game.Type, game.Player1ID.Int32, getScore(finalScores, 1))
+			ratingBefore0, ratingAfter0, ratingDelta0, game.CreatedAt, game.Type,
+			game.Player1ID.Int32, getScore(finalScores, 1), originalRequestID)
 		if err != nil {
 			return fmt.Errorf("failed to insert player 0 into game_players: %v", err)
 		}
 
 		// Player 1
+		ratingBefore1, ratingAfter1, ratingDelta1 := extractRatingData(game.Quickdata, 1)
 		_, err = tx.Exec(ctx, `
 			INSERT INTO game_players (
 				game_uuid, player_id, player_index, score, won, game_end_reason,
-				created_at, game_type, opponent_id, opponent_score
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				rating_before, rating_after, rating_delta, created_at, game_type,
+				opponent_id, opponent_score, original_request_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		`, game.UUID, game.Player1ID.Int32, 1,
 			getScore(finalScores, 1), getWon(game.WinnerIdx, 1), game.GameEndReason,
-			game.CreatedAt, game.Type, game.Player0ID.Int32, getScore(finalScores, 0))
+			ratingBefore1, ratingAfter1, ratingDelta1, game.CreatedAt, game.Type,
+			game.Player0ID.Int32, getScore(finalScores, 0), originalRequestID)
 		if err != nil {
 			return fmt.Errorf("failed to insert player 1 into game_players: %v", err)
 		}
@@ -336,4 +387,46 @@ func getWon(winnerIdx, playerIdx int) sql.NullBool {
 		return sql.NullBool{Valid: false}
 	}
 	return sql.NullBool{Bool: winnerIdx == playerIdx, Valid: true}
+}
+
+// extractRatingData extracts rating information from quickdata
+func extractRatingData(quickdataJSON json.RawMessage, playerIdx int) (before, after sql.NullInt32, delta sql.NullInt32) {
+	var quickdata struct {
+		OriginalRatings []float64 `json:"OriginalRatings"`
+		NewRatings      []float64 `json:"NewRatings"`
+	}
+
+	if err := json.Unmarshal(quickdataJSON, &quickdata); err != nil {
+		return sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}
+	}
+
+	// Check if we have rating data for this player
+	if playerIdx < len(quickdata.OriginalRatings) && playerIdx < len(quickdata.NewRatings) {
+		beforeRating := int32(quickdata.OriginalRatings[playerIdx])
+		afterRating := int32(quickdata.NewRatings[playerIdx])
+		ratingDelta := afterRating - beforeRating
+
+		return sql.NullInt32{Int32: beforeRating, Valid: true},
+			sql.NullInt32{Int32: afterRating, Valid: true},
+			sql.NullInt32{Int32: ratingDelta, Valid: true}
+	}
+
+	return sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}
+}
+
+// extractOriginalRequestID extracts the original request ID from quickdata
+func extractOriginalRequestID(quickdataJSON json.RawMessage) sql.NullString {
+	var quickdata struct {
+		OriginalRequestID string `json:"o"`
+	}
+
+	if err := json.Unmarshal(quickdataJSON, &quickdata); err != nil {
+		return sql.NullString{}
+	}
+
+	if quickdata.OriginalRequestID != "" {
+		return sql.NullString{String: quickdata.OriginalRequestID, Valid: true}
+	}
+
+	return sql.NullString{}
 }

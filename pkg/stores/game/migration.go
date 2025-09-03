@@ -37,13 +37,19 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 	// Create queries with transaction
 	txQueries := s.queries.WithTx(tx)
 
+	// Marshal GameRequest as protojson for past_games table
+	gameRequestJSON, err := MarshalGameRequestAsJSON(g.GameReq.GameRequest)
+	if err != nil {
+		return fmt.Errorf("marshaling game request: %w", err)
+	}
+
 	// Insert into past_games
 	err = txQueries.InsertPastGame(ctx, models.InsertPastGameParams{
 		Gid:            g.GameID(),
 		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		GameEndReason:  int16(g.GameEndReason),
 		WinnerIdx:      pgtype.Int2{Int16: int16(g.WinnerIdx), Valid: g.WinnerIdx >= -1},
-		GameRequest:    *g.GameReq,
+		GameRequest:    gameRequestJSON,
 		GameDocument:   docJSON,
 		Stats:          *g.Stats,
 		Quickdata:      *g.Quickdata,
@@ -69,18 +75,15 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 		return fmt.Errorf("updating migration status: %w", err)
 	}
 
-	// Clear data from games table
-	err = txQueries.ClearGameDataAfterMigration(ctx, common.ToPGTypeText(g.GameID()))
-	if err != nil {
-		return fmt.Errorf("clearing game data: %w", err)
-	}
+	// Note: In staged migration approach, we don't clear data immediately.
+	// Data remains in games table until separate cleanup phase.
 
 	// Commit the transaction
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
 
-	log.Info().Str("gameID", g.GameID()).Msg("game migrated to past_games")
+	log.Info().Str("gameID", g.GameID()).Msg("game migrated to past_games (data preserved in games table)")
 	return nil
 }
 
@@ -91,15 +94,16 @@ func (s *DBStore) insertGamePlayersWithTx(ctx context.Context, queries *models.Q
 		playerNick := g.History().Players[pidx].Nickname
 
 		params := models.InsertGamePlayerParams{
-			GameUuid:      g.GameID(),
-			PlayerID:      int32(g.PlayerDBIDs[pidx]),
-			PlayerIndex:   int16(pidx),
-			Score:         int32(g.PointsFor(pidx)),
-			GameEndReason: int16(g.GameEndReason),
-			CreatedAt:     pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-			GameType:      int16(g.Type),
-			OpponentID:    int32(g.PlayerDBIDs[opponentIdx]),
-			OpponentScore: int32(g.PointsFor(opponentIdx)),
+			GameUuid:          g.GameID(),
+			PlayerID:          int32(g.PlayerDBIDs[pidx]),
+			PlayerIndex:       int16(pidx),
+			Score:             int32(g.PointsFor(pidx)),
+			GameEndReason:     int16(g.GameEndReason),
+			CreatedAt:         pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+			GameType:          int16(g.Type),
+			OpponentID:        int32(g.PlayerDBIDs[opponentIdx]),
+			OpponentScore:     int32(g.PointsFor(opponentIdx)),
+			OriginalRequestID: pgtype.Text{String: g.Quickdata.OriginalRequestId, Valid: g.Quickdata.OriginalRequestId != ""},
 		}
 
 		// Set win/loss/tie

@@ -43,11 +43,3 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "MetaEventData"
-      - column: "games.request"
-        go_type:
-          import: "github.com/woogles-io/liwords/pkg/entity"
-          type: "GameRequest"
-      - column: "past_games.game_request"
-        go_type:
-          import: "github.com/woogles-io/liwords/pkg/entity"
-          type: "GameRequest" # this is just a wrapper on top of the pb \object

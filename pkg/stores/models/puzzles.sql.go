@@ -9,24 +9,23 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 const getPotentialPuzzleGames = `-- name: GetPotentialPuzzleGames :many
-SELECT games.uuid FROM games
-LEFT JOIN puzzles on puzzles.game_id = games.id
+SELECT past_games.gid FROM past_games
+JOIN games ON past_games.gid = games.uuid
+LEFT JOIN puzzles ON puzzles.game_id = games.id
 WHERE puzzles.id IS NULL 
-    AND games.created_at BETWEEN $1 AND $2
-    AND (stats->'d1'->'Challenged Phonies'->'t' = '0')
-    AND (stats->'d2'->'Challenged Phonies'->'t' = '0')
-    AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0')
-    AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0')
-    AND games.request LIKE $3  -- %lexicon%
-    AND games.request NOT LIKE '%classic_super%'
-    AND games.request NOT LIKE '%wordsmog%'
+    AND past_games.created_at BETWEEN $1 AND $2
+    AND (past_games.stats->'d1'->'Challenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d2'->'Challenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d1'->'Unchallenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d2'->'Unchallenged Phonies'->'t' = '0')
+    AND past_games.game_request->>'lexicon' = $3::text
+    AND past_games.game_request->'rules'->>'variantName' = 'classic'
     -- 0: none, 5: aborted, 7: canceled
-    AND game_end_reason not in (0, 5, 7)
-    AND type = 0
+    AND past_games.game_end_reason NOT IN (0, 5, 7)
+    AND past_games.type = 0
     
     ORDER BY games.id DESC 
     LIMIT $4 OFFSET $5
@@ -35,16 +34,16 @@ WHERE puzzles.id IS NULL
 type GetPotentialPuzzleGamesParams struct {
 	CreatedAt   pgtype.Timestamptz
 	CreatedAt_2 pgtype.Timestamptz
-	Request     entity.GameRequest
+	Column3     string
 	Limit       int32
 	Offset      int32
 }
 
-func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialPuzzleGamesParams) ([]pgtype.Text, error) {
+func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialPuzzleGamesParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, getPotentialPuzzleGames,
 		arg.CreatedAt,
 		arg.CreatedAt_2,
-		arg.Request,
+		arg.Column3,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -52,13 +51,13 @@ func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialP
 		return nil, err
 	}
 	defer rows.Close()
-	var items []pgtype.Text
+	var items []string
 	for rows.Next() {
-		var uuid pgtype.Text
-		if err := rows.Scan(&uuid); err != nil {
+		var gid string
+		if err := rows.Scan(&gid); err != nil {
 			return nil, err
 		}
-		items = append(items, uuid)
+		items = append(items, gid)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -68,21 +67,21 @@ func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialP
 
 const getPotentialPuzzleGamesAvoidBots = `-- name: GetPotentialPuzzleGamesAvoidBots :many
 
-SELECT games.uuid FROM games
-LEFT JOIN puzzles on puzzles.game_id = games.id
+SELECT past_games.gid FROM past_games
+JOIN games ON past_games.gid = games.uuid
+LEFT JOIN puzzles ON puzzles.game_id = games.id
 WHERE puzzles.id IS NULL 
-    AND games.created_at BETWEEN $1 AND $2
-    AND (stats->'d1'->'Challenged Phonies'->'t' = '0')
-    AND (stats->'d2'->'Challenged Phonies'->'t' = '0')
-    AND (stats->'d1'->'Unchallenged Phonies'->'t' = '0')
-    AND (stats->'d2'->'Unchallenged Phonies'->'t' = '0')
-    AND games.request LIKE $3  -- %lexicon%
-    AND games.request NOT LIKE '%classic_super%'
-    AND games.request NOT LIKE '%wordsmog%'
+    AND past_games.created_at BETWEEN $1 AND $2
+    AND (past_games.stats->'d1'->'Challenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d2'->'Challenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d1'->'Unchallenged Phonies'->'t' = '0')
+    AND (past_games.stats->'d2'->'Unchallenged Phonies'->'t' = '0')
+    AND past_games.game_request->>'lexicon' = $3::text
+    AND past_games.game_request->'rules'->>'variantName' = 'classic'
     -- 0: none, 5: aborted, 7: canceled
-    AND game_end_reason not in (0, 5, 7)
-    AND NOT (quickdata @> '{"pi": [{"is_bot": true}]}'::jsonb)
-    AND type = 0
+    AND past_games.game_end_reason NOT IN (0, 5, 7)
+    AND NOT (past_games.quickdata @> '{"pi": [{"is_bot": true}]}'::jsonb)
+    AND past_games.type = 0
 
     ORDER BY games.id DESC 
     LIMIT $4 OFFSET $5
@@ -91,17 +90,17 @@ WHERE puzzles.id IS NULL
 type GetPotentialPuzzleGamesAvoidBotsParams struct {
 	CreatedAt   pgtype.Timestamptz
 	CreatedAt_2 pgtype.Timestamptz
-	Request     entity.GameRequest
+	Column3     string
 	Limit       int32
 	Offset      int32
 }
 
 // puzzle generation
-func (q *Queries) GetPotentialPuzzleGamesAvoidBots(ctx context.Context, arg GetPotentialPuzzleGamesAvoidBotsParams) ([]pgtype.Text, error) {
+func (q *Queries) GetPotentialPuzzleGamesAvoidBots(ctx context.Context, arg GetPotentialPuzzleGamesAvoidBotsParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, getPotentialPuzzleGamesAvoidBots,
 		arg.CreatedAt,
 		arg.CreatedAt_2,
-		arg.Request,
+		arg.Column3,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -109,13 +108,13 @@ func (q *Queries) GetPotentialPuzzleGamesAvoidBots(ctx context.Context, arg GetP
 		return nil, err
 	}
 	defer rows.Close()
-	var items []pgtype.Text
+	var items []string
 	for rows.Next() {
-		var uuid pgtype.Text
-		if err := rows.Scan(&uuid); err != nil {
+		var gid string
+		if err := rows.Scan(&gid); err != nil {
 			return nil, err
 		}
-		items = append(items, uuid)
+		items = append(items, gid)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

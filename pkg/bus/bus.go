@@ -531,6 +531,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	if err == nil {
 		msgType = pb.MessageType(pnum).String()
 	}
+	log.Debug().Str("msgType", msgType).Str("auth", auth).Str("userID", userID).Str("wsConnID", wsConnID).
+		Msg("handling-nats-publish")
 	// XXX: Otherwise, ignore error for now.
 
 	switch msgType {
