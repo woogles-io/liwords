@@ -7,7 +7,7 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 ### Components
 
 - liwords (this repo) is an API server, written in Go.
-  - liwords-ui (inside this repo) is a TypeScript front-end, built using `create-react-app`
+  - liwords-ui (inside this repo) is a TypeScript front-end. It is built with `rsbuild`.
   - services/socketsrv (inside this repo) is a socket server, written in Go. It handles all the real-time communication.
 - NATS for pubsub / req-response functionality between liwords, socketsrv, and the user.
 - PostgreSQL
