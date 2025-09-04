@@ -108,6 +108,15 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 
 // Get gets a game from the cache.. it loads it into the cache if it's not there.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
+	// First check if we need to get the game metadata to determine if it's correspondence
+	metadata, err := c.backing.GetMetadata(ctx, id)
+	if err == nil && metadata != nil && metadata.GameRequest != nil && 
+		metadata.GameRequest.GameMode == pb.GameMode_CORRESPONDENCE {
+		// Bypass cache for correspondence games
+		log.Info().Str("gameid", id).Msg("bypassing-cache-for-correspondence-game")
+		return c.backing.Get(ctx, id)
+	}
+
 	g, ok := c.cache.Get(id)
 	if ok && g != nil {
 		return g.(*entity.Game), nil
@@ -151,11 +160,21 @@ func (c *Cache) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespons
 // Set sets a game in the cache, AND in the backing store. This ensures if the
 // node crashes the game doesn't just vanish.
 func (c *Cache) Set(ctx context.Context, game *entity.Game) error {
+	if game.IsCorrespondence() {
+		// Bypass cache for correspondence games
+		log.Info().Str("gameid", game.History().Uid).Msg("bypassing-cache-for-correspondence-game-set")
+		return c.backing.Set(ctx, game)
+	}
 	return c.setOrCreate(ctx, game, false)
 }
 
 // Create creates the game in the cache as well as the store.
 func (c *Cache) Create(ctx context.Context, game *entity.Game) error {
+	if game.IsCorrespondence() {
+		// Bypass cache for correspondence games
+		log.Info().Str("gameid", game.History().Uid).Msg("bypassing-cache-for-correspondence-game-create")
+		return c.backing.Create(ctx, game)
+	}
 	return c.setOrCreate(ctx, game, true)
 }
 
@@ -182,7 +201,10 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	if err != nil {
 		return err
 	}
-	c.cache.Add(gameID, game)
+	// Don't add to cache if it's a correspondence game (though we shouldn't reach here for corres games)
+	if !game.IsCorrespondence() {
+		c.cache.Add(gameID, game)
+	}
 	return nil
 }
 

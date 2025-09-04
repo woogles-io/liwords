@@ -793,8 +793,11 @@ type GameRequest struct {
 	PlayerVsBot        bool                       `protobuf:"varint,10,opt,name=player_vs_bot,json=playerVsBot,proto3" json:"player_vs_bot,omitempty"`
 	OriginalRequestId  string                     `protobuf:"bytes,11,opt,name=original_request_id,json=originalRequestId,proto3" json:"original_request_id,omitempty"`
 	BotType            macondo.BotRequest_BotCode `protobuf:"varint,12,opt,name=bot_type,json=botType,proto3,enum=macondo.BotRequest_BotCode" json:"bot_type,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// For correspondence games only
+	PerMoveTimeHours int32 `protobuf:"varint,13,opt,name=per_move_time_hours,json=perMoveTimeHours,proto3" json:"per_move_time_hours,omitempty"` // Max hours allowed per move (e.g., 60 for regular, 8 for league)
+	TimeBankHours    int32 `protobuf:"varint,14,opt,name=time_bank_hours,json=timeBankHours,proto3" json:"time_bank_hours,omitempty"`            // Total time bank in hours (e.g., 0 for regular, 96 for league)
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GameRequest) Reset() {
@@ -909,6 +912,20 @@ func (x *GameRequest) GetBotType() macondo.BotRequest_BotCode {
 		return x.BotType
 	}
 	return macondo.BotRequest_BotCode(0)
+}
+
+func (x *GameRequest) GetPerMoveTimeHours() int32 {
+	if x != nil {
+		return x.PerMoveTimeHours
+	}
+	return 0
+}
+
+func (x *GameRequest) GetTimeBankHours() int32 {
+	if x != nil {
+		return x.TimeBankHours
+	}
+	return 0
 }
 
 // GameMetaEvent defines how we serialize meta events to the database.
@@ -3166,7 +3183,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\tGameRules\x12*\n" +
 	"\x11board_layout_name\x18\x01 \x01(\tR\x0fboardLayoutName\x128\n" +
 	"\x18letter_distribution_name\x18\x02 \x01(\tR\x16letterDistributionName\x12!\n" +
-	"\fvariant_name\x18\x03 \x01(\tR\vvariantName\"\xa6\x04\n" +
+	"\fvariant_name\x18\x03 \x01(\tR\vvariantName\"\xfd\x04\n" +
 	"\vGameRequest\x12\x18\n" +
 	"\alexicon\x18\x01 \x01(\tR\alexicon\x12$\n" +
 	"\x05rules\x18\x02 \x01(\v2\x0e.ipc.GameRulesR\x05rules\x120\n" +
@@ -3182,7 +3199,9 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\rplayer_vs_bot\x18\n" +
 	" \x01(\bR\vplayerVsBot\x12.\n" +
 	"\x13original_request_id\x18\v \x01(\tR\x11originalRequestId\x126\n" +
-	"\bbot_type\x18\f \x01(\x0e2\x1b.macondo.BotRequest.BotCodeR\abotType\"\xee\x03\n" +
+	"\bbot_type\x18\f \x01(\x0e2\x1b.macondo.BotRequest.BotCodeR\abotType\x12-\n" +
+	"\x13per_move_time_hours\x18\r \x01(\x05R\x10perMoveTimeHours\x12&\n" +
+	"\x0ftime_bank_hours\x18\x0e \x01(\x05R\rtimeBankHours\"\xee\x03\n" +
 	"\rGameMetaEvent\x12\"\n" +
 	"\rorig_event_id\x18\x01 \x01(\tR\vorigEventId\x128\n" +
 	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x120\n" +

@@ -96,6 +96,9 @@ message GameRequest {
   bool player_vs_bot = 10;
   string original_request_id = 11;
   macondo.BotRequest.BotCode bot_type = 12;
+  // For correspondence games only
+  int32 per_move_time_hours = 13;  // Max hours allowed per move (e.g., 60 for regular, 8 for league)
+  int32 time_bank_hours = 14;       // Total time bank in hours (e.g., 0 for regular, 96 for league)
 }
 
 // GameMetaEvent defines how we serialize meta events to the database.

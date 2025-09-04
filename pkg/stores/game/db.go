@@ -545,7 +545,22 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		return nil, result.Error
 	}
 
-	return convertGamesToInfoResponses(games)
+	// Filter out correspondence games from the active games list
+	filteredGames := make([]*game, 0, len(games))
+	for _, g := range games {
+		gamereq := &pb.GameRequest{}
+		err := proto.Unmarshal(g.Request, gamereq)
+		if err != nil {
+			log.Err(err).Msg("failed to unmarshal game request in ListActive")
+			continue
+		}
+		// Only include non-correspondence games
+		if gamereq.GameMode != pb.GameMode_CORRESPONDENCE {
+			filteredGames = append(filteredGames, g)
+		}
+	}
+
+	return convertGamesToInfoResponses(filteredGames)
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {

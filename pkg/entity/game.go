@@ -32,6 +32,14 @@ type Timers struct {
 	TimeRemaining []int `json:"tr"`
 	// MaxOvertime is in minutes. All others are in milliseconds.
 	MaxOvertime int `json:"mo"`
+	
+	// Correspondence game specific fields
+	// PerMoveDeadline is the unix timestamp (milliseconds) by which the current player must move
+	PerMoveDeadline int64 `json:"pmd,omitempty"`
+	// TimeBankRemaining is an array of remaining time bank per player, in milliseconds (for league games)
+	TimeBankRemaining []int `json:"tbr,omitempty"`
+	// LastMoveTimestamp is the unix timestamp (milliseconds) of the last move made
+	LastMoveTimestamp int64 `json:"lmt,omitempty"`
 }
 
 func (t *Timers) Value() (driver.Value, error) {
@@ -537,4 +545,12 @@ func (g *Game) WinnerWasSet() bool {
 	// This is the only case in which the winner has not yet been set,
 	// when both winnerIdx and loserIdx are 0.
 	return !(g.WinnerIdx == 0 && g.LoserIdx == 0)
+}
+
+// IsCorrespondence returns true if this is a correspondence game
+func (g *Game) IsCorrespondence() bool {
+	if g.GameReq == nil || g.GameReq.GameRequest == nil {
+		return false
+	}
+	return g.GameReq.GameMode == pb.GameMode_CORRESPONDENCE
 }
