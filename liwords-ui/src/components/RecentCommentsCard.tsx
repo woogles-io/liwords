@@ -62,8 +62,8 @@ export const RecentCommentsCard = React.memo((props: Props) => {
 
     // Truncate comment for preview
     const commentPreview =
-      comment.comment.length > 50
-        ? comment.comment.substring(0, 50) + "..."
+      comment.comment.length > 100
+        ? comment.comment.substring(0, 100) + "..."
         : comment.comment;
 
     return {

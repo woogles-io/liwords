@@ -315,8 +315,8 @@ const ScorecardTurn = (props: turnProps) => {
           />
           <div className="comment-preview-text">
             "
-            {props.comments[props.comments.length - 1].comment.length > 40
-              ? `${props.comments[props.comments.length - 1].comment.substring(0, 40)}...`
+            {props.comments[props.comments.length - 1].comment.length > 120
+              ? `${props.comments[props.comments.length - 1].comment.substring(0, 120)}...`
               : props.comments[props.comments.length - 1].comment}
             "
           </div>

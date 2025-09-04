@@ -14,6 +14,7 @@ import {
 } from "../gen/api/proto/comments_service/comments_service_pb";
 import { CollectionNavigation } from "./CollectionNavigation";
 import { RecentCommentsCard } from "../components/RecentCommentsCard";
+import { TopBar } from "../navigation/topbar";
 import "./collections.scss";
 
 export const CollectionViewer: React.FC = () => {
@@ -129,63 +130,66 @@ export const CollectionViewer: React.FC = () => {
   }
 
   return (
-    <div className="collection-viewer">
-      <div className="collection-sidebar">
-        <CollectionNavigation
-          collection={collection}
-          currentChapter={currentChapter}
-          onChapterChange={handleChapterChange}
-          onCollectionUpdate={handleCollectionUpdate}
-        />
-      </div>
-      <div className="collection-content">
-        <Card className="chapter-card" style={{ marginBottom: "24px" }}>
-          <div className="chapter-header">
-            <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
-            <p className="chapter-type">
-              {currentGame.isAnnotated ? "Annotated Game" : "Game Record"}
-            </p>
-          </div>
+    <div className="collection-page-container">
+      <TopBar />
+      <div className="collection-viewer">
+        <div className="collection-sidebar">
+          <CollectionNavigation
+            collection={collection}
+            currentChapter={currentChapter}
+            onChapterChange={handleChapterChange}
+            onCollectionUpdate={handleCollectionUpdate}
+          />
+        </div>
+        <div className="collection-content">
+          <Card className="chapter-card" style={{ marginBottom: "24px" }}>
+            <div className="chapter-header">
+              <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
+              <p className="chapter-type">
+                {currentGame.isAnnotated ? "Annotated Game" : "Game Record"}
+              </p>
+            </div>
 
-          <div className="chapter-actions">
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlayCircleOutlined />}
-              onClick={() => {
-                const baseUrl = currentGame.isAnnotated
-                  ? `/anno/${currentGame.gameId}`
-                  : `/game/${currentGame.gameId}`;
-                const params = new URLSearchParams({
-                  turn: "1",
-                  collection: uuid!,
-                  chapter: currentChapter.toString(),
-                  total: collection.games.length.toString(),
-                });
-                const gameUrl = `${baseUrl}?${params.toString()}`;
-                navigate(gameUrl);
-              }}
-            >
-              View Game
-            </Button>
-          </div>
+            <div className="chapter-actions">
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlayCircleOutlined />}
+                onClick={() => {
+                  const baseUrl = currentGame.isAnnotated
+                    ? `/anno/${currentGame.gameId}`
+                    : `/game/${currentGame.gameId}`;
+                  const params = new URLSearchParams({
+                    turn: "1",
+                    collection: uuid!,
+                    chapter: currentChapter.toString(),
+                    total: collection.games.length.toString(),
+                  });
+                  const gameUrl = `${baseUrl}?${params.toString()}`;
+                  navigate(gameUrl);
+                }}
+              >
+                View Game
+              </Button>
+            </div>
 
-          <div className="chapter-info">
-            <p>
-              Click "View Game" to open this game. You can use the collection
-              navigation to move between chapters or return here to explore
-              other games in this collection.
-            </p>
-          </div>
-        </Card>
+            <div className="chapter-info">
+              <p>
+                Click "View Game" to open this game. You can use the collection
+                navigation to move between chapters or return here to explore
+                other games in this collection.
+              </p>
+            </div>
+          </Card>
 
-        <RecentCommentsCard
-          comments={recentComments}
-          fetchPrev={fetchPrevComments}
-          fetchNext={fetchNextComments}
-          collection={collection}
-          titleOverride="Recent comments for this collection"
-        />
+          <RecentCommentsCard
+            comments={recentComments}
+            fetchPrev={fetchPrevComments}
+            fetchNext={fetchNextComments}
+            collection={collection}
+            titleOverride="Recent comments for this collection"
+          />
+        </div>
       </div>
     </div>
   );

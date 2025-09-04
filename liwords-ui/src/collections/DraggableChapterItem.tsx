@@ -151,10 +151,7 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
 
   const itemStyle: React.CSSProperties = {
     cursor: isOwner ? (isDragging ? "grabbing" : "grab") : "pointer",
-    padding: "8px 12px",
-    borderRadius: "4px",
     opacity: isDragging ? 0.5 : 1,
-    backgroundColor: isOver && isOwner ? "rgba(24, 144, 255, 0.1)" : undefined,
     position: "relative",
   };
 
