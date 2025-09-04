@@ -137,7 +137,7 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
           </Paragraph>
         )}
         <Text type="secondary">
-          by {collection.creatorUsername} • {totalChapters} chapters
+          Collection by {collection.creatorUsername} • {totalChapters} chapters
         </Text>
       </div>
 

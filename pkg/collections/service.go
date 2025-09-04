@@ -533,11 +533,9 @@ func (cs *CollectionsService) GetRecentlyUpdatedCollections(ctx context.Context,
 
 	// If user UUID is provided, include it for private collections
 	if req.Msg.UserUuid != "" {
-		// Validate that it's a valid UUID
-		_, err := uuid.Parse(req.Msg.UserUuid)
-		if err != nil {
-			return nil, apiserver.InvalidArg("invalid user UUID")
-		}
+		// The userUuid might be in short UUID format (base57 encoded) which is valid
+		// We'll pass it through to the database as-is since the users table stores
+		// UUIDs in the short format
 		params.UserUuid = pgtype.Text{String: req.Msg.UserUuid, Valid: true}
 	}
 

@@ -116,14 +116,13 @@ export const EditorLandingPage = (props: Props) => {
         const resp = await collectionsClient.getRecentlyUpdatedCollections({
           limit: collectionsPageSize,
           offset: recentCollectionsOffset,
-          userUuid: loginState.userID || "",
         });
         setRecentCollections(resp.collections);
       } catch (e) {
         console.log(e);
       }
     })();
-  }, [collectionsClient, recentCollectionsOffset, loginState.userID]);
+  }, [collectionsClient, recentCollectionsOffset]);
 
   useEffect(() => {
     const handleResize = () => {
