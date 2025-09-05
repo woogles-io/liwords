@@ -1,0 +1,11 @@
+# For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml
+version: v2
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE
+modules:
+  - path: .
+    name: buf.build/domino14/liwords
