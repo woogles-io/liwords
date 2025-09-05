@@ -28,7 +28,6 @@ import { HeartFilled } from "@ant-design/icons";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { useGameContextStoreContext } from "../store/store";
-import { Comments } from "./comments";
 import { TurnCommentPreview } from "./TurnCommentPreview";
 import {
   Alphabet,
@@ -64,11 +63,6 @@ type turnProps = {
   board: Board;
   showComments: boolean;
   comments: Array<GameComment>;
-  editComment: (cid: string, comment: string) => void;
-  deleteComment: (cid: string) => void;
-  addComment: (comment: string) => void;
-  toggleCommentEditorVisible: () => void;
-  commentEditorVisible: boolean;
   alphabet: Alphabet;
   turnIndex: number;
   onOpenCommentsDrawer?: (turnIndex: number) => void;
@@ -146,10 +140,6 @@ const displayType = (evt: GameEvent) => {
 };
 
 const ScorecardTurn = (props: turnProps) => {
-  const commentsRef = useRef<HTMLDivElement>(null);
-
-  // Comments ref ready notification removed - autoscroll no longer needed
-
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
@@ -290,8 +280,6 @@ const ScorecardTurn = (props: turnProps) => {
             onExpandComments={() => {
               if (props.onOpenCommentsDrawer) {
                 props.onOpenCommentsDrawer(props.turnIndex);
-              } else {
-                props.toggleCommentEditorVisible();
               }
             }}
             className={`inline-comment-bubble ${
@@ -307,9 +295,6 @@ const ScorecardTurn = (props: turnProps) => {
             onExpandComments={() => {
               if (props.onOpenCommentsDrawer) {
                 props.onOpenCommentsDrawer(props.turnIndex);
-              } else {
-                // Fallback to old behavior if no drawer handler
-                props.toggleCommentEditorVisible();
               }
             }}
           />
@@ -322,17 +307,6 @@ const ScorecardTurn = (props: turnProps) => {
           </div>
         </div>
       )}
-      {props.showComments &&
-      props.commentEditorVisible &&
-      !props.onOpenCommentsDrawer ? (
-        <Comments
-          comments={props.comments}
-          deleteComment={props.deleteComment}
-          editComment={props.editComment}
-          addComment={props.addComment}
-          commentsRef={commentsRef}
-        />
-      ) : null}
     </>
   );
 };
@@ -441,9 +415,6 @@ export const ScoreCard = React.memo((props: Props) => {
   let contents = null;
   const { gameContext } = useGameContextStoreContext();
 
-  const [commentEditorVisibleForTurn, setCommentEditorVisibleForTurn] =
-    useState<number | undefined>(undefined);
-
   if (flipHidden) {
     const turnDisplay = (t: Turn, idx: number) => {
       if (t.events.length === 0) {
@@ -466,21 +437,6 @@ export const ScoreCard = React.memo((props: Props) => {
                     c.eventNumber < t.firstEvtIdx + t.events.length,
                 )
               : []
-          }
-          commentEditorVisible={commentEditorVisibleForTurn === idx}
-          toggleCommentEditorVisible={() => {
-            setCommentEditorVisibleForTurn((v) => (v === idx ? -1 : idx));
-          }}
-          editComment={props.editComment || (() => Promise.resolve())}
-          deleteComment={props.deleteComment || (() => Promise.resolve())}
-          addComment={(comment: string) =>
-            props.addNewComment
-              ? props.addNewComment(
-                  gameContext.gameID,
-                  t.firstEvtIdx + t.events.length - 1,
-                  comment,
-                )
-              : Promise.resolve()
           }
           alphabet={gameContext.alphabet}
           turnIndex={idx}

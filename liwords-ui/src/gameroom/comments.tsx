@@ -168,20 +168,35 @@ export const Comments = (props: Props) => {
       />
     );
   } else {
-    footer = (
-      <>
-        <span
-          ref={myRef}
-          className="add-cmt-pseudo-btn"
-          onClick={() => {
-            setNewEditorVisible(true);
-          }}
-        >
-          Add a comment
-        </span>
-        <div style={{ position: "relative", top: 50 }} ref={myRef} />
-      </>
-    );
+    if (!loginState.loggedIn) {
+      footer = (
+        <>
+          <div
+            ref={myRef}
+            className="add-cmt-pseudo-btn"
+            style={{ cursor: "default", opacity: 0.6 }}
+          >
+            Please log in to comment
+          </div>
+          <div style={{ position: "relative", top: 50 }} ref={myRef} />
+        </>
+      );
+    } else {
+      footer = (
+        <>
+          <span
+            ref={myRef}
+            className="add-cmt-pseudo-btn"
+            onClick={() => {
+              setNewEditorVisible(true);
+            }}
+          >
+            Add a comment
+          </span>
+          <div style={{ position: "relative", top: 50 }} ref={myRef} />
+        </>
+      );
+    }
   }
 
   return (
