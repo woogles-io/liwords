@@ -12,7 +12,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -182,30 +181,36 @@ type GameRequest struct {
 	*pb.GameRequest
 }
 
-func (g *GameRequest) Value() (driver.Value, error) {
-	return proto.Marshal(g.GameRequest)
-}
+// func (g *GameRequest) Value() (driver.Value, error) {
+// 	bts, err := proto.Marshal(g.GameRequest)
+// 	if err != nil {
+// 		log.Err(err).Msg("error-marshalling-game-request")
+// 		return nil, err
+// 	}
+// 	log.Debug().Bytes("marshalling as proto", bts).Msg("marshalled game request")
+// 	return bts, nil
+// }
 
-func (g *GameRequest) Scan(value interface{}) error {
+// func (g *GameRequest) Scan(value interface{}) error {
 
-	var b []byte
-	switch v := value.(type) {
-	case []byte:
-		b = v
-	case nil:
-		*g = GameRequest{GameRequest: &pb.GameRequest{}}
-		return nil
-	}
+// 	var b []byte
+// 	switch v := value.(type) {
+// 	case []byte:
+// 		b = v
+// 	case nil:
+// 		*g = GameRequest{GameRequest: &pb.GameRequest{}}
+// 		return nil
+// 	}
 
-	g.GameRequest = &pb.GameRequest{}
-	// XXX: Remove the proto unmarshal once we've migrated all game requests
-	// to be saved as JSONB.
-	err := proto.Unmarshal(b, g.GameRequest)
-	if err != nil {
-		err = protojson.Unmarshal(b, g.GameRequest)
-	}
-	return err
-}
+// 	g.GameRequest = &pb.GameRequest{}
+// 	// XXX: Remove the proto unmarshal once we've migrated all game requests
+// 	// to be saved as JSONB.
+// 	err := proto.Unmarshal(b, g.GameRequest)
+// 	if err != nil {
+// 		err = protojson.Unmarshal(b, g.GameRequest)
+// 	}
+// 	return err
+// }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
@@ -308,6 +313,11 @@ func (g *Game) TimeRemaining(idx int) int {
 	if g.Type == pb.GameType_ANNOTATED {
 		return LargeTime
 	}
+	if len(g.Timers.TimeRemaining) == 0 {
+		// can happen for past games
+		log.Debug().Msg("Timers not initialized")
+		return 0
+	}
 	if g.Game.PlayerOnTurn() == idx {
 		now := g.nower.Now()
 		return g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
@@ -319,6 +329,11 @@ func (g *Game) TimeRemaining(idx int) int {
 func (g *Game) CachedTimeRemaining(idx int) int {
 	if g.Type == pb.GameType_ANNOTATED {
 		return LargeTime
+	}
+	if len(g.Timers.TimeRemaining) == 0 {
+		// can happen for past games
+		log.Debug().Msg("Timers not initialized")
+		return 0
 	}
 	return g.Timers.TimeRemaining[idx]
 }
@@ -333,6 +348,12 @@ func (g *Game) TimeRanOut(idx int) bool {
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
+	if len(g.Timers.TimeRemaining) == 0 {
+		// can happen for past games
+		log.Debug().Msg("Timers not initialized")
+		return false
+	}
+
 	now := g.nower.Now()
 	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
 	return tr < (-g.Timers.MaxOvertime * 60000)
@@ -352,6 +373,10 @@ func (g *Game) GameID() string {
 
 // calculateTimeRemaining calculates the remaining time for the given player.
 func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncrement bool) {
+	if len(g.Timers.TimeRemaining) == 0 {
+		log.Debug().Msg("Timers not initialized")
+		return
+	}
 	log.Debug().
 		Int64("started", g.Timers.TimeStarted).
 		Int64("now", now).

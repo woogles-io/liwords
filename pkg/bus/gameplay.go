@@ -243,12 +243,15 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.stores, b.gameEventChan, g)
 		if err != nil {
-			log.Err(err).Msg("starting-game")
+			// If the game is already started (e.g., from a refresh), that's OK
+			if err == gameplay.ErrGameAlreadyStarted {
+				log.Info().Msg("game-already-started-on-refresh")
+			} else {
+				log.Err(err).Str("gameID", evt.GameId).Msg("error-starting-game")
+			}
 		} else {
-			// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
 			g.SendChange(g.NewActiveGameEntry(true))
 		}
-
 	}
 	return nil
 }

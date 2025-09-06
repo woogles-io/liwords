@@ -202,6 +202,25 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		return err
 	}
 
+	// Migrate the completed game to past_games and game_players tables
+	// Extract rating data from the evt we already computed
+	ratingsBefore := make(map[string]int32)
+	ratingsAfter := make(map[string]int32)
+	if evt.NewRatings != nil {
+		for player, newRating := range evt.NewRatings {
+			ratingsAfter[player] = newRating
+			if delta, ok := evt.RatingDeltas[player]; ok {
+				ratingsBefore[player] = newRating - delta
+			}
+		}
+	}
+
+	err = stores.GameStore.MigrateGameToPastGames(ctx, g, ratingsBefore, ratingsAfter)
+	if err != nil {
+		// Log the error but don't fail the entire operation
+		log.Err(err).Str("gameID", g.GameID()).Msg("failed to migrate game to past_games")
+	}
+
 	log.Info().Msg("game-ended-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
@@ -353,6 +372,17 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	// Unload the game
 	log.Info().Msg("game-aborted-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
+
+	if gameEndReason == pb.GameEndReason_ABORTED {
+		// Aborted games still get migrated to past games table in order to keep
+		// some history for audit purposes. But CANCELLED games should not be
+		// migrated and eventually thrown away.
+		err = stores.GameStore.MigrateGameToPastGames(ctx, g, nil, nil)
+		if err != nil {
+			// Log the error but don't fail the entire operation
+			log.Err(err).Str("gameID", g.GameID()).Msg("failed to migrate game to past_games")
+		}
+	}
 
 	// We use this instead of the game's event channel directly because there's
 	// a possibility that a game that never got started never got its channel

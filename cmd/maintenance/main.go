@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -56,6 +57,12 @@ func main() {
 		case "sub-badge-updater":
 			err := SubBadgeUpdater()
 			log.Err(err).Msg("ran subBadgeUpdater")
+		case "partition-creator":
+			err := PartitionCreator()
+			log.Err(err).Msg("ran partitionCreator")
+		case "cancelled-games-cleanup":
+			err := CancelledGamesCleanup()
+			log.Err(err).Msg("ran cancelledGamesCleanup")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -349,4 +356,137 @@ func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {
 	log.Info().Int64("rowsAffected", rowsAffected).Msg("affected-rows")
 
 	return tx.Commit(ctx)
+}
+
+// PartitionCreator creates monthly partitions for the past_games table
+// It only runs during the last 5 days of the month to minimize overhead
+func PartitionCreator() error {
+	// Only run on days 26-31 of the month
+	now := time.Now()
+	if now.Day() < 26 {
+		log.Info().Int("day", now.Day()).Msg("skipping partition creation - not end of month")
+		return nil
+	}
+
+	log.Info().Msg("checking for partition creation")
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Check for existing partitions
+	rows, err := dbPool.Query(ctx, `
+		SELECT tablename 
+		FROM pg_tables 
+		WHERE schemaname = 'public' 
+		AND tablename LIKE 'past_games_%'
+		ORDER BY tablename
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	existingPartitions := make(map[string]bool)
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			return err
+		}
+		existingPartitions[tableName] = true
+	}
+
+	// Create partitions for next 3 months if they don't exist
+	partitionsCreated := 0
+	for i := 0; i < 3; i++ {
+		targetDate := now.AddDate(0, i+1, 0)
+		year := targetDate.Year()
+		month := targetDate.Month()
+		
+		partitionName := fmt.Sprintf("past_games_%04d_%02d", year, month)
+		
+		if existingPartitions[partitionName] {
+			log.Debug().Str("partition", partitionName).Msg("partition already exists")
+			continue
+		}
+
+		// Calculate the start and end dates for the partition
+		startDate := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+		endDate := startDate.AddDate(0, 1, 0)
+		
+		createSQL := fmt.Sprintf(`
+			CREATE TABLE %s PARTITION OF past_games
+			FOR VALUES FROM ('%s') TO ('%s')
+		`, partitionName, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+		
+		_, err := dbPool.Exec(ctx, createSQL)
+		if err != nil {
+			log.Err(err).Str("partition", partitionName).Msg("failed to create partition")
+			return err
+		}
+		
+		log.Info().Str("partition", partitionName).
+			Str("from", startDate.Format("2006-01-02")).
+			Str("to", endDate.Format("2006-01-02")).
+			Msg("created partition")
+		partitionsCreated++
+	}
+
+	log.Info().Int("partitions_created", partitionsCreated).Msg("partition creation complete")
+	return nil
+}
+
+// CancelledGamesCleanup deletes cancelled games older than 7 days
+func CancelledGamesCleanup() error {
+	log.Info().Msg("starting cancelled games cleanup")
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Delete cancelled games older than 7 days
+	// game_end_reason = 7 is CANCELLED
+	result, err := dbPool.Exec(ctx, `
+		DELETE FROM games 
+		WHERE game_end_reason = 7 
+		AND created_at < NOW() - INTERVAL '7 days'
+	`)
+	if err != nil {
+		return err
+	}
+
+	rowsDeleted := result.RowsAffected()
+	log.Info().Int64("games_deleted", rowsDeleted).Msg("cancelled games cleanup complete")
+	
+	return nil
 }
