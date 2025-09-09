@@ -23,9 +23,10 @@ FROM games
 WHERE uuid = @uuid;
 
 -- name: GetPastGameMetadata :one
-SELECT game_end_reason, winner_idx, game_request, quickdata, type, tournament_data
-FROM past_games
-WHERE gid = @gid AND created_at = @created_at;
+SELECT pg.game_end_reason, pg.winner_idx, gm.game_request, pg.quickdata, pg.type, gm.tournament_data
+FROM past_games pg
+JOIN game_metadata gm ON gm.game_uuid = pg.gid
+WHERE pg.gid = @gid AND pg.created_at = @created_at;
 
 -- name: GetRematchStreak :many
 SELECT DISTINCT game_uuid as gid,
@@ -119,10 +120,10 @@ WHERE uuid = @uuid;
 -- name: InsertPastGame :exec
 INSERT INTO past_games (
     gid, created_at, game_end_reason, winner_idx,
-    game_request, game_document, stats, quickdata, type, tournament_data
+    game_document, stats, quickdata, type
 ) VALUES (
     @gid, @created_at, @game_end_reason, @winner_idx,
-    @game_request, @game_document, @stats, @quickdata, @type, @tournament_data
+    @game_document, @stats, @quickdata, @type
 );
 
 -- name: InsertGamePlayer :exec
@@ -141,6 +142,18 @@ UPDATE games
 SET migration_status = @migration_status,
     updated_at = NOW()
 WHERE uuid = @uuid;
+
+-- name: InsertGameMetadata :exec
+INSERT INTO game_metadata (
+    game_uuid, created_at, game_request, tournament_data
+) VALUES (
+    @game_uuid, @created_at, @game_request, @tournament_data
+);
+
+-- name: GetGameMetadata :one
+SELECT game_uuid, created_at, game_request, tournament_data
+FROM game_metadata 
+WHERE game_uuid = @game_uuid;
 
 -- name: ClearGameDataAfterMigration :exec
 UPDATE games
@@ -166,13 +179,15 @@ ORDER BY player_index;
 SELECT gp.game_uuid, gp.score, gp.opponent_score, gp.won, gp.game_end_reason,
        gp.created_at, gp.game_type, u.username as opponent_username,
        COALESCE(pg.quickdata, '{}') as quickdata,
-       COALESCE(pg.game_request, '{}') as game_request,
+       gm.game_request,
+       gm.tournament_data,
        COALESCE(pg.winner_idx, CASE WHEN gp.won = true THEN gp.player_index
                                    WHEN gp.won = false THEN (1 - gp.player_index)
                                    ELSE -1 END) as winner_idx
 FROM game_players gp
 JOIN users u ON u.id = gp.opponent_id
 JOIN users player ON player.id = gp.player_id
+JOIN game_metadata gm ON gm.game_uuid = gp.game_uuid
 LEFT JOIN past_games pg ON pg.gid = gp.game_uuid
 WHERE LOWER(player.username) = LOWER(@username)
 ORDER BY gp.created_at DESC
@@ -206,10 +221,11 @@ ORDER BY g.created_at DESC
 LIMIT @num_games OFFSET @offset_games;
 
 -- name: GetRecentTourneyGames :many
-SELECT pg.gid, pg.quickdata, pg.game_request, pg.winner_idx, pg.game_end_reason,
-       pg.created_at, pg.type, pg.tournament_data
+SELECT pg.gid, pg.quickdata, gm.game_request, pg.winner_idx, pg.game_end_reason,
+       pg.created_at, pg.type, gm.tournament_data
 FROM past_games pg
-WHERE pg.tournament_data->>'Id' = @tourney_id::text
+JOIN game_metadata gm ON gm.game_uuid = pg.gid
+WHERE gm.tournament_data->>'Id' = @tourney_id::text
 ORDER BY pg.created_at DESC
 LIMIT @num_games OFFSET @offset_games;
 

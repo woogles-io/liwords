@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -37,24 +38,42 @@ func (s *DBStore) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ra
 	// Create queries with transaction
 	txQueries := s.queries.WithTx(tx)
 
-	// Marshal GameRequest as protojson for past_games table
+	// Marshal GameRequest as protojson for game_metadata table
 	gameRequestJSON, err := MarshalGameRequestAsJSON(g.GameReq.GameRequest)
 	if err != nil {
 		return fmt.Errorf("marshaling game request: %w", err)
 	}
 
-	// Insert into past_games
-	err = txQueries.InsertPastGame(ctx, models.InsertPastGameParams{
-		Gid:            g.GameID(),
+	// Marshal TournamentData as JSON for game_metadata
+	var tournamentDataJSON []byte
+	if g.TournamentData != nil {
+		tournamentDataJSON, err = json.Marshal(g.TournamentData)
+		if err != nil {
+			return fmt.Errorf("marshaling tournament data: %w", err)
+		}
+	}
+
+	// Insert into game_metadata first
+	err = txQueries.InsertGameMetadata(ctx, models.InsertGameMetadataParams{
+		GameUuid:       g.GameID(),
 		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-		GameEndReason:  int16(g.GameEndReason),
-		WinnerIdx:      pgtype.Int2{Int16: int16(g.WinnerIdx), Valid: g.WinnerIdx >= -1},
 		GameRequest:    gameRequestJSON,
-		GameDocument:   docJSON,
-		Stats:          *g.Stats,
-		Quickdata:      *g.Quickdata,
-		Type:           int16(g.Type),
-		TournamentData: g.TournamentData,
+		TournamentData: tournamentDataJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("inserting into game_metadata: %w", err)
+	}
+
+	// Insert into past_games (without game_request and tournament_data)
+	err = txQueries.InsertPastGame(ctx, models.InsertPastGameParams{
+		Gid:           g.GameID(),
+		CreatedAt:     pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		GameEndReason: int16(g.GameEndReason),
+		WinnerIdx:     pgtype.Int2{Int16: int16(g.WinnerIdx), Valid: g.WinnerIdx >= -1},
+		GameDocument:  docJSON,
+		Stats:         *g.Stats,
+		Quickdata:     *g.Quickdata,
+		Type:          int16(g.Type),
 	})
 	if err != nil {
 		return fmt.Errorf("inserting into past_games: %w", err)

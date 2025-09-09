@@ -108,6 +108,14 @@ type GameDocument struct {
 	Document []byte
 }
 
+type GameMetadatum struct {
+	GameUuid       string
+	CreatedAt      pgtype.Timestamptz
+	GameRequest    []byte
+	TournamentData []byte
+	CreatedAtIdx   pgtype.Timestamptz
+}
+
 type GamePlayer struct {
 	GameUuid          string
 	PlayerID          int32
@@ -157,16 +165,14 @@ type Notoriousgame struct {
 }
 
 type PastGame struct {
-	Gid            string
-	CreatedAt      pgtype.Timestamptz
-	GameEndReason  int16
-	WinnerIdx      pgtype.Int2
-	GameRequest    []byte
-	GameDocument   []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	Type           int16
-	TournamentData *entity.TournamentData
+	Gid           string
+	CreatedAt     pgtype.Timestamptz
+	GameEndReason int16
+	WinnerIdx     pgtype.Int2
+	GameDocument  []byte
+	Stats         entity.Stats
+	Quickdata     entity.Quickdata
+	Type          int16
 }
 
 type PastGames202008 struct {

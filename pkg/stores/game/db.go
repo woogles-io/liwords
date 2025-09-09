@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -203,15 +204,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 			fullGame, err := s.queries.GetGameFullData(ctx, common.ToPGTypeText(id))
 			if err != nil {
 				log.Err(err).Msg("error-get-game-full-data")
-				// If we can't get full data, it might have been partially migrated
-				// Try to fetch from past_games
-				g := models.Game{
-					ID:        basicInfo.ID,
-					Uuid:      basicInfo.Uuid,
-					CreatedAt: basicInfo.CreatedAt,
-					UpdatedAt: basicInfo.UpdatedAt,
-				}
-				return s.getFromPastGames(ctx, g, true)
+				return nil, err
 			}
 			return s.inProgressGame(fullGame, true)
 		}
@@ -344,10 +337,29 @@ func (s *DBStore) getFromPastGames(ctx context.Context, g models.Game, playTurns
 			playerDBIDs[p.PlayerIndex] = uint(p.PlayerID)
 		}
 	}
-	gr, err := ParseGameRequest(pastgame.GameRequest)
+	// Get GameRequest and TournamentData from game_metadata
+	metadata, err := s.queries.GetGameMetadata(ctx, gid)
+	if err != nil {
+		log.Err(err).Msg("error-get-game-metadata")
+		return nil, err
+	}
+
+	gr, err := ParseGameRequest(metadata.GameRequest)
 	if err != nil {
 		log.Err(err).Msg("error-unmarshalling-game-request")
 		return nil, err
+	}
+
+	// Parse tournament data from metadata
+	var tournamentData *entity.TournamentData
+	if metadata.TournamentData != nil {
+		var td entity.TournamentData
+		if err := json.Unmarshal(metadata.TournamentData, &td); err == nil {
+			tournamentData = &td
+		}
+	}
+	if tournamentData == nil {
+		tournamentData = &entity.TournamentData{}
 	}
 
 	// convert to an entity.Game
@@ -358,7 +370,7 @@ func (s *DBStore) getFromPastGames(ctx context.Context, g models.Game, playTurns
 		Stats:          &pastgame.Stats,
 		Quickdata:      &pastgame.Quickdata,
 		Type:           pb.GameType(pastgame.Type),
-		TournamentData: pastgame.TournamentData, // could be null
+		TournamentData: tournamentData,
 		PlayerDBIDs:    playerDBIDs,
 		ChangeHook:     s.gameEventChan,
 		DBID:           uint(g.ID), // Keep the original game ID
@@ -404,13 +416,6 @@ func (s *DBStore) getFromPastGames(ctx context.Context, g models.Game, playTurns
 	return entGame, nil
 }
 
-// Legacy method for backwards compatibility during migration
-func (s *DBStore) pastGame(g models.Game, playTurns bool) (*entity.Game, error) {
-	// This method is kept for legacy games that haven't been migrated yet
-	// It extracts data from the existing games table
-	return s.inProgressGame(g, playTurns)
-}
-
 // GetMetadata gets metadata about the game, but does not actually play the game.
 func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
 	// First get basic info to check migration status without unmarshaling nullable fields
@@ -454,10 +459,13 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 				winner = int32(pastMeta.WinnerIdx.Int16)
 			}
 
-			// Extract tournament info
+			// Parse tournament info from JSONB
 			var tourneyID string
-			if pastMeta.TournamentData != nil && pastMeta.TournamentData.Id != "" {
-				tourneyID = pastMeta.TournamentData.Id
+			if pastMeta.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(pastMeta.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+				}
 			}
 
 			return &pb.GameInfoResponse{
@@ -513,10 +521,13 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 				winner = int32(pastMeta.WinnerIdx.Int16)
 			}
 
-			// Extract tournament info
+			// Parse tournament info from JSONB
 			var tourneyID string
-			if pastMeta.TournamentData != nil && pastMeta.TournamentData.Id != "" {
-				tourneyID = pastMeta.TournamentData.Id
+			if pastMeta.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(pastMeta.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+				}
 			}
 
 			return &pb.GameInfoResponse{
@@ -709,17 +720,36 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 				winner = int32(g.WinnerIdx.Int16)
 			}
 
+			// Parse tournament info from JSONB
+			var tourneyID string
+			var tDiv string
+			var tRound int32
+			var tGameIndex int32
+			if g.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(g.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+					tDiv = td.Division
+					tRound = int32(td.Round)
+					tGameIndex = int32(td.GameIndex)
+				}
+			}
+
 			info := &pb.GameInfoResponse{
-				Players:         g.Quickdata.PlayerInfo,
-				GameEndReason:   pb.GameEndReason(g.GameEndReason),
-				Scores:          g.Quickdata.FinalScores,
-				Winner:          winner,
-				TimeControlName: string(timefmt),
-				CreatedAt:       timestamppb.New(g.CreatedAt.Time),
-				LastUpdate:      timestamppb.New(g.CreatedAt.Time), // Using created_at as proxy for last update
-				GameId:          g.GameUuid,
-				GameRequest:     gameRequest,
-				Type:            pb.GameType(g.GameType),
+				Players:             g.Quickdata.PlayerInfo,
+				GameEndReason:       pb.GameEndReason(g.GameEndReason),
+				Scores:              g.Quickdata.FinalScores,
+				Winner:              winner,
+				TimeControlName:     string(timefmt),
+				CreatedAt:           timestamppb.New(g.CreatedAt.Time),
+				LastUpdate:          timestamppb.New(g.CreatedAt.Time), // Using created_at as proxy for last update
+				GameId:              g.GameUuid,
+				GameRequest:         gameRequest,
+				Type:                pb.GameType(g.GameType),
+				TournamentId:        tourneyID,
+				TournamentDivision:  tDiv,
+				TournamentRound:     tRound,
+				TournamentGameIndex: tGameIndex,
 			}
 			responses = append(responses, info)
 		}
@@ -825,14 +855,17 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 				winner = int32(g.WinnerIdx.Int16)
 			}
 
-			// Extract tournament info
+			// Parse tournament info from JSONB
 			var tDiv string
 			var tRound int32
 			var tGameIndex int32
 			if g.TournamentData != nil {
-				tDiv = g.TournamentData.Division
-				tRound = int32(g.TournamentData.Round)
-				tGameIndex = int32(g.TournamentData.GameIndex)
+				var td entity.TournamentData
+				if err := json.Unmarshal(g.TournamentData, &td); err == nil {
+					tDiv = td.Division
+					tRound = int32(td.Round)
+					tGameIndex = int32(td.GameIndex)
+				}
 			}
 
 			info := &pb.GameInfoResponse{

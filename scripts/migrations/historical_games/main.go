@@ -288,14 +288,24 @@ func migrateGame(ctx context.Context, db *pgxpool.Pool, cfg *config.Config, game
 	}
 	defer tx.Rollback(ctx)
 
-	// Insert into past_games
+	// Insert into game_metadata first
+	_, err = tx.Exec(ctx, `
+		INSERT INTO game_metadata (
+			game_uuid, created_at, game_request, tournament_data
+		) VALUES ($1, $2, $3, $4)
+	`, game.UUID, game.CreatedAt, grprotoJson, game.TournamentData)
+	if err != nil {
+		return fmt.Errorf("failed to insert into game_metadata: %v", err)
+	}
+
+	// Insert into past_games (without game_request and tournament_data)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO past_games (
 			gid, created_at, game_end_reason, winner_idx,
-			game_request, game_document, stats, quickdata, type, tournament_data
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			game_document, stats, quickdata, type
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, game.UUID, game.CreatedAt, game.GameEndReason, game.WinnerIdx,
-		grprotoJson, docBytes, game.Stats, game.Quickdata, game.Type, game.TournamentData)
+		docBytes, game.Stats, game.Quickdata, game.Type)
 	if err != nil {
 		return fmt.Errorf("failed to insert into past_games: %v", err)
 	}

@@ -202,6 +202,31 @@ func (q *Queries) GetGameFullData(ctx context.Context, uuid pgtype.Text) (Game, 
 	return i, err
 }
 
+const getGameMetadata = `-- name: GetGameMetadata :one
+SELECT game_uuid, created_at, game_request, tournament_data
+FROM game_metadata 
+WHERE game_uuid = $1
+`
+
+type GetGameMetadataRow struct {
+	GameUuid       string
+	CreatedAt      pgtype.Timestamptz
+	GameRequest    []byte
+	TournamentData []byte
+}
+
+func (q *Queries) GetGameMetadata(ctx context.Context, gameUuid string) (GetGameMetadataRow, error) {
+	row := q.db.QueryRow(ctx, getGameMetadata, gameUuid)
+	var i GetGameMetadataRow
+	err := row.Scan(
+		&i.GameUuid,
+		&i.CreatedAt,
+		&i.GameRequest,
+		&i.TournamentData,
+	)
+	return i, err
+}
+
 const getGameOwner = `-- name: GetGameOwner :one
 SELECT
     agm.creator_uuid,
@@ -306,7 +331,7 @@ func (q *Queries) GetLiveGameMetadata(ctx context.Context, uuid pgtype.Text) (Ge
 }
 
 const getPastGame = `-- name: GetPastGame :one
-SELECT gid, created_at, game_end_reason, winner_idx, game_request, game_document, stats, quickdata, type, tournament_data FROM past_games WHERE gid = $1 AND created_at = $2
+SELECT gid, created_at, game_end_reason, winner_idx, game_document, stats, quickdata, type FROM past_games WHERE gid = $1 AND created_at = $2
 `
 
 type GetPastGameParams struct {
@@ -322,20 +347,19 @@ func (q *Queries) GetPastGame(ctx context.Context, arg GetPastGameParams) (PastG
 		&i.CreatedAt,
 		&i.GameEndReason,
 		&i.WinnerIdx,
-		&i.GameRequest,
 		&i.GameDocument,
 		&i.Stats,
 		&i.Quickdata,
 		&i.Type,
-		&i.TournamentData,
 	)
 	return i, err
 }
 
 const getPastGameMetadata = `-- name: GetPastGameMetadata :one
-SELECT game_end_reason, winner_idx, game_request, quickdata, type, tournament_data
-FROM past_games
-WHERE gid = $1 AND created_at = $2
+SELECT pg.game_end_reason, pg.winner_idx, gm.game_request, pg.quickdata, pg.type, gm.tournament_data
+FROM past_games pg
+JOIN game_metadata gm ON gm.game_uuid = pg.gid
+WHERE pg.gid = $1 AND pg.created_at = $2
 `
 
 type GetPastGameMetadataParams struct {
@@ -349,7 +373,7 @@ type GetPastGameMetadataRow struct {
 	GameRequest    []byte
 	Quickdata      entity.Quickdata
 	Type           int16
-	TournamentData *entity.TournamentData
+	TournamentData []byte
 }
 
 func (q *Queries) GetPastGameMetadata(ctx context.Context, arg GetPastGameMetadataParams) (GetPastGameMetadataRow, error) {
@@ -370,13 +394,15 @@ const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
 SELECT gp.game_uuid, gp.score, gp.opponent_score, gp.won, gp.game_end_reason,
        gp.created_at, gp.game_type, u.username as opponent_username,
        COALESCE(pg.quickdata, '{}') as quickdata,
-       COALESCE(pg.game_request, '{}') as game_request,
+       gm.game_request,
+       gm.tournament_data,
        COALESCE(pg.winner_idx, CASE WHEN gp.won = true THEN gp.player_index
                                    WHEN gp.won = false THEN (1 - gp.player_index)
                                    ELSE -1 END) as winner_idx
 FROM game_players gp
 JOIN users u ON u.id = gp.opponent_id
 JOIN users player ON player.id = gp.player_id
+JOIN game_metadata gm ON gm.game_uuid = gp.game_uuid
 LEFT JOIN past_games pg ON pg.gid = gp.game_uuid
 WHERE LOWER(player.username) = LOWER($1)
 ORDER BY gp.created_at DESC
@@ -400,6 +426,7 @@ type GetRecentGamesByUsernameRow struct {
 	OpponentUsername pgtype.Text
 	Quickdata        entity.Quickdata
 	GameRequest      []byte
+	TournamentData   []byte
 	WinnerIdx        pgtype.Int2
 }
 
@@ -423,6 +450,7 @@ func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGam
 			&i.OpponentUsername,
 			&i.Quickdata,
 			&i.GameRequest,
+			&i.TournamentData,
 			&i.WinnerIdx,
 		); err != nil {
 			return nil, err
@@ -516,10 +544,11 @@ func (q *Queries) GetRecentGamesByUsernameOld(ctx context.Context, arg GetRecent
 }
 
 const getRecentTourneyGames = `-- name: GetRecentTourneyGames :many
-SELECT pg.gid, pg.quickdata, pg.game_request, pg.winner_idx, pg.game_end_reason,
-       pg.created_at, pg.type, pg.tournament_data
+SELECT pg.gid, pg.quickdata, gm.game_request, pg.winner_idx, pg.game_end_reason,
+       pg.created_at, pg.type, gm.tournament_data
 FROM past_games pg
-WHERE pg.tournament_data->>'Id' = $1::text
+JOIN game_metadata gm ON gm.game_uuid = pg.gid
+WHERE gm.tournament_data->>'Id' = $1::text
 ORDER BY pg.created_at DESC
 LIMIT $3 OFFSET $2
 `
@@ -538,7 +567,7 @@ type GetRecentTourneyGamesRow struct {
 	GameEndReason  int16
 	CreatedAt      pgtype.Timestamptz
 	Type           int16
-	TournamentData *entity.TournamentData
+	TournamentData []byte
 }
 
 func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourneyGamesParams) ([]GetRecentTourneyGamesRow, error) {
@@ -706,6 +735,31 @@ func (q *Queries) GetRematchStreakOld(ctx context.Context, origReqID string) ([]
 	return items, nil
 }
 
+const insertGameMetadata = `-- name: InsertGameMetadata :exec
+INSERT INTO game_metadata (
+    game_uuid, created_at, game_request, tournament_data
+) VALUES (
+    $1, $2, $3, $4
+)
+`
+
+type InsertGameMetadataParams struct {
+	GameUuid       string
+	CreatedAt      pgtype.Timestamptz
+	GameRequest    []byte
+	TournamentData []byte
+}
+
+func (q *Queries) InsertGameMetadata(ctx context.Context, arg InsertGameMetadataParams) error {
+	_, err := q.db.Exec(ctx, insertGameMetadata,
+		arg.GameUuid,
+		arg.CreatedAt,
+		arg.GameRequest,
+		arg.TournamentData,
+	)
+	return err
+}
+
 const insertGamePlayer = `-- name: InsertGamePlayer :exec
 INSERT INTO game_players (
     game_uuid, player_id, player_index, score, won, game_end_reason,
@@ -758,24 +812,22 @@ func (q *Queries) InsertGamePlayer(ctx context.Context, arg InsertGamePlayerPara
 const insertPastGame = `-- name: InsertPastGame :exec
 INSERT INTO past_games (
     gid, created_at, game_end_reason, winner_idx,
-    game_request, game_document, stats, quickdata, type, tournament_data
+    game_document, stats, quickdata, type
 ) VALUES (
     $1, $2, $3, $4,
-    $5, $6, $7, $8, $9, $10
+    $5, $6, $7, $8
 )
 `
 
 type InsertPastGameParams struct {
-	Gid            string
-	CreatedAt      pgtype.Timestamptz
-	GameEndReason  int16
-	WinnerIdx      pgtype.Int2
-	GameRequest    []byte
-	GameDocument   []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	Type           int16
-	TournamentData *entity.TournamentData
+	Gid           string
+	CreatedAt     pgtype.Timestamptz
+	GameEndReason int16
+	WinnerIdx     pgtype.Int2
+	GameDocument  []byte
+	Stats         entity.Stats
+	Quickdata     entity.Quickdata
+	Type          int16
 }
 
 func (q *Queries) InsertPastGame(ctx context.Context, arg InsertPastGameParams) error {
@@ -784,12 +836,10 @@ func (q *Queries) InsertPastGame(ctx context.Context, arg InsertPastGameParams) 
 		arg.CreatedAt,
 		arg.GameEndReason,
 		arg.WinnerIdx,
-		arg.GameRequest,
 		arg.GameDocument,
 		arg.Stats,
 		arg.Quickdata,
 		arg.Type,
-		arg.TournamentData,
 	)
 	return err
 }
