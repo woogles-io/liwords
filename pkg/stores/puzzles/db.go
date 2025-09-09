@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	macondogame "github.com/domino14/macondo/game"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -753,28 +752,30 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 		ids, err := s.queries.GetPotentialPuzzleGamesAvoidBots(ctx, models.GetPotentialPuzzleGamesAvoidBotsParams{
 			CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 			CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-			Request: entity.GameRequest{GameRequest: &ipc.GameRequest{
-				Lexicon: lexicon,
-				Rules: &ipc.GameRules{
-					VariantName: string(macondogame.VarClassic),
-				}}},
-			Limit:  int32(limit),
-			Offset: 0,
+			Column3:     lexicon,
+			Limit:       int32(limit),
+			Offset:      0,
 		})
-		return ids, err
+		// Convert []string to []pgtype.Text for backwards compatibility
+		result := make([]pgtype.Text, len(ids))
+		for i, id := range ids {
+			result[i] = pgtype.Text{String: id, Valid: true}
+		}
+		return result, err
 	}
 	ids, err := s.queries.GetPotentialPuzzleGames(ctx, models.GetPotentialPuzzleGamesParams{
 		CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 		CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-		Request: entity.GameRequest{GameRequest: &ipc.GameRequest{
-			Lexicon: lexicon,
-			Rules: &ipc.GameRules{
-				VariantName: string(macondogame.VarClassic),
-			}}},
-		Limit:  int32(limit),
-		Offset: 0,
+		Column3:     lexicon,
+		Limit:       int32(limit),
+		Offset:      0,
 	})
-	return ids, err
+	// Convert []string to []pgtype.Text for backwards compatibility
+	result := make([]pgtype.Text, len(ids))
+	for i, id := range ids {
+		result[i] = pgtype.Text{String: id, Valid: true}
+	}
+	return result, err
 }
 
 func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {

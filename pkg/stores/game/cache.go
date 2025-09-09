@@ -26,12 +26,12 @@ type backingStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error)
-	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
+	MigrateGameToPastGames(ctx context.Context, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error
 }
 
 const (
@@ -217,10 +217,6 @@ func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error
 	return games, err
 }
 
-func (c *Cache) Count(ctx context.Context) (int64, error) {
-	return c.backing.Count(ctx)
-}
-
 func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
 }
@@ -235,4 +231,8 @@ func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error)
 
 func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
 	return c.backing.GetHistory(ctx, id)
+}
+
+func (c *Cache) MigrateGameToPastGames(ctx context.Context, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error {
+	return c.backing.MigrateGameToPastGames(ctx, g, ratingsBefore, ratingsAfter)
 }

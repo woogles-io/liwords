@@ -67,29 +67,30 @@ type Following struct {
 }
 
 type Game struct {
-	ID             int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	DeletedAt      pgtype.Timestamptz
-	Uuid           pgtype.Text
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Request        entity.GameRequest
-	History        []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	ReadyFlag      pgtype.Int8
-	MetaEvents     entity.MetaEventData
-	Type           pgtype.Int4
-	GameRequest    entity.GameRequest
-	HistoryInS3    bool
+	ID              int32
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	DeletedAt       pgtype.Timestamptz
+	Uuid            pgtype.Text
+	Player0ID       pgtype.Int4
+	Player1ID       pgtype.Int4
+	Timers          entity.Timers
+	Started         pgtype.Bool
+	GameEndReason   pgtype.Int4
+	WinnerIdx       pgtype.Int4
+	LoserIdx        pgtype.Int4
+	Request         []byte
+	History         []byte
+	Stats           entity.Stats
+	Quickdata       entity.Quickdata
+	TournamentData  entity.TournamentData
+	TournamentID    pgtype.Text
+	ReadyFlag       pgtype.Int8
+	MetaEvents      entity.MetaEventData
+	Type            pgtype.Int4
+	GameRequest     []byte
+	HistoryInS3     bool
+	MigrationStatus pgtype.Int2
 }
 
 type GameComment struct {
@@ -107,10 +108,29 @@ type GameDocument struct {
 	Document []byte
 }
 
+type GameMetadatum struct {
+	GameUuid       string
+	CreatedAt      pgtype.Timestamptz
+	GameRequest    []byte
+	TournamentData []byte
+	CreatedAtIdx   pgtype.Timestamptz
+}
+
 type GamePlayer struct {
-	GameID      int32
-	PlayerID    int32
-	PlayerIndex pgtype.Int2
+	GameUuid          string
+	PlayerID          int32
+	PlayerIndex       int16
+	Score             int32
+	Won               pgtype.Bool
+	GameEndReason     int16
+	RatingBefore      pgtype.Int4
+	RatingAfter       pgtype.Int4
+	RatingDelta       pgtype.Int4
+	CreatedAt         pgtype.Timestamptz
+	GameType          int16
+	OpponentID        int32
+	OpponentScore     int32
+	OriginalRequestID pgtype.Text
 }
 
 type Integration struct {
@@ -142,6 +162,940 @@ type Notoriousgame struct {
 	PlayerID  pgtype.Text
 	Type      pgtype.Int4
 	Timestamp pgtype.Int8
+}
+
+type PastGame struct {
+	Gid           string
+	CreatedAt     pgtype.Timestamptz
+	GameEndReason int16
+	WinnerIdx     pgtype.Int2
+	GameDocument  []byte
+	Stats         entity.Stats
+	Quickdata     entity.Quickdata
+	Type          int16
+}
+
+type PastGames202008 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202009 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202010 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202011 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202012 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202101 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202102 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202103 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202104 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202105 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202106 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202107 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202108 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202109 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202110 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202111 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202112 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202201 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202202 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202203 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202204 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202205 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202206 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202207 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202208 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202209 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202210 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202211 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202212 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202301 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202302 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202303 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202304 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202305 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202306 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202307 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202308 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202309 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202310 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202311 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202312 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202401 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202402 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202403 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202404 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202405 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202406 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202407 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202408 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202409 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202410 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202411 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202412 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202501 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202502 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202503 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202504 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202505 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202506 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202507 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202508 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202509 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202510 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202511 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202512 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202601 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202602 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202603 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202604 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202605 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
+}
+
+type PastGames202606 struct {
+	Gid            string
+	CreatedAt      pgtype.Timestamptz
+	GameEndReason  int16
+	WinnerIdx      pgtype.Int2
+	GameRequest    []byte
+	GameDocument   []byte
+	Stats          []byte
+	Quickdata      []byte
+	Type           int16
+	TournamentData []byte
 }
 
 type Permission struct {

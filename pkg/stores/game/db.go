@@ -2,26 +2,23 @@ package game
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
+	"os"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-	"gorm.io/plugin/opentelemetry/tracing"
-
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 
@@ -32,14 +29,60 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// GameRequest utility functions for handling both proto and protojson formats
+
+// ParseGameRequest parses GameRequest from bytes, trying proto format first, then protojson
+func ParseGameRequest(data []byte) (*pb.GameRequest, error) {
+	if len(data) == 0 {
+		return &pb.GameRequest{}, nil
+	}
+
+	gr := &pb.GameRequest{}
+
+	// Try proto format first (binary data from live games)
+	err := proto.Unmarshal(data, gr)
+	if err == nil {
+		return gr, nil
+	}
+
+	// Fall back to protojson format (from past games)
+	err = protojson.Unmarshal(data, gr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse GameRequest as both proto and protojson: %w", err)
+	}
+
+	return gr, nil
+}
+
+// MarshalGameRequestAsProto marshals GameRequest as binary proto for live games table
+func MarshalGameRequestAsProto(gr *pb.GameRequest) ([]byte, error) {
+	if gr == nil {
+		return nil, fmt.Errorf("GameRequest is nil")
+	}
+	return proto.Marshal(gr)
+}
+
+// MarshalGameRequestAsJSON marshals GameRequest as protojson for past games table
+func MarshalGameRequestAsJSON(gr *pb.GameRequest) ([]byte, error) {
+	if gr == nil {
+		return nil, fmt.Errorf("GameRequest is nil")
+	}
+	return protojson.Marshal(gr)
+}
+
 const (
 	MaxRecentGames = 1000
+
+	// Migration status constants
+	MigrationStatusNotMigrated = 0
+	MigrationStatusMigrated    = 1
+	MigrationStatusCleaned     = 2
 )
 
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
 	cfg     *config.Config
-	db      *gorm.DB
+	dbPool  *pgxpool.Pool
 	queries *models.Queries
 
 	userStore pkguser.Store
@@ -48,60 +91,75 @@ type DBStore struct {
 	// from the database.
 	// All game events go down the same channel.
 	gameEventChan chan<- *entity.EventWrapper
+
+	// Feature flag to control whether to use past_games table
+	// When false, uses old queries against games table
+	// When true, uses new queries against past_games/game_players tables
+	usePastGamesTable bool
 }
 
-type game struct {
-	gorm.Model
-	UUID string `gorm:"type:varchar(24);index"`
+// type game struct {
+// 	gorm.Model
+// 	UUID string `gorm:"type:varchar(24);index"`
 
-	Type      pb.GameType
-	Player0ID uint `gorm:"foreignKey;index"`
-	// Player0   user.User
+// 	Type      pb.GameType
+// 	Player0ID uint `gorm:"foreignKey;index"`
+// 	// Player0   user.User
 
-	Player1ID uint `gorm:"foreignKey;index"`
-	// Player1   user.User
+// 	Player1ID uint `gorm:"foreignKey;index"`
+// 	// Player1   user.User
 
-	ReadyFlag uint // When both players are ready, this game starts.
+// 	ReadyFlag uint // When both players are ready, this game starts.
 
-	Timers datatypes.JSON // A JSON blob containing the game timers.
+// 	Timers datatypes.JSON // A JSON blob containing the game timers.
 
-	Started       bool
-	GameEndReason int `gorm:"index"`
-	WinnerIdx     int
-	LoserIdx      int
+// 	Started       bool
+// 	GameEndReason int `gorm:"index"`
+// 	WinnerIdx     int
+// 	LoserIdx      int
 
-	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
+// 	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
 
-	// Protobuf representations of the game request and history.
-	Request []byte
-	History []byte
-	// Meta Events (abort, adjourn, adjudicate, etc requests)
-	MetaEvents datatypes.JSON
+// 	// Protobuf representations of the game request and history.
+// 	Request []byte
+// 	History []byte
+// 	// Meta Events (abort, adjourn, adjudicate, etc requests)
+// 	MetaEvents datatypes.JSON
 
-	Stats datatypes.JSON
+// 	Stats datatypes.JSON
 
-	// This is purposefully not a foreign key. It can be empty/NULL for
-	// most games.
-	TournamentID   string `gorm:"index"`
-	TournamentData datatypes.JSON
-}
+// 	// This is purposefully not a foreign key. It can be empty/NULL for
+// 	// most games.
+// 	TournamentID   string `gorm:"index"`
+// 	TournamentData datatypes.JSON
+// }
 
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.Pool) (*DBStore, error) {
-
-	db, err := gorm.Open(postgres.Open(config.DBConnDSN), &gorm.Config{Logger: common.GormLogger})
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Use(tracing.NewPlugin()); err != nil {
-		return nil, err
-	}
 	// Note: We need to manually add the following index on production:
 	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
-	// I don't know how to do this with GORM. This makes the GetRematchStreak function
-	// much faster.
 
-	return &DBStore{db: db, cfg: config, userStore: userStore, queries: models.New(dbPool)}, nil
+	// Check environment variable for feature flag
+	// Default to false (use old queries) for backward compatibility
+	usePastGames := false
+	if envVal := os.Getenv("USE_PAST_GAMES_TABLE"); envVal == "true" {
+		usePastGames = true
+		log.Info().Bool("use_past_games", usePastGames).Msg("past-games-table-feature-flag")
+	}
+
+	return &DBStore{
+		cfg:               config,
+		dbPool:            dbPool,
+		userStore:         userStore,
+		queries:           models.New(dbPool),
+		usePastGamesTable: usePastGames,
+	}, nil
+}
+
+// SetUsePastGamesTable allows runtime configuration of the feature flag
+func (s *DBStore) SetUsePastGamesTable(use bool) {
+	s.usePastGamesTable = use
+	log.Info().Bool("use_past_games", use).Msg("updated-past-games-table-feature-flag")
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
@@ -120,13 +178,53 @@ func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
 // Only API nodes that have this game in its cache should respond to requests.
 // XXX: The above comment is obsolete and we will likely redo the way we do caches in the future.
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
-
-	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
+	// First get basic info to check migration status without unmarshaling nullable fields
+	basicInfo, err := s.queries.GetGameBasicInfo(ctx, common.ToPGTypeText(id))
 	if err != nil {
-		log.Err(err).Msg("error-get-game")
+		log.Err(err).Msg("error-get-game-basic-info")
 		return nil, err
 	}
+
+	// Check if the game has ended
+	if basicInfo.GameEndReason.Valid && basicInfo.GameEndReason.Int32 != int32(pb.GameEndReason_NONE) {
+		// Game has ended, check migration status
+		if basicInfo.MigrationStatus.Valid && basicInfo.MigrationStatus.Int16 >= MigrationStatusMigrated {
+			// Game has been migrated to past_games, fetch from there
+			// We need to create a minimal Game struct to pass to getFromPastGames
+			g := models.Game{
+				ID:        basicInfo.ID,
+				Uuid:      basicInfo.Uuid,
+				CreatedAt: basicInfo.CreatedAt,
+				UpdatedAt: basicInfo.UpdatedAt,
+			}
+			return s.getFromPastGames(ctx, g, true)
+		} else {
+			// Game ended but not yet migrated (legacy data)
+			// Try to get full data - this should work for non-migrated games
+			fullGame, err := s.queries.GetGameFullData(ctx, common.ToPGTypeText(id))
+			if err != nil {
+				log.Err(err).Msg("error-get-game-full-data")
+				return nil, err
+			}
+			return s.inProgressGame(fullGame, true)
+		}
+	} else {
+		// Game is still in progress, get full data
+		fullGame, err := s.queries.GetGameFullData(ctx, common.ToPGTypeText(id))
+		if err != nil {
+			log.Err(err).Msg("error-get-game-full-data-in-progress")
+			return nil, err
+		}
+		return s.inProgressGame(fullGame, true)
+	}
+}
+
+func (s *DBStore) inProgressGame(g models.Game, playTurns bool) (*entity.Game, error) {
 	// convert to an entity.Game
+	gr, err := ParseGameRequest(g.Request)
+	if err != nil {
+		return nil, err
+	}
 	entGame := &entity.Game{
 		Started:        g.Started.Bool,
 		Timers:         g.Timers,
@@ -142,29 +240,33 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		Type:           pb.GameType(g.Type.Int32),
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
-		GameReq:        &g.Request, // move to g.GameRequest after JSON migration
-
+		GameReq:        &entity.GameRequest{GameRequest: gr},
 	}
 	entGame.SetTimerModule(&entity.GameTimer{})
-
-	// Then unmarshal the history and start a game from it.
-	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(g.History, hist)
-	if err != nil {
-		return nil, err
+	if playTurns {
+		// Then unmarshal the history and start a game from it.
+		hist := &macondopb.GameHistory{}
+		err := proto.Unmarshal(g.History, hist)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+		return s.playHistory(entGame, hist)
 	}
-	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+	return entGame, nil
+}
 
+func (s *DBStore) playHistory(entGame *entity.Game, hist *macondopb.GameHistory) (*entity.Game, error) {
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
-		lexicon = g.Request.Lexicon
+		lexicon = entGame.GameReq.Lexicon
 	}
 
 	rules, err := macondogame.NewBasicGameRules(
-		s.cfg.MacondoConfig(), lexicon, g.Request.Rules.BoardLayoutName,
-		g.Request.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(g.Request.Rules.VariantName))
+		s.cfg.MacondoConfig(), lexicon, entGame.GameReq.Rules.BoardLayoutName,
+		entGame.GameReq.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(entGame.GameReq.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
@@ -208,67 +310,370 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	return entGame, nil
 }
 
-// GetMetadata gets metadata about the game, but does not actually play the game.
-func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
-	g := &game{}
+func (s *DBStore) getFromPastGames(ctx context.Context, g models.Game, playTurns bool) (*entity.Game, error) {
+	gid := g.Uuid.String
+	createdAt := g.CreatedAt.Time
 
-	result := s.db.Where("uuid = ?", id).First(g)
-	if result.Error != nil {
-		return nil, result.Error
+	pastgame, err := s.queries.GetPastGame(ctx, models.GetPastGameParams{
+		Gid:       gid,
+		CreatedAt: pgtype.Timestamptz{Time: createdAt, Valid: true},
+	})
+	if err != nil {
+		log.Err(err).Msg("error-get-past-game")
+		return nil, err
 	}
 
-	return convertGameToInfoResponse(g)
+	// Get player IDs from game_players table
+	players, err := s.queries.GetGamePlayers(ctx, gid)
+	if err != nil {
+		log.Err(err).Msg("error-get-game-players")
+		return nil, err
+	}
 
+	// Map players by index
+	var playerDBIDs [2]uint
+	for _, p := range players {
+		if p.PlayerIndex >= 0 && p.PlayerIndex < 2 {
+			playerDBIDs[p.PlayerIndex] = uint(p.PlayerID)
+		}
+	}
+	// Get GameRequest and TournamentData from game_metadata
+	metadata, err := s.queries.GetGameMetadata(ctx, gid)
+	if err != nil {
+		log.Err(err).Msg("error-get-game-metadata")
+		return nil, err
+	}
+
+	gr, err := ParseGameRequest(metadata.GameRequest)
+	if err != nil {
+		log.Err(err).Msg("error-unmarshalling-game-request")
+		return nil, err
+	}
+
+	// Parse tournament data from metadata
+	var tournamentData *entity.TournamentData
+	if metadata.TournamentData != nil {
+		var td entity.TournamentData
+		if err := json.Unmarshal(metadata.TournamentData, &td); err == nil {
+			tournamentData = &td
+		}
+	}
+	if tournamentData == nil {
+		tournamentData = &entity.TournamentData{}
+	}
+
+	// convert to an entity.Game
+	entGame := &entity.Game{
+		CreatedAt:      pastgame.CreatedAt.Time,
+		GameEndReason:  pb.GameEndReason(pastgame.GameEndReason),
+		GameReq:        &entity.GameRequest{GameRequest: gr},
+		Stats:          &pastgame.Stats,
+		Quickdata:      &pastgame.Quickdata,
+		Type:           pb.GameType(pastgame.Type),
+		TournamentData: tournamentData,
+		PlayerDBIDs:    playerDBIDs,
+		ChangeHook:     s.gameEventChan,
+		DBID:           uint(g.ID), // Keep the original game ID
+	}
+
+	entGame.SetTimerModule(&entity.GameTimer{})
+
+	winnerIdx := pastgame.WinnerIdx
+	if winnerIdx.Valid {
+		entGame.WinnerIdx = int(winnerIdx.Int16)
+		switch entGame.WinnerIdx {
+		case 0:
+			entGame.LoserIdx = 1
+		case 1:
+			entGame.LoserIdx = 0
+		case -1:
+			entGame.LoserIdx = -1
+		default:
+			log.Err(fmt.Errorf("invalid winner index: %d", entGame.WinnerIdx)).Msg("invalid-winner-index")
+			return nil, fmt.Errorf("invalid winner index: %d", entGame.WinnerIdx)
+		}
+	}
+
+	if playTurns {
+		docbts := pastgame.GameDocument
+		if docbts != nil {
+			doc := &pb.GameDocument{}
+			err = protojson.Unmarshal(docbts, doc)
+			if err != nil {
+				log.Err(err).Msg("error-unmarshalling-game-document")
+				return nil, err
+			}
+			gh, err := utilities.ToGameHistory(doc, s.cfg)
+			if err != nil {
+				log.Err(err).Msg("error-converting-game-document")
+				return nil, err
+			}
+			return s.playHistory(entGame, gh)
+		}
+		return nil, fmt.Errorf("game document is nil")
+	}
+
+	return entGame, nil
 }
 
-func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
-	games := []*game{}
-	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Raw(`SELECT uuid, winner_idx, quickdata FROM games where quickdata->>'o' = ?
-		AND game_end_reason not in (?, ?, ?) ORDER BY created_at desc`, originalRequestId,
-		pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).Scan(&games)
-	if result.Error != nil {
-		return nil, result.Error
+// GetMetadata gets metadata about the game, but does not actually play the game.
+func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
+	// First get basic info to check migration status without unmarshaling nullable fields
+	basicInfo, err := s.queries.GetGameBasicInfo(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		log.Err(err).Msg("error-get-game-basic-info-in-get-metadata")
+		return nil, err
 	}
 
-	resp := &gs.StreakInfoResponse{
-		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, len(games)),
-	}
+	// Check if the game has ended and been migrated
+	if basicInfo.GameEndReason.Valid && basicInfo.GameEndReason.Int32 != int32(pb.GameEndReason_NONE) {
+		// Game has ended, check migration status
+		if basicInfo.MigrationStatus.Valid && basicInfo.MigrationStatus.Int16 >= MigrationStatusMigrated {
+			// Game has been migrated to past_games, fetch from there directly
+			pastMeta, err := s.queries.GetPastGameMetadata(ctx, models.GetPastGameMetadataParams{
+				Gid:       id,
+				CreatedAt: pgtype.Timestamptz{Time: basicInfo.CreatedAt.Time, Valid: true},
+			})
+			if err != nil {
+				log.Err(err).Msg("error-get-past-game-metadata-migrated")
+				return nil, err
+			}
 
-	if result.RowsAffected <= 0 {
-		return resp, nil
-	}
+			gr, err := ParseGameRequest(pastMeta.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-unmarshalling-game-request")
+				return nil, err
+			}
 
-	for idx, g := range games {
-		var mdata entity.Quickdata
-		err := json.Unmarshal(g.Quickdata, &mdata)
-		if err != nil {
-			log.Debug().Err(err).Msg("convert-game-quickdata")
-			// If it's empty or unconvertible don't quit. We need this
-			// for backwards compatibility.
-		}
-		if idx == 0 {
-			playersInfo := make([]*gs.StreakInfoResponse_PlayerInfo, len(mdata.PlayerInfo))
-			for i, p := range mdata.PlayerInfo {
-				playersInfo[i] = &gs.StreakInfoResponse_PlayerInfo{
-					Nickname: p.Nickname,
-					Uuid:     p.UserId,
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gr != nil {
+				tc, _, err := entity.VariantFromGameReq(gr)
+				if err == nil {
+					timefmt = tc
 				}
 			}
-			sort.Slice(playersInfo, func(i, j int) bool { return playersInfo[i].Nickname > playersInfo[j].Nickname })
-			resp.PlayersInfo = playersInfo
-		}
-		winner := g.WinnerIdx
-		if len(resp.PlayersInfo) > 0 && len(mdata.PlayerInfo) > 0 &&
-			resp.PlayersInfo[0].Nickname != mdata.PlayerInfo[0].Nickname {
 
-			if winner != -1 {
-				winner = 1 - winner
+			winner := int32(-1)
+			if pastMeta.WinnerIdx.Valid {
+				winner = int32(pastMeta.WinnerIdx.Int16)
+			}
+
+			// Parse tournament info from JSONB
+			var tourneyID string
+			if pastMeta.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(pastMeta.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+				}
+			}
+
+			return &pb.GameInfoResponse{
+				Players:         pastMeta.Quickdata.PlayerInfo,
+				GameEndReason:   pb.GameEndReason(pastMeta.GameEndReason),
+				Scores:          pastMeta.Quickdata.FinalScores,
+				Winner:          winner,
+				TimeControlName: string(timefmt),
+				CreatedAt:       timestamppb.New(basicInfo.CreatedAt.Time),
+				LastUpdate:      timestamppb.New(basicInfo.UpdatedAt.Time),
+				GameId:          id,
+				GameRequest:     gr,
+				TournamentId:    tourneyID,
+				Type:            pb.GameType(pastMeta.Type),
+			}, nil
+		}
+	}
+
+	// Game is either in progress or ended but not migrated yet
+	// Try to get metadata from games table
+	g, err := s.queries.GetLiveGameMetadata(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		// If this fails for an ended game, it might be a legacy migration without proper status
+		// (migrated to past_games but migration_status not set), so try past_games as fallback
+		if err == pgx.ErrNoRows || basicInfo.GameEndReason.Valid && basicInfo.GameEndReason.Int32 != int32(pb.GameEndReason_NONE) {
+			// Try to get from past_games as fallback for legacy migrations
+			pastMeta, err := s.queries.GetPastGameMetadata(ctx, models.GetPastGameMetadataParams{
+				Gid:       id,
+				CreatedAt: pgtype.Timestamptz{Time: basicInfo.CreatedAt.Time, Valid: true},
+			})
+			if err != nil {
+				log.Err(err).Msg("error-get-past-game-metadata-fallback")
+				return nil, err
+			}
+
+			gr, err := ParseGameRequest(pastMeta.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-unmarshalling-game-request")
+				return nil, err
+			}
+
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gr != nil {
+				tc, _, err := entity.VariantFromGameReq(gr)
+				if err == nil {
+					timefmt = tc
+				}
+			}
+
+			winner := int32(-1)
+			if pastMeta.WinnerIdx.Valid {
+				winner = int32(pastMeta.WinnerIdx.Int16)
+			}
+
+			// Parse tournament info from JSONB
+			var tourneyID string
+			if pastMeta.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(pastMeta.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+				}
+			}
+
+			return &pb.GameInfoResponse{
+				Players:         pastMeta.Quickdata.PlayerInfo,
+				GameEndReason:   pb.GameEndReason(pastMeta.GameEndReason),
+				Scores:          pastMeta.Quickdata.FinalScores,
+				Winner:          winner,
+				TimeControlName: string(timefmt),
+				CreatedAt:       timestamppb.New(basicInfo.CreatedAt.Time),
+				LastUpdate:      timestamppb.New(basicInfo.UpdatedAt.Time),
+				GameId:          id,
+				GameRequest:     gr,
+				TournamentId:    tourneyID,
+				Type:            pb.GameType(pastMeta.Type),
+			}, nil
+		}
+		log.Err(err).Msg("error-get-live-game-metadata")
+		return nil, err
+	}
+
+	// Successfully got metadata from games table
+	// Note that the game request is stored as proto in the current games
+	// table, but as protojson in past games table. We will likely migrate
+	// the current games table to use protojson as well in the future.
+	gr, err := ParseGameRequest(g.Request)
+	if err != nil {
+		log.Err(err).Msg("error-unmarshalling-game-request")
+		return nil, err
+	}
+
+	// Get time control name
+	timefmt := entity.TCRegular
+	if gr != nil {
+		tc, _, err := entity.VariantFromGameReq(gr)
+		if err == nil {
+			timefmt = tc
+		}
+	}
+
+	// Extract tournament info
+	var tourneyID string
+	if g.TournamentData.Id != "" {
+		tourneyID = g.TournamentData.Id
+	}
+
+	return &pb.GameInfoResponse{
+		Players:         g.Quickdata.PlayerInfo,
+		GameEndReason:   pb.GameEndReason(g.GameEndReason.Int32),
+		Scores:          g.Quickdata.FinalScores,
+		Winner:          int32(g.WinnerIdx.Int32),
+		TimeControlName: string(timefmt),
+		CreatedAt:       timestamppb.New(g.CreatedAt.Time),
+		LastUpdate:      timestamppb.New(g.UpdatedAt.Time),
+		GameId:          g.Uuid.String,
+		GameRequest:     gr,
+		TournamentId:    tourneyID,
+		Type:            pb.GameType(g.Type.Int32),
+	}, nil
+}
+
+// func (s *DBStore)
+
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
+	resp := &gs.StreakInfoResponse{}
+
+	if s.usePastGamesTable {
+		// New path: use game_players table
+		games, err := s.queries.GetRematchStreak(ctx, originalRequestId)
+		if err != nil {
+			return nil, err
+		}
+
+		resp.Streak = make([]*gs.StreakInfoResponse_SingleGameInfo, len(games))
+
+		if len(games) == 0 {
+			return resp, nil
+		}
+
+		// Get player info from the first game from past_games table
+		firstGameID := games[0].Gid
+
+		// Get the created_at timestamp from games table to query past_games
+		gameRow, err := s.queries.GetGameBasicInfo(ctx, common.ToPGTypeText(firstGameID))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get game for streak: %w", err)
+		}
+
+		pastGame, err := s.queries.GetPastGame(ctx, models.GetPastGameParams{
+			Gid:       firstGameID,
+			CreatedAt: pgtype.Timestamptz{Time: gameRow.CreatedAt.Time, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get past game for streak: %w", err)
+		}
+
+		// Extract player info from quickdata
+		if len(pastGame.Quickdata.PlayerInfo) >= 2 {
+			resp.PlayersInfo = []*gs.StreakInfoResponse_PlayerInfo{
+				{Nickname: pastGame.Quickdata.PlayerInfo[0].Nickname, Uuid: pastGame.Quickdata.PlayerInfo[0].UserId},
+				{Nickname: pastGame.Quickdata.PlayerInfo[1].Nickname, Uuid: pastGame.Quickdata.PlayerInfo[1].UserId},
 			}
 		}
-		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
-			GameId: g.UUID,
-			Winner: int32(winner),
+
+		for idx, g := range games {
+			resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
+				GameId: g.Gid,
+				Winner: g.WinnerIdx,
+			}
+		}
+	} else {
+		// Old path: use games table directly
+		games, err := s.queries.GetRematchStreakOld(ctx, originalRequestId)
+		if err != nil {
+			return nil, err
+		}
+
+		resp.Streak = make([]*gs.StreakInfoResponse_SingleGameInfo, len(games))
+
+		if len(games) == 0 {
+			return resp, nil
+		}
+
+		// Get player info from the first game
+		firstGameID := games[0].Gid.String
+		firstGame, err := s.queries.GetGameFullData(ctx, common.ToPGTypeText(firstGameID))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get first game for streak: %w", err)
+		}
+
+		// Extract player info from quickdata
+		if len(firstGame.Quickdata.PlayerInfo) >= 2 {
+			resp.PlayersInfo = []*gs.StreakInfoResponse_PlayerInfo{
+				{Nickname: firstGame.Quickdata.PlayerInfo[0].Nickname, Uuid: firstGame.Quickdata.PlayerInfo[0].UserId},
+				{Nickname: firstGame.Quickdata.PlayerInfo[1].Nickname, Uuid: firstGame.Quickdata.PlayerInfo[1].UserId},
+			}
+		}
+
+		for idx, g := range games {
+			winner := int32(-1)
+			if g.WinnerIdx.Valid {
+				winner = g.WinnerIdx.Int32
+			}
+			resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
+				GameId: g.Gid.String,
+				Winner: winner,
+			}
 		}
 	}
 
@@ -279,375 +684,479 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
-	ctxDB := s.db.WithContext(ctx)
-	var games []*game
 
-	if err := ctxDB.Transaction(func(tx *gorm.DB) error {
+	var responses []*pb.GameInfoResponse
 
-		var userId int64
-		if results := tx.Raw(
-			"select id from users where lower(username) = lower(?)",
-			username).
-			Scan(&userId); results.Error != nil {
-
-			return results.Error
-		} else if results.RowsAffected != 1 {
-			// Note: With gorm, Scan does not return an error when the row is not found.
-			// No users means no games.
-			// There should already be a unique key on (lower(username)), so there cannot be multiple matches.
-			return nil
+	if s.usePastGamesTable {
+		// New path: use game_players and past_games tables
+		games, err := s.queries.GetRecentGamesByUsername(ctx, models.GetRecentGamesByUsernameParams{
+			Username:    username,
+			OffsetGames: int32(offset),
+			NumGames:    int32(numGames),
+		})
+		if err != nil {
+			return nil, err
 		}
 
-		// Note: The query now sorts by id. It used to sort by created_at, which was not indexed.
-		// Note: A partial index may be helpful for the few players with the most number of completed games.
-		// Note: This query only selects ids, to reduce the amount of work required by the db to paginate.
-		var gameIds []int64
-		if results := tx.Raw(
-			`select id from games where (player0_id = ? or player1_id = ?)
-			and game_end_reason not in (?, ?, ?) order by id desc limit ? offset ?`,
-			userId, userId,
-			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
-			Find(&gameIds); results.Error != nil {
+		for _, g := range games {
+			// Parse the GameRequest from bytes
+			gameRequest, err := ParseGameRequest(g.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-parsing-game-request")
+				continue // Skip this game if we can't parse its request
+			}
 
-			return results.Error
-		} else if results.RowsAffected == 0 {
-			// No game ids means no games.
-			return nil
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gameRequest != nil {
+				tc, _, err := entity.VariantFromGameReq(gameRequest)
+				if err == nil {
+					timefmt = tc
+				}
+			}
+
+			winner := int32(-1)
+			if g.WinnerIdx.Valid {
+				winner = int32(g.WinnerIdx.Int16)
+			}
+
+			// Parse tournament info from JSONB
+			var tourneyID string
+			var tDiv string
+			var tRound int32
+			var tGameIndex int32
+			if g.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(g.TournamentData, &td); err == nil && td.Id != "" {
+					tourneyID = td.Id
+					tDiv = td.Division
+					tRound = int32(td.Round)
+					tGameIndex = int32(td.GameIndex)
+				}
+			}
+
+			info := &pb.GameInfoResponse{
+				Players:             g.Quickdata.PlayerInfo,
+				GameEndReason:       pb.GameEndReason(g.GameEndReason),
+				Scores:              g.Quickdata.FinalScores,
+				Winner:              winner,
+				TimeControlName:     string(timefmt),
+				CreatedAt:           timestamppb.New(g.CreatedAt.Time),
+				LastUpdate:          timestamppb.New(g.CreatedAt.Time), // Using created_at as proxy for last update
+				GameId:              g.GameUuid,
+				GameRequest:         gameRequest,
+				Type:                pb.GameType(g.GameType),
+				TournamentId:        tourneyID,
+				TournamentDivision:  tDiv,
+				TournamentRound:     tRound,
+				TournamentGameIndex: tGameIndex,
+			}
+			responses = append(responses, info)
+		}
+	} else {
+		// Old path: use games table directly
+		games, err := s.queries.GetRecentGamesByUsernameOld(ctx, models.GetRecentGamesByUsernameOldParams{
+			Username:    pgtype.Text{String: username, Valid: true},
+			OffsetGames: int32(offset),
+			NumGames:    int32(numGames),
+		})
+		if err != nil {
+			return nil, err
 		}
 
-		// convertGamesToInfoResponses does not need History.
-		// This still reads each history, but then garbage-collects immediately.
-		// The "correct" way is to manually list all surviving column names.
-		if results := tx.Raw(
-			"select *, null history from games where id in ? order by id desc",
-			gameIds).
-			Find(&games); results.Error != nil {
+		for _, g := range games {
+			// Parse the GameRequest from bytes
+			gameRequest, err := ParseGameRequest(g.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-parsing-game-request")
+				continue // Skip this game if we can't parse its request
+			}
 
-			return results.Error
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gameRequest != nil {
+				tc, _, err := entity.VariantFromGameReq(gameRequest)
+				if err == nil {
+					timefmt = tc
+				}
+			}
+
+			winner := int32(-1)
+			if g.WinnerIdx.Valid {
+				winner = g.WinnerIdx.Int32
+			}
+
+			gameEndReason := pb.GameEndReason_NONE
+			if g.GameEndReason.Valid {
+				gameEndReason = pb.GameEndReason(g.GameEndReason.Int32)
+			}
+
+			gameType := pb.GameType_NATIVE
+			if g.GameType.Valid {
+				gameType = pb.GameType(g.GameType.Int32)
+			}
+
+			info := &pb.GameInfoResponse{
+				Players:         g.Quickdata.PlayerInfo,
+				GameEndReason:   gameEndReason,
+				Scores:          g.Quickdata.FinalScores,
+				Winner:          winner,
+				TimeControlName: string(timefmt),
+				CreatedAt:       timestamppb.New(g.CreatedAt.Time),
+				LastUpdate:      timestamppb.New(g.CreatedAt.Time), // Using created_at as proxy for last update
+				GameId:          g.GameUuid.String,
+				GameRequest:     gameRequest,
+				Type:            gameType,
+			}
+			responses = append(responses, info)
 		}
-
-		return nil
-	}, &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}); err != nil {
-		// Note: REPEATABLE READ is correct for Postgres (other databases may require SERIALIZABLE to avoid phantom reads).
-		// The default READ COMMITTED may return invalid rows if an update invalidates the row after the id has been chosen.
-		log.Err(err).Str("username", username).Int("numGames", numGames).Int("offset", offset).Msg("get-recent-games")
-		return nil, err
 	}
 
-	return convertGamesToInfoResponses(games)
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
 func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
-	ctxDB := s.db.WithContext(ctx)
-	var games []*game
 
-	if err := ctxDB.Transaction(func(tx *gorm.DB) error {
+	var responses []*pb.GameInfoResponse
 
-		// Note: This query only selects ids, to reduce the amount of work required by the db to paginate.
-		var gameIds []int64
-		if results := tx.Raw(
-			`select id from games where tournament_id = ?
-			and game_end_reason not in (?, ?, ?) order by updated_at desc limit ? offset ?`,
-			tourneyID,
-			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
-			Find(&gameIds); results.Error != nil {
-
-			return results.Error
-		} else if results.RowsAffected == 0 {
-			// No game ids means no games.
-			return nil
-		}
-
-		// convertGamesToInfoResponses does not need History.
-		// This still reads each history, but then garbage-collects immediately.
-		// The "correct" way is to manually list all surviving column names.
-		if results := tx.Raw(
-			"select *, null history from games where id in ? order by updated_at desc",
-			gameIds).
-			Find(&games); results.Error != nil {
-
-			return results.Error
-		}
-
-		return nil
-	}, &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}); err != nil {
-		// Note: REPEATABLE READ is correct for Postgres (other databases may require SERIALIZABLE to avoid phantom reads).
-		// The default READ COMMITTED may return invalid rows if an update invalidates the row after the id has been chosen.
-		log.Err(err).Str("tourneyID", tourneyID).Int("numGames", numGames).Int("offset", offset).Msg("get-recent-tourney-games")
-		return nil, err
-	}
-
-	return convertGamesToInfoResponses(games)
-}
-
-func convertGamesToInfoResponses(games []*game) (*pb.GameInfoResponses, error) {
-	responses := []*pb.GameInfoResponse{}
-	for _, g := range games {
-		info, err := convertGameToInfoResponse(g)
+	if s.usePastGamesTable {
+		// New path: use past_games table
+		games, err := s.queries.GetRecentTourneyGames(ctx, models.GetRecentTourneyGamesParams{
+			TourneyID:   tourneyID,
+			OffsetGames: int32(offset),
+			NumGames:    int32(numGames),
+		})
 		if err != nil {
 			return nil, err
 		}
-		responses = append(responses, info)
+
+		for _, g := range games {
+			// Parse the GameRequest from bytes
+			gameRequest, err := ParseGameRequest(g.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-parsing-game-request")
+				continue // Skip this game if we can't parse its request
+			}
+
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gameRequest != nil {
+				tc, _, err := entity.VariantFromGameReq(gameRequest)
+				if err == nil {
+					timefmt = tc
+				}
+			}
+
+			winner := int32(-1)
+			if g.WinnerIdx.Valid {
+				winner = int32(g.WinnerIdx.Int16)
+			}
+
+			// Parse tournament info from JSONB
+			var tDiv string
+			var tRound int32
+			var tGameIndex int32
+			if g.TournamentData != nil {
+				var td entity.TournamentData
+				if err := json.Unmarshal(g.TournamentData, &td); err == nil {
+					tDiv = td.Division
+					tRound = int32(td.Round)
+					tGameIndex = int32(td.GameIndex)
+				}
+			}
+
+			info := &pb.GameInfoResponse{
+				Players:             g.Quickdata.PlayerInfo,
+				GameEndReason:       pb.GameEndReason(g.GameEndReason),
+				Scores:              g.Quickdata.FinalScores,
+				Winner:              winner,
+				TimeControlName:     string(timefmt),
+				CreatedAt:           timestamppb.New(g.CreatedAt.Time),
+				LastUpdate:          timestamppb.New(g.CreatedAt.Time),
+				GameId:              g.Gid,
+				TournamentId:        tourneyID,
+				GameRequest:         gameRequest,
+				TournamentDivision:  tDiv,
+				TournamentRound:     tRound,
+				TournamentGameIndex: tGameIndex,
+				Type:                pb.GameType(g.Type),
+			}
+			responses = append(responses, info)
+		}
+	} else {
+		// Old path: use games table directly
+		games, err := s.queries.GetRecentTourneyGamesOld(ctx, models.GetRecentTourneyGamesOldParams{
+			TourneyID:   tourneyID,
+			OffsetGames: int32(offset),
+			NumGames:    int32(numGames),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, g := range games {
+			// Parse the GameRequest from bytes
+			gameRequest, err := ParseGameRequest(g.GameRequest)
+			if err != nil {
+				log.Err(err).Msg("error-parsing-game-request")
+				continue // Skip this game if we can't parse its request
+			}
+
+			// Get time control name
+			timefmt := entity.TCRegular
+			if gameRequest != nil {
+				tc, _, err := entity.VariantFromGameReq(gameRequest)
+				if err == nil {
+					timefmt = tc
+				}
+			}
+
+			winner := int32(-1)
+			if g.WinnerIdx.Valid {
+				winner = g.WinnerIdx.Int32
+			}
+
+			gameEndReason := pb.GameEndReason_NONE
+			if g.GameEndReason.Valid {
+				gameEndReason = pb.GameEndReason(g.GameEndReason.Int32)
+			}
+
+			gameType := pb.GameType_NATIVE
+			if g.Type.Valid {
+				gameType = pb.GameType(g.Type.Int32)
+			}
+
+			// Extract tournament info
+			var tDiv string
+			var tRound int32
+			var tGameIndex int32
+			if g.TournamentData.Id != "" {
+				tDiv = g.TournamentData.Division
+				tRound = int32(g.TournamentData.Round)
+				tGameIndex = int32(g.TournamentData.GameIndex)
+			}
+
+			info := &pb.GameInfoResponse{
+				Players:             g.Quickdata.PlayerInfo,
+				GameEndReason:       gameEndReason,
+				Scores:              g.Quickdata.FinalScores,
+				Winner:              winner,
+				TimeControlName:     string(timefmt),
+				CreatedAt:           timestamppb.New(g.CreatedAt.Time),
+				LastUpdate:          timestamppb.New(g.CreatedAt.Time),
+				GameId:              g.Gid.String,
+				TournamentId:        tourneyID,
+				GameRequest:         gameRequest,
+				TournamentDivision:  tDiv,
+				TournamentRound:     tRound,
+				TournamentGameIndex: tGameIndex,
+				Type:                gameType,
+			}
+			responses = append(responses, info)
+		}
 	}
+
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
-func convertGameToInfoResponse(g *game) (*pb.GameInfoResponse, error) {
-	var mdata entity.Quickdata
-
-	err := json.Unmarshal(g.Quickdata, &mdata)
-	if err != nil {
-		log.Debug().Err(err).Msg("convert-game-quickdata")
-		// If it's empty or unconvertible don't quit. We need this
-		// for backwards compatibility.
-	}
-
-	gamereq := &pb.GameRequest{}
-	err = proto.Unmarshal(g.Request, gamereq)
-	if err != nil {
-		return nil, err
-	}
-	timefmt, _, err := entity.VariantFromGameReq(gamereq)
-	if err != nil {
-		return nil, err
-	}
-
-	var trdata entity.TournamentData
-	tDiv := ""
-	tRound := 0
-	tGameIndex := 0
-	tid := ""
-
-	err = json.Unmarshal(g.TournamentData, &trdata)
-	if err == nil {
-		tDiv = trdata.Division
-		tRound = trdata.Round
-		tGameIndex = trdata.GameIndex
-		tid = trdata.Id
-	}
-
-	info := &pb.GameInfoResponse{
-		Players:             mdata.PlayerInfo,
-		GameEndReason:       pb.GameEndReason(g.GameEndReason),
-		Scores:              mdata.FinalScores,
-		Winner:              int32(g.WinnerIdx),
-		TimeControlName:     string(timefmt),
-		CreatedAt:           timestamppb.New(g.CreatedAt),
-		LastUpdate:          timestamppb.New(g.UpdatedAt),
-		GameId:              g.UUID,
-		TournamentId:        tid,
-		GameRequest:         gamereq,
-		TournamentDivision:  tDiv,
-		TournamentRound:     int32(tRound),
-		TournamentGameIndex: int32(tGameIndex),
-		Type:                g.Type,
-	}
-	return info, nil
-}
+// TODO: Remove these GORM-based functions once migrated to sqlc
 
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
-	// s.db.LogMode(true)
-	dbg, err := s.toDBObj(g)
-	if err != nil {
-		return err
-	}
-	th := &macondopb.GameHistory{}
-	err = proto.Unmarshal(dbg.History, th)
+	hist, err := proto.Marshal(g.History())
 	if err != nil {
 		return err
 	}
 
-	// result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
-	// 	Where("uuid = ?", g.GameID()).Update(dbg)
-	// s.db.LogMode(false)
+	// Marshal GameRequest as proto for live games table
+	requestBytes, err := MarshalGameRequestAsProto(g.GameReq.GameRequest)
+	if err != nil {
+		return err
+	}
 
-	// XXX: not sure this select for update is working. Might consider
-	// moving to select for share??
-	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("uuid = ?", g.GameID()).Updates(dbg)
+	var tourneyID pgtype.Text
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
+	}
 
-	return result.Error
+	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
+		UpdatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true}, // Use CreatedAt as proxy
+		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
+		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
+		Timers:         g.Timers,
+		Started:        pgtype.Bool{Bool: g.Started, Valid: true},
+		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
+		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
+		Request:        requestBytes,
+		History:        hist,
+		Stats:          *g.Stats,
+		Quickdata:      *g.Quickdata,
+		TournamentData: *g.TournamentData,
+		TournamentID:   tourneyID,
+		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
+		MetaEvents:     *g.MetaEvents,
+		Uuid:           common.ToPGTypeText(g.GameID()),
+	})
 }
 
 func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
-
-	var count int64
-	result := s.db.Model(&game{}).Where("uuid = ?", id).Count(&count)
-	if result.Error != nil {
-		return false, result.Error
+	// Check if game exists in games table. Note that we only need to check this
+	// table because we don't migrate the ID to the partitioned past games table.
+	exists, err := s.queries.GameExists(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		log.Err(err).Msg("error-checking-game-exists")
+		return false, err
 	}
-	if count > 1 {
-		return true, errors.New("unexpected duplicate ids")
+	if !exists {
+		log.Debug().Str("game_id", id).Msg("game-not-found-in-live-games")
+		return false, nil
 	}
-	return count == 1, nil
+	return true, nil
 }
 
 // Create saves a brand new entity to the database
 func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
-	dbg, err := s.toDBObj(g)
+	hist, err := proto.Marshal(g.History())
 	if err != nil {
 		return err
 	}
-	log.Debug().Interface("dbg", dbg).Msg("dbg")
-	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Create(dbg)
-	return result.Error
+
+	// Marshal GameRequest as proto for live games table
+	requestBytes, err := MarshalGameRequestAsProto(g.GameReq.GameRequest)
+	if err != nil {
+		return err
+	}
+
+	var tourneyID pgtype.Text
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
+	}
+
+	return s.queries.CreateGame(ctx, models.CreateGameParams{
+		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		UpdatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		Uuid:           common.ToPGTypeText(g.GameID()),
+		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
+		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
+		Timers:         g.Timers,
+		Started:        pgtype.Bool{Bool: g.Started, Valid: true},
+		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
+		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
+		Request:        requestBytes,
+		History:        hist,
+		Stats:          *g.Stats,
+		Quickdata:      *g.Quickdata,
+		TournamentData: *g.TournamentData,
+		TournamentID:   tourneyID,
+		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
+		MetaEvents:     *g.MetaEvents,
+		Type:           pgtype.Int4{Int32: int32(g.Type), Valid: true},
+	})
 }
 
 func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType) error {
 	if gt == pb.GameType_NATIVE {
 		return fmt.Errorf("this game already exists: %s", g.Uid())
 	}
-	ctxDB := s.db.WithContext(ctx)
 
-	req, err := proto.Marshal(g.GameReq)
-	if err != nil {
-		return err
-	}
 	hist, err := proto.Marshal(g.History())
 	if err != nil {
 		return err
 	}
-	result := ctxDB.Exec(
-		`insert into games(uuid, request, history, quickdata, timers,
-			game_end_reason, type)
-		values(?, ?, ?, ?, ?, ?, ?)`,
-		g.Uid(), req, hist, g.Quickdata, g.Timers, g.GameEndReason, gt)
-	return result.Error
+
+	// Marshal GameRequest as proto for live games table
+	requestBytes, err := MarshalGameRequestAsProto(g.GameReq.GameRequest)
+	if err != nil {
+		return err
+	}
+
+	return s.queries.CreateRawGame(ctx, models.CreateRawGameParams{
+		Uuid:          common.ToPGTypeText(g.Uid()),
+		Request:       requestBytes,
+		History:       hist,
+		Quickdata:     *g.Quickdata,
+		Timers:        g.Timers,
+		GameEndReason: pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		Type:          pgtype.Int4{Int32: int32(gt), Valid: true},
+	})
 }
 
 func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error) {
-	var games []*game
-
-	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("games").Select("quickdata, request, uuid, started, tournament_data").
-		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
+	var responses []*pb.GameInfoResponse
 
 	if tourneyID != "" {
-		query = query.Where("games.tournament_id = ?", tourneyID)
+		games, err := s.queries.ListActiveTournamentGames(ctx, common.ToPGTypeText(tourneyID))
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range games {
+			info := &pb.GameInfoResponse{
+				Players: g.Quickdata.PlayerInfo,
+				GameId:  g.Uuid.String,
+				Type:    pb.GameType_NATIVE, // Default type for active games
+			}
+			responses = append(responses, info)
+		}
+	} else {
+		games, err := s.queries.ListActiveGames(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range games {
+			info := &pb.GameInfoResponse{
+				Players: g.Quickdata.PlayerInfo,
+				GameId:  g.Uuid.String,
+				Type:    pb.GameType_NATIVE, // Default type for active games
+			}
+			responses = append(responses, info)
+		}
 	}
 
-	result := query.Order("games.id").Scan(&games)
-
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return convertGamesToInfoResponses(games)
-}
-
-func (s *DBStore) Count(ctx context.Context) (int64, error) {
-	var count int64
-	result := s.db.Model(&game{}).Count(&count)
-	if result.Error != nil {
-		return 0, result.Error
-	}
-	return count, nil
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
 // List all game IDs, ordered by date played. Should not be used by anything
 // other than debug or migration code when the db is still small.
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
-	var gids []struct{ Uuid string }
-	result := s.db.Table("games").Select("uuid").Order("created_at").Scan(&gids)
 
-	ids := make([]string, len(gids))
-	for idx, gid := range gids {
-		ids[idx] = gid.Uuid
+	ids, err := s.queries.ListAllIDs(ctx)
+	if err != nil {
+		log.Err(err).Msg("error-listing-all-ids")
+		return nil, err
 	}
-
-	return ids, result.Error
+	gameIDs := make([]string, len(ids))
+	for i, id := range ids {
+		gameIDs[i] = id.String
+	}
+	return gameIDs, nil
 }
 
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
-	var rf struct {
-		ReadyFlag int
+	readyRes, err := s.queries.SetReady(ctx, models.SetReadyParams{
+		PlayerIdx: int32(pidx),
+		Uuid:      common.ToPGTypeText(gid),
+	})
+
+	if err != nil {
+		// Only error now is if game doesn't exist
+		log.Err(err).Int("playerIdx", pidx).Str("gid", gid).Msg("setting-ready")
+		return 0, err
 	}
-	ctxDB := s.db.WithContext(ctx)
 
-	// If the game is already ready and this gets called again, this function
-	// returns 0 rows, which means rf.ReadyFlag == 0 and the game won't start again.
-	result := ctxDB.Raw(`update games set ready_flag = ready_flag | (1 << ?) where uuid = ?
-		and ready_flag & (1 << ?) = 0 returning ready_flag`, pidx, gid, pidx).Scan(&rf)
-
-	return rf.ReadyFlag, result.Error
+	log.Debug().Int("playerIdx", pidx).Str("gid", gid).Int("readyFlag", int(readyRes.Int64)).Msg("player-set-ready")
+	return int(readyRes.Int64), nil
 }
 
-func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
-	timers, err := json.Marshal(g.Timers)
-	if err != nil {
-		return nil, err
-	}
-	stats, err := json.Marshal(g.Stats)
-	if err != nil {
-		return nil, err
-	}
-	quickdata, err := json.Marshal(g.Quickdata)
-	if err != nil {
-		return nil, err
-	}
-	mdata, err := json.Marshal(g.MetaEvents)
-	if err != nil {
-		return nil, err
-	}
-	req, err := proto.Marshal(g.GameReq)
-	if err != nil {
-		return nil, err
-	}
-	hist, err := proto.Marshal(g.History())
-	if err != nil {
-		return nil, err
-	}
-
-	tourneydata, err := json.Marshal(g.TournamentData)
-	if err != nil {
-		return nil, err
-	}
-
-	dbg := &game{
-		UUID:           g.GameID(),
-		Player0ID:      g.PlayerDBIDs[0],
-		Player1ID:      g.PlayerDBIDs[1],
-		Timers:         timers,
-		Stats:          stats,
-		Quickdata:      quickdata,
-		Started:        g.Started,
-		GameEndReason:  int(g.GameEndReason),
-		WinnerIdx:      g.WinnerIdx,
-		LoserIdx:       g.LoserIdx,
-		Request:        req,
-		History:        hist,
-		TournamentData: tourneydata,
-		MetaEvents:     mdata,
-		Type:           g.Type,
-	}
-	if g.TournamentData != nil {
-		dbg.TournamentID = g.TournamentData.Id
-	}
-
-	return dbg, nil
-}
+// TODO: Remove this GORM-based function
 
 func (s *DBStore) Disconnect() {
-	dbSQL, err := s.db.DB()
-	if err == nil {
-		log.Info().Msg("disconnecting SQL db")
-		dbSQL.Close()
-		return
-	}
-	log.Err(err).Msg("unable to disconnect")
+	log.Warn().Msg("game-store-disconnect-not-implemented")
 }
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
@@ -655,15 +1164,81 @@ func (s *DBStore) CachedCount(ctx context.Context) int {
 }
 
 func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
-	g := &game{}
+	// First check if the game has been migrated
+	basicInfo, err := s.queries.GetGameBasicInfo(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		log.Err(err).Msg("error-get-game-basic-info-in-get-history")
+		return nil, err
+	}
 
-	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Select("history").Where("uuid = ?", id).First(g); result.Error != nil {
-		return nil, result.Error
+	// Check if the game has been migrated to past_games
+	if basicInfo.MigrationStatus.Valid && basicInfo.MigrationStatus.Int16 >= MigrationStatusMigrated {
+		// Game has been migrated, get from past_games
+		pastGame, err := s.queries.GetPastGame(ctx, models.GetPastGameParams{
+			Gid:       id,
+			CreatedAt: pgtype.Timestamptz{Time: basicInfo.CreatedAt.Time, Valid: true},
+		})
+		if err != nil {
+			log.Err(err).Msg("error-get-past-game-in-get-history")
+			return nil, err
+		}
+
+		// Parse the game document
+		doc := &pb.GameDocument{}
+		err = protojson.Unmarshal(pastGame.GameDocument, doc)
+		if err != nil {
+			log.Err(err).Msg("error-unmarshalling-game-document-in-get-history")
+			return nil, err
+		}
+
+		// Convert to game history
+		gh, err := utilities.ToGameHistory(doc, s.cfg)
+		if err != nil {
+			log.Err(err).Msg("error-converting-game-document-to-history")
+			return nil, err
+		}
+		log.Debug().Interface("hist", gh).Msg("got-history-from-past-games")
+		return gh, nil
+	}
+
+	// Game not migrated, try to get from games table
+	bts, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
+	if err != nil {
+		// If this fails, it might be a legacy migration without proper status
+		// Try to get from past_games as fallback
+		if basicInfo.GameEndReason.Valid && basicInfo.GameEndReason.Int32 != int32(pb.GameEndReason_NONE) {
+			pastGame, err := s.queries.GetPastGame(ctx, models.GetPastGameParams{
+				Gid:       id,
+				CreatedAt: pgtype.Timestamptz{Time: basicInfo.CreatedAt.Time, Valid: true},
+			})
+			if err != nil {
+				log.Err(err).Msg("error-get-past-game-fallback-in-get-history")
+				return nil, err
+			}
+
+			// Parse the game document
+			doc := &pb.GameDocument{}
+			err = protojson.Unmarshal(pastGame.GameDocument, doc)
+			if err != nil {
+				log.Err(err).Msg("error-unmarshalling-game-document-fallback")
+				return nil, err
+			}
+
+			// Convert to game history
+			gh, err := utilities.ToGameHistory(doc, s.cfg)
+			if err != nil {
+				log.Err(err).Msg("error-converting-game-document-to-history-fallback")
+				return nil, err
+			}
+			log.Debug().Interface("hist", gh).Msg("got-history-from-past-games-fallback")
+			return gh, nil
+		}
+		log.Err(err).Msg("error-get-history")
+		return nil, err
 	}
 
 	hist := &macondopb.GameHistory{}
-	err := proto.Unmarshal(g.History, hist)
+	err = proto.Unmarshal(bts, hist)
 	if err != nil {
 		return nil, err
 	}

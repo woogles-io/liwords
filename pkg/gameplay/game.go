@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -35,7 +36,7 @@ var (
 	errGameNotActive      = errors.New("game is not currently active")
 	errNotOnTurn          = errors.New("player not on turn")
 	errTimeDidntRunOut    = errors.New("got time ran out, but it did not actually")
-	errGameAlreadyStarted = errors.New("game already started")
+	ErrGameAlreadyStarted = errors.New("game already started")
 )
 
 const (
@@ -54,13 +55,13 @@ type GameStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context, string, bool) (*pb.GameInfoResponses, error)
-	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
+	MigrateGameToPastGames(ctx context.Context, g *entity.Game, ratingsBefore, ratingsAfter map[string]int32) error
 }
 
 // InstantiateNewGame instantiates a game and returns it.
@@ -93,6 +94,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Msg("created new game rules")
 
 	turnplayer, err := turnplayer.BaseTurnPlayerFromRules(&turnplayer.GameOptions{
 		ChallengeRule: req.ChallengeRule,
@@ -100,6 +102,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Msg("created new base turn player")
 
 	for {
 		// Overwrite the randomly generated macondo long ID with a shorter
@@ -124,7 +127,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		// creates the same game ID at the same time, but the chances
 		// of that are so astronomically unlikely we won't bother.
 	}
-
+	log.Debug().Str("gid", turnplayer.Game.History().Uid).Msg("created-unique-game-id")
 	entGame := entity.NewGame(turnplayer.Game, req)
 	entGame.PlayerDBIDs = dbids
 	entGame.TournamentData = tdata
@@ -158,10 +161,11 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	entGame.CreatedAt = time.Now()
 
 	entGame.MetaEvents = &entity.MetaEventData{}
-
+	entGame.Stats = &entity.Stats{}
+	log.Debug().Str("gid", turnplayer.Game.History().Uid).Msg("instantiating new game")
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create game in store: %w", err)
 	}
 	return entGame, nil
 	// We return the instantiated game. Although the tiles have technically been
@@ -229,7 +233,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 		return errGameNotActive
 	}
 	if entGame.Started {
-		return errGameAlreadyStarted
+		return ErrGameAlreadyStarted
 	}
 	log.Debug().Str("gameid", entGame.GameID()).Msg("reset timers (and start)")
 	entGame.ResetTimersAndStart()
