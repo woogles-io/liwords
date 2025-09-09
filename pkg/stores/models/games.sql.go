@@ -9,7 +9,122 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
+
+const createGame = `-- name: CreateGame :exec
+INSERT INTO games (
+    created_at, updated_at, uuid, type, player0_id, player1_id,
+    ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
+    quickdata, request, history, meta_events, stats, tournament_id, tournament_data
+) VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $9, $10, $11, $12,
+    $13, $14, $15, $16, $17, $18, $19
+)
+`
+
+type CreateGameParams struct {
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	ReadyFlag      pgtype.Int8
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	Request        []byte
+	History        []byte
+	MetaEvents     entity.MetaEventData
+	Stats          entity.Stats
+	TournamentID   pgtype.Text
+	TournamentData entity.TournamentData
+}
+
+func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
+	_, err := q.db.Exec(ctx, createGame,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.Uuid,
+		arg.Type,
+		arg.Player0ID,
+		arg.Player1ID,
+		arg.ReadyFlag,
+		arg.Timers,
+		arg.Started,
+		arg.GameEndReason,
+		arg.WinnerIdx,
+		arg.LoserIdx,
+		arg.Quickdata,
+		arg.Request,
+		arg.History,
+		arg.MetaEvents,
+		arg.Stats,
+		arg.TournamentID,
+		arg.TournamentData,
+	)
+	return err
+}
+
+const createRawGame = `-- name: CreateRawGame :exec
+INSERT INTO games (
+    uuid, request, history, quickdata, timers, game_end_reason, type
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+`
+
+type CreateRawGameParams struct {
+	Uuid          pgtype.Text
+	Request       []byte
+	History       []byte
+	Quickdata     entity.Quickdata
+	Timers        entity.Timers
+	GameEndReason pgtype.Int4
+	Type          pgtype.Int4
+}
+
+func (q *Queries) CreateRawGame(ctx context.Context, arg CreateRawGameParams) error {
+	_, err := q.db.Exec(ctx, createRawGame,
+		arg.Uuid,
+		arg.Request,
+		arg.History,
+		arg.Quickdata,
+		arg.Timers,
+		arg.GameEndReason,
+		arg.Type,
+	)
+	return err
+}
+
+const gameCount = `-- name: GameCount :one
+SELECT COUNT(*) FROM games
+`
+
+func (q *Queries) GameCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, gameCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const gameExists = `-- name: GameExists :one
+SELECT EXISTS (
+    SELECT 1 FROM games WHERE uuid = $1
+) AS exists
+`
+
+func (q *Queries) GameExists(ctx context.Context, uuid pgtype.Text) (bool, error) {
+	row := q.db.QueryRow(ctx, gameExists, uuid)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
 
 const getGame = `-- name: GetGame :one
 SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, request, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3 FROM games WHERE uuid = $1
@@ -46,6 +161,59 @@ func (q *Queries) GetGame(ctx context.Context, uuid pgtype.Text) (Game, error) {
 	return i, err
 }
 
+const getGameMetadata = `-- name: GetGameMetadata :one
+SELECT 
+    id, uuid, type, player0_id, player1_id, 
+    timers, started, game_end_reason, winner_idx, loser_idx, 
+    quickdata, request, tournament_data, tournament_id,
+    created_at, updated_at
+FROM games 
+WHERE uuid = $1
+`
+
+type GetGameMetadataRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	Request        []byte
+	TournamentData entity.TournamentData
+	TournamentID   pgtype.Text
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGameMetadataRow, error) {
+	row := q.db.QueryRow(ctx, getGameMetadata, uuid)
+	var i GetGameMetadataRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.Type,
+		&i.Player0ID,
+		&i.Player1ID,
+		&i.Timers,
+		&i.Started,
+		&i.GameEndReason,
+		&i.WinnerIdx,
+		&i.LoserIdx,
+		&i.Quickdata,
+		&i.Request,
+		&i.TournamentData,
+		&i.TournamentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getGameOwner = `-- name: GetGameOwner :one
 
 SELECT 
@@ -67,4 +235,401 @@ func (q *Queries) GetGameOwner(ctx context.Context, gameUuid string) (GetGameOwn
 	var i GetGameOwnerRow
 	err := row.Scan(&i.CreatorUuid, &i.Username)
 	return i, err
+}
+
+const getHistory = `-- name: GetHistory :one
+SELECT history FROM games
+WHERE uuid = $1
+`
+
+func (q *Queries) GetHistory(ctx context.Context, uuid pgtype.Text) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getHistory, uuid)
+	var history []byte
+	err := row.Scan(&history)
+	return history, err
+}
+
+const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
+WITH user_id AS (
+    SELECT id FROM users WHERE lower(username) = lower($3)
+)
+(SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at
+ FROM games g, user_id u
+ WHERE g.player0_id = u.id 
+   AND g.game_end_reason NOT IN (0, 5, 7)
+ ORDER BY g.id DESC
+ LIMIT $2::integer)
+UNION ALL
+(SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at
+ FROM games g, user_id u
+ WHERE g.player1_id = u.id 
+   AND g.game_end_reason NOT IN (0, 5, 7)
+ ORDER BY g.id DESC
+ LIMIT $2::integer)
+ORDER BY id DESC
+LIMIT $2::integer
+OFFSET $1::integer
+`
+
+type GetRecentGamesByUsernameParams struct {
+	OffsetGames int32
+	NumGames    int32
+	Username    string
+}
+
+type GetRecentGamesByUsernameRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	Request        []byte
+	TournamentData entity.TournamentData
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesByUsername, arg.OffsetGames, arg.NumGames, arg.Username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentGamesByUsernameRow
+	for rows.Next() {
+		var i GetRecentGamesByUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.Request,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentTourneyGames = `-- name: GetRecentTourneyGames :many
+SELECT 
+    id, uuid, type, player0_id, player1_id,
+    timers, started, game_end_reason, winner_idx, loser_idx,
+    quickdata, request, tournament_data, created_at, updated_at
+FROM games
+WHERE tournament_id = $1::text
+    AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+ORDER BY updated_at DESC
+LIMIT $3::integer
+OFFSET $2::integer
+`
+
+type GetRecentTourneyGamesParams struct {
+	TourneyID   string
+	OffsetGames int32
+	NumGames    int32
+}
+
+type GetRecentTourneyGamesRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	Request        []byte
+	TournamentData entity.TournamentData
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourneyGamesParams) ([]GetRecentTourneyGamesRow, error) {
+	rows, err := q.db.Query(ctx, getRecentTourneyGames, arg.TourneyID, arg.OffsetGames, arg.NumGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentTourneyGamesRow
+	for rows.Next() {
+		var i GetRecentTourneyGamesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.Request,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRematchStreak = `-- name: GetRematchStreak :many
+SELECT uuid, winner_idx, quickdata 
+FROM games 
+WHERE quickdata->>'o' = $1::text
+    AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+ORDER BY created_at DESC
+`
+
+type GetRematchStreakRow struct {
+	Uuid      pgtype.Text
+	WinnerIdx pgtype.Int4
+	Quickdata entity.Quickdata
+}
+
+func (q *Queries) GetRematchStreak(ctx context.Context, originalRequestID string) ([]GetRematchStreakRow, error) {
+	rows, err := q.db.Query(ctx, getRematchStreak, originalRequestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRematchStreakRow
+	for rows.Next() {
+		var i GetRematchStreakRow
+		if err := rows.Scan(&i.Uuid, &i.WinnerIdx, &i.Quickdata); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveGames = `-- name: ListActiveGames :many
+SELECT quickdata, request, uuid, started, tournament_data
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+ORDER BY id
+`
+
+type ListActiveGamesRow struct {
+	Quickdata      entity.Quickdata
+	Request        []byte
+	Uuid           pgtype.Text
+	Started        pgtype.Bool
+	TournamentData entity.TournamentData
+}
+
+func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, error) {
+	rows, err := q.db.Query(ctx, listActiveGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveGamesRow
+	for rows.Next() {
+		var i ListActiveGamesRow
+		if err := rows.Scan(
+			&i.Quickdata,
+			&i.Request,
+			&i.Uuid,
+			&i.Started,
+			&i.TournamentData,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveTournamentGames = `-- name: ListActiveTournamentGames :many
+SELECT quickdata, request, uuid, started, tournament_data
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND tournament_id = $1::text
+ORDER BY id
+`
+
+type ListActiveTournamentGamesRow struct {
+	Quickdata      entity.Quickdata
+	Request        []byte
+	Uuid           pgtype.Text
+	Started        pgtype.Bool
+	TournamentData entity.TournamentData
+}
+
+func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID string) ([]ListActiveTournamentGamesRow, error) {
+	rows, err := q.db.Query(ctx, listActiveTournamentGames, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveTournamentGamesRow
+	for rows.Next() {
+		var i ListActiveTournamentGamesRow
+		if err := rows.Scan(
+			&i.Quickdata,
+			&i.Request,
+			&i.Uuid,
+			&i.Started,
+			&i.TournamentData,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllIDs = `-- name: ListAllIDs :many
+SELECT uuid FROM games
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListAllIDs(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listAllIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setReady = `-- name: SetReady :one
+UPDATE games 
+SET ready_flag = ready_flag | (1 << $1::integer)
+WHERE uuid = $2
+    AND ready_flag & (1 << $1::integer) = 0
+RETURNING ready_flag
+`
+
+type SetReadyParams struct {
+	PlayerIdx int32
+	Uuid      pgtype.Text
+}
+
+func (q *Queries) SetReady(ctx context.Context, arg SetReadyParams) (pgtype.Int8, error) {
+	row := q.db.QueryRow(ctx, setReady, arg.PlayerIdx, arg.Uuid)
+	var ready_flag pgtype.Int8
+	err := row.Scan(&ready_flag)
+	return ready_flag, err
+}
+
+const updateGame = `-- name: UpdateGame :exec
+UPDATE games SET
+    updated_at = $1,
+    player0_id = $2,
+    player1_id = $3,
+    timers = $4,
+    started = $5,
+    game_end_reason = $6,
+    winner_idx = $7,
+    loser_idx = $8,
+    quickdata = $9,
+    request = $10,
+    history = $11,
+    meta_events = $12,
+    stats = $13,
+    tournament_data = $14,
+    tournament_id = $15,
+    ready_flag = $16
+WHERE uuid = $17
+`
+
+type UpdateGameParams struct {
+	UpdatedAt      pgtype.Timestamptz
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	Request        []byte
+	History        []byte
+	MetaEvents     entity.MetaEventData
+	Stats          entity.Stats
+	TournamentData entity.TournamentData
+	TournamentID   pgtype.Text
+	ReadyFlag      pgtype.Int8
+	Uuid           pgtype.Text
+}
+
+func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
+	_, err := q.db.Exec(ctx, updateGame,
+		arg.UpdatedAt,
+		arg.Player0ID,
+		arg.Player1ID,
+		arg.Timers,
+		arg.Started,
+		arg.GameEndReason,
+		arg.WinnerIdx,
+		arg.LoserIdx,
+		arg.Quickdata,
+		arg.Request,
+		arg.History,
+		arg.MetaEvents,
+		arg.Stats,
+		arg.TournamentData,
+		arg.TournamentID,
+		arg.ReadyFlag,
+		arg.Uuid,
+	)
+	return err
 }

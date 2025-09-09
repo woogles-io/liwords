@@ -79,7 +79,7 @@ type Game struct {
 	GameEndReason  pgtype.Int4
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
-	Request        entity.GameRequest
+	Request        []byte
 	History        []byte
 	Stats          entity.Stats
 	Quickdata      entity.Quickdata
@@ -88,7 +88,7 @@ type Game struct {
 	ReadyFlag      pgtype.Int8
 	MetaEvents     entity.MetaEventData
 	Type           pgtype.Int4
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 	HistoryInS3    bool
 }
 
