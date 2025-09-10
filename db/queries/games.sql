@@ -14,7 +14,7 @@ SELECT
     id, uuid, type, player0_id, player1_id, 
     timers, started, game_end_reason, winner_idx, loser_idx, 
     quickdata, request, tournament_data, tournament_id,
-    created_at, updated_at
+    created_at, updated_at, game_request
 FROM games 
 WHERE uuid = @uuid;
 
@@ -31,7 +31,7 @@ WITH user_id AS (
 )
 (SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
         g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at
+        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at, g.game_request
  FROM games g, user_id u
  WHERE g.player0_id = u.id 
    AND g.game_end_reason NOT IN (0, 5, 7)
@@ -40,7 +40,7 @@ WITH user_id AS (
 UNION ALL
 (SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
         g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at
+        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at, g.game_request
  FROM games g, user_id u
  WHERE g.player1_id = u.id 
    AND g.game_end_reason NOT IN (0, 5, 7)
@@ -54,7 +54,7 @@ OFFSET @offset_games::integer;
 SELECT 
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, request, tournament_data, created_at, updated_at
+    quickdata, request, tournament_data, created_at, updated_at, game_request
 FROM games
 WHERE tournament_id = @tourney_id::text
     AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
@@ -66,11 +66,11 @@ OFFSET @offset_games::integer;
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, request, history, meta_events, stats, tournament_id, tournament_data
+    quickdata, request, history, meta_events, stats, tournament_id, tournament_data, game_request
 ) VALUES (
     @created_at, @updated_at, @uuid, @type, @player0_id, @player1_id,
     @ready_flag, @timers, @started, @game_end_reason, @winner_idx, @loser_idx,
-    @quickdata, @request, @history, @meta_events, @stats, @tournament_id, @tournament_data
+    @quickdata, @request, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request
 );
 
 -- name: UpdateGame :exec
@@ -90,24 +90,25 @@ UPDATE games SET
     stats = @stats,
     tournament_data = @tournament_data,
     tournament_id = @tournament_id,
-    ready_flag = @ready_flag
+    ready_flag = @ready_flag,
+    game_request = @game_request
 WHERE uuid = @uuid;
 
 -- name: CreateRawGame :exec
 INSERT INTO games (
-    uuid, request, history, quickdata, timers, game_end_reason, type
+    uuid, request, history, quickdata, timers, game_end_reason, type, game_request
 ) VALUES (
-    @uuid, @request, @history, @quickdata, @timers, @game_end_reason, @type
+    @uuid, @request, @history, @quickdata, @timers, @game_end_reason, @type, @game_request
 );
 
 -- name: ListActiveGames :many
-SELECT quickdata, request, uuid, started, tournament_data
+SELECT quickdata, request, uuid, started, tournament_data, game_request
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveTournamentGames :many
-SELECT quickdata, request, uuid, started, tournament_data
+SELECT quickdata, request, uuid, started, tournament_data, game_request
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = @tournament_id::text

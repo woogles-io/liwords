@@ -30,3 +30,7 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "MetaEventData"
+      - column: "games.game_request"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "GameRequest"

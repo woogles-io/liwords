@@ -88,7 +88,7 @@ type Game struct {
 	ReadyFlag      pgtype.Int8
 	MetaEvents     entity.MetaEventData
 	Type           pgtype.Int4
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 	HistoryInS3    bool
 }
 
