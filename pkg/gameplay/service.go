@@ -43,6 +43,7 @@ func NewGameService(u user.Store, gs GameStore, gds *stores.GameDocumentStore,
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *connect.Request[pb.GameInfoRequest],
 ) (*connect.Response[ipc.GameInfoResponse], error) {
+	log.Debug().Str("id", req.Msg.GameId).Msg("get-metadata-svc")
 	gir, err := gs.gameStore.GetMetadata(ctx, req.Msg.GameId)
 	if err != nil {
 		return nil, err

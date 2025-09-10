@@ -167,6 +167,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
 func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoResponse, error) {
+	log.Debug().Str("id", id).Msg("get-metadata-dbstore")
 	g, err := s.queries.GetGameMetadata(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		return nil, err
@@ -241,7 +242,7 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 	for idx, g := range games {
 		// Use quickdata from each individual game (like original GORM implementation)
 		mdata := g.Quickdata
-		
+
 		if idx == 0 {
 			// Establish consistent player ordering from first game, sorted by nickname descending
 			playersInfo := make([]*gs.StreakInfoResponse_PlayerInfo, len(mdata.PlayerInfo))
@@ -255,21 +256,21 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 			sort.Slice(playersInfo, func(i, j int) bool { return playersInfo[i].Nickname > playersInfo[j].Nickname })
 			resp.PlayersInfo = playersInfo
 		}
-		
+
 		winner := int32(-1)
 		if g.WinnerIdx.Valid {
 			winner = g.WinnerIdx.Int32
 		}
-		
+
 		// Normalize winner index like original implementation
 		if len(resp.PlayersInfo) > 0 && len(mdata.PlayerInfo) > 0 &&
 			resp.PlayersInfo[0].Nickname != mdata.PlayerInfo[0].Nickname {
-			
+
 			if winner != -1 {
-				winner = 1 - winner  // Flip the winner index
+				winner = 1 - winner // Flip the winner index
 			}
 		}
-		
+
 		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
 			GameId: g.Uuid.String,
 			Winner: winner,
@@ -423,7 +424,6 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
-
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
@@ -551,13 +551,13 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		}
 		for _, g := range games {
 			mdata := g.Quickdata
-			
+
 			// Unmarshal the GameRequest from stored bytes
 			gamereq, err := s.unmarshalGameRequest(g.GameRequest, g.Request)
 			if err != nil {
 				return nil, fmt.Errorf("game %s has no request data: %w", g.Uuid.String, err)
 			}
-			
+
 			info := &pb.GameInfoResponse{
 				Players:     mdata.PlayerInfo,
 				GameId:      g.Uuid.String,
@@ -573,13 +573,13 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		}
 		for _, g := range games {
 			mdata := g.Quickdata
-			
+
 			// Unmarshal the GameRequest from stored bytes
 			gamereq, err := s.unmarshalGameRequest(g.GameRequest, g.Request)
 			if err != nil {
 				return nil, fmt.Errorf("game %s has no request data: %w", g.Uuid.String, err)
 			}
-			
+
 			info := &pb.GameInfoResponse{
 				Players:     mdata.PlayerInfo,
 				GameId:      g.Uuid.String,
@@ -701,19 +701,21 @@ func safeDerefGameRequest(gameReq *entity.GameRequest) entity.GameRequest {
 func (s *DBStore) unmarshalGameRequest(gameRequest entity.GameRequest, requestBytes []byte) (*pb.GameRequest, error) {
 	// First try to use the jsonb data if it exists and is properly populated
 	if gameRequest.GameRequest != nil && gameRequest.GameRequest.Rules != nil {
+		log.Debug().Msg("game-request-jsonb-present-and-valid, using that")
 		return gameRequest.GameRequest, nil
 	}
-	
+	log.Debug().Msg("game-request-jsonb-missing-or-invalid, falling back to bytea")
+
 	// Fall back to bytea protobuf data
 	if len(requestBytes) == 0 {
 		return nil, fmt.Errorf("no request data available in either jsonb or bytea format")
 	}
-	
+
 	gamereq := &pb.GameRequest{}
 	err := proto.Unmarshal(requestBytes, gamereq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal protobuf request data: %w", err)
 	}
-	
+
 	return gamereq, nil
 }

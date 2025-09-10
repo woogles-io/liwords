@@ -349,7 +349,7 @@ outerfor:
 					Int("outgoing-socket-user-events", len(b.subchans["user.>"])).
 					Int("outgoing-socket-game-events", len(b.subchans["game.>"])).
 					Int("bot-publish-events", len(b.subchans["bot.publish_event.>"])).
-					Msg("channel-buffer-lengths")
+					Msg("channel-buffer-lengths-monitor")
 			}()
 
 		}

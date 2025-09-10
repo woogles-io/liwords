@@ -12,7 +12,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -182,30 +181,31 @@ type GameRequest struct {
 	*pb.GameRequest
 }
 
-func (g *GameRequest) Value() (driver.Value, error) {
-	return proto.Marshal(g.GameRequest)
-}
+// XXX: bring this back once we have a single GameRequest column.
+// func (g *GameRequest) Value() (driver.Value, error) {
+// 	return proto.Marshal(g.GameRequest)
+// }
 
-func (g *GameRequest) Scan(value interface{}) error {
+// func (g *GameRequest) Scan(value interface{}) error {
 
-	var b []byte
-	switch v := value.(type) {
-	case []byte:
-		b = v
-	case nil:
-		*g = GameRequest{GameRequest: &pb.GameRequest{}}
-		return nil
-	}
+// 	var b []byte
+// 	switch v := value.(type) {
+// 	case []byte:
+// 		b = v
+// 	case nil:
+// 		*g = GameRequest{GameRequest: &pb.GameRequest{}}
+// 		return nil
+// 	}
 
-	g.GameRequest = &pb.GameRequest{}
-	// XXX: Remove the proto unmarshal once we've migrated all game requests
-	// to be saved as JSONB.
-	err := proto.Unmarshal(b, g.GameRequest)
-	if err != nil {
-		err = protojson.Unmarshal(b, g.GameRequest)
-	}
-	return err
-}
+// 	g.GameRequest = &pb.GameRequest{}
+// 	// XXX: Remove the proto unmarshal once we've migrated all game requests
+// 	// to be saved as JSONB.
+// 	err := proto.Unmarshal(b, g.GameRequest)
+// 	if err != nil {
+// 		err = protojson.Unmarshal(b, g.GameRequest)
+// 	}
+// 	return err
+// }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
