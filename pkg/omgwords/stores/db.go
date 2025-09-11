@@ -246,15 +246,26 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		var creatorUsername string
 		var private bool
 		var quickdata *entity.Quickdata
-		var request *entity.GameRequest
+		var requestBytes []byte
+		var gameRequestBytes []byte
 		var created time.Time
 
-		if err := rows.Scan(&uuid, &creatorUUID, &creatorUsername, &private, &quickdata, &request, &created); err != nil {
+		if err := rows.Scan(&uuid, &creatorUUID, &creatorUsername, &private, &quickdata, &requestBytes, &gameRequestBytes, &created); err != nil {
 			return nil, err
 		}
-		if quickdata == nil || request == nil {
+		if quickdata == nil {
 			continue // although this shouldn't happen
 		}
+		
+		// Unmarshal game request
+		var lexicon string
+		gamereq, err := common.UnmarshalGameRequest(gameRequestBytes, requestBytes)
+		if err != nil {
+			log.Warn().Err(err).Str("game_uuid", uuid).Msg("failed to unmarshal game request")
+		} else if gamereq != nil {
+			lexicon = gamereq.Lexicon
+		}
+		
 		games = append(games, &BroadcastGame{
 			GameUUID:        uuid,
 			CreatorUUID:     creatorUUID,
@@ -262,7 +273,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 			Private:         private,
 			Finished:        !unfinished,
 			Players:         quickdata.PlayerInfo,
-			Lexicon:         request.Lexicon,
+			Lexicon:         lexicon,
 			Created:         created,
 		})
 	}

@@ -44,7 +44,7 @@ type CreateGameParams struct {
 	Stats          entity.Stats
 	TournamentID   pgtype.Text
 	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
@@ -89,7 +89,7 @@ type CreateRawGameParams struct {
 	Timers        entity.Timers
 	GameEndReason pgtype.Int4
 	Type          pgtype.Int4
-	GameRequest   entity.GameRequest
+	GameRequest   []byte
 }
 
 func (q *Queries) CreateRawGame(ctx context.Context, arg CreateRawGameParams) error {
@@ -192,7 +192,7 @@ type GetGameMetadataRow struct {
 	TournamentID   pgtype.Text
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGameMetadataRow, error) {
@@ -303,7 +303,7 @@ type GetRecentGamesByUsernameRow struct {
 	TournamentData entity.TournamentData
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
@@ -378,7 +378,7 @@ type GetRecentTourneyGamesRow struct {
 	TournamentData entity.TournamentData
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourneyGamesParams) ([]GetRecentTourneyGamesRow, error) {
@@ -465,7 +465,7 @@ type ListActiveGamesRow struct {
 	Uuid           pgtype.Text
 	Started        pgtype.Bool
 	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, error) {
@@ -509,7 +509,7 @@ type ListActiveTournamentGamesRow struct {
 	Uuid           pgtype.Text
 	Started        pgtype.Bool
 	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 }
 
 func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID string) ([]ListActiveTournamentGamesRow, error) {
@@ -623,7 +623,7 @@ type UpdateGameParams struct {
 	TournamentData entity.TournamentData
 	TournamentID   pgtype.Text
 	ReadyFlag      pgtype.Int8
-	GameRequest    entity.GameRequest
+	GameRequest    []byte
 	Uuid           pgtype.Text
 }
 
