@@ -287,10 +287,10 @@ func TestListActive(t *testing.T) {
 
 	is.Equal(games.GameInfo[1].GameRequest.InitialTimeSeconds, int32(120))
 	is.Equal(games.GameInfo[1].GameRequest.ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
-	is.Equal(games.GameInfo[1].GameRequest.Rules, &pb.GameRules{
+	is.True(proto.Equal(games.GameInfo[1].GameRequest.Rules, &pb.GameRules{
 		BoardLayoutName:        "CrosswordGame",
 		LetterDistributionName: "english",
-	})
+	}))
 	ustore.(*user.DBStore).Disconnect()
 	gstore.Disconnect()
 }
