@@ -31,7 +31,7 @@ import { create, toJsonString } from "@bufbuild/protobuf";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { PuzzleService } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
-import { enumToOptions } from "../utils/protobuf";
+import { enumToOptions, getEnumLabel } from "../utils/protobuf";
 
 const layout = {
   labelCol: {
@@ -114,7 +114,6 @@ export const PuzzleGenerator = () => {
       req.daysPerChunk = vals.daysPerChunk;
       req.equityLossTotalLimit = vals.equityLossTotalLimit;
       req.startDate = vals.startDate;
-
       const bucketReq = create(PuzzleGenerationRequestSchema, {});
 
       const buckets = new Array<PuzzleBucket>();
@@ -122,8 +121,10 @@ export const PuzzleGenerator = () => {
         const pb = create(PuzzleBucketSchema, {});
         pb.size = bucket.size;
 
-        pb.includes = bucket.includes ?? new Array<PuzzleTag>();
-        pb.excludes = bucket.excludes ?? new Array<PuzzleTag>();
+        pb.includes =
+          bucket.includes?.map((v) => Number(v)) ?? new Array<PuzzleTag>();
+        pb.excludes =
+          bucket.excludes?.map((v) => Number(v)) ?? new Array<PuzzleTag>();
         buckets.push(pb);
       });
 
@@ -160,7 +161,11 @@ export const PuzzleGenerator = () => {
   const puzzleTags = useMemo(
     () =>
       enumToOptions(PuzzleTag).map((key) => {
-        return <Select.Option key={key.value}>{key.label}</Select.Option>;
+        return (
+          <Select.Option key={key.value} value={key.value}>
+            {key.label}
+          </Select.Option>
+        );
       }),
     [],
   );
@@ -246,29 +251,20 @@ export const PuzzleGenerator = () => {
           {(fields, { add, remove }) => (
             <>
               {fields.map((field) => (
-                <>
+                <React.Fragment key={field.key}>
                   <Form.Item
-                    {...field}
                     name={[field.name, "size"]}
                     label="Size"
                     rules={[{ required: true, message: "Missing bucket size" }]}
                   >
                     <InputNumber inputMode="numeric" />
                   </Form.Item>
-                  <Form.Item
-                    {...field}
-                    name={[field.name, "includes"]}
-                    label="Includes"
-                  >
+                  <Form.Item name={[field.name, "includes"]} label="Includes">
                     <Select mode="multiple" allowClear>
                       {puzzleTags}
                     </Select>
                   </Form.Item>
-                  <Form.Item
-                    {...field}
-                    name={[field.name, "excludes"]}
-                    label="Excludes"
-                  >
+                  <Form.Item name={[field.name, "excludes"]} label="Excludes">
                     <Select mode="multiple" allowClear>
                       {puzzleTags}
                     </Select>
@@ -279,7 +275,7 @@ export const PuzzleGenerator = () => {
                   >
                     Delete
                   </Button>
-                </>
+                </React.Fragment>
               ))}
               <Form.Item>
                 <Button

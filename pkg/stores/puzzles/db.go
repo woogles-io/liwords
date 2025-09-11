@@ -378,7 +378,7 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 				return nil, "", -1, nil, time.Time{}, time.Time{}, nil, nil, entity.NewWooglesError(ipc.WooglesError_PUZZLE_GET_PUZZLE_UPDATE_ATTEMPT, userUUID, puzzleUUID)
 			}
 		} else {
-			_, err = tx.Exec(ctx, `INSERT INTO puzzle_attempts (puzzle_id, user_id, attempts, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW())`, pid, uid, 0)
+			_, err = tx.Exec(ctx, `INSERT INTO puzzle_attempts (puzzle_id, user_id, attempts, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET updated_at = NOW()`, pid, uid, 0)
 			if err != nil {
 				return nil, "", -1, nil, time.Time{}, time.Time{}, nil, nil, err
 			}
