@@ -11,6 +11,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -60,11 +61,15 @@ func (s *DBStore) CreateAnnotatedGame(ctx context.Context, creatorUUID string, g
 	if err != nil {
 		return err
 	}
+	jsonReq, err := protojson.Marshal(req)
+	if err != nil {
+		return err
+	}
 	// Also insert it into the old games table. We will need to migrate this.
 	_, err = tx.Exec(ctx, `
-	INSERT INTO games (created_at, updated_at, uuid, type, quickdata, request)
-	VALUES (NOW(), NOW(), $1, $2, $3, $4)
-	`, gameUUID, ipc.GameType_ANNOTATED, quickdata, request)
+	INSERT INTO games (created_at, updated_at, uuid, type, quickdata, request, game_request)
+	VALUES (NOW(), NOW(), $1, $2, $3, $4, $5)
+	`, gameUUID, ipc.GameType_ANNOTATED, quickdata, request, jsonReq)
 	if err != nil {
 		return err
 	}
@@ -205,7 +210,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	if editorID == "" {
 		query = `
 		SELECT game_uuid, creator_uuid, username,
-			private_broadcast, quickdata, request, games.created_at
+			private_broadcast, quickdata, request, game_request, games.created_at
 		FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		JOIN users ON users.uuid = annotated_game_metadata.creator_uuid
@@ -222,7 +227,9 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		}
 	} else {
 		query = `
-		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast, quickdata, request, created_at FROM annotated_game_metadata
+		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast,
+			quickdata, request, game_request, created_at
+		FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		WHERE creator_uuid = $1 AND done = $2
 		ORDER BY created_at DESC
@@ -256,7 +263,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		if quickdata == nil {
 			continue // although this shouldn't happen
 		}
-		
+
 		// Unmarshal game request
 		var lexicon string
 		gamereq, err := common.UnmarshalGameRequest(gameRequestBytes, requestBytes)
@@ -265,7 +272,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		} else if gamereq != nil {
 			lexicon = gamereq.Lexicon
 		}
-		
+
 		games = append(games, &BroadcastGame{
 			GameUUID:        uuid,
 			CreatorUUID:     creatorUUID,
