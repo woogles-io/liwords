@@ -6,9 +6,9 @@
 @use "../../board_modes" as *;
 
 $tile-transition:
-  width ease-in 100ms,
-  height ease-in 100ms,
-  background-color ease-in 100ms;
+  width ease-in 50ms,
+  height ease-in 50ms,
+  background-color ease-in 50ms;
 
 .ant-modal-footer {
   display: flex;
@@ -1203,6 +1203,7 @@ p.rune {
   letter-spacing: -0.13em;
   font-size: $point-size-mobile;
   font-weight: 600;
+  pointer-events: none; // Allow clicks to pass through to tile
 
   @include colorModed() {
     color: m($background);
