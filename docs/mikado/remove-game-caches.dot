@@ -6,7 +6,8 @@ digraph RedoGameModel {
     node [shape=box, color=gray, fontcolor=gray, style=dashed];
     DBGet [label="Rewrite DB Get to use sqlc ✅"];
     AddOtherTables [label="Add many2many and turns tables ✅"];
-
+    SQLCDBStore [label="Rewrite DB store to use sqlc ✅"];
+    SQLCOtherFuncs [label="Rewrite all others to use sqlc ✅"];
     // Reset to default for other uncompleted nodes
     node [shape=box, color=black, fontcolor=black, style=solid];
 
@@ -14,40 +15,50 @@ digraph RedoGameModel {
     LessDowntimeBetweenDeploys [label="Allow for less downtime between deploys"];
     MakeDBFaster [label="Make DB faster to query"];
 
-
+    ImproveOtherTables [label="Improve many2many tables\nAdd indexes, pastgames table"];
     OnlyUseOtherTables [label="Only use new tables"];
     MigrateToNewTables [label="Migrate to new tables"];
-    UseOtherTables [label="Transparently use new many2many and turns tables"];
+    UseOtherTables [label="Transparently use new tables"];
     RemoveGameCache [label="Remove game cache"];
     EfficientTable [label="Make game DB model more efficient"];
-    OldGamesInS3 [label="Move old games to S3"];
-    TranslateToGameDocument [label="Translate S3 games to GameDocument"];
+
     FixGameDocumentBugs [label="Fix and test GameDocument bugs"];
-    SQLCDBStore [label="Rewrite DB store to use sqlc"];
-    SQLCOtherFuncs [label="Rewrite all others to use sqlc"];
+
     DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
 
+    ConsolidateRequestColumns [label="Consolidate request columns"];
+    ReplaceQuickData [label="Replace QuickData with JOINs"];
+
+    ClearLargeFields [label="Clear large fields in games table"];
+    ImplementS3Archival [label="Implement S3 archival of old partitions"];
     // Arrows
     Goal -> MoreSimultaneousGames;
     Goal -> LessDowntimeBetweenDeploys;
     Goal -> MakeDBFaster;
+    Goal -> ImplementS3Archival;
 
     MoreSimultaneousGames -> RemoveGameCache;
     LessDowntimeBetweenDeploys -> RemoveGameCache;
     MakeDBFaster -> EfficientTable;
 
     RemoveGameCache -> EfficientTable;
-    EfficientTable-> OnlyUseOtherTables;
-    OnlyUseOtherTables -> MigrateToNewTables;
+    OnlyUseOtherTables -> ReplaceQuickData;
+    ReplaceQuickData -> MigrateToNewTables;
+
     MigrateToNewTables -> UseOtherTables;
+    ImproveOtherTables -> AddOtherTables;
     EfficientTable -> SQLCDBStore;
-    EfficientTable -> OldGamesInS3;
-    OldGamesInS3 -> TranslateToGameDocument;
-    TranslateToGameDocument -> FixGameDocumentBugs;
-    UseOtherTables -> AddOtherTables;
+    EfficientTable -> DBSetSplit;
+    DBSetSplit -> SQLCOtherFuncs;
+    UseOtherTables -> ImproveOtherTables;
+    UseOtherTables -> FixGameDocumentBugs;
     SQLCDBStore -> DBGet;
-    SQLCDBStore -> DBSetSplit;
     SQLCDBStore -> SQLCOtherFuncs;
+    ConsolidateRequestColumns -> SQLCOtherFuncs;
+    EfficientTable -> ConsolidateRequestColumns;
+    MakeDBFaster -> ClearLargeFields;
+    ClearLargeFields -> OnlyUseOtherTables;
+    ImplementS3Archival -> ClearLargeFields;
 
 }
 
