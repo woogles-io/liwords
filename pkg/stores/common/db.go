@@ -169,7 +169,8 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 	var uuid string
 	var historyBytes []byte
 	var requestBytes []byte
-	err := tx.QueryRow(ctx, `SELECT uuid, history, request FROM games WHERE id = $1`, gameId).Scan(&uuid, &historyBytes, &requestBytes)
+	var gameRequestBytes []byte
+	err := tx.QueryRow(ctx, `SELECT uuid, history, request, game_request FROM games WHERE id = $1`, gameId).Scan(&uuid, &historyBytes, &requestBytes, &gameRequestBytes)
 	if err == pgx.ErrNoRows {
 		return nil, nil, "", fmt.Errorf("no rows for games table: %d", gameId)
 	}
@@ -182,9 +183,7 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 	if err != nil {
 		return nil, nil, "", err
 	}
-
-	req := &ipc.GameRequest{}
-	err = proto.Unmarshal(requestBytes, req)
+	req, err := UnmarshalGameRequest(gameRequestBytes, requestBytes)
 	if err != nil {
 		return nil, nil, "", err
 	}
