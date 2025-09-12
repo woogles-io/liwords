@@ -10,17 +10,17 @@
 
 -- 1. User game lookup optimization - player 0 index
 -- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_games_player0_filtered
--- ON public.games (player0_id, id DESC)
+-- ON public.games (player0_id, id)
 -- WHERE game_end_reason NOT IN (0, 5, 7);
 
 -- 2. User game lookup optimization - player 1 index
 -- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_games_player1_filtered
--- ON public.games (player1_id, id DESC)
+-- ON public.games (player1_id, id)
 -- WHERE game_end_reason NOT IN (0, 5, 7);
 
 -- 3. Tournament game lookup optimization
 -- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_games_tournament_filtered
--- ON public.games (tournament_id, updated_at DESC)
+-- ON public.games (tournament_id, updated_at)
 -- WHERE game_end_reason NOT IN (0, 5, 7) AND tournament_id IS NOT NULL;
 
 -- Expected performance improvement: 100x+ for high-volume players (bots with 50k+ games)
