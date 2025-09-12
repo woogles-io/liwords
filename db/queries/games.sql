@@ -2,25 +2,25 @@
 SELECT * FROM games WHERE uuid = @uuid; -- this is not even a uuid, sigh.
 
 -- name: GetGameOwner :one
-SELECT 
+SELECT
     agm.creator_uuid,
-    u.username 
+    u.username
 FROM annotated_game_metadata agm
 JOIN users u ON agm.creator_uuid = u.uuid
 WHERE agm.game_uuid = @game_uuid;
 
 -- name: GetGameMetadata :one
-SELECT 
-    id, uuid, type, player0_id, player1_id, 
-    timers, started, game_end_reason, winner_idx, loser_idx, 
+SELECT
+    id, uuid, type, player0_id, player1_id,
+    timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, request, tournament_data, tournament_id,
     created_at, updated_at, game_request
-FROM games 
+FROM games
 WHERE uuid = @uuid;
 
 -- name: GetRematchStreak :many
-SELECT uuid, winner_idx, quickdata 
-FROM games 
+SELECT uuid, winner_idx, quickdata
+FROM games
 WHERE quickdata->>'o' = @original_request_id::text
     AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
 ORDER BY created_at DESC;
@@ -29,29 +29,19 @@ ORDER BY created_at DESC;
 WITH user_id AS (
     SELECT id FROM users WHERE lower(username) = lower(@username)
 )
-(SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
         g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at, g.game_request
- FROM games g, user_id u
- WHERE g.player0_id = u.id 
-   AND g.game_end_reason NOT IN (0, 5, 7)
- ORDER BY g.id DESC
- LIMIT @num_games::integer)
-UNION ALL
-(SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at, g.game_request
- FROM games g, user_id u
- WHERE g.player1_id = u.id 
-   AND g.game_end_reason NOT IN (0, 5, 7)
- ORDER BY g.id DESC
- LIMIT @num_games::integer)
-ORDER BY id DESC
+        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at,
+        g.game_request
+FROM games g, user_id u
+WHERE (g.player0_id = u.id OR g.player1_id = u.id)
+AND g.game_end_reason NOT IN (0, 5, 7)
+ORDER BY g.id DESC
 LIMIT @num_games::integer
 OFFSET @offset_games::integer;
 
 -- name: GetRecentTourneyGames :many
-SELECT 
+SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, request, tournament_data, created_at, updated_at, game_request
@@ -115,7 +105,7 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: SetReady :one
-UPDATE games 
+UPDATE games
 SET ready_flag = ready_flag | (1 << @player_idx::integer)
 WHERE uuid = @uuid
     AND ready_flag & (1 << @player_idx::integer) = 0
