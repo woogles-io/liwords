@@ -233,6 +233,9 @@ export const SeekForm = (props: Props) => {
     case "OSPS49":
       storedValues.lexicon = "OSPS50";
       break;
+    case "NSF23":
+      storedValues.lexicon = "NSF25";
+      break;
   }
 
   const givenFriend = useMemo(

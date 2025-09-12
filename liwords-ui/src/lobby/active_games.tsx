@@ -172,7 +172,7 @@ export const ActiveGames = (props: Props) => {
         "RD29",
         "FRA24",
         "FILE2017",
-        "NSF23",
+        "NSF25",
         "DISC2",
         "OSPS50",
       ].map((l) => ({
