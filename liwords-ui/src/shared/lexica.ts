@@ -90,8 +90,8 @@ export const AllLexica: { [code: string]: Lexicon } = {
       "The “Scrabble®-Turnierliste” used as the German Lexicon is subject to copyright and related rights of Scrabble® Deutschland e.V. With the friendly assistance of Gero Illings SuperDic.",
     flagCode: "de",
   },
-  NSF23: {
-    code: "NSF23",
+  NSF25: {
+    code: "NSF25",
     shortDescription: "Norsk (Norwegian)",
     matchName: "Norsk",
     longDescription:
