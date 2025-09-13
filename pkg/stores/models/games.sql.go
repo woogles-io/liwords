@@ -16,11 +16,11 @@ const createGame = `-- name: CreateGame :exec
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, request, history, meta_events, stats, tournament_id, tournament_data, game_request
+    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, $11, $12,
-    $13, $14, $15, $16, $17, $18, $19, $20
+    $13, $14, $15, $16, $17, $18, $19
 )
 `
 
@@ -38,13 +38,12 @@ type CreateGameParams struct {
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
 	Quickdata      entity.Quickdata
-	Request        []byte
 	History        []byte
 	MetaEvents     entity.MetaEventData
 	Stats          entity.Stats
 	TournamentID   pgtype.Text
 	TournamentData entity.TournamentData
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
@@ -62,7 +61,6 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
 		arg.WinnerIdx,
 		arg.LoserIdx,
 		arg.Quickdata,
-		arg.Request,
 		arg.History,
 		arg.MetaEvents,
 		arg.Stats,
@@ -75,27 +73,25 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
 
 const createRawGame = `-- name: CreateRawGame :exec
 INSERT INTO games (
-    uuid, request, history, quickdata, timers, game_end_reason, type, game_request
+    uuid, history, quickdata, timers, game_end_reason, type, game_request
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7
 )
 `
 
 type CreateRawGameParams struct {
 	Uuid          pgtype.Text
-	Request       []byte
 	History       []byte
 	Quickdata     entity.Quickdata
 	Timers        entity.Timers
 	GameEndReason pgtype.Int4
 	Type          pgtype.Int4
-	GameRequest   []byte
+	GameRequest   entity.GameRequest
 }
 
 func (q *Queries) CreateRawGame(ctx context.Context, arg CreateRawGameParams) error {
 	_, err := q.db.Exec(ctx, createRawGame,
 		arg.Uuid,
-		arg.Request,
 		arg.History,
 		arg.Quickdata,
 		arg.Timers,
@@ -131,7 +127,7 @@ func (q *Queries) GameExists(ctx context.Context, uuid pgtype.Text) (bool, error
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, request, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3 FROM games WHERE uuid = $1
+SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3 FROM games WHERE uuid = $1
 `
 
 func (q *Queries) GetGame(ctx context.Context, uuid pgtype.Text) (Game, error) {
@@ -150,7 +146,6 @@ func (q *Queries) GetGame(ctx context.Context, uuid pgtype.Text) (Game, error) {
 		&i.GameEndReason,
 		&i.WinnerIdx,
 		&i.LoserIdx,
-		&i.Request,
 		&i.History,
 		&i.Stats,
 		&i.Quickdata,
@@ -169,7 +164,7 @@ const getGameMetadata = `-- name: GetGameMetadata :one
 SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, request, tournament_data, tournament_id,
+    quickdata, tournament_data, tournament_id,
     created_at, updated_at, game_request
 FROM games
 WHERE uuid = $1
@@ -187,12 +182,11 @@ type GetGameMetadataRow struct {
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
 	Quickdata      entity.Quickdata
-	Request        []byte
 	TournamentData entity.TournamentData
 	TournamentID   pgtype.Text
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGameMetadataRow, error) {
@@ -210,7 +204,6 @@ func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGam
 		&i.WinnerIdx,
 		&i.LoserIdx,
 		&i.Quickdata,
-		&i.Request,
 		&i.TournamentData,
 		&i.TournamentID,
 		&i.CreatedAt,
@@ -261,7 +254,7 @@ WITH user_id AS (
 )
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
         g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.request, g.tournament_data, g.created_at, g.updated_at,
+        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
         g.game_request
 FROM games g, user_id u
 WHERE (g.player0_id = u.id OR g.player1_id = u.id)
@@ -289,11 +282,10 @@ type GetRecentGamesByUsernameRow struct {
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
 	Quickdata      entity.Quickdata
-	Request        []byte
 	TournamentData entity.TournamentData
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
@@ -317,7 +309,6 @@ func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGam
 			&i.WinnerIdx,
 			&i.LoserIdx,
 			&i.Quickdata,
-			&i.Request,
 			&i.TournamentData,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -337,7 +328,7 @@ const getRecentTourneyGames = `-- name: GetRecentTourneyGames :many
 SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, request, tournament_data, created_at, updated_at, game_request
+    quickdata, tournament_data, created_at, updated_at, game_request
 FROM games
 WHERE tournament_id = $1::text
     AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
@@ -364,11 +355,10 @@ type GetRecentTourneyGamesRow struct {
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
 	Quickdata      entity.Quickdata
-	Request        []byte
 	TournamentData entity.TournamentData
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourneyGamesParams) ([]GetRecentTourneyGamesRow, error) {
@@ -392,7 +382,6 @@ func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourne
 			&i.WinnerIdx,
 			&i.LoserIdx,
 			&i.Quickdata,
-			&i.Request,
 			&i.TournamentData,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -443,7 +432,7 @@ func (q *Queries) GetRematchStreak(ctx context.Context, originalRequestID string
 }
 
 const listActiveGames = `-- name: ListActiveGames :many
-SELECT quickdata, request, uuid, started, tournament_data, game_request
+SELECT quickdata, uuid, started, tournament_data, game_request
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id
@@ -451,11 +440,10 @@ ORDER BY id
 
 type ListActiveGamesRow struct {
 	Quickdata      entity.Quickdata
-	Request        []byte
 	Uuid           pgtype.Text
 	Started        pgtype.Bool
 	TournamentData entity.TournamentData
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, error) {
@@ -469,7 +457,6 @@ func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, er
 		var i ListActiveGamesRow
 		if err := rows.Scan(
 			&i.Quickdata,
-			&i.Request,
 			&i.Uuid,
 			&i.Started,
 			&i.TournamentData,
@@ -486,7 +473,7 @@ func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, er
 }
 
 const listActiveTournamentGames = `-- name: ListActiveTournamentGames :many
-SELECT quickdata, request, uuid, started, tournament_data, game_request
+SELECT quickdata, uuid, started, tournament_data, game_request
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = $1::text
@@ -495,11 +482,10 @@ ORDER BY id
 
 type ListActiveTournamentGamesRow struct {
 	Quickdata      entity.Quickdata
-	Request        []byte
 	Uuid           pgtype.Text
 	Started        pgtype.Bool
 	TournamentData entity.TournamentData
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 }
 
 func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID string) ([]ListActiveTournamentGamesRow, error) {
@@ -513,7 +499,6 @@ func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID st
 		var i ListActiveTournamentGamesRow
 		if err := rows.Scan(
 			&i.Quickdata,
-			&i.Request,
 			&i.Uuid,
 			&i.Started,
 			&i.TournamentData,
@@ -585,15 +570,14 @@ UPDATE games SET
     winner_idx = $7,
     loser_idx = $8,
     quickdata = $9,
-    request = $10,
-    history = $11,
-    meta_events = $12,
-    stats = $13,
-    tournament_data = $14,
-    tournament_id = $15,
-    ready_flag = $16,
-    game_request = $17
-WHERE uuid = $18
+    history = $10,
+    meta_events = $11,
+    stats = $12,
+    tournament_data = $13,
+    tournament_id = $14,
+    ready_flag = $15,
+    game_request = $16
+WHERE uuid = $17
 `
 
 type UpdateGameParams struct {
@@ -606,14 +590,13 @@ type UpdateGameParams struct {
 	WinnerIdx      pgtype.Int4
 	LoserIdx       pgtype.Int4
 	Quickdata      entity.Quickdata
-	Request        []byte
 	History        []byte
 	MetaEvents     entity.MetaEventData
 	Stats          entity.Stats
 	TournamentData entity.TournamentData
 	TournamentID   pgtype.Text
 	ReadyFlag      pgtype.Int8
-	GameRequest    []byte
+	GameRequest    entity.GameRequest
 	Uuid           pgtype.Text
 }
 
@@ -628,7 +611,6 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 		arg.WinnerIdx,
 		arg.LoserIdx,
 		arg.Quickdata,
-		arg.Request,
 		arg.History,
 		arg.MetaEvents,
 		arg.Stats,

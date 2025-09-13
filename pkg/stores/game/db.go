@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -81,10 +80,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 
 	// Convert to an entity.Game
-	gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-	if err != nil {
-		return nil, fmt.Errorf("game %s: %w", id, err)
-	}
+	gamereq := &g.GameRequest
 
 	entGame := &entity.Game{
 		Started:        g.Started.Bool,
@@ -101,7 +97,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		Type:           pb.GameType(g.Type.Int32),
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
-		GameReq:        &entity.GameRequest{GameRequest: gamereq},
+		GameReq:        gamereq,
 	}
 	entGame.SetTimerModule(&entity.GameTimer{})
 
@@ -176,12 +172,9 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 
 	mdata := g.Quickdata
 
-	gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-	if err != nil {
-		return nil, fmt.Errorf("game %s: %w", id, err)
-	}
+	gamereq := &g.GameRequest
 
-	timefmt, _, err := entity.VariantFromGameReq(gamereq)
+	timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +210,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 		LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
 		GameId:              g.Uuid.String,
 		TournamentId:        tid,
-		GameRequest:         gamereq,
+		GameRequest:         gamereq.GameRequest,
 		TournamentDivision:  tDiv,
 		TournamentRound:     int32(tRound),
 		TournamentGameIndex: int32(tGameIndex),
@@ -300,12 +293,9 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		// Convert directly from GetRecentGamesRow
 		mdata := g.Quickdata
 
-		gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-		if err != nil {
-			return nil, fmt.Errorf("game has no request data: %w", err)
-		}
+		gamereq := &g.GameRequest
 
-		timefmt, _, err := entity.VariantFromGameReq(gamereq)
+		timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +331,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
 			GameId:              g.Uuid.String,
 			TournamentId:        tid,
-			GameRequest:         gamereq,
+			GameRequest:         gamereq.GameRequest,
 			TournamentDivision:  tDiv,
 			TournamentRound:     int32(tRound),
 			TournamentGameIndex: int32(tGameIndex),
@@ -372,12 +362,9 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 		// Convert directly from GetRecentTourneyGamesRow
 		mdata := g.Quickdata
 
-		gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-		if err != nil {
-			return nil, fmt.Errorf("game has no request data: %w", err)
-		}
+		gamereq := &g.GameRequest
 
-		timefmt, _, err := entity.VariantFromGameReq(gamereq)
+		timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -413,7 +400,7 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
 			GameId:              g.Uuid.String,
 			TournamentId:        tid,
-			GameRequest:         gamereq,
+			GameRequest:         gamereq.GameRequest,
 			TournamentDivision:  tDiv,
 			TournamentRound:     int32(tRound),
 			TournamentGameIndex: int32(tGameIndex),
@@ -433,10 +420,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-	reqBytes, err := proto.Marshal(g.GameReq.GameRequest)
-	if err != nil {
-		return err
-	}
 
 	var tourneyID pgtype.Text
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
@@ -452,7 +435,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
 		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
 		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
-		Request:        reqBytes,
 		History:        hist,
 		Stats:          safeDerefStats(g.Stats),
 		Quickdata:      safeDerefQuickdata(g.Quickdata),
@@ -461,7 +443,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
 		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
 		Uuid:           common.ToPGTypeText(g.GameID()),
-		GameRequest:    marshalGameRequestToJSON(g.GameReq), // Dual-write to new jsonb column
+		GameRequest:    safeDerefGameRequest(g.GameReq),
 	})
 }
 
@@ -481,10 +463,6 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-	reqBytes, err := proto.Marshal(g.GameReq.GameRequest)
-	if err != nil {
-		return err
-	}
 
 	var tourneyID pgtype.Text
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
@@ -502,7 +480,6 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
 		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
 		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
-		Request:        reqBytes,
 		History:        hist,
 		Stats:          safeDerefStats(g.Stats),
 		Quickdata:      safeDerefQuickdata(g.Quickdata),
@@ -511,7 +488,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
 		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
 		Type:           pgtype.Int4{Int32: int32(g.Type), Valid: true},
-		GameRequest:    marshalGameRequestToJSON(g.GameReq), // Dual-write to new jsonb column
+		GameRequest:    safeDerefGameRequest(g.GameReq),
 	})
 }
 
@@ -525,20 +502,15 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 		return err
 	}
 
-	reqBytes, err := proto.Marshal(g.GameReq.GameRequest)
-	if err != nil {
-		return err
-	}
 
 	return s.queries.CreateRawGame(ctx, models.CreateRawGameParams{
 		Uuid:          common.ToPGTypeText(g.Uid()),
-		Request:       reqBytes,
 		History:       hist,
 		Quickdata:     safeDerefQuickdata(g.Quickdata),
 		Timers:        g.Timers,
 		GameEndReason: pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
 		Type:          pgtype.Int4{Int32: int32(gt), Valid: true},
-		GameRequest:   marshalGameRequestToJSON(g.GameReq), // Dual-write to new jsonb column
+		GameRequest:   safeDerefGameRequest(g.GameReq),
 	})
 }
 
@@ -553,16 +525,13 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		for _, g := range games {
 			mdata := g.Quickdata
 
-			// Unmarshal the GameRequest from stored bytes
-			gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-			if err != nil {
-				return nil, fmt.Errorf("game %s has no request data: %w", g.Uuid.String, err)
-			}
+			// Get the GameRequest from the entity
+			gamereq := &g.GameRequest
 
 			info := &pb.GameInfoResponse{
 				Players:     mdata.PlayerInfo,
 				GameId:      g.Uuid.String,
-				GameRequest: gamereq,
+				GameRequest: gamereq.GameRequest,
 				Type:        pb.GameType_NATIVE, // Default type for active games
 			}
 			responses = append(responses, info)
@@ -575,16 +544,13 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		for _, g := range games {
 			mdata := g.Quickdata
 
-			// Unmarshal the GameRequest from stored bytes
-			gamereq, err := common.UnmarshalGameRequest(g.GameRequest, g.Request)
-			if err != nil {
-				return nil, fmt.Errorf("game %s has no request data: %w", g.Uuid.String, err)
-			}
+			// Get the GameRequest from the entity
+			gamereq := &g.GameRequest
 
 			info := &pb.GameInfoResponse{
 				Players:     mdata.PlayerInfo,
 				GameId:      g.Uuid.String,
-				GameRequest: gamereq,
+				GameRequest: gamereq.GameRequest,
 				Type:        pb.GameType_NATIVE, // Default type for active games
 			}
 			responses = append(responses, info)
@@ -690,16 +656,10 @@ func safeDerefMetaEvents(metaEvents *entity.MetaEventData) entity.MetaEventData 
 	return entity.MetaEventData{} // Return zero value if nil
 }
 
-func marshalGameRequestToJSON(gameReq *entity.GameRequest) []byte {
-	if gameReq == nil || gameReq.GameRequest == nil {
-		return nil
+func safeDerefGameRequest(g *entity.GameRequest) entity.GameRequest {
+	if g == nil {
+		return entity.GameRequest{}
 	}
-	// Marshal to protojson for storage in JSONB column
-	data, err := protojson.Marshal(gameReq.GameRequest)
-	if err != nil {
-		log.Err(err).Msg("failed to marshal game request to JSON")
-		return nil
-	}
-	return data
+	return *g
 }
 

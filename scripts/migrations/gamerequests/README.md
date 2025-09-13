@@ -75,6 +75,7 @@ SELECT
   COUNT(*) as total_games,
   COUNT(request) as has_bytea,
   COUNT(game_request) as has_jsonb,
-  COUNT(CASE WHEN request IS NOT NULL AND game_request IS NULL THEN 1 END) as needs_migration
+  COUNT(CASE WHEN game_request::text != '{}' THEN 1 END) as has_actual_jsonb_data,
+  COUNT(CASE WHEN request IS NOT NULL AND (game_request IS NULL OR game_request::text = '{}') THEN 1 END) as needs_migration
 FROM games;
 ```

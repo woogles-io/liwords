@@ -12,7 +12,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 type DBStore struct {
@@ -57,19 +56,15 @@ func (s *DBStore) CreateAnnotatedGame(ctx context.Context, creatorUUID string, g
 	// Create a fake game request. XXX this is only to make it work with the rest
 	// of the system. Otherwise, metadata API doesn't work. We will have to migrate
 	// this.
-	request, err := proto.Marshal(req)
-	if err != nil {
-		return err
-	}
 	jsonReq, err := protojson.Marshal(req)
 	if err != nil {
 		return err
 	}
 	// Also insert it into the old games table. We will need to migrate this.
 	_, err = tx.Exec(ctx, `
-	INSERT INTO games (created_at, updated_at, uuid, type, quickdata, request, game_request)
-	VALUES (NOW(), NOW(), $1, $2, $3, $4, $5)
-	`, gameUUID, ipc.GameType_ANNOTATED, quickdata, request, jsonReq)
+	INSERT INTO games (created_at, updated_at, uuid, type, quickdata, game_request)
+	VALUES (NOW(), NOW(), $1, $2, $3, $4)
+	`, gameUUID, ipc.GameType_ANNOTATED, quickdata, jsonReq)
 	if err != nil {
 		return err
 	}
@@ -210,7 +205,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	if editorID == "" {
 		query = `
 		SELECT game_uuid, creator_uuid, username,
-			private_broadcast, quickdata, request, game_request, games.created_at
+			private_broadcast, quickdata, game_request, games.created_at
 		FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		JOIN users ON users.uuid = annotated_game_metadata.creator_uuid
@@ -228,7 +223,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	} else {
 		query = `
 		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast,
-			quickdata, request, game_request, created_at
+			quickdata, game_request, created_at
 		FROM annotated_game_metadata
 		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
 		WHERE creator_uuid = $1 AND done = $2
@@ -253,24 +248,20 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		var creatorUsername string
 		var private bool
 		var quickdata *entity.Quickdata
-		var requestBytes []byte
-		var gameRequestBytes []byte
+		var gameRequest entity.GameRequest
 		var created time.Time
 
-		if err := rows.Scan(&uuid, &creatorUUID, &creatorUsername, &private, &quickdata, &requestBytes, &gameRequestBytes, &created); err != nil {
+		if err := rows.Scan(&uuid, &creatorUUID, &creatorUsername, &private, &quickdata, &gameRequest, &created); err != nil {
 			return nil, err
 		}
 		if quickdata == nil {
 			continue // although this shouldn't happen
 		}
 
-		// Unmarshal game request
+		// Get lexicon from game request
 		var lexicon string
-		gamereq, err := common.UnmarshalGameRequest(gameRequestBytes, requestBytes)
-		if err != nil {
-			log.Warn().Err(err).Str("game_uuid", uuid).Msg("failed to unmarshal game request")
-		} else if gamereq != nil {
-			lexicon = gamereq.Lexicon
+		if gameRequest.GameRequest != nil {
+			lexicon = gameRequest.GameRequest.Lexicon
 		}
 
 		games = append(games, &BroadcastGame{

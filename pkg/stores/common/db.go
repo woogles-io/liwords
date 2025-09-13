@@ -14,6 +14,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -168,9 +169,8 @@ func GetPuzzleDBIDFromUUID(ctx context.Context, tx pgx.Tx, uuid string) (int64, 
 func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHistory, *ipc.GameRequest, string, error) {
 	var uuid string
 	var historyBytes []byte
-	var requestBytes []byte
 	var gameRequestBytes []byte
-	err := tx.QueryRow(ctx, `SELECT uuid, history, request, game_request FROM games WHERE id = $1`, gameId).Scan(&uuid, &historyBytes, &requestBytes, &gameRequestBytes)
+	err := tx.QueryRow(ctx, `SELECT uuid, history, game_request FROM games WHERE id = $1`, gameId).Scan(&uuid, &historyBytes, &gameRequestBytes)
 	if err == pgx.ErrNoRows {
 		return nil, nil, "", fmt.Errorf("no rows for games table: %d", gameId)
 	}
@@ -183,12 +183,13 @@ func GetGameInfo(ctx context.Context, tx pgx.Tx, gameId int) (*macondopb.GameHis
 	if err != nil {
 		return nil, nil, "", err
 	}
-	req, err := UnmarshalGameRequest(gameRequestBytes, requestBytes)
+	gr := &ipc.GameRequest{}
+	err = protojson.Unmarshal(gameRequestBytes, gr) // ignore error, may be empty or invalid
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	return hist, req, uuid, nil
+	return hist, gr, uuid, nil
 }
 
 func InitializeUserRating(ctx context.Context, tx pgx.Tx, userId int64) error {
