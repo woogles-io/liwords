@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	macondogame "github.com/domino14/macondo/game"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -751,31 +749,21 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 	limit int, lexicon string, avoidBots bool) ([]pgtype.Text, error) {
 
 	if avoidBots {
-		reqBytes, _ := proto.Marshal(&ipc.GameRequest{
-			Lexicon: lexicon,
-			Rules: &ipc.GameRules{
-				VariantName: string(macondogame.VarClassic),
-			}})
 		ids, err := s.queries.GetPotentialPuzzleGamesAvoidBots(ctx, models.GetPotentialPuzzleGamesAvoidBotsParams{
 			CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 			CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-			Request: reqBytes,
-			Limit:  int32(limit),
-			Offset: 0,
+			Column3:     lexicon,
+			Limit:       int32(limit),
+			Offset:      0,
 		})
 		return ids, err
 	}
-	reqBytes2, _ := proto.Marshal(&ipc.GameRequest{
-		Lexicon: lexicon,
-		Rules: &ipc.GameRules{
-			VariantName: string(macondogame.VarClassic),
-		}})
 	ids, err := s.queries.GetPotentialPuzzleGames(ctx, models.GetPotentialPuzzleGamesParams{
 		CreatedAt:   pgtype.Timestamptz{Valid: true, Time: time1},
 		CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
-		Request: reqBytes2,
-		Limit:  int32(limit),
-		Offset: 0,
+		Column3:     lexicon,
+		Limit:       int32(limit),
+		Offset:      0,
 	})
 	return ids, err
 }

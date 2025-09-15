@@ -8,6 +8,8 @@ digraph RedoGameModel {
     AddOtherTables [label="Add many2many and turns tables ✅"];
     SQLCDBStore [label="Rewrite DB store to use sqlc ✅"];
     SQLCOtherFuncs [label="Rewrite all others to use sqlc ✅"];
+    ConsolidateRequestColumns [label="Consolidate request columns ✅"];
+
     // Reset to default for other uncompleted nodes
     node [shape=box, color=black, fontcolor=black, style=solid];
 
@@ -26,7 +28,6 @@ digraph RedoGameModel {
 
     DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
 
-    ConsolidateRequestColumns [label="Consolidate request columns"];
     ReplaceQuickData [label="Replace QuickData with JOINs"];
 
     ClearLargeFields [label="Clear large fields in games table"];

@@ -30,9 +30,7 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "MetaEventData"
-      # Uncomment this when we consolidate game_request handling (one single column)
-      # and write custom marshalling/unmarshalling logic for it in entity pkg.
-      # - column: "games.game_request"
-      #   go_type:
-      #     import: "github.com/woogles-io/liwords/pkg/entity"
-      #     type: "GameRequest"
+      - column: "games.game_request"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "GameRequest"
