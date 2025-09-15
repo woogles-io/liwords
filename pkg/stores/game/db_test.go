@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"encoding/hex"
 	"os"
 	"testing"
 
@@ -118,19 +117,22 @@ func addfakeGames(gstore *DBStore) {
 		panic(err)
 	}
 
-	req, err := hex.DecodeString("12180a0d43726f7373776f726447616d651207656e676c697368183c2803")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-
+	reqbts := []byte(`{
+	"rules": {
+		"boardLayoutName": "CrosswordGame",
+		"letterDistributionName": "english"
+	},
+	"initialTimeSeconds": 60,
+	"challengeRule": "FIVE_POINT"
+	}`)
 	ctx := context.Background()
 	_, err = gstore.dbPool.Exec(ctx, "INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
-		"request, history, quickdata) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+		"game_request, history, quickdata) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
 		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, histbts,
+		true, 0, 0, 0, reqbts, histbts,
 		`{"pi":[{"nickname":"mina","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
 
 	if err != nil {
