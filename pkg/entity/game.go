@@ -39,6 +39,11 @@ func (t *Timers) Value() (driver.Value, error) {
 }
 
 func (t *Timers) Scan(value interface{}) error {
+	if value == nil {
+		// Leave timers in zero state for NULL database values
+		return nil
+	}
+
 	var b []byte
 	switch v := value.(type) {
 	case []byte:
