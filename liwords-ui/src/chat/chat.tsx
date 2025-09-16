@@ -46,6 +46,36 @@ export type Props = {
 // userid -> channel -> string
 let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
 
+// Helper function to determine the correct default tab
+const getDefaultTab = (
+  suppressDefault: boolean,
+  loggedIn: boolean,
+  collectionContext: unknown,
+  defaultChannel: string,
+  tournamentID?: string,
+): string => {
+  if (suppressDefault || !loggedIn) return "CHAT";
+
+  // Collection takes precedence over everything else
+  if (collectionContext) return "COLLECTION";
+
+  // Check channel type
+  const channelType = defaultChannel?.split(".")[1];
+
+  // Tournament channels, game channels, and gametv channels should default to CHAT
+  if (
+    tournamentID ||
+    channelType === "tournament" ||
+    channelType === "game" ||
+    channelType === "gametv"
+  ) {
+    return "CHAT";
+  }
+
+  // Default to PLAYERS for lobby and other channels
+  return "PLAYERS";
+};
+
 export const Chat = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const competitorState = useTournamentCompetitorState();
@@ -60,15 +90,15 @@ export const Chat = React.memo((props: Props) => {
   const { defaultChannel, defaultDescription } = props;
   const [showChannels, setShowChannels] = useState(props.suppressDefault);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
-  const [selectedChatTab, setSelectedChatTab] = useState(() => {
-    if (props.suppressDefault || !loggedIn) return "CHAT";
-    // Collection takes precedence over game chat
-    if (collectionContext) return "COLLECTION";
-    // Check if we're in a game or gametv channel
-    const channelType = defaultChannel?.split(".")[1];
-    if (channelType === "game" || channelType === "gametv") return "CHAT";
-    return "PLAYERS";
-  });
+  const [selectedChatTab, setSelectedChatTab] = useState(() =>
+    getDefaultTab(
+      props.suppressDefault || false,
+      loggedIn,
+      collectionContext,
+      defaultChannel,
+      props.tournamentID,
+    ),
+  );
   const chatTab = selectedChatTab === "CHAT" ? tabContainerElement : null;
   const socializeClient = useClient(SocializeService);
   // Chat auto-scrolls when the last entity is visible.
@@ -305,14 +335,32 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     setChannel(defaultChannel);
     setDescription(defaultDescription);
-    if (
-      loggedIn &&
-      (defaultChannel === "chat.lobby" || props.suppressDefault)
-    ) {
+
+    // Only set PLAYERS tab for lobby channels, not tournament channels
+    if (loggedIn && defaultChannel === "chat.lobby") {
       setSelectedChatTab("PLAYERS");
       setShowChannels(true);
+    } else if (loggedIn && props.suppressDefault) {
+      // For suppressDefault, use the helper function to determine correct tab
+      setSelectedChatTab(
+        getDefaultTab(
+          props.suppressDefault,
+          loggedIn,
+          collectionContext,
+          defaultChannel,
+          props.tournamentID,
+        ),
+      );
+      setShowChannels(true);
     }
-  }, [defaultChannel, defaultDescription, loggedIn, props.suppressDefault]);
+  }, [
+    defaultChannel,
+    defaultDescription,
+    loggedIn,
+    props.suppressDefault,
+    collectionContext,
+    props.tournamentID,
+  ]);
 
   // Track context to detect actual changes (not just re-renders)
   const [prevContext, setPrevContext] = useState({
@@ -336,18 +384,51 @@ export const Chat = React.memo((props: Props) => {
       prevContext.hasCollection !== currentContext.hasCollection;
 
     if (contextChanged) {
-      if (
-        props.tournamentID ||
-        channelType === "game" ||
-        channelType === "gametv"
-      ) {
-        setSelectedChatTab("CHAT");
-      } else if (collectionContext) {
-        setSelectedChatTab("COLLECTION");
-      }
+      // Use the helper function to determine the correct tab for the new context
+      const newTab = getDefaultTab(
+        props.suppressDefault || false,
+        loggedIn,
+        collectionContext,
+        defaultChannel,
+        props.tournamentID,
+      );
+      setSelectedChatTab(newTab);
       setPrevContext(currentContext);
     }
-  }, [props.tournamentID, channelType, collectionContext, prevContext]);
+  }, [
+    props.tournamentID,
+    channelType,
+    collectionContext,
+    prevContext,
+    props.suppressDefault,
+    loggedIn,
+    defaultChannel,
+  ]);
+
+  // Handle collection context changes separately to fix race conditions
+  useEffect(() => {
+    if (collectionContext && selectedChatTab !== "COLLECTION") {
+      // Collection context became available, switch to collection tab
+      setSelectedChatTab("COLLECTION");
+    } else if (!collectionContext && selectedChatTab === "COLLECTION") {
+      // Collection context was removed, determine new default tab
+      const newTab = getDefaultTab(
+        props.suppressDefault || false,
+        loggedIn,
+        null, // no collection context
+        defaultChannel,
+        props.tournamentID,
+      );
+      setSelectedChatTab(newTab);
+    }
+  }, [
+    collectionContext,
+    selectedChatTab,
+    props.suppressDefault,
+    loggedIn,
+    defaultChannel,
+    props.tournamentID,
+  ]);
 
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
