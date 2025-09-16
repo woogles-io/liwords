@@ -188,18 +188,22 @@ class ScorecardCreator:
                 is_png = response.content.startswith(b"\x89PNG\r\n\x1a\n")
                 if not is_png:
                     print(f"Logo is not a PNG file. URL: {tourney_logo}")
-                    from PIL import Image
+                    try:
+                        from PIL import Image
 
-                    img = Image.open(BytesIO(response.content))
+                        img = Image.open(BytesIO(response.content))
 
-                    # Resize to reasonable dimensions to avoid memory issues
-                    img.thumbnail((300, 300))
-                    output = BytesIO()
-                    img.save(output, format="PNG")
-                    output.seek(0)
+                        # Resize to reasonable dimensions to avoid memory issues
+                        img.thumbnail((300, 300))
+                        output = BytesIO()
+                        img.save(output, format="PNG")
+                        output.seek(0)
 
-                    self.cached_logo = cairo.ImageSurface.create_from_png(output)
-                    print(f"Converted image to PNG")
+                        self.cached_logo = cairo.ImageSurface.create_from_png(output)
+                        print(f"Converted image to PNG")
+                    except Exception as e:
+                        print(f"Error processing non-PNG logo: {str(e)}")
+                        self.cached_logo = None
                 else:
                     # It's a PNG, proceed with caution
                     try:
@@ -214,30 +218,35 @@ class ScorecardCreator:
                             )
                     except Exception as e:
                         print(f"Error loading PNG: {str(e)}")
+                        self.cached_logo = None
 
             logo_surface = self.cached_logo
 
-            # Calculate safe width to avoid QR code overlap
-            logo_height = logo_surface.get_height()
-            logo_width = logo_surface.get_width()
+            # Only draw logo if we successfully loaded it
+            if logo_surface is not None:
+                # Calculate safe width to avoid QR code overlap
+                logo_height = logo_surface.get_height()
+                logo_width = logo_surface.get_width()
 
-            # QR code starts at x=490, logo starts at x=375
-            # Safe width = space between logo start and QR code start = 490-375 = 115
-            max_safe_width = 105  # Leave 10pt margin
+                # QR code starts at x=490, logo starts at x=375
+                # Safe width = space between logo start and QR code start = 490-375 = 115
+                max_safe_width = 105  # Leave 10pt margin
 
-            # Calculate scale based on both height and width constraints
-            height_scale_factor = 70 / logo_height
-            width_scale_factor = max_safe_width / logo_width
+                # Calculate scale based on both height and width constraints
+                height_scale_factor = 70 / logo_height
+                width_scale_factor = max_safe_width / logo_width
 
-            # Use the smaller scale factor to ensure logo fits in both dimensions
-            scale_factor = min(height_scale_factor, width_scale_factor)
+                # Use the smaller scale factor to ensure logo fits in both dimensions
+                scale_factor = min(height_scale_factor, width_scale_factor)
 
-            ctx.save()
-            ctx.translate(375, 10)
-            ctx.scale(scale_factor, scale_factor)
-            ctx.set_source_surface(logo_surface, 0, 0)
-            ctx.paint()
-            ctx.restore()
+                ctx.save()
+                ctx.translate(375, 10)
+                ctx.scale(scale_factor, scale_factor)
+                ctx.set_source_surface(logo_surface, 0, 0)
+                ctx.paint()
+                ctx.restore()
+            else:
+                print("Skipping logo drawing due to previous errors")
 
         # line for player and name
         ctx.set_font_size(20)
