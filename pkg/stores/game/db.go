@@ -514,7 +514,7 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	})
 }
 
-func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
 	if tourneyID != "" {
@@ -524,15 +524,20 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		}
 		for _, g := range games {
 			mdata := g.Quickdata
+			trdata := g.TournamentData
 
 			// Get the GameRequest from the entity
 			gamereq := &g.GameRequest
 
 			info := &pb.GameInfoResponse{
-				Players:     mdata.PlayerInfo,
-				GameId:      g.Uuid.String,
-				GameRequest: gamereq.GameRequest,
-				Type:        pb.GameType_NATIVE, // Default type for active games
+				Players:             mdata.PlayerInfo,
+				GameId:              g.Uuid.String,
+				GameRequest:         gamereq.GameRequest,
+				Type:                pb.GameType_NATIVE, // Default type for active games
+				TournamentId:        trdata.Id,
+				TournamentDivision:  trdata.Division,
+				TournamentRound:     int32(trdata.Round),
+				TournamentGameIndex: int32(trdata.GameIndex),
 			}
 			responses = append(responses, info)
 		}
@@ -543,15 +548,20 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*pb.GameInf
 		}
 		for _, g := range games {
 			mdata := g.Quickdata
+			trdata := g.TournamentData
 
 			// Get the GameRequest from the entity
 			gamereq := &g.GameRequest
 
 			info := &pb.GameInfoResponse{
-				Players:     mdata.PlayerInfo,
-				GameId:      g.Uuid.String,
-				GameRequest: gamereq.GameRequest,
-				Type:        pb.GameType_NATIVE, // Default type for active games
+				Players:             mdata.PlayerInfo,
+				GameId:              g.Uuid.String,
+				GameRequest:         gamereq.GameRequest,
+				Type:                pb.GameType_NATIVE, // Default type for active games
+				TournamentId:        trdata.Id,
+				TournamentDivision:  trdata.Division,
+				TournamentRound:     int32(trdata.Round),
+				TournamentGameIndex: int32(trdata.GameIndex),
 			}
 			responses = append(responses, info)
 		}

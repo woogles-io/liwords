@@ -25,7 +25,7 @@ type backingStore interface {
 	Create(context.Context, *entity.Game) error
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
-	ListActive(ctx context.Context, tourneyID string) (*pb.GameInfoResponses, error)
+	ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -194,7 +194,7 @@ func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*p
 		return c.listAllActive(ctx)
 	}
 	// Otherwise don't worry about caching; this list should be comparatively smaller.
-	return c.backing.ListActive(ctx, tourneyID)
+	return c.backing.ListActive(ctx, tourneyID, bust)
 }
 
 func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error) {
@@ -207,7 +207,7 @@ func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error
 	c.RUnlock()
 	log.Debug().Msg("active games not in cache, fetching from backing")
 
-	games, err := c.backing.ListActive(ctx, "")
+	games, err := c.backing.ListActive(ctx, "", false)
 	if err == nil {
 		c.Lock()
 		c.activeGames = games

@@ -271,7 +271,7 @@ func TestListActive(t *testing.T) {
 	// There should be an additional game, so 3 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
 
-	games, err := gstore.ListActive(context.Background(), "")
+	games, err := gstore.ListActive(context.Background(), "", true)
 	is.NoErr(err)
 	is.Equal(len(games.GameInfo), 3)
 	is.Equal(games.GameInfo[0].Players, []*pb.PlayerInfo{
