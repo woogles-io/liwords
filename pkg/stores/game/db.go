@@ -706,15 +706,18 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 
 	// Determine win status for each player
 	var player0Won, player1Won pgtype.Bool
-	switch g.WinnerIdx {
-	case 0:
-		player0Won = pgtype.Bool{Bool: true, Valid: true}
-		player1Won = pgtype.Bool{Bool: false, Valid: true}
-	case 1:
-		player0Won = pgtype.Bool{Bool: false, Valid: true}
-		player1Won = pgtype.Bool{Bool: true, Valid: true}
+	// For ABORTED games, don't set any winner regardless of WinnerIdx value
+	if g.GameEndReason != pb.GameEndReason_ABORTED {
+		switch g.WinnerIdx {
+		case 0:
+			player0Won = pgtype.Bool{Bool: true, Valid: true}
+			player1Won = pgtype.Bool{Bool: false, Valid: true}
+		case 1:
+			player0Won = pgtype.Bool{Bool: false, Valid: true}
+			player1Won = pgtype.Bool{Bool: true, Valid: true}
+		}
 	}
-	// If WinnerIdx is -1 (tie), both remain null (or if game was aborted)
+	// If WinnerIdx is -1 (tie) or game was ABORTED, both remain null
 
 	return s.queries.InsertGamePlayers(ctx, models.InsertGamePlayersParams{
 		GameUuid:          g.GameID(),

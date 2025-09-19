@@ -351,6 +351,13 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
 	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
+	// For ABORTED games, explicitly set winner/loser to -1 (no winner)
+	// This prevents the default value of 0 from being interpreted as "player 0 won"
+	if gameEndReason == pb.GameEndReason_ABORTED {
+		g.SetWinnerIdx(-1)
+		g.SetLoserIdx(-1)
+	}
+
 	// save the game back into the store
 	err := stores.GameStore.Set(ctx, g)
 	if err != nil {

@@ -186,7 +186,9 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			// Determine won status for each player based on winner_idx
 			// winner_idx still refers to the macondo game indices (0 = first player, 1 = second player)
 			var firstPlayerWon, secondPlayerWon *bool
-			if g.WinnerIdx != nil {
+			// For ABORTED games (game_end_reason = 5), don't set any winner regardless of winner_idx value
+			// This fixes historical data where ABORTED games incorrectly had winner_idx = 0
+			if g.GameEndReason != 5 && g.WinnerIdx != nil {
 				if *g.WinnerIdx == 0 {
 					t, f := true, false
 					firstPlayerWon, secondPlayerWon = &t, &f
