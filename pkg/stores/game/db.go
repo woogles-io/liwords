@@ -21,6 +21,7 @@ import (
 
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
 	pkguser "github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -115,10 +116,24 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		lexicon = gamereq.Lexicon
 	}
 
+	// Handle cases where Rules might be nil for old games
+	// XXX: this really shouldn't happen but i don't want to crash
+	var boardLayoutName, letterDistributionName, variantName string
+	if gamereq.Rules != nil {
+		boardLayoutName = gamereq.Rules.BoardLayoutName
+		letterDistributionName = gamereq.Rules.LetterDistributionName
+		variantName = gamereq.Rules.VariantName
+	} else {
+		// Use sensible defaults for old games without Rules
+		boardLayoutName = board.CrosswordGameLayout
+		letterDistributionName = "english"
+		variantName = "classic"
+	}
+
 	rules, err := macondogame.NewBasicGameRules(
-		s.cfg.MacondoConfig(), lexicon, gamereq.Rules.BoardLayoutName,
-		gamereq.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(gamereq.Rules.VariantName))
+		s.cfg.MacondoConfig(), lexicon, boardLayoutName,
+		letterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(variantName))
 	if err != nil {
 		return nil, err
 	}

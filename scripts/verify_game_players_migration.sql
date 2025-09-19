@@ -15,8 +15,8 @@ ORDER BY player_index;
 -- Check if player ordering matches between quickdata and game_players
 SELECT
     g.uuid,
-    g.quickdata->'PlayerInfo'->0->>'Nickname' as quickdata_first_player,
-    g.quickdata->'PlayerInfo'->1->>'Nickname' as quickdata_second_player,
+    g.quickdata->'pi'->0->>'nickname' as quickdata_first_player,
+    g.quickdata->'pi'->1->>'nickname' as quickdata_second_player,
     u0.username as game_players_first_player,
     u1.username as game_players_second_player
 FROM games g
@@ -44,19 +44,19 @@ JOIN users u1 ON gp1.player_id = u1.id
 WHERE g.game_end_reason NOT IN (0, 7)
     AND g.quickdata IS NOT NULL
     AND (
-        g.quickdata->'PlayerInfo'->0->>'Nickname' != u0.username
-        OR g.quickdata->'PlayerInfo'->1->>'Nickname' != u1.username
+        g.quickdata->'pi'->0->>'nickname' != u0.username
+        OR g.quickdata->'pi'->1->>'nickname' != u1.username
     );
 
 -- 5. Check score accuracy (sample)
 SELECT
     g.uuid,
-    g.quickdata->>'finalScores' as quickdata_scores,
+    g.quickdata->>'s' as quickdata_scores,
     gp0.score as first_player_score,
     gp1.score as second_player_score
 FROM games g
 JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
 JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
-WHERE g.quickdata->>'finalScores' IS NOT NULL
+WHERE g.quickdata->>'s' IS NOT NULL
 ORDER BY g.created_at DESC
 LIMIT 5;

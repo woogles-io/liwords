@@ -84,7 +84,8 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 				id, uuid,
 				game_end_reason, created_at, type,
 				winner_idx, loser_idx,
-				quickdata->>'finalScores' as final_scores,
+				(quickdata->'s'->0)::int as first_player_score,
+				(quickdata->'s'->1)::int as second_player_score,
 				COALESCE(quickdata->>'o', '') as original_request_id,
 				quickdata->'pi'->0->>'user_id' as first_player_uuid,
 				quickdata->'pi'->1->>'user_id' as second_player_uuid
@@ -124,7 +125,8 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			GameType          int32
 			WinnerIdx         *int32
 			LoserIdx          *int32
-			FinalScores       *string
+			FirstPlayerScore  *int32
+			SecondPlayerScore *int32
 			OriginalRequestID string
 			FirstPlayerUUID   *string
 			SecondPlayerUUID  *string
@@ -136,7 +138,8 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			if err := rows.Scan(
 				&g.ID, &g.UUID,
 				&g.GameEndReason, &g.CreatedAt, &g.GameType,
-				&g.WinnerIdx, &g.LoserIdx, &g.FinalScores, &g.OriginalRequestID,
+				&g.WinnerIdx, &g.LoserIdx,
+				&g.FirstPlayerScore, &g.SecondPlayerScore, &g.OriginalRequestID,
 				&g.FirstPlayerUUID, &g.SecondPlayerUUID,
 			); err != nil {
 				rows.Close()
@@ -171,12 +174,13 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 				continue
 			}
 
-			// Parse scores from JSON array like [500, 380]
-			// The scores are in the same order as PlayerInfo (first player, second player)
+			// Use the scores directly extracted from the query
 			var firstPlayerScore, secondPlayerScore int32
-			if g.FinalScores != nil && *g.FinalScores != "" {
-				// Simple parsing - expect format like [500,380] or [500, 380]
-				fmt.Sscanf(*g.FinalScores, "[%d,%d]", &firstPlayerScore, &secondPlayerScore)
+			if g.FirstPlayerScore != nil {
+				firstPlayerScore = *g.FirstPlayerScore
+			}
+			if g.SecondPlayerScore != nil {
+				secondPlayerScore = *g.SecondPlayerScore
 			}
 
 			// Determine won status for each player based on winner_idx
