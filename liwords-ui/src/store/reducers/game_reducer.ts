@@ -88,6 +88,7 @@ export type GameState = {
   gameDocument: GameDocument;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
+  refresherCount?: number; // Track number of GameRefreshers received
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -672,7 +673,22 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (!history) {
         throw new Error("missing history in refresh");
       }
+
+      // If we've already seen a refresher AND this one has no events,
+      // ignore it as it's likely a duplicate from InitRealmInfo
+      if ((state.refresherCount || 0) > 0 && history.events.length === 0) {
+        console.log(
+          "Ignoring subsequent empty GameRefresher - already processed",
+          state.refresherCount,
+          "refreshers",
+        );
+        return state;
+      }
+
       const newState = stateFromHistory(history);
+
+      // Increment the refresher count
+      newState.refresherCount = (state.refresherCount || 0) + 1;
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
