@@ -126,3 +126,47 @@ SELECT EXISTS (
 -- name: GameCount :one
 SELECT COUNT(*) FROM games;
 
+-- name: InsertGamePlayers :exec
+INSERT INTO game_players (
+    game_uuid,
+    player_id,
+    player_index,
+    score,
+    won,
+    game_end_reason,
+    created_at,
+    game_type,
+    opponent_id,
+    opponent_score,
+    original_request_id
+) VALUES
+    -- Player 0
+    (
+        @game_uuid,
+        @player0_id,
+        0,
+        @player0_score,
+        @player0_won,
+        @game_end_reason,
+        @created_at,
+        @game_type,
+        @player1_id,
+        @player1_score,
+        @original_request_id
+    ),
+    -- Player 1
+    (
+        @game_uuid,
+        @player1_id,
+        1,
+        @player1_score,
+        @player1_won,
+        @game_end_reason,
+        @created_at,
+        @game_type,
+        @player0_id,
+        @player0_score,
+        @original_request_id
+    )
+ON CONFLICT (game_uuid, player_id) DO NOTHING;
+

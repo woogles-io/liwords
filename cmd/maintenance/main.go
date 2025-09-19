@@ -56,6 +56,9 @@ func main() {
 		case "sub-badge-updater":
 			err := SubBadgeUpdater()
 			log.Err(err).Msg("ran subBadgeUpdater")
+		case "cancelled-games-cleanup":
+			err := CancelledGamesCleanup()
+			log.Err(err).Msg("ran cancelledGamesCleanup")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -280,6 +283,49 @@ func refreshPatreonToken(ctx context.Context, q *models.Queries, integration mod
 type PatreonBadge struct {
 	PatreonUserID string `json:"patreon_user_id"`
 	BadgeCode     string `json:"badge_code"`
+}
+
+// CancelledGamesCleanup deletes cancelled games older than 2 days
+func CancelledGamesCleanup() error {
+	log.Info().Msg("starting cancelled games cleanup")
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Delete cancelled games older than 2 days
+	// game_end_reason = 7 means CANCELLED
+	query := `
+		DELETE FROM games
+		WHERE game_end_reason = 7
+		  AND created_at < NOW() - INTERVAL '2 days'
+	`
+
+	result, err := dbPool.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	rowsDeleted := result.RowsAffected()
+	log.Info().Int64("rowsDeleted", rowsDeleted).Msg("deleted old cancelled games")
+
+	return nil
 }
 
 func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {

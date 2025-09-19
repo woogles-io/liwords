@@ -7,7 +7,7 @@ Resources:
       Name: liwords-daily-maintenance
       ScheduleExpression: cron(00 17 * * ? *)
       State: ENABLED
-      Description: Daily maintenance for liwords. Only daily tasks should go here.
+      Description: Daily maintenance for liwords. Includes integration token refresh and cancelled games cleanup.
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-DailyMaintenanceTarget"
@@ -25,7 +25,7 @@ Resources:
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
-                              "integrations-refresher"
+                              "integrations-refresher,cancelled-games-cleanup"
                           ]
                       }
                   ]

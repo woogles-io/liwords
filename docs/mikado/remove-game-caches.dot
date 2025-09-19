@@ -1,37 +1,39 @@
 digraph RedoGameModel {
-    Goal [label="Redo game model to support\n1) more simultaneous games\n2) less downtime between deploys\n3) make DB faster to back up and query";
-    shape=oval, peripheries=2, style=bold];
+    Goal [label = "Redo game model to support\n1) more simultaneous games\n2) less downtime between deploys\n3) make DB faster to back up and query";shape = oval;peripheries = 2;style = bold;];
 
     // Define a reusable style for "checked nodes"  ✅
-    node [shape=box, color=gray, fontcolor=gray, style=dashed];
-    DBGet [label="Rewrite DB Get to use sqlc ✅"];
-    AddOtherTables [label="Add many2many and turns tables ✅"];
-    SQLCDBStore [label="Rewrite DB store to use sqlc ✅"];
-    SQLCOtherFuncs [label="Rewrite all others to use sqlc ✅"];
-    ConsolidateRequestColumns [label="Consolidate request columns ✅"];
+    node [shape = box; color = gray; fontcolor = gray; style = dashed;];
+    DBGet [label = "Rewrite DB Get to use sqlc ✅";];
+    AddOtherTables [label = "Add many2many and turns tables ✅";];
+    SQLCDBStore [label = "Rewrite DB store to use sqlc ✅";];
+    SQLCOtherFuncs [label = "Rewrite all others to use sqlc ✅";];
+    ConsolidateRequestColumns [label = "Consolidate request columns ✅";];
+    ImproveMany2ManyTable [label = "Improve many2many table ✅";];
 
     // Reset to default for other uncompleted nodes
-    node [shape=box, color=black, fontcolor=black, style=solid];
+    node [shape = box; color = black; fontcolor = black; style = solid;];
 
-    MoreSimultaneousGames [label="Allow for more simultaneous games than cache limit"];
-    LessDowntimeBetweenDeploys [label="Allow for less downtime between deploys"];
-    MakeDBFaster [label="Make DB faster to query"];
+    MoreSimultaneousGames [label = "Allow for more simultaneous games than cache limit";];
+    LessDowntimeBetweenDeploys [label = "Allow for less downtime between deploys";];
+    MakeDBFaster [label = "Make DB faster to query";];
 
-    ImproveOtherTables [label="Improve many2many tables\nAdd indexes, pastgames table"];
-    OnlyUseOtherTables [label="Only use new tables"];
-    MigrateToNewTables [label="Migrate to new tables"];
-    UseOtherTables [label="Transparently use new tables"];
-    RemoveGameCache [label="Remove game cache"];
-    EfficientTable [label="Make game DB model more efficient"];
+    MigrateToMany2ManyTable [label = "Migrate to many2many table";];
+    AddPastGamesTable [label = "Add PastGames table";];
+    OnlyUseNewTables [label = "Only use new tables";];
+    MigrateToNewTables [label = "Migrate to new tables";];
+    UseMany2ManyTable [label = "Transparently use many2many table";];
+    UsePastGamesTable [label = "Transparently use PastGames table";];
+    RemoveGameCache [label = "Remove game cache";];
+    EfficientTable [label = "Make game DB model more efficient";];
 
-    FixGameDocumentBugs [label="Fix and test GameDocument bugs"];
+    FixGameDocumentBugs [label = "Fix and test GameDocument bugs";];
 
-    DBSetSplit [label="Split DB Set into separate functions\nthat set specific attributes of game"];
+    DBSetSplit [label = "Split DB Set into separate functions\nthat set specific attributes of game";];
 
-    ReplaceQuickData [label="Replace QuickData with JOINs"];
+    ReplaceQuickData [label = "Replace QuickData with JOINs";];
 
-    ClearLargeFields [label="Clear large fields in games table"];
-    ImplementS3Archival [label="Implement S3 archival of old partitions"];
+    ClearLargeFields [label = "Clear large fields in games table";];
+    ImplementS3Archival [label = "Implement S3 archival of old partitions";];
     // Arrows
     Goal -> MoreSimultaneousGames;
     Goal -> LessDowntimeBetweenDeploys;
@@ -43,23 +45,25 @@ digraph RedoGameModel {
     MakeDBFaster -> EfficientTable;
 
     RemoveGameCache -> EfficientTable;
-    OnlyUseOtherTables -> ReplaceQuickData;
-    ReplaceQuickData -> MigrateToNewTables;
+    OnlyUseNewTables -> ReplaceQuickData;
+    OnlyUseNewTables -> MigrateToMany2ManyTable;
+    ReplaceQuickData -> MigrateToPastGamesTable;
 
-    MigrateToNewTables -> UseOtherTables;
-    ImproveOtherTables -> AddOtherTables;
+    MigrateToMany2ManyTable -> UseMany2ManyTable;
+    ImproveMany2ManyTable -> AddOtherTables;
+    MigrateToPastGamesTable -> UsePastGamesTable;
+    AddPastGamesTable -> AddOtherTables;
     EfficientTable -> SQLCDBStore;
     EfficientTable -> DBSetSplit;
     DBSetSplit -> SQLCOtherFuncs;
-    UseOtherTables -> ImproveOtherTables;
-    UseOtherTables -> FixGameDocumentBugs;
+    UseMany2ManyTable -> ImproveMany2ManyTable;
+    UsePastGamesTable -> AddPastGamesTable;
+    AddPastGamesTable -> FixGameDocumentBugs;
     SQLCDBStore -> DBGet;
     SQLCDBStore -> SQLCOtherFuncs;
     ConsolidateRequestColumns -> SQLCOtherFuncs;
     EfficientTable -> ConsolidateRequestColumns;
     MakeDBFaster -> ClearLargeFields;
-    ClearLargeFields -> OnlyUseOtherTables;
+    ClearLargeFields -> OnlyUseNewTables;
     ImplementS3Archival -> ClearLargeFields;
-
 }
-

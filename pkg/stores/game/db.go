@@ -21,6 +21,7 @@ import (
 
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/cwgame/board"
 	pkguser "github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -115,10 +116,24 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		lexicon = gamereq.Lexicon
 	}
 
+	// Handle cases where Rules might be nil for old games
+	// XXX: this really shouldn't happen but i don't want to crash
+	var boardLayoutName, letterDistributionName, variantName string
+	if gamereq.Rules != nil {
+		boardLayoutName = gamereq.Rules.BoardLayoutName
+		letterDistributionName = gamereq.Rules.LetterDistributionName
+		variantName = gamereq.Rules.VariantName
+	} else {
+		// Use sensible defaults for old games without Rules
+		boardLayoutName = board.CrosswordGameLayout
+		letterDistributionName = "english"
+		variantName = "classic"
+	}
+
 	rules, err := macondogame.NewBasicGameRules(
-		s.cfg.MacondoConfig(), lexicon, gamereq.Rules.BoardLayoutName,
-		gamereq.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
-		macondogame.Variant(gamereq.Rules.VariantName))
+		s.cfg.MacondoConfig(), lexicon, boardLayoutName,
+		letterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(variantName))
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +435,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-
 	var tourneyID pgtype.Text
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
@@ -463,7 +477,6 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-
 	var tourneyID pgtype.Text
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
@@ -501,7 +514,6 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	if err != nil {
 		return err
 	}
-
 
 	return s.queries.CreateRawGame(ctx, models.CreateRawGameParams{
 		Uuid:          common.ToPGTypeText(g.Uid()),
@@ -673,3 +685,51 @@ func safeDerefGameRequest(g *entity.GameRequest) entity.GameRequest {
 	return *g
 }
 
+// InsertGamePlayers creates entries in the game_players table for a completed game
+func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
+	// Only insert for completed games (not ongoing or cancelled)
+	// CANCELLED games never started, so we don't track them
+	// ABORTED games are tracked since they represent actual gameplay
+	if g.GameEndReason == pb.GameEndReason_NONE || g.GameEndReason == pb.GameEndReason_CANCELLED {
+		return nil
+	}
+
+	// Extract original request ID for rematch tracking
+	var originalRequestID pgtype.Text
+	if g.Quickdata != nil && g.Quickdata.OriginalRequestId != "" {
+		originalRequestID = pgtype.Text{String: g.Quickdata.OriginalRequestId, Valid: true}
+	}
+
+	// Get scores directly from the game object
+	player0Score := int32(g.PointsFor(0))
+	player1Score := int32(g.PointsFor(1))
+
+	// Determine win status for each player
+	var player0Won, player1Won pgtype.Bool
+	// For ABORTED games, don't set any winner regardless of WinnerIdx value
+	if g.GameEndReason != pb.GameEndReason_ABORTED {
+		switch g.WinnerIdx {
+		case 0:
+			player0Won = pgtype.Bool{Bool: true, Valid: true}
+			player1Won = pgtype.Bool{Bool: false, Valid: true}
+		case 1:
+			player0Won = pgtype.Bool{Bool: false, Valid: true}
+			player1Won = pgtype.Bool{Bool: true, Valid: true}
+		}
+	}
+	// If WinnerIdx is -1 (tie) or game was ABORTED, both remain null
+
+	return s.queries.InsertGamePlayers(ctx, models.InsertGamePlayersParams{
+		GameUuid:          g.GameID(),
+		Player0ID:         int32(g.PlayerDBIDs[0]),
+		Player1ID:         int32(g.PlayerDBIDs[1]),
+		Player0Score:      player0Score,
+		Player1Score:      player1Score,
+		Player0Won:        player0Won,
+		Player1Won:        player1Won,
+		GameEndReason:     int16(g.GameEndReason),
+		CreatedAt:         pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		GameType:          int16(g.Type),
+		OriginalRequestID: originalRequestID,
+	})
+}
