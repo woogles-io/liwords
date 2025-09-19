@@ -202,6 +202,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		return err
 	}
 
+	// Insert entries into game_players table for query optimization
+	err = stores.GameStore.InsertGamePlayers(ctx, g)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Msg("game-ended-unload-cache")
 	stores.GameStore.Unload(ctx, g.GameID())
 	g.SendChange(g.NewActiveGameEntry(false))
@@ -349,6 +355,15 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	err := stores.GameStore.Set(ctx, g)
 	if err != nil {
 		return err
+	}
+
+	// Insert game_players entries for ABORTED games (but not CANCELLED)
+	if gameEndReason == pb.GameEndReason_ABORTED {
+		err = stores.GameStore.InsertGamePlayers(ctx, g)
+		if err != nil {
+			log.Err(err).Msg("failed to insert game_players entries for aborted game")
+			// Don't fail the abort if game_players insert fails
+		}
 	}
 	// Unload the game
 	log.Info().Msg("game-aborted-unload-cache")

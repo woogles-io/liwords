@@ -32,6 +32,7 @@ type backingStore interface {
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
+	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 }
 
 const (
@@ -235,4 +236,8 @@ func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error)
 
 func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
 	return c.backing.GetHistory(ctx, id)
+}
+
+func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
+	return c.backing.InsertGamePlayers(ctx, g)
 }
