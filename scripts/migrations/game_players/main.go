@@ -34,6 +34,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 		  AND quickdata IS NOT NULL
 		  AND quickdata->'pi'->0->>'user_id' IS NOT NULL
 		  AND quickdata->'pi'->1->>'user_id' IS NOT NULL
+		  AND type = 0 -- GameType_NATIVE only
 	`
 	err := pool.QueryRow(ctx, countQuery).Scan(&totalRows)
 	if err != nil {
@@ -74,8 +75,10 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 
 		tx, err := pool.BeginTx(ctx, common.DefaultTxOptions)
 		if err != nil {
+			log.Err(err).Msg("failed to begin transaction")
 			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
+		log.Info().Int32("last_id", lastID).Msg("transaction started successfully")
 
 		// Select batch of games to migrate
 		// Use quickdata PlayerInfo to determine correct turn order
@@ -84,8 +87,8 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 				id, uuid,
 				game_end_reason, created_at, type,
 				winner_idx, loser_idx,
-				(quickdata->'s'->0)::int as first_player_score,
-				(quickdata->'s'->1)::int as second_player_score,
+				COALESCE(NULLIF((quickdata->'s'->0)::text, 'null'), '0')::int as first_player_score,
+				COALESCE(NULLIF((quickdata->'s'->1)::text, 'null'), '0')::int as second_player_score,
 				COALESCE(quickdata->>'o', '') as original_request_id,
 				quickdata->'pi'->0->>'user_id' as first_player_uuid,
 				quickdata->'pi'->1->>'user_id' as second_player_uuid
@@ -96,6 +99,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			  AND quickdata IS NOT NULL
 			  AND quickdata->'pi'->0->>'user_id' IS NOT NULL
 			  AND quickdata->'pi'->1->>'user_id' IS NOT NULL
+			  AND type = 0 -- GameType_NATIVE only
 			ORDER BY id
 			LIMIT $2
 		`
@@ -108,9 +112,15 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 
 		rows, err := tx.Query(ctx, query, lastID, batchSize)
 		if err != nil {
+			log.
+				Err(err).
+				Int32("last_id", lastID).
+				Int("batch_size", batchSize).
+				Msg("failed to query games")
 			tx.Rollback(ctx)
 			return fmt.Errorf("failed to query games: %w", err)
 		}
+		log.Info().Int32("last_id", lastID).Msg("query executed successfully")
 
 		log.Debug().
 			Dur("query_duration", time.Since(batchStart)).
@@ -142,21 +152,41 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 				&g.FirstPlayerScore, &g.SecondPlayerScore, &g.OriginalRequestID,
 				&g.FirstPlayerUUID, &g.SecondPlayerUUID,
 			); err != nil {
+				log.Err(err).
+					Int32("game_id", g.ID).
+					Str("game_uuid", g.UUID).
+					Msg("failed to scan game row")
 				rows.Close()
 				tx.Rollback(ctx)
-				return fmt.Errorf("failed to scan row: %w", err)
+				return fmt.Errorf("failed to scan row for game ID %d: %w", g.ID, err)
 			}
 
 			games = append(games, g)
 		}
+
+		// Check if rows.Next() failed with an error
+		if err := rows.Err(); err != nil {
+			log.Err(err).Msg("rows iteration failed")
+			rows.Close()
+			tx.Rollback(ctx)
+			return fmt.Errorf("rows iteration failed: %w", err)
+		}
+
 		rows.Close()
 
 		// Insert into game_players
 		batchCount := 0
+		log.Info().Int("games_in_batch", len(games)).Msg("starting game processing loop")
 		for _, g := range games {
-			// Skip games without proper PlayerInfo data or created_at
+			// Skip games without proper PlayerInfo data, created_at, or non-NATIVE games
 			if g.FirstPlayerUUID == nil || g.SecondPlayerUUID == nil || g.CreatedAt == nil {
 				log.Debug().Int32("game_id", g.ID).Msg("skipping game due to missing data")
+				continue
+			}
+
+			// Skip non-NATIVE games (GameType != 0)
+			if g.GameType != 0 {
+				log.Debug().Int32("game_id", g.ID).Int32("game_type", g.GameType).Msg("skipping non-NATIVE game")
 				continue
 			}
 
@@ -164,13 +194,19 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			var firstPlayerID, secondPlayerID int32
 			err = tx.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", *g.FirstPlayerUUID).Scan(&firstPlayerID)
 			if err != nil {
-				log.Warn().Str("uuid", *g.FirstPlayerUUID).Int32("game_id", g.ID).Msg("could not find first player UUID")
+				log.Err(err).
+					Str("uuid", *g.FirstPlayerUUID).
+					Int32("game_id", g.ID).
+					Msg("could not find first player UUID")
 				continue
 			}
 
 			err = tx.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", *g.SecondPlayerUUID).Scan(&secondPlayerID)
 			if err != nil {
-				log.Warn().Str("uuid", *g.SecondPlayerUUID).Int32("game_id", g.ID).Msg("could not find second player UUID")
+				log.Err(err).
+					Str("uuid", *g.SecondPlayerUUID).
+					Int32("game_id", g.ID).
+					Msg("could not find second player UUID")
 				continue
 			}
 
@@ -217,6 +253,20 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 				secondPlayerID, secondPlayerScore, secondPlayerWon,
 			)
 			if err != nil {
+				log.
+					Err(err).
+					Int32("game_id", g.ID).
+					Str("game_uuid", g.UUID).
+					Int32("first_player_id", firstPlayerID).
+					Int32("second_player_id", secondPlayerID).
+					Int32("first_player_score", firstPlayerScore).
+					Int32("second_player_score", secondPlayerScore).
+					Interface("first_player_won", firstPlayerWon).
+					Interface("second_player_won", secondPlayerWon).
+					Int32("game_end_reason", g.GameEndReason).
+					Int32("game_type", g.GameType).
+					Str("original_request_id", g.OriginalRequestID).
+					Msg("failed to insert game_players")
 				tx.Rollback(ctx)
 				return fmt.Errorf("failed to insert game_players for game %d: %w", g.ID, err)
 			}
@@ -227,7 +277,18 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			}
 		}
 
+		log.Info().
+			Int("batch_count", batchCount).
+			Int32("last_processed_id", lastID).
+			Msg("completed processing all games in batch, attempting commit")
+
 		if err := tx.Commit(ctx); err != nil {
+			log.
+				Err(err).
+				Int("batch_count", batchCount).
+				Int32("last_processed_id", lastID).
+				Int("processed_so_far", processed).
+				Msg("failed to commit transaction")
 			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
 

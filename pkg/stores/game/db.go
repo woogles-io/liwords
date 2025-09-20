@@ -110,6 +110,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
 
+	// Check if history has no players. This can indicate a null history, like
+	// for an annotated game, which should not be handled by this code path.
+	if len(hist.Players) == 0 {
+		return nil, fmt.Errorf("game %s has no players", id)
+	}
+
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
