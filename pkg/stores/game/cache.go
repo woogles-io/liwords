@@ -33,7 +33,11 @@ type backingStore interface {
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
+	SetTimerModuleCreator(creator TimerModuleCreator)
 }
+
+// TimerModuleCreator is a function that creates a new timer module for a game.
+type TimerModuleCreator func() entity.Nower
 
 const (
 	// Assume every game takes up roughly 50KB in memory
@@ -240,4 +244,8 @@ func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHisto
 
 func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 	return c.backing.InsertGamePlayers(ctx, g)
+}
+
+func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
+	c.backing.SetTimerModuleCreator(creator)
 }

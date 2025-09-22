@@ -43,6 +43,9 @@ type DBStore struct {
 	// from the database.
 	// All game events go down the same channel.
 	gameEventChan chan<- *entity.EventWrapper
+
+	// timerModuleCreator creates timer modules for games loaded from the database
+	timerModuleCreator TimerModuleCreator
 }
 
 // NewDBStore creates a new DB store for games.
@@ -55,6 +58,10 @@ func NewDBStore(config *config.Config, userStore pkguser.Store, dbPool *pgxpool.
 		dbPool:    dbPool,
 		userStore: userStore,
 		queries:   models.New(dbPool),
+		// Default timer module creator
+		timerModuleCreator: func() entity.Nower {
+			return &entity.GameTimer{}
+		},
 	}, nil
 }
 
@@ -66,6 +73,11 @@ func (s *DBStore) SetGameEventChan(c chan<- *entity.EventWrapper) {
 // GameEventChan returns the game event channel for all games.
 func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
 	return s.gameEventChan
+}
+
+// SetTimerModuleCreator sets the function used to create timer modules for games.
+func (s *DBStore) SetTimerModuleCreator(creator TimerModuleCreator) {
+	s.timerModuleCreator = creator
 }
 
 // Get creates an instantiated entity.Game from the database.
@@ -100,7 +112,13 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		TournamentData: &g.TournamentData,
 		GameReq:        gamereq,
 	}
-	entGame.SetTimerModule(&entity.GameTimer{})
+	if s.timerModuleCreator != nil {
+		entGame.SetTimerModule(s.timerModuleCreator())
+		log.Info().Int64("Now", entGame.TimerModule().Now()).Msg("set timer module from creator")
+	} else {
+		// Fallback to default if creator is nil
+		entGame.SetTimerModule(&entity.GameTimer{})
+	}
 
 	// Then unmarshal the history and start a game from it.
 	hist := &macondopb.GameHistory{}
