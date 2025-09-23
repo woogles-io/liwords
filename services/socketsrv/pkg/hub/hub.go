@@ -439,11 +439,6 @@ func (h *Hub) sendRealmInitInfo(c *Client) error {
 
 // handlePresenceChanged processes new-style efficient presence notifications
 func (h *Hub) handlePresenceChanged(userID string, data []byte) {
-	// Only process if new presence system is enabled
-	if !h.pubsub.config.NewPresenceSystem {
-		return
-	}
-
 	log.Debug().Str("userID", userID).Msg("handling-presence-changed")
 
 	// Try to get followers from cache first

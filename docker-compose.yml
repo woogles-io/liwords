@@ -40,7 +40,6 @@ services:
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
       TWITCH_REDIRECT_URI: http://localhost/integrations/twitch/callback
-      NEW_PRESENCE_SYSTEM: true
 
     volumes:
       - .:/opt/program:rw
@@ -110,7 +109,6 @@ services:
       SECRET_KEY: jqxztripletriple
       DEBUG: 1
       NATS_URL: nats://nats:4222
-      NEW_PRESENCE_SYSTEM: true
       FOLLOWERS_CACHE_SIZE: 0
       FOLLOWERS_CACHE_TTL: 1m
     volumes:
