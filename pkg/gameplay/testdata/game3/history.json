@@ -1,0 +1,387 @@
+{
+    "events": [
+        {
+            "rack": "EGLOQSY",
+            "cumulative": 16,
+            "row": 7,
+            "column": 6,
+            "position": "8G",
+            "playedTiles": "LOGY",
+            "score": 16,
+            "wordsFormed": [
+                "LOGY"
+            ],
+            "millisRemaining": 3556768,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "AFIJMNW",
+            "cumulative": 33,
+            "row": 6,
+            "column": 7,
+            "position": "7H",
+            "playedTiles": "JAM",
+            "score": 33,
+            "wordsFormed": [
+                "JAM",
+                "JO",
+                "AG",
+                "MY"
+            ],
+            "millisRemaining": 3599982,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "EEGNPQS",
+            "cumulative": 43,
+            "row": 3,
+            "column": 10,
+            "direction": "VERTICAL",
+            "position": "K4",
+            "playedTiles": "PEGS",
+            "score": 27,
+            "wordsFormed": [
+                "PEGS",
+                "JAMS"
+            ],
+            "millisRemaining": 3512956,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "FIMNRVW",
+            "cumulative": 61,
+            "row": 2,
+            "column": 11,
+            "direction": "VERTICAL",
+            "position": "L3",
+            "playedTiles": "VIM",
+            "score": 28,
+            "wordsFormed": [
+                "VIM",
+                "PI",
+                "EM"
+            ],
+            "millisRemaining": 3599966,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "EEEFNOQ",
+            "cumulative": 63,
+            "row": 8,
+            "column": 5,
+            "position": "9F",
+            "playedTiles": "FOE",
+            "score": 20,
+            "wordsFormed": [
+                "FOE",
+                "LO",
+                "JOE"
+            ],
+            "millisRemaining": 3485123,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "?DFNRSW",
+            "cumulative": 79,
+            "row": 4,
+            "column": 8,
+            "direction": "VERTICAL",
+            "position": "I5",
+            "playedTiles": "FR..S",
+            "score": 18,
+            "wordsFormed": [
+                "FRAGS",
+                "FOES"
+            ],
+            "millisRemaining": 3599948,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "AEENOQV",
+            "cumulative": 95,
+            "column": 7,
+            "direction": "VERTICAL",
+            "position": "H1",
+            "playedTiles": "NOVAE",
+            "score": 32,
+            "wordsFormed": [
+                "NOVAE",
+                "EF"
+            ],
+            "millisRemaining": 3462599,
+            "numTilesFromRack": 5
+        },
+        {
+            "rack": "?DDINWX",
+            "cumulative": 92,
+            "row": 1,
+            "column": 6,
+            "position": "2G",
+            "playedTiles": "D.WD",
+            "score": 13,
+            "wordsFormed": [
+                "DOWD"
+            ],
+            "millisRemaining": 3599911,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "CEINOQU",
+            "cumulative": 125,
+            "row": 3,
+            "column": 2,
+            "position": "4C",
+            "playedTiles": "QUINO.",
+            "score": 30,
+            "wordsFormed": [
+                "QUINOA"
+            ],
+            "millisRemaining": 3241456,
+            "numTilesFromRack": 5
+        },
+        {
+            "rack": "?AHINUX",
+            "cumulative": 155,
+            "column": 9,
+            "position": "1J",
+            "playedTiles": "AUXINs",
+            "score": 63,
+            "wordsFormed": [
+                "AUXINS",
+                "AD"
+            ],
+            "millisRemaining": 3599886,
+            "playerIndex": 1,
+            "numTilesFromRack": 6
+        },
+        {
+            "rack": "BCEEIOT",
+            "cumulative": 154,
+            "row": 4,
+            "column": 1,
+            "position": "5B",
+            "playedTiles": "BITO",
+            "score": 29,
+            "wordsFormed": [
+                "BITO",
+                "QI",
+                "UT",
+                "IO"
+            ],
+            "millisRemaining": 3183072,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "AHORSTW",
+            "cumulative": 191,
+            "row": 9,
+            "column": 4,
+            "position": "10E",
+            "playedTiles": "HAWS",
+            "score": 36,
+            "wordsFormed": [
+                "HAWS",
+                "FA",
+                "LOW",
+                "JOES"
+            ],
+            "millisRemaining": 3599865,
+            "playerIndex": 1,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "CCEEGOR",
+            "cumulative": 185,
+            "row": 10,
+            "column": 2,
+            "position": "11C",
+            "playedTiles": "CROG",
+            "score": 31,
+            "wordsFormed": [
+                "CROG",
+                "HO",
+                "FAG"
+            ],
+            "millisRemaining": 3120863,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "AADLORT",
+            "cumulative": 214,
+            "row": 9,
+            "column": 3,
+            "direction": "VERTICAL",
+            "position": "D10",
+            "playedTiles": "T.OAD",
+            "score": 23,
+            "wordsFormed": [
+                "TROAD",
+                "THAWS"
+            ],
+            "millisRemaining": 3599846,
+            "playerIndex": 1,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "CEEEHNT",
+            "cumulative": 210,
+            "row": 10,
+            "column": 2,
+            "direction": "VERTICAL",
+            "position": "C11",
+            "playedTiles": ".HE",
+            "score": 25,
+            "wordsFormed": [
+                "CHE",
+                "HO",
+                "EA"
+            ],
+            "millisRemaining": 2960331,
+            "numTilesFromRack": 2
+        },
+        {
+            "rack": "AILLNOR",
+            "cumulative": 243,
+            "row": 13,
+            "column": 1,
+            "position": "14B",
+            "playedTiles": "OR.INAL",
+            "score": 29,
+            "wordsFormed": [
+                "ORDINAL",
+                "CHER"
+            ],
+            "millisRemaining": 3599788,
+            "playerIndex": 1,
+            "numTilesFromRack": 6
+        },
+        {
+            "rack": "CEEENTY",
+            "cumulative": 243,
+            "row": 11,
+            "column": 7,
+            "direction": "VERTICAL",
+            "position": "H12",
+            "playedTiles": "YE.T",
+            "score": 33,
+            "wordsFormed": [
+                "YELT"
+            ],
+            "millisRemaining": 2829010,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "DEEILTZ",
+            "cumulative": 305,
+            "row": 14,
+            "position": "15A",
+            "playedTiles": "ZITE",
+            "score": 62,
+            "wordsFormed": [
+                "ZITE",
+                "OI",
+                "CHERT",
+                "TROADE"
+            ],
+            "millisRemaining": 3599769,
+            "playerIndex": 1,
+            "numTilesFromRack": 4
+        },
+        {
+            "rack": "CEEINRU",
+            "cumulative": 260,
+            "row": 3,
+            "column": 12,
+            "direction": "VERTICAL",
+            "position": "M4",
+            "playedTiles": "CUE",
+            "score": 17,
+            "wordsFormed": [
+                "CUE",
+                "PIC",
+                "EMU"
+            ],
+            "millisRemaining": 2547138,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "AADEELN",
+            "cumulative": 331,
+            "row": 5,
+            "column": 1,
+            "position": "6B",
+            "playedTiles": "ANE",
+            "score": 26,
+            "wordsFormed": [
+                "ANE",
+                "BA",
+                "QIN",
+                "UTE"
+            ],
+            "millisRemaining": 3599744,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        },
+        {
+            "rack": "EEINRST",
+            "cumulative": 338,
+            "row": 5,
+            "direction": "VERTICAL",
+            "position": "A6",
+            "playedTiles": "NERITES",
+            "score": 78,
+            "isBingo": true,
+            "wordsFormed": [
+                "NERITES",
+                "NANE"
+            ],
+            "millisRemaining": 2370374,
+            "numTilesFromRack": 7
+        },
+        {
+            "rack": "ADEKLLT",
+            "cumulative": 356,
+            "row": 12,
+            "column": 6,
+            "position": "13G",
+            "playedTiles": "K.LL",
+            "score": 25,
+            "wordsFormed": [
+                "KELL",
+                "KA"
+            ],
+            "millisRemaining": 3599712,
+            "playerIndex": 1,
+            "numTilesFromRack": 3
+        }
+    ],
+    "players": [
+        {
+            "nickname": "Cepheid",
+            "realName": "Jim Brennan",
+            "userId": "xjCWug7EZtDxDHX5fRZTLo"
+        },
+        {
+            "nickname": "HastyBot",
+            "userId": "qUQkST8CendYA3baHNoPjk"
+        }
+    ],
+    "version": 2,
+    "lexicon": "CSW21",
+    "idAuth": "io.woogles",
+    "uid": "98uhDKtp",
+    "description": "Created with Macondo",
+    "lastKnownRacks": [
+        "?AIPRRU",
+        "ABDEEIT"
+    ],
+    "challengeRule": "FIVE_POINT",
+    "playState": "PLAYING",
+    "finalScores": [],
+    "boardLayout": "CrosswordGame",
+    "letterDistribution": "english"
+}
