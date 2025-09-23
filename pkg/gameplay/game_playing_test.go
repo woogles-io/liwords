@@ -2,10 +2,14 @@ package gameplay_test
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -250,6 +254,194 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	// We don't give them their time back. They get time back after they
 	// make some valid move, after challenging the play off.
 	is.Equal(evt.TimeRemaining, int32((25*60000)-7620))
+
+	teardownGame(gs)
+}
+
+func loadGameForTest(testid string, t *testing.T) *gamesetup {
+	pool, stores, _ := recreateDB()
+	ctx := context.Background()
+
+	testdataDir := filepath.Join(".", "testdata", testid)
+	historyPath := filepath.Join(testdataDir, "history.json")
+	historyBytes, err := os.ReadFile(historyPath)
+	if err != nil {
+		t.Fatalf("failed to read history.json: %v", err)
+	}
+	hist := &macondopb.GameHistory{}
+	if err := protojson.Unmarshal(historyBytes, hist); err != nil {
+		t.Fatalf("failed to unmarshal history.json: %v", err)
+	}
+	bpb, err := proto.Marshal(hist)
+	if err != nil {
+		t.Fatalf("failed to marshal history.json: %v", err)
+	}
+
+	_, err = pool.Exec(ctx, `INSERT INTO games(uuid, timers, player0_id, player1_id, started, game_end_reason, type, game_request, history, quickdata)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		"98uhDKtp", `{
+        "lu": 1707439121587,
+        "mo": 1,
+        "tr": [
+            200000,
+            3599676
+        ],
+        "ts": 1707435505427
+    }`, 1, 2, true, 0, 0, `{
+        "rules": {
+            "boardLayoutName": "CrosswordGame",
+            "letterDistributionName": "english"
+        },
+        "lexicon": "CSW21",
+        "requestId": "KKaVaNtAc6byE3tJXzLrP8",
+        "playerVsBot": true,
+        "challengeRule": "FIVE_POINT",
+        "originalRequestId": "KKaVaNtAc6byE3tJXzLrP8",
+        "initialTimeSeconds": 3600,
+        "maxOvertimeMinutes": 1
+    }`,
+		bpb, `{}`)
+	if err != nil {
+		t.Fatalf("failed to insert game: %v", err)
+	}
+
+	entGame, err := stores.GameStore.Get(ctx, "98uhDKtp")
+	if err != nil {
+		t.Fatalf("failed to get game: %v", err)
+	}
+
+	ch := make(chan *entity.EventWrapper)
+	donechan := make(chan bool)
+	consumer := &evtConsumer{}
+	stores.GameStore.SetGameEventChan(ch)
+
+	cctx, cancel := context.WithCancel(ctx)
+	go consumer.consumeEventChan(cctx, ch, donechan)
+
+	nower := entity.NewFakeNower(1707439121587)
+	entGame.SetTimerModule(nower)
+	entGame.RegisterChangeHook(ch)
+
+	// set the timer module factory for the game store
+	stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return nower
+	})
+
+	return &gamesetup{
+		entGame, nower, cancel, donechan, consumer, stores,
+	}
+}
+
+func TestEndOfGameChallengeBadWord(t *testing.T) {
+	is := is.New(t)
+	gs := loadGameForTest("game3", t)
+	ctx := ctxForTests()
+
+	fmt.Println(gs.g.Game.ToDisplayText())
+
+	// "jesse" plays a word after some time
+	gs.nower.Sleep(3750) // 3.75 secs
+
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         gs.g.GameID(),
+		PositionCoords: "1A",
+		MachineLetters: []byte{18, 9, 16, 21, 18, 9 | 0x80, 1, 0}, // RIPURiA(N)*
+	}
+
+	_, err := gameplay.HandleEvent(ctx, gs.stores, "xjCWug7EZtDxDHX5fRZTLo", cge)
+	is.NoErr(err)
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+
+	fmt.Println(gs.g.Game.ToDisplayText())
+
+	//  "mina" HastyBot waits a while before challenging this very plausible word.
+	gs.nower.Sleep(7620)
+	// unload the game to simulate a restart
+	gs.stores.GameStore.Unload(ctx, gs.g.GameID())
+
+	entGame, err := gameplay.HandleEvent(ctx, gs.stores,
+		"qUQkST8CendYA3baHNoPjk", &pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
+			GameId: gs.g.GameID(),
+		})
+	is.NoErr(err)
+	// Update gs.g with the freshly loaded game
+	gs.g = entGame
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_PLAYING)
+
+	gs.nower.Sleep(1000)
+	// unload the game to simulate a restart
+	gs.stores.GameStore.Unload(ctx, gs.g.GameID())
+
+	cge2 := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         gs.g.GameID(),
+		PositionCoords: "N6",
+		MachineLetters: []byte{4, 5, 2, 1, 20, 5}, // DEBATE
+	}
+
+	entGame, err = gameplay.HandleEvent(ctx, gs.stores, "qUQkST8CendYA3baHNoPjk", cge2)
+	is.NoErr(err)
+	gs.g = entGame
+	fmt.Println(gs.g.Game.ToDisplayText())
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_PLAYING)
+	// unload the game to simulate a restart
+	gs.stores.GameStore.Unload(ctx, gs.g.GameID())
+
+	cge3 := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         gs.g.GameID(),
+		PositionCoords: "9M",
+		MachineLetters: []byte{16, 0}, // P(A)
+	}
+
+	entGame, err = gameplay.HandleEvent(ctx, gs.stores, "xjCWug7EZtDxDHX5fRZTLo", cge3)
+	is.NoErr(err)
+	gs.g = entGame
+	fmt.Println(gs.g.Game.ToDisplayText())
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_PLAYING)
+
+	// unload the game to simulate a restart
+	gs.stores.GameStore.Unload(ctx, gs.g.GameID())
+
+	cge4 := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         gs.g.GameID(),
+		PositionCoords: "8N",
+		MachineLetters: []byte{0, 9}, // (B)I
+	}
+
+	entGame, err = gameplay.HandleEvent(ctx, gs.stores, "qUQkST8CendYA3baHNoPjk", cge4)
+	is.NoErr(err)
+	gs.g = entGame
+	fmt.Println(gs.g.Game.ToDisplayText())
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+	is.Equal(gs.g.Game.History().PlayState, macondopb.PlayState_WAITING_FOR_FINAL_PASS)
+
+	entGame, err = gameplay.HandleEvent(ctx, gs.stores, "xjCWug7EZtDxDHX5fRZTLo",
+		&pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_PASS,
+			GameId: gs.g.GameID(),
+		})
+	is.NoErr(err)
+	gs.g = entGame
+	fmt.Println(gs.g.Game.ToDisplayText())
+	is.Equal(gs.g.Game.Playing(), macondopb.PlayState_GAME_OVER)
+	is.Equal(gs.g.GameEndReason, pb.GameEndReason_STANDARD)
+
+	// Kill the go-routine and let's see the events.
+	gs.cancel()
+	<-gs.donechan
+	log.Info().Interface("evts", gs.consumer.evts).Msg("evts")
+
+	for idx, evt := range gs.consumer.evts {
+		log.Info().Int("idx", idx).Interface("evt", evt).Msg("evt")
+	}
 
 	teardownGame(gs)
 }

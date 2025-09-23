@@ -11,12 +11,12 @@ The `game_players` table is designed to improve query performance for operations
 
 ## What it does
 
-1. Processes all completed games (excludes ongoing games with `game_end_reason = 0` and cancelled games with `game_end_reason = 7`)
+1. Processes all completed NATIVE games (excludes ongoing games with `game_end_reason = 0`, cancelled games with `game_end_reason = 7`, and non-NATIVE game types)
 2. **Uses quickdata PlayerInfo ordering**: Extracts player order from `quickdata->'PlayerInfo'` to ensure correct turn order
 3. Resolves player UUIDs from PlayerInfo to actual user IDs
 4. For each game, creates two rows in `game_players` with proper `player_index` (0 = first player, 1 = second player)
 5. Extracts scores from the `quickdata->>'finalScores'` JSON field
-6. Determines win/loss status from `winner_idx` (which refers to PlayerInfo indices)
+6. Determines win/loss status from `winner_idx` (which refers to PlayerInfo indices), with special handling for ABORTED games
 7. Includes rematch tracking via `original_request_id` from `quickdata->>'o'`
 
 ## Important Note on Player Ordering

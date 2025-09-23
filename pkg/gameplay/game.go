@@ -183,7 +183,7 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 		if len(cge.MachineLetters) > 0 {
 			evtTiles = tilemapping.FromByteArr(cge.MachineLetters).UserVisiblePlayedTiles(g.Alphabet())
 		}
-		m, err := g.CreateAndScorePlacementMove(cge.PositionCoords, evtTiles, rack.String())
+		m, err := g.CreateAndScorePlacementMove(cge.PositionCoords, evtTiles, rack.String(), false)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +350,10 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		if err != nil {
 			return err
 		}
-		returnedTiles, err = calculateReturnedTiles(cfg, entGame.Game.Rules().LetterDistributionName(), entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers], lastEvent.Rack, lastEvent.PlayedTiles)
+		returnedTiles, err = calculateReturnedTiles(cfg,
+			entGame.Game.Rules().LetterDistributionName(),
+			entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers],
+			lastEvent.Rack, lastEvent.PlayedTiles)
 		if err != nil {
 			return err
 		}
