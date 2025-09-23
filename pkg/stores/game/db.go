@@ -213,9 +213,18 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 
 	gamereq := &g.GameRequest
 
-	timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
-	if err != nil {
-		return nil, err
+	// Defensive check for nil GameRequest or Rules
+	var timefmt entity.TimeControl
+	if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
+		log.Warn().Str("game_id", id).Msg("game has incomplete GameRequest data, using default time control")
+		timefmt = "Unknown"
+	} else {
+		var err error
+		timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
+		if err != nil {
+			log.Warn().Err(err).Str("game_id", id).Msg("error getting variant from GameRequest, using default")
+			timefmt = "Unknown"
+		}
 	}
 
 	trdata := g.TournamentData
@@ -334,9 +343,18 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 
 		gamereq := &g.GameRequest
 
-		timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
-		if err != nil {
-			return nil, err
+		// Defensive check for nil GameRequest or Rules
+		var timefmt entity.TimeControl
+		if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
+			log.Warn().Str("game_id", g.Uuid.String).Msg("game has incomplete GameRequest data, using default time control")
+			timefmt = "Unknown"
+		} else {
+			var err error
+			timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
+			if err != nil {
+				log.Warn().Err(err).Str("game_id", g.Uuid.String).Msg("error getting variant from GameRequest, using default")
+				timefmt = "Unknown"
+			}
 		}
 
 		trdata := g.TournamentData
@@ -382,6 +400,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
+
 func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
@@ -403,9 +422,18 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 
 		gamereq := &g.GameRequest
 
-		timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
-		if err != nil {
-			return nil, err
+		// Defensive check for nil GameRequest or Rules
+		var timefmt entity.TimeControl
+		if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
+			log.Warn().Str("game_id", g.Uuid.String).Msg("game has incomplete GameRequest data, using default time control")
+			timefmt = "Unknown"
+		} else {
+			var err error
+			timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
+			if err != nil {
+				log.Warn().Err(err).Str("game_id", g.Uuid.String).Msg("error getting variant from GameRequest, using default")
+				timefmt = "Unknown"
+			}
 		}
 
 		trdata := g.TournamentData

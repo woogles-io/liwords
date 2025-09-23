@@ -248,26 +248,99 @@ func (q *Queries) GetHistory(ctx context.Context, uuid pgtype.Text) ([]byte, err
 	return history, err
 }
 
-const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
-WITH user_id AS (
-    SELECT id FROM users WHERE lower(username) = lower($3)
-)
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-        g.game_request
-FROM games g, user_id u
-WHERE (g.player0_id = u.id OR g.player1_id = u.id)
-AND g.game_end_reason NOT IN (0, 5, 7)
+const getRecentGamesByPlayerID = `-- name: GetRecentGamesByPlayerID :many
+SELECT DISTINCT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+WHERE gp.player_id = $1::integer
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
 ORDER BY g.id DESC
-LIMIT $2::integer
-OFFSET $1::integer
+LIMIT $3::integer
+OFFSET $2::integer
+`
+
+type GetRecentGamesByPlayerIDParams struct {
+	PlayerID    int32
+	OffsetGames int32
+	NumGames    int32
+}
+
+type GetRecentGamesByPlayerIDRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	TournamentData entity.TournamentData
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	GameRequest    entity.GameRequest
+}
+
+func (q *Queries) GetRecentGamesByPlayerID(ctx context.Context, arg GetRecentGamesByPlayerIDParams) ([]GetRecentGamesByPlayerIDRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesByPlayerID, arg.PlayerID, arg.OffsetGames, arg.NumGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentGamesByPlayerIDRow
+	for rows.Next() {
+		var i GetRecentGamesByPlayerIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GameRequest,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+JOIN users u ON gp.player_id = u.id
+WHERE lower(u.username) = lower($1)
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+ORDER BY gp.created_at DESC
+LIMIT $3::integer
+OFFSET $2::integer
 `
 
 type GetRecentGamesByUsernameParams struct {
+	Username    string
 	OffsetGames int32
 	NumGames    int32
-	Username    string
 }
 
 type GetRecentGamesByUsernameRow struct {
@@ -289,7 +362,7 @@ type GetRecentGamesByUsernameRow struct {
 }
 
 func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
-	rows, err := q.db.Query(ctx, getRecentGamesByUsername, arg.OffsetGames, arg.NumGames, arg.Username)
+	rows, err := q.db.Query(ctx, getRecentGamesByUsername, arg.Username, arg.OffsetGames, arg.NumGames)
 	if err != nil {
 		return nil, err
 	}
@@ -297,6 +370,81 @@ func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGam
 	var items []GetRecentGamesByUsernameRow
 	for rows.Next() {
 		var i GetRecentGamesByUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GameRequest,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentGamesByUsernameOptimized = `-- name: GetRecentGamesByUsernameOptimized :many
+SELECT DISTINCT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+JOIN users u ON gp.player_id = u.id
+WHERE lower(u.username) = lower($1)
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+ORDER BY g.id DESC
+LIMIT $3::integer
+OFFSET $2::integer
+`
+
+type GetRecentGamesByUsernameOptimizedParams struct {
+	Username    string
+	OffsetGames int32
+	NumGames    int32
+}
+
+type GetRecentGamesByUsernameOptimizedRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	TournamentData entity.TournamentData
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	GameRequest    entity.GameRequest
+}
+
+func (q *Queries) GetRecentGamesByUsernameOptimized(ctx context.Context, arg GetRecentGamesByUsernameOptimizedParams) ([]GetRecentGamesByUsernameOptimizedRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesByUsernameOptimized, arg.Username, arg.OffsetGames, arg.NumGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentGamesByUsernameOptimizedRow
+	for rows.Next() {
+		var i GetRecentGamesByUsernameOptimizedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
@@ -398,11 +546,13 @@ func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourne
 }
 
 const getRematchStreak = `-- name: GetRematchStreak :many
-SELECT uuid, winner_idx, quickdata
-FROM games
-WHERE quickdata->>'o' = $1::text
-    AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
-ORDER BY created_at DESC
+SELECT g.uuid, g.winner_idx, g.quickdata
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+WHERE gp.original_request_id = $1::text
+    AND gp.game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
+GROUP BY g.uuid, g.winner_idx, g.quickdata, g.created_at
+ORDER BY g.created_at DESC
 `
 
 type GetRematchStreakRow struct {
