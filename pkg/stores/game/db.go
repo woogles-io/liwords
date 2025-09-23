@@ -213,19 +213,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 
 	gamereq := &g.GameRequest
 
-	// Defensive check for nil GameRequest or Rules
-	var timefmt entity.TimeControl
-	if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
-		log.Warn().Str("game_id", id).Msg("game has incomplete GameRequest data, using default time control")
-		timefmt = "Unknown"
-	} else {
-		var err error
-		timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
-		if err != nil {
-			log.Warn().Err(err).Str("game_id", id).Msg("error getting variant from GameRequest, using default")
-			timefmt = "Unknown"
-		}
-	}
+	timefmt := safeTimeControlFromGameReq(gamereq, id)
 
 	trdata := g.TournamentData
 	tDiv := trdata.Division
@@ -343,19 +331,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 
 		gamereq := &g.GameRequest
 
-		// Defensive check for nil GameRequest or Rules
-		var timefmt entity.TimeControl
-		if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
-			log.Warn().Str("game_id", g.Uuid.String).Msg("game has incomplete GameRequest data, using default time control")
-			timefmt = "Unknown"
-		} else {
-			var err error
-			timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
-			if err != nil {
-				log.Warn().Err(err).Str("game_id", g.Uuid.String).Msg("error getting variant from GameRequest, using default")
-				timefmt = "Unknown"
-			}
-		}
+		timefmt := safeTimeControlFromGameReq(gamereq, g.Uuid.String)
 
 		trdata := g.TournamentData
 		tDiv := trdata.Division
@@ -422,19 +398,7 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 
 		gamereq := &g.GameRequest
 
-		// Defensive check for nil GameRequest or Rules
-		var timefmt entity.TimeControl
-		if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
-			log.Warn().Str("game_id", g.Uuid.String).Msg("game has incomplete GameRequest data, using default time control")
-			timefmt = "Unknown"
-		} else {
-			var err error
-			timefmt, _, err = entity.VariantFromGameReq(gamereq.GameRequest)
-			if err != nil {
-				log.Warn().Err(err).Str("game_id", g.Uuid.String).Msg("error getting variant from GameRequest, using default")
-				timefmt = "Unknown"
-			}
-		}
+		timefmt := safeTimeControlFromGameReq(gamereq, g.Uuid.String)
 
 		trdata := g.TournamentData
 		tDiv := trdata.Division
@@ -699,6 +663,22 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	}
 	log.Debug().Interface("hist", hist).Msg("got-history")
 	return hist, nil
+}
+
+// Helper function to safely get time control from GameRequest
+func safeTimeControlFromGameReq(gamereq *entity.GameRequest, gameID string) entity.TimeControl {
+	if gamereq.GameRequest == nil || gamereq.GameRequest.Rules == nil {
+		log.Warn().Str("game_id", gameID).Msg("game has incomplete GameRequest data, using default time control")
+		return "Unknown"
+	}
+
+	timefmt, _, err := entity.VariantFromGameReq(gamereq.GameRequest)
+	if err != nil {
+		log.Warn().Err(err).Str("game_id", gameID).Msg("error getting variant from GameRequest, using default")
+		return "Unknown"
+	}
+
+	return timefmt
 }
 
 // Helper functions to safely dereference potentially nil entity pointers
