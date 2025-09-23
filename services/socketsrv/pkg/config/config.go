@@ -11,8 +11,6 @@ type Config struct {
 	WebsocketAddress string
 	NatsURL          string
 	SecretKey        string
-	// Feature flags
-	NewPresenceSystem bool
 	// Cache settings
 	FollowersCacheSize int
 	FollowersCacheTTL  time.Duration
@@ -26,7 +24,6 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
 	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
-	fs.BoolVar(&c.NewPresenceSystem, "new-presence-system", false, "Enable new efficient presence notification system")
 
 	// Cache configuration
 	fs.IntVar(&c.FollowersCacheSize, "followers-cache-size", 1000, "Maximum number of follower lists to cache")

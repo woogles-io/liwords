@@ -730,59 +730,10 @@ func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChann
 		return nil
 	}
 
-	// Try new system first, fall back to old system
-	if b.config.NewPresenceSystem {
-		log.Debug().Str("userID", userID).Str("username", username).
-			Interface("channels", newChannels).
-			Msg("using-new-presence-system")
-		return b.broadcastPresenceChanged(userID, username, newChannels)
-	}
-
 	log.Debug().Str("userID", userID).Str("username", username).
 		Interface("channels", newChannels).
-		Msg("using-old-presence-system")
-
-	// OLD SYSTEM: Keep for backward compatibility
-	// Courtesy note: followee* is not acceptable in csw19.
-	followee, err := b.stores.UserStore.GetByUUID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	followerUsers, err := b.stores.UserStore.GetFollowedBy(ctx, followee.ID)
-	if err != nil {
-		return err
-	}
-
-	// tell all the users that are followng us of our presence.
-	if len(followerUsers) > 0 && b.genericEventChan != nil {
-		wrapped := entity.WrapEvent(&pb.PresenceEntry{
-			Username: username,
-			UserId:   userID,
-			Channel:  newChannels,
-		}, pb.MessageType_PRESENCE_ENTRY)
-
-		for _, fu := range followerUsers {
-			wrapped.AddAudience(entity.AudUser, fu.UUID)
-		}
-
-		b.genericEventChan <- wrapped
-		log.Debug().Str("userID", userID).Int("follower_count", len(followerUsers)).
-			Msg("sent-old-presence-notifications")
-	}
-	// for _, c := range newChannels {
-	// 	if strings.HasPrefix(c, "tournament.") {
-	// 		wrapped := entity.WrapEvent(&pb.PresenceEntry{
-	// 			Username: username,
-	// 			UserId:   userID,
-	// 			Channel:  newChannels,
-	// 		}, pb.MessageType_PRESENCE_ENTRY)
-	// 		wrapped.AddAudience(entity.AudTournament, strings.TrimPrefix(c, "tournament."))
-	// 		b.genericEventChan <- wrapped
-	// 	}
-	// }
-
-	return nil
+		Msg("using-new-presence-system")
+	return b.broadcastPresenceChanged(userID, username, newChannels)
 }
 
 // NEW SYSTEM: Single efficient presence notification
