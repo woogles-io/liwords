@@ -257,7 +257,7 @@ func answersAreEqual(userAnswer *ipc.ClientGameplayEvent, correctAnswer *macondo
 		} else {
 			converted.PlayedTiles = userAnswer.Tiles
 		}
-		row, col, vertical := move.FromBoardGameCoords(userAnswer.PositionCoords)
+		row, col, vertical := move.FromBoardGameCoords(userAnswer.PositionCoords, false)
 
 		converted.Row = int32(row)
 		converted.Column = int32(col)
