@@ -379,7 +379,10 @@ export const errorMap: Map<number, string> = new Map<number, string>([
     1031,
     "Internal error pairing; a player was unable to be paired! (div $2, round $3, player $4)",
   ],
-  [1032, "Unable to add player, as they are already in division $2."],
+  [
+    1032,
+    "Unable to add player, as they are already in division $2. (player is $3)",
+  ],
   // am I interpreting this error correctly? I didn't think that was a restriction:
   [1033, "A player cannot be added in the last round"],
   [
