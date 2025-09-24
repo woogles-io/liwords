@@ -9,6 +9,8 @@ digraph RedoGameModel {
     SQLCOtherFuncs [label = "Rewrite all others to use sqlc ✅";];
     ConsolidateRequestColumns [label = "Consolidate request columns ✅";];
     ImproveMany2ManyTable [label = "Improve many2many table ✅";];
+    UseMany2ManyTable [label = "Transparently use many2many table ✅" ;];
+    MigrateToMany2ManyTable [label = "Migrate to many2many table ✅";];
 
     // Reset to default for other uncompleted nodes
     node [shape = box; color = black; fontcolor = black; style = solid;];
@@ -17,11 +19,9 @@ digraph RedoGameModel {
     LessDowntimeBetweenDeploys [label = "Allow for less downtime between deploys";];
     MakeDBFaster [label = "Make DB faster to query";];
 
-    MigrateToMany2ManyTable [label = "Migrate to many2many table";];
     AddPastGamesTable [label = "Add PastGames table";];
     OnlyUseNewTables [label = "Only use new tables";];
     MigrateToNewTables [label = "Migrate to new tables";];
-    UseMany2ManyTable [label = "Transparently use many2many table";];
     UsePastGamesTable [label = "Transparently use PastGames table";];
     RemoveGameCache [label = "Remove game cache";];
     EfficientTable [label = "Make game DB model more efficient";];
