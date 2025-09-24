@@ -30,52 +30,58 @@ WHERE g.uuid IN (
 ORDER BY g.created_at DESC;
 
 -- name: GetRecentGamesByUsername :many
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
   ORDER BY gp.created_at DESC
   LIMIT @num_games::integer
   OFFSET @offset_games::integer
-);
-
--- name: GetRecentGamesByPlayerID :many
+)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC;
+
+-- name: GetRecentGamesByPlayerID :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = @player_id::integer
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
   ORDER BY gp.created_at DESC
   LIMIT @num_games::integer
   OFFSET @offset_games::integer
-);
-
--- name: GetRecentGamesByUsernameOptimized :many
+)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC;
+
+-- name: GetRecentGamesByUsernameOptimized :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
   ORDER BY gp.created_at DESC
   LIMIT @num_games::integer
   OFFSET @offset_games::integer
-);
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC;
 
 -- name: GetRecentTourneyGames :many
 SELECT

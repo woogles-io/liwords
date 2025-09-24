@@ -249,13 +249,8 @@ func (q *Queries) GetHistory(ctx context.Context, uuid pgtype.Text) ([]byte, err
 }
 
 const getRecentGamesByPlayerID = `-- name: GetRecentGamesByPlayerID :many
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = $1::integer
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
@@ -263,6 +258,13 @@ WHERE g.uuid IN (
   LIMIT $3::integer
   OFFSET $2::integer
 )
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC
 `
 
 type GetRecentGamesByPlayerIDParams struct {
@@ -326,13 +328,8 @@ func (q *Queries) GetRecentGamesByPlayerID(ctx context.Context, arg GetRecentGam
 }
 
 const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
@@ -340,6 +337,13 @@ WHERE g.uuid IN (
   LIMIT $3::integer
   OFFSET $2::integer
 )
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC
 `
 
 type GetRecentGamesByUsernameParams struct {
@@ -403,13 +407,8 @@ func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGam
 }
 
 const getRecentGamesByUsernameOptimized = `-- name: GetRecentGamesByUsernameOptimized :many
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
-FROM games g
-WHERE g.uuid IN (
-  SELECT gp.game_uuid
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
   FROM game_players gp
   WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
@@ -417,6 +416,13 @@ WHERE g.uuid IN (
   LIMIT $3::integer
   OFFSET $2::integer
 )
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC
 `
 
 type GetRecentGamesByUsernameOptimizedParams struct {
