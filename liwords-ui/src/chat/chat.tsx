@@ -111,12 +111,12 @@ export const Chat = React.memo((props: Props) => {
     setChatChannels,
   } = useChatStoreContext();
   const { presences } = usePresenceStoreContext();
-  const [presenceCount, setPresenceCount] = useState(0);
   const lastChannel = useRef("");
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState<string | undefined>(
     !props.suppressDefault ? defaultChannel : undefined,
   );
+  const presenceCount = presences.filter((p) => p.channel === channel).length;
   const [, setRefreshCurMsg] = useState(0);
   const channelType = useMemo(() => {
     return channel?.split(".")[1] || "";
@@ -162,7 +162,6 @@ export const Chat = React.memo((props: Props) => {
     number | undefined
   >(undefined);
   const [description, setDescription] = useState(defaultDescription);
-  const [defaultLastMessage, setDefaultLastMessage] = useState("");
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
   const [channelReadTime, setChannelReadTime] = useState(Date.now());
   const [notificationCount, setNotificationCount] = useState<number>(0);
@@ -255,9 +254,9 @@ export const Chat = React.memo((props: Props) => {
   }, [
     updatedChannels,
     unseenMessages,
-    presenceCount,
     competitorState,
     setHeight,
+    presenceCount,
   ]);
 
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
@@ -319,10 +318,6 @@ export const Chat = React.memo((props: Props) => {
   }, [fetchChannels, channelsFetched]);
 
   useEffect(() => {
-    setPresenceCount(presences.filter((p) => p.channel === channel).length);
-  }, [presences, channel]);
-
-  useEffect(() => {
     if (chatTab) {
       // Designs changes when the chat is long enough to scroll
       if (chatTab.scrollHeight > chatTab.clientHeight) {
@@ -332,102 +327,58 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [chatTab, doChatAutoScroll, chatEntities]);
 
-  useEffect(() => {
-    setChannel(defaultChannel);
-    setDescription(defaultDescription);
+  // Track previous values to detect actual changes
+  const prevDefaultChannelRef = useRef(defaultChannel);
+  const prevCollectionContextRef = useRef(collectionContext);
 
-    // Only set PLAYERS tab for lobby channels, not tournament channels
-    if (loggedIn && defaultChannel === "chat.lobby") {
-      setSelectedChatTab("PLAYERS");
-      setShowChannels(true);
-    } else if (loggedIn && props.suppressDefault) {
-      // For suppressDefault, use the helper function to determine correct tab
-      setSelectedChatTab(
-        getDefaultTab(
-          props.suppressDefault,
+  useEffect(() => {
+    // Handle default channel/description changes
+    if (defaultChannel !== prevDefaultChannelRef.current) {
+      setChannel(defaultChannel);
+      setDescription(defaultDescription);
+      prevDefaultChannelRef.current = defaultChannel;
+
+      // Determine if we should switch tabs based on the new channel
+      if (loggedIn) {
+        const newTab = getDefaultTab(
+          props.suppressDefault || false,
           loggedIn,
           collectionContext,
           defaultChannel,
           props.tournamentID,
-        ),
-      );
-      setShowChannels(true);
+        );
+        setSelectedChatTab(newTab);
+        setShowChannels(
+          props.suppressDefault || defaultChannel === "chat.lobby",
+        );
+      }
+    }
+
+    // Handle collection context changes
+    if (collectionContext !== prevCollectionContextRef.current) {
+      prevCollectionContextRef.current = collectionContext;
+
+      if (collectionContext && selectedChatTab !== "COLLECTION") {
+        setSelectedChatTab("COLLECTION");
+      } else if (!collectionContext && selectedChatTab === "COLLECTION") {
+        const newTab = getDefaultTab(
+          props.suppressDefault || false,
+          loggedIn,
+          null,
+          defaultChannel,
+          props.tournamentID,
+        );
+        setSelectedChatTab(newTab);
+      }
     }
   }, [
     defaultChannel,
     defaultDescription,
+    collectionContext,
     loggedIn,
     props.suppressDefault,
-    collectionContext,
     props.tournamentID,
-  ]);
-
-  // Track context to detect actual changes (not just re-renders)
-  const [prevContext, setPrevContext] = useState({
-    tournamentID: props.tournamentID,
-    channelType,
-    hasCollection: !!collectionContext,
-  });
-
-  // Only auto-switch tabs when context actually changes
-  useEffect(() => {
-    const currentContext = {
-      tournamentID: props.tournamentID,
-      channelType,
-      hasCollection: !!collectionContext,
-    };
-
-    // Check if context actually changed
-    const contextChanged =
-      prevContext.tournamentID !== currentContext.tournamentID ||
-      prevContext.channelType !== currentContext.channelType ||
-      prevContext.hasCollection !== currentContext.hasCollection;
-
-    if (contextChanged) {
-      // Use the helper function to determine the correct tab for the new context
-      const newTab = getDefaultTab(
-        props.suppressDefault || false,
-        loggedIn,
-        collectionContext,
-        defaultChannel,
-        props.tournamentID,
-      );
-      setSelectedChatTab(newTab);
-      setPrevContext(currentContext);
-    }
-  }, [
-    props.tournamentID,
-    channelType,
-    collectionContext,
-    prevContext,
-    props.suppressDefault,
-    loggedIn,
-    defaultChannel,
-  ]);
-
-  // Handle collection context changes separately to fix race conditions
-  useEffect(() => {
-    if (collectionContext && selectedChatTab !== "COLLECTION") {
-      // Collection context became available, switch to collection tab
-      setSelectedChatTab("COLLECTION");
-    } else if (!collectionContext && selectedChatTab === "COLLECTION") {
-      // Collection context was removed, determine new default tab
-      const newTab = getDefaultTab(
-        props.suppressDefault || false,
-        loggedIn,
-        null, // no collection context
-        defaultChannel,
-        props.tournamentID,
-      );
-      setSelectedChatTab(newTab);
-    }
-  }, [
-    collectionContext,
     selectedChatTab,
-    props.suppressDefault,
-    loggedIn,
-    defaultChannel,
-    props.tournamentID,
   ]);
 
   const decoratedDescription = useMemo(() => {
@@ -440,36 +391,22 @@ export const Chat = React.memo((props: Props) => {
     return description;
   }, [description, channelType]);
 
-  useEffect(() => {
-    // Remove this channel's messages from the unseen list when we switch back to message view
-    setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
-    setUpdatedChannels((u) => {
-      if (u) {
-        const initialUpdated = Array.from(u);
-        return new Set(initialUpdated.filter((ch) => ch !== channel));
-      }
-      return undefined;
-    });
-  }, [channel, showChannels]);
+  // Calculate defaultLastMessage from chat entities
+  const defaultLastMessage = useMemo(() => {
+    const lastMessage = chatEntities.reduce(
+      (acc: ChatEntityObj | undefined, ch) =>
+        ch.channel === defaultChannel &&
+        ch.timestamp &&
+        (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
+          ? ch
+          : acc,
+      undefined,
+    );
+    return lastMessage ? `${lastMessage?.sender}: ${lastMessage?.message}` : "";
+  }, [chatEntities, defaultChannel]);
 
   useEffect(() => {
     if (chatTab || showChannels) {
-      // chat entities changed.
-      // Update defaultLastMessage
-
-      const lastMessage = chatEntities.reduce(
-        (acc: ChatEntityObj | undefined, ch) =>
-          ch.channel === defaultChannel &&
-          ch.timestamp &&
-          (acc === undefined || (acc.timestamp && ch.timestamp > acc.timestamp))
-            ? ch
-            : acc,
-        undefined,
-      );
-
-      setDefaultLastMessage((u) =>
-        lastMessage ? `${lastMessage?.sender}: ${lastMessage?.message}` : u,
-      );
       // If there are new messages in this
       // channel and we've scrolled up, mark this chat unread,
       const currentUnread = chatEntities
@@ -581,14 +518,26 @@ export const Chat = React.memo((props: Props) => {
     };
   }, []);
 
-  useEffect(() => {
-    // If we actually changed the channel, get the new messages
-    if (channel && channel !== lastChannel.current) {
-      lastChannel.current = channel || "";
-      setChannelSelectedTime(Date.now());
-      const fetchChats = async () => {
-        const chats = await socializeClient.getChatsForChannel({ channel });
+  // Fetch chats when channel changes
+  const handleChannelChange = useCallback(
+    async (newChannel: string | undefined) => {
+      if (newChannel && newChannel !== lastChannel.current) {
+        lastChannel.current = newChannel;
+        setChannelSelectedTime(Date.now());
 
+        // Clear unseen messages for this channel
+        setUnseenMessages((u) => u.filter((ch) => ch.channel !== newChannel));
+        setUpdatedChannels((u) => {
+          if (u) {
+            const initialUpdated = Array.from(u);
+            return new Set(initialUpdated.filter((ch) => ch !== newChannel));
+          }
+          return undefined;
+        });
+
+        const chats = await socializeClient.getChatsForChannel({
+          channel: newChannel,
+        });
         clearChat();
         const messages: Array<ChatMessage> = chats.messages;
         if (messages) {
@@ -597,12 +546,19 @@ export const Chat = React.memo((props: Props) => {
         setHasUnreadChat(false);
         setChatAutoScroll(true);
         setHeight();
-      };
-      fetchChats();
-    } else {
-      setHeight();
+      } else {
+        setHeight();
+      }
+    },
+    [addChats, clearChat, setHeight, socializeClient],
+  );
+
+  useEffect(() => {
+    // Only handle initial channel load
+    if (channel && channel !== lastChannel.current) {
+      handleChannelChange(channel);
     }
-  }, [channel, addChats, clearChat, loggedIn, setHeight, socializeClient]);
+  }, [channel, handleChannelChange]);
 
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
@@ -723,42 +679,45 @@ export const Chat = React.memo((props: Props) => {
       clearTimeout(t);
     };
   }, [gameChannelPresenceCount]);
-  const checkOpponentPresence = useRef<{
+  const prevGameChannelPresenceRef = useRef<{
     channel: string | undefined;
     count: number;
   }>({ channel: undefined, count: 0 });
+
   useEffect(() => {
-    if (
-      laggedGameChannelPresenceCount > 0 &&
-      checkOpponentPresence.current.channel !== gameChannel
-    ) {
-      checkOpponentPresence.current = {
-        channel: gameChannel,
-        count: laggedGameChannelPresenceCount,
-      };
-    }
-  }, [gameChannel, laggedGameChannelPresenceCount]);
-  useEffect(() => {
-    if (gameChannel && checkOpponentPresence.current.channel === gameChannel) {
-      const additionalCount =
-        laggedGameChannelPresenceCount - checkOpponentPresence.current.count;
-      // XXX: if this happens while browsing available chat channels, the message is lost.
-      if (additionalCount > 0) {
-        addChat({
-          entityType: ChatEntityType.ServerMsg,
-          sender: "",
-          message: "Opponent has returned to this room.",
-          channel: "server",
-        });
-      } else if (additionalCount < 0) {
-        addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: "",
-          message: "Opponent is no longer in this room.",
-          channel: "server",
-        });
+    if (gameChannel) {
+      // Initialize tracking for new game channel
+      if (prevGameChannelPresenceRef.current.channel !== gameChannel) {
+        prevGameChannelPresenceRef.current = {
+          channel: gameChannel,
+          count: laggedGameChannelPresenceCount,
+        };
       }
-      checkOpponentPresence.current.count = laggedGameChannelPresenceCount;
+      // Check for presence changes in the current game channel
+      else if (prevGameChannelPresenceRef.current.channel === gameChannel) {
+        const countDiff =
+          laggedGameChannelPresenceCount -
+          prevGameChannelPresenceRef.current.count;
+
+        if (countDiff > 0) {
+          addChat({
+            entityType: ChatEntityType.ServerMsg,
+            sender: "",
+            message: "Opponent has returned to this room.",
+            channel: "server",
+          });
+        } else if (countDiff < 0) {
+          addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: "",
+            message: "Opponent is no longer in this room.",
+            channel: "server",
+          });
+        }
+
+        prevGameChannelPresenceRef.current.count =
+          laggedGameChannelPresenceCount;
+      }
     }
   }, [addChat, gameChannel, laggedGameChannelPresenceCount]);
   const peopleOnlineCounter = useMemo(
@@ -841,10 +800,11 @@ export const Chat = React.memo((props: Props) => {
             defaultLastMessage={defaultLastMessage}
             updatedChannels={updatedChannels}
             unseenMessages={unseenMessages}
-            onChannelSelect={(ch: string, desc: string) => {
+            onChannelSelect={async (ch: string, desc: string) => {
               if (channel !== ch) {
                 setChannel(ch);
                 setDescription(desc);
+                await handleChannelChange(ch);
               }
               setShowChannels(false);
             }}
@@ -867,11 +827,11 @@ export const Chat = React.memo((props: Props) => {
                         ? " unread"
                         : ""
                     }`}
-                    onClick={() => {
+                    onClick={async () => {
                       setChannel(undefined);
                       setChannelSelectedTime(Date.now());
                       setShowChannels(true);
-                      fetchChannels();
+                      await fetchChannels();
                     }}
                   >
                     <LeftOutlined /> All chats
@@ -963,19 +923,16 @@ export const Chat = React.memo((props: Props) => {
     return item;
   });
 
-  // Ensure selected tab is valid when tabItems change
-  useEffect(() => {
-    const availableKeys = tabItems.map((item) => item.key);
-    if (!availableKeys.includes(selectedChatTab)) {
-      // If current selected tab is not available, pick first available tab
-      setSelectedChatTab(availableKeys[0] || "CHAT");
-    }
-  }, [tabItems, selectedChatTab]);
+  // Ensure selected tab is valid
+  const availableKeys = tabItems.map((item) => item.key);
+  const validatedSelectedTab = availableKeys.includes(selectedChatTab)
+    ? selectedChatTab
+    : availableKeys[0] || "CHAT";
 
   return (
     <Card className="chat" id="chat">
       <Tabs
-        activeKey={selectedChatTab}
+        activeKey={validatedSelectedTab}
         centered
         onTabClick={handleTabClick}
         animated={false}
