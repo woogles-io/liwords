@@ -59,6 +59,9 @@ const getDefaultTab = (
   // Collection takes precedence over everything else
   if (collectionContext) return "COLLECTION";
 
+  // Lobby should default to PLAYERS
+  if (defaultChannel === "chat.lobby") return "PLAYERS";
+
   // Check channel type
   const channelType = defaultChannel?.split(".")[1];
 
@@ -72,7 +75,7 @@ const getDefaultTab = (
     return "CHAT";
   }
 
-  // Default to PLAYERS for lobby and other channels
+  // Default to PLAYERS for other channels
   return "PLAYERS";
 };
 
@@ -330,13 +333,18 @@ export const Chat = React.memo((props: Props) => {
   // Track previous values to detect actual changes
   const prevDefaultChannelRef = useRef(defaultChannel);
   const prevCollectionContextRef = useRef(collectionContext);
+  const prevLoggedInRef = useRef(loggedIn);
 
   useEffect(() => {
-    // Handle default channel/description changes
-    if (defaultChannel !== prevDefaultChannelRef.current) {
+    // Handle default channel/description changes or login state changes
+    if (
+      defaultChannel !== prevDefaultChannelRef.current ||
+      loggedIn !== prevLoggedInRef.current
+    ) {
       setChannel(defaultChannel);
       setDescription(defaultDescription);
       prevDefaultChannelRef.current = defaultChannel;
+      prevLoggedInRef.current = loggedIn;
 
       // Determine if we should switch tabs based on the new channel
       if (loggedIn) {
@@ -354,13 +362,18 @@ export const Chat = React.memo((props: Props) => {
       }
     }
 
-    // Handle collection context changes
+    // Handle collection context changes - only auto-switch when context appears/disappears
     if (collectionContext !== prevCollectionContextRef.current) {
+      const wasNull = prevCollectionContextRef.current === null;
+      const isNull = collectionContext === null;
       prevCollectionContextRef.current = collectionContext;
 
-      if (collectionContext && selectedChatTab !== "COLLECTION") {
+      // Only auto-switch to COLLECTION when context appears (null -> truthy)
+      if (wasNull && !isNull) {
         setSelectedChatTab("COLLECTION");
-      } else if (!collectionContext && selectedChatTab === "COLLECTION") {
+      }
+      // Only auto-switch away from COLLECTION when context disappears (truthy -> null)
+      else if (!wasNull && isNull && selectedChatTab === "COLLECTION") {
         const newTab = getDefaultTab(
           props.suppressDefault || false,
           loggedIn,
