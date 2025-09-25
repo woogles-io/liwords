@@ -22,7 +22,7 @@ import {
 } from "antd";
 import { Modal } from "../../utils/focus_modal";
 import { Store } from "rc-field-form/lib/interface";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SingleRoundControlsRequestSchema,
   TType,
@@ -113,6 +113,7 @@ const FormModal = (props: ModalProps) => {
     "manage-check-ins-and-registrations": (
       <ManageCheckIns tournamentID={props.tournamentID} />
     ),
+    "count-firsts": <CountFirsts tournamentID={props.tournamentID} />,
     // "run-cop": <RunCOP tournamentID={props.tournamentID} />,
   };
 
@@ -182,6 +183,7 @@ export const GhettoTools = (props: Props) => {
     "Unpair entire round", // Unpair a whole round
     // "Run COP", // experimental run COP (new pairing method)
     // 'Clear checked in',
+    "Count firsts",
   ];
 
   const postTournamentTypes = ["Export tournament", "Unfinish tournament"];
@@ -1436,12 +1438,15 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
             King of the Hill
           </Select.Option>
           <Select.Option value={PairingMethod.INTERLEAVED_ROUND_ROBIN}>
-            Shirts and Skins
+            Shirts and Skins Round Robin
+          </Select.Option>
+          <Select.Option value={PairingMethod.SNAKED_ROUND_ROBIN}>
+            Snaked (Boustrophedonic) Round Robin
           </Select.Option>
           <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
           <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
           <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
-            Team Round Robin
+            Team (Top vs Bottom) Round Robin
           </Select.Option>
         </Select>
       </Form.Item>
@@ -2068,6 +2073,61 @@ const CreatePrintableScorecards = (props: { tournamentID: string }) => {
           </Button>
         </Form.Item>
       </Form>
+    </>
+  );
+};
+
+const CountFirsts = (props: { tournamentID: string }) => {
+  const [division, setDivision] = useState("");
+  const { tournamentContext } = useTournamentStoreContext();
+  const [firstsDisplay, setFirstsDisplay] = useState<string[]>([]);
+  const countFirsts = useCallback(() => {
+    // go through the tournament and count the number of firsts for every player,
+    // then display these in this widget. we're not using the API, but just doing
+    // a front-end count.
+    const firsts: Record<string, number> = {};
+    if (!division) {
+      message.error("Please select a division first.");
+      return;
+    }
+    const div = tournamentContext.divisions[division];
+    for (let i = 0; i < div.pairings.length; i++) {
+      const m = new Set<string>();
+      for (let j = 0; j < div.pairings[i].roundPairings.length; j++) {
+        const rp = div.pairings[i].roundPairings[j];
+        const playerName = rp.players[0].id.split(":")[1];
+        if (!m.has(playerName)) {
+          m.add(playerName);
+          firsts[playerName] = (firsts[playerName] || 0) + 1;
+        }
+      }
+    }
+    const firstsList = Object.entries(firsts)
+      .sort((a, b) => {
+        if (b[1] !== a[1]) {
+          return b[1] - a[1]; // Sort by count descending
+        }
+        return a[0].localeCompare(b[0]); // If counts are equal, sort by name ascending
+      })
+      .map(([name, count]) => `${name}: ${count} firsts`);
+    setFirstsDisplay(firstsList);
+  }, [division, tournamentContext.divisions]);
+  return (
+    <>
+      <DivisionFormItem onChange={(div: string) => setDivision(div)} />
+
+      <Button onClick={countFirsts}>Count firsts</Button>
+      <div className="readable-text-color" style={{ marginTop: 10 }}>
+        {firstsDisplay.length > 0 ? (
+          <ul>
+            {firstsDisplay.map((f, idx) => (
+              <li key={`first-${idx}`}>{f}</li>
+            ))}
+          </ul>
+        ) : (
+          "No firsts counted yet."
+        )}
+      </div>
     </>
   );
 };

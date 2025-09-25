@@ -107,6 +107,7 @@ const (
 	PairingMethod_MANUAL                  PairingMethod = 8
 	PairingMethod_TEAM_ROUND_ROBIN        PairingMethod = 9
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
+	PairingMethod_SNAKED_ROUND_ROBIN      PairingMethod = 11
 )
 
 // Enum value maps for PairingMethod.
@@ -123,6 +124,7 @@ var (
 		8:  "MANUAL",
 		9:  "TEAM_ROUND_ROBIN",
 		10: "INTERLEAVED_ROUND_ROBIN",
+		11: "SNAKED_ROUND_ROBIN",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -136,6 +138,7 @@ var (
 		"MANUAL":                  8,
 		"TEAM_ROUND_ROBIN":        9,
 		"INTERLEAVED_ROUND_ROBIN": 10,
+		"SNAKED_ROUND_ROBIN":      11,
 	}
 )
 
@@ -617,6 +620,7 @@ type RoundControl struct {
 	AllowOverMaxRepeats         bool                   `protobuf:"varint,8,opt,name=allow_over_max_repeats,json=allowOverMaxRepeats,proto3" json:"allow_over_max_repeats,omitempty"`
 	RepeatRelativeWeight        int32                  `protobuf:"varint,9,opt,name=repeat_relative_weight,json=repeatRelativeWeight,proto3" json:"repeat_relative_weight,omitempty"`
 	WinDifferenceRelativeWeight int32                  `protobuf:"varint,10,opt,name=win_difference_relative_weight,json=winDifferenceRelativeWeight,proto3" json:"win_difference_relative_weight,omitempty"`
+	PlayWithinTeam              bool                   `protobuf:"varint,11,opt,name=play_within_team,json=playWithinTeam,proto3" json:"play_within_team,omitempty"`
 	// Optional is needed to represent:
 	// - `nil` for no override at all
 	// - `0` overriding the default to disable the spread cap
@@ -724,6 +728,13 @@ func (x *RoundControl) GetWinDifferenceRelativeWeight() int32 {
 		return x.WinDifferenceRelativeWeight
 	}
 	return 0
+}
+
+func (x *RoundControl) GetPlayWithinTeam() bool {
+	if x != nil {
+		return x.PlayWithinTeam
+	}
+	return false
 }
 
 func (x *RoundControl) GetSpreadCapOverride() uint32 {
@@ -2013,7 +2024,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x9f\x04\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xc3\x04\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2026,9 +2037,10 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x16allow_over_max_repeats\x18\b \x01(\bR\x13allowOverMaxRepeats\x124\n" +
 	"\x16repeat_relative_weight\x18\t \x01(\x05R\x14repeatRelativeWeight\x12C\n" +
 	"\x1ewin_difference_relative_weight\x18\n" +
-	" \x01(\x05R\x1bwinDifferenceRelativeWeight\x123\n" +
+	" \x01(\x05R\x1bwinDifferenceRelativeWeight\x12(\n" +
+	"\x10play_within_team\x18\v \x01(\bR\x0eplayWithinTeam\x123\n" +
 	"\x13spread_cap_override\x18\f \x01(\rH\x00R\x11spreadCapOverride\x88\x01\x01B\x16\n" +
-	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
+	"\x14_spread_cap_override\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x123\n" +
@@ -2160,7 +2172,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xcc\x01\n" +
+	"\x04VOID\x10\b*\xe4\x01\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2176,7 +2188,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x06MANUAL\x10\b\x12\x14\n" +
 	"\x10TEAM_ROUND_ROBIN\x10\t\x12\x1b\n" +
 	"\x17INTERLEAVED_ROUND_ROBIN\x10\n" +
-	"*F\n" +
+	"\x12\x16\n" +
+	"\x12SNAKED_ROUND_ROBIN\x10\v*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +
