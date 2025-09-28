@@ -1,7 +1,6 @@
 package copdata_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -249,7 +248,6 @@ func TestCOPPrecompData(t *testing.T) {
 	req.ControlLossThreshold = 0.5
 	copRand.Seed(1)
 	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
-	fmt.Println(logsb.String())
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, 2)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {

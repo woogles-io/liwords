@@ -820,7 +820,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	})
 	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
 	resp = cop.COPPair(req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	// Andy should have the bye
 	is.Equal(resp.Pairings[2], int32(2))
@@ -831,7 +830,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	})
 	req.DivisionPairings[len(req.DivisionPairings)-1].Pairings[11] = 11
 	resp = cop.COPPair(req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	// Billy should get the bye since Eric already received a bye
 	is.Equal(resp.Pairings[5], int32(5))

@@ -47,6 +47,7 @@ type SimResults struct {
 	LowestFactorPairWins      int
 	AllControlLosses          map[int]int
 	SegmentRoundFactors       []int
+	TotalSims                 int
 }
 
 func GetRoundsRemaining(req *pb.PairRequest) int {
@@ -326,29 +327,30 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	highestControlLossRankIdx := -1
 	lowestFactorPairWins := sims + 1
 	var allControlLosses map[int]int
+	totalSims := 0
 	if lowestHopeControlLosser < 0 {
 		initialSimStopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
 		for simIdx := 0; simIdx < sims; simIdx++ {
-			timeLimitExceeded := standings.simRoundAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, initialSimStopTime)
+			timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, initialSimStopTime)
 			if timeLimitExceeded {
 				break
 			}
+			totalSims++
 		}
 		ranksToCheck := []int{int(req.PlacePrizes) - 1}
 		if !gibsonizedPlayers[0] {
 			ranksToCheck = append(ranksToCheck, 0)
 		}
-		totalSims := sims
 		reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
 	outerThresholdLoop:
 		for !simResultsReachedThreshold(results, playerIdxToRankIdx, ranksToCheck, totalSims, req.HopefulnessThreshold) {
 			for resimIdx := 0; resimIdx < resimBatchSize; resimIdx++ {
-				timeLimitExceeded := standings.simRoundAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
+				timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
 				if timeLimitExceeded {
 					break outerThresholdLoop
 				}
+				totalSims++
 			}
-			totalSims += resimBatchSize
 		}
 	} else {
 		// Perform a binary search to find the player with the lowest
@@ -365,6 +367,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
+			totalSims++
 			if vsFirstTournamentWins < sims {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
 				allControlLosses[forcedWinnerRankIdx] = -1
@@ -374,6 +377,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
+			totalSims++
 			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
 			if vsFactorPairTournamentWins < lowestFactorPairWins {
 				leftPlayerRankIdx = forcedWinnerRankIdx + 1
@@ -393,11 +397,12 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		LowestFactorPairWins:      lowestFactorPairWins,
 		AllControlLosses:          allControlLosses,
 		SegmentRoundFactors:       segmentRoundFactors,
+		TotalSims:                 totalSims,
 	}, pb.PairError_SUCCESS
 }
 
 // Returns true if the time limit has been exceeded
-func (standings *Standings) simRoundAndRecordResults(roundsRemaining int, copRand *rand.Rand, pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int, stopTimeNano int64) bool {
+func (standings *Standings) simToEndAndRecordResults(roundsRemaining int, copRand *rand.Rand, pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int, stopTimeNano int64) bool {
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 		timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
 		if timeLimitExceeded {
