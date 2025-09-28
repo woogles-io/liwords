@@ -1,14 +1,14 @@
 package standings
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
-	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"golang.org/x/exp/rand"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 const (
@@ -16,12 +16,17 @@ const (
 )
 
 const (
-	playerWinsOffset   int    = 48
-	initialWinsValue   int    = 1 << (64 - playerWinsOffset - 1)
-	playerSpreadOffset int    = 16
-	initialSpreadValue int    = 1 << (playerWinsOffset - playerSpreadOffset - 1)
-	playerIndexMask    uint64 = 0xFFFF
-	byeSpread          int    = 50
+	playerWinsOffset    int     = 48
+	initialWinsValue    int     = 1 << (64 - playerWinsOffset - 1)
+	playerSpreadOffset  int     = 16
+	initialSpreadValue  int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
+	playerIndexMask     uint64  = 0xFFFF
+	byeSpread           int     = 50
+	simConfidence       float64 = 0.99
+	resimBatchSize      int     = 10000
+	initialSimTimeLimit int     = 30
+	reSimTimeLimit      int     = 30
+	controlSimTimeLimit int     = 30
 )
 
 type Standings struct {
@@ -213,7 +218,7 @@ func (standings *Standings) Sort() {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := GetRoundsRemaining(req)
 	evenerPlayerAdded := false
@@ -231,7 +236,7 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 		evenerPlayerAdded = true
 	}
 
-	simResults, pairErr := standings.evenedSimFactorPairAll(ctx, req, copRand, sims, maxFactor, lowestHopeControlLosser, prevSegmentRoundFactors)
+	simResults, pairErr := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, lowestHopeControlLosser, prevSegmentRoundFactors)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -248,7 +253,7 @@ func (standings *Standings) SimFactorPairAll(ctx context.Context, req *pb.PairRe
 	return simResults, pb.PairError_SUCCESS
 }
 
-func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
@@ -318,28 +323,32 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 
 	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
 	standings.Backup()
-	numRecords := len(standings.records)
 	highestControlLossRankIdx := -1
 	lowestFactorPairWins := sims + 1
 	var allControlLosses map[int]int
 	if lowestHopeControlLosser < 0 {
+		initialSimStopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
 		for simIdx := 0; simIdx < sims; simIdx++ {
-			for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
-				pairErr := standings.simRound(ctx, copRand, pairings, roundIdx, -1)
-				if pairErr != pb.PairError_SUCCESS {
-					return nil, pairErr
+			timeLimitExceeded := standings.simRoundAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, initialSimStopTime)
+			if timeLimitExceeded {
+				break
+			}
+		}
+		ranksToCheck := []int{int(req.PlacePrizes) - 1}
+		if !gibsonizedPlayers[0] {
+			ranksToCheck = append(ranksToCheck, 0)
+		}
+		totalSims := sims
+		reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
+	outerThresholdLoop:
+		for !simResultsReachedThreshold(results, playerIdxToRankIdx, ranksToCheck, totalSims, req.HopefulnessThreshold) {
+			for resimIdx := 0; resimIdx < resimBatchSize; resimIdx++ {
+				timeLimitExceeded := standings.simRoundAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
+				if timeLimitExceeded {
+					break outerThresholdLoop
 				}
 			}
-			// Update results
-			for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
-				// The rankIdx is the final rank index that the player achieved
-				// for the simulation. We need to get the player index at that
-				// rankIdx and find the starting rank for the player, since results
-				// are ordered by starting rank index.
-				results[playerIdxToRankIdx[getIndex(standings.records[rankIdx])]][rankIdx] += 1
-			}
-
-			standings.RestoreFromBackup()
+			totalSims += resimBatchSize
 		}
 	} else {
 		// Perform a binary search to find the player with the lowest
@@ -348,10 +357,11 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 		allControlLosses = map[int]int{}
 		leftPlayerRankIdx := 1
 		rightPlayerRankIdx := lowestHopeControlLosser
+		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			vsFirstTournamentWins, pairErr := standings.simForceWinner(ctx, copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true)
+			vsFirstTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true, controlSimStopTime)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
@@ -360,7 +370,7 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 				allControlLosses[forcedWinnerRankIdx] = -1
 				continue
 			}
-			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(ctx, copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false)
+			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false, controlSimStopTime)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
@@ -386,14 +396,37 @@ func (standings *Standings) evenedSimFactorPairAll(ctx context.Context, req *pb.
 	}, pb.PairError_SUCCESS
 }
 
+// Returns true if the time limit has been exceeded
+func (standings *Standings) simRoundAndRecordResults(roundsRemaining int, copRand *rand.Rand, pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int, stopTimeNano int64) bool {
+	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
+		timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
+		if timeLimitExceeded {
+			return true
+		}
+	}
+	// Update results
+	numRecords := len(standings.records)
+	for rankIdx := 0; rankIdx < numRecords; rankIdx++ {
+		// The rankIdx is the final rank index that the player achieved
+		// for the simulation. We need to get the player index at that
+		// rankIdx and find the starting rank for the player, since results
+		// are ordered by starting rank index.
+		results[playerIdxToRankIdx[getIndex(standings.records[rankIdx])]][rankIdx] += 1
+	}
+
+	standings.RestoreFromBackup()
+	return false
+}
+
 func getCumeGibsonSpread(req *pb.PairRequest) int {
 	return int(req.GibsonSpread) * GetRoundsRemaining(req) * 2
 }
 
-func (standings *Standings) simRound(ctx context.Context, copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int) pb.PairError {
-	if ctx.Err() != nil {
-		log.Err(ctx.Err()).Msg("cop-timeout")
-		return pb.PairError_TIMEOUT
+// Returns true if the time limit has been exceeded
+func (standings *Standings) simRound(copRand *rand.Rand, pairings [][]int, roundIdx int, forcedWinnerRankIdx int, stopTimeNano int64) bool {
+	currentTimeNano := time.Now().UnixNano()
+	if currentTimeNano > stopTimeNano {
+		return true
 	}
 	numPlayers := len(standings.records)
 	numScoreDiffs := len(standings.possibleResults)
@@ -437,7 +470,7 @@ func (standings *Standings) simRound(ctx context.Context, copRand *rand.Rand, pa
 		}
 	}
 	standings.Sort()
-	return pb.PairError_SUCCESS
+	return false
 }
 
 func (standings *Standings) findRankIdx(playerIdx int) int {
@@ -450,7 +483,7 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(ctx context.Context, copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool) (int, pb.PairError) {
+func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
@@ -467,9 +500,9 @@ func (standings *Standings) simForceWinner(ctx context.Context, copRand *rand.Ra
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
 			}
-			pairErr := standings.simRound(ctx, copRand, pairings, roundIdx, forcedWinnerRankIdx)
-			if pairErr != pb.PairError_SUCCESS {
-				return 0, pairErr
+			timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, stopTimeNano)
+			if timeLimitExceeded {
+				return 0, pb.PairError_TIMEOUT
 			}
 			if vsFirst {
 				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
@@ -606,6 +639,44 @@ func areIntArraysEqual(arr1, arr2 []int) bool {
 	for i := range arr1 {
 		if arr1[i] != arr2[i] {
 			return false
+		}
+	}
+	return true
+}
+
+// ClopperPearson returns the (lower, upper) exact CI for a Binomial proportion
+// using the Clopper–Pearson method at confidence level 1 - alpha.
+func clopperPearson(k int, n int, alpha float64) (float64, float64) {
+	var lower, upper float64
+	if k == 0 {
+		lower = 0.0
+	} else {
+		beta := distuv.Beta{Alpha: float64(k), Beta: float64(n - k + 1)}
+		lower = beta.Quantile(alpha / 2)
+	}
+
+	if k == n {
+		upper = 1.0
+	} else {
+		beta := distuv.Beta{Alpha: float64(k + 1), Beta: float64(n - k)}
+		upper = beta.Quantile(1 - alpha/2)
+	}
+
+	return lower, upper
+}
+
+// Assumes n > 0
+func simResultsReachedThreshold(results [][]int, playerIdxToRankIdx map[int]int, ranksToCheck []int, n int, y float64) bool {
+	numRanks := len(results)
+	N := numRanks * len(ranksToCheck)
+	alphaPer := (1 - simConfidence) / float64(N)
+	for _, rankToCheck := range ranksToCheck {
+		for rankIdx := range numRanks {
+			lower, upper := clopperPearson(results[rankIdx][rankToCheck], n, alphaPer)
+			if !(lower > y || upper < y) {
+				// Inconclusive if CI spans threshold
+				return false
+			}
 		}
 	}
 	return true
