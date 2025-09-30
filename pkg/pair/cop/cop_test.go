@@ -951,12 +951,10 @@ func TestCOPDebug(t *testing.T) {
 		t.Skip("Skipping COP debug test. Use 'COP_DEBUG=1 go test -run COPDebug' to run it.")
 	}
 	is := is.New(t)
-	req := pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req := pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
+	req.ControlLossActivationRound = 11
 	req.Seed = 1
+	req.ControlLossSims = 1000000000
 	resp := cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	// whatnoloan is not gibsonized and is the only player who can hopefully win
-	// Therefore, whatnoloan needs to play condorave since condorave is the player ranked just below whatnoloan
-	is.Equal(resp.Pairings[1], int32(3))
-	is.Equal(resp.Pairings[3], int32(1))
+	is.Equal(resp.ErrorCode, pb.PairError_TIMEOUT)
 }
