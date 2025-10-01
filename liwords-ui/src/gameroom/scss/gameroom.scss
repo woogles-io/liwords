@@ -33,6 +33,8 @@ p.streak-loss {
 }
 
 .game-table {
+  touch-action: manipulation;
+
   .chat-area {
     .ant-card.left-menu {
       text-transform: uppercase;
@@ -911,7 +913,7 @@ p.streak-loss {
 /* Rack */
 
 .rack {
-  touch-action: manipulation;
+  touch-action: none;
   display: flex;
   justify-content: center;
   align-items: center;

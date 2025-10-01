@@ -168,7 +168,7 @@ services:
       - aeronet
 
   db:
-    image: postgres
+    image: postgres:17
     environment:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: liwords
