@@ -1,7 +1,6 @@
 package cop
 
 import (
-	"context"
 	"fmt"
 	"hash/fnv"
 	"math"
@@ -415,7 +414,7 @@ func addPairRequestAsJSONToLog(req *pb.PairRequest, logsb *strings.Builder, incl
 	req.PlayerNames = playerNames
 }
 
-func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
+func COPPair(req *pb.PairRequest) *pb.PairResponse {
 	logsb := &strings.Builder{}
 	starttime := time.Now()
 	if req.Seed == 0 {
@@ -427,7 +426,7 @@ func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 		req.Seed = int64(hash.Sum64()) + int64(len(req.DivisionPairings))
 	}
 	addPairRequestAsJSONToLog(req, logsb, false)
-	resp := copPairWithLog(ctx, req, logsb)
+	resp := copPairWithLog(req, logsb)
 	endtime := time.Now()
 	duration := endtime.Sub(starttime)
 	if resp.ErrorCode != pb.PairError_SUCCESS {
@@ -442,13 +441,13 @@ func COPPair(ctx context.Context, req *pb.PairRequest) *pb.PairResponse {
 	return resp
 }
 
-func copPairWithLog(ctx context.Context, req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	resp := verifyreq.Verify(req)
 	if resp != nil {
 		return resp
 	}
 
-	copdata, pairErr := copdatapkg.GetPrecompData(ctx, req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
+	copdata, pairErr := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
 
 	if pairErr != pb.PairError_SUCCESS {
 		return &pb.PairResponse{

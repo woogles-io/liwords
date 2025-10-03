@@ -2,7 +2,6 @@ package cop_test
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -459,7 +458,6 @@ func TestCompare(t *testing.T) {
 	}
 
 	is := is.New(t)
-	ctx := context.Background()
 
 	tourneyName := "2024-12-29-Albany-CSW-ME"
 
@@ -520,7 +518,7 @@ func TestCompare(t *testing.T) {
 		req := createPairRequest(players, totalRounds, config, oldLogFile)
 
 		// Call the COPPair function to generate new pairings
-		resp := cop.COPPair(ctx, req)
+		resp := cop.COPPair(req)
 		writeStringToFile(newLogFile, resp.Log)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 		// Parse the old pairings
