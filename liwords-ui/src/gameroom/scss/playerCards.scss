@@ -140,6 +140,30 @@
           }
         }
       }
+      .correspondence-timer-wrapper {
+        flex: 1;
+        margin: 3px;
+        .correspondence-timer {
+          @include colorModed() {
+            background-color: m($card-background);
+            color: m($primary-dark);
+            border: 1px solid m($primary-dark);
+          }
+          height: 32px;
+          border-radius: 4px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          font-size: 12px;
+          line-height: 14px;
+          font-weight: 500;
+          padding: 2px 4px;
+          .deadline {
+            white-space: nowrap;
+          }
+        }
+      }
     }
     &:last-child {
       .player {
@@ -161,6 +185,13 @@
             color: m($timer-dark);
             border-color: m($timer-dark);
           }
+        }
+      }
+      .correspondence-timer {
+        @include colorModed() {
+          background-color: m($card-background);
+          color: m($timer-dark);
+          border-color: m($timer-dark);
         }
       }
       &.time-low {
@@ -189,6 +220,13 @@
             }
           }
         }
+        .correspondence-timer {
+          color: #414141; // theming outlier
+          background: white; // theming outlier
+          @include colorModed() {
+            border-color: m($timer-low-dark);
+          }
+        }
       }
       &.time-out {
         @include colorModed() {
@@ -205,6 +243,13 @@
               border-color: m($timer-out-dark);
               color: m($timer-out-dark);
             }
+          }
+        }
+        .correspondence-timer {
+          @include colorModed() {
+            background: m($background);
+            border-color: m($timer-out-dark);
+            color: m($timer-out-dark);
           }
         }
       }

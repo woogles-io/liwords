@@ -18,6 +18,7 @@ type SoughtGameStore interface {
 	New(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
+	ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	UpdateForReceiver(ctx context.Context, userID string) (*entity.SoughtGame, error)

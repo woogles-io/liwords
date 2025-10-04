@@ -620,6 +620,22 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			return entGame, err
 		}
 
+		// For correspondence games, send real-time update with new playerOnTurn
+		if entGame.IsCorrespondence() && entGame.Game.Playing() != macondopb.PlayState_GAME_OVER {
+			metadata, err := stores.GameStore.GetMetadata(ctx, entGame.GameID())
+			if err != nil {
+				log.Err(err).Msg("error-getting-metadata-for-correspondence-update")
+			} else {
+				// Send updated game info to both players
+				wrapped := entity.WrapEvent(metadata, pb.MessageType_ONGOING_GAME_EVENT)
+				players := players(entGame)
+				for _, p := range players {
+					wrapped.AddAudience(entity.AudUser, p)
+				}
+				entGame.SendChange(wrapped)
+			}
+		}
+
 	}
 	return entGame, nil
 }

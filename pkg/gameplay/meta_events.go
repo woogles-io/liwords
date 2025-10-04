@@ -190,6 +190,14 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 		}
 
+		// Disallow abort and nudge for correspondence games
+		if g.IsCorrespondence() {
+			if evt.Type == pb.GameMetaEvent_REQUEST_ABORT ||
+				evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION {
+				return ErrNotAllowed
+			}
+		}
+
 		// Receiver may not be the one on turn, since either player may request abort.
 		onTurn := g.Game.PlayerOnTurn()
 		timeRemaining := g.TimeRemaining(onTurn)

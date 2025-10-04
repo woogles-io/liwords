@@ -53,6 +53,7 @@ import {
   ClientGameplayEventSchema,
   GameEndReason,
   GameInfoResponse,
+  GameMode,
   GameType,
   ReadyForGameSchema,
   TimedOutSchema,
@@ -493,6 +494,9 @@ export const Table = React.memo((props: Props) => {
     if (isObserver) return;
     if (!gameID) return;
 
+    // Don't send timeout signals for correspondence games - let the backend adjudicator handle it
+    if (gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE) return;
+
     let timedout = "";
 
     gameInfo.players.forEach((p) => {
@@ -513,6 +517,7 @@ export const Table = React.memo((props: Props) => {
     gameContext.uidToPlayerOrder,
     gameID,
     gameInfo.players,
+    gameInfo.gameRequest?.gameMode,
     isObserver,
     pTimedOut,
     sendSocketMsg,
@@ -870,6 +875,7 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournamentId}
             vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
+            gameMode={gameInfo.gameRequest?.gameMode}
             tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.type,
@@ -957,6 +963,7 @@ export const Table = React.memo((props: Props) => {
             editComment={editComment}
             addNewComment={addNewComment}
             deleteComment={deleteComment}
+            isCorrespondence={gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE}
           />
         </div>
       </div>

@@ -21,7 +21,7 @@ import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { RatingBadge } from "./rating_badge";
 import { VariantIcon } from "../shared/variant_icons";
-import { MatchLexiconDisplay } from "../shared/lexicon_display";
+import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
@@ -31,7 +31,14 @@ export const timeFormat = (
   initialTimeSecs: number,
   incrementSecs: number,
   maxOvertime: number,
+  gameMode?: number,
 ): string => {
+  // Check if this is a correspondence game
+  if (gameMode === 1) {
+    const days = Math.floor(initialTimeSecs / 86400);
+    return `Correspondence ${days} day${days !== 1 ? "s" : ""} per turn`;
+  }
+
   const label = timeCtrlToDisplayName(
     initialTimeSecs,
     incrementSecs,
@@ -112,17 +119,7 @@ export const SoughtGames = (props: Props) => {
       className: "lexicon",
       dataIndex: "lexicon",
       key: "lexicon",
-      filters: [
-        "CSW24",
-        "NWL23",
-        "ECWL",
-        "RD29",
-        "FRA24",
-        "FILE2017",
-        "NSF25",
-        "DISC2",
-        "OSPS50",
-      ].map((l) => ({
+      filters: lexiconOrder.map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,
       })),
@@ -253,6 +250,7 @@ export const SoughtGames = (props: Props) => {
             sg.initialTimeSecs,
             sg.incrementSecs,
             sg.maxOvertimeMinutes,
+            sg.gameMode,
           ),
           totalTime: calculateTotalTime(
             sg.initialTimeSecs,

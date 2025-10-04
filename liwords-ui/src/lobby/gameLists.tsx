@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Card, Button } from "antd";
+import { Badge, Card, Button } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
+import { CorrespondenceGames } from "./correspondence_games";
 import { SeekForm } from "./seek_form";
 import { useContextMatchContext, useLobbyStoreContext } from "../store/store";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
@@ -102,8 +103,36 @@ export const GameLists = React.memo((props: Props) => {
 
   const matchButtonText = "Match a friend";
 
+  // Calculate badge count for correspondence games where it's user's turn
+  const correspondenceBadgeCount = React.useMemo(() => {
+    if (!userID) return 0;
+
+    return lobbyContext.correspondenceGames.filter((ag: ActiveGame) => {
+      if (ag.playerOnTurn === undefined) return false;
+      const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+      return playerIndex === ag.playerOnTurn;
+    }).length;
+  }, [lobbyContext.correspondenceGames, userID]);
+
   const renderGames = () => {
+    if (selectedGameTab === "CORRESPONDENCE") {
+      return (
+        <CorrespondenceGames
+          username={username}
+          userID={userID}
+          correspondenceGames={lobbyContext?.correspondenceGames || []}
+          correspondenceSeeks={lobbyContext?.correspondenceSeeks || []}
+          newGame={newGame}
+        />
+      );
+    }
+
     if (loggedIn && userID && username && selectedGameTab === "PLAY") {
+      // Filter out correspondence matches - they appear only in CORRESPONDENCE tab
+      const realTimeMatchRequests = lobbyContext?.matchRequests.filter(
+        (req) => req.gameMode !== 1
+      ) || [];
+
       return (
         <>
           {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
@@ -114,13 +143,13 @@ export const GameLists = React.memo((props: Props) => {
             />
           )}
 
-          {lobbyContext?.matchRequests.length ? (
+          {realTimeMatchRequests.length > 0 ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              requests={lobbyContext?.matchRequests}
+              requests={realTimeMatchRequests}
             />
           ) : null}
 
@@ -135,15 +164,20 @@ export const GameLists = React.memo((props: Props) => {
         </>
       );
     }
+    // Default case (WATCH tab) - filter out correspondence matches
+    const realTimeMatchRequestsForWatch = lobbyContext?.matchRequests.filter(
+      (req) => req.gameMode !== 1
+    ) || [];
+
     return (
       <>
-        {lobbyContext?.matchRequests.length ? (
+        {realTimeMatchRequestsForWatch.length > 0 ? (
           <SoughtGames
             isMatch={true}
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={lobbyContext?.matchRequests}
+            requests={realTimeMatchRequestsForWatch}
           />
         ) : null}
         <ActiveGames
@@ -175,6 +209,15 @@ export const GameLists = React.memo((props: Props) => {
       }, 500);
     }
     resetLobbyFilter(sg.lexicon);
+    // Auto-select appropriate tab after creating a match request
+    if (sg.receiver && sg.receiver.displayName) {
+      // If correspondence game (gameMode = 1), select CORRESPONDENCE tab; otherwise PLAY tab
+      if (sg.gameMode === 1) {
+        setSelectedGameTab("CORRESPONDENCE");
+      } else {
+        setSelectedGameTab("PLAY");
+      }
+    }
   };
   const seekModal = (
     <Modal
@@ -213,6 +256,7 @@ export const GameLists = React.memo((props: Props) => {
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={false}
+        showCorrespondenceMode={false}
       />
     </Modal>
   );
@@ -373,6 +417,18 @@ export const GameLists = React.memo((props: Props) => {
           >
             Watch
           </div>
+          {loggedIn ? (
+            <div
+              onClick={() => {
+                setSelectedGameTab("CORRESPONDENCE");
+              }}
+              className={selectedGameTab === "CORRESPONDENCE" ? "tab active" : "tab"}
+            >
+              <Badge count={correspondenceBadgeCount} offset={[10, 0]}>
+                Correspondence
+              </Badge>
+            </div>
+          ) : null}
         </div>
         <div className="main-content">
           {renderGames()}

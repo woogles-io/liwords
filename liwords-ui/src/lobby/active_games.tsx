@@ -13,7 +13,7 @@ import { challengeFormat, PlayerDisplay, timeFormat } from "./sought_games";
 import { ActiveGame } from "../store/reducers/lobby_reducer";
 import { calculateTotalTime } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";
-import { MatchLexiconDisplay } from "../shared/lexicon_display";
+import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import {
   useLoginStateStoreContext,
   useLobbyStoreContext,
@@ -140,6 +140,7 @@ export const ActiveGames = (props: Props) => {
             ag.initialTimeSecs,
             ag.incrementSecs,
             ag.maxOvertimeMinutes,
+            ag.gameMode,
           ),
           totalTime: calculateTotalTime(
             ag.initialTimeSecs,
@@ -165,17 +166,7 @@ export const ActiveGames = (props: Props) => {
       className: "lexicon",
       dataIndex: "lexicon",
       key: "lexicon",
-      filters: [
-        "CSW24",
-        "NWL23",
-        "ECWL",
-        "RD29",
-        "FRA24",
-        "FILE2017",
-        "NSF25",
-        "DISC2",
-        "OSPS50",
-      ].map((l) => ({
+      filters: lexiconOrder.map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,
       })),

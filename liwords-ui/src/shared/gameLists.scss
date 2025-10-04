@@ -80,6 +80,13 @@
       font-weight: bold;
       letter-spacing: 0.16em;
       cursor: pointer;
+      // Ensure Badge and other child components inherit tab font styling
+      * {
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+      }
       &:hover,
       &.active {
         @include colorModed() {

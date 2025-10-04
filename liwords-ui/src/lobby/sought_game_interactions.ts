@@ -52,6 +52,7 @@ export const sendSeek = (
   gr.rules = rules;
   gr.ratingMode = game.rated ? RatingMode.RATED : RatingMode.CASUAL;
   gr.playerVsBot = game.playerVsBot;
+  gr.gameMode = game.gameMode ?? 0;
   if (game.playerVsBot) {
     gr.botType = BotTypesEnumProperties[game.botType].botCode(game.lexicon);
   }

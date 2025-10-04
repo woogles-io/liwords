@@ -127,6 +127,17 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
+
+	// Auto-start correspondence games immediately (skip ready flag)
+	if gameReq.GameMode == pb.GameMode_CORRESPONDENCE {
+		log.Debug().Str("gameID", g.GameID()).Msg("auto-starting-correspondence-game")
+		err = gameplay.StartGame(ctx, b.stores, b.gameEventChan, g)
+		if err != nil {
+			log.Err(err).Msg("auto-starting-correspondence-game")
+			return err
+		}
+	}
+
 	// This event will result in a redirect.
 	seekerConnID, err := sg.SeekerConnID()
 	if err != nil {
@@ -444,10 +455,17 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	return nil
 }
 
-func (b *Bus) adjudicateGames(ctx context.Context) error {
+func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) error {
 	// Always bust the cache when we're adjudicating games.
 
-	gs, err := b.stores.GameStore.ListActive(ctx, "", true)
+	var gs *pb.GameInfoResponses
+	var err error
+
+	if correspondenceOnly {
+		gs, err = b.stores.GameStore.ListActiveCorrespondence(ctx, "", true)
+	} else {
+		gs, err = b.stores.GameStore.ListActive(ctx, "", true)
+	}
 
 	if err != nil {
 		return err
@@ -470,9 +488,26 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
-		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
+		} else if !started {
+		var cancelThreshold time.Duration
+		if entGame.IsCorrespondence() {
+			// For correspondence: max of 3 days or the per-turn time
+			perTurnTime := time.Duration(g.GameRequest.InitialTimeSeconds) * time.Second
+			threeDays := 3 * 24 * time.Hour
+			if perTurnTime > threeDays {
+				cancelThreshold = perTurnTime
+			} else {
+				cancelThreshold = threeDays
+			}
+		} else {
+			cancelThreshold = CancelAfter // 60 seconds for real-time
+		}
+
+		if now.Sub(entGame.CreatedAt) > cancelThreshold {
 			log.Debug().Str("gid", g.GameId).
 				Str("tid", g.TournamentId).
+				Str("threshold", cancelThreshold.String()).
+				Bool("correspondence", entGame.IsCorrespondence()).
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
@@ -497,6 +532,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			}
 			b.gameEventChan <- wrapped
 		}
+	}
 	}
 	log.Debug().Interface("active-games", gs).Msg("exiting-adjudication...")
 

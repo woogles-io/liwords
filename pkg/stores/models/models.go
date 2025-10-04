@@ -89,6 +89,7 @@ type Game struct {
 	Type           pgtype.Int4
 	GameRequest    entity.GameRequest
 	HistoryInS3    bool
+	PlayerOnTurn   pgtype.Int4
 }
 
 type GameComment struct {
@@ -256,6 +257,7 @@ type Soughtgame struct {
 	ReceiverIsPermanent pgtype.Bool
 	SeekerConnID        pgtype.Text
 	ReceiverConnID      pgtype.Text
+	GameMode            pgtype.Int4
 }
 
 type Tournament struct {

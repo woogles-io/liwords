@@ -43,8 +43,15 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 	receiver, _ := game.ReceiverUserID()
 	receiverConnID, _ := game.ReceiverConnID()
 
-	_, err = tx.Exec(ctx, `INSERT INTO soughtgames (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request) VALUES ($1, $2, $3, $4, $5, $6)`,
-		id, seeker, seekerConnID, receiver, receiverConnID, game.SeekRequest)
+	// Extract game_mode from the GameRequest (nullable for backwards compatibility)
+	var gameMode *int32
+	if game.SeekRequest != nil && game.SeekRequest.GameRequest != nil {
+		mode := int32(game.SeekRequest.GameRequest.GameMode)
+		gameMode = &mode
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO soughtgames (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request, game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		id, seeker, seekerConnID, receiver, receiverConnID, game.SeekRequest, gameMode)
 	if err != nil {
 		return err
 	}
@@ -135,6 +142,7 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 
 // ExpireOld expires old seek requests. Usually this shouldn't be necessary
 // unless something weird happens.
+// Real-time seeks expire after 1 hour, correspondence seeks expire after 7 days.
 func (s *DBStore) ExpireOld(ctx context.Context) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -142,20 +150,32 @@ func (s *DBStore) ExpireOld(ctx context.Context) error {
 	}
 	defer tx.Rollback(ctx)
 
-	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE created_at < NOW() - INTERVAL '1 hour'`)
+	// Delete real-time seeks older than 1 hour (game_mode IS NULL or game_mode = 0)
+	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_at < NOW() - INTERVAL '1 hour'`)
 	if err != nil {
 		return err
 	}
 	if result.RowsAffected() > 0 {
-		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-seeks")
+		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-realtime-seeks")
 	}
+
+	// Delete correspondence seeks older than 7 days (game_mode = 1)
+	result, err = tx.Exec(ctx, `DELETE FROM soughtgames WHERE game_mode = 1 AND created_at < NOW() - INTERVAL '7 days'`)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() > 0 {
+		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-correspondence-seeks")
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil
 	}
 	return nil
 }
 
-// DeleteForUser deletes the game by seeker ID
+// DeleteForUser deletes the game by seeker ID.
+// Correspondence seeks are not deleted when user leaves - they persist for the receiver to accept later.
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -169,6 +189,15 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 			return nil, nil
 		}
 		return nil, err
+	}
+
+	// Don't delete correspondence seeks when seeker leaves - they should persist
+	if sg.SeekRequest != nil && sg.SeekRequest.GameRequest != nil && sg.SeekRequest.GameRequest.GameMode == pb.GameMode_CORRESPONDENCE {
+		log.Debug().Str("userID", userID).Msg("skipping-deletion-of-correspondence-seek-for-user")
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		return nil, nil
 	}
 
 	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerID, RowsAffectedType: common.AnyRowsAffected, Value: userID})
@@ -214,7 +243,8 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 	return sg, nil
 }
 
-// DeleteForSeekerConnID deletes the game by connection ID
+// DeleteForSeekerConnID deletes the game by connection ID.
+// Correspondence seeks are not deleted when seeker disconnects - they persist for the receiver to accept later.
 func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -228,6 +258,15 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 			return nil, nil
 		}
 		return nil, err
+	}
+
+	// Don't delete correspondence seeks when seeker disconnects - they should persist
+	if sg.SeekRequest != nil && sg.SeekRequest.GameRequest != nil && sg.SeekRequest.GameRequest.GameMode == pb.GameMode_CORRESPONDENCE {
+		log.Debug().Str("connID", connID).Msg("skipping-deletion-of-correspondence-seek")
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		return nil, nil
 	}
 
 	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerConnID, RowsAffectedType: common.AnyRowsAffected, Value: connID})
@@ -286,6 +325,36 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 	} else {
 		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
 	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := []*entity.SoughtGame{}
+
+	for rows.Next() {
+		var req pb.SeekRequest
+		if err := rows.Scan(&req); err != nil {
+			return nil, err
+		}
+		games = append(games, &entity.SoughtGame{SeekRequest: &req})
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return games, nil
+}
+
+// ListCorrespondenceSeeksForUser lists all correspondence match requests (incoming and outgoing) for a user.
+func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	// Get correspondence seeks where user is either seeker or receiver (game_mode = 1)
+	rows, err := tx.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1)`, userID)
 	if err != nil {
 		return nil, err
 	}

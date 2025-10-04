@@ -32,6 +32,12 @@ type Timers struct {
 	TimeRemaining []int `json:"tr"`
 	// MaxOvertime is in minutes. All others are in milliseconds.
 	MaxOvertime int `json:"mo"`
+	// TimeBank is an array of time bank per player, in milliseconds.
+	// Used for correspondence/league games.
+	TimeBank []int64 `json:"tb,omitempty"`
+	// ResetToIncrementAfterTurn resets the timer to increment_seconds after each turn.
+	// Used for correspondence games where each player has a fixed time per turn.
+	ResetToIncrementAfterTurn bool `json:"rtiat,omitempty"`
 }
 
 func (t *Timers) Value() (driver.Value, error) {
@@ -299,6 +305,15 @@ func (g *Game) ResetTimersAndStart() {
 	g.Timers.TimeOfLastUpdate = ts
 	g.Timers.TimeStarted = ts
 	g.Started = true
+
+	// Initialize correspondence-specific fields
+	if g.IsCorrespondence() {
+		// Initialize time bank for both players
+		timeBankMs := int64(g.GameReq.MaxOvertimeMinutes) * 60 * 1000
+		g.Timers.TimeBank = []int64{timeBankMs, timeBankMs}
+		// Enable reset-to-increment behavior for correspondence games
+		g.Timers.ResetToIncrementAfterTurn = true
+	}
 }
 
 func (g *Game) RatingKey() (VariantKey, error) {
@@ -370,10 +385,49 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		return
 	}
 	if g.Game.PlayerOnTurn() == pidx {
+		// For correspondence games with reset-to-increment, check time bank and reset
+		if accountForIncrement && g.Timers.ResetToIncrementAfterTurn {
+			// Check if player went over their allowed turn time
+			turnTime := now - g.Timers.TimeOfLastUpdate
+			allowedTime := int64(g.GameReq.IncrementSeconds) * 1000
+
+			if turnTime > allowedTime {
+				// Player took too long, deduct from time bank
+				deficit := turnTime - allowedTime
+				if len(g.Timers.TimeBank) > pidx && g.Timers.TimeBank[pidx] > 0 {
+					if g.Timers.TimeBank[pidx] >= deficit {
+						g.Timers.TimeBank[pidx] -= deficit
+					} else {
+						// Time bank exhausted
+						g.Timers.TimeBank[pidx] = 0
+					}
+				}
+			}
+
+			// Reset time to full increment for next turn
+			g.Timers.TimeRemaining[pidx] = int(g.GameReq.IncrementSeconds) * 1000
+			g.Timers.TimeOfLastUpdate = now
+			return
+		}
+
 		// Time has passed since this was calculated.
 		g.Timers.TimeRemaining[pidx] -= int(now - g.Timers.TimeOfLastUpdate)
 		if accountForIncrement {
 			g.Timers.TimeRemaining[pidx] += (int(g.GameReq.IncrementSeconds) * 1000)
+		}
+
+		// Handle time bank deduction if time went negative
+		if g.Timers.TimeRemaining[pidx] < 0 && len(g.Timers.TimeBank) > pidx {
+			deficit := -int64(g.Timers.TimeRemaining[pidx])
+			if g.Timers.TimeBank[pidx] >= deficit {
+				// Time bank can cover the deficit
+				g.Timers.TimeBank[pidx] -= deficit
+				g.Timers.TimeRemaining[pidx] = 0
+			} else {
+				// Time bank cannot cover the deficit, time bank exhausted
+				g.Timers.TimeRemaining[pidx] = -int(deficit - g.Timers.TimeBank[pidx])
+				g.Timers.TimeBank[pidx] = 0
+			}
 		}
 
 		// Cap the overtime, because auto-passing always happens after time has expired.
@@ -395,6 +449,8 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 
 func (g *Game) RecordTimeOfMove(idx int) {
 	now := g.nower.Now()
+
+	// Update timer with increment (works for all game types, including time bank logic)
 	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
@@ -462,6 +518,7 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
 		OutstandingEvent:   outstandingEvent,
+		TimeOfLastUpdate:   g.Timers.TimeOfLastUpdate,
 	}
 }
 
@@ -544,4 +601,12 @@ func (g *Game) WinnerWasSet() bool {
 	// This is the only case in which the winner has not yet been set,
 	// when both winnerIdx and loserIdx are 0.
 	return !(g.WinnerIdx == 0 && g.LoserIdx == 0)
+}
+
+// IsCorrespondence returns true if this is a correspondence game
+func (g *Game) IsCorrespondence() bool {
+	if g.GameReq == nil || g.GameReq.GameRequest == nil {
+		return false
+	}
+	return g.GameReq.GameMode == pb.GameMode_CORRESPONDENCE
 }

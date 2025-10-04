@@ -62,6 +62,7 @@ type Props = {
   storageKey?: string;
   prefixItems?: React.ReactNode;
   username?: string;
+  showCorrespondenceMode?: boolean;
 };
 
 export type seekPropVals = {
@@ -76,6 +77,8 @@ export type seekPropVals = {
   variant: string;
   botType: BotTypesEnum;
   ratingRange: number;
+  gameMode: number; // GameMode enum
+  correspondenceTimePerTurn?: number; // In seconds
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -261,6 +264,8 @@ export const SeekForm = (props: Props) => {
     variant: "classic",
     botType: BotTypesEnum.BEGINNER,
     ratingRange: 500,
+    gameMode: 0, // REAL_TIME
+    correspondenceTimePerTurn: 432000, // 5 days
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -385,30 +390,45 @@ export const SeekForm = (props: Props) => {
       );
     }
     setSelections(allvals);
-    if (allvals.incOrOT === "increment") {
-      setTimeSetting(incLabel);
-      setMaxTimeSetting(60);
-      setExtraTimeLabel(incUnitLabel);
+
+    // Determine time control values based on game mode
+    let secs: number;
+    let incrementSecs: number;
+    let maxOvertime: number;
+
+    if (allvals.gameMode === 1) {
+      // Correspondence mode: use correspondenceTimePerTurn
+      secs = allvals.correspondenceTimePerTurn as number;
+      incrementSecs = 0;
+      maxOvertime = 0;
     } else {
-      setTimeSetting(otLabel);
-      setMaxTimeSetting(10);
-      setExtraTimeLabel(otUnitLabel);
+      // Real-time mode: use slider-based time controls
+      if (allvals.incOrOT === "increment") {
+        setTimeSetting(incLabel);
+        setMaxTimeSetting(60);
+        setExtraTimeLabel(incUnitLabel);
+      } else {
+        setTimeSetting(otLabel);
+        setMaxTimeSetting(10);
+        setExtraTimeLabel(otUnitLabel);
+      }
+      secs = initTimeDiscreteScale[allvals.initialtimeslider].seconds;
+      incrementSecs =
+        allvals.incOrOT === "increment"
+          ? Math.round(allvals.extratime as number)
+          : 0;
+      maxOvertime =
+        allvals.incOrOT === "increment"
+          ? 0
+          : Math.round(allvals.extratime as number);
+      const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+      setTimectrl(tc);
+      setTtag(tt);
     }
-    const secs = initTimeDiscreteScale[allvals.initialtimeslider].seconds;
-    const incrementSecs =
-      allvals.incOrOT === "increment"
-        ? Math.round(allvals.extratime as number)
-        : 0;
-    const maxOvertime =
-      allvals.incOrOT === "increment"
-        ? 0
-        : Math.round(allvals.extratime as number);
-    const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+
     if (allvals.lexicon === "ECWL") {
       shouldHideChallengeRule = true;
     }
-    setTimectrl(tc);
-    setTtag(tt);
     setLexiconCopyright(AllLexica[allvals.lexicon]?.longDescription);
     setMyRating(
       myDisplayRating(
@@ -456,6 +476,10 @@ export const SeekForm = (props: Props) => {
     const receiver = create(MatchUserSchema, {
       displayName: val.friend as string,
     });
+
+    const isCorrespondence = val.gameMode === 1;
+    const correspondenceTime = val.correspondenceTimePerTurn as number;
+
     const obj = {
       // These items are assigned by the server:
       seeker: "",
@@ -468,12 +492,20 @@ export const SeekForm = (props: Props) => {
         (val.lexicon as string) === "ECWL"
           ? ChallengeRule.VOID
           : (val.challengerule as number),
-      initialTimeSecs: initTimeDiscreteScale[val.initialtimeslider].seconds,
-      incrementSecs:
-        val.incOrOT === "increment" ? Math.round(val.extratime as number) : 0,
+      initialTimeSecs: isCorrespondence
+        ? correspondenceTime
+        : initTimeDiscreteScale[val.initialtimeslider].seconds,
+      incrementSecs: isCorrespondence
+        ? correspondenceTime
+        : val.incOrOT === "increment"
+          ? Math.round(val.extratime as number)
+          : 0,
       rated: val.rated as boolean,
-      maxOvertimeMinutes:
-        val.incOrOT === "increment" ? 0 : Math.round(val.extratime as number),
+      maxOvertimeMinutes: isCorrespondence
+        ? 0
+        : val.incOrOT === "increment"
+          ? 0
+          : Math.round(val.extratime as number),
       receiver,
       rematchFor: "",
       playerVsBot: props.vsBot || false,
@@ -485,6 +517,7 @@ export const SeekForm = (props: Props) => {
       // modified together on the front end.
       minRatingRange: -val.ratingRange || 0,
       maxRatingRange: val.ratingRange || 0,
+      gameMode: val.gameMode ?? 0,
     };
     props.onFormSubmit(obj, val);
   };
@@ -579,43 +612,65 @@ export const SeekForm = (props: Props) => {
       {!hideChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
-      <Form.Item
-        className="initial custom-tags"
-        label="Initial minutes"
-        name="initialtimeslider"
-        extra={<Tag color={ttag}>{timectrl}</Tag>}
-      >
-        <Slider
-          disabled={disableTimeControls}
-          tooltip={{
-            formatter: initTimeFormatter,
-            open: sliderTooltipVisible || usernameOptions.length === 0,
-            getPopupContainer: (triggerNode) =>
-              triggerNode.parentElement ?? document.body,
-          }}
-          min={0}
-          max={initTimeDiscreteScale.length - 1}
-        />
-      </Form.Item>
-      <Form.Item label="Time setting" name="incOrOT">
-        <Radio.Group disabled={disableTimeControls}>
-          <Radio.Button value="overtime">Use max overtime</Radio.Button>
-          <Radio.Button value="increment">Use increment</Radio.Button>
-        </Radio.Group>
-      </Form.Item>
-      <Form.Item
-        className="extra-time-setter"
-        label={timeSetting}
-        name="extratime"
-        extra={extraTimeLabel}
-      >
-        <InputNumber
-          inputMode="numeric"
-          min={0}
-          max={maxTimeSetting}
-          disabled={disableTimeControls}
-        />
-      </Form.Item>
+      {props.showCorrespondenceMode !== false && (
+        <Form.Item label="Game mode" name="gameMode">
+          <Radio.Group disabled={disableTimeControls}>
+            <Radio.Button value={0}>Real-time</Radio.Button>
+            <Radio.Button value={1}>Correspondence</Radio.Button>
+          </Radio.Group>
+        </Form.Item>
+      )}
+      {selections?.gameMode === 1 ? (
+        <Form.Item label="Time per turn" name="correspondenceTimePerTurn">
+          <Select disabled={disableTimeControls}>
+            <Select.Option value={86400}>1 day</Select.Option>
+            <Select.Option value={172800}>2 days</Select.Option>
+            <Select.Option value={259200}>3 days</Select.Option>
+            <Select.Option value={345600}>4 days</Select.Option>
+            <Select.Option value={432000}>5 days</Select.Option>
+          </Select>
+        </Form.Item>
+      ) : (
+        <>
+          <Form.Item
+            className="initial custom-tags"
+            label="Initial minutes"
+            name="initialtimeslider"
+            extra={<Tag color={ttag}>{timectrl}</Tag>}
+          >
+            <Slider
+              disabled={disableTimeControls}
+              tooltip={{
+                formatter: initTimeFormatter,
+                open: sliderTooltipVisible || usernameOptions.length === 0,
+                getPopupContainer: (triggerNode) =>
+                  triggerNode.parentElement ?? document.body,
+              }}
+              min={0}
+              max={initTimeDiscreteScale.length - 1}
+            />
+          </Form.Item>
+          <Form.Item label="Time setting" name="incOrOT">
+            <Radio.Group disabled={disableTimeControls}>
+              <Radio.Button value="overtime">Use max overtime</Radio.Button>
+              <Radio.Button value="increment">Use increment</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item
+            className="extra-time-setter"
+            label={timeSetting}
+            name="extratime"
+            extra={extraTimeLabel}
+          >
+            <InputNumber
+              inputMode="numeric"
+              min={0}
+              max={maxTimeSetting}
+              disabled={disableTimeControls}
+            />
+          </Form.Item>
+        </>
+      )}
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableRatedControls} />
       </Form.Item>
