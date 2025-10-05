@@ -996,26 +996,15 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 
 // correspondenceGamesForUser returns all correspondence games for a specific user
 func (b *Bus) correspondenceGamesForUser(ctx context.Context, userID string) (*entity.EventWrapper, error) {
-	games, err := b.stores.GameStore.ListActiveCorrespondence(ctx, "", false)
+	games, err := b.stores.GameStore.ListActiveCorrespondenceForUser(ctx, userID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// Filter games to only include those where userID is one of the players
-	var userGames []*pb.GameInfoResponse
-	for _, game := range games.GameInfo {
-		for _, player := range game.Players {
-			if player.UserId == userID {
-				userGames = append(userGames, game)
-				break
-			}
-		}
-	}
+	log.Debug().Int("num-correspondence-games", len(games.GameInfo)).Str("userID", userID).Msg("correspondence-games-for-user")
 
-	log.Debug().Int("num-correspondence-games", len(userGames)).Str("userID", userID).Msg("correspondence-games-for-user")
-
-	evt := entity.WrapEvent(&pb.GameInfoResponses{GameInfo: userGames}, pb.MessageType_OUR_CORRESPONDENCE_GAMES)
+	evt := entity.WrapEvent(games, pb.MessageType_OUR_CORRESPONDENCE_GAMES)
 	return evt, nil
 }
 

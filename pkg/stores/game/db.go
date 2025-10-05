@@ -601,65 +601,72 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 }
 
 // ListActiveCorrespondence lists all active correspondence games.
-func (s *DBStore) ListActiveCorrespondence(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
+func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
-	if tourneyID != "" {
-		games, err := s.queries.ListActiveCorrespondenceTournamentGames(ctx, tourneyID)
-		if err != nil {
-			return nil, err
-		}
-		for _, g := range games {
-			mdata := g.Quickdata
-			trdata := g.TournamentData
+	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-			// Get the GameRequest from the entity
-			gamereq := &g.GameRequest
+	for _, g := range games {
+		mdata := g.Quickdata
+		trdata := g.TournamentData
 
-			info := &pb.GameInfoResponse{
-				Players:             mdata.PlayerInfo,
-				GameId:              g.Uuid.String,
-				GameRequest:         gamereq.GameRequest,
-				Type:                pb.GameType_NATIVE,
-				TournamentId:        trdata.Id,
-				TournamentDivision:  trdata.Division,
-				TournamentRound:     int32(trdata.Round),
-				TournamentGameIndex: int32(trdata.GameIndex),
-			}
-			if g.PlayerOnTurn.Valid {
-				playerOnTurn := uint32(g.PlayerOnTurn.Int32)
-				info.PlayerOnTurn = &playerOnTurn
-			}
-			responses = append(responses, info)
-		}
-	} else {
-		games, err := s.queries.ListActiveCorrespondenceGames(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, g := range games {
-			mdata := g.Quickdata
-			trdata := g.TournamentData
+		// Get the GameRequest from the entity
+		gamereq := &g.GameRequest
 
-			// Get the GameRequest from the entity
-			gamereq := &g.GameRequest
-
-			info := &pb.GameInfoResponse{
-				Players:             mdata.PlayerInfo,
-				GameId:              g.Uuid.String,
-				GameRequest:         gamereq.GameRequest,
-				Type:                pb.GameType_NATIVE,
-				TournamentId:        trdata.Id,
-				TournamentDivision:  trdata.Division,
-				TournamentRound:     int32(trdata.Round),
-				TournamentGameIndex: int32(trdata.GameIndex),
-			}
-			if g.PlayerOnTurn.Valid {
-				playerOnTurn := uint32(g.PlayerOnTurn.Int32)
-				info.PlayerOnTurn = &playerOnTurn
-			}
-			responses = append(responses, info)
+		info := &pb.GameInfoResponse{
+			Players:             mdata.PlayerInfo,
+			GameId:              g.Uuid.String,
+			GameRequest:         gamereq.GameRequest,
+			Type:                pb.GameType_NATIVE,
+			TournamentId:        trdata.Id,
+			TournamentDivision:  trdata.Division,
+			TournamentRound:     int32(trdata.Round),
+			TournamentGameIndex: int32(trdata.GameIndex),
 		}
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+		responses = append(responses, info)
+	}
+
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondenceForUser lists active correspondence games for a specific user.
+func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
+	var responses []*pb.GameInfoResponse
+
+	games, err := s.queries.ListActiveCorrespondenceGamesForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, g := range games {
+		mdata := g.Quickdata
+		trdata := g.TournamentData
+
+		// Get the GameRequest from the entity
+		gamereq := &g.GameRequest
+
+		info := &pb.GameInfoResponse{
+			Players:             mdata.PlayerInfo,
+			GameId:              g.Uuid.String,
+			GameRequest:         gamereq.GameRequest,
+			Type:                pb.GameType_NATIVE,
+			TournamentId:        trdata.Id,
+			TournamentDivision:  trdata.Division,
+			TournamentRound:     int32(trdata.Round),
+			TournamentGameIndex: int32(trdata.GameIndex),
+		}
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+		responses = append(responses, info)
 	}
 
 	return &pb.GameInfoResponses{GameInfo: responses}, nil

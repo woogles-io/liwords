@@ -421,7 +421,11 @@ export const SeekForm = (props: Props) => {
         allvals.incOrOT === "increment"
           ? 0
           : Math.round(allvals.extratime as number);
-      const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+      const [tc, , tt] = timeCtrlToDisplayName(
+        secs,
+        incrementSecs,
+        maxOvertime,
+      );
       setTimectrl(tc);
       setTtag(tt);
     }
@@ -623,10 +627,7 @@ export const SeekForm = (props: Props) => {
       {selections?.gameMode === 1 ? (
         <Form.Item label="Time per turn" name="correspondenceTimePerTurn">
           <Select disabled={disableTimeControls}>
-            <Select.Option value={86400}>1 day</Select.Option>
-            <Select.Option value={172800}>2 days</Select.Option>
             <Select.Option value={259200}>3 days</Select.Option>
-            <Select.Option value={345600}>4 days</Select.Option>
             <Select.Option value={432000}>5 days</Select.Option>
           </Select>
         </Form.Item>

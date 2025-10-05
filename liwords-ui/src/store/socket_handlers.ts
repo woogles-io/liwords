@@ -508,6 +508,28 @@ export const useOnSocketMsg = () => {
               anon: up.isAnonymous,
               deleting: up.deleting,
             });
+
+            // Show chat messages for game channel presence changes (opponent only)
+            if (
+              up.channel.startsWith("chat.game.") &&
+              up.userId !== loginState.userID
+            ) {
+              if (up.deleting) {
+                addChat({
+                  entityType: ChatEntityType.ErrorMsg,
+                  sender: "",
+                  message: "Opponent is no longer in this room.",
+                  channel: "server",
+                });
+              } else {
+                addChat({
+                  entityType: ChatEntityType.ServerMsg,
+                  sender: "",
+                  message: "Opponent has returned to this room.",
+                  channel: "server",
+                });
+              }
+            }
             break;
           }
 

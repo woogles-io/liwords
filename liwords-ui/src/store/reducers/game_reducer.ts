@@ -92,8 +92,6 @@ export type GameState = {
   // Raw timer values from GameHistoryRefresher (for correspondence games)
   timePlayer1?: number;
   timePlayer2?: number;
-  // Time of last update - when the last move was made (bigint from proto int64)
-  timeOfLastUpdate?: number | bigint;
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -698,7 +696,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // Store raw timer values from GameHistoryRefresher
       newState.timePlayer1 = ghr.timePlayer1;
       newState.timePlayer2 = ghr.timePlayer2;
-      newState.timeOfLastUpdate = ghr.timeOfLastUpdate;
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;

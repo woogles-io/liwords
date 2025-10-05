@@ -518,7 +518,6 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
 		OutstandingEvent:   outstandingEvent,
-		TimeOfLastUpdate:   g.Timers.TimeOfLastUpdate,
 	}
 }
 

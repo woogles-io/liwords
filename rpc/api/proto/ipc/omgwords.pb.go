@@ -1022,9 +1022,6 @@ type GameHistoryRefresher struct {
 	// outstanding_event refers to any possible outstanding game meta event that
 	// has not yet been responded to or expired.
 	OutstandingEvent *GameMetaEvent `protobuf:"bytes,5,opt,name=outstanding_event,json=outstandingEvent,proto3" json:"outstanding_event,omitempty"`
-	// time_of_last_update is when the last timer update occurred, in milliseconds.
-	// For correspondence games, this is when the current player's turn started.
-	TimeOfLastUpdate int64 `protobuf:"varint,6,opt,name=time_of_last_update,json=timeOfLastUpdate,proto3" json:"time_of_last_update,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1092,13 +1089,6 @@ func (x *GameHistoryRefresher) GetOutstandingEvent() *GameMetaEvent {
 		return x.OutstandingEvent
 	}
 	return nil
-}
-
-func (x *GameHistoryRefresher) GetTimeOfLastUpdate() int64 {
-	if x != nil {
-		return x.TimeOfLastUpdate
-	}
-	return 0
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
@@ -1344,7 +1334,8 @@ type GameInfoResponse struct {
 	// a game index within a round.
 	TournamentGameIndex int32    `protobuf:"varint,22,opt,name=tournament_game_index,json=tournamentGameIndex,proto3" json:"tournament_game_index,omitempty"`
 	Type                GameType `protobuf:"varint,23,opt,name=type,proto3,enum=ipc.GameType" json:"type,omitempty"`
-	// Index of the player whose turn it is (0 or 1). Optional for backwards compatibility.
+	// Index of the player whose turn it is (0 or 1). Optional for backwards
+	// compatibility.
 	PlayerOnTurn  *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3233,14 +3224,13 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\vUNDO_DENIED\x10\t\x12\f\n" +
 	"\bADD_TIME\x10\n" +
 	"\x12\x11\n" +
-	"\rTIMER_EXPIRED\x10\v\"\xae\x02\n" +
+	"\rTIMER_EXPIRED\x10\v\"\xff\x01\n" +
 	"\x14GameHistoryRefresher\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12!\n" +
 	"\ftime_player1\x18\x02 \x01(\x05R\vtimePlayer1\x12!\n" +
 	"\ftime_player2\x18\x03 \x01(\x05R\vtimePlayer2\x120\n" +
 	"\x14max_overtime_minutes\x18\x04 \x01(\x05R\x12maxOvertimeMinutes\x12?\n" +
-	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\x12-\n" +
-	"\x13time_of_last_update\x18\x06 \x01(\x03R\x10timeOfLastUpdate\"8\n" +
+	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\"8\n" +
 	"\x11GameDocumentEvent\x12#\n" +
 	"\x03doc\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\x03doc\"z\n" +
 	"\x15TournamentDataForGame\x12\x10\n" +

@@ -26,7 +26,8 @@ type backingStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
-	ListActiveCorrespondence(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -231,8 +232,14 @@ func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error
 
 // ListActiveCorrespondence lists all active correspondence games.
 // Don't cache correspondence game lists, always query DB.
-func (c *Cache) ListActiveCorrespondence(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
-	return c.backing.ListActiveCorrespondence(ctx, tourneyID, bust)
+func (c *Cache) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error) {
+	return c.backing.ListActiveCorrespondence(ctx)
+}
+
+// ListActiveCorrespondenceForUser lists active correspondence games for a specific user.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
+	return c.backing.ListActiveCorrespondenceForUser(ctx, userID)
 }
 
 func (c *Cache) Count(ctx context.Context) (int64, error) {

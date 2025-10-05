@@ -462,7 +462,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 	var err error
 
 	if correspondenceOnly {
-		gs, err = b.stores.GameStore.ListActiveCorrespondence(ctx, "", true)
+		gs, err = b.stores.GameStore.ListActiveCorrespondence(ctx)
 	} else {
 		gs, err = b.stores.GameStore.ListActive(ctx, "", true)
 	}

@@ -963,7 +963,9 @@ export const Table = React.memo((props: Props) => {
             editComment={editComment}
             addNewComment={addNewComment}
             deleteComment={deleteComment}
-            isCorrespondence={gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE}
+            isCorrespondence={
+              gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE
+            }
           />
         </div>
       </div>

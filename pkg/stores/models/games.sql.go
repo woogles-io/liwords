@@ -719,16 +719,19 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 	return items, nil
 }
 
-const listActiveCorrespondenceTournamentGames = `-- name: ListActiveCorrespondenceTournamentGames :many
+const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND tournament_id = $1::text
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND (
+        player0_id = (SELECT id FROM users WHERE uuid = $1::text)
+        OR player1_id = (SELECT id FROM users WHERE uuid = $1::text)
+    )
 ORDER BY id
 `
 
-type ListActiveCorrespondenceTournamentGamesRow struct {
+type ListActiveCorrespondenceGamesForUserRow struct {
 	Quickdata      entity.Quickdata
 	Uuid           pgtype.Text
 	Started        pgtype.Bool
@@ -737,15 +740,15 @@ type ListActiveCorrespondenceTournamentGamesRow struct {
 	PlayerOnTurn   pgtype.Int4
 }
 
-func (q *Queries) ListActiveCorrespondenceTournamentGames(ctx context.Context, tournamentID string) ([]ListActiveCorrespondenceTournamentGamesRow, error) {
-	rows, err := q.db.Query(ctx, listActiveCorrespondenceTournamentGames, tournamentID)
+func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, userUuid string) ([]ListActiveCorrespondenceGamesForUserRow, error) {
+	rows, err := q.db.Query(ctx, listActiveCorrespondenceGamesForUser, userUuid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListActiveCorrespondenceTournamentGamesRow
+	var items []ListActiveCorrespondenceGamesForUserRow
 	for rows.Next() {
-		var i ListActiveCorrespondenceTournamentGamesRow
+		var i ListActiveCorrespondenceGamesForUserRow
 		if err := rows.Scan(
 			&i.Quickdata,
 			&i.Uuid,
