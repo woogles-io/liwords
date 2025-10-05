@@ -771,7 +771,7 @@ const listActiveGames = `-- name: ListActiveGames :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
-    AND (game_request->>'game_mode')::int != 1 -- Exclude CORRESPONDENCE games
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id
 `
 
@@ -816,7 +816,7 @@ SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = $1::text
-    AND (game_request->>'game_mode')::int != 1 -- Exclude CORRESPONDENCE games
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id
 `
 

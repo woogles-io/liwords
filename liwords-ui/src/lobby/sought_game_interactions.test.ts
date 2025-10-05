@@ -29,6 +29,7 @@ it("tests sendSeek", () => {
     maxRatingRange: 500,
     botType: BotTypesEnum.MASTER,
     variant: "",
+    gameMode: 0,
   };
 
   sendSeek(game, (msg: Uint8Array) => {
