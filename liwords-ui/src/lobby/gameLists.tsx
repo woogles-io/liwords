@@ -128,10 +128,8 @@ export const GameLists = React.memo((props: Props) => {
     }
 
     if (loggedIn && userID && username && selectedGameTab === "PLAY") {
-      // Filter out correspondence matches - they appear only in CORRESPONDENCE tab
-      const realTimeMatchRequests = lobbyContext?.matchRequests.filter(
-        (req) => req.gameMode !== 1
-      ) || [];
+      // Show all match requests including correspondence in PLAY tab
+      const matchRequests = lobbyContext?.matchRequests || [];
 
       return (
         <>
@@ -143,13 +141,13 @@ export const GameLists = React.memo((props: Props) => {
             />
           )}
 
-          {realTimeMatchRequests.length > 0 ? (
+          {matchRequests.length > 0 ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              requests={realTimeMatchRequests}
+              requests={matchRequests}
             />
           ) : null}
 
@@ -164,20 +162,18 @@ export const GameLists = React.memo((props: Props) => {
         </>
       );
     }
-    // Default case (WATCH tab) - filter out correspondence matches
-    const realTimeMatchRequestsForWatch = lobbyContext?.matchRequests.filter(
-      (req) => req.gameMode !== 1
-    ) || [];
+    // Default case (WATCH tab) - show all match requests including correspondence
+    const matchRequestsForWatch = lobbyContext?.matchRequests || [];
 
     return (
       <>
-        {realTimeMatchRequestsForWatch.length > 0 ? (
+        {matchRequestsForWatch.length > 0 ? (
           <SoughtGames
             isMatch={true}
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={realTimeMatchRequestsForWatch}
+            requests={matchRequestsForWatch}
           />
         ) : null}
         <ActiveGames
@@ -422,7 +418,9 @@ export const GameLists = React.memo((props: Props) => {
               onClick={() => {
                 setSelectedGameTab("CORRESPONDENCE");
               }}
-              className={selectedGameTab === "CORRESPONDENCE" ? "tab active" : "tab"}
+              className={
+                selectedGameTab === "CORRESPONDENCE" ? "tab active" : "tab"
+              }
             >
               <Badge count={correspondenceBadgeCount} offset={[10, 0]}>
                 Correspondence

@@ -26,6 +26,7 @@ import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
+import { SeekConfirmModal } from "./seek_confirm_modal";
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -91,8 +92,10 @@ type Props = {
 };
 export const SoughtGames = (props: Props) => {
   const [cancelVisible, setCancelVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [selectedSeek, setSelectedSeek] = useState<SoughtGame | null>(null);
   const {
-    lobbyContext: { lobbyFilterByLexicon },
+    lobbyContext: { lobbyFilterByLexicon, profile },
     dispatchLobbyContext,
   } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
@@ -187,6 +190,7 @@ export const SoughtGames = (props: Props) => {
     details?: ReactNode;
     outgoing: boolean;
     seekID: string;
+    soughtGame: SoughtGame; // Keep reference to full object
   };
 
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
@@ -261,6 +265,7 @@ export const SoughtGames = (props: Props) => {
           outgoing,
           seekID: sg.seekID,
           lexiconCode: sg.lexicon,
+          soughtGame: sg,
         };
       });
     return gameData;
@@ -281,7 +286,14 @@ export const SoughtGames = (props: Props) => {
           return {
             onClick: () => {
               if (!record.outgoing) {
-                props.newGame(record.seekID);
+                // Direct match requests - accept immediately without modal
+                if (record.soughtGame.receiverIsPermanent) {
+                  props.newGame(record.soughtGame.seekID);
+                } else {
+                  // Global seeks - show confirmation modal
+                  setSelectedSeek(record.soughtGame);
+                  setConfirmModalVisible(true);
+                }
               } else if (!cancelVisible) {
                 setCancelVisible(true);
               }
@@ -295,6 +307,22 @@ export const SoughtGames = (props: Props) => {
           return "game-listing";
         }}
         onChange={handleChange}
+      />
+      <SeekConfirmModal
+        open={confirmModalVisible}
+        seek={selectedSeek}
+        onAccept={() => {
+          if (selectedSeek) {
+            props.newGame(selectedSeek.seekID);
+          }
+          setConfirmModalVisible(false);
+          setSelectedSeek(null);
+        }}
+        onCancel={() => {
+          setConfirmModalVisible(false);
+          setSelectedSeek(null);
+        }}
+        userRatings={profile?.ratings || {}}
       />
     </>
   );

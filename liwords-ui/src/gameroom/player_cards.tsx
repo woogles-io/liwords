@@ -13,7 +13,11 @@ import "./scss/playerCards.scss";
 import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { useBriefProfile } from "../utils/brief_profiles";
-import { GameInfoResponse, GameMode, PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  GameInfoResponse,
+  GameMode,
+  PlayerInfo,
+} from "../gen/api/proto/ipc/omgwords_pb";
 import { MachineLetter } from "../utils/cwgame/common";
 import { CorrespondenceTimer } from "./correspondence_timer";
 
@@ -162,7 +166,8 @@ export const PlayerCards = React.memo((props: Props) => {
     (props.gameMeta.gameRequest?.initialTimeSeconds ?? 0) * 1000;
 
   const playing = examinableGameContext.playState !== PlayState.GAME_OVER;
-  const isCorrespondence = props.gameMeta.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+  const isCorrespondence =
+    props.gameMeta.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
 
   // Use timer context for both real-time and correspondence games
   // setClock updates this on every move event, so it stays current

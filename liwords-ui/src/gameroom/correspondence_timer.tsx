@@ -7,7 +7,9 @@ type Props = {
   isOnTurn: boolean;
 };
 
-const formatTimeRemaining = (milliseconds: number): { text: string; className: string } => {
+const formatTimeRemaining = (
+  milliseconds: number,
+): { text: string; className: string } => {
   const totalSeconds = Math.floor(milliseconds / 1000);
   const totalMinutes = Math.floor(totalSeconds / 60);
   const totalHours = Math.floor(totalMinutes / 60);
@@ -15,7 +17,10 @@ const formatTimeRemaining = (milliseconds: number): { text: string; className: s
 
   // >= 48 hours: show days
   if (totalHours >= 48) {
-    return { text: `${totalDays} day${totalDays !== 1 ? "s" : ""}`, className: "" };
+    return {
+      text: `${totalDays} day${totalDays !== 1 ? "s" : ""}`,
+      className: "",
+    };
   }
 
   // 24-48 hours: show "1 day"
@@ -43,7 +48,8 @@ const formatTimeRemaining = (milliseconds: number): { text: string; className: s
 };
 
 const formatTimeBank = (milliseconds: number | bigint): string => {
-  const ms = typeof milliseconds === "bigint" ? Number(milliseconds) : milliseconds;
+  const ms =
+    typeof milliseconds === "bigint" ? Number(milliseconds) : milliseconds;
   const totalSeconds = Math.floor(ms / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
@@ -84,9 +90,7 @@ export const CorrespondenceTimer = ({
   return (
     <div className="correspondence-timer">
       <Tooltip title={formatDeadline(timeRemaining)}>
-        <div className={`time-remaining ${className}`}>
-          {text}
-        </div>
+        <div className={`time-remaining ${className}`}>{text}</div>
       </Tooltip>
       {hasTimeBank && (
         <div className="time-bank">Bank: {formatTimeBank(timeBank)}</div>

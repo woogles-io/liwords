@@ -205,9 +205,11 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
         // If it's a correspondence match, also add it to correspondenceSeeks
         if (soughtGame.gameMode === 1) {
-          const existingCorrespondenceSeeks = state.correspondenceSeeks.filter((sg) => {
-            return sg.seekID !== soughtGame.seekID;
-          });
+          const existingCorrespondenceSeeks = state.correspondenceSeeks.filter(
+            (sg) => {
+              return sg.seekID !== soughtGame.seekID;
+            },
+          );
           return {
             ...state,
             matchRequests: [...existingMatchRequests, soughtGame],
@@ -365,7 +367,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
       // Find and update the game, or add if not found
       const gameIndex = correspondenceGames.findIndex(
-        (ag) => ag.gameID === p.correspondenceGame.gameID
+        (ag) => ag.gameID === p.correspondenceGame.gameID,
       );
 
       let newGames: ActiveGame[];
