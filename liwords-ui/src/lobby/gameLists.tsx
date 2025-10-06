@@ -85,21 +85,7 @@ export const GameLists = React.memo((props: Props) => {
     (p) => p.displayName !== username,
   )?.displayName;
 
-  const enableVariants = React.useMemo(
-    () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
-  const unsanitizedSoughtGames = lobbyContext.soughtGames;
-  const sanitizedSoughtGames = React.useMemo(
-    () =>
-      (unsanitizedSoughtGames || []).filter((soughtGame) => {
-        if (!enableVariants && (soughtGame.variant || "classic") !== "classic")
-          return false;
-        return true;
-      }),
-
-    [enableVariants, unsanitizedSoughtGames],
-  );
+  const soughtGames = lobbyContext.soughtGames || [];
 
   const matchButtonText = "Match a friend";
 
@@ -156,7 +142,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={sanitizedSoughtGames}
+            requests={soughtGames}
             ratings={lobbyContext?.profile?.ratings}
           />
         </>

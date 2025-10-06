@@ -19,6 +19,10 @@ import {
   useLobbyStoreContext,
 } from "../store/store";
 import { ActionType } from "../actions/actions";
+import {
+  normalizeVariant,
+  VariantSectionHeader,
+} from "./variant_utils";
 
 type Props = {
   activeGames: ActiveGame[];
@@ -83,7 +87,23 @@ export const ActiveGames = (props: Props) => {
     details?: ReactNode;
     player1: string;
     player2: string;
+    variant: string;
   };
+  // Group games by variant
+  const groupGamesByVariant = (
+    games: ActiveGameTableData[],
+  ): { [variant: string]: ActiveGameTableData[] } => {
+    const grouped: { [variant: string]: ActiveGameTableData[] } = {};
+    games.forEach((game) => {
+      const variant = normalizeVariant(game.variant);
+      if (!grouped[variant]) {
+        grouped[variant] = [];
+      }
+      grouped[variant].push(game);
+    });
+    return grouped;
+  };
+
   const formatGameData = (games: ActiveGame[]): ActiveGameTableData[] => {
     const gameData: ActiveGameTableData[] = games
       .sort((agA: ActiveGame, agB: ActiveGame) => {
@@ -150,6 +170,7 @@ export const ActiveGames = (props: Props) => {
           details: getDetails(),
           player1: ag.players[0].displayName,
           player2: ag.players[1].displayName,
+          variant: ag.variant || "classic",
         };
       });
     return gameData;
@@ -191,6 +212,9 @@ export const ActiveGames = (props: Props) => {
     },
   ];
 
+  // Get formatted data
+  const formattedGames = formatGameData(props.activeGames);
+
   let title = <>Resume</>;
   if (props.type !== "RESUME") {
     title = isAdmin ? (
@@ -202,46 +226,112 @@ export const ActiveGames = (props: Props) => {
       <>Games live now</>
     );
   }
+
+  // For RESUME mode, show single table without grouping
+  if (props.type === "RESUME") {
+    return (
+      <>
+        <h4>{title}</h4>
+        <Table
+          className="games observe"
+          dataSource={formattedGames}
+          columns={columns}
+          pagination={false}
+          rowKey="gameID"
+          showSorterTooltip={false}
+          onRow={(record) => {
+            return {
+              onClick: (event) => {
+                if (event.ctrlKey || event.altKey || event.metaKey) {
+                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                } else {
+                  navigate(`/game/${encodeURIComponent(record.gameID)}`);
+                  console.log("redirecting to", record.gameID);
+                }
+              },
+              onAuxClick: (event) => {
+                if (event.button === 1) {
+                  // middle-click
+                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                }
+              },
+            };
+          }}
+          rowClassName={(record) => {
+            if (
+              props.username &&
+              (record.player1 === props.username ||
+                record.player2 === props.username)
+            ) {
+              return "game-listing resume";
+            }
+            return "game-listing";
+          }}
+          onChange={handleChange}
+        />
+      </>
+    );
+  }
+
+  // For WATCH mode, group by variant
+  const groupedGames = groupGamesByVariant(formattedGames);
+
+  // Define variant order: classic, wordsmog, classic_super
+  const variantOrder = ["classic", "wordsmog", "classic_super"];
+  const sortedVariants = Object.keys(groupedGames).sort((a, b) => {
+    const indexA = variantOrder.indexOf(a);
+    const indexB = variantOrder.indexOf(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
   return (
     <>
       <h4>{title}</h4>
-      <Table
-        className="games observe"
-        dataSource={formatGameData(props.activeGames)}
-        columns={columns}
-        pagination={false}
-        rowKey="gameID"
-        showSorterTooltip={false}
-        onRow={(record) => {
-          return {
-            onClick: (event) => {
-              if (event.ctrlKey || event.altKey || event.metaKey) {
-                window.open(`/game/${encodeURIComponent(record.gameID)}`);
-              } else {
-                navigate(`/game/${encodeURIComponent(record.gameID)}`);
-                console.log("redirecting to", record.gameID);
+
+      {sortedVariants.map((variant) => (
+        <React.Fragment key={variant}>
+          <VariantSectionHeader variant={variant} />
+          <Table
+            className="games observe"
+            dataSource={groupedGames[variant]}
+            columns={columns}
+            pagination={false}
+            rowKey="gameID"
+            showSorterTooltip={false}
+            onRow={(record) => {
+              return {
+                onClick: (event) => {
+                  if (event.ctrlKey || event.altKey || event.metaKey) {
+                    window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                  } else {
+                    navigate(`/game/${encodeURIComponent(record.gameID)}`);
+                    console.log("redirecting to", record.gameID);
+                  }
+                },
+                onAuxClick: (event) => {
+                  if (event.button === 1) {
+                    // middle-click
+                    window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                  }
+                },
+              };
+            }}
+            rowClassName={(record) => {
+              if (
+                props.username &&
+                (record.player1 === props.username ||
+                  record.player2 === props.username)
+              ) {
+                return "game-listing resume";
               }
-            },
-            onAuxClick: (event) => {
-              if (event.button === 1) {
-                // middle-click
-                window.open(`/game/${encodeURIComponent(record.gameID)}`);
-              }
-            },
-          };
-        }}
-        rowClassName={(record) => {
-          if (
-            props.username &&
-            (record.player1 === props.username ||
-              record.player2 === props.username)
-          ) {
-            return "game-listing resume";
-          }
-          return "game-listing";
-        }}
-        onChange={handleChange}
-      />
+              return "game-listing";
+            }}
+            onChange={handleChange}
+          />
+        </React.Fragment>
+      ))}
     </>
   );
 };

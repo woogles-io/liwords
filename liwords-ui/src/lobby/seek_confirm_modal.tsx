@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
 import { Modal, Button, Alert } from "antd";
 import {
@@ -15,6 +15,8 @@ import { timeFormat, challengeFormat } from "./sought_games";
 import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
 import { RatingBadge } from "./rating_badge";
 import { timeCtrlToDisplayName } from "../store/constants";
+import { VariantIcon } from "../shared/variant_icons";
+import { variantDescriptions } from "./variant_utils";
 
 type Props = {
   open: boolean;
@@ -26,6 +28,7 @@ type Props = {
 
 export const SeekConfirmModal = (props: Props) => {
   const { open, seek, onAccept, onCancel, userRatings } = props;
+  const [showVariantInfo, setShowVariantInfo] = useState(false);
 
   if (!seek) {
     return null;
@@ -76,20 +79,32 @@ export const SeekConfirmModal = (props: Props) => {
   const showTimeCtrlWarning =
     hasAnyRatings && !hasTimeCtrlRating && hasSlowerTimeCtrlRating;
 
-  // Check if user has rating in this lexicon (at any time control)
+  // Check if user has rating in this lexicon (at any variant/time control)
   // Rating keys are formatted as: lexicon.variant.timeCtrl
-  const lexiconPrefix = seek.ratingKey.substring(
-    0,
-    seek.ratingKey.lastIndexOf("."),
-  ); // e.g., "CSW24.classic"
+  // Extract just the lexicon part (first component)
+  const lexicon = seek.ratingKey.split(".")[0]; // e.g., "CSW24"
   const hasLexiconRating = Object.keys(userRatings).some((key) =>
-    key.startsWith(lexiconPrefix),
+    key.startsWith(lexicon + "."),
   );
+
+  // Check if user has rating in this variant (at any lexicon/time control)
+  // Rating keys are formatted as: lexicon.variant.timeCtrl
+  const seekVariant = seek.variant || "classic";
+  const hasVariantRating = Object.keys(userRatings).some((key) => {
+    const parts = key.split(".");
+    return parts.length >= 2 && parts[1] === seekVariant;
+  });
+  const isNonClassicVariant =
+    seekVariant !== "classic" && seekVariant !== "" && seekVariant;
+  const showVariantWarning =
+    hasAnyRatings && isNonClassicVariant && !hasVariantRating;
 
   // Determine which warning to show (priority order)
   let warningMessage = "";
   if (!hasLexiconRating) {
     warningMessage = `You have no rated games in this lexicon (${seek.lexicon}) - Are you sure you want to play?`;
+  } else if (showVariantWarning) {
+    warningMessage = `You have no rated games in this variant (${seekVariant}) - Are you sure you want to play?`;
   } else if (showTimeCtrlWarning) {
     warningMessage = `You have no rated games in this time control (${seekTimeCtrl}) - Are you sure you want to play?`;
   } else if (showChallengeWarning) {
@@ -156,9 +171,59 @@ export const SeekConfirmModal = (props: Props) => {
           />
           {challengeFormat(seek.challengeRule)},{" "}
           {seek.rated ? "Rated" : "Unrated"}
-          {seek.variant && seek.variant !== "classic" && `, ${seek.variant}`}
         </div>
       </div>
+
+      {seek.variant && seek.variant !== "classic" && (
+        <div style={{ marginBottom: 24 }}>
+          <h4
+            style={{
+              color: "#999",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 1,
+              marginBottom: 16,
+            }}
+          >
+            VARIANT
+          </h4>
+          <div
+            style={{ display: "flex", alignItems: "center", marginBottom: 8 }}
+          >
+            <VariantIcon vcode={seek.variant} />
+            <span style={{ marginLeft: 8, fontWeight: 500 }}>
+              {seek.variant === "wordsmog"
+                ? "WordSmog"
+                : seek.variant === "classic_super"
+                  ? "ZOMGWords"
+                  : seek.variant}
+            </span>
+            <a
+              onClick={() => setShowVariantInfo(!showVariantInfo)}
+              style={{ marginLeft: 12, fontSize: 13, cursor: "pointer" }}
+            >
+              {showVariantInfo ? "Hide info" : "Read more"}
+            </a>
+          </div>
+          {showVariantInfo && (
+            <div
+              style={{
+                padding: 12,
+                backgroundColor: "#f5f5f5",
+                borderRadius: 4,
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}
+            >
+              {variantDescriptions[seek.variant]?.description || (
+                <p style={{ margin: 0 }}>
+                  This is a non-standard variant with special rules. Good luck!
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ marginBottom: 24 }}>
         <h4
@@ -175,7 +240,10 @@ export const SeekConfirmModal = (props: Props) => {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <PlayerAvatar
-            player={{ displayName: seek.seeker, uuid: seek.seekerID }}
+            player={{
+              userId: seek.seekerID,
+              nickname: seek.seeker,
+            }}
           />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

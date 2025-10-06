@@ -27,6 +27,10 @@ import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
 import { SeekConfirmModal } from "./seek_confirm_modal";
+import {
+  normalizeVariant,
+  VariantSectionHeader,
+} from "./variant_utils";
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -193,6 +197,21 @@ export const SoughtGames = (props: Props) => {
     soughtGame: SoughtGame; // Keep reference to full object
   };
 
+  // Group games by variant
+  const groupGamesByVariant = (
+    games: SoughtGameTableData[],
+  ): { [variant: string]: SoughtGameTableData[] } => {
+    const grouped: { [variant: string]: SoughtGameTableData[] } = {};
+    games.forEach((game) => {
+      const variant = normalizeVariant(game.soughtGame.variant || "classic");
+      if (!grouped[variant]) {
+        grouped[variant] = [];
+      }
+      grouped[variant].push(game);
+    });
+    return grouped;
+  };
+
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
     const gameData: SoughtGameTableData[] = games
       .filter((sg: SoughtGame) => {
@@ -271,43 +290,58 @@ export const SoughtGames = (props: Props) => {
     return gameData;
   };
 
+  // Get formatted and grouped data
+  const formattedGames = formatGameData(props.requests);
+  const groupedGames = groupGamesByVariant(formattedGames);
+
+  // Define variant order: classic, wordsmog, classic_super
+  const variantOrder = ["classic", "wordsmog", "classic_super"];
+  const sortedVariants = Object.keys(groupedGames).sort((a, b) => {
+    const indexA = variantOrder.indexOf(a);
+    const indexB = variantOrder.indexOf(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
   return (
     <>
       {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
 
-      <Table
-        className={`games ${props.isMatch ? "match" : "seek"}`}
-        dataSource={formatGameData(props.requests)}
-        columns={columns}
-        pagination={false}
-        rowKey="seekID"
-        showSorterTooltip={false}
-        onRow={(record) => {
-          return {
-            onClick: () => {
-              if (!record.outgoing) {
-                // Direct match requests - accept immediately without modal
-                if (record.soughtGame.receiverIsPermanent) {
-                  props.newGame(record.soughtGame.seekID);
-                } else {
-                  // Global seeks - show confirmation modal
-                  setSelectedSeek(record.soughtGame);
-                  setConfirmModalVisible(true);
-                }
-              } else if (!cancelVisible) {
-                setCancelVisible(true);
+      {sortedVariants.map((variant) => (
+        <React.Fragment key={variant}>
+          <VariantSectionHeader variant={variant} />
+          <Table
+            className={`games ${props.isMatch ? "match" : "seek"}`}
+            dataSource={groupedGames[variant]}
+            columns={columns}
+            pagination={false}
+            rowKey="seekID"
+            showSorterTooltip={false}
+            onRow={(record) => {
+              return {
+                onClick: () => {
+                  if (!record.outgoing) {
+                    // Show confirmation modal for all incoming game requests
+                    setSelectedSeek(record.soughtGame);
+                    setConfirmModalVisible(true);
+                  } else if (!cancelVisible) {
+                    setCancelVisible(true);
+                  }
+                },
+              };
+            }}
+            rowClassName={(record) => {
+              if (record.outgoing) {
+                return "game-listing outgoing";
               }
-            },
-          };
-        }}
-        rowClassName={(record) => {
-          if (record.outgoing) {
-            return "game-listing outgoing";
-          }
-          return "game-listing";
-        }}
-        onChange={handleChange}
-      />
+              return "game-listing";
+            }}
+            onChange={handleChange}
+          />
+        </React.Fragment>
+      ))}
+
       <SeekConfirmModal
         open={confirmModalVisible}
         seek={selectedSeek}

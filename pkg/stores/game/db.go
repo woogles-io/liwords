@@ -376,7 +376,6 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
-
 func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
@@ -596,7 +595,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 			responses = append(responses, info)
 		}
 	}
-
+	log.Debug().Int("num-active", len(responses)).Msg("list-active")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
@@ -632,7 +631,7 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 		}
 		responses = append(responses, info)
 	}
-
+	log.Debug().Int("num-correspondence", len(responses)).Msg("list-active-correspondence")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
@@ -668,7 +667,7 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 		}
 		responses = append(responses, info)
 	}
-
+	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Msg("list-active-correspondence-for-user")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 

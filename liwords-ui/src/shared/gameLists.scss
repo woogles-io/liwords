@@ -87,6 +87,14 @@
         font-weight: inherit;
         letter-spacing: inherit;
       }
+      .ant-badge-count {
+        line-height: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: normal;
+      }
       &:hover,
       &.active {
         @include colorModed() {

@@ -3,11 +3,15 @@ import { FundOutlined } from "@ant-design/icons";
 import React, { ReactNode, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
-import { PlayerDisplay, SoughtGames } from "./sought_games";
+import { challengeFormat, PlayerDisplay, SoughtGames } from "./sought_games";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { VariantIcon } from "../shared/variant_icons";
 import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { useLoginStateStoreContext } from "../store/store";
+import {
+  normalizeVariant,
+  VariantSectionHeader,
+} from "./variant_utils";
 
 type Props = {
   correspondenceGames: ActiveGame[];
@@ -33,6 +37,22 @@ export const CorrespondenceGames = (props: Props) => {
     details?: ReactNode;
     player1: string;
     player2: string;
+    variant: string;
+  };
+
+  // Group games by variant
+  const groupGamesByVariant = (
+    games: CorrespondenceGameTableData[],
+  ): { [variant: string]: CorrespondenceGameTableData[] } => {
+    const grouped: { [variant: string]: CorrespondenceGameTableData[] } = {};
+    games.forEach((game) => {
+      const variant = normalizeVariant(game.variant);
+      if (!grouped[variant]) {
+        grouped[variant] = [];
+      }
+      grouped[variant].push(game);
+    });
+    return grouped;
   };
 
   const formatGameData = useCallback(
@@ -89,12 +109,14 @@ export const CorrespondenceGames = (props: Props) => {
             lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
             lexiconCode: ag.lexicon,
             onTurn,
+            variant: ag.variant || "classic",
             details:
               ag.tournamentID !== "" ? (
                 <span className="tourney-name">{ag.tournamentID}</span>
               ) : (
                 <>
-                  <VariantIcon vcode={ag.variant} />
+                  <VariantIcon vcode={ag.variant} />{" "}
+                  {challengeFormat(ag.challengeRule)}
                   {ag.rated ? (
                     <Tooltip title="Rated">
                       <FundOutlined />
@@ -163,6 +185,19 @@ export const CorrespondenceGames = (props: Props) => {
     },
   ];
 
+  // Group data by variant
+  const groupedGames = groupGamesByVariant(data);
+
+  // Define variant order: classic, wordsmog, classic_super
+  const variantOrder = ["classic", "wordsmog", "classic_super"];
+  const sortedVariants = Object.keys(groupedGames).sort((a, b) => {
+    const indexA = variantOrder.indexOf(a);
+    const indexB = variantOrder.indexOf(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
   return (
     <>
       {props.correspondenceSeeks.length > 0 && (
@@ -175,46 +210,52 @@ export const CorrespondenceGames = (props: Props) => {
         />
       )}
       <h4>My correspondence games</h4>
-      <Table
-        className="games observe correspondence-games"
-        dataSource={data}
-        columns={columns}
-        pagination={false}
-        rowKey="gameID"
-        showSorterTooltip={false}
-        onRow={(record) => ({
-          onClick: (event) => {
-            if (event.ctrlKey || event.altKey || event.metaKey) {
-              window.open(`/game/${encodeURIComponent(record.gameID)}`);
-            } else {
-              navigate(`/game/${encodeURIComponent(record.gameID)}`);
-            }
-          },
-          onAuxClick: (event) => {
-            if (event.button === 1) {
-              // middle-click
-              window.open(`/game/${encodeURIComponent(record.gameID)}`);
-            }
-          },
-        })}
-        rowClassName={(record) => {
-          const classes = ["game-listing"];
-          if (record.onTurn) {
-            classes.push("on-turn");
-          }
-          if (
-            props.username &&
-            (record.player1 === props.username ||
-              record.player2 === props.username)
-          ) {
-            classes.push("my-game");
-          }
-          return classes.join(" ");
-        }}
-        locale={{
-          emptyText: "No correspondence games",
-        }}
-      />
+
+      {sortedVariants.map((variant) => (
+        <React.Fragment key={variant}>
+          <VariantSectionHeader variant={variant} />
+          <Table
+            className="games observe correspondence-games"
+            dataSource={groupedGames[variant]}
+            columns={columns}
+            pagination={false}
+            rowKey="gameID"
+            showSorterTooltip={false}
+            onRow={(record) => ({
+              onClick: (event) => {
+                if (event.ctrlKey || event.altKey || event.metaKey) {
+                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                } else {
+                  navigate(`/game/${encodeURIComponent(record.gameID)}`);
+                }
+              },
+              onAuxClick: (event) => {
+                if (event.button === 1) {
+                  // middle-click
+                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
+                }
+              },
+            })}
+            rowClassName={(record) => {
+              const classes = ["game-listing"];
+              if (record.onTurn) {
+                classes.push("on-turn");
+              }
+              if (
+                props.username &&
+                (record.player1 === props.username ||
+                  record.player2 === props.username)
+              ) {
+                classes.push("my-game");
+              }
+              return classes.join(" ");
+            }}
+            locale={{
+              emptyText: "No correspondence games",
+            }}
+          />
+        </React.Fragment>
+      ))}
     </>
   );
 };

@@ -212,7 +212,7 @@ func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*p
 
 func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error) {
 	c.RLock()
-	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
+	if time.Since(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")
 		c.RUnlock()
 		return c.activeGames, nil

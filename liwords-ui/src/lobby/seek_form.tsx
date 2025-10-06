@@ -8,6 +8,7 @@ import {
   Tag,
   Slider,
   AutoComplete,
+  Button,
 } from "antd";
 
 import { Store } from "antd/lib/form/interface";
@@ -201,10 +202,8 @@ export const SeekForm = (props: Props) => {
     [],
   );
 
-  const enableVariants = React.useMemo(
-    () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
+  // Detect if user is new (no ratings)
+  const isNewPlayer = Object.keys(lobbyContext.profile.ratings).length === 0;
 
   let storageKey = "lastSeekForm";
   if (props.vsBot) {
@@ -240,6 +239,16 @@ export const SeekForm = (props: Props) => {
       storedValues.lexicon = "NSF25";
       break;
   }
+
+  // Check if user has customized settings that differ from defaults
+  const hasCustomizedSettings =
+    (storedValues.challengerule !== undefined &&
+      storedValues.challengerule !== ChallengeRule.VOID) ||
+    storedValues.incOrOT === "increment" ||
+    (storedValues.extratime !== undefined && storedValues.extratime !== 1) ||
+    (storedValues.variant !== undefined &&
+      storedValues.variant !== "classic" &&
+      storedValues.variant !== "");
 
   const givenFriend = useMemo(
     () => props.friendRef?.current ?? "",
@@ -372,6 +381,9 @@ export const SeekForm = (props: Props) => {
   const [lexiconCopyright, setLexiconCopyright] = useState(
     AllLexica[initialValues.lexicon]?.longDescription,
   );
+
+  // Always show toggle, auto-expand if customized
+  const [showAdvanced, setShowAdvanced] = useState(hasCustomizedSettings);
 
   const onFormChange = (val: Store, allvals: Store) => {
     let shouldHideChallengeRule = false;
@@ -536,6 +548,20 @@ export const SeekForm = (props: Props) => {
     }
   }, [defaultOptions, usernameOptions]);
 
+  const renderAdvancedToggle = () => {
+    return (
+      <div style={{ marginTop: 16, marginBottom: 16 }}>
+        <Button
+          type="link"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          style={{ padding: 0, height: "auto" }}
+        >
+          {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <Form
       id={props.id}
@@ -583,7 +609,7 @@ export const SeekForm = (props: Props) => {
                 option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
                   -1)
             }
-            onDropdownVisibleChange={handleDropdownVisibleChange}
+            onOpenChange={handleDropdownVisibleChange}
           >
             {usernameOptions.map((username) => (
               <AutoComplete.Option key={username} value={username}>
@@ -593,10 +619,18 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
+
+      <h4 className="form-section-header">GAME INFO</h4>
+
+      <LexiconFormItem
+        disabled={disableLexiconControls}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
+        onDropdownVisibleChange={handleDropdownVisibleChange}
+      />
+
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
-      {(enableVariants ||
-        (disableVariantControls && initialValues.variant !== "classic")) && (
+      {disableVariantControls && initialValues.variant !== "classic" ? (
         <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
@@ -608,14 +642,37 @@ export const SeekForm = (props: Props) => {
             </Select.Option>
           </Select>
         </Form.Item>
+      ) : (
+        <div
+          className="advanced-field"
+          style={{ display: showAdvanced ? "block" : "none" }}
+        >
+          <Form.Item label="Game type" name="variant">
+            <Select disabled={disableVariantControls}>
+              <Select.Option value="classic">Classic</Select.Option>
+              <Select.Option value="wordsmog">
+                <VariantIcon vcode="wordsmog" withName />
+              </Select.Option>
+              <Select.Option value="classic_super">
+                <VariantIcon vcode="classic_super" withName />
+              </Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
       )}
-      <LexiconFormItem
-        disabled={disableLexiconControls}
-        excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
-      />
+
       {!hideChallengeRule && (
-        <ChallengeRulesFormItem disabled={disableChallengeControls} />
+        <div
+          className="advanced-field"
+          style={{ display: showAdvanced ? "block" : "none" }}
+        >
+          <ChallengeRulesFormItem
+            disabled={disableChallengeControls}
+            onDropdownVisibleChange={handleDropdownVisibleChange}
+          />
+        </div>
       )}
+
       {props.showCorrespondenceMode !== false && (
         <Form.Item label="Game mode" name="gameMode">
           <Radio.Group disabled={disableTimeControls}>
@@ -624,6 +681,7 @@ export const SeekForm = (props: Props) => {
           </Radio.Group>
         </Form.Item>
       )}
+
       {selections?.gameMode === 1 ? (
         <Form.Item label="Time per turn" name="correspondenceTimePerTurn">
           <Select disabled={disableTimeControls}>
@@ -643,7 +701,7 @@ export const SeekForm = (props: Props) => {
               disabled={disableTimeControls}
               tooltip={{
                 formatter: initTimeFormatter,
-                open: sliderTooltipVisible || usernameOptions.length === 0,
+                open: sliderTooltipVisible && usernameOptions.length === 0,
                 getPopupContainer: (triggerNode) =>
                   triggerNode.parentElement ?? document.body,
               }}
@@ -651,45 +709,74 @@ export const SeekForm = (props: Props) => {
               max={initTimeDiscreteScale.length - 1}
             />
           </Form.Item>
-          <Form.Item label="Time setting" name="incOrOT">
-            <Radio.Group disabled={disableTimeControls}>
-              <Radio.Button value="overtime">Use max overtime</Radio.Button>
-              <Radio.Button value="increment">Use increment</Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-          <Form.Item
-            className="extra-time-setter"
-            label={timeSetting}
-            name="extratime"
-            extra={extraTimeLabel}
+          <div
+            className="advanced-field"
+            style={{ display: showAdvanced ? "block" : "none" }}
           >
-            <InputNumber
-              inputMode="numeric"
-              min={0}
-              max={maxTimeSetting}
-              disabled={disableTimeControls}
-            />
-          </Form.Item>
+            <Form.Item label="Time setting" name="incOrOT">
+              <Radio.Group disabled={disableTimeControls}>
+                <Radio.Button value="overtime">Use max overtime</Radio.Button>
+                <Radio.Button value="increment">Use increment</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          </div>
+          <div
+            className="advanced-field"
+            style={{ display: showAdvanced ? "block" : "none" }}
+          >
+            <Form.Item
+              className="extra-time-setter"
+              label={timeSetting}
+              name="extratime"
+              extra={extraTimeLabel}
+            >
+              <InputNumber
+                inputMode="numeric"
+                min={0}
+                max={maxTimeSetting}
+                disabled={disableTimeControls}
+              />
+            </Form.Item>
+          </div>
         </>
       )}
-      <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch disabled={disableRatedControls} />
+
+      <Form.Item label="Rating type" name="rated">
+        <Select disabled={disableRatedControls}>
+          <Select.Option value={true}>Rated</Select.Option>
+          <Select.Option value={false}>Unrated</Select.Option>
+        </Select>
       </Form.Item>
 
+      {renderAdvancedToggle()}
+
       {!props.showFriendInput && !props.vsBot && (
-        <Form.Item label="Rating range" name="ratingRange">
-          <Slider
-            min={50}
-            max={500}
-            tooltip={{
-              formatter: (v) => `${myRating} ± ${v ? v : 0}`,
-              open: sliderTooltipVisible,
-              getPopupContainer: (triggerNode) =>
-                triggerNode.parentElement ?? document.body,
-            }}
-            step={50}
-          />
-        </Form.Item>
+        <>
+          <h4 className="form-section-header">OPPONENT PREFERENCES</h4>
+
+          <Form.Item label="Rating range" name="ratingRange">
+            <Slider
+              min={50}
+              max={500}
+              tooltip={{
+                formatter: (v) => `${myRating} ± ${v ? v : 0}`,
+                open: sliderTooltipVisible,
+                getPopupContainer: (triggerNode) =>
+                  triggerNode.parentElement ?? document.body,
+              }}
+              step={50}
+            />
+          </Form.Item>
+
+          <Form.Item label="Show game to" name="visibility">
+            <Select defaultValue="all">
+              <Select.Option value="all">All players</Select.Option>
+              <Select.Option value="established">
+                Players with established ratings
+              </Select.Option>
+            </Select>
+          </Form.Item>
+        </>
       )}
 
       <small className="readable-text-color">
