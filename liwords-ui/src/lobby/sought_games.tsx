@@ -16,6 +16,7 @@ import {
 import {
   SoughtGame,
   matchesRatingFormula,
+  hasEstablishedRating,
 } from "../store/reducers/lobby_reducer";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
@@ -219,10 +220,20 @@ export const SoughtGames = (props: Props) => {
           // If we are the seeker, or if it's a match request, always show it.
           return true;
         }
-        if (props.ratings && matchesRatingFormula(sg, props.ratings)) {
-          return true;
+
+        // Check rating range
+        if (!props.ratings || !matchesRatingFormula(sg, props.ratings)) {
+          return false;
         }
-        return false;
+
+        // Check established rating requirement
+        if (sg.requireEstablishedRating && props.ratings) {
+          if (!hasEstablishedRating(props.ratings, sg.ratingKey)) {
+            return false;
+          }
+        }
+
+        return true;
       })
       .map((sg: SoughtGame): SoughtGameTableData => {
         const getDetails = () => {

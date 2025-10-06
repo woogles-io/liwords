@@ -534,6 +534,7 @@ export const SeekForm = (props: Props) => {
       minRatingRange: -val.ratingRange || 0,
       maxRatingRange: val.ratingRange || 0,
       gameMode: val.gameMode ?? 0,
+      requireEstablishedRating: val.visibility === "established",
     };
     props.onFormSubmit(obj, val);
   };

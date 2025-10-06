@@ -165,11 +165,12 @@ type SeekRequest struct {
 	// way. We are moving towards server-only matching during tournaments,
 	// so the following will only be used in "clubhouse mode" / more free-form
 	// clubs.
-	TournamentId        string `protobuf:"bytes,12,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
-	ReceiverIsPermanent bool   `protobuf:"varint,13,opt,name=receiver_is_permanent,json=receiverIsPermanent,proto3" json:"receiver_is_permanent,omitempty"`
-	RatingKey           string `protobuf:"bytes,14,opt,name=rating_key,json=ratingKey,proto3" json:"rating_key,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	TournamentId             string `protobuf:"bytes,12,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
+	ReceiverIsPermanent      bool   `protobuf:"varint,13,opt,name=receiver_is_permanent,json=receiverIsPermanent,proto3" json:"receiver_is_permanent,omitempty"`
+	RatingKey                string `protobuf:"bytes,14,opt,name=rating_key,json=ratingKey,proto3" json:"rating_key,omitempty"`
+	RequireEstablishedRating bool   `protobuf:"varint,15,opt,name=require_established_rating,json=requireEstablishedRating,proto3" json:"require_established_rating,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *SeekRequest) Reset() {
@@ -298,6 +299,13 @@ func (x *SeekRequest) GetRatingKey() string {
 		return x.RatingKey
 	}
 	return ""
+}
+
+func (x *SeekRequest) GetRequireEstablishedRating() bool {
+	if x != nil {
+		return x.RequireEstablishedRating
+	}
+	return false
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
@@ -446,7 +454,7 @@ const file_proto_ipc_omgseeks_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
 	"\x0frelevant_rating\x18\x02 \x01(\tR\x0erelevantRating\x12!\n" +
 	"\fis_anonymous\x18\x03 \x01(\bR\visAnonymous\x12!\n" +
-	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\"\x93\x05\n" +
+	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\"\xd1\x05\n" +
 	"\vSeekRequest\x123\n" +
 	"\fgame_request\x18\x01 \x01(\v2\x10.ipc.GameRequestR\vgameRequest\x12\"\n" +
 	"\x04user\x18\x02 \x01(\v2\x0e.ipc.MatchUserR\x04user\x120\n" +
@@ -465,7 +473,8 @@ const file_proto_ipc_omgseeks_proto_rawDesc = "" +
 	"\rtournament_id\x18\f \x01(\tR\ftournamentId\x122\n" +
 	"\x15receiver_is_permanent\x18\r \x01(\bR\x13receiverIsPermanent\x12\x1d\n" +
 	"\n" +
-	"rating_key\x18\x0e \x01(\tR\tratingKey\"7\n" +
+	"rating_key\x18\x0e \x01(\tR\tratingKey\x12<\n" +
+	"\x1arequire_established_rating\x18\x0f \x01(\bR\x18requireEstablishedRating\"7\n" +
 	"\x16SoughtGameProcessEvent\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\"<\n" +

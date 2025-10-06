@@ -39,6 +39,7 @@ export type SoughtGame = {
   tournamentID: string;
   receiverIsPermanent: boolean;
   ratingKey: string;
+  requireEstablishedRating: boolean;
 };
 
 type playerMeta = {
@@ -120,6 +121,7 @@ export const SeekRequestToSoughtGame = (
     ratingKey: req.ratingKey,
     receiverIsPermanent: req.receiverIsPermanent,
     gameMode: gameReq.gameMode ?? 0,
+    requireEstablishedRating: req.requireEstablishedRating,
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,
@@ -182,6 +184,16 @@ export const matchesRatingFormula = (
   const minRating = seekerRating + sg.minRatingRange;
   const maxRating = seekerRating + sg.maxRatingRange;
   return receiverRatingValue >= minRating && receiverRatingValue <= maxRating;
+};
+
+export const hasEstablishedRating = (
+  ratings: { [k: string]: ProfileUpdate_Rating },
+  ratingKey: string,
+): boolean => {
+  const rating = ratings[ratingKey];
+  if (!rating) return false;
+  // RatingDeviationConfidence = MinimumRatingDeviation(60) + 30 = 90
+  return rating.deviation <= 90;
 };
 
 export function LobbyReducer(state: LobbyState, action: Action): LobbyState {

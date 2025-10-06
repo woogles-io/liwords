@@ -525,6 +525,23 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		}
 	}
 
+	// If seek requires established rating, check acceptor has one
+	if sg.SeekRequest.RequireEstablishedRating {
+		ratingKey, err := ratingKey(gameReq)
+		if err != nil {
+			return err
+		}
+
+		accRating, err := accUser.GetRating(ratingKey)
+		if err != nil {
+			return err
+		}
+
+		if accRating.RatingDeviation > entity.RatingDeviationConfidence {
+			return errors.New("this seek requires an established rating")
+		}
+	}
+
 	reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
 	if err != nil {
 		return err
@@ -802,6 +819,18 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 
 		// only append game if the receiver is not being blocked
 		if block != 0 {
+			// Check if seek requires established rating
+			if sg.SeekRequest.RequireEstablishedRating && receiver != nil {
+				ratingKey, err := ratingKey(sg.SeekRequest.GameRequest)
+				if err != nil {
+					return nil, err
+				}
+				rating, err := receiver.GetRating(ratingKey)
+				if err != nil || rating.RatingDeviation > entity.RatingDeviationConfidence {
+					continue // Skip this seek
+				}
+			}
+
 			pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 		}
 	}
