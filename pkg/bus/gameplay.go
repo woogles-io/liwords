@@ -489,50 +489,50 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started {
-		var cancelThreshold time.Duration
-		if entGame.IsCorrespondence() {
-			// For correspondence: max of 3 days or the per-turn time
-			perTurnTime := time.Duration(g.GameRequest.InitialTimeSeconds) * time.Second
-			threeDays := 3 * 24 * time.Hour
-			if perTurnTime > threeDays {
-				cancelThreshold = perTurnTime
+			var cancelThreshold time.Duration
+			if entGame.IsCorrespondence() {
+				// For correspondence: max of 3 days or the per-turn time
+				perTurnTime := time.Duration(g.GameRequest.InitialTimeSeconds) * time.Second
+				threeDays := 3 * 24 * time.Hour
+				if perTurnTime > threeDays {
+					cancelThreshold = perTurnTime
+				} else {
+					cancelThreshold = threeDays
+				}
 			} else {
-				cancelThreshold = threeDays
+				cancelThreshold = CancelAfter // 60 seconds for real-time
 			}
-		} else {
-			cancelThreshold = CancelAfter // 60 seconds for real-time
-		}
 
-		if now.Sub(entGame.CreatedAt) > cancelThreshold {
-			log.Debug().Str("gid", g.GameId).
-				Str("tid", g.TournamentId).
-				Str("threshold", cancelThreshold.String()).
-				Bool("correspondence", entGame.IsCorrespondence()).
-				Interface("now", now).
-				Interface("created", entGame.CreatedAt).
-				Msg("canceling-never-started")
+			if now.Sub(entGame.CreatedAt) > cancelThreshold {
+				log.Debug().Str("gid", g.GameId).
+					Str("tid", g.TournamentId).
+					Str("threshold", cancelThreshold.String()).
+					Bool("correspondence", entGame.IsCorrespondence()).
+					Interface("now", now).
+					Interface("created", entGame.CreatedAt).
+					Msg("canceling-never-started")
 
-				// need to lock game to abort? maybe lock inside AbortGame?
-			log.Debug().Str("gid", g.GameId).Msg("locking")
-			entGame.Lock()
-			err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
-			log.Err(err).Msg("adjudicating-after-abort-game")
-			entGame.Unlock()
-			log.Debug().Str("gid", g.GameId).Msg("unlocking")
+					// need to lock game to abort? maybe lock inside AbortGame?
+				log.Debug().Str("gid", g.GameId).Msg("locking")
+				entGame.Lock()
+				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
+				log.Err(err).Msg("adjudicating-after-abort-game")
+				entGame.Unlock()
+				log.Debug().Str("gid", g.GameId).Msg("unlocking")
 
-			// Delete the game from the lobby. We do this here instead
-			// of inside the gameplay package because the game event channel
-			// was never registered with an unstarted game.
-			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
-				pb.MessageType_GAME_DELETION)
-			wrapped.AddAudience(entity.AudLobby, "gameEnded")
-			// send it to the tournament channel too if it's in one
-			if g.TournamentId != "" {
-				wrapped.AddAudience(entity.AudTournament, g.TournamentId)
+				// Delete the game from the lobby. We do this here instead
+				// of inside the gameplay package because the game event channel
+				// was never registered with an unstarted game.
+				wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
+					pb.MessageType_GAME_DELETION)
+				wrapped.AddAudience(entity.AudLobby, "gameEnded")
+				// send it to the tournament channel too if it's in one
+				if g.TournamentId != "" {
+					wrapped.AddAudience(entity.AudTournament, g.TournamentId)
+				}
+				b.gameEventChan <- wrapped
 			}
-			b.gameEventChan <- wrapped
 		}
-	}
 	}
 	log.Debug().Interface("active-games", gs).Msg("exiting-adjudication...")
 

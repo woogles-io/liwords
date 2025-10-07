@@ -32,11 +32,11 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval                = 10 * time.Second
-	AdjudicateCorrespondenceInterval  = 60 * time.Second
-	GamesCounterInterval              = 60 * time.Minute
-	SeeksExpireInterval               = 10 * time.Minute
-	ChannelMonitorInterval            = 5 * time.Second
+	AdjudicateInterval               = 10 * time.Second
+	AdjudicateCorrespondenceInterval = 60 * time.Second
+	GamesCounterInterval             = 60 * time.Minute
+	SeeksExpireInterval              = 10 * time.Minute
+	ChannelMonitorInterval           = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )

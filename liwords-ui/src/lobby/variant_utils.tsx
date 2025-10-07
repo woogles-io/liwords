@@ -15,9 +15,9 @@ export const variantDescriptions: {
       <>
         <p style={{ margin: "0 0 8px 0" }}>
           <strong>WordSmog</strong> is a variant where plays are acceptable if
-          they form an anagram of a valid word. For example, ACT, CAT, TAC,
-          CTA, ATC, and TCA are all valid plays in WordSmog as they all form
-          the word "CAT" (and ACT).
+          they form an anagram of a valid word. For example, ACT, CAT, TAC, CTA,
+          ATC, and TCA are all valid plays in WordSmog as they all form the word
+          "CAT" (and ACT).
         </p>
         <p style={{ margin: 0 }}>
           This variant requires careful strategic planning, defense, and great

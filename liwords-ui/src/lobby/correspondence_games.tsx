@@ -8,10 +8,7 @@ import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { VariantIcon } from "../shared/variant_icons";
 import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { useLoginStateStoreContext } from "../store/store";
-import {
-  normalizeVariant,
-  VariantSectionHeader,
-} from "./variant_utils";
+import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
 type Props = {
   correspondenceGames: ActiveGame[];

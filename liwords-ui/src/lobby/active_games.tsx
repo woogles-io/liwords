@@ -19,10 +19,7 @@ import {
   useLobbyStoreContext,
 } from "../store/store";
 import { ActionType } from "../actions/actions";
-import {
-  normalizeVariant,
-  VariantSectionHeader,
-} from "./variant_utils";
+import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
 type Props = {
   activeGames: ActiveGame[];

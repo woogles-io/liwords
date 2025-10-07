@@ -419,7 +419,7 @@ func (cs *CollectionsService) GetUserCollections(ctx context.Context, req *conne
 		} else if gc, ok := collection.GameCount.(int32); ok {
 			gameCount = uint32(gc)
 		}
-		
+
 		pbCollections[i] = &pb.Collection{
 			Uuid:            collection.Uuid.String(),
 			Title:           collection.Title,
@@ -554,7 +554,7 @@ func (cs *CollectionsService) GetRecentlyUpdatedCollections(ctx context.Context,
 		} else if gc, ok := collection.GameCount.(int32); ok {
 			gameCount = uint32(gc)
 		}
-		
+
 		pbCollections[i] = &pb.Collection{
 			Uuid:            collection.Uuid.String(),
 			Title:           collection.Title,

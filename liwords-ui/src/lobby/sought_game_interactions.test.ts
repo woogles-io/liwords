@@ -30,6 +30,8 @@ it("tests sendSeek", () => {
     botType: BotTypesEnum.MASTER,
     variant: "",
     gameMode: 0,
+    requireEstablishedRating: false,
+    onlyFollowedPlayers: false,
   };
 
   sendSeek(game, (msg: Uint8Array) => {

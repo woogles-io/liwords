@@ -32,14 +32,14 @@ func GetFollowers(userID string) ([]string, bool) {
 	if FollowersCache == nil {
 		return nil, false
 	}
-	
+
 	followers, found := FollowersCache.Get(userID)
 	if found {
 		log.Debug().Str("userID", userID).Int("follower_count", len(followers)).
 			Msg("cache-hit-followers")
 		return followers, true
 	}
-	
+
 	log.Debug().Str("userID", userID).Msg("cache-miss-followers")
 	return nil, false
 }
@@ -49,7 +49,7 @@ func CacheFollowers(userID string, followers []string) {
 	if FollowersCache == nil {
 		return
 	}
-	
+
 	evicted := FollowersCache.Add(userID, followers)
 	log.Debug().Str("userID", userID).Int("follower_count", len(followers)).
 		Bool("evicted", evicted).Msg("cached-followers")

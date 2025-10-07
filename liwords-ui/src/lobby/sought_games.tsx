@@ -28,10 +28,7 @@ import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
 import { SeekConfirmModal } from "./seek_confirm_modal";
-import {
-  normalizeVariant,
-  VariantSectionHeader,
-} from "./variant_utils";
+import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
 export const timeFormat = (
   initialTimeSecs: number,
