@@ -58,8 +58,11 @@
       color: m($gray-extreme);
     }
   }
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
   .ant-form-item-with-help {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
   }
   dl {
     @include colorModed() {
@@ -103,6 +106,13 @@
     align-items: center;
     .ant-form-item-control-input {
       width: auto;
+    }
+  }
+  .ant-input-number {
+    height: 32px;
+    .ant-input-number-input {
+      height: 30px;
+      padding: 4px 11px;
     }
   }
   .ant-form-item .ant-form-item-label {
@@ -164,7 +174,7 @@
       background: m($off-background);
       border-left: 3px solid m($primary-dark);
     }
-    padding: 8px 12px;
+    padding: 6px 12px;
     border-radius: 4px;
     margin-bottom: 12px;
     .ant-form-item {

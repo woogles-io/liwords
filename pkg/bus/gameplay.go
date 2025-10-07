@@ -488,20 +488,10 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
-		} else if !started {
-			var cancelThreshold time.Duration
-			if entGame.IsCorrespondence() {
-				// For correspondence: max of 3 days or the per-turn time
-				perTurnTime := time.Duration(g.GameRequest.InitialTimeSeconds) * time.Second
-				threeDays := 3 * 24 * time.Hour
-				if perTurnTime > threeDays {
-					cancelThreshold = perTurnTime
-				} else {
-					cancelThreshold = threeDays
-				}
-			} else {
-				cancelThreshold = CancelAfter // 60 seconds for real-time
-			}
+		} else if !started && !entGame.IsCorrespondence() {
+			// Only real-time games can be "not started" - correspondence games
+			// are auto-started immediately when accepted, so they never enter this state.
+			cancelThreshold := CancelAfter // 60 seconds for real-time
 
 			if now.Sub(entGame.CreatedAt) > cancelThreshold {
 				log.Debug().Str("gid", g.GameId).

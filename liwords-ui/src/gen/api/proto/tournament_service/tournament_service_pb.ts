@@ -157,7 +157,7 @@ export type TournamentMetadata = Message<"tournament_service.TournamentMetadata"
    * to be more freeform (for example, lexicon option or time setting).
    * The following parameter is a list of field names that are freeform.
    * The acceptable values are:
-   * lexicon, time, challenge_rule, rating_mode, variant_name
+   * lexicon, time, challenge_rule, rating_mode, variant_name, game_mode
    *
    * @generated from field: repeated string freeform_club_setting_fields = 10;
    */

@@ -34,7 +34,11 @@ import { VariantIcon } from "../shared/variant_icons";
 import { excludedLexica, LexiconFormItem } from "../shared/lexicon_display";
 import { AllLexica } from "../shared/lexica";
 import { BotTypesEnum, BotTypesEnumProperties } from "./bots";
-import { GameRequest, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  GameMode,
+  GameRequest,
+  RatingMode,
+} from "../gen/api/proto/ipc/omgwords_pb";
 import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useClient } from "../utils/hooks/connect";
@@ -92,6 +96,7 @@ type mandatoryFormValues = Partial<seekPropVals> &
     | "extratime"
     | "incOrOT"
     | "variant"
+    | "gameMode"
   >;
 
 export const GameRequestToFormValues: (
@@ -106,6 +111,7 @@ export const GameRequestToFormValues: (
       rated: true,
       extratime: 1,
       incOrOT: "overtime",
+      gameMode: GameMode.REAL_TIME,
     };
   }
 
@@ -117,6 +123,7 @@ export const GameRequestToFormValues: (
     initialtimeslider: 0,
     extratime: 0,
     incOrOT: "overtime",
+    gameMode: gameRequest.gameMode ?? GameMode.REAL_TIME, // Default to REAL_TIME for backward compatibility
   };
 
   const secs = gameRequest.initialTimeSeconds;
@@ -675,7 +682,7 @@ export const SeekForm = (props: Props) => {
         </div>
       )}
 
-      {props.showCorrespondenceMode !== false && (
+      {props.showCorrespondenceMode !== false && !props.tournamentID && (
         <Form.Item label="Game mode" name="gameMode">
           <Radio.Group disabled={disableTimeControls}>
             <Radio.Button value={0}>Real-time</Radio.Button>
@@ -703,7 +710,9 @@ export const SeekForm = (props: Props) => {
               disabled={disableTimeControls}
               tooltip={{
                 formatter: initTimeFormatter,
-                open: sliderTooltipVisible && usernameOptions.length === 0,
+                open:
+                  disableTimeControls ||
+                  (sliderTooltipVisible && usernameOptions.length === 0),
                 getPopupContainer: (triggerNode) =>
                   triggerNode.parentElement ?? document.body,
               }}
