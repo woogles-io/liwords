@@ -471,7 +471,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 		return err
 	}
 	now := time.Now()
-	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
+	log.Debug().Bool("correspondence", correspondenceOnly).Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs.GameInfo {
 		// These will likely be in the cache.
 		entGame, err := b.stores.GameStore.Get(ctx, g.GameId)
