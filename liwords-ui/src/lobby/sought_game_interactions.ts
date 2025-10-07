@@ -61,6 +61,7 @@ export const sendSeek = (
   sr.minimumRatingRange = game.minRatingRange;
   sr.maximumRatingRange = game.maxRatingRange;
   sr.requireEstablishedRating = game.requireEstablishedRating || false;
+  sr.onlyFollowedPlayers = game.onlyFollowedPlayers || false;
 
   if (!game.receiverIsPermanent) {
     sr.gameRequest = gr;

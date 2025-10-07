@@ -40,6 +40,7 @@ export type SoughtGame = {
   receiverIsPermanent: boolean;
   ratingKey: string;
   requireEstablishedRating: boolean;
+  onlyFollowedPlayers: boolean;
 };
 
 type playerMeta = {
@@ -122,6 +123,7 @@ export const SeekRequestToSoughtGame = (
     receiverIsPermanent: req.receiverIsPermanent,
     gameMode: gameReq.gameMode ?? 0,
     requireEstablishedRating: req.requireEstablishedRating,
+    onlyFollowedPlayers: req.onlyFollowedPlayers,
     // this is inconsequential as bot match requests are never shown
     // to the user. change if this becomes the case some day.
     botType: 0,

@@ -516,6 +516,46 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follower_count", len(followerIDs)).
 			Msg("published get-followers response")
 
+	case "getFollows":
+		msg := &pb.GetFollowsRequest{}
+		err := proto.Unmarshal(data, msg)
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Str("userID", msg.UserId).Msg("received-get-follows-request")
+
+		// Get user by UUID
+		user, err := b.stores.UserStore.GetByUUID(ctx, msg.UserId)
+		if err != nil {
+			return err
+		}
+
+		// Get all users that this user follows
+		followUsers, err := b.stores.UserStore.GetFollows(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+
+		// Convert to user IDs
+		followIDs := make([]string, len(followUsers))
+		for i, fu := range followUsers {
+			followIDs[i] = fu.UUID
+		}
+
+		resp := &pb.GetFollowsResponse{
+			FollowUserIds: followIDs,
+		}
+
+		retdata, err := proto.Marshal(resp)
+		if err != nil {
+			return err
+		}
+
+		b.natsconn.Publish(replyTopic, retdata)
+		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follows_count", len(followIDs)).
+			Msg("published get-follows response")
+
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}

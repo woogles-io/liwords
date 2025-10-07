@@ -270,7 +270,24 @@ func publishSeek(ctx context.Context, b *Bus, sg *entity.SoughtGame, userID stri
 		// know that this seek is open. If the old receiver state was absent
 		// and the new receiver state is not absent, this seek is no longer
 		// open and everyone must be notified.
-		publishSeekToLobby(b, sg)
+
+		// Check if this is an "only followed players" seek
+		if sg.SeekRequest.OnlyFollowedPlayers {
+			// Get the seeker user ID for the topic
+			seekerUserID, err := sg.SeekerUserID()
+			if err != nil {
+				return err
+			}
+
+			// Publish to a special topic for efficient socketsrv fan-out
+			log.Debug().Str("seekerUserID", seekerUserID).Msg("publishing seek to followed users only")
+			err = publishSeekToFollowed(b, sg, seekerUserID)
+			if err != nil {
+				return err
+			}
+		} else {
+			publishSeekToLobby(b, sg)
+		}
 	}
 	return nil
 }
@@ -284,6 +301,19 @@ func publishSeekToLobby(b *Bus, sg *entity.SoughtGame) error {
 	log.Debug().Interface("evt", evt).Msg("republishing seek request that was abandoned to lobby topic")
 	b.natsconn.Publish("lobby.seekRequest", outdata)
 	return nil
+}
+
+func publishSeekToFollowed(b *Bus, sg *entity.SoughtGame, seekerUserID string) error {
+	// Publish a single NATS message to a special topic.
+	// The socketsrv will handle fan-out to all users that the seeker follows.
+	// This is much more efficient than sending individual messages to each followed user.
+	data, err := proto.Marshal(sg.SeekRequest)
+	if err != nil {
+		return err
+	}
+	topic := "seek.followed." + seekerUserID
+	log.Debug().Str("topic", topic).Msg("publishing seek to followed users topic")
+	return b.natsconn.Publish(topic, data)
 }
 
 func publishSeekToPlayers(b *Bus, sg *entity.SoughtGame, seekerID, seekerConnID, receiverID, receiverConnID string) error {
@@ -539,6 +569,23 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 
 		if accRating.RatingDeviation > entity.RatingDeviationConfidence {
 			return errors.New("this seek requires an established rating")
+		}
+	}
+
+	// If seek is only for followed players, verify acceptor is followed
+	if sg.SeekRequest.OnlyFollowedPlayers {
+		reqUser, err := b.stores.UserStore.GetByUUID(ctx, requester)
+		if err != nil {
+			return err
+		}
+
+		isFollowed, err := b.stores.UserStore.IsFollowing(ctx, reqUser.ID, accUser.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isFollowed {
+			return errors.New("this seek is only available to players followed by the seeker")
 		}
 	}
 
@@ -828,6 +875,23 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 				rating, err := receiver.GetRating(ratingKey)
 				if err != nil || rating.RatingDeviation > entity.RatingDeviationConfidence {
 					continue // Skip this seek
+				}
+			}
+
+			// Check if seek is only for followed players
+			if sg.SeekRequest.OnlyFollowedPlayers && receiver != nil {
+				seekerUser, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
+				if err != nil {
+					return nil, err
+				}
+
+				isFollowed, err := b.stores.UserStore.IsFollowing(ctx, seekerUser.ID, receiver.ID)
+				if err != nil {
+					return nil, err
+				}
+
+				if !isFollowed {
+					continue // Skip this seek - receiver is not followed by seeker
 				}
 			}
 

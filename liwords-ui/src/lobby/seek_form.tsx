@@ -535,6 +535,7 @@ export const SeekForm = (props: Props) => {
       maxRatingRange: val.ratingRange || 0,
       gameMode: val.gameMode ?? 0,
       requireEstablishedRating: val.visibility === "established",
+      onlyFollowedPlayers: val.visibility === "followed",
     };
     props.onFormSubmit(obj, val);
   };
@@ -774,6 +775,9 @@ export const SeekForm = (props: Props) => {
               <Select.Option value="all">All players</Select.Option>
               <Select.Option value="established">
                 Players with established ratings
+              </Select.Option>
+              <Select.Option value="followed">
+                Only players I follow
               </Select.Option>
             </Select>
           </Form.Item>
