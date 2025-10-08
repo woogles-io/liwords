@@ -76,6 +76,8 @@ import { syntheticGameInfo } from "../boardwizard/synthetic_game_info";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { showTurnNotification } from "../utils/notifications";
+import { timeCtrlToDisplayName } from "../store/constants";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -87,7 +89,9 @@ const StreakFetchDelay = 2000;
 
 const DEFAULT_TITLE = "Woogles.io";
 
-const ManageWindowTitleAndTurnSound = () => {
+const ManageWindowTitleAndTurnSound = (props: {
+  gameInfo: GameInfoResponse;
+}) => {
   const { gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
@@ -121,23 +125,77 @@ const ManageWindowTitleAndTurnSound = () => {
   // do not play sound when game ends (e.g. resign) or has not loaded
   const canPlaySound = !gameDone && gameContext.gameID;
   const soundUnlocked = useRef(false);
+  const notificationShown = useRef(false);
+
   useEffect(() => {
     if (canPlaySound) {
       if (!soundUnlocked.current) {
         // ignore first sound
         soundUnlocked.current = true;
+        notificationShown.current = false;
         return;
       }
 
       if (myId === gameContext.onturn) {
         BoopSounds.playSound("oppMoveSound");
+
+        // Show notification on your turn
+        if (!notificationShown.current) {
+          const opponentName =
+            playerNicks.find((nick, idx) => idx !== myId) ?? "Opponent";
+
+          // Get time control info
+          const isCorrespondence =
+            props.gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+          let timeCtrl: string;
+
+          if (isCorrespondence) {
+            // For correspondence games, show time per turn
+            const timePerTurn =
+              props.gameInfo.gameRequest?.initialTimeSeconds || 0;
+            const days = Math.floor(timePerTurn / 86400);
+            timeCtrl =
+              days > 0
+                ? `${days} day${days > 1 ? "s" : ""}/turn`
+                : "Correspondence";
+          } else {
+            // For real-time games, use the standard format
+            const [tc] = timeCtrlToDisplayName(
+              gameContext.initialTimeSeconds || 0,
+              gameContext.incrementSeconds || 0,
+              gameContext.maxOvertimeMinutes || 0,
+            );
+            timeCtrl = tc;
+          }
+
+          showTurnNotification({
+            opponentName,
+            timeControl: timeCtrl,
+            gameId: gameContext.gameID,
+          });
+          notificationShown.current = true;
+        }
       } else {
         BoopSounds.playSound("makeMoveSound");
+        // Reset notification flag when it's opponent's turn
+        notificationShown.current = false;
       }
     } else {
       soundUnlocked.current = false;
+      notificationShown.current = false;
     }
-  }, [canPlaySound, myId, gameContext.onturn]);
+  }, [
+    canPlaySound,
+    myId,
+    gameContext.onturn,
+    playerNicks,
+    gameContext.initialTimeSeconds,
+    gameContext.incrementSeconds,
+    gameContext.maxOvertimeMinutes,
+    gameContext.gameID,
+    props.gameInfo.gameRequest?.gameMode,
+    props.gameInfo.gameRequest?.initialTimeSeconds,
+  ]);
 
   const desiredTitle = useMemo(() => {
     let title = "";
@@ -777,7 +835,7 @@ export const Table = React.memo((props: Props) => {
         commentsDrawerVisible ? " comments-drawer-open" : ""
       }`}
     >
-      <ManageWindowTitleAndTurnSound />
+      <ManageWindowTitleAndTurnSound gameInfo={gameInfo} />
       <TopBar tournamentID={gameInfo.tournamentId} />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
