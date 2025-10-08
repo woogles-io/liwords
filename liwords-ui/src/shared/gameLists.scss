@@ -36,8 +36,7 @@
     &.details {
       text-align: right;
     }
-    &.time,
-    &.lexicon {
+    &.time {
       text-align: center;
     }
   }
@@ -149,8 +148,7 @@
       .players {
         width: 350px;
       }
-      .time,
-      .lexicon {
+      .time {
         text-align: center;
       }
       .players > div {
@@ -284,6 +282,14 @@
       padding: 12px;
       letter-spacing: 0;
       margin: 0;
+    }
+  }
+
+  // Club match specific styling - left-justify everything
+  .ant-table-wrapper.pairings.club-match {
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      text-align: left;
     }
   }
 

@@ -86,6 +86,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
 
 type Props = {
   isMatch?: boolean;
+  isClubMatch?: boolean;
   newGame: (seekID: string) => void;
   userID?: string;
   username?: string;
@@ -311,6 +312,136 @@ export const SoughtGames = (props: Props) => {
     if (indexB === -1) return -1;
     return indexA - indexB;
   });
+
+  // Club match rendering
+  type ClubMatchTableData = {
+    players: ReactNode;
+    lexicon: ReactNode;
+    gameDetails: ReactNode;
+    actions: ReactNode;
+    key: string;
+    isMine: boolean;
+  };
+
+  const formatClubMatchData = (games: SoughtGame[]): ClubMatchTableData[] => {
+    return games.map((sg: SoughtGame): ClubMatchTableData => {
+      const isMatcher = sg.seeker === props.username;
+      const isReceiver = sg.receiver?.displayName === props.username;
+
+      const players = (
+        <div>
+          <p>{sg.seeker}</p>
+          <p>{sg.receiver?.displayName || "Waiting for opponent..."}</p>
+        </div>
+      );
+
+      const lexicon = <MatchLexiconDisplay lexiconCode={sg.lexicon} />;
+
+      const gameDetails = (
+        <div>
+          <div>
+            {timeFormat(
+              sg.initialTimeSecs,
+              sg.incrementSecs,
+              sg.maxOvertimeMinutes,
+              sg.gameMode,
+            )}
+          </div>
+          <div>
+            <VariantIcon vcode={sg.variant} />{" "}
+            {challengeFormat(sg.challengeRule)}
+            {sg.rated && (
+              <Tooltip title="Rated">
+                {" "}
+                <FundOutlined />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+      );
+
+      const actions = isMatcher ? (
+        <Popconfirm
+          title="Do you want to cancel this match request?"
+          onConfirm={() => {
+            props.newGame(sg.seekID);
+          }}
+          okText="Yes"
+          cancelText="No"
+        >
+          <button className="secondary">Cancel</button>
+        </Popconfirm>
+      ) : isReceiver ? (
+        <button
+          className="primary"
+          onClick={() => {
+            props.newGame(sg.seekID);
+          }}
+        >
+          Ready
+        </button>
+      ) : null;
+
+      return {
+        players,
+        lexicon,
+        gameDetails,
+        actions,
+        key: sg.seekID,
+        isMine: isMatcher || isReceiver,
+      };
+    });
+  };
+
+  const clubMatchColumns = [
+    {
+      title: "Players",
+      dataIndex: "players",
+      key: "players",
+      className: "players",
+    },
+    {
+      title: "Words",
+      dataIndex: "lexicon",
+      key: "lexicon",
+      className: "lexicon",
+    },
+    {
+      title: "Game Details",
+      dataIndex: "gameDetails",
+      key: "gameDetails",
+      className: "game-details",
+    },
+    {
+      title: " ",
+      dataIndex: "actions",
+      key: "actions",
+      className: "actions",
+    },
+  ];
+
+  if (props.isClubMatch) {
+    const clubMatchData = formatClubMatchData(props.requests);
+    return (
+      <>
+        <h4>Match requests</h4>
+        <Table
+          className="pairings club-match"
+          dataSource={clubMatchData}
+          columns={clubMatchColumns}
+          pagination={false}
+          rowKey="key"
+          showSorterTooltip={false}
+          rowClassName={(record) => {
+            if (record.isMine) {
+              return "game-listing mine";
+            }
+            return "game-listing";
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <>

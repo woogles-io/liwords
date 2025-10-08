@@ -161,9 +161,9 @@ const ManageWindowTitleAndTurnSound = (props: {
           } else {
             // For real-time games, use the standard format
             const [tc] = timeCtrlToDisplayName(
-              gameContext.initialTimeSeconds || 0,
-              gameContext.incrementSeconds || 0,
-              gameContext.maxOvertimeMinutes || 0,
+              props.gameInfo.gameRequest?.initialTimeSeconds || 0,
+              props.gameInfo.gameRequest?.incrementSeconds || 0,
+              props.gameInfo.gameRequest?.maxOvertimeMinutes || 0,
             );
             timeCtrl = tc;
           }
@@ -189,12 +189,11 @@ const ManageWindowTitleAndTurnSound = (props: {
     myId,
     gameContext.onturn,
     playerNicks,
-    gameContext.initialTimeSeconds,
-    gameContext.incrementSeconds,
-    gameContext.maxOvertimeMinutes,
     gameContext.gameID,
     props.gameInfo.gameRequest?.gameMode,
     props.gameInfo.gameRequest?.initialTimeSeconds,
+    props.gameInfo.gameRequest?.incrementSeconds,
+    props.gameInfo.gameRequest?.maxOvertimeMinutes,
   ]);
 
   const desiredTitle = useMemo(() => {

@@ -524,7 +524,7 @@ export const PlayerProfile = React.memo(() => {
                     username={username}
                   />
                   <h3>
-                    {username && viewer !== username ? (
+                    {username ? (
                       <UsernameWithContext
                         omitProfileLink
                         omitSendMessage
@@ -538,7 +538,7 @@ export const PlayerProfile = React.memo(() => {
                       />
                     ) : (
                       <span className="user">
-                        <span>{fullName || username}</span>
+                        <span>{fullName}</span>
                         <DisplayFlag countryCode={countryCode} />
                       </span>
                     )}
