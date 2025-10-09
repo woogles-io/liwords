@@ -793,8 +793,12 @@ type GameRequest struct {
 	PlayerVsBot        bool                       `protobuf:"varint,10,opt,name=player_vs_bot,json=playerVsBot,proto3" json:"player_vs_bot,omitempty"`
 	OriginalRequestId  string                     `protobuf:"bytes,11,opt,name=original_request_id,json=originalRequestId,proto3" json:"original_request_id,omitempty"`
 	BotType            macondo.BotRequest_BotCode `protobuf:"varint,12,opt,name=bot_type,json=botType,proto3,enum=macondo.BotRequest_BotCode" json:"bot_type,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// time_bank_minutes is the number of minutes of time bank for correspondence games.
+	// When a player exceeds their per-turn time (increment_seconds), the deficit is
+	// deducted from their time bank. Player times out only when time bank is exhausted.
+	TimeBankMinutes int32 `protobuf:"varint,13,opt,name=time_bank_minutes,json=timeBankMinutes,proto3" json:"time_bank_minutes,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GameRequest) Reset() {
@@ -909,6 +913,13 @@ func (x *GameRequest) GetBotType() macondo.BotRequest_BotCode {
 		return x.BotType
 	}
 	return macondo.BotRequest_BotCode(0)
+}
+
+func (x *GameRequest) GetTimeBankMinutes() int32 {
+	if x != nil {
+		return x.TimeBankMinutes
+	}
+	return 0
 }
 
 // GameMetaEvent defines how we serialize meta events to the database.
@@ -3187,7 +3198,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\tGameRules\x12*\n" +
 	"\x11board_layout_name\x18\x01 \x01(\tR\x0fboardLayoutName\x128\n" +
 	"\x18letter_distribution_name\x18\x02 \x01(\tR\x16letterDistributionName\x12!\n" +
-	"\fvariant_name\x18\x03 \x01(\tR\vvariantName\"\xa6\x04\n" +
+	"\fvariant_name\x18\x03 \x01(\tR\vvariantName\"\xd2\x04\n" +
 	"\vGameRequest\x12\x18\n" +
 	"\alexicon\x18\x01 \x01(\tR\alexicon\x12$\n" +
 	"\x05rules\x18\x02 \x01(\v2\x0e.ipc.GameRulesR\x05rules\x120\n" +
@@ -3203,7 +3214,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\rplayer_vs_bot\x18\n" +
 	" \x01(\bR\vplayerVsBot\x12.\n" +
 	"\x13original_request_id\x18\v \x01(\tR\x11originalRequestId\x126\n" +
-	"\bbot_type\x18\f \x01(\x0e2\x1b.macondo.BotRequest.BotCodeR\abotType\"\xee\x03\n" +
+	"\bbot_type\x18\f \x01(\x0e2\x1b.macondo.BotRequest.BotCodeR\abotType\x12*\n" +
+	"\x11time_bank_minutes\x18\r \x01(\x05R\x0ftimeBankMinutes\"\xee\x03\n" +
 	"\rGameMetaEvent\x12\"\n" +
 	"\rorig_event_id\x18\x01 \x01(\tR\vorigEventId\x128\n" +
 	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x120\n" +

@@ -309,7 +309,7 @@ func (g *Game) ResetTimersAndStart() {
 	// Initialize correspondence-specific fields
 	if g.IsCorrespondence() {
 		// Initialize time bank for both players
-		timeBankMs := int64(g.GameReq.MaxOvertimeMinutes) * 60 * 1000
+		timeBankMs := int64(g.GameReq.TimeBankMinutes) * 60 * 1000
 		g.Timers.TimeBank = []int64{timeBankMs, timeBankMs}
 		// Enable reset-to-increment behavior for correspondence games
 		g.Timers.ResetToIncrementAfterTurn = true
@@ -356,6 +356,26 @@ func (g *Game) TimeRanOut(idx int) bool {
 		return false
 	}
 	now := g.nower.Now()
+
+	// For correspondence games with reset-to-increment, check time bank
+	if g.Timers.ResetToIncrementAfterTurn {
+		turnTime := now - g.Timers.TimeOfLastUpdate
+		allowedTime := int64(g.GameReq.IncrementSeconds) * 1000
+
+		if turnTime <= allowedTime {
+			return false // within allowed time
+		}
+
+		deficit := turnTime - allowedTime
+		if len(g.Timers.TimeBank) > idx && g.Timers.TimeBank[idx] >= deficit {
+			return false // time bank covers it
+		}
+
+		// Time bank exhausted (or doesn't exist), timed out
+		return true
+	}
+
+	// For non-correspondence games, use simple MaxOvertime check
 	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
 	return tr < (-g.Timers.MaxOvertime * 60000)
 }

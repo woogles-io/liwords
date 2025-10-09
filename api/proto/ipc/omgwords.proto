@@ -96,6 +96,10 @@ message GameRequest {
   bool player_vs_bot = 10;
   string original_request_id = 11;
   macondo.BotRequest.BotCode bot_type = 12;
+  // time_bank_minutes is the number of minutes of time bank for correspondence games.
+  // When a player exceeds their per-turn time (increment_seconds), the deficit is
+  // deducted from their time bank. Player times out only when time bank is exhausted.
+  int32 time_bank_minutes = 13;
 }
 
 // GameMetaEvent defines how we serialize meta events to the database.

@@ -676,7 +676,7 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 }
 
 const listActiveCorrespondenceGames = `-- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -690,6 +690,8 @@ type ListActiveCorrespondenceGamesRow struct {
 	TournamentData entity.TournamentData
 	GameRequest    entity.GameRequest
 	PlayerOnTurn   pgtype.Int4
+	Timers         entity.Timers
+	Type           pgtype.Int4
 }
 
 func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActiveCorrespondenceGamesRow, error) {
@@ -708,6 +710,8 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.Timers,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}

@@ -603,7 +603,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
-	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
+	games, err := s.ListActiveCorrespondenceRaw(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -669,6 +669,16 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 	}
 	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Msg("list-active-correspondence-for-user")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondenceRaw returns raw DB rows with timer data.
+// This is used internally by ListActiveCorrespondence and the adjudication process.
+func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return games, nil
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {

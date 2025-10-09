@@ -696,6 +696,11 @@ func (b *Bus) GameEventChannel() chan *entity.EventWrapper {
 	return b.gameEventChan
 }
 
+// AdjudicateGames is an exported wrapper for testing the adjudication logic.
+func (b *Bus) AdjudicateGames(ctx context.Context, correspondenceOnly bool) error {
+	return b.adjudicateGames(ctx, correspondenceOnly)
+}
+
 func (b *Bus) broadcastPresence(username, userID string, anon bool,
 	presenceChannels []string, deleting bool) error {
 

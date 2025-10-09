@@ -137,10 +137,17 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 		if req.InitialTimeSeconds > 432000 { // 5 days maximum
 			return errors.New("correspondence games cannot exceed 5 days per turn")
 		}
-		// For correspondence, increment should equal initial time (reset logic)
-		// and max overtime should be 0
+		// For correspondence, max overtime should be 0 (use time bank instead)
 		if req.MaxOvertimeMinutes != 0 {
 			return errors.New("correspondence games cannot use max overtime")
+		}
+		// Validate time bank for correspondence games
+		if req.TimeBankMinutes < 0 {
+			return errors.New("time bank minutes cannot be negative")
+		}
+		// Optional: set a reasonable max for time bank (e.g., 30 days = 43200 minutes)
+		if req.TimeBankMinutes > 43200 {
+			return errors.New("time bank cannot exceed 30 days")
 		}
 	} else {
 		// Real-time game validation
@@ -158,6 +165,10 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 		}
 		if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
 			return errors.New("you can have increments or max overtime, but not both")
+		}
+		// Real-time games should not use time bank
+		if req.TimeBankMinutes != 0 {
+			return errors.New("only correspondence games can use time bank")
 		}
 	}
 

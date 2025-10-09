@@ -458,14 +458,16 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) error {
 	// Always bust the cache when we're adjudicating games.
 
+	if correspondenceOnly {
+		// Optimized path for correspondence games - check timeouts without loading full games
+		return b.adjudicateCorrespondenceGames(ctx)
+	}
+
+	// Original path for realtime games
 	var gs *pb.GameInfoResponses
 	var err error
 
-	if correspondenceOnly {
-		gs, err = b.stores.GameStore.ListActiveCorrespondence(ctx)
-	} else {
-		gs, err = b.stores.GameStore.ListActive(ctx, "", true)
-	}
+	gs, err = b.stores.GameStore.ListActive(ctx, "", true)
 
 	if err != nil {
 		return err
@@ -526,6 +528,77 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 	}
 	log.Debug().Interface("active-games", gs).Msg("exiting-adjudication...")
 
+	return nil
+}
+
+// adjudicateCorrespondenceGames is an optimized version for correspondence games
+// that checks for timeouts without loading the full game from the database.
+func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
+	// Get active correspondence games with timers
+	games, err := b.stores.GameStore.ListActiveCorrespondenceRaw(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UnixMilli()
+	log.Debug().Int("num-games", len(games)).Msg("adjudicating-correspondence-games")
+
+	for _, g := range games {
+		// Skip if not started
+		if !g.Started.Valid || !g.Started.Bool {
+			continue
+		}
+
+		// Skip if no player on turn (shouldn't happen but be defensive)
+		if !g.PlayerOnTurn.Valid {
+			continue
+		}
+
+		playerOnTurn := int(g.PlayerOnTurn.Int32)
+
+		// Check if time ran out using only DB columns
+		// This mirrors the logic in entity.Game.TimeRanOut()
+
+		// Skip annotated games
+		if g.Type.Valid && g.Type.Int32 == int32(pb.GameType_ANNOTATED) {
+			continue
+		}
+
+		// For correspondence games, check time bank before declaring timeout
+		// Correspondence games use ResetToIncrementAfterTurn behavior
+		turnTime := now - g.Timers.TimeOfLastUpdate
+		allowedTime := int64(g.GameRequest.IncrementSeconds) * 1000
+
+		// If within allowed time, no timeout
+		if turnTime <= allowedTime {
+			continue
+		}
+
+		// Player took too long, check if time bank can cover the deficit
+		deficit := turnTime - allowedTime
+		if len(g.Timers.TimeBank) > playerOnTurn && g.Timers.TimeBank[playerOnTurn] >= deficit {
+			// Time bank covers it, no timeout
+			continue
+		}
+
+		// Time bank exhausted, player timed out!
+		gameID := g.Uuid.String
+		log.Debug().Str("gid", gameID).Int64("deficit", deficit).
+			Int64("timeBank", g.Timers.TimeBank[playerOnTurn]).
+			Msg("adjudicating-time-ran-out")
+
+		// Get the player ID from quickdata
+		if playerOnTurn < 0 || playerOnTurn >= len(g.Quickdata.PlayerInfo) {
+			log.Error().Str("gid", gameID).Int("playerOnTurn", playerOnTurn).Msg("invalid-player-on-turn")
+			continue
+		}
+		playerID := g.Quickdata.PlayerInfo[playerOnTurn].UserId
+
+		err = gameplay.TimedOut(ctx, b.stores, playerID, gameID)
+		log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+	}
+
+	log.Debug().Msg("exiting-correspondence-adjudication")
 	return nil
 }
 

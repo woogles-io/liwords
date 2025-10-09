@@ -9,6 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -28,6 +29,7 @@ type backingStore interface {
 	ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -240,6 +242,13 @@ func (c *Cache) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRespo
 // Don't cache correspondence game lists, always query DB.
 func (c *Cache) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
 	return c.backing.ListActiveCorrespondenceForUser(ctx, userID)
+}
+
+// ListActiveCorrespondenceRaw returns raw DB rows for correspondence games.
+// This is used by the adjudication process to check timeouts without loading full games.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	return c.backing.ListActiveCorrespondenceRaw(ctx)
 }
 
 func (c *Cache) Count(ctx context.Context) (int64, error) {
