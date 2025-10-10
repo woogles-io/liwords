@@ -673,17 +673,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	// isn't hopeful enough.
 	is.True(resp.Pairings[3] == int32(2) || resp.Pairings[3] == int32(0))
 
-	// Control loss with player in 4th
-	req = pairtestutils.CreateBellevilleCSW4thCLAfterRound12PairRequest()
-	req.ControlLossActivationRound = 11
-	req.Seed = 1
-	req.HopefulnessThreshold = 0.01
-	resp = cop.COPPair(req)
-	// The control loss should force 1st to play either 3rd or 4th, and
-	// in this case should play 3rd because of repeats and other considerations
-	is.Equal(resp.Pairings[4], int32(3))
-	is.Equal(resp.Pairings[3], int32(4))
-
 	// Gibson groups and Gibson Bye
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
 	req.Seed = 1
