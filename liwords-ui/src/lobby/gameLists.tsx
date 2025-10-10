@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Badge, Card, Button, Tag } from "antd";
+import { Badge, Card, Button } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
@@ -38,6 +39,7 @@ export const GameLists = React.memo((props: Props) => {
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [showCorresInfoModal, setShowCorresInfoModal] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
 
   const { addHandleContextMatch, removeHandleContextMatch } =
@@ -409,7 +411,14 @@ export const GameLists = React.memo((props: Props) => {
               }
             >
               <Badge count={correspondenceBadgeCount} offset={[10, 0]}>
-                Correspondence <Tag color="blue" style={{ marginLeft: '4px' }}>New!</Tag>
+                Correspondence{" "}
+                <QuestionCircleOutlined
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCorresInfoModal(true);
+                  }}
+                  style={{ fontSize: 12, marginLeft: 4, cursor: "pointer" }}
+                />
               </Badge>
             </div>
           ) : null}
@@ -419,6 +428,21 @@ export const GameLists = React.memo((props: Props) => {
           {seekModal}
           {matchModal}
           {botModal}
+          <Modal
+            title="About Correspondence Mode"
+            visible={showCorresInfoModal}
+            onCancel={() => setShowCorresInfoModal(false)}
+            footer={null}
+            width={500}
+          >
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              <p style={{ marginBottom: "8px" }}>
+                Correspondence mode allows you to play asynchronously with
+                multiple days per turn. Perfect for players who can't always
+                commit to real-time games!
+              </p>
+            </div>
+          </Modal>
         </div>
         {showingResumeButton && (
           <div className="enable-simultaneous-ignore-link">

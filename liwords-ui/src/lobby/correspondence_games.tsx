@@ -1,5 +1,5 @@
-import { Table, Tooltip, Alert } from "antd";
-import { FundOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { Table, Tooltip } from "antd";
+import { FundOutlined } from "@ant-design/icons";
 import React, { ReactNode, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
@@ -199,23 +199,6 @@ export const CorrespondenceGames = (props: Props) => {
 
   return (
     <>
-      <Alert
-        message="About Correspondence Mode"
-        description={
-          <>
-            <p style={{ marginBottom: "8px" }}>
-              Correspondence mode allows you to play asynchronously with
-              multiple days per turn. Perfect for players who can't always
-              commit to real-time games!
-            </p>
-          </>
-        }
-        type="info"
-        icon={<InfoCircleOutlined />}
-        showIcon
-        closable
-        style={{ marginBottom: "16px" }}
-      />
       {props.correspondenceSeeks.length > 0 && (
         <SoughtGames
           isMatch={true}

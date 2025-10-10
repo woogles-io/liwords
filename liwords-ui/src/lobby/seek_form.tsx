@@ -710,6 +710,7 @@ export const SeekForm = (props: Props) => {
               disabled={disableTimeControls}
               tooltip={{
                 formatter: initTimeFormatter,
+                placement: "right",
                 open:
                   disableTimeControls ||
                   (sliderTooltipVisible && usernameOptions.length === 0),
