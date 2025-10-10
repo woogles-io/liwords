@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router";
-import { Modal, Button, Alert } from "antd";
+import { Modal, Button, Alert, theme } from "antd";
 import {
   ClockCircleOutlined,
   FileTextOutlined,
@@ -29,6 +29,7 @@ type Props = {
 export const SeekConfirmModal = (props: Props) => {
   const { open, seek, onAccept, onCancel, userRatings } = props;
   const [showVariantInfo, setShowVariantInfo] = useState(false);
+  const { token } = theme.useToken();
 
   if (!seek) {
     return null;
@@ -209,7 +210,7 @@ export const SeekConfirmModal = (props: Props) => {
             <div
               style={{
                 padding: 12,
-                backgroundColor: "#f5f5f5",
+                backgroundColor: token.colorFillQuaternary,
                 borderRadius: 4,
                 fontSize: 13,
                 lineHeight: 1.6,

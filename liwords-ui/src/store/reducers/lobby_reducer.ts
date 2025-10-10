@@ -211,9 +211,11 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
         // If it's a correspondence open seek, add to both arrays (like match requests)
         if (soughtGame.gameMode === 1) {
-          const existingCorrespondenceSeeks = state.correspondenceSeeks.filter((sg) => {
-            return sg.seekID !== soughtGame.seekID;
-          });
+          const existingCorrespondenceSeeks = state.correspondenceSeeks.filter(
+            (sg) => {
+              return sg.seekID !== soughtGame.seekID;
+            },
+          );
           return {
             ...state,
             soughtGames: [...existingSoughtGames, soughtGame],

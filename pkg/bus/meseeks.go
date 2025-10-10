@@ -831,7 +831,7 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	return b.sendReceiverAbsent(ctx, req)
 }
 
-// shouldIncludeSeek filters a seek based on blocks, established rating, and followed players requirements.
+// shouldIncludeSeek filters a seek based on blocks, rating range, established rating, and followed players requirements.
 // Returns true if the seek should be shown to the receiver, false if it should be filtered out.
 func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, receiver *entity.User) bool {
 	if receiver == nil {
@@ -863,6 +863,32 @@ func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, rece
 	if block == 0 {
 		// Receiver is blocked by seeker
 		return false
+	}
+
+	// Check rating range (for open seeks only, not match requests)
+	if !sg.SeekRequest.ReceiverIsPermanent {
+		ratingKey, err := ratingKey(sg.SeekRequest.GameRequest)
+		if err != nil {
+			return false
+		}
+
+		seekerRating, err := seeker.GetRating(ratingKey)
+		if err != nil {
+			return false
+		}
+
+		receiverRating, err := receiver.GetRating(ratingKey)
+		if err != nil {
+			return false
+		}
+
+		// Check if receiver's rating is within the seeker's specified range
+		// MinimumRatingRange should be negative
+		minRating := seekerRating.Rating + float64(sg.SeekRequest.MinimumRatingRange)
+		maxRating := seekerRating.Rating + float64(sg.SeekRequest.MaximumRatingRange)
+		if receiverRating.Rating < minRating || receiverRating.Rating > maxRating {
+			return false
+		}
 	}
 
 	// Check if seek requires established rating

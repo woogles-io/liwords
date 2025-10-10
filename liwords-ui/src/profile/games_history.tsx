@@ -143,11 +143,20 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case GameEndReason.STANDARD:
           endReason = "Completed";
       }
-      const time = `${item.timeControlName} ${timeToString(
-        item.gameRequest?.initialTimeSeconds ?? 0,
-        item.gameRequest?.incrementSeconds ?? 0,
-        item.gameRequest?.maxOvertimeMinutes ?? 0,
-      )}`;
+      let time: string;
+      if (item.gameRequest?.gameMode === 1) {
+        // Correspondence game
+        const days = Math.floor(
+          (item.gameRequest?.initialTimeSeconds ?? 0) / 86400,
+        );
+        time = `Correspondence ${days} day${days !== 1 ? "s" : ""}/turn`;
+      } else {
+        time = `${item.timeControlName} ${timeToString(
+          item.gameRequest?.initialTimeSeconds ?? 0,
+          item.gameRequest?.incrementSeconds ?? 0,
+          item.gameRequest?.maxOvertimeMinutes ?? 0,
+        )}`;
+      }
       return {
         gameId: item.gameId, // used by rowKey
         details: getDetails(),

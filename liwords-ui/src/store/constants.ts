@@ -100,9 +100,17 @@ export const ratingKey = (
   maxOvertime: number,
   variant: string,
   lexicon: string,
+  gameMode?: number,
 ) => {
-  const a = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
-  const tfmt = a[1];
+  // Check if this is a correspondence game first
+  let tfmt: string;
+  if (gameMode === 1) {
+    // GameMode.CORRESPONDENCE = 1
+    tfmt = "corres";
+  } else {
+    const a = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+    tfmt = a[1];
+  }
   let lexVariant = lexicon;
   // These are just used for the hard-coded rating keys in the profile.
   if (lexicon.startsWith("NWL")) {

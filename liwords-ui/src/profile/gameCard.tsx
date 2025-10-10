@@ -128,11 +128,18 @@ export const GameCard = React.memo((props: GameCardProps) => {
       <Tag className={`ant-tag-${result.toLowerCase()}`}>{result}</Tag>
     </>
   );
-  const time = `${timeControlName} ${timeToString(
-    gameRequest?.initialTimeSeconds ?? 0,
-    gameRequest?.incrementSeconds ?? 0,
-    gameRequest?.maxOvertimeMinutes ?? 0,
-  )}`;
+  let time: string;
+  if (gameRequest?.gameMode === 1) {
+    // Correspondence game
+    const days = Math.floor((gameRequest?.initialTimeSeconds ?? 0) / 86400);
+    time = `Correspondence ${days} day${days !== 1 ? "s" : ""}/turn`;
+  } else {
+    time = `${timeControlName} ${timeToString(
+      gameRequest?.initialTimeSeconds ?? 0,
+      gameRequest?.incrementSeconds ?? 0,
+      gameRequest?.maxOvertimeMinutes ?? 0,
+    )}`;
+  }
   return (
     <Card
       className={`game-info ${result.toLowerCase()}`}

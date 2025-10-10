@@ -227,7 +227,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	defer g.Unlock()
 
 	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
-	if g.Playing() != macondopb.PlayState_PLAYING {
+	if g.Playing() == macondopb.PlayState_GAME_OVER {
 		return errors.New("game is over")
 	}
 

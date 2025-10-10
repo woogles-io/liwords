@@ -165,9 +165,12 @@ const myDisplayRating = (
   maxOvertime: number,
   variant: string,
   lexicon: string,
+  gameMode?: number,
 ) => {
   const r =
-    ratings[ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon)];
+    ratings[
+      ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon, gameMode)
+    ];
   if (r) {
     return Math.round(r.rating);
   }
@@ -363,6 +366,7 @@ export const SeekForm = (props: Props) => {
       selectedMaxOvertime,
       initialValues.variant,
       initialValues.lexicon,
+      initialValues.gameMode,
     ),
   );
   const [selections, setSelections] = useState<Store | null>(initialValues);
@@ -384,6 +388,55 @@ export const SeekForm = (props: Props) => {
   const handleDropdownVisibleChange = useCallback((open: boolean) => {
     setSliderTooltipVisible(!open);
   }, []);
+
+  // Update rating reactively when game mode or related settings change
+  useEffect(() => {
+    if (!selections) return;
+
+    let secs: number;
+    let incrementSecs: number;
+    let maxOvertime: number;
+
+    if (selections.gameMode === 1) {
+      // Correspondence mode
+      secs = (selections.correspondenceTimePerTurn as number) || 432000;
+      incrementSecs = 0;
+      maxOvertime = 0;
+    } else {
+      // Real-time mode
+      const sliderIndex =
+        selections.initialtimeslider ?? initialTimeMinutesToSlider(20);
+      secs = initTimeDiscreteScale[sliderIndex as number].seconds;
+      incrementSecs =
+        selections.incOrOT === "increment"
+          ? Math.round((selections.extratime as number) || 0)
+          : 0;
+      maxOvertime =
+        selections.incOrOT === "increment"
+          ? 0
+          : Math.round((selections.extratime as number) || 1);
+    }
+
+    const newRating = myDisplayRating(
+      lobbyContext.profile.ratings,
+      secs,
+      incrementSecs,
+      maxOvertime,
+      (selections.variant as string) || "classic",
+      selections.lexicon as string,
+      selections.gameMode as number,
+    );
+    setMyRating(newRating);
+  }, [
+    selections?.gameMode,
+    selections?.correspondenceTimePerTurn,
+    selections?.initialtimeslider,
+    selections?.incOrOT,
+    selections?.extratime,
+    selections?.variant,
+    selections?.lexicon,
+    lobbyContext.profile.ratings,
+  ]);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const [lexiconCopyright, setLexiconCopyright] = useState(
     AllLexica[initialValues.lexicon]?.longDescription,
@@ -431,7 +484,9 @@ export const SeekForm = (props: Props) => {
         setMaxTimeSetting(10);
         setExtraTimeLabel(otUnitLabel);
       }
-      secs = initTimeDiscreteScale[allvals.initialtimeslider].seconds;
+      const sliderIndex =
+        allvals.initialtimeslider ?? initialTimeMinutesToSlider(20);
+      secs = initTimeDiscreteScale[sliderIndex].seconds;
       incrementSecs =
         allvals.incOrOT === "increment"
           ? Math.round(allvals.extratime as number)
@@ -461,6 +516,7 @@ export const SeekForm = (props: Props) => {
         maxOvertime,
         allvals.variant || "classic",
         allvals.lexicon,
+        allvals.gameMode,
       ),
     );
     setHideChallengeRule(shouldHideChallengeRule);
@@ -711,9 +767,7 @@ export const SeekForm = (props: Props) => {
               tooltip={{
                 formatter: initTimeFormatter,
                 placement: "right",
-                open:
-                  disableTimeControls ||
-                  (sliderTooltipVisible && usernameOptions.length === 0),
+                open: true,
                 getPopupContainer: (triggerNode) =>
                   triggerNode.parentElement ?? document.body,
               }}
