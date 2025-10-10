@@ -391,30 +391,28 @@ export const SeekForm = (props: Props) => {
 
   // Update rating reactively when game mode or related settings change
   useEffect(() => {
-    if (!selections) return;
-
     let secs: number;
     let incrementSecs: number;
     let maxOvertime: number;
 
-    if (selections.gameMode === 1) {
+    if (selections?.gameMode === 1) {
       // Correspondence mode
-      secs = (selections.correspondenceTimePerTurn as number) || 432000;
+      secs = (selections?.correspondenceTimePerTurn as number) || 432000;
       incrementSecs = 0;
       maxOvertime = 0;
     } else {
       // Real-time mode
       const sliderIndex =
-        selections.initialtimeslider ?? initialTimeMinutesToSlider(20);
+        selections?.initialtimeslider ?? initialTimeMinutesToSlider(20);
       secs = initTimeDiscreteScale[sliderIndex as number].seconds;
       incrementSecs =
-        selections.incOrOT === "increment"
-          ? Math.round((selections.extratime as number) || 0)
+        selections?.incOrOT === "increment"
+          ? Math.round((selections?.extratime as number) || 0)
           : 0;
       maxOvertime =
-        selections.incOrOT === "increment"
+        selections?.incOrOT === "increment"
           ? 0
-          : Math.round((selections.extratime as number) || 1);
+          : Math.round((selections?.extratime as number) || 1);
     }
 
     const newRating = myDisplayRating(
@@ -422,9 +420,9 @@ export const SeekForm = (props: Props) => {
       secs,
       incrementSecs,
       maxOvertime,
-      (selections.variant as string) || "classic",
-      selections.lexicon as string,
-      selections.gameMode as number,
+      (selections?.variant as string) || "classic",
+      selections?.lexicon as string,
+      selections?.gameMode as number,
     );
     setMyRating(newRating);
   }, [
