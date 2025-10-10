@@ -671,7 +671,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	resp = cop.COPPair(req)
 	// The control loss should force 1st to play either 2nd or 3rd since 4th
 	// isn't hopeful enough.
-	fmt.Println(resp.Log)
 	is.True(resp.Pairings[3] == int32(2) || resp.Pairings[3] == int32(0))
 
 	// Control loss with player in 4th
@@ -680,6 +679,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.Seed = 1
 	req.HopefulnessThreshold = 0.01
 	resp = cop.COPPair(req)
+	fmt.Println(resp.Log)
 	// The control loss should force 1st to play either 3rd or 4th, and
 	// in this case should play 3rd because of repeats and other considerations
 	is.Equal(resp.Pairings[4], int32(3))

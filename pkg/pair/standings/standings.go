@@ -343,7 +343,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		}
 		reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
 	outerThresholdLoop:
-		for !simResultsReachedThreshold(results, playerIdxToRankIdx, ranksToCheck, totalSims, req.HopefulnessThreshold) {
+		for !simResultsReachedThreshold(results, ranksToCheck, totalSims, req.HopefulnessThreshold) {
 			for resimIdx := 0; resimIdx < resimBatchSize; resimIdx++ {
 				timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
 				if timeLimitExceeded {
@@ -671,7 +671,7 @@ func clopperPearson(k int, n int, alpha float64) (float64, float64) {
 }
 
 // Assumes n > 0
-func simResultsReachedThreshold(results [][]int, playerIdxToRankIdx map[int]int, ranksToCheck []int, n int, y float64) bool {
+func simResultsReachedThreshold(results [][]int, ranksToCheck []int, n int, y float64) bool {
 	numRanks := len(results)
 	N := numRanks * len(ranksToCheck)
 	alphaPer := (1 - simConfidence) / float64(N)
