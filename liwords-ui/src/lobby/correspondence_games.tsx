@@ -1,5 +1,5 @@
-import { Table, Tooltip } from "antd";
-import { FundOutlined } from "@ant-design/icons";
+import { Table, Tooltip, Alert } from "antd";
+import { FundOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import React, { ReactNode, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
@@ -9,6 +9,7 @@ import { VariantIcon } from "../shared/variant_icons";
 import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { useLoginStateStoreContext } from "../store/store";
 import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
+import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 
 type Props = {
   correspondenceGames: ActiveGame[];
@@ -16,6 +17,7 @@ type Props = {
   username?: string;
   userID?: string;
   newGame: (seekID: string) => void;
+  ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 
 export const CorrespondenceGames = (props: Props) => {
@@ -197,6 +199,23 @@ export const CorrespondenceGames = (props: Props) => {
 
   return (
     <>
+      <Alert
+        message="About Correspondence Mode"
+        description={
+          <>
+            <p style={{ marginBottom: "8px" }}>
+              Correspondence mode allows you to play asynchronously with
+              multiple days per turn. Perfect for players who can't always
+              commit to real-time games!
+            </p>
+          </>
+        }
+        type="info"
+        icon={<InfoCircleOutlined />}
+        showIcon
+        closable
+        style={{ marginBottom: "16px" }}
+      />
       {props.correspondenceSeeks.length > 0 && (
         <SoughtGames
           isMatch={true}
@@ -204,6 +223,7 @@ export const CorrespondenceGames = (props: Props) => {
           username={props.username}
           newGame={props.newGame}
           requests={props.correspondenceSeeks}
+          ratings={props.ratings}
         />
       )}
       <h4>My correspondence games</h4>

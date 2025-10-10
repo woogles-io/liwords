@@ -204,9 +204,23 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const soughtGame = action.payload as SoughtGame;
 
       if (!soughtGame.receiverIsPermanent) {
+        // Open seek
         const existingSoughtGames = state.soughtGames.filter((sg) => {
           return sg.seekID !== soughtGame.seekID;
         });
+
+        // If it's a correspondence open seek, add to both arrays (like match requests)
+        if (soughtGame.gameMode === 1) {
+          const existingCorrespondenceSeeks = state.correspondenceSeeks.filter((sg) => {
+            return sg.seekID !== soughtGame.seekID;
+          });
+          return {
+            ...state,
+            soughtGames: [...existingSoughtGames, soughtGame],
+            correspondenceSeeks: [...existingCorrespondenceSeeks, soughtGame],
+          };
+        }
+
         return {
           ...state,
           soughtGames: [...existingSoughtGames, soughtGame],
@@ -265,12 +279,22 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       const soughtGames = action.payload as Array<SoughtGame>;
       const seeks: SoughtGame[] = [];
       const matches: SoughtGame[] = [];
+      const correspondenceSeeks: SoughtGame[] = [];
 
       soughtGames.forEach(function (sg) {
         if (sg.receiverIsPermanent) {
           matches.push(sg);
+          // If correspondence match request, also add to correspondence seeks
+          if (sg.gameMode === 1) {
+            correspondenceSeeks.push(sg);
+          }
         } else {
+          // Open seek - always add to seeks array
           seeks.push(sg);
+          // If correspondence, also add to correspondenceSeeks (show in both tabs)
+          if (sg.gameMode === 1) {
+            correspondenceSeeks.push(sg);
+          }
         }
       });
 
@@ -280,11 +304,15 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       matches.sort((a, b) => {
         return a.userRating < b.userRating ? -1 : 1;
       });
+      correspondenceSeeks.sort((a, b) => {
+        return a.userRating < b.userRating ? -1 : 1;
+      });
 
       return {
         ...state,
         soughtGames: seeks,
         matchRequests: matches,
+        correspondenceSeeks,
       };
     }
 

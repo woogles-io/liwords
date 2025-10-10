@@ -345,7 +345,7 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 	return games, nil
 }
 
-// ListCorrespondenceSeeksForUser lists all correspondence match requests (incoming and outgoing) for a user.
+// ListCorrespondenceSeeksForUser lists all correspondence match requests and open seeks for a user.
 func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -353,8 +353,11 @@ func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID str
 	}
 	defer tx.Rollback(ctx)
 
-	// Get correspondence seeks where user is either seeker or receiver (game_mode = 1)
-	rows, err := tx.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1)`, userID)
+	// Get correspondence seeks where:
+	// - user is the seeker (their own open seeks or match requests)
+	// - user is the receiver (match requests sent to them)
+	// - open seeks available to all (receiver is empty)
+	rows, err := tx.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')`, userID)
 	if err != nil {
 		return nil, err
 	}

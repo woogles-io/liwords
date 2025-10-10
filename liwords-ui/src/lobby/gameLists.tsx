@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Badge, Card, Button } from "antd";
+import { Badge, Card, Button, Tag } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
@@ -109,6 +109,7 @@ export const GameLists = React.memo((props: Props) => {
           correspondenceGames={lobbyContext?.correspondenceGames || []}
           correspondenceSeeks={lobbyContext?.correspondenceSeeks || []}
           newGame={newGame}
+          ratings={lobbyContext?.profile?.ratings}
         />
       );
     }
@@ -191,14 +192,13 @@ export const GameLists = React.memo((props: Props) => {
       }, 500);
     }
     resetLobbyFilter(sg.lexicon);
-    // Auto-select appropriate tab after creating a match request
-    if (sg.receiver && sg.receiver.displayName) {
-      // If correspondence game (gameMode = 1), select CORRESPONDENCE tab; otherwise PLAY tab
-      if (sg.gameMode === 1) {
-        setSelectedGameTab("CORRESPONDENCE");
-      } else {
-        setSelectedGameTab("PLAY");
-      }
+    // Auto-select appropriate tab after creating a seek/match
+    if (sg.gameMode === 1) {
+      // Correspondence mode - select CORRESPONDENCE tab
+      setSelectedGameTab("CORRESPONDENCE");
+    } else if (sg.receiver && sg.receiver.displayName) {
+      // Real-time match request - select PLAY tab
+      setSelectedGameTab("PLAY");
     }
   };
   const seekModal = (
@@ -238,7 +238,7 @@ export const GameLists = React.memo((props: Props) => {
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={false}
-        showCorrespondenceMode={false}
+        showCorrespondenceMode={true}
       />
     </Modal>
   );
@@ -409,7 +409,7 @@ export const GameLists = React.memo((props: Props) => {
               }
             >
               <Badge count={correspondenceBadgeCount} offset={[10, 0]}>
-                Correspondence
+                Correspondence <Tag color="blue" style={{ marginLeft: '4px' }}>New!</Tag>
               </Badge>
             </div>
           ) : null}

@@ -1053,16 +1053,29 @@ func (b *Bus) correspondenceGamesForUser(ctx context.Context, userID string) (*e
 	return evt, nil
 }
 
-// correspondenceSeeksForUser returns all correspondence match requests for a specific user
+// correspondenceSeeksForUser returns all correspondence match requests and open seeks for a specific user
 func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*entity.EventWrapper, error) {
 	seeks, err := b.stores.SoughtGameStore.ListCorrespondenceSeeksForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
+	var receiver *entity.User
+	if !userIsAnon(userID) {
+		receiver, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	seekRequests := make([]*pb.SeekRequest, 0, len(seeks))
 	for _, seek := range seeks {
-		if seek.SeekRequest != nil {
+		if seek.SeekRequest == nil {
+			continue
+		}
+
+		// Use shared filtering logic (blocks, established rating, followed players)
+		if b.shouldIncludeSeek(ctx, seek, receiver) {
 			seekRequests = append(seekRequests, seek.SeekRequest)
 		}
 	}

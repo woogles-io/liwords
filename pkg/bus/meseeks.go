@@ -831,6 +831,66 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	return b.sendReceiverAbsent(ctx, req)
 }
 
+// shouldIncludeSeek filters a seek based on blocks, established rating, and followed players requirements.
+// Returns true if the seek should be shown to the receiver, false if it should be filtered out.
+func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, receiver *entity.User) bool {
+	if receiver == nil {
+		// No receiver to filter for, include the seek
+		return true
+	}
+
+	// Get the seeker
+	seeker, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
+	if err != nil {
+		return false
+	}
+
+	// Always show seekers their own seeks (don't apply filters to your own seeks)
+	if seeker.UUID == receiver.UUID {
+		return true
+	}
+
+	// Always show match requests where you're the receiver (don't apply filters to direct matches)
+	if sg.SeekRequest.ReceivingUser != nil && sg.SeekRequest.ReceivingUser.UserId == receiver.UUID {
+		return true
+	}
+
+	// Check for blocks
+	block, err := b.blockExists(ctx, seeker, receiver)
+	if err != nil {
+		return false
+	}
+	if block == 0 {
+		// Receiver is blocked by seeker
+		return false
+	}
+
+	// Check if seek requires established rating
+	if sg.SeekRequest.RequireEstablishedRating {
+		ratingKey, err := ratingKey(sg.SeekRequest.GameRequest)
+		if err != nil {
+			return false
+		}
+		rating, err := receiver.GetRating(ratingKey)
+		if err != nil || rating.RatingDeviation > entity.RatingDeviationConfidence {
+			return false
+		}
+	}
+
+	// Check if seek is only for followed players
+	if sg.SeekRequest.OnlyFollowedPlayers {
+		isFollowed, err := b.stores.UserStore.IsFollowing(ctx, seeker.ID, receiver.ID)
+		if err != nil {
+			return false
+		}
+		if !isFollowed {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
 	sgs, err := b.stores.SoughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
 	if err != nil {
@@ -851,50 +911,7 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {
-		seeker, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
-		if err != nil {
-			return nil, err
-		}
-
-		block := -1
-		if receiver != nil {
-			block, err = b.blockExists(ctx, seeker, receiver)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// only append game if the receiver is not being blocked
-		if block != 0 {
-			// Check if seek requires established rating
-			if sg.SeekRequest.RequireEstablishedRating && receiver != nil {
-				ratingKey, err := ratingKey(sg.SeekRequest.GameRequest)
-				if err != nil {
-					return nil, err
-				}
-				rating, err := receiver.GetRating(ratingKey)
-				if err != nil || rating.RatingDeviation > entity.RatingDeviationConfidence {
-					continue // Skip this seek
-				}
-			}
-
-			// Check if seek is only for followed players
-			if sg.SeekRequest.OnlyFollowedPlayers && receiver != nil {
-				seekerUser, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
-				if err != nil {
-					return nil, err
-				}
-
-				isFollowed, err := b.stores.UserStore.IsFollowing(ctx, seekerUser.ID, receiver.ID)
-				if err != nil {
-					return nil, err
-				}
-
-				if !isFollowed {
-					continue // Skip this seek - receiver is not followed by seeker
-				}
-			}
-
+		if b.shouldIncludeSeek(ctx, sg, receiver) {
 			pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 		}
 	}

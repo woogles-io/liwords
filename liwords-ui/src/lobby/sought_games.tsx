@@ -6,7 +6,7 @@ import {
   TablePaginationConfig,
 } from "antd/lib/table/interface";
 import React, { ReactNode, useCallback, useMemo, useState } from "react";
-import { FundOutlined, ExportOutlined } from "@ant-design/icons";
+import { FundOutlined, ExportOutlined, TeamOutlined } from "@ant-design/icons";
 import {
   calculateTotalTime,
   challRuleToStr,
@@ -234,6 +234,7 @@ export const SoughtGames = (props: Props) => {
         return true;
       })
       .map((sg: SoughtGame): SoughtGameTableData => {
+        const outgoing = sg.seeker === props.username;
         const getDetails = () => {
           return (
             <>
@@ -244,10 +245,20 @@ export const SoughtGames = (props: Props) => {
                   <FundOutlined />
                 </Tooltip>
               ) : null}
+              {!sg.receiverIsPermanent && sg.onlyFollowedPlayers ? (
+                <Tooltip
+                  title={
+                    outgoing
+                      ? "Only visible to players you follow"
+                      : "Only shown to followed players"
+                  }
+                >
+                  <TeamOutlined />
+                </Tooltip>
+              ) : null}
             </>
           );
         };
-        const outgoing = sg.seeker === props.username;
         return {
           seeker: outgoing ? (
             <Popconfirm
