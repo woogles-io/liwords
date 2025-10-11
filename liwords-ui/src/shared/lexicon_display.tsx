@@ -9,6 +9,7 @@ type Props = {
   disabled?: boolean;
   hideRequired?: boolean;
   additionalLexica?: Array<string>;
+  onDropdownVisibleChange?: (open: boolean) => void;
 };
 
 export const MatchLexiconDisplay = (props: {
@@ -78,7 +79,12 @@ export const LexiconFormItem = React.memo((props: Props) => {
       ]}
     >
       {/* i don't know why this z-index is 1100 (see app.scss). reset here, figure out later */}
-      <Select disabled={props.disabled} listHeight={300} style={{ zIndex: 0 }}>
+      <Select
+        disabled={props.disabled}
+        listHeight={300}
+        style={{ zIndex: 0 }}
+        onDropdownVisibleChange={props.onDropdownVisibleChange}
+      >
         {options}
       </Select>
     </Form.Item>

@@ -119,6 +119,7 @@ type Props = {
   vsBot: boolean;
   exitableExaminer?: boolean;
   changeCurrentRack?: (rack: MachineWord, evtIdx: number) => void;
+  gameMode?: number;
 };
 
 export const BoardPanel = React.memo((props: Props) => {
@@ -1116,12 +1117,16 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [sendMetaEvent]);
   const showAbort = useMemo(() => {
     // This hardcoded number is also on the backend.
+    const isCorrespondence = props.gameMode === 1;
+    if (isCorrespondence) return false;
     return !props.vsBot && gameContext.turns.length <= 7;
-  }, [gameContext.turns, props.vsBot]);
+  }, [gameContext.turns, props.vsBot, props.gameMode]);
   const showNudge = useMemo(() => {
     // Only show nudge if this is not a tournament/club game and it's not our turn.
+    const isCorrespondence = props.gameMode === 1;
+    if (isCorrespondence) return false;
     return !isMyTurn && !props.vsBot && props.tournamentID === "";
-  }, [isMyTurn, props.tournamentID, props.vsBot]);
+  }, [isMyTurn, props.tournamentID, props.vsBot, props.gameMode]);
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
   const nonDirectorAnalyzerDisallowed =

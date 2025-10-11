@@ -47,6 +47,8 @@ func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
 		"channel.>",
 		// NEW: efficient presence change notifications
 		"presence.changed.>",
+		// Efficient seek notifications to followed users
+		"seek.followed.>",
 	}
 	pubSub := &PubSub{
 		natsconn:      natsconn,
@@ -191,6 +193,16 @@ func (h *Hub) PubsubProcess() {
 			}
 			userID := subtopics[2]
 			h.handlePresenceChanged(userID, msg.Data)
+
+		case msg := <-h.pubsub.subchans["seek.followed.>"]:
+			log.Debug().Str("topic", msg.Subject).Msg("seek-followed")
+			subtopics := strings.Split(msg.Subject, ".")
+			if len(subtopics) < 3 {
+				log.Error().Msgf("seek.followed subtopics weird %v", msg.Subject)
+				continue
+			}
+			seekerUserID := subtopics[2]
+			h.handleSeekFollowed(seekerUserID, msg.Data)
 		}
 
 	}

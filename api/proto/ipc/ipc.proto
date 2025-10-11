@@ -62,8 +62,9 @@ enum MessageType {
   // a byte long.
   OMGWORDS_GAMEPLAY_EVENT = 44;
   OMGWORDS_GAMEDOCUMENT = 45;
-
   TOURNAMENT_PLAYER_CHECKIN = 46;
+  OUR_CORRESPONDENCE_GAMES = 47;
+  OUR_CORRESPONDENCE_SEEKS = 48;
 }
 
 message RegisterRealmRequest {

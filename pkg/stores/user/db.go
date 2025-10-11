@@ -526,6 +526,15 @@ func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, 
 	return entUsers, nil
 }
 
+// IsFollowing checks if followerID is following userID.
+func (s *DBStore) IsFollowing(ctx context.Context, followerID, userID uint) (bool, error) {
+	var exists bool
+	err := s.dbPool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM followings WHERE follower_id = $1 AND user_id = $2)`,
+		followerID, userID).Scan(&exists)
+	return exists, err
+}
+
 func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {

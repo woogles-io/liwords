@@ -150,6 +150,8 @@ const MsgTypesMap = {
   [MessageType.TIMED_OUT]: TimedOutSchema,
   [MessageType.ONGOING_GAME_EVENT]: GameInfoResponseSchema,
   [MessageType.ONGOING_GAMES]: GameInfoResponsesSchema,
+  [MessageType.OUR_CORRESPONDENCE_GAMES]: GameInfoResponsesSchema,
+  [MessageType.OUR_CORRESPONDENCE_SEEKS]: SeekRequestsSchema,
   [MessageType.GAME_DELETION]: GameDeletionSchema,
   [MessageType.MATCH_REQUESTS]: SeekRequestsSchema,
   [MessageType.DECLINE_SEEK_REQUEST]: DeclineSeekRequestSchema,
@@ -506,6 +508,28 @@ export const useOnSocketMsg = () => {
               anon: up.isAnonymous,
               deleting: up.deleting,
             });
+
+            // Show chat messages for game channel presence changes (opponent only)
+            if (
+              up.channel.startsWith("chat.game.") &&
+              up.userId !== loginState.userID
+            ) {
+              if (up.deleting) {
+                addChat({
+                  entityType: ChatEntityType.ErrorMsg,
+                  sender: "",
+                  message: "Opponent is no longer in this room.",
+                  channel: "server",
+                });
+              } else {
+                addChat({
+                  entityType: ChatEntityType.ServerMsg,
+                  sender: "",
+                  message: "Opponent has returned to this room.",
+                  channel: "server",
+                });
+              }
+            }
             break;
           }
 
@@ -856,22 +880,34 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.ONGOING_GAME_EVENT: {
-            // lobby context, add active game
+            // lobby context, add or update active/correspondence game
             const gme = parsedMsg as GameInfoResponse;
             const activeGame = GameInfoResponseToActiveGame(gme);
             if (!activeGame) {
               return;
             }
-            const dispatchFn = tournamentContext.metadata?.id
-              ? dispatchTournamentContext
-              : dispatchLobbyContext;
-            dispatchFn({
-              actionType: ActionType.AddActiveGame,
-              payload: {
-                activeGame,
-                loginState,
-              },
-            });
+
+            // For correspondence games, use UpdateCorrespondenceGame to handle updates
+            if (activeGame.gameMode === 1) {
+              dispatchLobbyContext({
+                actionType: ActionType.UpdateCorrespondenceGame,
+                payload: {
+                  correspondenceGame: activeGame,
+                },
+              });
+            } else {
+              // For regular games, use the existing AddActiveGame logic
+              const dispatchFn = tournamentContext.metadata?.id
+                ? dispatchTournamentContext
+                : dispatchLobbyContext;
+              dispatchFn({
+                actionType: ActionType.AddActiveGame,
+                payload: {
+                  activeGame,
+                  loginState,
+                },
+              });
+            }
             break;
           }
 
@@ -905,6 +941,38 @@ export const useOnSocketMsg = () => {
                   GameInfoResponseToActiveGame(g),
                 ),
                 loginState,
+              },
+            });
+            break;
+          }
+
+          case MessageType.OUR_CORRESPONDENCE_GAMES: {
+            const corresGames = parsedMsg as GameInfoResponses;
+            console.log("got correspondence games", corresGames);
+
+            dispatchLobbyContext({
+              actionType: ActionType.AddCorrespondenceGames,
+              payload: {
+                correspondenceGames: corresGames.gameInfo.map((g) =>
+                  GameInfoResponseToActiveGame(g),
+                ),
+              },
+            });
+            break;
+          }
+
+          case MessageType.OUR_CORRESPONDENCE_SEEKS: {
+            const corresSeeks = parsedMsg as SeekRequests;
+            console.log("got correspondence seeks", corresSeeks);
+
+            const soughtGames = corresSeeks.requests
+              .map((req) => SeekRequestToSoughtGame(req))
+              .filter((sg) => sg !== null);
+
+            dispatchLobbyContext({
+              actionType: ActionType.SetCorrespondenceSeeks,
+              payload: {
+                correspondenceSeeks: soughtGames,
               },
             });
             break;

@@ -52,6 +52,7 @@ export const sendSeek = (
   gr.rules = rules;
   gr.ratingMode = game.rated ? RatingMode.RATED : RatingMode.CASUAL;
   gr.playerVsBot = game.playerVsBot;
+  gr.gameMode = game.gameMode ?? 0;
   if (game.playerVsBot) {
     gr.botType = BotTypesEnumProperties[game.botType].botCode(game.lexicon);
   }
@@ -59,6 +60,8 @@ export const sendSeek = (
   sr.userState = SeekState.READY;
   sr.minimumRatingRange = game.minRatingRange;
   sr.maximumRatingRange = game.maxRatingRange;
+  sr.requireEstablishedRating = game.requireEstablishedRating || false;
+  sr.onlyFollowedPlayers = game.onlyFollowedPlayers || false;
 
   if (!game.receiverIsPermanent) {
     sr.gameRequest = gr;

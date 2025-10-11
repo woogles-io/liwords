@@ -96,6 +96,10 @@ message GameRequest {
   bool player_vs_bot = 10;
   string original_request_id = 11;
   macondo.BotRequest.BotCode bot_type = 12;
+  // time_bank_minutes is the number of minutes of time bank for correspondence games.
+  // When a player exceeds their per-turn time (increment_seconds), the deficit is
+  // deducted from their time bank. Player times out only when time bank is exhausted.
+  int32 time_bank_minutes = 13;
 }
 
 // GameMetaEvent defines how we serialize meta events to the database.
@@ -214,6 +218,9 @@ message GameInfoResponse {
   // a game index within a round.
   int32 tournament_game_index = 22;
   GameType type = 23;
+  // Index of the player whose turn it is (0 or 1). Optional for backwards
+  // compatibility.
+  optional uint32 player_on_turn = 24;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
@@ -420,6 +427,10 @@ message Timers {
   bool reset_to_increment_after_turn = 6;
   // If untimed is true, then Timers are not updated at all.
   bool untimed = 7;
+  // time_bank is an array of time bank per player, in milliseconds.
+  // Used for correspondence/league games. Once time_remaining reaches 0,
+  // time is deducted from time_bank. Player only loses when both are exhausted.
+  repeated int64 time_bank = 8;
 }
 
 message MetaEventData { repeated GameMetaEvent events = 1; }

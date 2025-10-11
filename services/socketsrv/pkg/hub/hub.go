@@ -92,6 +92,9 @@ func NewHub(cfg *config.Config) (*Hub, error) {
 	// Initialize followers cache
 	InitFollowersCache(cfg.FollowersCacheSize, cfg.FollowersCacheTTL)
 
+	// Initialize follows cache (uses same config as followers cache)
+	InitFollowsCache(cfg.FollowersCacheSize, cfg.FollowersCacheTTL)
+
 	return &Hub{
 		// broadcast:         make(chan []byte),
 		broadcastRealm:  make(chan RealmMessage),
@@ -305,11 +308,13 @@ func (h *Hub) Run() {
 			atomic.StoreInt64(&lastReportedRequestCount, currentRequests)
 			atomic.StoreInt64(&lastReportedDataBytes, currentDataBytes)
 
-			cacheLen := GetCacheStats()
+			followersCacheLen := GetCacheStats()
+			followsCacheLen := GetFollowsCacheStats()
 			log.Info().Int("num-conns", len(h.clients)).
 				Int("num-users", len(h.clientsByUserID)).
 				Int("num-realms", len(h.realms)).
-				Int("cache-entries", cacheLen).
+				Int("followers-cache-entries", followersCacheLen).
+				Int("follows-cache-entries", followsCacheLen).
 				Int64("followers-api-requests-per-min", requestsPerMin).
 				Int64("followers-api-bytes-per-min", dataBytesPerMin).
 				Msg("conn-stats")
@@ -491,4 +496,59 @@ func (h *Hub) handlePresenceChanged(userID string, data []byte) {
 		Int("total_followers", len(followers)).
 		Bool("cache_hit", cacheHit).
 		Msg("presence-changed-processed")
+}
+
+func (h *Hub) handleSeekFollowed(seekerUserID string, data []byte) {
+	log.Debug().Str("seekerUserID", seekerUserID).Msg("handling-seek-followed")
+
+	// Try to get follows from cache first
+	follows, found := GetFollows(seekerUserID)
+	var cacheHit bool
+
+	if !found {
+		// Cache miss - request follows from main service
+		req := &pb.GetFollowsRequest{
+			UserId: seekerUserID,
+		}
+		reqData, err := proto.Marshal(req)
+		if err != nil {
+			log.Err(err).Msg("marshal-get-follows-request")
+			return
+		}
+
+		resp, err := h.pubsub.natsconn.Request("ipc.request.getFollows", reqData, ipcTimeout)
+		if err != nil {
+			log.Err(err).Str("seekerUserID", seekerUserID).Msg("get-follows-request-failed")
+			return
+		}
+
+		followsResp := &pb.GetFollowsResponse{}
+		err = proto.Unmarshal(resp.Data, followsResp)
+		if err != nil {
+			log.Err(err).Msg("unmarshal-get-follows-response")
+			return
+		}
+
+		follows = followsResp.FollowUserIds
+		// Cache the result for future requests
+		CacheFollows(seekerUserID, follows)
+		cacheHit = false
+	} else {
+		cacheHit = true
+	}
+
+	btsToSend := entity.BytesFromSerializedEvent(data, byte(pb.MessageType_SEEK_REQUEST))
+
+	// Send seek notification to the seeker themselves (so they see their own seek)
+	h.sendToUser(seekerUserID, btsToSend)
+
+	// Send seek notification to all users that the seeker follows
+	for _, followedUserID := range follows {
+		h.sendToUser(followedUserID, btsToSend)
+	}
+
+	log.Debug().Str("seekerUserID", seekerUserID).
+		Int("total_follows", len(follows)).
+		Bool("cache_hit", cacheHit).
+		Msg("seek-followed-processed")
 }

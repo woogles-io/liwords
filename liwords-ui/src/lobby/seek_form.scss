@@ -58,8 +58,11 @@
       color: m($gray-extreme);
     }
   }
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
   .ant-form-item-with-help {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
   }
   dl {
     @include colorModed() {
@@ -105,9 +108,12 @@
       width: auto;
     }
   }
-
-  .initial {
-    margin-top: 48px;
+  .ant-input-number {
+    height: 32px;
+    .ant-input-number-input {
+      height: 30px;
+      padding: 4px 11px;
+    }
   }
   .ant-form-item .ant-form-item-label {
     text-align: left;
@@ -161,6 +167,31 @@
     border: 0;
     font-size: 13px;
     text-transform: none;
+  }
+
+  .advanced-field {
+    @include colorModed() {
+      background: m($off-background);
+      border-left: 3px solid m($primary-dark);
+    }
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    .ant-form-item {
+      margin-bottom: 0;
+    }
+  }
+
+  .form-section-header {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    @include colorModed() {
+      color: m($primary-midDark);
+    }
   }
 }
 

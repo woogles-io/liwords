@@ -41,6 +41,8 @@ type Store interface {
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
 	// GetFollowedBy gets all the users that are following the passed-in user DB ID.
 	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
+	// IsFollowing checks if followerID is following userID.
+	IsFollowing(ctx context.Context, followerID, userID uint) (bool, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error

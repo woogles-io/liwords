@@ -41,14 +41,6 @@ export const Secret = React.memo(() => {
     setBlindfold((x) => !x);
   }, []);
 
-  const [variantsEnabled, setVariantsEnabled] = useState(
-    localStorage?.getItem("enableVariants") === "true",
-  );
-  const toggleVariants = useCallback(() => {
-    const useVariants = localStorage?.getItem("enableVariants") !== "true";
-    localStorage.setItem("enableVariants", useVariants ? "true" : "false");
-    setVariantsEnabled((x) => !x);
-  }, []);
   const [showEquityLoss, setShowEquityLoss] = useState(
     localStorage?.getItem("enableShowEquityLoss") === "true",
   );
@@ -144,17 +136,6 @@ export const Secret = React.memo(() => {
                 defaultChecked={enableAllLexicons}
                 onChange={toggleEnableAllLexicons}
                 className="dark-toggle"
-              />
-            </div>
-          </div>
-          <div className="toggle-section">
-            <div className="title">Variants</div>
-            <div>
-              <div>Enable Variants, such as WordSmog and ZOMGWords</div>
-              <Switch
-                defaultChecked={variantsEnabled}
-                onChange={toggleVariants}
-                className="variants-toggle"
               />
             </div>
           </div>

@@ -13,6 +13,12 @@ export enum ActionType {
   AddActiveGames,
   RemoveActiveGame,
 
+  AddCorrespondenceGame,
+  AddCorrespondenceGames,
+  RemoveCorrespondenceGame,
+  UpdateCorrespondenceGame,
+  SetCorrespondenceSeeks,
+
   setLobbyFilterByLexicon,
 
   // XXX: should move somewhere else?

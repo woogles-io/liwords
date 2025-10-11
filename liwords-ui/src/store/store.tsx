@@ -220,6 +220,8 @@ const LobbyContext = createContext<LobbyStoreData>({
   lobbyContext: {
     soughtGames: [],
     activeGames: [],
+    correspondenceGames: [],
+    correspondenceSeeks: [],
     matchRequests: [],
     profile: { ratings: {} },
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),
@@ -779,6 +781,8 @@ const RealStore = ({ children, ...props }: Props) => {
   const [lobbyContext, setLobbyContext] = useState<LobbyState>({
     soughtGames: [],
     activeGames: [],
+    correspondenceGames: [],
+    correspondenceSeeks: [],
     matchRequests: [],
     profile: { ratings: {} },
     lobbyFilterByLexicon: localStorage.getItem("lobbyFilterByLexicon"),

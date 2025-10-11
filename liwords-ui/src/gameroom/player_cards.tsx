@@ -13,8 +13,13 @@ import "./scss/playerCards.scss";
 import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { useBriefProfile } from "../utils/brief_profiles";
-import { GameInfoResponse, PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  GameInfoResponse,
+  GameMode,
+  PlayerInfo,
+} from "../gen/api/proto/ipc/omgwords_pb";
 import { MachineLetter } from "../utils/cwgame/common";
+import { CorrespondenceTimer } from "./correspondence_timer";
 
 import variables from "../base.module.scss";
 import { DisplayUserBadges } from "../profile/badge";
@@ -29,6 +34,8 @@ type CardProps = {
   score: number;
   spread: number;
   hideProfileLink?: boolean;
+  isCorrespondence?: boolean;
+  timeBank?: number | bigint;
 };
 
 const timepenalty = (time: Millis) => {
@@ -97,9 +104,19 @@ const PlayerCard = React.memo((props: CardProps) => {
             {props.score}
           </Button>
         </Tooltip>
-        <Button className="timer" type="primary">
-          {timeStr}
-        </Button>
+        {props.isCorrespondence ? (
+          <div className="correspondence-timer-wrapper">
+            <CorrespondenceTimer
+              timeRemaining={props.time}
+              timeBank={props.timeBank}
+              isOnTurn={props.player?.onturn ?? false}
+            />
+          </div>
+        ) : (
+          <Button className="timer" type="primary">
+            {timeStr}
+          </Button>
+        )}
       </Row>
     </div>
   );
@@ -147,13 +164,19 @@ export const PlayerCards = React.memo((props: Props) => {
 
   const initialTimeSeconds =
     (props.gameMeta.gameRequest?.initialTimeSeconds ?? 0) * 1000;
-  let p0Time = examinableTimerContext.p0;
-  if (p0Time === Infinity) p0Time = initialTimeSeconds;
-  let p1Time = examinableTimerContext.p1;
-  if (p1Time === Infinity) p1Time = initialTimeSeconds;
 
   const playing = examinableGameContext.playState !== PlayState.GAME_OVER;
-  const applyTimePenalty = !isExamining && playing;
+  const isCorrespondence =
+    props.gameMeta.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+
+  // Use timer context for both real-time and correspondence games
+  // setClock updates this on every move event, so it stays current
+  let p0Time: number = examinableTimerContext.p0;
+  if (p0Time === Infinity) p0Time = initialTimeSeconds;
+  let p1Time: number = examinableTimerContext.p1;
+  if (p1Time === Infinity) p1Time = initialTimeSeconds;
+
+  const applyTimePenalty = !isExamining && playing && !isCorrespondence;
   let p0Score = p0?.score ?? 0;
   if (applyTimePenalty) p0Score -= timepenalty(p0Time);
   let p1Score = p1?.score ?? 0;
@@ -176,6 +199,8 @@ export const PlayerCards = React.memo((props: Props) => {
         spread={p0Spread}
         playing={playing}
         hideProfileLink={props.hideProfileLink}
+        isCorrespondence={isCorrespondence}
+        timeBank={undefined}
       />
       <PlayerCard
         player={p1}
@@ -186,6 +211,8 @@ export const PlayerCards = React.memo((props: Props) => {
         spread={-p0Spread}
         playing={playing}
         hideProfileLink={props.hideProfileLink}
+        isCorrespondence={isCorrespondence}
+        timeBank={undefined}
       />
     </Card>
   );

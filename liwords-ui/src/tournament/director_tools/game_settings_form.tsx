@@ -125,7 +125,7 @@ export const SettingsForm = (props: Props) => {
       gr.maxOvertimeMinutes = values.extratime;
     }
     gr.challengeRule = values.challengerule;
-    gr.gameMode = GameMode.REAL_TIME;
+    gr.gameMode = GameMode.REAL_TIME; // Hardcoded to REAL_TIME for clubs
     gr.ratingMode = values.rated ? RatingMode.RATED : RatingMode.CASUAL;
     props.setGameRequest(gr);
   };

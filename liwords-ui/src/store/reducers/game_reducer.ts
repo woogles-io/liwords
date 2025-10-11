@@ -89,6 +89,9 @@ export type GameState = {
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
   refresherCount?: number; // Track number of GameRefreshers received
+  // Raw timer values from GameHistoryRefresher (for correspondence games)
+  timePlayer1?: number;
+  timePlayer2?: number;
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -689,6 +692,10 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
 
       // Increment the refresher count
       newState.refresherCount = (state.refresherCount || 0) + 1;
+
+      // Store raw timer values from GameHistoryRefresher
+      newState.timePlayer1 = ghr.timePlayer1;
+      newState.timePlayer2 = ghr.timePlayer2;
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
