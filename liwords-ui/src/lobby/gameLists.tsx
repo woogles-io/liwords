@@ -92,15 +92,27 @@ export const GameLists = React.memo((props: Props) => {
   const matchButtonText = "Match a friend";
 
   // Calculate badge count for correspondence games where it's user's turn
+  // plus incoming correspondence match requests
   const correspondenceBadgeCount = React.useMemo(() => {
-    if (!userID) return 0;
+    if (!userID || !username) return 0;
 
-    return lobbyContext.correspondenceGames.filter((ag: ActiveGame) => {
+    // Count games where it's user's turn
+    const yourTurnCount = lobbyContext.correspondenceGames.filter((ag: ActiveGame) => {
       if (ag.playerOnTurn === undefined) return false;
       const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
       return playerIndex === ag.playerOnTurn;
     }).length;
-  }, [lobbyContext.correspondenceGames, userID]);
+
+    // Count incoming correspondence match requests (where user is the receiver)
+    const incomingMatchRequestCount = (lobbyContext.correspondenceSeeks || []).filter((sg: SoughtGame) => {
+      // Only count match requests (not open seeks)
+      if (!sg.receiverIsPermanent) return false;
+      // Only count where user is the receiver
+      return sg.receiver?.displayName === username || sg.receiver?.userId === userID;
+    }).length;
+
+    return yourTurnCount + incomingMatchRequestCount;
+  }, [lobbyContext.correspondenceGames, lobbyContext.correspondenceSeeks, userID, username]);
 
   const renderGames = () => {
     if (selectedGameTab === "CORRESPONDENCE") {

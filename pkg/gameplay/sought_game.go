@@ -9,7 +9,11 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
-var errAlreadyOpenReq = errors.New("You already have an open match or seek request")
+var (
+	errAlreadyOpenReq                = errors.New("You already have an open match or seek request")
+	errCannotMixCorrespondenceRealtime = errors.New("You cannot create a correspondence match while you have a real-time seek open, or vice versa")
+	errCannotMixSeekAndMatch          = errors.New("You cannot create a match request while you have an open seek, or vice versa")
+)
 
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {
@@ -20,6 +24,7 @@ type SoughtGameStore interface {
 	ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
 	ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
+	CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error)
 	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	UpdateForReceiver(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	DeleteForSeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
@@ -31,12 +36,33 @@ type SoughtGameStore interface {
 func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 	req *pb.SeekRequest) (*entity.SoughtGame, error) {
 
-	exists, err := gameStore.ExistsForUser(ctx, req.User.UserId)
+	// Determine receiver ID (empty string for open seeks)
+	receiverID := ""
+	if req.ReceivingUser != nil {
+		receiverID = req.ReceivingUser.UserId
+	}
+
+	// Determine game mode (default to REAL_TIME if not specified)
+	gameMode := pb.GameMode_REAL_TIME
+	if req.GameRequest != nil {
+		gameMode = req.GameRequest.GameMode
+	}
+
+	// Check if user can create this seek/match
+	canCreate, conflictType, err := gameStore.CanCreateSeek(ctx, req.User.UserId, gameMode, receiverID)
 	if err != nil {
 		return nil, err
 	}
-	if exists {
-		return nil, errAlreadyOpenReq
+	if !canCreate {
+		// Return a more specific error based on the conflict type
+		switch conflictType {
+		case "has_open_seek":
+			return nil, errCannotMixSeekAndMatch
+		case "has_realtime_seek":
+			return nil, errCannotMixCorrespondenceRealtime
+		default:
+			return nil, errAlreadyOpenReq
+		}
 	}
 
 	sg := entity.NewSoughtGame(req)

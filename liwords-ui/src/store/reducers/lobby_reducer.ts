@@ -209,7 +209,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
           return sg.seekID !== soughtGame.seekID;
         });
 
-        // If it's a correspondence open seek, add to both arrays (like match requests)
+        // If it's a correspondence open seek, add to correspondenceSeeks as well
         if (soughtGame.gameMode === 1) {
           const existingCorrespondenceSeeks = state.correspondenceSeeks.filter(
             (sg) => {
@@ -233,7 +233,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
           return sg.seekID !== soughtGame.seekID;
         });
 
-        // If it's a correspondence match, also add it to correspondenceSeeks
+        // If it's a correspondence match, ONLY add to correspondenceSeeks (not matchRequests)
         if (soughtGame.gameMode === 1) {
           const existingCorrespondenceSeeks = state.correspondenceSeeks.filter(
             (sg) => {
@@ -242,11 +242,12 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
           );
           return {
             ...state,
-            matchRequests: [...existingMatchRequests, soughtGame],
+            matchRequests: existingMatchRequests, // Don't add correspondence matches to matchRequests
             correspondenceSeeks: [...existingCorrespondenceSeeks, soughtGame],
           };
         }
 
+        // Real-time match requests go to matchRequests only
         return {
           ...state,
           matchRequests: [...existingMatchRequests, soughtGame],
@@ -285,10 +286,13 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
       soughtGames.forEach(function (sg) {
         if (sg.receiverIsPermanent) {
-          matches.push(sg);
-          // If correspondence match request, also add to correspondence seeks
+          // Match request
           if (sg.gameMode === 1) {
+            // Correspondence match - ONLY add to correspondenceSeeks
             correspondenceSeeks.push(sg);
+          } else {
+            // Real-time match - add to matchRequests
+            matches.push(sg);
           }
         } else {
           // Open seek - always add to seeks array

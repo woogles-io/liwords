@@ -159,6 +159,11 @@ func (b *Bus) newSeekRequest(ctx context.Context, auth, userID, connID string,
 			return nil
 		}
 		req.ReceivingUser.UserId = receiver.UUID
+
+		// Prevent users from matching themselves
+		if receiver.UUID == reqUser.UserId {
+			return errors.New("you cannot match yourself")
+		}
 	}
 
 	sg, err := gameplay.NewSoughtGame(ctx, b.stores.SoughtGameStore, req)

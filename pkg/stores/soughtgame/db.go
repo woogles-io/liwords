@@ -399,6 +399,73 @@ func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error
 	return exists, nil
 }
 
+// CanCreateSeek returns true if the user can create a new seek/match request.
+// For correspondence match requests, multiple can exist simultaneously.
+// For all other types (real-time or open seeks), only one can exist at a time.
+// Returns (canCreate, conflictType, error) where conflictType indicates what kind of conflict exists.
+func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return false, "", err
+	}
+	defer tx.Rollback(ctx)
+
+	// Check if user has any existing seeks
+	var count int
+	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM soughtgames WHERE seeker = $1`, userID).Scan(&count)
+	if err != nil {
+		return false, "", err
+	}
+
+	// If no existing seeks, always allow
+	if count == 0 {
+		if err := tx.Commit(ctx); err != nil {
+			return false, "", err
+		}
+		return true, "", nil
+	}
+
+	// If this is a correspondence match request (receiver != '' AND game_mode = 1)
+	isCorrespondenceMatch := gameMode == pb.GameMode_CORRESPONDENCE && receiverID != ""
+
+	if !isCorrespondenceMatch {
+		// For real-time or open seeks, don't allow if any existing seeks exist
+		if err := tx.Commit(ctx); err != nil {
+			return false, "", err
+		}
+		return false, "has_other_seek", nil
+	}
+
+	// For correspondence match requests, check what kind of conflicts exist
+	var hasOpenSeek int
+	var hasRealtimeSeek int
+	err = tx.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE receiver = ''),
+			COUNT(*) FILTER (WHERE game_mode IS NULL OR game_mode != 1)
+		FROM soughtgames
+		WHERE seeker = $1
+	`, userID).Scan(&hasOpenSeek, &hasRealtimeSeek)
+	if err != nil {
+		return false, "", err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, "", err
+	}
+
+	// Determine conflict type
+	if hasOpenSeek > 0 {
+		return false, "has_open_seek", nil
+	}
+	if hasRealtimeSeek > 0 {
+		return false, "has_realtime_seek", nil
+	}
+
+	// All existing seeks are correspondence matches, allow
+	return true, "", nil
+}
+
 // UserMatchedBy returns true if there is an open seek request from matcher for user
 func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
