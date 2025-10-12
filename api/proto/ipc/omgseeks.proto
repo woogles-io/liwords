@@ -44,6 +44,8 @@ message SeekRequest {
   string tournament_id = 12;
   bool receiver_is_permanent = 13;
   string rating_key = 14;
+  bool require_established_rating = 15;
+  bool only_followed_players = 16;
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)

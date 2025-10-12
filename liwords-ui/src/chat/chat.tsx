@@ -671,68 +671,6 @@ export const Chat = React.memo((props: Props) => {
       defaultChannel?.startsWith("chat.game.") ? defaultChannel : undefined,
     [defaultChannel],
   );
-  const gameChannelPresenceCount = useMemo(
-    () =>
-      gameChannel
-        ? presences.reduce(
-            (count, p) => count + +!!(p.channel === gameChannel),
-            0,
-          )
-        : 0,
-    [presences, gameChannel],
-  );
-  const [laggedGameChannelPresenceCount, setLaggedGameChannelPresenceCount] =
-    useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      // lag this update to allow opponent to refresh the window.
-      setLaggedGameChannelPresenceCount(gameChannelPresenceCount);
-    }, 5000);
-    return () => {
-      clearTimeout(t);
-    };
-  }, [gameChannelPresenceCount]);
-  const prevGameChannelPresenceRef = useRef<{
-    channel: string | undefined;
-    count: number;
-  }>({ channel: undefined, count: 0 });
-
-  useEffect(() => {
-    if (gameChannel) {
-      // Initialize tracking for new game channel
-      if (prevGameChannelPresenceRef.current.channel !== gameChannel) {
-        prevGameChannelPresenceRef.current = {
-          channel: gameChannel,
-          count: laggedGameChannelPresenceCount,
-        };
-      }
-      // Check for presence changes in the current game channel
-      else if (prevGameChannelPresenceRef.current.channel === gameChannel) {
-        const countDiff =
-          laggedGameChannelPresenceCount -
-          prevGameChannelPresenceRef.current.count;
-
-        if (countDiff > 0) {
-          addChat({
-            entityType: ChatEntityType.ServerMsg,
-            sender: "",
-            message: "Opponent has returned to this room.",
-            channel: "server",
-          });
-        } else if (countDiff < 0) {
-          addChat({
-            entityType: ChatEntityType.ErrorMsg,
-            sender: "",
-            message: "Opponent is no longer in this room.",
-            channel: "server",
-          });
-        }
-
-        prevGameChannelPresenceRef.current.count =
-          laggedGameChannelPresenceCount;
-      }
-    }
-  }, [addChat, gameChannel, laggedGameChannelPresenceCount]);
   const peopleOnlineCounter = useMemo(
     () =>
       channel?.startsWith("chat.gametv.")

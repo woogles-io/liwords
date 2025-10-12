@@ -6,7 +6,7 @@ import {
   TablePaginationConfig,
 } from "antd/lib/table/interface";
 import React, { ReactNode, useCallback, useMemo, useState } from "react";
-import { FundOutlined, ExportOutlined } from "@ant-design/icons";
+import { FundOutlined, ExportOutlined, TeamOutlined } from "@ant-design/icons";
 import {
   calculateTotalTime,
   challRuleToStr,
@@ -16,22 +16,31 @@ import {
 import {
   SoughtGame,
   matchesRatingFormula,
+  hasEstablishedRating,
 } from "../store/reducers/lobby_reducer";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { RatingBadge } from "./rating_badge";
 import { VariantIcon } from "../shared/variant_icons";
-import { MatchLexiconDisplay } from "../shared/lexicon_display";
+import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useLobbyStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 import { DisplayUserBadges } from "../profile/badge";
+import { SeekConfirmModal } from "./seek_confirm_modal";
+import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
 export const timeFormat = (
   initialTimeSecs: number,
   incrementSecs: number,
   maxOvertime: number,
+  gameMode?: number,
 ): string => {
+  // Check if this is a correspondence game
+  if (gameMode === 1) {
+    return "Correspondence";
+  }
+
   const label = timeCtrlToDisplayName(
     initialTimeSecs,
     incrementSecs,
@@ -76,6 +85,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
 
 type Props = {
   isMatch?: boolean;
+  isClubMatch?: boolean;
   newGame: (seekID: string) => void;
   userID?: string;
   username?: string;
@@ -83,9 +93,13 @@ type Props = {
   ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 export const SoughtGames = (props: Props) => {
-  const [cancelVisible, setCancelVisible] = useState(false);
+  const [cancelVisibleSeekID, setCancelVisibleSeekID] = useState<string | null>(
+    null,
+  );
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [selectedSeek, setSelectedSeek] = useState<SoughtGame | null>(null);
   const {
-    lobbyContext: { lobbyFilterByLexicon },
+    lobbyContext: { lobbyFilterByLexicon, profile },
     dispatchLobbyContext,
   } = useLobbyStoreContext();
   const lobbyFilterByLexiconArray = useMemo(
@@ -112,17 +126,7 @@ export const SoughtGames = (props: Props) => {
       className: "lexicon",
       dataIndex: "lexicon",
       key: "lexicon",
-      filters: [
-        "CSW24",
-        "NWL23",
-        "ECWL",
-        "RD29",
-        "FRA24",
-        "FILE2017",
-        "NSF25",
-        "DISC2",
-        "OSPS50",
-      ].map((l) => ({
+      filters: lexiconOrder.map((l) => ({
         text: <MatchLexiconDisplay lexiconCode={l} />,
         value: l,
       })),
@@ -190,6 +194,22 @@ export const SoughtGames = (props: Props) => {
     details?: ReactNode;
     outgoing: boolean;
     seekID: string;
+    soughtGame: SoughtGame; // Keep reference to full object
+  };
+
+  // Group games by variant
+  const groupGamesByVariant = (
+    games: SoughtGameTableData[],
+  ): { [variant: string]: SoughtGameTableData[] } => {
+    const grouped: { [variant: string]: SoughtGameTableData[] } = {};
+    games.forEach((game) => {
+      const variant = normalizeVariant(game.soughtGame.variant || "classic");
+      if (!grouped[variant]) {
+        grouped[variant] = [];
+      }
+      grouped[variant].push(game);
+    });
+    return grouped;
   };
 
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
@@ -199,12 +219,23 @@ export const SoughtGames = (props: Props) => {
           // If we are the seeker, or if it's a match request, always show it.
           return true;
         }
-        if (props.ratings && matchesRatingFormula(sg, props.ratings)) {
-          return true;
+
+        // Check rating range
+        if (!props.ratings || !matchesRatingFormula(sg, props.ratings)) {
+          return false;
         }
-        return false;
+
+        // Check established rating requirement
+        if (sg.requireEstablishedRating && props.ratings) {
+          if (!hasEstablishedRating(props.ratings, sg.ratingKey)) {
+            return false;
+          }
+        }
+
+        return true;
       })
       .map((sg: SoughtGame): SoughtGameTableData => {
+        const outgoing = sg.seeker === props.username;
         const getDetails = () => {
           return (
             <>
@@ -215,28 +246,37 @@ export const SoughtGames = (props: Props) => {
                   <FundOutlined />
                 </Tooltip>
               ) : null}
+              {!sg.receiverIsPermanent && sg.onlyFollowedPlayers ? (
+                <Tooltip
+                  title={
+                    outgoing
+                      ? "Only visible to players you follow"
+                      : "Only shown to followed players"
+                  }
+                >
+                  <TeamOutlined />
+                </Tooltip>
+              ) : null}
             </>
           );
         };
-        const outgoing = sg.seeker === props.username;
         return {
           seeker: outgoing ? (
             <Popconfirm
               title="Do you want to cancel this game?"
               onConfirm={() => {
                 props.newGame(sg.seekID);
-                setCancelVisible(false);
+                setCancelVisibleSeekID(null);
               }}
               okText="Yes"
               cancelText="No"
               onCancel={() => {
-                console.log("trying", setCancelVisible, cancelVisible);
-                setCancelVisible(false);
+                setCancelVisibleSeekID(null);
               }}
               onOpenChange={(visible) => {
-                setCancelVisible(visible);
+                setCancelVisibleSeekID(visible ? sg.seekID : null);
               }}
-              open={cancelVisible}
+              open={cancelVisibleSeekID === sg.seekID}
             >
               <div>
                 <ExportOutlined />
@@ -253,6 +293,7 @@ export const SoughtGames = (props: Props) => {
             sg.initialTimeSecs,
             sg.incrementSecs,
             sg.maxOvertimeMinutes,
+            sg.gameMode,
           ),
           totalTime: calculateTotalTime(
             sg.initialTimeSecs,
@@ -263,40 +304,209 @@ export const SoughtGames = (props: Props) => {
           outgoing,
           seekID: sg.seekID,
           lexiconCode: sg.lexicon,
+          soughtGame: sg,
         };
       });
     return gameData;
   };
 
+  // Get formatted and grouped data
+  const formattedGames = formatGameData(props.requests);
+  const groupedGames = groupGamesByVariant(formattedGames);
+
+  // Define variant order: classic, wordsmog, classic_super
+  const variantOrder = ["classic", "wordsmog", "classic_super"];
+  const sortedVariants = Object.keys(groupedGames).sort((a, b) => {
+    const indexA = variantOrder.indexOf(a);
+    const indexB = variantOrder.indexOf(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
+  // Club match rendering
+  type ClubMatchTableData = {
+    players: ReactNode;
+    lexicon: ReactNode;
+    gameDetails: ReactNode;
+    actions: ReactNode;
+    key: string;
+    isMine: boolean;
+  };
+
+  const formatClubMatchData = (games: SoughtGame[]): ClubMatchTableData[] => {
+    return games.map((sg: SoughtGame): ClubMatchTableData => {
+      const isMatcher = sg.seeker === props.username;
+      const isReceiver = sg.receiver?.displayName === props.username;
+
+      const players = (
+        <div>
+          <p>{sg.seeker}</p>
+          <p>{sg.receiver?.displayName || "Waiting for opponent..."}</p>
+        </div>
+      );
+
+      const lexicon = <MatchLexiconDisplay lexiconCode={sg.lexicon} />;
+
+      const gameDetails = (
+        <div>
+          <div>
+            {timeFormat(
+              sg.initialTimeSecs,
+              sg.incrementSecs,
+              sg.maxOvertimeMinutes,
+              sg.gameMode,
+            )}
+          </div>
+          <div>
+            <VariantIcon vcode={sg.variant} />{" "}
+            {challengeFormat(sg.challengeRule)}
+            {sg.rated && (
+              <Tooltip title="Rated">
+                {" "}
+                <FundOutlined />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+      );
+
+      const actions = isMatcher ? (
+        <Popconfirm
+          title="Do you want to cancel this match request?"
+          onConfirm={() => {
+            props.newGame(sg.seekID);
+          }}
+          okText="Yes"
+          cancelText="No"
+        >
+          <button className="secondary">Cancel</button>
+        </Popconfirm>
+      ) : isReceiver ? (
+        <button
+          className="primary"
+          onClick={() => {
+            props.newGame(sg.seekID);
+          }}
+        >
+          Ready
+        </button>
+      ) : null;
+
+      return {
+        players,
+        lexicon,
+        gameDetails,
+        actions,
+        key: sg.seekID,
+        isMine: isMatcher || isReceiver,
+      };
+    });
+  };
+
+  const clubMatchColumns = [
+    {
+      title: "Players",
+      dataIndex: "players",
+      key: "players",
+      className: "players",
+    },
+    {
+      title: "Words",
+      dataIndex: "lexicon",
+      key: "lexicon",
+      className: "lexicon",
+    },
+    {
+      title: "Game Details",
+      dataIndex: "gameDetails",
+      key: "gameDetails",
+      className: "game-details",
+    },
+    {
+      title: " ",
+      dataIndex: "actions",
+      key: "actions",
+      className: "actions",
+    },
+  ];
+
+  if (props.isClubMatch) {
+    const clubMatchData = formatClubMatchData(props.requests);
+    return (
+      <>
+        <h4>Match requests</h4>
+        <Table
+          className="pairings club-match"
+          dataSource={clubMatchData}
+          columns={clubMatchColumns}
+          pagination={false}
+          rowKey="key"
+          showSorterTooltip={false}
+          rowClassName={(record) => {
+            if (record.isMine) {
+              return "game-listing mine";
+            }
+            return "game-listing";
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
 
-      <Table
-        className={`games ${props.isMatch ? "match" : "seek"}`}
-        dataSource={formatGameData(props.requests)}
-        columns={columns}
-        pagination={false}
-        rowKey="seekID"
-        showSorterTooltip={false}
-        onRow={(record) => {
-          return {
-            onClick: () => {
-              if (!record.outgoing) {
-                props.newGame(record.seekID);
-              } else if (!cancelVisible) {
-                setCancelVisible(true);
+      {sortedVariants.map((variant) => (
+        <React.Fragment key={variant}>
+          <VariantSectionHeader variant={variant} />
+          <Table
+            className={`games ${props.isMatch ? "match" : "seek"}`}
+            dataSource={groupedGames[variant]}
+            columns={columns}
+            pagination={false}
+            rowKey="seekID"
+            showSorterTooltip={false}
+            onRow={(record) => {
+              return {
+                onClick: () => {
+                  if (!record.outgoing) {
+                    // Show confirmation modal for all incoming game requests
+                    setSelectedSeek(record.soughtGame);
+                    setConfirmModalVisible(true);
+                  } else if (cancelVisibleSeekID === null) {
+                    setCancelVisibleSeekID(record.seekID);
+                  }
+                },
+              };
+            }}
+            rowClassName={(record) => {
+              if (record.outgoing) {
+                return "game-listing outgoing";
               }
-            },
-          };
-        }}
-        rowClassName={(record) => {
-          if (record.outgoing) {
-            return "game-listing outgoing";
+              return "game-listing";
+            }}
+            onChange={handleChange}
+          />
+        </React.Fragment>
+      ))}
+
+      <SeekConfirmModal
+        open={confirmModalVisible}
+        seek={selectedSeek}
+        onAccept={() => {
+          if (selectedSeek) {
+            props.newGame(selectedSeek.seekID);
           }
-          return "game-listing";
+          setConfirmModalVisible(false);
+          setSelectedSeek(null);
         }}
-        onChange={handleChange}
+        onCancel={() => {
+          setConfirmModalVisible(false);
+          setSelectedSeek(null);
+        }}
+        userRatings={profile?.ratings || {}}
       />
     </>
   );

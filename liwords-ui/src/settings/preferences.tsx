@@ -14,6 +14,12 @@ import { DndProvider } from "react-dnd";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store/redux_store";
 import { setDarkMode } from "../store/theme";
+import {
+  getTurnNotificationPreference,
+  setTurnNotificationPreference,
+  requestNotificationPermission,
+  getNotificationPermissionState,
+} from "../utils/notifications";
 
 const previewTilesLayout = [
   "               ",
@@ -177,6 +183,13 @@ export const Preferences = React.memo(() => {
     initialPuzzleLexicon,
   );
 
+  const [turnNotifications, setTurnNotifications] = useState(
+    getTurnNotificationPreference(),
+  );
+  const [permissionState, setPermissionState] = useState(
+    getNotificationPermissionState(),
+  );
+
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
       .split(" ")
@@ -195,6 +208,73 @@ export const Preferences = React.memo(() => {
     localStorage.setItem("puzzleLexicon", lexicon);
     setPuzzleLexicon(lexicon);
   }, []);
+
+  // Auto-request permission on mount if not already decided
+  React.useEffect(() => {
+    const currentPermission = getNotificationPermissionState();
+
+    // If permission is default (not yet decided), auto-request
+    if (currentPermission === "default") {
+      requestNotificationPermission().then((granted) => {
+        if (granted) {
+          setTurnNotificationPreference(true);
+          setTurnNotifications(true);
+          setPermissionState("granted");
+        } else {
+          setPermissionState("denied");
+        }
+      });
+    } else if (currentPermission === "granted") {
+      // Check if user previously denied but then re-enabled in browser settings
+      // If so, and we don't have the preference set, auto-enable
+      const currentPref = getTurnNotificationPreference();
+      if (!currentPref) {
+        // Permission is granted but preference is off - could be newly granted
+        // Don't auto-enable in this case, let user control it
+      }
+      setPermissionState("granted");
+    } else {
+      setPermissionState(currentPermission);
+    }
+  }, []);
+
+  const handleTurnNotificationsChange = useCallback(
+    async (checked: boolean) => {
+      if (checked) {
+        const currentPermission = getNotificationPermissionState();
+
+        if (currentPermission === "denied") {
+          // Show alert about blocked permission
+          alert(
+            "Notifications are blocked. Please enable them in your browser settings.",
+          );
+          return;
+        }
+
+        if (currentPermission === "default") {
+          // Request permission first
+          const granted = await requestNotificationPermission();
+          if (granted) {
+            setTurnNotificationPreference(true);
+            setTurnNotifications(true);
+            setPermissionState("granted");
+          } else {
+            setTurnNotificationPreference(false);
+            setTurnNotifications(false);
+            setPermissionState("denied");
+          }
+        } else if (currentPermission === "granted") {
+          // Permission already granted, just update preference
+          setTurnNotificationPreference(true);
+          setTurnNotifications(true);
+        }
+      } else {
+        setTurnNotificationPreference(false);
+        setTurnNotifications(false);
+      }
+    },
+    [],
+  );
 
   const handleUserBoardChange = useCallback((boardStyle: string) => {
     const classes = document?.body?.className
@@ -307,6 +387,48 @@ export const Preferences = React.memo(() => {
                 onChange={(checked: boolean) => dispatch(setDarkMode(checked))}
                 className="dark-toggle"
               />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Turn notifications</div>
+            <div>
+              <div>
+                Get a notification when it's your turn (works when tab is
+                unfocused)
+              </div>
+              <Switch
+                checked={turnNotifications}
+                onChange={handleTurnNotificationsChange}
+                disabled={
+                  permissionState === "denied" ||
+                  permissionState === "unsupported"
+                }
+                className="notification-toggle"
+              />
+              {permissionState === "denied" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#ff4d4f" }}>
+                  Permission blocked.{" "}
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      alert(
+                        "To enable notifications:\n\n" +
+                          "Chrome/Edge: Click the lock icon in the address bar → Site settings → Notifications → Allow\n\n" +
+                          "Firefox: Click the lock icon → Clear permissions → Refresh page\n\n" +
+                          "Safari: Safari menu → Settings → Websites → Notifications → woogles.io → Allow",
+                      );
+                    }}
+                  >
+                    How to enable in browser settings
+                  </a>
+                </div>
+              )}
+              {permissionState === "unsupported" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#8c8c8c" }}>
+                  Your browser doesn't support notifications
+                </div>
+              )}
             </div>
           </div>
         </div>

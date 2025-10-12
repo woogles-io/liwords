@@ -78,7 +78,7 @@ func migrate(cfg *config.Config, pool *pgxpool.Pool, batchSize int) error {
 			Int32("last_id", lastID).
 			Int("batch_size", batchSize).
 			Msg("Executing query")
-		
+
 		rows, err := tx.Query(ctx, query, lastID, batchSize)
 		if err != nil {
 			tx.Rollback(ctx)

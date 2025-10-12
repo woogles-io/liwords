@@ -99,11 +99,11 @@ OFFSET @offset_games::integer;
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request
+    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn
 ) VALUES (
     @created_at, @updated_at, @uuid, @type, @player0_id, @player1_id,
     @ready_flag, @timers, @started, @game_end_reason, @winner_idx, @loser_idx,
-    @quickdata, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request
+    @quickdata, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request, @player_on_turn
 );
 
 -- name: UpdateGame :exec
@@ -123,7 +123,8 @@ UPDATE games SET
     tournament_data = @tournament_data,
     tournament_id = @tournament_id,
     ready_flag = @ready_flag,
-    game_request = @game_request
+    game_request = @game_request,
+    player_on_turn = @player_on_turn
 WHERE uuid = @uuid;
 
 -- name: CreateRawGame :exec
@@ -134,16 +135,36 @@ INSERT INTO games (
 );
 
 -- name: ListActiveGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id;
 
 -- name: ListActiveTournamentGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = @tournament_id::text
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id;
+
+-- name: ListActiveCorrespondenceGames :many
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+ORDER BY id;
+
+-- name: ListActiveCorrespondenceGamesForUser :many
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND (
+        player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+        OR player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+    )
 ORDER BY id;
 
 -- name: SetReady :one

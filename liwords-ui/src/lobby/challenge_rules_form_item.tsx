@@ -4,11 +4,15 @@ import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
 
 type Props = {
   disabled: boolean;
+  onDropdownVisibleChange?: (open: boolean) => void;
 };
 
 export const ChallengeRulesFormItem = (props: Props) => (
   <Form.Item label="Challenge rule" name="challengerule">
-    <Select disabled={props.disabled}>
+    <Select
+      disabled={props.disabled}
+      onDropdownVisibleChange={props.onDropdownVisibleChange}
+    >
       <Select.Option value={ChallengeRule.VOID}>
         Void{" "}
         <span className="hover-help">(All words are checked before play)</span>

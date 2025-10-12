@@ -46,16 +46,22 @@ func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, game.Variant, err
 	if gamereq.Rules == nil {
 		return "", "", errors.New("nil GameRequest rules")
 	}
-	totalTime := TotalTimeEstimate(gamereq)
 
-	if totalTime <= CutoffUltraBlitz {
-		timefmt = TCUltraBlitz
-	} else if totalTime <= CutoffBlitz {
-		timefmt = TCBlitz
-	} else if totalTime <= CutoffRapid {
-		timefmt = TCRapid
+	// Check if this is a correspondence game first
+	if gamereq.GameMode == pb.GameMode_CORRESPONDENCE {
+		timefmt = TCCorres
 	} else {
-		timefmt = TCRegular
+		totalTime := TotalTimeEstimate(gamereq)
+
+		if totalTime <= CutoffUltraBlitz {
+			timefmt = TCUltraBlitz
+		} else if totalTime <= CutoffBlitz {
+			timefmt = TCBlitz
+		} else if totalTime <= CutoffRapid {
+			timefmt = TCRapid
+		} else {
+			timefmt = TCRegular
+		}
 	}
 	var variant game.Variant
 	switch gamereq.Rules.VariantName {

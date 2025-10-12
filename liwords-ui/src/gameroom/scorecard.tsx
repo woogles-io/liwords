@@ -55,6 +55,7 @@ type Props = {
     comment: string,
   ) => Promise<void>;
   deleteComment?: (cid: string) => Promise<void>;
+  isCorrespondence?: boolean;
 };
 
 type turnProps = {
@@ -66,6 +67,7 @@ type turnProps = {
   alphabet: Alphabet;
   turnIndex: number;
   onOpenCommentsDrawer?: (turnIndex: number) => void;
+  isCorrespondence?: boolean;
 };
 
 type MoveEntityObj = {
@@ -154,7 +156,9 @@ const ScorecardTurn = (props: turnProps) => {
       oldScore = evts[0].cumulative - evts[0].score;
     }
     let timeRemaining = "";
+    // Don't show time for correspondence games
     if (
+      !props.isCorrespondence &&
       evts[0].type !== GameEvent_Type.END_RACK_PTS &&
       evts[0].type !== GameEvent_Type.END_RACK_PENALTY
     ) {
@@ -234,7 +238,13 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-  }, [props.board, props.playerMeta, props.turn, props.alphabet]);
+  }, [
+    props.board,
+    props.playerMeta,
+    props.turn,
+    props.alphabet,
+    props.isCorrespondence,
+  ]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -441,6 +451,7 @@ export const ScoreCard = React.memo((props: Props) => {
           alphabet={gameContext.alphabet}
           turnIndex={idx}
           onOpenCommentsDrawer={props.onOpenCommentsDrawer}
+          isCorrespondence={props.isCorrespondence}
         />
       );
     };

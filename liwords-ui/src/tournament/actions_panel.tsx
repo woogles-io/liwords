@@ -299,6 +299,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           {thisTournamentMatchRequests?.length ? (
             <SoughtGames
               isMatch={true}
+              isClubMatch={isClubType(tournamentContext.metadata?.type)}
               userID={userID}
               username={username}
               newGame={newGame}

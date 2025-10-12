@@ -9,6 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -26,6 +27,9 @@ type backingStore interface {
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -112,7 +116,9 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 }
 
 // Get gets a game from the cache.. it loads it into the cache if it's not there.
+// Correspondence games bypass the cache and always go to the DB.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
+	// Check if we already have it in cache (correspondence games won't be cached)
 	g, ok := c.cache.Get(id)
 	if ok && g != nil {
 		return g.(*entity.Game), nil
@@ -127,7 +133,8 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 	log.Info().Str("gameid", id).Msg("not-in-cache")
 	uncachedGame, err := c.backing.Get(ctx, id)
-	if err == nil {
+	if err == nil && !uncachedGame.IsCorrespondence() {
+		// Only add to cache if it's not a correspondence game
 		c.cache.Add(id, uncachedGame)
 	}
 	return uncachedGame, err
@@ -187,7 +194,10 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	if err != nil {
 		return err
 	}
-	c.cache.Add(gameID, game)
+	// Only add to cache if it's not a correspondence game
+	if !game.IsCorrespondence() {
+		c.cache.Add(gameID, game)
+	}
 	return nil
 }
 
@@ -204,7 +214,7 @@ func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*p
 
 func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error) {
 	c.RLock()
-	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
+	if time.Since(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")
 		c.RUnlock()
 		return c.activeGames, nil
@@ -220,6 +230,25 @@ func (c *Cache) listAllActive(ctx context.Context) (*pb.GameInfoResponses, error
 		c.Unlock()
 	}
 	return games, err
+}
+
+// ListActiveCorrespondence lists all active correspondence games.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error) {
+	return c.backing.ListActiveCorrespondence(ctx)
+}
+
+// ListActiveCorrespondenceForUser lists active correspondence games for a specific user.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
+	return c.backing.ListActiveCorrespondenceForUser(ctx, userID)
+}
+
+// ListActiveCorrespondenceRaw returns raw DB rows for correspondence games.
+// This is used by the adjudication process to check timeouts without loading full games.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	return c.backing.ListActiveCorrespondenceRaw(ctx)
 }
 
 func (c *Cache) Count(ctx context.Context) (int64, error) {

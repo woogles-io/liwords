@@ -127,6 +127,17 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
 	}
+
+	// Auto-start correspondence games immediately (skip ready flag)
+	if gameReq.GameMode == pb.GameMode_CORRESPONDENCE {
+		log.Debug().Str("gameID", g.GameID()).Msg("auto-starting-correspondence-game")
+		err = gameplay.StartGame(ctx, b.stores, b.gameEventChan, g)
+		if err != nil {
+			log.Err(err).Msg("auto-starting-correspondence-game")
+			return err
+		}
+	}
+
 	// This event will result in a redirect.
 	seekerConnID, err := sg.SeekerConnID()
 	if err != nil {
@@ -216,7 +227,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	defer g.Unlock()
 
 	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
-	if g.Playing() != macondopb.PlayState_PLAYING {
+	if g.Playing() == macondopb.PlayState_GAME_OVER {
 		return errors.New("game is over")
 	}
 
@@ -444,16 +455,25 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	return nil
 }
 
-func (b *Bus) adjudicateGames(ctx context.Context) error {
+func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) error {
 	// Always bust the cache when we're adjudicating games.
 
-	gs, err := b.stores.GameStore.ListActive(ctx, "", true)
+	if correspondenceOnly {
+		// Optimized path for correspondence games - check timeouts without loading full games
+		return b.adjudicateCorrespondenceGames(ctx)
+	}
+
+	// Original path for realtime games
+	var gs *pb.GameInfoResponses
+	var err error
+
+	gs, err = b.stores.GameStore.ListActive(ctx, "", true)
 
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
+	log.Debug().Bool("correspondence", correspondenceOnly).Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs.GameInfo {
 		// These will likely be in the cache.
 		entGame, err := b.stores.GameStore.Get(ctx, g.GameId)
@@ -470,36 +490,115 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
-		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
-			log.Debug().Str("gid", g.GameId).
-				Str("tid", g.TournamentId).
-				Interface("now", now).
-				Interface("created", entGame.CreatedAt).
-				Msg("canceling-never-started")
+		} else if !started && !entGame.IsCorrespondence() {
+			// Only real-time games can be "not started" - correspondence games
+			// are auto-started immediately when accepted, so they never enter this state.
+			cancelThreshold := CancelAfter // 60 seconds for real-time
 
-				// need to lock game to abort? maybe lock inside AbortGame?
-			log.Debug().Str("gid", g.GameId).Msg("locking")
-			entGame.Lock()
-			err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
-			log.Err(err).Msg("adjudicating-after-abort-game")
-			entGame.Unlock()
-			log.Debug().Str("gid", g.GameId).Msg("unlocking")
+			if now.Sub(entGame.CreatedAt) > cancelThreshold {
+				log.Debug().Str("gid", g.GameId).
+					Str("tid", g.TournamentId).
+					Str("threshold", cancelThreshold.String()).
+					Bool("correspondence", entGame.IsCorrespondence()).
+					Interface("now", now).
+					Interface("created", entGame.CreatedAt).
+					Msg("canceling-never-started")
 
-			// Delete the game from the lobby. We do this here instead
-			// of inside the gameplay package because the game event channel
-			// was never registered with an unstarted game.
-			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
-				pb.MessageType_GAME_DELETION)
-			wrapped.AddAudience(entity.AudLobby, "gameEnded")
-			// send it to the tournament channel too if it's in one
-			if g.TournamentId != "" {
-				wrapped.AddAudience(entity.AudTournament, g.TournamentId)
+					// need to lock game to abort? maybe lock inside AbortGame?
+				log.Debug().Str("gid", g.GameId).Msg("locking")
+				entGame.Lock()
+				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
+				log.Err(err).Msg("adjudicating-after-abort-game")
+				entGame.Unlock()
+				log.Debug().Str("gid", g.GameId).Msg("unlocking")
+
+				// Delete the game from the lobby. We do this here instead
+				// of inside the gameplay package because the game event channel
+				// was never registered with an unstarted game.
+				wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
+					pb.MessageType_GAME_DELETION)
+				wrapped.AddAudience(entity.AudLobby, "gameEnded")
+				// send it to the tournament channel too if it's in one
+				if g.TournamentId != "" {
+					wrapped.AddAudience(entity.AudTournament, g.TournamentId)
+				}
+				b.gameEventChan <- wrapped
 			}
-			b.gameEventChan <- wrapped
 		}
 	}
 	log.Debug().Interface("active-games", gs).Msg("exiting-adjudication...")
 
+	return nil
+}
+
+// adjudicateCorrespondenceGames is an optimized version for correspondence games
+// that checks for timeouts without loading the full game from the database.
+func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
+	// Get active correspondence games with timers
+	games, err := b.stores.GameStore.ListActiveCorrespondenceRaw(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UnixMilli()
+	log.Debug().Int("num-games", len(games)).Msg("adjudicating-correspondence-games")
+
+	for _, g := range games {
+		// Skip if not started
+		if !g.Started.Valid || !g.Started.Bool {
+			continue
+		}
+
+		// Skip if no player on turn (shouldn't happen but be defensive)
+		if !g.PlayerOnTurn.Valid {
+			continue
+		}
+
+		playerOnTurn := int(g.PlayerOnTurn.Int32)
+
+		// Check if time ran out using only DB columns
+		// This mirrors the logic in entity.Game.TimeRanOut()
+
+		// Skip annotated games
+		if g.Type.Valid && g.Type.Int32 == int32(pb.GameType_ANNOTATED) {
+			continue
+		}
+
+		// For correspondence games, check time bank before declaring timeout
+		// Correspondence games use ResetToIncrementAfterTurn behavior
+		turnTime := now - g.Timers.TimeOfLastUpdate
+		allowedTime := int64(g.GameRequest.IncrementSeconds) * 1000
+
+		// If within allowed time, no timeout
+		if turnTime <= allowedTime {
+			continue
+		}
+
+		// Player took too long, check if time bank can cover the deficit
+		deficit := turnTime - allowedTime
+		if len(g.Timers.TimeBank) > playerOnTurn && g.Timers.TimeBank[playerOnTurn] >= deficit {
+			// Time bank covers it, no timeout
+			continue
+		}
+
+		// Time bank exhausted, player timed out!
+		gameID := g.Uuid.String
+		log.Debug().Str("gid", gameID).Int64("deficit", deficit).
+			Int64("timeBank", g.Timers.TimeBank[playerOnTurn]).
+			Msg("adjudicating-time-ran-out")
+
+		// Get the player ID from quickdata
+		if playerOnTurn < 0 || playerOnTurn >= len(g.Quickdata.PlayerInfo) {
+			log.Error().Str("gid", gameID).Int("playerOnTurn", playerOnTurn).Msg("invalid-player-on-turn")
+			continue
+		}
+		playerID := g.Quickdata.PlayerInfo[playerOnTurn].UserId
+
+		err = gameplay.TimedOut(ctx, b.stores, playerID, gameID)
+		log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+	}
+
+	log.Debug().Msg("exiting-correspondence-adjudication")
 	return nil
 }
 

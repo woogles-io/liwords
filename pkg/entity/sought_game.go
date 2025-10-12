@@ -128,20 +128,48 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req == nil {
 		return errors.New("game request is missing")
 	}
-	if req.InitialTimeSeconds < 15 {
-		return errors.New("the initial time must be at least 15 seconds")
-	}
-	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 10 {
-		return errors.New("overtime minutes must be between 0 and 10")
-	}
-	if req.IncrementSeconds < 0 {
-		return errors.New("you cannot have a negative time increment")
-	}
-	if req.IncrementSeconds > 60 {
-		return errors.New("time increment must be at most 60 seconds")
-	}
-	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
-		return errors.New("you can have increments or max overtime, but not both")
+
+	// Correspondence games have different time limits
+	if req.GameMode == pb.GameMode_CORRESPONDENCE {
+		if req.InitialTimeSeconds < 3600 { // 1 hour minimum
+			return errors.New("correspondence games must have at least 1 hour initial time")
+		}
+		if req.InitialTimeSeconds > 432000 { // 5 days maximum
+			return errors.New("correspondence games cannot exceed 5 days per turn")
+		}
+		// For correspondence, max overtime should be 0 (use time bank instead)
+		if req.MaxOvertimeMinutes != 0 {
+			return errors.New("correspondence games cannot use max overtime")
+		}
+		// Validate time bank for correspondence games
+		if req.TimeBankMinutes < 0 {
+			return errors.New("time bank minutes cannot be negative")
+		}
+		// Optional: set a reasonable max for time bank (e.g., 30 days = 43200 minutes)
+		if req.TimeBankMinutes > 43200 {
+			return errors.New("time bank cannot exceed 30 days")
+		}
+	} else {
+		// Real-time game validation
+		if req.InitialTimeSeconds < 15 {
+			return errors.New("the initial time must be at least 15 seconds")
+		}
+		if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 10 {
+			return errors.New("overtime minutes must be between 0 and 10")
+		}
+		if req.IncrementSeconds < 0 {
+			return errors.New("you cannot have a negative time increment")
+		}
+		if req.IncrementSeconds > 60 {
+			return errors.New("time increment must be at most 60 seconds")
+		}
+		if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
+			return errors.New("you can have increments or max overtime, but not both")
+		}
+		// Real-time games should not use time bank
+		if req.TimeBankMinutes != 0 {
+			return errors.New("only correspondence games can use time bank")
+		}
 	}
 
 	// Modify the game request if the variant calls for it.

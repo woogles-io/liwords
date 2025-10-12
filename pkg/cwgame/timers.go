@@ -62,6 +62,15 @@ func timeRanOut(gdoc *ipc.GameDocument, nower Nower, pidx uint32) bool {
 		return false
 	}
 	tr := gdoc.Timers.TimeRemaining[pidx] - (nower.Now() - gdoc.Timers.TimeOfLastUpdate)
+
+	// Check time bank if main time expired
+	if tr < 0 && len(gdoc.Timers.TimeBank) > int(pidx) {
+		timeBank := gdoc.Timers.TimeBank[pidx]
+		// Only ran out if both main time and time bank are exhausted
+		totalTime := tr + timeBank
+		return totalTime < 0
+	}
+
 	return tr < (-int64(gdoc.Timers.MaxOvertime) * 60000)
 }
 
@@ -89,6 +98,21 @@ func calculateAndSetTimeRemaining(gdoc *ipc.GameDocument, now int64, pidx uint32
 	if applyIncrement {
 		gdoc.Timers.TimeRemaining[pidx] += (int64(gdoc.Timers.IncrementSeconds) * 1000)
 	}
+
+	// Handle time bank deduction if time went negative
+	if gdoc.Timers.TimeRemaining[pidx] < 0 && len(gdoc.Timers.TimeBank) > int(pidx) {
+		deficit := -gdoc.Timers.TimeRemaining[pidx]
+		if gdoc.Timers.TimeBank[pidx] >= deficit {
+			// Time bank can cover the deficit
+			gdoc.Timers.TimeBank[pidx] -= deficit
+			gdoc.Timers.TimeRemaining[pidx] = 0
+		} else {
+			// Time bank cannot cover the deficit, time bank exhausted
+			gdoc.Timers.TimeRemaining[pidx] = -(deficit - gdoc.Timers.TimeBank[pidx])
+			gdoc.Timers.TimeBank[pidx] = 0
+		}
+	}
+
 	// Cap the overtime, because auto-passing always happens after time has expired.
 	maxOvertimeMs := gdoc.Timers.MaxOvertime * 60000
 	if gdoc.Timers.TimeRemaining[pidx] < int64(-maxOvertimeMs) {

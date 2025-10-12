@@ -32,10 +32,11 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval     = 10 * time.Second
-	GamesCounterInterval   = 60 * time.Minute
-	SeeksExpireInterval    = 10 * time.Minute
-	ChannelMonitorInterval = 5 * time.Second
+	AdjudicateInterval               = 10 * time.Second
+	AdjudicateCorrespondenceInterval = 60 * time.Second
+	GamesCounterInterval             = 60 * time.Minute
+	SeeksExpireInterval              = 10 * time.Minute
+	ChannelMonitorInterval           = 5 * time.Second
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -129,9 +130,13 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	ctx = b.config.WithContext(ctx)
 	ctx = log.Logger.WithContext(ctx)
 	log := zerolog.Ctx(ctx)
-	// Adjudicate unfinished games every few seconds.
+	// Adjudicate unfinished real-time games every few seconds.
 	adjudicator := time.NewTicker(AdjudicateInterval)
 	defer adjudicator.Stop()
+
+	// Adjudicate correspondence games once a minute
+	correspondenceAdjudicator := time.NewTicker(AdjudicateCorrespondenceInterval)
+	defer correspondenceAdjudicator.Stop()
 
 	seekExpirer := time.NewTicker(SeeksExpireInterval)
 	defer seekExpirer.Stop()
@@ -322,9 +327,17 @@ outerfor:
 
 		case <-adjudicator.C:
 			go func() {
-				err := b.adjudicateGames(ctx)
+				err := b.adjudicateGames(ctx, false) // false = real-time games only
 				if err != nil {
 					log.Err(err).Msg("adjudicate-error")
+				}
+			}()
+
+		case <-correspondenceAdjudicator.C:
+			go func() {
+				err := b.adjudicateGames(ctx, true) // true = correspondence games only
+				if err != nil {
+					log.Err(err).Msg("adjudicate-correspondence-error")
 				}
 			}()
 
@@ -503,6 +516,46 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follower_count", len(followerIDs)).
 			Msg("published get-followers response")
 
+	case "getFollows":
+		msg := &pb.GetFollowsRequest{}
+		err := proto.Unmarshal(data, msg)
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Str("userID", msg.UserId).Msg("received-get-follows-request")
+
+		// Get user by UUID
+		user, err := b.stores.UserStore.GetByUUID(ctx, msg.UserId)
+		if err != nil {
+			return err
+		}
+
+		// Get all users that this user follows
+		followUsers, err := b.stores.UserStore.GetFollows(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+
+		// Convert to user IDs
+		followIDs := make([]string, len(followUsers))
+		for i, fu := range followUsers {
+			followIDs[i] = fu.UUID
+		}
+
+		resp := &pb.GetFollowsResponse{
+			FollowUserIds: followIDs,
+		}
+
+		retdata, err := proto.Marshal(resp)
+		if err != nil {
+			return err
+		}
+
+		b.natsconn.Publish(replyTopic, retdata)
+		log.Debug().Str("topic", topic).Str("userID", msg.UserId).Int("follows_count", len(followIDs)).
+			Msg("published get-follows response")
+
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}
@@ -641,6 +694,11 @@ func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
 
 func (b *Bus) GameEventChannel() chan *entity.EventWrapper {
 	return b.gameEventChan
+}
+
+// AdjudicateGames is an exported wrapper for testing the adjudication logic.
+func (b *Bus) AdjudicateGames(ctx context.Context, correspondenceOnly bool) error {
+	return b.adjudicateGames(ctx, correspondenceOnly)
 }
 
 func (b *Bus) broadcastPresence(username, userID string, anon bool,
@@ -981,6 +1039,53 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 	return evt, nil
 }
 
+// correspondenceGamesForUser returns all correspondence games for a specific user
+func (b *Bus) correspondenceGamesForUser(ctx context.Context, userID string) (*entity.EventWrapper, error) {
+	games, err := b.stores.GameStore.ListActiveCorrespondenceForUser(ctx, userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug().Int("num-correspondence-games", len(games.GameInfo)).Str("userID", userID).Msg("correspondence-games-for-user")
+
+	evt := entity.WrapEvent(games, pb.MessageType_OUR_CORRESPONDENCE_GAMES)
+	return evt, nil
+}
+
+// correspondenceSeeksForUser returns all correspondence match requests and open seeks for a specific user
+func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*entity.EventWrapper, error) {
+	seeks, err := b.stores.SoughtGameStore.ListCorrespondenceSeeksForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var receiver *entity.User
+	if !userIsAnon(userID) {
+		receiver, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	seekRequests := make([]*pb.SeekRequest, 0, len(seeks))
+	for _, seek := range seeks {
+		if seek.SeekRequest == nil {
+			continue
+		}
+
+		// Use shared filtering logic (blocks, established rating, followed players)
+		if b.shouldIncludeSeek(ctx, seek, receiver) {
+			seekRequests = append(seekRequests, seek.SeekRequest)
+		}
+	}
+
+	log.Debug().Int("num-correspondence-seeks", len(seekRequests)).Str("userID", userID).Msg("correspondence-seeks-for-user")
+
+	evt := entity.WrapEvent(&pb.SeekRequests{Requests: seekRequests}, pb.MessageType_OUR_CORRESPONDENCE_SEEKS)
+	return evt, nil
+}
+
 // Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
 // the other. Note, if they both block each other it will return 0.
 func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error) {
@@ -1048,6 +1153,28 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 	err = b.pubToConnectionID(connID, userID, activeGames)
 	if err != nil {
 		return err
+	}
+
+	// correspondence games (only for logged-in users)
+	if !userIsAnon(userID) {
+		correspondenceGames, err := b.correspondenceGamesForUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToConnectionID(connID, userID, correspondenceGames)
+		if err != nil {
+			return err
+		}
+
+		// correspondence seeks (pending match requests)
+		correspondenceSeeks, err := b.correspondenceSeeksForUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToConnectionID(connID, userID, correspondenceSeeks)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: send followed online

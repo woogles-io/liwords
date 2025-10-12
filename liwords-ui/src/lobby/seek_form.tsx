@@ -8,6 +8,7 @@ import {
   Tag,
   Slider,
   AutoComplete,
+  Button,
 } from "antd";
 
 import { Store } from "antd/lib/form/interface";
@@ -33,7 +34,11 @@ import { VariantIcon } from "../shared/variant_icons";
 import { excludedLexica, LexiconFormItem } from "../shared/lexicon_display";
 import { AllLexica } from "../shared/lexica";
 import { BotTypesEnum, BotTypesEnumProperties } from "./bots";
-import { GameRequest, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  GameMode,
+  GameRequest,
+  RatingMode,
+} from "../gen/api/proto/ipc/omgwords_pb";
 import { MatchUserSchema } from "../gen/api/proto/ipc/omgseeks_pb";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
 import { useClient } from "../utils/hooks/connect";
@@ -62,6 +67,7 @@ type Props = {
   storageKey?: string;
   prefixItems?: React.ReactNode;
   username?: string;
+  showCorrespondenceMode?: boolean;
 };
 
 export type seekPropVals = {
@@ -76,6 +82,8 @@ export type seekPropVals = {
   variant: string;
   botType: BotTypesEnum;
   ratingRange: number;
+  gameMode: number; // GameMode enum
+  correspondenceTimePerTurn?: number; // In seconds
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -88,6 +96,7 @@ type mandatoryFormValues = Partial<seekPropVals> &
     | "extratime"
     | "incOrOT"
     | "variant"
+    | "gameMode"
   >;
 
 export const GameRequestToFormValues: (
@@ -102,6 +111,7 @@ export const GameRequestToFormValues: (
       rated: true,
       extratime: 1,
       incOrOT: "overtime",
+      gameMode: GameMode.REAL_TIME,
     };
   }
 
@@ -113,6 +123,7 @@ export const GameRequestToFormValues: (
     initialtimeslider: 0,
     extratime: 0,
     incOrOT: "overtime",
+    gameMode: gameRequest.gameMode ?? GameMode.REAL_TIME, // Default to REAL_TIME for backward compatibility
   };
 
   const secs = gameRequest.initialTimeSeconds;
@@ -154,9 +165,12 @@ const myDisplayRating = (
   maxOvertime: number,
   variant: string,
   lexicon: string,
+  gameMode?: number,
 ) => {
   const r =
-    ratings[ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon)];
+    ratings[
+      ratingKey(secs, incrementSecs, maxOvertime, variant, lexicon, gameMode)
+    ];
   if (r) {
     return Math.round(r.rating);
   }
@@ -198,10 +212,8 @@ export const SeekForm = (props: Props) => {
     [],
   );
 
-  const enableVariants = React.useMemo(
-    () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
+  // Detect if user is new (no ratings)
+  const isNewPlayer = Object.keys(lobbyContext.profile.ratings).length === 0;
 
   let storageKey = "lastSeekForm";
   if (props.vsBot) {
@@ -238,6 +250,16 @@ export const SeekForm = (props: Props) => {
       break;
   }
 
+  // Check if user has customized settings that differ from defaults
+  const hasCustomizedSettings =
+    (storedValues.challengerule !== undefined &&
+      storedValues.challengerule !== ChallengeRule.VOID) ||
+    storedValues.incOrOT === "increment" ||
+    (storedValues.extratime !== undefined && storedValues.extratime !== 1) ||
+    (storedValues.variant !== undefined &&
+      storedValues.variant !== "classic" &&
+      storedValues.variant !== "");
+
   const givenFriend = useMemo(
     () => props.friendRef?.current ?? "",
     [props.friendRef],
@@ -261,6 +283,8 @@ export const SeekForm = (props: Props) => {
     variant: "classic",
     botType: BotTypesEnum.BEGINNER,
     ratingRange: 500,
+    gameMode: 0, // REAL_TIME
+    correspondenceTimePerTurn: 432000, // 5 days
   };
   let disableTimeControls = false;
   let disableVariantControls = false;
@@ -342,6 +366,7 @@ export const SeekForm = (props: Props) => {
       selectedMaxOvertime,
       initialValues.variant,
       initialValues.lexicon,
+      initialValues.gameMode,
     ),
   );
   const [selections, setSelections] = useState<Store | null>(initialValues);
@@ -363,10 +388,60 @@ export const SeekForm = (props: Props) => {
   const handleDropdownVisibleChange = useCallback((open: boolean) => {
     setSliderTooltipVisible(!open);
   }, []);
+
+  // Update rating reactively when game mode or related settings change
+  useEffect(() => {
+    let secs: number;
+    let incrementSecs: number;
+    let maxOvertime: number;
+
+    if (selections?.gameMode === 1) {
+      // Correspondence mode
+      secs = (selections?.correspondenceTimePerTurn as number) || 432000;
+      incrementSecs = 0;
+      maxOvertime = 0;
+    } else {
+      // Real-time mode
+      const sliderIndex =
+        selections?.initialtimeslider ?? initialTimeMinutesToSlider(20);
+      secs = initTimeDiscreteScale[sliderIndex as number].seconds;
+      incrementSecs =
+        selections?.incOrOT === "increment"
+          ? Math.round((selections?.extratime as number) || 0)
+          : 0;
+      maxOvertime =
+        selections?.incOrOT === "increment"
+          ? 0
+          : Math.round((selections?.extratime as number) || 1);
+    }
+
+    const newRating = myDisplayRating(
+      lobbyContext.profile.ratings,
+      secs,
+      incrementSecs,
+      maxOvertime,
+      (selections?.variant as string) || "classic",
+      selections?.lexicon as string,
+      selections?.gameMode as number,
+    );
+    setMyRating(newRating);
+  }, [
+    selections?.gameMode,
+    selections?.correspondenceTimePerTurn,
+    selections?.initialtimeslider,
+    selections?.incOrOT,
+    selections?.extratime,
+    selections?.variant,
+    selections?.lexicon,
+    lobbyContext.profile.ratings,
+  ]);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const [lexiconCopyright, setLexiconCopyright] = useState(
     AllLexica[initialValues.lexicon]?.longDescription,
   );
+
+  // Always show toggle, auto-expand if customized
+  const [showAdvanced, setShowAdvanced] = useState(hasCustomizedSettings);
 
   const onFormChange = (val: Store, allvals: Store) => {
     let shouldHideChallengeRule = false;
@@ -385,30 +460,51 @@ export const SeekForm = (props: Props) => {
       );
     }
     setSelections(allvals);
-    if (allvals.incOrOT === "increment") {
-      setTimeSetting(incLabel);
-      setMaxTimeSetting(60);
-      setExtraTimeLabel(incUnitLabel);
+
+    // Determine time control values based on game mode
+    let secs: number;
+    let incrementSecs: number;
+    let maxOvertime: number;
+
+    if (allvals.gameMode === 1) {
+      // Correspondence mode: use correspondenceTimePerTurn
+      secs = allvals.correspondenceTimePerTurn as number;
+      incrementSecs = 0;
+      maxOvertime = 0;
     } else {
-      setTimeSetting(otLabel);
-      setMaxTimeSetting(10);
-      setExtraTimeLabel(otUnitLabel);
+      // Real-time mode: use slider-based time controls
+      if (allvals.incOrOT === "increment") {
+        setTimeSetting(incLabel);
+        setMaxTimeSetting(60);
+        setExtraTimeLabel(incUnitLabel);
+      } else {
+        setTimeSetting(otLabel);
+        setMaxTimeSetting(10);
+        setExtraTimeLabel(otUnitLabel);
+      }
+      const sliderIndex =
+        allvals.initialtimeslider ?? initialTimeMinutesToSlider(20);
+      secs = initTimeDiscreteScale[sliderIndex].seconds;
+      incrementSecs =
+        allvals.incOrOT === "increment"
+          ? Math.round(allvals.extratime as number)
+          : 0;
+      maxOvertime =
+        allvals.incOrOT === "increment"
+          ? 0
+          : Math.round(allvals.extratime as number);
+      const [tc, , tt] = timeCtrlToDisplayName(
+        secs,
+        incrementSecs,
+        maxOvertime,
+      );
+      setTimectrl(tc);
+      setTtag(tt);
     }
-    const secs = initTimeDiscreteScale[allvals.initialtimeslider].seconds;
-    const incrementSecs =
-      allvals.incOrOT === "increment"
-        ? Math.round(allvals.extratime as number)
-        : 0;
-    const maxOvertime =
-      allvals.incOrOT === "increment"
-        ? 0
-        : Math.round(allvals.extratime as number);
-    const [tc, , tt] = timeCtrlToDisplayName(secs, incrementSecs, maxOvertime);
+
     if (allvals.lexicon === "ECWL") {
       shouldHideChallengeRule = true;
     }
-    setTimectrl(tc);
-    setTtag(tt);
     setLexiconCopyright(AllLexica[allvals.lexicon]?.longDescription);
     setMyRating(
       myDisplayRating(
@@ -418,6 +514,7 @@ export const SeekForm = (props: Props) => {
         maxOvertime,
         allvals.variant || "classic",
         allvals.lexicon,
+        allvals.gameMode,
       ),
     );
     setHideChallengeRule(shouldHideChallengeRule);
@@ -456,6 +553,11 @@ export const SeekForm = (props: Props) => {
     const receiver = create(MatchUserSchema, {
       displayName: val.friend as string,
     });
+
+    const isCorrespondence = val.gameMode === 1;
+    const correspondenceTime =
+      (val.correspondenceTimePerTurn as number) || 432000; // Default to 5 days
+
     const obj = {
       // These items are assigned by the server:
       seeker: "",
@@ -468,12 +570,20 @@ export const SeekForm = (props: Props) => {
         (val.lexicon as string) === "ECWL"
           ? ChallengeRule.VOID
           : (val.challengerule as number),
-      initialTimeSecs: initTimeDiscreteScale[val.initialtimeslider].seconds,
-      incrementSecs:
-        val.incOrOT === "increment" ? Math.round(val.extratime as number) : 0,
+      initialTimeSecs: isCorrespondence
+        ? correspondenceTime
+        : initTimeDiscreteScale[val.initialtimeslider].seconds,
+      incrementSecs: isCorrespondence
+        ? correspondenceTime
+        : val.incOrOT === "increment"
+          ? Math.round(val.extratime as number)
+          : 0,
       rated: val.rated as boolean,
-      maxOvertimeMinutes:
-        val.incOrOT === "increment" ? 0 : Math.round(val.extratime as number),
+      maxOvertimeMinutes: isCorrespondence
+        ? 0
+        : val.incOrOT === "increment"
+          ? 0
+          : Math.round(val.extratime as number),
       receiver,
       rematchFor: "",
       playerVsBot: props.vsBot || false,
@@ -485,6 +595,9 @@ export const SeekForm = (props: Props) => {
       // modified together on the front end.
       minRatingRange: -val.ratingRange || 0,
       maxRatingRange: val.ratingRange || 0,
+      gameMode: val.gameMode ?? 0,
+      requireEstablishedRating: val.visibility === "established",
+      onlyFollowedPlayers: val.visibility === "followed",
     };
     props.onFormSubmit(obj, val);
   };
@@ -498,6 +611,20 @@ export const SeekForm = (props: Props) => {
       setUsernameOptions(defaultOptions);
     }
   }, [defaultOptions, usernameOptions]);
+
+  const renderAdvancedToggle = () => {
+    return (
+      <div style={{ marginTop: 16, marginBottom: 16 }}>
+        <Button
+          type="link"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          style={{ padding: 0, height: "auto" }}
+        >
+          {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <Form
@@ -546,7 +673,7 @@ export const SeekForm = (props: Props) => {
                 option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
                   -1)
             }
-            onDropdownVisibleChange={handleDropdownVisibleChange}
+            onOpenChange={handleDropdownVisibleChange}
           >
             {usernameOptions.map((username) => (
               <AutoComplete.Option key={username} value={username}>
@@ -556,10 +683,18 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
+
+      <h4 className="form-section-header">GAME INFO</h4>
+
+      <LexiconFormItem
+        disabled={disableLexiconControls}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
+        onDropdownVisibleChange={handleDropdownVisibleChange}
+      />
+
       {/* if variant controls are disabled it means we have hardcoded settings
       for it, so show them if not classic */}
-      {(enableVariants ||
-        (disableVariantControls && initialValues.variant !== "classic")) && (
+      {disableVariantControls && initialValues.variant !== "classic" ? (
         <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
@@ -571,69 +706,138 @@ export const SeekForm = (props: Props) => {
             </Select.Option>
           </Select>
         </Form.Item>
+      ) : (
+        <div
+          className="advanced-field"
+          style={{ display: showAdvanced ? "block" : "none" }}
+        >
+          <Form.Item label="Game type" name="variant">
+            <Select disabled={disableVariantControls}>
+              <Select.Option value="classic">Classic</Select.Option>
+              <Select.Option value="wordsmog">
+                <VariantIcon vcode="wordsmog" withName />
+              </Select.Option>
+              <Select.Option value="classic_super">
+                <VariantIcon vcode="classic_super" withName />
+              </Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
       )}
-      <LexiconFormItem
-        disabled={disableLexiconControls}
-        excludedLexica={excludedLexica(enableAllLexicons, enableCSW24X)}
-      />
+
       {!hideChallengeRule && (
-        <ChallengeRulesFormItem disabled={disableChallengeControls} />
+        <div
+          className="advanced-field"
+          style={{ display: showAdvanced ? "block" : "none" }}
+        >
+          <ChallengeRulesFormItem
+            disabled={disableChallengeControls}
+            onDropdownVisibleChange={handleDropdownVisibleChange}
+          />
+        </div>
       )}
-      <Form.Item
-        className="initial custom-tags"
-        label="Initial minutes"
-        name="initialtimeslider"
-        extra={<Tag color={ttag}>{timectrl}</Tag>}
-      >
-        <Slider
-          disabled={disableTimeControls}
-          tooltip={{
-            formatter: initTimeFormatter,
-            open: sliderTooltipVisible || usernameOptions.length === 0,
-            getPopupContainer: (triggerNode) =>
-              triggerNode.parentElement ?? document.body,
-          }}
-          min={0}
-          max={initTimeDiscreteScale.length - 1}
-        />
-      </Form.Item>
-      <Form.Item label="Time setting" name="incOrOT">
-        <Radio.Group disabled={disableTimeControls}>
-          <Radio.Button value="overtime">Use max overtime</Radio.Button>
-          <Radio.Button value="increment">Use increment</Radio.Button>
-        </Radio.Group>
-      </Form.Item>
-      <Form.Item
-        className="extra-time-setter"
-        label={timeSetting}
-        name="extratime"
-        extra={extraTimeLabel}
-      >
-        <InputNumber
-          inputMode="numeric"
-          min={0}
-          max={maxTimeSetting}
-          disabled={disableTimeControls}
-        />
-      </Form.Item>
-      <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch disabled={disableRatedControls} />
+
+      {props.showCorrespondenceMode !== false && !props.tournamentID && (
+        <Form.Item label="Game mode" name="gameMode">
+          <Radio.Group disabled={disableTimeControls}>
+            <Radio.Button value={0}>Real-time</Radio.Button>
+            <Radio.Button value={1}>Correspondence</Radio.Button>
+          </Radio.Group>
+        </Form.Item>
+      )}
+
+      {selections?.gameMode !== 1 && (
+        <>
+          <Form.Item
+            className="initial custom-tags"
+            label="Initial minutes"
+            name="initialtimeslider"
+            extra={<Tag color={ttag}>{timectrl}</Tag>}
+          >
+            <Slider
+              disabled={disableTimeControls}
+              tooltip={{
+                formatter: initTimeFormatter,
+                placement: "right",
+                open: true,
+                getPopupContainer: (triggerNode) =>
+                  triggerNode.parentElement ?? document.body,
+              }}
+              min={0}
+              max={initTimeDiscreteScale.length - 1}
+            />
+          </Form.Item>
+          <div
+            className="advanced-field"
+            style={{ display: showAdvanced ? "block" : "none" }}
+          >
+            <Form.Item label="Time setting" name="incOrOT">
+              <Radio.Group disabled={disableTimeControls}>
+                <Radio.Button value="overtime">Use max overtime</Radio.Button>
+                <Radio.Button value="increment">Use increment</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          </div>
+          <div
+            className="advanced-field"
+            style={{ display: showAdvanced ? "block" : "none" }}
+          >
+            <Form.Item
+              className="extra-time-setter"
+              label={timeSetting}
+              name="extratime"
+              extra={extraTimeLabel}
+            >
+              <InputNumber
+                inputMode="numeric"
+                min={0}
+                max={maxTimeSetting}
+                disabled={disableTimeControls}
+              />
+            </Form.Item>
+          </div>
+        </>
+      )}
+
+      <Form.Item label="Rating type" name="rated">
+        <Select disabled={disableRatedControls}>
+          <Select.Option value={true}>Rated</Select.Option>
+          <Select.Option value={false}>Unrated</Select.Option>
+        </Select>
       </Form.Item>
 
+      {renderAdvancedToggle()}
+
       {!props.showFriendInput && !props.vsBot && (
-        <Form.Item label="Rating range" name="ratingRange">
-          <Slider
-            min={50}
-            max={500}
-            tooltip={{
-              formatter: (v) => `${myRating} ± ${v ? v : 0}`,
-              open: sliderTooltipVisible,
-              getPopupContainer: (triggerNode) =>
-                triggerNode.parentElement ?? document.body,
-            }}
-            step={50}
-          />
-        </Form.Item>
+        <>
+          <h4 className="form-section-header">OPPONENT PREFERENCES</h4>
+
+          <Form.Item label="Rating range" name="ratingRange">
+            <Slider
+              min={50}
+              max={500}
+              tooltip={{
+                formatter: (v) => `${myRating} ± ${v ? v : 0}`,
+                open: sliderTooltipVisible,
+                getPopupContainer: (triggerNode) =>
+                  triggerNode.parentElement ?? document.body,
+              }}
+              step={50}
+            />
+          </Form.Item>
+
+          <Form.Item label="Show game to" name="visibility">
+            <Select defaultValue="all">
+              <Select.Option value="all">All players</Select.Option>
+              <Select.Option value="established">
+                Players with established ratings
+              </Select.Option>
+              <Select.Option value="followed">
+                Only players I follow
+              </Select.Option>
+            </Select>
+          </Form.Item>
+        </>
       )}
 
       <small className="readable-text-color">

@@ -187,7 +187,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
-  if (props.showModTools && canMod(perms) && props.userID !== userID) {
+  if (props.showModTools && canMod(perms)) {
     userMenuOptions.push({
       key: `mod-${props.userID}`,
       label: `Moderate`,

@@ -115,21 +115,23 @@ export const GameInfo = React.memo((props: Props) => {
           </p>
         )}
         <p className="variant">
-          {`${
-            timeCtrlToDisplayName(
-              props.meta.gameRequest?.initialTimeSeconds ?? 0,
-              props.meta.gameRequest?.incrementSeconds ?? 0,
-              props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
-              props.meta.timeControlName === "Annotated"
-                ? props.meta.timeControlName
-                : undefined,
-            )[0]
-          } ${timeToString(
-            props.meta.gameRequest?.initialTimeSeconds ?? 0,
-            props.meta.gameRequest?.incrementSeconds ?? 0,
-            props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
-            props.meta.timeControlName === "Annotated",
-          )}`}{" "}
+          {props.meta.gameRequest?.gameMode === 1
+            ? "Correspondence"
+            : `${
+                timeCtrlToDisplayName(
+                  props.meta.gameRequest?.initialTimeSeconds ?? 0,
+                  props.meta.gameRequest?.incrementSeconds ?? 0,
+                  props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
+                  props.meta.timeControlName === "Annotated"
+                    ? props.meta.timeControlName
+                    : undefined,
+                )[0]
+              } ${timeToString(
+                props.meta.gameRequest?.initialTimeSeconds ?? 0,
+                props.meta.gameRequest?.incrementSeconds ?? 0,
+                props.meta.gameRequest?.maxOvertimeMinutes ?? 0,
+                props.meta.timeControlName === "Annotated",
+              )}`}{" "}
           • {variant} •{" "}
           <MatchLexiconDisplay
             lexiconCode={props.meta.gameRequest?.lexicon ?? ""}

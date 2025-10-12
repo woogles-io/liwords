@@ -376,7 +376,6 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
-
 func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
@@ -474,6 +473,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
 		Uuid:           common.ToPGTypeText(g.GameID()),
 		GameRequest:    safeDerefGameRequest(g.GameReq),
+		PlayerOnTurn:   pgtype.Int4{Int32: int32(g.PlayerOnTurn()), Valid: true},
 	})
 }
 
@@ -518,6 +518,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
 		Type:           pgtype.Int4{Int32: int32(g.Type), Valid: true},
 		GameRequest:    safeDerefGameRequest(g.GameReq),
+		PlayerOnTurn:   pgtype.Int4{Int32: 0, Valid: true}, // First player starts
 	})
 }
 
@@ -594,8 +595,92 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (
 			responses = append(responses, info)
 		}
 	}
-
+	log.Debug().Int("num-active", len(responses)).Msg("list-active")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondence lists all active correspondence games.
+func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error) {
+	var responses []*pb.GameInfoResponse
+
+	games, err := s.ListActiveCorrespondenceRaw(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, g := range games {
+		mdata := g.Quickdata
+		trdata := g.TournamentData
+
+		// Get the GameRequest from the entity
+		gamereq := &g.GameRequest
+
+		info := &pb.GameInfoResponse{
+			Players:             mdata.PlayerInfo,
+			GameId:              g.Uuid.String,
+			GameRequest:         gamereq.GameRequest,
+			Type:                pb.GameType_NATIVE,
+			TournamentId:        trdata.Id,
+			TournamentDivision:  trdata.Division,
+			TournamentRound:     int32(trdata.Round),
+			TournamentGameIndex: int32(trdata.GameIndex),
+			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
+		}
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+		responses = append(responses, info)
+	}
+	log.Debug().Int("num-correspondence", len(responses)).Msg("list-active-correspondence")
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondenceForUser lists active correspondence games for a specific user.
+func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
+	var responses []*pb.GameInfoResponse
+
+	games, err := s.queries.ListActiveCorrespondenceGamesForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, g := range games {
+		mdata := g.Quickdata
+		trdata := g.TournamentData
+
+		// Get the GameRequest from the entity
+		gamereq := &g.GameRequest
+
+		info := &pb.GameInfoResponse{
+			Players:             mdata.PlayerInfo,
+			GameId:              g.Uuid.String,
+			GameRequest:         gamereq.GameRequest,
+			Type:                pb.GameType_NATIVE,
+			TournamentId:        trdata.Id,
+			TournamentDivision:  trdata.Division,
+			TournamentRound:     int32(trdata.Round),
+			TournamentGameIndex: int32(trdata.GameIndex),
+			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
+		}
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+		responses = append(responses, info)
+	}
+	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Msg("list-active-correspondence-for-user")
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondenceRaw returns raw DB rows with timer data.
+// This is used internally by ListActiveCorrespondence and the adjudication process.
+func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {
+	games, err := s.queries.ListActiveCorrespondenceGames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return games, nil
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {

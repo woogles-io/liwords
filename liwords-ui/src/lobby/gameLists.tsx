@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Card, Button } from "antd";
+import { Badge, Card, Button } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Modal } from "../utils/focus_modal";
 import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
+import { CorrespondenceGames } from "./correspondence_games";
 import { SeekForm } from "./seek_form";
 import { useContextMatchContext, useLobbyStoreContext } from "../store/store";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
@@ -37,6 +39,7 @@ export const GameLists = React.memo((props: Props) => {
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [showCorresInfoModal, setShowCorresInfoModal] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
 
   const { addHandleContextMatch, removeHandleContextMatch } =
@@ -84,26 +87,62 @@ export const GameLists = React.memo((props: Props) => {
     (p) => p.displayName !== username,
   )?.displayName;
 
-  const enableVariants = React.useMemo(
-    () => localStorage.getItem("enableVariants") === "true",
-    [],
-  );
-  const unsanitizedSoughtGames = lobbyContext.soughtGames;
-  const sanitizedSoughtGames = React.useMemo(
-    () =>
-      (unsanitizedSoughtGames || []).filter((soughtGame) => {
-        if (!enableVariants && (soughtGame.variant || "classic") !== "classic")
-          return false;
-        return true;
-      }),
-
-    [enableVariants, unsanitizedSoughtGames],
-  );
+  const soughtGames = lobbyContext.soughtGames || [];
 
   const matchButtonText = "Match a friend";
 
+  // Calculate badge count for correspondence games where it's user's turn
+  // plus incoming correspondence match requests
+  const correspondenceBadgeCount = React.useMemo(() => {
+    if (!userID || !username) return 0;
+
+    // Count games where it's user's turn
+    const yourTurnCount = lobbyContext.correspondenceGames.filter(
+      (ag: ActiveGame) => {
+        if (ag.playerOnTurn === undefined) return false;
+        const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+        return playerIndex === ag.playerOnTurn;
+      },
+    ).length;
+
+    // Count incoming correspondence match requests (where user is the receiver)
+    const incomingMatchRequestCount = (
+      lobbyContext.correspondenceSeeks || []
+    ).filter((sg: SoughtGame) => {
+      // Only count match requests (not open seeks)
+      if (!sg.receiverIsPermanent) return false;
+      // Only count where user is the receiver
+      return (
+        sg.receiver?.displayName === username || sg.receiver?.userId === userID
+      );
+    }).length;
+
+    return yourTurnCount + incomingMatchRequestCount;
+  }, [
+    lobbyContext.correspondenceGames,
+    lobbyContext.correspondenceSeeks,
+    userID,
+    username,
+  ]);
+
   const renderGames = () => {
+    if (selectedGameTab === "CORRESPONDENCE") {
+      return (
+        <CorrespondenceGames
+          username={username}
+          userID={userID}
+          correspondenceGames={lobbyContext?.correspondenceGames || []}
+          correspondenceSeeks={lobbyContext?.correspondenceSeeks || []}
+          newGame={newGame}
+          ratings={lobbyContext?.profile?.ratings}
+        />
+      );
+    }
+
     if (loggedIn && userID && username && selectedGameTab === "PLAY") {
+      // Show all match requests including correspondence in PLAY tab
+      const matchRequests = lobbyContext?.matchRequests || [];
+
       return (
         <>
           {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
@@ -114,13 +153,13 @@ export const GameLists = React.memo((props: Props) => {
             />
           )}
 
-          {lobbyContext?.matchRequests.length ? (
+          {matchRequests.length > 0 ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              requests={lobbyContext?.matchRequests}
+              requests={matchRequests}
             />
           ) : null}
 
@@ -129,21 +168,24 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={sanitizedSoughtGames}
+            requests={soughtGames}
             ratings={lobbyContext?.profile?.ratings}
           />
         </>
       );
     }
+    // Default case (WATCH tab) - show all match requests including correspondence
+    const matchRequestsForWatch = lobbyContext?.matchRequests || [];
+
     return (
       <>
-        {lobbyContext?.matchRequests.length ? (
+        {matchRequestsForWatch.length > 0 ? (
           <SoughtGames
             isMatch={true}
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={lobbyContext?.matchRequests}
+            requests={matchRequestsForWatch}
           />
         ) : null}
         <ActiveGames
@@ -175,6 +217,14 @@ export const GameLists = React.memo((props: Props) => {
       }, 500);
     }
     resetLobbyFilter(sg.lexicon);
+    // Auto-select appropriate tab after creating a seek/match
+    if (sg.gameMode === 1) {
+      // Correspondence mode - select CORRESPONDENCE tab
+      setSelectedGameTab("CORRESPONDENCE");
+    } else if (sg.receiver && sg.receiver.displayName) {
+      // Real-time match request - select PLAY tab
+      setSelectedGameTab("PLAY");
+    }
   };
   const seekModal = (
     <Modal
@@ -213,6 +263,7 @@ export const GameLists = React.memo((props: Props) => {
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={false}
+        showCorrespondenceMode={true}
       />
     </Modal>
   );
@@ -373,12 +424,48 @@ export const GameLists = React.memo((props: Props) => {
           >
             Watch
           </div>
+          {loggedIn ? (
+            <div
+              onClick={() => {
+                setSelectedGameTab("CORRESPONDENCE");
+              }}
+              className={
+                selectedGameTab === "CORRESPONDENCE" ? "tab active" : "tab"
+              }
+            >
+              <Badge count={correspondenceBadgeCount} offset={[10, 0]}>
+                Correspondence{" "}
+                <QuestionCircleOutlined
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCorresInfoModal(true);
+                  }}
+                  style={{ fontSize: 12, marginLeft: 4, cursor: "pointer" }}
+                />
+              </Badge>
+            </div>
+          ) : null}
         </div>
         <div className="main-content">
           {renderGames()}
           {seekModal}
           {matchModal}
           {botModal}
+          <Modal
+            title="About Correspondence Mode"
+            visible={showCorresInfoModal}
+            onCancel={() => setShowCorresInfoModal(false)}
+            footer={null}
+            width={500}
+          >
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              <p style={{ marginBottom: "8px" }}>
+                Correspondence mode allows you to play asynchronously with
+                multiple days per turn. Perfect for players who can't always
+                commit to real-time games!
+              </p>
+            </div>
+          </Modal>
         </div>
         {showingResumeButton && (
           <div className="enable-simultaneous-ignore-link">

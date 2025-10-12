@@ -143,7 +143,7 @@ func (cs *CommentsService) GetCollectionComments(ctx context.Context, req *conne
 	if req.Msg.Limit > MaxCommentsPerReq {
 		return nil, apiserver.InvalidArg("too many comments")
 	}
-	
+
 	comments, err := cs.commentsStore.GetCommentsForCollectionGames(ctx, req.Msg.CollectionUuid, int(req.Msg.Limit), int(req.Msg.Offset))
 	if err != nil {
 		return nil, err

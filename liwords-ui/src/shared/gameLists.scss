@@ -36,8 +36,7 @@
     &.details {
       text-align: right;
     }
-    &.time,
-    &.lexicon {
+    &.time {
       text-align: center;
     }
   }
@@ -80,6 +79,21 @@
       font-weight: bold;
       letter-spacing: 0.16em;
       cursor: pointer;
+      // Ensure Badge and other child components inherit tab font styling
+      * {
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+      }
+      .ant-badge-count {
+        line-height: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: normal;
+      }
       &:hover,
       &.active {
         @include colorModed() {
@@ -134,8 +148,7 @@
       .players {
         width: 350px;
       }
-      .time,
-      .lexicon {
+      .time {
         text-align: center;
       }
       .players > div {
@@ -269,6 +282,14 @@
       padding: 12px;
       letter-spacing: 0;
       margin: 0;
+    }
+  }
+
+  // Club match specific styling - left-justify everything
+  .ant-table-wrapper.pairings.club-match {
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      text-align: left;
     }
   }
 
