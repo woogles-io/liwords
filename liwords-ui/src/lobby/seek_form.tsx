@@ -555,7 +555,7 @@ export const SeekForm = (props: Props) => {
     });
 
     const isCorrespondence = val.gameMode === 1;
-    const correspondenceTime = val.correspondenceTimePerTurn as number;
+    const correspondenceTime = (val.correspondenceTimePerTurn as number) || 432000; // Default to 5 days
 
     const obj = {
       // These items are assigned by the server:
@@ -745,14 +745,7 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
 
-      {selections?.gameMode === 1 ? (
-        <Form.Item label="Time per turn" name="correspondenceTimePerTurn">
-          <Select disabled={disableTimeControls}>
-            <Select.Option value={259200}>3 days</Select.Option>
-            <Select.Option value={432000}>5 days</Select.Option>
-          </Select>
-        </Form.Item>
-      ) : (
+      {selections?.gameMode !== 1 && (
         <>
           <Form.Item
             className="initial custom-tags"
