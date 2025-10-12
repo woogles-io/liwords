@@ -150,14 +150,14 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games

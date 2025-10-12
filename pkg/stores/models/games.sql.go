@@ -676,7 +676,7 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 }
 
 const listActiveCorrespondenceGames = `-- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -692,6 +692,7 @@ type ListActiveCorrespondenceGamesRow struct {
 	PlayerOnTurn   pgtype.Int4
 	Timers         entity.Timers
 	Type           pgtype.Int4
+	UpdatedAt      pgtype.Timestamptz
 }
 
 func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActiveCorrespondenceGamesRow, error) {
@@ -712,6 +713,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 			&i.PlayerOnTurn,
 			&i.Timers,
 			&i.Type,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -724,7 +726,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 }
 
 const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -742,6 +744,7 @@ type ListActiveCorrespondenceGamesForUserRow struct {
 	TournamentData entity.TournamentData
 	GameRequest    entity.GameRequest
 	PlayerOnTurn   pgtype.Int4
+	UpdatedAt      pgtype.Timestamptz
 }
 
 func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, userUuid string) ([]ListActiveCorrespondenceGamesForUserRow, error) {
@@ -760,6 +763,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

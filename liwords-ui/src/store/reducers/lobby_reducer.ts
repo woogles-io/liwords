@@ -65,6 +65,7 @@ export type ActiveGame = {
   tournamentGameIndex: number;
   gameMode: number; // GameMode enum value
   playerOnTurn?: number; // Index of player whose turn it is (0 or 1)
+  lastUpdate?: number; // Timestamp of last move in milliseconds
 };
 
 export type LobbyState = {
@@ -148,6 +149,13 @@ export const GameInfoResponseToActiveGame = (
   if (!variant) {
     variant = "classic";
   }
+
+  // Convert Timestamp to milliseconds
+  const lastUpdate = gi.lastUpdate
+    ? Number(gi.lastUpdate.seconds) * 1000 +
+      Math.floor(Number(gi.lastUpdate.nanos) / 1000000)
+    : undefined;
+
   return {
     players,
     lexicon: gameReq.lexicon,
@@ -164,6 +172,7 @@ export const GameInfoResponseToActiveGame = (
     tournamentGameIndex: gi.tournamentGameIndex,
     gameMode: gameReq.gameMode ?? 0, // 0 = REAL_TIME
     playerOnTurn: gi.playerOnTurn,
+    lastUpdate,
   };
 };
 

@@ -97,22 +97,33 @@ export const GameLists = React.memo((props: Props) => {
     if (!userID || !username) return 0;
 
     // Count games where it's user's turn
-    const yourTurnCount = lobbyContext.correspondenceGames.filter((ag: ActiveGame) => {
-      if (ag.playerOnTurn === undefined) return false;
-      const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
-      return playerIndex === ag.playerOnTurn;
-    }).length;
+    const yourTurnCount = lobbyContext.correspondenceGames.filter(
+      (ag: ActiveGame) => {
+        if (ag.playerOnTurn === undefined) return false;
+        const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+        return playerIndex === ag.playerOnTurn;
+      },
+    ).length;
 
     // Count incoming correspondence match requests (where user is the receiver)
-    const incomingMatchRequestCount = (lobbyContext.correspondenceSeeks || []).filter((sg: SoughtGame) => {
+    const incomingMatchRequestCount = (
+      lobbyContext.correspondenceSeeks || []
+    ).filter((sg: SoughtGame) => {
       // Only count match requests (not open seeks)
       if (!sg.receiverIsPermanent) return false;
       // Only count where user is the receiver
-      return sg.receiver?.displayName === username || sg.receiver?.userId === userID;
+      return (
+        sg.receiver?.displayName === username || sg.receiver?.userId === userID
+      );
     }).length;
 
     return yourTurnCount + incomingMatchRequestCount;
-  }, [lobbyContext.correspondenceGames, lobbyContext.correspondenceSeeks, userID, username]);
+  }, [
+    lobbyContext.correspondenceGames,
+    lobbyContext.correspondenceSeeks,
+    userID,
+    username,
+  ]);
 
   const renderGames = () => {
     if (selectedGameTab === "CORRESPONDENCE") {

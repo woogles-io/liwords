@@ -1,5 +1,5 @@
-import { Table, Tooltip } from "antd";
-import { FundOutlined } from "@ant-design/icons";
+import { Table, Tooltip, Badge } from "antd";
+import { FundOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import React, { ReactNode, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
@@ -29,7 +29,7 @@ export const CorrespondenceGames = (props: Props) => {
   type CorrespondenceGameTableData = {
     gameID: string;
     players: ReactNode;
-    turn: string;
+    turn: ReactNode;
     lexicon: ReactNode;
     lexiconCode: string;
     onTurn: boolean;
@@ -37,6 +37,7 @@ export const CorrespondenceGames = (props: Props) => {
     player1: string;
     player2: string;
     variant: string;
+    timeRemaining: number; // Time remaining in seconds, or Infinity if not applicable
   };
 
   // Group games by variant
@@ -82,6 +83,29 @@ export const CorrespondenceGames = (props: Props) => {
                 : ag.players[1]?.displayName || "";
           }
 
+          // Calculate time remaining for low time warning (< 24 hours)
+          const now = Date.now();
+          let timeRemainingSecs = Infinity;
+          let isLowTime = false;
+          if (onTurn && ag.lastUpdate && ag.incrementSecs) {
+            const timeElapsedSecs = (now - ag.lastUpdate) / 1000;
+            timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
+            isLowTime = timeRemainingSecs < 86400; // 24 hours in seconds
+          }
+
+          // Add low time indicator to turn text
+          let turnDisplay: ReactNode = turnIndicator;
+          if (isLowTime) {
+            turnDisplay = (
+              <span style={{ color: "#ff4d4f" }}>
+                <Tooltip title="Less than 24 hours remaining">
+                  <ClockCircleOutlined style={{ marginRight: 4 }} />
+                </Tooltip>
+                {turnIndicator}
+              </span>
+            );
+          }
+
           return {
             gameID: ag.gameID,
             players: (
@@ -102,13 +126,14 @@ export const CorrespondenceGames = (props: Props) => {
                 </div>
               </>
             ),
-            turn: turnIndicator,
+            turn: turnDisplay,
             player1: ag.players[0]?.displayName || "",
             player2: ag.players[1]?.displayName || "",
             lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
             lexiconCode: ag.lexicon,
             onTurn,
             variant: ag.variant || "classic",
+            timeRemaining: timeRemainingSecs,
             details:
               ag.tournamentID !== "" ? (
                 <span className="tourney-name">{ag.tournamentID}</span>
@@ -127,11 +152,13 @@ export const CorrespondenceGames = (props: Props) => {
         },
       );
 
-      // Sort: games where it's user's turn first
+      // Sort: games where it's user's turn first, then by time remaining (least to most)
       gameData.sort((a, b) => {
+        // First prioritize games where it's user's turn
         if (a.onTurn && !b.onTurn) return -1;
         if (!a.onTurn && b.onTurn) return 1;
-        return 0;
+        // Within each group (user's turn vs not), sort by time remaining (ascending)
+        return a.timeRemaining - b.timeRemaining;
       });
 
       return gameData;

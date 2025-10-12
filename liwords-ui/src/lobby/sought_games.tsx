@@ -94,7 +94,9 @@ type Props = {
   ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 export const SoughtGames = (props: Props) => {
-  const [cancelVisibleSeekID, setCancelVisibleSeekID] = useState<string | null>(null);
+  const [cancelVisibleSeekID, setCancelVisibleSeekID] = useState<string | null>(
+    null,
+  );
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [selectedSeek, setSelectedSeek] = useState<SoughtGame | null>(null);
   const {

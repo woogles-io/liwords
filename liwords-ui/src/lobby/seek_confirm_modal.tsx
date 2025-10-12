@@ -35,6 +35,11 @@ export const SeekConfirmModal = (props: Props) => {
     return null;
   }
 
+  // Check if this is a direct match request vs an open seek
+  const isMatchRequest = seek.receiverIsPermanent || false;
+  const modalTitle = isMatchRequest ? "Accept Match" : "Accept Seek";
+  const buttonText = isMatchRequest ? "Accept Match" : "Accept Seek";
+
   // Check if user has ANY ratings (to determine if they're completely new)
   const hasAnyRatings = Object.keys(userRatings).length > 0;
 
@@ -115,7 +120,7 @@ export const SeekConfirmModal = (props: Props) => {
 
   return (
     <Modal
-      title="Accept Seek"
+      title={modalTitle}
       open={open}
       onCancel={onCancel}
       footer={[
@@ -123,7 +128,7 @@ export const SeekConfirmModal = (props: Props) => {
           Cancel
         </Button>,
         <Button key="accept" type="primary" onClick={onAccept}>
-          Accept
+          {buttonText}
         </Button>,
       ]}
       width={500}
