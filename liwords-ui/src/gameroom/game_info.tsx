@@ -116,7 +116,7 @@ export const GameInfo = React.memo((props: Props) => {
         )}
         <p className="variant">
           {props.meta.gameRequest?.gameMode === 1
-            ? `Correspondence ${Math.floor((props.meta.gameRequest?.initialTimeSeconds ?? 0) / 86400)} day${Math.floor((props.meta.gameRequest?.initialTimeSeconds ?? 0) / 86400) !== 1 ? "s" : ""} per turn`
+            ? "Correspondence"
             : `${
                 timeCtrlToDisplayName(
                   props.meta.gameRequest?.initialTimeSeconds ?? 0,

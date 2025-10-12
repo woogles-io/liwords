@@ -38,8 +38,7 @@ export const timeFormat = (
 ): string => {
   // Check if this is a correspondence game
   if (gameMode === 1) {
-    const days = Math.floor(initialTimeSecs / 86400);
-    return `Correspondence ${days} day${days !== 1 ? "s" : ""} per turn`;
+    return "Correspondence";
   }
 
   const label = timeCtrlToDisplayName(

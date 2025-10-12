@@ -131,8 +131,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
   let time: string;
   if (gameRequest?.gameMode === 1) {
     // Correspondence game
-    const days = Math.floor((gameRequest?.initialTimeSeconds ?? 0) / 86400);
-    time = `Correspondence ${days} day${days !== 1 ? "s" : ""}/turn`;
+    time = "Correspondence";
   } else {
     time = `${timeControlName} ${timeToString(
       gameRequest?.initialTimeSeconds ?? 0,

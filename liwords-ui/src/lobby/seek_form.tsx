@@ -555,7 +555,8 @@ export const SeekForm = (props: Props) => {
     });
 
     const isCorrespondence = val.gameMode === 1;
-    const correspondenceTime = (val.correspondenceTimePerTurn as number) || 432000; // Default to 5 days
+    const correspondenceTime =
+      (val.correspondenceTimePerTurn as number) || 432000; // Default to 5 days
 
     const obj = {
       // These items are assigned by the server:
