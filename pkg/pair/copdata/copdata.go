@@ -1,7 +1,6 @@
 package copdata
 
 import (
-	"context"
 	"fmt"
 	"math"
 
@@ -37,12 +36,12 @@ type PrecompData struct {
 	CompletePairings      int
 }
 
-func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
+func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
 	standings := pkgstnd.CreateInitialStandings(req)
 
 	// Use the initial results to get a tighter bound on the maximum factor
 	initialFactor := pkgstnd.GetRoundsRemaining(req)
-	initialSimResults, pairErr := standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), initialFactor, -1, nil)
+	initialSimResults, pairErr := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, -1, nil)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -89,7 +88,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 	// Only re-sim with the improved bound if it actually makes the max factor smaller
 	// for the highest gibson group.
 	if maxFactor*2 < numPlayersInhighestNongibsonGroup {
-		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.DivisionSims), maxFactor, -1, initialSimResults.SegmentRoundFactors)
+		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), maxFactor, -1, initialSimResults.SegmentRoundFactors)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}
@@ -102,7 +101,7 @@ func GetPrecompData(ctx context.Context, req *pb.PairRequest, copRand *rand.Rand
 		writeFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
-	minWinsForHopeful := int(math.Round(float64(req.DivisionSims) * req.HopefulnessThreshold))
+	minWinsForHopeful := int(math.Round(float64(improvedFactorSimResults.TotalSims) * req.HopefulnessThreshold))
 	highestRankHopefully := make([]int, numPlayers)
 	highestRankAbsolutely := make([]int, numPlayers)
 	lowestRankAbsolutely := make([]int, numPlayers)
@@ -185,7 +184,7 @@ divisionPairingLoop:
 	var allControlLosses map[int]int
 	destinysChild := -1
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
-		controlLossSimResults, pairErr = standings.SimFactorPairAll(ctx, req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
+		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}
@@ -265,19 +264,26 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allCont
 func writeFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
 	header := append([]string{}, standingsHeader[:]...)
 	numPlayers := standings.GetNumPlayers()
+	totalSims := 0
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		header = append(header, strconv.Itoa(rankIdx+1))
+		totalSims += finalRanks[rankIdx][0]
 	}
 
-	finalRanksStr := make([][]string, numPlayers)
+	finalRanksStrPct := make([][]string, numPlayers)
+	finalRanksStrRaw := make([][]string, numPlayers)
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
-		finalRanksStr[rankIdx] = make([]string, numPlayers)
+		finalRanksStrPct[rankIdx] = make([]string, numPlayers)
+		finalRanksStrRaw[rankIdx] = make([]string, numPlayers)
 		for colIdx, value := range finalRanks[rankIdx] {
-			finalRanksStr[rankIdx][colIdx] = strconv.Itoa(value)
+			finalRanksStrPct[rankIdx][colIdx] = fmt.Sprintf("%.4f%%", float64(value)*100/float64(totalSims))
+			finalRanksStrRaw[rankIdx][colIdx] = fmt.Sprintf("%d", value)
 		}
 	}
 
-	WriteStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), finalRanksStr), logsb)
+	WriteStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), finalRanksStrPct), logsb)
+	WriteStringDataToLog("Totals", header, combineStringMatrices(standings.StringData(req), finalRanksStrRaw), logsb)
+	logsb.WriteString(fmt.Sprintf("Total Sims: %d\n\n", totalSims))
 }
 
 func formatStringData(header []string, data [][]string) string {

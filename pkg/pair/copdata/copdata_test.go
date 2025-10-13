@@ -1,8 +1,6 @@
 package copdata_test
 
 import (
-	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -16,7 +14,6 @@ import (
 func TestCOPPrecompData(t *testing.T) {
 	is := is.New(t)
 	copRand := rand.New(rand.NewSource(uint64(0)))
-	ctx := context.Background()
 
 	var logsb strings.Builder
 	var req *pb.PairRequest
@@ -25,7 +22,7 @@ func TestCOPPrecompData(t *testing.T) {
 
 	// Empty division
 	req = pairtestutils.CreateDefaultPairRequest()
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for _, count := range copdata.PairingCounts {
 		is.Equal(count, 0)
@@ -46,7 +43,7 @@ func TestCOPPrecompData(t *testing.T) {
 
 	// Empty division
 	req = pairtestutils.CreateDefaultOddPairRequest()
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for _, count := range copdata.PairingCounts {
 		is.Equal(count, 0)
@@ -70,7 +67,7 @@ func TestCOPPrecompData(t *testing.T) {
 	copRand.Seed(1)
 	// 1st is gibsonized, so control loss should not be used
 	// even though it's set to true in the request
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 23)], 1)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 14)], 1)
@@ -123,9 +120,9 @@ func TestCOPPrecompData(t *testing.T) {
 	is.Equal(copdata.HighestRankHopefully[6], 3)
 	is.Equal(copdata.HighestRankAbsolutely[6], 3)
 	is.Equal(copdata.HighestRankHopefully[7], 4)
-	is.Equal(copdata.HighestRankAbsolutely[7], 4)
+	is.Equal(copdata.HighestRankAbsolutely[7], 3)
 	is.Equal(copdata.HighestRankHopefully[17], 9)
-	is.Equal(copdata.HighestRankAbsolutely[17], 8)
+	is.Equal(copdata.HighestRankAbsolutely[17], 7)
 	for _, group := range copdata.GibsonGroups {
 		is.Equal(group, 0)
 	}
@@ -136,7 +133,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 0)], 2)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 1)], 0)
@@ -159,7 +156,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 25)], 1)
 	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 29)], 1)
@@ -191,7 +188,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for rank := 0; rank < 4; rank++ {
 		is.Equal(copdata.GibsonGroups[rank], 1)
@@ -205,7 +202,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 26
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	is.Equal(copdata.GibsonGroups[0], 0)
@@ -220,7 +217,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	is.Equal(copdata.GibsonGroups[0], 0)
@@ -239,7 +236,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.ControlLossActivationRound = 15
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
@@ -250,8 +247,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req.ControlLossActivationRound = 12
 	req.ControlLossThreshold = 0.5
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
-	fmt.Println(logsb.String())
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, 2)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
@@ -261,7 +257,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.ControlLossActivationRound = 12
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(ctx, req, copRand, &logsb)
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, 1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {

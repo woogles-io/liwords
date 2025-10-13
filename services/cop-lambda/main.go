@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/rs/zerolog/log"
@@ -24,12 +23,6 @@ func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (*pair.LambdaIn
 		return nil, err
 	}
 	log.Info().Msg("unmarshalled-pair-request")
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(TimeLimit)*time.Second)
-	defer cancel()
-
-	if err := ctxWithTimeout.Err(); err != nil {
-		return nil, err
-	}
 
 	marshaler := protojson.MarshalOptions{
 		Multiline:    true, // Enables pretty printing
@@ -42,7 +35,7 @@ func HandleRequest(ctx context.Context, evt pair.LambdaInvokeIO) (*pair.LambdaIn
 	}
 	log.Info().Str("request-json", string(requestJSONData)).Msg("calling-cop-pair")
 
-	pairResponse := cop.COPPair(ctxWithTimeout, &pairRequest)
+	pairResponse := cop.COPPair(&pairRequest)
 	log.Info().Msg("marshalling-pair-response")
 
 	pairResponseBytes, err := proto.Marshal(pairResponse)
