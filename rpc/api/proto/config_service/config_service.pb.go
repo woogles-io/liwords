@@ -834,6 +834,86 @@ func (x *Usernames) GetUsernames() []string {
 	return nil
 }
 
+type GetCorrespondenceGameCountRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCorrespondenceGameCountRequest) Reset() {
+	*x = GetCorrespondenceGameCountRequest{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCorrespondenceGameCountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCorrespondenceGameCountRequest) ProtoMessage() {}
+
+func (x *GetCorrespondenceGameCountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCorrespondenceGameCountRequest.ProtoReflect.Descriptor instead.
+func (*GetCorrespondenceGameCountRequest) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{17}
+}
+
+type CorrespondenceGameCountResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         int32                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CorrespondenceGameCountResponse) Reset() {
+	*x = CorrespondenceGameCountResponse{}
+	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CorrespondenceGameCountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CorrespondenceGameCountResponse) ProtoMessage() {}
+
+func (x *CorrespondenceGameCountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_config_service_config_service_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CorrespondenceGameCountResponse.ProtoReflect.Descriptor instead.
+func (*CorrespondenceGameCountResponse) Descriptor() ([]byte, []int) {
+	return file_proto_config_service_config_service_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CorrespondenceGameCountResponse) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
 var File_proto_config_service_config_service_proto protoreflect.FileDescriptor
 
 const file_proto_config_service_config_service_proto_rawDesc = "" +
@@ -881,7 +961,10 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\x13SearchEmailResponse\x129\n" +
 	"\x05users\x18\x01 \x03(\v2#.config_service.UserDetailsResponseR\x05users\")\n" +
 	"\tUsernames\x12\x1c\n" +
-	"\tusernames\x18\x01 \x03(\tR\tusernames2\xd9\b\n" +
+	"\tusernames\x18\x01 \x03(\tR\tusernames\"#\n" +
+	"!GetCorrespondenceGameCountRequest\"7\n" +
+	"\x1fCorrespondenceGameCountResponse\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count2\xe1\t\n" +
 	"\rConfigService\x12U\n" +
 	"\x0fSetGamesEnabled\x12\".config_service.EnableGamesRequest\x1a\x1e.config_service.ConfigResponse\x12M\n" +
 	"\tSetFEHash\x12 .config_service.SetFEHashRequest\x1a\x1e.config_service.ConfigResponse\x12[\n" +
@@ -894,7 +977,8 @@ const file_proto_config_service_config_service_proto_rawDesc = "" +
 	"\rUnassignBadge\x12\".config_service.AssignBadgeRequest\x1a\x1e.config_service.ConfigResponse\x12[\n" +
 	"\x10GetUsersForBadge\x12'.config_service.GetUsersForBadgeRequest\x1a\x19.config_service.Usernames\"\x03\x90\x02\x01\x12a\n" +
 	"\x0eGetUserDetails\x12%.config_service.GetUserDetailsRequest\x1a#.config_service.UserDetailsResponse\"\x03\x90\x02\x01\x12[\n" +
-	"\vSearchEmail\x12\".config_service.SearchEmailRequest\x1a#.config_service.SearchEmailResponse\"\x03\x90\x02\x01B\xb8\x01\n" +
+	"\vSearchEmail\x12\".config_service.SearchEmailRequest\x1a#.config_service.SearchEmailResponse\"\x03\x90\x02\x01\x12\x85\x01\n" +
+	"\x1aGetCorrespondenceGameCount\x121.config_service.GetCorrespondenceGameCountRequest\x1a/.config_service.CorrespondenceGameCountResponse\"\x03\x90\x02\x01B\xb8\x01\n" +
 	"\x12com.config_serviceB\x12ConfigServiceProtoP\x01Z:github.com/woogles-io/liwords/rpc/api/proto/config_service\xa2\x02\x03CXX\xaa\x02\rConfigService\xca\x02\rConfigService\xe2\x02\x19ConfigService\\GPBMetadata\xea\x02\rConfigServiceb\x06proto3"
 
 var (
@@ -909,32 +993,34 @@ func file_proto_config_service_config_service_proto_rawDescGZIP() []byte {
 	return file_proto_config_service_config_service_proto_rawDescData
 }
 
-var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_proto_config_service_config_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_proto_config_service_config_service_proto_goTypes = []any{
-	(*EnableGamesRequest)(nil),           // 0: config_service.EnableGamesRequest
-	(*SetFEHashRequest)(nil),             // 1: config_service.SetFEHashRequest
-	(*ConfigResponse)(nil),               // 2: config_service.ConfigResponse
-	(*Announcement)(nil),                 // 3: config_service.Announcement
-	(*SetAnnouncementsRequest)(nil),      // 4: config_service.SetAnnouncementsRequest
-	(*GetAnnouncementsRequest)(nil),      // 5: config_service.GetAnnouncementsRequest
-	(*AnnouncementsResponse)(nil),        // 6: config_service.AnnouncementsResponse
-	(*SetSingleAnnouncementRequest)(nil), // 7: config_service.SetSingleAnnouncementRequest
-	(*SetGlobalIntegrationRequest)(nil),  // 8: config_service.SetGlobalIntegrationRequest
-	(*AddBadgeRequest)(nil),              // 9: config_service.AddBadgeRequest
-	(*AssignBadgeRequest)(nil),           // 10: config_service.AssignBadgeRequest
-	(*GetUsersForBadgeRequest)(nil),      // 11: config_service.GetUsersForBadgeRequest
-	(*GetUserDetailsRequest)(nil),        // 12: config_service.GetUserDetailsRequest
-	(*UserDetailsResponse)(nil),          // 13: config_service.UserDetailsResponse
-	(*SearchEmailRequest)(nil),           // 14: config_service.SearchEmailRequest
-	(*SearchEmailResponse)(nil),          // 15: config_service.SearchEmailResponse
-	(*Usernames)(nil),                    // 16: config_service.Usernames
-	(*timestamppb.Timestamp)(nil),        // 17: google.protobuf.Timestamp
+	(*EnableGamesRequest)(nil),                // 0: config_service.EnableGamesRequest
+	(*SetFEHashRequest)(nil),                  // 1: config_service.SetFEHashRequest
+	(*ConfigResponse)(nil),                    // 2: config_service.ConfigResponse
+	(*Announcement)(nil),                      // 3: config_service.Announcement
+	(*SetAnnouncementsRequest)(nil),           // 4: config_service.SetAnnouncementsRequest
+	(*GetAnnouncementsRequest)(nil),           // 5: config_service.GetAnnouncementsRequest
+	(*AnnouncementsResponse)(nil),             // 6: config_service.AnnouncementsResponse
+	(*SetSingleAnnouncementRequest)(nil),      // 7: config_service.SetSingleAnnouncementRequest
+	(*SetGlobalIntegrationRequest)(nil),       // 8: config_service.SetGlobalIntegrationRequest
+	(*AddBadgeRequest)(nil),                   // 9: config_service.AddBadgeRequest
+	(*AssignBadgeRequest)(nil),                // 10: config_service.AssignBadgeRequest
+	(*GetUsersForBadgeRequest)(nil),           // 11: config_service.GetUsersForBadgeRequest
+	(*GetUserDetailsRequest)(nil),             // 12: config_service.GetUserDetailsRequest
+	(*UserDetailsResponse)(nil),               // 13: config_service.UserDetailsResponse
+	(*SearchEmailRequest)(nil),                // 14: config_service.SearchEmailRequest
+	(*SearchEmailResponse)(nil),               // 15: config_service.SearchEmailResponse
+	(*Usernames)(nil),                         // 16: config_service.Usernames
+	(*GetCorrespondenceGameCountRequest)(nil), // 17: config_service.GetCorrespondenceGameCountRequest
+	(*CorrespondenceGameCountResponse)(nil),   // 18: config_service.CorrespondenceGameCountResponse
+	(*timestamppb.Timestamp)(nil),             // 19: google.protobuf.Timestamp
 }
 var file_proto_config_service_config_service_proto_depIdxs = []int32{
 	3,  // 0: config_service.SetAnnouncementsRequest.announcements:type_name -> config_service.Announcement
 	3,  // 1: config_service.AnnouncementsResponse.announcements:type_name -> config_service.Announcement
 	3,  // 2: config_service.SetSingleAnnouncementRequest.announcement:type_name -> config_service.Announcement
-	17, // 3: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
+	19, // 3: config_service.UserDetailsResponse.created:type_name -> google.protobuf.Timestamp
 	13, // 4: config_service.SearchEmailResponse.users:type_name -> config_service.UserDetailsResponse
 	0,  // 5: config_service.ConfigService.SetGamesEnabled:input_type -> config_service.EnableGamesRequest
 	1,  // 6: config_service.ConfigService.SetFEHash:input_type -> config_service.SetFEHashRequest
@@ -948,20 +1034,22 @@ var file_proto_config_service_config_service_proto_depIdxs = []int32{
 	11, // 14: config_service.ConfigService.GetUsersForBadge:input_type -> config_service.GetUsersForBadgeRequest
 	12, // 15: config_service.ConfigService.GetUserDetails:input_type -> config_service.GetUserDetailsRequest
 	14, // 16: config_service.ConfigService.SearchEmail:input_type -> config_service.SearchEmailRequest
-	2,  // 17: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
-	2,  // 18: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
-	2,  // 19: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
-	6,  // 20: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
-	2,  // 21: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
-	2,  // 22: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
-	2,  // 23: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
-	2,  // 24: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
-	2,  // 25: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
-	16, // 26: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
-	13, // 27: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
-	15, // 28: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
-	17, // [17:29] is the sub-list for method output_type
-	5,  // [5:17] is the sub-list for method input_type
+	17, // 17: config_service.ConfigService.GetCorrespondenceGameCount:input_type -> config_service.GetCorrespondenceGameCountRequest
+	2,  // 18: config_service.ConfigService.SetGamesEnabled:output_type -> config_service.ConfigResponse
+	2,  // 19: config_service.ConfigService.SetFEHash:output_type -> config_service.ConfigResponse
+	2,  // 20: config_service.ConfigService.SetAnnouncements:output_type -> config_service.ConfigResponse
+	6,  // 21: config_service.ConfigService.GetAnnouncements:output_type -> config_service.AnnouncementsResponse
+	2,  // 22: config_service.ConfigService.SetSingleAnnouncement:output_type -> config_service.ConfigResponse
+	2,  // 23: config_service.ConfigService.SetGlobalIntegration:output_type -> config_service.ConfigResponse
+	2,  // 24: config_service.ConfigService.AddBadge:output_type -> config_service.ConfigResponse
+	2,  // 25: config_service.ConfigService.AssignBadge:output_type -> config_service.ConfigResponse
+	2,  // 26: config_service.ConfigService.UnassignBadge:output_type -> config_service.ConfigResponse
+	16, // 27: config_service.ConfigService.GetUsersForBadge:output_type -> config_service.Usernames
+	13, // 28: config_service.ConfigService.GetUserDetails:output_type -> config_service.UserDetailsResponse
+	15, // 29: config_service.ConfigService.SearchEmail:output_type -> config_service.SearchEmailResponse
+	18, // 30: config_service.ConfigService.GetCorrespondenceGameCount:output_type -> config_service.CorrespondenceGameCountResponse
+	18, // [18:31] is the sub-list for method output_type
+	5,  // [5:18] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -978,7 +1066,7 @@ func file_proto_config_service_config_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_config_service_config_service_proto_rawDesc), len(file_proto_config_service_config_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

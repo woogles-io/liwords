@@ -25,6 +25,7 @@ type Props = {
   activeGames: ActiveGame[];
   username?: string;
   type?: "RESUME";
+  correspondenceGamesCount?: number;
 };
 
 export const ActiveGames = (props: Props) => {
@@ -214,14 +215,22 @@ export const ActiveGames = (props: Props) => {
 
   let title = <>Resume</>;
   if (props.type !== "RESUME") {
-    title = isAdmin ? (
-      <>
-        {"Games live now"}
-        <span className="game-count">{props.activeGames?.length}</span>
-      </>
-    ) : (
-      <>Games live now</>
-    );
+    if (isAdmin) {
+      title = (
+        <>
+          {"Games live now"}
+          <span className="game-count">{props.activeGames?.length}</span>
+          {props.correspondenceGamesCount !== undefined && (
+            <span className="game-count">
+              {" "}
+              + {props.correspondenceGamesCount} correspondence
+            </span>
+          )}
+        </>
+      );
+    } else {
+      title = <>Games live now</>;
+    }
   }
 
   // For RESUME mode, show single table without grouping

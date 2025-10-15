@@ -67,6 +67,9 @@ const (
 	// ConfigServiceSearchEmailProcedure is the fully-qualified name of the ConfigService's SearchEmail
 	// RPC.
 	ConfigServiceSearchEmailProcedure = "/config_service.ConfigService/SearchEmail"
+	// ConfigServiceGetCorrespondenceGameCountProcedure is the fully-qualified name of the
+	// ConfigService's GetCorrespondenceGameCount RPC.
+	ConfigServiceGetCorrespondenceGameCountProcedure = "/config_service.ConfigService/GetCorrespondenceGameCount"
 )
 
 // ConfigServiceClient is a client for the config_service.ConfigService service.
@@ -83,6 +86,7 @@ type ConfigServiceClient interface {
 	GetUsersForBadge(context.Context, *connect.Request[config_service.GetUsersForBadgeRequest]) (*connect.Response[config_service.Usernames], error)
 	GetUserDetails(context.Context, *connect.Request[config_service.GetUserDetailsRequest]) (*connect.Response[config_service.UserDetailsResponse], error)
 	SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
+	GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error)
 }
 
 // NewConfigServiceClient constructs a client for the config_service.ConfigService service. By
@@ -172,23 +176,31 @@ func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getCorrespondenceGameCount: connect.NewClient[config_service.GetCorrespondenceGameCountRequest, config_service.CorrespondenceGameCountResponse](
+			httpClient,
+			baseURL+ConfigServiceGetCorrespondenceGameCountProcedure,
+			connect.WithSchema(configServiceMethods.ByName("GetCorrespondenceGameCount")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // configServiceClient implements ConfigServiceClient.
 type configServiceClient struct {
-	setGamesEnabled       *connect.Client[config_service.EnableGamesRequest, config_service.ConfigResponse]
-	setFEHash             *connect.Client[config_service.SetFEHashRequest, config_service.ConfigResponse]
-	setAnnouncements      *connect.Client[config_service.SetAnnouncementsRequest, config_service.ConfigResponse]
-	getAnnouncements      *connect.Client[config_service.GetAnnouncementsRequest, config_service.AnnouncementsResponse]
-	setSingleAnnouncement *connect.Client[config_service.SetSingleAnnouncementRequest, config_service.ConfigResponse]
-	setGlobalIntegration  *connect.Client[config_service.SetGlobalIntegrationRequest, config_service.ConfigResponse]
-	addBadge              *connect.Client[config_service.AddBadgeRequest, config_service.ConfigResponse]
-	assignBadge           *connect.Client[config_service.AssignBadgeRequest, config_service.ConfigResponse]
-	unassignBadge         *connect.Client[config_service.AssignBadgeRequest, config_service.ConfigResponse]
-	getUsersForBadge      *connect.Client[config_service.GetUsersForBadgeRequest, config_service.Usernames]
-	getUserDetails        *connect.Client[config_service.GetUserDetailsRequest, config_service.UserDetailsResponse]
-	searchEmail           *connect.Client[config_service.SearchEmailRequest, config_service.SearchEmailResponse]
+	setGamesEnabled            *connect.Client[config_service.EnableGamesRequest, config_service.ConfigResponse]
+	setFEHash                  *connect.Client[config_service.SetFEHashRequest, config_service.ConfigResponse]
+	setAnnouncements           *connect.Client[config_service.SetAnnouncementsRequest, config_service.ConfigResponse]
+	getAnnouncements           *connect.Client[config_service.GetAnnouncementsRequest, config_service.AnnouncementsResponse]
+	setSingleAnnouncement      *connect.Client[config_service.SetSingleAnnouncementRequest, config_service.ConfigResponse]
+	setGlobalIntegration       *connect.Client[config_service.SetGlobalIntegrationRequest, config_service.ConfigResponse]
+	addBadge                   *connect.Client[config_service.AddBadgeRequest, config_service.ConfigResponse]
+	assignBadge                *connect.Client[config_service.AssignBadgeRequest, config_service.ConfigResponse]
+	unassignBadge              *connect.Client[config_service.AssignBadgeRequest, config_service.ConfigResponse]
+	getUsersForBadge           *connect.Client[config_service.GetUsersForBadgeRequest, config_service.Usernames]
+	getUserDetails             *connect.Client[config_service.GetUserDetailsRequest, config_service.UserDetailsResponse]
+	searchEmail                *connect.Client[config_service.SearchEmailRequest, config_service.SearchEmailResponse]
+	getCorrespondenceGameCount *connect.Client[config_service.GetCorrespondenceGameCountRequest, config_service.CorrespondenceGameCountResponse]
 }
 
 // SetGamesEnabled calls config_service.ConfigService.SetGamesEnabled.
@@ -251,6 +263,11 @@ func (c *configServiceClient) SearchEmail(ctx context.Context, req *connect.Requ
 	return c.searchEmail.CallUnary(ctx, req)
 }
 
+// GetCorrespondenceGameCount calls config_service.ConfigService.GetCorrespondenceGameCount.
+func (c *configServiceClient) GetCorrespondenceGameCount(ctx context.Context, req *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error) {
+	return c.getCorrespondenceGameCount.CallUnary(ctx, req)
+}
+
 // ConfigServiceHandler is an implementation of the config_service.ConfigService service.
 type ConfigServiceHandler interface {
 	SetGamesEnabled(context.Context, *connect.Request[config_service.EnableGamesRequest]) (*connect.Response[config_service.ConfigResponse], error)
@@ -265,6 +282,7 @@ type ConfigServiceHandler interface {
 	GetUsersForBadge(context.Context, *connect.Request[config_service.GetUsersForBadgeRequest]) (*connect.Response[config_service.Usernames], error)
 	GetUserDetails(context.Context, *connect.Request[config_service.GetUserDetailsRequest]) (*connect.Response[config_service.UserDetailsResponse], error)
 	SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error)
+	GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error)
 }
 
 // NewConfigServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -350,6 +368,13 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	configServiceGetCorrespondenceGameCountHandler := connect.NewUnaryHandler(
+		ConfigServiceGetCorrespondenceGameCountProcedure,
+		svc.GetCorrespondenceGameCount,
+		connect.WithSchema(configServiceMethods.ByName("GetCorrespondenceGameCount")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/config_service.ConfigService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConfigServiceSetGamesEnabledProcedure:
@@ -376,6 +401,8 @@ func NewConfigServiceHandler(svc ConfigServiceHandler, opts ...connect.HandlerOp
 			configServiceGetUserDetailsHandler.ServeHTTP(w, r)
 		case ConfigServiceSearchEmailProcedure:
 			configServiceSearchEmailHandler.ServeHTTP(w, r)
+		case ConfigServiceGetCorrespondenceGameCountProcedure:
+			configServiceGetCorrespondenceGameCountHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -431,4 +458,8 @@ func (UnimplementedConfigServiceHandler) GetUserDetails(context.Context, *connec
 
 func (UnimplementedConfigServiceHandler) SearchEmail(context.Context, *connect.Request[config_service.SearchEmailRequest]) (*connect.Response[config_service.SearchEmailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.SearchEmail is not implemented"))
+}
+
+func (UnimplementedConfigServiceHandler) GetCorrespondenceGameCount(context.Context, *connect.Request[config_service.GetCorrespondenceGameCountRequest]) (*connect.Response[config_service.CorrespondenceGameCountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("config_service.ConfigService.GetCorrespondenceGameCount is not implemented"))
 }

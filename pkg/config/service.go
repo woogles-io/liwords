@@ -254,3 +254,21 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 		Users: matchesPb,
 	}), nil
 }
+
+func (cs *ConfigService) GetCorrespondenceGameCount(ctx context.Context, req *connect.Request[pb.GetCorrespondenceGameCountRequest]) (
+	*connect.Response[pb.CorrespondenceGameCountResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, cs.userStore, cs.q, rbac.AdminAllAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := cs.q.CountActiveCorrespondenceGames(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&pb.CorrespondenceGameCountResponse{
+		Count: count,
+	}), nil
+}

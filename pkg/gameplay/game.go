@@ -269,7 +269,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	return potentiallySendBotMoveRequest(ctx, stores, entGame)
+	return PotentiallySendBotMoveRequest(ctx, stores, entGame)
 
 }
 
@@ -437,7 +437,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 				return err
 			}
 		}
-		return potentiallySendBotMoveRequest(ctx, stores, entGame)
+		return PotentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
 	return nil
@@ -528,7 +528,7 @@ func PlayMove(ctx context.Context,
 				return err
 			}
 		}
-		return potentiallySendBotMoveRequest(ctx, stores, entGame)
+		return PotentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
 	return nil
@@ -723,8 +723,8 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 	return userStats, nil
 }
 
-// send a request to the internal Macondo bot to move.
-func potentiallySendBotMoveRequest(ctx context.Context, stores *stores.Stores, g *entity.Game) error {
+// PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
+func PotentiallySendBotMoveRequest(ctx context.Context, stores *stores.Stores, g *entity.Game) error {
 	userOnTurn, err := stores.UserStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {
 		return err

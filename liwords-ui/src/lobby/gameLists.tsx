@@ -7,9 +7,15 @@ import { SoughtGames } from "./sought_games";
 import { ActiveGames } from "./active_games";
 import { CorrespondenceGames } from "./correspondence_games";
 import { SeekForm } from "./seek_form";
-import { useContextMatchContext, useLobbyStoreContext } from "../store/store";
+import {
+  useContextMatchContext,
+  useLobbyStoreContext,
+  useLoginStateStoreContext,
+} from "../store/store";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { ActionType } from "../actions/actions";
+import { useClient } from "../utils/hooks/connect";
+import { ConfigService } from "../gen/api/proto/config_service/config_service_pb";
 import "./seek_form.scss";
 import "../shared/gameLists.scss";
 
@@ -36,11 +42,32 @@ export const GameLists = React.memo((props: Props) => {
     onSeekSubmit,
   } = props;
   const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
+  const { loginState } = useLoginStateStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [showCorresInfoModal, setShowCorresInfoModal] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
+  const [correspondenceGameCount, setCorrespondenceGameCount] = useState<
+    number | undefined
+  >(undefined);
+
+  const configClient = useClient(ConfigService);
+  const isAdmin = loginState.perms.includes("adm");
+
+  // Fetch correspondence game count if user is admin
+  useEffect(() => {
+    if (isAdmin) {
+      (async () => {
+        try {
+          const resp = await configClient.getCorrespondenceGameCount({});
+          setCorrespondenceGameCount(resp.count);
+        } catch (err) {
+          console.error("Failed to fetch correspondence game count:", err);
+        }
+      })();
+    }
+  }, [isAdmin, configClient]);
 
   const { addHandleContextMatch, removeHandleContextMatch } =
     useContextMatchContext();
@@ -191,6 +218,7 @@ export const GameLists = React.memo((props: Props) => {
         <ActiveGames
           username={username}
           activeGames={lobbyContext?.activeGames}
+          correspondenceGamesCount={correspondenceGameCount}
         />
       </>
     );

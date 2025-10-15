@@ -167,6 +167,46 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
     )
 ORDER BY id;
 
+-- name: CountActiveCorrespondenceGames :one
+SELECT COUNT(*)::int
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1; -- Only CORRESPONDENCE games
+
+-- name: ListActiveCorrespondenceGamesWithBotOnTurn :many
+SELECT g.uuid
+FROM games g
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND g.player_on_turn IS NOT NULL
+    AND (
+        (g.player_on_turn = 0 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+        OR
+        (g.player_on_turn = 1 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+    )
+ORDER BY g.id;
+
+-- name: ListActiveRealtimeGamesWithBotOnTurn :many
+SELECT g.uuid
+FROM games g
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((g.game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+    AND g.player_on_turn IS NOT NULL
+    AND (
+        (g.player_on_turn = 0 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+        OR
+        (g.player_on_turn = 1 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+    )
+ORDER BY g.id;
+
 -- name: SetReady :one
 UPDATE games
 SET ready_flag = ready_flag | (1 << @player_idx::integer)

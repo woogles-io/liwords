@@ -53,6 +53,10 @@ message UserDetailsResponse {
 message SearchEmailRequest { string partial_email = 1; }
 message SearchEmailResponse { repeated UserDetailsResponse users = 1; }
 message Usernames { repeated string usernames = 1; }
+
+message GetCorrespondenceGameCountRequest {}
+message CorrespondenceGameCountResponse { int32 count = 1; }
+
 // ConfigService requires admin authentication, except for the GetAnnouncements
 // endpoint.
 service ConfigService {
@@ -77,6 +81,10 @@ service ConfigService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SearchEmail(SearchEmailRequest) returns (SearchEmailResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetCorrespondenceGameCount(GetCorrespondenceGameCountRequest)
+      returns (CorrespondenceGameCountResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
