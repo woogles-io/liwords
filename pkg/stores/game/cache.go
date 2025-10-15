@@ -131,7 +131,7 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if ok && g != nil {
 		return g.(*entity.Game), nil
 	}
-	log.Info().Str("gameid", id).Msg("not-in-cache")
+	log.Debug().Str("gameid", id).Msg("not-in-cache")
 	uncachedGame, err := c.backing.Get(ctx, id)
 	if err == nil && !uncachedGame.IsCorrespondence() {
 		// Only add to cache if it's not a correspondence game

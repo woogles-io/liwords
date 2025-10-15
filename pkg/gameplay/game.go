@@ -428,6 +428,15 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 			return err
 		}
 	} else {
+		// For correspondence games, save to DB BEFORE potentially sending bot request
+		// to prevent race condition where bot response loads stale state from DB.
+		// HandleEvent will skip the save for correspondence games to avoid double-saving.
+		if entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving-before-bot-request")
+				return err
+			}
+		}
 		return potentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
@@ -510,6 +519,15 @@ func PlayMove(ctx context.Context,
 			return err
 		}
 	} else {
+		// For correspondence games, save to DB BEFORE potentially sending bot request
+		// to prevent race condition where bot response loads stale state from DB.
+		// HandleEvent will skip the save for correspondence games to avoid double-saving.
+		if entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving-before-bot-request")
+				return err
+			}
+		}
 		return potentiallySendBotMoveRequest(ctx, stores, entGame)
 	}
 
@@ -603,6 +621,8 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 	// If the game hasn't ended yet, save it to the store. If it HAS ended,
 	// it was already saved to the store somewhere above (in performEndgameDuties)
 	// and we don't want to save it again as it will reload it into the cache.
+	// For correspondence games, PlayMove already saved before sending bot request,
+	// so we skip the save here to avoid double-saving.
 	if entGame.GameEndReason == pb.GameEndReason_NONE {
 
 		// Since we processed a game event, we should cancel any outstanding
@@ -615,9 +635,11 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			}
 		}
 
-		if err := stores.GameStore.Set(ctx, entGame); err != nil {
-			log.Err(err).Msg("error-saving")
-			return entGame, err
+		if !entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving")
+				return entGame, err
+			}
 		}
 
 		// For correspondence games, send real-time update with new playerOnTurn
