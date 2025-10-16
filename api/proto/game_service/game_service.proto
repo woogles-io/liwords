@@ -37,6 +37,24 @@ message StreakInfoResponse {
 
 message RematchStreakRequest { string original_request_id = 1; }
 
+enum UnfreezeBotMode {
+  UNFREEZE_BOT_MODE_UNSPECIFIED = 0;
+  UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE = 1;
+  UNFREEZE_BOT_MODE_ALL_REALTIME = 2;
+  UNFREEZE_BOT_MODE_SPECIFIC_GAME = 3;
+}
+
+message UnfreezeBotRequest {
+  UnfreezeBotMode mode = 1;
+  string game_id = 2;  // Required if mode is SPECIFIC_GAME
+}
+
+message UnfreezeBotResponse {
+  int32 games_processed = 1;
+  int32 requests_sent = 2;
+  int32 errors = 3;
+}
+
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns (ipc.GameInfoResponse);
   // GetGCG gets a GCG string for the given game ID.
@@ -50,4 +68,6 @@ service GameMetadataService {
   // GetGameDocument gets a Game Document. This will eventually obsolete
   // GetGameHistory. Does not work with annotated games for now.
   rpc GetGameDocument(GameDocumentRequest) returns (GameDocumentResponse);
+  // UnfreezeBot re-sends bot move requests for stuck games (admin only)
+  rpc UnfreezeBot(UnfreezeBotRequest) returns (UnfreezeBotResponse);
 }

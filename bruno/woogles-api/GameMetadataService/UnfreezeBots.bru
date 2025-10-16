@@ -1,0 +1,21 @@
+meta {
+  name: UnfreezeBots
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseURL}}/api/game_service.GameMetadataService/UnfreezeBot
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "mode": "UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE"
+  }
+}
+
+docs {
+  Only used for non-annotated games.
+}

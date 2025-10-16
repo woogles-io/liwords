@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -456,7 +457,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	}
 
 	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
-		UpdatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true}, // Use CreatedAt as proxy
+		UpdatedAt:      pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
 		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
 		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
 		Timers:         g.Timers,

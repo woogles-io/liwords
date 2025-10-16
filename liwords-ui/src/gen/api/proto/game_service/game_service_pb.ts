@@ -2,8 +2,8 @@
 // @generated from file proto/game_service/game_service.proto (package game_service, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { GameDocument, GameInfoResponseSchema, GameInfoResponsesSchema } from "../ipc/omgwords_pb";
 import { file_proto_ipc_omgwords } from "../ipc/omgwords_pb";
 import type { GameHistory } from "../../vendor/macondo/macondo_pb";
@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/game_service/game_service.proto.
  */
 export const file_proto_game_service_game_service: GenFile = /*@__PURE__*/
-  fileDesc("CiVwcm90by9nYW1lX3NlcnZpY2UvZ2FtZV9zZXJ2aWNlLnByb3RvEgxnYW1lX3NlcnZpY2UiIgoPR2FtZUluZm9SZXF1ZXN0Eg8KB2dhbWVfaWQYASABKAkiHQoKR0NHUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIiUKEkdhbWVIaXN0b3J5UmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIiYKE0dhbWVEb2N1bWVudFJlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSIaCgtHQ0dSZXNwb25zZRILCgNnY2cYASABKAkiPAoTR2FtZUhpc3RvcnlSZXNwb25zZRIlCgdoaXN0b3J5GAEgASgLMhQubWFjb25kby5HYW1lSGlzdG9yeSI7ChRHYW1lRG9jdW1lbnRSZXNwb25zZRIjCghkb2N1bWVudBgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiSQoSUmVjZW50R2FtZXNSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhEKCW51bV9nYW1lcxgCIAEoBRIOCgZvZmZzZXQYAyABKAUi+AEKElN0cmVha0luZm9SZXNwb25zZRI/CgZzdHJlYWsYASADKAsyLy5nYW1lX3NlcnZpY2UuU3RyZWFrSW5mb1Jlc3BvbnNlLlNpbmdsZUdhbWVJbmZvEkAKC3BsYXllcnNJbmZvGAMgAygLMisuZ2FtZV9zZXJ2aWNlLlN0cmVha0luZm9SZXNwb25zZS5QbGF5ZXJJbmZvGjEKDlNpbmdsZUdhbWVJbmZvEg8KB2dhbWVfaWQYASABKAkSDgoGd2lubmVyGAMgASgFGiwKClBsYXllckluZm8SEAoIbmlja25hbWUYASABKAkSDAoEdXVpZBgCIAEoCSIzChRSZW1hdGNoU3RyZWFrUmVxdWVzdBIbChNvcmlnaW5hbF9yZXF1ZXN0X2lkGAEgASgJMvADChNHYW1lTWV0YWRhdGFTZXJ2aWNlEkMKC0dldE1ldGFkYXRhEh0uZ2FtZV9zZXJ2aWNlLkdhbWVJbmZvUmVxdWVzdBoVLmlwYy5HYW1lSW5mb1Jlc3BvbnNlEj0KBkdldEdDRxIYLmdhbWVfc2VydmljZS5HQ0dSZXF1ZXN0GhkuZ2FtZV9zZXJ2aWNlLkdDR1Jlc3BvbnNlElUKDkdldEdhbWVIaXN0b3J5EiAuZ2FtZV9zZXJ2aWNlLkdhbWVIaXN0b3J5UmVxdWVzdBohLmdhbWVfc2VydmljZS5HYW1lSGlzdG9yeVJlc3BvbnNlEkoKDkdldFJlY2VudEdhbWVzEiAuZ2FtZV9zZXJ2aWNlLlJlY2VudEdhbWVzUmVxdWVzdBoWLmlwYy5HYW1lSW5mb1Jlc3BvbnNlcxJYChBHZXRSZW1hdGNoU3RyZWFrEiIuZ2FtZV9zZXJ2aWNlLlJlbWF0Y2hTdHJlYWtSZXF1ZXN0GiAuZ2FtZV9zZXJ2aWNlLlN0cmVha0luZm9SZXNwb25zZRJYCg9HZXRHYW1lRG9jdW1lbnQSIS5nYW1lX3NlcnZpY2UuR2FtZURvY3VtZW50UmVxdWVzdBoiLmdhbWVfc2VydmljZS5HYW1lRG9jdW1lbnRSZXNwb25zZUKqAQoQY29tLmdhbWVfc2VydmljZUIQR2FtZVNlcnZpY2VQcm90b1ABWjhnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2dhbWVfc2VydmljZaICA0dYWKoCC0dhbWVTZXJ2aWNlygILR2FtZVNlcnZpY2XiAhdHYW1lU2VydmljZVxHUEJNZXRhZGF0YeoCC0dhbWVTZXJ2aWNlYgZwcm90bzM", [file_proto_ipc_omgwords, file_vendor_macondo_macondo]);
+  fileDesc("CiVwcm90by9nYW1lX3NlcnZpY2UvZ2FtZV9zZXJ2aWNlLnByb3RvEgxnYW1lX3NlcnZpY2UiIgoPR2FtZUluZm9SZXF1ZXN0Eg8KB2dhbWVfaWQYASABKAkiHQoKR0NHUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIiUKEkdhbWVIaXN0b3J5UmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIiYKE0dhbWVEb2N1bWVudFJlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSIaCgtHQ0dSZXNwb25zZRILCgNnY2cYASABKAkiPAoTR2FtZUhpc3RvcnlSZXNwb25zZRIlCgdoaXN0b3J5GAEgASgLMhQubWFjb25kby5HYW1lSGlzdG9yeSI7ChRHYW1lRG9jdW1lbnRSZXNwb25zZRIjCghkb2N1bWVudBgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiSQoSUmVjZW50R2FtZXNSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhEKCW51bV9nYW1lcxgCIAEoBRIOCgZvZmZzZXQYAyABKAUi+AEKElN0cmVha0luZm9SZXNwb25zZRI/CgZzdHJlYWsYASADKAsyLy5nYW1lX3NlcnZpY2UuU3RyZWFrSW5mb1Jlc3BvbnNlLlNpbmdsZUdhbWVJbmZvEkAKC3BsYXllcnNJbmZvGAMgAygLMisuZ2FtZV9zZXJ2aWNlLlN0cmVha0luZm9SZXNwb25zZS5QbGF5ZXJJbmZvGjEKDlNpbmdsZUdhbWVJbmZvEg8KB2dhbWVfaWQYASABKAkSDgoGd2lubmVyGAMgASgFGiwKClBsYXllckluZm8SEAoIbmlja25hbWUYASABKAkSDAoEdXVpZBgCIAEoCSIzChRSZW1hdGNoU3RyZWFrUmVxdWVzdBIbChNvcmlnaW5hbF9yZXF1ZXN0X2lkGAEgASgJIlIKElVuZnJlZXplQm90UmVxdWVzdBIrCgRtb2RlGAEgASgOMh0uZ2FtZV9zZXJ2aWNlLlVuZnJlZXplQm90TW9kZRIPCgdnYW1lX2lkGAIgASgJIlUKE1VuZnJlZXplQm90UmVzcG9uc2USFwoPZ2FtZXNfcHJvY2Vzc2VkGAEgASgFEhUKDXJlcXVlc3RzX3NlbnQYAiABKAUSDgoGZXJyb3JzGAMgASgFKqcBCg9VbmZyZWV6ZUJvdE1vZGUSIQodVU5GUkVFWkVfQk9UX01PREVfVU5TUEVDSUZJRUQQABIoCiRVTkZSRUVaRV9CT1RfTU9ERV9BTExfQ09SUkVTUE9OREVOQ0UQARIiCh5VTkZSRUVaRV9CT1RfTU9ERV9BTExfUkVBTFRJTUUQAhIjCh9VTkZSRUVaRV9CT1RfTU9ERV9TUEVDSUZJQ19HQU1FEAMyxAQKE0dhbWVNZXRhZGF0YVNlcnZpY2USQwoLR2V0TWV0YWRhdGESHS5nYW1lX3NlcnZpY2UuR2FtZUluZm9SZXF1ZXN0GhUuaXBjLkdhbWVJbmZvUmVzcG9uc2USPQoGR2V0R0NHEhguZ2FtZV9zZXJ2aWNlLkdDR1JlcXVlc3QaGS5nYW1lX3NlcnZpY2UuR0NHUmVzcG9uc2USVQoOR2V0R2FtZUhpc3RvcnkSIC5nYW1lX3NlcnZpY2UuR2FtZUhpc3RvcnlSZXF1ZXN0GiEuZ2FtZV9zZXJ2aWNlLkdhbWVIaXN0b3J5UmVzcG9uc2USSgoOR2V0UmVjZW50R2FtZXMSIC5nYW1lX3NlcnZpY2UuUmVjZW50R2FtZXNSZXF1ZXN0GhYuaXBjLkdhbWVJbmZvUmVzcG9uc2VzElgKEEdldFJlbWF0Y2hTdHJlYWsSIi5nYW1lX3NlcnZpY2UuUmVtYXRjaFN0cmVha1JlcXVlc3QaIC5nYW1lX3NlcnZpY2UuU3RyZWFrSW5mb1Jlc3BvbnNlElgKD0dldEdhbWVEb2N1bWVudBIhLmdhbWVfc2VydmljZS5HYW1lRG9jdW1lbnRSZXF1ZXN0GiIuZ2FtZV9zZXJ2aWNlLkdhbWVEb2N1bWVudFJlc3BvbnNlElIKC1VuZnJlZXplQm90EiAuZ2FtZV9zZXJ2aWNlLlVuZnJlZXplQm90UmVxdWVzdBohLmdhbWVfc2VydmljZS5VbmZyZWV6ZUJvdFJlc3BvbnNlQqoBChBjb20uZ2FtZV9zZXJ2aWNlQhBHYW1lU2VydmljZVByb3RvUAFaOGdpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vZ2FtZV9zZXJ2aWNlogIDR1hYqgILR2FtZVNlcnZpY2XKAgtHYW1lU2VydmljZeICF0dhbWVTZXJ2aWNlXEdQQk1ldGFkYXRh6gILR2FtZVNlcnZpY2ViBnByb3RvMw", [file_proto_ipc_omgwords, file_vendor_macondo_macondo]);
 
 /**
  * Meta information about a game, including its players.
@@ -254,6 +254,88 @@ export const RematchStreakRequestSchema: GenMessage<RematchStreakRequest> = /*@_
   messageDesc(file_proto_game_service_game_service, 9);
 
 /**
+ * @generated from message game_service.UnfreezeBotRequest
+ */
+export type UnfreezeBotRequest = Message<"game_service.UnfreezeBotRequest"> & {
+  /**
+   * @generated from field: game_service.UnfreezeBotMode mode = 1;
+   */
+  mode: UnfreezeBotMode;
+
+  /**
+   * Required if mode is SPECIFIC_GAME
+   *
+   * @generated from field: string game_id = 2;
+   */
+  gameId: string;
+};
+
+/**
+ * Describes the message game_service.UnfreezeBotRequest.
+ * Use `create(UnfreezeBotRequestSchema)` to create a new message.
+ */
+export const UnfreezeBotRequestSchema: GenMessage<UnfreezeBotRequest> = /*@__PURE__*/
+  messageDesc(file_proto_game_service_game_service, 10);
+
+/**
+ * @generated from message game_service.UnfreezeBotResponse
+ */
+export type UnfreezeBotResponse = Message<"game_service.UnfreezeBotResponse"> & {
+  /**
+   * @generated from field: int32 games_processed = 1;
+   */
+  gamesProcessed: number;
+
+  /**
+   * @generated from field: int32 requests_sent = 2;
+   */
+  requestsSent: number;
+
+  /**
+   * @generated from field: int32 errors = 3;
+   */
+  errors: number;
+};
+
+/**
+ * Describes the message game_service.UnfreezeBotResponse.
+ * Use `create(UnfreezeBotResponseSchema)` to create a new message.
+ */
+export const UnfreezeBotResponseSchema: GenMessage<UnfreezeBotResponse> = /*@__PURE__*/
+  messageDesc(file_proto_game_service_game_service, 11);
+
+/**
+ * @generated from enum game_service.UnfreezeBotMode
+ */
+export enum UnfreezeBotMode {
+  /**
+   * @generated from enum value: UNFREEZE_BOT_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE = 1;
+   */
+  ALL_CORRESPONDENCE = 1,
+
+  /**
+   * @generated from enum value: UNFREEZE_BOT_MODE_ALL_REALTIME = 2;
+   */
+  ALL_REALTIME = 2,
+
+  /**
+   * @generated from enum value: UNFREEZE_BOT_MODE_SPECIFIC_GAME = 3;
+   */
+  SPECIFIC_GAME = 3,
+}
+
+/**
+ * Describes the enum game_service.UnfreezeBotMode.
+ */
+export const UnfreezeBotModeSchema: GenEnum<UnfreezeBotMode> = /*@__PURE__*/
+  enumDesc(file_proto_game_service_game_service, 0);
+
+/**
  * @generated from service game_service.GameMetadataService
  */
 export const GameMetadataService: GenService<{
@@ -314,6 +396,16 @@ export const GameMetadataService: GenService<{
     methodKind: "unary";
     input: typeof GameDocumentRequestSchema;
     output: typeof GameDocumentResponseSchema;
+  },
+  /**
+   * UnfreezeBot re-sends bot move requests for stuck games (admin only)
+   *
+   * @generated from rpc game_service.GameMetadataService.UnfreezeBot
+   */
+  unfreezeBot: {
+    methodKind: "unary";
+    input: typeof UnfreezeBotRequestSchema;
+    output: typeof UnfreezeBotResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_game_service_game_service, 0);

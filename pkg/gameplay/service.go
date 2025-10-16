@@ -239,3 +239,86 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameI
 		}
 	}
 }
+
+func (gs *GameService) UnfreezeBot(ctx context.Context, req *connect.Request[pb.UnfreezeBotRequest]) (
+	*connect.Response[pb.UnfreezeBotResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, gs.userStore, gs.queries, rbac.AdminAllAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	var gameIDs []string
+
+	switch req.Msg.Mode {
+	case pb.UnfreezeBotMode_UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE:
+		rows, err := gs.queries.ListActiveCorrespondenceGamesWithBotOnTurn(ctx)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		gameIDs = make([]string, len(rows))
+		for i, row := range rows {
+			gameIDs[i] = row.String
+		}
+		log.Info().Int("count", len(gameIDs)).Msg("found active correspondence games with bot on turn")
+
+	case pb.UnfreezeBotMode_UNFREEZE_BOT_MODE_ALL_REALTIME:
+		rows, err := gs.queries.ListActiveRealtimeGamesWithBotOnTurn(ctx)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		gameIDs = make([]string, len(rows))
+		for i, row := range rows {
+			gameIDs[i] = row.String
+		}
+		log.Info().Int("count", len(gameIDs)).Msg("found active realtime games with bot on turn")
+
+	case pb.UnfreezeBotMode_UNFREEZE_BOT_MODE_SPECIFIC_GAME:
+		if req.Msg.GameId == "" {
+			return nil, apiserver.InvalidArg("game_id is required for SPECIFIC_GAME mode")
+		}
+		gameIDs = []string{req.Msg.GameId}
+		log.Info().Str("gameID", req.Msg.GameId).Msg("processing specific game")
+
+	default:
+		return nil, apiserver.InvalidArg("invalid mode specified")
+	}
+
+	gamesProcessed := int32(0)
+	requestsSent := int32(0)
+	errors := int32(0)
+
+	for _, gameID := range gameIDs {
+		gamesProcessed++
+
+		// Load game
+		game, err := gs.gameStore.Get(ctx, gameID)
+		if err != nil {
+			log.Err(err).Str("gameID", gameID).Msg("failed to load game")
+			errors++
+			continue
+		}
+
+		err = PotentiallySendBotMoveRequest(ctx, gs.userStore, game)
+		if err != nil {
+			log.Err(err).Str("gameID", gameID).Msg("failed to send bot move request")
+			errors++
+			continue
+		}
+
+		requestsSent++
+		log.Info().Str("gameID", gameID).Msg("sent bot request")
+	}
+
+	log.Info().
+		Int32("games_processed", gamesProcessed).
+		Int32("requests_sent", requestsSent).
+		Int32("errors", errors).
+		Msg("unfreeze bot completed")
+
+	return connect.NewResponse(&pb.UnfreezeBotResponse{
+		GamesProcessed: gamesProcessed,
+		RequestsSent:   requestsSent,
+		Errors:         errors,
+	}), nil
+}

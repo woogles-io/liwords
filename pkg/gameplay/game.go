@@ -27,6 +27,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -269,7 +270,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	return potentiallySendBotMoveRequest(ctx, stores, entGame)
+	return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 
 }
 
@@ -428,7 +429,16 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 			return err
 		}
 	} else {
-		return potentiallySendBotMoveRequest(ctx, stores, entGame)
+		// For correspondence games, save to DB BEFORE potentially sending bot request
+		// to prevent race condition where bot response loads stale state from DB.
+		// HandleEvent will skip the save for correspondence games to avoid double-saving.
+		if entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving-before-bot-request")
+				return err
+			}
+		}
+		return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 	}
 
 	return nil
@@ -510,7 +520,16 @@ func PlayMove(ctx context.Context,
 			return err
 		}
 	} else {
-		return potentiallySendBotMoveRequest(ctx, stores, entGame)
+		// For correspondence games, save to DB BEFORE potentially sending bot request
+		// to prevent race condition where bot response loads stale state from DB.
+		// HandleEvent will skip the save for correspondence games to avoid double-saving.
+		if entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving-before-bot-request")
+				return err
+			}
+		}
+		return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 	}
 
 	return nil
@@ -603,6 +622,8 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 	// If the game hasn't ended yet, save it to the store. If it HAS ended,
 	// it was already saved to the store somewhere above (in performEndgameDuties)
 	// and we don't want to save it again as it will reload it into the cache.
+	// For correspondence games, PlayMove already saved before sending bot request,
+	// so we skip the save here to avoid double-saving.
 	if entGame.GameEndReason == pb.GameEndReason_NONE {
 
 		// Since we processed a game event, we should cancel any outstanding
@@ -615,9 +636,11 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			}
 		}
 
-		if err := stores.GameStore.Set(ctx, entGame); err != nil {
-			log.Err(err).Msg("error-saving")
-			return entGame, err
+		if !entGame.IsCorrespondence() {
+			if err := stores.GameStore.Set(ctx, entGame); err != nil {
+				log.Err(err).Msg("error-saving")
+				return entGame, err
+			}
 		}
 
 		// For correspondence games, send real-time update with new playerOnTurn
@@ -701,9 +724,9 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 	return userStats, nil
 }
 
-// send a request to the internal Macondo bot to move.
-func potentiallySendBotMoveRequest(ctx context.Context, stores *stores.Stores, g *entity.Game) error {
-	userOnTurn, err := stores.UserStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+// PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
+func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
+	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {
 		return err
 	}

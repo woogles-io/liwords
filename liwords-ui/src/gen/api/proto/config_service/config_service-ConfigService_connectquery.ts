@@ -63,3 +63,8 @@ export const getUserDetails = ConfigService.method.getUserDetails;
  * @generated from rpc config_service.ConfigService.SearchEmail
  */
 export const searchEmail = ConfigService.method.searchEmail;
+
+/**
+ * @generated from rpc config_service.ConfigService.GetCorrespondenceGameCount
+ */
+export const getCorrespondenceGameCount = ConfigService.method.getCorrespondenceGameCount;

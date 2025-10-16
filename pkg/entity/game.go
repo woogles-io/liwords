@@ -568,7 +568,7 @@ func (g *Game) SendChange(e *EventWrapper) {
 		// SendChange for a NewActiveGameEntry, and the game has not started by then.
 		// This channel only gets initialized when a game actually starts.
 		// (how is it working?)
-		log.Error().Msg("change hook is closed!")
+		log.Error().Str("gameid", g.GameID()).Msg("change hook is closed!")
 		return
 	}
 	g.ChangeHook <- e

@@ -12,6 +12,20 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
+const countActiveCorrespondenceGames = `-- name: CountActiveCorrespondenceGames :one
+SELECT COUNT(*)::int
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1
+`
+
+func (q *Queries) CountActiveCorrespondenceGames(ctx context.Context) (int32, error) {
+	row := q.db.QueryRow(ctx, countActiveCorrespondenceGames)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createGame = `-- name: CreateGame :exec
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
@@ -775,6 +789,46 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 	return items, nil
 }
 
+const listActiveCorrespondenceGamesWithBotOnTurn = `-- name: ListActiveCorrespondenceGamesWithBotOnTurn :many
+
+SELECT g.uuid
+FROM games g
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND (g.game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND g.player_on_turn IS NOT NULL
+    AND (
+        (g.player_on_turn = 0 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+        OR
+        (g.player_on_turn = 1 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+    )
+ORDER BY g.id
+`
+
+// Only CORRESPONDENCE games
+func (q *Queries) ListActiveCorrespondenceGamesWithBotOnTurn(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listActiveCorrespondenceGamesWithBotOnTurn)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveGames = `-- name: ListActiveGames :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
 FROM games
@@ -812,6 +866,44 @@ func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, er
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveRealtimeGamesWithBotOnTurn = `-- name: ListActiveRealtimeGamesWithBotOnTurn :many
+SELECT g.uuid
+FROM games g
+WHERE g.game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((g.game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+    AND g.player_on_turn IS NOT NULL
+    AND (
+        (g.player_on_turn = 0 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player0_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+        OR
+        (g.player_on_turn = 1 AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = g.player1_id AND u.internal_bot = true AND lower(u.username) != 'bestbot'
+        ))
+    )
+ORDER BY g.id
+`
+
+func (q *Queries) ListActiveRealtimeGamesWithBotOnTurn(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listActiveRealtimeGamesWithBotOnTurn)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

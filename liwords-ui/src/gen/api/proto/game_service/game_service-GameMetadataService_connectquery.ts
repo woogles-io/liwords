@@ -43,3 +43,10 @@ export const getRematchStreak = GameMetadataService.method.getRematchStreak;
  * @generated from rpc game_service.GameMetadataService.GetGameDocument
  */
 export const getGameDocument = GameMetadataService.method.getGameDocument;
+
+/**
+ * UnfreezeBot re-sends bot move requests for stuck games (admin only)
+ *
+ * @generated from rpc game_service.GameMetadataService.UnfreezeBot
+ */
+export const unfreezeBot = GameMetadataService.method.unfreezeBot;
