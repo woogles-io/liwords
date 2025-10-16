@@ -12,7 +12,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
-	"github.com/woogles-io/liwords/pkg/entity"
 	entityutils "github.com/woogles-io/liwords/pkg/entity/utilities"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords/stores"
@@ -21,7 +20,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"google.golang.org/protobuf/proto"
 )
 
 // GameService is a service that contains functions relevant to a game's
@@ -301,32 +299,15 @@ func (gs *GameService) UnfreezeBot(ctx context.Context, req *connect.Request[pb.
 			continue
 		}
 
-		// Send bot move request (inlined from PotentiallySendBotMoveRequest to avoid import cycle)
-		userOnTurn, err := gs.userStore.GetByUUID(ctx, game.PlayerIDOnTurn())
+		err = PotentiallySendBotMoveRequest(ctx, gs.userStore, game)
 		if err != nil {
-			log.Err(err).Str("gameID", gameID).Msg("failed to load user on turn")
+			log.Err(err).Str("gameID", gameID).Msg("failed to send bot move request")
 			errors++
 			continue
 		}
 
-		if !userOnTurn.IsBot {
-			// Not a bot, skip (this shouldn't happen with the SQL queries)
-			log.Warn().Str("gameID", gameID).Str("user", userOnTurn.Username).Msg("player on turn is not a bot")
-			continue
-		}
-
-		evt := proto.Clone(&macondopb.BotRequest{
-			GameHistory:     game.History(),
-			BotType:         game.GameReq.BotType,
-			MillisRemaining: int32(game.TimeRemaining(game.PlayerOnTurn())),
-		}).(*macondopb.BotRequest)
-		wrapped := entity.WrapEvent(evt, 0)
-		wrapped.SetAudience(entity.AudBotCommands)
-		wrapped.SetSerializationProtocol(entity.EvtSerializationProto)
-		game.SendChange(wrapped)
-
 		requestsSent++
-		log.Info().Str("gameID", gameID).Str("bot", userOnTurn.Username).Msg("sent bot request")
+		log.Info().Str("gameID", gameID).Msg("sent bot request")
 	}
 
 	log.Info().

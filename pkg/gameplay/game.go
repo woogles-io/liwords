@@ -27,6 +27,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/user"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -269,7 +270,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 			entGame.SendChange(wrappedRematch)
 		}
 	}
-	return PotentiallySendBotMoveRequest(ctx, stores, entGame)
+	return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 
 }
 
@@ -437,7 +438,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 				return err
 			}
 		}
-		return PotentiallySendBotMoveRequest(ctx, stores, entGame)
+		return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 	}
 
 	return nil
@@ -528,7 +529,7 @@ func PlayMove(ctx context.Context,
 				return err
 			}
 		}
-		return PotentiallySendBotMoveRequest(ctx, stores, entGame)
+		return PotentiallySendBotMoveRequest(ctx, stores.UserStore, entGame)
 	}
 
 	return nil
@@ -724,8 +725,8 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
-func PotentiallySendBotMoveRequest(ctx context.Context, stores *stores.Stores, g *entity.Game) error {
-	userOnTurn, err := stores.UserStore.GetByUUID(ctx, g.PlayerIDOnTurn())
+func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
+	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {
 		return err
 	}
