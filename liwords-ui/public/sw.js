@@ -33,8 +33,9 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// Minimal fetch handler (required for PWA)
+// Minimal fetch handler - just let all requests pass through normally
+// We don't need to intercept requests since we're not doing offline caching
 self.addEventListener("fetch", (event) => {
-  // Just pass through to network - no caching for now
-  event.respondWith(fetch(event.request));
+  // Do nothing - let the browser handle all fetches normally
+  // This is valid for PWA, we just need the event listener to exist
 });
