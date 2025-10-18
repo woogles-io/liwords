@@ -784,6 +784,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req.DivisionPairings = req.DivisionPairings[:len(req.DivisionPairings)-1]
 	req.TopDownByes = true
 	req.AllowRepeatByes = false
+	req.DivisionSims = 5000
 	req.ControlLossSims = 1000
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
