@@ -107,6 +107,7 @@ const (
 	PairingMethod_MANUAL                  PairingMethod = 8
 	PairingMethod_TEAM_ROUND_ROBIN        PairingMethod = 9
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
+	PairingMethod_PAIRING_METHOD_COP      PairingMethod = 11
 )
 
 // Enum value maps for PairingMethod.
@@ -123,6 +124,7 @@ var (
 		8:  "MANUAL",
 		9:  "TEAM_ROUND_ROBIN",
 		10: "INTERLEAVED_ROUND_ROBIN",
+		11: "PAIRING_METHOD_COP",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -136,6 +138,7 @@ var (
 		"MANUAL":                  8,
 		"TEAM_ROUND_ROBIN":        9,
 		"INTERLEAVED_ROUND_ROBIN": 10,
+		"PAIRING_METHOD_COP":      11,
 	}
 )
 
@@ -622,8 +625,20 @@ type RoundControl struct {
 	// - `0` overriding the default to disable the spread cap
 	// Without an optional, these two cases would be indistinguishable.
 	SpreadCapOverride *uint32 `protobuf:"varint,12,opt,name=spread_cap_override,json=spreadCapOverride,proto3,oneof" json:"spread_cap_override,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// COP-specific fields (only used when pairing_method == COP)
+	// These arrays should have one value per round in the round range.
+	// gibson_spreads are ordered from last round to first (reverse chronological).
+	GibsonSpreads []int32 `protobuf:"varint,13,rep,packed,name=gibson_spreads,json=gibsonSpreads,proto3" json:"gibson_spreads,omitempty"`
+	// hopefulness_thresholds are ordered from last round to first (reverse chronological).
+	HopefulnessThresholds []float64 `protobuf:"fixed64,14,rep,packed,name=hopefulness_thresholds,json=hopefulnessThresholds,proto3" json:"hopefulness_thresholds,omitempty"`
+	ControlLossThreshold  float64   `protobuf:"fixed64,15,opt,name=control_loss_threshold,json=controlLossThreshold,proto3" json:"control_loss_threshold,omitempty"`
+	DivisionSims          int32     `protobuf:"varint,16,opt,name=division_sims,json=divisionSims,proto3" json:"division_sims,omitempty"`
+	ControlLossSims       int32     `protobuf:"varint,17,opt,name=control_loss_sims,json=controlLossSims,proto3" json:"control_loss_sims,omitempty"`
+	// control_loss_activation_round is 0-indexed relative to the start of this COP round range.
+	ControlLossActivationRound int32 `protobuf:"varint,18,opt,name=control_loss_activation_round,json=controlLossActivationRound,proto3" json:"control_loss_activation_round,omitempty"`
+	PlacePrizes                int32 `protobuf:"varint,19,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *RoundControl) Reset() {
@@ -729,6 +744,55 @@ func (x *RoundControl) GetWinDifferenceRelativeWeight() int32 {
 func (x *RoundControl) GetSpreadCapOverride() uint32 {
 	if x != nil && x.SpreadCapOverride != nil {
 		return *x.SpreadCapOverride
+	}
+	return 0
+}
+
+func (x *RoundControl) GetGibsonSpreads() []int32 {
+	if x != nil {
+		return x.GibsonSpreads
+	}
+	return nil
+}
+
+func (x *RoundControl) GetHopefulnessThresholds() []float64 {
+	if x != nil {
+		return x.HopefulnessThresholds
+	}
+	return nil
+}
+
+func (x *RoundControl) GetControlLossThreshold() float64 {
+	if x != nil {
+		return x.ControlLossThreshold
+	}
+	return 0
+}
+
+func (x *RoundControl) GetDivisionSims() int32 {
+	if x != nil {
+		return x.DivisionSims
+	}
+	return 0
+}
+
+func (x *RoundControl) GetControlLossSims() int32 {
+	if x != nil {
+		return x.ControlLossSims
+	}
+	return 0
+}
+
+func (x *RoundControl) GetControlLossActivationRound() int32 {
+	if x != nil {
+		return x.ControlLossActivationRound
+	}
+	return 0
+}
+
+func (x *RoundControl) GetPlacePrizes() int32 {
+	if x != nil {
+		return x.PlacePrizes
 	}
 	return 0
 }
@@ -2013,7 +2077,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x9f\x04\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xea\x06\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2027,7 +2091,14 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x16repeat_relative_weight\x18\t \x01(\x05R\x14repeatRelativeWeight\x12C\n" +
 	"\x1ewin_difference_relative_weight\x18\n" +
 	" \x01(\x05R\x1bwinDifferenceRelativeWeight\x123\n" +
-	"\x13spread_cap_override\x18\f \x01(\rH\x00R\x11spreadCapOverride\x88\x01\x01B\x16\n" +
+	"\x13spread_cap_override\x18\f \x01(\rH\x00R\x11spreadCapOverride\x88\x01\x01\x12%\n" +
+	"\x0egibson_spreads\x18\r \x03(\x05R\rgibsonSpreads\x125\n" +
+	"\x16hopefulness_thresholds\x18\x0e \x03(\x01R\x15hopefulnessThresholds\x124\n" +
+	"\x16control_loss_threshold\x18\x0f \x01(\x01R\x14controlLossThreshold\x12#\n" +
+	"\rdivision_sims\x18\x10 \x01(\x05R\fdivisionSims\x12*\n" +
+	"\x11control_loss_sims\x18\x11 \x01(\x05R\x0fcontrolLossSims\x12A\n" +
+	"\x1dcontrol_loss_activation_round\x18\x12 \x01(\x05R\x1acontrolLossActivationRound\x12!\n" +
+	"\fplace_prizes\x18\x13 \x01(\x05R\vplacePrizesB\x16\n" +
 	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2160,7 +2231,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xcc\x01\n" +
+	"\x04VOID\x10\b*\xe4\x01\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2176,7 +2247,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x06MANUAL\x10\b\x12\x14\n" +
 	"\x10TEAM_ROUND_ROBIN\x10\t\x12\x1b\n" +
 	"\x17INTERLEAVED_ROUND_ROBIN\x10\n" +
-	"*F\n" +
+	"\x12\x16\n" +
+	"\x12PAIRING_METHOD_COP\x10\v*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +

@@ -5,5 +5,5 @@ control_loss_threshold: 0.25
 hopefulness_threshold: [0.1, 0.1, 0.05, 0.02, 0.01]
 division_sims: 100000
 control_loss_sims: 10000
-control_loss_activation_round: 13
+control_loss_activation_round: 12 # 0-indexed
 place_prizes: 4

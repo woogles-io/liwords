@@ -81,6 +81,7 @@ enum PairingMethod {
   MANUAL = 8;
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
+  PAIRING_METHOD_COP = 11;
 }
 
 enum FirstMethod {
@@ -119,6 +120,19 @@ message RoundControl {
   // - `0` overriding the default to disable the spread cap
   // Without an optional, these two cases would be indistinguishable.
   optional uint32 spread_cap_override = 12;
+
+  // COP-specific fields (only used when pairing_method == COP)
+  // These arrays should have one value per round in the round range.
+  // gibson_spreads are ordered from last round to first (reverse chronological).
+  repeated int32 gibson_spreads = 13;
+  // hopefulness_thresholds are ordered from last round to first (reverse chronological).
+  repeated double hopefulness_thresholds = 14;
+  double control_loss_threshold = 15;
+  int32 division_sims = 16;
+  int32 control_loss_sims = 17;
+  // control_loss_activation_round is 0-indexed relative to the start of this COP round range.
+  int32 control_loss_activation_round = 18;
+  int32 place_prizes = 19;
 }
 
 message DivisionControls {
