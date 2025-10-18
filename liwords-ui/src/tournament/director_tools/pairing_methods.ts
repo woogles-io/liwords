@@ -77,6 +77,10 @@ export const fieldsForMethod = (
         "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
       ]);
       break;
+
+    case PairingMethod.PAIRING_METHOD_COP:
+      // COP fields are handled by a custom component, not this field system
+      return [];
   }
 
   return fields;

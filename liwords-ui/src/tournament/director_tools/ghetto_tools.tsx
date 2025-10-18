@@ -1331,21 +1331,341 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
 type RdCtrlFieldsProps = {
   setting: RoundSetting;
-  onChange: (fieldName: string, value: string | number | boolean) => void;
+  onChange: (
+    fieldName: string,
+    value: string | number | boolean | number[] | string[],
+  ) => void;
   onRemove: () => void;
+  totalRounds?: number;
 };
 
 type SingleRdCtrlFieldsProps = {
   setting: RoundControl;
   onChange: (
     fieldName: keyof RoundControl,
-    value: string | number | boolean | PairingMethod,
+    value: string | number | boolean | PairingMethod | number[] | string[],
   ) => void;
+  // Optional props for COP validation (second half only)
+  beginRound?: number;
+  endRound?: number;
+  totalRounds?: number;
+};
+
+// Get default COP values
+const getCOPDefaults = (totalRounds: number) => {
+  return {
+    gibsonSpreads: [250, 200],
+    hopefulnessThresholds: [0.1, 0.1],
+    placePrizes: 4,
+    controlLossActivationRound: Math.max(totalRounds - 3, 1) - 1, // 0-indexed for backend (for 16-rd tournament: 16-3 = 13 (display), -1 = 12 (backend))
+    divisionSims: 100000,
+    controlLossSims: 10000,
+    controlLossThreshold: 0.25,
+  };
+};
+
+const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
+  const { setting, beginRound, endRound, totalRounds } = props;
+  const [showCOPDetails, setShowCOPDetails] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
+  // Get defaults
+  const defaults = React.useMemo(() => {
+    return totalRounds !== undefined ? getCOPDefaults(totalRounds) : null;
+  }, [totalRounds]);
+
+  // Wrapper to mark fields as touched and call parent onChange
+  const handleFieldChange = (fieldName: string, value: any) => {
+    setTouchedFields((prev) => new Set(prev).add(fieldName));
+    props.onChange(fieldName, value);
+  };
+
+  // If field is touched, show actual value (even if 0). Otherwise show default.
+  const displayPlacePrizes = touchedFields.has("placePrizes")
+    ? setting.placePrizes
+    : setting.placePrizes || defaults?.placePrizes || 4;
+  const displayControlLossActivationRound = touchedFields.has(
+    "controlLossActivationRound",
+  )
+    ? setting.controlLossActivationRound
+    : setting.controlLossActivationRound || defaults?.controlLossActivationRound || 0;
+  const displayDivisionSims = touchedFields.has("divisionSims")
+    ? setting.divisionSims
+    : setting.divisionSims || defaults?.divisionSims || 100000;
+  const displayControlLossSims = touchedFields.has("controlLossSims")
+    ? setting.controlLossSims
+    : setting.controlLossSims || defaults?.controlLossSims || 10000;
+  const displayControlLossThreshold = touchedFields.has("controlLossThreshold")
+    ? setting.controlLossThreshold
+    : setting.controlLossThreshold || defaults?.controlLossThreshold || 0.25;
+
+  const displayGibsonSpreads =
+    setting.gibsonSpreads && setting.gibsonSpreads.length > 0
+      ? setting.gibsonSpreads.join(", ")
+      : defaults?.gibsonSpreads.join(", ") || "250, 200";
+
+  const displayHopefulnessThresholds =
+    setting.hopefulnessThresholds && setting.hopefulnessThresholds.length > 0
+      ? setting.hopefulnessThresholds.join(", ")
+      : defaults?.hopefulnessThresholds.join(", ") || "0.1, 0.1";
+
+  return (
+    <div
+      className="cop-config-panel"
+      style={{
+        padding: "16px",
+        borderRadius: "4px",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      <h4>COP Configuration</h4>
+      <p style={{ fontSize: "12px", marginBottom: "16px" }}>
+        COP (Castellano O'Connor Pairings) is an advanced pairing algorithm
+        designed for the second half of tournaments.
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setShowCOPDetails(true);
+          }}
+          style={{ textDecoration: "underline" }}
+        >
+          Read more
+        </a>
+      </p>
+
+      <Modal
+        title="About COP (Castellano O'Connor Pairings)"
+        open={showCOPDetails}
+        onCancel={() => setShowCOPDetails(false)}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setShowCOPDetails(false)}
+          >
+            Close
+          </Button>,
+        ]}
+        width={700}
+      >
+        <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
+          <p style={{ marginBottom: "16px" }}>
+            Castellano O'Connor Pairings (COP) is an automated tournament
+            Scrabble pairing system that replaces slow, manual late-round
+            decisions with data-driven, minimum-weight matching. It simulates
+            many possible futures of the event—without using player ratings—to
+            estimate who still has a realistic shot at prizes ("contenders") and
+            to detect when a player risks losing control of their destiny.
+            Simulations start with "factor" pairings (e.g., with 3 rounds left:
+            1v4, 2v5, 3v6, then 1v3/2v4, then KOTH), then tighten those bounds
+            based on who actually reaches first in the trials. COP can also run
+            "control loss" simulations to ensure pivotal challengers meet the
+            right opponents.
+          </p>
+          <p style={{ marginBottom: "16px" }}>
+            COP's policies turn those insights into constraints and weights.
+            Constraints enforce things like: preserving any pre-set pairings;
+            KOTH among contenders in the final round (with a top noncontender
+            added if needed); special handling for class prizes; control-loss
+            matchups late in events; Gibson group separation and Gibson byes;
+            and optional top-down bye assignment. Weights act as penalties the
+            matcher tries to minimize: major (never pair contenders with
+            noncontenders or with a Gibsonized player; avoid repeat byes), minor
+            (avoid back-to-back repeats for noncontenders), and normal (prefer
+            small rank gaps—especially contender vs contender where the
+            lower-ranked player can still catch up—and penalize repeat
+            pairings). The result is fast, equitable, low-drama pairings for the
+            rest of the tournament.
+          </p>
+          <p style={{ marginBottom: "16px" }}>
+            The default values are generally good for most tournaments, but you
+            should carefully review the <strong>Place Prizes</strong> and{" "}
+            <strong>Control Loss Activation Round</strong> settings to ensure
+            they match your tournament structure.
+          </p>
+          <p>
+            To read more, take a look at{" "}
+            <a
+              href="https://docs.google.com/document/d/1JNCbaesdBMGYtka3ZajfGf62zIzjnKEG-QBQ6_sEuBo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "underline" }}
+            >
+              this document
+            </a>
+            .
+          </p>
+        </div>
+      </Modal>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Place Prizes"
+            help="Number of places that receive prizes. Used to determine who is in contention."
+          />
+        }
+      >
+        <InputNumber
+          inputMode="numeric"
+          min={1}
+          value={displayPlacePrizes}
+          onChange={(v) => handleFieldChange("placePrizes", v as number)}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Control Loss Activation Round"
+            help="Round at which control loss simulation activates (displayed as 1-indexed, sent as 0-indexed to backend). Typically set to total_rounds - 3 for the last 4 rounds (e.g., round 13 for a 16-round tournament)."
+          />
+        }
+      >
+        <InputNumber
+          inputMode="numeric"
+          min={1}
+          value={displayControlLossActivationRound + 1}
+          onChange={(v) =>
+            handleFieldChange("controlLossActivationRound", (v as number) - 1)
+          }
+        />
+      </Form.Item>
+
+      <hr
+        style={{
+          margin: "24px 0",
+          border: "none",
+          borderTop: "1px solid var(--color-border)",
+        }}
+      />
+      <h5
+        style={{
+          marginBottom: "16px",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "var(--color-text-secondary)",
+        }}
+      >
+        Advanced Settings (rarely need adjustment)
+      </h5>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Gibson Spreads"
+            help="Comma-separated values (ordered from last round to first). If fewer values are provided than rounds, the last value will be repeated. Example: 250,200 means the last round has a Gibson threshold of 250 points (spread between players), then every round from the penultimate and back has a threshold of an additional 200 points."
+          />
+        }
+      >
+        <Input
+          defaultValue={displayGibsonSpreads}
+          onChange={(e) => {
+            const values = e.target.value
+              .split(",")
+              .map((v) => parseInt(v.trim(), 10))
+              .filter((v) => !isNaN(v));
+            if (values.length > 0) {
+              handleFieldChange("gibsonSpreads", values);
+            }
+          }}
+          placeholder="250, 200"
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Hopefulness Thresholds"
+            help="Comma-separated decimal values (ordered from last round to first). If fewer values are provided than rounds, the last value will be repeated. Example: 0.1, 0.1"
+          />
+        }
+      >
+        <Input
+          defaultValue={displayHopefulnessThresholds}
+          onChange={(e) => {
+            const values = e.target.value
+              .split(",")
+              .map((v) => parseFloat(v.trim()))
+              .filter((v) => !isNaN(v));
+            if (values.length > 0) {
+              handleFieldChange("hopefulnessThresholds", values);
+            }
+          }}
+          placeholder="0.1, 0.1"
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Control Loss Threshold"
+            help="Probability threshold for control loss scenarios. Typical value: 0.25"
+          />
+        }
+      >
+        <InputNumber
+          inputMode="numeric"
+          step={0.01}
+          min={0}
+          max={1}
+          value={displayControlLossThreshold}
+          onChange={(v) => handleFieldChange("controlLossThreshold", v as number)}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Division Simulations"
+            help="Number of Monte Carlo simulations for division outcomes. Typical value: 100000"
+          />
+        }
+      >
+        <InputNumber
+          inputMode="numeric"
+          min={1000}
+          step={1000}
+          value={displayDivisionSims}
+          onChange={(v) => handleFieldChange("divisionSims", v as number)}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={
+          <HelptipLabel
+            labelText="Control Loss Simulations"
+            help="Number of simulations for control loss scenarios. Typical value: 10000"
+          />
+        }
+      >
+        <InputNumber
+          inputMode="numeric"
+          min={1000}
+          step={1000}
+          value={displayControlLossSims}
+          onChange={(v) => handleFieldChange("controlLossSims", v as number)}
+        />
+      </Form.Item>
+    </div>
+  );
 };
 
 const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
-  const { setting } = props;
+  const { setting, beginRound, endRound, totalRounds } = props;
   const addlFields = fieldsForMethod(setting.pairingMethod);
+
+  // Determine if COP should be disabled (only allowed for second half)
+  const isCOPDisabled = React.useMemo(() => {
+    if (beginRound === undefined || totalRounds === undefined) {
+      // If we don't have round information, allow COP (e.g., in single round controls)
+      return false;
+    }
+    // COP is only allowed if the BEGIN round is in the second half or later
+    const halfwayPoint = Math.ceil(totalRounds / 2);
+    return beginRound <= halfwayPoint;
+  }, [beginRound, totalRounds]);
 
   const formItemLayout = {
     labelCol: {
@@ -1420,12 +1740,17 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           value={setting.pairingMethod}
           onChange={(e) => {
             props.onChange("pairingMethod", e);
-            // Show more fields potentially.
           }}
         >
           <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
           <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
-
+          <Select.Option
+            value={PairingMethod.PAIRING_METHOD_COP}
+            disabled={isCOPDisabled}
+          >
+            COP (Castellano O'Connor Pairings)
+            {isCOPDisabled && " - Only for 2nd half"}
+          </Select.Option>
           <Select.Option value={PairingMethod.ROUND_ROBIN}>
             Round Robin
           </Select.Option>
@@ -1445,6 +1770,22 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           </Select.Option>
         </Select>
       </Form.Item>
+      {isCOPDisabled &&
+        setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP &&
+        beginRound !== undefined &&
+        totalRounds !== undefined && (
+          <p
+            style={{
+              fontSize: "12px",
+              color: "#ff4d4f",
+              marginTop: "-8px",
+              marginBottom: "8px",
+            }}
+          >
+            COP can only be used for the second half of the tournament (round{" "}
+            {Math.ceil(totalRounds / 2) + 1} and later).
+          </p>
+        )}
       <p></p>
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
@@ -1489,12 +1830,22 @@ const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         }
         return null;
       })}
+      {/* Conditional rendering for COP configuration */}
+      {setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP && (
+        <COPRoundControlFields
+          setting={setting}
+          onChange={props.onChange}
+          beginRound={beginRound}
+          endRound={endRound}
+          totalRounds={totalRounds}
+        />
+      )}
     </>
   );
 };
 
 const RoundControlFields = (props: RdCtrlFieldsProps) => {
-  const { setting } = props;
+  const { setting, totalRounds } = props;
   return (
     <>
       <Form size="small">
@@ -1519,6 +1870,9 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
         <SingleRoundControlFields
           setting={setting.setting}
           onChange={props.onChange}
+          beginRound={setting.beginRound}
+          endRound={setting.endRound}
+          totalRounds={totalRounds}
         />
       </Form>
       <Button onClick={props.onRemove}>- Remove</Button>
@@ -1527,7 +1881,10 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
   );
 };
 
-const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
+const rdCtrlFromSetting = (
+  rdSetting: RoundControl,
+  totalRounds?: number,
+): RoundControl => {
   const rdCtrl = create(RoundControlSchema, {
     firstMethod: FirstMethod.AUTOMATIC_FIRST,
     gamesPerRound: 1,
@@ -1588,12 +1945,44 @@ const rdCtrlFromSetting = (rdSetting: RoundControl): RoundControl => {
     case PairingMethod.TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
       break;
+
+    case PairingMethod.PAIRING_METHOD_COP:
+      // Apply defaults if values are not set
+      const copDefaults = totalRounds ? getCOPDefaults(totalRounds) : null;
+
+      rdCtrl.gibsonSpreads =
+        rdSetting.gibsonSpreads && rdSetting.gibsonSpreads.length > 0
+          ? rdSetting.gibsonSpreads
+          : copDefaults?.gibsonSpreads || [250, 200];
+
+      rdCtrl.hopefulnessThresholds =
+        rdSetting.hopefulnessThresholds &&
+        rdSetting.hopefulnessThresholds.length > 0
+          ? rdSetting.hopefulnessThresholds
+          : copDefaults?.hopefulnessThresholds || [0.1, 0.1];
+
+      rdCtrl.placePrizes =
+        rdSetting.placePrizes || copDefaults?.placePrizes || 4;
+      rdCtrl.controlLossActivationRound =
+        rdSetting.controlLossActivationRound ||
+        copDefaults?.controlLossActivationRound ||
+        0;
+      rdCtrl.divisionSims =
+        rdSetting.divisionSims || copDefaults?.divisionSims || 100000;
+      rdCtrl.controlLossSims =
+        rdSetting.controlLossSims || copDefaults?.controlLossSims || 10000;
+      rdCtrl.controlLossThreshold =
+        rdSetting.controlLossThreshold ||
+        copDefaults?.controlLossThreshold ||
+        0.25;
+      break;
   }
   // Other cases don't matter, we've already set the pairing method.
   return rdCtrl;
 };
 
 const SetSingleRoundControls = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
   const [division, setDivision] = useState("");
   const [roundSetting, setRoundSetting] = useState<RoundControl>(
     create(RoundControlSchema, {
@@ -1602,6 +1991,7 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
   );
   const [userVisibleRound, setUserVisibleRound] = useState(1);
   const tClient = useClient(TournamentService);
+
   const setRoundControls = async () => {
     if (!division) {
       showError("Division is missing");
@@ -1623,7 +2013,8 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
     });
     let rdCtrl;
     try {
-      rdCtrl = rdCtrlFromSetting(roundSetting);
+      const totalRounds = tournamentContext.divisions[division]?.numRounds;
+      rdCtrl = rdCtrlFromSetting(roundSetting, totalRounds);
     } catch (e) {
       message.error({
         content: (e as Error).message,
@@ -1675,11 +2066,22 @@ const SetSingleRoundControls = (props: { tournamentID: string }) => {
           setting={roundSetting}
           onChange={(
             fieldName: keyof RoundControl,
-            value: string | number | boolean | PairingMethod,
+            value:
+              | string
+              | number
+              | boolean
+              | PairingMethod
+              | number[]
+              | string[],
           ) => {
             const val = { ...roundSetting, [fieldName]: value };
             setRoundSetting(create(RoundControlSchema, val));
           }}
+          totalRounds={
+            division
+              ? tournamentContext.divisions[division]?.numRounds
+              : undefined
+          }
         />
         <Form.Item>
           <Button type="primary" onClick={() => setRoundControls()}>
@@ -1716,6 +2118,14 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           allowOverMaxRepeats: v.allowOverMaxRepeats,
           repeatRelativeWeight: v.repeatRelativeWeight,
           winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
+          // COP-specific fields
+          gibsonSpreads: v.gibsonSpreads,
+          hopefulnessThresholds: v.hopefulnessThresholds,
+          placePrizes: v.placePrizes,
+          controlLossActivationRound: v.controlLossActivationRound,
+          divisionSims: v.divisionSims,
+          controlLossSims: v.controlLossSims,
+          controlLossThreshold: v.controlLossThreshold,
         });
         if (lastSetting !== null) {
           if (settingsEqual(lastSetting, thisSetting)) {
@@ -1766,6 +2176,9 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     }
     // validate round array
     let lastRd = 0;
+    const totalRounds = roundArray[roundArray.length - 1].endRound;
+    const halfwayPoint = Math.ceil(totalRounds / 2);
+
     for (let i = 0; i < roundArray.length; i++) {
       const rdCtrl = roundArray[i];
       if (rdCtrl.beginRound <= lastRd) {
@@ -1779,6 +2192,16 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       if (rdCtrl.beginRound > lastRd + 1) {
         showError("Round numbers must be consecutive; you cannot skip rounds");
         return;
+      }
+      // Validate COP can only be used in second half
+      if (rdCtrl.setting.pairingMethod === PairingMethod.PAIRING_METHOD_COP) {
+        if (rdCtrl.beginRound <= halfwayPoint) {
+          showError(
+            `COP can only be used for the second half of the tournament (round ${halfwayPoint + 1} and later). ` +
+              `This round range starts at round ${rdCtrl.beginRound}.`,
+          );
+          return;
+        }
       }
       lastRd = rdCtrl.endRound;
     }
@@ -1795,7 +2218,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
       for (let i = v.beginRound; i <= v.endRound; i++) {
         let rdCtrl;
         try {
-          rdCtrl = rdCtrlFromSetting(v.setting);
+          rdCtrl = rdCtrlFromSetting(v.setting, totalRounds);
         } catch (e) {
           message.error({
             content: (e as Error).message,
@@ -1876,36 +2299,48 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         )}
 
       <Divider />
-      {roundArray.map((v, idx) => (
-        <RoundControlFields
-          key={`rdctrl-${idx}`}
-          setting={v}
-          onChange={(fieldName: string, value: string | number | boolean) => {
-            const newRdArray = [...roundArray];
+      {roundArray.map((v, idx) => {
+        // Calculate total rounds from the last round control
+        const totalRounds =
+          roundArray.length > 0
+            ? roundArray[roundArray.length - 1].endRound
+            : 0;
 
-            if (fieldName === "beginRound" || fieldName === "endRound") {
-              newRdArray[idx] = {
-                ...newRdArray[idx],
-                [fieldName]: value,
-              };
-            } else {
-              newRdArray[idx] = {
-                ...newRdArray[idx],
-                setting: create(RoundControlSchema, {
-                  ...newRdArray[idx].setting,
+        return (
+          <RoundControlFields
+            key={`rdctrl-${idx}`}
+            setting={v}
+            totalRounds={totalRounds}
+            onChange={(
+              fieldName: string,
+              value: string | number | boolean | number[] | string[],
+            ) => {
+              const newRdArray = [...roundArray];
+
+              if (fieldName === "beginRound" || fieldName === "endRound") {
+                newRdArray[idx] = {
+                  ...newRdArray[idx],
                   [fieldName]: value,
-                }),
-              };
-            }
-            setRoundArray(newRdArray);
-          }}
-          onRemove={() => {
-            const newRdArray = [...roundArray];
-            newRdArray.splice(idx, 1);
-            setRoundArray(newRdArray);
-          }}
-        />
-      ))}
+                };
+              } else {
+                newRdArray[idx] = {
+                  ...newRdArray[idx],
+                  setting: create(RoundControlSchema, {
+                    ...newRdArray[idx].setting,
+                    [fieldName]: value,
+                  }),
+                };
+              }
+              setRoundArray(newRdArray);
+            }}
+            onRemove={() => {
+              const newRdArray = [...roundArray];
+              newRdArray.splice(idx, 1);
+              setRoundArray(newRdArray);
+            }}
+          />
+        );
+      })}
       <Button
         onClick={() => {
           const newRdArray = [...roundArray];

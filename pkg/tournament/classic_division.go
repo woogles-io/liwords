@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/pair"
+	"github.com/woogles-io/liwords/pkg/pair/cop"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -705,6 +706,11 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		return nil, err
 	}
 
+	// Handle COP pairing differently - it needs full tournament history
+	if pairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
+		return t.pairRoundWithCOP(round, preserveByes)
+	}
+
 	poolMembers := []*entity.PoolMember{}
 	pmessage := newPairingsMessage()
 
@@ -913,6 +919,137 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 	err = validatePairings(t, round)
 	if err != nil {
 		return nil, err
+	}
+
+	return pmessage, nil
+}
+
+func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.DivisionPairingsResponse, error) {
+	if round < 0 || round >= len(t.Matrix) {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "pairRoundWithCOP")
+	}
+
+	// Build COPIntermediateConfig from the RoundControl
+	rc := t.RoundControls[round]
+	numRounds := len(rc.GibsonSpreads)
+
+	// Convert gibson_spreads and hopefulness_thresholds from repeated fields to slices
+	gibsonSpread := make([]int, numRounds)
+	for i, gs := range rc.GibsonSpreads {
+		gibsonSpread[i] = int(gs)
+	}
+
+	hopefulnessThreshold := make([]float64, numRounds)
+	copy(hopefulnessThreshold, rc.HopefulnessThresholds)
+
+	cfg := &COPIntermediateConfig{
+		GibsonSpread:               gibsonSpread,
+		ControlLossThreshold:       rc.ControlLossThreshold,
+		HopefulnessThreshold:       hopefulnessThreshold,
+		DivisionSims:               int(rc.DivisionSims),
+		ControlLossSims:            int(rc.ControlLossSims),
+		ControlLossActivationRound: int(rc.ControlLossActivationRound),
+		PlacePrizes:                int(rc.PlacePrizes),
+	}
+
+	// Get the division data
+	divisionData, err := t.GetXHRResponse()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get division data for COP: %w", err)
+	}
+
+	// Convert to COP PairRequest
+	pairRequest, err := TournamentDivisionToCOPRequest(divisionData, int64(round), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert division to COP request: %w", err)
+	}
+
+	// Set the seed for reproducibility
+	pairRequest.Seed = int64(t.Seed) + int64(round)
+
+	// Call COP pairing algorithm
+	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("calling COP pairing algorithm")
+	pairResponse := cop.COPPair(pairRequest)
+	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Msg("returned from COP pairing algorithm")
+
+	if pairResponse.ErrorCode != pb.PairError_SUCCESS {
+		log.Error().Str("error", pairResponse.ErrorMessage).Msg("COP pairing failed")
+		return nil, fmt.Errorf("COP pairing failed: %s", pairResponse.ErrorMessage)
+	}
+
+	// Log the COP output
+	if pairResponse.Log != "" {
+		log.Info().Str("cop-log", pairResponse.Log).Msg("COP pairing log")
+	}
+
+	// Clear existing pairings for this round (respecting preserveByes)
+	playersWithByes := make(map[string]bool)
+	if preserveByes {
+		for i := 0; i < len(t.Players.Persons); i++ {
+			player := t.Players.Persons[i].Id
+			isBye, err := t.pairingIsBye(player, round)
+			if err != nil {
+				return nil, err
+			}
+			if isBye {
+				playersWithByes[player] = true
+			}
+		}
+	}
+
+	for i := 0; i < len(t.Players.Persons); i++ {
+		player := t.Players.Persons[i].Id
+		if !preserveByes || !playersWithByes[player] {
+			err := t.clearPairingKey(t.PlayerIndexMap[player], round)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Convert COP pairings to tournament pairings
+	pmessage := newPairingsMessage()
+	roundPairings := t.Matrix[round]
+
+	for playerIdx, opponentIdx := range pairResponse.Pairings {
+		if opponentIdx < 0 {
+			// Player is unpaired (removed or suspended)
+			continue
+		}
+
+		playerId := t.Players.Persons[playerIdx].Id
+
+		// Skip if this player was preserved with a bye
+		if playersWithByes[playerId] {
+			continue
+		}
+
+		// Check if already paired (COP returns pairs from both directions)
+		if roundPairings[playerIdx] != "" {
+			continue
+		}
+
+		opponentId := t.Players.Persons[opponentIdx].Id
+		result := pb.TournamentGameResult_NO_RESULT
+
+		// Handle self-pairing (bye)
+		if playerIdx == int(opponentIdx) {
+			result = pb.TournamentGameResult_BYE
+		}
+
+		newPairingMessage, err := t.SetPairing(playerId, opponentId, round, result)
+		if err != nil {
+			return nil, err
+		}
+		pmessage = combinePairingMessages(pmessage, newPairingMessage)
+	}
+
+	// Verify all non-suspended players are paired
+	for i := 0; i < len(t.Players.Persons); i++ {
+		player := t.Players.Persons[i]
+		if !player.Suspended && roundPairings[i] == "" && !playersWithByes[player.Id] {
+			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
+		}
 	}
 
 	return pmessage, nil

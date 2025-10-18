@@ -9,15 +9,16 @@ import (
 )
 
 type COPIntermediateConfig struct {
-	GibsonSpread               []int     `yaml:"gibson_spread"`
-	ControlLossThreshold       float64   `yaml:"control_loss_threshold"`
-	HopefulnessThreshold       []float64 `yaml:"hopefulness_threshold"`
-	DivisionSims               int       `yaml:"division_sims"`
-	ControlLossSims            int       `yaml:"control_loss_sims"`
-	ControlLossActivationRound int       `yaml:"control_loss_activation_round"`
-	TournamentID               string    `yaml:"tournament_id"`
-	DivisionName               string    `yaml:"division_name"`
-	PlacePrizes                int       `yaml:"place_prizes"`
+	GibsonSpread         []int     `yaml:"gibson_spread"`
+	ControlLossThreshold float64   `yaml:"control_loss_threshold"`
+	HopefulnessThreshold []float64 `yaml:"hopefulness_threshold"`
+	DivisionSims         int       `yaml:"division_sims"`
+	ControlLossSims      int       `yaml:"control_loss_sims"`
+	// ControlLossActivationRound is 0-indexed
+	ControlLossActivationRound int    `yaml:"control_loss_activation_round"`
+	TournamentID               string `yaml:"tournament_id"`
+	DivisionName               string `yaml:"division_name"`
+	PlacePrizes                int    `yaml:"place_prizes"`
 }
 
 // TournamentDivisionToCOPRequest converts a TournamentDivisionDataResponse to a COPRequest.
