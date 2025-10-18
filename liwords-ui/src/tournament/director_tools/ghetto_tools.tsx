@@ -1375,7 +1375,10 @@ const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
   }, [totalRounds]);
 
   // Wrapper to mark fields as touched and call parent onChange
-  const handleFieldChange = (fieldName: string, value: any) => {
+  const handleFieldChange = (
+    fieldName: keyof RoundControl,
+    value: string | number | boolean | PairingMethod | number[] | string[],
+  ) => {
     setTouchedFields((prev) => new Set(prev).add(fieldName));
     props.onChange(fieldName, value);
   };
