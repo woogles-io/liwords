@@ -1391,7 +1391,9 @@ const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     "controlLossActivationRound",
   )
     ? setting.controlLossActivationRound
-    : setting.controlLossActivationRound || defaults?.controlLossActivationRound || 0;
+    : setting.controlLossActivationRound ||
+      defaults?.controlLossActivationRound ||
+      0;
   const displayDivisionSims = touchedFields.has("divisionSims")
     ? setting.divisionSims
     : setting.divisionSims || defaults?.divisionSims || 100000;
@@ -1614,7 +1616,9 @@ const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           min={0}
           max={1}
           value={displayControlLossThreshold}
-          onChange={(v) => handleFieldChange("controlLossThreshold", v as number)}
+          onChange={(v) =>
+            handleFieldChange("controlLossThreshold", v as number)
+          }
         />
       </Form.Item>
 
