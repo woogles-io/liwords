@@ -24,9 +24,9 @@ const (
 	byeSpread           int     = 50
 	simConfidence       float64 = 0.99
 	resimBatchSize      int     = 10000
-	initialSimTimeLimit int     = 30
-	reSimTimeLimit      int     = 30
-	controlSimTimeLimit int     = 30
+	initialSimTimeLimit int     = 15
+	reSimTimeLimit      int     = 15
+	controlSimTimeLimit int     = 15
 )
 
 type Standings struct {
