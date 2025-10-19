@@ -229,12 +229,12 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "SetSingleRoundControls")
 	}
 
-	err := validateRoundControl(t, controls)
+	totalRounds := len(t.RoundControls)
+	err := validateRoundControl(t, controls, totalRounds)
 	if err != nil {
 		return nil, err
 	}
 
-	controls.Round = t.RoundControls[round].Round
 	controls.InitialFontes = t.RoundControls[round].InitialFontes
 	t.RoundControls[round] = controls
 	return controls, nil
@@ -2147,9 +2147,10 @@ func validatePairings(t *ClassicDivision, round int) error {
 }
 
 func validateRoundControls(t *ClassicDivision, rcs []*pb.RoundControl) error {
+	totalRounds := len(rcs)
 	var err error
 	for _, rc := range rcs {
-		err = validateRoundControl(t, rc)
+		err = validateRoundControl(t, rc, totalRounds)
 		if err != nil {
 			return err
 		}
@@ -2157,7 +2158,7 @@ func validateRoundControls(t *ClassicDivision, rcs []*pb.RoundControl) error {
 	return nil
 }
 
-func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
+func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl, totalRounds int) error {
 	if (rc.PairingMethod == pb.PairingMethod_SWISS ||
 		rc.PairingMethod == pb.PairingMethod_FACTOR) &&
 		!rc.AllowOverMaxRepeats && rc.MaxRepeats == 0 {
@@ -2166,6 +2167,96 @@ func validateRoundControl(t *ClassicDivision, rc *pb.RoundControl) error {
 	if rc.GamesPerRound == 0 {
 		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ZERO_GAMES_PER_ROUND, t.TournamentName, t.DivisionName, strconv.Itoa(int(rc.Round+1)))
 	}
+
+	// COP-specific validations
+	if rc.PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
+		// COP can only be used in the second half of the tournament
+		halfwayPoint := (totalRounds + 1) / 2 // Rounds are 0-indexed, so round N is the (N+1)th round
+		if int(rc.Round) < halfwayPoint {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_IN_FIRST_HALF,
+				t.TournamentName,
+				t.DivisionName,
+				strconv.Itoa(int(rc.Round+1)),
+				strconv.Itoa(halfwayPoint+1),
+			)
+		}
+
+		// Validate simulations >= 1000
+		if rc.DivisionSims < 1000 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_SIMULATIONS,
+				t.TournamentName,
+				t.DivisionName,
+				"division_sims",
+				strconv.Itoa(int(rc.DivisionSims)),
+			)
+		}
+		if rc.ControlLossSims < 1000 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_SIMULATIONS,
+				t.TournamentName,
+				t.DivisionName,
+				"control_loss_sims",
+				strconv.Itoa(int(rc.ControlLossSims)),
+			)
+		}
+
+		// Validate place_prizes >= 1
+		if rc.PlacePrizes < 1 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_PLACE_PRIZES,
+				t.TournamentName,
+				t.DivisionName,
+				strconv.Itoa(int(rc.PlacePrizes)),
+			)
+		}
+
+		// Validate gibson_spreads not all zeros
+		allZeroGibson := true
+		for _, spread := range rc.GibsonSpreads {
+			if spread != 0 {
+				allZeroGibson = false
+				break
+			}
+		}
+		if allZeroGibson && len(rc.GibsonSpreads) > 0 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_PARAMETERS,
+				t.TournamentName,
+				t.DivisionName,
+				"gibson_spreads cannot all be zero",
+			)
+		}
+
+		// Validate hopefulness_thresholds not all zeros
+		allZeroHopefulness := true
+		for _, threshold := range rc.HopefulnessThresholds {
+			if threshold != 0.0 {
+				allZeroHopefulness = false
+				break
+			}
+		}
+		if allZeroHopefulness && len(rc.HopefulnessThresholds) > 0 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_PARAMETERS,
+				t.TournamentName,
+				t.DivisionName,
+				"hopefulness_thresholds cannot all be zero",
+			)
+		}
+
+		// Validate control_loss_threshold != 0
+		if rc.ControlLossThreshold == 0.0 {
+			return entity.NewWooglesError(
+				pb.WooglesError_TOURNAMENT_COP_INVALID_PARAMETERS,
+				t.TournamentName,
+				t.DivisionName,
+				"control_loss_threshold cannot be zero",
+			)
+		}
+	}
+
 	return nil
 }
 

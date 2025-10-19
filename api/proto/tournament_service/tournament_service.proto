@@ -89,8 +89,7 @@ message SetTournamentMetadataRequest {
 message SingleRoundControlsRequest {
   string id = 1;
   string division = 2;
-  int32 round = 3;
-  ipc.RoundControl round_controls = 4;
+  ipc.RoundControl round_controls = 3;
 }
 
 message PairRoundRequest {
