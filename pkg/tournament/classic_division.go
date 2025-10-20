@@ -165,6 +165,25 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*pb.RoundControl) (*p
 		return nil, nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_INVALID_INITIAL_FONTES_ROUNDS, t.TournamentName, t.DivisionName, strconv.Itoa(int(initialFontes)))
 	}
 
+	// COP validation: once COP begins, all subsequent rounds must be COP
+	firstCOPRound := -1
+	for i := 0; i < numberOfRounds; i++ {
+		if roundControls[i].PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
+			firstCOPRound = i
+			break
+		}
+	}
+	if firstCOPRound >= 0 {
+		for i := firstCOPRound + 1; i < numberOfRounds; i++ {
+			if roundControls[i].PairingMethod != pb.PairingMethod_PAIRING_METHOD_COP {
+				return nil, nil, entity.NewWooglesError(
+					pb.WooglesError_TOURNAMENT_NON_COP_AFTER_COP,
+					t.TournamentName, t.DivisionName,
+					strconv.Itoa(i+1), strconv.Itoa(firstCOPRound+1))
+			}
+		}
+	}
+
 	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
 
 	if roundControls[0].PairingMethod == pb.PairingMethod_ELIMINATION {
@@ -237,6 +256,29 @@ func (t *ClassicDivision) SetSingleRoundControls(round int, controls *pb.RoundCo
 	err := validateRoundControl(t, controls, totalRounds)
 	if err != nil {
 		return nil, err
+	}
+
+	// COP continuity validation: once COP begins, all subsequent rounds must be COP
+	if controls.PairingMethod != pb.PairingMethod_PAIRING_METHOD_COP {
+		// Check if any previous round uses COP
+		for i := 0; i < round; i++ {
+			if t.RoundControls[i].PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP {
+				return nil, entity.NewWooglesError(
+					pb.WooglesError_TOURNAMENT_NON_COP_AFTER_COP,
+					t.TournamentName, t.DivisionName,
+					strconv.Itoa(round+1), strconv.Itoa(i+1))
+			}
+		}
+	} else {
+		// Setting to COP - check if any future round uses non-COP
+		for i := round + 1; i < len(t.RoundControls); i++ {
+			if t.RoundControls[i].PairingMethod != pb.PairingMethod_PAIRING_METHOD_COP {
+				return nil, entity.NewWooglesError(
+					pb.WooglesError_TOURNAMENT_NON_COP_AFTER_COP,
+					t.TournamentName, t.DivisionName,
+					strconv.Itoa(i+1), strconv.Itoa(round+1))
+			}
+		}
 	}
 
 	controls.InitialFontes = t.RoundControls[round].InitialFontes
@@ -987,7 +1029,15 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 	}
 
 	// Store COP gibsonization data for this round
+	// Initialize map if nil (for tournaments loaded from DB before this field was added)
+	if t.COPGibsonization == nil {
+		t.COPGibsonization = make(map[int32][]bool)
+	}
 	t.COPGibsonization[int32(round)] = pairResponse.GibsonizedPlayers
+	log.Info().Str("tournament", t.TournamentName).
+		Str("division", t.DivisionName).Int("round", round+1).
+		Interface("gibsonizedPlayers", pairResponse.GibsonizedPlayers).
+		Msg("stored COP gibsonization data")
 
 	// Clear existing pairings for this round (respecting preserveByes)
 	playersWithByes := make(map[string]bool)
@@ -1058,6 +1108,14 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 			return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_PLAYER_NOT_PAIRED, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), player.Id)
 		}
 	}
+
+	// Calculate standings for this round now that we have the COP gibsonization data
+	// This ensures the gibson flags make it to the frontend
+	standings, _, err := t.GetStandings(round)
+	if err != nil {
+		return nil, err
+	}
+	pmessage.DivisionStandings[int32(round)] = standings
 
 	return pmessage, nil
 }
@@ -1413,6 +1471,7 @@ func getRecords(t *ClassicDivision, round int) ([]*pb.PlayerStanding, error) {
 	return records, nil
 }
 
+// XXX: this function should probably not modify things. (see gibsonization stuff)
 func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, -1, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "GetStandings")
@@ -1426,8 +1485,16 @@ func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, erro
 	gibsonRank := -1
 
 	// Check if this round used COP pairing - if so, use COP gibsonization data
+	isCOPRound := t.RoundControls[round].PairingMethod == pb.PairingMethod_PAIRING_METHOD_COP
 	copGibsonization, hasCOPGibsonization := t.COPGibsonization[int32(round)]
-	if hasCOPGibsonization {
+	log.Info().Str("tournament", t.TournamentName).
+		Str("division", t.DivisionName).
+		Int("round", round+1).
+		Bool("isCOPRound", isCOPRound).
+		Bool("hasCOPGibsonization", hasCOPGibsonization).
+		Interface("copGibsonization", copGibsonization).
+		Msg("determining gibsonizations for standings")
+	if isCOPRound && hasCOPGibsonization {
 		// Apply COP gibsonization to the standings
 		for i, record := range records {
 			// COP gibsonization is indexed by player rank, not player ID
@@ -1437,7 +1504,7 @@ func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, erro
 				gibsonRank = i
 			}
 		}
-	} else if t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
+	} else if !isCOPRound && t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
 		// Use classic gibsonization logic (canCatch)
 
 		lastCompleteRound := round + 1

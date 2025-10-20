@@ -112,6 +112,7 @@ const (
 	WooglesError_TOURNAMENT_COP_INVALID_SIMULATIONS                     WooglesError = 1101
 	WooglesError_TOURNAMENT_COP_INVALID_PLACE_PRIZES                    WooglesError = 1102
 	WooglesError_TOURNAMENT_COP_INVALID_PARAMETERS                      WooglesError = 1103
+	WooglesError_TOURNAMENT_NON_COP_AFTER_COP                           WooglesError = 1104
 	WooglesError_PUZZLE_VOTE_INVALID                                    WooglesError = 1074
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND                  WooglesError = 1075
 	WooglesError_PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND                     WooglesError = 1076
@@ -221,6 +222,7 @@ var (
 		1101: "TOURNAMENT_COP_INVALID_SIMULATIONS",
 		1102: "TOURNAMENT_COP_INVALID_PLACE_PRIZES",
 		1103: "TOURNAMENT_COP_INVALID_PARAMETERS",
+		1104: "TOURNAMENT_NON_COP_AFTER_COP",
 		1074: "PUZZLE_VOTE_INVALID",
 		1075: "PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND",
 		1076: "PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND",
@@ -327,6 +329,7 @@ var (
 		"TOURNAMENT_COP_INVALID_SIMULATIONS":                     1101,
 		"TOURNAMENT_COP_INVALID_PLACE_PRIZES":                    1102,
 		"TOURNAMENT_COP_INVALID_PARAMETERS":                      1103,
+		"TOURNAMENT_NON_COP_AFTER_COP":                           1104,
 		"PUZZLE_VOTE_INVALID":                                    1074,
 		"PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND":                  1075,
 		"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND":                     1076,
@@ -423,7 +426,7 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\n" +
 	"\x16proto/ipc/errors.proto\x12\x03ipc\"(\n" +
 	"\fErrorMessage\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage*\x92 \n" +
+	"\amessage\x18\x01 \x01(\tR\amessage*\xb5 \n" +
 	"\fWooglesError\x12\v\n" +
 	"\aDEFAULT\x10\x00\x12*\n" +
 	"%TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT\x10\xe9\a\x12&\n" +
@@ -512,7 +515,8 @@ const file_proto_ipc_errors_proto_rawDesc = "" +
 	"\x1cTOURNAMENT_COP_IN_FIRST_HALF\x10\xcc\b\x12'\n" +
 	"\"TOURNAMENT_COP_INVALID_SIMULATIONS\x10\xcd\b\x12(\n" +
 	"#TOURNAMENT_COP_INVALID_PLACE_PRIZES\x10\xce\b\x12&\n" +
-	"!TOURNAMENT_COP_INVALID_PARAMETERS\x10\xcf\b\x12\x18\n" +
+	"!TOURNAMENT_COP_INVALID_PARAMETERS\x10\xcf\b\x12!\n" +
+	"\x1cTOURNAMENT_NON_COP_AFTER_COP\x10\xd0\b\x12\x18\n" +
 	"\x13PUZZLE_VOTE_INVALID\x10\xb2\b\x12*\n" +
 	"%PUZZLE_GET_RANDOM_PUZZLE_ID_NOT_FOUND\x10\xb3\b\x12'\n" +
 	"\"PUZZLE_GET_RANDOM_PUZZLE_NOT_FOUND\x10\xb4\b\x12%\n" +

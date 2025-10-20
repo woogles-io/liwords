@@ -511,4 +511,5 @@ export const errorMap: Map<number, string> = new Map<number, string>([
     "Internal error: could not find puzzle attempt for user $1 and puzzle $2.",
   ],
   [1089, "Game is no longer available."],
+  [1104, "You cannot use non-COP pairings after COP pairings."],
 ]);
