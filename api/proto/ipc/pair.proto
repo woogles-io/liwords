@@ -77,4 +77,5 @@ message PairResponse {
   string error_message = 2;
   string log = 3;
   repeated int32 pairings = 4;
+  repeated bool gibsonized_players = 5;
 }

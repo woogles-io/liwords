@@ -487,13 +487,14 @@ func (x *PairRequest) GetTopDownByes() bool {
 }
 
 type PairResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ErrorCode     PairError              `protobuf:"varint,1,opt,name=error_code,json=errorCode,proto3,enum=ipc.PairError" json:"error_code,omitempty"`
-	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	Log           string                 `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Pairings      []int32                `protobuf:"varint,4,rep,packed,name=pairings,proto3" json:"pairings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	ErrorCode         PairError              `protobuf:"varint,1,opt,name=error_code,json=errorCode,proto3,enum=ipc.PairError" json:"error_code,omitempty"`
+	ErrorMessage      string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Log               string                 `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Pairings          []int32                `protobuf:"varint,4,rep,packed,name=pairings,proto3" json:"pairings,omitempty"`
+	GibsonizedPlayers []bool                 `protobuf:"varint,5,rep,packed,name=gibsonized_players,json=gibsonizedPlayers,proto3" json:"gibsonized_players,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PairResponse) Reset() {
@@ -554,6 +555,13 @@ func (x *PairResponse) GetPairings() []int32 {
 	return nil
 }
 
+func (x *PairResponse) GetGibsonizedPlayers() []bool {
+	if x != nil {
+		return x.GibsonizedPlayers
+	}
+	return nil
+}
+
 var File_proto_ipc_pair_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_pair_proto_rawDesc = "" +
@@ -586,13 +594,14 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x11allow_repeat_byes\x18\x11 \x01(\bR\x0fallowRepeatByes\x12'\n" +
 	"\x0fremoved_players\x18\x12 \x03(\x05R\x0eremovedPlayers\x12\x12\n" +
 	"\x04seed\x18\x13 \x01(\x03R\x04seed\x12\"\n" +
-	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\"\x90\x01\n" +
+	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\"\xbf\x01\n" +
 	"\fPairResponse\x12-\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x0e2\x0e.ipc.PairErrorR\terrorCode\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x10\n" +
 	"\x03log\x18\x03 \x01(\tR\x03log\x12\x1a\n" +
-	"\bpairings\x18\x04 \x03(\x05R\bpairings*\x15\n" +
+	"\bpairings\x18\x04 \x03(\x05R\bpairings\x12-\n" +
+	"\x12gibsonized_players\x18\x05 \x03(\bR\x11gibsonizedPlayers*\x15\n" +
 	"\n" +
 	"PairMethod\x12\a\n" +
 	"\x03COP\x10\x00*\x91\a\n" +

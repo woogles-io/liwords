@@ -463,8 +463,9 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	}
 
 	return &pb.PairResponse{
-		ErrorCode: pb.PairError_SUCCESS,
-		Pairings:  pairings,
+		ErrorCode:          pb.PairError_SUCCESS,
+		Pairings:           pairings,
+		GibsonizedPlayers:  copdata.GibsonizedPlayers,
 	}
 }
 

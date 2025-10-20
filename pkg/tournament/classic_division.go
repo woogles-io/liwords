@@ -37,6 +37,9 @@ type ClassicDivision struct {
 	CurrentRound     int32                        `json:"currentRound"`
 	PairingKeyInt    int                          `json:"pairingKeyInt"`
 	Seed             uint64                       `json:"seed"`
+	// COPGibsonization stores gibsonization data from COP pairing algorithm
+	// Map key is round number, value is array of gibsonized flags indexed by player index
+	COPGibsonization map[int32][]bool `json:"copGibsonization"`
 }
 
 func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivision {
@@ -51,7 +54,8 @@ func NewClassicDivision(tournamentName string, divisionName string) *ClassicDivi
 		DivisionControls: &pb.DivisionControls{},
 		CurrentRound:     -1,
 		PairingKeyInt:    0,
-		Seed:             uint64(time.Now().UnixNano())}
+		Seed:             uint64(time.Now().UnixNano()),
+		COPGibsonization: make(map[int32][]bool)}
 }
 
 func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
@@ -982,6 +986,9 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 		log.Info().Str("cop-log", pairResponse.Log).Msg("COP pairing log")
 	}
 
+	// Store COP gibsonization data for this round
+	t.COPGibsonization[int32(round)] = pairResponse.GibsonizedPlayers
+
 	// Clear existing pairings for this round (respecting preserveByes)
 	playersWithByes := make(map[string]bool)
 	if preserveByes {
@@ -1418,7 +1425,20 @@ func (t *ClassicDivision) GetStandings(round int) (*pb.RoundStandings, int, erro
 
 	gibsonRank := -1
 
-	if t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
+	// Check if this round used COP pairing - if so, use COP gibsonization data
+	copGibsonization, hasCOPGibsonization := t.COPGibsonization[int32(round)]
+	if hasCOPGibsonization {
+		// Apply COP gibsonization to the standings
+		for i, record := range records {
+			// COP gibsonization is indexed by player rank, not player ID
+			// The records array is already sorted by rank, so i is the rank
+			if i < len(copGibsonization) && copGibsonization[i] {
+				record.Gibsonized = true
+				gibsonRank = i
+			}
+		}
+	} else if t.DivisionControls.Gibsonize && len(t.Matrix) != 1 {
+		// Use classic gibsonization logic (canCatch)
 
 		lastCompleteRound := round + 1
 		isComplete := false

@@ -251,6 +251,13 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           />
         </Form.Item>
 
+        <Form.Item {...formItemLayout} label=" ">
+          <p style={{ color: "#666", fontSize: "12px", margin: 0 }}>
+            <strong>Note:</strong> Gibson settings above are overridden when using COP (Castellano O'Connor) pairings.
+            COP uses its own gibson_spreads array configured per round.
+          </p>
+        </Form.Item>
+
         <Form.Item
           {...formItemLayout}
           label={
