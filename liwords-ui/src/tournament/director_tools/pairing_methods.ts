@@ -19,7 +19,14 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.maxRepeats === s2.maxRepeats &&
     s1.allowOverMaxRepeats === s2.allowOverMaxRepeats &&
     s1.repeatRelativeWeight === s2.repeatRelativeWeight &&
-    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight
+    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight //&&
+    //    s1.controlLossActivationRound === s2.controlLossActivationRound &&
+    //    s1.controlLossSims === s2.controlLossSims &&
+    //    s1.controlLossThreshold === s2.controlLossThreshold &&
+    //    s1.divisionSims === s2.divisionSims &&
+    //    s1.gibsonSpreads === s2.gibsonSpreads &&
+    // s1.hopefulnessThresholds === s2.hopefulnessThresholds &&
+    // s1.placePrizes === s2.placePrizes
   );
 };
 
@@ -77,6 +84,10 @@ export const fieldsForMethod = (
         "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
       ]);
       break;
+
+    case PairingMethod.PAIRING_METHOD_COP:
+      // COP fields are handled by a custom component, not this field system
+      return [];
   }
 
   return fields;

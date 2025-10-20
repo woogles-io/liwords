@@ -491,8 +491,7 @@ type SingleRoundControlsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Division      string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
-	Round         int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
-	RoundControls *ipc.RoundControl      `protobuf:"bytes,4,opt,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
+	RoundControls *ipc.RoundControl      `protobuf:"bytes,3,opt,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -539,13 +538,6 @@ func (x *SingleRoundControlsRequest) GetDivision() string {
 		return x.Division
 	}
 	return ""
-}
-
-func (x *SingleRoundControlsRequest) GetRound() int32 {
-	if x != nil {
-		return x.Round
-	}
-	return 0
 }
 
 func (x *SingleRoundControlsRequest) GetRoundControls() *ipc.RoundControl {
@@ -2624,12 +2616,11 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x11registration_open\x18\x13 \x01(\bR\x10registrationOpen\"\x90\x01\n" +
 	"\x1cSetTournamentMetadataRequest\x12B\n" +
 	"\bmetadata\x18\x01 \x01(\v2&.tournament_service.TournamentMetadataR\bmetadata\x12,\n" +
-	"\x12set_only_specified\x18\x02 \x01(\bR\x10setOnlySpecified\"\x98\x01\n" +
+	"\x12set_only_specified\x18\x02 \x01(\bR\x10setOnlySpecified\"\x82\x01\n" +
 	"\x1aSingleRoundControlsRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +
-	"\x05round\x18\x03 \x01(\x05R\x05round\x128\n" +
-	"\x0eround_controls\x18\x04 \x01(\v2\x11.ipc.RoundControlR\rroundControls\"\xa2\x01\n" +
+	"\bdivision\x18\x02 \x01(\tR\bdivision\x128\n" +
+	"\x0eround_controls\x18\x03 \x01(\v2\x11.ipc.RoundControlR\rroundControls\"\xa2\x01\n" +
 	"\x10PairRoundRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +

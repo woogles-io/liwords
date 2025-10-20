@@ -111,7 +111,7 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *co
 	if err != nil {
 		return nil, err
 	}
-	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.Round), req.Msg.RoundControls)
+	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Msg.Id, req.Msg.Division, int(req.Msg.RoundControls.Round), req.Msg.RoundControls)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}

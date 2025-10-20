@@ -8,9 +8,12 @@ import { ReadyButton } from "./ready_button";
 import {
   TournamentPerson,
   TournamentGameResult,
+  TournamentPersonSchema,
 } from "../gen/api/proto/ipc/tournament_pb";
+import { create } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { TourneyStatus } from "../store/selectors/tournament_selectors";
+import { ScoreEditPopover } from "./score_edit_popover";
 // import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
@@ -421,14 +424,60 @@ export const Pairings = React.memo((props: Props) => {
                 ),
             )
           );
-        const scores =
-          playerNames[0] === playerNames[1]
-            ? null
-            : playerNames.map((playerName) => (
-                <p key={`${playerName}scores`}>
-                  {getScores(playerName, pairing)}
-                </p>
-              ));
+        const isSelfPaired = playerNames[0] === playerNames[1];
+        let scores: ReactNode = isSelfPaired
+          ? null
+          : playerNames.map((playerName) => (
+              <p key={`${playerName}scores`}>
+                {getScores(playerName, pairing)}
+              </p>
+            ));
+
+        // Wrap scores in popover for directors (for both paired and self-paired players)
+        if (props.isDirector && props.selectedDivision) {
+          if (isSelfPaired) {
+            // For self-paired players, show a clickable edit trigger
+            const selfPairedTrigger = (
+              <div className="score-edit-trigger" style={{ cursor: "pointer" }}>
+                <p>—</p>
+              </div>
+            );
+
+            scores = (
+              <ScoreEditPopover
+                tournamentID={divisions[props.selectedDivision].tournamentID}
+                division={props.selectedDivision}
+                round={round}
+                players={pairing.players}
+                currentResults={pairing.outcomes}
+                isUnpaired={true}
+              >
+                {selfPairedTrigger}
+              </ScoreEditPopover>
+            );
+          } else if (scores) {
+            // For paired players with scores
+            const currentScores = pairing.games[0]?.scores || [];
+            const scoresContent = (
+              <div className="score-edit-trigger" style={{ cursor: "pointer" }}>
+                {scores}
+              </div>
+            );
+
+            scores = (
+              <ScoreEditPopover
+                tournamentID={divisions[props.selectedDivision].tournamentID}
+                division={props.selectedDivision}
+                round={round}
+                players={pairing.players}
+                currentScores={currentScores}
+                currentResults={pairing.outcomes}
+              >
+                {scoresContent}
+              </ScoreEditPopover>
+            );
+          }
+        }
 
         return {
           players,
@@ -559,10 +608,54 @@ export const Pairings = React.memo((props: Props) => {
           <h5 style={{ marginTop: 10 }}>Unpaired players</h5>
           <List
             size="small"
-            dataSource={Array.from(unpairedPlayers).map((v) => v.split(":")[1])}
-            renderItem={(item) => (
-              <List.Item className="readable-text-color">{item}</List.Item>
-            )}
+            dataSource={Array.from(unpairedPlayers)}
+            renderItem={(playerID) => {
+              const username = playerID.split(":")[1];
+              const listItem = (
+                <List.Item className="readable-text-color">
+                  {username}
+                </List.Item>
+              );
+
+              // Wrap in popover for directors
+              if (props.isDirector && props.selectedDivision) {
+                const player = create(TournamentPersonSchema, {
+                  id: playerID,
+                  rating: 0,
+                  suspended: false,
+                  checkedIn: false,
+                });
+
+                return (
+                  <ScoreEditPopover
+                    tournamentID={
+                      divisions[props.selectedDivision].tournamentID
+                    }
+                    division={props.selectedDivision}
+                    round={props.selectedRound}
+                    players={[player]}
+                    isUnpaired={true}
+                    onSuccess={() => {
+                      // Refresh will happen automatically via websocket
+                    }}
+                  >
+                    <div
+                      className="score-edit-trigger"
+                      style={{
+                        cursor: "pointer",
+                        display: "inline-block",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {username}
+                    </div>
+                  </ScoreEditPopover>
+                );
+              }
+
+              return listItem;
+            }}
           />
         </>
       ) : null}

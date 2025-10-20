@@ -28,6 +28,25 @@
     position: relative;
   }
 
+  .score-edit-trigger {
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      @include colorModed() {
+        background: m($primary-light);
+      }
+
+      &::after {
+        content: " ✏️";
+        font-size: 12px;
+        opacity: 0.7;
+      }
+    }
+  }
+
   .single-pairing {
     &.mine {
       &.ROUND_OPEN.current,
