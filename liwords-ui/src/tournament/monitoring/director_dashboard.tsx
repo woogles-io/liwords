@@ -108,7 +108,7 @@ export const DirectorDashboard = ({
               )}
             </>
           ) : (
-            <Tag color="default">Not shared</Tag>
+            <Tag color="red">Not shared</Tag>
           )}
         </Space>
       ),
@@ -181,7 +181,7 @@ export const DirectorDashboard = ({
               )}
             </>
           ) : (
-            <Tag color="default">Not shared</Tag>
+            <Tag color="red">Not shared</Tag>
           )}
         </Space>
       ),
@@ -237,7 +237,7 @@ export const DirectorDashboard = ({
         locale={{
           emptyText: searchText
             ? `No participants found matching "${searchText}"`
-            : "No monitoring data available yet. Participants will appear here once they start sharing their streams.",
+            : "No participants are registered in this tournament yet.",
         }}
       />
     </Card>

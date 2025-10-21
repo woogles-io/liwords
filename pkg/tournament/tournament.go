@@ -1999,6 +1999,7 @@ func StopMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID,
 
 // GetTournamentMonitoring returns all monitoring data for a tournament
 // This is used by directors to poll for stream status updates
+// Returns ALL tournament players across all divisions, with monitoring status if available
 func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournamentID string) ([]*ipc.MonitoringData, error) {
 	t, err := ts.Get(ctx, tournamentID)
 	if err != nil {
@@ -2012,9 +2013,49 @@ func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournament
 		return nil, errors.New("monitoring is not enabled for this tournament")
 	}
 
+	// Start with existing monitoring data
+	allPlayers := make(map[string]*ipc.MonitoringData)
+
+	if t.ExtraMeta.MonitoringData != nil {
+		for uuid, md := range t.ExtraMeta.MonitoringData {
+			allPlayers[uuid] = md
+		}
+	}
+
+	// Add all tournament players who don't have monitoring data yet
+	for _, division := range t.Divisions {
+		if division.DivisionManager != nil {
+			players := division.DivisionManager.GetPlayers()
+			for _, p := range players.Persons {
+				// Extract UUID from tournament ID (format: "uuid:username")
+				splitID := strings.Split(p.Id, ":")
+				var uuid, username string
+				if len(splitID) == 2 {
+					uuid = splitID[0]
+					username = splitID[1]
+				} else if len(splitID) == 1 {
+					uuid = splitID[0]
+					username = uuid // fallback to UUID if username not available
+				} else {
+					continue // skip malformed IDs
+				}
+
+				// Only add if not already present in monitoring data
+				if _, exists := allPlayers[uuid]; !exists {
+					allPlayers[uuid] = &ipc.MonitoringData{
+						UserId:   uuid,
+						Username: username,
+						// CameraKey, ScreenshotKey, and timestamps remain nil/empty
+						// to indicate streams haven't been started yet
+					}
+				}
+			}
+		}
+	}
+
 	// Convert map to slice
-	participants := make([]*ipc.MonitoringData, 0, len(t.ExtraMeta.MonitoringData))
-	for _, md := range t.ExtraMeta.MonitoringData {
+	participants := make([]*ipc.MonitoringData, 0, len(allPlayers))
+	for _, md := range allPlayers {
 		participants = append(participants, md)
 	}
 

@@ -41,6 +41,7 @@ export const MonitoringSetup = () => {
   const [screenshotWindow, setScreenshotWindow] = useState<Window | null>(null);
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
   const [monitoringData, setMonitoringData] = useState<MonitoringData[]>([]);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // Generate keys on mount
   useEffect(() => {
@@ -103,8 +104,13 @@ export const MonitoringSetup = () => {
             setScreenshotActive(true);
           }
         }
-      } catch (e) {
-        flashError(e);
+      } catch (e: any) {
+        // Check if it's a permission denied error
+        if (e.code === "permission_denied") {
+          setAccessDenied(true);
+        } else {
+          flashError(e);
+        }
       }
     };
 
@@ -250,6 +256,27 @@ export const MonitoringSetup = () => {
 
   // Check if current user is a director
   const isDirector = tournamentContext.directors.includes(loginState.username);
+
+  // Show access denied message if user is not a participant
+  if (accessDenied) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px" }}>
+        <Alert
+          message="Access Denied"
+          description="You must be registered in this tournament to access the monitoring page."
+          type="error"
+          showIcon
+          style={{ marginBottom: "16px" }}
+        />
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate(`${tournamentContext.metadata.slug}`)}
+        >
+          Back to Tournament
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px" }}>

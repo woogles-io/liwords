@@ -907,6 +907,37 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	err = authenticateDirector(ctx, ts, req.Msg.TournamentId, req.Msg)
 	isDirector := (err == nil)
 
+	// Get tournament to check if user is a participant
+	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	// If not a director, check if user is registered in this tournament
+	if !isDirector {
+		userIsParticipant := false
+		userID := user.TournamentID()
+
+		for _, division := range t.Divisions {
+			if division.DivisionManager != nil {
+				players := division.DivisionManager.GetPlayers()
+				for _, p := range players.Persons {
+					if p.Id == userID {
+						userIsParticipant = true
+						break
+					}
+				}
+				if userIsParticipant {
+					break
+				}
+			}
+		}
+
+		if !userIsParticipant {
+			return nil, apiserver.PermissionDenied("you are not registered in this tournament")
+		}
+	}
+
 	participants, err := GetTournamentMonitoring(ctx, ts.tournamentStore, req.Msg.TournamentId)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
