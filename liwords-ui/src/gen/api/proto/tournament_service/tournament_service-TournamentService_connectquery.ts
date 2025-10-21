@@ -195,3 +195,20 @@ export const getRecentAndUpcomingTournaments = TournamentService.method.getRecen
  * @generated from rpc tournament_service.TournamentService.RunCOP
  */
 export const runCOP = TournamentService.method.runCOP;
+
+/**
+ * Monitoring/invigilation endpoints
+ *
+ * @generated from rpc tournament_service.TournamentService.StartMonitoringStream
+ */
+export const startMonitoringStream = TournamentService.method.startMonitoringStream;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.StopMonitoringStream
+ */
+export const stopMonitoringStream = TournamentService.method.stopMonitoringStream;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.GetTournamentMonitoring
+ */
+export const getTournamentMonitoring = TournamentService.method.getTournamentMonitoring;

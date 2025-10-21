@@ -254,3 +254,21 @@ message PlayerCheckinResponse {
   string division = 2;
   TournamentPerson player = 3;
 }
+
+// Monitoring/Invigilation data for tournament participants
+message MonitoringData {
+  string user_id = 1;
+  string username = 2;
+  // camera_key and screenshot_key are only sent to directors and the user themselves
+  string camera_key = 3;
+  string screenshot_key = 4;
+  // Public timestamps indicating when streams were started (null if not started)
+  google.protobuf.Timestamp camera_started_at = 5;
+  google.protobuf.Timestamp screenshot_started_at = 6;
+}
+
+// Broadcast message for monitoring updates
+message TournamentMonitoringUpdate {
+  string tournament_id = 1;
+  repeated MonitoringData participants = 2;
+}

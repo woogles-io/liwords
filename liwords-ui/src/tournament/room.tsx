@@ -15,13 +15,14 @@ import { ActionsPanel } from "./actions_panel";
 import { CompetitorStatus } from "./competitor_status";
 import "./room.scss";
 import { useTourneyMetadata } from "./utils";
-import { useSearchParams } from "react-router";
+import { useSearchParams, useLocation } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { readyForTournamentGame } from "./ready";
+import { MonitoringSetup } from "./monitoring/monitoring_setup";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -30,6 +31,7 @@ type Props = {
 
 export const TournamentRoom = (props: Props) => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
@@ -48,8 +50,13 @@ export const TournamentRoom = (props: Props) => {
     { enabled: loginState.loggedIn },
   );
 
+  // Strip /monitoring suffix from path if present for metadata fetch
+  const metadataPath = path.endsWith("/monitoring")
+    ? path.slice(0, -"/monitoring".length)
+    : path;
+
   useTourneyMetadata(
-    path,
+    metadataPath,
     "",
     dispatchTournamentContext,
     loginState,
@@ -92,6 +99,16 @@ export const TournamentRoom = (props: Props) => {
         <div className="lobby">
           <h3>You tried to access a non-existing page.</h3>
         </div>
+      </>
+    );
+  }
+
+  // Check if we're on the monitoring page (before tournamentID check)
+  if (location.pathname.endsWith("/monitoring")) {
+    return (
+      <>
+        <TopBar />
+        <MonitoringSetup />
       </>
     );
   }

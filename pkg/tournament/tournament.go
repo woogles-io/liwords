@@ -180,6 +180,12 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	t.Description = ternary(merge && meta.Description == "", t.Description, meta.Description)
 	t.Slug = ternary(merge && meta.Slug == "", t.Slug, meta.Slug)
 	t.Type = ternary(merge && meta.Type == pb.TType_STANDARD, t.Type, ttype)
+	// Preserve MonitoringData from existing ExtraMeta when updating
+	var existingMonitoringData map[string]*ipc.MonitoringData
+	if t.ExtraMeta != nil {
+		existingMonitoringData = t.ExtraMeta.MonitoringData
+	}
+
 	t.ExtraMeta = &entity.TournamentMeta{
 		Disclaimer: ternary(merge && meta.Disclaimer == "" && t.ExtraMeta != nil,
 			t.ExtraMeta.Disclaimer, meta.Disclaimer),
@@ -201,10 +207,13 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 			t.ExtraMeta.PrivateAnalysis, meta.PrivateAnalysis),
 		IRLMode: ternary(merge && !meta.IrlMode && t.ExtraMeta != nil,
 			t.ExtraMeta.IRLMode, meta.IrlMode),
+		Monitored: ternary(merge && !meta.Monitored && t.ExtraMeta != nil,
+			t.ExtraMeta.Monitored, meta.Monitored),
 		CheckinsOpen: ternary(merge && !meta.CheckinsOpen && t.ExtraMeta != nil,
 			t.ExtraMeta.CheckinsOpen, meta.CheckinsOpen),
 		RegistrationOpen: ternary(merge && !meta.RegistrationOpen && t.ExtraMeta != nil,
 			t.ExtraMeta.RegistrationOpen, meta.RegistrationOpen),
+		MonitoringData: existingMonitoringData,
 	}
 
 	if meta.ScheduledStartTime != nil {
@@ -1870,4 +1879,144 @@ func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) erro
 
 	wrapped := entity.WrapEvent(tdevt, ipc.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
+}
+
+// StartMonitoringStream marks a user's monitoring stream (camera or screenshot) as started
+func StartMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType, streamKey string) error {
+	t, err := ts.Get(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if !t.ExtraMeta.Monitored {
+		return errors.New("monitoring is not enabled for this tournament")
+	}
+
+	// Parse username from TournamentID (format: "uuid:username")
+	splitID := strings.Split(userID, ":")
+	var uuid, username string
+	if len(splitID) == 2 {
+		uuid = splitID[0]
+		username = splitID[1]
+	} else if len(splitID) == 1 {
+		uuid = splitID[0]
+		username = uuid // fallback to UUID if username not available
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Initialize MonitoringData map if needed
+	if t.ExtraMeta.MonitoringData == nil {
+		t.ExtraMeta.MonitoringData = make(map[string]*ipc.MonitoringData)
+	}
+
+	// Get or create monitoring data for this user
+	data, exists := t.ExtraMeta.MonitoringData[uuid]
+	if !exists {
+		data = &ipc.MonitoringData{
+			UserId:   uuid,
+			Username: username,
+		}
+		t.ExtraMeta.MonitoringData[uuid] = data
+	}
+
+	// Update the appropriate stream based on type
+	now := timestamppb.Now()
+	switch streamType {
+	case "camera":
+		data.CameraKey = streamKey
+		data.CameraStartedAt = now
+	case "screenshot":
+		data.ScreenshotKey = streamKey
+		data.ScreenshotStartedAt = now
+	default:
+		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// StopMonitoringStream marks a user's monitoring stream (camera or screenshot) as stopped
+func StopMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
+	t, err := ts.Get(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if !t.ExtraMeta.Monitored {
+		return errors.New("monitoring is not enabled for this tournament")
+	}
+
+	// Parse UUID from TournamentID
+	splitID := strings.Split(userID, ":")
+	var uuid string
+	if len(splitID) >= 1 {
+		uuid = splitID[0]
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Check if monitoring data exists for this user
+	if t.ExtraMeta.MonitoringData == nil {
+		return errors.New("no monitoring data found for this tournament")
+	}
+
+	data, exists := t.ExtraMeta.MonitoringData[uuid]
+	if !exists {
+		return errors.New("no monitoring data found for this user")
+	}
+
+	// Clear the appropriate stream based on type
+	switch streamType {
+	case "camera":
+		data.CameraKey = ""
+		data.CameraStartedAt = nil
+	case "screenshot":
+		data.ScreenshotKey = ""
+		data.ScreenshotStartedAt = nil
+	default:
+		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetTournamentMonitoring returns all monitoring data for a tournament
+// This is used by directors to poll for stream status updates
+func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournamentID string) ([]*ipc.MonitoringData, error) {
+	t, err := ts.Get(ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+
+	t.RLock()
+	defer t.RUnlock()
+
+	if !t.ExtraMeta.Monitored {
+		return nil, errors.New("monitoring is not enabled for this tournament")
+	}
+
+	// Convert map to slice
+	participants := make([]*ipc.MonitoringData, 0, len(t.ExtraMeta.MonitoringData))
+	for _, md := range t.ExtraMeta.MonitoringData {
+		participants = append(participants, md)
+	}
+
+	return participants, nil
 }
