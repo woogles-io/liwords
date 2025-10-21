@@ -23,6 +23,7 @@ import { DeviceType, MonitoringData } from "./types";
 import { DirectorDashboard } from "./director_dashboard";
 import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import { flashError, useClient } from "../../utils/hooks/connect";
+import { Code } from "@connectrpc/connect";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -42,6 +43,7 @@ export const MonitoringSetup = () => {
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
   const [monitoringData, setMonitoringData] = useState<MonitoringData[]>([]);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
 
   // Generate keys on mount
   useEffect(() => {
@@ -58,8 +60,13 @@ export const MonitoringSetup = () => {
 
   // Poll for monitoring data every 5 seconds to restore state
   useEffect(() => {
-    // Don't fetch if tournament ID is not loaded yet
-    if (!tournamentContext.metadata.id) {
+    // Don't fetch if tournament ID is not loaded yet or user is not logged in
+    if (!tournamentContext.metadata.id || !loginState.loggedIn) {
+      return;
+    }
+
+    // Don't continue polling if access was denied
+    if (accessDenied) {
       return;
     }
 
@@ -91,6 +98,9 @@ export const MonitoringSetup = () => {
 
         setMonitoringData(data);
 
+        // Mark access check as complete on successful fetch
+        setIsCheckingAccess(false);
+
         // Restore own state from backend data
         const ownData = data.find((d) => d.userId === loginState.userID);
         if (ownData) {
@@ -107,10 +117,12 @@ export const MonitoringSetup = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         // Check if it's a permission denied error
-        if (e.code === "permission_denied") {
+        if (e.code === Code.PermissionDenied) {
           setAccessDenied(true);
+          setIsCheckingAccess(false);
         } else {
           flashError(e);
+          setIsCheckingAccess(false);
         }
       }
     };
@@ -118,17 +130,27 @@ export const MonitoringSetup = () => {
     // Fetch immediately on mount
     fetchMonitoringData();
 
-    // Then poll every 5 seconds
-    const interval = setInterval(fetchMonitoringData, 5000);
+    // Only poll if access check has completed successfully
+    let interval: NodeJS.Timeout | undefined;
+    if (!isCheckingAccess && !accessDenied) {
+      interval = setInterval(fetchMonitoringData, 5000);
+    }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [
     tClient,
     tournamentContext.metadata.id,
     loginState.userID,
+    loginState.loggedIn,
     cameraActive,
     phoneConfirmed,
     screenshotActive,
+    isCheckingAccess,
+    accessDenied,
   ]);
 
   // Check if windows are closed periodically
@@ -255,16 +277,13 @@ export const MonitoringSetup = () => {
     tournamentContext.metadata.slug,
   );
 
-  // Check if current user is a director
-  const isDirector = tournamentContext.directors.includes(loginState.username);
-
-  // Show access denied message if user is not a participant
-  if (accessDenied) {
+  // Check if user is logged in
+  if (!loginState.loggedIn) {
     return (
       <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px" }}>
         <Alert
-          message="Access Denied"
-          description="You must be registered in this tournament to access the monitoring page."
+          message="Login Required"
+          description="You must be logged in to access the monitoring page."
           type="error"
           showIcon
           style={{ marginBottom: "16px" }}
@@ -278,6 +297,36 @@ export const MonitoringSetup = () => {
       </div>
     );
   }
+
+  // Show loading or access denied while checking access
+  if (isCheckingAccess || accessDenied) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px" }}>
+        {accessDenied ? (
+          <>
+            <Alert
+              message="Page Not Found"
+              description="The page you are looking for does not exist or you do not have permission to access it."
+              type="error"
+              showIcon
+              style={{ marginBottom: "16px" }}
+            />
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate(`${tournamentContext.metadata.slug}`)}
+            >
+              Back to Tournament
+            </Button>
+          </>
+        ) : (
+          <div>Loading...</div>
+        )}
+      </div>
+    );
+  }
+
+  // Check if current user is a director
+  const isDirector = tournamentContext.directors.includes(loginState.username);
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px" }}>
