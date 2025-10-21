@@ -1,5 +1,12 @@
 @use "../base.scss" as *;
 
+.monitoring-link-container {
+  @include colorModed() {
+    background: m($card-background) !important;
+    border-color: m($gray-subtle) !important;
+  }
+}
+
 .pairings-container {
   .ant-table {
     margin-top: 6px;

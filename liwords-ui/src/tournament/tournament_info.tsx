@@ -6,8 +6,9 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isClubType } from "../store/constants";
-import { TeamOutlined } from "@ant-design/icons";
+import { TeamOutlined, CameraOutlined } from "@ant-design/icons";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { Link } from "react-router";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -76,6 +77,26 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
               display: "block",
             }}
           />
+        )}
+        {tournamentContext.metadata.monitored && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "8px",
+              backgroundColor: "rgba(0, 0, 0, 0.04)",
+              borderRadius: "4px",
+              border: "1px solid rgba(0, 0, 0, 0.1)",
+            }}
+            className="monitoring-link-container"
+          >
+            <Link
+              to={`${tournamentContext.metadata.slug}/monitoring`}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            >
+              <CameraOutlined style={{ fontSize: "18px" }} />
+              <strong>Set up monitoring</strong>
+            </Link>
+          </div>
         )}
         <h4>Directed by: {directors}</h4>
         <h5 className="section-header">{type} Details</h5>

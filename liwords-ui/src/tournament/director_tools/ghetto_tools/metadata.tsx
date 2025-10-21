@@ -36,6 +36,7 @@ export const EditDescription = (props: { tournamentID: string }) => {
         range: [scheduledStartTime, scheduledEndTime],
       },
       irlMode: metadata.irlMode,
+      monitored: metadata.monitored,
     });
   }, [form, tournamentContext.metadata]);
 
@@ -56,6 +57,7 @@ export const EditDescription = (props: { tournamentID: string }) => {
           ? dayjsToProtobufTimestampIgnoringNanos(scheduledEndTime)
           : undefined,
         irlMode: vals.irlMode,
+        monitored: vals.monitored,
       },
       setOnlySpecified: true,
     };
@@ -126,6 +128,15 @@ export const EditDescription = (props: { tournamentID: string }) => {
                 isClubType(tournamentContext.metadata.type)
               }
             />
+          </Form.Item>
+        </Form.Item>
+        <Form.Item>
+          <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+            Monitoring/Invigilation mode requires participants to share their
+            camera and screen via vdo.ninja for tournament oversight.
+          </div>
+          <Form.Item name="monitored" label="Monitoring Enabled">
+            <Switch />
           </Form.Item>
         </Form.Item>
         <Form.Item style={{ paddingBottom: 20 }}>

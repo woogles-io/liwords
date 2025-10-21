@@ -863,6 +863,104 @@ func (ts *TournamentService) RunCOP(ctx context.Context, req *connect.Request[pb
 	return connect.NewResponse(&ipc.PairResponse{}), nil
 }
 
+func (ts *TournamentService) StartMonitoringStream(ctx context.Context, req *connect.Request[pb.StartMonitoringStreamRequest],
+) (*connect.Response[pb.TournamentResponse], error) {
+
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = StartMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID(), req.Msg.StreamType, req.Msg.StreamKey)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) StopMonitoringStream(ctx context.Context, req *connect.Request[pb.StopMonitoringStreamRequest],
+) (*connect.Response[pb.TournamentResponse], error) {
+
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = StopMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID(), req.Msg.StreamType)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *connect.Request[pb.GetTournamentMonitoringRequest],
+) (*connect.Response[pb.GetTournamentMonitoringResponse], error) {
+
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if user is a director (no error means they are)
+	err = authenticateDirector(ctx, ts, req.Msg.TournamentId, req.Msg)
+	isDirector := (err == nil)
+
+	// Get tournament to check if user is a participant
+	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	// If not a director, check if user is registered in this tournament
+	if !isDirector {
+		userIsParticipant := false
+		userID := user.TournamentID()
+
+		for _, division := range t.Divisions {
+			if division.DivisionManager != nil {
+				players := division.DivisionManager.GetPlayers()
+				for _, p := range players.Persons {
+					if p.Id == userID {
+						userIsParticipant = true
+						break
+					}
+				}
+				if userIsParticipant {
+					break
+				}
+			}
+		}
+
+		if !userIsParticipant {
+			return nil, apiserver.PermissionDenied("you are not registered in this tournament")
+		}
+	}
+
+	participants, err := GetTournamentMonitoring(ctx, ts.tournamentStore, req.Msg.TournamentId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	// If not a director, filter to only the current user's data
+	if !isDirector {
+		filteredParticipants := []*ipc.MonitoringData{}
+		userID := user.TournamentID()
+		for _, p := range participants {
+			if p.UserId == userID {
+				filteredParticipants = append(filteredParticipants, p)
+				break
+			}
+		}
+		participants = filteredParticipants
+	}
+
+	return connect.NewResponse(&pb.GetTournamentMonitoringResponse{
+		Participants: participants,
+	}), nil
+}
+
 func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tournament) (*pb.TournamentMetadata, error) {
 	var tt pb.TType
 	switch t.Type {
@@ -903,6 +1001,7 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		Color:                     t.ExtraMeta.Color,
 		PrivateAnalysis:           t.ExtraMeta.PrivateAnalysis,
 		IrlMode:                   t.ExtraMeta.IRLMode,
+		Monitored:                 t.ExtraMeta.Monitored,
 		ScheduledStartTime:        scheduledStartTime,
 		ScheduledEndTime:          scheduledEndTime,
 		CheckinsOpen:              t.ExtraMeta.CheckinsOpen,

@@ -76,6 +76,9 @@ message TournamentMetadata {
   google.protobuf.Timestamp scheduled_end_time = 17;
   bool checkins_open = 18;
   bool registration_open = 19;
+  // monitored enables invigilation/monitoring mode requiring participants
+  // to share camera and screenshot streams via vdo.ninja
+  bool monitored = 20;
 }
 
 message SetTournamentMetadataRequest {
@@ -320,6 +323,16 @@ service TournamentService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);
+
+  // Monitoring/invigilation endpoints
+  rpc StartMonitoringStream(StartMonitoringStreamRequest)
+      returns (TournamentResponse);
+  rpc StopMonitoringStream(StopMonitoringStreamRequest)
+      returns (TournamentResponse);
+  rpc GetTournamentMonitoring(GetTournamentMonitoringRequest)
+      returns (GetTournamentMonitoringResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message ExportTournamentRequest {
@@ -354,3 +367,22 @@ message RecentClubSessionsRequest {
 }
 
 message ClubSessionsResponse { repeated ClubSessionResponse sessions = 1; }
+
+message StartMonitoringStreamRequest {
+  string tournament_id = 1;
+  string stream_type = 2; // "camera" or "screenshot"
+  string stream_key = 3;  // vdo.ninja stream key
+}
+
+message StopMonitoringStreamRequest {
+  string tournament_id = 1;
+  string stream_type = 2; // "camera" or "screenshot"
+}
+
+message GetTournamentMonitoringRequest {
+  string tournament_id = 1;
+}
+
+message GetTournamentMonitoringResponse {
+  repeated ipc.MonitoringData participants = 1;
+}

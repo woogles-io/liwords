@@ -180,6 +180,7 @@ export const TourneyEditor = (props: Props) => {
         color: metadata.color,
         privateAnalysis: metadata.privateAnalysis || false,
         irlMode: metadata.irlMode || false,
+        monitored: metadata.monitored || false,
         scheduledTime: {
           range: [scheduledStartTime, scheduledEndTime],
         },
@@ -237,6 +238,7 @@ export const TourneyEditor = (props: Props) => {
           color: vals.color,
           privateAnalysis: vals.privateAnalysis,
           irlMode: vals.irlMode,
+          monitored: vals.monitored,
           scheduledStartTime: scheduledStartTime
             ? dayjsToProtobufTimestampIgnoringNanos(scheduledStartTime)
             : undefined,
@@ -474,6 +476,15 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item
               name="irlMode"
               label="Use tournament mode for IRL games"
+              hidden={props.mode === "new"}
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              name="monitored"
+              label="Enable monitoring/invigilation"
               hidden={props.mode === "new"}
               valuePropName="checked"
             >

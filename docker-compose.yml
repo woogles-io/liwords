@@ -47,15 +47,7 @@ services:
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
-    depends_on:
-      [
-        "db",
-        "proxy",
-        "nats",
-        "socket",
-        "redis",
-        "minio"
-      ]
+    depends_on: [ "db", "proxy", "nats", "socket", "redis", "minio" ]
     networks:
       - aeronet
     ports:
@@ -100,8 +92,7 @@ services:
   #   networks:
   #     - aeronet
 
-  socket:
-    &socketsetup
+  socket: &socketsetup
     build:
       context: .
       dockerfile: services/socketsrv/Dockerfile-dev
@@ -168,7 +159,7 @@ services:
       - aeronet
 
   db:
-    image: postgres:16
+    image: postgres:17
     environment:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: liwords
@@ -200,12 +191,7 @@ services:
     depends_on:
       - minio
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass;
-      /usr/bin/mc mb myminio/woogles-uploads;
-      /usr/bin/mc anonymous set public myminio/woogles-uploads;
-      exit 0;
-      "
+      /bin/sh -c " /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass; /usr/bin/mc mb myminio/woogles-uploads; /usr/bin/mc anonymous set public myminio/woogles-uploads; exit 0; "
     networks:
       - aeronet
 

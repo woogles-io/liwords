@@ -32,6 +32,7 @@ import {
 } from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import { LoginState } from "../login_state";
 import { ActiveGame } from "./lobby_reducer";
+import { MonitoringData } from "../../tournament/monitoring/types";
 
 type TournamentGame = {
   scores: Array<number>;
@@ -88,6 +89,9 @@ export type TournamentState = {
   gamesOffset: number;
   finished: boolean;
   initializedFromXHR: boolean;
+
+  // Monitoring data for all participants
+  monitoringData: { [userId: string]: MonitoringData };
 };
 
 const defaultMetadata = create(TournamentMetadataSchema, {
@@ -105,6 +109,7 @@ export const defaultTournamentState = {
   gamesOffset: 0,
   finished: false,
   initializedFromXHR: false,
+  monitoringData: {},
 };
 
 const findOpponentIdx = (
@@ -857,6 +862,29 @@ export function TournamentReducer(
         };
       }
       return state;
+    }
+
+    case ActionType.SetMonitoringData: {
+      // Complete replacement of monitoring data (from full tournament update)
+      const monitoringData = action.payload as {
+        [userId: string]: MonitoringData;
+      };
+      return {
+        ...state,
+        monitoringData,
+      };
+    }
+
+    case ActionType.UpdateMonitoringStream: {
+      // Update a single user's monitoring data
+      const update = action.payload as MonitoringData;
+      return {
+        ...state,
+        monitoringData: {
+          ...state.monitoringData,
+          [update.userId]: update,
+        },
+      };
     }
   }
   throw new Error(`unhandled action type ${action.actionType}`);
