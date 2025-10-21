@@ -104,6 +104,7 @@ export const MonitoringSetup = () => {
             setScreenshotActive(true);
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         // Check if it's a permission denied error
         if (e.code === "permission_denied") {
@@ -458,7 +459,7 @@ export const MonitoringSetup = () => {
             </Paragraph>
 
             <Paragraph strong style={{ marginTop: "16px" }}>
-              When the widget opens on your phone:
+              When the vdo.ninja window opens on your phone:
             </Paragraph>
             <Paragraph>
               • Select the <strong>Video Source</strong> (choose your{" "}
@@ -466,8 +467,9 @@ export const MonitoringSetup = () => {
               <br />• Select the <strong>Audio Source</strong> (Default audio
               source)
               <br />• Click <strong>Start</strong>
-              <br />• <strong>Minimize</strong> the widget and keep it running
-              <br />• Return to this page on your computer and click the button
+              <br />• Don't close the browser tab on your phone
+              <br />• Return to this page on your computer and{" "}
+              <strong>click the button</strong>
               below to confirm
             </Paragraph>
 
