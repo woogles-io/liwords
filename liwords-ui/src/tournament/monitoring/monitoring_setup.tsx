@@ -361,7 +361,8 @@ export const MonitoringSetup = () => {
         <Paragraph>
           To ensure fair play and maintain the integrity of competitive
           Scrabble, this tournament uses invigilation—a monitoring system where
-          tournament directors can observe participants during games.
+          tournament directors can observe participants during games. You must
+          use a laptop or desktop computer to play in this tournament.
         </Paragraph>
         <Paragraph>
           Invigilation helps prevent cheating and ensures all players compete on
