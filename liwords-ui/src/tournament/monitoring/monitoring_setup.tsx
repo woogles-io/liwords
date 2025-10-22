@@ -353,6 +353,35 @@ export const MonitoringSetup = () => {
       {/* Director Dashboard - shown at top for directors */}
       {isDirector && <DirectorDashboard monitoringData={monitoringData} />}
 
+      {/* Invigilation Explanation */}
+      <Card
+        title="About Tournament Invigilation"
+        style={{ marginBottom: "24px" }}
+      >
+        <Paragraph>
+          To ensure fair play and maintain the integrity of competitive
+          Scrabble, this tournament uses invigilation—a monitoring system where
+          tournament directors can observe participants during games.
+        </Paragraph>
+        <Paragraph>
+          Invigilation helps prevent cheating and ensures all players compete on
+          a level playing field. This is especially important in tournaments
+          with prizes or ratings at stake. By participating, you're helping us
+          create a trustworthy competitive environment for everyone.
+        </Paragraph>
+        <Paragraph>
+          <strong>Important:</strong> All participants must share{" "}
+          <strong>both their camera AND screen</strong> during tournament games.
+          You must complete all three steps below to participate in this
+          tournament.
+        </Paragraph>
+        <Paragraph>
+          The setup process below will guide you through sharing your camera and
+          screen with tournament directors. Thank you for your cooperation in
+          keeping our tournaments fair and enjoyable!
+        </Paragraph>
+      </Card>
+
       {/* Recovered session alerts */}
       {cameraActive && !cameraWindow && (
         <Alert
@@ -417,9 +446,22 @@ export const MonitoringSetup = () => {
             title="Step 2: Position and Start Your Camera"
             style={{ marginBottom: "24px" }}
           >
+            <Alert
+              message="Important: External Webcam Required"
+              description="You must use an external webcam for monitoring. Built-in laptop/computer cameras cannot be repositioned to show your hands and side view, which is required for proper invigilation."
+              type="warning"
+              showIcon
+              style={{ marginBottom: "16px" }}
+            />
             <Paragraph>
-              • Place your webcam so it faces you from the side
-              <br />• Ensure your monitor/screen and hands are visible
+              • Use an <strong>external webcam</strong> (not your computer's
+              built-in camera)
+              <br />• Place your webcam so it faces you from the side
+              <br />• Position it away from your computer to capture your hands
+              and monitor/screen
+              <br />• Use a <strong>tripod or camera holder</strong> to keep the
+              webcam stable and ensure consistent stream quality
+              <br />• Ensure your monitor/screen and hands are clearly visible
             </Paragraph>
 
             <div style={{ textAlign: "center", margin: "16px 0" }}>
@@ -435,7 +477,7 @@ export const MonitoringSetup = () => {
             </div>
 
             <Paragraph strong style={{ marginTop: "16px" }}>
-              When the widget opens:
+              Click the button below. When the window opens:
             </Paragraph>
             <Paragraph>
               • Select the <strong>Video Source</strong> (your camera)
@@ -475,8 +517,14 @@ export const MonitoringSetup = () => {
             style={{ marginBottom: "24px" }}
           >
             <Paragraph>
-              • Place your phone so the camera faces you from the side
-              <br />• Ensure your monitor/screen and hands are visible
+              • Use your phone in <strong>landscape mode/position</strong> (this
+              makes it easier for monitors to get a better view)
+              <br />• Use a <strong>tripod or phone holder</strong> to keep your
+              device stable and ensure consistent stream quality
+              <br />• Place your phone so the camera faces you from the side
+              <br />• Position it away from your computer to capture your hands
+              and monitor/screen
+              <br />• Ensure your monitor/screen and hands are clearly visible
             </Paragraph>
 
             <div style={{ textAlign: "center", margin: "16px 0" }}>
@@ -566,7 +614,9 @@ export const MonitoringSetup = () => {
         title="Step 3: Start Screen Share (on this computer)"
         style={{ marginBottom: "24px" }}
       >
-        <Paragraph strong>When the widget opens:</Paragraph>
+        <Paragraph strong>
+          Click the button below. When the window opens:
+        </Paragraph>
         <Paragraph>
           • Click <strong>SELECT SCREEN TO SHARE</strong> in the widget
           <br />• Click <strong>CHOOSE YOUR ENTIRE SCREEN</strong> tab
