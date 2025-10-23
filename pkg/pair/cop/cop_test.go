@@ -686,7 +686,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	resp = cop.COPPair(req)
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
-	is.Equal(resp.Pairings[1], int32(1))
+	is.Equal(resp.Pairings[11], int32(-1))
 
 	// Gibson Bye
 	req = pairtestutils.CreateAlbanyCSWAfterRound24OddPairRequest()
@@ -823,8 +823,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	// Billy should get the bye since Eric already received a bye
 	is.Equal(resp.Pairings[5], int32(5))
-
-	// FIXME: check that timeouts work
 }
 
 func TestCOPWeights(t *testing.T) {

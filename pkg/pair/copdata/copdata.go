@@ -34,6 +34,7 @@ type PrecompData struct {
 	GibsonGroups          []int
 	GibsonizedPlayers     []bool
 	CompletePairings      int
+	ControlLossTriggered  bool
 }
 
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -183,6 +184,7 @@ divisionPairingLoop:
 	var controlLossSimResults *pkgstnd.SimResults
 	var allControlLosses map[int]int
 	destinysChild := -1
+	controlLossTriggered := false
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
 		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
 		if pairErr != pb.PairError_SUCCESS {
@@ -192,6 +194,7 @@ divisionPairingLoop:
 		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
 			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
 			destinysChild = controlLossSimResults.HighestControlLossRankIdx
+			controlLossTriggered = true
 		} else if lowestPossibleHopeNth[0] > 0 {
 			destinysChild = lowestPossibleHopeNth[0]
 		}
@@ -211,6 +214,7 @@ divisionPairingLoop:
 		GibsonGroups:          improvedFactorSimResults.GibsonGroups,
 		GibsonizedPlayers:     improvedFactorSimResults.GibsonizedPlayers,
 		CompletePairings:      numCompletePairings,
+		ControlLossTriggered:  controlLossTriggered,
 	}, pb.PairError_SUCCESS
 }
 

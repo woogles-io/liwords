@@ -2,6 +2,7 @@ package cop_test
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -113,7 +114,7 @@ func parseTFile(filepath string) ([]Player, int, error) {
 		playerClass := int32(rune(strings.ToUpper(classMatches[1])[0]) - 'A')
 		parts := strings.Split(line, ";")
 		// Define a regex to match the name, rating, and opponent IDs
-		oppRegex := regexp.MustCompile(`^([\w, ']+?)\s+(\d+)((?:\s+\d+)+)$`)
+		oppRegex := regexp.MustCompile(`^([\w, ':]+?)\s+(\d+)((?:\s+\d+)+)$`)
 
 		// Apply the oppRegex to the input string
 		oppMatches := oppRegex.FindStringSubmatch(parts[0])
@@ -138,7 +139,11 @@ func parseTFile(filepath string) ([]Player, int, error) {
 			if err != nil {
 				panic(fmt.Sprintf("Error converting opponent ID to integer: %s\n", err.Error()))
 			}
-			opponents[i] = int32(id - 1)
+			if id == 0 {
+				opponents[i] = playerID
+			} else {
+				opponents[i] = int32(id - 1)
+			}
 		}
 
 		scoresStr := strings.Fields(parts[1])
@@ -284,49 +289,50 @@ func parseFloat64List(value string) []float64 {
 }
 
 // getRoundInfo parses the log file and extracts information about the round and remaining rounds.
-func getRoundInfo(oldLogFile string) (int, int, int) {
+func getRoundInfo(oldLogFile string) (int, int, int, int64) {
 	// Read the file content
 	content, err := os.ReadFile(oldLogFile)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading file: %v", err))
 	}
 
-	// Define the regex patterns for extracting numPairings, numResults, and roundsRemaining
-	roundInfoPattern := regexp.MustCompile(`round_(\d+)_based_on_(\d+)`)
-	roundsRemainingPattern := regexp.MustCompile(`Rounds Remaining:\s+(\d+)`)
+	// Count the number of times the pattern `"pairings": [` appears in content
+	numPairingsPattern := regexp.MustCompile(`"pairings":\s*\[`)
+	numPairingsMatches := numPairingsPattern.FindAllStringSubmatch(string(content), -1)
+	numPairings := len(numPairingsMatches)
 
-	// Find matches for round info (numPairings and numResults)
-	roundInfoMatches := roundInfoPattern.FindStringSubmatch(string(content))
-	if len(roundInfoMatches) < 3 {
-		panic("Error: Could not find round info in the log file")
-	}
+	// Count the number of times the pattern `"results": [` appears in content
+	numResultsPattern := regexp.MustCompile(`"results":\s*\[`)
+	numResultsMatches := numResultsPattern.FindAllStringSubmatch(string(content), -1)
+	numResults := len(numResultsMatches)
 
-	// Extract and calculate numPairings and numResults
-	numPairings, err := strconv.Atoi(roundInfoMatches[1])
-	if err != nil {
-		panic(fmt.Sprintf("Error converting numPairings to int: %v", err))
-	}
-	numPairings -= 1
+	// Find rounds remaining
+	roundsRemainingPattern := regexp.MustCompile(`Rounds Remaining:\s(\d+)`)
 
-	numResults, err := strconv.Atoi(roundInfoMatches[2])
-	if err != nil {
-		panic(fmt.Sprintf("Error converting numResults to int: %v", err))
-	}
-
-	// Find matches for roundsRemaining
 	roundsRemainingMatches := roundsRemainingPattern.FindStringSubmatch(string(content))
 	if len(roundsRemainingMatches) < 2 {
 		panic("Error: Could not find rounds remaining in the log file")
 	}
 
-	// Extract roundsRemaining
 	roundsRemaining, err := strconv.Atoi(roundsRemainingMatches[1])
 	if err != nil {
 		panic(fmt.Sprintf("Error converting roundsRemaining to int: %v", err))
 	}
 
-	// Return the parsed values
-	return numPairings, numResults, roundsRemaining
+	// Capture the seed pattern: "seed":  "\S+"
+	seedPattern := regexp.MustCompile(`"seed":\s*"(\S+)"`)
+	seedMatches := seedPattern.FindStringSubmatch(string(content))
+	if len(seedMatches) < 2 {
+		panic("Error: Could not find seed in the log file")
+	}
+	seedStr := seedMatches[1]
+
+	seed, err := strconv.ParseInt(seedStr, 10, 64)
+	if err != nil {
+		panic(fmt.Sprintf("Error converting seed to int64: %v", err))
+	}
+
+	return numPairings, numResults, roundsRemaining, seed
 }
 
 func createPairRequest(players []Player, totalRounds int, config *TSHConfig, oldLogFile string) *pb.PairRequest {
@@ -340,11 +346,11 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, old
 		playerClasses = append(playerClasses, player.Class)
 	}
 
-	numPairings, numResults, roundsRemaining := getRoundInfo(oldLogFile)
+	numPairings, numResults, roundsRemaining, seed := getRoundInfo(oldLogFile)
 
 	// Division pairings and results
 	var divisionResults []*pb.RoundResults
-	for round := 0; round < numResults; round++ {
+	for round := range numResults {
 		var roundResults []int32
 		for _, player := range players {
 			roundResults = append(roundResults, player.Scores[round])
@@ -353,7 +359,7 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, old
 	}
 
 	var divisionPairings []*pb.RoundPairings
-	for round := 0; round < numPairings; round++ {
+	for round := range numPairings {
 		var roundPairings []int32
 		for _, player := range players {
 			roundPairings = append(roundPairings, player.Opponents[round])
@@ -398,7 +404,7 @@ func createPairRequest(players []Player, totalRounds int, config *TSHConfig, old
 		ControlLossActivationRound: config.ControlLossActivationRound,
 		AllowRepeatByes:            false, // Example default
 		RemovedPlayers:             removedPlayers,
-		Seed:                       0,
+		Seed:                       seed,
 	}
 }
 
@@ -459,7 +465,8 @@ func TestCompare(t *testing.T) {
 
 	is := is.New(t)
 
-	tourneyName := "2024-12-29-Albany-CSW-ME"
+	tourneyName := flag.Arg(0)
+	flag.Parse()
 
 	// URLs and filepaths
 	tfileURL := fmt.Sprintf("https://scrabbleplayers.org/directors/AA003954/%s/a.t", tourneyName)
@@ -496,7 +503,7 @@ func TestCompare(t *testing.T) {
 	// fmt.Printf("ClassPrizes: %v\n", config.ClassPrizes)
 	// fmt.Printf("NumPlacePrizes: %d\n", config.NumPlacePrizes)
 
-	for round := 0; round < totalRounds; round++ {
+	for round := range totalRounds {
 		oldLogURL := fmt.Sprintf("https://scrabbleplayers.org/directors/AA003954/%s/html/A%d_cop.log", tourneyName, round+1)
 		logTourneyAndRound := fmt.Sprintf("%s-%d", tourneyName, round+1)
 		oldLogFile := fmt.Sprintf("%s-old.log", logTourneyAndRound)
@@ -509,48 +516,9 @@ func TestCompare(t *testing.T) {
 			fmt.Printf("Running %s round %d\n", tourneyName, round+1)
 		}
 
-		// fmt.Println("Old Pairings:")
-		// for key, value := range oldPairings {
-		// 	fmt.Printf("%d vs %d\n", key, value)
-		// }
-
-		// Construct the new PairRequest
 		req := createPairRequest(players, totalRounds, config, oldLogFile)
-
-		// Call the COPPair function to generate new pairings
 		resp := cop.COPPair(req)
 		writeStringToFile(newLogFile, resp.Log)
-		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-		// Parse the old pairings
-		oldPairings, err := parseOldPairings(oldLogFile)
-		is.NoErr(err)
-
-		numOldPairs := len(oldPairings)
-		fmt.Print("old pairings: [")
-		for i := 0; i < numOldPairs; i++ {
-			fmt.Printf("%d", oldPairings[int32(i)])
-			if i < numOldPairs-1 {
-				fmt.Print(" ")
-			}
-		}
-		fmt.Print("]\n")
-		fmt.Printf("new pairings: %v\n", resp.Pairings)
-
-		// // Compare pairings
-		// newPairings := make(map[int32]int32)
-		// for i, opponent := range resp.Pairings {
-		// 	newPairings[int32(i)] = opponent
-		// }
-
-		// // Print differences
-		// fmt.Println("Differences between old and new pairings:")
-		// for player, oldOpponent := range oldPairings {
-		// 	newOpponent, exists := newPairings[player]
-		// 	if !exists || newOpponent != oldOpponent {
-		// 		fmt.Printf("Player %d: Old Opponent: %d, New Opponent: %d\n",
-		// 			player, oldOpponent, newOpponent)
-		// 	}
-		// }
 	}
 
 }

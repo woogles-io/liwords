@@ -252,6 +252,18 @@ var constraintPolicies = []constraintPolicy{
 	},
 }
 
+func getCasherRankDiffWeight(diff int64) int64 {
+	return diff * diff * diff
+}
+
+func getCasherPairWeight(copdata *copdatapkg.PrecompData, ri int, rj int) int64 {
+	casherDiff := copdata.LowestPossibleHopeNth[ri] - rj
+	if casherDiff < 0 {
+		casherDiff *= -1
+	}
+	return int64(math.Pow(float64(casherDiff), 3) * 2)
+}
+
 var weightPolicies = []weightPolicy{
 	{
 		// Rank diff
@@ -275,7 +287,7 @@ var weightPolicies = []weightPolicy{
 				ri > pargs.lowestPossibleAbsCasher {
 				return diff
 			}
-			return diff * diff * diff
+			return getCasherRankDiffWeight(diff)
 		},
 	},
 	{
@@ -293,11 +305,7 @@ var weightPolicies = []weightPolicy{
 			}
 			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
 				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
-				casherDiff := pargs.copdata.LowestPossibleHopeNth[ri] - rj
-				if casherDiff < 0 {
-					casherDiff *= -1
-				}
-				return int64(math.Pow(float64(casherDiff), 3) * 2)
+				return getCasherPairWeight(pargs.copdata, ri, rj)
 			}
 			return majorPenalty
 		},
@@ -330,11 +338,17 @@ var weightPolicies = []weightPolicy{
 		// Repeats
 		name: "RE",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// If control loss is not triggered, make the repeat weight for everyone
+			// the same as the penalty for pairing 1st vs 2nd.
 			pi := pargs.playerNodes[ri]
 			pj := pargs.playerNodes[rj]
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
-			return int64(timesPlayed * 2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			if pargs.copdata.ControlLossTriggered || pargs.copdata.GibsonizedPlayers[0] {
+				return int64(timesPlayed * 2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			} else {
+				return int64(timesPlayed) * (getCasherRankDiffWeight(1) + getCasherPairWeight(pargs.copdata, 0, 1))
+			}
 		},
 	},
 	{
@@ -463,9 +477,9 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	}
 
 	return &pb.PairResponse{
-		ErrorCode:          pb.PairError_SUCCESS,
-		Pairings:           pairings,
-		GibsonizedPlayers:  copdata.GibsonizedPlayers,
+		ErrorCode:         pb.PairError_SUCCESS,
+		Pairings:          pairings,
+		GibsonizedPlayers: copdata.GibsonizedPlayers,
 	}
 }
 
@@ -562,6 +576,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
+	logsb.WriteString(fmt.Sprintf("Control Loss Triggered: %t\n", copdata.ControlLossTriggered))
 	logsb.WriteString("Destinys Child: ")
 	if copdata.DestinysChild >= 0 {
 		logsb.WriteString(req.PlayerNames[playerNodes[copdata.DestinysChild]])
