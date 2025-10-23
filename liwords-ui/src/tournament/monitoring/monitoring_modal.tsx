@@ -8,6 +8,8 @@ import {
   Typography,
   Divider,
   Modal,
+  Row,
+  Col,
 } from "antd";
 import {
   CameraOutlined,
@@ -237,7 +239,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
       }
       open={visible}
       onCancel={onClose}
-      width={800}
+      width="90vw"
       footer={[
         <Button key="close" onClick={onClose}>
           Close
@@ -263,7 +265,8 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
           To ensure fair play and maintain the integrity of competitive
           OMGWords, this tournament uses invigilation - a monitoring system
           where tournament directors can observe participants during games. You
-          must use a laptop or desktop computer to play in this tournament.
+          must use a laptop or desktop computer to play in this tournament, with
+          a connected webcam or cell phone camera for monitoring.
         </Paragraph>
         <Paragraph>
           Invigilation helps prevent cheating and ensures all players compete on
@@ -314,39 +317,49 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
               showIcon
               style={{ marginBottom: "16px" }}
             />
-            <Paragraph>
-              • Use an <strong>external webcam</strong> (not your computer's
-              built-in camera)
-              <br />• Place your webcam so it faces you from the side
-              <br />• Position it away from your computer to capture your hands
-              and monitor/screen
-              <br />• Use a <strong>tripod or camera holder</strong> to keep the
-              webcam stable and ensure consistent stream quality
-              <br />• Ensure your monitor/screen and hands are clearly visible
-            </Paragraph>
 
-            <div style={{ textAlign: "center", margin: "16px 0" }}>
-              <img
-                src="/approved-camera-position.jpg"
-                alt="Approved camera position showing player from the side with monitor visible"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  borderRadius: "4px",
-                }}
-              />
-            </div>
+            <Row gutter={24}>
+              <Col xs={24} md={14}>
+                <Paragraph>
+                  • Use an <strong>external webcam</strong> (not your computer's
+                  built-in camera)
+                  <br />• Place your webcam so it faces you from the side
+                  <br />• Position it away from your computer to capture your
+                  hands and monitor/screen
+                  <br />• Use a <strong>tripod or camera holder</strong> to keep
+                  the webcam stable and ensure consistent stream quality
+                  <br />• Ensure your monitor/screen and hands are clearly
+                  visible
+                </Paragraph>
 
-            <Paragraph strong style={{ marginTop: "16px" }}>
-              Click the button below. When the window opens:
-            </Paragraph>
-            <Paragraph>
-              • Select the <strong>Video Source</strong> (your camera)
-              <br />• Select the <strong>Audio Source</strong> (your microphone)
-              <br />• Click <strong>Start</strong>
-              <br />• <strong>Minimize</strong> the widget and don't close it
-              <br />• Return to this page and continue the instructions
-            </Paragraph>
+                <Paragraph strong style={{ marginTop: "16px" }}>
+                  Click the button below. When the window opens:
+                </Paragraph>
+                <Paragraph>
+                  • Select the <strong>Video Source</strong> (your camera)
+                  <br />• Select the <strong>Audio Source</strong> (your
+                  microphone)
+                  <br />• Click <strong>Start</strong>
+                  <br />• <strong>Minimize</strong> the widget and don't close
+                  it
+                  <br />• Return to this page and continue the instructions
+                </Paragraph>
+              </Col>
+
+              <Col xs={24} md={10}>
+                <div style={{ textAlign: "center", padding: "8px" }}>
+                  <img
+                    src="/approved-camera-position.jpg"
+                    alt="Approved camera position showing player from the side with monitor visible"
+                    style={{
+                      maxWidth: "100%",
+                      height: "auto",
+                      borderRadius: "4px",
+                    }}
+                  />
+                </div>
+              </Col>
+            </Row>
 
             <Button
               type="primary"
@@ -392,28 +405,39 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
             title="Step 2: Position and Start Your Phone Camera"
             style={{ marginBottom: "24px" }}
           >
-            <Paragraph>
-              • Use your phone in <strong>landscape mode/position</strong> (this
-              makes it easier for monitors to get a better view)
-              <br />• Use a <strong>tripod or phone holder</strong> to keep your
-              device stable and ensure consistent stream quality
-              <br />• Place your phone so the camera faces you from the side
-              <br />• Position it away from your computer to capture your hands
-              and monitor/screen
-              <br />• Ensure your monitor/screen and hands are clearly visible
-            </Paragraph>
+            <Row gutter={24}>
+              <Col xs={24} md={14}>
+                <Paragraph>
+                  • Use your phone in <strong>landscape mode/position</strong>{" "}
+                  (this makes it easier for monitors to get a better view)
+                  <br />• Use a <strong>tripod or phone holder</strong> to keep
+                  your device stable and ensure consistent stream quality
+                  <br />• We recommend you <strong>
+                    plug your phone in
+                  </strong>{" "}
+                  so it doesn't run out of battery.
+                  <br />• Place your phone so the camera faces you from the side
+                  <br />• Position it away from your computer to capture your
+                  hands and monitor/screen
+                  <br />• Ensure your monitor/screen and hands are clearly
+                  visible
+                </Paragraph>
+              </Col>
 
-            <div style={{ textAlign: "center", margin: "16px 0" }}>
-              <img
-                src="/approved-camera-position.jpg"
-                alt="Approved camera position showing player from the side with monitor visible"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  borderRadius: "4px",
-                }}
-              />
-            </div>
+              <Col xs={24} md={10}>
+                <div style={{ textAlign: "center", padding: "8px" }}>
+                  <img
+                    src="/approved-camera-position.jpg"
+                    alt="Approved camera position showing player from the side with monitor visible"
+                    style={{
+                      maxWidth: "100%",
+                      height: "auto",
+                      borderRadius: "4px",
+                    }}
+                  />
+                </div>
+              </Col>
+            </Row>
 
             <Paragraph strong style={{ marginTop: "16px" }}>
               Scan this QR code with your phone camera:
@@ -463,7 +487,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
 
             {cameraStreaming && (
               <Alert
-                message="Phone camera is streaming. Keep your phone camera active during the tournament."
+                message="Camera is streaming. Keep your camera active during the tournament."
                 type="success"
                 showIcon
                 style={{ marginTop: "16px" }}

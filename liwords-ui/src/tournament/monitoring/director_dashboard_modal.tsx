@@ -356,7 +356,7 @@ export const DirectorDashboardModal = ({
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={1000}
+      width="90vw"
       title={
         <Space>
           <CameraOutlined />

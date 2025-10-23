@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { useCallback, useMemo } from "react";
 
@@ -25,6 +25,10 @@ import { readyForTournamentGame } from "./ready";
 import { MonitoringModal } from "./monitoring/monitoring_modal";
 import { DirectorDashboardModal } from "./monitoring/director_dashboard_modal";
 import { MonitoringWidget } from "./monitoring/monitoring_widget";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { flashError, useClient } from "../utils/hooks/connect";
+import { ActionType } from "../actions/actions";
+import { MonitoringData } from "./monitoring/types";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -44,6 +48,7 @@ export const TournamentRoom = (props: Props) => {
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState("GAMES");
+  const tClient = useClient(TournamentService);
 
   // Modal visibility from URL parameters
   const monitoringModalVisible = searchParams.get("monitoring") === "true";
@@ -80,6 +85,69 @@ export const TournamentRoom = (props: Props) => {
   const tournamentID = useMemo(() => {
     return tournamentContext.metadata.id;
   }, [tournamentContext.metadata]);
+
+  // Fetch monitoring data on initial load if tournament requires monitoring
+  useEffect(() => {
+    if (
+      !tournamentContext.metadata.id ||
+      !loginState.loggedIn ||
+      !tournamentContext.metadata.monitored
+    ) {
+      return;
+    }
+
+    const fetchMonitoringData = async () => {
+      try {
+        const response = await tClient.getTournamentMonitoring({
+          tournamentId: tournamentContext.metadata.id,
+        });
+
+        // Convert to frontend format
+        const data: MonitoringData[] = response.participants.map((p) => ({
+          userId: p.userId,
+          username: p.username,
+          cameraKey: p.cameraKey,
+          screenshotKey: p.screenshotKey,
+          cameraStatus: p.cameraStatus,
+          cameraTimestamp: p.cameraTimestamp
+            ? new Date(
+                Number(p.cameraTimestamp.seconds) * 1000 +
+                  Number(p.cameraTimestamp.nanos) / 1000000,
+              )
+            : null,
+          screenshotStatus: p.screenshotStatus,
+          screenshotTimestamp: p.screenshotTimestamp
+            ? new Date(
+                Number(p.screenshotTimestamp.seconds) * 1000 +
+                  Number(p.screenshotTimestamp.nanos) / 1000000,
+              )
+            : null,
+        }));
+
+        // Update tournament context with monitoring data
+        dispatchTournamentContext({
+          actionType: ActionType.SetMonitoringData,
+          payload: data.reduce(
+            (acc, d) => {
+              acc[d.userId] = d;
+              return acc;
+            },
+            {} as { [userId: string]: MonitoringData },
+          ),
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    };
+
+    fetchMonitoringData();
+  }, [
+    tournamentContext.metadata.id,
+    tournamentContext.metadata.monitored,
+    loginState.loggedIn,
+    tClient,
+    dispatchTournamentContext,
+  ]);
 
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
