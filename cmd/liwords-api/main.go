@@ -61,6 +61,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/tournament"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	"github.com/woogles-io/liwords/pkg/utilities"
+	"github.com/woogles-io/liwords/pkg/vdowebhook"
 	"github.com/woogles-io/liwords/pkg/words"
 	"github.com/woogles-io/liwords/rpc/api/proto/collections_service/collections_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
@@ -219,6 +220,7 @@ func main() {
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	pairService := pair.NewPairService(cfg, lambdaClient)
+	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()
@@ -246,6 +248,12 @@ func main() {
 			"oauth-integration-handlers",
 			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 		)))
+	// VDO webhook doesn't need authentication middleware - it handles CORS directly
+	router.Handle("/api/vdo-webhook", otelhttp.WithRouteTag("/api/vdo-webhook", otelhttp.NewHandler(
+		vdoWebhookService,
+		"vdo-webhook-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	)))
 
 	interceptors := connect.WithInterceptors(otcInterceptor)
 	// We want to emit default values for backwards compatibility.

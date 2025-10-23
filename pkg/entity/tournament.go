@@ -84,7 +84,6 @@ type TournamentMeta struct {
 	CheckinsOpen              bool                           `json:"checkinsOpen"`
 	RegistrationOpen          bool                           `json:"registrationOpen"`
 	Monitored                 bool                           `json:"monitored"`
-	MonitoringData            map[string]*pb.MonitoringData  `json:"monitoringData,omitempty"`
 }
 
 type Tournament struct {

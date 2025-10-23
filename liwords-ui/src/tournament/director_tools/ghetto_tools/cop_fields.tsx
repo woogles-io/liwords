@@ -127,16 +127,16 @@ export const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
           <p style={{ marginBottom: "16px" }}>
             Castellano O'Connor Pairings (COP) is an automated tournament
-            Scrabble pairing system that replaces slow, manual late-round
-            decisions with data-driven, minimum-weight matching. It simulates
-            many possible futures of the event—without using player ratings—to
-            estimate who still has a realistic shot at prizes ("contenders") and
-            to detect when a player risks losing control of their destiny.
-            Simulations start with "factor" pairings (e.g., with 3 rounds left:
-            1v4, 2v5, 3v6, then 1v3/2v4, then KOTH), then tighten those bounds
-            based on who actually reaches first in the trials. COP can also run
-            "control loss" simulations to ensure pivotal challengers meet the
-            right opponents.
+            pairing system that replaces slow, manual late-round decisions with
+            data-driven, minimum-weight matching. It simulates many possible
+            futures of the event—without using player ratings—to estimate who
+            still has a realistic shot at prizes ("contenders") and to detect
+            when a player risks losing control of their destiny. Simulations
+            start with "factor" pairings (e.g., with 3 rounds left: 1v4, 2v5,
+            3v6, then 1v3/2v4, then KOTH), then tighten those bounds based on
+            who actually reaches first in the trials. COP can also run "control
+            loss" simulations to ensure pivotal challengers meet the right
+            opponents.
           </p>
           <p style={{ marginBottom: "16px" }}>
             COP's policies turn those insights into constraints and weights.

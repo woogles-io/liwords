@@ -119,6 +119,8 @@ import {
   TournamentDivisionDataResponseSchema,
   PlayerCheckinResponseSchema,
   PlayerCheckinResponse,
+  MonitoringStreamStatusUpdate,
+  MonitoringStreamStatusUpdateSchema,
 } from "../gen/api/proto/ipc/tournament_pb";
 import {
   ProfileUpdate,
@@ -190,6 +192,8 @@ const MsgTypesMap = {
   [MessageType.OMGWORDS_GAMEPLAY_EVENT]: ServerOMGWordsEventSchema,
   [MessageType.OMGWORDS_GAMEDOCUMENT]: GameDocumentEventSchema,
   [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
+  [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
+    MonitoringStreamStatusUpdateSchema,
 };
 
 export const parseMsgs = (
@@ -1042,6 +1046,15 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.SetTourneyReducedMetadata,
               payload: tm,
+            });
+            break;
+          }
+
+          case MessageType.MONITORING_STREAM_STATUS_UPDATE: {
+            const update = parsedMsg as MonitoringStreamStatusUpdate;
+            dispatchTournamentContext({
+              actionType: ActionType.UpdateMonitoringStream,
+              payload: update.monitoringData,
             });
             break;
           }

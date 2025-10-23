@@ -145,6 +145,17 @@ type Liststat struct {
 	Item      []byte
 }
 
+type MonitoringStream struct {
+	TournamentID    string
+	UserID          string
+	Username        string
+	StreamType      string
+	StreamKey       string
+	Status          int32
+	StatusTimestamp pgtype.Timestamp
+	CreatedAt       pgtype.Timestamp
+}
+
 type Notoriousgame struct {
 	GameID    pgtype.Text
 	PlayerID  pgtype.Text

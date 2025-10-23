@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -357,6 +358,36 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return ids, result.Error
 }
 
+// FindTournamentByStreamKey uses UNIQUE index on stream_key for O(1) lookup
+// Returns tournament UUID and full user ID in "uuid:username" format
+// Returns empty strings if not found
+func (s *DBStore) FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error) {
+	ctxDB := s.db.WithContext(ctx)
+	var result struct {
+		TournamentID string
+		UserID       string
+		Username     string
+	}
+
+	query := `
+		SELECT tournament_id, user_id, username
+		FROM monitoring_streams
+		WHERE stream_key = ?
+		LIMIT 1
+	`
+
+	if err := ctxDB.Raw(query, streamKey).Scan(&result).Error; err != nil {
+		return "", "", err
+	}
+
+	if result.TournamentID == "" || result.UserID == "" {
+		return "", "", nil
+	}
+
+	// Return full userID in "uuid:username" format
+	return result.TournamentID, result.UserID + ":" + result.Username, nil
+}
+
 func (s *DBStore) AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
 
 	ctxDB := s.db.WithContext(ctx)
@@ -413,4 +444,158 @@ func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2
 		ret[idx] = [2]string{val.TournamentID, val.DivisionID}
 	}
 	return ret, nil
+}
+
+// Monitoring streams methods - direct SQL operations
+
+// InsertMonitoringStream inserts a new stream key for a user in a tournament
+func (s *DBStore) InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error {
+	ctxDB := s.db.WithContext(ctx)
+	query := `
+		INSERT INTO monitoring_streams (tournament_id, user_id, username, stream_type, stream_key, status, created_at)
+		VALUES (?, ?, ?, ?, ?, 0, NOW())
+	`
+	result := ctxDB.Exec(query, tid, uid, username, streamType, streamKey)
+	return result.Error
+}
+
+// UpdateMonitoringStreamStatus updates the status and timestamp of a stream
+// Can update by stream key OR by tournament_id + user_id + stream_type
+func (s *DBStore) UpdateMonitoringStreamStatus(ctx context.Context, streamKey string, status int, timestamp int64) error {
+	ctxDB := s.db.WithContext(ctx)
+	query := `
+		UPDATE monitoring_streams
+		SET status = ?, status_timestamp = TO_TIMESTAMP(?)
+		WHERE stream_key = ?
+	`
+	result := ctxDB.Exec(query, status, timestamp, streamKey)
+	return result.Error
+}
+
+// UpdateMonitoringStreamStatusByUser updates the status and timestamp of a stream by user and type
+func (s *DBStore) UpdateMonitoringStreamStatusByUser(ctx context.Context, tournamentID, userID, streamType string, status int, timestamp int64) error {
+	ctxDB := s.db.WithContext(ctx)
+	query := `
+		UPDATE monitoring_streams
+		SET status = ?, status_timestamp = TO_TIMESTAMP(?)
+		WHERE tournament_id = ? AND user_id = ? AND stream_type = ?
+	`
+	result := ctxDB.Exec(query, status, timestamp, tournamentID, userID, streamType)
+	return result.Error
+}
+
+// GetMonitoringStreams gets all monitoring streams for a tournament, grouped by user
+// Returns a map of userID -> MonitoringData (combining camera and screenshot rows)
+func (s *DBStore) GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error) {
+	ctxDB := s.db.WithContext(ctx)
+
+	type streamRow struct {
+		UserID          string
+		Username        string
+		StreamType      string
+		StreamKey       string
+		Status          int32
+		StatusTimestamp *time.Time
+	}
+
+	var rows []streamRow
+	query := `
+		SELECT user_id, username, stream_type, stream_key, status, status_timestamp
+		FROM monitoring_streams
+		WHERE tournament_id = ?
+		ORDER BY user_id, stream_type
+	`
+
+	if err := ctxDB.Raw(query, tournamentID).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	// Group by user and combine camera + screenshot rows
+	result := make(map[string]*ipc.MonitoringData)
+	for _, row := range rows {
+		data, exists := result[row.UserID]
+		if !exists {
+			data = &ipc.MonitoringData{
+				UserId:   row.UserID,
+				Username: row.Username,
+			}
+			result[row.UserID] = data
+		}
+
+		if row.StreamType == "camera" {
+			data.CameraKey = row.StreamKey
+			data.CameraStatus = ipc.StreamStatus(row.Status)
+			if row.StatusTimestamp != nil {
+				data.CameraTimestamp = timestamppb.New(*row.StatusTimestamp)
+			}
+		} else if row.StreamType == "screenshot" {
+			data.ScreenshotKey = row.StreamKey
+			data.ScreenshotStatus = ipc.StreamStatus(row.Status)
+			if row.StatusTimestamp != nil {
+				data.ScreenshotTimestamp = timestamppb.New(*row.StatusTimestamp)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// GetMonitoringStream gets monitoring data for a specific user in a tournament
+func (s *DBStore) GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error) {
+	ctxDB := s.db.WithContext(ctx)
+
+	type streamRow struct {
+		UserID          string
+		Username        string
+		StreamType      string
+		StreamKey       string
+		Status          int32
+		StatusTimestamp *time.Time
+	}
+
+	var rows []streamRow
+	query := `
+		SELECT user_id, username, stream_type, stream_key, status, status_timestamp
+		FROM monitoring_streams
+		WHERE tournament_id = ? AND user_id = ?
+		ORDER BY stream_type
+	`
+
+	if err := ctxDB.Raw(query, tournamentID, userID).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	data := &ipc.MonitoringData{
+		UserId:   userID,
+		Username: rows[0].Username,
+	}
+
+	for _, row := range rows {
+		if row.StreamType == "camera" {
+			data.CameraKey = row.StreamKey
+			data.CameraStatus = ipc.StreamStatus(row.Status)
+			if row.StatusTimestamp != nil {
+				data.CameraTimestamp = timestamppb.New(*row.StatusTimestamp)
+			}
+		} else if row.StreamType == "screenshot" {
+			data.ScreenshotKey = row.StreamKey
+			data.ScreenshotStatus = ipc.StreamStatus(row.Status)
+			if row.StatusTimestamp != nil {
+				data.ScreenshotTimestamp = timestamppb.New(*row.StatusTimestamp)
+			}
+		}
+	}
+
+	return data, nil
+}
+
+// DeleteMonitoringStreamsForTournament deletes all monitoring streams for a tournament
+func (s *DBStore) DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error {
+	ctxDB := s.db.WithContext(ctx)
+	result := ctxDB.Exec("DELETE FROM monitoring_streams WHERE tournament_id = ?", tournamentID)
+	return result.Error
 }

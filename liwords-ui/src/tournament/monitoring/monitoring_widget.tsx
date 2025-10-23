@@ -3,13 +3,15 @@ import { Card, Space, Typography } from "antd";
 import { CameraOutlined, DesktopOutlined } from "@ant-design/icons";
 import { useTournamentStoreContext } from "../../store/store";
 import { useLoginStateStoreContext } from "../../store/store";
-import { Link } from "react-router";
+import { useSearchParams } from "react-router";
+import { StreamStatus } from "./types";
 
 const { Text } = Typography;
 
 export const MonitoringWidget = () => {
   const { tournamentContext } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Don't show widget if tournament doesn't require monitoring
   if (!tournamentContext.metadata.monitored) {
@@ -20,8 +22,13 @@ export const MonitoringWidget = () => {
   const userMonitoringData =
     tournamentContext.monitoringData?.[loginState.userID];
 
-  const cameraActive = !!userMonitoringData?.cameraStartedAt;
-  const screenshotActive = !!userMonitoringData?.screenshotStartedAt;
+  // Stream is considered "active" if status is PENDING or ACTIVE
+  const cameraActive =
+    userMonitoringData?.cameraStatus === StreamStatus.PENDING ||
+    userMonitoringData?.cameraStatus === StreamStatus.ACTIVE;
+  const screenshotActive =
+    userMonitoringData?.screenshotStatus === StreamStatus.PENDING ||
+    userMonitoringData?.screenshotStatus === StreamStatus.ACTIVE;
 
   // Show green if both active, yellow if one active, red if none active
   let status: "success" | "warning" | "error" = "error";
@@ -38,6 +45,12 @@ export const MonitoringWidget = () => {
         ? "#faad14"
         : "#f5222d";
 
+  const handleOpenMonitoring = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("monitoring", "true");
+    setSearchParams(newParams);
+  };
+
   return (
     <Card
       size="small"
@@ -49,12 +62,11 @@ export const MonitoringWidget = () => {
         zIndex: 1000,
         boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
         borderLeft: `4px solid ${statusColor}`,
+        cursor: "pointer",
       }}
+      onClick={handleOpenMonitoring}
     >
-      <Link
-        to={`${tournamentContext.metadata.slug}/monitoring`}
-        style={{ textDecoration: "none", color: "inherit" }}
-      >
+      <div style={{ textDecoration: "none", color: "inherit" }}>
         <Space direction="vertical" size="small" style={{ width: "100%" }}>
           <Text strong style={{ fontSize: "12px" }}>
             Monitoring Status
@@ -84,7 +96,7 @@ export const MonitoringWidget = () => {
             </Text>
           )}
         </Space>
-      </Link>
+      </div>
     </Card>
   );
 };

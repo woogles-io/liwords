@@ -325,9 +325,11 @@ service TournamentService {
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);
 
   // Monitoring/invigilation endpoints
-  rpc StartMonitoringStream(StartMonitoringStreamRequest)
+  rpc InitializeMonitoringKeys(InitializeMonitoringKeysRequest)
       returns (TournamentResponse);
-  rpc StopMonitoringStream(StopMonitoringStreamRequest)
+  rpc RequestMonitoringStream(RequestMonitoringStreamRequest)
+      returns (TournamentResponse);
+  rpc ResetMonitoringStream(ResetMonitoringStreamRequest)
       returns (TournamentResponse);
   rpc GetTournamentMonitoring(GetTournamentMonitoringRequest)
       returns (GetTournamentMonitoringResponse) {
@@ -368,15 +370,19 @@ message RecentClubSessionsRequest {
 
 message ClubSessionsResponse { repeated ClubSessionResponse sessions = 1; }
 
-message StartMonitoringStreamRequest {
+message InitializeMonitoringKeysRequest {
   string tournament_id = 1;
-  string stream_type = 2; // "camera" or "screenshot"
-  string stream_key = 3;  // vdo.ninja stream key
 }
 
-message StopMonitoringStreamRequest {
+message RequestMonitoringStreamRequest {
   string tournament_id = 1;
   string stream_type = 2; // "camera" or "screenshot"
+}
+
+message ResetMonitoringStreamRequest {
+  string tournament_id = 1;
+  string user_id = 2;
+  string stream_type = 3; // "camera" or "screenshot"
 }
 
 message GetTournamentMonitoringRequest {

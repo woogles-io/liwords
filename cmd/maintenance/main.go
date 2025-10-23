@@ -59,6 +59,9 @@ func main() {
 		case "cancelled-games-cleanup":
 			err := CancelledGamesCleanup()
 			log.Err(err).Msg("ran cancelledGamesCleanup")
+		case "monitoring-streams-cleanup":
+			err := MonitoringStreamsCleanup()
+			log.Err(err).Msg("ran monitoringStreamsCleanup")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -395,4 +398,61 @@ func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {
 	log.Info().Int64("rowsAffected", rowsAffected).Msg("affected-rows")
 
 	return tx.Commit(ctx)
+}
+
+// MonitoringStreamsCleanup deletes old monitoring stream keys
+// Removes streams from finished tournaments and streams older than 1 month
+func MonitoringStreamsCleanup() error {
+	log.Info().Msg("starting monitoring streams cleanup")
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Delete monitoring streams for finished tournaments
+	queryFinished := `
+		DELETE FROM monitoring_streams
+		WHERE tournament_id IN (
+			SELECT uuid FROM tournaments WHERE is_finished = true
+		)
+	`
+	resultFinished, err := dbPool.Exec(ctx, queryFinished)
+	if err != nil {
+		return err
+	}
+	rowsDeletedFinished := resultFinished.RowsAffected()
+	log.Info().Int64("rowsDeleted", rowsDeletedFinished).Msg("deleted monitoring streams for finished tournaments")
+
+	// Delete monitoring streams older than 1 month
+	queryOld := `
+		DELETE FROM monitoring_streams
+		WHERE created_at < NOW() - INTERVAL '1 month'
+	`
+	resultOld, err := dbPool.Exec(ctx, queryOld)
+	if err != nil {
+		return err
+	}
+	rowsDeletedOld := resultOld.RowsAffected()
+	log.Info().Int64("rowsDeleted", rowsDeletedOld).Msg("deleted monitoring streams older than 1 month")
+
+	totalDeleted := rowsDeletedFinished + rowsDeletedOld
+	log.Info().Int64("totalDeleted", totalDeleted).Msg("monitoring streams cleanup complete")
+
+	return nil
 }

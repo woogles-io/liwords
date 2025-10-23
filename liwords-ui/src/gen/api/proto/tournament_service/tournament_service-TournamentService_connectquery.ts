@@ -199,14 +199,19 @@ export const runCOP = TournamentService.method.runCOP;
 /**
  * Monitoring/invigilation endpoints
  *
- * @generated from rpc tournament_service.TournamentService.StartMonitoringStream
+ * @generated from rpc tournament_service.TournamentService.InitializeMonitoringKeys
  */
-export const startMonitoringStream = TournamentService.method.startMonitoringStream;
+export const initializeMonitoringKeys = TournamentService.method.initializeMonitoringKeys;
 
 /**
- * @generated from rpc tournament_service.TournamentService.StopMonitoringStream
+ * @generated from rpc tournament_service.TournamentService.RequestMonitoringStream
  */
-export const stopMonitoringStream = TournamentService.method.stopMonitoringStream;
+export const requestMonitoringStream = TournamentService.method.requestMonitoringStream;
+
+/**
+ * @generated from rpc tournament_service.TournamentService.ResetMonitoringStream
+ */
+export const resetMonitoringStream = TournamentService.method.resetMonitoringStream;
 
 /**
  * @generated from rpc tournament_service.TournamentService.GetTournamentMonitoring

@@ -2583,29 +2583,27 @@ func (x *ClubSessionsResponse) GetSessions() []*ClubSessionResponse {
 	return nil
 }
 
-type StartMonitoringStreamRequest struct {
+type InitializeMonitoringKeysRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TournamentId  string                 `protobuf:"bytes,1,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
-	StreamType    string                 `protobuf:"bytes,2,opt,name=stream_type,json=streamType,proto3" json:"stream_type,omitempty"` // "camera" or "screenshot"
-	StreamKey     string                 `protobuf:"bytes,3,opt,name=stream_key,json=streamKey,proto3" json:"stream_key,omitempty"`    // vdo.ninja stream key
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *StartMonitoringStreamRequest) Reset() {
-	*x = StartMonitoringStreamRequest{}
+func (x *InitializeMonitoringKeysRequest) Reset() {
+	*x = InitializeMonitoringKeysRequest{}
 	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *StartMonitoringStreamRequest) String() string {
+func (x *InitializeMonitoringKeysRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StartMonitoringStreamRequest) ProtoMessage() {}
+func (*InitializeMonitoringKeysRequest) ProtoMessage() {}
 
-func (x *StartMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
+func (x *InitializeMonitoringKeysRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2617,55 +2615,94 @@ func (x *StartMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StartMonitoringStreamRequest.ProtoReflect.Descriptor instead.
-func (*StartMonitoringStreamRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use InitializeMonitoringKeysRequest.ProtoReflect.Descriptor instead.
+func (*InitializeMonitoringKeysRequest) Descriptor() ([]byte, []int) {
 	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{41}
 }
 
-func (x *StartMonitoringStreamRequest) GetTournamentId() string {
+func (x *InitializeMonitoringKeysRequest) GetTournamentId() string {
 	if x != nil {
 		return x.TournamentId
 	}
 	return ""
 }
 
-func (x *StartMonitoringStreamRequest) GetStreamType() string {
+type RequestMonitoringStreamRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TournamentId  string                 `protobuf:"bytes,1,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
+	StreamType    string                 `protobuf:"bytes,2,opt,name=stream_type,json=streamType,proto3" json:"stream_type,omitempty"` // "camera" or "screenshot"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestMonitoringStreamRequest) Reset() {
+	*x = RequestMonitoringStreamRequest{}
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestMonitoringStreamRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestMonitoringStreamRequest) ProtoMessage() {}
+
+func (x *RequestMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestMonitoringStreamRequest.ProtoReflect.Descriptor instead.
+func (*RequestMonitoringStreamRequest) Descriptor() ([]byte, []int) {
+	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *RequestMonitoringStreamRequest) GetTournamentId() string {
+	if x != nil {
+		return x.TournamentId
+	}
+	return ""
+}
+
+func (x *RequestMonitoringStreamRequest) GetStreamType() string {
 	if x != nil {
 		return x.StreamType
 	}
 	return ""
 }
 
-func (x *StartMonitoringStreamRequest) GetStreamKey() string {
-	if x != nil {
-		return x.StreamKey
-	}
-	return ""
-}
-
-type StopMonitoringStreamRequest struct {
+type ResetMonitoringStreamRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TournamentId  string                 `protobuf:"bytes,1,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
-	StreamType    string                 `protobuf:"bytes,2,opt,name=stream_type,json=streamType,proto3" json:"stream_type,omitempty"` // "camera" or "screenshot"
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	StreamType    string                 `protobuf:"bytes,3,opt,name=stream_type,json=streamType,proto3" json:"stream_type,omitempty"` // "camera" or "screenshot"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *StopMonitoringStreamRequest) Reset() {
-	*x = StopMonitoringStreamRequest{}
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[42]
+func (x *ResetMonitoringStreamRequest) Reset() {
+	*x = ResetMonitoringStreamRequest{}
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *StopMonitoringStreamRequest) String() string {
+func (x *ResetMonitoringStreamRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StopMonitoringStreamRequest) ProtoMessage() {}
+func (*ResetMonitoringStreamRequest) ProtoMessage() {}
 
-func (x *StopMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[42]
+func (x *ResetMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2676,19 +2713,26 @@ func (x *StopMonitoringStreamRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StopMonitoringStreamRequest.ProtoReflect.Descriptor instead.
-func (*StopMonitoringStreamRequest) Descriptor() ([]byte, []int) {
-	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{42}
+// Deprecated: Use ResetMonitoringStreamRequest.ProtoReflect.Descriptor instead.
+func (*ResetMonitoringStreamRequest) Descriptor() ([]byte, []int) {
+	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{43}
 }
 
-func (x *StopMonitoringStreamRequest) GetTournamentId() string {
+func (x *ResetMonitoringStreamRequest) GetTournamentId() string {
 	if x != nil {
 		return x.TournamentId
 	}
 	return ""
 }
 
-func (x *StopMonitoringStreamRequest) GetStreamType() string {
+func (x *ResetMonitoringStreamRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ResetMonitoringStreamRequest) GetStreamType() string {
 	if x != nil {
 		return x.StreamType
 	}
@@ -2704,7 +2748,7 @@ type GetTournamentMonitoringRequest struct {
 
 func (x *GetTournamentMonitoringRequest) Reset() {
 	*x = GetTournamentMonitoringRequest{}
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[43]
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2716,7 +2760,7 @@ func (x *GetTournamentMonitoringRequest) String() string {
 func (*GetTournamentMonitoringRequest) ProtoMessage() {}
 
 func (x *GetTournamentMonitoringRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[43]
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2729,7 +2773,7 @@ func (x *GetTournamentMonitoringRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTournamentMonitoringRequest.ProtoReflect.Descriptor instead.
 func (*GetTournamentMonitoringRequest) Descriptor() ([]byte, []int) {
-	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{43}
+	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetTournamentMonitoringRequest) GetTournamentId() string {
@@ -2748,7 +2792,7 @@ type GetTournamentMonitoringResponse struct {
 
 func (x *GetTournamentMonitoringResponse) Reset() {
 	*x = GetTournamentMonitoringResponse{}
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[44]
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2760,7 +2804,7 @@ func (x *GetTournamentMonitoringResponse) String() string {
 func (*GetTournamentMonitoringResponse) ProtoMessage() {}
 
 func (x *GetTournamentMonitoringResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[44]
+	mi := &file_proto_tournament_service_tournament_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2773,7 +2817,7 @@ func (x *GetTournamentMonitoringResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTournamentMonitoringResponse.ProtoReflect.Descriptor instead.
 func (*GetTournamentMonitoringResponse) Descriptor() ([]byte, []int) {
-	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{44}
+	return file_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *GetTournamentMonitoringResponse) GetParticipants() []*ipc.MonitoringData {
@@ -2961,16 +3005,17 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"[\n" +
 	"\x14ClubSessionsResponse\x12C\n" +
-	"\bsessions\x18\x01 \x03(\v2'.tournament_service.ClubSessionResponseR\bsessions\"\x83\x01\n" +
-	"\x1cStartMonitoringStreamRequest\x12#\n" +
+	"\bsessions\x18\x01 \x03(\v2'.tournament_service.ClubSessionResponseR\bsessions\"F\n" +
+	"\x1fInitializeMonitoringKeysRequest\x12#\n" +
+	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\"f\n" +
+	"\x1eRequestMonitoringStreamRequest\x12#\n" +
 	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\x12\x1f\n" +
 	"\vstream_type\x18\x02 \x01(\tR\n" +
-	"streamType\x12\x1d\n" +
-	"\n" +
-	"stream_key\x18\x03 \x01(\tR\tstreamKey\"c\n" +
-	"\x1bStopMonitoringStreamRequest\x12#\n" +
-	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\x12\x1f\n" +
-	"\vstream_type\x18\x02 \x01(\tR\n" +
+	"streamType\"}\n" +
+	"\x1cResetMonitoringStreamRequest\x12#\n" +
+	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1f\n" +
+	"\vstream_type\x18\x03 \x01(\tR\n" +
 	"streamType\"E\n" +
 	"\x1eGetTournamentMonitoringRequest\x12#\n" +
 	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\"Z\n" +
@@ -2981,7 +3026,7 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x04CLUB\x10\x01\x12\t\n" +
 	"\x05CHILD\x10\x02\x12\n" +
 	"\n" +
-	"\x06LEGACY\x10\x032\xf8\x1f\n" +
+	"\x06LEGACY\x10\x032\xf7 \n" +
 	"\x11TournamentService\x12d\n" +
 	"\rNewTournament\x12(.tournament_service.NewTournamentRequest\x1a).tournament_service.NewTournamentResponse\x12~\n" +
 	"\x15GetTournamentMetadata\x120.tournament_service.GetTournamentMetadataRequest\x1a..tournament_service.TournamentMetadataResponse\"\x03\x90\x02\x01\x12\\\n" +
@@ -3020,9 +3065,10 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x10ExportTournament\x12+.tournament_service.ExportTournamentRequest\x1a,.tournament_service.ExportTournamentResponse\"\x03\x90\x02\x01\x12\x7f\n" +
 	"\x17GetTournamentScorecards\x12..tournament_service.TournamentScorecardRequest\x1a/.tournament_service.TournamentScorecardResponse\"\x03\x90\x02\x01\x12\x9f\x01\n" +
 	"\x1fGetRecentAndUpcomingTournaments\x12:.tournament_service.GetRecentAndUpcomingTournamentsRequest\x1a;.tournament_service.GetRecentAndUpcomingTournamentsResponse\"\x03\x90\x02\x01\x12>\n" +
-	"\x06RunCOP\x12!.tournament_service.RunCopRequest\x1a\x11.ipc.PairResponse\x12q\n" +
-	"\x15StartMonitoringStream\x120.tournament_service.StartMonitoringStreamRequest\x1a&.tournament_service.TournamentResponse\x12o\n" +
-	"\x14StopMonitoringStream\x12/.tournament_service.StopMonitoringStreamRequest\x1a&.tournament_service.TournamentResponse\x12\x87\x01\n" +
+	"\x06RunCOP\x12!.tournament_service.RunCopRequest\x1a\x11.ipc.PairResponse\x12w\n" +
+	"\x18InitializeMonitoringKeys\x123.tournament_service.InitializeMonitoringKeysRequest\x1a&.tournament_service.TournamentResponse\x12u\n" +
+	"\x17RequestMonitoringStream\x122.tournament_service.RequestMonitoringStreamRequest\x1a&.tournament_service.TournamentResponse\x12q\n" +
+	"\x15ResetMonitoringStream\x120.tournament_service.ResetMonitoringStreamRequest\x1a&.tournament_service.TournamentResponse\x12\x87\x01\n" +
 	"\x17GetTournamentMonitoring\x122.tournament_service.GetTournamentMonitoringRequest\x1a3.tournament_service.GetTournamentMonitoringResponse\"\x03\x90\x02\x01B\xd4\x01\n" +
 	"\x16com.tournament_serviceB\x16TournamentServiceProtoP\x01Z>github.com/woogles-io/liwords/rpc/api/proto/tournament_service\xa2\x02\x03TXX\xaa\x02\x11TournamentService\xca\x02\x11TournamentService\xe2\x02\x1dTournamentService\\GPBMetadata\xea\x02\x11TournamentServiceb\x06proto3"
 
@@ -3039,7 +3085,7 @@ func file_proto_tournament_service_tournament_service_proto_rawDescGZIP() []byte
 }
 
 var file_proto_tournament_service_tournament_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_tournament_service_tournament_service_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_proto_tournament_service_tournament_service_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_proto_tournament_service_tournament_service_proto_goTypes = []any{
 	(TType)(0),                                      // 0: tournament_service.TType
 	(*StartRoundRequest)(nil),                       // 1: tournament_service.StartRoundRequest
@@ -3083,44 +3129,45 @@ var file_proto_tournament_service_tournament_service_proto_goTypes = []any{
 	(*ClubSessionResponse)(nil),                     // 39: tournament_service.ClubSessionResponse
 	(*RecentClubSessionsRequest)(nil),               // 40: tournament_service.RecentClubSessionsRequest
 	(*ClubSessionsResponse)(nil),                    // 41: tournament_service.ClubSessionsResponse
-	(*StartMonitoringStreamRequest)(nil),            // 42: tournament_service.StartMonitoringStreamRequest
-	(*StopMonitoringStreamRequest)(nil),             // 43: tournament_service.StopMonitoringStreamRequest
-	(*GetTournamentMonitoringRequest)(nil),          // 44: tournament_service.GetTournamentMonitoringRequest
-	(*GetTournamentMonitoringResponse)(nil),         // 45: tournament_service.GetTournamentMonitoringResponse
-	(*timestamppb.Timestamp)(nil),                   // 46: google.protobuf.Timestamp
-	(*ipc.GameRequest)(nil),                         // 47: ipc.GameRequest
-	(*ipc.RoundControl)(nil),                        // 48: ipc.RoundControl
-	(ipc.TournamentGameResult)(0),                   // 49: ipc.TournamentGameResult
-	(ipc.GameEndReason)(0),                          // 50: ipc.GameEndReason
-	(*ipc.TournamentGameEndedEvent)(nil),            // 51: ipc.TournamentGameEndedEvent
-	(*ipc.MonitoringData)(nil),                      // 52: ipc.MonitoringData
-	(*ipc.DivisionRoundControls)(nil),               // 53: ipc.DivisionRoundControls
-	(*ipc.DivisionControls)(nil),                    // 54: ipc.DivisionControls
-	(*ipc.TournamentPersons)(nil),                   // 55: ipc.TournamentPersons
-	(*ipc.FullTournamentDivisions)(nil),             // 56: ipc.FullTournamentDivisions
-	(*ipc.PairResponse)(nil),                        // 57: ipc.PairResponse
+	(*InitializeMonitoringKeysRequest)(nil),         // 42: tournament_service.InitializeMonitoringKeysRequest
+	(*RequestMonitoringStreamRequest)(nil),          // 43: tournament_service.RequestMonitoringStreamRequest
+	(*ResetMonitoringStreamRequest)(nil),            // 44: tournament_service.ResetMonitoringStreamRequest
+	(*GetTournamentMonitoringRequest)(nil),          // 45: tournament_service.GetTournamentMonitoringRequest
+	(*GetTournamentMonitoringResponse)(nil),         // 46: tournament_service.GetTournamentMonitoringResponse
+	(*timestamppb.Timestamp)(nil),                   // 47: google.protobuf.Timestamp
+	(*ipc.GameRequest)(nil),                         // 48: ipc.GameRequest
+	(*ipc.RoundControl)(nil),                        // 49: ipc.RoundControl
+	(ipc.TournamentGameResult)(0),                   // 50: ipc.TournamentGameResult
+	(ipc.GameEndReason)(0),                          // 51: ipc.GameEndReason
+	(*ipc.TournamentGameEndedEvent)(nil),            // 52: ipc.TournamentGameEndedEvent
+	(*ipc.MonitoringData)(nil),                      // 53: ipc.MonitoringData
+	(*ipc.DivisionRoundControls)(nil),               // 54: ipc.DivisionRoundControls
+	(*ipc.DivisionControls)(nil),                    // 55: ipc.DivisionControls
+	(*ipc.TournamentPersons)(nil),                   // 56: ipc.TournamentPersons
+	(*ipc.FullTournamentDivisions)(nil),             // 57: ipc.FullTournamentDivisions
+	(*ipc.PairResponse)(nil),                        // 58: ipc.PairResponse
 }
 var file_proto_tournament_service_tournament_service_proto_depIdxs = []int32{
 	0,  // 0: tournament_service.NewTournamentRequest.type:type_name -> tournament_service.TType
-	46, // 1: tournament_service.NewTournamentRequest.scheduled_start_time:type_name -> google.protobuf.Timestamp
-	46, // 2: tournament_service.NewTournamentRequest.scheduled_end_time:type_name -> google.protobuf.Timestamp
+	47, // 1: tournament_service.NewTournamentRequest.scheduled_start_time:type_name -> google.protobuf.Timestamp
+	47, // 2: tournament_service.NewTournamentRequest.scheduled_end_time:type_name -> google.protobuf.Timestamp
 	0,  // 3: tournament_service.TournamentMetadata.type:type_name -> tournament_service.TType
-	47, // 4: tournament_service.TournamentMetadata.default_club_settings:type_name -> ipc.GameRequest
-	46, // 5: tournament_service.TournamentMetadata.scheduled_start_time:type_name -> google.protobuf.Timestamp
-	46, // 6: tournament_service.TournamentMetadata.scheduled_end_time:type_name -> google.protobuf.Timestamp
+	48, // 4: tournament_service.TournamentMetadata.default_club_settings:type_name -> ipc.GameRequest
+	47, // 5: tournament_service.TournamentMetadata.scheduled_start_time:type_name -> google.protobuf.Timestamp
+	47, // 6: tournament_service.TournamentMetadata.scheduled_end_time:type_name -> google.protobuf.Timestamp
 	3,  // 7: tournament_service.SetTournamentMetadataRequest.metadata:type_name -> tournament_service.TournamentMetadata
-	48, // 8: tournament_service.SingleRoundControlsRequest.round_controls:type_name -> ipc.RoundControl
-	49, // 9: tournament_service.TournamentPairingRequest.self_play_result:type_name -> ipc.TournamentGameResult
+	49, // 8: tournament_service.SingleRoundControlsRequest.round_controls:type_name -> ipc.RoundControl
+	50, // 9: tournament_service.TournamentPairingRequest.self_play_result:type_name -> ipc.TournamentGameResult
 	8,  // 10: tournament_service.TournamentPairingsRequest.pairings:type_name -> tournament_service.TournamentPairingRequest
-	49, // 11: tournament_service.TournamentResultOverrideRequest.player_one_result:type_name -> ipc.TournamentGameResult
-	49, // 12: tournament_service.TournamentResultOverrideRequest.player_two_result:type_name -> ipc.TournamentGameResult
-	50, // 13: tournament_service.TournamentResultOverrideRequest.game_end_reason:type_name -> ipc.GameEndReason
+	50, // 11: tournament_service.TournamentResultOverrideRequest.player_one_result:type_name -> ipc.TournamentGameResult
+	50, // 12: tournament_service.TournamentResultOverrideRequest.player_two_result:type_name -> ipc.TournamentGameResult
+	51, // 13: tournament_service.TournamentResultOverrideRequest.game_end_reason:type_name -> ipc.GameEndReason
 	3,  // 14: tournament_service.TournamentMetadataResponse.metadata:type_name -> tournament_service.TournamentMetadata
-	51, // 15: tournament_service.RecentGamesResponse.games:type_name -> ipc.TournamentGameEndedEvent
+	52, // 15: tournament_service.RecentGamesResponse.games:type_name -> ipc.TournamentGameEndedEvent
 	3,  // 16: tournament_service.GetRecentAndUpcomingTournamentsResponse.tournaments:type_name -> tournament_service.TournamentMetadata
-	46, // 17: tournament_service.NewClubSessionRequest.date:type_name -> google.protobuf.Timestamp
+	47, // 17: tournament_service.NewClubSessionRequest.date:type_name -> google.protobuf.Timestamp
 	39, // 18: tournament_service.ClubSessionsResponse.sessions:type_name -> tournament_service.ClubSessionResponse
-	52, // 19: tournament_service.GetTournamentMonitoringResponse.participants:type_name -> ipc.MonitoringData
+	53, // 19: tournament_service.GetTournamentMonitoringResponse.participants:type_name -> ipc.MonitoringData
 	2,  // 20: tournament_service.TournamentService.NewTournament:input_type -> tournament_service.NewTournamentRequest
 	15, // 21: tournament_service.TournamentService.GetTournamentMetadata:input_type -> tournament_service.GetTournamentMetadataRequest
 	16, // 22: tournament_service.TournamentService.GetTournament:input_type -> tournament_service.GetTournamentRequest
@@ -3129,15 +3176,15 @@ var file_proto_tournament_service_tournament_service_proto_depIdxs = []int32{
 	4,  // 25: tournament_service.TournamentService.SetTournamentMetadata:input_type -> tournament_service.SetTournamentMetadataRequest
 	6,  // 26: tournament_service.TournamentService.PairRound:input_type -> tournament_service.PairRoundRequest
 	5,  // 27: tournament_service.TournamentService.SetSingleRoundControls:input_type -> tournament_service.SingleRoundControlsRequest
-	53, // 28: tournament_service.TournamentService.SetRoundControls:input_type -> ipc.DivisionRoundControls
-	54, // 29: tournament_service.TournamentService.SetDivisionControls:input_type -> ipc.DivisionControls
-	55, // 30: tournament_service.TournamentService.AddDirectors:input_type -> ipc.TournamentPersons
-	55, // 31: tournament_service.TournamentService.RemoveDirectors:input_type -> ipc.TournamentPersons
+	54, // 28: tournament_service.TournamentService.SetRoundControls:input_type -> ipc.DivisionRoundControls
+	55, // 29: tournament_service.TournamentService.SetDivisionControls:input_type -> ipc.DivisionControls
+	56, // 30: tournament_service.TournamentService.AddDirectors:input_type -> ipc.TournamentPersons
+	56, // 31: tournament_service.TournamentService.RemoveDirectors:input_type -> ipc.TournamentPersons
 	7,  // 32: tournament_service.TournamentService.AddDivision:input_type -> tournament_service.TournamentDivisionRequest
 	9,  // 33: tournament_service.TournamentService.RenameDivision:input_type -> tournament_service.DivisionRenameRequest
 	7,  // 34: tournament_service.TournamentService.RemoveDivision:input_type -> tournament_service.TournamentDivisionRequest
-	55, // 35: tournament_service.TournamentService.AddPlayers:input_type -> ipc.TournamentPersons
-	55, // 36: tournament_service.TournamentService.RemovePlayers:input_type -> ipc.TournamentPersons
+	56, // 35: tournament_service.TournamentService.AddPlayers:input_type -> ipc.TournamentPersons
+	56, // 36: tournament_service.TournamentService.RemovePlayers:input_type -> ipc.TournamentPersons
 	10, // 37: tournament_service.TournamentService.SetPairing:input_type -> tournament_service.TournamentPairingsRequest
 	11, // 38: tournament_service.TournamentService.SetResult:input_type -> tournament_service.TournamentResultOverrideRequest
 	12, // 39: tournament_service.TournamentService.StartRoundCountdown:input_type -> tournament_service.TournamentStartRoundCountdownRequest
@@ -3157,50 +3204,52 @@ var file_proto_tournament_service_tournament_service_proto_depIdxs = []int32{
 	31, // 53: tournament_service.TournamentService.GetTournamentScorecards:input_type -> tournament_service.TournamentScorecardRequest
 	33, // 54: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:input_type -> tournament_service.GetRecentAndUpcomingTournamentsRequest
 	35, // 55: tournament_service.TournamentService.RunCOP:input_type -> tournament_service.RunCopRequest
-	42, // 56: tournament_service.TournamentService.StartMonitoringStream:input_type -> tournament_service.StartMonitoringStreamRequest
-	43, // 57: tournament_service.TournamentService.StopMonitoringStream:input_type -> tournament_service.StopMonitoringStreamRequest
-	44, // 58: tournament_service.TournamentService.GetTournamentMonitoring:input_type -> tournament_service.GetTournamentMonitoringRequest
-	14, // 59: tournament_service.TournamentService.NewTournament:output_type -> tournament_service.NewTournamentResponse
-	19, // 60: tournament_service.TournamentService.GetTournamentMetadata:output_type -> tournament_service.TournamentMetadataResponse
-	56, // 61: tournament_service.TournamentService.GetTournament:output_type -> ipc.FullTournamentDivisions
-	13, // 62: tournament_service.TournamentService.UnfinishTournament:output_type -> tournament_service.TournamentResponse
-	13, // 63: tournament_service.TournamentService.FinishTournament:output_type -> tournament_service.TournamentResponse
-	13, // 64: tournament_service.TournamentService.SetTournamentMetadata:output_type -> tournament_service.TournamentResponse
-	13, // 65: tournament_service.TournamentService.PairRound:output_type -> tournament_service.TournamentResponse
-	13, // 66: tournament_service.TournamentService.SetSingleRoundControls:output_type -> tournament_service.TournamentResponse
-	13, // 67: tournament_service.TournamentService.SetRoundControls:output_type -> tournament_service.TournamentResponse
-	13, // 68: tournament_service.TournamentService.SetDivisionControls:output_type -> tournament_service.TournamentResponse
-	13, // 69: tournament_service.TournamentService.AddDirectors:output_type -> tournament_service.TournamentResponse
-	13, // 70: tournament_service.TournamentService.RemoveDirectors:output_type -> tournament_service.TournamentResponse
-	13, // 71: tournament_service.TournamentService.AddDivision:output_type -> tournament_service.TournamentResponse
-	13, // 72: tournament_service.TournamentService.RenameDivision:output_type -> tournament_service.TournamentResponse
-	13, // 73: tournament_service.TournamentService.RemoveDivision:output_type -> tournament_service.TournamentResponse
-	13, // 74: tournament_service.TournamentService.AddPlayers:output_type -> tournament_service.TournamentResponse
-	13, // 75: tournament_service.TournamentService.RemovePlayers:output_type -> tournament_service.TournamentResponse
-	13, // 76: tournament_service.TournamentService.SetPairing:output_type -> tournament_service.TournamentResponse
-	13, // 77: tournament_service.TournamentService.SetResult:output_type -> tournament_service.TournamentResponse
-	13, // 78: tournament_service.TournamentService.StartRoundCountdown:output_type -> tournament_service.TournamentResponse
-	21, // 79: tournament_service.TournamentService.RecentGames:output_type -> tournament_service.RecentGamesResponse
-	39, // 80: tournament_service.TournamentService.CreateClubSession:output_type -> tournament_service.ClubSessionResponse
-	41, // 81: tournament_service.TournamentService.GetRecentClubSessions:output_type -> tournament_service.ClubSessionsResponse
-	13, // 82: tournament_service.TournamentService.UnstartTournament:output_type -> tournament_service.TournamentResponse
-	13, // 83: tournament_service.TournamentService.OpenRegistration:output_type -> tournament_service.TournamentResponse
-	13, // 84: tournament_service.TournamentService.CloseRegistration:output_type -> tournament_service.TournamentResponse
-	13, // 85: tournament_service.TournamentService.OpenCheckins:output_type -> tournament_service.TournamentResponse
-	13, // 86: tournament_service.TournamentService.CloseCheckins:output_type -> tournament_service.TournamentResponse
-	13, // 87: tournament_service.TournamentService.UncheckAllIn:output_type -> tournament_service.TournamentResponse
-	13, // 88: tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn:output_type -> tournament_service.TournamentResponse
-	13, // 89: tournament_service.TournamentService.CheckIn:output_type -> tournament_service.TournamentResponse
-	13, // 90: tournament_service.TournamentService.Register:output_type -> tournament_service.TournamentResponse
-	37, // 91: tournament_service.TournamentService.ExportTournament:output_type -> tournament_service.ExportTournamentResponse
-	32, // 92: tournament_service.TournamentService.GetTournamentScorecards:output_type -> tournament_service.TournamentScorecardResponse
-	34, // 93: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:output_type -> tournament_service.GetRecentAndUpcomingTournamentsResponse
-	57, // 94: tournament_service.TournamentService.RunCOP:output_type -> ipc.PairResponse
-	13, // 95: tournament_service.TournamentService.StartMonitoringStream:output_type -> tournament_service.TournamentResponse
-	13, // 96: tournament_service.TournamentService.StopMonitoringStream:output_type -> tournament_service.TournamentResponse
-	45, // 97: tournament_service.TournamentService.GetTournamentMonitoring:output_type -> tournament_service.GetTournamentMonitoringResponse
-	59, // [59:98] is the sub-list for method output_type
-	20, // [20:59] is the sub-list for method input_type
+	42, // 56: tournament_service.TournamentService.InitializeMonitoringKeys:input_type -> tournament_service.InitializeMonitoringKeysRequest
+	43, // 57: tournament_service.TournamentService.RequestMonitoringStream:input_type -> tournament_service.RequestMonitoringStreamRequest
+	44, // 58: tournament_service.TournamentService.ResetMonitoringStream:input_type -> tournament_service.ResetMonitoringStreamRequest
+	45, // 59: tournament_service.TournamentService.GetTournamentMonitoring:input_type -> tournament_service.GetTournamentMonitoringRequest
+	14, // 60: tournament_service.TournamentService.NewTournament:output_type -> tournament_service.NewTournamentResponse
+	19, // 61: tournament_service.TournamentService.GetTournamentMetadata:output_type -> tournament_service.TournamentMetadataResponse
+	57, // 62: tournament_service.TournamentService.GetTournament:output_type -> ipc.FullTournamentDivisions
+	13, // 63: tournament_service.TournamentService.UnfinishTournament:output_type -> tournament_service.TournamentResponse
+	13, // 64: tournament_service.TournamentService.FinishTournament:output_type -> tournament_service.TournamentResponse
+	13, // 65: tournament_service.TournamentService.SetTournamentMetadata:output_type -> tournament_service.TournamentResponse
+	13, // 66: tournament_service.TournamentService.PairRound:output_type -> tournament_service.TournamentResponse
+	13, // 67: tournament_service.TournamentService.SetSingleRoundControls:output_type -> tournament_service.TournamentResponse
+	13, // 68: tournament_service.TournamentService.SetRoundControls:output_type -> tournament_service.TournamentResponse
+	13, // 69: tournament_service.TournamentService.SetDivisionControls:output_type -> tournament_service.TournamentResponse
+	13, // 70: tournament_service.TournamentService.AddDirectors:output_type -> tournament_service.TournamentResponse
+	13, // 71: tournament_service.TournamentService.RemoveDirectors:output_type -> tournament_service.TournamentResponse
+	13, // 72: tournament_service.TournamentService.AddDivision:output_type -> tournament_service.TournamentResponse
+	13, // 73: tournament_service.TournamentService.RenameDivision:output_type -> tournament_service.TournamentResponse
+	13, // 74: tournament_service.TournamentService.RemoveDivision:output_type -> tournament_service.TournamentResponse
+	13, // 75: tournament_service.TournamentService.AddPlayers:output_type -> tournament_service.TournamentResponse
+	13, // 76: tournament_service.TournamentService.RemovePlayers:output_type -> tournament_service.TournamentResponse
+	13, // 77: tournament_service.TournamentService.SetPairing:output_type -> tournament_service.TournamentResponse
+	13, // 78: tournament_service.TournamentService.SetResult:output_type -> tournament_service.TournamentResponse
+	13, // 79: tournament_service.TournamentService.StartRoundCountdown:output_type -> tournament_service.TournamentResponse
+	21, // 80: tournament_service.TournamentService.RecentGames:output_type -> tournament_service.RecentGamesResponse
+	39, // 81: tournament_service.TournamentService.CreateClubSession:output_type -> tournament_service.ClubSessionResponse
+	41, // 82: tournament_service.TournamentService.GetRecentClubSessions:output_type -> tournament_service.ClubSessionsResponse
+	13, // 83: tournament_service.TournamentService.UnstartTournament:output_type -> tournament_service.TournamentResponse
+	13, // 84: tournament_service.TournamentService.OpenRegistration:output_type -> tournament_service.TournamentResponse
+	13, // 85: tournament_service.TournamentService.CloseRegistration:output_type -> tournament_service.TournamentResponse
+	13, // 86: tournament_service.TournamentService.OpenCheckins:output_type -> tournament_service.TournamentResponse
+	13, // 87: tournament_service.TournamentService.CloseCheckins:output_type -> tournament_service.TournamentResponse
+	13, // 88: tournament_service.TournamentService.UncheckAllIn:output_type -> tournament_service.TournamentResponse
+	13, // 89: tournament_service.TournamentService.RemoveAllPlayersNotCheckedIn:output_type -> tournament_service.TournamentResponse
+	13, // 90: tournament_service.TournamentService.CheckIn:output_type -> tournament_service.TournamentResponse
+	13, // 91: tournament_service.TournamentService.Register:output_type -> tournament_service.TournamentResponse
+	37, // 92: tournament_service.TournamentService.ExportTournament:output_type -> tournament_service.ExportTournamentResponse
+	32, // 93: tournament_service.TournamentService.GetTournamentScorecards:output_type -> tournament_service.TournamentScorecardResponse
+	34, // 94: tournament_service.TournamentService.GetRecentAndUpcomingTournaments:output_type -> tournament_service.GetRecentAndUpcomingTournamentsResponse
+	58, // 95: tournament_service.TournamentService.RunCOP:output_type -> ipc.PairResponse
+	13, // 96: tournament_service.TournamentService.InitializeMonitoringKeys:output_type -> tournament_service.TournamentResponse
+	13, // 97: tournament_service.TournamentService.RequestMonitoringStream:output_type -> tournament_service.TournamentResponse
+	13, // 98: tournament_service.TournamentService.ResetMonitoringStream:output_type -> tournament_service.TournamentResponse
+	46, // 99: tournament_service.TournamentService.GetTournamentMonitoring:output_type -> tournament_service.GetTournamentMonitoringResponse
+	60, // [60:100] is the sub-list for method output_type
+	20, // [20:60] is the sub-list for method input_type
 	20, // [20:20] is the sub-list for extension type_name
 	20, // [20:20] is the sub-list for extension extendee
 	0,  // [0:20] is the sub-list for field type_name
@@ -3217,7 +3266,7 @@ func file_proto_tournament_service_tournament_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_tournament_service_tournament_service_proto_rawDesc), len(file_proto_tournament_service_tournament_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   45,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

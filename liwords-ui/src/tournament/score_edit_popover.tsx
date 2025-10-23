@@ -97,8 +97,8 @@ export const ScoreEditPopover: React.FC<Props> = (props) => {
       const obj = {
         id: props.tournamentID,
         division: props.division,
-        playerOneId: props.players[0].id,
-        playerTwoId: props.players[1].id,
+        playerOneId: props.players[0].id.split(":")[0],
+        playerTwoId: props.players[1].id.split(":")[0],
         round: props.round,
         playerOneScore: values.p1score,
         playerTwoScore: values.p2score,
