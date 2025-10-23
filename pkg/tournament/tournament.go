@@ -46,10 +46,19 @@ type TournamentStore interface {
 	ListAllIDs(context.Context) ([]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
+	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
+
+	// Monitoring streams methods - direct SQL, no tournament entity needed
+	InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error
+	UpdateMonitoringStreamStatus(ctx context.Context, streamKey string, status int, timestamp int64) error
+	UpdateMonitoringStreamStatusByUser(ctx context.Context, tournamentID, userID, streamType string, status int, timestamp int64) error
+	GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error)
+	GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error)
+	DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error
 }
 
 func md5hash(s string) string {
@@ -180,11 +189,6 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	t.Description = ternary(merge && meta.Description == "", t.Description, meta.Description)
 	t.Slug = ternary(merge && meta.Slug == "", t.Slug, meta.Slug)
 	t.Type = ternary(merge && meta.Type == pb.TType_STANDARD, t.Type, ttype)
-	// Preserve MonitoringData from existing ExtraMeta when updating
-	var existingMonitoringData map[string]*ipc.MonitoringData
-	if t.ExtraMeta != nil {
-		existingMonitoringData = t.ExtraMeta.MonitoringData
-	}
 
 	t.ExtraMeta = &entity.TournamentMeta{
 		Disclaimer: ternary(merge && meta.Disclaimer == "" && t.ExtraMeta != nil,
@@ -213,7 +217,6 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 			t.ExtraMeta.CheckinsOpen, meta.CheckinsOpen),
 		RegistrationOpen: ternary(merge && !meta.RegistrationOpen && t.ExtraMeta != nil,
 			t.ExtraMeta.RegistrationOpen, meta.RegistrationOpen),
-		MonitoringData: existingMonitoringData,
 	}
 
 	if meta.ScheduledStartTime != nil {
@@ -1881,84 +1884,16 @@ func CloseRegistration(ctx context.Context, ts TournamentStore, tid string) erro
 	return SendTournamentMessage(ctx, ts, tid, wrapped)
 }
 
-// StartMonitoringStream marks a user's monitoring stream (camera or screenshot) as started
-func StartMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType, streamKey string) error {
-	t, err := ts.Get(ctx, tournamentID)
-	if err != nil {
-		return err
-	}
-
-	t.Lock()
-	defer t.Unlock()
-
-	if !t.ExtraMeta.Monitored {
-		return errors.New("monitoring is not enabled for this tournament")
-	}
-
-	// Parse username from TournamentID (format: "uuid:username")
-	splitID := strings.Split(userID, ":")
-	var uuid, username string
-	if len(splitID) == 2 {
-		uuid = splitID[0]
-		username = splitID[1]
-	} else if len(splitID) == 1 {
-		uuid = splitID[0]
-		username = uuid // fallback to UUID if username not available
-	} else {
-		return errors.New("invalid user ID format")
-	}
-
-	// Initialize MonitoringData map if needed
-	if t.ExtraMeta.MonitoringData == nil {
-		t.ExtraMeta.MonitoringData = make(map[string]*ipc.MonitoringData)
-	}
-
-	// Get or create monitoring data for this user
-	data, exists := t.ExtraMeta.MonitoringData[uuid]
-	if !exists {
-		data = &ipc.MonitoringData{
-			UserId:   uuid,
-			Username: username,
-		}
-		t.ExtraMeta.MonitoringData[uuid] = data
-	}
-
-	// Update the appropriate stream based on type
-	now := timestamppb.Now()
-	switch streamType {
-	case "camera":
-		data.CameraKey = streamKey
-		data.CameraStartedAt = now
-	case "screenshot":
-		data.ScreenshotKey = streamKey
-		data.ScreenshotStartedAt = now
-	default:
+// ResetMonitoringStream resets a user's monitoring stream status to NOT_STARTED
+// This is used by directors to clear stuck stream states when webhooks fail
+// IMPORTANT: This preserves the stream keys to avoid confusion if old VDO.Ninja window still open
+func ResetMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
+	// Validate stream type
+	if streamType != "camera" && streamType != "screenshot" {
 		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
 	}
 
-	err = ts.Set(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// StopMonitoringStream marks a user's monitoring stream (camera or screenshot) as stopped
-func StopMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
-	t, err := ts.Get(ctx, tournamentID)
-	if err != nil {
-		return err
-	}
-
-	t.Lock()
-	defer t.Unlock()
-
-	if !t.ExtraMeta.Monitored {
-		return errors.New("monitoring is not enabled for this tournament")
-	}
-
-	// Parse UUID from TournamentID
+	// Parse UUID from userID (format: "uuid:username")
 	splitID := strings.Split(userID, ":")
 	var uuid string
 	if len(splitID) >= 1 {
@@ -1968,28 +1903,24 @@ func StopMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID,
 	}
 
 	// Check if monitoring data exists for this user
-	if t.ExtraMeta.MonitoringData == nil {
-		return errors.New("no monitoring data found for this tournament")
+	data, err := ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
 	}
-
-	data, exists := t.ExtraMeta.MonitoringData[uuid]
-	if !exists {
+	if data == nil {
 		return errors.New("no monitoring data found for this user")
 	}
 
-	// Clear the appropriate stream based on type
-	switch streamType {
-	case "camera":
-		data.CameraKey = ""
-		data.CameraStartedAt = nil
-	case "screenshot":
-		data.ScreenshotKey = ""
-		data.ScreenshotStartedAt = nil
-	default:
-		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	// Log director action
+	if streamType == "camera" {
+		log.Info().Str("tid", tournamentID).Str("uid", userID).Msg("director-reset-camera-stream")
+	} else {
+		log.Info().Str("tid", tournamentID).Str("uid", userID).Msg("director-reset-screenshot-stream")
 	}
 
-	err = ts.Set(ctx, t)
+	// Reset status to NOT_STARTED using direct SQL (preserves keys automatically)
+	now := time.Now().Unix()
+	err = ts.UpdateMonitoringStreamStatusByUser(ctx, tournamentID, uuid, streamType, int(ipc.StreamStatus_NOT_STARTED), now)
 	if err != nil {
 		return err
 	}
@@ -2001,29 +1932,35 @@ func StopMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID,
 // This is used by directors to poll for stream status updates
 // Returns ALL tournament players across all divisions, with monitoring status if available
 func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournamentID string) ([]*ipc.MonitoringData, error) {
+	// First check if monitoring is enabled by reading tournament (read-only)
 	t, err := ts.Get(ctx, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 
 	t.RLock()
-	defer t.RUnlock()
+	monitored := t.ExtraMeta.Monitored
+	divisions := t.Divisions
+	t.RUnlock()
 
-	if !t.ExtraMeta.Monitored {
+	if !monitored {
 		return nil, errors.New("monitoring is not enabled for this tournament")
 	}
 
-	// Start with existing monitoring data
-	allPlayers := make(map[string]*ipc.MonitoringData)
+	// Get monitoring streams from database using direct SQL
+	monitoringStreams, err := ts.GetMonitoringStreams(ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
 
-	if t.ExtraMeta.MonitoringData != nil {
-		for uuid, md := range t.ExtraMeta.MonitoringData {
-			allPlayers[uuid] = md
-		}
+	// Start with existing monitoring data from database
+	allPlayers := make(map[string]*ipc.MonitoringData)
+	for uuid, md := range monitoringStreams {
+		allPlayers[uuid] = md
 	}
 
 	// Add all tournament players who don't have monitoring data yet
-	for _, division := range t.Divisions {
+	for _, division := range divisions {
 		if division.DivisionManager != nil {
 			players := division.DivisionManager.GetPlayers()
 			for _, p := range players.Persons {
@@ -2060,4 +1997,213 @@ func GetTournamentMonitoring(ctx context.Context, ts TournamentStore, tournament
 	}
 
 	return participants, nil
+}
+
+// InitializeMonitoringKeys generates and stores stream keys for a user if they don't already exist
+// This is called when a user first opens the monitoring modal
+func InitializeMonitoringKeys(ctx context.Context, ts TournamentStore, tournamentID, userID string) error {
+	t, err := ts.Get(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+
+	t.RLock()
+	monitored := t.ExtraMeta.Monitored
+	t.RUnlock()
+
+	if !monitored {
+		return errors.New("monitoring is not enabled for this tournament")
+	}
+
+	// Parse username from userID (format: "uuid:username")
+	splitID := strings.Split(userID, ":")
+	var uuid, username string
+	if len(splitID) == 2 {
+		uuid = splitID[0]
+		username = splitID[1]
+	} else if len(splitID) == 1 {
+		uuid = splitID[0]
+		username = uuid // fallback to UUID if username not available
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Check if keys already exist in database
+	existing, err := ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
+	}
+
+	// If keys already exist, nothing to do
+	if existing != nil && existing.CameraKey != "" {
+		return nil
+	}
+
+	// Generate keys
+	// Both keys share the same base, screenshot adds _ss suffix
+	// Using short keys (woog_ + 12 chars) for VDO.Ninja compatibility
+	baseKey := "woog_" + shortuuid.New()[:12]
+	cameraKey := baseKey
+	screenshotKey := baseKey + "_ss"
+
+	// Insert both stream types into database
+	err = ts.InsertMonitoringStream(ctx, tournamentID, uuid, username, "camera", cameraKey)
+	if err != nil {
+		return err
+	}
+
+	err = ts.InsertMonitoringStream(ctx, tournamentID, uuid, username, "screenshot", screenshotKey)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("tid", tournamentID).Str("uid", userID).Msg("initialized-monitoring-keys")
+	return nil
+}
+
+// RequestMonitoringStream sets a user's monitoring stream to PENDING status
+// This is called when the user opens the VDO.Ninja window (before actual streaming starts)
+func RequestMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
+	// Validate stream type
+	if streamType != "camera" && streamType != "screenshot" {
+		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	}
+
+	// Parse UUID from userID (format: "uuid:username")
+	splitID := strings.Split(userID, ":")
+	var uuid string
+	if len(splitID) >= 1 {
+		uuid = splitID[0]
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Check if stream key exists for this user (ensures InitializeMonitoringKeys was called)
+	data, err := ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return errors.New("no monitoring data found for this user - call InitializeMonitoringKeys first")
+	}
+
+	// Verify key exists for the requested stream type
+	if streamType == "camera" && data.CameraKey == "" {
+		return errors.New("camera key not initialized - call InitializeMonitoringKeys first")
+	}
+	if streamType == "screenshot" && data.ScreenshotKey == "" {
+		return errors.New("screenshot key not initialized - call InitializeMonitoringKeys first")
+	}
+
+	// Update stream status to PENDING using direct SQL
+	now := time.Now().Unix()
+	err = ts.UpdateMonitoringStreamStatusByUser(ctx, tournamentID, uuid, streamType, int(ipc.StreamStatus_PENDING), now)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("monitoring-stream-pending")
+	return nil
+}
+
+// ActivateMonitoringStream sets a user's monitoring stream to ACTIVE status
+// This is called by the webhook handler when VDO.Ninja confirms stream started
+func ActivateMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
+	// Validate stream type
+	if streamType != "camera" && streamType != "screenshot" {
+		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	}
+
+	// Parse UUID from userID (format: "uuid:username")
+	splitID := strings.Split(userID, ":")
+	var uuid string
+	if len(splitID) >= 1 {
+		uuid = splitID[0]
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Update stream status to ACTIVE using direct SQL
+	now := time.Now().Unix()
+	err := ts.UpdateMonitoringStreamStatusByUser(ctx, tournamentID, uuid, streamType, int(ipc.StreamStatus_ACTIVE), now)
+	if err != nil {
+		return err
+	}
+
+	// Fetch updated monitoring data to send via WebSocket
+	data, err := ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return errors.New("no monitoring data found for this user")
+	}
+
+	// Send WebSocket message to the user to notify them of status change
+	evt := &ipc.MonitoringStreamStatusUpdate{
+		MonitoringData: data,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_MONITORING_STREAM_STATUS_UPDATE)
+	wrapped.AddAudience(entity.AudUser, uuid)
+	eventChan := ts.TournamentEventChan()
+	if eventChan != nil {
+		eventChan <- wrapped
+		log.Debug().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("sent-monitoring-stream-active-websocket")
+	} else {
+		log.Error().Msg("monitoring-stream-active-event-chan-nil")
+	}
+
+	log.Info().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("monitoring-stream-active")
+	return nil
+}
+
+// DeactivateMonitoringStream sets a user's monitoring stream to STOPPED status
+// This is called by the webhook handler when VDO.Ninja confirms stream stopped
+func DeactivateMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID, userID, streamType string) error {
+	// Validate stream type
+	if streamType != "camera" && streamType != "screenshot" {
+		return errors.New("invalid stream type, must be 'camera' or 'screenshot'")
+	}
+
+	// Parse UUID from userID (format: "uuid:username")
+	splitID := strings.Split(userID, ":")
+	var uuid string
+	if len(splitID) >= 1 {
+		uuid = splitID[0]
+	} else {
+		return errors.New("invalid user ID format")
+	}
+
+	// Update stream status to STOPPED using direct SQL
+	now := time.Now().Unix()
+	err := ts.UpdateMonitoringStreamStatusByUser(ctx, tournamentID, uuid, streamType, int(ipc.StreamStatus_STOPPED), now)
+	if err != nil {
+		return err
+	}
+
+	// Fetch updated monitoring data to send via WebSocket
+	data, err := ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return errors.New("no monitoring data found for this user")
+	}
+
+	// Send WebSocket message to the user to notify them of status change
+	evt := &ipc.MonitoringStreamStatusUpdate{
+		MonitoringData: data,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_MONITORING_STREAM_STATUS_UPDATE)
+	wrapped.AddAudience(entity.AudUser, uuid)
+	eventChan := ts.TournamentEventChan()
+	if eventChan != nil {
+		eventChan <- wrapped
+		log.Debug().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("sent-monitoring-stream-stopped-websocket")
+	} else {
+		log.Error().Msg("monitoring-stream-stopped-event-chan-nil")
+	}
+
+	log.Info().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("monitoring-stream-stopped")
+	return nil
 }

@@ -255,6 +255,14 @@ message PlayerCheckinResponse {
   TournamentPerson player = 3;
 }
 
+// Stream status for monitoring
+enum StreamStatus {
+  NOT_STARTED = 0;
+  PENDING = 1;
+  ACTIVE = 2;
+  STOPPED = 3;
+}
+
 // Monitoring/Invigilation data for tournament participants
 message MonitoringData {
   string user_id = 1;
@@ -262,13 +270,21 @@ message MonitoringData {
   // camera_key and screenshot_key are only sent to directors and the user themselves
   string camera_key = 3;
   string screenshot_key = 4;
-  // Public timestamps indicating when streams were started (null if not started)
-  google.protobuf.Timestamp camera_started_at = 5;
-  google.protobuf.Timestamp screenshot_started_at = 6;
+  // Camera stream status and timestamp
+  StreamStatus camera_status = 5;
+  google.protobuf.Timestamp camera_timestamp = 6;
+  // Screenshot stream status and timestamp
+  StreamStatus screenshot_status = 7;
+  google.protobuf.Timestamp screenshot_timestamp = 8;
 }
 
 // Broadcast message for monitoring updates
 message TournamentMonitoringUpdate {
   string tournament_id = 1;
   repeated MonitoringData participants = 2;
+}
+
+// Single user monitoring stream status update (sent via WebSocket to individual user)
+message MonitoringStreamStatusUpdate {
+  MonitoringData monitoring_data = 1;
 }

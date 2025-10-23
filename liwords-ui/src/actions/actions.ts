@@ -44,6 +44,8 @@ export enum ActionType {
   SetTourneyPlayerCheckin,
   SetMonitoringData,
   UpdateMonitoringStream,
+  SetMonitoringUIState,
+  ClearMonitoringUIState,
 
   /* game actions */
   AddGameEvent, // will be obsolete when we move to OMGWordsEVent

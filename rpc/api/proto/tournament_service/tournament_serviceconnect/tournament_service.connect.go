@@ -142,12 +142,15 @@ const (
 	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
 	// RPC.
 	TournamentServiceRunCOPProcedure = "/tournament_service.TournamentService/RunCOP"
-	// TournamentServiceStartMonitoringStreamProcedure is the fully-qualified name of the
-	// TournamentService's StartMonitoringStream RPC.
-	TournamentServiceStartMonitoringStreamProcedure = "/tournament_service.TournamentService/StartMonitoringStream"
-	// TournamentServiceStopMonitoringStreamProcedure is the fully-qualified name of the
-	// TournamentService's StopMonitoringStream RPC.
-	TournamentServiceStopMonitoringStreamProcedure = "/tournament_service.TournamentService/StopMonitoringStream"
+	// TournamentServiceInitializeMonitoringKeysProcedure is the fully-qualified name of the
+	// TournamentService's InitializeMonitoringKeys RPC.
+	TournamentServiceInitializeMonitoringKeysProcedure = "/tournament_service.TournamentService/InitializeMonitoringKeys"
+	// TournamentServiceRequestMonitoringStreamProcedure is the fully-qualified name of the
+	// TournamentService's RequestMonitoringStream RPC.
+	TournamentServiceRequestMonitoringStreamProcedure = "/tournament_service.TournamentService/RequestMonitoringStream"
+	// TournamentServiceResetMonitoringStreamProcedure is the fully-qualified name of the
+	// TournamentService's ResetMonitoringStream RPC.
+	TournamentServiceResetMonitoringStreamProcedure = "/tournament_service.TournamentService/ResetMonitoringStream"
 	// TournamentServiceGetTournamentMonitoringProcedure is the fully-qualified name of the
 	// TournamentService's GetTournamentMonitoring RPC.
 	TournamentServiceGetTournamentMonitoringProcedure = "/tournament_service.TournamentService/GetTournamentMonitoring"
@@ -198,8 +201,9 @@ type TournamentServiceClient interface {
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
-	StartMonitoringStream(context.Context, *connect.Request[tournament_service.StartMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	StopMonitoringStream(context.Context, *connect.Request[tournament_service.StopMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RequestMonitoringStream(context.Context, *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	ResetMonitoringStream(context.Context, *connect.Request[tournament_service.ResetMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	GetTournamentMonitoring(context.Context, *connect.Request[tournament_service.GetTournamentMonitoringRequest]) (*connect.Response[tournament_service.GetTournamentMonitoringResponse], error)
 }
 
@@ -437,16 +441,22 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
 			connect.WithClientOptions(opts...),
 		),
-		startMonitoringStream: connect.NewClient[tournament_service.StartMonitoringStreamRequest, tournament_service.TournamentResponse](
+		initializeMonitoringKeys: connect.NewClient[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse](
 			httpClient,
-			baseURL+TournamentServiceStartMonitoringStreamProcedure,
-			connect.WithSchema(tournamentServiceMethods.ByName("StartMonitoringStream")),
+			baseURL+TournamentServiceInitializeMonitoringKeysProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("InitializeMonitoringKeys")),
 			connect.WithClientOptions(opts...),
 		),
-		stopMonitoringStream: connect.NewClient[tournament_service.StopMonitoringStreamRequest, tournament_service.TournamentResponse](
+		requestMonitoringStream: connect.NewClient[tournament_service.RequestMonitoringStreamRequest, tournament_service.TournamentResponse](
 			httpClient,
-			baseURL+TournamentServiceStopMonitoringStreamProcedure,
-			connect.WithSchema(tournamentServiceMethods.ByName("StopMonitoringStream")),
+			baseURL+TournamentServiceRequestMonitoringStreamProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("RequestMonitoringStream")),
+			connect.WithClientOptions(opts...),
+		),
+		resetMonitoringStream: connect.NewClient[tournament_service.ResetMonitoringStreamRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceResetMonitoringStreamProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("ResetMonitoringStream")),
 			connect.WithClientOptions(opts...),
 		),
 		getTournamentMonitoring: connect.NewClient[tournament_service.GetTournamentMonitoringRequest, tournament_service.GetTournamentMonitoringResponse](
@@ -497,8 +507,9 @@ type tournamentServiceClient struct {
 	getTournamentScorecards         *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 	getRecentAndUpcomingTournaments *connect.Client[tournament_service.GetRecentAndUpcomingTournamentsRequest, tournament_service.GetRecentAndUpcomingTournamentsResponse]
 	runCOP                          *connect.Client[tournament_service.RunCopRequest, ipc.PairResponse]
-	startMonitoringStream           *connect.Client[tournament_service.StartMonitoringStreamRequest, tournament_service.TournamentResponse]
-	stopMonitoringStream            *connect.Client[tournament_service.StopMonitoringStreamRequest, tournament_service.TournamentResponse]
+	initializeMonitoringKeys        *connect.Client[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse]
+	requestMonitoringStream         *connect.Client[tournament_service.RequestMonitoringStreamRequest, tournament_service.TournamentResponse]
+	resetMonitoringStream           *connect.Client[tournament_service.ResetMonitoringStreamRequest, tournament_service.TournamentResponse]
 	getTournamentMonitoring         *connect.Client[tournament_service.GetTournamentMonitoringRequest, tournament_service.GetTournamentMonitoringResponse]
 }
 
@@ -684,14 +695,19 @@ func (c *tournamentServiceClient) RunCOP(ctx context.Context, req *connect.Reque
 	return c.runCOP.CallUnary(ctx, req)
 }
 
-// StartMonitoringStream calls tournament_service.TournamentService.StartMonitoringStream.
-func (c *tournamentServiceClient) StartMonitoringStream(ctx context.Context, req *connect.Request[tournament_service.StartMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return c.startMonitoringStream.CallUnary(ctx, req)
+// InitializeMonitoringKeys calls tournament_service.TournamentService.InitializeMonitoringKeys.
+func (c *tournamentServiceClient) InitializeMonitoringKeys(ctx context.Context, req *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.initializeMonitoringKeys.CallUnary(ctx, req)
 }
 
-// StopMonitoringStream calls tournament_service.TournamentService.StopMonitoringStream.
-func (c *tournamentServiceClient) StopMonitoringStream(ctx context.Context, req *connect.Request[tournament_service.StopMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return c.stopMonitoringStream.CallUnary(ctx, req)
+// RequestMonitoringStream calls tournament_service.TournamentService.RequestMonitoringStream.
+func (c *tournamentServiceClient) RequestMonitoringStream(ctx context.Context, req *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.requestMonitoringStream.CallUnary(ctx, req)
+}
+
+// ResetMonitoringStream calls tournament_service.TournamentService.ResetMonitoringStream.
+func (c *tournamentServiceClient) ResetMonitoringStream(ctx context.Context, req *connect.Request[tournament_service.ResetMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.resetMonitoringStream.CallUnary(ctx, req)
 }
 
 // GetTournamentMonitoring calls tournament_service.TournamentService.GetTournamentMonitoring.
@@ -745,8 +761,9 @@ type TournamentServiceHandler interface {
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
-	StartMonitoringStream(context.Context, *connect.Request[tournament_service.StartMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
-	StopMonitoringStream(context.Context, *connect.Request[tournament_service.StopMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	RequestMonitoringStream(context.Context, *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
+	ResetMonitoringStream(context.Context, *connect.Request[tournament_service.ResetMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	GetTournamentMonitoring(context.Context, *connect.Request[tournament_service.GetTournamentMonitoringRequest]) (*connect.Response[tournament_service.GetTournamentMonitoringResponse], error)
 }
 
@@ -980,16 +997,22 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithSchema(tournamentServiceMethods.ByName("RunCOP")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tournamentServiceStartMonitoringStreamHandler := connect.NewUnaryHandler(
-		TournamentServiceStartMonitoringStreamProcedure,
-		svc.StartMonitoringStream,
-		connect.WithSchema(tournamentServiceMethods.ByName("StartMonitoringStream")),
+	tournamentServiceInitializeMonitoringKeysHandler := connect.NewUnaryHandler(
+		TournamentServiceInitializeMonitoringKeysProcedure,
+		svc.InitializeMonitoringKeys,
+		connect.WithSchema(tournamentServiceMethods.ByName("InitializeMonitoringKeys")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tournamentServiceStopMonitoringStreamHandler := connect.NewUnaryHandler(
-		TournamentServiceStopMonitoringStreamProcedure,
-		svc.StopMonitoringStream,
-		connect.WithSchema(tournamentServiceMethods.ByName("StopMonitoringStream")),
+	tournamentServiceRequestMonitoringStreamHandler := connect.NewUnaryHandler(
+		TournamentServiceRequestMonitoringStreamProcedure,
+		svc.RequestMonitoringStream,
+		connect.WithSchema(tournamentServiceMethods.ByName("RequestMonitoringStream")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceResetMonitoringStreamHandler := connect.NewUnaryHandler(
+		TournamentServiceResetMonitoringStreamProcedure,
+		svc.ResetMonitoringStream,
+		connect.WithSchema(tournamentServiceMethods.ByName("ResetMonitoringStream")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceGetTournamentMonitoringHandler := connect.NewUnaryHandler(
@@ -1073,10 +1096,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetRecentAndUpcomingTournamentsHandler.ServeHTTP(w, r)
 		case TournamentServiceRunCOPProcedure:
 			tournamentServiceRunCOPHandler.ServeHTTP(w, r)
-		case TournamentServiceStartMonitoringStreamProcedure:
-			tournamentServiceStartMonitoringStreamHandler.ServeHTTP(w, r)
-		case TournamentServiceStopMonitoringStreamProcedure:
-			tournamentServiceStopMonitoringStreamHandler.ServeHTTP(w, r)
+		case TournamentServiceInitializeMonitoringKeysProcedure:
+			tournamentServiceInitializeMonitoringKeysHandler.ServeHTTP(w, r)
+		case TournamentServiceRequestMonitoringStreamProcedure:
+			tournamentServiceRequestMonitoringStreamHandler.ServeHTTP(w, r)
+		case TournamentServiceResetMonitoringStreamProcedure:
+			tournamentServiceResetMonitoringStreamHandler.ServeHTTP(w, r)
 		case TournamentServiceGetTournamentMonitoringProcedure:
 			tournamentServiceGetTournamentMonitoringHandler.ServeHTTP(w, r)
 		default:
@@ -1232,12 +1257,16 @@ func (UnimplementedTournamentServiceHandler) RunCOP(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RunCOP is not implemented"))
 }
 
-func (UnimplementedTournamentServiceHandler) StartMonitoringStream(context.Context, *connect.Request[tournament_service.StartMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.StartMonitoringStream is not implemented"))
+func (UnimplementedTournamentServiceHandler) InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.InitializeMonitoringKeys is not implemented"))
 }
 
-func (UnimplementedTournamentServiceHandler) StopMonitoringStream(context.Context, *connect.Request[tournament_service.StopMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.StopMonitoringStream is not implemented"))
+func (UnimplementedTournamentServiceHandler) RequestMonitoringStream(context.Context, *connect.Request[tournament_service.RequestMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RequestMonitoringStream is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) ResetMonitoringStream(context.Context, *connect.Request[tournament_service.ResetMonitoringStreamRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.ResetMonitoringStream is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) GetTournamentMonitoring(context.Context, *connect.Request[tournament_service.GetTournamentMonitoringRequest]) (*connect.Response[tournament_service.GetTournamentMonitoringResponse], error) {

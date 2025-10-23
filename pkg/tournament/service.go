@@ -863,7 +863,7 @@ func (ts *TournamentService) RunCOP(ctx context.Context, req *connect.Request[pb
 	return connect.NewResponse(&ipc.PairResponse{}), nil
 }
 
-func (ts *TournamentService) StartMonitoringStream(ctx context.Context, req *connect.Request[pb.StartMonitoringStreamRequest],
+func (ts *TournamentService) InitializeMonitoringKeys(ctx context.Context, req *connect.Request[pb.InitializeMonitoringKeysRequest],
 ) (*connect.Response[pb.TournamentResponse], error) {
 
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
@@ -871,7 +871,35 @@ func (ts *TournamentService) StartMonitoringStream(ctx context.Context, req *con
 		return nil, err
 	}
 
-	err = StartMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID(), req.Msg.StreamType, req.Msg.StreamKey)
+	// Check if user is registered in this tournament
+	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	userIsParticipant := false
+	userID := user.TournamentID()
+
+	for _, division := range t.Divisions {
+		if division.DivisionManager != nil {
+			players := division.DivisionManager.GetPlayers()
+			for _, p := range players.Persons {
+				if p.Id == userID {
+					userIsParticipant = true
+					break
+				}
+			}
+			if userIsParticipant {
+				break
+			}
+		}
+	}
+
+	if !userIsParticipant {
+		return nil, apiserver.PermissionDenied("you are not registered in this tournament")
+	}
+
+	err = InitializeMonitoringKeys(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID())
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -879,7 +907,7 @@ func (ts *TournamentService) StartMonitoringStream(ctx context.Context, req *con
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
-func (ts *TournamentService) StopMonitoringStream(ctx context.Context, req *connect.Request[pb.StopMonitoringStreamRequest],
+func (ts *TournamentService) RequestMonitoringStream(ctx context.Context, req *connect.Request[pb.RequestMonitoringStreamRequest],
 ) (*connect.Response[pb.TournamentResponse], error) {
 
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
@@ -887,7 +915,52 @@ func (ts *TournamentService) StopMonitoringStream(ctx context.Context, req *conn
 		return nil, err
 	}
 
-	err = StopMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID(), req.Msg.StreamType)
+	// Check if user is registered in this tournament
+	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	userIsParticipant := false
+	userID := user.TournamentID()
+
+	for _, division := range t.Divisions {
+		if division.DivisionManager != nil {
+			players := division.DivisionManager.GetPlayers()
+			for _, p := range players.Persons {
+				if p.Id == userID {
+					userIsParticipant = true
+					break
+				}
+			}
+			if userIsParticipant {
+				break
+			}
+		}
+	}
+
+	if !userIsParticipant {
+		return nil, apiserver.PermissionDenied("you are not registered in this tournament")
+	}
+
+	err = RequestMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, user.TournamentID(), req.Msg.StreamType)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) ResetMonitoringStream(ctx context.Context, req *connect.Request[pb.ResetMonitoringStreamRequest],
+) (*connect.Response[pb.TournamentResponse], error) {
+
+	// Only directors can reset streams
+	err := authenticateDirector(ctx, ts, req.Msg.TournamentId, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ResetMonitoringStream(ctx, ts.tournamentStore, req.Msg.TournamentId, req.Msg.UserId, req.Msg.StreamType)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -906,37 +979,6 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	// Check if user is a director (no error means they are)
 	err = authenticateDirector(ctx, ts, req.Msg.TournamentId, req.Msg)
 	isDirector := (err == nil)
-
-	// Get tournament to check if user is a participant
-	t, err := ts.tournamentStore.Get(ctx, req.Msg.TournamentId)
-	if err != nil {
-		return nil, apiserver.InvalidArg(err.Error())
-	}
-
-	// If not a director, check if user is registered in this tournament
-	if !isDirector {
-		userIsParticipant := false
-		userID := user.TournamentID()
-
-		for _, division := range t.Divisions {
-			if division.DivisionManager != nil {
-				players := division.DivisionManager.GetPlayers()
-				for _, p := range players.Persons {
-					if p.Id == userID {
-						userIsParticipant = true
-						break
-					}
-				}
-				if userIsParticipant {
-					break
-				}
-			}
-		}
-
-		if !userIsParticipant {
-			return nil, apiserver.PermissionDenied("you are not registered in this tournament")
-		}
-	}
 
 	participants, err := GetTournamentMonitoring(ctx, ts.tournamentStore, req.Msg.TournamentId)
 	if err != nil {

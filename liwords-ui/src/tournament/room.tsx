@@ -15,14 +15,16 @@ import { ActionsPanel } from "./actions_panel";
 import { CompetitorStatus } from "./competitor_status";
 import "./room.scss";
 import { useTourneyMetadata } from "./utils";
-import { useSearchParams, useLocation } from "react-router";
+import { useSearchParams } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { readyForTournamentGame } from "./ready";
-import { MonitoringSetup } from "./monitoring/monitoring_setup";
+import { MonitoringModal } from "./monitoring/monitoring_modal";
+import { DirectorDashboardModal } from "./monitoring/director_dashboard_modal";
+import { MonitoringWidget } from "./monitoring/monitoring_widget";
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -30,8 +32,7 @@ type Props = {
 };
 
 export const TournamentRoom = (props: Props) => {
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
@@ -44,19 +45,32 @@ export const TournamentRoom = (props: Props) => {
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState("GAMES");
 
+  // Modal visibility from URL parameters
+  const monitoringModalVisible = searchParams.get("monitoring") === "true";
+  const directorDashboardModalVisible =
+    searchParams.get("director-dashboard") === "true";
+
+  // Modal close handlers - remove URL parameter
+  const closeMonitoringModal = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("monitoring");
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
+  const closeDirectorDashboardModal = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("director-dashboard");
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
   const { data: selfRoles } = useQuery(
     getSelfRoles,
     {},
     { enabled: loginState.loggedIn },
   );
 
-  // Strip /monitoring suffix from path if present for metadata fetch
-  const metadataPath = path.endsWith("/monitoring")
-    ? path.slice(0, -"/monitoring".length)
-    : path;
-
   useTourneyMetadata(
-    metadataPath,
+    path,
     "",
     dispatchTournamentContext,
     loginState,
@@ -99,16 +113,6 @@ export const TournamentRoom = (props: Props) => {
         <div className="lobby">
           <h3>You tried to access a non-existing page.</h3>
         </div>
-      </>
-    );
-  }
-
-  // Check if we're on the monitoring page (before tournamentID check)
-  if (location.pathname.endsWith("/monitoring")) {
-    return (
-      <>
-        <TopBar />
-        <MonitoringSetup />
       </>
     );
   }
@@ -192,6 +196,19 @@ export const TournamentRoom = (props: Props) => {
           sendSocketMsg={sendSocketMsg}
         />
       </div>
+
+      {/* Monitoring widget - shows status and opens modal when clicked */}
+      <MonitoringWidget />
+
+      {/* Monitoring modals */}
+      <MonitoringModal
+        visible={monitoringModalVisible}
+        onClose={closeMonitoringModal}
+      />
+      <DirectorDashboardModal
+        visible={directorDashboardModalVisible}
+        onClose={closeDirectorDashboardModal}
+      />
     </>
   );
 };

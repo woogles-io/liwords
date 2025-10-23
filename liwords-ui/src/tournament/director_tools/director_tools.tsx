@@ -7,7 +7,8 @@ import { Button, Divider } from "antd";
 import { GhettoTools } from "./ghetto_tools";
 import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
 import { flashError, useClient } from "../../utils/hooks/connect";
-import { CheckCircleOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, CameraOutlined } from "@ant-design/icons";
+import { useSearchParams } from "react-router";
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import { ModifyDivisionsForm } from './modify_divisions_form';
@@ -22,6 +23,7 @@ type DTProps = {
 
 export const DirectorTools = React.memo((props: DTProps) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   /*   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
@@ -161,9 +163,39 @@ export const DirectorTools = React.memo((props: DTProps) => {
     );
   };
 
+  const openDirectorDashboard = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("director-dashboard", "true");
+    setSearchParams(newParams);
+  };
+
+  const renderMonitoringControls = () => {
+    if (!tournamentContext.metadata.monitored) {
+      return null;
+    }
+
+    return (
+      <>
+        <Divider />
+        <h4>Monitoring</h4>
+        <Button
+          type="primary"
+          icon={<CameraOutlined />}
+          onClick={openDirectorDashboard}
+        >
+          Open Director Dashboard
+        </Button>
+        <p style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+          View and manage all participant camera and screen streams
+        </p>
+      </>
+    );
+  };
+
   return (
     <div className="director-tools">
       {renderStartButton()}
+      {renderMonitoringControls()}
       {renderRoster()}
       {renderGhettoTools()}
     </div>

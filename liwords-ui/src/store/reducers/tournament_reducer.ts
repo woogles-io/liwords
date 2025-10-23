@@ -74,6 +74,13 @@ export const defaultCompetitorState = {
   currentRound: -1,
 };
 
+export type MonitoringUIState = {
+  deviceType: "webcam" | "phone" | null;
+  cameraKey: string | null;
+  screenshotKey: string | null;
+  phoneConfirmed: boolean;
+};
+
 export type TournamentState = {
   metadata: TournamentMetadata;
   directors: Array<string>;
@@ -92,6 +99,9 @@ export type TournamentState = {
 
   // Monitoring data for all participants
   monitoringData: { [userId: string]: MonitoringData };
+
+  // UI state for monitoring modal (persists across navigation)
+  monitoringUIState?: MonitoringUIState;
 };
 
 const defaultMetadata = create(TournamentMetadataSchema, {
@@ -884,6 +894,31 @@ export function TournamentReducer(
           ...state.monitoringData,
           [update.userId]: update,
         },
+      };
+    }
+
+    case ActionType.SetMonitoringUIState: {
+      // Set or update monitoring UI state
+      const uiState = action.payload as Partial<MonitoringUIState>;
+      return {
+        ...state,
+        monitoringUIState: {
+          ...(state.monitoringUIState || {
+            deviceType: null,
+            cameraKey: null,
+            screenshotKey: null,
+            phoneConfirmed: false,
+          }),
+          ...uiState,
+        },
+      };
+    }
+
+    case ActionType.ClearMonitoringUIState: {
+      // Clear monitoring UI state
+      return {
+        ...state,
+        monitoringUIState: undefined,
       };
     }
   }

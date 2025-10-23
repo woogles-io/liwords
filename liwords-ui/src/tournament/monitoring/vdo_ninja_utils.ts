@@ -1,31 +1,24 @@
 // VDO.ninja integration utilities for tournament monitoring
 
 /**
- * Simple hash function to generate a short code from a string
- */
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(36);
-}
-
-/**
  * Generates a unique monitoring key for a user in a tournament
- * Format: {shortTournamentHash}_{shortUserHash}_{timestamp}
+ * Format: {tournamentId}_{randomAlphanumeric}
+ * Only uses letters, numbers, and underscores (VDO.Ninja compatible)
+ * The tournamentId prefix allows O(1) webhook lookup
  */
 export function generateMonitoringKey(
   tournamentId: string,
   userId: string,
 ): string {
-  const timestamp = Date.now();
-  const tourneyHash = simpleHash(tournamentId);
-  const userHash = simpleHash(userId);
-  const timeHash = timestamp.toString(36); // Base36 is shorter
-  return `${tourneyHash}_${userHash}_${timeHash}`;
+  // Generate 12 character random alphanumeric string
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const randomBytes = crypto.getRandomValues(new Uint8Array(12));
+  const randomSuffix = Array.from(randomBytes)
+    .map((byte) => chars[byte % chars.length])
+    .join("");
+
+  return `${tournamentId}_${randomSuffix}`;
 }
 
 /**
@@ -39,14 +32,22 @@ export function getScreenshotKey(cameraKey: string): string {
  * Generates a vdo.ninja share URL for camera stream
  */
 export function generateCameraShareUrl(key: string, room: string): string {
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Camera")}`;
+  const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
+  const postapi = webhookUrl
+    ? `&postapi=${encodeURIComponent(webhookUrl)}`
+    : "";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Camera")}${postapi}`;
 }
 
 /**
  * Generates a vdo.ninja share URL for screenshot/screen share stream
  */
 export function generateScreenshotShareUrl(key: string, room: string): string {
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&screenshare&label=${encodeURIComponent("Screen")}`;
+  const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
+  const postapi = webhookUrl
+    ? `&postapi=${encodeURIComponent(webhookUrl)}`
+    : "";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&screenshare&label=${encodeURIComponent("Screen")}${postapi}`;
 }
 
 /**
@@ -78,5 +79,9 @@ export function generateScreenshotViewUrl(
  * for phone camera setup (bypasses authentication)
  */
 export function generatePhoneQRUrl(key: string, room: string): string {
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Phone Camera")}`;
+  const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
+  const postapi = webhookUrl
+    ? `&postapi=${encodeURIComponent(webhookUrl)}`
+    : "";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Phone Camera")}${postapi}`;
 }

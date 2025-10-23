@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
@@ -22,12 +23,21 @@ type backingStore interface {
 	TournamentEventChan() chan<- *entity.EventWrapper
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	ListAllIDs(context.Context) ([]string, error)
+	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
+
+	// Monitoring streams methods - direct SQL, no tournament entity needed
+	InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error
+	UpdateMonitoringStreamStatus(ctx context.Context, streamKey string, status int, timestamp int64) error
+	UpdateMonitoringStreamStatusByUser(ctx context.Context, tournamentID, userID, streamType string, status int, timestamp int64) error
+	GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error)
+	GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error)
+	DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error
 }
 
 const (
@@ -142,6 +152,10 @@ func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {
 	return c.backing.ListAllIDs(ctx)
 }
 
+func (c *Cache) FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error) {
+	return c.backing.FindTournamentByStreamKey(ctx, streamKey, streamType)
+}
+
 func (c *Cache) AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
 	return c.backing.AddRegistrants(ctx, tid, userIDs, division)
 }
@@ -156,4 +170,29 @@ func (c *Cache) RemoveRegistrantsForTournament(ctx context.Context, tid string) 
 
 func (c *Cache) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {
 	return c.backing.ActiveTournamentsFor(ctx, userID)
+}
+
+// Monitoring streams methods - passthrough to backing store
+func (c *Cache) InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error {
+	return c.backing.InsertMonitoringStream(ctx, tid, uid, username, streamType, streamKey)
+}
+
+func (c *Cache) UpdateMonitoringStreamStatus(ctx context.Context, streamKey string, status int, timestamp int64) error {
+	return c.backing.UpdateMonitoringStreamStatus(ctx, streamKey, status, timestamp)
+}
+
+func (c *Cache) UpdateMonitoringStreamStatusByUser(ctx context.Context, tournamentID, userID, streamType string, status int, timestamp int64) error {
+	return c.backing.UpdateMonitoringStreamStatusByUser(ctx, tournamentID, userID, streamType, status, timestamp)
+}
+
+func (c *Cache) GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error) {
+	return c.backing.GetMonitoringStreams(ctx, tournamentID)
+}
+
+func (c *Cache) GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error) {
+	return c.backing.GetMonitoringStream(ctx, tournamentID, userID)
+}
+
+func (c *Cache) DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error {
+	return c.backing.DeleteMonitoringStreamsForTournament(ctx, tournamentID)
 }
