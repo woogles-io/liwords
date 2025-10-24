@@ -988,7 +988,7 @@ func (ts *TournamentService) GetTournamentMonitoring(ctx context.Context, req *c
 	// If not a director, filter to only the current user's data
 	if !isDirector {
 		filteredParticipants := []*ipc.MonitoringData{}
-		userID := user.TournamentID()
+		userID := user.UUID // Use UUID only, not TournamentID() which includes username
 		for _, p := range participants {
 			if p.UserId == userID {
 				filteredParticipants = append(filteredParticipants, p)
