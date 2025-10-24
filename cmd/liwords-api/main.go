@@ -220,7 +220,7 @@ func main() {
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	pairService := pair.NewPairService(cfg, lambdaClient)
-	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore)
+	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()
@@ -382,6 +382,7 @@ func main() {
 		ReadTimeout:  10 * time.Second}
 
 	go pubsubBus.ProcessMessages(ctx)
+	go vdoWebhookService.Start(ctx)
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

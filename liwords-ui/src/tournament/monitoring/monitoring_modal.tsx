@@ -156,6 +156,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
     const url = generateCameraShareUrl(
       cameraKey,
       tournamentContext.metadata.slug,
+      loginState.username,
     );
     window.open(
       url,
@@ -178,6 +179,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
     const url = generateScreenshotShareUrl(
       screenshotKey,
       tournamentContext.metadata.slug,
+      loginState.username,
     );
     window.open(
       url,
@@ -199,6 +201,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
   const phoneQRUrl = generatePhoneQRUrl(
     cameraKey,
     tournamentContext.metadata.slug,
+    loginState.username,
   );
 
   // Derive streaming status from backend data (backend is source of truth)

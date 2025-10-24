@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, Space, Typography } from "antd";
 import { CameraOutlined, DesktopOutlined } from "@ant-design/icons";
 import { useTournamentStoreContext } from "../../store/store";
 import { useLoginStateStoreContext } from "../../store/store";
 import { useSearchParams } from "react-router";
 import { StreamStatus } from "./types";
+import "./monitoring_widget.scss";
 
 const { Text } = Typography;
 
@@ -12,6 +13,7 @@ export const MonitoringWidget = () => {
   const { tournamentContext } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Don't show widget if tournament doesn't require monitoring
   if (!tournamentContext.metadata.monitored) {
@@ -51,9 +53,41 @@ export const MonitoringWidget = () => {
     setSearchParams(newParams);
   };
 
+  const handleWidgetClick = () => {
+    if (isCollapsed) {
+      // First click expands the widget
+      setIsCollapsed(false);
+    } else {
+      // Second click opens the modal
+      handleOpenMonitoring();
+    }
+  };
+
+  // Collapsed view - small circular indicator
+  if (isCollapsed) {
+    return (
+      <div
+        className={`monitoring-widget-collapsed monitoring-widget-status-${status}`}
+        onClick={handleWidgetClick}
+        title="Monitoring Status - Click to expand"
+      >
+        <div className="monitoring-widget-icons">
+          <CameraOutlined
+            style={{ color: cameraActive ? "#52c41a" : "#d9d9d9" }}
+          />
+          <DesktopOutlined
+            style={{ color: screenshotActive ? "#52c41a" : "#d9d9d9" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Expanded view - full card
   return (
     <Card
       size="small"
+      className="monitoring-widget-expanded"
       style={{
         position: "fixed",
         bottom: "20px",
@@ -68,9 +102,35 @@ export const MonitoringWidget = () => {
     >
       <div style={{ textDecoration: "none", color: "inherit" }}>
         <Space direction="vertical" size="small" style={{ width: "100%" }}>
-          <Text strong style={{ fontSize: "12px" }}>
-            Monitoring Status
-          </Text>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text strong style={{ fontSize: "12px" }}>
+              Monitoring Status
+            </Text>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(true);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "18px",
+                padding: "2px 6px",
+                color: "#999",
+                lineHeight: "1",
+              }}
+              title="Collapse"
+            >
+              ×
+            </button>
+          </div>
           <Space size="small">
             <CameraOutlined
               style={{ color: cameraActive ? "#52c41a" : "#d9d9d9" }}

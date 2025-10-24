@@ -7,6 +7,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
+	tl "github.com/woogles-io/liwords/pkg/tournament"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
@@ -38,6 +39,7 @@ type backingStore interface {
 	GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error)
 	GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error)
 	DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error
+	GetActiveMonitoringStreams(ctx context.Context) ([]tl.ActiveMonitoringStream, error)
 }
 
 const (
@@ -195,4 +197,8 @@ func (c *Cache) GetMonitoringStream(ctx context.Context, tournamentID, userID st
 
 func (c *Cache) DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error {
 	return c.backing.DeleteMonitoringStreamsForTournament(ctx, tournamentID)
+}
+
+func (c *Cache) GetActiveMonitoringStreams(ctx context.Context) ([]tl.ActiveMonitoringStream, error) {
+	return c.backing.GetActiveMonitoringStreams(ctx)
 }

@@ -21,6 +21,7 @@ import { MonitoringData, StreamStatus } from "./types";
 import {
   generateCameraViewUrl,
   generateScreenshotViewUrl,
+  generateMultiStreamViewUrl,
 } from "./vdo_ninja_utils";
 import { useTournamentStoreContext } from "../../store/store";
 import { TournamentService } from "../../gen/api/proto/tournament_service/tournament_service_pb";
@@ -41,6 +42,9 @@ export const DirectorDashboardModal = ({
   const tClient = useClient(TournamentService);
   const [searchText, setSearchText] = useState("");
   const [monitoringData, setMonitoringData] = useState<MonitoringData[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Fetch monitoring data and poll every 2 seconds when modal is visible
   useEffect(() => {
@@ -115,6 +119,43 @@ export const DirectorDashboardModal = ({
     } catch (e) {
       flashError(e);
     }
+  };
+
+  const handleViewSelectedStreams = () => {
+    // Collect all stream keys from selected participants
+    const streamKeys: string[] = [];
+
+    selectedUserIds.forEach((userId) => {
+      const participant = monitoringData.find((p) => p.userId === userId);
+      if (!participant) return;
+
+      // Add camera key if stream exists (PENDING, ACTIVE, or STOPPED)
+      if (
+        participant.cameraKey &&
+        participant.cameraStatus !== StreamStatus.NOT_STARTED
+      ) {
+        streamKeys.push(participant.cameraKey);
+      }
+
+      // Add screenshot key if stream exists (PENDING, ACTIVE, or STOPPED)
+      if (
+        participant.screenshotKey &&
+        participant.screenshotStatus !== StreamStatus.NOT_STARTED
+      ) {
+        streamKeys.push(participant.screenshotKey);
+      }
+    });
+
+    if (streamKeys.length === 0) {
+      message.warning("No active streams found for selected participants");
+      return;
+    }
+
+    const url = generateMultiStreamViewUrl(streamKeys, false);
+    window.open(url, "_blank", "noopener,noreferrer");
+    message.success(
+      `Opening ${streamKeys.length} streams from ${selectedUserIds.size} participants`,
+    );
   };
 
   // Helper to render status tag based on StreamStatus
@@ -381,11 +422,40 @@ export const DirectorDashboardModal = ({
         style={{ marginBottom: "16px", maxWidth: "400px" }}
       />
 
+      {selectedUserIds.size > 0 && (
+        <Space style={{ marginBottom: "16px" }}>
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            onClick={handleViewSelectedStreams}
+          >
+            View Selected Streams ({selectedUserIds.size})
+          </Button>
+          <Button
+            onClick={() => setSelectedUserIds(new Set())}
+          >
+            Clear Selection
+          </Button>
+        </Space>
+      )}
+
       <Table
         dataSource={filteredData}
         columns={columns}
         rowKey="userId"
         pagination={false}
+        rowSelection={{
+          selectedRowKeys: Array.from(selectedUserIds),
+          onChange: (selectedKeys) => {
+            setSelectedUserIds(new Set(selectedKeys as string[]));
+          },
+          getCheckboxProps: (record) => ({
+            // Only allow selection if participant has at least one stream that's not NOT_STARTED
+            disabled:
+              record.cameraStatus === StreamStatus.NOT_STARTED &&
+              record.screenshotStatus === StreamStatus.NOT_STARTED,
+          }),
+        }}
         locale={{
           emptyText: searchText
             ? `No participants found matching "${searchText}"`

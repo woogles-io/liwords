@@ -31,23 +31,35 @@ export function getScreenshotKey(cameraKey: string): string {
 /**
  * Generates a vdo.ninja share URL for camera stream
  */
-export function generateCameraShareUrl(key: string, room: string): string {
+export function generateCameraShareUrl(
+  key: string,
+  room: string,
+  username?: string,
+): string {
   const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
   const postapi = webhookUrl
     ? `&postapi=${encodeURIComponent(webhookUrl)}`
     : "";
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Camera")}${postapi}`;
+  const apiKey = `&api=${encodeURIComponent(key)}_api`;
+  const label = username ? `${username} - Camera` : "Camera";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&retry=30&retrytimeout=10000&label=${encodeURIComponent(label)}${apiKey}${postapi}`;
 }
 
 /**
  * Generates a vdo.ninja share URL for screenshot/screen share stream
  */
-export function generateScreenshotShareUrl(key: string, room: string): string {
+export function generateScreenshotShareUrl(
+  key: string,
+  room: string,
+  username?: string,
+): string {
   const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
   const postapi = webhookUrl
     ? `&postapi=${encodeURIComponent(webhookUrl)}`
     : "";
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&screenshare&label=${encodeURIComponent("Screen")}${postapi}`;
+  const apiKey = `&api=${encodeURIComponent(key)}_api`;
+  const label = username ? `${username} - Screen` : "Screen";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&screenshare&retry=30&retrytimeout=10000&label=${encodeURIComponent(label)}${apiKey}${postapi}`;
 }
 
 /**
@@ -75,13 +87,37 @@ export function generateScreenshotViewUrl(
 }
 
 /**
+ * Generates a vdo.ninja view URL for directors to watch multiple streams simultaneously
+ * VDO.Ninja supports comma-separated view IDs to show multiple streams in a grid
+ */
+export function generateMultiStreamViewUrl(
+  keys: string[],
+  lowQuality: boolean = true,
+): string {
+  if (keys.length === 0) {
+    return "";
+  }
+  // VDO.Ninja supports comma-separated view IDs: ?view=key1,key2,key3
+  const viewParam = keys.map((k) => encodeURIComponent(k)).join(",");
+  const qualityParam = lowQuality ? "&scale=30" : "";
+  // showlabels displays the labels set during push (username - Camera/Screen)
+  return `https://vdo.ninja/?view=${viewParam}${qualityParam}&showlabels`;
+}
+
+/**
  * Generates a QR code-friendly URL that directly opens vdo.ninja
  * for phone camera setup (bypasses authentication)
  */
-export function generatePhoneQRUrl(key: string, room: string): string {
+export function generatePhoneQRUrl(
+  key: string,
+  room: string,
+  username?: string,
+): string {
   const webhookUrl = import.meta.env.PUBLIC_VDO_WEBHOOK_URL;
   const postapi = webhookUrl
     ? `&postapi=${encodeURIComponent(webhookUrl)}`
     : "";
-  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&label=${encodeURIComponent("Phone Camera")}${postapi}`;
+  const apiKey = `&api=${encodeURIComponent(key)}_api`;
+  const label = username ? `${username} - Camera` : "Phone Camera";
+  return `https://vdo.ninja/?push=${encodeURIComponent(key)}&webcam&retry=30&retrytimeout=10000&label=${encodeURIComponent(label)}${apiKey}${postapi}`;
 }

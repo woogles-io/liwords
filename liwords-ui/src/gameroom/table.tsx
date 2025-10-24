@@ -45,6 +45,8 @@ import { Analyzer, AnalyzerContextProvider } from "./analyzer";
 import { isClubType, isPairedMode, sortTiles } from "../store/constants";
 import { readyForTournamentGame } from "../tournament/ready";
 import { CompetitorStatus } from "../tournament/competitor_status";
+import { MonitoringWidget } from "../tournament/monitoring/monitoring_widget";
+import { MonitoringModal } from "../tournament/monitoring/monitoring_modal";
 import { MetaEventControl } from "./meta_event_control";
 import { useTourneyMetadata } from "../tournament/utils";
 import { Disclaimer } from "./disclaimer";
@@ -295,6 +297,15 @@ export const Table = React.memo((props: Props) => {
   const [commentsDrawerVisible, setCommentsDrawerVisible] = useState(false);
   const [commentsDrawerEventNumber, setCommentsDrawerEventNumber] =
     useState<number>(0);
+
+  // Monitoring modal state
+  const monitoringModalVisible = searchParams.get("monitoring") === "true";
+
+  const closeMonitoringModal = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("monitoring");
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
 
   const handleOpenCommentsDrawerForEvent = useCallback(
     (eventNumber: number) => {
@@ -1029,10 +1040,17 @@ export const Table = React.memo((props: Props) => {
     </div>
   );
 
-  // Add the CommentsDrawer
+  // Add the CommentsDrawer and Monitoring components
   ret = (
     <>
       {ret}
+      {/* Monitoring widget - only show if tournament requires monitoring and user is not observer */}
+      {gameInfo.tournamentId && !isObserver && <MonitoringWidget />}
+      {/* Monitoring modal */}
+      <MonitoringModal
+        visible={monitoringModalVisible}
+        onClose={closeMonitoringModal}
+      />
       {props.annotated && (
         <CommentsDrawer
           visible={commentsDrawerVisible}

@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -13,22 +15,24 @@ import (
 
 // VDOWebhookService handles webhook callbacks from VDO.Ninja
 type VDOWebhookService struct {
-	tournamentStore tournament.TournamentStore
+	tournamentStore           tournament.TournamentStore
+	pollingIntervalSeconds    int
 }
 
 // NewVDOWebhookService creates a new VDO webhook service
-func NewVDOWebhookService(ts tournament.TournamentStore) *VDOWebhookService {
+func NewVDOWebhookService(ts tournament.TournamentStore, pollingIntervalSeconds int) *VDOWebhookService {
 	return &VDOWebhookService{
-		tournamentStore: ts,
+		tournamentStore:        ts,
+		pollingIntervalSeconds: pollingIntervalSeconds,
 	}
 }
 
 // VDOWebhookPayload represents the JSON payload sent by VDO.Ninja
 type VDOWebhookPayload struct {
 	Update struct {
-		StreamID string `json:"streamID"`
-		Action   string `json:"action"`
-		Value    bool   `json:"value"`
+		StreamID string      `json:"streamID"`
+		Action   string      `json:"action"`
+		Value    interface{} `json:"value"` // Can be bool or object depending on action type
 	} `json:"update"`
 }
 
@@ -70,7 +74,7 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Info().
 		Str("streamID", payload.Update.StreamID).
 		Str("action", payload.Update.Action).
-		Bool("value", payload.Update.Value).
+		Interface("value", payload.Update.Value).
 		Msg("vdo-webhook-received")
 
 	// The streamID is the key we stored when starting the stream
@@ -100,7 +104,15 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// VDO.Ninja sends "seeding" action when stream starts/stops
 	// VDO.Ninja sends "hangup" action when user closes the stream window
 	if payload.Update.Action == "seeding" {
-		if payload.Update.Value {
+		// Type assert value to bool
+		boolVal, ok := payload.Update.Value.(bool)
+		if !ok {
+			log.Warn().Str("streamID", payload.Update.StreamID).Interface("value", payload.Update.Value).Msg("vdo-webhook-seeding-value-not-bool")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+		if boolVal {
 			// Stream started - set status to ACTIVE
 			log.Info().
 				Str("tournamentID", tournamentID).
@@ -145,7 +157,21 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					Msg("vdo-webhook-stream-deactivated")
 			}
 		}
-	} else if payload.Update.Action == "hangup" && payload.Update.Value {
+	} else if payload.Update.Action == "hangup" {
+		// Type assert value to bool
+		boolVal, ok := payload.Update.Value.(bool)
+		if !ok {
+			log.Warn().Str("streamID", payload.Update.StreamID).Interface("value", payload.Update.Value).Msg("vdo-webhook-hangup-value-not-bool")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+		if !boolVal {
+			// Hangup with false means ignore (shouldn't happen but be safe)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
 		// User closed the stream window - treat as STOPPED
 		log.Info().
 			Str("tournamentID", tournamentID).
@@ -171,7 +197,7 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Log unhandled actions for debugging
 		log.Warn().
 			Str("action", payload.Update.Action).
-			Bool("value", payload.Update.Value).
+			Interface("value", payload.Update.Value).
 			Str("streamID", payload.Update.StreamID).
 			Msg("vdo-webhook-unhandled-action")
 	}
@@ -206,4 +232,164 @@ type StreamNotFoundError struct {
 
 func (e *StreamNotFoundError) Error() string {
 	return "stream key not found: " + e.StreamKey
+}
+
+// Start begins the polling loop that checks active stream health
+// Runs continuously until context is cancelled
+func (s *VDOWebhookService) Start(ctx context.Context) {
+	log.Info().Msg("vdo-polling-service-started")
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("vdo-polling-service-stopped")
+			return
+		case <-time.After(s.getJitteredInterval()):
+			// Poll all active streams in a separate goroutine to avoid blocking
+			go s.pollActiveStreams(ctx)
+		}
+	}
+}
+
+// getJitteredInterval returns a random duration around the configured midpoint with ±25% jitter
+// This prevents thundering herd and spreads API load on VDO.Ninja
+// For example, with 60s midpoint: returns 45-75 seconds (60 ± 15)
+func (s *VDOWebhookService) getJitteredInterval() time.Duration {
+	midpoint := time.Duration(s.pollingIntervalSeconds) * time.Second
+	// Jitter is ±25% of the midpoint
+	jitterRange := s.pollingIntervalSeconds / 2 // 50% range (±25%)
+	jitter := time.Duration(rand.Intn(jitterRange+1)) * time.Second
+	// Subtract 25% from midpoint, then add random jitter from 0 to 50%
+	base := midpoint - (midpoint / 4) // midpoint - 25%
+	return base + jitter
+}
+
+// pollActiveStreams fetches all active streams and spreads API checks over 30 seconds
+func (s *VDOWebhookService) pollActiveStreams(ctx context.Context) {
+	streams, err := s.tournamentStore.GetActiveMonitoringStreams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("vdo-poll-get-active-streams-error")
+		return
+	}
+
+	if len(streams) == 0 {
+		log.Debug().Msg("vdo-poll-no-active-streams")
+		return
+	}
+
+	log.Info().Int("count", len(streams)).Msg("vdo-poll-checking-active-streams")
+
+	// Spread requests evenly over 30 seconds to avoid bursts
+	delayBetween := 30 * time.Second / time.Duration(len(streams))
+
+	for i, stream := range streams {
+		// Calculate staggered delay for this stream
+		delay := time.Duration(i) * delayBetween
+		// Add small random jitter (0-2 seconds) to each request
+		delay += time.Duration(rand.Intn(2000)) * time.Millisecond
+
+		// Launch goroutine with delay
+		go func(streamData tournament.ActiveMonitoringStream, d time.Duration) {
+			time.Sleep(d)
+			s.checkStream(ctx, streamData)
+		}(stream, delay)
+	}
+}
+
+// checkStream polls VDO.Ninja API to verify stream is still active
+// If stream is disconnected or API returns error, deactivates the stream
+func (s *VDOWebhookService) checkStream(ctx context.Context, stream tournament.ActiveMonitoringStream) {
+	apiKey := stream.StreamKey + "_api"
+	url := "https://api.vdo.ninja/" + apiKey + "/getDetails"
+
+	// Create HTTP request with 10 second timeout
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, "GET", url, nil)
+	if err != nil {
+		log.Error().Err(err).Str("streamKey", stream.StreamKey).Msg("vdo-poll-create-request-error")
+		return
+	}
+
+	// Make the HTTP request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warn().Err(err).
+			Str("streamKey", stream.StreamKey).
+			Str("tournamentID", stream.TournamentID).
+			Str("userID", stream.UserID).
+			Str("streamType", stream.StreamType).
+			Msg("vdo-poll-http-error-skipping")
+		// HTTP error could mean API is down, not that stream failed
+		// Don't deactivate - wait for explicit "failed" response
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error().Err(err).Str("streamKey", stream.StreamKey).Msg("vdo-poll-read-body-error")
+		return
+	}
+
+	bodyStr := strings.TrimSpace(string(body))
+
+	// Only deactivate if VDO.Ninja explicitly returns "failed", "timedout", or "timeout"
+	if bodyStr == "failed" || bodyStr == "timedout" || bodyStr == "timeout" {
+		log.Info().
+			Str("streamKey", stream.StreamKey).
+			Str("tournamentID", stream.TournamentID).
+			Str("userID", stream.UserID).
+			Str("streamType", stream.StreamType).
+			Str("reason", bodyStr).
+			Msg("vdo-poll-stream-failed-deactivating")
+		s.deactivateStream(ctx, stream)
+		return
+	}
+
+	// Try to parse as JSON to verify we got a valid response
+	var details map[string]interface{}
+	if err := json.Unmarshal([]byte(bodyStr), &details); err != nil {
+		log.Warn().
+			Err(err).
+			Str("streamKey", stream.StreamKey).
+			Str("tournamentID", stream.TournamentID).
+			Str("userID", stream.UserID).
+			Str("streamType", stream.StreamType).
+			Str("response", bodyStr).
+			Msg("vdo-poll-invalid-json-skipping")
+		// Invalid JSON could mean API issue, not stream failure
+		// Don't deactivate - wait for explicit "failed" response
+		return
+	}
+
+	// Stream is healthy, log success at debug level
+	log.Debug().
+		Str("streamKey", stream.StreamKey).
+		Str("tournamentID", stream.TournamentID).
+		Str("userID", stream.UserID).
+		Str("streamType", stream.StreamType).
+		Msg("vdo-poll-stream-healthy")
+}
+
+// deactivateStream marks a stream as disconnected
+// Reuses the same DeactivateMonitoringStream logic as webhook handler
+func (s *VDOWebhookService) deactivateStream(ctx context.Context, stream tournament.ActiveMonitoringStream) {
+	err := tournament.DeactivateMonitoringStream(ctx, s.tournamentStore, stream.TournamentID, stream.UserID, stream.StreamType)
+	if err != nil {
+		log.Error().Err(err).
+			Str("tournamentID", stream.TournamentID).
+			Str("userID", stream.UserID).
+			Str("streamType", stream.StreamType).
+			Msg("vdo-poll-deactivate-stream-error")
+	} else {
+		log.Info().
+			Str("tournamentID", stream.TournamentID).
+			Str("userID", stream.UserID).
+			Str("streamType", stream.StreamType).
+			Msg("vdo-poll-stream-deactivated")
+	}
 }
