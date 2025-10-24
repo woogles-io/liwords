@@ -269,8 +269,8 @@ export const TourneyEditor = (props: Props) => {
     try {
       await tournamentClient.addDirectors({
         id: form.getFieldValue("id"),
-        // Need a non-zero "rating" for director..
-        persons: [{ id: director, rating: 1 }],
+        // Rating field: -1=Read-only Director, otherwise Full Director
+        persons: [{ id: director, rating: 0 }],
       });
       message.info({
         content: "Director successfully added",

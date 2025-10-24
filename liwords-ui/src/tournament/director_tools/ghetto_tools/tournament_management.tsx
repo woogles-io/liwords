@@ -245,6 +245,32 @@ export const ManageCheckIns = (props: { tournamentID: string }) => {
       </div>
       {uncheckedText}
       <Divider />
+      <h3>Clear all check-ins</h3>
+      <div style={{ fontSize: "12px", marginBottom: "8px" }}>
+        This will uncheck all players without deleting them. Useful for
+        resetting check-ins for a new session or day.
+      </div>
+      <Form.Item>
+        <Popconfirm
+          title="Are you sure you want to clear all check-ins? Players will remain registered but will need to check in again."
+          onConfirm={async () => {
+            try {
+              await tClient.uncheckAllIn({
+                id: props.tournamentID,
+              });
+              message.info({
+                content: "All check-ins cleared successfully.",
+                duration: 3,
+              });
+            } catch (e) {
+              flashError(e);
+            }
+          }}
+        >
+          <Button type="default">Clear all check-ins</Button>
+        </Popconfirm>
+      </Form.Item>
+      <Divider />
       <h3>Registrations</h3>
 
       <div>

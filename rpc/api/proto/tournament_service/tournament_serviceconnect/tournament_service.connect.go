@@ -85,6 +85,9 @@ const (
 	// TournamentServiceRemovePlayersProcedure is the fully-qualified name of the TournamentService's
 	// RemovePlayers RPC.
 	TournamentServiceRemovePlayersProcedure = "/tournament_service.TournamentService/RemovePlayers"
+	// TournamentServiceMovePlayerProcedure is the fully-qualified name of the TournamentService's
+	// MovePlayer RPC.
+	TournamentServiceMovePlayerProcedure = "/tournament_service.TournamentService/MovePlayer"
 	// TournamentServiceSetPairingProcedure is the fully-qualified name of the TournamentService's
 	// SetPairing RPC.
 	TournamentServiceSetPairingProcedure = "/tournament_service.TournamentService/SetPairing"
@@ -182,6 +185,8 @@ type TournamentServiceClient interface {
 	AddPlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Input to RemovePlayers should be player usernames
 	RemovePlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
+	// MovePlayer moves a player from one division to another
+	MovePlayer(context.Context, *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetPairing(context.Context, *connect.Request[tournament_service.TournamentPairingsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetResult(context.Context, *connect.Request[tournament_service.TournamentResultOverrideRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	StartRoundCountdown(context.Context, *connect.Request[tournament_service.TournamentStartRoundCountdownRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -324,6 +329,12 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+TournamentServiceRemovePlayersProcedure,
 			connect.WithSchema(tournamentServiceMethods.ByName("RemovePlayers")),
+			connect.WithClientOptions(opts...),
+		),
+		movePlayer: connect.NewClient[tournament_service.MovePlayerRequest, tournament_service.TournamentResponse](
+			httpClient,
+			baseURL+TournamentServiceMovePlayerProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("MovePlayer")),
 			connect.WithClientOptions(opts...),
 		),
 		setPairing: connect.NewClient[tournament_service.TournamentPairingsRequest, tournament_service.TournamentResponse](
@@ -499,6 +510,7 @@ type tournamentServiceClient struct {
 	removeDivision                  *connect.Client[tournament_service.TournamentDivisionRequest, tournament_service.TournamentResponse]
 	addPlayers                      *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
 	removePlayers                   *connect.Client[ipc.TournamentPersons, tournament_service.TournamentResponse]
+	movePlayer                      *connect.Client[tournament_service.MovePlayerRequest, tournament_service.TournamentResponse]
 	setPairing                      *connect.Client[tournament_service.TournamentPairingsRequest, tournament_service.TournamentResponse]
 	setResult                       *connect.Client[tournament_service.TournamentResultOverrideRequest, tournament_service.TournamentResponse]
 	startRoundCountdown             *connect.Client[tournament_service.TournamentStartRoundCountdownRequest, tournament_service.TournamentResponse]
@@ -608,6 +620,11 @@ func (c *tournamentServiceClient) AddPlayers(ctx context.Context, req *connect.R
 // RemovePlayers calls tournament_service.TournamentService.RemovePlayers.
 func (c *tournamentServiceClient) RemovePlayers(ctx context.Context, req *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return c.removePlayers.CallUnary(ctx, req)
+}
+
+// MovePlayer calls tournament_service.TournamentService.MovePlayer.
+func (c *tournamentServiceClient) MovePlayer(ctx context.Context, req *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return c.movePlayer.CallUnary(ctx, req)
 }
 
 // SetPairing calls tournament_service.TournamentService.SetPairing.
@@ -756,6 +773,8 @@ type TournamentServiceHandler interface {
 	AddPlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
 	// Input to RemovePlayers should be player usernames
 	RemovePlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error)
+	// MovePlayer moves a player from one division to another
+	MovePlayer(context.Context, *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetPairing(context.Context, *connect.Request[tournament_service.TournamentPairingsRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	SetResult(context.Context, *connect.Request[tournament_service.TournamentResultOverrideRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
 	StartRoundCountdown(context.Context, *connect.Request[tournament_service.TournamentStartRoundCountdownRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -894,6 +913,12 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		TournamentServiceRemovePlayersProcedure,
 		svc.RemovePlayers,
 		connect.WithSchema(tournamentServiceMethods.ByName("RemovePlayers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tournamentServiceMovePlayerHandler := connect.NewUnaryHandler(
+		TournamentServiceMovePlayerProcedure,
+		svc.MovePlayer,
+		connect.WithSchema(tournamentServiceMethods.ByName("MovePlayer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tournamentServiceSetPairingHandler := connect.NewUnaryHandler(
@@ -1083,6 +1108,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceAddPlayersHandler.ServeHTTP(w, r)
 		case TournamentServiceRemovePlayersProcedure:
 			tournamentServiceRemovePlayersHandler.ServeHTTP(w, r)
+		case TournamentServiceMovePlayerProcedure:
+			tournamentServiceMovePlayerHandler.ServeHTTP(w, r)
 		case TournamentServiceSetPairingProcedure:
 			tournamentServiceSetPairingHandler.ServeHTTP(w, r)
 		case TournamentServiceSetResultProcedure:
@@ -1206,6 +1233,10 @@ func (UnimplementedTournamentServiceHandler) AddPlayers(context.Context, *connec
 
 func (UnimplementedTournamentServiceHandler) RemovePlayers(context.Context, *connect.Request[ipc.TournamentPersons]) (*connect.Response[tournament_service.TournamentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.RemovePlayers is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) MovePlayer(context.Context, *connect.Request[tournament_service.MovePlayerRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.MovePlayer is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) SetPairing(context.Context, *connect.Request[tournament_service.TournamentPairingsRequest]) (*connect.Response[tournament_service.TournamentResponse], error) {

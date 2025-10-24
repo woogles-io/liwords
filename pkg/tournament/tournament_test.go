@@ -270,12 +270,29 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// Directors should remain unchanged
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
-	// HACK: Test read-only directors using Rating field (0=Full, 1=Read-only)
+	// HACK: Test read-only directors using Rating field (-1=Read-only, otherwise Full)
 	// TODO: Replace with proper permissions field when backend schema is updated
 	// Add a read-only director
-	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": 1}))
+	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": -1}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": 1}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), ty.Directors))
+
+	// Attempt to remove all full directors, leaving only read-only director (should fail)
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": 2, "Jennifer": 2}))
+	is.True(err != nil)
+	is.True(err.Error() == "cannot remove the last non-read-only director from a tournament")
+	// Directors should remain unchanged
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": -1}), ty.Directors))
+
+	// Should be able to remove just one full director (leaving one full director and the read-only director)
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Jennifer": 2}))
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Noah:Noah": -1}), ty.Directors))
+
+	// Should be able to remove the read-only director, leaving one full director
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": -1}))
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2}), ty.Directors))
 
 	// Same thing for players.
 	div1 := ty.Divisions[divOneName]

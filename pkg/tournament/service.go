@@ -182,12 +182,13 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	directors := &ipc.TournamentPersons{
 		Persons: []*ipc.TournamentPerson{},
 	}
-	for idx, username := range req.Msg.DirectorUsernames {
+	for _, username := range req.Msg.DirectorUsernames {
 		u, err := ts.userStore.Get(ctx, username)
 		if err != nil {
 			return nil, err
 		}
-		directors.Persons = append(directors.Persons, &ipc.TournamentPerson{Id: u.TournamentID(), Rating: int32(idx)})
+		// Rating field: -1=Read-only Director, otherwise Full Director (backward compatible)
+		directors.Persons = append(directors.Persons, &ipc.TournamentPerson{Id: u.TournamentID(), Rating: 0})
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -294,9 +295,9 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *con
 			username = u.Username
 		}
 
-		// HACK: Append :readonly suffix for read-only directors (Rating=1)
+		// HACK: Append :readonly suffix for read-only directors (Rating=-1)
 		// TODO: Replace with proper permissions field when backend schema is updated
-		if director.Rating == 1 {
+		if director.Rating == -1 {
 			username = username + ":readonly"
 		}
 
@@ -361,6 +362,19 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *connect.Req
 	}
 
 	err = RemovePlayers(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.Division, req.Msg)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	return connect.NewResponse(&pb.TournamentResponse{}), nil
+}
+
+func (ts *TournamentService) MovePlayer(ctx context.Context, req *connect.Request[pb.MovePlayerRequest]) (*connect.Response[pb.TournamentResponse], error) {
+	err := authenticateDirector(ctx, ts, req.Msg.Id, req.Msg, true)
+	if err != nil {
+		return nil, err
+	}
+
+	err = MovePlayer(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg.SourceDivision, req.Msg.TargetDivision, req.Msg.PlayerId)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -601,7 +615,7 @@ func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connec
 }
 
 // HACK: The requireFullDirector parameter checks director permissions using the Rating field.
-// Rating field is temporarily repurposed: 0=Full Director, 1=Read-only Director
+// Rating field is temporarily repurposed: -1=Read-only Director, otherwise Full Director
 // TODO: Replace with proper permissions field when backend schema is updated
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, req proto.Message, requireFullDirector bool) error {
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
@@ -642,8 +656,8 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	for _, director := range t.Directors.Persons {
 		if director.Id == fullID {
 			authorized = true
-			// HACK: Rating field repurposed: 0=Full Director, 1=Read-only Director
-			if director.Rating == 1 {
+			// HACK: Rating field repurposed: -1=Read-only Director, otherwise Full Director
+			if director.Rating == -1 {
 				isReadOnly = true
 			}
 			break

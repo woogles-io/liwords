@@ -445,6 +445,25 @@ func RenameDivision(ctx context.Context, ts TournamentStore, id string, division
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_ADD_DIVISION_AFTER_START, t.Name, division)
 	}
 
+	// Validate inputs
+	if division == "" {
+		return errors.New("source division name cannot be empty")
+	}
+
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return errors.New("new division name cannot be empty")
+	}
+
+	if len(newName) > MaxDivisionNameLength {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_INVALID_DIVISION_NAME, t.Name, newName)
+	}
+
+	// Check if division with new name already exists
+	if _, exists := t.Divisions[newName]; exists {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_DIVISION_ALREADY_EXISTS, t.Name, newName)
+	}
+
 	div, ok := t.Divisions[division]
 
 	if !ok {
@@ -766,6 +785,120 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		DivisionStandings: pairingsResp.DivisionStandings}
 	wrapped := entity.WrapEvent(removePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+func MovePlayer(ctx context.Context, ts TournamentStore, us user.Store, id string, sourceDivision string, targetDivision string, playerID string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_FINISHED, t.Name, sourceDivision)
+	}
+
+	if t.IsStarted {
+		return errors.New("cannot move players after tournament has started")
+	}
+
+	// Validate source and target divisions are different
+	if sourceDivision == targetDivision {
+		return errors.New("source and target divisions must be different")
+	}
+
+	// Validate source division exists
+	sourceDivisionObject, ok := t.Divisions[sourceDivision]
+	if !ok {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, sourceDivision)
+	}
+
+	// Validate target division exists
+	targetDivisionObject, ok := t.Divisions[targetDivision]
+	if !ok {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, targetDivision)
+	}
+
+	if sourceDivisionObject.DivisionManager == nil {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, sourceDivision)
+	}
+
+	if targetDivisionObject.DivisionManager == nil {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NIL_DIVISION_MANAGER, t.Name, targetDivision)
+	}
+
+	// Construct full player ID
+	var fullID string
+	if t.ExtraMeta.IRLMode {
+		UUID := md5hash(playerID)
+		fullID = UUID + ":" + playerID
+	} else {
+		fullID, _, err = constructFullID(t.Name, sourceDivision, ctx, us, playerID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Find the player in the source division
+	sourcePlayers := sourceDivisionObject.DivisionManager.GetPlayers()
+	var playerToMove *ipc.TournamentPerson
+	for _, p := range sourcePlayers.Persons {
+		if p.Id == fullID {
+			playerToMove = p
+			break
+		}
+	}
+
+	if playerToMove == nil {
+		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_PLAYER, t.Name, sourceDivision, "0", fullID, "MovePlayer")
+	}
+
+	// Remove from source division
+	removeResp, err := sourceDivisionObject.DivisionManager.RemovePlayers(&ipc.TournamentPersons{
+		Persons: []*ipc.TournamentPerson{playerToMove},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Add to target division
+	addResp, err := targetDivisionObject.DivisionManager.AddPlayers(&ipc.TournamentPersons{
+		Persons: []*ipc.TournamentPerson{playerToMove},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	// Send updates for both divisions
+	sourcePlayersMessage := &ipc.PlayersAddedOrRemovedResponse{
+		Id:                id,
+		Division:          sourceDivision,
+		Players:           sourceDivisionObject.DivisionManager.GetPlayers(),
+		DivisionPairings:  removeResp.DivisionPairings,
+		DivisionStandings: removeResp.DivisionStandings,
+	}
+	wrappedSource := entity.WrapEvent(sourcePlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	err = SendTournamentMessage(ctx, ts, id, wrappedSource)
+	if err != nil {
+		return err
+	}
+
+	targetPlayersMessage := &ipc.PlayersAddedOrRemovedResponse{
+		Id:                id,
+		Division:          targetDivision,
+		Players:           targetDivisionObject.DivisionManager.GetPlayers(),
+		DivisionPairings:  addResp.DivisionPairings,
+		DivisionStandings: addResp.DivisionStandings,
+	}
+	wrappedTarget := entity.WrapEvent(targetPlayersMessage, ipc.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrappedTarget)
 }
 
 // SetPairings is only called by the API
@@ -1493,6 +1626,30 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 	// Prevent removal of the last director
 	if areDirectors && len(persons.Persons)-len(indexesToRemove) < 1 {
 		return nil, errors.New("cannot remove the last director from a tournament")
+	}
+
+	// Prevent removal of the last non-read-only (full) director
+	if areDirectors {
+		fullDirectorCount := 0
+		fullDirectorsToRemove := 0
+
+		for idx, person := range persons.Persons {
+			// Rating == -1 means read-only director
+			if person.Rating != -1 {
+				fullDirectorCount++
+				// Check if this full director is being removed
+				for _, removeIdx := range indexesToRemove {
+					if idx == removeIdx {
+						fullDirectorsToRemove++
+						break
+					}
+				}
+			}
+		}
+
+		if fullDirectorCount-fullDirectorsToRemove < 1 {
+			return nil, errors.New("cannot remove the last non-read-only director from a tournament")
+		}
 	}
 
 	sort.Ints(indexesToRemove)
