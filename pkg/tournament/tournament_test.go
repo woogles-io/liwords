@@ -263,6 +263,13 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
+	// Attempt to remove all remaining directors (should fail - cannot remove last director)
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": 2, "Jennifer": 2}))
+	is.True(err != nil)
+	is.True(err.Error() == "cannot remove the last director from a tournament")
+	// Directors should remain unchanged
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
+
 	// Same thing for players.
 	div1 := ty.Divisions[divOneName]
 

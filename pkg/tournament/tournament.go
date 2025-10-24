@@ -1490,6 +1490,11 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 		}
 	}
 
+	// Prevent removal of the last director
+	if areDirectors && len(persons.Persons)-len(indexesToRemove) < 1 {
+		return nil, errors.New("cannot remove the last director from a tournament")
+	}
+
 	sort.Ints(indexesToRemove)
 
 	for i := len(indexesToRemove) - 1; i >= 0; i-- {
