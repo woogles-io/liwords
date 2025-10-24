@@ -327,6 +327,7 @@ func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entit
 		(scheduled_end_time IS NOT NULL AND scheduled_end_time BETWEEN ? AND ?)
 		`,
 		oneWeekAgo, oneWeekFromNow, oneWeekAgo, oneWeekFromNow).
+		Order("scheduled_start_time ASC").
 		Find(&tournaments)
 
 	if result.Error != nil {
@@ -344,6 +345,41 @@ func (s *DBStore) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entit
 
 	return tourneyList, nil
 
+}
+
+func (s *DBStore) GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error) {
+	var tournaments []*tournament
+	ctxDB := s.db.WithContext(ctx)
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	now := time.Now()
+
+	query := ctxDB.Where(`
+		scheduled_end_time IS NOT NULL
+		AND scheduled_end_time BETWEEN ? AND ?
+		`,
+		thirtyDaysAgo, now).
+		Order("scheduled_end_time DESC")
+
+	if limit > 0 {
+		query = query.Limit(int(limit))
+	}
+
+	result := query.Find(&tournaments)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	tourneyList := make([]*entity.Tournament, len(tournaments))
+	for i, t := range tournaments {
+		t, err := s.dbObjToEntity(t)
+		if err != nil {
+			return nil, err
+		}
+		tourneyList[i] = t
+	}
+
+	return tourneyList, nil
 }
 
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {

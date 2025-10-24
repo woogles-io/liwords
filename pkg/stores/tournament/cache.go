@@ -31,6 +31,7 @@ type backingStore interface {
 	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
+	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
 
 	// Monitoring streams methods - direct SQL, no tournament entity needed
 	InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error
@@ -148,6 +149,10 @@ func (c *Cache) GetRecentClubSessions(ctx context.Context, clubID string, numSes
 
 func (c *Cache) GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error) {
 	return c.backing.GetRecentAndUpcomingTournaments(ctx)
+}
+
+func (c *Cache) GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error) {
+	return c.backing.GetPastTournaments(ctx, limit)
 }
 
 func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {

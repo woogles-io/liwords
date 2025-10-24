@@ -139,6 +139,9 @@ const (
 	// TournamentServiceGetRecentAndUpcomingTournamentsProcedure is the fully-qualified name of the
 	// TournamentService's GetRecentAndUpcomingTournaments RPC.
 	TournamentServiceGetRecentAndUpcomingTournamentsProcedure = "/tournament_service.TournamentService/GetRecentAndUpcomingTournaments"
+	// TournamentServiceGetPastTournamentsProcedure is the fully-qualified name of the
+	// TournamentService's GetPastTournaments RPC.
+	TournamentServiceGetPastTournamentsProcedure = "/tournament_service.TournamentService/GetPastTournaments"
 	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
 	// RPC.
 	TournamentServiceRunCOPProcedure = "/tournament_service.TournamentService/RunCOP"
@@ -199,6 +202,7 @@ type TournamentServiceClient interface {
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
+	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -435,6 +439,13 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getPastTournaments: connect.NewClient[tournament_service.GetPastTournamentsRequest, tournament_service.GetPastTournamentsResponse](
+			httpClient,
+			baseURL+TournamentServiceGetPastTournamentsProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("GetPastTournaments")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		runCOP: connect.NewClient[tournament_service.RunCopRequest, ipc.PairResponse](
 			httpClient,
 			baseURL+TournamentServiceRunCOPProcedure,
@@ -506,6 +517,7 @@ type tournamentServiceClient struct {
 	exportTournament                *connect.Client[tournament_service.ExportTournamentRequest, tournament_service.ExportTournamentResponse]
 	getTournamentScorecards         *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 	getRecentAndUpcomingTournaments *connect.Client[tournament_service.GetRecentAndUpcomingTournamentsRequest, tournament_service.GetRecentAndUpcomingTournamentsResponse]
+	getPastTournaments              *connect.Client[tournament_service.GetPastTournamentsRequest, tournament_service.GetPastTournamentsResponse]
 	runCOP                          *connect.Client[tournament_service.RunCopRequest, ipc.PairResponse]
 	initializeMonitoringKeys        *connect.Client[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse]
 	requestMonitoringStream         *connect.Client[tournament_service.RequestMonitoringStreamRequest, tournament_service.TournamentResponse]
@@ -690,6 +702,11 @@ func (c *tournamentServiceClient) GetRecentAndUpcomingTournaments(ctx context.Co
 	return c.getRecentAndUpcomingTournaments.CallUnary(ctx, req)
 }
 
+// GetPastTournaments calls tournament_service.TournamentService.GetPastTournaments.
+func (c *tournamentServiceClient) GetPastTournaments(ctx context.Context, req *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error) {
+	return c.getPastTournaments.CallUnary(ctx, req)
+}
+
 // RunCOP calls tournament_service.TournamentService.RunCOP.
 func (c *tournamentServiceClient) RunCOP(ctx context.Context, req *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {
 	return c.runCOP.CallUnary(ctx, req)
@@ -759,6 +776,7 @@ type TournamentServiceHandler interface {
 	ExportTournament(context.Context, *connect.Request[tournament_service.ExportTournamentRequest]) (*connect.Response[tournament_service.ExportTournamentResponse], error)
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
+	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -991,6 +1009,13 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServiceGetPastTournamentsHandler := connect.NewUnaryHandler(
+		TournamentServiceGetPastTournamentsProcedure,
+		svc.GetPastTournaments,
+		connect.WithSchema(tournamentServiceMethods.ByName("GetPastTournaments")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	tournamentServiceRunCOPHandler := connect.NewUnaryHandler(
 		TournamentServiceRunCOPProcedure,
 		svc.RunCOP,
@@ -1094,6 +1119,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetTournamentScorecardsHandler.ServeHTTP(w, r)
 		case TournamentServiceGetRecentAndUpcomingTournamentsProcedure:
 			tournamentServiceGetRecentAndUpcomingTournamentsHandler.ServeHTTP(w, r)
+		case TournamentServiceGetPastTournamentsProcedure:
+			tournamentServiceGetPastTournamentsHandler.ServeHTTP(w, r)
 		case TournamentServiceRunCOPProcedure:
 			tournamentServiceRunCOPHandler.ServeHTTP(w, r)
 		case TournamentServiceInitializeMonitoringKeysProcedure:
@@ -1251,6 +1278,10 @@ func (UnimplementedTournamentServiceHandler) GetTournamentScorecards(context.Con
 
 func (UnimplementedTournamentServiceHandler) GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetRecentAndUpcomingTournaments is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetPastTournaments is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {

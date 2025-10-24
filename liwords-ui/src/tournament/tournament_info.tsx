@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { Card, Tooltip, Button } from "antd";
 import ReactMarkdown from "react-markdown";
 import { useTournamentStoreContext } from "../store/store";
@@ -7,7 +7,7 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isClubType } from "../store/constants";
-import { TeamOutlined, CameraOutlined } from "@ant-design/icons";
+import { GlobalOutlined, CameraOutlined } from "@ant-design/icons";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { useSearchParams } from "react-router";
 
@@ -37,12 +37,35 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
     setSearchParams(newParams);
   };
 
-  const directors = tournamentContext.directors.map((username, i) => (
-    <span className="director" key={username}>
-      {i > 0 && ", "}
-      <UsernameWithContext username={username} omitSendMessage />
-    </span>
-  ));
+  // HACK: Parse :readonly suffix and sort directors (full first, then read-only)
+  // TODO: Replace with proper permissions field when backend schema is updated
+  const directors = useMemo(() => {
+    const parsedDirectors = tournamentContext.directors.map((username) => {
+      const isReadOnly = username.endsWith(":readonly");
+      const displayName = isReadOnly ? username.slice(0, -9) : username;
+      return {
+        displayName,
+        isReadOnly,
+        originalName: username,
+      };
+    });
+
+    // Sort: full directors first, then read-only directors
+    parsedDirectors.sort((a, b) => {
+      if (a.isReadOnly === b.isReadOnly) return 0;
+      return a.isReadOnly ? 1 : -1;
+    });
+
+    return parsedDirectors.map((director, i) => (
+      <span
+        className={director.isReadOnly ? "director readonly" : "director"}
+        key={director.originalName}
+      >
+        {i > 0 && ", "}
+        <UsernameWithContext username={director.displayName} omitSendMessage />
+      </span>
+    ));
+  }, [tournamentContext.directors]);
   const type = isClubType(metadata.type) ? "Club" : "Tournament";
   const title = (
     <span style={{ color: tournamentContext.metadata.color }}>
@@ -69,9 +92,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         extra={
           tournamentContext.metadata.irlMode ? (
             <Tooltip title="In Real Life Mode">
-              <TeamOutlined style={{ color: "#955f9a" }} />
-              <TeamOutlined style={{ color: "#955f9a" }} />
-              <TeamOutlined style={{ color: "#955f9a" }} />
+              <GlobalOutlined style={{ color: "#955f9a" }} />
             </Tooltip>
           ) : null
         }

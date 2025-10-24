@@ -21,6 +21,8 @@ import {
   UnfinishTournament,
   UnstartTournament,
 } from "./tournament_management";
+import { ManageDirectorsModal } from "../../manage_directors_modal";
+import { UserOutlined } from "@ant-design/icons";
 
 type ModalProps = {
   title: string;
@@ -93,6 +95,7 @@ export const GhettoTools = (props: Props) => {
   const [modalTitle, setModalTitle] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("");
+  const [manageDirectorsVisible, setManageDirectorsVisible] = useState(false);
   const { tournamentContext } = useTournamentStoreContext();
 
   const showModal = (key: string, title: string) => {
@@ -147,12 +150,27 @@ export const GhettoTools = (props: Props) => {
   return (
     <>
       <h3>Tournament Tools</h3>
-      <h4>Edit tournament metadata</h4>
-      <ul>{metadataItems}</ul>
+      <h4>General Settings</h4>
+      <ul>
+        <li style={{ marginBottom: 5 }}>
+          <Button
+            onClick={() => setManageDirectorsVisible(true)}
+            size="small"
+            icon={<UserOutlined />}
+          >
+            Manage Directors
+          </Button>
+        </li>
+        {metadataItems}
+      </ul>
+      <ManageDirectorsModal
+        visible={manageDirectorsVisible}
+        onClose={() => setManageDirectorsVisible(false)}
+      />
       {(tournamentContext.metadata.type === TType.STANDARD ||
         tournamentContext.metadata.type === TType.CHILD) && (
         <>
-          <h4>Pre-tournament settings</h4>
+          <h4>Pre-Tournament Setup</h4>
           <ul>{preListItems}</ul>
           <Divider />
           <h4>In-tournament management</h4>

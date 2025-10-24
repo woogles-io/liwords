@@ -151,7 +151,12 @@ export const TournamentRoom = (props: Props) => {
 
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
-    return tournamentContext.directors.includes(username);
+    // HACK: Check for both exact match and :readonly suffix
+    // TODO: Replace with proper permissions field when backend schema is updated
+    return tournamentContext.directors.some(
+      (director) =>
+        director === username || director === `${username}:readonly`,
+    );
   }, [tournamentContext.directors, username]);
 
   const canManageTournaments = useMemo(() => {

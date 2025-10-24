@@ -260,7 +260,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     }
     .ant-tabs-tab {
       justify-content: center;
-      padding: 12px 24px;
+      padding: 12px 16px;
       margin: 0;
       text-transform: uppercase;
       @include colorModed() {

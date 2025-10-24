@@ -53,6 +53,7 @@ type TournamentStore interface {
 	TournamentEventChan() chan<- *entity.EventWrapper
 	ListAllIDs(context.Context) ([]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
+	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
@@ -1489,6 +1490,11 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 		}
 	}
 
+	// Prevent removal of the last director
+	if areDirectors && len(persons.Persons)-len(indexesToRemove) < 1 {
+		return nil, errors.New("cannot remove the last director from a tournament")
+	}
+
 	sort.Ints(indexesToRemove)
 
 	for i := len(indexesToRemove) - 1; i >= 0; i-- {
@@ -2199,6 +2205,8 @@ func DeactivateMonitoringStream(ctx context.Context, ts TournamentStore, tournam
 	}
 
 	// Parse UUID from userID (format: "uuid:username")
+	// Note: this defensive code handles both uuid and uuid:username,
+	// this is not great! XXX
 	splitID := strings.Split(userID, ":")
 	var uuid string
 	if len(splitID) >= 1 {

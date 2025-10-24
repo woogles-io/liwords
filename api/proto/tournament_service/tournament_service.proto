@@ -79,6 +79,10 @@ message TournamentMetadata {
   // monitored enables invigilation/monitoring mode requiring participants
   // to share camera and screenshot streams via vdo.ninja
   bool monitored = 20;
+  // first_director is the username of the first tournament director
+  string first_director = 21;
+  // registrant_count is the total number of registered players across all divisions
+  int32 registrant_count = 22;
 }
 
 message SetTournamentMetadataRequest {
@@ -229,6 +233,15 @@ message GetRecentAndUpcomingTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
 }
 
+message GetPastTournamentsRequest {
+  // optional limit for number of tournaments to return (default 100)
+  int32 limit = 1;
+}
+
+message GetPastTournamentsResponse {
+  repeated TournamentMetadata tournaments = 1;
+}
+
 message RunCopRequest {
   string id = 1;
   string division = 2;
@@ -320,6 +333,10 @@ service TournamentService {
 
   rpc GetRecentAndUpcomingTournaments(GetRecentAndUpcomingTournamentsRequest)
       returns (GetRecentAndUpcomingTournamentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetPastTournaments(GetPastTournamentsRequest)
+      returns (GetPastTournamentsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);

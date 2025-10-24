@@ -192,6 +192,11 @@ export const getTournamentScorecards = TournamentService.method.getTournamentSco
 export const getRecentAndUpcomingTournaments = TournamentService.method.getRecentAndUpcomingTournaments;
 
 /**
+ * @generated from rpc tournament_service.TournamentService.GetPastTournaments
+ */
+export const getPastTournaments = TournamentService.method.getPastTournaments;
+
+/**
  * @generated from rpc tournament_service.TournamentService.RunCOP
  */
 export const runCOP = TournamentService.method.runCOP;

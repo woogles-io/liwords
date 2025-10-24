@@ -600,9 +600,20 @@ export const Chat = React.memo((props: Props) => {
           return true;
         })
         .map((ent) => {
-          const specialSender = props.highlight
-            ? props.highlight.includes(ent.sender)
-            : false;
+          // HACK: Check for both exact match and :readonly suffix for directors
+          // TODO: Replace with proper permissions field when backend schema is updated
+          let specialSender = false;
+          let isReadOnly = false;
+          if (props.highlight) {
+            specialSender = props.highlight.some(
+              (name) =>
+                name === ent.sender || name === `${ent.sender}:readonly`,
+            );
+            // Check if this sender is a read-only director
+            isReadOnly = props.highlight.some(
+              (name) => name === `${ent.sender}:readonly`,
+            );
+          }
           if (!ent.id) {
             return null;
           }
@@ -617,7 +628,7 @@ export const Chat = React.memo((props: Props) => {
               channel={ent.channel}
               timestamp={ent.timestamp}
               highlight={specialSender}
-              highlightText={props.highlightText}
+              highlightText={isReadOnly ? "Invigilator" : props.highlightText}
               sendMessage={sendNewMessage}
             />
           );

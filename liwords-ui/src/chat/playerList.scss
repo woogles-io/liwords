@@ -1,9 +1,9 @@
 @use "../base.scss" as *;
 
 .player-pane {
-  padding: 24px 0 0 0;
+  padding: 12px 0 0 0;
   .breadcrumb {
-    margin: 18px 0;
+    margin: 6px 0;
     @include colorModed() {
       color: m($gray-dark);
     }
@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   margin: 0 0 0 24px;
-  padding: 12px 0 24px 0;
+  padding: 6px 0 24px 0;
   section {
     width: 100%;
   }
@@ -62,7 +62,7 @@
     }
   }
   .player-display {
-    margin: 18px 0 0;
+    margin: 0;
     display: flex;
     align-items: center;
     .player-avatar {
