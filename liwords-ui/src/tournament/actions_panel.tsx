@@ -67,6 +67,16 @@ export const ActionsPanel = React.memo((props: Props) => {
   };
   const { dispatchTournamentContext, tournamentContext } =
     useTournamentStoreContext();
+
+  // HACK: Check if user is a full director (not read-only)
+  // TODO: Replace with proper permissions field when backend schema is updated
+  const isFullDirector = useMemo(() => {
+    if (!isDirector || !username) return false;
+    // Check if user is in directors list WITHOUT :readonly suffix
+    return tournamentContext.directors.some(
+      (director) => director === username,
+    );
+  }, [isDirector, username, tournamentContext.directors]);
   const itIsPairedMode = useMemo(
     () => isPairedMode(tournamentContext.metadata?.type),
     [tournamentContext],
@@ -288,6 +298,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               username={username}
               sendReady={props.sendReady}
               isDirector={isDirector}
+              isFullDirector={isFullDirector}
               showFirst={props.showFirst}
               tentative={pairingsTentative}
             />

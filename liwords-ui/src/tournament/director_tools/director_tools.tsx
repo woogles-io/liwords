@@ -1,6 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 // import { toAPIUrl } from '../api/api';
-import { useTournamentStoreContext } from "../../store/store";
+import {
+  useTournamentStoreContext,
+  useLoginStateStoreContext,
+} from "../../store/store";
 import "./director_tools.scss";
 import { UsernameWithContext } from "../../shared/usernameWithContext";
 import { Button, Divider } from "antd";
@@ -23,7 +26,18 @@ type DTProps = {
 
 export const DirectorTools = React.memo((props: DTProps) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { loginState } = useLoginStateStoreContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const username = loginState.username;
+
+  // HACK: Check if current user is a read-only director
+  // TODO: Replace with proper permissions field when backend schema is updated
+  const isReadOnlyDirector = useMemo(() => {
+    if (!username) return false;
+    return tournamentContext.directors.some(
+      (director) => director === `${username}:readonly`,
+    );
+  }, [username, tournamentContext.directors]);
 
   /*   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
@@ -194,10 +208,10 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   return (
     <div className="director-tools">
-      {renderStartButton()}
+      {!isReadOnlyDirector && renderStartButton()}
       {renderMonitoringControls()}
       {renderRoster()}
-      {renderGhettoTools()}
+      {!isReadOnlyDirector && renderGhettoTools()}
     </div>
   );
 });

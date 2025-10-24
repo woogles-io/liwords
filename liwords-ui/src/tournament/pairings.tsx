@@ -137,6 +137,7 @@ type Props = {
   username?: string;
   sendReady: () => void;
   isDirector: boolean;
+  isFullDirector?: boolean;
   showFirst?: boolean;
   tentative: boolean;
 };
@@ -433,8 +434,10 @@ export const Pairings = React.memo((props: Props) => {
               </p>
             ));
 
-        // Wrap scores in popover for directors (for both paired and self-paired players)
-        if (props.isDirector && props.selectedDivision) {
+        // Wrap scores in popover for full directors (not read-only)
+        // HACK: isFullDirector checks for directors without :readonly suffix
+        // TODO: Replace with proper permissions field when backend schema is updated
+        if (props.isFullDirector && props.selectedDivision) {
           if (isSelfPaired) {
             // For self-paired players, show a clickable edit trigger
             const selfPairedTrigger = (
@@ -617,8 +620,8 @@ export const Pairings = React.memo((props: Props) => {
                 </List.Item>
               );
 
-              // Wrap in popover for directors
-              if (props.isDirector && props.selectedDivision) {
+              // Wrap in popover for full directors (not read-only)
+              if (props.isFullDirector && props.selectedDivision) {
                 const player = create(TournamentPersonSchema, {
                   id: playerID,
                   rating: 0,
