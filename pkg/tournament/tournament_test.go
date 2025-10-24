@@ -270,6 +270,13 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// Directors should remain unchanged
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
+	// HACK: Test read-only directors using Rating field (0=Full, 1=Read-only)
+	// TODO: Replace with proper permissions field when backend schema is updated
+	// Add a read-only director
+	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Noah": 1}))
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Vince:Vince": 2, "Jennifer:Jennifer": 2, "Noah:Noah": 1}), ty.Directors))
+
 	// Same thing for players.
 	div1 := ty.Divisions[divOneName]
 

@@ -107,6 +107,13 @@
       @include colorModed() {
         color: m($primary-dark);
       }
+
+      &.readonly {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+        opacity: 0.7;
+      }
     }
   }
   h3 {

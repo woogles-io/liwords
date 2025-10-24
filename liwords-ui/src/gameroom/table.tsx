@@ -406,11 +406,13 @@ export const Table = React.memo((props: Props) => {
   );
 
   const tournamentNonDirectorObserver = useMemo(() => {
-    return (
-      isObserver &&
-      !tournamentContext.directors?.includes(username) &&
-      !loginState.perms.includes("adm")
+    // HACK: Check for both exact match and :readonly suffix
+    // TODO: Replace with proper permissions field when backend schema is updated
+    const isDirector = tournamentContext.directors?.some(
+      (director) =>
+        director === username || director === `${username}:readonly`,
     );
+    return isObserver && !isDirector && !loginState.perms.includes("adm");
   }, [isObserver, loginState.perms, username, tournamentContext.directors]);
   useFirefoxPatch();
   const gmClient = useClient(GameMetadataService);

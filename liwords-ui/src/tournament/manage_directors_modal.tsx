@@ -2,11 +2,13 @@ import React, { useState, useMemo, useCallback } from "react";
 import {
   Modal,
   Table,
+  Tag,
   Button,
   Space,
   Typography,
   Input,
   Form,
+  Checkbox,
   message,
   Popconfirm,
 } from "antd";
@@ -42,10 +44,16 @@ export const ManageDirectorsModal = ({
 
   const directors = useMemo(() => {
     // Transform director usernames to the expected format
-    return tournamentContext.directors.map((username) => ({
-      username,
-      // viewOnly: false, // TODO: Read-only directors not yet implemented
-    }));
+    // HACK: Parse :readonly suffix to determine permission level
+    // TODO: Replace with proper permissions field when backend schema is updated
+    return tournamentContext.directors.map((username) => {
+      const isReadOnly = username.endsWith(":readonly");
+      const displayName = isReadOnly ? username.slice(0, -9) : username;
+      return {
+        username: displayName,
+        viewOnly: isReadOnly,
+      };
+    });
   }, [tournamentContext.directors]);
 
   // Refetch tournament metadata to get updated directors list
@@ -72,25 +80,28 @@ export const ManageDirectorsModal = ({
 
   const handleAddDirector = async (values: {
     username: string;
-    // viewOnly: boolean; // TODO: Read-only directors not yet implemented
+    viewOnly: boolean;
   }) => {
     try {
       setAddingDirector(true);
 
-      // Create TournamentPersons request
+      // HACK: Rating field: 0=Full Director, 1=Read-only Director
+      // TODO: Replace with proper permissions field when backend schema is updated
       const request = create(TournamentPersonsSchema, {
         id: tournamentContext.metadata.id,
         division: "",
         persons: [
           create(TournamentPersonSchema, {
             id: values.username,
-            rating: 0, // Full director permissions
+            rating: values.viewOnly ? 1 : 0,
           }),
         ],
       });
 
       await tClient.addDirectors(request);
-      message.success(`Added ${values.username} as director`);
+      message.success(
+        `Added ${values.username} as ${values.viewOnly ? "read-only" : "full"} director`,
+      );
       form.resetFields();
 
       // Refetch metadata to update directors list
@@ -132,21 +143,20 @@ export const ManageDirectorsModal = ({
       key: "username",
       render: (username: string) => <strong>{username}</strong>,
     },
-    // TODO: Re-enable when read-only directors are implemented
-    // {
-    //   title: 'Permissions',
-    //   dataIndex: 'viewOnly',
-    //   key: 'viewOnly',
-    //   render: (viewOnly: boolean) => (
-    //     <Tag color={viewOnly ? 'orange' : 'green'}>
-    //       {viewOnly ? 'View-only' : 'Full Director'}
-    //     </Tag>
-    //   ),
-    // },
+    {
+      title: "Permissions",
+      dataIndex: "viewOnly",
+      key: "viewOnly",
+      render: (viewOnly: boolean) => (
+        <Tag color={viewOnly ? "orange" : "green"}>
+          {viewOnly ? "Read-only" : "Full Director"}
+        </Tag>
+      ),
+    },
     {
       title: "Actions",
       key: "actions",
-      render: (_: unknown, record: { username: string }) => (
+      render: (_: unknown, record: { username: string; viewOnly: boolean }) => (
         <Popconfirm
           title="Remove director?"
           description={`Are you sure you want to remove ${record.username} as a director?`}
@@ -178,7 +188,9 @@ export const ManageDirectorsModal = ({
       }
     >
       <Text type="secondary" style={{ display: "block", marginBottom: "16px" }}>
-        Add or remove tournament directors.
+        Add or remove tournament directors. Read-only directors can access the
+        monitoring dashboard and reset participant streams, but cannot modify
+        tournament settings or start rounds.
       </Text>
 
       <Form
@@ -193,12 +205,10 @@ export const ManageDirectorsModal = ({
         >
           <Input placeholder="Username" prefix={<UserOutlined />} />
         </Form.Item>
-        {/* TODO: Re-enable when read-only directors are implemented
         <Form.Item name="viewOnly" valuePropName="checked" initialValue={false}>
-          <Checkbox>View-only (monitoring dashboard access only)</Checkbox>
+          <Checkbox>Read-only (monitoring access only)</Checkbox>
         </Form.Item>
-        */}
-        <Form.Item>
+        <Form.Item style={{ marginTop: "-4px" }}>
           <Button
             type="primary"
             htmlType="submit"

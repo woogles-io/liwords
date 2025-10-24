@@ -9,6 +9,7 @@ import { Wooglinkify } from "../shared/wooglinkify";
 import { App, Tag } from "antd";
 import {
   CrownFilled,
+  EyeFilled,
   SafetyCertificateFilled,
   StarFilled,
 } from "@ant-design/icons";
@@ -151,9 +152,23 @@ export const ChatEntity = (props: EntityProps) => {
                   />
                   {props.highlightText && props.highlight && (
                     <Tag
-                      className="director"
-                      icon={<CrownFilled />}
-                      color={"#d5cad6"}
+                      className={
+                        props.highlightText === "Invigilator"
+                          ? "invigilator"
+                          : "director"
+                      }
+                      icon={
+                        props.highlightText === "Invigilator" ? (
+                          <EyeFilled />
+                        ) : (
+                          <CrownFilled />
+                        )
+                      }
+                      color={
+                        props.highlightText === "Invigilator"
+                          ? "#7eb3d6"
+                          : "#d5cad6"
+                      }
                     >
                       {props.highlightText}
                     </Tag>
