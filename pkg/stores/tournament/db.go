@@ -599,3 +599,23 @@ func (s *DBStore) DeleteMonitoringStreamsForTournament(ctx context.Context, tour
 	result := ctxDB.Exec("DELETE FROM monitoring_streams WHERE tournament_id = ?", tournamentID)
 	return result.Error
 }
+
+// GetActiveMonitoringStreams returns all streams with ACTIVE status (status = 2)
+// Used by the polling service to check stream health
+func (s *DBStore) GetActiveMonitoringStreams(ctx context.Context) ([]tl.ActiveMonitoringStream, error) {
+	ctxDB := s.db.WithContext(ctx)
+	var streams []tl.ActiveMonitoringStream
+
+	query := `
+		SELECT tournament_id, user_id, stream_type, stream_key
+		FROM monitoring_streams
+		WHERE status = 2
+		ORDER BY tournament_id, user_id, stream_type
+	`
+
+	if err := ctxDB.Raw(query).Scan(&streams).Error; err != nil {
+		return nil, err
+	}
+
+	return streams, nil
+}

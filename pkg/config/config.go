@@ -57,6 +57,9 @@ type Config struct {
 	TwitchClientSecret string
 	TwitchRedirectURI  string
 
+	// VDO.Ninja monitoring
+	VDOPollingIntervalSeconds int
+
 	Debug bool
 }
 
@@ -100,6 +103,9 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.TwitchClientID, "twitch-client-id", "", "The Twitch Integration Client ID")
 	fs.StringVar(&c.TwitchClientSecret, "twitch-client-secret", "", "The Twitch Integration Client secret")
 	fs.StringVar(&c.TwitchRedirectURI, "twitch-redirect-uri", "", "The Twitch redirect URI")
+
+	// VDO.Ninja monitoring
+	fs.IntVar(&c.VDOPollingIntervalSeconds, "vdo-polling-interval-seconds", 60, "VDO.Ninja stream polling interval midpoint in seconds (with ±25% jitter)")
 
 	// For password hashing:
 	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")

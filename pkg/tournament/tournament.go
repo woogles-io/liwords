@@ -34,6 +34,14 @@ var (
 	tracer = otel.Tracer("tournament")
 )
 
+// ActiveMonitoringStream represents a stream that needs to be polled
+type ActiveMonitoringStream struct {
+	TournamentID string
+	UserID       string
+	StreamType   string
+	StreamKey    string
+}
+
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
@@ -59,6 +67,7 @@ type TournamentStore interface {
 	GetMonitoringStreams(ctx context.Context, tournamentID string) (map[string]*ipc.MonitoringData, error)
 	GetMonitoringStream(ctx context.Context, tournamentID, userID string) (*ipc.MonitoringData, error)
 	DeleteMonitoringStreamsForTournament(ctx context.Context, tournamentID string) error
+	GetActiveMonitoringStreams(ctx context.Context) ([]ActiveMonitoringStream, error)
 }
 
 func md5hash(s string) string {
@@ -1925,6 +1934,30 @@ func ResetMonitoringStream(ctx context.Context, ts TournamentStore, tournamentID
 		return err
 	}
 
+	// Fetch updated monitoring data to send via WebSocket
+	data, err = ts.GetMonitoringStream(ctx, tournamentID, uuid)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return errors.New("no monitoring data found for this user")
+	}
+
+	// Send WebSocket message to the user to notify them of status change
+	evt := &ipc.MonitoringStreamStatusUpdate{
+		MonitoringData: data,
+	}
+	wrapped := entity.WrapEvent(evt, ipc.MessageType_MONITORING_STREAM_STATUS_UPDATE)
+	wrapped.AddAudience(entity.AudUser, uuid)
+	eventChan := ts.TournamentEventChan()
+	if eventChan != nil {
+		eventChan <- wrapped
+		log.Debug().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("sent-monitoring-stream-reset-websocket")
+	} else {
+		log.Error().Msg("monitoring-stream-reset-event-chan-nil")
+	}
+
+	log.Info().Str("tid", tournamentID).Str("uid", userID).Str("type", streamType).Msg("monitoring-stream-reset")
 	return nil
 }
 

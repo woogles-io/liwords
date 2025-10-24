@@ -1,13 +1,15 @@
 import React, { ReactNode } from "react";
-import { Card, Tooltip } from "antd";
+import { Card, Tooltip, Button } from "antd";
 import ReactMarkdown from "react-markdown";
 import { useTournamentStoreContext } from "../store/store";
+import { useLoginStateStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { CompetitorStatus } from "./competitor_status";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isClubType } from "../store/constants";
-import { TeamOutlined } from "@ant-design/icons";
+import { TeamOutlined, CameraOutlined } from "@ant-design/icons";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
+import { useSearchParams } from "react-router";
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -24,8 +26,17 @@ function LinkRenderer(props: { href?: string; children?: ReactNode }) {
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const { loginState } = useLoginStateStoreContext();
   const { metadata } = tournamentContext;
   const competitorState = useTournamentCompetitorState();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const handleOpenMonitoring = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("monitoring", "true");
+    setSearchParams(newParams);
+  };
+
   const directors = tournamentContext.directors.map((username, i) => (
     <span className="director" key={username}>
       {i > 0 && ", "}
@@ -78,6 +89,24 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           />
         )}
         <h4>Directed by: {directors}</h4>
+        {tournamentContext.metadata.monitored && loginState.loggedIn && (
+          <>
+            <h5 className="section-header">Monitoring Required</h5>
+            <p>
+              This tournament requires all participants to share their camera
+              and screen during games for invigilation purposes.
+            </p>
+            <Button
+              type="primary"
+              icon={<CameraOutlined />}
+              onClick={handleOpenMonitoring}
+              block
+              style={{ marginTop: "12px" }}
+            >
+              Set up Monitoring
+            </Button>
+          </>
+        )}
         <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown components={{ a: LinkRenderer }}>
           {tournamentContext.metadata.description}

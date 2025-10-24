@@ -1,0 +1,86 @@
+@use "../../base.scss" as *;
+
+// Collapsed widget - small circular indicator
+.monitoring-widget-collapsed {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  z-index: 1000;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+
+  @include colorModed() {
+    background: m($background);
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  // Status color borders
+  &.monitoring-widget-status-success {
+    border: 4px solid #52c41a;
+  }
+
+  &.monitoring-widget-status-warning {
+    border: 4px solid #faad14;
+  }
+
+  &.monitoring-widget-status-error {
+    border: 4px solid #f5222d;
+  }
+
+  .monitoring-widget-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 16px;
+  }
+}
+
+// Expanded widget - full card with animation
+.monitoring-widget-expanded {
+  animation: expandWidget 0.3s ease;
+}
+
+@keyframes expandWidget {
+  from {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+  to {
+    width: 250px;
+    opacity: 1;
+  }
+}
+
+// Responsive adjustments for mobile
+@media (max-width: $screen-tablet-min - 1) {
+  .monitoring-widget-collapsed {
+    bottom: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+
+    .monitoring-widget-icons {
+      font-size: 14px;
+      gap: 2px;
+    }
+  }
+
+  .monitoring-widget-expanded {
+    width: calc(100vw - 20px) !important;
+    right: 10px !important;
+    bottom: 10px !important;
+  }
+}
