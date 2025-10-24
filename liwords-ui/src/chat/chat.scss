@@ -421,6 +421,15 @@ p {
   }
 }
 
+// Lobby-specific (not tournament room): Account for increased tab padding (12px vs 8px)
+.lobby:not(.room) .chat-area {
+  .ant-card.chat {
+    .ant-tabs-content-holder {
+      height: calc(100% - 56px); // Subtract tab nav height (48px base + 8px extra)
+    }
+  }
+}
+
 .game-table {
   .chat-area {
     .ant-card.chat {

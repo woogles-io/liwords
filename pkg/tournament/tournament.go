@@ -53,6 +53,7 @@ type TournamentStore interface {
 	TournamentEventChan() chan<- *entity.EventWrapper
 	ListAllIDs(context.Context) ([]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
+	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
@@ -2199,6 +2200,8 @@ func DeactivateMonitoringStream(ctx context.Context, ts TournamentStore, tournam
 	}
 
 	// Parse UUID from userID (format: "uuid:username")
+	// Note: this defensive code handles both uuid and uuid:username,
+	// this is not great! XXX
 	splitID := strings.Split(userID, ":")
 	var uuid string
 	if len(splitID) >= 1 {

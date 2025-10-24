@@ -568,6 +568,31 @@ func (ts *TournamentService) GetRecentAndUpcomingTournaments(ctx context.Context
 	return connect.NewResponse(response), nil
 }
 
+func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connect.Request[pb.GetPastTournamentsRequest]) (*connect.Response[pb.GetPastTournamentsResponse], error) {
+	limit := req.Msg.Limit
+	if limit == 0 {
+		limit = 100 // default limit
+	}
+	tournaments, err := ts.tournamentStore.GetPastTournaments(ctx, limit)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	response := &pb.GetPastTournamentsResponse{
+		Tournaments: make([]*pb.TournamentMetadata, len(tournaments)),
+	}
+	for i, t := range tournaments {
+		if t == nil {
+			return nil, apiserver.InternalErr(errors.New("tournament is nil"))
+		}
+		tMeta, err := dbTournamentToTournamentMetadataResponse(ctx, t)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		response.Tournaments[i] = tMeta
+	}
+	return connect.NewResponse(response), nil
+}
+
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, req proto.Message) error {
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
@@ -1027,6 +1052,30 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		scheduledEndTime = timestamppb.New(*t.ScheduledEndTime)
 	}
 
+	// Get first director username
+	var firstDirector string
+	if t.Directors != nil && len(t.Directors.Persons) > 0 {
+		// Director ID format is "uuid:username", extract username
+		firstDirectorID := t.Directors.Persons[0].Id
+		parts := strings.Split(firstDirectorID, ":")
+		if len(parts) == 2 {
+			firstDirector = parts[1]
+		} else {
+			firstDirector = firstDirectorID
+		}
+	}
+
+	// Calculate total registrant count across all divisions
+	var registrantCount int32
+	for _, division := range t.Divisions {
+		if division.DivisionManager != nil {
+			players := division.DivisionManager.GetPlayers()
+			if players != nil {
+				registrantCount += int32(len(players.Persons))
+			}
+		}
+	}
+
 	metadata := &pb.TournamentMetadata{
 		Id:                        t.UUID,
 		Name:                      t.Name,
@@ -1048,6 +1097,8 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		ScheduledEndTime:          scheduledEndTime,
 		CheckinsOpen:              t.ExtraMeta.CheckinsOpen,
 		RegistrationOpen:          t.ExtraMeta.RegistrationOpen,
+		FirstDirector:             firstDirector,
+		RegistrantCount:           registrantCount,
 	}
 
 	return metadata, nil
