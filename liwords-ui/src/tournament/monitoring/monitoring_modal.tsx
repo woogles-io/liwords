@@ -65,39 +65,20 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
     [dispatchTournamentContext],
   );
 
-  // Initialize keys on backend when modal opens
+  // Initialize keys and fetch monitoring data when modal opens
   useEffect(() => {
     if (!visible || !tournamentContext.metadata.id || !loginState.loggedIn) {
       return;
     }
 
-    const initializeKeys = async () => {
+    const initializeAndFetch = async () => {
       try {
+        // First, ensure keys are initialized on the backend
         await tClient.initializeMonitoringKeys({
           tournamentId: tournamentContext.metadata.id,
         });
-      } catch (e) {
-        flashError(e);
-      }
-    };
 
-    initializeKeys();
-  }, [visible, tournamentContext.metadata.id, loginState.loggedIn, tClient]);
-
-  // Fetch monitoring data once when modal opens (no polling - webhooks update backend)
-  useEffect(() => {
-    // Don't fetch if modal is not visible
-    if (!visible) {
-      return;
-    }
-
-    // Don't fetch if tournament ID is not loaded yet or user is not logged in
-    if (!tournamentContext.metadata.id || !loginState.loggedIn) {
-      return;
-    }
-
-    const fetchMonitoringData = async () => {
-      try {
+        // Then fetch the monitoring data (which now includes the initialized keys)
         const response = await tClient.getTournamentMonitoring({
           tournamentId: tournamentContext.metadata.id,
         });
@@ -142,13 +123,12 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
       }
     };
 
-    // Fetch once when modal opens
-    fetchMonitoringData();
+    initializeAndFetch();
   }, [
     visible,
-    tClient,
     tournamentContext.metadata.id,
     loginState.loggedIn,
+    tClient,
     dispatchTournamentContext,
   ]);
 
