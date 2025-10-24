@@ -431,9 +431,7 @@ export const DirectorDashboardModal = ({
           >
             View Selected Streams ({selectedUserIds.size})
           </Button>
-          <Button
-            onClick={() => setSelectedUserIds(new Set())}
-          >
+          <Button onClick={() => setSelectedUserIds(new Set())}>
             Clear Selection
           </Button>
         </Space>
