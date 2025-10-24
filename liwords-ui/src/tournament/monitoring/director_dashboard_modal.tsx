@@ -121,43 +121,6 @@ export const DirectorDashboardModal = ({
     }
   };
 
-  const handleViewSelectedStreams = () => {
-    // Collect all stream keys from selected participants
-    const streamKeys: string[] = [];
-
-    selectedUserIds.forEach((userId) => {
-      const participant = monitoringData.find((p) => p.userId === userId);
-      if (!participant) return;
-
-      // Add camera key if stream exists (PENDING, ACTIVE, or STOPPED)
-      if (
-        participant.cameraKey &&
-        participant.cameraStatus !== StreamStatus.NOT_STARTED
-      ) {
-        streamKeys.push(participant.cameraKey);
-      }
-
-      // Add screenshot key if stream exists (PENDING, ACTIVE, or STOPPED)
-      if (
-        participant.screenshotKey &&
-        participant.screenshotStatus !== StreamStatus.NOT_STARTED
-      ) {
-        streamKeys.push(participant.screenshotKey);
-      }
-    });
-
-    if (streamKeys.length === 0) {
-      message.warning("No active streams found for selected participants");
-      return;
-    }
-
-    const url = generateMultiStreamViewUrl(streamKeys, false);
-    window.open(url, "_blank", "noopener,noreferrer");
-    message.success(
-      `Opening ${streamKeys.length} streams from ${selectedUserIds.size} participants`,
-    );
-  };
-
   // Helper to render status tag based on StreamStatus
   const renderStatusTag = (
     status: StreamStatus,
@@ -392,12 +355,56 @@ export const DirectorDashboardModal = ({
     );
   }, [monitoringData, searchText]);
 
+  const handleViewSelectedStreams = () => {
+    // Collect all stream keys from selected participants
+    const streamKeys: string[] = [];
+
+    selectedUserIds.forEach((userId) => {
+      const participant = filteredData.find((p) => p.userId === userId);
+      if (!participant) return;
+
+      // Add camera key if stream exists (PENDING, ACTIVE, or STOPPED)
+      if (
+        participant.cameraKey &&
+        participant.cameraStatus !== StreamStatus.NOT_STARTED
+      ) {
+        streamKeys.push(participant.cameraKey);
+      }
+
+      // Add screenshot key if stream exists (PENDING, ACTIVE, or STOPPED)
+      if (
+        participant.screenshotKey &&
+        participant.screenshotStatus !== StreamStatus.NOT_STARTED
+      ) {
+        streamKeys.push(participant.screenshotKey);
+      }
+    });
+
+    if (streamKeys.length === 0) {
+      message.warning("No active streams found for selected participants");
+      return;
+    }
+
+    const url = generateMultiStreamViewUrl(streamKeys, false);
+    window.open(url, "_blank", "noopener,noreferrer");
+    message.success(
+      `Opening ${streamKeys.length} streams from ${selectedUserIds.size} participants`,
+    );
+  };
+
   return (
     <Modal
       open={visible}
       onCancel={onClose}
       footer={null}
       width="90vw"
+      style={{ top: 20 }}
+      bodyStyle={{
+        maxHeight: "calc(100vh - 200px)",
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
+      }}
       title={
         <Space>
           <CameraOutlined />
@@ -437,29 +444,31 @@ export const DirectorDashboardModal = ({
         </Space>
       )}
 
-      <Table
-        dataSource={filteredData}
-        columns={columns}
-        rowKey="userId"
-        pagination={false}
-        rowSelection={{
-          selectedRowKeys: Array.from(selectedUserIds),
-          onChange: (selectedKeys) => {
-            setSelectedUserIds(new Set(selectedKeys as string[]));
-          },
-          getCheckboxProps: (record) => ({
-            // Only allow selection if participant has at least one stream that's not NOT_STARTED
-            disabled:
-              record.cameraStatus === StreamStatus.NOT_STARTED &&
-              record.screenshotStatus === StreamStatus.NOT_STARTED,
-          }),
-        }}
-        locale={{
-          emptyText: searchText
-            ? `No participants found matching "${searchText}"`
-            : "No participants are registered in this tournament yet.",
-        }}
-      />
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <Table
+          dataSource={filteredData}
+          columns={columns}
+          rowKey="userId"
+          pagination={false}
+          rowSelection={{
+            selectedRowKeys: Array.from(selectedUserIds),
+            onChange: (selectedKeys) => {
+              setSelectedUserIds(new Set(selectedKeys as string[]));
+            },
+            getCheckboxProps: (record) => ({
+              // Only allow selection if participant has at least one stream that's not NOT_STARTED
+              disabled:
+                record.cameraStatus === StreamStatus.NOT_STARTED &&
+                record.screenshotStatus === StreamStatus.NOT_STARTED,
+            }),
+          }}
+          locale={{
+            emptyText: searchText
+              ? `No participants found matching "${searchText}"`
+              : "No participants are registered in this tournament yet.",
+          }}
+        />
+      </div>
     </Modal>
   );
 };

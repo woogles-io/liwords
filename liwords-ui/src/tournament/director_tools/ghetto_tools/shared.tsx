@@ -71,11 +71,14 @@ export const DivisionSelector = (props: {
   onChange?: (value: string) => void;
   value?: string;
   exclude?: Array<string>;
+  divisions?: Array<string>;
 }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const divisionList =
+    props.divisions ?? Object.keys(tournamentContext.divisions);
   return (
     <Select onChange={props.onChange} value={props.value}>
-      {Object.keys(tournamentContext.divisions)
+      {divisionList
         .filter((d) => !props.exclude?.includes(d))
         .map((d) => (
           <Select.Option value={d} key={`div-${d}`}>
@@ -90,11 +93,14 @@ export const DivisionSelector = (props: {
 export const DivisionFormItem = (props: {
   onChange?: (value: string) => void;
   value?: string;
+  name?: string;
+  label?: string;
+  divisions?: Array<string>;
 }) => {
   return (
     <Form.Item
-      name="division"
-      label="Division Name"
+      name={props.name ?? "division"}
+      label={props.label ?? "Division Name"}
       rules={[
         {
           required: true,
@@ -102,7 +108,11 @@ export const DivisionFormItem = (props: {
         },
       ]}
     >
-      <DivisionSelector onChange={props.onChange} value={props.value} />
+      <DivisionSelector
+        onChange={props.onChange}
+        value={props.value}
+        divisions={props.divisions}
+      />
     </Form.Item>
   );
 };

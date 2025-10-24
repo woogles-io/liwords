@@ -161,6 +161,69 @@ export const RemovePlayer = (props: { tournamentID: string }) => {
   );
 };
 
+export const MovePlayer = (props: { tournamentID: string }) => {
+  const [sourceDivision, setSourceDivision] = useState("");
+  const [targetDivision, setTargetDivision] = useState("");
+  const { tournamentContext } = useTournamentStoreContext();
+  const tClient = useClient(TournamentService);
+
+  const onFinish = async (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      sourceDivision: vals.sourceDivision,
+      targetDivision: vals.targetDivision,
+      playerId: vals.username,
+    };
+    try {
+      await tClient.movePlayer(obj);
+      message.info({
+        content: "Player moved successfully",
+        duration: 3,
+      });
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  // Get list of divisions excluding the source division for target dropdown
+  const targetDivisions = Object.keys(tournamentContext.divisions).filter(
+    (div) => div !== sourceDivision,
+  );
+
+  return (
+    <Form onFinish={onFinish}>
+      <DivisionFormItem
+        name="sourceDivision"
+        label="Source Division"
+        onChange={(div: string) => {
+          setSourceDivision(div);
+          setTargetDivision(""); // Reset target when source changes
+        }}
+      />
+
+      <PlayersFormItem
+        name="username"
+        label="Player to move"
+        division={sourceDivision}
+        required
+      />
+
+      <DivisionFormItem
+        name="targetDivision"
+        label="Target Division"
+        onChange={(div: string) => setTargetDivision(div)}
+        divisions={targetDivisions}
+      />
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
 /*
 const ClearCheckedIn = (props: { tournamentID: string }) => {
   const tClient = useClient(TournamentService);

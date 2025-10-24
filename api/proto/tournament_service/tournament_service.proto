@@ -127,6 +127,13 @@ message DivisionRenameRequest {
   string new_name = 3;
 }
 
+message MovePlayerRequest {
+  string id = 1;
+  string source_division = 2;
+  string target_division = 3;
+  string player_id = 4;
+}
+
 message TournamentPairingsRequest {
   string id = 1;
   string division = 2;
@@ -289,6 +296,8 @@ service TournamentService {
   rpc AddPlayers(ipc.TournamentPersons) returns (TournamentResponse);
   // Input to RemovePlayers should be player usernames
   rpc RemovePlayers(ipc.TournamentPersons) returns (TournamentResponse);
+  // MovePlayer moves a player from one division to another
+  rpc MovePlayer(MovePlayerRequest) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)

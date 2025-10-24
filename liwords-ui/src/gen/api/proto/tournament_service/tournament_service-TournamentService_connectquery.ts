@@ -98,6 +98,13 @@ export const addPlayers = TournamentService.method.addPlayers;
 export const removePlayers = TournamentService.method.removePlayers;
 
 /**
+ * MovePlayer moves a player from one division to another
+ *
+ * @generated from rpc tournament_service.TournamentService.MovePlayer
+ */
+export const movePlayer = TournamentService.method.movePlayer;
+
+/**
  * @generated from rpc tournament_service.TournamentService.SetPairing
  */
 export const setPairing = TournamentService.method.setPairing;

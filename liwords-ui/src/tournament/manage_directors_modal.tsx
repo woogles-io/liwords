@@ -85,7 +85,7 @@ export const ManageDirectorsModal = ({
     try {
       setAddingDirector(true);
 
-      // HACK: Rating field: 0=Full Director, 1=Read-only Director
+      // HACK: Rating field: -1=Read-only Director, otherwise Full Director
       // TODO: Replace with proper permissions field when backend schema is updated
       const request = create(TournamentPersonsSchema, {
         id: tournamentContext.metadata.id,
@@ -93,7 +93,7 @@ export const ManageDirectorsModal = ({
         persons: [
           create(TournamentPersonSchema, {
             id: values.username,
-            rating: values.viewOnly ? 1 : 0,
+            rating: values.viewOnly ? -1 : 0,
           }),
         ],
       });
