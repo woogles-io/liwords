@@ -193,6 +193,79 @@ func (s *VDOWebhookService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Str("streamType", streamType).
 				Msg("vdo-webhook-hangup-stream-deactivated")
 		}
+	} else if payload.Update.Action == "details" {
+		// Type assert value to map[string]any
+		detailsMap, ok := payload.Update.Value.(map[string]any)
+		if !ok {
+			log.Warn().Str("streamID", payload.Update.StreamID).Interface("value", payload.Update.Value).Msg("vdo-webhook-details-value-not-map")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+
+		// Get the stream details for this specific streamID
+		streamDetails, ok := detailsMap[payload.Update.StreamID].(map[string]any)
+		if !ok {
+			log.Warn().Str("streamID", payload.Update.StreamID).Interface("value", payload.Update.Value).Msg("vdo-webhook-details-stream-not-found")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+
+		// Check the "seeding" field to determine if stream is active
+		seeding, ok := streamDetails["seeding"].(bool)
+		if !ok {
+			log.Warn().Str("streamID", payload.Update.StreamID).Interface("streamDetails", streamDetails).Msg("vdo-webhook-details-seeding-not-bool")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+
+		if seeding {
+			// Stream is active - activate it
+			log.Info().
+				Str("tournamentID", tournamentID).
+				Str("userID", userID).
+				Str("streamType", streamType).
+				Msg("vdo-webhook-details-activating-stream")
+			err = tournament.ActivateMonitoringStream(ctx, s.tournamentStore, tournamentID, userID, streamType)
+			if err != nil {
+				log.Error().Err(err).
+					Str("tournamentID", tournamentID).
+					Str("userID", userID).
+					Str("streamType", streamType).
+					Msg("vdo-webhook-details-activate-error")
+				// Don't return error to VDO.Ninja, just log it
+			} else {
+				log.Info().
+					Str("tournamentID", tournamentID).
+					Str("userID", userID).
+					Str("streamType", streamType).
+					Msg("vdo-webhook-details-stream-activated")
+			}
+		} else {
+			// Stream is not active - deactivate it
+			log.Info().
+				Str("tournamentID", tournamentID).
+				Str("userID", userID).
+				Str("streamType", streamType).
+				Msg("vdo-webhook-details-deactivating-stream")
+			err = tournament.DeactivateMonitoringStream(ctx, s.tournamentStore, tournamentID, userID, streamType)
+			if err != nil {
+				log.Error().Err(err).
+					Str("tournamentID", tournamentID).
+					Str("userID", userID).
+					Str("streamType", streamType).
+					Msg("vdo-webhook-details-deactivate-error")
+				// Don't return error to VDO.Ninja, just log it
+			} else {
+				log.Info().
+					Str("tournamentID", tournamentID).
+					Str("userID", userID).
+					Str("streamType", streamType).
+					Msg("vdo-webhook-details-stream-deactivated")
+			}
+		}
 	} else {
 		// Log unhandled actions for debugging
 		log.Warn().
@@ -351,7 +424,7 @@ func (s *VDOWebhookService) checkStream(ctx context.Context, stream tournament.A
 	}
 
 	// Try to parse as JSON to verify we got a valid response
-	var details map[string]interface{}
+	var details map[string]any
 	if err := json.Unmarshal([]byte(bodyStr), &details); err != nil {
 		log.Warn().
 			Err(err).
