@@ -77,7 +77,11 @@ export const DivisionSelector = (props: {
   const divisionList =
     props.divisions ?? Object.keys(tournamentContext.divisions);
   return (
-    <Select onChange={props.onChange} value={props.value}>
+    <Select
+      onChange={props.onChange}
+      value={props.value}
+      style={{ width: "50%" }}
+    >
       {divisionList
         .filter((d) => !props.exclude?.includes(d))
         .map((d) => (

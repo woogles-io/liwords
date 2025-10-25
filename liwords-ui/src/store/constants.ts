@@ -299,9 +299,12 @@ export const isSpanish = (lexicon: string) => lexicon.startsWith("FILE");
 // 1001 - max bye placement - front end doesn't allow this
 // 1002 - min gibson placement - front end doesn't allow this
 // 1003 - min gibson spread - not allowed in front end
-// 1004 - empty round controls - not allowed in front end
 export const errorMap: Map<number, string> = new Map<number, string>([
   // Tournament errors
+  [
+    1004,
+    "Round controls have not been set for division $2. Please set round controls before starting the tournament.",
+  ],
   [
     WooglesError.TOURNAMENT_NEGATIVE_MAX_BYE_PLACEMENT,
     "Max Bye Placement cannot be less than 1: Tournament: $1 Division: $2 Max Bye Placement you entered: $3",
