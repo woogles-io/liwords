@@ -230,6 +230,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
       ]}
       style={{ top: 20 }}
       bodyStyle={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
+      zIndex={1100}
     >
       <Alert
         message="Monitoring Required"

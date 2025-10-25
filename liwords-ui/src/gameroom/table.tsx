@@ -70,9 +70,11 @@ import {
   StreakInfoResponse,
   StreakInfoResponseSchema,
 } from "../gen/api/proto/game_service/game_service_pb";
-import { useClient } from "../utils/hooks/connect";
+import { flashError, useClient } from "../utils/hooks/connect";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { MonitoringData } from "../tournament/monitoring/types";
 import { ActionType } from "../actions/actions";
 import { syntheticGameInfo } from "../boardwizard/synthetic_game_info";
 import { MachineLetter, MachineWord } from "../utils/cwgame/common";
@@ -291,6 +293,9 @@ export const Table = React.memo((props: Props) => {
     commentsClient,
     props.annotated ?? false,
   );
+
+  // Tournament client for monitoring
+  const tClient = useClient(TournamentService);
 
   // Comments drawer state
   const [searchParams, setSearchParams] = useSearchParams();
@@ -521,6 +526,69 @@ export const Table = React.memo((props: Props) => {
     loginState,
     undefined,
   );
+
+  // Fetch monitoring data on initial load if tournament requires monitoring
+  useEffect(() => {
+    if (
+      !tournamentContext.metadata.id ||
+      !loginState.loggedIn ||
+      !tournamentContext.metadata.monitored
+    ) {
+      return;
+    }
+
+    const fetchMonitoringData = async () => {
+      try {
+        const response = await tClient.getTournamentMonitoring({
+          tournamentId: tournamentContext.metadata.id,
+        });
+
+        // Convert to frontend format
+        const data: MonitoringData[] = response.participants.map((p) => ({
+          userId: p.userId,
+          username: p.username,
+          cameraKey: p.cameraKey,
+          screenshotKey: p.screenshotKey,
+          cameraStatus: p.cameraStatus,
+          cameraTimestamp: p.cameraTimestamp
+            ? new Date(
+                Number(p.cameraTimestamp.seconds) * 1000 +
+                  Number(p.cameraTimestamp.nanos) / 1000000,
+              )
+            : null,
+          screenshotStatus: p.screenshotStatus,
+          screenshotTimestamp: p.screenshotTimestamp
+            ? new Date(
+                Number(p.screenshotTimestamp.seconds) * 1000 +
+                  Number(p.screenshotTimestamp.nanos) / 1000000,
+              )
+            : null,
+        }));
+
+        // Update tournament context with monitoring data
+        dispatchTournamentContext({
+          actionType: ActionType.SetMonitoringData,
+          payload: data.reduce(
+            (acc, d) => {
+              acc[d.userId] = d;
+              return acc;
+            },
+            {} as { [userId: string]: MonitoringData },
+          ),
+        });
+      } catch (e) {
+        flashError(e);
+      }
+    };
+
+    fetchMonitoringData();
+  }, [
+    tournamentContext.metadata.id,
+    tournamentContext.metadata.monitored,
+    loginState.loggedIn,
+    tClient,
+    dispatchTournamentContext,
+  ]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.

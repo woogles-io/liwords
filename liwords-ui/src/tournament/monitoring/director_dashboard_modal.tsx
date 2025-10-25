@@ -46,7 +46,7 @@ export const DirectorDashboardModal = ({
     new Set(),
   );
 
-  // Fetch monitoring data and poll every 2 seconds when modal is visible
+  // Fetch monitoring data and poll every 5 seconds when modal is visible
   useEffect(() => {
     if (!visible) {
       return; // Stop polling when modal is not visible
@@ -84,7 +84,23 @@ export const DirectorDashboardModal = ({
             : null,
         }));
 
-        setMonitoringData(data);
+        // Filter to only show players currently in the tournament
+        // Build a set of current player IDs from all divisions
+        const currentPlayerIds = new Set<string>();
+        Object.values(tournamentContext.divisions).forEach((division) => {
+          division.players.forEach((player) => {
+            currentPlayerIds.add(player.id);
+          });
+        });
+
+        // Filter monitoring data to only include current players
+        // Player IDs are in format "userId:username"
+        const filteredData = data.filter((monitoringEntry) => {
+          const fullPlayerId = `${monitoringEntry.userId}:${monitoringEntry.username}`;
+          return currentPlayerIds.has(fullPlayerId);
+        });
+
+        setMonitoringData(filteredData);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         flashError(e);
@@ -100,7 +116,12 @@ export const DirectorDashboardModal = ({
     return () => {
       clearInterval(interval);
     };
-  }, [visible, tClient, tournamentContext.metadata.id]);
+  }, [
+    visible,
+    tClient,
+    tournamentContext.metadata.id,
+    tournamentContext.divisions,
+  ]);
 
   const handleResetStream = async (
     userId: string,

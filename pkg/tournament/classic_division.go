@@ -1607,8 +1607,14 @@ func (t *ClassicDivision) IsRoundStartable() error {
 		if isFinished {
 			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_FINISHED, t.TournamentName, t.DivisionName)
 		}
-	} else if !t.IsStartable() {
-		return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NOT_STARTABLE, t.TournamentName, t.DivisionName)
+	} else {
+		// Check conditions separately for more specific error messages
+		if len(t.Players.Persons) < 2 {
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_NOT_STARTABLE, t.TournamentName, t.DivisionName)
+		}
+		if len(t.Matrix) < 1 {
+			return entity.NewWooglesError(pb.WooglesError_TOURNAMENT_EMPTY_ROUND_CONTROLS, t.TournamentName, t.DivisionName)
+		}
 	}
 
 	err := t.IsRoundReady(int(t.CurrentRound + 1))
