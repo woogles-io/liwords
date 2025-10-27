@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Card, Tabs, Tooltip } from "antd";
+import { useEffect, useState } from "react";
+import { Card, Tooltip } from "antd";
 import { Link } from "react-router";
 import {
   GlobalOutlined,
@@ -10,8 +10,6 @@ import { useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import type { TournamentMetadata } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import "./upcoming_tournaments.scss";
-
-const { TabPane } = Tabs;
 
 const formatRelativeTime = (date: Date): string => {
   const now = new Date();
@@ -62,7 +60,6 @@ const TournamentCard = ({ tournament }: { tournament: TournamentMetadata }) => {
   const now = new Date();
   const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
   const isUpcoming = startDate && now < startDate;
-  const hasEnded = endDate && now > endDate;
 
   return (
     <div className="tournament-card">
@@ -139,7 +136,6 @@ export const UpcomingTournamentsWidget = () => {
   const [pastTournaments, setPastTournaments] = useState<
     Array<TournamentMetadata>
   >([]);
-  const [activeTab, setActiveTab] = useState("upcoming");
   const tournamentClient = useClient(TournamentService);
 
   useEffect(() => {
@@ -148,7 +144,7 @@ export const UpcomingTournamentsWidget = () => {
         const resp = await tournamentClient.getRecentAndUpcomingTournaments({});
         // Filter out tournaments that have already ended
         const now = new Date();
-        const filtered = resp.tournaments.filter((t) => {
+        const filtered = resp.tournaments.filter((t: TournamentMetadata) => {
           if (!t.scheduledEndTime) return true;
           const endDate = new Date(Number(t.scheduledEndTime.seconds) * 1000);
           return endDate > now; // Only show if end time is in the future
@@ -161,58 +157,45 @@ export const UpcomingTournamentsWidget = () => {
   }, [tournamentClient]);
 
   useEffect(() => {
-    if (activeTab === "past") {
-      (async () => {
-        try {
-          const resp = await tournamentClient.getPastTournaments({ limit: 50 });
-          setPastTournaments(resp.tournaments);
-        } catch (error) {
-          console.error("Error fetching past tournaments:", error);
-        }
-      })();
-    }
-  }, [activeTab, tournamentClient]);
-
-  const renderUpcoming = () => {
-    if (upcomingTournaments.length === 0) {
-      return (
-        <div className="empty-state">
-          No upcoming tournaments in next 7 days
-        </div>
-      );
-    }
-    return (
-      <div className="tournaments-list">
-        {upcomingTournaments.map((t) => (
-          <TournamentCard key={t.id} tournament={t} />
-        ))}
-      </div>
-    );
-  };
-
-  const renderPast = () => {
-    if (pastTournaments.length === 0) {
-      return <div className="empty-state">No past tournaments</div>;
-    }
-    return (
-      <div className="tournaments-list">
-        {pastTournaments.map((t) => (
-          <TournamentCard key={t.id} tournament={t} />
-        ))}
-      </div>
-    );
-  };
+    (async () => {
+      try {
+        const resp = await tournamentClient.getPastTournaments({ limit: 50 });
+        setPastTournaments(resp.tournaments);
+      } catch (error) {
+        console.error("Error fetching past tournaments:", error);
+      }
+    })();
+  }, [tournamentClient]);
 
   return (
-    <Card className="upcoming-tournaments-widget">
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="UPCOMING TOURNAMENTS" key="upcoming">
-          {renderUpcoming()}
-        </TabPane>
-        <TabPane tab="PAST" key="past">
-          {renderPast()}
-        </TabPane>
-      </Tabs>
+    <Card className="upcoming-tournaments-widget" title="Tournaments">
+      <div className="tournaments-container">
+        {upcomingTournaments.length > 0 && (
+          <>
+            <h4>Upcoming Tournaments</h4>
+            <div className="tournaments-list">
+              {upcomingTournaments.map((t) => (
+                <TournamentCard key={t.id} tournament={t} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {upcomingTournaments.length === 0 && pastTournaments.length === 0 && (
+          <div className="empty-state">No tournaments</div>
+        )}
+
+        {pastTournaments.length > 0 && (
+          <>
+            <h4>Past Tournaments</h4>
+            <div className="tournaments-list">
+              {pastTournaments.map((t) => (
+                <TournamentCard key={t.id} tournament={t} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </Card>
   );
 };

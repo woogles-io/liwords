@@ -177,8 +177,17 @@ span.user-context-menu.ant-dropdown-trigger {
     .tournament-info .ant-card.tournament {
       height: calc(100vh - #{base.$header-height-desktop + 48px});
     }
+    .chat-area {
+      .ant-card.upcoming-tournaments-widget {
+        height: calc(50% - 6px);
+        .ant-card-body {
+          height: calc(100% - 52px);
+          max-height: calc(100% - 52px);
+        }
+      }
+    }
     &:not(.room) .chat-area .ant-card.chat {
-      height: calc(100vh - #{base.$header-height-desktop + 48px + 192px});
+      height: calc(50% - 6px);
     }
     &.room .chat-area .ant-card.chat {
       height: calc(100vh - #{base.$header-height-desktop + 48px});
