@@ -59,28 +59,30 @@ Email: %s
 var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
 
 type AuthenticationService struct {
-	userStore    user.Store
-	sessionStore sessions.SessionStore
-	configStore  config.ConfigStore
-	secretKey    string
-	mailgunKey   string
-	discordToken string
-	argonConfig  config.ArgonConfig
-	q            *models.Queries
+	userStore     user.Store
+	sessionStore  sessions.SessionStore
+	configStore   config.ConfigStore
+	secretKey     string
+	mailgunKey    string
+	discordToken  string
+	argonConfig   config.ArgonConfig
+	secureCookies bool
+	q             *models.Queries
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
 	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig,
-	q *models.Queries) *AuthenticationService {
+	secureCookies bool, q *models.Queries) *AuthenticationService {
 	return &AuthenticationService{
-		userStore:    u,
-		sessionStore: ss,
-		configStore:  cs,
-		secretKey:    secretKey,
-		mailgunKey:   mailgunKey,
-		discordToken: discordToken,
-		argonConfig:  cfg,
-		q:            q}
+		userStore:     u,
+		sessionStore:  ss,
+		configStore:   cs,
+		secretKey:     secretKey,
+		mailgunKey:    mailgunKey,
+		discordToken:  discordToken,
+		argonConfig:   cfg,
+		secureCookies: secureCookies,
+		q:             q}
 }
 
 func modActionExistsErr(err error) error {
@@ -120,7 +122,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 		return nil, apiserver.InternalErr(err)
 	}
 
-	err = apiserver.SetDefaultCookie(ctx, sess.ID)
+	err = apiserver.SetDefaultCookie(ctx, sess.ID, as.secureCookies)
 
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
@@ -142,7 +144,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *connect.Request[
 		return nil, apiserver.InternalErr(err)
 	}
 	// Delete the cookie as well.
-	err = apiserver.ExpireCookie(ctx, sess.ID)
+	err = apiserver.ExpireCookie(ctx, sess.ID, as.secureCookies)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -164,10 +166,22 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 
 	u, err := apiserver.AuthUser(ctx, as.userStore)
 	if err != nil {
+		// Auth failed - log comprehensive details for debugging
+		log.Warn().
+			Err(err).
+			Str("authError", err.Error()).
+			Msg("auth-failed-issuing-anonymous-token")
+
 		ut, err := as.unauthedToken(ctx, feHash)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
+
+		log.Info().
+			Str("anonymousUID", ut.Cid).
+			Str("connectionID", ut.Cid).
+			Msg("issued-anonymous-socket-token")
+
 		return connect.NewResponse(ut), nil
 	}
 	// Otherwise, we are authenticated.
@@ -208,6 +222,15 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 	// create a random connection ID.
 	cid := shortuuid.New()[1:10]
+
+	log.Info().
+		Str("username", unn).
+		Str("userID", uuid).
+		Str("connectionID", cid).
+		Bool("authenticated", authed).
+		Strs("permissions", perms).
+		Msg("issued-authenticated-socket-token")
+
 	return connect.NewResponse(&pb.SocketTokenResponse{
 		Token:           tokenString,
 		Cid:             cid,
@@ -277,7 +300,7 @@ func (as *AuthenticationService) InstallSignedCookie(ctx context.Context, r *con
 			return nil, apiserver.InternalErr(errors.New("could not convert claim"))
 		}
 		log.Info().Msg("install-signed-cookie")
-		err = apiserver.SetDefaultCookie(ctx, sessId)
+		err = apiserver.SetDefaultCookie(ctx, sessId, as.secureCookies)
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}

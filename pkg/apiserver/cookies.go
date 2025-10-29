@@ -36,7 +36,7 @@ func setCookie(ctx context.Context, cookie *http.Cookie) error {
 	return nil
 }
 
-func SetDefaultCookie(ctx context.Context, sessID string) error {
+func SetDefaultCookie(ctx context.Context, sessID string, secure bool) error {
 	cookie := &http.Cookie{
 		Name:  "session",
 		Value: sessID,
@@ -47,18 +47,22 @@ func SetDefaultCookie(ctx context.Context, sessID string) error {
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
 		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
 	}
 	log.Debug().Msgf("setting cookie %v", cookie)
 	return setCookie(ctx, cookie)
 }
 
-func ExpireCookie(ctx context.Context, sessID string) error {
+func ExpireCookie(ctx context.Context, sessID string, secure bool) error {
 	return setCookie(ctx, &http.Cookie{
 		Name:     "session",
 		Value:    sessID,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
 		Expires:  time.Now().Add(-100 * time.Hour),
 	})
 }
@@ -72,7 +76,7 @@ const RenewCookieTimer = time.Hour * 24 * 14
 
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
 // a session ID, and attaches a Session to the request context (at `sesskey`)
-func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
+func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore, secureCookies bool) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -100,7 +104,7 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 				err := sessionStore.ExtendExpiry(ctx, session)
 				log.Err(err).Msg("extending-session")
 				// extend the cookie age as well.
-				SetDefaultCookie(ctx, sessionCookie.Value)
+				SetDefaultCookie(ctx, sessionCookie.Value, secureCookies)
 			}
 			ctx = PlaceInContext(ctx, session)
 			r = r.WithContext(ctx)

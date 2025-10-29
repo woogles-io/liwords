@@ -63,6 +63,7 @@ import {
   ClientGameplayEvent,
   GameMetaEvent_EventType,
   GameMetaEventSchema,
+  GameMode,
   PlayerInfo,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
@@ -1123,12 +1124,15 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [gameContext.turns, props.vsBot, props.gameMode]);
   const showNudge = useMemo(() => {
     // Only show nudge if this is not a tournament/club game and it's not our turn.
-    const isCorrespondence = props.gameMode === 1;
+    const isCorrespondence = props.gameMode === GameMode.CORRESPONDENCE;
     if (isCorrespondence) return false;
     return !isMyTurn && !props.vsBot && props.tournamentID === "";
   }, [isMyTurn, props.tournamentID, props.vsBot, props.gameMode]);
+  const isCorrespondenceGame = props.gameMode === GameMode.CORRESPONDENCE;
   const anonymousTourneyViewer =
     props.tournamentID && props.anonymousViewer && !props.gameDone;
+  const correspondenceSpectator =
+    isCorrespondenceGame && !props.gameDone && props.currentRack.length === 0;
   const nonDirectorAnalyzerDisallowed =
     props.tournamentNonDirectorObserver && props.tournamentPrivateAnalysis;
   const stillWaitingForGameToStart =
@@ -1139,6 +1143,8 @@ export const BoardPanel = React.memo((props: Props) => {
   let gameMetaMessage;
   if (examinableGameEndMessage) {
     gameMetaMessage = examinableGameEndMessage;
+  } else if (correspondenceSpectator) {
+    gameMetaMessage = "Tiles are hidden for correspondence game spectators";
   } else if (anonymousTourneyViewer) {
     gameMetaMessage = "Log in or register to see player tiles";
   } else if (stillWaitingForGameToStart) {

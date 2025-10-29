@@ -2,7 +2,7 @@ import { Button } from "antd";
 import React, { useState } from "react";
 
 type Props = {
-  sendReady: () => void;
+  sendReady: () => boolean;
 };
 
 export const ReadyButton = (props: Props) => {
@@ -11,8 +11,10 @@ export const ReadyButton = (props: Props) => {
     <Button
       className="primary"
       onClick={() => {
-        props.sendReady();
-        setDisabled(true);
+        const success = props.sendReady();
+        if (success) {
+          setDisabled(true);
+        }
       }}
       disabled={disabled}
     >

@@ -170,7 +170,7 @@ func main() {
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.ExposeResponseWriterMiddleware,
-		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
+		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies),
 		apiserver.APIKeyMiddlewareGenerator(),
 		config.CtxMiddlewareGenerator(cfg),
 
@@ -204,7 +204,7 @@ func main() {
 	oauthIntegrationService := integrations.NewOAuthIntegrationService(stores.SessionStore, stores.Queries, cfg)
 	integrationService := integrations.NewIntegrationService(stores.Queries)
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
-		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig, stores.Queries)
+		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig, cfg.SecureCookies, stores.Queries)
 	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)

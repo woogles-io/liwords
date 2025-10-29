@@ -735,7 +735,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
-	sanitized, err := sanitize(b.stores.UserStore, evt, userID)
+	sanitized, err := sanitize(b.stores.UserStore, b.stores.GameStore, evt, userID)
 	if err != nil {
 		return err
 	}
@@ -755,7 +755,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
-	sanitized, err := sanitize(b.stores.UserStore, evt, userID)
+	sanitized, err := sanitize(b.stores.UserStore, b.stores.GameStore, evt, userID)
 	if err != nil {
 		return err
 	}

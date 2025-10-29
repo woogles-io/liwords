@@ -135,7 +135,7 @@ type Props = {
   selectedDivision?: string;
   selectedRound: number;
   username?: string;
-  sendReady: () => void;
+  sendReady: () => boolean;
   isDirector: boolean;
   isFullDirector?: boolean;
   showFirst?: boolean;

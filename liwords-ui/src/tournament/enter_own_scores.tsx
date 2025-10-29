@@ -60,7 +60,7 @@ const ShowResults = (props: ShowResultsProps) => {
           newGame={() => {}}
           username=""
           userID={props.userID}
-          sendReady={() => {}}
+          sendReady={() => false}
           showFirst
         />
       </div>
