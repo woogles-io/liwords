@@ -14,11 +14,13 @@ export const baseURL = `${loc.protocol}//${apiEndpoint}`;
 export const transport = createConnectTransport({
   baseUrl: `${baseURL}/api/`,
   //   interceptors: [errorTranslator],
+  fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
 });
 
 export const binaryTransport = createConnectTransport({
   baseUrl: `${loc.protocol}//${apiEndpoint}/api/`,
   useBinaryFormat: true,
+  fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
 });
 
 export function useClient<T extends DescService>(

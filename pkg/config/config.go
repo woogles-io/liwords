@@ -60,7 +60,8 @@ type Config struct {
 	// VDO.Ninja monitoring
 	VDOPollingIntervalSeconds int
 
-	Debug bool
+	Debug         bool
+	SecureCookies bool
 }
 
 type ctxKey string
@@ -78,6 +79,7 @@ func (c *Config) Load(args []string) error {
 	fs := flag.NewFlagSet("liwords", flag.ContinueOnError)
 
 	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
+	fs.BoolVar(&c.SecureCookies, "secure-cookies", false, "use Secure flag on cookies (set to true for HTTPS/production)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")

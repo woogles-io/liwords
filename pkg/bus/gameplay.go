@@ -284,12 +284,40 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
+	log.Ctx(ctx).Info().
+		Str("userID", userID).
+		Str("username", reqUser.Username).
+		Str("fullUserID", fullUserID).
+		Str("tournamentID", evt.TournamentId).
+		Str("tournamentName", t.Name).
+		Str("division", evt.Division).
+		Int32("round", evt.Round).
+		Int32("gameIndex", evt.GameIndex).
+		Bool("unready", evt.Unready).
+		Str("connID", connID).
+		Msg("user-clicked-ready")
+
 	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.stores.TournamentStore, t, fullUserID, connID,
 		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
+		log.Ctx(ctx).Error().
+			Err(err).
+			Str("userID", userID).
+			Str("username", reqUser.Username).
+			Str("tournamentID", evt.TournamentId).
+			Str("division", evt.Division).
+			Int32("round", evt.Round).
+			Msg("error-setting-ready")
 		return err
 	}
+
+	log.Ctx(ctx).Info().
+		Str("userID", userID).
+		Str("username", reqUser.Username).
+		Bool("bothReady", bothReady).
+		Interface("playerIDs", playerIDs).
+		Msg("ready-state-updated")
 
 	// Let's send the ready message to both players.
 	evt.PlayerId = fullUserID
@@ -325,6 +353,15 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	defer redisConn.Close()
 
 	// Both players are ready! Instantiate and start a new game.
+	log.Ctx(ctx).Info().
+		Str("userID", userID).
+		Str("username", reqUser.Username).
+		Str("tournamentID", evt.TournamentId).
+		Str("division", evt.Division).
+		Int32("round", evt.Round).
+		Interface("playerIDs", playerIDs).
+		Msg("both-players-ready-instantiating-game")
+
 	foundUs := false
 	otherID := ""
 	users := [2]*entity.User{nil, nil}
@@ -378,8 +415,27 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	g, err := gameplay.InstantiateNewGame(ctx, b.stores.GameStore, b.config,
 		users, gameReq, tdata)
 	if err != nil {
+		log.Ctx(ctx).Error().
+			Err(err).
+			Str("userID", userID).
+			Str("username", reqUser.Username).
+			Str("otherUserID", otherID).
+			Str("otherUsername", users[otherUserIdx].Username).
+			Str("tournamentID", evt.TournamentId).
+			Msg("error-instantiating-tournament-game")
 		return err
 	}
+
+	log.Ctx(ctx).Info().
+		Str("userID", userID).
+		Str("username", reqUser.Username).
+		Str("otherUserID", otherID).
+		Str("otherUsername", users[otherUserIdx].Username).
+		Str("gameID", g.GameID()).
+		Str("tournamentID", evt.TournamentId).
+		Str("division", evt.Division).
+		Int32("round", evt.Round).
+		Msg("tournament-game-created")
 
 	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
 	if err != nil {

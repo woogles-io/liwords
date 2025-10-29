@@ -222,13 +222,13 @@ export const TournamentRoom = (props: Props) => {
           />
           {isRegistered && (
             <CompetitorStatus
-              sendReady={() =>
-                readyForTournamentGame(
+              sendReady={() => {
+                return readyForTournamentGame(
                   sendSocketMsg,
                   tournamentContext.metadata.id,
                   competitorState,
-                )
-              }
+                );
+              }}
             />
           )}
         </div>

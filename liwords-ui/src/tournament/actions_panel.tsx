@@ -45,7 +45,7 @@ type Props = {
   isDirector: boolean;
   canManageTournaments: boolean;
   onSeekSubmit: (g: SoughtGame) => void;
-  sendReady: () => void;
+  sendReady: () => boolean;
   showFirst?: boolean;
 };
 

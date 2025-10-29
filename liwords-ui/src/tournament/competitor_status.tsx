@@ -11,7 +11,7 @@ import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor
 import { TourneyStatus } from "../store/selectors/tournament_selectors";
 
 type Props = {
-  sendReady: () => void;
+  sendReady: () => boolean;
 };
 
 export const CompetitorStatus = (props: Props) => {
