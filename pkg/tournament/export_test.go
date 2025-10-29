@@ -23,7 +23,7 @@ func TestExport(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	stores, cfg := recreateDB()
-	defer func() { cleanup(stores) }()
+	defer stores.Disconnect()
 	tstore, us := stores.TournamentStore, stores.UserStore
 
 	testcases := []struct {

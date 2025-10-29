@@ -10,6 +10,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/comments"
 	"github.com/woogles-io/liwords/pkg/stores/config"
 	"github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/mod"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/puzzles"
@@ -34,6 +35,7 @@ type Stores struct {
 	SessionStore    *session.DBStore
 	PuzzleStore     *puzzles.DBStore
 	CommentsStore   *comments.DBStore
+	LeagueStore     *league.DBStore
 
 	// Refactor this soon:
 	GameDocumentStore  *owstores.GameDocumentStore
@@ -103,7 +105,44 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
+
+	stores.LeagueStore, err = league.NewDBStore(cfg, dbPool)
+	if err != nil {
+		return nil, err
+	}
+
 	stores.Queries = models.New(dbPool)
 
 	return stores, nil
+}
+
+// Disconnect disconnects from all stores
+func (s *Stores) Disconnect() {
+	if s.UserStore != nil {
+		s.UserStore.Disconnect()
+	}
+	if s.GameStore != nil {
+		s.GameStore.Disconnect()
+	}
+	if s.SoughtGameStore != nil {
+		s.SoughtGameStore.Disconnect()
+	}
+	if s.ListStatStore != nil {
+		s.ListStatStore.Disconnect()
+	}
+	if s.NotorietyStore != nil {
+		s.NotorietyStore.Disconnect()
+	}
+	if s.TournamentStore != nil {
+		s.TournamentStore.Disconnect()
+	}
+	if s.SessionStore != nil {
+		s.SessionStore.Disconnect()
+	}
+	if s.PuzzleStore != nil {
+		s.PuzzleStore.Disconnect()
+	}
+	if s.CommentsStore != nil {
+		s.CommentsStore.Disconnect()
+	}
 }

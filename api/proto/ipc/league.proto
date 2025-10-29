@@ -1,0 +1,90 @@
+syntax = "proto3";
+package ipc;
+
+option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
+
+message League {
+    string uuid = 1;
+    string name = 2;
+    string description = 3;
+    string slug = 4;
+    LeagueSettings settings = 5;
+    string current_season_id = 6;
+    bool is_active = 7;
+}
+
+message LeagueSettings {
+    int32 season_length_days = 1;
+    repeated int32 start_day_of_month = 2;
+    TimeControl time_control = 3;
+    string lexicon = 4;
+    string variant = 5;
+    int32 division_size = 6;
+    int32 promotion_count = 7;
+    int32 relegation_count = 8;
+}
+
+message TimeControl {
+    int32 increment_seconds = 1;
+    int32 time_bank_minutes = 2;
+}
+
+message Season {
+    string uuid = 1;
+    string league_id = 2;
+    int32 season_number = 3;
+    int64 start_date = 4;
+    int64 end_date = 5;
+    int64 actual_end_date = 6;
+    SeasonStatus status = 7;
+    repeated Division divisions = 8;
+}
+
+enum SeasonStatus {
+    SEASON_SCHEDULED = 0;
+    SEASON_ACTIVE = 1;
+    SEASON_COMPLETED = 2;
+    SEASON_CANCELLED = 3;
+}
+
+message Division {
+    string uuid = 1;
+    string season_id = 2;
+    int32 division_number = 3;
+    string division_name = 4;
+    repeated PlayerRegistration players = 5;
+    repeated string game_ids = 6;
+    repeated LeaguePlayerStanding standings = 7;
+    bool is_complete = 8;
+}
+
+message PlayerRegistration {
+    string user_id = 1;
+    string username = 2;
+    string division_id = 3;
+    int64 registration_date = 4;
+    int32 starting_rating = 5;
+    int32 firsts_count = 6;
+    string status = 7;
+}
+
+message LeaguePlayerStanding {
+    string user_id = 1;
+    string username = 2;
+    int32 rank = 3;
+    int32 wins = 4;
+    int32 losses = 5;
+    int32 draws = 6;
+    int32 spread = 7;
+    int32 games_played = 8;
+    int32 games_remaining = 9;
+    StandingResult result = 10;
+}
+
+enum StandingResult {
+    RESULT_NONE = 0;
+    RESULT_PROMOTED = 1;
+    RESULT_RELEGATED = 2;
+    RESULT_STAYED = 3;
+    RESULT_CHAMPION = 4;
+}

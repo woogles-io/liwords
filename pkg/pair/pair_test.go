@@ -21,35 +21,35 @@ func TestRoundRobin(t *testing.T) {
 	// Test Round Robin with only two players.
 	// This should obviously never be used
 	// but it shouldn't throw any errors.
-	pairings, err := getRoundRobinPairings(2, 0, 10)
+	pairings, err := GetRoundRobinPairings(2, 0, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings, err = getRoundRobinPairings(2, 1, 10)
+	pairings, err = GetRoundRobinPairings(2, 1, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings, err = getRoundRobinPairings(2, 2, 10)
+	pairings, err = GetRoundRobinPairings(2, 2, 10)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings0_1, err := getRoundRobinPairings(10, 0, 3)
+	pairings0_1, err := GetRoundRobinPairings(10, 0, 3)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings0_2, err := getRoundRobinPairings(10, 0, 3)
+	pairings0_2, err := GetRoundRobinPairings(10, 0, 3)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings9, err := getRoundRobinPairings(10, 9, 3)
+	pairings9, err := GetRoundRobinPairings(10, 9, 3)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings18, err := getRoundRobinPairings(10, 18, 3)
+	pairings18, err := GetRoundRobinPairings(10, 18, 3)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
-	pairings20, err := getRoundRobinPairings(10, 20, 3)
+	pairings20, err := GetRoundRobinPairings(10, 20, 3)
 	is.NoErr(err)
 	is.NoErr(equalPairings([]int{1, 0}, pairings))
 
@@ -66,7 +66,7 @@ func TestRoundRobin(t *testing.T) {
 			pairingsStr := ""
 			prevPairingsStr := ""
 			for round := 0; round < 60; round++ {
-				pairings, err := getRoundRobinPairings(numberOfPlayers, round, seed)
+				pairings, err := GetRoundRobinPairings(numberOfPlayers, round, seed)
 				is.NoErr(err)
 				pairingsStr += fmt.Sprintf(">%v<\n", pairings)
 				for player, opponent := range pairings {

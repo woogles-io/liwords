@@ -153,19 +153,11 @@ func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 	return tp
 }
 
-func cleanup(s *stores.Stores) {
-	s.UserStore.Disconnect()
-	s.TournamentStore.Disconnect()
-	s.GameStore.Disconnect()
-	s.NotorietyStore.Disconnect()
-	s.ListStatStore.Disconnect()
-}
-
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	stores, cfg := recreateDB()
-	defer func() { cleanup(stores) }()
+	defer stores.Disconnect()
 	tstore, us := stores.TournamentStore, stores.UserStore
 
 	players := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
@@ -586,7 +578,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	stores, cfg := recreateDB()
-	defer func() { cleanup(stores) }()
+	defer stores.Disconnect()
 	tstore, us := stores.TournamentStore, stores.UserStore
 
 	divOnePlayers := makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
