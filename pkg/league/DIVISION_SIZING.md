@@ -56,6 +56,39 @@ Rookie divisions are numbered 100, 101, 102, ... to distinguish them from regula
 - 40 rookies → [14, 13, 13] (3 balanced divisions)
 - 60 rookies → [15, 15, 15, 15] (4 divisions at target)
 
+## Rookie Graduation
+
+When a season with rookie divisions ends, rookies are graduated into regular divisions for the next season.
+
+**Graduation Formula:**
+```
+groupSize = ceil(numRookies / 6)
+numGroups = ceil(numRookies / groupSize)
+startingDivision = max(2, highestRegularDivision - numGroups + 1)
+```
+
+**Special case:** If only 1 regular division exists, all rookies go to Division 1.
+
+**Distribution:**
+- Rookies are sorted by their final standing (rank 1 = best performer)
+- Divided into groups of size `groupSize`
+- Top group goes to `startingDivision`, next group to `startingDivision+1`, etc.
+- Division 1 is skipped unless it's the only division
+- If more groups than divisions, multiple groups go to the lowest divisions
+
+**Examples:**
+- **19 rookies, 12 divisions**: groupSize=4, 5 groups → Divs [8,9,10,11,12]
+- **15 rookies, 5 divisions**: groupSize=3, 5 groups → Divs [2,3,4,5,5] (skip Div 1)
+- **20 rookies, 1 division**: All 20 → Div 1 (no choice)
+- **12 rookies, 2 divisions**: groupSize=2, 6 groups → All to Div 2
+- **100 rookies, 3 divisions**: groupSize=17, 6 groups → Divs [2,2,2,3,3,3] (overflow)
+
+**Key points:**
+- ALL rookies graduate (no one repeats rookie division)
+- Top performers go to higher divisions (lower numbers)
+- Division 1 is protected from rookie influx (unless it's the only division)
+- Rebalancing phase handles overflow cases
+
 ## Enforcement
 
 **During Creation:**
@@ -66,6 +99,11 @@ Rookie divisions are numbered 100, 101, 102, ... to distinguish them from regula
 - Returning players: Placed without size checks (they go back to their division)
 - Rookies into regular divisions: Added without size checks
 - Rookies into rookie divisions: Strict size enforcement (10-20 range)
+
+**During Graduation:**
+- All rookies from rookie divisions (100+) are graduated
+- Placed into regular divisions based on final standing
+- May cause divisions to exceed max size (rebalancing fixes this)
 
 **During Rebalancing (Future Phase):**
 - Final regular division sizes should fall within 13-20 range (or whatever is possible if league has collapsed)
