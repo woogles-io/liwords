@@ -116,7 +116,7 @@ func TestFullPlacementFlow_20Players(t *testing.T) {
 	// Place returning players - they should go back to their rookie division
 	// But rookie division 100 doesn't exist in Season 2, so they should go to lowest division (Division 1)
 	pm := NewPlacementManager(store)
-	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, categorized2)
+	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, 2, categorized2)
 	is.NoErr(err)
 
 	// All should be placed in the lowest division since their rookie division doesn't exist
@@ -291,7 +291,7 @@ func TestFullPlacementFlow_21Players(t *testing.T) {
 
 	// Place returning players first
 	pm := NewPlacementManager(store)
-	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, returning)
+	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, 1, returning)
 	is.NoErr(err)
 	is.Equal(len(placementResult.PlacedReturning), 15)
 
@@ -451,7 +451,7 @@ func TestFullPlacementFlow_22Players(t *testing.T) {
 
 	// Place returning players first
 	pm := NewPlacementManager(store)
-	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, returning)
+	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, 1, returning)
 	is.NoErr(err)
 	is.Equal(len(placementResult.PlacedReturning), 12)
 
@@ -597,7 +597,7 @@ func TestFullPlacementFlow_23Players(t *testing.T) {
 
 	// Place returning players first
 	pm := NewPlacementManager(store)
-	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, returning)
+	placementResult, err := pm.PlaceReturningPlayers(ctx, leagueID, season1ID, 1, returning)
 	is.NoErr(err)
 	is.Equal(len(placementResult.PlacedReturning), 12)
 

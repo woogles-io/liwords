@@ -108,21 +108,75 @@ func (sm *StandingsManager) calculateDivisionStandings(
 		return nil // Nothing to do
 	}
 
-	// TODO: Get game results and calculate wins/losses/draws/spread
-	// For now, we'll create placeholder standings
-	// This will be implemented when game results are integrated
+	// Get game results for this division
+	gameResults, err := sm.store.GetDivisionGameResults(ctx, division.Uuid)
+	if err != nil {
+		return fmt.Errorf("failed to get game results: %w", err)
+	}
 
-	standings := make([]PlayerStanding, len(registrations))
-	for i, reg := range registrations {
-		standings[i] = PlayerStanding{
+	// Create a map to track player stats
+	playerStats := make(map[string]*PlayerStanding)
+	for _, reg := range registrations {
+		playerStats[reg.UserID] = &PlayerStanding{
 			UserID:      reg.UserID,
 			DivisionID:  division.Uuid,
-			Wins:        0, // TODO: Calculate from game results
+			Wins:        0,
 			Losses:      0,
 			Draws:       0,
 			Spread:      0,
 			GamesPlayed: 0,
 		}
+	}
+
+	// Process each game result
+	for _, game := range gameResults {
+		// Get player IDs
+		player0ID := fmt.Sprintf("%d", game.Player0ID.Int32)
+		player1ID := fmt.Sprintf("%d", game.Player1ID.Int32)
+
+		// Skip if players not in this division (shouldn't happen, but be safe)
+		p0Stats, p0Exists := playerStats[player0ID]
+		p1Stats, p1Exists := playerStats[player1ID]
+		if !p0Exists || !p1Exists {
+			continue
+		}
+
+		// Increment games played
+		p0Stats.GamesPlayed++
+		p1Stats.GamesPlayed++
+
+		// Calculate spread
+		p0Score := int(game.Player0Score)
+		p1Score := int(game.Player1Score)
+		p0Stats.Spread += (p0Score - p1Score)
+		p1Stats.Spread += (p1Score - p0Score)
+
+		// Determine outcome based on won column from game_players
+		// won = true means won, false means lost, null means tie
+		if game.Player0Won.Valid {
+			if game.Player0Won.Bool {
+				// Player 0 won
+				p0Stats.Wins++
+				p1Stats.Losses++
+			} else {
+				// Player 0 lost (player 1 won)
+				p1Stats.Wins++
+				p0Stats.Losses++
+			}
+		} else {
+			// Draw (won is null for both players)
+			p0Stats.Draws++
+			p1Stats.Draws++
+			// Draws count as 0.5 wins for ranking
+			p0Stats.Wins += 0.5
+			p1Stats.Wins += 0.5
+		}
+	}
+
+	// Convert map to slice
+	standings := make([]PlayerStanding, 0, len(playerStats))
+	for _, stats := range playerStats {
+		standings = append(standings, *stats)
 	}
 
 	// Sort standings by wins (desc), then spread (desc), then randomly for ties
@@ -211,4 +265,86 @@ func (sm *StandingsManager) markOutcomes(
 			standings[i].Outcome = pb.StandingResult_RESULT_STAYED
 		}
 	}
+}
+
+// UpdateStandingsIncremental updates standings for a single completed game
+// This is called immediately when a league game completes to provide real-time standings
+func (sm *StandingsManager) UpdateStandingsIncremental(
+	ctx context.Context,
+	divisionID uuid.UUID,
+	player0ID int32,
+	player1ID int32,
+	winnerIdx int32, // 0, 1, or -1 for tie
+	player0Score int32,
+	player1Score int32,
+) error {
+	// Use atomic operations to prevent race conditions when multiple games finish simultaneously
+	player0IDStr := fmt.Sprintf("%d", player0ID)
+	player1IDStr := fmt.Sprintf("%d", player1ID)
+
+	// Calculate deltas for player 0
+	var p0Wins, p0Losses, p0Draws int32
+	if winnerIdx == 0 {
+		p0Wins = 1
+	} else if winnerIdx == 1 {
+		p0Losses = 1
+	} else {
+		p0Draws = 1
+	}
+	p0Spread := player0Score - player1Score
+
+	// Calculate deltas for player 1
+	var p1Wins, p1Losses, p1Draws int32
+	if winnerIdx == 1 {
+		p1Wins = 1
+	} else if winnerIdx == 0 {
+		p1Losses = 1
+	} else {
+		p1Draws = 1
+	}
+	p1Spread := player1Score - player0Score
+
+	// Atomically increment player 0's standings
+	err := sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
+		DivisionID:     divisionID,
+		UserID:         player0IDStr,
+		Wins:           pgtype.Int4{Int32: p0Wins, Valid: true},
+		Losses:         pgtype.Int4{Int32: p0Losses, Valid: true},
+		Draws:          pgtype.Int4{Int32: p0Draws, Valid: true},
+		Spread:         pgtype.Int4{Int32: p0Spread, Valid: true},
+		GamesRemaining: pgtype.Int4{Int32: 0, Valid: true}, // TODO: calculate from expected games
+	})
+	if err != nil {
+		return fmt.Errorf("failed to increment standings for player %d: %w", player0ID, err)
+	}
+
+	// Atomically increment player 1's standings
+	err = sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
+		DivisionID:     divisionID,
+		UserID:         player1IDStr,
+		Wins:           pgtype.Int4{Int32: p1Wins, Valid: true},
+		Losses:         pgtype.Int4{Int32: p1Losses, Valid: true},
+		Draws:          pgtype.Int4{Int32: p1Draws, Valid: true},
+		Spread:         pgtype.Int4{Int32: p1Spread, Valid: true},
+		GamesRemaining: pgtype.Int4{Int32: 0, Valid: true}, // TODO: calculate from expected games
+	})
+	if err != nil {
+		return fmt.Errorf("failed to increment standings for player %d: %w", player1ID, err)
+	}
+
+	// Recalculate ranks for the entire division
+	// This uses a SQL window function to atomically update all ranks based on wins/spread
+	err = sm.store.RecalculateRanks(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to recalculate ranks: %w", err)
+	}
+
+	return nil
+}
+
+// RecalculateRanks recalculates ranks for all players in a division
+// This can be called periodically or on-demand to ensure rankings are correct
+// The atomic SQL query uses a window function to rank players by wins (desc), spread (desc)
+func (sm *StandingsManager) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
+	return sm.store.RecalculateRanks(ctx, divisionID)
 }

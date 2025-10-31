@@ -158,6 +158,18 @@ func (rm *RookieManager) placeInRegularDivisions(
 				return nil, fmt.Errorf("failed to assign rookie to division: %w", err)
 			}
 
+			// Set placement status to NEW (first-time player placed directly in regular division)
+			err = rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+				UserID:               rookie.Registration.UserID,
+				PlacementStatus:      pgtype.Text{String: "NEW", Valid: true},
+				PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false}, // No previous rank
+				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},   // First season
+				SeasonID:             seasonID,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to set placement status: %w", err)
+			}
+
 			divName := fmt.Sprintf("Division %d", bottomDiv.DivisionNumber)
 			if bottomDiv.DivisionName.Valid {
 				divName = bottomDiv.DivisionName.String
@@ -191,6 +203,18 @@ func (rm *RookieManager) placeInRegularDivisions(
 			return nil, fmt.Errorf("failed to assign rookie to division: %w", err)
 		}
 
+		// Set placement status to NEW
+		err = rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			UserID:               rookie.Registration.UserID,
+			PlacementStatus:      pgtype.Text{String: "NEW", Valid: true},
+			PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
+			SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
+			SeasonID:             seasonID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to set placement status: %w", err)
+		}
+
 		divName := fmt.Sprintf("Division %d", secondBottomDiv.DivisionNumber)
 		if secondBottomDiv.DivisionName.Valid {
 			divName = secondBottomDiv.DivisionName.String
@@ -214,6 +238,18 @@ func (rm *RookieManager) placeInRegularDivisions(
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to assign rookie to division: %w", err)
+		}
+
+		// Set placement status to NEW
+		err = rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			UserID:               rookie.Registration.UserID,
+			PlacementStatus:      pgtype.Text{String: "NEW", Valid: true},
+			PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
+			SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
+			SeasonID:             seasonID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to set placement status: %w", err)
 		}
 
 		divName := fmt.Sprintf("Division %d", bottomDiv.DivisionNumber)

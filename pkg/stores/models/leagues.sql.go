@@ -164,6 +164,16 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 	return i, err
 }
 
+const deleteDivision = `-- name: DeleteDivision :exec
+DELETE FROM league_divisions
+WHERE uuid = $1
+`
+
+func (q *Queries) DeleteDivision(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteDivision, argUuid)
+	return err
+}
+
 const deleteDivisionStandings = `-- name: DeleteDivisionStandings :exec
 DELETE FROM league_standings
 WHERE division_id = $1
@@ -171,6 +181,26 @@ WHERE division_id = $1
 
 func (q *Queries) DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteDivisionStandings, divisionID)
+	return err
+}
+
+const forceFinishGame = `-- name: ForceFinishGame :exec
+UPDATE games
+SET game_end_reason = 8,  -- FORCE_FORFEIT
+    winner_idx = $2,
+    loser_idx = $3,
+    updated_at = NOW()
+WHERE uuid = $1
+`
+
+type ForceFinishGameParams struct {
+	Uuid      pgtype.Text
+	WinnerIdx pgtype.Int4
+	LoserIdx  pgtype.Int4
+}
+
+func (q *Queries) ForceFinishGame(ctx context.Context, arg ForceFinishGameParams) error {
+	_, err := q.db.Exec(ctx, forceFinishGame, arg.Uuid, arg.WinnerIdx, arg.LoserIdx)
 	return err
 }
 
@@ -257,8 +287,67 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 	return i, err
 }
 
+const getDivisionGameResults = `-- name: GetDivisionGameResults :many
+SELECT
+    g.uuid,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason
+FROM games g
+INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.division_id = $1
+  AND gp0.game_end_reason != 0  -- Only finished games
+  AND gp0.game_end_reason != 5  -- Exclude ABORTED
+  AND gp0.game_end_reason != 7
+`
+
+type GetDivisionGameResultsRow struct {
+	Uuid          pgtype.Text
+	Player0ID     pgtype.Int4
+	Player1ID     pgtype.Int4
+	Player0Score  int32
+	Player1Score  int32
+	Player0Won    pgtype.Bool
+	Player1Won    pgtype.Bool
+	GameEndReason int16
+}
+
+func (q *Queries) GetDivisionGameResults(ctx context.Context, divisionID pgtype.UUID) ([]GetDivisionGameResultsRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionGameResults, divisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionGameResultsRow
+	for rows.Next() {
+		var i GetDivisionGameResultsRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Player0Score,
+			&i.Player1Score,
+			&i.Player0Won,
+			&i.Player1Won,
+			&i.GameEndReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDivisionRegistrations = `-- name: GetDivisionRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE division_id = $1
 ORDER BY registration_date
 `
@@ -281,6 +370,9 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -328,6 +420,57 @@ func (q *Queries) GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const getGameLeagueInfo = `-- name: GetGameLeagueInfo :one
+
+SELECT
+    g.division_id,
+    g.season_id,
+    g.league_id,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason
+FROM games g
+LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.uuid = $1
+`
+
+type GetGameLeagueInfoRow struct {
+	DivisionID    pgtype.UUID
+	SeasonID      pgtype.UUID
+	LeagueID      pgtype.UUID
+	Player0ID     pgtype.Int4
+	Player1ID     pgtype.Int4
+	Player0Score  pgtype.Int4
+	Player1Score  pgtype.Int4
+	Player0Won    pgtype.Bool
+	Player1Won    pgtype.Bool
+	GameEndReason pgtype.Int2
+}
+
+// Exclude CANCELLED
+func (q *Queries) GetGameLeagueInfo(ctx context.Context, argUuid pgtype.Text) (GetGameLeagueInfoRow, error) {
+	row := q.db.QueryRow(ctx, getGameLeagueInfo, argUuid)
+	var i GetGameLeagueInfoRow
+	err := row.Scan(
+		&i.DivisionID,
+		&i.SeasonID,
+		&i.LeagueID,
+		&i.Player0ID,
+		&i.Player1ID,
+		&i.Player0Score,
+		&i.Player1Score,
+		&i.Player0Won,
+		&i.Player1Won,
+		&i.GameEndReason,
+	)
+	return i, err
 }
 
 const getLeagueBySlug = `-- name: GetLeagueBySlug :one
@@ -528,7 +671,7 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 }
 
 const getPlayerRegistration = `-- name: GetPlayerRegistration :one
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1 AND user_id = $2
 `
 
@@ -549,6 +692,9 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 		&i.StartingRating,
 		&i.FirstsCount,
 		&i.Status,
+		&i.PlacementStatus,
+		&i.PreviousDivisionRank,
+		&i.SeasonsAway,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -556,7 +702,7 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 }
 
 const getPlayerSeasonHistory = `-- name: GetPlayerSeasonHistory :many
-SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.starting_rating, lr.firsts_count, lr.status, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.starting_rating, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
 FROM league_registrations lr
 JOIN league_seasons ls ON lr.season_id = ls.uuid
 WHERE lr.user_id = $1
@@ -570,18 +716,21 @@ type GetPlayerSeasonHistoryParams struct {
 }
 
 type GetPlayerSeasonHistoryRow struct {
-	ID               int64
-	UserID           string
-	SeasonID         uuid.UUID
-	DivisionID       pgtype.UUID
-	RegistrationDate pgtype.Timestamptz
-	StartingRating   pgtype.Int4
-	FirstsCount      pgtype.Int4
-	Status           pgtype.Text
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	SeasonNumber     int32
-	LeagueID         uuid.UUID
+	ID                   int64
+	UserID               string
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	StartingRating       pgtype.Int4
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Text
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	SeasonNumber         int32
+	LeagueID             uuid.UUID
 }
 
 func (q *Queries) GetPlayerSeasonHistory(ctx context.Context, arg GetPlayerSeasonHistoryParams) ([]GetPlayerSeasonHistoryRow, error) {
@@ -602,6 +751,9 @@ func (q *Queries) GetPlayerSeasonHistory(ctx context.Context, arg GetPlayerSeaso
 			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SeasonNumber,
@@ -647,6 +799,46 @@ func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingPa
 	return i, err
 }
 
+const getRegistrationsByDivision = `-- name: GetRegistrationsByDivision :many
+SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
+WHERE division_id = $1
+ORDER BY placement_status, previous_division_rank
+`
+
+func (q *Queries) GetRegistrationsByDivision(ctx context.Context, divisionID pgtype.UUID) ([]LeagueRegistration, error) {
+	rows, err := q.db.Query(ctx, getRegistrationsByDivision, divisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LeagueRegistration
+	for rows.Next() {
+		var i LeagueRegistration
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SeasonID,
+			&i.DivisionID,
+			&i.RegistrationDate,
+			&i.StartingRating,
+			&i.FirstsCount,
+			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSeason = `-- name: GetSeason :one
 SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons WHERE uuid = $1
 `
@@ -670,7 +862,7 @@ func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeaso
 }
 
 const getSeasonRegistrations = `-- name: GetSeasonRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1
 ORDER BY registration_date
 `
@@ -693,6 +885,9 @@ func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID
 			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -782,6 +977,81 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Lea
 	return items, nil
 }
 
+const getUnfinishedLeagueGames = `-- name: GetUnfinishedLeagueGames :many
+SELECT
+    uuid as game_id,
+    player0_id,
+    player1_id
+FROM games
+WHERE season_id = $1
+  AND game_end_reason = 0
+`
+
+type GetUnfinishedLeagueGamesRow struct {
+	GameID    pgtype.Text
+	Player0ID pgtype.Int4
+	Player1ID pgtype.Int4
+}
+
+func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.UUID) ([]GetUnfinishedLeagueGamesRow, error) {
+	rows, err := q.db.Query(ctx, getUnfinishedLeagueGames, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnfinishedLeagueGamesRow
+	for rows.Next() {
+		var i GetUnfinishedLeagueGamesRow
+		if err := rows.Scan(&i.GameID, &i.Player0ID, &i.Player1ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec
+INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
+VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, '', NOW())
+ON CONFLICT (division_id, user_id)
+DO UPDATE SET
+    wins = league_standings.wins + EXCLUDED.wins,
+    losses = league_standings.losses + EXCLUDED.losses,
+    draws = league_standings.draws + EXCLUDED.draws,
+    spread = league_standings.spread + EXCLUDED.spread,
+    games_played = league_standings.games_played + 1,
+    games_remaining = GREATEST(league_standings.games_remaining - 1, 0),
+    updated_at = NOW()
+`
+
+type IncrementStandingsAtomicParams struct {
+	DivisionID     uuid.UUID
+	UserID         string
+	Wins           pgtype.Int4
+	Losses         pgtype.Int4
+	Draws          pgtype.Int4
+	Spread         pgtype.Int4
+	GamesRemaining pgtype.Int4
+}
+
+// Atomically increment standings for a player after a game completes
+// This avoids race conditions by using database-level arithmetic
+func (q *Queries) IncrementStandingsAtomic(ctx context.Context, arg IncrementStandingsAtomicParams) error {
+	_, err := q.db.Exec(ctx, incrementStandingsAtomic,
+		arg.DivisionID,
+		arg.UserID,
+		arg.Wins,
+		arg.Losses,
+		arg.Draws,
+		arg.Spread,
+		arg.GamesRemaining,
+	)
+	return err
+}
+
 const markDivisionComplete = `-- name: MarkDivisionComplete :exec
 UPDATE league_divisions
 SET is_complete = true, updated_at = NOW()
@@ -804,27 +1074,60 @@ func (q *Queries) MarkSeasonComplete(ctx context.Context, argUuid uuid.UUID) err
 	return err
 }
 
+const recalculateRanks = `-- name: RecalculateRanks :exec
+WITH ranked AS (
+    SELECT
+        ls.division_id,
+        ls.user_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY ls.division_id
+            ORDER BY ls.wins DESC, ls.spread DESC
+        ) as new_rank
+    FROM league_standings ls
+    WHERE ls.division_id = $1
+)
+UPDATE league_standings
+SET rank = ranked.new_rank,
+    updated_at = NOW()
+FROM ranked
+WHERE league_standings.division_id = ranked.division_id
+  AND league_standings.user_id = ranked.user_id
+`
+
+// Recalculate ranks for all players in a division
+// Ranks are based on: wins (DESC), then spread (DESC)
+func (q *Queries) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, recalculateRanks, divisionID)
+	return err
+}
+
 const registerPlayer = `-- name: RegisterPlayer :one
 
-INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (user_id, season_id)
 DO UPDATE SET
     division_id = EXCLUDED.division_id,
     starting_rating = EXCLUDED.starting_rating,
     firsts_count = EXCLUDED.firsts_count,
-    status = EXCLUDED.status
-RETURNING id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, created_at, updated_at
+    status = EXCLUDED.status,
+    placement_status = EXCLUDED.placement_status,
+    previous_division_rank = EXCLUDED.previous_division_rank,
+    seasons_away = EXCLUDED.seasons_away
+RETURNING id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at
 `
 
 type RegisterPlayerParams struct {
-	UserID           string
-	SeasonID         uuid.UUID
-	DivisionID       pgtype.UUID
-	RegistrationDate pgtype.Timestamptz
-	StartingRating   pgtype.Int4
-	FirstsCount      pgtype.Int4
-	Status           pgtype.Text
+	UserID               string
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	StartingRating       pgtype.Int4
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Text
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
 }
 
 // Registration operations
@@ -837,6 +1140,9 @@ func (q *Queries) RegisterPlayer(ctx context.Context, arg RegisterPlayerParams) 
 		arg.StartingRating,
 		arg.FirstsCount,
 		arg.Status,
+		arg.PlacementStatus,
+		arg.PreviousDivisionRank,
+		arg.SeasonsAway,
 	)
 	var i LeagueRegistration
 	err := row.Scan(
@@ -848,6 +1154,9 @@ func (q *Queries) RegisterPlayer(ctx context.Context, arg RegisterPlayerParams) 
 		&i.StartingRating,
 		&i.FirstsCount,
 		&i.Status,
+		&i.PlacementStatus,
+		&i.PreviousDivisionRank,
+		&i.SeasonsAway,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -885,6 +1194,23 @@ func (q *Queries) UnregisterPlayer(ctx context.Context, arg UnregisterPlayerPara
 	return err
 }
 
+const updateDivisionNumber = `-- name: UpdateDivisionNumber :exec
+UPDATE league_divisions
+SET division_number = $2, division_name = $3, updated_at = NOW()
+WHERE uuid = $1
+`
+
+type UpdateDivisionNumberParams struct {
+	Uuid           uuid.UUID
+	DivisionNumber int32
+	DivisionName   pgtype.Text
+}
+
+func (q *Queries) UpdateDivisionNumber(ctx context.Context, arg UpdateDivisionNumberParams) error {
+	_, err := q.db.Exec(ctx, updateDivisionNumber, arg.Uuid, arg.DivisionNumber, arg.DivisionName)
+	return err
+}
+
 const updateDivisionPlayerCount = `-- name: UpdateDivisionPlayerCount :exec
 UPDATE league_divisions
 SET player_count = $2, updated_at = NOW()
@@ -914,6 +1240,54 @@ type UpdateLeagueSettingsParams struct {
 
 func (q *Queries) UpdateLeagueSettings(ctx context.Context, arg UpdateLeagueSettingsParams) error {
 	_, err := q.db.Exec(ctx, updateLeagueSettings, arg.Uuid, arg.Settings)
+	return err
+}
+
+const updatePlacementStatus = `-- name: UpdatePlacementStatus :exec
+UPDATE league_registrations
+SET placement_status = $2, previous_division_rank = $3, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $4
+`
+
+type UpdatePlacementStatusParams struct {
+	UserID               string
+	PlacementStatus      pgtype.Text
+	PreviousDivisionRank pgtype.Int4
+	SeasonID             uuid.UUID
+}
+
+func (q *Queries) UpdatePlacementStatus(ctx context.Context, arg UpdatePlacementStatusParams) error {
+	_, err := q.db.Exec(ctx, updatePlacementStatus,
+		arg.UserID,
+		arg.PlacementStatus,
+		arg.PreviousDivisionRank,
+		arg.SeasonID,
+	)
+	return err
+}
+
+const updatePlacementStatusWithSeasonsAway = `-- name: UpdatePlacementStatusWithSeasonsAway :exec
+UPDATE league_registrations
+SET placement_status = $2, previous_division_rank = $3, seasons_away = $4, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $5
+`
+
+type UpdatePlacementStatusWithSeasonsAwayParams struct {
+	UserID               string
+	PlacementStatus      pgtype.Text
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	SeasonID             uuid.UUID
+}
+
+func (q *Queries) UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg UpdatePlacementStatusWithSeasonsAwayParams) error {
+	_, err := q.db.Exec(ctx, updatePlacementStatusWithSeasonsAway,
+		arg.UserID,
+		arg.PlacementStatus,
+		arg.PreviousDivisionRank,
+		arg.SeasonsAway,
+		arg.SeasonID,
+	)
 	return err
 }
 

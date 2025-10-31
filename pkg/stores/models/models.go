@@ -167,16 +167,19 @@ type LeagueDivision struct {
 }
 
 type LeagueRegistration struct {
-	ID               int64
-	UserID           string
-	SeasonID         uuid.UUID
-	DivisionID       pgtype.UUID
-	RegistrationDate pgtype.Timestamptz
-	StartingRating   pgtype.Int4
-	FirstsCount      pgtype.Int4
-	Status           pgtype.Text
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                   int64
+	UserID               string
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	StartingRating       pgtype.Int4
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Text
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }
 
 type LeagueSeason struct {

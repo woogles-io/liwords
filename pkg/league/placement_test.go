@@ -141,7 +141,7 @@ func TestPlaceReturningPlayers_AllReturning(t *testing.T) {
 
 	// Place returning players
 	pm := NewPlacementManager(store)
-	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, categorized)
+	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, 2, categorized)
 	is.NoErr(err)
 
 	// All 10 should be placed as returning
@@ -284,7 +284,7 @@ func TestPlaceReturningPlayers_Mixed(t *testing.T) {
 	is.Equal(len(categorized), 7)
 
 	pm := NewPlacementManager(store)
-	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, categorized)
+	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, 2, categorized)
 	is.NoErr(err)
 
 	// 3 returning, 4 rookies
@@ -416,7 +416,7 @@ func TestPlaceReturningPlayers_MissingDivision(t *testing.T) {
 	is.NoErr(err)
 
 	pm := NewPlacementManager(store)
-	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, categorized)
+	result, err := pm.PlaceReturningPlayers(ctx, leagueID, season2ID, 2, categorized)
 	is.NoErr(err)
 
 	// div1Player should be placed in their original division

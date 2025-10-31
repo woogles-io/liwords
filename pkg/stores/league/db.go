@@ -36,6 +36,8 @@ type Store interface {
 	GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) ([]models.LeagueDivision, error)
 	UpdateDivisionPlayerCount(ctx context.Context, arg models.UpdateDivisionPlayerCountParams) error
 	MarkDivisionComplete(ctx context.Context, uuid uuid.UUID) error
+	DeleteDivision(ctx context.Context, uuid uuid.UUID) error
+	UpdateDivisionNumber(ctx context.Context, arg models.UpdateDivisionNumberParams) error
 
 	// Registration operations
 	RegisterPlayer(ctx context.Context, arg models.RegisterPlayerParams) (models.LeagueRegistration, error)
@@ -45,6 +47,8 @@ type Store interface {
 	GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueRegistration, error)
 	UpdatePlayerDivision(ctx context.Context, arg models.UpdatePlayerDivisionParams) error
 	UpdateRegistrationDivision(ctx context.Context, arg models.UpdateRegistrationDivisionParams) error
+	UpdatePlacementStatus(ctx context.Context, arg models.UpdatePlacementStatusParams) error
+	UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error
 	GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error)
 
 	// Standings operations
@@ -52,12 +56,18 @@ type Store interface {
 	GetStandings(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueStanding, error)
 	GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error)
 	DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error
+	IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error
+	RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error
 
 	// Game queries
 	GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error)
 	GetLeagueGamesByStatus(ctx context.Context, arg models.GetLeagueGamesByStatusParams) ([]models.Game, error)
 	CountDivisionGamesComplete(ctx context.Context, divisionID uuid.UUID) (int64, error)
 	CountDivisionGamesTotal(ctx context.Context, divisionID uuid.UUID) (int64, error)
+	GetDivisionGameResults(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGameResultsRow, error)
+	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
+	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
+	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
 }
 
 // DBStore is a postgres-backed store for leagues.
@@ -156,6 +166,14 @@ func (s *DBStore) MarkDivisionComplete(ctx context.Context, uuid uuid.UUID) erro
 	return s.queries.MarkDivisionComplete(ctx, uuid)
 }
 
+func (s *DBStore) DeleteDivision(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.DeleteDivision(ctx, uuid)
+}
+
+func (s *DBStore) UpdateDivisionNumber(ctx context.Context, arg models.UpdateDivisionNumberParams) error {
+	return s.queries.UpdateDivisionNumber(ctx, arg)
+}
+
 // Registration operations
 
 func (s *DBStore) RegisterPlayer(ctx context.Context, arg models.RegisterPlayerParams) (models.LeagueRegistration, error) {
@@ -186,6 +204,14 @@ func (s *DBStore) UpdateRegistrationDivision(ctx context.Context, arg models.Upd
 	return s.queries.UpdateRegistrationDivision(ctx, arg)
 }
 
+func (s *DBStore) UpdatePlacementStatus(ctx context.Context, arg models.UpdatePlacementStatusParams) error {
+	return s.queries.UpdatePlacementStatus(ctx, arg)
+}
+
+func (s *DBStore) UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error {
+	return s.queries.UpdatePlacementStatusWithSeasonsAway(ctx, arg)
+}
+
 func (s *DBStore) GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error) {
 	return s.queries.GetPlayerSeasonHistory(ctx, arg)
 }
@@ -208,6 +234,14 @@ func (s *DBStore) DeleteDivisionStandings(ctx context.Context, divisionID uuid.U
 	return s.queries.DeleteDivisionStandings(ctx, divisionID)
 }
 
+func (s *DBStore) IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error {
+	return s.queries.IncrementStandingsAtomic(ctx, arg)
+}
+
+func (s *DBStore) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
+	return s.queries.RecalculateRanks(ctx, divisionID)
+}
+
 // Game queries
 
 func (s *DBStore) GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error) {
@@ -224,4 +258,20 @@ func (s *DBStore) CountDivisionGamesComplete(ctx context.Context, divisionID uui
 
 func (s *DBStore) CountDivisionGamesTotal(ctx context.Context, divisionID uuid.UUID) (int64, error) {
 	return s.queries.CountDivisionGamesTotal(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+}
+
+func (s *DBStore) GetDivisionGameResults(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGameResultsRow, error) {
+	return s.queries.GetDivisionGameResults(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+}
+
+func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error) {
+	return s.queries.GetUnfinishedLeagueGames(ctx, pgtype.UUID{Bytes: seasonID, Valid: true})
+}
+
+func (s *DBStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
+	return s.queries.ForceFinishGame(ctx, arg)
+}
+
+func (s *DBStore) GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error) {
+	return s.queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameUUID, Valid: true})
 }

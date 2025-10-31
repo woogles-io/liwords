@@ -154,6 +154,24 @@ func (gm *GraduationManager) GraduateRookies(
 				continue
 			}
 
+			// Set placement status to GRADUATED
+			// Use the standing rank as previous_division_rank
+			rank := int32(0)
+			if standing.Rank.Valid {
+				rank = standing.Rank.Int32
+			}
+			err = gm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+				UserID:               standing.UserID,
+				PlacementStatus:      pgtype.Text{String: "GRADUATED", Valid: true},
+				PreviousDivisionRank: pgtype.Int4{Int32: rank, Valid: true},
+				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true}, // Just completed previous season
+				SeasonID:             newSeasonID,
+			})
+			if err != nil {
+				// Log error but continue
+				continue
+			}
+
 			result.GraduatedRookies = append(result.GraduatedRookies, PlacedPlayer{
 				CategorizedPlayer: CategorizedPlayer{
 					Registration: models.LeagueRegistration{

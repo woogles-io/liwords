@@ -62,6 +62,15 @@ func main() {
 		case "monitoring-streams-cleanup":
 			err := MonitoringStreamsCleanup()
 			log.Err(err).Msg("ran monitoringStreamsCleanup")
+		case "league-season-starter":
+			err := LeagueSeasonStarter()
+			log.Err(err).Msg("ran leagueSeasonStarter")
+		case "league-game-starter":
+			err := LeagueGameStarter()
+			log.Err(err).Msg("ran leagueGameStarter")
+		case "league-season-completion-checker":
+			err := LeagueSeasonCompletionChecker()
+			log.Err(err).Msg("ran leagueSeasonCompletionChecker")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}

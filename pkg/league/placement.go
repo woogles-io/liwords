@@ -63,13 +63,61 @@ func findLowestDivision(divisions []models.LeagueDivision) (uuid.UUID, string, e
 	return lowestDiv.Uuid, divName, nil
 }
 
+// calculateAndSetPlacementStatus determines placement_status based on hiatus length
+// and sets it in the database
+func (pm *PlacementManager) calculateAndSetPlacementStatus(
+	ctx context.Context,
+	userID string,
+	seasonID uuid.UUID,
+	currentSeasonNumber int32,
+	lastPlayedSeasonNumber int32,
+	previousPlacementStatus string,
+	previousRank int32,
+) error {
+	// Calculate seasons away: current_season_number - last_played_season_number - 1
+	seasonsAway := currentSeasonNumber - lastPlayedSeasonNumber - 1
+
+	var newPlacementStatus string
+
+	if seasonsAway == 0 {
+		// Consecutive season - use existing placement_status from previous season
+		if previousPlacementStatus != "" {
+			newPlacementStatus = previousPlacementStatus
+		} else {
+			// No previous status, default to STAYED
+			newPlacementStatus = "STAYED"
+		}
+	} else if seasonsAway >= 1 && seasonsAway <= 3 {
+		// Short hiatus (1-3 seasons away)
+		newPlacementStatus = "SHORT_HIATUS_RETURNING"
+	} else {
+		// Long hiatus (4+ seasons away)
+		newPlacementStatus = "LONG_HIATUS_RETURNING"
+	}
+
+	// Update placement status in database
+	return pm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+		UserID:               userID,
+		PlacementStatus:      pgtype.Text{String: newPlacementStatus, Valid: true},
+		PreviousDivisionRank: pgtype.Int4{Int32: previousRank, Valid: previousRank != 0},
+		SeasonsAway:          pgtype.Int4{Int32: seasonsAway, Valid: true},
+		SeasonID:             seasonID,
+	})
+}
+
 // PlaceReturningPlayers attempts to place returning players back into their
 // previous divisions. Returns a result indicating which players were placed
 // and which still need placement.
+//
+// This function also detects hiatus and sets placement_status:
+//   - 0 seasons away (consecutive): Keeps existing placement_status from previous season
+//   - 1-3 seasons away: Sets placement_status = SHORT_HIATUS_RETURNING
+//   - 4+ seasons away: Sets placement_status = LONG_HIATUS_RETURNING
 func (pm *PlacementManager) PlaceReturningPlayers(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	currentSeasonID uuid.UUID,
+	currentSeasonNumber int32,
 	categorizedPlayers []CategorizedPlayer,
 ) (*PlacementResult, error) {
 	result := &PlacementResult{
@@ -109,10 +157,21 @@ func (pm *PlacementManager) PlaceReturningPlayers(
 
 		// Find the most recent completed season (not the current one)
 		var previousDivisionID uuid.UUID
+		var lastPlayedSeasonNumber int32
+		var placementStatus string
+		var previousRank int32
 		found := false
 		for _, season := range history {
 			if season.SeasonID != currentSeasonID && season.DivisionID.Valid {
 				previousDivisionID = season.DivisionID.Bytes
+				lastPlayedSeasonNumber = season.SeasonNumber
+				// Store the previous placement status and rank for hiatus calculation
+				if season.PlacementStatus.Valid {
+					placementStatus = season.PlacementStatus.String
+				}
+				if season.PreviousDivisionRank.Valid {
+					previousRank = season.PreviousDivisionRank.Int32
+				}
 				found = true
 				break // Take the first one (most recent)
 			}
@@ -225,6 +284,20 @@ func (pm *PlacementManager) PlaceReturningPlayers(
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to assign player %s to division: %w", player.Registration.UserID, err)
+		}
+
+		// Calculate and set placement status based on hiatus length
+		err = pm.calculateAndSetPlacementStatus(
+			ctx,
+			player.Registration.UserID,
+			currentSeasonID,
+			currentSeasonNumber,
+			lastPlayedSeasonNumber,
+			placementStatus,
+			previousRank,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set placement status for %s: %w", player.Registration.UserID, err)
 		}
 
 		result.PlacedReturning = append(result.PlacedReturning, PlacedPlayer{

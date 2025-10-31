@@ -52,6 +52,9 @@ CREATE TABLE league_registrations (
     starting_rating INT,
     firsts_count INT,
     status TEXT DEFAULT 'ACTIVE',
+    placement_status TEXT,
+    previous_division_rank INT,
+    seasons_away INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, season_id)

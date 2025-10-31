@@ -86,17 +86,29 @@ UPDATE league_divisions
 SET is_complete = true, updated_at = NOW()
 WHERE uuid = $1;
 
+-- name: DeleteDivision :exec
+DELETE FROM league_divisions
+WHERE uuid = $1;
+
+-- name: UpdateDivisionNumber :exec
+UPDATE league_divisions
+SET division_number = $2, division_name = $3, updated_at = NOW()
+WHERE uuid = $1;
+
 -- Registration operations
 
 -- name: RegisterPlayer :one
-INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (user_id, season_id)
 DO UPDATE SET
     division_id = EXCLUDED.division_id,
     starting_rating = EXCLUDED.starting_rating,
     firsts_count = EXCLUDED.firsts_count,
-    status = EXCLUDED.status
+    status = EXCLUDED.status,
+    placement_status = EXCLUDED.placement_status,
+    previous_division_rank = EXCLUDED.previous_division_rank,
+    seasons_away = EXCLUDED.seasons_away
 RETURNING *;
 
 -- name: UnregisterPlayer :exec
@@ -126,6 +138,21 @@ WHERE user_id = $3 AND season_id = $4;
 UPDATE league_registrations
 SET division_id = $2, firsts_count = $3, updated_at = NOW()
 WHERE season_id = $1 AND user_id = $4;
+
+-- name: UpdatePlacementStatus :exec
+UPDATE league_registrations
+SET placement_status = $2, previous_division_rank = $3, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $4;
+
+-- name: UpdatePlacementStatusWithSeasonsAway :exec
+UPDATE league_registrations
+SET placement_status = $2, previous_division_rank = $3, seasons_away = $4, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $5;
+
+-- name: GetRegistrationsByDivision :many
+SELECT * FROM league_registrations
+WHERE division_id = $1
+ORDER BY placement_status, previous_division_rank;
 
 -- name: GetPlayerSeasonHistory :many
 SELECT lr.*, ls.season_number, ls.league_id
@@ -165,6 +192,42 @@ WHERE division_id = $1 AND user_id = $2;
 DELETE FROM league_standings
 WHERE division_id = $1;
 
+-- name: IncrementStandingsAtomic :exec
+-- Atomically increment standings for a player after a game completes
+-- This avoids race conditions by using database-level arithmetic
+INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
+VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, '', NOW())
+ON CONFLICT (division_id, user_id)
+DO UPDATE SET
+    wins = league_standings.wins + EXCLUDED.wins,
+    losses = league_standings.losses + EXCLUDED.losses,
+    draws = league_standings.draws + EXCLUDED.draws,
+    spread = league_standings.spread + EXCLUDED.spread,
+    games_played = league_standings.games_played + 1,
+    games_remaining = GREATEST(league_standings.games_remaining - 1, 0),
+    updated_at = NOW();
+
+-- name: RecalculateRanks :exec
+-- Recalculate ranks for all players in a division
+-- Ranks are based on: wins (DESC), then spread (DESC)
+WITH ranked AS (
+    SELECT
+        ls.division_id,
+        ls.user_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY ls.division_id
+            ORDER BY ls.wins DESC, ls.spread DESC
+        ) as new_rank
+    FROM league_standings ls
+    WHERE ls.division_id = $1
+)
+UPDATE league_standings
+SET rank = ranked.new_rank,
+    updated_at = NOW()
+FROM ranked
+WHERE league_standings.division_id = ranked.division_id
+  AND league_standings.user_id = ranked.user_id;
+
 -- Game queries for league games
 
 -- name: GetLeagueGames :many
@@ -185,3 +248,55 @@ WHERE division_id = $1 AND game_end_reason != 0;
 -- name: CountDivisionGamesTotal :one
 SELECT COUNT(*) FROM games
 WHERE division_id = $1;
+
+-- name: GetUnfinishedLeagueGames :many
+SELECT
+    uuid as game_id,
+    player0_id,
+    player1_id
+FROM games
+WHERE season_id = $1
+  AND game_end_reason = 0;
+
+-- name: ForceFinishGame :exec
+UPDATE games
+SET game_end_reason = 8,  -- FORCE_FORFEIT
+    winner_idx = $2,
+    loser_idx = $3,
+    updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: GetDivisionGameResults :many
+SELECT
+    g.uuid,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason
+FROM games g
+INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.division_id = $1
+  AND gp0.game_end_reason != 0  -- Only finished games
+  AND gp0.game_end_reason != 5  -- Exclude ABORTED
+  AND gp0.game_end_reason != 7; -- Exclude CANCELLED
+
+-- name: GetGameLeagueInfo :one
+SELECT
+    g.division_id,
+    g.season_id,
+    g.league_id,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason
+FROM games g
+LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.uuid = $1;

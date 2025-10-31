@@ -39,6 +39,7 @@ func (rm *RegistrationManager) RegisterPlayer(
 		StartingRating:   pgtype.Int4{Int32: rating, Valid: true},
 		FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 		Status:           pgtype.Text{String: "REGISTERED", Valid: true},
+		SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true}, // Will be calculated during placement
 	})
 
 	return err

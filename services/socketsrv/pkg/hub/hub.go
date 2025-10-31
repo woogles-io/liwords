@@ -225,6 +225,7 @@ func (h *Hub) Run() {
 			if err != nil {
 				log.Err(err).Msg("error-adding-client")
 			}
+			log.Info().Str("username", client.username).Msg("registered-client")
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
@@ -244,9 +245,6 @@ func (h *Hub) Run() {
 				Msg("sending broadcast message to realm")
 			for client := range h.realms[message.realm] {
 				select {
-				// XXX: got a panic: send on closed channel from this line:
-				// I think this is because the client wasn't done registering
-				// (register-realm-path) before it was disconnected abnormally.
 				case client.send <- message.msg:
 				default:
 					log.Debug().Str("username", client.username).Msg("in broadcastRealm, removeClient")
