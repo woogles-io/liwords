@@ -67,32 +67,32 @@ type Following struct {
 }
 
 type Game struct {
-	ID             int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	DeletedAt      pgtype.Timestamptz
-	Uuid           pgtype.Text
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	History        []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	ReadyFlag      pgtype.Int8
-	MetaEvents     entity.MetaEventData
-	Type           pgtype.Int4
-	GameRequest    entity.GameRequest
-	HistoryInS3    bool
-	PlayerOnTurn   pgtype.Int4
-	LeagueID       pgtype.UUID
-	SeasonID       pgtype.UUID
-	DivisionID     pgtype.UUID
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	HistoryInS3      bool
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 type GameComment struct {
@@ -172,10 +172,9 @@ type LeagueRegistration struct {
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
-	StartingRating       pgtype.Int4
 	FirstsCount          pgtype.Int4
 	Status               pgtype.Text
-	PlacementStatus      pgtype.Text
+	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonsAway          pgtype.Int4
 	CreatedAt            pgtype.Timestamptz
@@ -190,7 +189,7 @@ type LeagueSeason struct {
 	StartDate     pgtype.Timestamptz
 	EndDate       pgtype.Timestamptz
 	ActualEndDate pgtype.Timestamptz
-	Status        string
+	Status        int32
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
@@ -206,7 +205,7 @@ type LeagueStanding struct {
 	Spread         pgtype.Int4
 	GamesPlayed    pgtype.Int4
 	GamesRemaining pgtype.Int4
-	Result         pgtype.Text
+	Result         pgtype.Int4
 	UpdatedAt      pgtype.Timestamptz
 }
 

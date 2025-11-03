@@ -40,22 +40,6 @@ type PlayerStanding struct {
 	Outcome     pb.StandingResult
 }
 
-// standingResultToString converts a StandingResult enum to its string representation for database storage
-func standingResultToString(result pb.StandingResult) string {
-	switch result {
-	case pb.StandingResult_RESULT_PROMOTED:
-		return "PROMOTED"
-	case pb.StandingResult_RESULT_RELEGATED:
-		return "RELEGATED"
-	case pb.StandingResult_RESULT_STAYED:
-		return "STAYED"
-	case pb.StandingResult_RESULT_CHAMPION:
-		return "CHAMPION"
-	default:
-		return ""
-	}
-}
-
 // CalculateAndSaveStandings calculates final standings for all divisions in a season
 // and marks players with their outcomes (promoted/relegated/stayed)
 func (sm *StandingsManager) CalculateAndSaveStandings(
@@ -202,7 +186,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 			Spread:         pgtype.Int4{Int32: int32(standing.Spread), Valid: true},
 			GamesPlayed:    pgtype.Int4{Int32: int32(standing.GamesPlayed), Valid: true},
 			GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
-			Result:         pgtype.Text{String: standingResultToString(standing.Outcome), Valid: true},
+			Result:         pgtype.Int4{Int32: int32(standing.Outcome), Valid: true},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to save standing: %w", err)

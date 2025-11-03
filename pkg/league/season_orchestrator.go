@@ -16,7 +16,6 @@ type SeasonOrchestrator struct {
 	registrationMgr    *RegistrationManager
 	placementMgr       *PlacementManager
 	graduationMgr      *GraduationManager
-	rookieMgr          *RookieManager
 }
 
 // NewSeasonOrchestrator creates a new season orchestrator
@@ -26,7 +25,6 @@ func NewSeasonOrchestrator(store league.Store) *SeasonOrchestrator {
 		registrationMgr:    NewRegistrationManager(store),
 		placementMgr:       NewPlacementManager(store),
 		graduationMgr:      NewGraduationManager(store),
-		rookieMgr:          NewRookieManager(store),
 	}
 }
 
@@ -65,7 +63,7 @@ type DivisionPreparationResult struct {
 //    - Updates placement statuses
 //    - Assigns virtual divisions
 //    - Calculates priority scores
-//    - Creates real divisions (round(count/15))
+//    - Creates real divisions (round(count/idealDivisionSize))
 //    - Assigns players by priority
 // 5. Create rookie divisions for ≥10 new rookies
 //
@@ -76,6 +74,7 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 	previousSeasonID uuid.UUID,
 	newSeasonID uuid.UUID,
 	newSeasonNumber int32,
+	idealDivisionSize int32,
 ) (*DivisionPreparationResult, error) {
 	result := &DivisionPreparationResult{}
 
@@ -135,15 +134,22 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 			newSeasonID,
 			newSeasonNumber,
 			playersForRebalancing,
+			idealDivisionSize,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to rebalance divisions: %w", err)
 		}
 
 		result.RegularDivisionsUsed = rebalanceResult.DivisionsCreated
-		result.PlacedReturning = len(playersForRebalancing) - len(newRookies)
+
+		// Calculate PlacedReturning based on whether rookies were included
 		if len(newRookies) < MinPlayersForRookieDivision {
+			// Rookies were included in rebalancing
+			result.PlacedReturning = len(playersForRebalancing) - len(newRookies)
 			result.PlacedInRegularDivs = len(newRookies)
+		} else {
+			// Rookies were NOT included in rebalancing
+			result.PlacedReturning = len(playersForRebalancing)
 		}
 	}
 
@@ -154,7 +160,8 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 			return newRookies[i].Rating > newRookies[j].Rating
 		})
 
-		rookieResult, err := so.rookieMgr.createRookieDivisions(ctx, newSeasonID, newRookies)
+		rebalanceMgr := NewRebalanceManager(so.store)
+		rookieResult, err := rebalanceMgr.CreateRookieDivisionsAndAssign(ctx, newSeasonID, newRookies, idealDivisionSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create rookie divisions: %w", err)
 		}

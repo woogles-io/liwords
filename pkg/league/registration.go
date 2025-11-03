@@ -29,14 +29,12 @@ func (rm *RegistrationManager) RegisterPlayer(
 	ctx context.Context,
 	userID string,
 	seasonID uuid.UUID,
-	rating int32,
 ) error {
 	_, err := rm.store.RegisterPlayer(ctx, models.RegisterPlayerParams{
 		UserID:           userID,
 		SeasonID:         seasonID,
 		DivisionID:       pgtype.UUID{Valid: false}, // No division assigned yet
 		RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		StartingRating:   pgtype.Int4{Int32: rating, Valid: true},
 		FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 		Status:           pgtype.Text{String: "REGISTERED", Valid: true},
 		SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true}, // Will be calculated during placement
@@ -102,15 +100,10 @@ func (rm *RegistrationManager) CategorizeRegistrations(
 			category = PlayerCategoryReturning
 		}
 
-		rating := int32(0)
-		if reg.StartingRating.Valid {
-			rating = reg.StartingRating.Int32
-		}
-
 		categorized = append(categorized, CategorizedPlayer{
 			Registration: reg,
 			Category:     category,
-			Rating:       rating,
+			Rating:       0, // Rating removed from system
 		})
 	}
 

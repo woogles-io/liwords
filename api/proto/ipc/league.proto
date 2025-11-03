@@ -1,6 +1,9 @@
 syntax = "proto3";
 package ipc;
 
+import "proto/ipc/omgwords.proto";
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/domino14/liwords/rpc/api/proto/ipc";
 
 message League {
@@ -15,13 +18,11 @@ message League {
 
 message LeagueSettings {
     int32 season_length_days = 1;
-    repeated int32 start_day_of_month = 2;
     TimeControl time_control = 3;
     string lexicon = 4;
     string variant = 5;
-    int32 division_size = 6;
-    int32 promotion_count = 7;
-    int32 relegation_count = 8;
+    int32 ideal_division_size = 6;
+    ChallengeRule challenge_rule = 9;
 }
 
 message TimeControl {
@@ -33,9 +34,9 @@ message Season {
     string uuid = 1;
     string league_id = 2;
     int32 season_number = 3;
-    int64 start_date = 4;
-    int64 end_date = 5;
-    int64 actual_end_date = 6;
+    google.protobuf.Timestamp start_date = 4;
+    google.protobuf.Timestamp end_date = 5;
+    google.protobuf.Timestamp actual_end_date = 6;
     SeasonStatus status = 7;
     repeated Division divisions = 8;
 }
@@ -45,6 +46,7 @@ enum SeasonStatus {
     SEASON_ACTIVE = 1;
     SEASON_COMPLETED = 2;
     SEASON_CANCELLED = 3;
+    SEASON_REGISTRATION_OPEN = 4;
 }
 
 message Division {
@@ -62,10 +64,9 @@ message PlayerRegistration {
     string user_id = 1;
     string username = 2;
     string division_id = 3;
-    int64 registration_date = 4;
-    int32 starting_rating = 5;
-    int32 firsts_count = 6;
-    string status = 7;
+    google.protobuf.Timestamp registration_date = 4;
+    int32 firsts_count = 5;
+    string status = 6;
 }
 
 message LeaguePlayerStanding {
@@ -87,4 +88,16 @@ enum StandingResult {
     RESULT_RELEGATED = 2;
     RESULT_STAYED = 3;
     RESULT_CHAMPION = 4;
+}
+
+// PlacementStatus indicates a player's status for next season placement
+enum PlacementStatus {
+    PLACEMENT_NONE = 0;
+    PLACEMENT_NEW = 1;  // Brand new player
+    PLACEMENT_GRADUATED = 2;  // Rookie graduating to regular divisions
+    PLACEMENT_PROMOTED = 3;  // Promoted from lower division
+    PLACEMENT_RELEGATED = 4;  // Relegated from higher division
+    PLACEMENT_STAYED = 5;  // Stayed in same division
+    PLACEMENT_SHORT_HIATUS_RETURNING = 6;  // Returning after 1-3 seasons
+    PLACEMENT_LONG_HIATUS_RETURNING = 7;  // Returning after 4+ seasons
 }

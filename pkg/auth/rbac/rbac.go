@@ -24,6 +24,7 @@ const (
 	CanManageAppRolesAndPermissions Permission = "can_manage_app_roles_and_permissions"
 	CanManageUserRoles              Permission = "can_manage_user_roles"
 	CanViewUserRoles                Permission = "can_view_user_roles"
+	CanManageLeagues                Permission = "can_manage_leagues"
 )
 
 // These Roles are also defined in the database.

@@ -38,6 +38,9 @@ import { encodeToSocketFmt } from "./utils/protobuf";
 import { Clubs } from "./clubs";
 import { TournamentRoom } from "./tournament/room";
 import { Admin } from "./admin/admin";
+import { LeaguesList } from "./leagues/leagues_list";
+import { LeaguePage } from "./leagues/league_page";
+import { LeagueAdmin } from "./leagues/admin";
 import { DonateSuccess } from "./donate_success";
 import { TermsOfService } from "./about/termsOfService";
 import { ChatMessageSchema } from "./gen/api/proto/ipc/chat_pb";
@@ -382,6 +385,9 @@ const App = React.memo(() => {
               }
             />
             <Route path="clubs" element={<Clubs />} />
+            <Route path="leagues" element={<LeaguesList />} />
+            <Route path="leagues/admin" element={<LeagueAdmin />} />
+            <Route path="leagues/:slug" element={<LeaguePage />} />
             <Route
               path="game/:gameID"
               element={

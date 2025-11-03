@@ -29,6 +29,11 @@ export const updateLeagueSettings = LeagueService.method.updateLeagueSettings;
 /**
  * Season management
  *
+ * @generated from rpc league_service.LeagueService.BootstrapSeason
+ */
+export const bootstrapSeason = LeagueService.method.bootstrapSeason;
+
+/**
  * @generated from rpc league_service.LeagueService.GetSeason
  */
 export const getSeason = LeagueService.method.getSeason;
@@ -42,6 +47,11 @@ export const getCurrentSeason = LeagueService.method.getCurrentSeason;
  * @generated from rpc league_service.LeagueService.GetPastSeasons
  */
 export const getPastSeasons = LeagueService.method.getPastSeasons;
+
+/**
+ * @generated from rpc league_service.LeagueService.OpenRegistration
+ */
+export const openRegistration = LeagueService.method.openRegistration;
 
 /**
  * @generated from rpc league_service.LeagueService.StartNextSeason

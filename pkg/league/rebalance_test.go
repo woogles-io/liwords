@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "alice",
 				VirtualDivision:     1,
-				PlacementStatus:     "PROMOTED",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_PROMOTED,
 				PreviousDivisionSize: 15,
 				PreviousRank:        3,
 				HiatusSeasons:       0,
@@ -36,7 +37,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "bob",
 				VirtualDivision:     1,
-				PlacementStatus:     "STAYED",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_STAYED,
 				PreviousDivisionSize: 15,
 				PreviousRank:        10,
 				HiatusSeasons:       0,
@@ -49,7 +50,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "charlie",
 				VirtualDivision:     2,
-				PlacementStatus:     "RELEGATED",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_RELEGATED,
 				PreviousDivisionSize: 15,
 				PreviousRank:        14,
 				HiatusSeasons:       0,
@@ -62,7 +63,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "dora",
 				VirtualDivision:     2,
-				PlacementStatus:     "STAYED",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_STAYED,
 				PreviousDivisionSize: 15,
 				PreviousRank:        12,
 				HiatusSeasons:       0,
@@ -75,7 +76,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "eleanor",
 				VirtualDivision:     2,
-				PlacementStatus:     "GRADUATED",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_GRADUATED,
 				PreviousDivisionSize: 10,
 				PreviousRank:        2,
 				HiatusSeasons:       0,
@@ -88,7 +89,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 			player: PlayerWithVirtualDiv{
 				UserID:              "frankie",
 				VirtualDivision:     2,
-				PlacementStatus:     "SHORT_HIATUS_RETURNING",
+				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING,
 				PreviousDivisionSize: 0, // Use 0 for hiatus players
 				PreviousRank:        0,  // Use 0 for hiatus players
 				HiatusSeasons:       4,
@@ -137,12 +138,12 @@ func TestCalculatePriorityScores_Sorting(t *testing.T) {
 
 	// Create the players from the example
 	players := []PlayerWithVirtualDiv{
-		{UserID: "alice", VirtualDivision: 1, PlacementStatus: "PROMOTED", PreviousDivisionSize: 15, PreviousRank: 3},
-		{UserID: "bob", VirtualDivision: 1, PlacementStatus: "STAYED", PreviousDivisionSize: 15, PreviousRank: 10},
-		{UserID: "charlie", VirtualDivision: 2, PlacementStatus: "RELEGATED", PreviousDivisionSize: 15, PreviousRank: 14},
-		{UserID: "dora", VirtualDivision: 2, PlacementStatus: "STAYED", PreviousDivisionSize: 15, PreviousRank: 12},
-		{UserID: "eleanor", VirtualDivision: 2, PlacementStatus: "GRADUATED", PreviousDivisionSize: 10, PreviousRank: 2},
-		{UserID: "frankie", VirtualDivision: 2, PlacementStatus: "SHORT_HIATUS_RETURNING", HiatusSeasons: 4},
+		{UserID: "alice", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_PROMOTED, PreviousDivisionSize: 15, PreviousRank: 3},
+		{UserID: "bob", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_STAYED, PreviousDivisionSize: 15, PreviousRank: 10},
+		{UserID: "charlie", VirtualDivision: 2, PlacementStatus: ipc.PlacementStatus_PLACEMENT_RELEGATED, PreviousDivisionSize: 15, PreviousRank: 14},
+		{UserID: "dora", VirtualDivision: 2, PlacementStatus: ipc.PlacementStatus_PLACEMENT_STAYED, PreviousDivisionSize: 15, PreviousRank: 12},
+		{UserID: "eleanor", VirtualDivision: 2, PlacementStatus: ipc.PlacementStatus_PLACEMENT_GRADUATED, PreviousDivisionSize: 10, PreviousRank: 2},
+		{UserID: "frankie", VirtualDivision: 2, PlacementStatus: ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, HiatusSeasons: 4},
 	}
 
 	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs)
@@ -197,7 +198,8 @@ func TestCalculateDivisionCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
-			actualDivs := int(math.Round(float64(tt.playerCount) / float64(IdealDivisionSize)))
+			const idealDivisionSize = 15
+			actualDivs := int(math.Round(float64(tt.playerCount) / float64(idealDivisionSize)))
 			assert.Equal(t, tt.expectedDivs, actualDivs, tt.description)
 		})
 	}
@@ -280,9 +282,10 @@ func TestSequentialAssignment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
+			const idealDivisionSize = 15
 			playersPerDiv := make([]int, tt.numDivs)
 			for i := 0; i < tt.totalPlayers; i++ {
-				divIndex := i / IdealDivisionSize
+				divIndex := i / idealDivisionSize
 				if divIndex >= tt.numDivs {
 					divIndex = tt.numDivs - 1
 				}
@@ -307,7 +310,7 @@ func TestPriorityBonusConstants(t *testing.T) {
 }
 
 func TestDivisionSizeConstants(t *testing.T) {
-	assert.Equal(t, 15, IdealDivisionSize, "Ideal division size")
+	// IdealDivisionSize is now configurable per league (via LeagueSettings.IdealDivisionSize)
 	assert.Equal(t, 12, MinimumFinalDivSize, "Minimum final division size")
 }
 
@@ -350,6 +353,108 @@ func TestNewRookieSplitting(t *testing.T) {
 					"Top half should go to Div %d", secondBottom)
 				assert.Equal(t, bottom, tt.expectedBotHalf,
 					"Bottom half should go to Div %d", bottom)
+			}
+		})
+	}
+}
+
+func TestCalculateRookieDivisionSizes(t *testing.T) {
+	tests := []struct {
+		name          string
+		numRookies    int
+		expectedSizes []int
+		description   string
+	}{
+		{
+			name:          "Too few rookies",
+			numRookies:    9,
+			expectedSizes: []int{},
+			description:   "Less than MinPlayersForRookieDivision should return empty",
+		},
+		{
+			name:          "Minimum rookies - one division",
+			numRookies:    10,
+			expectedSizes: []int{10},
+			description:   "10 rookies → 1 division",
+		},
+		{
+			name:          "15 rookies - one division",
+			numRookies:    15,
+			expectedSizes: []int{15},
+			description:   "15 rookies (target size) → 1 division",
+		},
+		{
+			name:          "20 rookies - one division at max",
+			numRookies:    20,
+			expectedSizes: []int{20},
+			description:   "20 rookies (max size) → 1 division",
+		},
+		{
+			name:          "21 rookies - two divisions",
+			numRookies:    21,
+			expectedSizes: []int{11, 10},
+			description:   "21 rookies → 2 divisions of 11 and 10",
+		},
+		{
+			name:          "30 rookies - two divisions",
+			numRookies:    30,
+			expectedSizes: []int{15, 15},
+			description:   "30 rookies → 2 divisions of 15 each",
+		},
+		{
+			name:          "40 rookies - three divisions",
+			numRookies:    40,
+			expectedSizes: []int{14, 13, 13},
+			description:   "40 rookies → 3 divisions (trying for target 15, gets 14/13/13)",
+		},
+		{
+			name:          "45 rookies - three divisions",
+			numRookies:    45,
+			expectedSizes: []int{15, 15, 15},
+			description:   "45 rookies → 3 divisions of 15 each",
+		},
+		{
+			name:          "50 rookies - four divisions",
+			numRookies:    50,
+			expectedSizes: []int{13, 13, 12, 12},
+			description:   "50 rookies → 4 divisions with sizes 13, 13, 12, 12",
+		},
+		{
+			name:          "60 rookies - four divisions",
+			numRookies:    60,
+			expectedSizes: []int{15, 15, 15, 15},
+			description:   "60 rookies → 4 divisions of 15 each",
+		},
+		{
+			name:          "100 rookies - seven divisions",
+			numRookies:    100,
+			expectedSizes: []int{15, 15, 14, 14, 14, 14, 14},
+			description:   "100 rookies → 7 divisions with balanced sizes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			const idealDivisionSize = 15
+			actualSizes := calculateRookieDivisionSizes(tt.numRookies, idealDivisionSize)
+			assert.Equal(t, tt.expectedSizes, actualSizes, tt.description)
+
+			// If we expect divisions, verify constraints
+			if len(tt.expectedSizes) > 0 {
+				// Verify total adds up
+				total := 0
+				for _, size := range actualSizes {
+					total += size
+				}
+				assert.Equal(t, tt.numRookies, total, "Total should equal input")
+
+				// Verify all sizes within constraints
+				for i, size := range actualSizes {
+					assert.GreaterOrEqual(t, size, MinRookieDivisionSize,
+						"Division %d size %d should be >= min %d", i, size, MinRookieDivisionSize)
+					assert.LessOrEqual(t, size, MaxRookieDivisionSize,
+						"Division %d size %d should be <= max %d", i, size, MaxRookieDivisionSize)
+				}
 			}
 		})
 	}

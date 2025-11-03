@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
@@ -43,7 +44,7 @@ func TestMergeDivisions_BasicMerge(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -148,7 +149,7 @@ func TestMergeDivisions_WithRenumbering(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -223,7 +224,7 @@ func TestMovePlayer_Success(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -303,7 +304,7 @@ func TestMovePlayer_InvalidDivision(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -362,7 +363,7 @@ func TestCreateDivision_AtEnd(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -424,7 +425,7 @@ func TestCreateDivision_InsertMiddle(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 

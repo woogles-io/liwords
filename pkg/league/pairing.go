@@ -16,8 +16,9 @@ type GamePairing struct {
 
 // GenerateAllLeaguePairings generates all pairings for a full round-robin league season
 // For N players, this generates N-1 rounds with N/2 games per round (or (N-1)/2 if odd)
+// If maxRounds > 0, limits the number of rounds to min(calculated, maxRounds)
 // Returns a slice of all game pairings that should be created when the season starts
-func GenerateAllLeaguePairings(numPlayers int, seed uint64) ([]*GamePairing, error) {
+func GenerateAllLeaguePairings(numPlayers int, seed uint64, maxRounds int) ([]*GamePairing, error) {
 	if numPlayers < 2 {
 		return nil, fmt.Errorf("need at least 2 players for league pairings")
 	}
@@ -26,6 +27,11 @@ func GenerateAllLeaguePairings(numPlayers int, seed uint64) ([]*GamePairing, err
 	numRounds := numPlayers
 	if numPlayers%2 == 0 {
 		numRounds = numPlayers - 1
+	}
+
+	// Apply max rounds cap if specified
+	if maxRounds > 0 && numRounds > maxRounds {
+		numRounds = maxRounds
 	}
 
 	allPairings := []*GamePairing{}

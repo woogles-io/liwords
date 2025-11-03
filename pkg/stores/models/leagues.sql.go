@@ -14,11 +14,11 @@ import (
 
 const countDivisionGamesComplete = `-- name: CountDivisionGamesComplete :one
 SELECT COUNT(*) FROM games
-WHERE division_id = $1 AND game_end_reason != 0
+WHERE league_division_id = $1 AND game_end_reason != 0
 `
 
-func (q *Queries) CountDivisionGamesComplete(ctx context.Context, divisionID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countDivisionGamesComplete, divisionID)
+func (q *Queries) CountDivisionGamesComplete(ctx context.Context, leagueDivisionID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDivisionGamesComplete, leagueDivisionID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -26,11 +26,11 @@ func (q *Queries) CountDivisionGamesComplete(ctx context.Context, divisionID pgt
 
 const countDivisionGamesTotal = `-- name: CountDivisionGamesTotal :one
 SELECT COUNT(*) FROM games
-WHERE division_id = $1
+WHERE league_division_id = $1
 `
 
-func (q *Queries) CountDivisionGamesTotal(ctx context.Context, divisionID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countDivisionGamesTotal, divisionID)
+func (q *Queries) CountDivisionGamesTotal(ctx context.Context, leagueDivisionID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDivisionGamesTotal, leagueDivisionID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -135,7 +135,7 @@ type CreateSeasonParams struct {
 	SeasonNumber int32
 	StartDate    pgtype.Timestamptz
 	EndDate      pgtype.Timestamptz
-	Status       string
+	Status       int32
 }
 
 // Season operations
@@ -300,7 +300,7 @@ SELECT
 FROM games g
 INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
 INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
-WHERE g.division_id = $1
+WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 0  -- Only finished games
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7
@@ -317,8 +317,8 @@ type GetDivisionGameResultsRow struct {
 	GameEndReason int16
 }
 
-func (q *Queries) GetDivisionGameResults(ctx context.Context, divisionID pgtype.UUID) ([]GetDivisionGameResultsRow, error) {
-	rows, err := q.db.Query(ctx, getDivisionGameResults, divisionID)
+func (q *Queries) GetDivisionGameResults(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionGameResultsRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionGameResults, leagueDivisionID)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (q *Queries) GetDivisionGameResults(ctx context.Context, divisionID pgtype.
 }
 
 const getDivisionRegistrations = `-- name: GetDivisionRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE division_id = $1
 ORDER BY registration_date
 `
@@ -367,7 +367,6 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 			&i.SeasonID,
 			&i.DivisionID,
 			&i.RegistrationDate,
-			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
 			&i.PlacementStatus,
@@ -425,7 +424,7 @@ func (q *Queries) GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) 
 const getGameLeagueInfo = `-- name: GetGameLeagueInfo :one
 
 SELECT
-    g.division_id,
+    g.league_division_id,
     g.season_id,
     g.league_id,
     g.player0_id,
@@ -442,16 +441,16 @@ WHERE g.uuid = $1
 `
 
 type GetGameLeagueInfoRow struct {
-	DivisionID    pgtype.UUID
-	SeasonID      pgtype.UUID
-	LeagueID      pgtype.UUID
-	Player0ID     pgtype.Int4
-	Player1ID     pgtype.Int4
-	Player0Score  pgtype.Int4
-	Player1Score  pgtype.Int4
-	Player0Won    pgtype.Bool
-	Player1Won    pgtype.Bool
-	GameEndReason pgtype.Int2
+	LeagueDivisionID pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueID         pgtype.UUID
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Player0Score     pgtype.Int4
+	Player1Score     pgtype.Int4
+	Player0Won       pgtype.Bool
+	Player1Won       pgtype.Bool
+	GameEndReason    pgtype.Int2
 }
 
 // Exclude CANCELLED
@@ -459,7 +458,7 @@ func (q *Queries) GetGameLeagueInfo(ctx context.Context, argUuid pgtype.Text) (G
 	row := q.db.QueryRow(ctx, getGameLeagueInfo, argUuid)
 	var i GetGameLeagueInfoRow
 	err := row.Scan(
-		&i.DivisionID,
+		&i.LeagueDivisionID,
 		&i.SeasonID,
 		&i.LeagueID,
 		&i.Player0ID,
@@ -521,14 +520,14 @@ func (q *Queries) GetLeagueByUUID(ctx context.Context, argUuid uuid.UUID) (Leagu
 
 const getLeagueGames = `-- name: GetLeagueGames :many
 
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, division_id FROM games
-WHERE division_id = $1
+SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, league_division_id FROM games
+WHERE league_division_id = $1
 ORDER BY created_at
 `
 
 // Game queries for league games
-func (q *Queries) GetLeagueGames(ctx context.Context, divisionID pgtype.UUID) ([]Game, error) {
-	rows, err := q.db.Query(ctx, getLeagueGames, divisionID)
+func (q *Queries) GetLeagueGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]Game, error) {
+	rows, err := q.db.Query(ctx, getLeagueGames, leagueDivisionID)
 	if err != nil {
 		return nil, err
 	}
@@ -562,7 +561,7 @@ func (q *Queries) GetLeagueGames(ctx context.Context, divisionID pgtype.UUID) ([
 			&i.PlayerOnTurn,
 			&i.LeagueID,
 			&i.SeasonID,
-			&i.DivisionID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -575,19 +574,19 @@ func (q *Queries) GetLeagueGames(ctx context.Context, divisionID pgtype.UUID) ([
 }
 
 const getLeagueGamesByStatus = `-- name: GetLeagueGamesByStatus :many
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, division_id FROM games
-WHERE division_id = $1
+SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, league_division_id FROM games
+WHERE league_division_id = $1
   AND ($2::boolean = true OR game_end_reason = 0)
 ORDER BY created_at
 `
 
 type GetLeagueGamesByStatusParams struct {
-	DivisionID      pgtype.UUID
-	IncludeFinished bool
+	LeagueDivisionID pgtype.UUID
+	IncludeFinished  bool
 }
 
 func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGamesByStatusParams) ([]Game, error) {
-	rows, err := q.db.Query(ctx, getLeagueGamesByStatus, arg.DivisionID, arg.IncludeFinished)
+	rows, err := q.db.Query(ctx, getLeagueGamesByStatus, arg.LeagueDivisionID, arg.IncludeFinished)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +620,7 @@ func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGames
 			&i.PlayerOnTurn,
 			&i.LeagueID,
 			&i.SeasonID,
-			&i.DivisionID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -635,7 +634,7 @@ func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGames
 
 const getPastSeasons = `-- name: GetPastSeasons :many
 SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons
-WHERE league_id = $1 AND status = 'SEASON_COMPLETED'
+WHERE league_id = $1 AND status = 2  -- SeasonStatus.SEASON_COMPLETED
 ORDER BY season_number DESC
 `
 
@@ -671,7 +670,7 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 }
 
 const getPlayerRegistration = `-- name: GetPlayerRegistration :one
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1 AND user_id = $2
 `
 
@@ -689,7 +688,6 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 		&i.SeasonID,
 		&i.DivisionID,
 		&i.RegistrationDate,
-		&i.StartingRating,
 		&i.FirstsCount,
 		&i.Status,
 		&i.PlacementStatus,
@@ -702,7 +700,7 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 }
 
 const getPlayerSeasonHistory = `-- name: GetPlayerSeasonHistory :many
-SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.starting_rating, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
 FROM league_registrations lr
 JOIN league_seasons ls ON lr.season_id = ls.uuid
 WHERE lr.user_id = $1
@@ -721,10 +719,9 @@ type GetPlayerSeasonHistoryRow struct {
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
-	StartingRating       pgtype.Int4
 	FirstsCount          pgtype.Int4
 	Status               pgtype.Text
-	PlacementStatus      pgtype.Text
+	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonsAway          pgtype.Int4
 	CreatedAt            pgtype.Timestamptz
@@ -748,7 +745,6 @@ func (q *Queries) GetPlayerSeasonHistory(ctx context.Context, arg GetPlayerSeaso
 			&i.SeasonID,
 			&i.DivisionID,
 			&i.RegistrationDate,
-			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
 			&i.PlacementStatus,
@@ -800,7 +796,7 @@ func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingPa
 }
 
 const getRegistrationsByDivision = `-- name: GetRegistrationsByDivision :many
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE division_id = $1
 ORDER BY placement_status, previous_division_rank
 `
@@ -820,7 +816,6 @@ func (q *Queries) GetRegistrationsByDivision(ctx context.Context, divisionID pgt
 			&i.SeasonID,
 			&i.DivisionID,
 			&i.RegistrationDate,
-			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
 			&i.PlacementStatus,
@@ -861,8 +856,36 @@ func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeaso
 	return i, err
 }
 
+const getSeasonByLeagueAndNumber = `-- name: GetSeasonByLeagueAndNumber :one
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons
+WHERE league_id = $1 AND season_number = $2
+`
+
+type GetSeasonByLeagueAndNumberParams struct {
+	LeagueID     uuid.UUID
+	SeasonNumber int32
+}
+
+func (q *Queries) GetSeasonByLeagueAndNumber(ctx context.Context, arg GetSeasonByLeagueAndNumberParams) (LeagueSeason, error) {
+	row := q.db.QueryRow(ctx, getSeasonByLeagueAndNumber, arg.LeagueID, arg.SeasonNumber)
+	var i LeagueSeason
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.LeagueID,
+		&i.SeasonNumber,
+		&i.StartDate,
+		&i.EndDate,
+		&i.ActualEndDate,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSeasonRegistrations = `-- name: GetSeasonRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
+SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1
 ORDER BY registration_date
 `
@@ -882,7 +905,6 @@ func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID
 			&i.SeasonID,
 			&i.DivisionID,
 			&i.RegistrationDate,
-			&i.StartingRating,
 			&i.FirstsCount,
 			&i.Status,
 			&i.PlacementStatus,
@@ -1065,7 +1087,7 @@ func (q *Queries) MarkDivisionComplete(ctx context.Context, argUuid uuid.UUID) e
 
 const markSeasonComplete = `-- name: MarkSeasonComplete :exec
 UPDATE league_seasons
-SET status = 'SEASON_COMPLETED', actual_end_date = NOW(), updated_at = NOW()
+SET status = 2, actual_end_date = NOW(), updated_at = NOW()  -- SeasonStatus.SEASON_COMPLETED
 WHERE uuid = $1
 `
 
@@ -1103,18 +1125,17 @@ func (q *Queries) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) er
 
 const registerPlayer = `-- name: RegisterPlayer :one
 
-INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (user_id, season_id)
 DO UPDATE SET
     division_id = EXCLUDED.division_id,
-    starting_rating = EXCLUDED.starting_rating,
     firsts_count = EXCLUDED.firsts_count,
     status = EXCLUDED.status,
     placement_status = EXCLUDED.placement_status,
     previous_division_rank = EXCLUDED.previous_division_rank,
     seasons_away = EXCLUDED.seasons_away
-RETURNING id, user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at
+RETURNING id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at
 `
 
 type RegisterPlayerParams struct {
@@ -1122,10 +1143,9 @@ type RegisterPlayerParams struct {
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
-	StartingRating       pgtype.Int4
 	FirstsCount          pgtype.Int4
 	Status               pgtype.Text
-	PlacementStatus      pgtype.Text
+	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonsAway          pgtype.Int4
 }
@@ -1137,7 +1157,6 @@ func (q *Queries) RegisterPlayer(ctx context.Context, arg RegisterPlayerParams) 
 		arg.SeasonID,
 		arg.DivisionID,
 		arg.RegistrationDate,
-		arg.StartingRating,
 		arg.FirstsCount,
 		arg.Status,
 		arg.PlacementStatus,
@@ -1151,7 +1170,6 @@ func (q *Queries) RegisterPlayer(ctx context.Context, arg RegisterPlayerParams) 
 		&i.SeasonID,
 		&i.DivisionID,
 		&i.RegistrationDate,
-		&i.StartingRating,
 		&i.FirstsCount,
 		&i.Status,
 		&i.PlacementStatus,
@@ -1251,7 +1269,7 @@ WHERE user_id = $1 AND season_id = $4
 
 type UpdatePlacementStatusParams struct {
 	UserID               string
-	PlacementStatus      pgtype.Text
+	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonID             uuid.UUID
 }
@@ -1274,7 +1292,7 @@ WHERE user_id = $1 AND season_id = $5
 
 type UpdatePlacementStatusWithSeasonsAwayParams struct {
 	UserID               string
-	PlacementStatus      pgtype.Text
+	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonsAway          pgtype.Int4
 	SeasonID             uuid.UUID
@@ -1345,7 +1363,7 @@ WHERE uuid = $1
 
 type UpdateSeasonStatusParams struct {
 	Uuid   uuid.UUID
-	Status string
+	Status int32
 }
 
 func (q *Queries) UpdateSeasonStatus(ctx context.Context, arg UpdateSeasonStatusParams) error {
@@ -1380,7 +1398,7 @@ type UpsertStandingParams struct {
 	Spread         pgtype.Int4
 	GamesPlayed    pgtype.Int4
 	GamesRemaining pgtype.Int4
-	Result         pgtype.Text
+	Result         pgtype.Int4
 }
 
 // Standings operations

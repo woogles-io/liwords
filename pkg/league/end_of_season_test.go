@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
@@ -43,7 +44,7 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -75,7 +76,6 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: div1ID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			StartingRating:   pgtype.Int4{Int32: 1500, Valid: true},
 			FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 			Status:           pgtype.Text{String: "ACTIVE", Valid: true},
 			SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true},
@@ -90,7 +90,6 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: div2ID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			StartingRating:   pgtype.Int4{Int32: 1500, Valid: true},
 			FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 			Status:           pgtype.Text{String: "ACTIVE", Valid: true},
 			SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true},
@@ -116,9 +115,9 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		is.True(reg.PlacementStatus.Valid)
 		is.True(reg.PreviousDivisionRank.Valid)
 
-		if reg.PlacementStatus.String == "STAYED" {
+		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
 			stayed++
-		} else if reg.PlacementStatus.String == "RELEGATED" {
+		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_RELEGATED) {
 			relegated++
 		}
 	}
@@ -140,9 +139,9 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		is.True(reg.PlacementStatus.Valid)
 		is.True(reg.PreviousDivisionRank.Valid)
 
-		if reg.PlacementStatus.String == "PROMOTED" {
+		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_PROMOTED) {
 			promoted++
-		} else if reg.PlacementStatus.String == "STAYED" {
+		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
 			stayed++
 		}
 	}
@@ -181,7 +180,7 @@ func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       "SEASON_ACTIVE",
+		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	is.NoErr(err)
 
@@ -203,7 +202,6 @@ func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: rookieDivID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			StartingRating:   pgtype.Int4{Int32: 1200, Valid: true},
 			FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 			Status:           pgtype.Text{String: "ACTIVE", Valid: true},
 			SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true},
@@ -226,9 +224,9 @@ func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
 	var promoted, stayed int
 	for _, reg := range rookieRegs {
 		is.True(reg.PlacementStatus.Valid)
-		if reg.PlacementStatus.String == "PROMOTED" {
+		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_PROMOTED) {
 			promoted++
-		} else if reg.PlacementStatus.String == "STAYED" {
+		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
 			stayed++
 		}
 	}

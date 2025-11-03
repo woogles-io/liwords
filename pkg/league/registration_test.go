@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/matryer/is"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -69,7 +70,7 @@ func TestRegisterPlayer(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
-		Status:       "SCHEDULED",
+		Status:       int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	is.NoErr(err)
 
@@ -77,9 +78,8 @@ func TestRegisterPlayer(t *testing.T) {
 	rm := NewRegistrationManager(store)
 
 	userID := "test-user-1"
-	rating := int32(1500)
 
-	err = rm.RegisterPlayer(ctx, userID, seasonID, rating)
+	err = rm.RegisterPlayer(ctx, userID, seasonID)
 	is.NoErr(err)
 
 	// Verify registration was stored
@@ -87,7 +87,6 @@ func TestRegisterPlayer(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(regs), 1)
 	is.Equal(regs[0].UserID, userID)
-	is.Equal(regs[0].StartingRating.Int32, rating)
 	is.Equal(regs[0].Status.String, "REGISTERED")
 	is.True(!regs[0].DivisionID.Valid) // No division assigned yet
 }
@@ -119,7 +118,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
-		Status:       "SCHEDULED",
+		Status:       int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	is.NoErr(err)
 
@@ -128,8 +127,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		userID := uuid.NewString()
-		rating := int32(1200 + i*10)
-		err = rm.RegisterPlayer(ctx, userID, seasonID, rating)
+		err = rm.RegisterPlayer(ctx, userID, seasonID)
 		is.NoErr(err)
 	}
 
@@ -166,7 +164,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
-		Status:       "SCHEDULED",
+		Status:       int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	is.NoErr(err)
 
@@ -175,8 +173,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		userID := uuid.NewString()
-		rating := int32(1500 + i*10)
-		err = rm.RegisterPlayer(ctx, userID, seasonID, rating)
+		err = rm.RegisterPlayer(ctx, userID, seasonID)
 		is.NoErr(err)
 	}
 
@@ -222,7 +219,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 		SeasonNumber: 1,
 		StartDate:    pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, -30), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, -16), Valid: true},
-		Status:       "COMPLETED",
+		Status:       int32(ipc.SeasonStatus_SEASON_COMPLETED),
 	})
 	is.NoErr(err)
 
@@ -232,7 +229,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		userID := uuid.NewString()
 		returningPlayerIDs = append(returningPlayerIDs, userID)
-		err = rm.RegisterPlayer(ctx, userID, season1ID, int32(1500+i*10))
+		err = rm.RegisterPlayer(ctx, userID, season1ID)
 		is.NoErr(err)
 	}
 
@@ -244,13 +241,13 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 		SeasonNumber: 2,
 		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
-		Status:       "SCHEDULED",
+		Status:       int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	is.NoErr(err)
 
 	// Register the 5 returning players in Season 2
-	for i, userID := range returningPlayerIDs {
-		err = rm.RegisterPlayer(ctx, userID, season2ID, int32(1550+i*10))
+	for _, userID := range returningPlayerIDs {
+		err = rm.RegisterPlayer(ctx, userID, season2ID)
 		is.NoErr(err)
 	}
 
@@ -259,7 +256,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		userID := uuid.NewString()
 		newPlayerIDs = append(newPlayerIDs, userID)
-		err = rm.RegisterPlayer(ctx, userID, season2ID, int32(1400+i*10))
+		err = rm.RegisterPlayer(ctx, userID, season2ID)
 		is.NoErr(err)
 	}
 

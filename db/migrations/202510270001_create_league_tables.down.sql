@@ -1,9 +1,9 @@
 -- Remove league metadata from games table
-DROP INDEX IF EXISTS idx_games_division_id;
+DROP INDEX IF EXISTS idx_games_league_division_id;
 DROP INDEX IF EXISTS idx_games_season_id;
 DROP INDEX IF EXISTS idx_games_league_id;
 
-ALTER TABLE games DROP COLUMN IF EXISTS division_id;
+ALTER TABLE games DROP COLUMN IF EXISTS league_division_id;
 ALTER TABLE games DROP COLUMN IF EXISTS season_id;
 ALTER TABLE games DROP COLUMN IF EXISTS league_id;
 

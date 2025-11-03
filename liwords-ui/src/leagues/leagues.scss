@@ -1,0 +1,156 @@
+@import "../base";
+
+.leagues-container {
+  max-width: 1200px;
+  margin: 24px auto;
+  padding: 0 24px;
+
+  h1 {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+
+  .leagues-description {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 32px;
+
+    @include colorModed {
+      color: #aaa;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+  }
+
+  .no-leagues {
+    text-align: center;
+    padding: 48px;
+    color: #999;
+  }
+
+  .league-card {
+    height: 100%;
+
+    .league-meta {
+      margin-top: 16px;
+      font-size: 14px;
+
+      div {
+        margin-bottom: 8px;
+      }
+    }
+  }
+
+  .league-header {
+    margin-bottom: 24px;
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 16px;
+      color: #666;
+
+      @include colorModed {
+        color: #aaa;
+      }
+    }
+  }
+
+  .league-settings-card {
+    margin-bottom: 24px;
+
+    .setting-item {
+      text-align: center;
+
+      strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #888;
+
+        @include colorModed {
+          color: #aaa;
+        }
+      }
+
+      div {
+        font-size: 16px;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .season-navigation-card {
+    margin-bottom: 24px;
+
+    .season-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+
+      h2 {
+        margin: 0;
+      }
+    }
+  }
+
+  .standings-container {
+    h3 {
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    .division-standings {
+      margin-bottom: 32px;
+
+      h4 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+
+      .ant-table {
+        background: white;
+
+        @include colorModed {
+          background: #1a1a1a;
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .leagues-container {
+    padding: 0 16px;
+
+    h1 {
+      font-size: 24px;
+    }
+
+    .league-settings-card {
+      .ant-col {
+        margin-bottom: 16px;
+      }
+    }
+
+    .season-header {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 16px;
+
+      h2 {
+        margin-bottom: 8px !important;
+      }
+    }
+  }
+}

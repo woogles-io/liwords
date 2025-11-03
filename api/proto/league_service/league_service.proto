@@ -4,136 +4,126 @@ package league_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/league_service";
 
 import "proto/ipc/league.proto";
+import "google/protobuf/timestamp.proto";
 
 service LeagueService {
-    // League management
-    rpc CreateLeague(CreateLeagueRequest) returns (LeagueResponse);
-    rpc GetLeague(LeagueRequest) returns (LeagueResponse);
-    rpc GetAllLeagues(GetAllLeaguesRequest) returns (GetAllLeaguesResponse);
-    rpc UpdateLeagueSettings(UpdateLeagueSettingsRequest) returns (LeagueResponse);
+  // League management
+  rpc CreateLeague(CreateLeagueRequest) returns (LeagueResponse);
+  rpc GetLeague(LeagueRequest) returns (LeagueResponse);
+  rpc GetAllLeagues(GetAllLeaguesRequest) returns (GetAllLeaguesResponse);
+  rpc UpdateLeagueSettings(UpdateLeagueSettingsRequest)
+      returns (LeagueResponse);
 
-    // Season management
-    rpc GetSeason(SeasonRequest) returns (SeasonResponse);
-    rpc GetCurrentSeason(LeagueRequest) returns (SeasonResponse);
-    rpc GetPastSeasons(LeagueRequest) returns (PastSeasonsResponse);
-    rpc StartNextSeason(StartSeasonRequest) returns (SeasonResponse);
-    rpc CompleteSeason(SeasonRequest) returns (SeasonResponse);
+  // Season management
+  rpc BootstrapSeason(BootstrapSeasonRequest) returns (SeasonResponse);
+  rpc GetSeason(SeasonRequest) returns (SeasonResponse);
+  rpc GetCurrentSeason(LeagueRequest) returns (SeasonResponse);
+  rpc GetPastSeasons(LeagueRequest) returns (PastSeasonsResponse);
+  rpc OpenRegistration(LeagueRequest) returns (SeasonResponse);
+  rpc StartNextSeason(StartSeasonRequest) returns (SeasonResponse);
+  rpc CompleteSeason(SeasonRequest) returns (SeasonResponse);
 
-    // Division and standings
-    rpc GetDivisionStandings(DivisionRequest) returns (DivisionStandingsResponse);
-    rpc GetAllDivisionStandings(SeasonRequest) returns (AllDivisionStandingsResponse);
+  // Division and standings
+  rpc GetDivisionStandings(DivisionRequest) returns (DivisionStandingsResponse);
+  rpc GetAllDivisionStandings(SeasonRequest)
+      returns (AllDivisionStandingsResponse);
 
-    // Player management
-    rpc RegisterForSeason(RegisterRequest) returns (RegisterResponse);
-    rpc UnregisterFromSeason(UnregisterRequest) returns (UnregisterResponse);
-    rpc GetPlayerLeagueHistory(PlayerHistoryRequest) returns (PlayerHistoryResponse);
+  // Player management
+  rpc RegisterForSeason(RegisterRequest) returns (RegisterResponse);
+  rpc UnregisterFromSeason(UnregisterRequest) returns (UnregisterResponse);
+  rpc GetPlayerLeagueHistory(PlayerHistoryRequest)
+      returns (PlayerHistoryResponse);
 
-    // Statistics (Phase 8)
-    rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
+  // Statistics (Phase 8)
+  rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
 }
 
 message CreateLeagueRequest {
-    string name = 1;
-    string description = 2;
-    string slug = 3;
-    ipc.LeagueSettings settings = 4;
+  string name = 1;
+  string description = 2;
+  string slug = 3;
+  ipc.LeagueSettings settings = 4;
 }
 
 message LeagueRequest {
-    string league_id = 1;  // UUID or slug
+  string league_id = 1; // UUID or slug
 }
 
-message GetAllLeaguesRequest {
-    bool active_only = 1;
-}
+message GetAllLeaguesRequest { bool active_only = 1; }
 
-message GetAllLeaguesResponse {
-    repeated ipc.League leagues = 1;
-}
+message GetAllLeaguesResponse { repeated ipc.League leagues = 1; }
 
-message LeagueResponse {
-    ipc.League league = 1;
-}
+message LeagueResponse { ipc.League league = 1; }
 
 message UpdateLeagueSettingsRequest {
-    string league_id = 1;
-    ipc.LeagueSettings settings = 2;
+  string league_id = 1;
+  ipc.LeagueSettings settings = 2;
 }
 
-message SeasonRequest {
-    string season_id = 1;
+message SeasonRequest { string season_id = 1; }
+
+message SeasonResponse { ipc.Season season = 1; }
+
+message PastSeasonsResponse { repeated ipc.Season seasons = 1; }
+
+message BootstrapSeasonRequest {
+  string league_id = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+  ipc.SeasonStatus status = 4; // Explicit status (SCHEDULED, ACTIVE)
 }
 
-message SeasonResponse {
-    ipc.Season season = 1;
-}
+message StartSeasonRequest { string league_id = 1; }
 
-message PastSeasonsResponse {
-    repeated ipc.Season seasons = 1;
-}
+message DivisionRequest { string division_id = 1; }
 
-message StartSeasonRequest {
-    string league_id = 1;
-}
+message DivisionStandingsResponse { ipc.Division division = 1; }
 
-message DivisionRequest {
-    string division_id = 1;
-}
-
-message DivisionStandingsResponse {
-    ipc.Division division = 1;
-}
-
-message AllDivisionStandingsResponse {
-    repeated ipc.Division divisions = 1;
-}
+message AllDivisionStandingsResponse { repeated ipc.Division divisions = 1; }
 
 message RegisterRequest {
-    string league_id = 1;
-    string user_id = 2;
+  string league_id = 1;
+  string user_id = 2;
+  string season_id = 3;
 }
 
 message RegisterResponse {
-    bool success = 1;
-    string season_id = 2;
+  bool success = 1;
+  string season_id = 2;
 }
 
 message UnregisterRequest {
-    string season_id = 1;
-    string user_id = 2;
+  string season_id = 1;
+  string user_id = 2;
 }
 
-message UnregisterResponse {
-    bool success = 1;
-}
+message UnregisterResponse { bool success = 1; }
 
 message PlayerHistoryRequest {
-    string user_id = 1;
-    string league_id = 2;  // Optional: filter by specific league
+  string user_id = 1;
+  string league_id = 2; // Optional: filter by specific league
 }
 
-message PlayerHistoryResponse {
-    repeated SeasonSummary seasons = 1;
-}
+message PlayerHistoryResponse { repeated SeasonSummary seasons = 1; }
 
 message SeasonSummary {
-    string season_id = 1;
-    int32 season_number = 2;
-    string league_name = 3;
-    int32 division_number = 4;
-    ipc.LeaguePlayerStanding standing = 5;
+  string season_id = 1;
+  int32 season_number = 2;
+  string league_name = 3;
+  int32 division_number = 4;
+  ipc.LeaguePlayerStanding standing = 5;
 }
 
 message LeagueStatisticsResponse {
-    // Phase 8 implementation
-    repeated LeagueStat stats = 1;
+  // Phase 8 implementation
+  repeated LeagueStat stats = 1;
 }
 
 message LeagueStat {
-    string stat_type = 1;
-    string user_id = 2;
-    string username = 3;
-    int32 value = 4;
-    string game_id = 5;
-    int32 division_number = 6;
+  string stat_type = 1;
+  string user_id = 2;
+  string username = 3;
+  int32 value = 4;
+  string game_id = 5;
+  int32 division_number = 6;
 }

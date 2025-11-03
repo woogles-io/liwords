@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -28,7 +29,6 @@ const (
 	HiatusWeightBase = 0.933
 
 	// Division sizing
-	IdealDivisionSize    = 15
 	MinimumFinalDivSize  = 12
 )
 
@@ -48,7 +48,7 @@ func NewRebalanceManager(store league.Store) *RebalanceManager {
 type PlayerWithVirtualDiv struct {
 	UserID              string
 	VirtualDivision     int32
-	PlacementStatus     string
+	PlacementStatus     ipc.PlacementStatus
 	PreviousDivisionSize int
 	PreviousRank        int32
 	HiatusSeasons       int32
@@ -79,6 +79,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	newSeasonID uuid.UUID,
 	newSeasonNumber int32,
 	categorizedPlayers []CategorizedPlayer,
+	idealDivisionSize int32,
 ) (*RebalanceResult, error) {
 	result := &RebalanceResult{
 		VirtualDivisions: make(map[string]int32),
@@ -118,13 +119,13 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	playersWithPriority := rm.CalculatePriorityScores(playersWithVirtualDivs, numVirtualDivs)
 
 	// Step 4: Determine number of divisions to create
-	numDivisions := int(math.Round(float64(len(playersWithPriority)) / float64(IdealDivisionSize)))
+	numDivisions := int(math.Round(float64(len(playersWithPriority)) / float64(idealDivisionSize)))
 	if numDivisions < 1 {
 		numDivisions = 1
 	}
 
 	// Step 5: Create divisions and assign players
-	err = rm.CreateDivisionsAndAssign(ctx, newSeasonID, playersWithPriority, numDivisions)
+	err = rm.CreateDivisionsAndAssign(ctx, newSeasonID, playersWithPriority, numDivisions, idealDivisionSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create divisions and assign players: %w", err)
 	}
@@ -176,7 +177,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			// Brand new player
 			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
-				PlacementStatus:      pgtype.Text{String: "NEW", Valid: true},
+				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_NEW), Valid: true},
 				PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
 				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
 				SeasonID:             newSeasonID,
@@ -211,7 +212,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			// No history found, treat as new
 			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
-				PlacementStatus:      pgtype.Text{String: "NEW", Valid: true},
+				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_NEW), Valid: true},
 				PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
 				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
 				SeasonID:             newSeasonID,
@@ -236,7 +237,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			// Rookie graduating to regular divisions
 			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
-				PlacementStatus:      pgtype.Text{String: "GRADUATED", Valid: true},
+				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_GRADUATED), Valid: true},
 				PreviousDivisionRank: lastSeason.PreviousDivisionRank,
 				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
 				SeasonID:             newSeasonID,
@@ -252,16 +253,16 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 
 		if seasonsAway > 0 {
 			// Returning from hiatus
-			var status string
+			var status ipc.PlacementStatus
 			if seasonsAway >= 1 && seasonsAway <= 3 {
-				status = "SHORT_HIATUS_RETURNING"
+				status = ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING
 			} else {
-				status = "LONG_HIATUS_RETURNING"
+				status = ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING
 			}
 
 			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
-				PlacementStatus:      pgtype.Text{String: status, Valid: true},
+				PlacementStatus:      pgtype.Int4{Int32: int32(status), Valid: true},
 				PreviousDivisionRank: lastSeason.PreviousDivisionRank,
 				SeasonsAway:          pgtype.Int4{Int32: seasonsAway, Valid: true},
 				SeasonID:             newSeasonID,
@@ -309,9 +310,9 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 			return nil, fmt.Errorf("failed to get registration for %s: %w", catPlayer.Registration.UserID, err)
 		}
 
-		status := ""
+		status := ipc.PlacementStatus_PLACEMENT_NONE
 		if reg.PlacementStatus.Valid {
-			status = reg.PlacementStatus.String
+			status = ipc.PlacementStatus(reg.PlacementStatus.Int32)
 		}
 
 		player := PlayerWithVirtualDiv{
@@ -332,7 +333,7 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 		}
 
 		// Get previous division size (if applicable)
-		if status != "NEW" {
+		if status != ipc.PlacementStatus_PLACEMENT_NEW {
 			history, err := rm.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
 				UserID:   catPlayer.Registration.UserID,
 				LeagueID: leagueID,
@@ -397,9 +398,9 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 
 	for _, p := range players {
 		switch p.PlacementStatus {
-		case "GRADUATED":
+		case ipc.PlacementStatus_PLACEMENT_GRADUATED:
 			graduates = append(graduates, p)
-		case "NEW":
+		case ipc.PlacementStatus_PLACEMENT_NEW:
 			newPlayers = append(newPlayers, p)
 		default:
 			regularPlayers = append(regularPlayers, p)
@@ -431,14 +432,14 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 
 		// Apply outcome
 		switch p.PlacementStatus {
-		case "PROMOTED":
+		case ipc.PlacementStatus_PLACEMENT_PROMOTED:
 			regularPlayers[i].VirtualDivision = prevDivNumber - 1
 			if regularPlayers[i].VirtualDivision < 1 {
 				regularPlayers[i].VirtualDivision = 1
 			}
-		case "RELEGATED":
+		case ipc.PlacementStatus_PLACEMENT_RELEGATED:
 			regularPlayers[i].VirtualDivision = prevDivNumber + 1
-		case "STAYED", "SHORT_HIATUS_RETURNING", "LONG_HIATUS_RETURNING":
+		case ipc.PlacementStatus_PLACEMENT_STAYED, ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
 			regularPlayers[i].VirtualDivision = prevDivNumber
 		default:
 			regularPlayers[i].VirtualDivision = prevDivNumber
@@ -543,17 +544,17 @@ func (rm *RebalanceManager) CalculatePriorityScores(
 		// Calculate priority bonus based on status
 		var priorityBonus int64
 		switch p.PlacementStatus {
-		case "STAYED":
+		case ipc.PlacementStatus_PLACEMENT_STAYED:
 			priorityBonus = PriorityBonusStayed
-		case "PROMOTED":
+		case ipc.PlacementStatus_PLACEMENT_PROMOTED:
 			priorityBonus = PriorityBonusPromoted
-		case "RELEGATED":
+		case ipc.PlacementStatus_PLACEMENT_RELEGATED:
 			priorityBonus = PriorityBonusRelegated
-		case "GRADUATED":
+		case ipc.PlacementStatus_PLACEMENT_GRADUATED:
 			priorityBonus = PriorityBonusGraduated
-		case "SHORT_HIATUS_RETURNING", "LONG_HIATUS_RETURNING":
+		case ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
 			priorityBonus = PriorityBonusHiatusReturning
-		case "NEW":
+		case ipc.PlacementStatus_PLACEMENT_NEW:
 			priorityBonus = PriorityBonusNew
 		default:
 			priorityBonus = 0
@@ -599,6 +600,7 @@ func (rm *RebalanceManager) CreateDivisionsAndAssign(
 	seasonID uuid.UUID,
 	playersWithPriority []PlayerWithPriority,
 	numDivisions int,
+	idealDivisionSize int32,
 ) error {
 	// Create divisions 1, 2, 3, ..., numDivisions
 	createdDivisions := []models.LeagueDivision{}
@@ -612,10 +614,10 @@ func (rm *RebalanceManager) CreateDivisionsAndAssign(
 		createdDivisions = append(createdDivisions, div)
 	}
 
-	// Assign players sequentially: 15 per division
+	// Assign players sequentially based on ideal division size
 	for i, player := range playersWithPriority {
 		// Determine which division this player goes to
-		divIndex := i / IdealDivisionSize
+		divIndex := i / int(idealDivisionSize)
 		if divIndex >= len(createdDivisions) {
 			divIndex = len(createdDivisions) - 1 // Put overflow in last division
 		}
@@ -690,4 +692,129 @@ func (rm *RebalanceManager) MergeUndersizedFinalDivision(
 	}
 
 	return false, nil
+}
+
+// calculateRookieDivisionSizes determines the optimal sizes for rookie divisions
+// Aims to keep divisions between MinRookieDivisionSize and idealDivisionSize
+// but will allow up to MaxRookieDivisionSize (20) to avoid divisions that are too small
+func calculateRookieDivisionSizes(numRookies int, idealDivisionSize int) []int {
+	if numRookies < MinPlayersForRookieDivision {
+		return []int{}
+	}
+
+	// For 10-20 rookies, use one division (up to max)
+	if numRookies <= MaxRookieDivisionSize {
+		return []int{numRookies}
+	}
+
+	// For more than MaxRookieDivisionSize, we need multiple divisions
+	// Start by trying to use the target (idealDivisionSize) as the goal
+	numDivisions := (numRookies + idealDivisionSize - 1) / idealDivisionSize
+
+	// Calculate sizes with this number of divisions
+	baseSize := numRookies / numDivisions
+	remainder := numRookies % numDivisions
+	maxSize := baseSize
+	if remainder > 0 {
+		maxSize = baseSize + 1
+	}
+
+	// If the minimum size is too small, reduce number of divisions
+	// This will make divisions larger but still respect the max
+	for baseSize < MinRookieDivisionSize && numDivisions > 1 {
+		numDivisions--
+		baseSize = numRookies / numDivisions
+		remainder = numRookies % numDivisions
+		maxSize = baseSize
+		if remainder > 0 {
+			maxSize = baseSize + 1
+		}
+	}
+
+	// Verify we don't exceed the max
+	if maxSize > MaxRookieDivisionSize {
+		// Need more divisions to stay under max
+		numDivisions = (numRookies + MaxRookieDivisionSize - 1) / MaxRookieDivisionSize
+		baseSize = numRookies / numDivisions
+		remainder = numRookies % numDivisions
+	}
+
+	// Calculate actual sizes, distributing remainder across first divisions
+	sizes := make([]int, numDivisions)
+	for i := 0; i < numDivisions; i++ {
+		sizes[i] = baseSize
+		if i < remainder {
+			sizes[i]++
+		}
+	}
+
+	return sizes
+}
+
+// CreateRookieDivisionsAndAssign creates separate rookie divisions with balanced sizes (10-20 players each)
+// This should only be called when there are >= MinPlayersForRookieDivision new rookies
+func (rm *RebalanceManager) CreateRookieDivisionsAndAssign(
+	ctx context.Context,
+	seasonID uuid.UUID,
+	sortedRookies []CategorizedPlayer,
+	idealDivisionSize int32,
+) (*RookiePlacementResult, error) {
+	result := &RookiePlacementResult{
+		CreatedDivisions:         []models.LeagueDivision{},
+		PlacedInRookieDivisions:  []PlacedPlayer{},
+		PlacedInRegularDivisions: []PlacedPlayer{},
+	}
+
+	if len(sortedRookies) < MinPlayersForRookieDivision {
+		return nil, fmt.Errorf("not enough rookies for rookie divisions (need %d, got %d)",
+			MinPlayersForRookieDivision, len(sortedRookies))
+	}
+
+	// Calculate optimal division sizes
+	divisionSizes := calculateRookieDivisionSizes(len(sortedRookies), int(idealDivisionSize))
+
+	// Create divisions and assign players
+	playerIndex := 0
+	for divIndex, size := range divisionSizes {
+		// Create the division
+		divNumber := RookieDivisionNumberBase + divIndex
+		divName := fmt.Sprintf("Rookie Division %d", divIndex+1)
+
+		division, err := rm.store.CreateDivision(ctx, models.CreateDivisionParams{
+			Uuid:           uuid.New(),
+			SeasonID:       seasonID,
+			DivisionNumber: int32(divNumber),
+			DivisionName:   pgtype.Text{String: divName, Valid: true},
+			PlayerCount:    pgtype.Int4{Int32: int32(size), Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create rookie division: %w", err)
+		}
+
+		result.CreatedDivisions = append(result.CreatedDivisions, division)
+
+		// Assign players to this division
+		for i := 0; i < size && playerIndex < len(sortedRookies); i++ {
+			rookie := sortedRookies[playerIndex]
+			playerIndex++
+
+			err := rm.store.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+				UserID:      rookie.Registration.UserID,
+				SeasonID:    seasonID,
+				DivisionID:  pgtype.UUID{Bytes: division.Uuid, Valid: true},
+				FirstsCount: pgtype.Int4{Int32: 0, Valid: true},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to assign rookie to division: %w", err)
+			}
+
+			result.PlacedInRookieDivisions = append(result.PlacedInRookieDivisions, PlacedPlayer{
+				CategorizedPlayer: rookie,
+				DivisionID:        division.Uuid,
+				DivisionName:      divName,
+			})
+		}
+	}
+
+	return result, nil
 }

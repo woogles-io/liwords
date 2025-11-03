@@ -49,7 +49,7 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pairings, err := GenerateAllLeaguePairings(tt.numPlayers, 12345)
+			pairings, err := GenerateAllLeaguePairings(tt.numPlayers, 12345, 0)
 			if err != nil {
 				t.Fatalf("GenerateAllLeaguePairings failed: %v", err)
 			}
@@ -107,12 +107,12 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 }
 
 func TestGenerateAllLeaguePairings_TooFewPlayers(t *testing.T) {
-	_, err := GenerateAllLeaguePairings(1, 12345)
+	_, err := GenerateAllLeaguePairings(1, 12345, 0)
 	if err == nil {
 		t.Error("Expected error for 1 player, got nil")
 	}
 
-	_, err = GenerateAllLeaguePairings(0, 12345)
+	_, err = GenerateAllLeaguePairings(0, 12345, 0)
 	if err == nil {
 		t.Error("Expected error for 0 players, got nil")
 	}
@@ -120,8 +120,8 @@ func TestGenerateAllLeaguePairings_TooFewPlayers(t *testing.T) {
 
 func TestGenerateAllLeaguePairings_Deterministic(t *testing.T) {
 	// Same seed should produce same results
-	pairings1, _ := GenerateAllLeaguePairings(14, 99999)
-	pairings2, _ := GenerateAllLeaguePairings(14, 99999)
+	pairings1, _ := GenerateAllLeaguePairings(14, 99999, 0)
+	pairings2, _ := GenerateAllLeaguePairings(14, 99999, 0)
 
 	if len(pairings1) != len(pairings2) {
 		t.Fatal("Same seed produced different number of pairings")
@@ -139,8 +139,8 @@ func TestGenerateAllLeaguePairings_Deterministic(t *testing.T) {
 
 func TestGenerateAllLeaguePairings_DifferentSeeds(t *testing.T) {
 	// Different seeds should produce different initial shuffles (but same logical structure)
-	pairings1, _ := GenerateAllLeaguePairings(14, 11111)
-	pairings2, _ := GenerateAllLeaguePairings(14, 22222)
+	pairings1, _ := GenerateAllLeaguePairings(14, 11111, 0)
+	pairings2, _ := GenerateAllLeaguePairings(14, 22222, 0)
 
 	if len(pairings1) != len(pairings2) {
 		t.Fatal("Different seeds produced different number of pairings")

@@ -2,15 +2,54 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/league"
-	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
+	"github.com/woogles-io/liwords/pkg/stores"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+// GameplayAdapter adapts the gameplay package functions to the league.GameCreator interface
+type GameplayAdapter struct {
+	stores    *stores.Stores
+	cfg       *config.Config
+	eventChan chan<- *entity.EventWrapper
+}
+
+func (a *GameplayAdapter) InstantiateNewGame(ctx context.Context, users [2]*entity.User,
+	req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
+	return gameplay.InstantiateNewGame(ctx, a.stores.GameStore, a.cfg, users, req, tdata)
+}
+
+func (a *GameplayAdapter) StartGame(ctx context.Context, game *entity.Game) error {
+	return gameplay.StartGame(ctx, a.stores, a.eventChan, game)
+}
+
+// initLeagueStores initializes the necessary stores for league maintenance tasks
+func initLeagueStores(ctx context.Context, cfg *config.Config) (*stores.Stores, error) {
+	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
+	if err != nil {
+		return nil, err
+	}
+
+	redisPool := &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(cfg.RedisURL)
+		},
+	}
+
+	return stores.NewInitializedStores(dbPool, redisPool, cfg)
+}
 
 // LeagueRegistrationOpener opens registration for the next season on Day 15
 // This creates a new season with status REGISTRATION_OPEN
@@ -21,21 +60,15 @@ func LeagueRegistrationOpener() error {
 	cfg := &config.Config{}
 	cfg.Load(nil)
 
-	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
-	if err != nil {
-		return err
-	}
-	defer dbPool.Close()
-
-	leagueStore, err := leaguestore.NewDBStore(cfg, dbPool)
+	allStores, err := initLeagueStores(ctx, cfg)
 	if err != nil {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(leagueStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
 
 	// Get all active leagues
-	leagues, err := leagueStore.GetAllLeagues(ctx, true)
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -74,21 +107,15 @@ func LeagueSeasonCloser() error {
 	cfg := &config.Config{}
 	cfg.Load(nil)
 
-	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
-	if err != nil {
-		return err
-	}
-	defer dbPool.Close()
-
-	leagueStore, err := leaguestore.NewDBStore(cfg, dbPool)
+	allStores, err := initLeagueStores(ctx, cfg)
 	if err != nil {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(leagueStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
 
 	// Get all active leagues
-	leagues, err := leagueStore.GetAllLeagues(ctx, true)
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -121,6 +148,7 @@ func LeagueSeasonCloser() error {
 
 // LeagueSeasonStarter starts seasons that are SCHEDULED and past their start date
 // This runs at 8 AM ET on Day 21 (or any time after the scheduled start)
+// It also creates ALL games for the season upfront using round-robin pairing
 func LeagueSeasonStarter() error {
 	log.Info().Msg("starting league season starter maintenance task")
 
@@ -128,21 +156,15 @@ func LeagueSeasonStarter() error {
 	cfg := &config.Config{}
 	cfg.Load(nil)
 
-	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
-	if err != nil {
-		return err
-	}
-	defer dbPool.Close()
-
-	leagueStore, err := leaguestore.NewDBStore(cfg, dbPool)
+	allStores, err := initLeagueStores(ctx, cfg)
 	if err != nil {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(leagueStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
 
 	// Get all active leagues
-	leagues, err := leagueStore.GetAllLeagues(ctx, true)
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -150,15 +172,40 @@ func LeagueSeasonStarter() error {
 	now := time.Now()
 	seasonsStarted := 0
 
+	// Create event channel for game events (will be nil for maintenance, but required)
+	eventChan := make(chan *entity.EventWrapper, 100)
+	defer close(eventChan)
+
+	// Drain events in background
+	go func() {
+		for range eventChan {
+			// Discard events in maintenance context
+		}
+	}()
+
+	gameCreator := &GameplayAdapter{
+		stores:    allStores,
+		cfg:       cfg,
+		eventChan: eventChan,
+	}
+
 	for _, dbLeague := range leagues {
+		// Parse league settings to get game configuration
+		leagueSettings, err := parseLeagueSettings(dbLeague.Settings)
+		if err != nil {
+			log.Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to parse league settings")
+			continue
+		}
+
 		// Get all seasons for this league
-		seasons, err := leagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+		seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
 		if err != nil {
 			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to get seasons")
 			continue
 		}
 
 		for _, season := range seasons {
+			// Step 1: Start the season (changes status to ACTIVE)
 			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid, now)
 			if err != nil {
 				log.Err(err).
@@ -168,17 +215,45 @@ func LeagueSeasonStarter() error {
 				continue
 			}
 
-			if result != nil {
-				log.Info().
-					Str("leagueID", result.LeagueID.String()).
-					Str("seasonID", result.SeasonID.String()).
-					Str("leagueName", result.LeagueName).
-					Msg("successfully started league season")
-				seasonsStarted++
+			if result == nil {
+				// Season wasn't started (not scheduled or start time not reached)
+				continue
 			}
+
+			// Step 2: Create ALL games for the season using SeasonStartManager
+			startMgr := league.NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, eventChan, gameCreator)
+			gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings)
+			if err != nil {
+				log.Err(err).
+					Str("seasonID", season.Uuid.String()).
+					Str("leagueID", dbLeague.Uuid.String()).
+					Msg("failed to create games for season")
+				continue
+			}
+
+			log.Info().
+				Str("leagueID", result.LeagueID.String()).
+				Str("seasonID", result.SeasonID.String()).
+				Str("leagueName", result.LeagueName).
+				Int("totalGames", gameResult.TotalGamesCreated).
+				Interface("gamesPerDivision", gameResult.GamesPerDivision).
+				Msg("successfully started league season and created all games")
+
+			seasonsStarted++
 		}
 	}
 
 	log.Info().Int("seasonsStarted", seasonsStarted).Msg("completed league season starter")
 	return nil
 }
+
+// parseLeagueSettings parses the JSONB settings from the database
+func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
+	var settings pb.LeagueSettings
+	err := json.Unmarshal(settingsJSON, &settings)
+	if err != nil {
+		return nil, err
+	}
+	return &settings, nil
+}
+

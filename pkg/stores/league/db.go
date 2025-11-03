@@ -27,6 +27,7 @@ type Store interface {
 	GetCurrentSeason(ctx context.Context, leagueUUID uuid.UUID) (models.LeagueSeason, error)
 	GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error)
 	GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error)
+	GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error)
 	UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error
 	MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error
 
@@ -134,6 +135,13 @@ func (s *DBStore) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]mod
 
 func (s *DBStore) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error) {
 	return s.queries.GetSeasonsByLeague(ctx, leagueID)
+}
+
+func (s *DBStore) GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error) {
+	return s.queries.GetSeasonByLeagueAndNumber(ctx, models.GetSeasonByLeagueAndNumberParams{
+		LeagueID:     leagueID,
+		SeasonNumber: seasonNumber,
+	})
 }
 
 func (s *DBStore) UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error {

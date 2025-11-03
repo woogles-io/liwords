@@ -126,6 +126,9 @@ func (m *mockLeagueStore) GetPastSeasons(ctx context.Context, leagueID uuid.UUID
 func (m *mockLeagueStore) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error) {
 	return nil, nil
 }
+func (m *mockLeagueStore) GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error) {
+	return models.LeagueSeason{}, nil
+}
 func (m *mockLeagueStore) UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error {
 	return nil
 }

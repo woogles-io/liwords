@@ -2,12 +2,16 @@ package league
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -36,7 +40,7 @@ type RegistrationOpenResult struct {
 }
 
 // OpenRegistrationForNextSeason opens registration for the next season on Day 15
-// Returns nil if conditions aren't met (not Day 15, no current season, etc.)
+// Returns nil if conditions aren't met.
 func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -45,30 +49,17 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	// Get current season
 	currentSeason, err := slm.store.GetCurrentSeason(ctx, leagueID)
 	if err != nil {
-		return nil, nil // No current season, skip
-	}
-
-	// Check if current season is active
-	if currentSeason.Status != "SEASON_ACTIVE" {
-		return nil, nil // Not active, skip
-	}
-
-	// Check if we're on Day 15
-	daysSinceStart := int(now.Sub(currentSeason.StartDate.Time).Hours() / 24)
-	if daysSinceStart != 15 {
-		return nil, nil // Not Day 15, skip
+		return nil, fmt.Errorf("no current season found - use BootstrapSeason API to create first season: %w", err)
 	}
 
 	// Check if next season already exists
 	nextSeasonNumber := currentSeason.SeasonNumber + 1
-	existingSeasons, err := slm.store.GetSeasonsByLeague(ctx, leagueID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check existing seasons: %w", err)
+	_, err = slm.store.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
+	if err == nil {
+		return nil, nil // Next season already exists, skip
 	}
-	for _, s := range existingSeasons {
-		if s.SeasonNumber == nextSeasonNumber {
-			return nil, nil // Next season already exists, skip
-		}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to check existing season: %w", err)
 	}
 
 	// Get league info for result
@@ -88,7 +79,7 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		SeasonNumber: nextSeasonNumber,
 		StartDate:    pgtype.Timestamptz{Time: nextStartDate, Valid: true},
 		EndDate:      pgtype.Timestamptz{Time: nextEndDate, Valid: true},
-		Status:       "REGISTRATION_OPEN",
+		Status:       int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create next season: %w", err)
@@ -127,14 +118,8 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	}
 
 	// Check if current season is active
-	if currentSeason.Status != "SEASON_ACTIVE" {
+	if currentSeason.Status != int32(ipc.SeasonStatus_SEASON_ACTIVE) {
 		return nil, nil // Not active, skip
-	}
-
-	// Check if we're on Day 20
-	daysSinceStart := int(now.Sub(currentSeason.StartDate.Time).Hours() / 24)
-	if daysSinceStart != 20 {
-		return nil, nil // Not Day 20, skip
 	}
 
 	// Get league info for result
@@ -166,22 +151,20 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 
 	// Step 3: Get next season (should exist from Day 15)
 	nextSeasonNumber := currentSeason.SeasonNumber + 1
-	existingSeasons, err := slm.store.GetSeasonsByLeague(ctx, leagueID)
+	nextSeason, err := slm.store.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get seasons: %w", err)
-	}
-
-	var nextSeason *models.LeagueSeason
-	for _, s := range existingSeasons {
-		if s.SeasonNumber == nextSeasonNumber {
-			nextSeason = &s
-			break
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("next season not found - was registration opened on Day 15?")
 		}
-	}
-	if nextSeason == nil {
-		return nil, fmt.Errorf("next season not found - was registration opened on Day 15?")
+		return nil, fmt.Errorf("failed to get next season: %w", err)
 	}
 	result.NextSeasonID = nextSeason.Uuid
+
+	// Parse league settings to get ideal division size
+	var leagueSettings ipc.LeagueSettings
+	if err := json.Unmarshal(dbLeague.Settings, &leagueSettings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal league settings: %w", err)
+	}
 
 	// Step 4: Prepare next season divisions
 	orchestrator := NewSeasonOrchestrator(slm.store)
@@ -191,6 +174,7 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 		currentSeason.Uuid,
 		nextSeason.Uuid,
 		nextSeasonNumber,
+		leagueSettings.IdealDivisionSize,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare next season divisions: %w", err)
@@ -200,7 +184,7 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	// Step 5: Update next season status to SCHEDULED
 	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
 		Uuid:   nextSeason.Uuid,
-		Status: "SCHEDULED",
+		Status: int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update next season status: %w", err)
@@ -209,7 +193,7 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	// Step 6: Mark current season as COMPLETED
 	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
 		Uuid:   currentSeason.Uuid,
-		Status: "COMPLETED",
+		Status: int32(ipc.SeasonStatus_SEASON_COMPLETED),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to mark current season as completed: %w", err)
@@ -240,7 +224,7 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 	}
 
 	// Check if season is SCHEDULED
-	if season.Status != "SCHEDULED" {
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
 		return nil, nil // Not scheduled, skip
 	}
 
@@ -255,17 +239,31 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 		return nil, fmt.Errorf("failed to get league: %w", err)
 	}
 
-	// TODO: Start the season (create pairings/games)
-	// This requires a SeasonManager or PairingManager that doesn't exist yet
-	// For now, just update status
+	// Note: Game creation should be done by the caller using SeasonStartManager
+	// after this function returns successfully. This keeps SeasonLifecycleManager
+	// lightweight and focused on status transitions.
+	//
+	// To create games:
+	//   gameCreator := &GameplayAdapter{stores: stores, cfg: cfg, eventChan: eventChan}
+	//   startMgr := NewSeasonStartManager(store, stores, cfg, eventChan, gameCreator)
+	//   result, err := startMgr.CreateGamesForSeason(ctx, leagueID, seasonID, leagueSettings)
 
 	// Update season status to ACTIVE
 	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
 		Uuid:   seasonID,
-		Status: "SEASON_ACTIVE",
+		Status: int32(ipc.SeasonStatus_SEASON_ACTIVE),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update season status: %w", err)
+	}
+
+	// Set this season as the current season
+	err = slm.store.SetCurrentSeason(ctx, models.SetCurrentSeasonParams{
+		Uuid:            leagueID,
+		CurrentSeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to set current season: %w", err)
 	}
 
 	return &SeasonStartResult{
@@ -274,4 +272,3 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 		SeasonID:   seasonID,
 	}, nil
 }
-

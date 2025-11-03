@@ -9,6 +9,7 @@ package ipc
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -24,10 +25,11 @@ const (
 type SeasonStatus int32
 
 const (
-	SeasonStatus_SEASON_SCHEDULED SeasonStatus = 0
-	SeasonStatus_SEASON_ACTIVE    SeasonStatus = 1
-	SeasonStatus_SEASON_COMPLETED SeasonStatus = 2
-	SeasonStatus_SEASON_CANCELLED SeasonStatus = 3
+	SeasonStatus_SEASON_SCHEDULED         SeasonStatus = 0
+	SeasonStatus_SEASON_ACTIVE            SeasonStatus = 1
+	SeasonStatus_SEASON_COMPLETED         SeasonStatus = 2
+	SeasonStatus_SEASON_CANCELLED         SeasonStatus = 3
+	SeasonStatus_SEASON_REGISTRATION_OPEN SeasonStatus = 4
 )
 
 // Enum value maps for SeasonStatus.
@@ -37,12 +39,14 @@ var (
 		1: "SEASON_ACTIVE",
 		2: "SEASON_COMPLETED",
 		3: "SEASON_CANCELLED",
+		4: "SEASON_REGISTRATION_OPEN",
 	}
 	SeasonStatus_value = map[string]int32{
-		"SEASON_SCHEDULED": 0,
-		"SEASON_ACTIVE":    1,
-		"SEASON_COMPLETED": 2,
-		"SEASON_CANCELLED": 3,
+		"SEASON_SCHEDULED":         0,
+		"SEASON_ACTIVE":            1,
+		"SEASON_COMPLETED":         2,
+		"SEASON_CANCELLED":         3,
+		"SEASON_REGISTRATION_OPEN": 4,
 	}
 )
 
@@ -126,6 +130,71 @@ func (x StandingResult) Number() protoreflect.EnumNumber {
 // Deprecated: Use StandingResult.Descriptor instead.
 func (StandingResult) EnumDescriptor() ([]byte, []int) {
 	return file_proto_ipc_league_proto_rawDescGZIP(), []int{1}
+}
+
+// PlacementStatus indicates a player's status for next season placement
+type PlacementStatus int32
+
+const (
+	PlacementStatus_PLACEMENT_NONE                   PlacementStatus = 0
+	PlacementStatus_PLACEMENT_NEW                    PlacementStatus = 1 // Brand new player
+	PlacementStatus_PLACEMENT_GRADUATED              PlacementStatus = 2 // Rookie graduating to regular divisions
+	PlacementStatus_PLACEMENT_PROMOTED               PlacementStatus = 3 // Promoted from lower division
+	PlacementStatus_PLACEMENT_RELEGATED              PlacementStatus = 4 // Relegated from higher division
+	PlacementStatus_PLACEMENT_STAYED                 PlacementStatus = 5 // Stayed in same division
+	PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING PlacementStatus = 6 // Returning after 1-3 seasons
+	PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING  PlacementStatus = 7 // Returning after 4+ seasons
+)
+
+// Enum value maps for PlacementStatus.
+var (
+	PlacementStatus_name = map[int32]string{
+		0: "PLACEMENT_NONE",
+		1: "PLACEMENT_NEW",
+		2: "PLACEMENT_GRADUATED",
+		3: "PLACEMENT_PROMOTED",
+		4: "PLACEMENT_RELEGATED",
+		5: "PLACEMENT_STAYED",
+		6: "PLACEMENT_SHORT_HIATUS_RETURNING",
+		7: "PLACEMENT_LONG_HIATUS_RETURNING",
+	}
+	PlacementStatus_value = map[string]int32{
+		"PLACEMENT_NONE":                   0,
+		"PLACEMENT_NEW":                    1,
+		"PLACEMENT_GRADUATED":              2,
+		"PLACEMENT_PROMOTED":               3,
+		"PLACEMENT_RELEGATED":              4,
+		"PLACEMENT_STAYED":                 5,
+		"PLACEMENT_SHORT_HIATUS_RETURNING": 6,
+		"PLACEMENT_LONG_HIATUS_RETURNING":  7,
+	}
+)
+
+func (x PlacementStatus) Enum() *PlacementStatus {
+	p := new(PlacementStatus)
+	*p = x
+	return p
+}
+
+func (x PlacementStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PlacementStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_ipc_league_proto_enumTypes[2].Descriptor()
+}
+
+func (PlacementStatus) Type() protoreflect.EnumType {
+	return &file_proto_ipc_league_proto_enumTypes[2]
+}
+
+func (x PlacementStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PlacementStatus.Descriptor instead.
+func (PlacementStatus) EnumDescriptor() ([]byte, []int) {
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{2}
 }
 
 type League struct {
@@ -221,17 +290,15 @@ func (x *League) GetIsActive() bool {
 }
 
 type LeagueSettings struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	SeasonLengthDays int32                  `protobuf:"varint,1,opt,name=season_length_days,json=seasonLengthDays,proto3" json:"season_length_days,omitempty"`
-	StartDayOfMonth  []int32                `protobuf:"varint,2,rep,packed,name=start_day_of_month,json=startDayOfMonth,proto3" json:"start_day_of_month,omitempty"`
-	TimeControl      *TimeControl           `protobuf:"bytes,3,opt,name=time_control,json=timeControl,proto3" json:"time_control,omitempty"`
-	Lexicon          string                 `protobuf:"bytes,4,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
-	Variant          string                 `protobuf:"bytes,5,opt,name=variant,proto3" json:"variant,omitempty"`
-	DivisionSize     int32                  `protobuf:"varint,6,opt,name=division_size,json=divisionSize,proto3" json:"division_size,omitempty"`
-	PromotionCount   int32                  `protobuf:"varint,7,opt,name=promotion_count,json=promotionCount,proto3" json:"promotion_count,omitempty"`
-	RelegationCount  int32                  `protobuf:"varint,8,opt,name=relegation_count,json=relegationCount,proto3" json:"relegation_count,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	SeasonLengthDays  int32                  `protobuf:"varint,1,opt,name=season_length_days,json=seasonLengthDays,proto3" json:"season_length_days,omitempty"`
+	TimeControl       *TimeControl           `protobuf:"bytes,3,opt,name=time_control,json=timeControl,proto3" json:"time_control,omitempty"`
+	Lexicon           string                 `protobuf:"bytes,4,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+	Variant           string                 `protobuf:"bytes,5,opt,name=variant,proto3" json:"variant,omitempty"`
+	IdealDivisionSize int32                  `protobuf:"varint,6,opt,name=ideal_division_size,json=idealDivisionSize,proto3" json:"ideal_division_size,omitempty"`
+	ChallengeRule     ChallengeRule          `protobuf:"varint,9,opt,name=challenge_rule,json=challengeRule,proto3,enum=ipc.ChallengeRule" json:"challenge_rule,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *LeagueSettings) Reset() {
@@ -271,13 +338,6 @@ func (x *LeagueSettings) GetSeasonLengthDays() int32 {
 	return 0
 }
 
-func (x *LeagueSettings) GetStartDayOfMonth() []int32 {
-	if x != nil {
-		return x.StartDayOfMonth
-	}
-	return nil
-}
-
 func (x *LeagueSettings) GetTimeControl() *TimeControl {
 	if x != nil {
 		return x.TimeControl
@@ -299,25 +359,18 @@ func (x *LeagueSettings) GetVariant() string {
 	return ""
 }
 
-func (x *LeagueSettings) GetDivisionSize() int32 {
+func (x *LeagueSettings) GetIdealDivisionSize() int32 {
 	if x != nil {
-		return x.DivisionSize
+		return x.IdealDivisionSize
 	}
 	return 0
 }
 
-func (x *LeagueSettings) GetPromotionCount() int32 {
+func (x *LeagueSettings) GetChallengeRule() ChallengeRule {
 	if x != nil {
-		return x.PromotionCount
+		return x.ChallengeRule
 	}
-	return 0
-}
-
-func (x *LeagueSettings) GetRelegationCount() int32 {
-	if x != nil {
-		return x.RelegationCount
-	}
-	return 0
+	return ChallengeRule_ChallengeRule_VOID
 }
 
 type TimeControl struct {
@@ -377,9 +430,9 @@ type Season struct {
 	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	LeagueId      string                 `protobuf:"bytes,2,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
 	SeasonNumber  int32                  `protobuf:"varint,3,opt,name=season_number,json=seasonNumber,proto3" json:"season_number,omitempty"`
-	StartDate     int64                  `protobuf:"varint,4,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       int64                  `protobuf:"varint,5,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
-	ActualEndDate int64                  `protobuf:"varint,6,opt,name=actual_end_date,json=actualEndDate,proto3" json:"actual_end_date,omitempty"`
+	StartDate     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	ActualEndDate *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=actual_end_date,json=actualEndDate,proto3" json:"actual_end_date,omitempty"`
 	Status        SeasonStatus           `protobuf:"varint,7,opt,name=status,proto3,enum=ipc.SeasonStatus" json:"status,omitempty"`
 	Divisions     []*Division            `protobuf:"bytes,8,rep,name=divisions,proto3" json:"divisions,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -437,25 +490,25 @@ func (x *Season) GetSeasonNumber() int32 {
 	return 0
 }
 
-func (x *Season) GetStartDate() int64 {
+func (x *Season) GetStartDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartDate
 	}
-	return 0
+	return nil
 }
 
-func (x *Season) GetEndDate() int64 {
+func (x *Season) GetEndDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndDate
 	}
-	return 0
+	return nil
 }
 
-func (x *Season) GetActualEndDate() int64 {
+func (x *Season) GetActualEndDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ActualEndDate
 	}
-	return 0
+	return nil
 }
 
 func (x *Season) GetStatus() SeasonStatus {
@@ -577,10 +630,9 @@ type PlayerRegistration struct {
 	UserId           string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Username         string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	DivisionId       string                 `protobuf:"bytes,3,opt,name=division_id,json=divisionId,proto3" json:"division_id,omitempty"`
-	RegistrationDate int64                  `protobuf:"varint,4,opt,name=registration_date,json=registrationDate,proto3" json:"registration_date,omitempty"`
-	StartingRating   int32                  `protobuf:"varint,5,opt,name=starting_rating,json=startingRating,proto3" json:"starting_rating,omitempty"`
-	FirstsCount      int32                  `protobuf:"varint,6,opt,name=firsts_count,json=firstsCount,proto3" json:"firsts_count,omitempty"`
-	Status           string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	RegistrationDate *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=registration_date,json=registrationDate,proto3" json:"registration_date,omitempty"`
+	FirstsCount      int32                  `protobuf:"varint,5,opt,name=firsts_count,json=firstsCount,proto3" json:"firsts_count,omitempty"`
+	Status           string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -636,18 +688,11 @@ func (x *PlayerRegistration) GetDivisionId() string {
 	return ""
 }
 
-func (x *PlayerRegistration) GetRegistrationDate() int64 {
+func (x *PlayerRegistration) GetRegistrationDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.RegistrationDate
 	}
-	return 0
-}
-
-func (x *PlayerRegistration) GetStartingRating() int32 {
-	if x != nil {
-		return x.StartingRating
-	}
-	return 0
+	return nil
 }
 
 func (x *PlayerRegistration) GetFirstsCount() int32 {
@@ -784,7 +829,7 @@ var File_proto_ipc_league_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_league_proto_rawDesc = "" +
 	"\n" +
-	"\x16proto/ipc/league.proto\x12\x03ipc\"\xe0\x01\n" +
+	"\x16proto/ipc/league.proto\x12\x03ipc\x1a\x18proto/ipc/omgwords.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe0\x01\n" +
 	"\x06League\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -792,27 +837,25 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12/\n" +
 	"\bsettings\x18\x05 \x01(\v2\x13.ipc.LeagueSettingsR\bsettings\x12*\n" +
 	"\x11current_season_id\x18\x06 \x01(\tR\x0fcurrentSeasonId\x12\x1b\n" +
-	"\tis_active\x18\a \x01(\bR\bisActive\"\xcd\x02\n" +
+	"\tis_active\x18\a \x01(\bR\bisActive\"\x92\x02\n" +
 	"\x0eLeagueSettings\x12,\n" +
-	"\x12season_length_days\x18\x01 \x01(\x05R\x10seasonLengthDays\x12+\n" +
-	"\x12start_day_of_month\x18\x02 \x03(\x05R\x0fstartDayOfMonth\x123\n" +
+	"\x12season_length_days\x18\x01 \x01(\x05R\x10seasonLengthDays\x123\n" +
 	"\ftime_control\x18\x03 \x01(\v2\x10.ipc.TimeControlR\vtimeControl\x12\x18\n" +
 	"\alexicon\x18\x04 \x01(\tR\alexicon\x12\x18\n" +
-	"\avariant\x18\x05 \x01(\tR\avariant\x12#\n" +
-	"\rdivision_size\x18\x06 \x01(\x05R\fdivisionSize\x12'\n" +
-	"\x0fpromotion_count\x18\a \x01(\x05R\x0epromotionCount\x12)\n" +
-	"\x10relegation_count\x18\b \x01(\x05R\x0frelegationCount\"f\n" +
+	"\avariant\x18\x05 \x01(\tR\avariant\x12.\n" +
+	"\x13ideal_division_size\x18\x06 \x01(\x05R\x11idealDivisionSize\x129\n" +
+	"\x0echallenge_rule\x18\t \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\"f\n" +
 	"\vTimeControl\x12+\n" +
 	"\x11increment_seconds\x18\x01 \x01(\x05R\x10incrementSeconds\x12*\n" +
-	"\x11time_bank_minutes\x18\x02 \x01(\x05R\x0ftimeBankMinutes\"\x98\x02\n" +
+	"\x11time_bank_minutes\x18\x02 \x01(\x05R\x0ftimeBankMinutes\"\xec\x02\n" +
 	"\x06Season\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1b\n" +
 	"\tleague_id\x18\x02 \x01(\tR\bleagueId\x12#\n" +
-	"\rseason_number\x18\x03 \x01(\x05R\fseasonNumber\x12\x1d\n" +
+	"\rseason_number\x18\x03 \x01(\x05R\fseasonNumber\x129\n" +
 	"\n" +
-	"start_date\x18\x04 \x01(\x03R\tstartDate\x12\x19\n" +
-	"\bend_date\x18\x05 \x01(\x03R\aendDate\x12&\n" +
-	"\x0factual_end_date\x18\x06 \x01(\x03R\ractualEndDate\x12)\n" +
+	"start_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartDate\x125\n" +
+	"\bend_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendDate\x12B\n" +
+	"\x0factual_end_date\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ractualEndDate\x12)\n" +
 	"\x06status\x18\a \x01(\x0e2\x11.ipc.SeasonStatusR\x06status\x12+\n" +
 	"\tdivisions\x18\b \x03(\v2\r.ipc.DivisionR\tdivisions\"\xb1\x02\n" +
 	"\bDivision\x12\x12\n" +
@@ -824,16 +867,15 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\bgame_ids\x18\x06 \x03(\tR\agameIds\x127\n" +
 	"\tstandings\x18\a \x03(\v2\x19.ipc.LeaguePlayerStandingR\tstandings\x12\x1f\n" +
 	"\vis_complete\x18\b \x01(\bR\n" +
-	"isComplete\"\xfb\x01\n" +
+	"isComplete\"\xee\x01\n" +
 	"\x12PlayerRegistration\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1f\n" +
 	"\vdivision_id\x18\x03 \x01(\tR\n" +
-	"divisionId\x12+\n" +
-	"\x11registration_date\x18\x04 \x01(\x03R\x10registrationDate\x12'\n" +
-	"\x0fstarting_rating\x18\x05 \x01(\x05R\x0estartingRating\x12!\n" +
-	"\ffirsts_count\x18\x06 \x01(\x05R\vfirstsCount\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\"\xb2\x02\n" +
+	"divisionId\x12G\n" +
+	"\x11registration_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10registrationDate\x12!\n" +
+	"\ffirsts_count\x18\x05 \x01(\x05R\vfirstsCount\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xb2\x02\n" +
 	"\x14LeaguePlayerStanding\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -845,18 +887,28 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\fgames_played\x18\b \x01(\x05R\vgamesPlayed\x12'\n" +
 	"\x0fgames_remaining\x18\t \x01(\x05R\x0egamesRemaining\x12+\n" +
 	"\x06result\x18\n" +
-	" \x01(\x0e2\x13.ipc.StandingResultR\x06result*c\n" +
+	" \x01(\x0e2\x13.ipc.StandingResultR\x06result*\x81\x01\n" +
 	"\fSeasonStatus\x12\x14\n" +
 	"\x10SEASON_SCHEDULED\x10\x00\x12\x11\n" +
 	"\rSEASON_ACTIVE\x10\x01\x12\x14\n" +
 	"\x10SEASON_COMPLETED\x10\x02\x12\x14\n" +
-	"\x10SEASON_CANCELLED\x10\x03*t\n" +
+	"\x10SEASON_CANCELLED\x10\x03\x12\x1c\n" +
+	"\x18SEASON_REGISTRATION_OPEN\x10\x04*t\n" +
 	"\x0eStandingResult\x12\x0f\n" +
 	"\vRESULT_NONE\x10\x00\x12\x13\n" +
 	"\x0fRESULT_PROMOTED\x10\x01\x12\x14\n" +
 	"\x10RESULT_RELEGATED\x10\x02\x12\x11\n" +
 	"\rRESULT_STAYED\x10\x03\x12\x13\n" +
-	"\x0fRESULT_CHAMPION\x10\x04Bs\n" +
+	"\x0fRESULT_CHAMPION\x10\x04*\xe3\x01\n" +
+	"\x0fPlacementStatus\x12\x12\n" +
+	"\x0ePLACEMENT_NONE\x10\x00\x12\x11\n" +
+	"\rPLACEMENT_NEW\x10\x01\x12\x17\n" +
+	"\x13PLACEMENT_GRADUATED\x10\x02\x12\x16\n" +
+	"\x12PLACEMENT_PROMOTED\x10\x03\x12\x17\n" +
+	"\x13PLACEMENT_RELEGATED\x10\x04\x12\x14\n" +
+	"\x10PLACEMENT_STAYED\x10\x05\x12$\n" +
+	" PLACEMENT_SHORT_HIATUS_RETURNING\x10\x06\x12#\n" +
+	"\x1fPLACEMENT_LONG_HIATUS_RETURNING\x10\aBs\n" +
 	"\acom.ipcB\vLeagueProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (
@@ -871,32 +923,40 @@ func file_proto_ipc_league_proto_rawDescGZIP() []byte {
 	return file_proto_ipc_league_proto_rawDescData
 }
 
-var file_proto_ipc_league_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_proto_ipc_league_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_proto_ipc_league_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_ipc_league_proto_goTypes = []any{
-	(SeasonStatus)(0),            // 0: ipc.SeasonStatus
-	(StandingResult)(0),          // 1: ipc.StandingResult
-	(*League)(nil),               // 2: ipc.League
-	(*LeagueSettings)(nil),       // 3: ipc.LeagueSettings
-	(*TimeControl)(nil),          // 4: ipc.TimeControl
-	(*Season)(nil),               // 5: ipc.Season
-	(*Division)(nil),             // 6: ipc.Division
-	(*PlayerRegistration)(nil),   // 7: ipc.PlayerRegistration
-	(*LeaguePlayerStanding)(nil), // 8: ipc.LeaguePlayerStanding
+	(SeasonStatus)(0),             // 0: ipc.SeasonStatus
+	(StandingResult)(0),           // 1: ipc.StandingResult
+	(PlacementStatus)(0),          // 2: ipc.PlacementStatus
+	(*League)(nil),                // 3: ipc.League
+	(*LeagueSettings)(nil),        // 4: ipc.LeagueSettings
+	(*TimeControl)(nil),           // 5: ipc.TimeControl
+	(*Season)(nil),                // 6: ipc.Season
+	(*Division)(nil),              // 7: ipc.Division
+	(*PlayerRegistration)(nil),    // 8: ipc.PlayerRegistration
+	(*LeaguePlayerStanding)(nil),  // 9: ipc.LeaguePlayerStanding
+	(ChallengeRule)(0),            // 10: ipc.ChallengeRule
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_proto_ipc_league_proto_depIdxs = []int32{
-	3, // 0: ipc.League.settings:type_name -> ipc.LeagueSettings
-	4, // 1: ipc.LeagueSettings.time_control:type_name -> ipc.TimeControl
-	0, // 2: ipc.Season.status:type_name -> ipc.SeasonStatus
-	6, // 3: ipc.Season.divisions:type_name -> ipc.Division
-	7, // 4: ipc.Division.players:type_name -> ipc.PlayerRegistration
-	8, // 5: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
-	1, // 6: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4,  // 0: ipc.League.settings:type_name -> ipc.LeagueSettings
+	5,  // 1: ipc.LeagueSettings.time_control:type_name -> ipc.TimeControl
+	10, // 2: ipc.LeagueSettings.challenge_rule:type_name -> ipc.ChallengeRule
+	11, // 3: ipc.Season.start_date:type_name -> google.protobuf.Timestamp
+	11, // 4: ipc.Season.end_date:type_name -> google.protobuf.Timestamp
+	11, // 5: ipc.Season.actual_end_date:type_name -> google.protobuf.Timestamp
+	0,  // 6: ipc.Season.status:type_name -> ipc.SeasonStatus
+	7,  // 7: ipc.Season.divisions:type_name -> ipc.Division
+	8,  // 8: ipc.Division.players:type_name -> ipc.PlayerRegistration
+	9,  // 9: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
+	11, // 10: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
+	1,  // 11: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_league_proto_init() }
@@ -904,12 +964,13 @@ func file_proto_ipc_league_proto_init() {
 	if File_proto_ipc_league_proto != nil {
 		return
 	}
+	file_proto_ipc_omgwords_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_league_proto_rawDesc), len(file_proto_ipc_league_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,

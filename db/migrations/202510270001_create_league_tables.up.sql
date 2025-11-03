@@ -22,7 +22,7 @@ CREATE TABLE league_seasons (
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
     actual_end_date TIMESTAMP WITH TIME ZONE,
-    status TEXT NOT NULL,
+    status INTEGER NOT NULL, -- SeasonStatus proto enum: 0=SCHEDULED, 1=ACTIVE, 2=COMPLETED, 3=CANCELLED, 4=REGISTRATION_OPEN
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(league_id, season_number)
@@ -49,10 +49,9 @@ CREATE TABLE league_registrations (
     season_id UUID NOT NULL REFERENCES league_seasons(uuid) ON DELETE CASCADE,
     division_id UUID REFERENCES league_divisions(uuid) ON DELETE SET NULL,
     registration_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    starting_rating INT,
     firsts_count INT,
     status TEXT DEFAULT 'ACTIVE',
-    placement_status TEXT,
+    placement_status INTEGER, -- StandingResult proto enum: 0=NONE, 1=PROMOTED, 2=RELEGATED, 3=STAYED, 4=CHAMPION
     previous_division_rank INT,
     seasons_away INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -72,7 +71,7 @@ CREATE TABLE league_standings (
     spread INT DEFAULT 0,
     games_played INT DEFAULT 0,
     games_remaining INT,
-    result TEXT,
+    result INTEGER, -- StandingResult proto enum: 0=NONE, 1=PROMOTED, 2=RELEGATED, 3=STAYED, 4=CHAMPION
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(division_id, user_id)
 );
@@ -91,8 +90,8 @@ CREATE INDEX idx_leagues_slug ON leagues(slug);
 -- Add league metadata to games table
 ALTER TABLE games ADD COLUMN league_id UUID;
 ALTER TABLE games ADD COLUMN season_id UUID;
-ALTER TABLE games ADD COLUMN division_id UUID;
+ALTER TABLE games ADD COLUMN league_division_id UUID;
 
 CREATE INDEX idx_games_league_id ON games(league_id) WHERE league_id IS NOT NULL;
 CREATE INDEX idx_games_season_id ON games(season_id) WHERE season_id IS NOT NULL;
-CREATE INDEX idx_games_division_id ON games(division_id) WHERE division_id IS NOT NULL;
+CREATE INDEX idx_games_league_division_id ON games(league_division_id) WHERE league_division_id IS NOT NULL;

@@ -4,13 +4,17 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { ChallengeRule } from "./omgwords_pb";
+import { file_proto_ipc_omgwords } from "./omgwords_pb";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/ipc/league.proto.
  */
 export const file_proto_ipc_league: GenFile = /*@__PURE__*/
-  fileDesc("ChZwcm90by9pcGMvbGVhZ3VlLnByb3RvEgNpcGMinAEKBkxlYWd1ZRIMCgR1dWlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDAoEc2x1ZxgEIAEoCRIlCghzZXR0aW5ncxgFIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncxIZChFjdXJyZW50X3NlYXNvbl9pZBgGIAEoCRIRCglpc19hY3RpdmUYByABKAgi3AEKDkxlYWd1ZVNldHRpbmdzEhoKEnNlYXNvbl9sZW5ndGhfZGF5cxgBIAEoBRIaChJzdGFydF9kYXlfb2ZfbW9udGgYAiADKAUSJgoMdGltZV9jb250cm9sGAMgASgLMhAuaXBjLlRpbWVDb250cm9sEg8KB2xleGljb24YBCABKAkSDwoHdmFyaWFudBgFIAEoCRIVCg1kaXZpc2lvbl9zaXplGAYgASgFEhcKD3Byb21vdGlvbl9jb3VudBgHIAEoBRIYChByZWxlZ2F0aW9uX2NvdW50GAggASgFIkMKC1RpbWVDb250cm9sEhkKEWluY3JlbWVudF9zZWNvbmRzGAEgASgFEhkKEXRpbWVfYmFua19taW51dGVzGAIgASgFIsQBCgZTZWFzb24SDAoEdXVpZBgBIAEoCRIRCglsZWFndWVfaWQYAiABKAkSFQoNc2Vhc29uX251bWJlchgDIAEoBRISCgpzdGFydF9kYXRlGAQgASgDEhAKCGVuZF9kYXRlGAUgASgDEhcKD2FjdHVhbF9lbmRfZGF0ZRgGIAEoAxIhCgZzdGF0dXMYByABKA4yES5pcGMuU2Vhc29uU3RhdHVzEiAKCWRpdmlzaW9ucxgIIAMoCzINLmlwYy5EaXZpc2lvbiLaAQoIRGl2aXNpb24SDAoEdXVpZBgBIAEoCRIRCglzZWFzb25faWQYAiABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAMgASgFEhUKDWRpdmlzaW9uX25hbWUYBCABKAkSKAoHcGxheWVycxgFIAMoCzIXLmlwYy5QbGF5ZXJSZWdpc3RyYXRpb24SEAoIZ2FtZV9pZHMYBiADKAkSLAoJc3RhbmRpbmdzGAcgAygLMhkuaXBjLkxlYWd1ZVBsYXllclN0YW5kaW5nEhMKC2lzX2NvbXBsZXRlGAggASgIIqYBChJQbGF5ZXJSZWdpc3RyYXRpb24SDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtkaXZpc2lvbl9pZBgDIAEoCRIZChFyZWdpc3RyYXRpb25fZGF0ZRgEIAEoAxIXCg9zdGFydGluZ19yYXRpbmcYBSABKAUSFAoMZmlyc3RzX2NvdW50GAYgASgFEg4KBnN0YXR1cxgHIAEoCSLYAQoUTGVhZ3VlUGxheWVyU3RhbmRpbmcSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIMCgRyYW5rGAMgASgFEgwKBHdpbnMYBCABKAUSDgoGbG9zc2VzGAUgASgFEg0KBWRyYXdzGAYgASgFEg4KBnNwcmVhZBgHIAEoBRIUCgxnYW1lc19wbGF5ZWQYCCABKAUSFwoPZ2FtZXNfcmVtYWluaW5nGAkgASgFEiMKBnJlc3VsdBgKIAEoDjITLmlwYy5TdGFuZGluZ1Jlc3VsdCpjCgxTZWFzb25TdGF0dXMSFAoQU0VBU09OX1NDSEVEVUxFRBAAEhEKDVNFQVNPTl9BQ1RJVkUQARIUChBTRUFTT05fQ09NUExFVEVEEAISFAoQU0VBU09OX0NBTkNFTExFRBADKnQKDlN0YW5kaW5nUmVzdWx0Eg8KC1JFU1VMVF9OT05FEAASEwoPUkVTVUxUX1BST01PVEVEEAESFAoQUkVTVUxUX1JFTEVHQVRFRBACEhEKDVJFU1VMVF9TVEFZRUQQAxITCg9SRVNVTFRfQ0hBTVBJT04QBEJzCgdjb20uaXBjQgtMZWFndWVQcm90b1ABWi9naXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2lwY6ICA0lYWKoCA0lwY8oCA0lwY+ICD0lwY1xHUEJNZXRhZGF0YeoCA0lwY2IGcHJvdG8z");
+  fileDesc("ChZwcm90by9pcGMvbGVhZ3VlLnByb3RvEgNpcGMinAEKBkxlYWd1ZRIMCgR1dWlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDAoEc2x1ZxgEIAEoCRIlCghzZXR0aW5ncxgFIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncxIZChFjdXJyZW50X3NlYXNvbl9pZBgGIAEoCRIRCglpc19hY3RpdmUYByABKAgivwEKDkxlYWd1ZVNldHRpbmdzEhoKEnNlYXNvbl9sZW5ndGhfZGF5cxgBIAEoBRImCgx0aW1lX2NvbnRyb2wYAyABKAsyEC5pcGMuVGltZUNvbnRyb2wSDwoHbGV4aWNvbhgEIAEoCRIPCgd2YXJpYW50GAUgASgJEhsKE2lkZWFsX2RpdmlzaW9uX3NpemUYBiABKAUSKgoOY2hhbGxlbmdlX3J1bGUYCSABKA4yEi5pcGMuQ2hhbGxlbmdlUnVsZSJDCgtUaW1lQ29udHJvbBIZChFpbmNyZW1lbnRfc2Vjb25kcxgBIAEoBRIZChF0aW1lX2JhbmtfbWludXRlcxgCIAEoBSKYAgoGU2Vhc29uEgwKBHV1aWQYASABKAkSEQoJbGVhZ3VlX2lkGAIgASgJEhUKDXNlYXNvbl9udW1iZXIYAyABKAUSLgoKc3RhcnRfZGF0ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX2RhdGUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKD2FjdHVhbF9lbmRfZGF0ZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIQoGc3RhdHVzGAcgASgOMhEuaXBjLlNlYXNvblN0YXR1cxIgCglkaXZpc2lvbnMYCCADKAsyDS5pcGMuRGl2aXNpb24i2gEKCERpdmlzaW9uEgwKBHV1aWQYASABKAkSEQoJc2Vhc29uX2lkGAIgASgJEhcKD2RpdmlzaW9uX251bWJlchgDIAEoBRIVCg1kaXZpc2lvbl9uYW1lGAQgASgJEigKB3BsYXllcnMYBSADKAsyFy5pcGMuUGxheWVyUmVnaXN0cmF0aW9uEhAKCGdhbWVfaWRzGAYgAygJEiwKCXN0YW5kaW5ncxgHIAMoCzIZLmlwYy5MZWFndWVQbGF5ZXJTdGFuZGluZxITCgtpc19jb21wbGV0ZRgIIAEoCCKpAQoSUGxheWVyUmVnaXN0cmF0aW9uEg8KB3VzZXJfaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSEwoLZGl2aXNpb25faWQYAyABKAkSNQoRcmVnaXN0cmF0aW9uX2RhdGUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGZpcnN0c19jb3VudBgFIAEoBRIOCgZzdGF0dXMYBiABKAki2AEKFExlYWd1ZVBsYXllclN0YW5kaW5nEg8KB3VzZXJfaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSDAoEcmFuaxgDIAEoBRIMCgR3aW5zGAQgASgFEg4KBmxvc3NlcxgFIAEoBRINCgVkcmF3cxgGIAEoBRIOCgZzcHJlYWQYByABKAUSFAoMZ2FtZXNfcGxheWVkGAggASgFEhcKD2dhbWVzX3JlbWFpbmluZxgJIAEoBRIjCgZyZXN1bHQYCiABKA4yEy5pcGMuU3RhbmRpbmdSZXN1bHQqgQEKDFNlYXNvblN0YXR1cxIUChBTRUFTT05fU0NIRURVTEVEEAASEQoNU0VBU09OX0FDVElWRRABEhQKEFNFQVNPTl9DT01QTEVURUQQAhIUChBTRUFTT05fQ0FOQ0VMTEVEEAMSHAoYU0VBU09OX1JFR0lTVFJBVElPTl9PUEVOEAQqdAoOU3RhbmRpbmdSZXN1bHQSDwoLUkVTVUxUX05PTkUQABITCg9SRVNVTFRfUFJPTU9URUQQARIUChBSRVNVTFRfUkVMRUdBVEVEEAISEQoNUkVTVUxUX1NUQVlFRBADEhMKD1JFU1VMVF9DSEFNUElPThAEKuMBCg9QbGFjZW1lbnRTdGF0dXMSEgoOUExBQ0VNRU5UX05PTkUQABIRCg1QTEFDRU1FTlRfTkVXEAESFwoTUExBQ0VNRU5UX0dSQURVQVRFRBACEhYKElBMQUNFTUVOVF9QUk9NT1RFRBADEhcKE1BMQUNFTUVOVF9SRUxFR0FURUQQBBIUChBQTEFDRU1FTlRfU1RBWUVEEAUSJAogUExBQ0VNRU5UX1NIT1JUX0hJQVRVU19SRVRVUk5JTkcQBhIjCh9QTEFDRU1FTlRfTE9OR19ISUFUVVNfUkVUVVJOSU5HEAdCcwoHY29tLmlwY0ILTGVhZ3VlUHJvdG9QAVovZ2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9pcGOiAgNJWFiqAgNJcGPKAgNJcGPiAg9JcGNcR1BCTWV0YWRhdGHqAgNJcGNiBnByb3RvMw", [file_proto_ipc_omgwords, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message ipc.League
@@ -69,11 +73,6 @@ export type LeagueSettings = Message<"ipc.LeagueSettings"> & {
   seasonLengthDays: number;
 
   /**
-   * @generated from field: repeated int32 start_day_of_month = 2;
-   */
-  startDayOfMonth: number[];
-
-  /**
    * @generated from field: ipc.TimeControl time_control = 3;
    */
   timeControl?: TimeControl;
@@ -89,19 +88,14 @@ export type LeagueSettings = Message<"ipc.LeagueSettings"> & {
   variant: string;
 
   /**
-   * @generated from field: int32 division_size = 6;
+   * @generated from field: int32 ideal_division_size = 6;
    */
-  divisionSize: number;
+  idealDivisionSize: number;
 
   /**
-   * @generated from field: int32 promotion_count = 7;
+   * @generated from field: ipc.ChallengeRule challenge_rule = 9;
    */
-  promotionCount: number;
-
-  /**
-   * @generated from field: int32 relegation_count = 8;
-   */
-  relegationCount: number;
+  challengeRule: ChallengeRule;
 };
 
 /**
@@ -153,19 +147,19 @@ export type Season = Message<"ipc.Season"> & {
   seasonNumber: number;
 
   /**
-   * @generated from field: int64 start_date = 4;
+   * @generated from field: google.protobuf.Timestamp start_date = 4;
    */
-  startDate: bigint;
+  startDate?: Timestamp;
 
   /**
-   * @generated from field: int64 end_date = 5;
+   * @generated from field: google.protobuf.Timestamp end_date = 5;
    */
-  endDate: bigint;
+  endDate?: Timestamp;
 
   /**
-   * @generated from field: int64 actual_end_date = 6;
+   * @generated from field: google.protobuf.Timestamp actual_end_date = 6;
    */
-  actualEndDate: bigint;
+  actualEndDate?: Timestamp;
 
   /**
    * @generated from field: ipc.SeasonStatus status = 7;
@@ -257,22 +251,17 @@ export type PlayerRegistration = Message<"ipc.PlayerRegistration"> & {
   divisionId: string;
 
   /**
-   * @generated from field: int64 registration_date = 4;
+   * @generated from field: google.protobuf.Timestamp registration_date = 4;
    */
-  registrationDate: bigint;
+  registrationDate?: Timestamp;
 
   /**
-   * @generated from field: int32 starting_rating = 5;
-   */
-  startingRating: number;
-
-  /**
-   * @generated from field: int32 firsts_count = 6;
+   * @generated from field: int32 firsts_count = 5;
    */
   firstsCount: number;
 
   /**
-   * @generated from field: string status = 7;
+   * @generated from field: string status = 6;
    */
   status: string;
 };
@@ -369,6 +358,11 @@ export enum SeasonStatus {
    * @generated from enum value: SEASON_CANCELLED = 3;
    */
   SEASON_CANCELLED = 3,
+
+  /**
+   * @generated from enum value: SEASON_REGISTRATION_OPEN = 4;
+   */
+  SEASON_REGISTRATION_OPEN = 4,
 }
 
 /**
@@ -412,4 +406,71 @@ export enum StandingResult {
  */
 export const StandingResultSchema: GenEnum<StandingResult> = /*@__PURE__*/
   enumDesc(file_proto_ipc_league, 1);
+
+/**
+ * PlacementStatus indicates a player's status for next season placement
+ *
+ * @generated from enum ipc.PlacementStatus
+ */
+export enum PlacementStatus {
+  /**
+   * @generated from enum value: PLACEMENT_NONE = 0;
+   */
+  PLACEMENT_NONE = 0,
+
+  /**
+   * Brand new player
+   *
+   * @generated from enum value: PLACEMENT_NEW = 1;
+   */
+  PLACEMENT_NEW = 1,
+
+  /**
+   * Rookie graduating to regular divisions
+   *
+   * @generated from enum value: PLACEMENT_GRADUATED = 2;
+   */
+  PLACEMENT_GRADUATED = 2,
+
+  /**
+   * Promoted from lower division
+   *
+   * @generated from enum value: PLACEMENT_PROMOTED = 3;
+   */
+  PLACEMENT_PROMOTED = 3,
+
+  /**
+   * Relegated from higher division
+   *
+   * @generated from enum value: PLACEMENT_RELEGATED = 4;
+   */
+  PLACEMENT_RELEGATED = 4,
+
+  /**
+   * Stayed in same division
+   *
+   * @generated from enum value: PLACEMENT_STAYED = 5;
+   */
+  PLACEMENT_STAYED = 5,
+
+  /**
+   * Returning after 1-3 seasons
+   *
+   * @generated from enum value: PLACEMENT_SHORT_HIATUS_RETURNING = 6;
+   */
+  PLACEMENT_SHORT_HIATUS_RETURNING = 6,
+
+  /**
+   * Returning after 4+ seasons
+   *
+   * @generated from enum value: PLACEMENT_LONG_HIATUS_RETURNING = 7;
+   */
+  PLACEMENT_LONG_HIATUS_RETURNING = 7,
+}
+
+/**
+ * Describes the enum ipc.PlacementStatus.
+ */
+export const PlacementStatusSchema: GenEnum<PlacementStatus> = /*@__PURE__*/
+  enumDesc(file_proto_ipc_league, 2);
 

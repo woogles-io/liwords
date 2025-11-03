@@ -43,13 +43,17 @@ WHERE l.uuid = $1;
 
 -- name: GetPastSeasons :many
 SELECT * FROM league_seasons
-WHERE league_id = $1 AND status = 'SEASON_COMPLETED'
+WHERE league_id = $1 AND status = 2  -- SeasonStatus.SEASON_COMPLETED
 ORDER BY season_number DESC;
 
 -- name: GetSeasonsByLeague :many
 SELECT * FROM league_seasons
 WHERE league_id = $1
 ORDER BY season_number DESC;
+
+-- name: GetSeasonByLeagueAndNumber :one
+SELECT * FROM league_seasons
+WHERE league_id = $1 AND season_number = $2;
 
 -- name: UpdateSeasonStatus :exec
 UPDATE league_seasons
@@ -58,7 +62,7 @@ WHERE uuid = $1;
 
 -- name: MarkSeasonComplete :exec
 UPDATE league_seasons
-SET status = 'SEASON_COMPLETED', actual_end_date = NOW(), updated_at = NOW()
+SET status = 2, actual_end_date = NOW(), updated_at = NOW()  -- SeasonStatus.SEASON_COMPLETED
 WHERE uuid = $1;
 
 -- Division operations
@@ -98,12 +102,11 @@ WHERE uuid = $1;
 -- Registration operations
 
 -- name: RegisterPlayer :one
-INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, starting_rating, firsts_count, status, placement_status, previous_division_rank, seasons_away)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO league_registrations (user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (user_id, season_id)
 DO UPDATE SET
     division_id = EXCLUDED.division_id,
-    starting_rating = EXCLUDED.starting_rating,
     firsts_count = EXCLUDED.firsts_count,
     status = EXCLUDED.status,
     placement_status = EXCLUDED.placement_status,
@@ -232,22 +235,22 @@ WHERE league_standings.division_id = ranked.division_id
 
 -- name: GetLeagueGames :many
 SELECT * FROM games
-WHERE division_id = $1
+WHERE league_division_id = $1
 ORDER BY created_at;
 
 -- name: GetLeagueGamesByStatus :many
 SELECT * FROM games
-WHERE division_id = $1
+WHERE league_division_id = $1
   AND (@include_finished::boolean = true OR game_end_reason = 0)
 ORDER BY created_at;
 
 -- name: CountDivisionGamesComplete :one
 SELECT COUNT(*) FROM games
-WHERE division_id = $1 AND game_end_reason != 0;
+WHERE league_division_id = $1 AND game_end_reason != 0;
 
 -- name: CountDivisionGamesTotal :one
 SELECT COUNT(*) FROM games
-WHERE division_id = $1;
+WHERE league_division_id = $1;
 
 -- name: GetUnfinishedLeagueGames :many
 SELECT
@@ -279,14 +282,14 @@ SELECT
 FROM games g
 INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
 INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
-WHERE g.division_id = $1
+WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 0  -- Only finished games
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7; -- Exclude CANCELLED
 
 -- name: GetGameLeagueInfo :one
 SELECT
-    g.division_id,
+    g.league_division_id,
     g.season_id,
     g.league_id,
     g.player0_id,
