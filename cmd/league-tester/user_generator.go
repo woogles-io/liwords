@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 
@@ -41,7 +41,7 @@ func createTestUsers(ctx context.Context, count int, outputFile string) error {
 	for i := 1; i <= count; i++ {
 		username := fmt.Sprintf("league_test_user_%02d", i)
 		email := fmt.Sprintf("%s@example.com", username)
-		userUUID := uuid.NewString()
+		userUUID := shortuuid.New()
 
 		// Hash a simple password
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("testpassword123"), bcrypt.DefaultCost)

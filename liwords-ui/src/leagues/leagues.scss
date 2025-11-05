@@ -1,9 +1,8 @@
 @import "../base";
 
 .leagues-container {
-  max-width: 1200px;
-  margin: 24px auto;
-  padding: 0 24px;
+  margin: 24px 48px;
+  padding: 0;
 
   h1 {
     font-size: 32px;
@@ -118,10 +117,40 @@
       }
 
       .ant-table {
-        background: white;
+        background: #ffffff;
 
         @include colorModed {
-          background: #1a1a1a;
+          background: m($card-background);
+        }
+
+        .ant-table-thead > tr > th {
+          background: #fafafa;
+          color: rgba(0, 0, 0, 0.85);
+
+          @include colorModed {
+            background: m($off-background);
+            color: m($gray-extreme);
+          }
+        }
+
+        .ant-table-tbody > tr > td {
+          background: #ffffff;
+          color: rgba(0, 0, 0, 0.85);
+          border-bottom: 1px solid #f0f0f0;
+
+          @include colorModed {
+            background: m($card-background);
+            color: m($gray-extreme);
+            border-bottom-color: m($gray-subtle);
+          }
+        }
+
+        .ant-table-tbody > tr:hover > td {
+          background: #fafafa !important;
+
+          @include colorModed {
+            background: m($off-background) !important;
+          }
         }
       }
     }

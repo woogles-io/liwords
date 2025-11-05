@@ -30,35 +30,40 @@ const createGame = `-- name: CreateGame :exec
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn
+    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn,
+    league_id, season_id, league_division_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, $11, $12,
-    $13, $14, $15, $16, $17, $18, $19, $20
+    $13, $14, $15, $16, $17, $18, $19, $20,
+    $21, $22, $23
 )
 `
 
 type CreateGameParams struct {
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	ReadyFlag      pgtype.Int8
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	History        []byte
-	MetaEvents     entity.MetaEventData
-	Stats          entity.Stats
-	TournamentID   pgtype.Text
-	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	ReadyFlag        pgtype.Int8
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	History          []byte
+	MetaEvents       entity.MetaEventData
+	Stats            entity.Stats
+	TournamentID     pgtype.Text
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
@@ -83,6 +88,9 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
 		arg.TournamentData,
 		arg.GameRequest,
 		arg.PlayerOnTurn,
+		arg.LeagueID,
+		arg.SeasonID,
+		arg.LeagueDivisionID,
 	)
 	return err
 }

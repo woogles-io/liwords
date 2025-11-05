@@ -19,9 +19,8 @@ service LeagueService {
   rpc GetSeason(SeasonRequest) returns (SeasonResponse);
   rpc GetCurrentSeason(LeagueRequest) returns (SeasonResponse);
   rpc GetPastSeasons(LeagueRequest) returns (PastSeasonsResponse);
-  rpc OpenRegistration(LeagueRequest) returns (SeasonResponse);
-  rpc StartNextSeason(StartSeasonRequest) returns (SeasonResponse);
-  rpc CompleteSeason(SeasonRequest) returns (SeasonResponse);
+  rpc GetAllSeasons(LeagueRequest) returns (AllSeasonsResponse);
+  rpc OpenRegistration(OpenRegistrationRequest) returns (SeasonResponse);
 
   // Division and standings
   rpc GetDivisionStandings(DivisionRequest) returns (DivisionStandingsResponse);
@@ -31,6 +30,7 @@ service LeagueService {
   // Player management
   rpc RegisterForSeason(RegisterRequest) returns (RegisterResponse);
   rpc UnregisterFromSeason(UnregisterRequest) returns (UnregisterResponse);
+  rpc GetSeasonRegistrations(SeasonRequest) returns (SeasonRegistrationsResponse);
   rpc GetPlayerLeagueHistory(PlayerHistoryRequest)
       returns (PlayerHistoryResponse);
 
@@ -66,6 +66,8 @@ message SeasonResponse { ipc.Season season = 1; }
 
 message PastSeasonsResponse { repeated ipc.Season seasons = 1; }
 
+message AllSeasonsResponse { repeated ipc.Season seasons = 1; }
+
 message BootstrapSeasonRequest {
   string league_id = 1;
   google.protobuf.Timestamp start_date = 2;
@@ -73,7 +75,10 @@ message BootstrapSeasonRequest {
   ipc.SeasonStatus status = 4; // Explicit status (SCHEDULED, ACTIVE)
 }
 
-message StartSeasonRequest { string league_id = 1; }
+message OpenRegistrationRequest {
+  string league_id = 1; // UUID or slug (for context, not used)
+  string season_id = 2;  // Required: UUID of season to open registration for
+}
 
 message DivisionRequest { string division_id = 1; }
 
@@ -98,6 +103,18 @@ message UnregisterRequest {
 }
 
 message UnregisterResponse { bool success = 1; }
+
+message SeasonRegistrationsResponse {
+  repeated SeasonRegistration registrations = 1;
+}
+
+message SeasonRegistration {
+  string user_id = 1;
+  string username = 2;
+  string season_id = 3;
+  string division_id = 4; // Empty if not assigned to division yet
+  int32 division_number = 5; // 0 if not assigned to division yet
+}
 
 message PlayerHistoryRequest {
   string user_id = 1;

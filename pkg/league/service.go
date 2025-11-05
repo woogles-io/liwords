@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -464,10 +463,55 @@ func (ls *LeagueService) GetPastSeasons(
 	return connect.NewResponse(&pb.PastSeasonsResponse{Seasons: protoSeasons}), nil
 }
 
-// OpenRegistration opens registration for the next season (Day 15 workflow)
-func (ls *LeagueService) OpenRegistration(
+func (ls *LeagueService) GetAllSeasons(
 	ctx context.Context,
 	req *connect.Request[pb.LeagueRequest],
+) (*connect.Response[pb.AllSeasonsResponse], error) {
+	// Parse league ID (UUID or slug)
+	var leagueID uuid.UUID
+	var err error
+
+	leagueID, err = uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		// Try as slug
+		league, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
+		}
+		leagueID = league.Uuid
+	}
+
+	// Get all seasons (regardless of status)
+	dbSeasons, err := ls.store.GetSeasonsByLeague(ctx, leagueID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get all seasons: %w", err))
+	}
+
+	// Convert to proto
+	protoSeasons := make([]*ipc.Season, len(dbSeasons))
+	for i, season := range dbSeasons {
+		protoSeasons[i] = &ipc.Season{
+			Uuid:         season.Uuid.String(),
+			LeagueId:     season.LeagueID.String(),
+			SeasonNumber: season.SeasonNumber,
+			StartDate:    timestamppb.New(season.StartDate.Time),
+			EndDate:      timestamppb.New(season.EndDate.Time),
+			Status:       ipc.SeasonStatus(season.Status),
+			Divisions:    []*ipc.Division{},
+		}
+
+		if season.ActualEndDate.Valid {
+			protoSeasons[i].ActualEndDate = timestamppb.New(season.ActualEndDate.Time)
+		}
+	}
+
+	return connect.NewResponse(&pb.AllSeasonsResponse{Seasons: protoSeasons}), nil
+}
+
+// OpenRegistration opens registration for a specific season
+func (ls *LeagueService) OpenRegistration(
+	ctx context.Context,
+	req *connect.Request[pb.OpenRegistrationRequest],
 ) (*connect.Response[pb.SeasonResponse], error) {
 	// Authenticate - requires can_manage_leagues permission
 	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
@@ -475,34 +519,26 @@ func (ls *LeagueService) OpenRegistration(
 		return nil, err
 	}
 
-	// Parse league ID (UUID or slug)
-	var leagueID uuid.UUID
-	leagueID, err = uuid.Parse(req.Msg.LeagueId)
-	if err != nil {
-		// Not a UUID, try as slug
-		dbLeague, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
-		if err != nil {
-			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
-		}
-		leagueID = dbLeague.Uuid
+	// season_id is required
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
 	}
 
-	// Open registration for next season
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("invalid season_id: %s", req.Msg.SeasonId))
+	}
+
 	lifecycleMgr := NewSeasonLifecycleManager(ls.store, nil)
-	result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, leagueID, time.Now())
+	result, err := lifecycleMgr.OpenRegistrationForSeason(ctx, seasonID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to open registration: %w", err))
 	}
 
-	if result == nil {
-		// Next season already exists or couldn't be created
-		return nil, apiserver.InvalidArg("registration already open for next season or conditions not met")
-	}
-
-	// Get the created season
+	// Get the season
 	season, err := ls.store.GetSeason(ctx, result.NextSeasonID)
 	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get created season: %w", err))
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season: %w", err))
 	}
 
 	// Convert to proto response
@@ -517,170 +553,10 @@ func (ls *LeagueService) OpenRegistration(
 	}
 
 	log.Info().
-		Str("leagueID", leagueID.String()).
+		Str("leagueID", result.LeagueID.String()).
 		Str("seasonID", result.NextSeasonID.String()).
 		Int32("seasonNumber", result.NextSeasonNumber).
-		Msg("registration-opened-for-next-season")
-
-	return connect.NewResponse(&pb.SeasonResponse{Season: protoSeason}), nil
-}
-
-// StartNextSeason starts a scheduled season and creates all games (Day 21 workflow)
-func (ls *LeagueService) StartNextSeason(
-	ctx context.Context,
-	req *connect.Request[pb.StartSeasonRequest],
-) (*connect.Response[pb.SeasonResponse], error) {
-	// Authenticate - requires can_manage_leagues permission
-	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse league ID (UUID or slug)
-	var leagueID uuid.UUID
-	leagueID, err = uuid.Parse(req.Msg.LeagueId)
-	if err != nil {
-		// Not a UUID, try as slug
-		dbLeague, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
-		if err != nil {
-			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
-		}
-		leagueID = dbLeague.Uuid
-	}
-
-	// Get the league to access settings
-	dbLeague, err := ls.store.GetLeagueByUUID(ctx, leagueID)
-	if err != nil {
-		return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", leagueID))
-	}
-
-	// Parse league settings
-	var leagueSettings ipc.LeagueSettings
-	err = json.Unmarshal(dbLeague.Settings, &leagueSettings)
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to parse league settings: %w", err))
-	}
-
-	// Get current season to find the next scheduled season
-	currentSeason, err := ls.store.GetCurrentSeason(ctx, leagueID)
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get current season: %w", err))
-	}
-
-	// Get next season (current season number + 1)
-	nextSeasonNumber := currentSeason.SeasonNumber + 1
-	nextSeason, err := ls.store.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
-	if err != nil {
-		return nil, apiserver.InvalidArg(fmt.Sprintf("next season not found: %v", err))
-	}
-
-	// Step 1: Start the season (changes status to ACTIVE)
-	lifecycleMgr := NewSeasonLifecycleManager(ls.store, ls.stores.GameStore)
-	result, err := lifecycleMgr.StartScheduledSeason(ctx, leagueID, nextSeason.Uuid, time.Now())
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to start season: %w", err))
-	}
-
-	if result == nil {
-		return nil, apiserver.InvalidArg("season not ready to start (not scheduled or start time not reached)")
-	}
-
-	// Step 2: Create ALL games for the season
-	startMgr := NewSeasonStartManager(ls.store, ls.stores, ls.cfg, ls.gameCreator)
-	gameResult, err := startMgr.CreateGamesForSeason(ctx, leagueID, nextSeason.Uuid, &leagueSettings)
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to create games: %w", err))
-	}
-
-	// Get the updated season
-	updatedSeason, err := ls.store.GetSeason(ctx, nextSeason.Uuid)
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get updated season: %w", err))
-	}
-
-	// Convert to proto response
-	protoSeason := &ipc.Season{
-		Uuid:         updatedSeason.Uuid.String(),
-		LeagueId:     updatedSeason.LeagueID.String(),
-		SeasonNumber: updatedSeason.SeasonNumber,
-		StartDate:    timestamppb.New(updatedSeason.StartDate.Time),
-		EndDate:      timestamppb.New(updatedSeason.EndDate.Time),
-		Status:       ipc.SeasonStatus(updatedSeason.Status),
-		Divisions:    []*ipc.Division{}, // TODO: load divisions if needed
-	}
-
-	log.Info().
-		Str("leagueID", leagueID.String()).
-		Str("seasonID", nextSeason.Uuid.String()).
-		Int32("seasonNumber", nextSeasonNumber).
-		Int("totalGames", gameResult.TotalGamesCreated).
-		Msg("season-started-and-games-created")
-
-	return connect.NewResponse(&pb.SeasonResponse{Season: protoSeason}), nil
-}
-
-// CompleteSeason closes the current season (Day 20 workflow):
-// - Force-finishes unfinished games
-// - Marks season outcomes (promoted/relegated/stayed)
-// - Prepares divisions for next season
-func (ls *LeagueService) CompleteSeason(
-	ctx context.Context,
-	req *connect.Request[pb.SeasonRequest],
-) (*connect.Response[pb.SeasonResponse], error) {
-	// Authenticate - requires can_manage_leagues permission
-	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse season ID
-	seasonID, err := uuid.Parse(req.Msg.SeasonId)
-	if err != nil {
-		return nil, apiserver.InvalidArg(fmt.Sprintf("invalid season ID: %s", req.Msg.SeasonId))
-	}
-
-	// Get the season to find the league
-	season, err := ls.store.GetSeason(ctx, seasonID)
-	if err != nil {
-		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", seasonID))
-	}
-
-	leagueID := season.LeagueID
-
-	// Close the current season (force-finishes games, marks outcomes, prepares next season)
-	lifecycleMgr := NewSeasonLifecycleManager(ls.store, ls.stores.GameStore)
-	result, err := lifecycleMgr.CloseCurrentSeason(ctx, leagueID, time.Now())
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to close season: %w", err))
-	}
-
-	if result == nil {
-		return nil, apiserver.InvalidArg("season could not be closed (may not be active or conditions not met)")
-	}
-
-	// Get the updated season
-	updatedSeason, err := ls.store.GetSeason(ctx, seasonID)
-	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get updated season: %w", err))
-	}
-
-	// Convert to proto response
-	protoSeason := &ipc.Season{
-		Uuid:         updatedSeason.Uuid.String(),
-		LeagueId:     updatedSeason.LeagueID.String(),
-		SeasonNumber: updatedSeason.SeasonNumber,
-		StartDate:    timestamppb.New(updatedSeason.StartDate.Time),
-		EndDate:      timestamppb.New(updatedSeason.EndDate.Time),
-		Status:       ipc.SeasonStatus(updatedSeason.Status),
-		Divisions:    []*ipc.Division{}, // TODO: load divisions if needed
-	}
-
-	log.Info().
-		Str("leagueID", leagueID.String()).
-		Str("seasonID", seasonID.String()).
-		Int("forceFinishedGames", result.ForceFinishedGames).
-		Int("totalRegistrations", result.DivisionPreparation.TotalRegistrations).
-		Msg("season-closed-and-next-season-prepared")
+		Msg("registration-opened")
 
 	return connect.NewResponse(&pb.SeasonResponse{Season: protoSeason}), nil
 }
@@ -787,6 +663,30 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			return nil, apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
 		}
 
+		// If no standings exist yet (season not started), create initial standings from registrations
+		if len(standings) == 0 {
+			registrations, err := ls.store.GetDivisionRegistrations(ctx, divisionUUID)
+			if err != nil {
+				return nil, apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
+			}
+
+			// Convert registrations to "fake standings" with all zeros
+			standings = make([]models.LeagueStanding, len(registrations))
+			for j, reg := range registrations {
+				standings[j] = models.LeagueStanding{
+					UserID:         reg.UserID,
+					Rank:           pgtype.Int4{Int32: int32(j + 1), Valid: true},
+					Wins:           pgtype.Int4{Int32: 0, Valid: true},
+					Losses:         pgtype.Int4{Int32: 0, Valid: true},
+					Draws:          pgtype.Int4{Int32: 0, Valid: true},
+					Spread:         pgtype.Int4{Int32: 0, Valid: true},
+					GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
+					GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
+					Result:         pgtype.Int4{Valid: false},
+				}
+			}
+		}
+
 		// Convert standings to proto
 		protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 		for j, standing := range standings {
@@ -862,7 +762,7 @@ func (ls *LeagueService) RegisterForSeason(
 		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
 	}
 
-	// Validate that registration is open
+	// Validate that registration is open (only REGISTRATION_OPEN status)
 	if season.Status != int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
 		return nil, apiserver.InvalidArg(fmt.Sprintf("registration is not open for this season (current status: %s)", ipc.SeasonStatus(season.Status).String()))
 	}
@@ -939,6 +839,61 @@ func (ls *LeagueService) UnregisterFromSeason(
 		Msg("player-unregistered-from-season")
 
 	return connect.NewResponse(&pb.UnregisterResponse{Success: true}), nil
+}
+
+func (ls *LeagueService) GetSeasonRegistrations(
+	ctx context.Context,
+	req *connect.Request[pb.SeasonRequest],
+) (*connect.Response[pb.SeasonRegistrationsResponse], error) {
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Get all registrations for the season
+	rm := NewRegistrationManager(ls.store)
+	registrations, err := rm.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season registrations: %w", err))
+	}
+
+	// Convert to proto
+	protoRegistrations := make([]*pb.SeasonRegistration, len(registrations))
+	for i, reg := range registrations {
+		// Get user info
+		user, err := ls.userStore.GetByUUID(ctx, reg.UserID)
+		if err != nil {
+			// If user not found, use placeholder
+			user = &entity.User{UUID: reg.UserID, Username: "Unknown"}
+		}
+
+		divisionID := ""
+		divisionNumber := int32(0)
+		if reg.DivisionID.Valid {
+			divUUID, err := uuid.FromBytes(reg.DivisionID.Bytes[:])
+			if err == nil {
+				divisionID = divUUID.String()
+				// Get division to find division number
+				division, err := ls.store.GetDivision(ctx, divUUID)
+				if err == nil {
+					divisionNumber = division.DivisionNumber
+				}
+			}
+		}
+
+		protoRegistrations[i] = &pb.SeasonRegistration{
+			UserId:         reg.UserID,
+			Username:       user.Username,
+			SeasonId:       reg.SeasonID.String(),
+			DivisionId:     divisionID,
+			DivisionNumber: divisionNumber,
+		}
+	}
+
+	return connect.NewResponse(&pb.SeasonRegistrationsResponse{
+		Registrations: protoRegistrations,
+	}), nil
 }
 
 func (ls *LeagueService) GetPlayerLeagueHistory(

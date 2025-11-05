@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -254,6 +255,11 @@ type Game struct {
 	TournamentData *TournamentData
 	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
+
+	// League-specific fields
+	LeagueID         *uuid.UUID
+	SeasonID         *uuid.UUID
+	LeagueDivisionID *uuid.UUID
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

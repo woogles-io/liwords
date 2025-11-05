@@ -118,11 +118,13 @@ OFFSET @offset_games::integer;
 INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn
+    quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn,
+    league_id, season_id, league_division_id
 ) VALUES (
     @created_at, @updated_at, @uuid, @type, @player0_id, @player1_id,
     @ready_flag, @timers, @started, @game_end_reason, @winner_idx, @loser_idx,
-    @quickdata, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request, @player_on_turn
+    @quickdata, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request, @player_on_turn,
+    @league_id, @season_id, @league_division_id
 );
 
 -- name: UpdateGame :exec

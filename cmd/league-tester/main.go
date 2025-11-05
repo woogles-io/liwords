@@ -32,6 +32,12 @@ func main() {
 		err = createLeagueCommand(ctx, os.Args[2:])
 	case "register-users":
 		err = registerUsersCommand(ctx, os.Args[2:])
+	case "open-registration":
+		err = openRegistrationCommand(ctx, os.Args[2:])
+	case "close-season":
+		err = closeSeasonCommand(ctx, os.Args[2:])
+	case "prepare-divisions":
+		err = prepareDivisionsCommand(ctx, os.Args[2:])
 	case "start-season":
 		err = startSeasonCommand(ctx, os.Args[2:])
 	case "simulate-games":
@@ -68,6 +74,7 @@ func printUsage() {
 	fmt.Println("Examples:")
 	fmt.Println("  go run cmd/league-tester create-users --count 20")
 	fmt.Println("  go run cmd/league-tester create-league --slug test-league")
+	fmt.Println("  go run cmd/league-tester register-users --league test-league --season 1")
 	fmt.Println("  go run cmd/league-tester simulate-games --season <uuid> --all")
 	fmt.Println()
 	fmt.Println("Run 'go run cmd/league-tester <command> --help' for command-specific options")
@@ -96,6 +103,7 @@ func createLeagueCommand(ctx context.Context, args []string) error {
 func registerUsersCommand(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("register-users", flag.ExitOnError)
 	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
 	usersFile := fs.String("users-file", "test_users.json", "JSON file with user UUIDs")
 	fs.Parse(args)
 
@@ -103,11 +111,32 @@ func registerUsersCommand(ctx context.Context, args []string) error {
 		return fmt.Errorf("--league is required")
 	}
 
-	return registerTestUsers(ctx, *league, *usersFile)
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	return registerTestUsers(ctx, *league, int32(*season), *usersFile)
 }
 
-func startSeasonCommand(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("start-season", flag.ExitOnError)
+func openRegistrationCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("open-registration", flag.ExitOnError)
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
+	fs.Parse(args)
+
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	return openRegistration(ctx, *league, int32(*season))
+}
+
+func closeSeasonCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("close-season", flag.ExitOnError)
 	league := fs.String("league", "", "League slug or UUID (required)")
 	fs.Parse(args)
 
@@ -115,8 +144,41 @@ func startSeasonCommand(ctx context.Context, args []string) error {
 		return fmt.Errorf("--league is required")
 	}
 
-	log.Info().Str("league", *league).Msg("start-season not yet implemented")
-	return fmt.Errorf("not implemented yet")
+	return closeSeason(ctx, *league)
+}
+
+func prepareDivisionsCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("prepare-divisions", flag.ExitOnError)
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
+	fs.Parse(args)
+
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	return prepareDivisions(ctx, *league, int32(*season))
+}
+
+func startSeasonCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("start-season", flag.ExitOnError)
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
+	fs.Parse(args)
+
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	return startSeason(ctx, *league, int32(*season))
 }
 
 func simulateGamesCommand(ctx context.Context, args []string) error {

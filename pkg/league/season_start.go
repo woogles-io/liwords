@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/word-golib/tilemapping"
 	"github.com/google/uuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/config"
@@ -162,12 +164,6 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		Int("pairingsCount", len(pairings)).
 		Msg("generated-pairings-for-division")
 
-	// Build game request from league settings
-	gameReq, err := ssm.buildGameRequest(leagueSettings)
-	if err != nil {
-		return 0, fmt.Errorf("failed to build game request: %w", err)
-	}
-
 	// Create tournament data for league games
 	tdata := &entity.TournamentData{
 		Division: division.Uuid.String(),
@@ -199,11 +195,22 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 			users = [2]*entity.User{user2, user1}
 		}
 
+		// Build game request with unique request ID for each game
+		gameReq, err := ssm.buildGameRequest(leagueSettings)
+		if err != nil {
+			return gamesCreated, fmt.Errorf("failed to build game request: %w", err)
+		}
+
 		// Create the game
 		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, tdata)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
 		}
+
+		// Set league-specific fields
+		game.LeagueID = &leagueID
+		game.SeasonID = &seasonID
+		game.LeagueDivisionID = &division.Uuid
 
 		// Start the game (starts timer for correspondence games)
 		err = ssm.gameCreator.StartGame(ctx, game)
@@ -224,11 +231,23 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 
 // calculateMaxRounds determines the max rounds based on player count
 func calculateMaxRounds(numPlayers int) int {
-	if numPlayers >= 15 {
-		return 14 // Cap at 14 rounds for large divisions
+	// For odd divisions >= 17: GenerateAllLeaguePairings will use subset selection
+	// to ensure exactly 14 games per player, so we don't need a cap here
+	if numPlayers%2 == 1 && numPlayers >= 17 {
+		return 0 // No cap - full round-robin generated, then subset selected
 	}
-	// For smaller divisions, do full round-robin (N-1 rounds)
-	return 0 // 0 means no limit, will use N-1
+
+	// For even divisions >= 16: cap at 14 rounds
+	// Each player will play exactly 14 games
+	if numPlayers >= 16 {
+		return 14
+	}
+
+	// For smaller divisions (11-15 players), do full round-robin
+	// 11 players: 10 games each
+	// 13 players: 12 games each
+	// 15 players: 14 games each (ideal!)
+	return 0 // 0 means no limit, will use calculated rounds
 }
 
 // generatePairingSeed creates a consistent seed from seasonID and divisionID
@@ -277,20 +296,28 @@ func (ssm *SeasonStartManager) buildGameRequest(settings *pb.LeagueSettings) (*p
 		challengeRule = determineChallengeRule(lexicon)
 	}
 
+	// Determine letter distribution from lexicon
+	letterDistribution, err := tilemapping.ProbableLetterDistributionName(lexicon)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine letter distribution for lexicon %s: %w", lexicon, err)
+	}
+
 	req := &pb.GameRequest{
 		Lexicon:       lexicon,
 		ChallengeRule: macondo.ChallengeRule(challengeRule),
 		Rules: &pb.GameRules{
 			BoardLayoutName:         "CrosswordGame",
-			LetterDistributionName:  lexicon,
+			LetterDistributionName:  letterDistribution,
 			VariantName:             variant,
 		},
-		InitialTimeSeconds: 0, // Correspondence games don't use this
+		InitialTimeSeconds: timeControl.IncrementSeconds, // Same as increment for correspondence
 		IncrementSeconds:   timeControl.IncrementSeconds,
-		MaxOvertimeMinutes: int32(timeControl.TimeBankMinutes),
-		RatingMode:         pb.RatingMode_RATED,
-		RequestId:          uuid.NewString(),
-		OriginalRequestId:  uuid.NewString(),
+		MaxOvertimeMinutes: 0,                               // No overtime for league games
+		TimeBankMinutes:    int32(timeControl.TimeBankMinutes), // Time bank for correspondence
+		RatingMode:         pb.RatingMode_RATED,             // RATED = 0
+		GameMode:           pb.GameMode_CORRESPONDENCE,
+		RequestId:          shortuuid.New(),
+		OriginalRequestId:  shortuuid.New(),
 	}
 
 	return req, nil

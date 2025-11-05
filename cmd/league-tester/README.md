@@ -66,30 +66,98 @@ go run cmd/league-tester create-league \
 
 ### 3. Register Users
 
-Registers all test users for the current season of a league.
+Registers all test users for a specific season of a league. The season must have REGISTRATION_OPEN status.
 
 ```bash
 go run cmd/league-tester register-users \
   --league test-league \
+  --season 1 \
   --users-file test_users.json
 ```
 
 **Options:**
 - `--league`: League slug or UUID (required)
+- `--season`: Season number to register for (required)
 - `--users-file`: JSON file with user UUIDs (default: test_users.json)
 
-### 4. Start Season
+**Note:** This command will fail if the season status is not REGISTRATION_OPEN. Use `open-registration` command or the frontend to open registration first.
 
-**Note:** Use the existing maintenance command instead:
+### 4. Season Lifecycle Commands
+
+These commands manage the season lifecycle and mirror what the maintenance tasks do in production.
+
+#### 4a. Open Registration
+
+Opens registration for a specific season by changing its status from SCHEDULED to REGISTRATION_OPEN.
 
 ```bash
-go run cmd/maintenance league-season-starter
+go run cmd/league-tester open-registration --league test-league --season 1
 ```
 
-This will:
-- Find all SCHEDULED seasons that are past their start date
-- Transition them to ACTIVE
-- Create all round-robin games for the season
+**Options:**
+- `--league`: League slug or UUID (required)
+- `--season`: Season number to open registration for (required)
+
+**What it does:**
+- Changes the specified SCHEDULED season to REGISTRATION_OPEN status
+- Allows players to register for that season
+
+#### 4b. Prepare Divisions
+
+Closes registration and creates divisions for a season (Day 21 at 7:45 AM in production).
+
+```bash
+go run cmd/league-tester prepare-divisions \
+  --league test-league \
+  --season 1
+```
+
+**Options:**
+- `--league`: League slug or UUID (required)
+- `--season`: Season number to prepare (required)
+
+**What it does:**
+- Categorizes players as NEW (rookies) or RETURNING
+- Creates rookie divisions if ≥10 new players
+- Rebalances regular divisions for returning players
+- Changes season status from REGISTRATION_OPEN to SCHEDULED
+
+**For Season 1:** All players are considered rookies, so this will create rookie divisions.
+
+#### 4c. Start Season
+
+Starts a scheduled season and creates all games (Day 21 at 8:00 AM in production).
+
+```bash
+go run cmd/league-tester start-season \
+  --league test-league \
+  --season 1
+```
+
+**Options:**
+- `--league`: League slug or UUID (required)
+- `--season`: Season number to start (required)
+
+**What it does:**
+- Changes season status from SCHEDULED to ACTIVE
+- Creates all round-robin games for all divisions
+- Sets the season as the current season
+
+#### 4d. Close Season
+
+Closes the current active season (Day 20 in production).
+
+```bash
+go run cmd/league-tester close-season --league test-league
+```
+
+**Options:**
+- `--league`: League slug or UUID (required)
+
+**What it does:**
+- Force-finishes any unfinished games
+- Marks season outcomes (PROMOTED/RELEGATED/STAYED)
+- Changes season status to COMPLETED
 
 ### 5. Simulate Games
 
@@ -150,43 +218,90 @@ Season 1 - ACTIVE
 
 Here's a complete workflow for testing league functionality:
 
-```bash
-# 1. Create 20 test users
-go run cmd/league-tester create-users --count 20
+### Season 1 (Bootstrapped)
 
-# 2. Create a test league
+#### Option A: Bootstrap with REGISTRATION_OPEN (default)
+
+```bash
+# 1. Create 30+ test users
+go run cmd/league-tester create-users --count 32
+
+# 2. Create a test league (bootstraps Season 1 with REGISTRATION_OPEN status)
 go run cmd/league-tester create-league --slug test-league
 
-# 3. Register all users
-go run cmd/league-tester register-users --league test-league
+# 3. Register all users for season 1
+go run cmd/league-tester register-users --league test-league --season 1
 
-# 4. You can manually place users into divisions, or use the placement manager
-# For testing, you could manually create divisions and assign players
+# 4. Prepare divisions (creates rookie divisions since this is Season 1)
+go run cmd/league-tester prepare-divisions --league test-league --season 1
 
 # 5. Start the season (creates all games)
-go run cmd/maintenance league-season-starter
+go run cmd/league-tester start-season --league test-league --season 1
 
-# 6. Get the season UUID from the league JSON file or database
-cat test_league.json
-
-# 7. Simulate all games with a specific seed for reproducibility
+# 6. Simulate all games
 go run cmd/league-tester simulate-games \
-  --season <season-uuid-from-above> \
+  --season <season-uuid> \
   --seed 12345
 
-# 8. Inspect the results
+# 7. Inspect the results
 go run cmd/league-tester inspect --league test-league
 
-# 9. Close the season (calculates final standings, promotion/relegation)
+# 8. Close the season
+go run cmd/league-tester close-season --league test-league
+```
+
+#### Option B: If Season 1 was created as SCHEDULED
+
+If you have a Season 1 that's already SCHEDULED (not REGISTRATION_OPEN), you can open registration:
+
+```bash
+# After prepare-divisions closes registration and season becomes SCHEDULED
+# You can reopen registration for that season:
+go run cmd/league-tester open-registration --league test-league --season 1
+
+# Then continue with registration, prepare, start flow
+```
+
+### Season 2+ (Normal Flow)
+
+**Note**: For Season 2+, you would typically use the maintenance task `league-registration-opener` on Day 15 to create the next season with REGISTRATION_OPEN status. For manual testing with league-tester, you can create a new season and then open registration:
+
+```bash
+# If you need to manually open registration for Season 2 after it's been created as SCHEDULED:
+go run cmd/league-tester open-registration --league test-league --season 2
+
+# 2. Players register via frontend or register-users command
+go run cmd/league-tester register-users --league test-league --season 2
+
+# 3. Close registration and prepare divisions (Day 21 at 7:45 AM)
+go run cmd/league-tester prepare-divisions --league test-league --season 2
+
+# 4. Start the season (Day 21 at 8:00 AM)
+go run cmd/league-tester start-season --league test-league --season 2
+
+# 5. Simulate games
+go run cmd/league-tester simulate-games --season <season-uuid> --seed 12345
+
+# 6. Close season (Day 20 of next month)
+go run cmd/league-tester close-season --league test-league
+```
+
+### Using Maintenance Commands
+
+The maintenance commands can also be used in production:
+
+```bash
+# Day 15: Open registration
+go run cmd/maintenance league-registration-opener
+
+# Day 20: Close current season
 go run cmd/maintenance league-season-closer
 
-# 10. Inspect again to see promotion/relegation results
-go run cmd/league-tester inspect --league test-league
+# Day 21 at 7:45 AM: Prepare divisions
+go run cmd/maintenance league-division-preparer
 
-# 11. Run another season
+# Day 21 at 8:00 AM: Start season
 go run cmd/maintenance league-season-starter
-go run cmd/league-tester simulate-games --season <new-season-uuid>
-go run cmd/maintenance league-season-closer
 ```
 
 ## Testing Different Scenarios

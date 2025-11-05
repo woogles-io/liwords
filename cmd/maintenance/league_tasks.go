@@ -133,16 +133,76 @@ func LeagueSeasonCloser() error {
 		if result != nil {
 			log.Info().
 				Str("currentSeasonID", result.CurrentSeasonID.String()).
-				Str("nextSeasonID", result.NextSeasonID.String()).
 				Str("leagueID", result.LeagueID.String()).
 				Int("forceFinished", result.ForceFinishedGames).
-				Int("totalRegistrations", result.DivisionPreparation.TotalRegistrations).
-				Msg("successfully closed season and prepared next season")
+				Msg("successfully closed season")
 			seasonsClosed++
 		}
 	}
 
 	log.Info().Int("seasonsClosed", seasonsClosed).Msg("completed league season closer")
+	return nil
+}
+
+// LeagueDivisionPreparer prepares divisions for seasons that are in REGISTRATION_OPEN status
+// This should run on Day 21 at 7:45 AM (15 minutes before season start at 8:00 AM)
+// It closes registration, creates divisions, and transitions seasons to SCHEDULED
+func LeagueDivisionPreparer() error {
+	log.Info().Msg("starting league division preparer maintenance task")
+
+	ctx := context.Background()
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	allStores, err := initLeagueStores(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
+
+	// Get all active leagues
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	seasonsPrepared := 0
+
+	for _, dbLeague := range leagues {
+		// Get all seasons for this league
+		seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+		if err != nil {
+			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to get seasons")
+			continue
+		}
+
+		for _, season := range seasons {
+			result, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid, now)
+			if err != nil {
+				log.Err(err).
+					Str("seasonID", season.Uuid.String()).
+					Str("leagueID", dbLeague.Uuid.String()).
+					Msg("failed to prepare and schedule season")
+				continue
+			}
+
+			if result != nil {
+				log.Info().
+					Str("leagueID", result.LeagueID.String()).
+					Str("seasonID", result.SeasonID.String()).
+					Int32("seasonNumber", result.SeasonNumber).
+					Int("totalRegistrations", result.DivisionPreparation.TotalRegistrations).
+					Int("regularDivisions", result.DivisionPreparation.RegularDivisionsUsed).
+					Int("rookieDivisions", result.DivisionPreparation.RookieDivisionsCreated).
+					Msg("successfully prepared and scheduled season")
+				seasonsPrepared++
+			}
+		}
+	}
+
+	log.Info().Int("seasonsPrepared", seasonsPrepared).Msg("completed league division preparer")
 	return nil
 }
 
@@ -208,26 +268,29 @@ func LeagueSeasonStarter() error {
 			// Step 1: Start the season (changes status to ACTIVE)
 			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid, now)
 			if err != nil {
-				log.Err(err).
+				log.Info().
 					Str("seasonID", season.Uuid.String()).
 					Str("leagueID", dbLeague.Uuid.String()).
-					Msg("failed to start season")
-				continue
-			}
-
-			if result == nil {
-				// Season wasn't started (not scheduled or start time not reached)
+					Err(err).
+					Msg("season not ready to start (skipping)")
 				continue
 			}
 
 			// Step 2: Create ALL games for the season using SeasonStartManager
-			startMgr := league.NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, eventChan, gameCreator)
+			startMgr := league.NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
 			gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings)
 			if err != nil {
+				// Roll back the season status to SCHEDULED since game creation failed
+				rollbackErr := lifecycleMgr.RollbackSeasonToScheduled(ctx, season.Uuid)
+				if rollbackErr != nil {
+					log.Err(rollbackErr).
+						Str("seasonID", season.Uuid.String()).
+						Msg("failed to rollback season status after game creation failure")
+				}
 				log.Err(err).
 					Str("seasonID", season.Uuid.String()).
 					Str("leagueID", dbLeague.Uuid.String()).
-					Msg("failed to create games for season")
+					Msg("failed to create games for season - rolled back season to SCHEDULED")
 				continue
 			}
 

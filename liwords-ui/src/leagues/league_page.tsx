@@ -6,15 +6,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../navigation/topbar";
 import {
   getLeague,
-  getCurrentSeason,
-  getPastSeasons,
+  getAllSeasons,
   getAllDivisionStandings,
+  getSeasonRegistrations,
   registerForSeason,
   unregisterFromSeason,
+  openRegistration,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
 export const LeaguePage = () => {
@@ -34,29 +37,39 @@ export const LeaguePage = () => {
     { enabled: !!slug },
   );
 
-  // Fetch current season
-  const { data: currentSeasonData, isLoading: currentSeasonLoading } = useQuery(
-    getCurrentSeason,
+  // Fetch all seasons (regardless of status)
+  const { data: allSeasonsData, isLoading: allSeasonsLoading } = useQuery(
+    getAllSeasons,
     {
       leagueId: slug || "",
     },
     { enabled: !!slug },
   );
 
-  // Fetch past seasons
-  const { data: pastSeasonsData, isLoading: pastSeasonsLoading } = useQuery(
-    getPastSeasons,
-    {
-      leagueId: slug || "",
-    },
-    { enabled: !!slug },
-  );
+  // Fetch user roles for admin checks
+  const { data: selfRoles } = useQuery(getSelfRoles, {}, { enabled: loggedIn });
+
+  // Data processing - get all seasons and find the active one
+  const league = leagueData?.league;
+  const allSeasons = useMemo(() => {
+    const seasons = allSeasonsData?.seasons || [];
+    // Sort by season number descending (newest first)
+    return [...seasons].sort(
+      (a, b) => (b.seasonNumber || 0) - (a.seasonNumber || 0),
+    );
+  }, [allSeasonsData?.seasons]);
+
+  // Find the current season (status = ACTIVE = 1)
+  const currentSeason = useMemo(() => {
+    return allSeasons.find((s) => s.status === 1) || null;
+  }, [allSeasons]);
 
   // Determine which season to display standings for
   const displaySeasonId = useMemo(() => {
     if (selectedSeasonId) return selectedSeasonId;
-    return currentSeasonData?.season?.uuid || null;
-  }, [selectedSeasonId, currentSeasonData]);
+    // Default to current season if available, otherwise first season in list
+    return currentSeason?.uuid || allSeasons[0]?.uuid || null;
+  }, [selectedSeasonId, currentSeason, allSeasons]);
 
   // Fetch standings for selected season
   const { data: standingsData, isLoading: standingsLoading } = useQuery(
@@ -67,51 +80,58 @@ export const LeaguePage = () => {
     { enabled: !!displaySeasonId },
   );
 
-  // Data processing - compute before using in queries
-  const league = leagueData?.league;
-  const currentSeason = currentSeasonData?.season;
-  const pastSeasons = useMemo(
-    () => pastSeasonsData?.seasons || [],
-    [pastSeasonsData?.seasons],
+  // Fetch registrations for selected season
+  const { data: registrationsData } = useQuery(
+    getSeasonRegistrations,
+    {
+      seasonId: displaySeasonId || "",
+    },
+    { enabled: !!displaySeasonId },
   );
-
-  const allSeasons = useMemo(() => {
-    const seasons = [];
-    if (currentSeason) {
-      seasons.push({ ...currentSeason, isCurrent: true });
-    }
-    seasons.push(...pastSeasons.map((s) => ({ ...s, isCurrent: false })));
-    return seasons;
-  }, [currentSeason, pastSeasons]);
 
   // Find the season that has REGISTRATION_OPEN status from all seasons
   const registrationOpenSeason = useMemo(() => {
     return allSeasons.find((s) => s.status === 4) || null;
   }, [allSeasons]);
 
-  // Fetch standings for registration-open season to check registration status
-  const { data: registrationSeasonData } = useQuery(
-    getAllDivisionStandings,
-    {
-      seasonId: registrationOpenSeason?.uuid || "",
-    },
-    { enabled: !!registrationOpenSeason?.uuid },
-  );
+  // Find the most recent SCHEDULED season (status = 0)
+  const scheduledSeason = useMemo(() => {
+    const scheduled = allSeasons.filter((s) => s.status === 0);
+    return scheduled.length > 0 ? scheduled[scheduled.length - 1] : null;
+  }, [allSeasons]);
 
-  // Check if user is registered for the registration-open season
+  // Get the displayed season object
+  const displayedSeason = useMemo(() => {
+    return allSeasons.find((s) => s.uuid === displaySeasonId) || null;
+  }, [allSeasons, displaySeasonId]);
+
+  // Check if user is registered for the displayed season
   const isUserRegistered = useMemo(() => {
-    if (
-      !registrationOpenSeason ||
-      !userID ||
-      !registrationSeasonData?.divisions
-    )
+    if (!displayedSeason || !userID || !registrationsData?.registrations) {
       return false;
+    }
 
-    // Check if user appears in any division's players list
-    return registrationSeasonData.divisions.some((division) =>
-      division.players?.some((player) => player.userId === userID),
+    // Check if user appears in registrations list
+    return registrationsData.registrations.some((reg) => reg.userId === userID);
+  }, [displayedSeason, userID, registrationsData]);
+
+  // Get all registrants for the displayed season
+  const registrants = useMemo(() => {
+    if (!registrationsData?.registrations) return [];
+
+    return registrationsData.registrations.map((reg) => ({
+      userId: reg.userId || "",
+      username: reg.username || "",
+      divisionNumber: reg.divisionNumber || 0,
+    }));
+  }, [registrationsData]);
+
+  // Check if user can manage leagues (Admin or Manager role)
+  const canManageLeagues = useMemo(() => {
+    return !!(
+      selfRoles?.roles.includes("Admin") || selfRoles?.roles.includes("Manager")
     );
-  }, [registrationOpenSeason, userID, registrationSeasonData]);
+  }, [selfRoles?.roles]);
 
   // Register/Unregister mutations
   const registerMutation = useMutation(registerForSeason, {
@@ -136,21 +156,42 @@ export const LeaguePage = () => {
     },
   });
 
+  // Admin mutation to open registration
+  const openRegistrationMutation = useMutation(openRegistration, {
+    onSuccess: (response) => {
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries();
+      const seasonNumber = response.season?.seasonNumber || "next";
+      alert(`Successfully opened registration for Season ${seasonNumber}!`);
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
   // Handler functions
   const handleRegister = () => {
-    if (!slug || !registrationOpenSeason?.uuid) return;
+    if (!slug || !displayedSeason?.uuid) return;
     registerMutation.mutate({
       leagueId: slug,
       userId: userID,
-      seasonId: registrationOpenSeason.uuid,
+      seasonId: displayedSeason.uuid,
     });
   };
 
   const handleUnregister = () => {
-    if (!registrationOpenSeason?.uuid) return;
+    if (!displayedSeason?.uuid) return;
     unregisterMutation.mutate({
-      seasonId: registrationOpenSeason.uuid,
+      seasonId: displayedSeason.uuid,
       userId: userID,
+    });
+  };
+
+  const handleOpenRegistration = () => {
+    if (!slug || !scheduledSeason) return;
+    openRegistrationMutation.mutate({
+      leagueId: slug,
+      seasonId: scheduledSeason.uuid,
     });
   };
 
@@ -159,7 +200,7 @@ export const LeaguePage = () => {
     return registrationOpenSeason !== null;
   }, [registrationOpenSeason]);
 
-  const isLoading = leagueLoading || currentSeasonLoading || pastSeasonsLoading;
+  const isLoading = leagueLoading || allSeasonsLoading;
 
   if (isLoading) {
     return (
@@ -208,102 +249,186 @@ export const LeaguePage = () => {
           <p>{league.description}</p>
         </div>
 
-        {league.settings && (
-          <Card className="league-settings-card">
-            <Row gutter={16}>
-              <Col span={6}>
+        <Row gutter={16}>
+          {/* Left Column - League Info & Registrants */}
+          <Col xs={24} lg={6}>
+            {league.settings && (
+              <Card
+                className="league-settings-card"
+                style={{ marginBottom: 16 }}
+              >
+                <h3>League Settings</h3>
                 <div className="setting-item">
                   <strong>Lexicon</strong>
                   <div>{league.settings.lexicon}</div>
                 </div>
-              </Col>
-              <Col span={6}>
-                <div className="setting-item">
+                <div className="setting-item" style={{ marginTop: 12 }}>
                   <strong>Season Length</strong>
                   <div>{league.settings.seasonLengthDays} days</div>
                 </div>
-              </Col>
-              <Col span={8}>
-                <div className="setting-item">
+                <div className="setting-item" style={{ marginTop: 12 }}>
                   <strong>Ideal Division Size</strong>
                   <div>{league.settings.idealDivisionSize} players</div>
                 </div>
-              </Col>
-            </Row>
-          </Card>
-        )}
+              </Card>
+            )}
 
-        <Card className="season-navigation-card">
-          <div className="season-header">
-            <h2>Seasons</h2>
-            {isRegistrationOpen && loggedIn && (
-              <Space>
-                {isUserRegistered ? (
-                  <>
-                    <Tag color="green">
-                      Registered for Season{" "}
-                      {registrationOpenSeason?.seasonNumber}
-                    </Tag>
-                    <Button
-                      onClick={handleUnregister}
-                      loading={unregisterMutation.isPending}
-                    >
-                      Unregister
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    type="primary"
-                    onClick={handleRegister}
-                    loading={registerMutation.isPending}
+            {/* Show registrants for seasons without divisions (SCHEDULED, REGISTRATION_OPEN) */}
+            {!standingsLoading &&
+              displayedSeason &&
+              registrants.length > 0 &&
+              standingsData?.divisions.length === 0 && (
+                <Card className="registrants-card">
+                  <h3>Registrants</h3>
+                  <p style={{ marginBottom: 12 }}>
+                    {registrants.length}{" "}
+                    {registrants.length === 1 ? "player" : "players"} registered
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px 16px",
+                    }}
                   >
-                    Register for Season {registrationOpenSeason?.seasonNumber}
-                  </Button>
-                )}
-              </Space>
-            )}
-          </div>
+                    {registrants.map((registrant) => (
+                      <UsernameWithContext
+                        key={registrant.userId}
+                        username={registrant.username}
+                        userID={registrant.userId}
+                      />
+                    ))}
+                  </div>
+                </Card>
+              )}
+          </Col>
 
-          <Tabs
-            activeKey={displaySeasonId || undefined}
-            onChange={setSelectedSeasonId}
-            items={allSeasons.map((season) => ({
-              key: season.uuid,
-              label: (
-                <span>
-                  Season {season.seasonNumber}
-                  {season.isCurrent && <Tag color="blue">Current</Tag>}
-                </span>
-              ),
-            }))}
-          />
-        </Card>
+          {/* Center Column - Seasons & Standings */}
+          <Col xs={24} lg={12}>
+            <Card className="season-navigation-card">
+              <div className="season-header">
+                <h2>Seasons</h2>
+                {/* Admin button to open registration - show when there's a SCHEDULED season */}
+                {canManageLeagues &&
+                  loggedIn &&
+                  !isRegistrationOpen &&
+                  scheduledSeason && (
+                    <Button
+                      type="default"
+                      onClick={handleOpenRegistration}
+                      loading={openRegistrationMutation.isPending}
+                    >
+                      Open Registration
+                    </Button>
+                  )}
+              </div>
 
-        {standingsLoading && (
-          <div className="loading-container">
-            <Spin size="large" />
-          </div>
-        )}
+              {/* Player registration status/buttons for displayed season */}
+              {loggedIn && displayedSeason && (
+                <div style={{ marginBottom: 16 }}>
+                  {isUserRegistered ? (
+                    <Space>
+                      <Tag color="green">
+                        Registered for Season {displayedSeason.seasonNumber}
+                      </Tag>
+                      {/* Only allow unregister if season is REGISTRATION_OPEN */}
+                      {displayedSeason.status === 4 && (
+                        <Button
+                          onClick={handleUnregister}
+                          loading={unregisterMutation.isPending}
+                        >
+                          Unregister
+                        </Button>
+                      )}
+                    </Space>
+                  ) : (
+                    <>
+                      {/* Only allow registration if season is REGISTRATION_OPEN */}
+                      {displayedSeason.status === 4 && (
+                        <Button
+                          type="primary"
+                          onClick={handleRegister}
+                          loading={registerMutation.isPending}
+                        >
+                          Register for Season {displayedSeason.seasonNumber}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
-        {!standingsLoading && standingsData && (
-          <div className="standings-container">
-            <h3>
-              Season{" "}
-              {allSeasons.find((s) => s.uuid === displaySeasonId)?.seasonNumber}{" "}
-              Standings
-            </h3>
-            {standingsData.divisions.length === 0 && (
-              <Alert
-                message="No divisions yet"
-                description="Divisions will be created when the season starts."
-                type="info"
+              <Tabs
+                activeKey={displaySeasonId || undefined}
+                onChange={setSelectedSeasonId}
+                items={allSeasons.map((season) => {
+                  // Determine status badge
+                  let statusTag = null;
+                  if (season.status === 0) {
+                    // SCHEDULED
+                    statusTag = <Tag>Scheduled</Tag>;
+                  } else if (season.status === 1) {
+                    // ACTIVE
+                    statusTag = <Tag color="blue">Active</Tag>;
+                  } else if (season.status === 2) {
+                    // COMPLETED
+                    statusTag = <Tag color="default">Completed</Tag>;
+                  } else if (season.status === 3) {
+                    // CANCELLED
+                    statusTag = <Tag color="red">Cancelled</Tag>;
+                  } else if (season.status === 4) {
+                    // REGISTRATION_OPEN
+                    statusTag = <Tag color="green">Registration Open</Tag>;
+                  }
+
+                  return {
+                    key: season.uuid,
+                    label: (
+                      <span>
+                        Season {season.seasonNumber} {statusTag}
+                      </span>
+                    ),
+                  };
+                })}
               />
+            </Card>
+
+            {standingsLoading && (
+              <div className="loading-container" style={{ marginTop: 16 }}>
+                <Spin size="large" />
+              </div>
             )}
-            {standingsData.divisions.map((division) => (
-              <DivisionStandings key={division.uuid} division={division} />
-            ))}
-          </div>
-        )}
+
+            {!standingsLoading &&
+              standingsData &&
+              standingsData.divisions.length === 0 && (
+                <Alert
+                  message="No divisions yet"
+                  description="Divisions will be created when the season starts."
+                  type="info"
+                  style={{ marginTop: 16 }}
+                />
+              )}
+
+            {!standingsLoading &&
+              standingsData &&
+              standingsData.divisions.length > 0 && (
+                <div className="standings-container" style={{ marginTop: 16 }}>
+                  {standingsData.divisions.map((division) => (
+                    <DivisionStandings
+                      key={division.uuid}
+                      division={division}
+                    />
+                  ))}
+                </div>
+              )}
+          </Col>
+
+          {/* Right Column - Future Stats */}
+          <Col xs={24} lg={6}>
+            {/* Reserved for future stats */}
+          </Col>
+        </Row>
       </div>
     </>
   );

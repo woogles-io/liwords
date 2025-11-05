@@ -49,19 +49,14 @@ export const getCurrentSeason = LeagueService.method.getCurrentSeason;
 export const getPastSeasons = LeagueService.method.getPastSeasons;
 
 /**
+ * @generated from rpc league_service.LeagueService.GetAllSeasons
+ */
+export const getAllSeasons = LeagueService.method.getAllSeasons;
+
+/**
  * @generated from rpc league_service.LeagueService.OpenRegistration
  */
 export const openRegistration = LeagueService.method.openRegistration;
-
-/**
- * @generated from rpc league_service.LeagueService.StartNextSeason
- */
-export const startNextSeason = LeagueService.method.startNextSeason;
-
-/**
- * @generated from rpc league_service.LeagueService.CompleteSeason
- */
-export const completeSeason = LeagueService.method.completeSeason;
 
 /**
  * Division and standings
@@ -86,6 +81,11 @@ export const registerForSeason = LeagueService.method.registerForSeason;
  * @generated from rpc league_service.LeagueService.UnregisterFromSeason
  */
 export const unregisterFromSeason = LeagueService.method.unregisterFromSeason;
+
+/**
+ * @generated from rpc league_service.LeagueService.GetSeasonRegistrations
+ */
+export const getSeasonRegistrations = LeagueService.method.getSeasonRegistrations;
 
 /**
  * @generated from rpc league_service.LeagueService.GetPlayerLeagueHistory

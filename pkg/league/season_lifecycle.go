@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/league"
@@ -94,18 +95,58 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	}, nil
 }
 
+// OpenRegistrationForSeason opens registration for a specific existing season
+// Changes the season status from SCHEDULED to REGISTRATION_OPEN
+func (slm *SeasonLifecycleManager) OpenRegistrationForSeason(
+	ctx context.Context,
+	seasonID uuid.UUID,
+) (*RegistrationOpenResult, error) {
+	// Get the season
+	season, err := slm.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season: %w", err)
+	}
+
+	// Verify season is in SCHEDULED status
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
+		return nil, fmt.Errorf("season must be SCHEDULED to open registration, current status: %d", season.Status)
+	}
+
+	// Get league info
+	dbLeague, err := slm.store.GetLeagueByUUID(ctx, season.LeagueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get league: %w", err)
+	}
+
+	// Update season status to REGISTRATION_OPEN
+	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
+		Uuid:   seasonID,
+		Status: int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update season status: %w", err)
+	}
+
+	return &RegistrationOpenResult{
+		LeagueID:         season.LeagueID,
+		LeagueName:       dbLeague.Name,
+		NextSeasonID:     seasonID,
+		NextSeasonNumber: season.SeasonNumber,
+		StartDate:        season.StartDate.Time,
+	}, nil
+}
+
 // SeasonCloseResult tracks the outcome of closing a season
 type SeasonCloseResult struct {
-	LeagueID            uuid.UUID
-	LeagueName          string
-	CurrentSeasonID     uuid.UUID
-	NextSeasonID        uuid.UUID
-	ForceFinishedGames  int
-	DivisionPreparation *DivisionPreparationResult
+	LeagueID           uuid.UUID
+	LeagueName         string
+	CurrentSeasonID    uuid.UUID
+	ForceFinishedGames int
 }
 
 // CloseCurrentSeason closes the current season on Day 20 at midnight
-// Returns nil if conditions aren't met (not Day 20, no current season, etc.)
+// This force-finishes unfinished games, marks season outcomes, and sets the season to COMPLETED
+// Returns nil if conditions aren't met (no current season, season not ACTIVE, etc.)
 func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -149,16 +190,60 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 		return nil, fmt.Errorf("failed to mark season outcomes: %w", err)
 	}
 
-	// Step 3: Get next season (should exist from Day 15)
-	nextSeasonNumber := currentSeason.SeasonNumber + 1
-	nextSeason, err := slm.store.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
+	// Step 3: Mark current season as COMPLETED
+	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
+		Uuid:   currentSeason.Uuid,
+		Status: int32(ipc.SeasonStatus_SEASON_COMPLETED),
+	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("next season not found - was registration opened on Day 15?")
-		}
-		return nil, fmt.Errorf("failed to get next season: %w", err)
+		return nil, fmt.Errorf("failed to mark current season as completed: %w", err)
 	}
-	result.NextSeasonID = nextSeason.Uuid
+
+	return result, nil
+}
+
+// PrepareAndScheduleSeasonResult tracks the outcome of preparing divisions
+type PrepareAndScheduleSeasonResult struct {
+	LeagueID            uuid.UUID
+	LeagueName          string
+	SeasonID            uuid.UUID
+	SeasonNumber        int32
+	DivisionPreparation *DivisionPreparationResult
+}
+
+// PrepareAndScheduleSeason closes registration and prepares divisions for a REGISTRATION_OPEN season
+// This should be called on Day 21 at 7:45 AM (15 minutes before season start at 8:00 AM)
+// For Season 1 (bootstrapped), this is the first division creation step
+// Returns nil if conditions aren't met (season not REGISTRATION_OPEN, etc.)
+func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
+	ctx context.Context,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+	now time.Time,
+) (*PrepareAndScheduleSeasonResult, error) {
+	// Get season
+	season, err := slm.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, nil // No season found, skip
+	}
+
+	// Check if season is REGISTRATION_OPEN
+	if season.Status != int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
+		return nil, nil // Not in registration, skip
+	}
+
+	// Get league info for result
+	dbLeague, err := slm.store.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get league: %w", err)
+	}
+
+	result := &PrepareAndScheduleSeasonResult{
+		LeagueID:     leagueID,
+		LeagueName:   dbLeague.Name,
+		SeasonID:     seasonID,
+		SeasonNumber: season.SeasonNumber,
+	}
 
 	// Parse league settings to get ideal division size
 	var leagueSettings ipc.LeagueSettings
@@ -166,37 +251,70 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 		return nil, fmt.Errorf("failed to unmarshal league settings: %w", err)
 	}
 
-	// Step 4: Prepare next season divisions
+	// Determine previous season ID (uuid.Nil for Season 1)
+	previousSeasonID := uuid.Nil
+	if season.SeasonNumber > 1 {
+		prevSeason, err := slm.store.GetSeasonByLeagueAndNumber(ctx, leagueID, season.SeasonNumber-1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get previous season: %w", err)
+		}
+		previousSeasonID = prevSeason.Uuid
+	}
+
+	// Check if divisions already exist for this season (e.g., if registration was reopened)
+	// If they do, delete them so we can recreate with updated registrations
+	existingDivisions, err := slm.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing divisions: %w", err)
+	}
+
+	if len(existingDivisions) > 0 {
+		log.Info().
+			Str("seasonID", seasonID.String()).
+			Int("existingDivisions", len(existingDivisions)).
+			Msg("found existing divisions, deleting them before re-preparing season")
+
+		// Delete each division (standings will CASCADE delete, registrations will have division_id SET NULL)
+		for _, div := range existingDivisions {
+			// Delete standings first (explicit for clarity, though CASCADE handles this)
+			if err := slm.store.DeleteDivisionStandings(ctx, div.Uuid); err != nil {
+				return nil, fmt.Errorf("failed to delete standings for division %d: %w", div.DivisionNumber, err)
+			}
+
+			// Delete division
+			if err := slm.store.DeleteDivision(ctx, div.Uuid); err != nil {
+				return nil, fmt.Errorf("failed to delete division %d: %w", div.DivisionNumber, err)
+			}
+		}
+
+		log.Info().
+			Str("seasonID", seasonID.String()).
+			Int("divisionsDeleted", len(existingDivisions)).
+			Msg("successfully deleted existing divisions")
+	}
+
+	// Prepare divisions for this season
 	orchestrator := NewSeasonOrchestrator(slm.store)
 	divPrep, err := orchestrator.PrepareNextSeasonDivisions(
 		ctx,
 		leagueID,
-		currentSeason.Uuid,
-		nextSeason.Uuid,
-		nextSeasonNumber,
+		previousSeasonID,
+		seasonID,
+		season.SeasonNumber,
 		leagueSettings.IdealDivisionSize,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare next season divisions: %w", err)
+		return nil, fmt.Errorf("failed to prepare season divisions: %w", err)
 	}
 	result.DivisionPreparation = divPrep
 
-	// Step 5: Update next season status to SCHEDULED
+	// Update season status to SCHEDULED
 	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
-		Uuid:   nextSeason.Uuid,
+		Uuid:   seasonID,
 		Status: int32(ipc.SeasonStatus_SEASON_SCHEDULED),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update next season status: %w", err)
-	}
-
-	// Step 6: Mark current season as COMPLETED
-	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
-		Uuid:   currentSeason.Uuid,
-		Status: int32(ipc.SeasonStatus_SEASON_COMPLETED),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to mark current season as completed: %w", err)
+		return nil, fmt.Errorf("failed to update season status: %w", err)
 	}
 
 	return result, nil
@@ -225,12 +343,25 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 
 	// Check if season is SCHEDULED
 	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
-		return nil, nil // Not scheduled, skip
+		statusNames := map[int32]string{
+			0: "SCHEDULED",
+			1: "ACTIVE",
+			2: "COMPLETED",
+			3: "CANCELLED",
+			4: "REGISTRATION_OPEN",
+		}
+		statusName := statusNames[season.Status]
+		if statusName == "" {
+			statusName = fmt.Sprintf("UNKNOWN(%d)", season.Status)
+		}
+		return nil, fmt.Errorf("season must be SCHEDULED to start, current status: %s", statusName)
 	}
 
 	// Check if start time has passed
 	if now.Before(season.StartDate.Time) {
-		return nil, nil // Start time not reached, skip
+		return nil, fmt.Errorf("season start time (%s) has not been reached yet (current time: %s)",
+			season.StartDate.Time.Format(time.RFC3339),
+			now.Format(time.RFC3339))
 	}
 
 	// Get league info for result
@@ -271,4 +402,38 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 		LeagueName: dbLeague.Name,
 		SeasonID:   seasonID,
 	}, nil
+}
+
+// RollbackSeasonToScheduled rolls back a season from ACTIVE to SCHEDULED
+// This is used when game creation fails after the season was started
+func (slm *SeasonLifecycleManager) RollbackSeasonToScheduled(ctx context.Context, seasonID uuid.UUID) error {
+	// Get the season to verify it exists
+	season, err := slm.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
+	// Update season status back to SCHEDULED
+	err = slm.store.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
+		Uuid:   seasonID,
+		Status: int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to rollback season status: %w", err)
+	}
+
+	// Clear current_season_id if this was set as current
+	err = slm.store.SetCurrentSeason(ctx, models.SetCurrentSeasonParams{
+		Uuid:            season.LeagueID,
+		CurrentSeasonID: pgtype.UUID{Valid: false}, // NULL
+	})
+	if err != nil {
+		// Log but don't fail - this is best effort cleanup
+		log.Warn().Err(err).
+			Str("leagueID", season.LeagueID.String()).
+			Str("seasonID", seasonID.String()).
+			Msg("failed to clear current season during rollback")
+	}
+
+	return nil
 }

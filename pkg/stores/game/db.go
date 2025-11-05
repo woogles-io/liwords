@@ -564,27 +564,45 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
 	}
 
+	var leagueID pgtype.UUID
+	if g.LeagueID != nil {
+		leagueID = pgtype.UUID{Bytes: *g.LeagueID, Valid: true}
+	}
+
+	var seasonID pgtype.UUID
+	if g.SeasonID != nil {
+		seasonID = pgtype.UUID{Bytes: *g.SeasonID, Valid: true}
+	}
+
+	var leagueDivisionID pgtype.UUID
+	if g.LeagueDivisionID != nil {
+		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
+	}
+
 	return s.queries.CreateGame(ctx, models.CreateGameParams{
-		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-		UpdatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-		Uuid:           common.ToPGTypeText(g.GameID()),
-		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
-		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
-		Timers:         g.Timers,
-		Started:        pgtype.Bool{Bool: g.Started, Valid: true},
-		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
-		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
-		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
-		History:        hist,
-		Stats:          safeDerefStats(g.Stats),
-		Quickdata:      safeDerefQuickdata(g.Quickdata),
-		TournamentData: safeDerefTournamentData(g.TournamentData),
-		TournamentID:   tourneyID,
-		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
-		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
-		Type:           pgtype.Int4{Int32: int32(g.Type), Valid: true},
-		GameRequest:    safeDerefGameRequest(g.GameReq),
-		PlayerOnTurn:   pgtype.Int4{Int32: 0, Valid: true}, // First player starts
+		CreatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		UpdatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		Uuid:             common.ToPGTypeText(g.GameID()),
+		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
+		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
+		Timers:           g.Timers,
+		Started:          pgtype.Bool{Bool: g.Started, Valid: true},
+		GameEndReason:    pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		WinnerIdx:        pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
+		LoserIdx:         pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
+		History:          hist,
+		Stats:            safeDerefStats(g.Stats),
+		Quickdata:        safeDerefQuickdata(g.Quickdata),
+		TournamentData:   safeDerefTournamentData(g.TournamentData),
+		TournamentID:     tourneyID,
+		ReadyFlag:        pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
+		MetaEvents:       safeDerefMetaEvents(g.MetaEvents),
+		Type:             pgtype.Int4{Int32: int32(g.Type), Valid: true},
+		GameRequest:      safeDerefGameRequest(g.GameReq),
+		PlayerOnTurn:     pgtype.Int4{Int32: 0, Valid: true}, // First player starts
+		LeagueID:         leagueID,
+		SeasonID:         seasonID,
+		LeagueDivisionID: leagueDivisionID,
 	})
 }
 

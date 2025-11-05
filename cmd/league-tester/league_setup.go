@@ -71,6 +71,7 @@ func createTestLeague(ctx context.Context, name, slug string, divisionSize int32
 		Slug:        slug,
 		Settings:    settingsJSON,
 		IsActive:    pgtype.Bool{Bool: true, Valid: true},
+		CreatedBy:   pgtype.Int8{Valid: false},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create league: %w", err)
@@ -139,9 +140,10 @@ func createTestLeague(ctx context.Context, name, slug string, divisionSize int32
 	return nil
 }
 
-func registerTestUsers(ctx context.Context, leagueSlugOrUUID, usersFile string) error {
+func registerTestUsers(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32, usersFile string) error {
 	log.Info().
 		Str("league", leagueSlugOrUUID).
+		Int32("seasonNumber", seasonNumber).
 		Str("usersFile", usersFile).
 		Msg("registering test users")
 
@@ -182,10 +184,19 @@ func registerTestUsers(ctx context.Context, leagueSlugOrUUID, usersFile string) 
 		leagueUUID = league.Uuid
 	}
 
-	// Get current season
-	season, err := queries.GetCurrentSeason(ctx, leagueUUID)
+	// Get season by number
+	season, err := queries.GetSeasonByLeagueAndNumber(ctx, models.GetSeasonByLeagueAndNumberParams{
+		LeagueID:     leagueUUID,
+		SeasonNumber: seasonNumber,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get current season: %w", err)
+		return fmt.Errorf("failed to get season %d: %w", seasonNumber, err)
+	}
+
+	// Validate that registration is open (status = 4)
+	if season.Status != int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
+		return fmt.Errorf("registration is not open for season %d (current status: %s)",
+			seasonNumber, ipc.SeasonStatus(season.Status).String())
 	}
 
 	log.Info().
@@ -212,10 +223,9 @@ func registerTestUsers(ctx context.Context, leagueSlugOrUUID, usersFile string) 
 			SeasonID:             season.Uuid,
 			DivisionID:           pgtype.UUID{Valid: false}, // No division yet
 			RegistrationDate:     pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			StartingRating:       pgtype.Int4{Int32: 1500, Valid: true},
 			FirstsCount:          pgtype.Int4{Int32: 0, Valid: true},
 			Status:               pgtype.Text{String: "REGISTERED", Valid: true},
-			PlacementStatus:      pgtype.Text{String: "PENDING_PLACEMENT", Valid: true},
+			PlacementStatus:      pgtype.Int4{Int32: 0, Valid: true}, // 0 = PLACEMENT_NONE
 			PreviousDivisionRank: pgtype.Int4{Valid: false},
 			SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
 		})

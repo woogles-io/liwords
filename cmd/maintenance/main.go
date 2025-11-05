@@ -68,6 +68,9 @@ func main() {
 		case "league-season-closer":
 			err := LeagueSeasonCloser()
 			log.Err(err).Msg("ran leagueSeasonCloser")
+		case "league-division-preparer":
+			err := LeagueDivisionPreparer()
+			log.Err(err).Msg("ran leagueDivisionPreparer")
 		case "league-season-starter":
 			err := LeagueSeasonStarter()
 			log.Err(err).Msg("ran leagueSeasonStarter")

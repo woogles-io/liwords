@@ -709,7 +709,11 @@ func calculateRookieDivisionSizes(numRookies int, idealDivisionSize int) []int {
 
 	// For more than MaxRookieDivisionSize, we need multiple divisions
 	// Start by trying to use the target (idealDivisionSize) as the goal
-	numDivisions := (numRookies + idealDivisionSize - 1) / idealDivisionSize
+	// Use ceiling for rookie divisions to prefer more smaller divisions
+	numDivisions := int(math.Ceil(float64(numRookies) / float64(idealDivisionSize)))
+	if numDivisions < 1 {
+		numDivisions = 1
+	}
 
 	// Calculate sizes with this number of divisions
 	baseSize := numRookies / numDivisions
