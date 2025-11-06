@@ -1109,29 +1109,35 @@ UPDATE games SET
     tournament_id = $14,
     ready_flag = $15,
     game_request = $16,
-    player_on_turn = $17
-WHERE uuid = $18
+    player_on_turn = $17,
+    league_id = $18,
+    season_id = $19,
+    league_division_id = $20
+WHERE uuid = $21
 `
 
 type UpdateGameParams struct {
-	UpdatedAt      pgtype.Timestamptz
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	History        []byte
-	MetaEvents     entity.MetaEventData
-	Stats          entity.Stats
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	ReadyFlag      pgtype.Int8
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
-	Uuid           pgtype.Text
+	UpdatedAt        pgtype.Timestamptz
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	History          []byte
+	MetaEvents       entity.MetaEventData
+	Stats            entity.Stats
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+	Uuid             pgtype.Text
 }
 
 func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
@@ -1153,6 +1159,9 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 		arg.ReadyFlag,
 		arg.GameRequest,
 		arg.PlayerOnTurn,
+		arg.LeagueID,
+		arg.SeasonID,
+		arg.LeagueDivisionID,
 		arg.Uuid,
 	)
 	return err

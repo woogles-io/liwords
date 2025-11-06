@@ -1,10 +1,12 @@
 import React from "react";
-import { Col, Row, Card, Spin } from "antd";
+import { Col, Row, Card, Spin, Collapse } from "antd";
 import { Link } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { getAllLeagues } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import "./leagues.scss";
+
+const { Panel } = Collapse;
 
 export const LeaguesList = () => {
   const { data: leaguesData, isLoading } = useQuery(getAllLeagues, {
@@ -68,6 +70,127 @@ export const LeaguesList = () => {
             <p>No active leagues at this time. Check back soon!</p>
           </div>
         )}
+
+        <div className="leagues-memorial">
+          <p>
+            In memory of <strong>Elliott Manley</strong>, creator of playscrab
+            and pioneer of correspondence word game leagues. We hope to continue
+            his vision of competitive, accessible, fun leagues.
+          </p>
+        </div>
+
+        <div className="leagues-faq">
+          <h2>Frequently Asked Questions</h2>
+          <Collapse accordion>
+            <Panel header="What are leagues?" key="1">
+              <p>
+                Leagues are competitive, correspondence-based competitions where
+                players compete in seasonal rounds with promotion and relegation
+                systems.
+              </p>
+              <p>
+                Each season, players in a division play{" "}
+                <strong>14 games</strong> over approximately{" "}
+                <strong>3 weeks</strong>. Games are correspondence-style,
+                meaning you don't need to be online at the same time as your
+                opponent - you make your moves when it's convenient for you.
+              </p>
+              <p>
+                At the end of each season, top performers are promoted to higher
+                divisions, while those at the bottom may be relegated to lower
+                divisions, creating a dynamic competitive environment.
+              </p>
+            </Panel>
+
+            <Panel header="How does promotion and relegation work?" key="2">
+              <p>
+                Leagues use a skill-based division system with automatic
+                promotion and relegation between seasons:
+              </p>
+              <ul>
+                <li>
+                  <strong>Promotion:</strong> Top-performing players in each
+                  division advance to a higher-skilled division in the next
+                  season
+                </li>
+                <li>
+                  <strong>Relegation:</strong> Lower-performing players move to
+                  a lower division to compete at a more appropriate skill level
+                </li>
+                <li>
+                  <strong>Stability:</strong> Mid-table players remain in their
+                  current division
+                </li>
+              </ul>
+              <p>
+                This system ensures you're always competing against players of
+                similar skill level, with opportunities to climb the ranks or
+                find your competitive balance.
+              </p>
+            </Panel>
+
+            <Panel header="How do time banks and timing work?" key="3">
+              <p>
+                League games use a correspondence time control designed to
+                complete 14 games within 3 weeks while accommodating real-life
+                schedules:
+              </p>
+              <ul>
+                <li>
+                  <strong>8 hours per turn:</strong> You have 8 hours to make
+                  each move under normal circumstances
+                </li>
+                <li>
+                  <strong>72-hour time bank:</strong> Each player starts with a
+                  72-hour (3-day) time bank that provides flexibility
+                </li>
+              </ul>
+              <p>
+                <strong>How the time bank helps:</strong> When your 8-hour
+                per-turn timer runs out, time starts consuming from your 72-hour
+                time bank. This means if you're busy for a day or two and can't
+                make your moves within 8 hours, you have plenty of buffer time
+                available. Even if you have a hectic couple of days, you won't
+                lose games on time as long as you manage your time bank wisely.
+              </p>
+              <p>
+                This timing system strikes a balance between keeping games
+                moving at a reasonable pace and giving players the flexibility
+                that correspondence word games provide.
+              </p>
+            </Panel>
+
+            <Panel header="What are rookie leagues?" key="4">
+              <p>
+                Rookie leagues are special divisions designed for new league
+                participants:
+              </p>
+              <ul>
+                <li>
+                  When you first join a league, you'll be placed in a rookie
+                  division along with other newcomers
+                </li>
+                <li>
+                  Rookie divisions provide a gentler introduction to league play
+                  and competitive correspondence games
+                </li>
+                <li>
+                  After your first season, you'll be graduated into the regular
+                  division system based on your performance
+                </li>
+                <li>
+                  Strong rookies will be placed in higher divisions, while those
+                  still learning will start in lower divisions with similarly
+                  skilled players
+                </li>
+              </ul>
+              <p>
+                This ensures everyone gets a fair start and finds their
+                appropriate competitive level from season two onwards.
+              </p>
+            </Panel>
+          </Collapse>
+        </div>
       </div>
     </>
   );

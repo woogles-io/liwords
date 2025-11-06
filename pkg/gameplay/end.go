@@ -210,12 +210,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 
 	// Update league standings if this is a league game
-	if stores.LeagueStore != nil {
-		err = league.UpdateGameStandings(ctx, stores.LeagueStore, g.GameID())
-		if err != nil {
-			// Log error but don't fail game completion
-			log.Err(err).Str("gameID", g.GameID()).Msg("failed-to-update-league-standings")
-		}
+	err = league.UpdateGameStandings(ctx, stores.LeagueStore, g.GameID())
+	if err != nil {
+		// Log error but don't fail game completion
+		log.Err(err).Str("gameID", g.GameID()).Msg("failed-to-update-league-standings")
 	}
 
 	log.Info().Msg("game-ended-unload-cache")

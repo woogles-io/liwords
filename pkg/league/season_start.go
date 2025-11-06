@@ -164,11 +164,6 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		Int("pairingsCount", len(pairings)).
 		Msg("generated-pairings-for-division")
 
-	// Create tournament data for league games
-	tdata := &entity.TournamentData{
-		Division: division.Uuid.String(),
-	}
-
 	// Create games for each pairing
 	gamesCreated := 0
 	for _, pairing := range pairings {
@@ -201,8 +196,8 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 			return gamesCreated, fmt.Errorf("failed to build game request: %w", err)
 		}
 
-		// Create the game
-		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, tdata)
+		// Create the game (league games don't use TournamentData)
+		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
 		}

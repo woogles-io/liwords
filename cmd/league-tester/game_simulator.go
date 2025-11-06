@@ -172,10 +172,21 @@ func simulateSingleGame(ctx context.Context, allStores *stores.Stores, gameUUID 
 		entGame.AddFinalScoresToHistory()
 	}
 
+	// Copy final scores to Quickdata (like performEndgameDuties does)
+	// This is required for the UI to display scores correctly
+	entGame.Quickdata.FinalScores = entGame.History().FinalScores
+
 	// Save the game to the database
 	err = allStores.GameStore.Set(ctx, entGame)
 	if err != nil {
 		return fmt.Errorf("failed to save game: %w", err)
+	}
+
+	// Insert entries into game_players table for query optimization
+	// This is required for standings calculations and game queries
+	err = allStores.GameStore.InsertGamePlayers(ctx, entGame)
+	if err != nil {
+		return fmt.Errorf("failed to insert game_players: %w", err)
 	}
 
 	// Manually update league standings

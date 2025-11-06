@@ -176,6 +176,10 @@ export const PlayerCards = React.memo((props: Props) => {
   let p1Time: number = examinableTimerContext.p1;
   if (p1Time === Infinity) p1Time = initialTimeSeconds;
 
+  // Get time bank values for correspondence games
+  const p0TimeBank = examinableTimerContext.p0TimeBank;
+  const p1TimeBank = examinableTimerContext.p1TimeBank;
+
   const applyTimePenalty = !isExamining && playing && !isCorrespondence;
   let p0Score = p0?.score ?? 0;
   if (applyTimePenalty) p0Score -= timepenalty(p0Time);
@@ -200,7 +204,7 @@ export const PlayerCards = React.memo((props: Props) => {
         playing={playing}
         hideProfileLink={props.hideProfileLink}
         isCorrespondence={isCorrespondence}
-        timeBank={undefined}
+        timeBank={p0TimeBank}
       />
       <PlayerCard
         player={p1}
@@ -212,7 +216,7 @@ export const PlayerCards = React.memo((props: Props) => {
         playing={playing}
         hideProfileLink={props.hideProfileLink}
         isCorrespondence={isCorrespondence}
-        timeBank={undefined}
+        timeBank={p1TimeBank}
       />
     </Card>
   );

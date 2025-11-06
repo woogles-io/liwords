@@ -1033,8 +1033,11 @@ type GameHistoryRefresher struct {
 	// outstanding_event refers to any possible outstanding game meta event that
 	// has not yet been responded to or expired.
 	OutstandingEvent *GameMetaEvent `protobuf:"bytes,5,opt,name=outstanding_event,json=outstandingEvent,proto3" json:"outstanding_event,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Time bank remaining for each player in correspondence games, in milliseconds
+	TimeBankPlayer1 int32 `protobuf:"varint,6,opt,name=time_bank_player1,json=timeBankPlayer1,proto3" json:"time_bank_player1,omitempty"`
+	TimeBankPlayer2 int32 `protobuf:"varint,7,opt,name=time_bank_player2,json=timeBankPlayer2,proto3" json:"time_bank_player2,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GameHistoryRefresher) Reset() {
@@ -1100,6 +1103,20 @@ func (x *GameHistoryRefresher) GetOutstandingEvent() *GameMetaEvent {
 		return x.OutstandingEvent
 	}
 	return nil
+}
+
+func (x *GameHistoryRefresher) GetTimeBankPlayer1() int32 {
+	if x != nil {
+		return x.TimeBankPlayer1
+	}
+	return 0
+}
+
+func (x *GameHistoryRefresher) GetTimeBankPlayer2() int32 {
+	if x != nil {
+		return x.TimeBankPlayer2
+	}
+	return 0
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
@@ -1815,6 +1832,7 @@ type ServerGameplayEvent struct {
 	TimeRemaining int32                  `protobuf:"varint,4,opt,name=time_remaining,json=timeRemaining,proto3" json:"time_remaining,omitempty"`
 	Playing       macondo.PlayState      `protobuf:"varint,5,opt,name=playing,proto3,enum=macondo.PlayState" json:"playing,omitempty"` // XXX: move to ipc.PlayState
 	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`             // the event has the nickname, but not the userid.
+	TimeBank      int32                  `protobuf:"varint,7,opt,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`      // time bank remaining for the player who just moved, in milliseconds
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1889,6 +1907,13 @@ func (x *ServerGameplayEvent) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *ServerGameplayEvent) GetTimeBank() int32 {
+	if x != nil {
+		return x.TimeBank
+	}
+	return 0
 }
 
 // ServerOMGWordsEvent is a new event type.
@@ -3236,13 +3261,15 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\vUNDO_DENIED\x10\t\x12\f\n" +
 	"\bADD_TIME\x10\n" +
 	"\x12\x11\n" +
-	"\rTIMER_EXPIRED\x10\v\"\xff\x01\n" +
+	"\rTIMER_EXPIRED\x10\v\"\xd7\x02\n" +
 	"\x14GameHistoryRefresher\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12!\n" +
 	"\ftime_player1\x18\x02 \x01(\x05R\vtimePlayer1\x12!\n" +
 	"\ftime_player2\x18\x03 \x01(\x05R\vtimePlayer2\x120\n" +
 	"\x14max_overtime_minutes\x18\x04 \x01(\x05R\x12maxOvertimeMinutes\x12?\n" +
-	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\"8\n" +
+	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\x12*\n" +
+	"\x11time_bank_player1\x18\x06 \x01(\x05R\x0ftimeBankPlayer1\x12*\n" +
+	"\x11time_bank_player2\x18\a \x01(\x05R\x0ftimeBankPlayer2\"8\n" +
 	"\x11GameDocumentEvent\x12#\n" +
 	"\x03doc\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\x03doc\"z\n" +
 	"\x15TournamentDataForGame\x12\x10\n" +
@@ -3297,14 +3324,15 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06player\x18\x02 \x03(\v2\x15.ipc.ActiveGamePlayerR\x06player\x12\x10\n" +
 	"\x03ttl\x18\x03 \x01(\x03R\x03ttl\"'\n" +
 	"\fReadyForGame\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xe1\x01\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xfe\x01\n" +
 	"\x13ServerGameplayEvent\x12(\n" +
 	"\x05event\x18\x01 \x01(\v2\x12.macondo.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +
 	"\bnew_rack\x18\x03 \x01(\tR\anewRack\x12%\n" +
 	"\x0etime_remaining\x18\x04 \x01(\x05R\rtimeRemaining\x12,\n" +
 	"\aplaying\x18\x05 \x01(\x0e2\x12.macondo.PlayStateR\aplaying\x12\x17\n" +
-	"\auser_id\x18\x06 \x01(\tR\x06userId\"\xd9\x01\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12\x1b\n" +
+	"\ttime_bank\x18\a \x01(\x05R\btimeBank\"\xd9\x01\n" +
 	"\x13ServerOMGWordsEvent\x12$\n" +
 	"\x05event\x18\x01 \x01(\v2\x0e.ipc.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +

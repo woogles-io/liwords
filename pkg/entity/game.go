@@ -538,12 +538,20 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 		outstandingEvent = LastOutstandingMetaRequest(g.MetaEvents.Events, "", now)
 	}
 
+	var timeBankPlayer1, timeBankPlayer2 int32
+	if len(g.Timers.TimeBank) >= 2 {
+		timeBankPlayer1 = int32(g.Timers.TimeBank[0])
+		timeBankPlayer2 = int32(g.Timers.TimeBank[1])
+	}
+
 	return &pb.GameHistoryRefresher{
 		History:            g.History(),
 		TimePlayer1:        int32(g.TimeRemaining(0)),
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
 		OutstandingEvent:   outstandingEvent,
+		TimeBankPlayer1:    timeBankPlayer1,
+		TimeBankPlayer2:    timeBankPlayer2,
 	}
 }
 

@@ -493,6 +493,7 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   // happen in some tests.
   // Set the clock
   const rem = sge.timeRemaining; // time remaining for the player who just played
+  const timeBank = sge.timeBank; // time bank for the player who just played
   const evt = sge.event;
   if (!evt) {
     throw new Error("missing event in setclock");
@@ -500,7 +501,8 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
 
   const justPlayed = evt.playerIndex;
 
-  let { p0, p1 } = newState.clockController.current.times;
+  let { p0, p1, p0TimeBank, p1TimeBank } =
+    newState.clockController.current.times;
   let activePlayer;
   let flipTimeRemaining = false;
 
@@ -518,15 +520,31 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   if (justPlayed === 0) {
     if (flipTimeRemaining) {
       p1 = rem;
+      // Time bank also flipped - it's for the challenger (p1)
+      if (timeBank !== undefined) {
+        p1TimeBank = timeBank > 0 ? timeBank : undefined;
+      }
     } else {
       p0 = rem;
+      // Normal case - time bank for player who moved (p0)
+      if (timeBank !== undefined) {
+        p0TimeBank = timeBank > 0 ? timeBank : undefined;
+      }
     }
     activePlayer = "p1";
   } else if (justPlayed === 1) {
     if (flipTimeRemaining) {
       p0 = rem;
+      // Time bank also flipped - it's for the challenger (p0)
+      if (timeBank !== undefined) {
+        p0TimeBank = timeBank > 0 ? timeBank : undefined;
+      }
     } else {
       p1 = rem;
+      // Normal case - time bank for player who moved (p1)
+      if (timeBank !== undefined) {
+        p1TimeBank = timeBank > 0 ? timeBank : undefined;
+      }
     }
     activePlayer = "p0";
   } else {
@@ -537,6 +555,8 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
     {
       p0,
       p1,
+      p0TimeBank,
+      p1TimeBank,
       activePlayer: activePlayer as PlayerOrder,
       lastUpdate: 0, // will get overwritten by setclock
     },
@@ -563,6 +583,7 @@ const initializeTimerController = (
   }
 
   const [t1, t2] = [ghr.timePlayer1, ghr.timePlayer2];
+  const [tb1, tb2] = [ghr.timeBankPlayer1, ghr.timeBankPlayer2];
 
   let onturn = "p0" as PlayerOrder;
 
@@ -583,6 +604,8 @@ const initializeTimerController = (
   const clockState = {
     p0: t1,
     p1: t2,
+    p0TimeBank: tb1 > 0 ? tb1 : undefined,
+    p1TimeBank: tb2 > 0 ? tb2 : undefined,
     activePlayer: onturn,
     lastUpdate: 0,
   };

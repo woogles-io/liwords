@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
@@ -46,7 +47,7 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 	}
 
 	for _, season := range seasons {
-		fmt.Printf("Season %d - %s\n", season.SeasonNumber, season.Status)
+		fmt.Printf("Season %d - %s\n", season.SeasonNumber, pb.SeasonStatus(season.Status).String())
 		fmt.Printf("  UUID: %s\n", season.Uuid.String())
 		fmt.Printf("  Start: %s\n", season.StartDate.Time.Format("2006-01-02"))
 		fmt.Printf("  End: %s\n", season.EndDate.Time.Format("2006-01-02"))

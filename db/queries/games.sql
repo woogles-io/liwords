@@ -145,7 +145,10 @@ UPDATE games SET
     tournament_id = @tournament_id,
     ready_flag = @ready_flag,
     game_request = @game_request,
-    player_on_turn = @player_on_turn
+    player_on_turn = @player_on_turn,
+    league_id = @league_id,
+    season_id = @season_id,
+    league_division_id = @league_division_id
 WHERE uuid = @uuid;
 
 -- name: CreateRawGame :exec

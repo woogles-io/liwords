@@ -42,6 +42,8 @@ func main() {
 		err = startSeasonCommand(ctx, os.Args[2:])
 	case "simulate-games":
 		err = simulateGamesCommand(ctx, os.Args[2:])
+	case "set-season-status":
+		err = setSeasonStatusCommand(ctx, os.Args[2:])
 	case "inspect":
 		err = inspectCommand(ctx, os.Args[2:])
 	case "run-full-season":
@@ -68,6 +70,7 @@ func printUsage() {
 	fmt.Println("  register-users     Register users for a league season")
 	fmt.Println("  start-season       Start a season (creates games)")
 	fmt.Println("  simulate-games     Simulate game completions with random results")
+	fmt.Println("  set-season-status  Change a season's status")
 	fmt.Println("  inspect            Inspect current league state")
 	fmt.Println("  run-full-season    Run complete season(s) end-to-end")
 	fmt.Println()
