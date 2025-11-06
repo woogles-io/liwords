@@ -19,10 +19,10 @@ import (
 func TestMergeDivisions_BasicMerge(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()
@@ -77,11 +77,11 @@ func TestMergeDivisions_BasicMerge(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 3 players in Division 3
-	player1 := uuid.New().String()
-	player2 := uuid.New().String()
-	player3 := uuid.New().String()
+	player1 := int32(1)
+	player2 := int32(2)
+	player3 := int32(3)
 
-	for _, playerID := range []string{player1, player2, player3} {
+	for _, playerID := range []int32{player1, player2, player3} {
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
 			UserID:      playerID,
 			SeasonID:    seasonID,
@@ -124,10 +124,10 @@ func TestMergeDivisions_BasicMerge(t *testing.T) {
 func TestMergeDivisions_WithRenumbering(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()
@@ -199,10 +199,10 @@ func TestMergeDivisions_WithRenumbering(t *testing.T) {
 func TestMovePlayer_Success(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()
@@ -248,9 +248,11 @@ func TestMovePlayer_Success(t *testing.T) {
 	is.NoErr(err)
 
 	// Register player in Division 1
-	playerID := uuid.New().String()
+	// Use the test user UUID that was created by createTestUsers()
+	playerUUID := "test-uuid-1"
+	playerDBID := int32(1)
 	_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-		UserID:      playerID,
+		UserID:      playerDBID,
 		SeasonID:    seasonID,
 		DivisionID:  pgtype.UUID{Bytes: div1ID, Valid: true},
 		SeasonsAway: pgtype.Int4{Int32: 0, Valid: true},
@@ -258,17 +260,17 @@ func TestMovePlayer_Success(t *testing.T) {
 	is.NoErr(err)
 
 	// Move player from Division 1 to Division 2
-	result, err := mdm.MovePlayer(ctx, playerID, seasonID, div1ID, div2ID)
+	result, err := mdm.MovePlayer(ctx, playerUUID, seasonID, div1ID, div2ID)
 	is.NoErr(err)
 	is.Equal(result.Success, true)
-	is.Equal(result.UserID, playerID)
+	is.Equal(result.UserID, playerUUID)
 	is.Equal(result.PreviousDivisionID, div1ID)
 	is.Equal(result.NewDivisionID, div2ID)
 
 	// Verify player is now in Division 2
 	reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 		SeasonID: seasonID,
-		UserID:   playerID,
+		UserID:   playerDBID,
 	})
 	is.NoErr(err)
 	is.True(reg.DivisionID.Valid)
@@ -279,10 +281,10 @@ func TestMovePlayer_Success(t *testing.T) {
 func TestMovePlayer_InvalidDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()
@@ -319,9 +321,10 @@ func TestMovePlayer_InvalidDivision(t *testing.T) {
 	is.NoErr(err)
 
 	// Register player in Division 1
-	playerID := uuid.New().String()
+	playerUUID := uuid.New().String()
+	playerDBID := int32(1)
 	_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-		UserID:      playerID,
+		UserID:      playerDBID,
 		SeasonID:    seasonID,
 		DivisionID:  pgtype.UUID{Bytes: div1ID, Valid: true},
 		SeasonsAway: pgtype.Int4{Int32: 0, Valid: true},
@@ -330,7 +333,7 @@ func TestMovePlayer_InvalidDivision(t *testing.T) {
 
 	// Try to move player from wrong division - should fail
 	wrongDivID := uuid.New()
-	_, err = mdm.MovePlayer(ctx, playerID, seasonID, wrongDivID, div1ID)
+	_, err = mdm.MovePlayer(ctx, playerUUID, seasonID, wrongDivID, div1ID)
 	is.True(err != nil) // Should return error
 }
 
@@ -338,10 +341,10 @@ func TestMovePlayer_InvalidDivision(t *testing.T) {
 func TestCreateDivision_AtEnd(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()
@@ -400,10 +403,10 @@ func TestCreateDivision_AtEnd(t *testing.T) {
 func TestCreateDivision_InsertMiddle(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
-	mdm := NewManualDivisionManager(store)
+	mdm := NewManualDivisionManager(allStores)
 
 	// Create league and season
 	league := uuid.New()

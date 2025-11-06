@@ -3,7 +3,6 @@ package league
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
@@ -16,10 +15,10 @@ func TestCalculateGraduationGroups_Standard(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 19 rookie standings
-	rookies := make([]models.LeagueStanding, 19)
+	rookies := make([]models.GetStandingsRow, 19)
 	for i := 0; i < 19; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}
@@ -56,10 +55,10 @@ func TestCalculateGraduationGroups_SkipDivision1(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 15 rookie standings
-	rookies := make([]models.LeagueStanding, 15)
+	rookies := make([]models.GetStandingsRow, 15)
 	for i := 0; i < 15; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}
@@ -88,10 +87,10 @@ func TestCalculateGraduationGroups_SingleDivision(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 20 rookie standings
-	rookies := make([]models.LeagueStanding, 20)
+	rookies := make([]models.GetStandingsRow, 20)
 	for i := 0; i < 20; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}
@@ -112,10 +111,10 @@ func TestCalculateGraduationGroups_TwoDivisions(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 12 rookie standings
-	rookies := make([]models.LeagueStanding, 12)
+	rookies := make([]models.GetStandingsRow, 12)
 	for i := 0; i < 12; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}
@@ -137,10 +136,10 @@ func TestCalculateGraduationGroups_ExactGroups(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 6 rookie standings
-	rookies := make([]models.LeagueStanding, 6)
+	rookies := make([]models.GetStandingsRow, 6)
 	for i := 0; i < 6; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}
@@ -166,10 +165,10 @@ func TestCalculateGraduationGroups_ManyRookies(t *testing.T) {
 	gm := &GraduationManager{}
 
 	// Create 100 rookie standings
-	rookies := make([]models.LeagueStanding, 100)
+	rookies := make([]models.GetStandingsRow, 100)
 	for i := 0; i < 100; i++ {
-		rookies[i] = models.LeagueStanding{
-			UserID: uuid.NewString(),
+		rookies[i] = models.GetStandingsRow{
+			UserID: int32(i + 1),
 			Rank:   pgtype.Int4{Int32: int32(i + 1), Valid: true},
 		}
 	}

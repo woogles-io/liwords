@@ -529,7 +529,7 @@ func (ls *LeagueService) OpenRegistration(
 		return nil, apiserver.InvalidArg(fmt.Sprintf("invalid season_id: %s", req.Msg.SeasonId))
 	}
 
-	lifecycleMgr := NewSeasonLifecycleManager(ls.store, nil)
+	lifecycleMgr := NewSeasonLifecycleManager(ls.stores)
 	result, err := lifecycleMgr.OpenRegistrationForSeason(ctx, seasonID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to open registration: %w", err))
@@ -586,11 +586,11 @@ func (ls *LeagueService) GetDivisionStandings(
 	// Convert standings to proto
 	protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 	for i, standing := range standings {
-		// Get user info
-		user, err := ls.userStore.GetByUUID(ctx, standing.UserID)
-		if err != nil {
-			// If user not found, use placeholder
-			user = &entity.User{UUID: standing.UserID, Username: "Unknown"}
+		// Use user info from the JOIN (no need to query separately)
+		userUUID := standing.UserUuid.String
+		username := standing.Username.String
+		if username == "" {
+			username = "Unknown"
 		}
 
 		resultValue := ipc.StandingResult_RESULT_NONE
@@ -599,8 +599,8 @@ func (ls *LeagueService) GetDivisionStandings(
 		}
 
 		protoStandings[i] = &ipc.LeaguePlayerStanding{
-			UserId:         standing.UserID,
-			Username:       user.Username,
+			UserId:         userUUID,
+			Username:       username,
 			Rank:           standing.Rank.Int32,
 			Wins:           standing.Wins.Int32,
 			Losses:         standing.Losses.Int32,
@@ -671,10 +671,12 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			}
 
 			// Convert registrations to "fake standings" with all zeros
-			standings = make([]models.LeagueStanding, len(registrations))
+			standings = make([]models.GetStandingsRow, len(registrations))
 			for j, reg := range registrations {
-				standings[j] = models.LeagueStanding{
+				standings[j] = models.GetStandingsRow{
 					UserID:         reg.UserID,
+					UserUuid:       reg.UserUuid, // From JOIN
+					Username:       pgtype.Text{String: "", Valid: false}, // Not included in registration JOIN, will fetch later
 					Rank:           pgtype.Int4{Int32: int32(j + 1), Valid: true},
 					Wins:           pgtype.Int4{Int32: 0, Valid: true},
 					Losses:         pgtype.Int4{Int32: 0, Valid: true},
@@ -690,10 +692,17 @@ func (ls *LeagueService) GetAllDivisionStandings(
 		// Convert standings to proto
 		protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 		for j, standing := range standings {
-			// Get user info
-			user, err := ls.userStore.GetByUUID(ctx, standing.UserID)
-			if err != nil {
-				user = &entity.User{UUID: standing.UserID, Username: "Unknown"}
+			// Get user info (either from standings JOIN or lookup)
+			userUUID := standing.UserUuid.String
+			username := "Unknown"
+			if standing.Username.Valid && standing.Username.String != "" {
+				username = standing.Username.String
+			} else if userUUID != "" {
+				// Fallback: lookup by UUID
+				user, err := ls.userStore.GetByUUID(ctx, userUUID)
+				if err == nil {
+					username = user.Username
+				}
 			}
 
 			resultValue := ipc.StandingResult_RESULT_NONE
@@ -702,8 +711,8 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			}
 
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
-				UserId:         standing.UserID,
-				Username:       user.Username,
+				UserId:         userUUID,
+				Username:       username,
 				Rank:           standing.Rank.Int32,
 				Wins:           standing.Wins.Int32,
 				Losses:         standing.Losses.Int32,
@@ -769,7 +778,7 @@ func (ls *LeagueService) RegisterForSeason(
 
 	// Register the player
 	regMgr := NewRegistrationManager(ls.store)
-	err = regMgr.RegisterPlayer(ctx, user.UUID, season.Uuid)
+	err = regMgr.RegisterPlayer(ctx, int32(user.ID), season.Uuid)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to register player: %w", err))
 	}
@@ -814,27 +823,35 @@ func (ls *LeagueService) UnregisterFromSeason(
 	}
 
 	// Allow user to specify different user_id only if they have manage permission
-	userIDToUnregister := user.UUID
+	userDBIDToUnregister := int32(user.ID)
+	userUUIDForLogging := user.UUID
 	if req.Msg.UserId != "" && req.Msg.UserId != user.UUID {
 		// Check if user has manage permission
 		_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
 		if err != nil {
 			return nil, apiserver.PermissionDenied("cannot unregister other users")
 		}
-		userIDToUnregister = req.Msg.UserId
+
+		// Look up the target user to get their database ID
+		targetUser, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
+		}
+		userDBIDToUnregister = int32(targetUser.ID)
+		userUUIDForLogging = targetUser.UUID
 	}
 
 	// Unregister the player
 	err = ls.store.UnregisterPlayer(ctx, models.UnregisterPlayerParams{
 		SeasonID: seasonID,
-		UserID:   userIDToUnregister,
+		UserID:   userDBIDToUnregister,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to unregister player: %w", err))
 	}
 
 	log.Info().
-		Str("userID", userIDToUnregister).
+		Str("userID", userUUIDForLogging).
 		Str("seasonID", seasonID.String()).
 		Msg("player-unregistered-from-season")
 
@@ -862,10 +879,10 @@ func (ls *LeagueService) GetSeasonRegistrations(
 	protoRegistrations := make([]*pb.SeasonRegistration, len(registrations))
 	for i, reg := range registrations {
 		// Get user info
-		user, err := ls.userStore.GetByUUID(ctx, reg.UserID)
+		user, err := ls.userStore.GetByUUID(ctx, reg.UserUuid.String)
 		if err != nil {
 			// If user not found, use placeholder
-			user = &entity.User{UUID: reg.UserID, Username: "Unknown"}
+			user = &entity.User{UUID: reg.UserUuid.String, Username: "Unknown"}
 		}
 
 		divisionID := ""
@@ -883,7 +900,7 @@ func (ls *LeagueService) GetSeasonRegistrations(
 		}
 
 		protoRegistrations[i] = &pb.SeasonRegistration{
-			UserId:         reg.UserID,
+			UserId:         reg.UserUuid.String,
 			Username:       user.Username,
 			SeasonId:       reg.SeasonID.String(),
 			DivisionId:     divisionID,

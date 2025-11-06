@@ -65,7 +65,7 @@ func LeagueRegistrationOpener() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -112,7 +112,7 @@ func LeagueSeasonCloser() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -159,7 +159,7 @@ func LeagueDivisionPreparer() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -221,7 +221,7 @@ func LeagueSeasonStarter() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores.LeagueStore, allStores.GameStore)
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)

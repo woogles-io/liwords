@@ -171,15 +171,15 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		player1Reg := registrations[pairing.Player1Index]
 		player2Reg := registrations[pairing.Player2Index]
 
-		// Look up user entities
-		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserID)
+		// Look up user entities using the UUIDs from the JOIN
+		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid.String)
 		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to get user %s: %w", player1Reg.UserID, err)
+			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player1Reg.UserID, err)
 		}
 
-		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserID)
+		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserUuid.String)
 		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to get user %s: %w", player2Reg.UserID, err)
+			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player2Reg.UserID, err)
 		}
 
 		// Determine order based on who goes first

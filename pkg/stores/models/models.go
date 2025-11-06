@@ -168,7 +168,7 @@ type LeagueDivision struct {
 
 type LeagueRegistration struct {
 	ID                   int64
-	UserID               string
+	UserID               int32
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
@@ -197,7 +197,7 @@ type LeagueSeason struct {
 type LeagueStanding struct {
 	ID             int64
 	DivisionID     uuid.UUID
-	UserID         string
+	UserID         int32
 	Rank           pgtype.Int4
 	Wins           pgtype.Int4
 	Losses         pgtype.Int4

@@ -45,7 +45,7 @@ CREATE TABLE league_divisions (
 -- Registrations table
 CREATE TABLE league_registrations (
     id BIGSERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     season_id UUID NOT NULL REFERENCES league_seasons(uuid) ON DELETE CASCADE,
     division_id UUID REFERENCES league_divisions(uuid) ON DELETE SET NULL,
     registration_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -63,7 +63,7 @@ CREATE TABLE league_registrations (
 CREATE TABLE league_standings (
     id BIGSERIAL PRIMARY KEY,
     division_id UUID NOT NULL REFERENCES league_divisions(uuid) ON DELETE CASCADE,
-    user_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rank INT,
     wins INT DEFAULT 0,
     losses INT DEFAULT 0,

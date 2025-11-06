@@ -347,20 +347,37 @@ func (q *Queries) GetDivisionGameResults(ctx context.Context, leagueDivisionID p
 }
 
 const getDivisionRegistrations = `-- name: GetDivisionRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
-WHERE division_id = $1
-ORDER BY registration_date
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+WHERE lr.division_id = $1
+ORDER BY lr.registration_date
 `
 
-func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtype.UUID) ([]LeagueRegistration, error) {
+type GetDivisionRegistrationsRow struct {
+	ID                   int64
+	UserID               int32
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Int4
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	UserUuid             pgtype.Text
+}
+
+func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtype.UUID) ([]GetDivisionRegistrationsRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionRegistrations, divisionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LeagueRegistration
+	var items []GetDivisionRegistrationsRow
 	for rows.Next() {
-		var i LeagueRegistration
+		var i GetDivisionRegistrationsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -374,6 +391,7 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 			&i.SeasonsAway,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserUuid,
 		); err != nil {
 			return nil, err
 		}
@@ -676,7 +694,7 @@ WHERE season_id = $1 AND user_id = $2
 
 type GetPlayerRegistrationParams struct {
 	SeasonID uuid.UUID
-	UserID   string
+	UserID   int32
 }
 
 func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegistrationParams) (LeagueRegistration, error) {
@@ -709,13 +727,13 @@ ORDER BY ls.season_number DESC
 `
 
 type GetPlayerSeasonHistoryParams struct {
-	UserID   string
+	UserID   int32
 	LeagueID uuid.UUID
 }
 
 type GetPlayerSeasonHistoryRow struct {
 	ID                   int64
-	UserID               string
+	UserID               int32
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
@@ -772,7 +790,7 @@ WHERE division_id = $1 AND user_id = $2
 
 type GetPlayerStandingParams struct {
 	DivisionID uuid.UUID
-	UserID     string
+	UserID     int32
 }
 
 func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingParams) (LeagueStanding, error) {
@@ -885,20 +903,37 @@ func (q *Queries) GetSeasonByLeagueAndNumber(ctx context.Context, arg GetSeasonB
 }
 
 const getSeasonRegistrations = `-- name: GetSeasonRegistrations :many
-SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
-WHERE season_id = $1
-ORDER BY registration_date
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+WHERE lr.season_id = $1
+ORDER BY lr.registration_date
 `
 
-func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]LeagueRegistration, error) {
+type GetSeasonRegistrationsRow struct {
+	ID                   int64
+	UserID               int32
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Int4
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	UserUuid             pgtype.Text
+}
+
+func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]GetSeasonRegistrationsRow, error) {
 	rows, err := q.db.Query(ctx, getSeasonRegistrations, seasonID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LeagueRegistration
+	var items []GetSeasonRegistrationsRow
 	for rows.Next() {
-		var i LeagueRegistration
+		var i GetSeasonRegistrationsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -912,6 +947,7 @@ func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID
 			&i.SeasonsAway,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserUuid,
 		); err != nil {
 			return nil, err
 		}
@@ -961,20 +997,38 @@ func (q *Queries) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([
 }
 
 const getStandings = `-- name: GetStandings :many
-SELECT id, division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at FROM league_standings
-WHERE division_id = $1
-ORDER BY rank ASC
+SELECT ls.id, ls.division_id, ls.user_id, ls.rank, ls.wins, ls.losses, ls.draws, ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at, u.uuid as user_uuid, u.username FROM league_standings ls
+JOIN users u ON ls.user_id = u.id
+WHERE ls.division_id = $1
+ORDER BY ls.rank ASC
 `
 
-func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]LeagueStanding, error) {
+type GetStandingsRow struct {
+	ID             int64
+	DivisionID     uuid.UUID
+	UserID         int32
+	Rank           pgtype.Int4
+	Wins           pgtype.Int4
+	Losses         pgtype.Int4
+	Draws          pgtype.Int4
+	Spread         pgtype.Int4
+	GamesPlayed    pgtype.Int4
+	GamesRemaining pgtype.Int4
+	Result         pgtype.Int4
+	UpdatedAt      pgtype.Timestamptz
+	UserUuid       pgtype.Text
+	Username       pgtype.Text
+}
+
+func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]GetStandingsRow, error) {
 	rows, err := q.db.Query(ctx, getStandings, divisionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LeagueStanding
+	var items []GetStandingsRow
 	for rows.Next() {
-		var i LeagueStanding
+		var i GetStandingsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.DivisionID,
@@ -988,6 +1042,8 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Lea
 			&i.GamesRemaining,
 			&i.Result,
 			&i.UpdatedAt,
+			&i.UserUuid,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -1037,7 +1093,7 @@ func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.
 
 const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec
 INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, '', NOW())
+VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, 0, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,
@@ -1051,7 +1107,7 @@ DO UPDATE SET
 
 type IncrementStandingsAtomicParams struct {
 	DivisionID     uuid.UUID
-	UserID         string
+	UserID         int32
 	Wins           pgtype.Int4
 	Losses         pgtype.Int4
 	Draws          pgtype.Int4
@@ -1139,7 +1195,7 @@ RETURNING id, user_id, season_id, division_id, registration_date, firsts_count, 
 `
 
 type RegisterPlayerParams struct {
-	UserID               string
+	UserID               int32
 	SeasonID             uuid.UUID
 	DivisionID           pgtype.UUID
 	RegistrationDate     pgtype.Timestamptz
@@ -1204,7 +1260,7 @@ WHERE season_id = $1 AND user_id = $2
 
 type UnregisterPlayerParams struct {
 	SeasonID uuid.UUID
-	UserID   string
+	UserID   int32
 }
 
 func (q *Queries) UnregisterPlayer(ctx context.Context, arg UnregisterPlayerParams) error {
@@ -1268,7 +1324,7 @@ WHERE user_id = $1 AND season_id = $4
 `
 
 type UpdatePlacementStatusParams struct {
-	UserID               string
+	UserID               int32
 	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonID             uuid.UUID
@@ -1291,7 +1347,7 @@ WHERE user_id = $1 AND season_id = $5
 `
 
 type UpdatePlacementStatusWithSeasonsAwayParams struct {
-	UserID               string
+	UserID               int32
 	PlacementStatus      pgtype.Int4
 	PreviousDivisionRank pgtype.Int4
 	SeasonsAway          pgtype.Int4
@@ -1318,7 +1374,7 @@ WHERE user_id = $3 AND season_id = $4
 type UpdatePlayerDivisionParams struct {
 	DivisionID  pgtype.UUID
 	FirstsCount pgtype.Int4
-	UserID      string
+	UserID      int32
 	SeasonID    uuid.UUID
 }
 
@@ -1342,7 +1398,7 @@ type UpdateRegistrationDivisionParams struct {
 	SeasonID    uuid.UUID
 	DivisionID  pgtype.UUID
 	FirstsCount pgtype.Int4
-	UserID      string
+	UserID      int32
 }
 
 func (q *Queries) UpdateRegistrationDivision(ctx context.Context, arg UpdateRegistrationDivisionParams) error {
@@ -1390,7 +1446,7 @@ DO UPDATE SET
 
 type UpsertStandingParams struct {
 	DivisionID     uuid.UUID
-	UserID         string
+	UserID         int32
 	Rank           pgtype.Int4
 	Wins           pgtype.Int4
 	Losses         pgtype.Int4

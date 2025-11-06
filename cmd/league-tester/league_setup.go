@@ -207,10 +207,18 @@ func registerTestUsers(ctx context.Context, leagueSlugOrUUID string, seasonNumbe
 	// Register each user
 	registered := 0
 	for _, user := range usersOutput.Users {
+		// Look up user database ID from UUID using raw SQL
+		var userDBID int32
+		err := dbPool.QueryRow(ctx, "SELECT id FROM users WHERE uuid = $1", user.UUID).Scan(&userDBID)
+		if err != nil {
+			log.Warn().Err(err).Str("uuid", user.UUID).Str("username", user.Username).Msg("failed to get user from database")
+			continue
+		}
+
 		// Check if already registered
 		existing, err := queries.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 			SeasonID: season.Uuid,
-			UserID:   user.UUID,
+			UserID:   userDBID,
 		})
 		if err == nil && existing.ID > 0 {
 			log.Info().Str("username", user.Username).Msg("already registered, skipping")
@@ -219,7 +227,7 @@ func registerTestUsers(ctx context.Context, leagueSlugOrUUID string, seasonNumbe
 
 		// Create registration using RegisterPlayer
 		_, err = queries.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:               user.UUID,
+			UserID:               userDBID,
 			SeasonID:             season.Uuid,
 			DivisionID:           pgtype.UUID{Valid: false}, // No division yet
 			RegistrationDate:     pgtype.Timestamptz{Time: time.Now(), Valid: true},

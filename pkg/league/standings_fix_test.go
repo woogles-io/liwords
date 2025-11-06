@@ -3,7 +3,6 @@ package league
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/matryer/is"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -19,7 +18,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 	div1Standings := make([]PlayerStanding, 15)
 	for i := 0; i < 15; i++ {
 		div1Standings[i] = PlayerStanding{
-			UserID: uuid.NewString(),
+			UserID: int32(i + 1),
 			Rank:   i + 1,
 		}
 	}
@@ -47,7 +46,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 	div2Standings := make([]PlayerStanding, 13)
 	for i := 0; i < 13; i++ {
 		div2Standings[i] = PlayerStanding{
-			UserID: uuid.NewString(),
+			UserID: int32(16 + i), // IDs 16-28
 			Rank:   i + 1,
 		}
 	}
@@ -75,7 +74,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 	div3Standings := make([]PlayerStanding, 20)
 	for i := 0; i < 20; i++ {
 		div3Standings[i] = PlayerStanding{
-			UserID: uuid.NewString(),
+			UserID: int32(29 + i), // IDs 29-48
 			Rank:   i + 1,
 		}
 	}

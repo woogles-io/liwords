@@ -2,22 +2,28 @@ package league
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
+
+	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/stores/user"
 )
 
 const pkg = "league_test"
 
-func setupTest(t *testing.T) (*leaguestore.DBStore, func()) {
+func setupTest(t *testing.T) (*stores.Stores, *leaguestore.DBStore, func()) {
 	err := common.RecreateTestDB(pkg)
 	if err != nil {
 		t.Fatal(err)
@@ -31,23 +37,66 @@ func setupTest(t *testing.T) (*leaguestore.DBStore, func()) {
 	cfg := config.DefaultConfig()
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(pkg)
 
-	store, err := leaguestore.NewDBStore(cfg, pool)
+	leagueStore, err := leaguestore.NewDBStore(cfg, pool)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	userStore, err := user.NewDBStore(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create test users
+	err = createTestUsers(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create minimal stores object for testing
+	allStores := &stores.Stores{
+		LeagueStore: leagueStore,
+		UserStore:   userStore,
 	}
 
 	cleanup := func() {
 		pool.Close()
 	}
 
-	return store, cleanup
+	return allStores, leagueStore, cleanup
+}
+
+// createTestUsers creates test users in the database for league tests
+func createTestUsers(pool *pgxpool.Pool) error {
+	ustore, err := user.NewDBStore(pool)
+	if err != nil {
+		return err
+	}
+	// Don't disconnect - the pool is shared with the league store
+
+	ctx := context.Background()
+
+	// Create 100 test users (enough for all tests)
+	for i := 1; i <= 100; i++ {
+		u := &entity.User{
+			Username: fmt.Sprintf("testuser%d", i),
+			Email:    fmt.Sprintf("testuser%d@test.com", i),
+			UUID:     fmt.Sprintf("test-uuid-%d", i),
+		}
+		err = ustore.New(ctx, u)
+		if err != nil {
+			return fmt.Errorf("failed to create test user %d: %w", i, err)
+		}
+	}
+
+	return nil
 }
 
 func TestRegisterPlayer(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create a test league and season
@@ -77,7 +126,7 @@ func TestRegisterPlayer(t *testing.T) {
 	// Test registration
 	rm := NewRegistrationManager(store)
 
-	userID := "test-user-1"
+	userID := int32(1)
 
 	err = rm.RegisterPlayer(ctx, userID, seasonID)
 	is.NoErr(err)
@@ -95,7 +144,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league and season
@@ -126,7 +175,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 	rm := NewRegistrationManager(store)
 
 	for i := 0; i < 50; i++ {
-		userID := uuid.NewString()
+		userID := int32(i + 1)
 		err = rm.RegisterPlayer(ctx, userID, seasonID)
 		is.NoErr(err)
 	}
@@ -141,7 +190,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league and season
@@ -172,7 +221,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 	rm := NewRegistrationManager(store)
 
 	for i := 0; i < 10; i++ {
-		userID := uuid.NewString()
+		userID := int32(i + 1)
 		err = rm.RegisterPlayer(ctx, userID, seasonID)
 		is.NoErr(err)
 	}
@@ -195,7 +244,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league
@@ -225,9 +274,9 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 
 	// Register 5 players in Season 1
 	rm := NewRegistrationManager(store)
-	returningPlayerIDs := []string{}
+	returningPlayerIDs := []int32{}
 	for i := 0; i < 5; i++ {
-		userID := uuid.NewString()
+		userID := int32(i + 1)
 		returningPlayerIDs = append(returningPlayerIDs, userID)
 		err = rm.RegisterPlayer(ctx, userID, season1ID)
 		is.NoErr(err)
@@ -252,9 +301,9 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	}
 
 	// Register 5 new players in Season 2
-	newPlayerIDs := []string{}
+	newPlayerIDs := []int32{}
 	for i := 0; i < 5; i++ {
-		userID := uuid.NewString()
+		userID := int32(6 + i) // IDs 6-10
 		newPlayerIDs = append(newPlayerIDs, userID)
 		err = rm.RegisterPlayer(ctx, userID, season2ID)
 		is.NoErr(err)

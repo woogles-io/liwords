@@ -29,7 +29,7 @@ func NewStandingsManager(store league.Store) *StandingsManager {
 
 // PlayerStanding represents a player's standing within a division
 type PlayerStanding struct {
-	UserID      string
+	UserID      int32 // Database ID, not UUID
 	DivisionID  uuid.UUID
 	Wins        float64 // includes ties as 0.5
 	Losses      int
@@ -99,7 +99,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	}
 
 	// Create a map to track player stats
-	playerStats := make(map[string]*PlayerStanding)
+	playerStats := make(map[int32]*PlayerStanding)
 	for _, reg := range registrations {
 		playerStats[reg.UserID] = &PlayerStanding{
 			UserID:      reg.UserID,
@@ -115,8 +115,8 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	// Process each game result
 	for _, game := range gameResults {
 		// Get player IDs
-		player0ID := fmt.Sprintf("%d", game.Player0ID.Int32)
-		player1ID := fmt.Sprintf("%d", game.Player1ID.Int32)
+		player0ID := game.Player0ID.Int32
+		player1ID := game.Player1ID.Int32
 
 		// Skip if players not in this division (shouldn't happen, but be safe)
 		p0Stats, p0Exists := playerStats[player0ID]
@@ -263,8 +263,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	player1Score int32,
 ) error {
 	// Use atomic operations to prevent race conditions when multiple games finish simultaneously
-	player0IDStr := fmt.Sprintf("%d", player0ID)
-	player1IDStr := fmt.Sprintf("%d", player1ID)
+	// Note: player IDs are database IDs (int32), not UUID strings
 
 	// Calculate deltas for player 0
 	var p0Wins, p0Losses, p0Draws int32
@@ -291,7 +290,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	// Atomically increment player 0's standings
 	err := sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
 		DivisionID:     divisionID,
-		UserID:         player0IDStr,
+		UserID:         player0ID,
 		Wins:           pgtype.Int4{Int32: p0Wins, Valid: true},
 		Losses:         pgtype.Int4{Int32: p0Losses, Valid: true},
 		Draws:          pgtype.Int4{Int32: p0Draws, Valid: true},
@@ -305,7 +304,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	// Atomically increment player 1's standings
 	err = sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
 		DivisionID:     divisionID,
-		UserID:         player1IDStr,
+		UserID:         player1ID,
 		Wins:           pgtype.Int4{Int32: p1Wins, Valid: true},
 		Losses:         pgtype.Int4{Int32: p1Losses, Valid: true},
 		Draws:          pgtype.Int4{Int32: p1Draws, Valid: true},

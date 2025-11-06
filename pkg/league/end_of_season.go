@@ -113,7 +113,7 @@ func (em *EndOfSeasonManager) updateRegistrationOutcomes(
 			SeasonID:             seasonID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to update placement status for user %s: %w",
+			return fmt.Errorf("failed to update placement status for user %d: %w",
 				standing.UserID, err)
 		}
 	}

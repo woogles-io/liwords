@@ -27,7 +27,7 @@ func NewRegistrationManager(store league.Store) *RegistrationManager {
 // Returns error if already registered or if validation fails
 func (rm *RegistrationManager) RegisterPlayer(
 	ctx context.Context,
-	userID string,
+	userID int32,
 	seasonID uuid.UUID,
 ) error {
 	_, err := rm.store.RegisterPlayer(ctx, models.RegisterPlayerParams{
@@ -47,7 +47,7 @@ func (rm *RegistrationManager) RegisterPlayer(
 func (rm *RegistrationManager) GetSeasonRegistrations(
 	ctx context.Context,
 	seasonID uuid.UUID,
-) ([]models.LeagueRegistration, error) {
+) ([]models.GetSeasonRegistrationsRow, error) {
 	return rm.store.GetSeasonRegistrations(ctx, seasonID)
 }
 
@@ -61,7 +61,7 @@ const (
 
 // CategorizedPlayer contains a registration and its category
 type CategorizedPlayer struct {
-	Registration models.LeagueRegistration
+	Registration models.GetSeasonRegistrationsRow
 	Category     PlayerCategory
 	Rating       int32
 }
@@ -73,7 +73,7 @@ func (rm *RegistrationManager) CategorizeRegistrations(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
-	registrations []models.LeagueRegistration,
+	registrations []models.GetSeasonRegistrationsRow,
 ) ([]CategorizedPlayer, error) {
 	categorized := make([]CategorizedPlayer, 0, len(registrations))
 

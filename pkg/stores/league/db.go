@@ -44,8 +44,8 @@ type Store interface {
 	RegisterPlayer(ctx context.Context, arg models.RegisterPlayerParams) (models.LeagueRegistration, error)
 	UnregisterPlayer(ctx context.Context, arg models.UnregisterPlayerParams) error
 	GetPlayerRegistration(ctx context.Context, arg models.GetPlayerRegistrationParams) (models.LeagueRegistration, error)
-	GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.LeagueRegistration, error)
-	GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueRegistration, error)
+	GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonRegistrationsRow, error)
+	GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionRegistrationsRow, error)
 	UpdatePlayerDivision(ctx context.Context, arg models.UpdatePlayerDivisionParams) error
 	UpdateRegistrationDivision(ctx context.Context, arg models.UpdateRegistrationDivisionParams) error
 	UpdatePlacementStatus(ctx context.Context, arg models.UpdatePlacementStatusParams) error
@@ -54,7 +54,7 @@ type Store interface {
 
 	// Standings operations
 	UpsertStanding(ctx context.Context, arg models.UpsertStandingParams) error
-	GetStandings(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueStanding, error)
+	GetStandings(ctx context.Context, divisionID uuid.UUID) ([]models.GetStandingsRow, error)
 	GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error)
 	DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error
 	IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error
@@ -196,11 +196,11 @@ func (s *DBStore) GetPlayerRegistration(ctx context.Context, arg models.GetPlaye
 	return s.queries.GetPlayerRegistration(ctx, arg)
 }
 
-func (s *DBStore) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.LeagueRegistration, error) {
+func (s *DBStore) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonRegistrationsRow, error) {
 	return s.queries.GetSeasonRegistrations(ctx, seasonID)
 }
 
-func (s *DBStore) GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueRegistration, error) {
+func (s *DBStore) GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionRegistrationsRow, error) {
 	return s.queries.GetDivisionRegistrations(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
 }
 
@@ -230,7 +230,7 @@ func (s *DBStore) UpsertStanding(ctx context.Context, arg models.UpsertStandingP
 	return s.queries.UpsertStanding(ctx, arg)
 }
 
-func (s *DBStore) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueStanding, error) {
+func (s *DBStore) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]models.GetStandingsRow, error) {
 	return s.queries.GetStandings(ctx, divisionID)
 }
 

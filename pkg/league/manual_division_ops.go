@@ -8,19 +8,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/woogles-io/liwords/pkg/stores/league"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
 // ManualDivisionManager provides tools for manual division management
 type ManualDivisionManager struct {
-	store league.Store
+	stores *stores.Stores
 }
 
 // NewManualDivisionManager creates a new manual division manager
-func NewManualDivisionManager(store league.Store) *ManualDivisionManager {
+func NewManualDivisionManager(allStores *stores.Stores) *ManualDivisionManager {
 	return &ManualDivisionManager{
-		store: store,
+		stores: allStores,
 	}
 }
 
@@ -56,12 +56,12 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 	}
 
 	// Get both divisions to validate they exist and are in the same season
-	receivingDiv, err := mdm.store.GetDivision(ctx, receivingDivID)
+	receivingDiv, err := mdm.stores.LeagueStore.GetDivision(ctx, receivingDivID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get receiving division: %w", err)
 	}
 
-	mergingDiv, err := mdm.store.GetDivision(ctx, mergingDivID)
+	mergingDiv, err := mdm.stores.LeagueStore.GetDivision(ctx, mergingDivID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get merging division: %w", err)
 	}
@@ -72,32 +72,32 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 	}
 
 	// Get all players from the merging division
-	mergingPlayers, err := mdm.store.GetDivisionRegistrations(ctx, mergingDivID)
+	mergingPlayers, err := mdm.stores.LeagueStore.GetDivisionRegistrations(ctx, mergingDivID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get merging division players: %w", err)
 	}
 
 	// Move all players to receiving division
 	for _, player := range mergingPlayers {
-		err := mdm.store.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+		err := mdm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
 			UserID:      player.UserID,
 			SeasonID:    seasonID,
 			DivisionID:  pgtype.UUID{Bytes: receivingDivID, Valid: true},
 			FirstsCount: player.FirstsCount,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to move player %s: %w", player.UserID, err)
+			return nil, fmt.Errorf("failed to move player %d: %w", player.UserID, err)
 		}
 	}
 
 	// Delete the merging division
-	err = mdm.store.DeleteDivision(ctx, mergingDivID)
+	err = mdm.stores.LeagueStore.DeleteDivision(ctx, mergingDivID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete merging division: %w", err)
 	}
 
 	// Get all remaining divisions in the season (excluding rookie divisions)
-	allDivisions, err := mdm.store.GetDivisionsBySeason(ctx, seasonID)
+	allDivisions, err := mdm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get season divisions: %w", err)
 	}
@@ -124,7 +124,7 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 		if div.DivisionNumber != newNumber {
 			// Need to renumber this division
 			divName := fmt.Sprintf("Division %d", newNumber)
-			err := mdm.store.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
+			err := mdm.stores.LeagueStore.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
 				Uuid:         div.Uuid,
 				DivisionNumber: newNumber,
 				DivisionName:   pgtype.Text{String: divName, Valid: true},
@@ -150,7 +150,7 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 // This is useful for manual corrections and balancing.
 func (mdm *ManualDivisionManager) MovePlayer(
 	ctx context.Context,
-	userID string,
+	userID string, // UUID string
 	seasonID uuid.UUID,
 	fromDivID uuid.UUID,
 	toDivID uuid.UUID,
@@ -159,10 +159,17 @@ func (mdm *ManualDivisionManager) MovePlayer(
 		return nil, fmt.Errorf("cannot move player to the same division")
 	}
 
+	// Look up user database ID from UUID
+	dbUser, err := mdm.stores.UserStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	userDBID := int32(dbUser.ID)
+
 	// Verify player exists in the from division
-	reg, err := mdm.store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+	reg, err := mdm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 		SeasonID: seasonID,
-		UserID:   userID,
+		UserID:   userDBID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player registration: %w", err)
@@ -173,7 +180,7 @@ func (mdm *ManualDivisionManager) MovePlayer(
 	}
 
 	// Verify target division exists and is in the same season
-	toDiv, err := mdm.store.GetDivision(ctx, toDivID)
+	toDiv, err := mdm.stores.LeagueStore.GetDivision(ctx, toDivID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get target division: %w", err)
 	}
@@ -183,8 +190,8 @@ func (mdm *ManualDivisionManager) MovePlayer(
 	}
 
 	// Move the player
-	err = mdm.store.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
-		UserID:      userID,
+	err = mdm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+		UserID:      userDBID,
 		SeasonID:    seasonID,
 		DivisionID:  pgtype.UUID{Bytes: toDivID, Valid: true},
 		FirstsCount: reg.FirstsCount,
@@ -224,7 +231,7 @@ func (mdm *ManualDivisionManager) CreateDivision(
 	}
 
 	// Get all regular divisions in the season
-	allDivisions, err := mdm.store.GetDivisionsBySeason(ctx, seasonID)
+	allDivisions, err := mdm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
 	if err != nil {
 		return models.LeagueDivision{}, fmt.Errorf("failed to get season divisions: %w", err)
 	}
@@ -247,7 +254,7 @@ func (mdm *ManualDivisionManager) CreateDivision(
 		if div.DivisionNumber >= divisionNumber {
 			newNumber := div.DivisionNumber + 1
 			newName := fmt.Sprintf("Division %d", newNumber)
-			err := mdm.store.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
+			err := mdm.stores.LeagueStore.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
 				Uuid:           div.Uuid,
 				DivisionNumber: newNumber,
 				DivisionName:   pgtype.Text{String: newName, Valid: true},
@@ -263,7 +270,7 @@ func (mdm *ManualDivisionManager) CreateDivision(
 		divisionName = fmt.Sprintf("Division %d", divisionNumber)
 	}
 
-	newDiv, err := mdm.store.CreateDivision(ctx, models.CreateDivisionParams{
+	newDiv, err := mdm.stores.LeagueStore.CreateDivision(ctx, models.CreateDivisionParams{
 		Uuid:           uuid.New(),
 		SeasonID:       seasonID,
 		DivisionNumber: divisionNumber,

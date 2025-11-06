@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	"github.com/woogles-io/liwords/pkg/stores/league"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
@@ -34,19 +34,20 @@ const (
 
 // RebalanceManager handles the rebalancing of divisions for a new season
 type RebalanceManager struct {
-	store league.Store
+	stores *stores.Stores
 }
 
 // NewRebalanceManager creates a new rebalance manager
-func NewRebalanceManager(store league.Store) *RebalanceManager {
+func NewRebalanceManager(allStores *stores.Stores) *RebalanceManager {
 	return &RebalanceManager{
-		store: store,
+		stores: allStores,
 	}
 }
 
 // PlayerWithVirtualDiv represents a player with their assigned virtual division
 type PlayerWithVirtualDiv struct {
-	UserID              string
+	UserID              string // UUID string for external use
+	UserDBID            int32  // Database ID for internal queries
 	VirtualDivision     int32
 	PlacementStatus     ipc.PlacementStatus
 	PreviousDivisionSize int
@@ -145,13 +146,13 @@ func (rm *RebalanceManager) RebalanceDivisions(
 
 	// Get final division assignments for result
 	for _, p := range playersWithPriority {
-		reg, err := rm.store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 			SeasonID: newSeasonID,
-			UserID:   p.UserID,
+			UserID:   p.UserDBID,
 		})
 		if err == nil && reg.DivisionID.Valid {
 			// Get division number
-			div, err := rm.store.GetDivision(ctx, reg.DivisionID.Bytes)
+			div, err := rm.stores.LeagueStore.GetDivision(ctx, reg.DivisionID.Bytes)
 			if err == nil {
 				result.FinalDivisions[p.UserID] = div.DivisionNumber
 			}
@@ -175,7 +176,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 	for _, player := range categorizedPlayers {
 		if player.Category == PlayerCategoryNew {
 			// Brand new player
-			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			err := rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
 				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_NEW), Valid: true},
 				PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
@@ -183,18 +184,18 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 				SeasonID:             newSeasonID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to set NEW status for %s: %w", player.Registration.UserID, err)
+				return fmt.Errorf("failed to set NEW status for %d: %w", player.Registration.UserID, err)
 			}
 			continue
 		}
 
 		// RETURNING player - get their history
-		history, err := rm.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
+		history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
 			UserID:   player.Registration.UserID,
 			LeagueID: leagueID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to get history for %s: %w", player.Registration.UserID, err)
+			return fmt.Errorf("failed to get history for %d: %w", player.Registration.UserID, err)
 		}
 
 		// Find most recent season (not the new one)
@@ -210,7 +211,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 
 		if !found {
 			// No history found, treat as new
-			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			err := rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
 				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_NEW), Valid: true},
 				PreviousDivisionRank: pgtype.Int4{Int32: 0, Valid: false},
@@ -218,7 +219,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 				SeasonID:             newSeasonID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to set NEW status for %s: %w", player.Registration.UserID, err)
+				return fmt.Errorf("failed to set NEW status for %d: %w", player.Registration.UserID, err)
 			}
 			continue
 		}
@@ -227,7 +228,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 		isRookieGraduate := false
 		if lastSeason.DivisionID.Valid {
 			// Look up the division to get its number
-			div, err := rm.store.GetDivision(ctx, lastSeason.DivisionID.Bytes)
+			div, err := rm.stores.LeagueStore.GetDivision(ctx, lastSeason.DivisionID.Bytes)
 			if err == nil {
 				isRookieGraduate = div.DivisionNumber >= RookieDivisionNumberBase
 			}
@@ -235,7 +236,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 
 		if isRookieGraduate {
 			// Rookie graduating to regular divisions
-			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			err := rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
 				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_GRADUATED), Valid: true},
 				PreviousDivisionRank: lastSeason.PreviousDivisionRank,
@@ -243,7 +244,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 				SeasonID:             newSeasonID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to set GRADUATED status for %s: %w", player.Registration.UserID, err)
+				return fmt.Errorf("failed to set GRADUATED status for %d: %w", player.Registration.UserID, err)
 			}
 			continue
 		}
@@ -260,7 +261,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 				status = ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING
 			}
 
-			err := rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+			err := rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 				UserID:               player.Registration.UserID,
 				PlacementStatus:      pgtype.Int4{Int32: int32(status), Valid: true},
 				PreviousDivisionRank: lastSeason.PreviousDivisionRank,
@@ -268,14 +269,14 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 				SeasonID:             newSeasonID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to set %s status for %s: %w", status, player.Registration.UserID, err)
+				return fmt.Errorf("failed to set %s status for %d: %w", status, player.Registration.UserID, err)
 			}
 			continue
 		}
 
 		// Consecutive play - copy status from last season
 		// (PROMOTED/RELEGATED/STAYED already set by MarkSeasonOutcomes)
-		err = rm.store.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
+		err = rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 			UserID:               player.Registration.UserID,
 			PlacementStatus:      lastSeason.PlacementStatus,
 			PreviousDivisionRank: lastSeason.PreviousDivisionRank,
@@ -283,7 +284,7 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			SeasonID:             newSeasonID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to copy status for %s: %w", player.Registration.UserID, err)
+			return fmt.Errorf("failed to copy status for %d: %w", player.Registration.UserID, err)
 		}
 	}
 
@@ -302,12 +303,12 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 
 	// Get registrations to access updated placement_status
 	for _, catPlayer := range categorizedPlayers {
-		reg, err := rm.store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 			SeasonID: newSeasonID,
 			UserID:   catPlayer.Registration.UserID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get registration for %s: %w", catPlayer.Registration.UserID, err)
+			return nil, fmt.Errorf("failed to get registration for %d: %w", catPlayer.Registration.UserID, err)
 		}
 
 		status := ipc.PlacementStatus_PLACEMENT_NONE
@@ -316,7 +317,8 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 		}
 
 		player := PlayerWithVirtualDiv{
-			UserID:              catPlayer.Registration.UserID,
+			UserID:              catPlayer.Registration.UserUuid.String, // UUID string from JOIN
+			UserDBID:            catPlayer.Registration.UserID,          // Database ID
 			PlacementStatus:     status,
 			PreviousRank:        0,
 			HiatusSeasons:       0,
@@ -334,7 +336,7 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 
 		// Get previous division size (if applicable)
 		if status != ipc.PlacementStatus_PLACEMENT_NEW {
-			history, err := rm.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
+			history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
 				UserID:   catPlayer.Registration.UserID,
 				LeagueID: leagueID,
 			})
@@ -343,7 +345,7 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 				for _, h := range history {
 					if h.SeasonID != newSeasonID && h.DivisionID.Valid {
 						// Count players in that division
-						standings, err := rm.store.GetStandings(ctx, h.DivisionID.Bytes)
+						standings, err := rm.stores.LeagueStore.GetStandings(ctx, h.DivisionID.Bytes)
 						if err == nil {
 							player.PreviousDivisionSize = len(standings)
 						}
@@ -368,7 +370,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	players []PlayerWithVirtualDiv,
 ) ([]PlayerWithVirtualDiv, error) {
 	// Get previous season divisions to determine virtual division structure
-	prevDivisions, err := rm.store.GetDivisionsBySeason(ctx, previousSeasonID)
+	prevDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, previousSeasonID)
 	if err != nil && previousSeasonID != uuid.Nil {
 		return nil, fmt.Errorf("failed to get previous season divisions: %w", err)
 	}
@@ -410,8 +412,8 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	// Assign virtual divisions for regular players (PROMOTED/RELEGATED/STAYED/HIATUS)
 	for i, p := range regularPlayers {
 		// Get their previous division number
-		history, err := rm.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
-			UserID:   p.UserID,
+		history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
+			UserID:   p.UserDBID,
 			LeagueID: leagueID,
 		})
 		if err != nil {
@@ -422,7 +424,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 		for _, h := range history {
 			if h.DivisionID.Valid {
 				// Look up the division to get its number
-				div, err := rm.store.GetDivision(ctx, h.DivisionID.Bytes)
+				div, err := rm.stores.LeagueStore.GetDivision(ctx, h.DivisionID.Bytes)
 				if err == nil {
 					prevDivNumber = div.DivisionNumber
 				}
@@ -449,10 +451,10 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	// Assign virtual divisions for graduates using graduation formula
 	if len(graduates) > 0 {
 		// Get rookie standings from previous season
-		rookieStandings := []models.LeagueStanding{}
+		rookieStandings := []models.GetStandingsRow{}
 		for _, div := range prevDivisions {
 			if div.DivisionNumber >= RookieDivisionNumberBase {
-				standings, err := rm.store.GetStandings(ctx, div.Uuid)
+				standings, err := rm.stores.LeagueStore.GetStandings(ctx, div.Uuid)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get rookie standings: %w", err)
 				}
@@ -469,14 +471,14 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 		})
 
 		// Use graduation formula
-		graduationMgr := NewGraduationManager(rm.store)
+		graduationMgr := NewGraduationManager(rm.stores.LeagueStore)
 		groups := graduationMgr.calculateGraduationGroups(rookieStandings, highestPrevDivNumber)
 
 		// Create map of userID -> virtual division
 		graduateVirtualDivs := make(map[string]int32)
 		for _, group := range groups {
 			for _, standing := range group.Rookies {
-				graduateVirtualDivs[standing.UserID] = group.TargetDivision
+				graduateVirtualDivs[standing.UserUuid.String] = group.TargetDivision
 			}
 		}
 
@@ -604,7 +606,7 @@ func (rm *RebalanceManager) CreateDivisionsAndAssign(
 ) error {
 	// Create divisions 1, 2, 3, ..., numDivisions
 	createdDivisions := []models.LeagueDivision{}
-	manualMgr := NewManualDivisionManager(rm.store)
+	manualMgr := NewManualDivisionManager(rm.stores)
 
 	for divNum := 1; divNum <= numDivisions; divNum++ {
 		div, err := manualMgr.CreateDivision(ctx, seasonID, int32(divNum), "")
@@ -625,8 +627,8 @@ func (rm *RebalanceManager) CreateDivisionsAndAssign(
 		targetDiv := createdDivisions[divIndex]
 
 		// Assign player to this division
-		err := rm.store.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
-			UserID:      player.UserID,
+		err := rm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+			UserID:      player.UserDBID,
 			SeasonID:    seasonID,
 			DivisionID:  pgtype.UUID{Bytes: targetDiv.Uuid, Valid: true},
 			FirstsCount: pgtype.Int4{Int32: 0, Valid: true},
@@ -650,7 +652,7 @@ func (rm *RebalanceManager) MergeUndersizedFinalDivision(
 	}
 
 	// Get all divisions
-	divisions, err := rm.store.GetDivisionsBySeason(ctx, seasonID)
+	divisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get divisions: %w", err)
 	}
@@ -676,14 +678,14 @@ func (rm *RebalanceManager) MergeUndersizedFinalDivision(
 	secondToLast := regularDivs[len(regularDivs)-2]
 
 	// Count players in last division
-	lastDivPlayers, err := rm.store.GetDivisionRegistrations(ctx, lastDiv.Uuid)
+	lastDivPlayers, err := rm.stores.LeagueStore.GetDivisionRegistrations(ctx, lastDiv.Uuid)
 	if err != nil {
 		return false, fmt.Errorf("failed to get last division players: %w", err)
 	}
 
 	if len(lastDivPlayers) < MinimumFinalDivSize {
 		// Merge into second-to-last division
-		manualMgr := NewManualDivisionManager(rm.store)
+		manualMgr := NewManualDivisionManager(rm.stores)
 		_, err := manualMgr.MergeDivisions(ctx, seasonID, secondToLast.Uuid, lastDiv.Uuid)
 		if err != nil {
 			return false, fmt.Errorf("failed to merge divisions: %w", err)
@@ -784,7 +786,7 @@ func (rm *RebalanceManager) CreateRookieDivisionsAndAssign(
 		divNumber := RookieDivisionNumberBase + divIndex
 		divName := fmt.Sprintf("Rookie Division %d", divIndex+1)
 
-		division, err := rm.store.CreateDivision(ctx, models.CreateDivisionParams{
+		division, err := rm.stores.LeagueStore.CreateDivision(ctx, models.CreateDivisionParams{
 			Uuid:           uuid.New(),
 			SeasonID:       seasonID,
 			DivisionNumber: int32(divNumber),
@@ -802,7 +804,7 @@ func (rm *RebalanceManager) CreateRookieDivisionsAndAssign(
 			rookie := sortedRookies[playerIndex]
 			playerIndex++
 
-			err := rm.store.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+			err := rm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
 				UserID:      rookie.Registration.UserID,
 				SeasonID:    seasonID,
 				DivisionID:  pgtype.UUID{Bytes: division.Uuid, Valid: true},

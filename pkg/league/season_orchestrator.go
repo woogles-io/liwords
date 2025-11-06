@@ -7,24 +7,24 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/woogles-io/liwords/pkg/stores/league"
+	"github.com/woogles-io/liwords/pkg/stores"
 )
 
 // SeasonOrchestrator coordinates all phases of season setup
 type SeasonOrchestrator struct {
-	store              league.Store
+	stores             *stores.Stores
 	registrationMgr    *RegistrationManager
 	placementMgr       *PlacementManager
 	graduationMgr      *GraduationManager
 }
 
 // NewSeasonOrchestrator creates a new season orchestrator
-func NewSeasonOrchestrator(store league.Store) *SeasonOrchestrator {
+func NewSeasonOrchestrator(allStores *stores.Stores) *SeasonOrchestrator {
 	return &SeasonOrchestrator{
-		store:              store,
-		registrationMgr:    NewRegistrationManager(store),
-		placementMgr:       NewPlacementManager(store),
-		graduationMgr:      NewGraduationManager(store),
+		stores:             allStores,
+		registrationMgr:    NewRegistrationManager(allStores.LeagueStore),
+		placementMgr:       NewPlacementManager(allStores.LeagueStore),
+		graduationMgr:      NewGraduationManager(allStores.LeagueStore),
 	}
 }
 
@@ -126,7 +126,7 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 
 	// Step 4: Rebalance divisions (creates divisions + assigns players)
 	if len(playersForRebalancing) > 0 {
-		rebalanceMgr := NewRebalanceManager(so.store)
+		rebalanceMgr := NewRebalanceManager(so.stores)
 		rebalanceResult, err := rebalanceMgr.RebalanceDivisions(
 			ctx,
 			leagueID,
@@ -160,7 +160,7 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 			return newRookies[i].Rating > newRookies[j].Rating
 		})
 
-		rebalanceMgr := NewRebalanceManager(so.store)
+		rebalanceMgr := NewRebalanceManager(so.stores)
 		rookieResult, err := rebalanceMgr.CreateRookieDivisionsAndAssign(ctx, newSeasonID, newRookies, idealDivisionSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create rookie divisions: %w", err)

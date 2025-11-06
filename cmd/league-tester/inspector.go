@@ -101,11 +101,10 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 				fmt.Println("    " + "────────────────────────────────────────────────────────────")
 
 				for _, standing := range standings {
-					// Get username
-					user, err := allStores.UserStore.GetByUUID(ctx, standing.UserID)
+					// Get username from the JOIN (no need for separate lookup)
 					username := "Unknown"
-					if err == nil {
-						username = user.Username
+					if standing.Username.Valid {
+						username = standing.Username.String
 					}
 
 					rank := int32(0)

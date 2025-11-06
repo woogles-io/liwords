@@ -123,14 +123,16 @@ SELECT * FROM league_registrations
 WHERE season_id = $1 AND user_id = $2;
 
 -- name: GetSeasonRegistrations :many
-SELECT * FROM league_registrations
-WHERE season_id = $1
-ORDER BY registration_date;
+SELECT lr.*, u.uuid as user_uuid FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+WHERE lr.season_id = $1
+ORDER BY lr.registration_date;
 
 -- name: GetDivisionRegistrations :many
-SELECT * FROM league_registrations
-WHERE division_id = $1
-ORDER BY registration_date;
+SELECT lr.*, u.uuid as user_uuid FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+WHERE lr.division_id = $1
+ORDER BY lr.registration_date;
 
 -- name: UpdatePlayerDivision :exec
 UPDATE league_registrations
@@ -183,9 +185,10 @@ DO UPDATE SET
     updated_at = NOW();
 
 -- name: GetStandings :many
-SELECT * FROM league_standings
-WHERE division_id = $1
-ORDER BY rank ASC;
+SELECT ls.*, u.uuid as user_uuid, u.username FROM league_standings ls
+JOIN users u ON ls.user_id = u.id
+WHERE ls.division_id = $1
+ORDER BY ls.rank ASC;
 
 -- name: GetPlayerStanding :one
 SELECT * FROM league_standings
@@ -199,7 +202,7 @@ WHERE division_id = $1;
 -- Atomically increment standings for a player after a game completes
 -- This avoids race conditions by using database-level arithmetic
 INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, '', NOW())
+VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, 0, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,

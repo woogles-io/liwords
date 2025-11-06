@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/stores/league"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
@@ -20,15 +20,13 @@ type GameStore interface {
 
 // ForceFinishManager handles force-finishing unfinished games
 type ForceFinishManager struct {
-	store     league.Store
-	gameStore GameStore
+	stores *stores.Stores
 }
 
 // NewForceFinishManager creates a new force-finish manager
-func NewForceFinishManager(store league.Store, gameStore GameStore) *ForceFinishManager {
+func NewForceFinishManager(allStores *stores.Stores) *ForceFinishManager {
 	return &ForceFinishManager{
-		store:     store,
-		gameStore: gameStore,
+		stores: allStores,
 	}
 }
 
@@ -53,7 +51,7 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 	}
 
 	// Get all unfinished games for this season
-	unfinishedGames, err := ffm.store.GetUnfinishedLeagueGames(ctx, seasonID)
+	unfinishedGames, err := ffm.stores.LeagueStore.GetUnfinishedLeagueGames(ctx, seasonID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unfinished games: %w", err)
 	}
@@ -65,7 +63,7 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 		var winnerIdx, loserIdx int32
 
 		// Load the game entity to get current scores
-		gameEntity, err := ffm.gameStore.Get(ctx, gameRow.GameID.String)
+		gameEntity, err := ffm.stores.GameStore.Get(ctx, gameRow.GameID.String)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to load game %s: %v", gameRow.GameID.String, err))
 			continue
@@ -90,7 +88,7 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 		}
 
 		// Force-finish the game with FORCE_FORFEIT reason
-		err = ffm.store.ForceFinishGame(ctx, models.ForceFinishGameParams{
+		err = ffm.stores.LeagueStore.ForceFinishGame(ctx, models.ForceFinishGameParams{
 			Uuid:      gameRow.GameID,
 			WinnerIdx: pgtype.Int4{Int32: winnerIdx, Valid: true},
 			LoserIdx:  pgtype.Int4{Int32: loserIdx, Valid: true},
@@ -113,7 +111,7 @@ func (ffm *ForceFinishManager) GetUnfinishedGameCount(
 	ctx context.Context,
 	seasonID uuid.UUID,
 ) (int, error) {
-	unfinishedGames, err := ffm.store.GetUnfinishedLeagueGames(ctx, seasonID)
+	unfinishedGames, err := ffm.stores.LeagueStore.GetUnfinishedLeagueGames(ctx, seasonID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get unfinished games: %w", err)
 	}

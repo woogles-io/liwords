@@ -18,7 +18,7 @@ import (
 func TestMarkSeasonOutcomes(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	em := NewEndOfSeasonManager(store)
@@ -72,7 +72,7 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 	// Register 3 players in Division 1
 	for i := 1; i <= 3; i++ {
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:           uuid.New().String(),
+			UserID:           int32(i),
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: div1ID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
@@ -83,10 +83,10 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		is.NoErr(err)
 	}
 
-	// Register 3 players in Division 2
-	for i := 1; i <= 3; i++ {
+	// Register 3 different players in Division 2 (players 4, 5, 6)
+	for i := 4; i <= 6; i++ {
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:           uuid.New().String(),
+			UserID:           int32(i),
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: div2ID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
@@ -154,7 +154,7 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
-	store, cleanup := setupTest(t)
+	_, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	em := NewEndOfSeasonManager(store)
@@ -198,7 +198,7 @@ func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
 	// Register 10 rookies
 	for i := 1; i <= 10; i++ {
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:           uuid.New().String(),
+			UserID:           int32(i),
 			SeasonID:         seasonID,
 			DivisionID:       pgtype.UUID{Bytes: rookieDivID, Valid: true},
 			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},

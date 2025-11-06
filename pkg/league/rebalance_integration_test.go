@@ -2,23 +2,29 @@ package league
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/entity"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	"github.com/woogles-io/liwords/pkg/stores/user"
 )
 
 const integrationPkg = "league_rebalance_integration_test"
 
-func setupIntegrationTest(t *testing.T) (*leaguestore.DBStore, func()) {
+func setupIntegrationTest(t *testing.T) (*stores.Stores, func()) {
 	err := common.RecreateTestDB(integrationPkg)
 	if err != nil {
 		t.Fatal(err)
@@ -32,20 +38,64 @@ func setupIntegrationTest(t *testing.T) (*leaguestore.DBStore, func()) {
 	cfg := config.DefaultConfig()
 	cfg.DBConnDSN = common.TestingPostgresConnDSN(integrationPkg)
 
-	store, err := leaguestore.NewDBStore(cfg, pool)
+	leagueStore, err := leaguestore.NewDBStore(cfg, pool)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	userStore, err := user.NewDBStore(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create test users
+	err = createIntegrationTestUsers(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create minimal stores object for testing
+	allStores := &stores.Stores{
+		LeagueStore: leagueStore,
+		UserStore:   userStore,
 	}
 
 	cleanup := func() {
 		pool.Close()
 	}
 
-	return store, cleanup
+	return allStores, cleanup
+}
+
+// createIntegrationTestUsers creates test users in the database for integration tests
+func createIntegrationTestUsers(pool *pgxpool.Pool) error {
+	ustore, err := user.NewDBStore(pool)
+	if err != nil {
+		return err
+	}
+	// Don't disconnect - the pool is shared with the league store
+
+	ctx := context.Background()
+
+	// Create 100 test users (enough for all integration tests)
+	for i := 1; i <= 100; i++ {
+		u := &entity.User{
+			Username: fmt.Sprintf("testuser%d", i),
+			Email:    fmt.Sprintf("testuser%d@test.com", i),
+			UUID:     fmt.Sprintf("test-uuid-%d", i),
+		}
+		err = ustore.New(ctx, u)
+		if err != nil {
+			return fmt.Errorf("failed to create test user %d: %w", i, err)
+		}
+	}
+
+	return nil
 }
 
 // Helper to create a league and season for testing
-func createLeagueAndSeason(t *testing.T, ctx context.Context, store leaguestore.Store) (uuid.UUID, uuid.UUID) {
+func createLeagueAndSeason(t *testing.T, ctx context.Context, allStores *stores.Stores) (uuid.UUID, uuid.UUID) {
+	store := allStores.LeagueStore
 	leagueID := uuid.New()
 	_, err := store.CreateLeague(ctx, models.CreateLeagueParams{
 		Uuid:        leagueID,
@@ -80,25 +130,34 @@ func TestCreateRookieDivisionsAndAssign_20Rookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	_, seasonID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 20 rookie players with varying ratings
-	rookies := make([]CategorizedPlayer, 20)
 	for i := 0; i < 20; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(i + 1)
 
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID:   userDBID,
 			SeasonID: seasonID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch the registrations
+	regs, err := store.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 20)
+
+	// Create CategorizedPlayer list
+	rookies := make([]CategorizedPlayer, 20)
+	for i := 0; i < 20; i++ {
 		rookies[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryNew,
 			Rating:       0,
 		}
@@ -110,7 +169,7 @@ func TestCreateRookieDivisionsAndAssign_20Rookies(t *testing.T) {
 	})
 
 	// Create rookie divisions and assign
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.CreateRookieDivisionsAndAssign(ctx, seasonID, rookies, 15)
 	is.NoErr(err)
 
@@ -144,34 +203,43 @@ func TestCreateRookieDivisionsAndAssign_20Rookies(t *testing.T) {
 	is.Equal(len(divs), 1)
 	is.Equal(divs[0].DivisionNumber, int32(RookieDivisionNumberBase))
 
-	regs, err := store.GetDivisionRegistrations(ctx, div.Uuid)
+	divRegs, err := store.GetDivisionRegistrations(ctx, div.Uuid)
 	is.NoErr(err)
-	is.Equal(len(regs), 20)
+	is.Equal(len(divRegs), 20)
 }
 
 func TestCreateRookieDivisionsAndAssign_45Rookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	_, seasonID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 45 rookie players
-	rookies := make([]CategorizedPlayer, 45)
 	for i := 0; i < 45; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(i + 1)
 
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID:   userDBID,
 			SeasonID: seasonID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch the registrations
+	regs, err := store.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 45)
+
+	// Create CategorizedPlayer list
+	rookies := make([]CategorizedPlayer, 45)
+	for i := 0; i < 45; i++ {
 		rookies[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryNew,
 			Rating:       0,
 		}
@@ -183,7 +251,7 @@ func TestCreateRookieDivisionsAndAssign_45Rookies(t *testing.T) {
 	})
 
 	// Create rookie divisions and assign
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.CreateRookieDivisionsAndAssign(ctx, seasonID, rookies, 15)
 	is.NoErr(err)
 
@@ -226,33 +294,42 @@ func TestCreateRookieDivisionsAndAssign_TooFewRookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	_, seasonID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create only 8 rookies (below minimum)
-	rookies := make([]CategorizedPlayer, 8)
 	for i := 0; i < 8; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(i + 1)
 
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID:   userDBID,
 			SeasonID: seasonID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch the registrations
+	regs, err := store.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 8)
+
+	// Create CategorizedPlayer list
+	rookies := make([]CategorizedPlayer, 8)
+	for i := 0; i < 8; i++ {
 		rookies[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryNew,
 			Rating:       0,
 		}
 	}
 
 	// Attempt to create rookie divisions - should fail
-	rm := NewRebalanceManager(store)
-	_, err := rm.CreateRookieDivisionsAndAssign(ctx, seasonID, rookies, 15)
+	rm := NewRebalanceManager(allStores)
+	_, err = rm.CreateRookieDivisionsAndAssign(ctx, seasonID, rookies, 15)
 	is.True(err != nil) // Should return error
 }
 
@@ -260,25 +337,34 @@ func TestCreateRookieDivisionsAndAssign_100Rookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	_, seasonID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 100 rookie players
-	rookies := make([]CategorizedPlayer, 100)
 	for i := 0; i < 100; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(i + 1)
 
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID:   userDBID,
 			SeasonID: seasonID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch the registrations
+	regs, err := store.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 100)
+
+	// Create CategorizedPlayer list
+	rookies := make([]CategorizedPlayer, 100)
+	for i := 0; i < 100; i++ {
 		rookies[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryNew,
 			Rating:       0,
 		}
@@ -290,7 +376,7 @@ func TestCreateRookieDivisionsAndAssign_100Rookies(t *testing.T) {
 	})
 
 	// Create rookie divisions
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.CreateRookieDivisionsAndAssign(ctx, seasonID, rookies, 15)
 	is.NoErr(err)
 
@@ -323,10 +409,11 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	leagueID, season1ID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 2 divisions in Season 1
 	div1 := uuid.New()
@@ -350,10 +437,10 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 30 players in Season 1 (15 in each division)
-	playerIDs := make([]string, 30)
+	playerIDs := make([]int32, 30)
 	for i := 0; i < 30; i++ {
-		userID := uuid.NewString()
-		playerIDs[i] = userID
+		userDBID := int32(i + 1)
+		playerIDs[i] = userDBID
 
 		divID := div1
 		if i >= 15 {
@@ -361,7 +448,7 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 		}
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			SeasonID:   season1ID,
 			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
 			DivisionID: pgtype.UUID{Bytes: divID, Valid: true},
@@ -370,7 +457,7 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 
 		// Create standings for each player
 		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			DivisionID: divID,
 			Wins:       pgtype.Int4{Int32: int32(10 - i%15), Valid: true},
 			Losses:     pgtype.Int4{Int32: int32(i % 15), Valid: true},
@@ -399,24 +486,32 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 	is.NoErr(err)
 
 	// Register all 30 players for Season 2
-	categorized := make([]CategorizedPlayer, 30)
-	for i, userID := range playerIDs {
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+	for _, userID := range playerIDs {
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
 			UserID:   userID,
 			SeasonID: season2ID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch registrations
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 30)
+
+	// Create CategorizedPlayer list
+	categorized := make([]CategorizedPlayer, 30)
+	for i := 0; i < 30; i++ {
 		categorized[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryReturning,
 			Rating:       0,
 		}
 	}
 
 	// Run rebalancing
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
 	is.NoErr(err)
 
@@ -438,10 +533,10 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 	is.Equal(divNums[1], int32(2))
 
 	// Verify all registrations have divisions assigned
-	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	finalRegs, err := store.GetSeasonRegistrations(ctx, season2ID)
 	is.NoErr(err)
-	is.Equal(len(regs), 30)
-	for _, reg := range regs {
+	is.Equal(len(finalRegs), 30)
+	for _, reg := range finalRegs {
 		is.True(reg.DivisionID.Valid) // All should have divisions
 	}
 }
@@ -450,10 +545,11 @@ func TestRebalanceDivisions_45Players(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	leagueID, season1ID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 3 divisions in Season 1
 	divIDs := make([]uuid.UUID, 3)
@@ -471,15 +567,15 @@ func TestRebalanceDivisions_45Players(t *testing.T) {
 	}
 
 	// Register 45 players
-	playerIDs := make([]string, 45)
+	playerIDs := make([]int32, 45)
 	for i := 0; i < 45; i++ {
-		userID := uuid.NewString()
-		playerIDs[i] = userID
+		userDBID := int32(i + 1)
+		playerIDs[i] = userDBID
 
 		divID := divIDs[i/15] // 15 per division
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			SeasonID:   season1ID,
 			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
 			DivisionID: pgtype.UUID{Bytes: divID, Valid: true},
@@ -488,7 +584,7 @@ func TestRebalanceDivisions_45Players(t *testing.T) {
 
 		// Create standings
 		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			DivisionID: divID,
 			Wins:       pgtype.Int4{Int32: int32(10), Valid: true},
 			Losses:     pgtype.Int4{Int32: int32(5), Valid: true},
@@ -517,24 +613,32 @@ func TestRebalanceDivisions_45Players(t *testing.T) {
 	is.NoErr(err)
 
 	// Register all 45 players for Season 2
-	categorized := make([]CategorizedPlayer, 45)
-	for i, userID := range playerIDs {
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+	for _, userID := range playerIDs {
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
 			UserID:   userID,
 			SeasonID: season2ID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch registrations
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 45)
+
+	// Create CategorizedPlayer list
+	categorized := make([]CategorizedPlayer, 45)
+	for i := 0; i < 45; i++ {
 		categorized[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryReturning,
 			Rating:       0,
 		}
 	}
 
 	// Run rebalancing
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
 	is.NoErr(err)
 
@@ -560,33 +664,42 @@ func TestRebalanceDivisions_8NewRookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	_, seasonID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	_, seasonID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 8 new rookies (below the MinPlayersForRookieDivision threshold)
 	// These should be handled by regular division rebalancing
-	categorized := make([]CategorizedPlayer, 8)
 	for i := 0; i < 8; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(i + 1)
 
-		reg, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID:   userDBID,
 			SeasonID: seasonID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
 		is.NoErr(err)
+	}
 
+	// Fetch registrations
+	regs, err := store.GetSeasonRegistrations(ctx, seasonID)
+	is.NoErr(err)
+	is.Equal(len(regs), 8)
+
+	// Create CategorizedPlayer list
+	categorized := make([]CategorizedPlayer, 8)
+	for i := 0; i < 8; i++ {
 		categorized[i] = CategorizedPlayer{
-			Registration: reg,
+			Registration: regs[i],
 			Category:     PlayerCategoryNew,
 			Rating:       0,
 		}
 	}
 
 	// Run rebalancing - should create 1 division for these 8 rookies
-	rm := NewRebalanceManager(store)
+	rm := NewRebalanceManager(allStores)
 	result, err := rm.RebalanceDivisions(ctx, uuid.New(), uuid.New(), seasonID, 1, categorized, 15)
 	is.NoErr(err)
 
@@ -605,10 +718,11 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	leagueID, season1ID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 2 divisions in Season 1
 	div1 := uuid.New()
@@ -632,10 +746,10 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 30 returning players in Season 1
-	returningPlayerIDs := make([]string, 30)
+	returningPlayerIDs := make([]int32, 30)
 	for i := 0; i < 30; i++ {
-		userID := uuid.NewString()
-		returningPlayerIDs[i] = userID
+		userDBID := int32(i + 1)
+		returningPlayerIDs[i] = userDBID
 
 		divID := div1
 		if i >= 15 {
@@ -643,7 +757,7 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 		}
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			SeasonID:   season1ID,
 			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
 			DivisionID: pgtype.UUID{Bytes: divID, Valid: true},
@@ -652,7 +766,7 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 
 		// Create standings
 		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			DivisionID: divID,
 			Wins:       pgtype.Int4{Int32: int32(10), Valid: true},
 			Losses:     pgtype.Int4{Int32: int32(5), Valid: true},
@@ -691,13 +805,11 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 	}
 
 	// Register 20 new rookies for Season 2
-	newPlayerIDs := make([]string, 20)
 	for i := 0; i < 20; i++ {
-		userID := uuid.NewString()
-		newPlayerIDs[i] = userID
+		userDBID := int32(31 + i) // IDs 31-50
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+			UserID:   userDBID,
 			SeasonID: season2ID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
@@ -705,7 +817,7 @@ func TestSeasonOrchestrator_FullWorkflow_30Returning_20Rookies(t *testing.T) {
 	}
 
 	// Run full season orchestration
-	orchestrator := NewSeasonOrchestrator(store)
+	orchestrator := NewSeasonOrchestrator(allStores)
 	const idealDivisionSize = 15
 	result, err := orchestrator.PrepareNextSeasonDivisions(ctx, leagueID, season1ID, season2ID, 2, idealDivisionSize)
 	is.NoErr(err)
@@ -750,10 +862,11 @@ func TestSeasonOrchestrator_8RookiesIntoRegularDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	store, cleanup := setupIntegrationTest(t)
+	allStores, cleanup := setupIntegrationTest(t)
 	defer cleanup()
 
-	leagueID, season1ID := createLeagueAndSeason(t, ctx, store)
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
 
 	// Create 1 division in Season 1 with 20 returning players
 	div1 := uuid.New()
@@ -767,13 +880,13 @@ func TestSeasonOrchestrator_8RookiesIntoRegularDivisions(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 20 returning players
-	returningPlayerIDs := make([]string, 20)
+	returningPlayerIDs := make([]int32, 20)
 	for i := 0; i < 20; i++ {
-		userID := uuid.NewString()
-		returningPlayerIDs[i] = userID
+		userDBID := int32(i + 1)
+		returningPlayerIDs[i] = userDBID
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			SeasonID:   season1ID,
 			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
 			DivisionID: pgtype.UUID{Bytes: div1, Valid: true},
@@ -781,7 +894,7 @@ func TestSeasonOrchestrator_8RookiesIntoRegularDivisions(t *testing.T) {
 		is.NoErr(err)
 
 		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
-			UserID:     userID,
+			UserID:     userDBID,
 			DivisionID: div1,
 			Wins:       pgtype.Int4{Int32: 10, Valid: true},
 			Losses:     pgtype.Int4{Int32: 5, Valid: true},
@@ -818,10 +931,10 @@ func TestSeasonOrchestrator_8RookiesIntoRegularDivisions(t *testing.T) {
 
 	// Register only 8 new rookies (below MinPlayersForRookieDivision)
 	for i := 0; i < 8; i++ {
-		userID := uuid.NewString()
+		userDBID := int32(21 + i) // IDs 21-28
 
 		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:   userID,
+			UserID:   userDBID,
 			SeasonID: season2ID,
 			Status:   pgtype.Text{String: "REGISTERED", Valid: true},
 		})
@@ -829,7 +942,7 @@ func TestSeasonOrchestrator_8RookiesIntoRegularDivisions(t *testing.T) {
 	}
 
 	// Run orchestration
-	orchestrator := NewSeasonOrchestrator(store)
+	orchestrator := NewSeasonOrchestrator(allStores)
 	const idealDivisionSize = 15
 	result, err := orchestrator.PrepareNextSeasonDivisions(ctx, leagueID, season1ID, season2ID, 2, idealDivisionSize)
 	is.NoErr(err)

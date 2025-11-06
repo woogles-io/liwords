@@ -28,13 +28,13 @@ type GraduationGroup struct {
 	StartRank      int                  // First rookie rank in this group (1-based)
 	EndRank        int                  // Last rookie rank in this group (1-based)
 	TargetDivision int32                // Division number to place this group
-	Rookies        []models.LeagueStanding
+	Rookies        []models.GetStandingsRow
 }
 
 // calculateGraduationGroups determines how to split rookies into groups
 // and which divisions each group should be placed into
 func (gm *GraduationManager) calculateGraduationGroups(
-	rookieStandings []models.LeagueStanding,
+	rookieStandings []models.GetStandingsRow,
 	highestRegularDivision int32,
 ) []GraduationGroup {
 	numRookies := len(rookieStandings)
