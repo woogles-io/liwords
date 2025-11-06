@@ -71,6 +71,7 @@ func printUsage() {
 	fmt.Println("  start-season       Start a season (creates games)")
 	fmt.Println("  simulate-games     Simulate game completions with random results")
 	fmt.Println("  set-season-status  Change a season's status")
+	fmt.Println("  prepare-divisions  Prepare divisions for a season")
 	fmt.Println("  inspect            Inspect current league state")
 	fmt.Println("  run-full-season    Run complete season(s) end-to-end")
 	fmt.Println()

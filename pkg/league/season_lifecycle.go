@@ -12,9 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // SeasonLifecycleManager handles automated season lifecycle operations
@@ -209,10 +209,10 @@ type PrepareAndScheduleSeasonResult struct {
 	DivisionPreparation *DivisionPreparationResult
 }
 
-// PrepareAndScheduleSeason closes registration and prepares divisions for a REGISTRATION_OPEN season
+// PrepareAndScheduleSeason closes registration and prepares divisions for a SCHEDULED season
 // This should be called on Day 21 at 7:45 AM (15 minutes before season start at 8:00 AM)
 // For Season 1 (bootstrapped), this is the first division creation step
-// Returns nil if conditions aren't met (season not REGISTRATION_OPEN, etc.)
+// Returns nil if conditions aren't met (season not SCHEDULED, etc.)
 func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -222,12 +222,12 @@ func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	// Get season
 	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
 	if err != nil {
-		return nil, nil // No season found, skip
+		return nil, errors.New("season not found")
 	}
 
-	// Check if season is REGISTRATION_OPEN
-	if season.Status != int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
-		return nil, nil // Not in registration, skip
+	// Check if season is SCHEDULED
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
+		return nil, errors.New("season is not in SCHEDULED status")
 	}
 
 	// Get league info for result
