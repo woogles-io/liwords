@@ -79,6 +79,9 @@ const (
 	// LeagueServiceGetPlayerLeagueHistoryProcedure is the fully-qualified name of the LeagueService's
 	// GetPlayerLeagueHistory RPC.
 	LeagueServiceGetPlayerLeagueHistoryProcedure = "/league_service.LeagueService/GetPlayerLeagueHistory"
+	// LeagueServiceGetPlayerSeasonGamesProcedure is the fully-qualified name of the LeagueService's
+	// GetPlayerSeasonGames RPC.
+	LeagueServiceGetPlayerSeasonGamesProcedure = "/league_service.LeagueService/GetPlayerSeasonGames"
 	// LeagueServiceGetLeagueStatisticsProcedure is the fully-qualified name of the LeagueService's
 	// GetLeagueStatistics RPC.
 	LeagueServiceGetLeagueStatisticsProcedure = "/league_service.LeagueService/GetLeagueStatistics"
@@ -106,6 +109,7 @@ type LeagueServiceClient interface {
 	UnregisterFromSeason(context.Context, *connect.Request[league_service.UnregisterRequest]) (*connect.Response[league_service.UnregisterResponse], error)
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
+	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 }
@@ -217,6 +221,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetPlayerLeagueHistory")),
 			connect.WithClientOptions(opts...),
 		),
+		getPlayerSeasonGames: connect.NewClient[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse](
+			httpClient,
+			baseURL+LeagueServiceGetPlayerSeasonGamesProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
+			connect.WithClientOptions(opts...),
+		),
 		getLeagueStatistics: connect.NewClient[league_service.LeagueRequest, league_service.LeagueStatisticsResponse](
 			httpClient,
 			baseURL+LeagueServiceGetLeagueStatisticsProcedure,
@@ -244,6 +254,7 @@ type leagueServiceClient struct {
 	unregisterFromSeason    *connect.Client[league_service.UnregisterRequest, league_service.UnregisterResponse]
 	getSeasonRegistrations  *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
 	getPlayerLeagueHistory  *connect.Client[league_service.PlayerHistoryRequest, league_service.PlayerHistoryResponse]
+	getPlayerSeasonGames    *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
 	getLeagueStatistics     *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
 }
 
@@ -327,6 +338,11 @@ func (c *leagueServiceClient) GetPlayerLeagueHistory(ctx context.Context, req *c
 	return c.getPlayerLeagueHistory.CallUnary(ctx, req)
 }
 
+// GetPlayerSeasonGames calls league_service.LeagueService.GetPlayerSeasonGames.
+func (c *leagueServiceClient) GetPlayerSeasonGames(ctx context.Context, req *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error) {
+	return c.getPlayerSeasonGames.CallUnary(ctx, req)
+}
+
 // GetLeagueStatistics calls league_service.LeagueService.GetLeagueStatistics.
 func (c *leagueServiceClient) GetLeagueStatistics(ctx context.Context, req *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {
 	return c.getLeagueStatistics.CallUnary(ctx, req)
@@ -354,6 +370,7 @@ type LeagueServiceHandler interface {
 	UnregisterFromSeason(context.Context, *connect.Request[league_service.UnregisterRequest]) (*connect.Response[league_service.UnregisterResponse], error)
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
+	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 }
@@ -461,6 +478,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetPlayerLeagueHistory")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceGetPlayerSeasonGamesHandler := connect.NewUnaryHandler(
+		LeagueServiceGetPlayerSeasonGamesProcedure,
+		svc.GetPlayerSeasonGames,
+		connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
+		connect.WithHandlerOptions(opts...),
+	)
 	leagueServiceGetLeagueStatisticsHandler := connect.NewUnaryHandler(
 		LeagueServiceGetLeagueStatisticsProcedure,
 		svc.GetLeagueStatistics,
@@ -501,6 +524,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetSeasonRegistrationsHandler.ServeHTTP(w, r)
 		case LeagueServiceGetPlayerLeagueHistoryProcedure:
 			leagueServiceGetPlayerLeagueHistoryHandler.ServeHTTP(w, r)
+		case LeagueServiceGetPlayerSeasonGamesProcedure:
+			leagueServiceGetPlayerSeasonGamesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetLeagueStatisticsProcedure:
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
 		default:
@@ -574,6 +599,10 @@ func (UnimplementedLeagueServiceHandler) GetSeasonRegistrations(context.Context,
 
 func (UnimplementedLeagueServiceHandler) GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetPlayerLeagueHistory is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetPlayerSeasonGames is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {

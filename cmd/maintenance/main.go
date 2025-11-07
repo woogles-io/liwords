@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"io"
 	"net/http"
 	"net/url"
@@ -38,13 +39,45 @@ var WooglesAPIBasePath = os.Getenv("WOOGLES_API_BASE_PATH")
 // A set of maintenance functions on Woogles that can run at some given
 // cadence.
 
-// go run . blogrss-updater,foo,bar,baz
-func main() {
-	if len(os.Args) < 2 {
-		panic("need one comma-separated list of commands")
+// getForceRun checks both CLI flag and environment variable for force run mode
+func getForceRun(forceFlag *bool) bool {
+	if forceFlag != nil && *forceFlag {
+		return true
 	}
-	commands := strings.Split(os.Args[1], ",")
-	log.Info().Interface("commands", commands).Msg("starting maintenance")
+	return os.Getenv("LEAGUE_FORCE_RUN") == "true"
+}
+
+// go run . blogrss-updater,foo,bar,baz
+// Or: go run . league-midnight-runner --force
+func main() {
+	// Define flags
+	forceFlag := flag.Bool("force", false, "Force run without time checks (for testing)")
+	flag.Parse()
+
+	// Check for force mode from env var as well
+	forceRun := getForceRun(forceFlag)
+
+	// Get commands - either from flag args or old-style first arg
+	var commands []string
+	args := flag.Args()
+
+	if len(args) > 0 {
+		// New style: commands after flags
+		commands = args
+	} else if len(os.Args) >= 2 {
+		// Old style: comma-separated first argument
+		// Check if first arg is a flag
+		if !strings.HasPrefix(os.Args[1], "-") {
+			commands = strings.Split(os.Args[1], ",")
+		}
+	}
+
+	if len(commands) == 0 {
+		panic("need at least one command")
+	}
+
+	log.Info().Interface("commands", commands).Bool("force", forceRun).Msg("starting maintenance")
+
 	for _, command := range commands {
 		switch strings.ToLower(command) {
 		case "blogrss-updater":
@@ -74,6 +107,12 @@ func main() {
 		case "league-season-starter":
 			err := LeagueSeasonStarter()
 			log.Err(err).Msg("ran leagueSeasonStarter")
+		case "league-midnight-runner":
+			err := LeagueMidnightRunner(forceRun)
+			log.Err(err).Msg("ran leagueMidnightRunner")
+		case "league-morning-runner":
+			err := LeagueMorningRunner(forceRun)
+			log.Err(err).Msg("ran leagueMorningRunner")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}

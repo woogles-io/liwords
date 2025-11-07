@@ -38,9 +38,9 @@ func (q *Queries) CountDivisionGamesTotal(ctx context.Context, leagueDivisionID 
 
 const createDivision = `-- name: CreateDivision :one
 
-INSERT INTO league_divisions (uuid, season_id, division_number, division_name, player_count, is_complete)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, uuid, season_id, division_number, division_name, player_count, is_complete, created_at, updated_at
+INSERT INTO league_divisions (uuid, season_id, division_number, division_name, is_complete)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, uuid, season_id, division_number, division_name, is_complete, created_at, updated_at
 `
 
 type CreateDivisionParams struct {
@@ -48,7 +48,6 @@ type CreateDivisionParams struct {
 	SeasonID       uuid.UUID
 	DivisionNumber int32
 	DivisionName   pgtype.Text
-	PlayerCount    pgtype.Int4
 	IsComplete     pgtype.Bool
 }
 
@@ -59,7 +58,6 @@ func (q *Queries) CreateDivision(ctx context.Context, arg CreateDivisionParams) 
 		arg.SeasonID,
 		arg.DivisionNumber,
 		arg.DivisionName,
-		arg.PlayerCount,
 		arg.IsComplete,
 	)
 	var i LeagueDivision
@@ -69,7 +67,6 @@ func (q *Queries) CreateDivision(ctx context.Context, arg CreateDivisionParams) 
 		&i.SeasonID,
 		&i.DivisionNumber,
 		&i.DivisionName,
-		&i.PlayerCount,
 		&i.IsComplete,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -267,7 +264,7 @@ func (q *Queries) GetCurrentSeason(ctx context.Context, argUuid uuid.UUID) (Leag
 }
 
 const getDivision = `-- name: GetDivision :one
-SELECT id, uuid, season_id, division_number, division_name, player_count, is_complete, created_at, updated_at FROM league_divisions WHERE uuid = $1
+SELECT id, uuid, season_id, division_number, division_name, is_complete, created_at, updated_at FROM league_divisions WHERE uuid = $1
 `
 
 func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDivision, error) {
@@ -279,7 +276,6 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 		&i.SeasonID,
 		&i.DivisionNumber,
 		&i.DivisionName,
-		&i.PlayerCount,
 		&i.IsComplete,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -404,7 +400,7 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 }
 
 const getDivisionsBySeason = `-- name: GetDivisionsBySeason :many
-SELECT id, uuid, season_id, division_number, division_name, player_count, is_complete, created_at, updated_at FROM league_divisions
+SELECT id, uuid, season_id, division_number, division_name, is_complete, created_at, updated_at FROM league_divisions
 WHERE season_id = $1
 ORDER BY division_number ASC
 `
@@ -424,7 +420,6 @@ func (q *Queries) GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) 
 			&i.SeasonID,
 			&i.DivisionNumber,
 			&i.DivisionName,
-			&i.PlayerCount,
 			&i.IsComplete,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -903,7 +898,7 @@ func (q *Queries) GetSeasonByLeagueAndNumber(ctx context.Context, arg GetSeasonB
 }
 
 const getSeasonRegistrations = `-- name: GetSeasonRegistrations :many
-SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid FROM league_registrations lr
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid, u.username as username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 WHERE lr.season_id = $1
 ORDER BY lr.registration_date
@@ -923,6 +918,7 @@ type GetSeasonRegistrationsRow struct {
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
 	UserUuid             pgtype.Text
+	Username             pgtype.Text
 }
 
 func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]GetSeasonRegistrationsRow, error) {
@@ -948,6 +944,7 @@ func (q *Queries) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserUuid,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -1282,22 +1279,6 @@ type UpdateDivisionNumberParams struct {
 
 func (q *Queries) UpdateDivisionNumber(ctx context.Context, arg UpdateDivisionNumberParams) error {
 	_, err := q.db.Exec(ctx, updateDivisionNumber, arg.Uuid, arg.DivisionNumber, arg.DivisionName)
-	return err
-}
-
-const updateDivisionPlayerCount = `-- name: UpdateDivisionPlayerCount :exec
-UPDATE league_divisions
-SET player_count = $2, updated_at = NOW()
-WHERE uuid = $1
-`
-
-type UpdateDivisionPlayerCountParams struct {
-	Uuid        uuid.UUID
-	PlayerCount pgtype.Int4
-}
-
-func (q *Queries) UpdateDivisionPlayerCount(ctx context.Context, arg UpdateDivisionPlayerCountParams) error {
-	_, err := q.db.Exec(ctx, updateDivisionPlayerCount, arg.Uuid, arg.PlayerCount)
 	return err
 }
 

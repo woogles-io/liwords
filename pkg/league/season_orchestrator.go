@@ -3,7 +3,6 @@ package league
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/google/uuid"
 
@@ -12,43 +11,35 @@ import (
 
 // SeasonOrchestrator coordinates all phases of season setup
 type SeasonOrchestrator struct {
-	stores             *stores.Stores
-	registrationMgr    *RegistrationManager
-	placementMgr       *PlacementManager
-	graduationMgr      *GraduationManager
+	stores          *stores.Stores
+	registrationMgr *RegistrationManager
+	placementMgr    *PlacementManager
 }
 
 // NewSeasonOrchestrator creates a new season orchestrator
 func NewSeasonOrchestrator(allStores *stores.Stores) *SeasonOrchestrator {
 	return &SeasonOrchestrator{
-		stores:             allStores,
-		registrationMgr:    NewRegistrationManager(allStores.LeagueStore),
-		placementMgr:       NewPlacementManager(allStores.LeagueStore),
-		graduationMgr:      NewGraduationManager(allStores.LeagueStore),
+		stores:          allStores,
+		registrationMgr: NewRegistrationManager(allStores.LeagueStore),
+		placementMgr:    NewPlacementManager(allStores.LeagueStore),
 	}
 }
 
 // DivisionPreparationResult tracks the outcome of preparing divisions for a new season
 type DivisionPreparationResult struct {
 	// Summary counts
-	TotalRegistrations   int
-	NewPlayers           int
-	ReturningPlayers     int
+	TotalRegistrations int
+	NewPlayers         int
+	ReturningPlayers   int
 
 	// Placement results
-	PlacedReturning      int
-	GraduatedRookies     int
-	PlacedInRookieDivs   int
-	PlacedInRegularDivs  int
+	PlacedPlayers int
 
 	// Division counts
 	RegularDivisionsUsed int
-	RookieDivisionsCreated int
 
 	// Detailed results
-	PlacementResult  *PlacementResult
-	GraduationResult *GraduationResult
-	RookieResult     *RookiePlacementResult
+	PlacementResult *PlacementResult
 }
 
 // PrepareNextSeasonDivisions orchestrates the complete process of preparing divisions
@@ -58,16 +49,14 @@ type DivisionPreparationResult struct {
 // Process:
 // 1. Get all registrations for the new season
 // 2. Categorize players (NEW vs RETURNING)
-// 3. Separate new rookies (≥10 → rookie divisions, <10 → include in rebalancing)
-// 4. Rebalance all regular division players (includes <10 new rookies if applicable)
+// 3. Rebalance ALL players (new and returning together)
 //    - Updates placement statuses
 //    - Assigns virtual divisions
-//    - Calculates priority scores
+//    - Calculates priority scores (NEW players have lowest priority)
 //    - Creates real divisions (round(count/idealDivisionSize))
 //    - Assigns players by priority
-// 5. Create rookie divisions for ≥10 new rookies
 //
-// Note: This function NOW creates regular divisions automatically based on player count.
+// Note: NEW players are placed naturally via rebalancing with lowest priority.
 func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -105,27 +94,9 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 		}
 	}
 
-	// Step 3: Separate new rookies based on count
-	newRookies := []CategorizedPlayer{}
-	regularPlayers := []CategorizedPlayer{}
-
-	for _, cp := range categorized {
-		if cp.Category == PlayerCategoryNew {
-			newRookies = append(newRookies, cp)
-		} else {
-			regularPlayers = append(regularPlayers, cp)
-		}
-	}
-
-	// Determine if we create rookie divisions or include rookies in rebalancing
-	playersForRebalancing := regularPlayers
-	if len(newRookies) < MinPlayersForRookieDivision {
-		// Include new rookies in regular division rebalancing
-		playersForRebalancing = append(playersForRebalancing, newRookies...)
-	}
-
-	// Step 4: Rebalance divisions (creates divisions + assigns players)
-	if len(playersForRebalancing) > 0 {
+	// Step 3: Rebalance ALL players (new and returning together)
+	// New players have lowest priority and will be naturally placed in lower divisions
+	if len(categorized) > 0 {
 		rebalanceMgr := NewRebalanceManager(so.stores)
 		rebalanceResult, err := rebalanceMgr.RebalanceDivisions(
 			ctx,
@@ -133,7 +104,7 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 			previousSeasonID,
 			newSeasonID,
 			newSeasonNumber,
-			playersForRebalancing,
+			categorized,
 			idealDivisionSize,
 		)
 		if err != nil {
@@ -141,33 +112,7 @@ func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(
 		}
 
 		result.RegularDivisionsUsed = rebalanceResult.DivisionsCreated
-
-		// Calculate PlacedReturning based on whether rookies were included
-		if len(newRookies) < MinPlayersForRookieDivision {
-			// Rookies were included in rebalancing
-			result.PlacedReturning = len(playersForRebalancing) - len(newRookies)
-			result.PlacedInRegularDivs = len(newRookies)
-		} else {
-			// Rookies were NOT included in rebalancing
-			result.PlacedReturning = len(playersForRebalancing)
-		}
-	}
-
-	// Step 5: Create rookie divisions for ≥10 new rookies
-	if len(newRookies) >= MinPlayersForRookieDivision {
-		// Sort rookies by rating (highest first) before creating divisions
-		sort.Slice(newRookies, func(i, j int) bool {
-			return newRookies[i].Rating > newRookies[j].Rating
-		})
-
-		rebalanceMgr := NewRebalanceManager(so.stores)
-		rookieResult, err := rebalanceMgr.CreateRookieDivisionsAndAssign(ctx, newSeasonID, newRookies, idealDivisionSize)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create rookie divisions: %w", err)
-		}
-		result.RookieResult = rookieResult
-		result.PlacedInRookieDivs = len(rookieResult.PlacedInRookieDivisions)
-		result.RookieDivisionsCreated = len(rookieResult.CreatedDivisions)
+		result.PlacedPlayers = len(categorized)
 	}
 
 	return result, nil

@@ -154,7 +154,6 @@ func prepareDivisions(ctx context.Context, leagueSlugOrUUID string, seasonNumber
 		Int("newPlayers", result.DivisionPreparation.NewPlayers).
 		Int("returningPlayers", result.DivisionPreparation.ReturningPlayers).
 		Int("regularDivisions", result.DivisionPreparation.RegularDivisionsUsed).
-		Int("rookieDivisions", result.DivisionPreparation.RookieDivisionsCreated).
 		Msg("successfully prepared divisions and scheduled season")
 
 	return nil

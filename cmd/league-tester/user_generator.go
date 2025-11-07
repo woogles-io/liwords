@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
@@ -26,8 +28,8 @@ type TestUser struct {
 	Email    string `json:"email"`
 }
 
-func createTestUsers(ctx context.Context, count int, outputFile string) error {
-	log.Info().Int("count", count).Msg("creating test users")
+func createTestUsers(ctx context.Context, count int, startID int, outputFile string) error {
+	log.Info().Int("count", count).Int("startID", startID).Msg("creating test users")
 
 	// Initialize stores
 	allStores, err := initStores(ctx)
@@ -38,8 +40,9 @@ func createTestUsers(ctx context.Context, count int, outputFile string) error {
 	testUsers := []TestUser{}
 
 	// Create users using the user store
-	for i := 1; i <= count; i++ {
-		username := fmt.Sprintf("league_test_user_%02d", i)
+	for i := 0; i < count; i++ {
+		userNum := startID + i
+		username := fmt.Sprintf("league_test_user_%02d", userNum)
 		email := fmt.Sprintf("%s@example.com", username)
 		userUUID := shortuuid.New()
 
@@ -122,6 +125,14 @@ func initStores(ctx context.Context) (*stores.Stores, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// For testing, we don't need Redis
-	return stores.NewInitializedStores(dbPool, nil, cfg)
+	// Initialize Redis pool (needed for some store operations)
+	redisPool := &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(cfg.RedisURL)
+		},
+	}
+
+	return stores.NewInitializedStores(dbPool, redisPool, cfg)
 }

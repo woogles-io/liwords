@@ -8,36 +8,41 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
-	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-func simulateGames(ctx context.Context, seasonUUIDStr string, all bool, rounds int, seed int64) error {
+func simulateGames(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32, all bool, rounds int, seed int64) error {
 	log.Info().
-		Str("season", seasonUUIDStr).
+		Str("league", leagueSlugOrUUID).
+		Int32("seasonNumber", seasonNumber).
 		Bool("all", all).
 		Int("rounds", rounds).
 		Int64("seed", seed).
 		Msg("simulating games")
 
-	// Parse season UUID
-	seasonUUID, err := uuid.Parse(seasonUUIDStr)
-	if err != nil {
-		return fmt.Errorf("invalid season UUID: %w", err)
-	}
-
 	// Initialize stores
-	allStores, err := initializeStores(ctx)
+	allStores, err := initStores(ctx)
 	if err != nil {
 		return err
 	}
+
+	// Get league
+	leagueUUID, err := getLeagueUUID(ctx, allStores, leagueSlugOrUUID)
+	if err != nil {
+		return err
+	}
+
+	// Get season
+	season, err := allStores.LeagueStore.GetSeasonByLeagueAndNumber(ctx, leagueUUID, seasonNumber)
+	if err != nil {
+		return fmt.Errorf("failed to get season %d: %w", seasonNumber, err)
+	}
+	seasonUUID := season.Uuid
 
 	// Initialize random number generator
 	var rng *rand.Rand
@@ -199,25 +204,4 @@ func simulateSingleGame(ctx context.Context, allStores *stores.Stores, gameUUID 
 	}
 
 	return nil
-}
-
-func initializeStores(ctx context.Context) (*stores.Stores, error) {
-	cfg := &config.Config{}
-	cfg.Load(nil)
-
-	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	// Initialize Redis pool (needed for some store operations)
-	redisPool := &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(cfg.RedisURL)
-		},
-	}
-
-	return stores.NewInitializedStores(dbPool, redisPool, cfg)
 }

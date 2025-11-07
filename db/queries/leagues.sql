@@ -68,8 +68,8 @@ WHERE uuid = $1;
 -- Division operations
 
 -- name: CreateDivision :one
-INSERT INTO league_divisions (uuid, season_id, division_number, division_name, player_count, is_complete)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO league_divisions (uuid, season_id, division_number, division_name, is_complete)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetDivision :one
@@ -79,11 +79,6 @@ SELECT * FROM league_divisions WHERE uuid = $1;
 SELECT * FROM league_divisions
 WHERE season_id = $1
 ORDER BY division_number ASC;
-
--- name: UpdateDivisionPlayerCount :exec
-UPDATE league_divisions
-SET player_count = $2, updated_at = NOW()
-WHERE uuid = $1;
 
 -- name: MarkDivisionComplete :exec
 UPDATE league_divisions
@@ -123,7 +118,7 @@ SELECT * FROM league_registrations
 WHERE season_id = $1 AND user_id = $2;
 
 -- name: GetSeasonRegistrations :many
-SELECT lr.*, u.uuid as user_uuid FROM league_registrations lr
+SELECT lr.*, u.uuid as user_uuid, u.username as username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 WHERE lr.season_id = $1
 ORDER BY lr.registration_date;

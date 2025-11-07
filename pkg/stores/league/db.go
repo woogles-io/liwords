@@ -35,7 +35,6 @@ type Store interface {
 	CreateDivision(ctx context.Context, arg models.CreateDivisionParams) (models.LeagueDivision, error)
 	GetDivision(ctx context.Context, uuid uuid.UUID) (models.LeagueDivision, error)
 	GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) ([]models.LeagueDivision, error)
-	UpdateDivisionPlayerCount(ctx context.Context, arg models.UpdateDivisionPlayerCountParams) error
 	MarkDivisionComplete(ctx context.Context, uuid uuid.UUID) error
 	DeleteDivision(ctx context.Context, uuid uuid.UUID) error
 	UpdateDivisionNumber(ctx context.Context, arg models.UpdateDivisionNumberParams) error
@@ -164,10 +163,6 @@ func (s *DBStore) GetDivision(ctx context.Context, uuid uuid.UUID) (models.Leagu
 
 func (s *DBStore) GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) ([]models.LeagueDivision, error) {
 	return s.queries.GetDivisionsBySeason(ctx, seasonID)
-}
-
-func (s *DBStore) UpdateDivisionPlayerCount(ctx context.Context, arg models.UpdateDivisionPlayerCountParams) error {
-	return s.queries.UpdateDivisionPlayerCount(ctx, arg)
 }
 
 func (s *DBStore) MarkDivisionComplete(ctx context.Context, uuid uuid.UUID) error {

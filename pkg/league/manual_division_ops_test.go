@@ -111,13 +111,8 @@ func TestMergeDivisions_BasicMerge(t *testing.T) {
 	divisions, err := store.GetDivisionsBySeason(ctx, seasonID)
 	is.NoErr(err)
 
-	regularDivs := 0
-	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			regularDivs++
-		}
-	}
-	is.Equal(regularDivs, 2) // Only 2 divisions left
+	// All divisions are now regular divisions
+	is.Equal(len(divisions), 2) // Only 2 divisions left
 }
 
 // TestMergeDivisions_WithRenumbering tests that divisions get renumbered after merge
@@ -176,11 +171,10 @@ func TestMergeDivisions_WithRenumbering(t *testing.T) {
 	divisions, err := store.GetDivisionsBySeason(ctx, seasonID)
 	is.NoErr(err)
 
+	// All divisions are now regular divisions
 	divNumbers := []int32{}
 	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			divNumbers = append(divNumbers, div.DivisionNumber)
-		}
+		divNumbers = append(divNumbers, div.DivisionNumber)
 	}
 
 	// Sort for comparison
@@ -390,13 +384,8 @@ func TestCreateDivision_AtEnd(t *testing.T) {
 	divisions, err := store.GetDivisionsBySeason(ctx, seasonID)
 	is.NoErr(err)
 
-	regularDivs := 0
-	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			regularDivs++
-		}
-	}
-	is.Equal(regularDivs, 3)
+	// All divisions are now regular divisions
+	is.Equal(len(divisions), 3)
 }
 
 // TestCreateDivision_InsertMiddle tests creating a division in the middle and renumbering
@@ -455,11 +444,10 @@ func TestCreateDivision_InsertMiddle(t *testing.T) {
 	divisions, err := store.GetDivisionsBySeason(ctx, seasonID)
 	is.NoErr(err)
 
+	// All divisions are now regular divisions
 	divNumbers := []int32{}
 	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			divNumbers = append(divNumbers, div.DivisionNumber)
-		}
+		divNumbers = append(divNumbers, div.DivisionNumber)
 	}
 
 	sort.Slice(divNumbers, func(i, j int) bool {

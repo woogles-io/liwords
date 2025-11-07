@@ -152,6 +152,113 @@
             background: m($off-background) !important;
           }
         }
+
+        // Promotion zone highlighting
+        .ant-table-tbody > tr.promotion-row > td {
+          @include colorModed {
+            background: m($profile-game-win) !important;
+          }
+        }
+
+        .ant-table-tbody > tr.promotion-row:hover > td {
+          @include colorModed {
+            background: lighten(m($profile-game-win), 5%) !important;
+          }
+        }
+
+        // Relegation zone highlighting
+        .ant-table-tbody > tr.relegation-row > td {
+          @include colorModed {
+            background: m($profile-game-loss) !important;
+          }
+        }
+
+        .ant-table-tbody > tr.relegation-row:hover > td {
+          @include colorModed {
+            background: lighten(m($profile-game-loss), 5%) !important;
+          }
+        }
+
+        // Clickable player names
+        .clickable-player {
+          cursor: pointer;
+          text-decoration: none;
+          color: inherit;
+
+          &:hover {
+            text-decoration: underline;
+            color: #1890ff;
+
+            @include colorModed {
+              color: #40a9ff;
+            }
+          }
+        }
+
+        // Points column styling
+        .points-column {
+          font-weight: 600;
+          font-size: 16px;
+        }
+      }
+    }
+
+    .standings-legend {
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+
+      @include colorModed {
+        background: m($primary-light);
+        border: 1px solid m($primary-middle);
+      }
+
+      p {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        line-height: 1.6;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        strong {
+          font-weight: 600;
+        }
+      }
+
+      .legend-item {
+        display: inline-block;
+        margin-right: 20px;
+        margin-bottom: 4px;
+
+        .promotion-indicator {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
+          margin-right: 6px;
+          vertical-align: middle;
+
+          @include colorModed {
+            background: m($profile-game-win);
+            border: 1px solid darken(m($profile-game-win), 20%);
+          }
+        }
+
+        .relegation-indicator {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
+          margin-right: 6px;
+          vertical-align: middle;
+
+          @include colorModed {
+            background: m($profile-game-loss);
+            border: 1px solid darken(m($profile-game-loss), 20%);
+          }
+        }
       }
     }
   }

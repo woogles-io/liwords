@@ -675,7 +675,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			for j, reg := range registrations {
 				standings[j] = models.GetStandingsRow{
 					UserID:         reg.UserID,
-					UserUuid:       reg.UserUuid, // From JOIN
+					UserUuid:       reg.UserUuid,                          // From JOIN
 					Username:       pgtype.Text{String: "", Valid: false}, // Not included in registration JOIN, will fetch later
 					Rank:           pgtype.Int4{Int32: int32(j + 1), Valid: true},
 					Wins:           pgtype.Int4{Int32: 0, Valid: true},
@@ -918,6 +918,104 @@ func (ls *LeagueService) GetPlayerLeagueHistory(
 	req *connect.Request[pb.PlayerHistoryRequest],
 ) (*connect.Response[pb.PlayerHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("GetPlayerLeagueHistory not yet implemented"))
+}
+
+func (ls *LeagueService) GetPlayerSeasonGames(
+	ctx context.Context,
+	req *connect.Request[pb.GetPlayerSeasonGamesRequest],
+) (*connect.Response[pb.GetPlayerSeasonGamesResponse], error) {
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Parse user ID
+	userID := req.Msg.UserId
+	if userID == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+
+	// Get all divisions for this season
+	divisions, err := ls.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get divisions: %w", err))
+	}
+
+	// Collect all games from all divisions where the user is a participant
+	var allGames []*pb.PlayerSeasonGame
+	for _, division := range divisions {
+		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
+		if err != nil {
+			continue
+		}
+
+		// Get all league games for this division
+		games, err := ls.store.GetLeagueGames(ctx, divisionUUID)
+
+		if err != nil {
+			continue
+		}
+
+		// Filter games where the user is a participant
+		for _, gameRow := range games {
+			// Load full game entity to get player info
+			game, err := ls.stores.GameStore.Get(ctx, gameRow.Uuid.String)
+			if err != nil {
+				continue
+			}
+
+			// Check if user is a participant
+			playerIndex := -1
+			if game.History().Players[0].UserId == userID {
+				playerIndex = 0
+			} else if game.History().Players[1].UserId == userID {
+				playerIndex = 1
+			}
+
+			if playerIndex == -1 {
+				continue // User not in this game
+			}
+
+			opponentIndex := 1 - playerIndex
+			opponentUserID := game.History().Players[opponentIndex].UserId
+			opponentUsername := game.History().Players[opponentIndex].Nickname
+
+			// Determine result
+			result := "in_progress"
+			playerScore := int32(0)
+			opponentScore := int32(0)
+
+			if game.GameEndReason != ipc.GameEndReason_NONE {
+				// Game is finished
+				playerScore = int32(game.PointsFor(playerIndex))
+				opponentScore = int32(game.PointsFor(opponentIndex))
+
+				if game.WinnerIdx == playerIndex {
+					result = "win"
+				} else if game.LoserIdx == playerIndex {
+					result = "loss"
+				} else {
+					result = "draw"
+				}
+			}
+
+			allGames = append(allGames, &pb.PlayerSeasonGame{
+				GameId:           game.GameID(),
+				OpponentUserId:   opponentUserID,
+				OpponentUsername: opponentUsername,
+				PlayerScore:      playerScore,
+				OpponentScore:    opponentScore,
+				Result:           result,
+				GameDate:         timestamppb.New(game.CreatedAt),
+				Round:            0, // TODO: Add round info if available
+			})
+		}
+	}
+
+	return connect.NewResponse(&pb.GetPlayerSeasonGamesResponse{
+		Games: allGames,
+	}), nil
 }
 
 func (ls *LeagueService) GetLeagueStatistics(

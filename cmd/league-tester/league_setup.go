@@ -253,3 +253,83 @@ func registerTestUsers(ctx context.Context, leagueSlugOrUUID string, seasonNumbe
 
 	return nil
 }
+
+func unregisterUser(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32, username string) error {
+	log.Info().
+		Str("league", leagueSlugOrUUID).
+		Int32("seasonNumber", seasonNumber).
+		Str("username", username).
+		Msg("unregistering user")
+
+	// Load config
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	// Connect to database
+	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer dbPool.Close()
+
+	queries := models.New(dbPool)
+
+	// Get league
+	var leagueUUID uuid.UUID
+	leagueUUID, err = uuid.Parse(leagueSlugOrUUID)
+	if err != nil {
+		// Not a UUID, try as slug
+		league, err := queries.GetLeagueBySlug(ctx, leagueSlugOrUUID)
+		if err != nil {
+			return fmt.Errorf("league not found: %s", leagueSlugOrUUID)
+		}
+		leagueUUID = league.Uuid
+	}
+
+	// Get season by number
+	season, err := queries.GetSeasonByLeagueAndNumber(ctx, models.GetSeasonByLeagueAndNumberParams{
+		LeagueID:     leagueUUID,
+		SeasonNumber: seasonNumber,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get season %d: %w", seasonNumber, err)
+	}
+
+	log.Info().
+		Str("seasonUUID", season.Uuid.String()).
+		Str("username", username).
+		Msg("looking up user")
+
+	// Look up user database ID from username using raw SQL
+	var userDBID int32
+	err = dbPool.QueryRow(ctx, "SELECT id FROM users WHERE username = $1", username).Scan(&userDBID)
+	if err != nil {
+		return fmt.Errorf("user not found: %s (%w)", username, err)
+	}
+
+	// Check if user is actually registered
+	_, err = queries.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+		SeasonID: season.Uuid,
+		UserID:   userDBID,
+	})
+	if err != nil {
+		return fmt.Errorf("user %s is not registered for season %d", username, seasonNumber)
+	}
+
+	// Unregister the player
+	err = queries.UnregisterPlayer(ctx, models.UnregisterPlayerParams{
+		SeasonID: season.Uuid,
+		UserID:   userDBID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to unregister user: %w", err)
+	}
+
+	log.Info().
+		Str("username", username).
+		Int32("userDBID", userDBID).
+		Str("seasonUUID", season.Uuid.String()).
+		Msg("✓ successfully unregistered user")
+
+	return nil
+}

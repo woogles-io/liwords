@@ -45,10 +45,45 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	leagueID uuid.UUID,
 	now time.Time,
 ) (*RegistrationOpenResult, error) {
-	// Get current season
+	// Get current season (try current_season_id first, fall back to latest season)
 	currentSeason, err := slm.stores.LeagueStore.GetCurrentSeason(ctx, leagueID)
 	if err != nil {
-		return nil, fmt.Errorf("no current season found - use BootstrapSeason API to create first season: %w", err)
+		// If no current season set, try to get the latest season by number
+		allSeasons, err := slm.stores.LeagueStore.GetSeasonsByLeague(ctx, leagueID)
+		if err != nil || len(allSeasons) == 0 {
+			return nil, fmt.Errorf("no seasons found - use BootstrapSeason API to create first season")
+		}
+
+		// Find the latest season (highest season number)
+		latestSeason := allSeasons[0]
+		for _, season := range allSeasons {
+			if season.SeasonNumber > latestSeason.SeasonNumber {
+				latestSeason = season
+			}
+		}
+		currentSeason = latestSeason
+	}
+
+	// Get league info early to check if league is active
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get league: %w", err)
+	}
+
+	// Safety check: League must be active
+	if !dbLeague.IsActive.Valid || !dbLeague.IsActive.Bool {
+		return nil, fmt.Errorf("cannot open registration: league is not active")
+	}
+
+	// Safety check: Verify no orphaned REGISTRATION_OPEN seasons exist
+	allSeasons, err := slm.stores.LeagueStore.GetSeasonsByLeague(ctx, leagueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing seasons: %w", err)
+	}
+	for _, season := range allSeasons {
+		if season.Status == int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
+			return nil, fmt.Errorf("cannot open registration: another season (%d) is already in REGISTRATION_OPEN status", season.SeasonNumber)
+		}
 	}
 
 	// Check if next season already exists
@@ -59,12 +94,6 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("failed to check existing season: %w", err)
-	}
-
-	// Get league info for result
-	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get league: %w", err)
 	}
 
 	// Create next season with REGISTRATION_OPEN status
@@ -161,6 +190,30 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 		return nil, nil // Not active, skip
 	}
 
+	// Safety check: Season must have at least one division
+	divisions, err := slm.stores.LeagueStore.GetDivisionsBySeason(ctx, currentSeason.Uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get divisions: %w", err)
+	}
+	if len(divisions) == 0 {
+		return nil, fmt.Errorf("cannot close season: no divisions exist")
+	}
+
+	// Safety check: All divisions must have standings calculated
+	for _, division := range divisions {
+		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
+		if err != nil {
+			continue
+		}
+		standings, err := slm.stores.LeagueStore.GetStandings(ctx, divisionUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get standings for division %d: %w", division.DivisionNumber, err)
+		}
+		if len(standings) == 0 {
+			return nil, fmt.Errorf("cannot close season: division %d has no standings", division.DivisionNumber)
+		}
+	}
+
 	// Get league info for result
 	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, currentSeason.LeagueID)
 	if err != nil {
@@ -181,11 +234,42 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	}
 	result.ForceFinishedGames = ffResult.ForceForfeitGames
 
+	// Post-operation check: Verify all games are finished
+	for _, division := range divisions {
+		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
+		if err != nil {
+			continue
+		}
+		totalGames, err := slm.stores.LeagueStore.CountDivisionGamesTotal(ctx, divisionUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count total games: %w", err)
+		}
+		completedGames, err := slm.stores.LeagueStore.CountDivisionGamesComplete(ctx, divisionUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count completed games: %w", err)
+		}
+		unfinishedCount := totalGames - completedGames
+		if unfinishedCount > 0 {
+			return nil, fmt.Errorf("force-finish failed: division %d still has %d unfinished games", division.DivisionNumber, unfinishedCount)
+		}
+	}
+
 	// Step 2: Mark season outcomes (PROMOTED/RELEGATED/STAYED)
 	endOfSeasonMgr := NewEndOfSeasonManager(slm.stores.LeagueStore)
 	err = endOfSeasonMgr.MarkSeasonOutcomes(ctx, currentSeason.Uuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to mark season outcomes: %w", err)
+	}
+
+	// Post-operation check: Verify all registrations have placement_status set
+	registrations, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, currentSeason.Uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+	}
+	for _, reg := range registrations {
+		if !reg.PlacementStatus.Valid {
+			return nil, fmt.Errorf("registration for user ID %d missing placement status after marking outcomes", reg.UserID)
+		}
 	}
 
 	// Step 3: Mark current season as COMPLETED
@@ -195,6 +279,15 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to mark current season as completed: %w", err)
+	}
+
+	// Step 4: Clear current_season_id since this season is no longer active
+	err = slm.stores.LeagueStore.SetCurrentSeason(ctx, models.SetCurrentSeasonParams{
+		Uuid:            leagueID,
+		CurrentSeasonID: pgtype.UUID{Valid: false}, // Set to NULL
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear current season: %w", err)
 	}
 
 	return result, nil
@@ -209,10 +302,12 @@ type PrepareAndScheduleSeasonResult struct {
 	DivisionPreparation *DivisionPreparationResult
 }
 
-// PrepareAndScheduleSeason closes registration and prepares divisions for a SCHEDULED season
+// PrepareAndScheduleSeason closes registration and prepares divisions for a season
+// Accepts seasons in REGISTRATION_OPEN or SCHEDULED status:
+// - REGISTRATION_OPEN: closes registration, creates divisions, sets to SCHEDULED
+// - SCHEDULED: recreates divisions (allows re-running if registrations changed)
 // This should be called on Day 21 at 7:45 AM (15 minutes before season start at 8:00 AM)
-// For Season 1 (bootstrapped), this is the first division creation step
-// Returns nil if conditions aren't met (season not SCHEDULED, etc.)
+// Returns nil if season is not in an appropriate status (silently skips)
 func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -225,9 +320,30 @@ func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 		return nil, errors.New("season not found")
 	}
 
-	// Check if season is SCHEDULED
-	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
-		return nil, errors.New("season is not in SCHEDULED status")
+	// Check if season is REGISTRATION_OPEN or SCHEDULED
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) &&
+		season.Status != int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
+		return nil, nil // Skip seasons that aren't ready (return nil to avoid error logs)
+	}
+
+	// Safety check: Season must have valid start/end dates
+	if !season.StartDate.Valid || !season.EndDate.Valid {
+		return nil, fmt.Errorf("cannot prepare season: invalid start/end dates")
+	}
+
+	// Safety check: Season must have registrations
+	registrations, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+	}
+	if len(registrations) == 0 {
+		return nil, fmt.Errorf("cannot prepare season: no registrations found")
+	}
+
+	// Safety check: Minimum player threshold
+	const MinimumPlayersForSeason = 11
+	if len(registrations) < MinimumPlayersForSeason {
+		return nil, fmt.Errorf("cannot prepare season: insufficient registrations (%d, minimum %d)", len(registrations), MinimumPlayersForSeason)
 	}
 
 	// Get league info for result
@@ -256,6 +372,13 @@ func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get previous season: %w", err)
 		}
+
+		// Safety check: Previous season must be COMPLETED
+		if prevSeason.Status != int32(ipc.SeasonStatus_SEASON_COMPLETED) {
+			return nil, fmt.Errorf("cannot prepare season %d: previous season (season %d) must be COMPLETED (current status: %s)",
+				season.SeasonNumber, prevSeason.SeasonNumber, ipc.SeasonStatus(prevSeason.Status).String())
+		}
+
 		previousSeasonID = prevSeason.Uuid
 	}
 
@@ -306,6 +429,30 @@ func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	}
 	result.DivisionPreparation = divPrep
 
+	// Post-operation check: Verify divisions were created
+	createdDivisions, err := slm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify division creation: %w", err)
+	}
+	if len(createdDivisions) == 0 {
+		return nil, fmt.Errorf("division preparation failed: no divisions created")
+	}
+
+	// Post-operation check: Verify all registrations are assigned to divisions
+	updatedRegistrations, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify registration assignments: %w", err)
+	}
+	unassignedCount := 0
+	for _, reg := range updatedRegistrations {
+		if !reg.DivisionID.Valid {
+			unassignedCount++
+		}
+	}
+	if unassignedCount > 0 {
+		return nil, fmt.Errorf("division preparation failed: %d players not assigned to divisions", unassignedCount)
+	}
+
 	// Update season status to SCHEDULED
 	err = slm.stores.LeagueStore.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
 		Uuid:   seasonID,
@@ -325,8 +472,9 @@ type SeasonStartResult struct {
 	SeasonID   uuid.UUID
 }
 
-// StartScheduledSeason starts a season that is SCHEDULED and past its start date
-// Returns nil if conditions aren't met (not SCHEDULED, start time not reached, etc.)
+// StartScheduledSeason starts a season that is SCHEDULED
+// Returns nil if conditions aren't met (season not SCHEDULED)
+// Note: Timing is controlled by external task scheduling, not checked here
 func (slm *SeasonLifecycleManager) StartScheduledSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -341,25 +489,7 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 
 	// Check if season is SCHEDULED
 	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
-		statusNames := map[int32]string{
-			0: "SCHEDULED",
-			1: "ACTIVE",
-			2: "COMPLETED",
-			3: "CANCELLED",
-			4: "REGISTRATION_OPEN",
-		}
-		statusName := statusNames[season.Status]
-		if statusName == "" {
-			statusName = fmt.Sprintf("UNKNOWN(%d)", season.Status)
-		}
-		return nil, fmt.Errorf("season must be SCHEDULED to start, current status: %s", statusName)
-	}
-
-	// Check if start time has passed
-	if now.Before(season.StartDate.Time) {
-		return nil, fmt.Errorf("season start time (%s) has not been reached yet (current time: %s)",
-			season.StartDate.Time.Format(time.RFC3339),
-			now.Format(time.RFC3339))
+		return nil, nil // Skip seasons that aren't SCHEDULED (no error logged)
 	}
 
 	// Get league info for result
@@ -367,6 +497,16 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get league: %w", err)
 	}
+
+	// Safety check: Ensure divisions have been created and have players
+	divisions, err := slm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get divisions: %w", err)
+	}
+	if len(divisions) == 0 {
+		return nil, fmt.Errorf("cannot start season: no divisions created yet (run PrepareAndScheduleSeason first)")
+	}
+	log.Info().Str("leagueID", leagueID.String()).Int32("season-number", season.SeasonNumber).Msg("season divisions verified")
 
 	// Note: Game creation should be done by the caller using SeasonStartManager
 	// after this function returns successfully. This keeps SeasonLifecycleManager
@@ -434,4 +574,64 @@ func (slm *SeasonLifecycleManager) RollbackSeasonToScheduled(ctx context.Context
 	}
 
 	return nil
+}
+
+// ShouldRunTask checks if a maintenance task should run based on season dates
+// Returns (shouldRun bool, reason string)
+func ShouldRunTask(season *models.LeagueSeason, taskType string, forceRun bool, now time.Time) (bool, string) {
+	// Force override for testing
+	if forceRun {
+		return true, "FORCE mode enabled"
+	}
+
+	// Ensure season has valid dates
+	if !season.StartDate.Valid || !season.EndDate.Valid {
+		return false, "Season has invalid start/end dates"
+	}
+
+	startDate := season.StartDate.Time
+	endDate := season.EndDate.Time
+
+	switch taskType {
+	case "close-season":
+		// Should run at midnight on Day 21 (last day of season)
+		// The EndDate is the last day of the season (Day 21)
+		seasonEndDate := endDate.Truncate(24 * time.Hour)
+		todayMidnight := now.Truncate(24 * time.Hour)
+
+		if todayMidnight.Equal(seasonEndDate) {
+			return true, "Today is last day of season"
+		}
+		return false, fmt.Sprintf("Today=%s, SeasonEnd=%s",
+			todayMidnight.Format("2006-01-02"),
+			seasonEndDate.Format("2006-01-02"))
+
+	case "open-registration":
+		// Should run at 8am on Day 14 of current season
+		// Day 14 is 13 days after start (0-indexed)
+		seasonStartDate := startDate.Truncate(24 * time.Hour)
+		day14 := seasonStartDate.Add(13 * 24 * time.Hour)
+		today := now.Truncate(24 * time.Hour)
+
+		if today.Equal(day14) {
+			return true, "Today is Day 14 of season"
+		}
+		return false, fmt.Sprintf("Today=%s, Day14=%s",
+			today.Format("2006-01-02"),
+			day14.Format("2006-01-02"))
+
+	case "start-season":
+		// Should run at 8am on the season's start date
+		seasonStartDate := startDate.Truncate(24 * time.Hour)
+		today := now.Truncate(24 * time.Hour)
+
+		if today.Equal(seasonStartDate) {
+			return true, "Today is season start date"
+		}
+		return false, fmt.Sprintf("Today=%s, SeasonStart=%s",
+			today.Format("2006-01-02"),
+			seasonStartDate.Format("2006-01-02"))
+	}
+
+	return false, "Unknown task type"
 }

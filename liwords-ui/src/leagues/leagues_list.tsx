@@ -159,36 +159,6 @@ export const LeaguesList = () => {
                 that correspondence word games provide.
               </p>
             </Panel>
-
-            <Panel header="What are rookie leagues?" key="4">
-              <p>
-                Rookie leagues are special divisions designed for new league
-                participants:
-              </p>
-              <ul>
-                <li>
-                  When you first join a league, you'll be placed in a rookie
-                  division along with other newcomers
-                </li>
-                <li>
-                  Rookie divisions provide a gentler introduction to league play
-                  and competitive correspondence games
-                </li>
-                <li>
-                  After your first season, you'll be graduated into the regular
-                  division system based on your performance
-                </li>
-                <li>
-                  Strong rookies will be placed in higher divisions, while those
-                  still learning will start in lower divisions with similarly
-                  skilled players
-                </li>
-              </ul>
-              <p>
-                This ensures everyone gets a fair start and finds their
-                appropriate competitive level from season two onwards.
-              </p>
-            </Panel>
           </Collapse>
         </div>
       </div>

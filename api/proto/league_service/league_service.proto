@@ -33,6 +33,8 @@ service LeagueService {
   rpc GetSeasonRegistrations(SeasonRequest) returns (SeasonRegistrationsResponse);
   rpc GetPlayerLeagueHistory(PlayerHistoryRequest)
       returns (PlayerHistoryResponse);
+  rpc GetPlayerSeasonGames(GetPlayerSeasonGamesRequest)
+      returns (GetPlayerSeasonGamesResponse);
 
   // Statistics (Phase 8)
   rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
@@ -143,4 +145,24 @@ message LeagueStat {
   int32 value = 4;
   string game_id = 5;
   int32 division_number = 6;
+}
+
+message GetPlayerSeasonGamesRequest {
+  string user_id = 1;
+  string season_id = 2;
+}
+
+message GetPlayerSeasonGamesResponse {
+  repeated PlayerSeasonGame games = 1;
+}
+
+message PlayerSeasonGame {
+  string game_id = 1;
+  string opponent_user_id = 2;
+  string opponent_username = 3;
+  int32 player_score = 4;
+  int32 opponent_score = 5;
+  string result = 6; // "win", "loss", "draw", "in_progress"
+  google.protobuf.Timestamp game_date = 7;
+  int32 round = 8; // Optional round number
 }

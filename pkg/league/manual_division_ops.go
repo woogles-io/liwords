@@ -102,24 +102,16 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 		return nil, fmt.Errorf("failed to get season divisions: %w", err)
 	}
 
-	// Filter to regular divisions only (< 100)
-	regularDivisions := []models.LeagueDivision{}
-	for _, div := range allDivisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			regularDivisions = append(regularDivisions, div)
-		}
-	}
-
 	// Sort by current division number
-	sort.Slice(regularDivisions, func(i, j int) bool {
-		return regularDivisions[i].DivisionNumber < regularDivisions[j].DivisionNumber
+	sort.Slice(allDivisions, func(i, j int) bool {
+		return allDivisions[i].DivisionNumber < allDivisions[j].DivisionNumber
 	})
 
 	// Renumber sequentially: 1, 2, 3, ..., N
 	newNumbers := make(map[uuid.UUID]int32)
 	divisionsRenumbered := 0
 
-	for i, div := range regularDivisions {
+	for i, div := range allDivisions {
 		newNumber := int32(i + 1)
 		if div.DivisionNumber != newNumber {
 			// Need to renumber this division
@@ -225,32 +217,19 @@ func (mdm *ManualDivisionManager) CreateDivision(
 		return models.LeagueDivision{}, fmt.Errorf("division number must be >= 1")
 	}
 
-	// Check if this is a rookie division number
-	if divisionNumber >= RookieDivisionNumberBase {
-		return models.LeagueDivision{}, fmt.Errorf("cannot create regular division with number >= %d (reserved for rookie divisions)", RookieDivisionNumberBase)
-	}
-
-	// Get all regular divisions in the season
+	// Get all divisions in the season
 	allDivisions, err := mdm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
 	if err != nil {
 		return models.LeagueDivision{}, fmt.Errorf("failed to get season divisions: %w", err)
 	}
 
-	// Filter to regular divisions only
-	regularDivisions := []models.LeagueDivision{}
-	for _, div := range allDivisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			regularDivisions = append(regularDivisions, div)
-		}
-	}
-
 	// Sort by division number (descending) to shift from bottom up
-	sort.Slice(regularDivisions, func(i, j int) bool {
-		return regularDivisions[i].DivisionNumber > regularDivisions[j].DivisionNumber
+	sort.Slice(allDivisions, func(i, j int) bool {
+		return allDivisions[i].DivisionNumber > allDivisions[j].DivisionNumber
 	})
 
 	// Shift existing divisions that are >= divisionNumber
-	for _, div := range regularDivisions {
+	for _, div := range allDivisions {
 		if div.DivisionNumber >= divisionNumber {
 			newNumber := div.DivisionNumber + 1
 			newName := fmt.Sprintf("Division %d", newNumber)
@@ -275,7 +254,6 @@ func (mdm *ManualDivisionManager) CreateDivision(
 		SeasonID:       seasonID,
 		DivisionNumber: divisionNumber,
 		DivisionName:   pgtype.Text{String: divisionName, Valid: true},
-		PlayerCount:    pgtype.Int4{Int32: 0, Valid: true},
 		IsComplete:     pgtype.Bool{Bool: false, Valid: true},
 	})
 	if err != nil {

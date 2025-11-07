@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Col, Row, Card, Spin, Button, Tabs, Space, Tag, Alert } from "antd";
+import { Col, Row, Card, Spin, Button, Select, Space, Tag, Alert } from "antd";
 import { useParams } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -135,9 +135,14 @@ export const LeaguePage = () => {
 
   // Register/Unregister mutations
   const registerMutation = useMutation(registerForSeason, {
-    onSuccess: () => {
-      // Invalidate queries to refetch fresh data
-      queryClient.invalidateQueries();
+    onSuccess: async () => {
+      // Refetch queries with proper Connect Query syntax
+      await queryClient.refetchQueries({
+        queryKey: ["connect-query", { methodName: "GetSeasonRegistrations" }],
+      });
+      await queryClient.refetchQueries({
+        queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
+      });
       alert("Successfully registered for the season!");
     },
     onError: (error) => {
@@ -146,9 +151,11 @@ export const LeaguePage = () => {
   });
 
   const unregisterMutation = useMutation(unregisterFromSeason, {
-    onSuccess: () => {
-      // Invalidate queries to refetch fresh data
-      queryClient.invalidateQueries();
+    onSuccess: async () => {
+      // Refetch queries with proper Connect Query syntax
+      await queryClient.refetchQueries({
+        queryKey: ["connect-query", { methodName: "GetSeasonRegistrations" }],
+      });
       alert("Successfully unregistered from the season!");
     },
     onError: (error) => {
@@ -158,9 +165,11 @@ export const LeaguePage = () => {
 
   // Admin mutation to open registration
   const openRegistrationMutation = useMutation(openRegistration, {
-    onSuccess: (response) => {
-      // Invalidate queries to refetch fresh data
-      queryClient.invalidateQueries();
+    onSuccess: async (response) => {
+      // Refetch queries with proper Connect Query syntax
+      await queryClient.refetchQueries({
+        queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
+      });
       const seasonNumber = response.season?.seasonNumber || "next";
       alert(`Successfully opened registration for Season ${seasonNumber}!`);
     },
@@ -358,39 +367,56 @@ export const LeaguePage = () => {
                 </div>
               )}
 
-              <Tabs
-                activeKey={displaySeasonId || undefined}
-                onChange={setSelectedSeasonId}
-                items={allSeasons.map((season) => {
-                  // Determine status badge
-                  let statusTag = null;
-                  if (season.status === 0) {
-                    // SCHEDULED
-                    statusTag = <Tag>Scheduled</Tag>;
-                  } else if (season.status === 1) {
-                    // ACTIVE
-                    statusTag = <Tag color="blue">Active</Tag>;
-                  } else if (season.status === 2) {
-                    // COMPLETED
-                    statusTag = <Tag color="default">Completed</Tag>;
-                  } else if (season.status === 3) {
-                    // CANCELLED
-                    statusTag = <Tag color="red">Cancelled</Tag>;
-                  } else if (season.status === 4) {
-                    // REGISTRATION_OPEN
-                    statusTag = <Tag color="green">Registration Open</Tag>;
-                  }
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ marginRight: 8, fontWeight: 500 }}>
+                  Select Season:
+                </label>
+                <Select
+                  value={displaySeasonId || undefined}
+                  onChange={setSelectedSeasonId}
+                  style={{ width: 350 }}
+                  popupMatchSelectWidth={true}
+                  options={allSeasons.map((season) => {
+                    // Determine status label
+                    let statusLabel = "";
+                    let statusColor = "";
+                    if (season.status === 0) {
+                      statusLabel = "Scheduled";
+                      statusColor = "";
+                    } else if (season.status === 1) {
+                      statusLabel = "Active";
+                      statusColor = "blue";
+                    } else if (season.status === 2) {
+                      statusLabel = "Completed";
+                      statusColor = "default";
+                    } else if (season.status === 3) {
+                      statusLabel = "Cancelled";
+                      statusColor = "red";
+                    } else if (season.status === 4) {
+                      statusLabel = "Registration Open";
+                      statusColor = "green";
+                    }
 
-                  return {
-                    key: season.uuid,
-                    label: (
-                      <span>
-                        Season {season.seasonNumber} {statusTag}
-                      </span>
-                    ),
-                  };
-                })}
-              />
+                    return {
+                      value: season.uuid,
+                      label: (
+                        <span
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span>Season {season.seasonNumber}</span>
+                          {statusLabel && (
+                            <Tag color={statusColor}>{statusLabel}</Tag>
+                          )}
+                        </span>
+                      ),
+                    };
+                  })}
+                />
+              </div>
             </Card>
 
             {standingsLoading && (
@@ -414,10 +440,41 @@ export const LeaguePage = () => {
               standingsData &&
               standingsData.divisions.length > 0 && (
                 <div className="standings-container" style={{ marginTop: 16 }}>
+                  <div className="standings-legend">
+                    <p>
+                      <strong>Promotion/Relegation Zones:</strong> Green
+                      highlighted rows indicate players in the promotion zone
+                      (top{" "}
+                      {Math.ceil(
+                        (standingsData.divisions[0]?.standings.length || 0) / 6,
+                      )}{" "}
+                      players per division will move up). Red highlighted rows
+                      indicate relegation zones (bottom players will move down).
+                    </p>
+                    <p>
+                      <strong>Note:</strong> If additional divisions are added
+                      in future seasons to maintain balance, some players from
+                      the bottom division may be relegated to accommodate the
+                      new structure.
+                    </p>
+                    <div style={{ marginTop: 12 }}>
+                      <span className="legend-item">
+                        <span className="promotion-indicator"></span>
+                        Promotion Zone
+                      </span>
+                      <span className="legend-item">
+                        <span className="relegation-indicator"></span>
+                        Relegation Zone
+                      </span>
+                    </div>
+                  </div>
                   {standingsData.divisions.map((division) => (
                     <DivisionStandings
                       key={division.uuid}
                       division={division}
+                      totalDivisions={standingsData.divisions.length}
+                      seasonId={displaySeasonId || ""}
+                      currentUserId={userID}
                     />
                   ))}
                 </div>

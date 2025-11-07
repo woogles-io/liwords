@@ -32,6 +32,8 @@ func main() {
 		err = createLeagueCommand(ctx, os.Args[2:])
 	case "register-users":
 		err = registerUsersCommand(ctx, os.Args[2:])
+	case "unregister-user":
+		err = unregisterUserCommand(ctx, os.Args[2:])
 	case "open-registration":
 		err = openRegistrationCommand(ctx, os.Args[2:])
 	case "close-season":
@@ -68,6 +70,7 @@ func printUsage() {
 	fmt.Println("  create-users       Create fake test users")
 	fmt.Println("  create-league      Create a test league")
 	fmt.Println("  register-users     Register users for a league season")
+	fmt.Println("  unregister-user    Unregister a specific user from a season")
 	fmt.Println("  start-season       Start a season (creates games)")
 	fmt.Println("  simulate-games     Simulate game completions with random results")
 	fmt.Println("  set-season-status  Change a season's status")
@@ -77,9 +80,11 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  go run cmd/league-tester create-users --count 20")
+	fmt.Println("  go run cmd/league-tester create-users --count 10 --start-id 31  # Creates users 31-40")
 	fmt.Println("  go run cmd/league-tester create-league --slug test-league")
 	fmt.Println("  go run cmd/league-tester register-users --league test-league --season 1")
-	fmt.Println("  go run cmd/league-tester simulate-games --season <uuid> --all")
+	fmt.Println("  go run cmd/league-tester unregister-user --league test-league --season 1 --username testuser5")
+	fmt.Println("  go run cmd/league-tester simulate-games --league test-league --season 2 --all")
 	fmt.Println()
 	fmt.Println("Run 'go run cmd/league-tester <command> --help' for command-specific options")
 }
@@ -87,10 +92,11 @@ func printUsage() {
 func createUsersCommand(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("create-users", flag.ExitOnError)
 	count := fs.Int("count", 20, "Number of test users to create")
+	startID := fs.Int("start-id", 1, "Starting ID number for usernames (default: 1)")
 	output := fs.String("output", "test_users.json", "Output file for user UUIDs")
 	fs.Parse(args)
 
-	return createTestUsers(ctx, *count, *output)
+	return createTestUsers(ctx, *count, *startID, *output)
 }
 
 func createLeagueCommand(ctx context.Context, args []string) error {
@@ -120,6 +126,28 @@ func registerUsersCommand(ctx context.Context, args []string) error {
 	}
 
 	return registerTestUsers(ctx, *league, int32(*season), *usersFile)
+}
+
+func unregisterUserCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("unregister-user", flag.ExitOnError)
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
+	username := fs.String("username", "", "Username to unregister (required)")
+	fs.Parse(args)
+
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	if *username == "" {
+		return fmt.Errorf("--username is required")
+	}
+
+	return unregisterUser(ctx, *league, int32(*season), *username)
 }
 
 func openRegistrationCommand(ctx context.Context, args []string) error {
@@ -187,17 +215,21 @@ func startSeasonCommand(ctx context.Context, args []string) error {
 
 func simulateGamesCommand(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("simulate-games", flag.ExitOnError)
-	season := fs.String("season", "", "Season UUID (required)")
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
 	all := fs.Bool("all", true, "Simulate all games at once")
 	rounds := fs.Int("rounds", 0, "Number of rounds to simulate (0 = all)")
 	seed := fs.Int64("seed", 0, "Random seed for reproducibility (0 = random)")
 	fs.Parse(args)
 
-	if *season == "" {
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+	if *season == 0 {
 		return fmt.Errorf("--season is required")
 	}
 
-	return simulateGames(ctx, *season, *all, *rounds, *seed)
+	return simulateGames(ctx, *league, int32(*season), *all, *rounds, *seed)
 }
 
 func inspectCommand(ctx context.Context, args []string) error {

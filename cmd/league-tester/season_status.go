@@ -6,26 +6,25 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func setSeasonStatusCommand(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set-season-status", flag.ExitOnError)
-	season := fs.String("season", "", "Season UUID (required)")
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number (required)")
 	status := fs.String("status", "", "Status name: SCHEDULED, ACTIVE, REGISTRATION_OPEN, COMPLETED, CANCELLED")
 	statusValue := fs.Int("status-value", -1, "Status as integer (0-4)")
 	fs.Parse(args)
 
-	if *season == "" {
-		return fmt.Errorf("--season is required")
+	if *league == "" {
+		return fmt.Errorf("--league is required")
 	}
-
-	seasonUUID, err := uuid.Parse(*season)
-	if err != nil {
-		return fmt.Errorf("invalid season UUID: %w", err)
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
 	}
 
 	// Determine the status value
@@ -50,20 +49,33 @@ func setSeasonStatusCommand(ctx context.Context, args []string) error {
 	}
 
 	log.Info().
-		Str("season", seasonUUID.String()).
+		Str("league", *league).
+		Int("seasonNumber", *season).
 		Int32("newStatus", newStatus).
 		Str("statusName", pb.SeasonStatus(newStatus).String()).
 		Msg("setting season status")
 
 	// Initialize stores
-	allStores, err := initializeStores(ctx)
+	allStores, err := initStores(ctx)
 	if err != nil {
 		return err
 	}
 
+	// Get league
+	leagueUUID, err := getLeagueUUID(ctx, allStores, *league)
+	if err != nil {
+		return err
+	}
+
+	// Get season
+	seasonData, err := allStores.LeagueStore.GetSeasonByLeagueAndNumber(ctx, leagueUUID, int32(*season))
+	if err != nil {
+		return fmt.Errorf("failed to get season %d: %w", *season, err)
+	}
+
 	// Update the season status
 	err = allStores.LeagueStore.UpdateSeasonStatus(ctx, models.UpdateSeasonStatusParams{
-		Uuid:   seasonUUID,
+		Uuid:   seasonData.Uuid,
 		Status: newStatus,
 	})
 	if err != nil {
@@ -71,7 +83,7 @@ func setSeasonStatusCommand(ctx context.Context, args []string) error {
 	}
 
 	log.Info().
-		Str("season", seasonUUID.String()).
+		Str("seasonUUID", seasonData.Uuid.String()).
 		Str("status", pb.SeasonStatus(newStatus).String()).
 		Msg("successfully updated season status")
 

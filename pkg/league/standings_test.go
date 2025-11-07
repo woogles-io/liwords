@@ -139,9 +139,6 @@ func (m *mockLeagueStore) CreateDivision(ctx context.Context, arg models.CreateD
 func (m *mockLeagueStore) GetDivision(ctx context.Context, uuid uuid.UUID) (models.LeagueDivision, error) {
 	return models.LeagueDivision{}, nil
 }
-func (m *mockLeagueStore) UpdateDivisionPlayerCount(ctx context.Context, arg models.UpdateDivisionPlayerCountParams) error {
-	return nil
-}
 func (m *mockLeagueStore) MarkDivisionComplete(ctx context.Context, uuid uuid.UUID) error { return nil }
 func (m *mockLeagueStore) DeleteDivision(ctx context.Context, uuid uuid.UUID) error       { return nil }
 func (m *mockLeagueStore) UpdateDivisionNumber(ctx context.Context, arg models.UpdateDivisionNumberParams) error {

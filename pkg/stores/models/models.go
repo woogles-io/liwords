@@ -160,7 +160,6 @@ type LeagueDivision struct {
 	SeasonID       uuid.UUID
 	DivisionNumber int32
 	DivisionName   pgtype.Text
-	PlayerCount    pgtype.Int4
 	IsComplete     pgtype.Bool
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz

@@ -57,10 +57,10 @@ func (sm *StandingsManager) CalculateAndSaveStandings(
 		return divisions[i].DivisionNumber < divisions[j].DivisionNumber
 	})
 
-	// Find the highest regular division number (excluding rookie divisions)
+	// Find the highest division number
 	highestRegularDivision := int32(0)
 	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase && div.DivisionNumber > highestRegularDivision {
+		if div.DivisionNumber > highestRegularDivision {
 			highestRegularDivision = div.DivisionNumber
 		}
 	}
@@ -233,7 +233,7 @@ func (sm *StandingsManager) markOutcomes(
 	relegationCount := promotionCount
 
 	isHighestDivision := divisionNumber == 1
-	isLowestDivision := divisionNumber >= highestRegularDivision || divisionNumber >= RookieDivisionNumberBase
+	isLowestDivision := divisionNumber >= highestRegularDivision
 
 	for i := range standings {
 		rank := i + 1

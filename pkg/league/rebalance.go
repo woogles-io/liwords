@@ -8,28 +8,28 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const (
 	// Priority score constants
-	DivisionMultiplier = 1_000_000
+	DivisionMultiplier = 1_000
 
-	PriorityBonusStayed           = 500_000
-	PriorityBonusPromoted         = 400_000
-	PriorityBonusRelegated        = 300_000
-	PriorityBonusGraduated        = 50_000
-	PriorityBonusHiatusReturning  = 5_000
-	PriorityBonusNew              = 0
+	PriorityBonusRelegated       = 500
+	PriorityBonusStayed          = 400
+	PriorityBonusPromoted        = 300
+	PriorityBonusHiatusReturning = 100
+	PriorityBonusNew             = 50 // Lowest priority - new players placed naturally via rebalancing
 
 	// Hiatus weight: 0.933^N (halves every ~10 seasons)
 	HiatusWeightBase = 0.933
 
 	// Division sizing
-	MinimumFinalDivSize  = 12
+	MinimumFinalDivSize = 12
 )
 
 // RebalanceManager handles the rebalancing of divisions for a new season
@@ -46,15 +46,16 @@ func NewRebalanceManager(allStores *stores.Stores) *RebalanceManager {
 
 // PlayerWithVirtualDiv represents a player with their assigned virtual division
 type PlayerWithVirtualDiv struct {
-	UserID              string // UUID string for external use
-	UserDBID            int32  // Database ID for internal queries
-	VirtualDivision     int32
-	PlacementStatus     ipc.PlacementStatus
+	UserID               string // UUID string for external use
+	UserDBID             int32  // Database ID for internal queries
+	Username             string // Username for logging
+	VirtualDivision      int32
+	PlacementStatus      ipc.PlacementStatus
 	PreviousDivisionSize int
-	PreviousRank        int32
-	HiatusSeasons       int32
-	Rating              int
-	RegistrationRow     models.LeagueRegistration
+	PreviousRank         int32
+	HiatusSeasons        int32
+	Rating               int
+	RegistrationRow      models.LeagueRegistration
 }
 
 // PlayerWithPriority extends PlayerWithVirtualDiv with priority score
@@ -68,8 +69,8 @@ type RebalanceResult struct {
 	DivisionsCreated int
 	PlayersAssigned  int
 	FinalDivMerged   bool
-	VirtualDivisions map[string]int32  // UserID -> virtual division
-	FinalDivisions   map[string]int32  // UserID -> real division
+	VirtualDivisions map[string]int32 // UserID -> virtual division
+	FinalDivisions   map[string]int32 // UserID -> real division
 }
 
 // RebalanceDivisions orchestrates the complete rebalancing process
@@ -224,31 +225,6 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			continue
 		}
 
-		// Check if from rookie division
-		isRookieGraduate := false
-		if lastSeason.DivisionID.Valid {
-			// Look up the division to get its number
-			div, err := rm.stores.LeagueStore.GetDivision(ctx, lastSeason.DivisionID.Bytes)
-			if err == nil {
-				isRookieGraduate = div.DivisionNumber >= RookieDivisionNumberBase
-			}
-		}
-
-		if isRookieGraduate {
-			// Rookie graduating to regular divisions
-			err := rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
-				UserID:               player.Registration.UserID,
-				PlacementStatus:      pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_GRADUATED), Valid: true},
-				PreviousDivisionRank: lastSeason.PreviousDivisionRank,
-				SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
-				SeasonID:             newSeasonID,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to set GRADUATED status for %d: %w", player.Registration.UserID, err)
-			}
-			continue
-		}
-
 		// Calculate hiatus: newSeasonNumber - lastPlayedSeasonNumber - 1
 		seasonsAway := newSeasonNumber - lastSeason.SeasonNumber - 1
 
@@ -317,14 +293,15 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 		}
 
 		player := PlayerWithVirtualDiv{
-			UserID:              catPlayer.Registration.UserUuid.String, // UUID string from JOIN
-			UserDBID:            catPlayer.Registration.UserID,          // Database ID
-			PlacementStatus:     status,
-			PreviousRank:        0,
-			HiatusSeasons:       0,
+			UserID:               catPlayer.Registration.UserUuid.String, // UUID string from JOIN
+			UserDBID:             catPlayer.Registration.UserID,          // Database ID
+			Username:             catPlayer.Registration.Username.String, // Username from JOIN
+			PlacementStatus:      status,
+			PreviousRank:         0,
+			HiatusSeasons:        0,
 			PreviousDivisionSize: 0,
-			Rating:              int(catPlayer.Rating),
-			RegistrationRow:     reg,
+			Rating:               int(catPlayer.Rating),
+			RegistrationRow:      reg,
 		}
 
 		if reg.PreviousDivisionRank.Valid {
@@ -375,42 +352,20 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 		return nil, fmt.Errorf("failed to get previous season divisions: %w", err)
 	}
 
-	// Filter to regular divisions
-	prevRegularDivs := []models.LeagueDivision{}
-	for _, div := range prevDivisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			prevRegularDivs = append(prevRegularDivs, div)
-		}
-	}
-
-	// Sort by division number
-	sort.Slice(prevRegularDivs, func(i, j int) bool {
-		return prevRegularDivs[i].DivisionNumber < prevRegularDivs[j].DivisionNumber
+	// Sort divisions by division number
+	sort.Slice(prevDivisions, func(i, j int) bool {
+		return prevDivisions[i].DivisionNumber < prevDivisions[j].DivisionNumber
 	})
 
 	highestPrevDivNumber := int32(0)
-	if len(prevRegularDivs) > 0 {
-		highestPrevDivNumber = prevRegularDivs[len(prevRegularDivs)-1].DivisionNumber
+	if len(prevDivisions) > 0 {
+		highestPrevDivNumber = prevDivisions[len(prevDivisions)-1].DivisionNumber
 	}
 
-	// Separate players by status
-	regularPlayers := []PlayerWithVirtualDiv{}
-	graduates := []PlayerWithVirtualDiv{}
-	newPlayers := []PlayerWithVirtualDiv{}
+	// Assign virtual divisions for all players based on their status
+	result := make([]PlayerWithVirtualDiv, len(players))
 
-	for _, p := range players {
-		switch p.PlacementStatus {
-		case ipc.PlacementStatus_PLACEMENT_GRADUATED:
-			graduates = append(graduates, p)
-		case ipc.PlacementStatus_PLACEMENT_NEW:
-			newPlayers = append(newPlayers, p)
-		default:
-			regularPlayers = append(regularPlayers, p)
-		}
-	}
-
-	// Assign virtual divisions for regular players (PROMOTED/RELEGATED/STAYED/HIATUS)
-	for i, p := range regularPlayers {
+	for i, p := range players {
 		// Get their previous division number
 		history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
 			UserID:   p.UserDBID,
@@ -432,105 +387,31 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 			}
 		}
 
-		// Apply outcome
+		// Copy player data to result
+		result[i] = p
+
+		// Apply outcome to determine virtual division
 		switch p.PlacementStatus {
 		case ipc.PlacementStatus_PLACEMENT_PROMOTED:
-			regularPlayers[i].VirtualDivision = prevDivNumber - 1
-			if regularPlayers[i].VirtualDivision < 1 {
-				regularPlayers[i].VirtualDivision = 1
+			result[i].VirtualDivision = prevDivNumber - 1
+			if result[i].VirtualDivision < 1 {
+				result[i].VirtualDivision = 1
 			}
 		case ipc.PlacementStatus_PLACEMENT_RELEGATED:
-			regularPlayers[i].VirtualDivision = prevDivNumber + 1
-		case ipc.PlacementStatus_PLACEMENT_STAYED, ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
-			regularPlayers[i].VirtualDivision = prevDivNumber
-		default:
-			regularPlayers[i].VirtualDivision = prevDivNumber
-		}
-	}
-
-	// Assign virtual divisions for graduates using graduation formula
-	if len(graduates) > 0 {
-		// Get rookie standings from previous season
-		rookieStandings := []models.GetStandingsRow{}
-		for _, div := range prevDivisions {
-			if div.DivisionNumber >= RookieDivisionNumberBase {
-				standings, err := rm.stores.LeagueStore.GetStandings(ctx, div.Uuid)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get rookie standings: %w", err)
-				}
-				rookieStandings = append(rookieStandings, standings...)
-			}
-		}
-
-		// Sort by rank
-		sort.Slice(rookieStandings, func(i, j int) bool {
-			if rookieStandings[i].Rank.Valid && rookieStandings[j].Rank.Valid {
-				return rookieStandings[i].Rank.Int32 < rookieStandings[j].Rank.Int32
-			}
-			return false
-		})
-
-		// Use graduation formula
-		graduationMgr := NewGraduationManager(rm.stores.LeagueStore)
-		groups := graduationMgr.calculateGraduationGroups(rookieStandings, highestPrevDivNumber)
-
-		// Create map of userID -> virtual division
-		graduateVirtualDivs := make(map[string]int32)
-		for _, group := range groups {
-			for _, standing := range group.Rookies {
-				graduateVirtualDivs[standing.UserUuid.String] = group.TargetDivision
-			}
-		}
-
-		// Assign virtual divisions
-		for i, p := range graduates {
-			if vDiv, exists := graduateVirtualDivs[p.UserID]; exists {
-				graduates[i].VirtualDivision = vDiv
+			result[i].VirtualDivision = prevDivNumber + 1
+		case ipc.PlacementStatus_PLACEMENT_NEW:
+			// New players start at the highest division and low priority pushes them down
+			if highestPrevDivNumber > 0 {
+				result[i].VirtualDivision = highestPrevDivNumber
 			} else {
-				// Default to highest division if not found
-				graduates[i].VirtualDivision = highestPrevDivNumber
-				if graduates[i].VirtualDivision < 1 {
-					graduates[i].VirtualDivision = 1
-				}
+				result[i].VirtualDivision = 1
 			}
+		case ipc.PlacementStatus_PLACEMENT_STAYED, ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
+			result[i].VirtualDivision = prevDivNumber
+		default:
+			result[i].VirtualDivision = prevDivNumber
 		}
 	}
-
-	// Assign virtual divisions for new players (<10 new rookies placed directly)
-	if len(newPlayers) > 0 {
-		numVirtualDivs := highestPrevDivNumber
-		if numVirtualDivs < 1 {
-			numVirtualDivs = 1
-		}
-
-		// Sort by rating (highest first)
-		sort.Slice(newPlayers, func(i, j int) bool {
-			return newPlayers[i].Rating > newPlayers[j].Rating
-		})
-
-		if numVirtualDivs == 1 {
-			// All go to Division 1
-			for i := range newPlayers {
-				newPlayers[i].VirtualDivision = 1
-			}
-		} else {
-			// Split: top half -> second-to-bottom, bottom half -> bottom
-			midpoint := len(newPlayers) / 2
-			secondBottom := numVirtualDivs - 1
-			bottom := numVirtualDivs
-
-			for i := 0; i < midpoint; i++ {
-				newPlayers[i].VirtualDivision = secondBottom
-			}
-			for i := midpoint; i < len(newPlayers); i++ {
-				newPlayers[i].VirtualDivision = bottom
-			}
-		}
-	}
-
-	// Combine all players
-	result := append(regularPlayers, graduates...)
-	result = append(result, newPlayers...)
 
 	return result, nil
 }
@@ -552,8 +433,6 @@ func (rm *RebalanceManager) CalculatePriorityScores(
 			priorityBonus = PriorityBonusPromoted
 		case ipc.PlacementStatus_PLACEMENT_RELEGATED:
 			priorityBonus = PriorityBonusRelegated
-		case ipc.PlacementStatus_PLACEMENT_GRADUATED:
-			priorityBonus = PriorityBonusGraduated
 		case ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
 			priorityBonus = PriorityBonusHiatusReturning
 		case ipc.PlacementStatus_PLACEMENT_NEW:
@@ -577,9 +456,9 @@ func (rm *RebalanceManager) CalculatePriorityScores(
 		// Calculate priority score
 		// score = ((DivMultiplier * (num_virtual_divs - our_virtual_div)) + PriorityBonus + rankComponent) * Weight
 		score := float64(
-			(int64(DivisionMultiplier) * int64(numVirtualDivs - p.VirtualDivision)) +
-			priorityBonus +
-			rankComponent,
+			(int64(DivisionMultiplier)*int64(numVirtualDivs-p.VirtualDivision))+
+				priorityBonus+
+				rankComponent,
 		) * weight
 
 		result[i] = PlayerWithPriority{
@@ -626,6 +505,20 @@ func (rm *RebalanceManager) CreateDivisionsAndAssign(
 
 		targetDiv := createdDivisions[divIndex]
 
+		// Log player placement with priority score details
+		log.Info().
+			Str("username", player.Username).
+			Int("assignmentOrder", i+1).
+			Int32("divisionNumber", targetDiv.DivisionNumber).
+			Float64("priorityScore", player.PriorityScore).
+			Int32("virtualDivision", player.VirtualDivision).
+			Str("placementStatus", player.PlacementStatus.String()).
+			Int32("previousRank", player.PreviousRank).
+			Int("previousDivisionSize", player.PreviousDivisionSize).
+			Int32("hiatusSeasons", player.HiatusSeasons).
+			Int("rating", player.Rating).
+			Msg("Player division assignment")
+
 		// Assign player to this division
 		err := rm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
 			UserID:      player.UserDBID,
@@ -657,25 +550,18 @@ func (rm *RebalanceManager) MergeUndersizedFinalDivision(
 		return false, fmt.Errorf("failed to get divisions: %w", err)
 	}
 
-	// Filter to regular divisions and sort by number
-	regularDivs := []models.LeagueDivision{}
-	for _, div := range divisions {
-		if div.DivisionNumber < RookieDivisionNumberBase {
-			regularDivs = append(regularDivs, div)
-		}
-	}
-
-	sort.Slice(regularDivs, func(i, j int) bool {
-		return regularDivs[i].DivisionNumber < regularDivs[j].DivisionNumber
+	// Sort divisions by number
+	sort.Slice(divisions, func(i, j int) bool {
+		return divisions[i].DivisionNumber < divisions[j].DivisionNumber
 	})
 
-	if len(regularDivs) <= 1 {
+	if len(divisions) <= 1 {
 		return false, nil
 	}
 
 	// Get last division
-	lastDiv := regularDivs[len(regularDivs)-1]
-	secondToLast := regularDivs[len(regularDivs)-2]
+	lastDiv := divisions[len(divisions)-1]
+	secondToLast := divisions[len(divisions)-2]
 
 	// Count players in last division
 	lastDivPlayers, err := rm.stores.LeagueStore.GetDivisionRegistrations(ctx, lastDiv.Uuid)
@@ -694,133 +580,4 @@ func (rm *RebalanceManager) MergeUndersizedFinalDivision(
 	}
 
 	return false, nil
-}
-
-// calculateRookieDivisionSizes determines the optimal sizes for rookie divisions
-// Aims to keep divisions between MinRookieDivisionSize and idealDivisionSize
-// but will allow up to MaxRookieDivisionSize (20) to avoid divisions that are too small
-func calculateRookieDivisionSizes(numRookies int, idealDivisionSize int) []int {
-	if numRookies < MinPlayersForRookieDivision {
-		return []int{}
-	}
-
-	// For 10-20 rookies, use one division (up to max)
-	if numRookies <= MaxRookieDivisionSize {
-		return []int{numRookies}
-	}
-
-	// For more than MaxRookieDivisionSize, we need multiple divisions
-	// Start by trying to use the target (idealDivisionSize) as the goal
-	// Use ceiling for rookie divisions to prefer more smaller divisions
-	numDivisions := int(math.Ceil(float64(numRookies) / float64(idealDivisionSize)))
-	if numDivisions < 1 {
-		numDivisions = 1
-	}
-
-	// Calculate sizes with this number of divisions
-	baseSize := numRookies / numDivisions
-	remainder := numRookies % numDivisions
-	maxSize := baseSize
-	if remainder > 0 {
-		maxSize = baseSize + 1
-	}
-
-	// If the minimum size is too small, reduce number of divisions
-	// This will make divisions larger but still respect the max
-	for baseSize < MinRookieDivisionSize && numDivisions > 1 {
-		numDivisions--
-		baseSize = numRookies / numDivisions
-		remainder = numRookies % numDivisions
-		maxSize = baseSize
-		if remainder > 0 {
-			maxSize = baseSize + 1
-		}
-	}
-
-	// Verify we don't exceed the max
-	if maxSize > MaxRookieDivisionSize {
-		// Need more divisions to stay under max
-		numDivisions = (numRookies + MaxRookieDivisionSize - 1) / MaxRookieDivisionSize
-		baseSize = numRookies / numDivisions
-		remainder = numRookies % numDivisions
-	}
-
-	// Calculate actual sizes, distributing remainder across first divisions
-	sizes := make([]int, numDivisions)
-	for i := 0; i < numDivisions; i++ {
-		sizes[i] = baseSize
-		if i < remainder {
-			sizes[i]++
-		}
-	}
-
-	return sizes
-}
-
-// CreateRookieDivisionsAndAssign creates separate rookie divisions with balanced sizes (10-20 players each)
-// This should only be called when there are >= MinPlayersForRookieDivision new rookies
-func (rm *RebalanceManager) CreateRookieDivisionsAndAssign(
-	ctx context.Context,
-	seasonID uuid.UUID,
-	sortedRookies []CategorizedPlayer,
-	idealDivisionSize int32,
-) (*RookiePlacementResult, error) {
-	result := &RookiePlacementResult{
-		CreatedDivisions:         []models.LeagueDivision{},
-		PlacedInRookieDivisions:  []PlacedPlayer{},
-		PlacedInRegularDivisions: []PlacedPlayer{},
-	}
-
-	if len(sortedRookies) < MinPlayersForRookieDivision {
-		return nil, fmt.Errorf("not enough rookies for rookie divisions (need %d, got %d)",
-			MinPlayersForRookieDivision, len(sortedRookies))
-	}
-
-	// Calculate optimal division sizes
-	divisionSizes := calculateRookieDivisionSizes(len(sortedRookies), int(idealDivisionSize))
-
-	// Create divisions and assign players
-	playerIndex := 0
-	for divIndex, size := range divisionSizes {
-		// Create the division
-		divNumber := RookieDivisionNumberBase + divIndex
-		divName := fmt.Sprintf("Rookie Division %d", divIndex+1)
-
-		division, err := rm.stores.LeagueStore.CreateDivision(ctx, models.CreateDivisionParams{
-			Uuid:           uuid.New(),
-			SeasonID:       seasonID,
-			DivisionNumber: int32(divNumber),
-			DivisionName:   pgtype.Text{String: divName, Valid: true},
-			PlayerCount:    pgtype.Int4{Int32: int32(size), Valid: true},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create rookie division: %w", err)
-		}
-
-		result.CreatedDivisions = append(result.CreatedDivisions, division)
-
-		// Assign players to this division
-		for i := 0; i < size && playerIndex < len(sortedRookies); i++ {
-			rookie := sortedRookies[playerIndex]
-			playerIndex++
-
-			err := rm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
-				UserID:      rookie.Registration.UserID,
-				SeasonID:    seasonID,
-				DivisionID:  pgtype.UUID{Bytes: division.Uuid, Valid: true},
-				FirstsCount: pgtype.Int4{Int32: 0, Valid: true},
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to assign rookie to division: %w", err)
-			}
-
-			result.PlacedInRookieDivisions = append(result.PlacedInRookieDivisions, PlacedPlayer{
-				CategorizedPlayer: rookie,
-				DivisionID:        division.Uuid,
-				DivisionName:      divName,
-			})
-		}
-	}
-
-	return result, nil
 }

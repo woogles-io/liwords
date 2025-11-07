@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // TestMarkSeasonOutcomes tests that end-of-season processing correctly
@@ -55,7 +55,6 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		SeasonID:       seasonID,
 		DivisionNumber: 1,
 		DivisionName:   pgtype.Text{String: "Division 1", Valid: true},
-		PlayerCount:    pgtype.Int4{Int32: 3, Valid: true},
 	})
 	is.NoErr(err)
 
@@ -65,7 +64,6 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 		SeasonID:       seasonID,
 		DivisionNumber: 2,
 		DivisionName:   pgtype.Text{String: "Division 2", Valid: true},
-		PlayerCount:    pgtype.Int4{Int32: 3, Valid: true},
 	})
 	is.NoErr(err)
 
@@ -147,89 +145,4 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 	}
 	is.Equal(promoted, 1)
 	is.Equal(stayed, 2)
-}
-
-// TestMarkSeasonOutcomesWithRookieDivision tests that rookie divisions
-// don't get promotion/relegation outcomes
-func TestMarkSeasonOutcomesWithRookieDivision(t *testing.T) {
-	is := is.New(t)
-	ctx := context.Background()
-	_, store, cleanup := setupTest(t)
-	defer cleanup()
-
-	em := NewEndOfSeasonManager(store)
-
-	// Create league
-	league := uuid.New()
-	_, err := store.CreateLeague(ctx, models.CreateLeagueParams{
-		Uuid:        league,
-		Name:        "Test League",
-		Description: pgtype.Text{String: "Test", Valid: true},
-		Slug:        "test",
-		Settings:    []byte(`{}`),
-		IsActive:    pgtype.Bool{Bool: true, Valid: true},
-		CreatedBy:   pgtype.Int8{Int64: 1, Valid: true},
-	})
-	is.NoErr(err)
-
-	// Create season
-	seasonID := uuid.New()
-	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
-		Uuid:         seasonID,
-		LeagueID:     league,
-		SeasonNumber: 1,
-		StartDate:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		EndDate:      pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
-		Status:       int32(ipc.SeasonStatus_SEASON_ACTIVE),
-	})
-	is.NoErr(err)
-
-	// Create a rookie division (100+)
-	rookieDivID := uuid.New()
-	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
-		Uuid:           rookieDivID,
-		SeasonID:       seasonID,
-		DivisionNumber: RookieDivisionNumberBase, // 100
-		DivisionName:   pgtype.Text{String: "Rookie Division 1", Valid: true},
-		PlayerCount:    pgtype.Int4{Int32: 10, Valid: true},
-	})
-	is.NoErr(err)
-
-	// Register 10 rookies
-	for i := 1; i <= 10; i++ {
-		_, err := store.RegisterPlayer(ctx, models.RegisterPlayerParams{
-			UserID:           int32(i),
-			SeasonID:         seasonID,
-			DivisionID:       pgtype.UUID{Bytes: rookieDivID, Valid: true},
-			RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
-			Status:           pgtype.Text{String: "ACTIVE", Valid: true},
-			SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true},
-		})
-		is.NoErr(err)
-	}
-
-	// Mark season outcomes
-	err = em.MarkSeasonOutcomes(ctx, seasonID)
-	is.NoErr(err)
-
-	// Verify rookie division
-	// Rookie divisions are treated as lowest division for marking purposes
-	// Top performers (ceil(10/6) = 2) get PROMOTED
-	// Middle/Bottom performers (8) get STAYED (can't relegate from lowest)
-	rookieRegs, err := store.GetDivisionRegistrations(ctx, rookieDivID)
-	is.NoErr(err)
-	is.Equal(len(rookieRegs), 10)
-
-	var promoted, stayed int
-	for _, reg := range rookieRegs {
-		is.True(reg.PlacementStatus.Valid)
-		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_PROMOTED) {
-			promoted++
-		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
-			stayed++
-		}
-	}
-	is.Equal(promoted, 2) // ceil(10/6) = 2
-	is.Equal(stayed, 8)   // Rest stay
 }

@@ -94,7 +94,6 @@ enum StandingResult {
 enum PlacementStatus {
     PLACEMENT_NONE = 0;
     PLACEMENT_NEW = 1;  // Brand new player
-    PLACEMENT_GRADUATED = 2;  // Rookie graduating to regular divisions
     PLACEMENT_PROMOTED = 3;  // Promoted from lower division
     PLACEMENT_RELEGATED = 4;  // Relegated from higher division
     PLACEMENT_STAYED = 5;  // Stayed in same division

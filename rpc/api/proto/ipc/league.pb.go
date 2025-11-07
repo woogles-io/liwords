@@ -138,7 +138,6 @@ type PlacementStatus int32
 const (
 	PlacementStatus_PLACEMENT_NONE                   PlacementStatus = 0
 	PlacementStatus_PLACEMENT_NEW                    PlacementStatus = 1 // Brand new player
-	PlacementStatus_PLACEMENT_GRADUATED              PlacementStatus = 2 // Rookie graduating to regular divisions
 	PlacementStatus_PLACEMENT_PROMOTED               PlacementStatus = 3 // Promoted from lower division
 	PlacementStatus_PLACEMENT_RELEGATED              PlacementStatus = 4 // Relegated from higher division
 	PlacementStatus_PLACEMENT_STAYED                 PlacementStatus = 5 // Stayed in same division
@@ -151,7 +150,6 @@ var (
 	PlacementStatus_name = map[int32]string{
 		0: "PLACEMENT_NONE",
 		1: "PLACEMENT_NEW",
-		2: "PLACEMENT_GRADUATED",
 		3: "PLACEMENT_PROMOTED",
 		4: "PLACEMENT_RELEGATED",
 		5: "PLACEMENT_STAYED",
@@ -161,7 +159,6 @@ var (
 	PlacementStatus_value = map[string]int32{
 		"PLACEMENT_NONE":                   0,
 		"PLACEMENT_NEW":                    1,
-		"PLACEMENT_GRADUATED":              2,
 		"PLACEMENT_PROMOTED":               3,
 		"PLACEMENT_RELEGATED":              4,
 		"PLACEMENT_STAYED":                 5,
@@ -899,11 +896,10 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\x0fRESULT_PROMOTED\x10\x01\x12\x14\n" +
 	"\x10RESULT_RELEGATED\x10\x02\x12\x11\n" +
 	"\rRESULT_STAYED\x10\x03\x12\x13\n" +
-	"\x0fRESULT_CHAMPION\x10\x04*\xe3\x01\n" +
+	"\x0fRESULT_CHAMPION\x10\x04*\xca\x01\n" +
 	"\x0fPlacementStatus\x12\x12\n" +
 	"\x0ePLACEMENT_NONE\x10\x00\x12\x11\n" +
-	"\rPLACEMENT_NEW\x10\x01\x12\x17\n" +
-	"\x13PLACEMENT_GRADUATED\x10\x02\x12\x16\n" +
+	"\rPLACEMENT_NEW\x10\x01\x12\x16\n" +
 	"\x12PLACEMENT_PROMOTED\x10\x03\x12\x17\n" +
 	"\x13PLACEMENT_RELEGATED\x10\x04\x12\x14\n" +
 	"\x10PLACEMENT_STAYED\x10\x05\x12$\n" +

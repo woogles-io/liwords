@@ -35,7 +35,6 @@ CREATE TABLE league_divisions (
     season_id UUID NOT NULL REFERENCES league_seasons(uuid) ON DELETE CASCADE,
     division_number INT NOT NULL,
     division_name TEXT,
-    player_count INT,
     is_complete BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

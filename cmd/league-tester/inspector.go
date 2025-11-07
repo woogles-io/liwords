@@ -13,7 +13,7 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 	log.Info().Str("league", leagueSlugOrUUID).Msg("inspecting league")
 
 	// Initialize stores
-	allStores, err := initializeStores(ctx)
+	allStores, err := initStores(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,19 +73,22 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 				continue
 			}
 
-			divisionName := "Division"
-			if division.DivisionName.Valid {
+			divisionName := fmt.Sprintf("Division %d", division.DivisionNumber)
+			if division.DivisionName.Valid && division.DivisionName.String != "" {
 				divisionName = division.DivisionName.String
 			}
 
-			playerCount := int32(0)
-			if division.PlayerCount.Valid {
-				playerCount = division.PlayerCount.Int32
+			// Count actual players assigned to this division
+			registrations, err := allStores.LeagueStore.GetDivisionRegistrations(ctx, division.Uuid)
+			if err != nil {
+				log.Err(err).Msg("failed to get division registrations")
+				continue
 			}
 
-			fmt.Printf("  %s %d (%d players)\n", divisionName, division.DivisionNumber, playerCount)
+			playerCount := len(registrations)
+			fmt.Printf("  %s (%d players)\n", divisionName, playerCount)
 
-			// Get standings
+			// Get standings for display
 			standings, err := allStores.LeagueStore.GetStandings(ctx, divisionUUID)
 			if err != nil {
 				log.Err(err).Msg("failed to get standings")
