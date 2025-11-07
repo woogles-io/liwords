@@ -47,6 +47,25 @@ FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC;
 
+-- name: GetRecentCorrespondenceGamesByUsername :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
+  FROM game_players gp
+  JOIN games g ON gp.game_uuid = g.uuid
+  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+  ORDER BY gp.created_at DESC
+  LIMIT @num_games::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC;
+
 -- name: GetRecentGamesByPlayerID :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.created_at

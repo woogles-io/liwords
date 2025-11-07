@@ -425,7 +425,9 @@ p {
 .lobby:not(.room) .chat-area {
   .ant-card.chat {
     .ant-tabs-content-holder {
-      height: calc(100% - 56px); // Subtract tab nav height (48px base + 8px extra)
+      height: calc(
+        100% - 56px
+      ); // Subtract tab nav height (48px base + 8px extra)
     }
   }
 }

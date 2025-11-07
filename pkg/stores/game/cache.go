@@ -22,6 +22,7 @@ type backingStore interface {
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*pb.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error)
+	GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	CreateRaw(context.Context, *entity.Game, pb.GameType) error
@@ -152,6 +153,10 @@ func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames in
 
 func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.GameInfoResponses, error) {
 	return c.backing.GetRecentTourneyGames(ctx, tourneyID, numGames, offset)
+}
+
+func (c *Cache) GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error) {
+	return c.backing.GetRecentCorrespondenceGames(ctx, username, numGames)
 }
 
 // Similar to get but does not unmarshal the stats and timers and does

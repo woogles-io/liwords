@@ -1,6 +1,16 @@
-import { Table, Tooltip, Badge } from "antd";
-import { FundOutlined, ClockCircleOutlined } from "@ant-design/icons";
-import React, { ReactNode, useCallback, useMemo } from "react";
+import { Table, Tooltip, Badge, Tag } from "antd";
+import {
+  FundOutlined,
+  ClockCircleOutlined,
+  TrophyOutlined,
+} from "@ant-design/icons";
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
 import { challengeFormat, PlayerDisplay, SoughtGames } from "./sought_games";
@@ -10,6 +20,12 @@ import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { useLoginStateStoreContext } from "../store/store";
 import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 import { ProfileUpdate_Rating } from "../gen/api/proto/ipc/users_pb";
+import {
+  GameEndReason,
+  GameInfoResponse,
+} from "../gen/api/proto/ipc/omgwords_pb";
+import { useClient } from "../utils/hooks/connect";
+import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 type Props = {
   correspondenceGames: ActiveGame[];
@@ -25,6 +41,27 @@ export const CorrespondenceGames = (props: Props) => {
   const {
     loginState: { userID },
   } = useLoginStateStoreContext();
+  const gameMetadataClient = useClient(GameMetadataService);
+  const [recentGames, setRecentGames] = useState<GameInfoResponse[]>([]);
+
+  // Fetch recent correspondence games
+  useEffect(() => {
+    if (!props.username) return;
+
+    const fetchRecentGames = async () => {
+      try {
+        const resp = await gameMetadataClient.getRecentCorrespondenceGames({
+          username: props.username,
+          numGames: 10,
+        });
+        setRecentGames(resp.gameInfo);
+      } catch (e) {
+        console.error("Failed to fetch recent correspondence games:", e);
+      }
+    };
+
+    fetchRecentGames();
+  }, [props.username, gameMetadataClient]);
 
   type CorrespondenceGameTableData = {
     gameID: string;
@@ -38,6 +75,8 @@ export const CorrespondenceGames = (props: Props) => {
     player2: string;
     variant: string;
     timeRemaining: number; // Time remaining in seconds, or Infinity if not applicable
+    finalScore?: ReactNode; // For finished games
+    endReason?: ReactNode; // For finished games
   };
 
   // Group games by variant
@@ -166,9 +205,122 @@ export const CorrespondenceGames = (props: Props) => {
     [userID],
   );
 
+  // Format recent (finished) games
+  const formatRecentGameData = useCallback(
+    (games: GameInfoResponse[]): CorrespondenceGameTableData[] => {
+      return games.map((g: GameInfoResponse) => {
+        const player1 = g.players[0];
+        const player2 = g.players[1];
+        const player1rating = player1?.rating || "1500?";
+        const player2rating = player2?.rating || "1500?";
+
+        // Show final scores and end reason
+        const score1 = g.scores[0] ?? 0;
+        const score2 = g.scores[1] ?? 0;
+
+        // Determine end reason text
+        let endReasonText = "";
+        switch (g.gameEndReason) {
+          case GameEndReason.TIME:
+            endReasonText = "Time out";
+            break;
+          case GameEndReason.STANDARD:
+            endReasonText = "Completed";
+            break;
+          case GameEndReason.RESIGNED:
+            endReasonText = "Resigned";
+            break;
+          case GameEndReason.CONSECUTIVE_ZEROES:
+            endReasonText = "Six zeroes";
+            break;
+          case GameEndReason.TRIPLE_CHALLENGE:
+            endReasonText = "Triple challenge";
+            break;
+          case GameEndReason.FORCE_FORFEIT:
+            endReasonText = "Forfeit";
+            break;
+          default:
+            endReasonText = "Ended";
+        }
+
+        // Determine if user won, lost, or tied
+        let resultBadge: ReactNode = null;
+        const userPlayerIndex = g.players.findIndex((p) => p.userId === userID);
+        if (userPlayerIndex !== -1) {
+          if (g.winner === userPlayerIndex) {
+            resultBadge = <Tag color="green">Won</Tag>;
+          } else if (g.winner === -1) {
+            resultBadge = <Tag>Tie</Tag>;
+          } else {
+            resultBadge = <Tag color="red">Lost</Tag>;
+          }
+        }
+
+        const finalScore = (
+          <span style={{ opacity: 0.8 }}>
+            {resultBadge} {score1}–{score2}
+          </span>
+        );
+
+        const endReason = <span style={{ opacity: 0.8 }}>{endReasonText}</span>;
+
+        return {
+          gameID: g.gameId,
+          players: (
+            <>
+              <div>
+                <PlayerDisplay
+                  username={player1?.nickname || ""}
+                  userID={player1?.userId}
+                />
+              </div>
+              <div>
+                <PlayerDisplay
+                  username={player2?.nickname || ""}
+                  userID={player2?.userId}
+                />
+              </div>
+            </>
+          ),
+          turn: finalScore, // Keep for compatibility
+          finalScore,
+          endReason,
+          lexicon: (
+            <MatchLexiconDisplay lexiconCode={g.gameRequest?.lexicon || ""} />
+          ),
+          lexiconCode: g.gameRequest?.lexicon || "",
+          onTurn: false, // Finished games aren't anyone's turn
+          details: g.tournamentId ? (
+            <span className="tourney-name">{g.tournamentId}</span>
+          ) : (
+            <>
+              <VariantIcon vcode={g.gameRequest?.rules?.variantName || ""} />{" "}
+              {challengeFormat(g.gameRequest?.challengeRule || 0)}
+              {g.gameRequest?.ratingMode === 0 ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
+            </>
+          ),
+          player1: player1?.nickname || "",
+          player2: player2?.nickname || "",
+          variant: g.gameRequest?.rules?.variantName || "",
+          timeRemaining: Infinity, // Not relevant for finished games
+        };
+      });
+    },
+    [userID],
+  );
+
   const data = useMemo(
     () => formatGameData(props.correspondenceGames),
     [props.correspondenceGames, formatGameData],
+  );
+
+  const recentData = useMemo(
+    () => formatRecentGameData(recentGames),
+    [recentGames, formatRecentGameData],
   );
 
   const handleRowClick = (record: CorrespondenceGameTableData) => {
@@ -187,6 +339,48 @@ export const CorrespondenceGames = (props: Props) => {
       className: "turn",
       dataIndex: "turn",
       key: "turn",
+    },
+    {
+      title: "Words",
+      className: "lexicon",
+      dataIndex: "lexicon",
+      key: "lexicon",
+      filters: lexiconOrder.map((l) => ({
+        text: <MatchLexiconDisplay lexiconCode={l} />,
+        value: l,
+      })),
+      filterMultiple: true,
+      onFilter: (
+        value: React.Key | boolean,
+        record: CorrespondenceGameTableData,
+      ) => typeof value === "string" && record.lexiconCode === value,
+    },
+    {
+      title: "Details",
+      className: "details",
+      dataIndex: "details",
+      key: "details",
+    },
+  ];
+
+  const finishedGameColumns = [
+    {
+      title: "Players",
+      className: "players",
+      dataIndex: "players",
+      key: "players",
+    },
+    {
+      title: "Final Score",
+      className: "final-score",
+      dataIndex: "finalScore",
+      key: "finalScore",
+    },
+    {
+      title: "End",
+      className: "end-reason",
+      dataIndex: "endReason",
+      key: "endReason",
     },
     {
       title: "Words",
@@ -283,6 +477,73 @@ export const CorrespondenceGames = (props: Props) => {
           />
         </React.Fragment>
       ))}
+
+      {recentData.length > 0 && (
+        <>
+          <h4 style={{ marginTop: "32px", opacity: 0.8 }}>
+            Recently ended games
+          </h4>
+          {Object.keys(groupGamesByVariant(recentData))
+            .sort((a, b) => {
+              const indexA = variantOrder.indexOf(a);
+              const indexB = variantOrder.indexOf(b);
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              return indexA - indexB;
+            })
+            .map((variant) => {
+              const variantGames = groupGamesByVariant(recentData)[variant];
+              return (
+                <React.Fragment key={`recent-${variant}`}>
+                  <VariantSectionHeader variant={variant} />
+                  <Table
+                    className="games observe correspondence-games finished-games"
+                    dataSource={variantGames}
+                    columns={finishedGameColumns}
+                    pagination={false}
+                    rowKey="gameID"
+                    showSorterTooltip={false}
+                    onRow={(record) => ({
+                      onClick: (event) => {
+                        if (event.ctrlKey || event.altKey || event.metaKey) {
+                          window.open(
+                            `/game/${encodeURIComponent(record.gameID)}`,
+                          );
+                        } else {
+                          navigate(
+                            `/game/${encodeURIComponent(record.gameID)}`,
+                          );
+                        }
+                      },
+                      onAuxClick: (event) => {
+                        if (event.button === 1) {
+                          // middle-click
+                          window.open(
+                            `/game/${encodeURIComponent(record.gameID)}`,
+                          );
+                        }
+                      },
+                    })}
+                    rowClassName={(record) => {
+                      const classes = ["game-listing", "finished-game"];
+                      if (
+                        props.username &&
+                        (record.player1 === props.username ||
+                          record.player2 === props.username)
+                      ) {
+                        classes.push("my-game");
+                      }
+                      return classes.join(" ");
+                    }}
+                    locale={{
+                      emptyText: "No recently ended correspondence games",
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })}
+        </>
+      )}
     </>
   );
 };

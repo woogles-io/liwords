@@ -131,6 +131,44 @@ func (gs *GameService) GetActiveCorrespondenceGames(ctx context.Context, req *co
 	return connect.NewResponse(resp), nil
 }
 
+// GetRecentCorrespondenceGames gets recently ended correspondence games for a user.
+func (gs *GameService) GetRecentCorrespondenceGames(ctx context.Context, req *connect.Request[pb.RecentCorrespondenceGamesRequest],
+) (*connect.Response[ipc.GameInfoResponses], error) {
+	resp, err := gs.gameStore.GetRecentCorrespondenceGames(ctx, req.Msg.Username, int(req.Msg.NumGames))
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	user, err := gs.userStore.Get(ctx, req.Msg.Username)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	if mod.IsCensorable(ctx, gs.userStore, user.UUID) {
+		// This view requires authentication.
+		sess, err := apiserver.GetSession(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		viewer, err := gs.userStore.Get(ctx, sess.Username)
+		if err != nil {
+			log.Err(err).Msg("getting-user")
+			return nil, apiserver.InternalErr(err)
+		}
+
+		privilegedViewer, err := gs.queries.HasPermission(ctx, models.HasPermissionParams{
+			UserID:     int32(viewer.ID),
+			Permission: string(rbac.CanModerateUsers),
+		})
+
+		if !privilegedViewer {
+			return connect.NewResponse(&ipc.GameInfoResponses{}), nil
+		}
+	}
+	// Censors the responses in-place
+	censorGameInfoResponses(ctx, gs.userStore, resp)
+	return connect.NewResponse(resp), nil
+}
+
 // GetGCG downloads a GCG for a full native game, or a partial GCG
 // for an annotated game.
 func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRequest],

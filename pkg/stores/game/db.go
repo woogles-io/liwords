@@ -443,6 +443,71 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
+func (s *DBStore) GetRecentCorrespondenceGames(ctx context.Context, username string, numGames int) (*pb.GameInfoResponses, error) {
+	if numGames > MaxRecentGames {
+		return nil, errors.New("too many games")
+	}
+
+	games, err := s.queries.GetRecentCorrespondenceGamesByUsername(ctx, models.GetRecentCorrespondenceGamesByUsernameParams{
+		Username: username,
+		NumGames: int32(numGames),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	responses := []*pb.GameInfoResponse{}
+	for _, g := range games {
+		// Convert directly from GetRecentCorrespondenceGamesRow
+		mdata := g.Quickdata
+
+		gamereq := &g.GameRequest
+
+		timefmt := safeTimeControlFromGameReq(gamereq, g.Uuid.String)
+
+		trdata := g.TournamentData
+		tDiv := trdata.Division
+		tRound := trdata.Round
+		tGameIndex := trdata.GameIndex
+		tid := trdata.Id
+
+		winner := int32(-1)
+		if g.WinnerIdx.Valid {
+			winner = g.WinnerIdx.Int32
+		}
+
+		endReason := pb.GameEndReason_NONE
+		if g.GameEndReason.Valid {
+			endReason = pb.GameEndReason(g.GameEndReason.Int32)
+		}
+
+		gType := pb.GameType_NATIVE
+		if g.Type.Valid {
+			gType = pb.GameType(g.Type.Int32)
+		}
+
+		info := &pb.GameInfoResponse{
+			Players:             mdata.PlayerInfo,
+			GameEndReason:       endReason,
+			Scores:              mdata.FinalScores,
+			Winner:              winner,
+			TimeControlName:     string(timefmt),
+			CreatedAt:           timestamppb.New(g.CreatedAt.Time),
+			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
+			GameId:              g.Uuid.String,
+			TournamentId:        tid,
+			GameRequest:         gamereq.GameRequest,
+			TournamentDivision:  tDiv,
+			TournamentRound:     int32(tRound),
+			TournamentGameIndex: int32(tGameIndex),
+			Type:                gType,
+		}
+		responses = append(responses, info)
+	}
+
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
