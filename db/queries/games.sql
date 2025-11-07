@@ -14,7 +14,8 @@ SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, tournament_data, tournament_id,
-    created_at, updated_at, game_request
+    created_at, updated_at, game_request,
+    league_id, season_id, league_division_id
 FROM games
 WHERE uuid = @uuid;
 
@@ -42,7 +43,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC;
@@ -79,7 +80,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC;
@@ -97,7 +98,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC;
@@ -106,7 +107,8 @@ ORDER BY rgu.created_at DESC;
 SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, tournament_data, created_at, updated_at, game_request
+    quickdata, tournament_data, created_at, updated_at, game_request,
+    league_id, season_id, league_division_id
 FROM games
 WHERE tournament_id = @tourney_id::text
     AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
@@ -159,14 +161,14 @@ INSERT INTO games (
 );
 
 -- name: ListActiveGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
 ORDER BY id;
 
 -- name: ListActiveTournamentGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = @tournament_id::text
@@ -174,14 +176,14 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games

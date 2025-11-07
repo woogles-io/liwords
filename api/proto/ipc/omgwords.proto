@@ -224,6 +224,9 @@ message GameInfoResponse {
   // Index of the player whose turn it is (0 or 1). Optional for backwards
   // compatibility.
   optional uint32 player_on_turn = 24;
+  // League information
+  string league_id = 25;
+  string league_slug = 26;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }

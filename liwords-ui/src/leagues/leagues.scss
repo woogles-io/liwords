@@ -400,3 +400,54 @@
     }
   }
 }
+
+// League correspondence games styles
+.league-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .league-game-item {
+    padding: 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    @include colorModed {
+      background: m($card-background);
+      border: 1px solid m($gray-subtle);
+
+      &:hover {
+        background: m($off-background);
+      }
+
+      &.user-turn {
+        background: m($off-background);
+        border-color: m($gray-medium);
+      }
+    }
+
+    .game-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .opponent-name {
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .turn-indicator {
+        font-size: 12px;
+        font-weight: 600;
+
+        @include colorModed {
+          color: m($gray-medium);
+        }
+
+        &.low-time {
+          color: #ff4d4f;
+        }
+      }
+    }
+  }
+}

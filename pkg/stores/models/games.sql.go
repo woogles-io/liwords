@@ -193,28 +193,32 @@ SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, tournament_data, tournament_id,
-    created_at, updated_at, game_request
+    created_at, updated_at, game_request,
+    league_id, season_id, league_division_id
 FROM games
 WHERE uuid = $1
 `
 
 type GetGameMetadataRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGameMetadataRow, error) {
@@ -237,6 +241,9 @@ func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGam
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GameRequest,
+		&i.LeagueID,
+		&i.SeasonID,
+		&i.LeagueDivisionID,
 	)
 	return i, err
 }
@@ -368,7 +375,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC
@@ -381,21 +388,24 @@ type GetRecentGamesByPlayerIDParams struct {
 }
 
 type GetRecentGamesByPlayerIDRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) GetRecentGamesByPlayerID(ctx context.Context, arg GetRecentGamesByPlayerIDParams) ([]GetRecentGamesByPlayerIDRow, error) {
@@ -423,6 +433,9 @@ func (q *Queries) GetRecentGamesByPlayerID(ctx context.Context, arg GetRecentGam
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -447,7 +460,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC
@@ -460,21 +473,24 @@ type GetRecentGamesByUsernameParams struct {
 }
 
 type GetRecentGamesByUsernameRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
@@ -502,6 +518,9 @@ func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGam
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -526,7 +545,7 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.created_at DESC
@@ -539,21 +558,24 @@ type GetRecentGamesByUsernameOptimizedParams struct {
 }
 
 type GetRecentGamesByUsernameOptimizedRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) GetRecentGamesByUsernameOptimized(ctx context.Context, arg GetRecentGamesByUsernameOptimizedParams) ([]GetRecentGamesByUsernameOptimizedRow, error) {
@@ -581,6 +603,9 @@ func (q *Queries) GetRecentGamesByUsernameOptimized(ctx context.Context, arg Get
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -596,7 +621,8 @@ const getRecentTourneyGames = `-- name: GetRecentTourneyGames :many
 SELECT
     id, uuid, type, player0_id, player1_id,
     timers, started, game_end_reason, winner_idx, loser_idx,
-    quickdata, tournament_data, created_at, updated_at, game_request
+    quickdata, tournament_data, created_at, updated_at, game_request,
+    league_id, season_id, league_division_id
 FROM games
 WHERE tournament_id = $1::text
     AND game_end_reason NOT IN (0, 5, 7) -- NONE, ABORTED, CANCELLED
@@ -612,21 +638,24 @@ type GetRecentTourneyGamesParams struct {
 }
 
 type GetRecentTourneyGamesRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourneyGamesParams) ([]GetRecentTourneyGamesRow, error) {
@@ -654,6 +683,9 @@ func (q *Queries) GetRecentTourneyGames(ctx context.Context, arg GetRecentTourne
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -780,7 +812,7 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 }
 
 const listActiveCorrespondenceGames = `-- name: ListActiveCorrespondenceGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -788,15 +820,18 @@ ORDER BY id
 `
 
 type ListActiveCorrespondenceGamesRow struct {
-	Quickdata      entity.Quickdata
-	Uuid           pgtype.Text
-	Started        pgtype.Bool
-	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
-	Timers         entity.Timers
-	Type           pgtype.Int4
-	UpdatedAt      pgtype.Timestamptz
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	Timers           entity.Timers
+	Type             pgtype.Int4
+	UpdatedAt        pgtype.Timestamptz
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActiveCorrespondenceGamesRow, error) {
@@ -818,6 +853,9 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 			&i.Timers,
 			&i.Type,
 			&i.UpdatedAt,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -830,7 +868,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 }
 
 const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -842,13 +880,16 @@ ORDER BY id
 `
 
 type ListActiveCorrespondenceGamesForUserRow struct {
-	Quickdata      entity.Quickdata
-	Uuid           pgtype.Text
-	Started        pgtype.Bool
-	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
-	UpdatedAt      pgtype.Timestamptz
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	UpdatedAt        pgtype.Timestamptz
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, userUuid string) ([]ListActiveCorrespondenceGamesForUserRow, error) {
@@ -868,6 +909,9 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 			&i.GameRequest,
 			&i.PlayerOnTurn,
 			&i.UpdatedAt,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -920,7 +964,7 @@ func (q *Queries) ListActiveCorrespondenceGamesWithBotOnTurn(ctx context.Context
 }
 
 const listActiveGames = `-- name: ListActiveGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
@@ -928,12 +972,15 @@ ORDER BY id
 `
 
 type ListActiveGamesRow struct {
-	Quickdata      entity.Quickdata
-	Uuid           pgtype.Text
-	Started        pgtype.Bool
-	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, error) {
@@ -952,6 +999,9 @@ func (q *Queries) ListActiveGames(ctx context.Context) ([]ListActiveGamesRow, er
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -1002,7 +1052,7 @@ func (q *Queries) ListActiveRealtimeGamesWithBotOnTurn(ctx context.Context) ([]p
 }
 
 const listActiveTournamentGames = `-- name: ListActiveTournamentGames :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, league_id, season_id, league_division_id
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND tournament_id = $1::text
@@ -1011,12 +1061,15 @@ ORDER BY id
 `
 
 type ListActiveTournamentGamesRow struct {
-	Quickdata      entity.Quickdata
-	Uuid           pgtype.Text
-	Started        pgtype.Bool
-	TournamentData entity.TournamentData
-	GameRequest    entity.GameRequest
-	PlayerOnTurn   pgtype.Int4
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID string) ([]ListActiveTournamentGamesRow, error) {
@@ -1035,6 +1088,9 @@ func (q *Queries) ListActiveTournamentGames(ctx context.Context, tournamentID st
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
 		); err != nil {
 			return nil, err
 		}

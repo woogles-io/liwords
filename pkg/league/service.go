@@ -930,87 +930,54 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		return nil, apiserver.InvalidArg("invalid season_id")
 	}
 
-	// Parse user ID
+	// User ID is required
 	userID := req.Msg.UserId
 	if userID == "" {
 		return nil, apiserver.InvalidArg("user_id is required")
 	}
 
-	// Get all divisions for this season
-	divisions, err := ls.store.GetDivisionsBySeason(ctx, seasonID)
+	// Use the new query that joins with game_players table
+	gameRows, err := ls.queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+		UserUuid: pgtype.Text{String: userID, Valid: true},
+	})
 	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get divisions: %w", err))
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player season games: %w", err))
 	}
 
-	// Collect all games from all divisions where the user is a participant
-	var allGames []*pb.PlayerSeasonGame
-	for _, division := range divisions {
-		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
-		if err != nil {
-			continue
-		}
+	// Convert to proto
+	allGames := make([]*pb.PlayerSeasonGame, 0, len(gameRows))
+	for _, row := range gameRows {
+		// Determine result from the won field and game_end_reason
+		result := "in_progress"
+		playerScore := int32(0)
+		opponentScore := int32(0)
 
-		// Get all league games for this division
-		games, err := ls.store.GetLeagueGames(ctx, divisionUUID)
+		if row.GameEndReason != 0 { // Game is finished
+			playerScore = row.PlayerScore
+			opponentScore = row.OpponentScore
 
-		if err != nil {
-			continue
-		}
-
-		// Filter games where the user is a participant
-		for _, gameRow := range games {
-			// Load full game entity to get player info
-			game, err := ls.stores.GameStore.Get(ctx, gameRow.Uuid.String)
-			if err != nil {
-				continue
-			}
-
-			// Check if user is a participant
-			playerIndex := -1
-			if game.History().Players[0].UserId == userID {
-				playerIndex = 0
-			} else if game.History().Players[1].UserId == userID {
-				playerIndex = 1
-			}
-
-			if playerIndex == -1 {
-				continue // User not in this game
-			}
-
-			opponentIndex := 1 - playerIndex
-			opponentUserID := game.History().Players[opponentIndex].UserId
-			opponentUsername := game.History().Players[opponentIndex].Nickname
-
-			// Determine result
-			result := "in_progress"
-			playerScore := int32(0)
-			opponentScore := int32(0)
-
-			if game.GameEndReason != ipc.GameEndReason_NONE {
-				// Game is finished
-				playerScore = int32(game.PointsFor(playerIndex))
-				opponentScore = int32(game.PointsFor(opponentIndex))
-
-				if game.WinnerIdx == playerIndex {
+			if row.Won.Valid {
+				if row.Won.Bool {
 					result = "win"
-				} else if game.LoserIdx == playerIndex {
-					result = "loss"
 				} else {
-					result = "draw"
+					result = "loss"
 				}
+			} else {
+				result = "draw"
 			}
-
-			allGames = append(allGames, &pb.PlayerSeasonGame{
-				GameId:           game.GameID(),
-				OpponentUserId:   opponentUserID,
-				OpponentUsername: opponentUsername,
-				PlayerScore:      playerScore,
-				OpponentScore:    opponentScore,
-				Result:           result,
-				GameDate:         timestamppb.New(game.CreatedAt),
-				Round:            0, // TODO: Add round info if available
-			})
 		}
+
+		allGames = append(allGames, &pb.PlayerSeasonGame{
+			GameId:           row.GameUuid.String,
+			OpponentUserId:   row.OpponentUuid.String,
+			OpponentUsername: row.OpponentUsername.String,
+			PlayerScore:      playerScore,
+			OpponentScore:    opponentScore,
+			Result:           result,
+			GameDate:         timestamppb.New(row.CreatedAt.Time), // Game creation date
+			Round:            0,                                    // TODO: Add round info if available
+		})
 	}
 
 	return connect.NewResponse(&pb.GetPlayerSeasonGamesResponse{

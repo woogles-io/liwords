@@ -2,7 +2,6 @@ import React from "react";
 import { Modal, Table, Tag, Spin } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { useNavigate } from "react-router";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type PlayerGameHistoryModalProps = {
@@ -11,6 +10,7 @@ type PlayerGameHistoryModalProps = {
   userId: string;
   username: string;
   seasonId: string;
+  seasonNumber: number;
 };
 
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
@@ -19,9 +19,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   userId,
   username,
   seasonId,
+  seasonNumber,
 }) => {
-  const navigate = useNavigate();
-
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
     userId,
     seasonId,
@@ -87,12 +86,12 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     })) || [];
 
   const handleRowClick = (record: { gameId: string }) => {
-    navigate(`/game/${record.gameId}`);
+    window.open(`/game/${record.gameId}`, "_blank");
   };
 
   return (
     <Modal
-      title={`${username}'s Season Games`}
+      title={`${username}'s Season ${seasonNumber} Games`}
       open={visible}
       onCancel={onClose}
       footer={null}

@@ -712,6 +712,75 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 	return i, err
 }
 
+const getPlayerSeasonGames = `-- name: GetPlayerSeasonGames :many
+SELECT
+    g.uuid as game_uuid,
+    g.created_at,
+    gp_player.player_id,
+    gp_player.score as player_score,
+    gp_player.opponent_score,
+    gp_player.won,
+    gp_player.game_end_reason,
+    u_opponent.uuid as opponent_uuid,
+    u_opponent.username as opponent_username
+FROM games g
+INNER JOIN game_players gp_player ON g.uuid = gp_player.game_uuid
+INNER JOIN users u_player ON gp_player.player_id = u_player.id
+INNER JOIN game_players gp_opponent ON g.uuid = gp_opponent.game_uuid AND gp_opponent.player_index = (1 - gp_player.player_index)
+INNER JOIN users u_opponent ON gp_opponent.player_id = u_opponent.id
+WHERE g.season_id = $1
+  AND u_player.uuid = $2
+ORDER BY g.created_at DESC
+`
+
+type GetPlayerSeasonGamesParams struct {
+	SeasonID pgtype.UUID
+	UserUuid pgtype.Text
+}
+
+type GetPlayerSeasonGamesRow struct {
+	GameUuid         pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	PlayerID         int32
+	PlayerScore      int32
+	OpponentScore    int32
+	Won              pgtype.Bool
+	GameEndReason    int16
+	OpponentUuid     pgtype.Text
+	OpponentUsername pgtype.Text
+}
+
+// Get all games for a specific player in a season with scores from game_players table
+func (q *Queries) GetPlayerSeasonGames(ctx context.Context, arg GetPlayerSeasonGamesParams) ([]GetPlayerSeasonGamesRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerSeasonGames, arg.SeasonID, arg.UserUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerSeasonGamesRow
+	for rows.Next() {
+		var i GetPlayerSeasonGamesRow
+		if err := rows.Scan(
+			&i.GameUuid,
+			&i.CreatedAt,
+			&i.PlayerID,
+			&i.PlayerScore,
+			&i.OpponentScore,
+			&i.Won,
+			&i.GameEndReason,
+			&i.OpponentUuid,
+			&i.OpponentUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerSeasonHistory = `-- name: GetPlayerSeasonHistory :many
 SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
 FROM league_registrations lr

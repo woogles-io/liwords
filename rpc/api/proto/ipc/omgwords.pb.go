@@ -1364,7 +1364,10 @@ type GameInfoResponse struct {
 	Type                GameType `protobuf:"varint,23,opt,name=type,proto3,enum=ipc.GameType" json:"type,omitempty"`
 	// Index of the player whose turn it is (0 or 1). Optional for backwards
 	// compatibility.
-	PlayerOnTurn  *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
+	PlayerOnTurn *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
+	// League information
+	LeagueId      string `protobuf:"bytes,25,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	LeagueSlug    string `protobuf:"bytes,26,opt,name=league_slug,json=leagueSlug,proto3" json:"league_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1502,6 +1505,20 @@ func (x *GameInfoResponse) GetPlayerOnTurn() uint32 {
 		return *x.PlayerOnTurn
 	}
 	return 0
+}
+
+func (x *GameInfoResponse) GetLeagueId() string {
+	if x != nil {
+		return x.LeagueId
+	}
+	return ""
+}
+
+func (x *GameInfoResponse) GetLeagueSlug() string {
+	if x != nil {
+		return x.LeagueSlug
+	}
+	return ""
 }
 
 type GameInfoResponses struct {
@@ -3287,7 +3304,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06rating\x18\x05 \x01(\tR\x06rating\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\x12\x15\n" +
 	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12\x18\n" +
-	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xb1\x05\n" +
+	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xef\x05\n" +
 	"\x10GameInfoResponse\x12)\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0f.ipc.PlayerInfoR\aplayers\x12*\n" +
 	"\x11time_control_name\x18\x04 \x01(\tR\x0ftimeControlName\x12#\n" +
@@ -3305,7 +3322,10 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x10tournament_round\x18\x15 \x01(\x05R\x0ftournamentRound\x122\n" +
 	"\x15tournament_game_index\x18\x16 \x01(\x05R\x13tournamentGameIndex\x12!\n" +
 	"\x04type\x18\x17 \x01(\x0e2\r.ipc.GameTypeR\x04type\x12)\n" +
-	"\x0eplayer_on_turn\x18\x18 \x01(\rH\x00R\fplayerOnTurn\x88\x01\x01B\x11\n" +
+	"\x0eplayer_on_turn\x18\x18 \x01(\rH\x00R\fplayerOnTurn\x88\x01\x01\x12\x1b\n" +
+	"\tleague_id\x18\x19 \x01(\tR\bleagueId\x12\x1f\n" +
+	"\vleague_slug\x18\x1a \x01(\tR\n" +
+	"leagueSlugB\x11\n" +
 	"\x0f_player_on_turn\"G\n" +
 	"\x11GameInfoResponses\x122\n" +
 	"\tgame_info\x18\x01 \x03(\v2\x15.ipc.GameInfoResponseR\bgameInfo\"\xcd\x01\n" +

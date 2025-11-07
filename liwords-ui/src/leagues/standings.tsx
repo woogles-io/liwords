@@ -9,6 +9,7 @@ type DivisionStandingsProps = {
   division: Division;
   totalDivisions: number;
   seasonId: string;
+  seasonNumber: number;
   currentUserId?: string;
 };
 
@@ -16,6 +17,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   division,
   totalDivisions,
   seasonId,
+  seasonNumber,
   currentUserId,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
@@ -164,6 +166,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           userId={selectedPlayer.userId}
           username={selectedPlayer.username}
           seasonId={seasonId}
+          seasonNumber={seasonNumber}
         />
       )}
     </div>

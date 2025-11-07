@@ -301,3 +301,24 @@ FROM games g
 LEFT JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
 LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
 WHERE g.uuid = $1;
+
+-- name: GetPlayerSeasonGames :many
+-- Get all games for a specific player in a season with scores from game_players table
+SELECT
+    g.uuid as game_uuid,
+    g.created_at,
+    gp_player.player_id,
+    gp_player.score as player_score,
+    gp_player.opponent_score,
+    gp_player.won,
+    gp_player.game_end_reason,
+    u_opponent.uuid as opponent_uuid,
+    u_opponent.username as opponent_username
+FROM games g
+INNER JOIN game_players gp_player ON g.uuid = gp_player.game_uuid
+INNER JOIN users u_player ON gp_player.player_id = u_player.id
+INNER JOIN game_players gp_opponent ON g.uuid = gp_opponent.game_uuid AND gp_opponent.player_index = (1 - gp_player.player_index)
+INNER JOIN users u_opponent ON gp_opponent.player_id = u_opponent.id
+WHERE g.season_id = @season_id
+  AND u_player.uuid = @user_uuid
+ORDER BY g.created_at DESC;

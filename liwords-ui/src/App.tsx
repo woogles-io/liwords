@@ -387,7 +387,12 @@ const App = React.memo(() => {
             <Route path="clubs" element={<Clubs />} />
             <Route path="leagues" element={<LeaguesList />} />
             <Route path="leagues/admin" element={<LeagueAdmin />} />
-            <Route path="leagues/:slug" element={<LeaguePage />} />
+            <Route
+              path="leagues/:slug"
+              element={
+                <LeaguePage sendSocketMsg={sendMessage} sendChat={sendChat} />
+              }
+            />
             <Route
               path="game/:gameID"
               element={

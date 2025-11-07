@@ -1497,6 +1497,29 @@ p.rune {
     }
   }
 
+  .league-name {
+    @include colorModed() {
+      color: m($primary-middle);
+    }
+
+    & {
+      font-size: 13px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    a {
+      @include colorModed() {
+        color: m($primary-middle);
+      }
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
   &.ant-card .ant-card-body {
     padding: 12px;
     display: flex;

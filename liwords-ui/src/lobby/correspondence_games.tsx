@@ -1,8 +1,8 @@
-import { Table, Tooltip, Badge, Tag } from "antd";
+import { Table, Tag, Tooltip } from "antd";
 import {
   FundOutlined,
   ClockCircleOutlined,
-  TrophyOutlined,
+  CrownOutlined,
 } from "@ant-design/icons";
 import React, {
   ReactNode,
@@ -179,6 +179,15 @@ export const CorrespondenceGames = (props: Props) => {
             details:
               ag.tournamentID !== "" ? (
                 <span className="tourney-name">{ag.tournamentID}</span>
+              ) : ag.leagueSlug ? (
+                <span className="league-game">
+                  <Tooltip title={`League Game: ${ag.leagueSlug}`}>
+                    <CrownOutlined
+                      style={{ color: "#faad14", marginRight: 4 }}
+                    />
+                  </Tooltip>
+                  League
+                </span>
               ) : (
                 <>
                   <VariantIcon vcode={ag.variant} />{" "}

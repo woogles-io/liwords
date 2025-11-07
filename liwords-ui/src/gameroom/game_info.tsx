@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, Button } from "antd";
 import { EditOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@connectrpc/connect-query";
 import { timeCtrlToDisplayName, timeToString } from "../store/constants";
@@ -112,6 +112,13 @@ export const GameInfo = React.memo((props: Props) => {
             style={{ color: props.colorOverride || "ignore" }}
           >
             {props.tournamentName}
+          </p>
+        )}
+        {props.meta.leagueSlug && (
+          <p className="league-name">
+            <Link to={`/leagues/${props.meta.leagueSlug}`}>
+              League Game: {props.meta.leagueSlug}
+            </Link>
           </p>
         )}
         <p className="variant">

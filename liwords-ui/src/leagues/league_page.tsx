@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Col, Row, Card, Spin, Button, Select, Space, Tag, Alert } from "antd";
-import { useParams } from "react-router";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useParams, Link } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../navigation/topbar";
@@ -15,12 +16,18 @@ import {
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
+import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
-export const LeaguePage = () => {
+type Props = {
+  sendSocketMsg: (msg: Uint8Array) => void;
+  sendChat: (msg: string, chan: string) => void;
+};
+
+export const LeaguePage = (props: Props) => {
   const { slug } = useParams<{ slug: string }>();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
@@ -254,6 +261,15 @@ export const LeaguePage = () => {
       </Row>
       <div className="leagues-container">
         <div className="league-header">
+          <Link to="/leagues">
+            <Button
+              type="link"
+              icon={<ArrowLeftOutlined />}
+              style={{ paddingLeft: 0, marginBottom: 8 }}
+            >
+              Back to Leagues
+            </Button>
+          </Link>
           <h1>{league.name}</h1>
           <p>{league.description}</p>
         </div>
@@ -440,6 +456,16 @@ export const LeaguePage = () => {
               standingsData &&
               standingsData.divisions.length > 0 && (
                 <div className="standings-container" style={{ marginTop: 16 }}>
+                  {standingsData.divisions.map((division) => (
+                    <DivisionStandings
+                      key={division.uuid}
+                      division={division}
+                      totalDivisions={standingsData.divisions.length}
+                      seasonId={displaySeasonId || ""}
+                      seasonNumber={displayedSeason?.seasonNumber || 0}
+                      currentUserId={userID}
+                    />
+                  ))}
                   <div className="standings-legend">
                     <p>
                       <strong>Promotion/Relegation Zones:</strong> Green
@@ -455,7 +481,9 @@ export const LeaguePage = () => {
                       <strong>Note:</strong> If additional divisions are added
                       in future seasons to maintain balance, some players from
                       the bottom division may be relegated to accommodate the
-                      new structure.
+                      new structure. These relegation and promotion zones are
+                      not always 100% set in stone, depending on how many
+                      players join or leave season to season.
                     </p>
                     <div style={{ marginTop: 12 }}>
                       <span className="legend-item">
@@ -468,22 +496,15 @@ export const LeaguePage = () => {
                       </span>
                     </div>
                   </div>
-                  {standingsData.divisions.map((division) => (
-                    <DivisionStandings
-                      key={division.uuid}
-                      division={division}
-                      totalDivisions={standingsData.divisions.length}
-                      seasonId={displaySeasonId || ""}
-                      currentUserId={userID}
-                    />
-                  ))}
                 </div>
               )}
           </Col>
 
-          {/* Right Column - Future Stats */}
+          {/* Right Column - League Games */}
           <Col xs={24} lg={6}>
-            {/* Reserved for future stats */}
+            {loggedIn && slug && (
+              <LeagueCorrespondenceGames leagueSlug={slug} />
+            )}
           </Col>
         </Row>
       </div>

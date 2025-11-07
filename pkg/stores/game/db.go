@@ -268,6 +268,21 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 		TournamentGameIndex: int32(tGameIndex),
 		Type:                gameType,
 	}
+
+	// Populate league fields if present
+	if g.LeagueID.Valid {
+		leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+		info.LeagueId = leagueUUID.String()
+
+		// Fetch league slug from database
+		league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+		if err == nil {
+			info.LeagueSlug = league.Slug
+		} else {
+			log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+		}
+	}
+
 	return info, nil
 }
 
@@ -386,6 +401,18 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 			TournamentGameIndex: int32(tGameIndex),
 			Type:                gType,
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			}
+		}
+
 		responses = append(responses, info)
 	}
 
@@ -660,6 +687,7 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	})
 }
 
+// ListActive lists all active games, except for correspondence games.
 func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
@@ -747,6 +775,21 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
 			info.PlayerOnTurn = &playerOnTurn
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			// Fetch league slug from database
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			} else {
+				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+			}
+		}
+
 		responses = append(responses, info)
 	}
 	log.Debug().Int("num-correspondence", len(responses)).Msg("list-active-correspondence")
@@ -784,6 +827,21 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
 			info.PlayerOnTurn = &playerOnTurn
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			// Fetch league slug from database
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			} else {
+				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+			}
+		}
+
 		responses = append(responses, info)
 	}
 	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Msg("list-active-correspondence-for-user")
