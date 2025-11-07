@@ -52,6 +52,9 @@ const (
 	// GameMetadataServiceGetGameDocumentProcedure is the fully-qualified name of the
 	// GameMetadataService's GetGameDocument RPC.
 	GameMetadataServiceGetGameDocumentProcedure = "/game_service.GameMetadataService/GetGameDocument"
+	// GameMetadataServiceGetActiveCorrespondenceGamesProcedure is the fully-qualified name of the
+	// GameMetadataService's GetActiveCorrespondenceGames RPC.
+	GameMetadataServiceGetActiveCorrespondenceGamesProcedure = "/game_service.GameMetadataService/GetActiveCorrespondenceGames"
 	// GameMetadataServiceUnfreezeBotProcedure is the fully-qualified name of the GameMetadataService's
 	// UnfreezeBot RPC.
 	GameMetadataServiceUnfreezeBotProcedure = "/game_service.GameMetadataService/UnfreezeBot"
@@ -71,6 +74,8 @@ type GameMetadataServiceClient interface {
 	// GetGameDocument gets a Game Document. This will eventually obsolete
 	// GetGameHistory. Does not work with annotated games for now.
 	GetGameDocument(context.Context, *connect.Request[game_service.GameDocumentRequest]) (*connect.Response[game_service.GameDocumentResponse], error)
+	// GetActiveCorrespondenceGames gets all active correspondence games for a user.
+	GetActiveCorrespondenceGames(context.Context, *connect.Request[game_service.ActiveCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error)
 	// UnfreezeBot re-sends bot move requests for stuck games (admin only)
 	UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error)
 }
@@ -122,6 +127,12 @@ func NewGameMetadataServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
+		getActiveCorrespondenceGames: connect.NewClient[game_service.ActiveCorrespondenceGamesRequest, ipc.GameInfoResponses](
+			httpClient,
+			baseURL+GameMetadataServiceGetActiveCorrespondenceGamesProcedure,
+			connect.WithSchema(gameMetadataServiceMethods.ByName("GetActiveCorrespondenceGames")),
+			connect.WithClientOptions(opts...),
+		),
 		unfreezeBot: connect.NewClient[game_service.UnfreezeBotRequest, game_service.UnfreezeBotResponse](
 			httpClient,
 			baseURL+GameMetadataServiceUnfreezeBotProcedure,
@@ -133,13 +144,14 @@ func NewGameMetadataServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // gameMetadataServiceClient implements GameMetadataServiceClient.
 type gameMetadataServiceClient struct {
-	getMetadata      *connect.Client[game_service.GameInfoRequest, ipc.GameInfoResponse]
-	getGCG           *connect.Client[game_service.GCGRequest, game_service.GCGResponse]
-	getGameHistory   *connect.Client[game_service.GameHistoryRequest, game_service.GameHistoryResponse]
-	getRecentGames   *connect.Client[game_service.RecentGamesRequest, ipc.GameInfoResponses]
-	getRematchStreak *connect.Client[game_service.RematchStreakRequest, game_service.StreakInfoResponse]
-	getGameDocument  *connect.Client[game_service.GameDocumentRequest, game_service.GameDocumentResponse]
-	unfreezeBot      *connect.Client[game_service.UnfreezeBotRequest, game_service.UnfreezeBotResponse]
+	getMetadata                  *connect.Client[game_service.GameInfoRequest, ipc.GameInfoResponse]
+	getGCG                       *connect.Client[game_service.GCGRequest, game_service.GCGResponse]
+	getGameHistory               *connect.Client[game_service.GameHistoryRequest, game_service.GameHistoryResponse]
+	getRecentGames               *connect.Client[game_service.RecentGamesRequest, ipc.GameInfoResponses]
+	getRematchStreak             *connect.Client[game_service.RematchStreakRequest, game_service.StreakInfoResponse]
+	getGameDocument              *connect.Client[game_service.GameDocumentRequest, game_service.GameDocumentResponse]
+	getActiveCorrespondenceGames *connect.Client[game_service.ActiveCorrespondenceGamesRequest, ipc.GameInfoResponses]
+	unfreezeBot                  *connect.Client[game_service.UnfreezeBotRequest, game_service.UnfreezeBotResponse]
 }
 
 // GetMetadata calls game_service.GameMetadataService.GetMetadata.
@@ -172,6 +184,11 @@ func (c *gameMetadataServiceClient) GetGameDocument(ctx context.Context, req *co
 	return c.getGameDocument.CallUnary(ctx, req)
 }
 
+// GetActiveCorrespondenceGames calls game_service.GameMetadataService.GetActiveCorrespondenceGames.
+func (c *gameMetadataServiceClient) GetActiveCorrespondenceGames(ctx context.Context, req *connect.Request[game_service.ActiveCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error) {
+	return c.getActiveCorrespondenceGames.CallUnary(ctx, req)
+}
+
 // UnfreezeBot calls game_service.GameMetadataService.UnfreezeBot.
 func (c *gameMetadataServiceClient) UnfreezeBot(ctx context.Context, req *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error) {
 	return c.unfreezeBot.CallUnary(ctx, req)
@@ -191,6 +208,8 @@ type GameMetadataServiceHandler interface {
 	// GetGameDocument gets a Game Document. This will eventually obsolete
 	// GetGameHistory. Does not work with annotated games for now.
 	GetGameDocument(context.Context, *connect.Request[game_service.GameDocumentRequest]) (*connect.Response[game_service.GameDocumentResponse], error)
+	// GetActiveCorrespondenceGames gets all active correspondence games for a user.
+	GetActiveCorrespondenceGames(context.Context, *connect.Request[game_service.ActiveCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error)
 	// UnfreezeBot re-sends bot move requests for stuck games (admin only)
 	UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error)
 }
@@ -238,6 +257,12 @@ func NewGameMetadataServiceHandler(svc GameMetadataServiceHandler, opts ...conne
 		connect.WithSchema(gameMetadataServiceMethods.ByName("GetGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
+	gameMetadataServiceGetActiveCorrespondenceGamesHandler := connect.NewUnaryHandler(
+		GameMetadataServiceGetActiveCorrespondenceGamesProcedure,
+		svc.GetActiveCorrespondenceGames,
+		connect.WithSchema(gameMetadataServiceMethods.ByName("GetActiveCorrespondenceGames")),
+		connect.WithHandlerOptions(opts...),
+	)
 	gameMetadataServiceUnfreezeBotHandler := connect.NewUnaryHandler(
 		GameMetadataServiceUnfreezeBotProcedure,
 		svc.UnfreezeBot,
@@ -258,6 +283,8 @@ func NewGameMetadataServiceHandler(svc GameMetadataServiceHandler, opts ...conne
 			gameMetadataServiceGetRematchStreakHandler.ServeHTTP(w, r)
 		case GameMetadataServiceGetGameDocumentProcedure:
 			gameMetadataServiceGetGameDocumentHandler.ServeHTTP(w, r)
+		case GameMetadataServiceGetActiveCorrespondenceGamesProcedure:
+			gameMetadataServiceGetActiveCorrespondenceGamesHandler.ServeHTTP(w, r)
 		case GameMetadataServiceUnfreezeBotProcedure:
 			gameMetadataServiceUnfreezeBotHandler.ServeHTTP(w, r)
 		default:
@@ -291,6 +318,10 @@ func (UnimplementedGameMetadataServiceHandler) GetRematchStreak(context.Context,
 
 func (UnimplementedGameMetadataServiceHandler) GetGameDocument(context.Context, *connect.Request[game_service.GameDocumentRequest]) (*connect.Response[game_service.GameDocumentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("game_service.GameMetadataService.GetGameDocument is not implemented"))
+}
+
+func (UnimplementedGameMetadataServiceHandler) GetActiveCorrespondenceGames(context.Context, *connect.Request[game_service.ActiveCorrespondenceGamesRequest]) (*connect.Response[ipc.GameInfoResponses], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("game_service.GameMetadataService.GetActiveCorrespondenceGames is not implemented"))
 }
 
 func (UnimplementedGameMetadataServiceHandler) UnfreezeBot(context.Context, *connect.Request[game_service.UnfreezeBotRequest]) (*connect.Response[game_service.UnfreezeBotResponse], error) {

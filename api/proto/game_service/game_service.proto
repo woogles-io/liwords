@@ -37,6 +37,10 @@ message StreakInfoResponse {
 
 message RematchStreakRequest { string original_request_id = 1; }
 
+message ActiveCorrespondenceGamesRequest {
+  // No fields - uses authenticated user from session
+}
+
 enum UnfreezeBotMode {
   UNFREEZE_BOT_MODE_UNSPECIFIED = 0;
   UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE = 1;
@@ -68,6 +72,8 @@ service GameMetadataService {
   // GetGameDocument gets a Game Document. This will eventually obsolete
   // GetGameHistory. Does not work with annotated games for now.
   rpc GetGameDocument(GameDocumentRequest) returns (GameDocumentResponse);
+  // GetActiveCorrespondenceGames gets all active correspondence games for a user.
+  rpc GetActiveCorrespondenceGames(ActiveCorrespondenceGamesRequest) returns (ipc.GameInfoResponses);
   // UnfreezeBot re-sends bot move requests for stuck games (admin only)
   rpc UnfreezeBot(UnfreezeBotRequest) returns (UnfreezeBotResponse);
 }

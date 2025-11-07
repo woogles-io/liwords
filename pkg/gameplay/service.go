@@ -107,6 +107,30 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(resp), nil
 }
 
+// GetActiveCorrespondenceGames gets all active correspondence games for the authenticated user.
+func (gs *GameService) GetActiveCorrespondenceGames(ctx context.Context, req *connect.Request[pb.ActiveCorrespondenceGamesRequest],
+) (*connect.Response[ipc.GameInfoResponses], error) {
+	// Authenticate the user
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := gs.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, apiserver.InternalErr(err)
+	}
+
+	resp, err := gs.gameStore.ListActiveCorrespondenceForUser(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	// No need to censor since user is only getting their own games
+	return connect.NewResponse(resp), nil
+}
+
 // GetGCG downloads a GCG for a full native game, or a partial GCG
 // for an annotated game.
 func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRequest],

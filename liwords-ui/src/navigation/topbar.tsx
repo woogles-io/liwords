@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import "./topbar.scss";
-import { DisconnectOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  DisconnectOutlined,
+  RightOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import { notification, Dropdown } from "antd";
 import {
   useLoginStateStoreContext,
@@ -157,6 +161,8 @@ const TopMenu = React.memo((props: Props) => {
 
 type Props = {
   tournamentID?: string;
+  nextCorresGameID?: string;
+  corresGamesWaiting?: number;
 };
 
 export const TopBar = React.memo((props: Props) => {
@@ -166,6 +172,7 @@ export const TopBar = React.memo((props: Props) => {
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const authClient = useClient(AuthenticationService);
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
@@ -207,6 +214,12 @@ export const TopBar = React.memo((props: Props) => {
 
   const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : "/";
 
+  const handleNextCorresGame = () => {
+    if (props.nextCorresGameID) {
+      navigate(`/game/${encodeURIComponent(props.nextCorresGameID)}`);
+    }
+  };
+
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
@@ -228,6 +241,31 @@ export const TopBar = React.memo((props: Props) => {
             </div>
           ) : null}
         </Link>
+        {props.nextCorresGameID && (
+          <div
+            className="next-corres-game-topbar"
+            onClick={handleNextCorresGame}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              fontWeight: "bold",
+              fontSize: "14px",
+              marginLeft: "24px",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            <RightOutlined style={{ marginRight: "6px" }} /> Next game
+            {props.corresGamesWaiting && props.corresGamesWaiting > 1 && (
+              <span style={{ marginLeft: "6px", opacity: 0.7 }}>
+                ({props.corresGamesWaiting})
+              </span>
+            )}
+          </div>
+        )}
         <TopMenu />
         {loggedIn ? (
           <div className="user-info">
