@@ -6,9 +6,9 @@ import React, {
   useState,
 } from "react";
 import { Card, message, Popconfirm } from "antd";
-import { HomeOutlined } from "@ant-design/icons";
+import { HomeOutlined, RightOutlined } from "@ant-design/icons";
 
-import { Link, useSearchParams, useParams } from "react-router";
+import { Link, useSearchParams, useParams, useNavigate } from "react-router";
 import { useFirefoxPatch } from "../utils/hooks/firefox";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
@@ -20,6 +20,7 @@ import {
   useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useLobbyStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
   useRematchRequestStoreContext,
@@ -259,6 +260,7 @@ const getChatTitle = (
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
+  const navigate = useNavigate();
   const { addChat } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =
@@ -267,6 +269,7 @@ export const Table = React.memo((props: Props) => {
     useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
+  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
@@ -285,6 +288,9 @@ export const Table = React.memo((props: Props) => {
       playersInfo: [],
     }),
   );
+  const [localCorresGames, setLocalCorresGames] = useState<
+    Array<GameInfoResponse>
+  >([]);
   const [isObserver, setIsObserver] = useState(false);
 
   // Comments functionality
@@ -470,6 +476,22 @@ export const Table = React.memo((props: Props) => {
           // ended. We want to synthesize a new GameEnd message
           setGameEndMessage(endGameMessageFromGameInfo(resp));
         }
+
+        // If this is a correspondence game and we don't have correspondence games loaded,
+        // fetch active correspondence games to populate the next game button
+        if (
+          resp.gameRequest?.gameMode === GameMode.CORRESPONDENCE &&
+          lobbyContext.correspondenceGames.length === 0
+        ) {
+          try {
+            const activeCorresGames =
+              await gmClient.getActiveCorrespondenceGames({});
+
+            setLocalCorresGames(activeCorresGames.gameInfo);
+          } catch (e) {
+            console.error("Failed to fetch active correspondence games:", e);
+          }
+        }
       } catch (e) {
         message.error({
           content: `Failed to fetch game information; please refresh. (Error: ${e})`,
@@ -484,7 +506,13 @@ export const Table = React.memo((props: Props) => {
       setGameInfo(defaultGameInfo);
       message.destroy("board-messages");
     };
-  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
+  }, [
+    gameID,
+    gmClient,
+    setGameEndMessage,
+    setPoolFormat,
+    lobbyContext.correspondenceGames.length,
+  ]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -879,6 +907,94 @@ export const Table = React.memo((props: Props) => {
     }
     return true;
   }, [gameDone, gameInfo.tournamentId, loggedIn]);
+
+  // Calculate next correspondence game where it's user's turn
+  // Uses either lobbyContext.correspondenceGames (if loaded from lobby) or
+  // localCorresGames (fetched via API when navigating directly to a game)
+  const { nextCorresGame, corresGamesWaiting } = useMemo(() => {
+    const isCorrespondence =
+      gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+
+    if (!isCorrespondence || !userID) {
+      return { nextCorresGame: null, corresGamesWaiting: 0 };
+    }
+
+    // Use lobby context games if available, otherwise use locally fetched games
+    const corresGames =
+      lobbyContext.correspondenceGames.length > 0
+        ? lobbyContext.correspondenceGames
+        : localCorresGames.map((g) => ({
+            gameID: g.gameId,
+            players: g.players.map((p) => ({
+              uuid: p.userId,
+              nickname: p.nickname,
+            })),
+            playerOnTurn: g.playerOnTurn,
+            lastUpdate: g.lastUpdate
+              ? Number(g.lastUpdate.seconds) * 1000
+              : Date.now(),
+            incrementSecs: g.gameRequest?.incrementSeconds || 86400,
+            lexicon: g.gameRequest?.lexicon || "",
+            variant: g.gameRequest?.rules?.variantName || "",
+            initialTimeSecs: g.gameRequest?.initialTimeSeconds || 0,
+            challengeRule: g.gameRequest?.challengeRule || 0,
+            rated: g.gameRequest?.ratingMode === 0, // RatingMode.RATED = 0
+            maxOvertimeMinutes: g.gameRequest?.maxOvertimeMinutes || 0,
+            tournamentID: g.tournamentId,
+            gameMode: g.gameRequest?.gameMode || 0,
+          }));
+
+    if (corresGames.length === 0) {
+      return { nextCorresGame: null, corresGamesWaiting: 0 };
+    }
+
+    // Get all correspondence games where it's user's turn, excluding current game
+    const gamesOnMyTurn = corresGames
+      .filter((ag) => {
+        // Exclude current game
+        if (ag.gameID === gameID) {
+          return false;
+        }
+
+        // Check if it's user's turn
+        const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+        if (playerIndex === -1) {
+          return false;
+        }
+
+        return playerIndex === ag.playerOnTurn;
+      })
+      .map((ag) => {
+        // Calculate time remaining for sorting
+        const now = Date.now();
+        const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
+        const timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
+
+        return {
+          game: ag,
+          timeRemaining: timeRemainingSecs,
+        };
+      })
+      .sort((a, b) => a.timeRemaining - b.timeRemaining); // Sort by most urgent first
+
+    return {
+      nextCorresGame: gamesOnMyTurn.length > 0 ? gamesOnMyTurn[0].game : null,
+      corresGamesWaiting: gamesOnMyTurn.length,
+    };
+  }, [
+    gameInfo.gameRequest?.gameMode,
+    userID,
+    gameID,
+    lobbyContext.correspondenceGames,
+    localCorresGames,
+  ]);
+
+  const handleNextCorresGame = useCallback(() => {
+    if (nextCorresGame) {
+      navigate(`/game/${encodeURIComponent(nextCorresGame.gameID)}`);
+    }
+  }, [nextCorresGame, navigate]);
+
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
 
@@ -916,7 +1032,11 @@ export const Table = React.memo((props: Props) => {
       }`}
     >
       <ManageWindowTitleAndTurnSound gameInfo={gameInfo} />
-      <TopBar tournamentID={gameInfo.tournamentId} />
+      <TopBar
+        tournamentID={gameInfo.tournamentId}
+        nextCorresGameID={nextCorresGame?.gameID}
+        corresGamesWaiting={corresGamesWaiting}
+      />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
@@ -927,20 +1047,46 @@ export const Table = React.memo((props: Props) => {
           id="left-sidebar"
         >
           <Card className="left-menu">
-            {gameInfo.tournamentId ? (
-              <Link to={tournamentContext.metadata?.slug}>
-                <HomeOutlined />
-                Back to
-                {isClubType(tournamentContext.metadata?.type)
-                  ? " Club"
-                  : " Tournament"}
-              </Link>
-            ) : (
-              <Link to="/">
-                <HomeOutlined />
-                Back to lobby
-              </Link>
-            )}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {gameInfo.tournamentId ? (
+                <Link to={tournamentContext.metadata?.slug}>
+                  <HomeOutlined />
+                  Back to
+                  {isClubType(tournamentContext.metadata?.type)
+                    ? " Club"
+                    : " Tournament"}
+                </Link>
+              ) : (
+                <Link to="/">
+                  <HomeOutlined />
+                  Back to lobby
+                </Link>
+              )}
+              {nextCorresGame && (
+                <div
+                  className="next-corres-game"
+                  onClick={handleNextCorresGame}
+                  style={{
+                    cursor: "pointer",
+                    marginLeft: "12px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <RightOutlined /> Next
+                  {corresGamesWaiting > 1 && (
+                    <span style={{ marginLeft: "4px" }}>
+                      ({corresGamesWaiting})
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </Card>
           {playerNames.length > 1 ? (
             <Chat

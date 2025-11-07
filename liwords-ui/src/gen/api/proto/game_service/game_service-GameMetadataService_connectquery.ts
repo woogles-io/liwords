@@ -45,6 +45,13 @@ export const getRematchStreak = GameMetadataService.method.getRematchStreak;
 export const getGameDocument = GameMetadataService.method.getGameDocument;
 
 /**
+ * GetActiveCorrespondenceGames gets all active correspondence games for a user.
+ *
+ * @generated from rpc game_service.GameMetadataService.GetActiveCorrespondenceGames
+ */
+export const getActiveCorrespondenceGames = GameMetadataService.method.getActiveCorrespondenceGames;
+
+/**
  * UnfreezeBot re-sends bot move requests for stuck games (admin only)
  *
  * @generated from rpc game_service.GameMetadataService.UnfreezeBot
