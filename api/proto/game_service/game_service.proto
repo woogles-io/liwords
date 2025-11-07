@@ -41,6 +41,11 @@ message ActiveCorrespondenceGamesRequest {
   // No fields - uses authenticated user from session
 }
 
+message RecentCorrespondenceGamesRequest {
+  string username = 1;
+  int32 num_games = 2;
+}
+
 enum UnfreezeBotMode {
   UNFREEZE_BOT_MODE_UNSPECIFIED = 0;
   UNFREEZE_BOT_MODE_ALL_CORRESPONDENCE = 1;
@@ -74,6 +79,8 @@ service GameMetadataService {
   rpc GetGameDocument(GameDocumentRequest) returns (GameDocumentResponse);
   // GetActiveCorrespondenceGames gets all active correspondence games for a user.
   rpc GetActiveCorrespondenceGames(ActiveCorrespondenceGamesRequest) returns (ipc.GameInfoResponses);
+  // GetRecentCorrespondenceGames gets recently ended correspondence games for a user.
+  rpc GetRecentCorrespondenceGames(RecentCorrespondenceGamesRequest) returns (ipc.GameInfoResponses);
   // UnfreezeBot re-sends bot move requests for stuck games (admin only)
   rpc UnfreezeBot(UnfreezeBotRequest) returns (UnfreezeBotResponse);
 }

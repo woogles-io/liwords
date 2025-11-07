@@ -265,6 +265,85 @@ func (q *Queries) GetHistory(ctx context.Context, uuid pgtype.Text) ([]byte, err
 	return history, err
 }
 
+const getRecentCorrespondenceGamesByUsername = `-- name: GetRecentCorrespondenceGamesByUsername :many
+WITH recent_game_uuids AS (
+  SELECT gp.game_uuid, gp.created_at
+  FROM game_players gp
+  JOIN games g ON gp.game_uuid = g.uuid
+  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
+    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+  ORDER BY gp.created_at DESC
+  LIMIT $2::integer
+)
+SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
+       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
+       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
+       g.game_request
+FROM recent_game_uuids rgu
+JOIN games g ON rgu.game_uuid = g.uuid
+ORDER BY rgu.created_at DESC
+`
+
+type GetRecentCorrespondenceGamesByUsernameParams struct {
+	Username string
+	NumGames int32
+}
+
+type GetRecentCorrespondenceGamesByUsernameRow struct {
+	ID             int32
+	Uuid           pgtype.Text
+	Type           pgtype.Int4
+	Player0ID      pgtype.Int4
+	Player1ID      pgtype.Int4
+	Timers         entity.Timers
+	Started        pgtype.Bool
+	GameEndReason  pgtype.Int4
+	WinnerIdx      pgtype.Int4
+	LoserIdx       pgtype.Int4
+	Quickdata      entity.Quickdata
+	TournamentData entity.TournamentData
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	GameRequest    entity.GameRequest
+}
+
+func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, arg GetRecentCorrespondenceGamesByUsernameParams) ([]GetRecentCorrespondenceGamesByUsernameRow, error) {
+	rows, err := q.db.Query(ctx, getRecentCorrespondenceGamesByUsername, arg.Username, arg.NumGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentCorrespondenceGamesByUsernameRow
+	for rows.Next() {
+		var i GetRecentCorrespondenceGamesByUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Type,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Timers,
+			&i.Started,
+			&i.GameEndReason,
+			&i.WinnerIdx,
+			&i.LoserIdx,
+			&i.Quickdata,
+			&i.TournamentData,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GameRequest,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecentGamesByPlayerID = `-- name: GetRecentGamesByPlayerID :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.created_at

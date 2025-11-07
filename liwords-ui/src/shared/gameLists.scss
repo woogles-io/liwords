@@ -256,6 +256,20 @@
           }
         }
       }
+      // Finished games styling - muted to indicate they're not active
+      &.finished-game {
+        opacity: 0.65;
+        &:hover {
+          opacity: 0.85;
+          @include colorModed() {
+            background-color: color.mix(
+              m($off-background),
+              m($card-background),
+              $weight: 30%
+            );
+          }
+        }
+      }
     }
   }
   .requests {
@@ -313,6 +327,15 @@
   td.score,
   th.score {
     min-width: 100px;
+  }
+  td.final-score,
+  th.final-score {
+    min-width: 160px;
+    white-space: nowrap;
+  }
+  td.end-reason,
+  th.end-reason {
+    min-width: 120px;
   }
   td.details {
     text-align: right;
