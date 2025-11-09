@@ -178,7 +178,7 @@ jobs:
           UI_HASH=$(find /tmp/liwords-ui/artifact -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32)
           echo $UI_HASH
           sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/artifact/config.js
-          echo "export UI_HASH=$UI_HASH" >> $GITHUB_ENV
+          echo "UI_HASH=$UI_HASH" >> $GITHUB_ENV
 
       - name: Sync to S3 (Cache Everything)
         run: |
