@@ -292,6 +292,7 @@ export const Table = React.memo((props: Props) => {
     Array<GameInfoResponse>
   >([]);
   const [isObserver, setIsObserver] = useState(false);
+  const prevGameIDRef = useRef<string | undefined>();
 
   // Comments functionality
   const commentsClient = useClient(GameCommentService);
@@ -452,6 +453,14 @@ export const Table = React.memo((props: Props) => {
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
+    // Only reset state when gameID actually changes, not when other deps change
+    const gameIDChanged = prevGameIDRef.current !== gameID;
+    if (gameIDChanged) {
+      setGameInfo(defaultGameInfo);
+      setLocalCorresGames([]);
+      message.destroy("board-messages");
+      prevGameIDRef.current = gameID;
+    }
 
     const fetchGameMetadata = async () => {
       try {
@@ -503,7 +512,7 @@ export const Table = React.memo((props: Props) => {
     fetchGameMetadata();
 
     return () => {
-      setGameInfo(defaultGameInfo);
+      // Cleanup messages
       message.destroy("board-messages");
     };
   }, [
