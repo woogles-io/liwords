@@ -1000,9 +1000,10 @@ export const Table = React.memo((props: Props) => {
 
   const handleNextCorresGame = useCallback(() => {
     if (nextCorresGame) {
-      navigate(`/game/${encodeURIComponent(nextCorresGame.gameID)}`);
+      // Use full page navigation to ensure clean component mount
+      window.location.href = `/game/${encodeURIComponent(nextCorresGame.gameID)}`;
     }
-  }, [nextCorresGame, navigate]);
+  }, [nextCorresGame]);
 
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
