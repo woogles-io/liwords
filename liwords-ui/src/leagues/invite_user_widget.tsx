@@ -71,6 +71,11 @@ export const InviteUserToLeaguesWidget = () => {
 
   const handleUsernameSelect = useCallback((data: string) => {
     setSelectedUserForInvite(data);
+    // Extract just the username from "uuid:username" format
+    const parts = data.split(":");
+    if (parts.length === 2) {
+      setInputValue(parts[1]); // Set display to just username
+    }
   }, []);
 
   const handleInviteUser = () => {
@@ -93,7 +98,10 @@ export const InviteUserToLeaguesWidget = () => {
   };
 
   return (
-    <Card className="invite-user-card" style={{ marginBottom: 32 }}>
+    <Card
+      className="invite-user-card"
+      style={{ marginBottom: 32, marginTop: 32 }}
+    >
       <h3>Invite Users to Leagues</h3>
       <p className="invite-description">
         Search for a user and grant them access to participate in leagues.

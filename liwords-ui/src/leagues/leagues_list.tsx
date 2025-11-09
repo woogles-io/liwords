@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
 import { Col, Row, Card, Spin, Collapse } from "antd";
-import { CrownOutlined } from "@ant-design/icons";
+import { TrophyOutlined } from "@ant-design/icons";
 import { Link } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
 import { getAllLeagues } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { InviteUserToLeaguesWidget } from "./invite_user_widget";
 import "./leagues.scss";
 
@@ -22,14 +23,21 @@ export const LeaguesList = () => {
     [loginState.userID, loginState.username],
   );
 
+  // Fetch user roles for permission checks
+  const { data: selfRoles } = useQuery(
+    getSelfRoles,
+    {},
+    { enabled: !!loggedIn },
+  );
+
   const canInviteToLeagues = useMemo(() => {
-    const selfRoles = loginState.perms;
-    if (!selfRoles?.roles) return false;
+    const roles = selfRoles?.roles || [];
     return (
-      selfRoles.roles.includes("League Promoter") ||
-      selfRoles.roles.includes("Admin")
+      roles.includes("League Promoter") ||
+      roles.includes("Admin") ||
+      roles.includes("Manager")
     );
-  }, [loginState.perms]);
+  }, [selfRoles?.roles]);
 
   return (
     <>
@@ -62,7 +70,7 @@ export const LeaguesList = () => {
                     className="league-card"
                     title={
                       <span>
-                        <CrownOutlined
+                        <TrophyOutlined
                           style={{ marginRight: "8px", color: "#d4af37" }}
                         />{" "}
                         {league.name}

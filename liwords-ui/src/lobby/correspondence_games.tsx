@@ -2,7 +2,7 @@ import { Table, Tag, Tooltip } from "antd";
 import {
   FundOutlined,
   ClockCircleOutlined,
-  CrownOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
 import React, {
   ReactNode,
@@ -182,7 +182,7 @@ export const CorrespondenceGames = (props: Props) => {
               ) : ag.leagueSlug ? (
                 <span className="league-game">
                   <Tooltip title={`League Game: ${ag.leagueSlug}`}>
-                    <CrownOutlined
+                    <TrophyOutlined
                       style={{ color: "#faad14", marginRight: 4 }}
                     />
                   </Tooltip>
