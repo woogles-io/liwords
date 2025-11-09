@@ -27,6 +27,7 @@ import {
   useTimerStoreContext,
   useTournamentStoreContext,
 } from "../store/store";
+import { GameInfoResponseToActiveGame } from "../store/reducers/lobby_reducer";
 import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
@@ -497,6 +498,16 @@ export const Table = React.memo((props: Props) => {
               await gmClient.getActiveCorrespondenceGames({});
 
             setLocalCorresGames(activeCorresGames.gameInfo);
+
+            // Also populate lobbyContext so it stays in sync when ONGOING_GAME_EVENTs arrive
+            dispatchLobbyContext({
+              actionType: ActionType.AddCorrespondenceGames,
+              payload: {
+                correspondenceGames: activeCorresGames.gameInfo
+                  .map(GameInfoResponseToActiveGame)
+                  .filter((g) => g !== null),
+              },
+            });
           } catch (e) {
             console.error("Failed to fetch active correspondence games:", e);
           }
