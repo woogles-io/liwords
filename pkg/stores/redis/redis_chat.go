@@ -32,7 +32,7 @@ var LatestChannelsScript string
 
 const LongChannelExpiration = 86400 * 14
 
-const GameChatChannelExpiration = 86400
+const GameChatChannelExpiration = 86400 * 14
 
 const LobbyChatChannel = "chat.lobby"
 

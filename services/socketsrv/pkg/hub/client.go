@@ -43,7 +43,7 @@ const (
 	pingPeriod = 5 * time.Second
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	maxMessageSize = 2048
 )
 
 var upgrader = websocket.Upgrader{
