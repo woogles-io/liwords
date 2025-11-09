@@ -204,10 +204,18 @@ jobs:
 
       - name: Update Frontend Hash
         run: |
-          curl -X POST -H "Content-Type: application/json" \
+          echo "Updating frontend hash to: $UI_HASH"
+          response=$(curl -f -X POST -H "Content-Type: application/json" \
           -H "X-Api-Key: ${{ secrets.ADMIN_WOOGLES_API_KEY }}" \
           https://woogles.io/api/config_service.ConfigService/SetFEHash \
-          -d "{\"hash\": \"$UI_HASH\"}"
+          -d "{\"hash\": \"$UI_HASH\"}" -w "\n%{http_code}")
+          http_code=$(echo "$response" | tail -n1)
+          if [ "$http_code" -ne 200 ]; then
+            echo "Failed to update frontend hash. HTTP status: $http_code"
+            echo "Response: $response"
+            exit 1
+          fi
+          echo "Frontend hash updated successfully"
 
       - name: Discord notification
         env:
