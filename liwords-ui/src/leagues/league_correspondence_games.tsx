@@ -72,7 +72,7 @@ export const LeagueCorrespondenceGames: React.FC<
   }
 
   return (
-    <Card title="My League Games" size="small">
+    <Card title="My League Games">
       <div className="league-games-list">
         {leagueGames.map((game) => {
           const isUserTurn =
@@ -100,14 +100,23 @@ export const LeagueCorrespondenceGames: React.FC<
           return (
             <div
               key={game.gameID}
-              className={`league-game-item ${isUserTurn ? "user-turn" : ""}`}
+              className={`league-game-item compact ${isUserTurn ? "user-turn" : ""}`}
               onClick={() => handleGameClick(game.gameID)}
               style={{ cursor: "pointer" }}
             >
-              <div className="game-info">
-                <div className="opponent-name">vs {opponentName}</div>
+              <div className="game-info-compact">
+                <div
+                  className="opponent-name-compact"
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  vs {opponentName}
+                </div>
                 {isUserTurn && (
-                  <div className="turn-indicator">
+                  <div className="turn-indicator-compact">
                     {isLowTime && (
                       <Tooltip title="Less than 24 hours remaining">
                         <ClockCircleOutlined

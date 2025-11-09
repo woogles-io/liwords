@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/entity"
+	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -46,17 +48,19 @@ type RedisChatStore struct {
 	redisPool            *redis.Pool
 	presenceStore        user.PresenceStore
 	tournamentStore      tournament.TournamentStore
+	leagueStore          leaguestore.Store
 	addChatScript        *redis.Script
 	latestChannelsScript *redis.Script
 	eventChan            chan *entity.EventWrapper
 }
 
 // NewRedisChatStore instantiates a new store for chats, based on Redis.
-func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.TournamentStore) *RedisChatStore {
+func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.TournamentStore, l leaguestore.Store) *RedisChatStore {
 	return &RedisChatStore{
 		redisPool:            r,
 		presenceStore:        p,
 		tournamentStore:      t,
+		leagueStore:          l,
 		addChatScript:        redis.NewScript(0, AddChatScript),
 		latestChannelsScript: redis.NewScript(0, LatestChannelsScript),
 		eventChan:            nil,
@@ -245,8 +249,11 @@ func maybeTrim(msg string) string {
 // If a non-blank tournamentID is passed, we force this function to return
 // the chat channel for the given tournament ID, even if the user has not
 // yet chatted in it.
+// If a non-blank leagueID is passed, we force this function to return
+// the chat channel for the given league ID, even if the user has not
+// yet chatted in it.
 func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
-	uid, tournamentID string) (*upb.ActiveChatChannels, error) {
+	uid, tournamentID, leagueID string) (*upb.ActiveChatChannels, error) {
 
 	conn := r.redisPool.Get()
 	defer conn.Close()
@@ -267,6 +274,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)/3)
 	getTournament := tournamentID != ""
+	getLeague := leagueID != ""
 
 	for idx := 0; idx < len(chans); idx++ {
 
@@ -297,6 +305,9 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 		if tournamentID != "" && chanName[0] == "chat.tournament."+tournamentID {
 			getTournament = false
 		}
+		if leagueID != "" && chanName[0] == "chat.league."+leagueID {
+			getLeague = false
+		}
 	}
 
 	// If a tournament ID is passed in, we should fetch the tournament channel
@@ -322,6 +333,39 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 		chans = append(chans, &upb.ActiveChatChannels_Channel{
 			Name:        chatChannel,
 			DisplayName: "tournament:" + t.Name,
+			LastUpdate:  lastUpdate,
+			LastMessage: lastMessage,
+			HasUpdate:   lastUpdate > lastSeen && lastMessage != "",
+		})
+	}
+
+	// If a league ID is passed in, we should fetch the league channel
+	// as well as the latest chat for this league.
+	if getLeague {
+		leagueUUID, err := uuid.Parse(leagueID)
+		if err != nil {
+			return nil, err
+		}
+		league, err := r.leagueStore.GetLeagueByUUID(ctx, leagueUUID)
+		if err != nil {
+			return nil, err
+		}
+		// Get the last chat for this league channel.
+		chatChannel := "chat.league." + leagueID
+		cm, err := r.OldChats(ctx, chatChannel, 1)
+		if err != nil {
+			return nil, err
+		}
+		lastUpdate := int64(0)
+		lastMessage := ""
+		if len(cm) == 1 {
+			lastUpdate = int64(cm[0].Timestamp / 1000)
+			lastMessage = maybeTrim(cm[0].Message)
+		}
+
+		chans = append(chans, &upb.ActiveChatChannels_Channel{
+			Name:        chatChannel,
+			DisplayName: "league:" + league.Name,
 			LastUpdate:  lastUpdate,
 			LastMessage: lastMessage,
 			HasUpdate:   lastUpdate > lastSeen && lastMessage != "",

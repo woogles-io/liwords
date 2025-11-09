@@ -80,7 +80,7 @@ local tsSeconds = math.floor(ts / 1000)
 
 if channel ~= LobbyChatChannel then
   local exp
-  if hasPrefix(channel, "chat.tournament.") or hasPrefix(channel, "chat.pm.") then
+  if hasPrefix(channel, "chat.tournament.") or hasPrefix(channel, "chat.league.") or hasPrefix(channel, "chat.pm.") then
     exp = LongChannelExpiration
   else
     exp = GameChatChannelExpiration
@@ -93,6 +93,8 @@ if hasPrefix(channel, "chat.pm.") then
     storeLatestChat(msg, user, channel, channelFriendly, tsSeconds)
   end
 elseif hasPrefix(channel, "chat.tournament.") then
+  storeLatestChat(msg, senderUID, channel, channelFriendly, tsSeconds)
+elseif hasPrefix(channel, "chat.league.") then
   storeLatestChat(msg, senderUID, channel, channelFriendly, tsSeconds)
 end
 

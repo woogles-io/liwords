@@ -277,14 +277,39 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 ) ([]PlayerWithVirtualDiv, error) {
 	players := []PlayerWithVirtualDiv{}
 
+	// Fetch all registrations for the season at once to avoid N+1 queries
+	allRegistrations, err := rm.stores.LeagueStore.GetSeasonRegistrations(ctx, newSeasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+	}
+
+	// Create a map for O(1) lookup by user_id
+	registrationMap := make(map[int32]models.GetSeasonRegistrationsRow)
+	for _, reg := range allRegistrations {
+		registrationMap[reg.UserID] = reg
+	}
+
 	// Get registrations to access updated placement_status
 	for _, catPlayer := range categorizedPlayers {
-		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
-			SeasonID: newSeasonID,
-			UserID:   catPlayer.Registration.UserID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get registration for %d: %w", catPlayer.Registration.UserID, err)
+		regRow, exists := registrationMap[catPlayer.Registration.UserID]
+		if !exists {
+			return nil, fmt.Errorf("registration not found for user %d in season", catPlayer.Registration.UserID)
+		}
+
+		// Convert GetSeasonRegistrationsRow to LeagueRegistration
+		reg := models.LeagueRegistration{
+			ID:                   regRow.ID,
+			UserID:               regRow.UserID,
+			SeasonID:             regRow.SeasonID,
+			DivisionID:           regRow.DivisionID,
+			RegistrationDate:     regRow.RegistrationDate,
+			FirstsCount:          regRow.FirstsCount,
+			Status:               regRow.Status,
+			PlacementStatus:      regRow.PlacementStatus,
+			PreviousDivisionRank: regRow.PreviousDivisionRank,
+			SeasonsAway:          regRow.SeasonsAway,
+			CreatedAt:            regRow.CreatedAt,
+			UpdatedAt:            regRow.UpdatedAt,
 		}
 
 		status := ipc.PlacementStatus_PLACEMENT_NONE

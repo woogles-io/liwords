@@ -35,6 +35,7 @@ service LeagueService {
       returns (PlayerHistoryResponse);
   rpc GetPlayerSeasonGames(GetPlayerSeasonGamesRequest)
       returns (GetPlayerSeasonGamesResponse);
+  rpc InviteUserToLeagues(InviteUserRequest) returns (InviteUserResponse);
 
   // Statistics (Phase 8)
   rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
@@ -165,4 +166,13 @@ message PlayerSeasonGame {
   string result = 6; // "win", "loss", "draw", "in_progress"
   google.protobuf.Timestamp game_date = 7;
   int32 round = 8; // Optional round number
+}
+
+message InviteUserRequest {
+  string user_id = 1; // UUID of user to invite
+}
+
+message InviteUserResponse {
+  bool success = 1;
+  string message = 2;
 }

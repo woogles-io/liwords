@@ -82,6 +82,9 @@ const (
 	// LeagueServiceGetPlayerSeasonGamesProcedure is the fully-qualified name of the LeagueService's
 	// GetPlayerSeasonGames RPC.
 	LeagueServiceGetPlayerSeasonGamesProcedure = "/league_service.LeagueService/GetPlayerSeasonGames"
+	// LeagueServiceInviteUserToLeaguesProcedure is the fully-qualified name of the LeagueService's
+	// InviteUserToLeagues RPC.
+	LeagueServiceInviteUserToLeaguesProcedure = "/league_service.LeagueService/InviteUserToLeagues"
 	// LeagueServiceGetLeagueStatisticsProcedure is the fully-qualified name of the LeagueService's
 	// GetLeagueStatistics RPC.
 	LeagueServiceGetLeagueStatisticsProcedure = "/league_service.LeagueService/GetLeagueStatistics"
@@ -110,6 +113,7 @@ type LeagueServiceClient interface {
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
 	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
+	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 }
@@ -227,6 +231,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
 			connect.WithClientOptions(opts...),
 		),
+		inviteUserToLeagues: connect.NewClient[league_service.InviteUserRequest, league_service.InviteUserResponse](
+			httpClient,
+			baseURL+LeagueServiceInviteUserToLeaguesProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("InviteUserToLeagues")),
+			connect.WithClientOptions(opts...),
+		),
 		getLeagueStatistics: connect.NewClient[league_service.LeagueRequest, league_service.LeagueStatisticsResponse](
 			httpClient,
 			baseURL+LeagueServiceGetLeagueStatisticsProcedure,
@@ -255,6 +265,7 @@ type leagueServiceClient struct {
 	getSeasonRegistrations  *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
 	getPlayerLeagueHistory  *connect.Client[league_service.PlayerHistoryRequest, league_service.PlayerHistoryResponse]
 	getPlayerSeasonGames    *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
+	inviteUserToLeagues     *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
 	getLeagueStatistics     *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
 }
 
@@ -343,6 +354,11 @@ func (c *leagueServiceClient) GetPlayerSeasonGames(ctx context.Context, req *con
 	return c.getPlayerSeasonGames.CallUnary(ctx, req)
 }
 
+// InviteUserToLeagues calls league_service.LeagueService.InviteUserToLeagues.
+func (c *leagueServiceClient) InviteUserToLeagues(ctx context.Context, req *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error) {
+	return c.inviteUserToLeagues.CallUnary(ctx, req)
+}
+
 // GetLeagueStatistics calls league_service.LeagueService.GetLeagueStatistics.
 func (c *leagueServiceClient) GetLeagueStatistics(ctx context.Context, req *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {
 	return c.getLeagueStatistics.CallUnary(ctx, req)
@@ -371,6 +387,7 @@ type LeagueServiceHandler interface {
 	GetSeasonRegistrations(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonRegistrationsResponse], error)
 	GetPlayerLeagueHistory(context.Context, *connect.Request[league_service.PlayerHistoryRequest]) (*connect.Response[league_service.PlayerHistoryResponse], error)
 	GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error)
+	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 }
@@ -484,6 +501,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetPlayerSeasonGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceInviteUserToLeaguesHandler := connect.NewUnaryHandler(
+		LeagueServiceInviteUserToLeaguesProcedure,
+		svc.InviteUserToLeagues,
+		connect.WithSchema(leagueServiceMethods.ByName("InviteUserToLeagues")),
+		connect.WithHandlerOptions(opts...),
+	)
 	leagueServiceGetLeagueStatisticsHandler := connect.NewUnaryHandler(
 		LeagueServiceGetLeagueStatisticsProcedure,
 		svc.GetLeagueStatistics,
@@ -526,6 +549,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetPlayerLeagueHistoryHandler.ServeHTTP(w, r)
 		case LeagueServiceGetPlayerSeasonGamesProcedure:
 			leagueServiceGetPlayerSeasonGamesHandler.ServeHTTP(w, r)
+		case LeagueServiceInviteUserToLeaguesProcedure:
+			leagueServiceInviteUserToLeaguesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetLeagueStatisticsProcedure:
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
 		default:
@@ -603,6 +628,10 @@ func (UnimplementedLeagueServiceHandler) GetPlayerLeagueHistory(context.Context,
 
 func (UnimplementedLeagueServiceHandler) GetPlayerSeasonGames(context.Context, *connect.Request[league_service.GetPlayerSeasonGamesRequest]) (*connect.Response[league_service.GetPlayerSeasonGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetPlayerSeasonGames is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.InviteUserToLeagues is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {

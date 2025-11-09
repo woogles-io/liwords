@@ -453,6 +453,20 @@ export const Players = React.memo((props: Props) => {
     return tournamentPresences;
   }, [transformedAndFilteredPresences, defaultChannelType]);
 
+  const leaguePresences = useMemo(() => {
+    if (defaultChannelType === "lobby") {
+      return [];
+    }
+    const leaguePresences = transformedAndFilteredPresences.filter(
+      (p) =>
+        p.channel &&
+        p.channel.some((c) => {
+          return c.startsWith("chat.league");
+        }),
+    );
+    return leaguePresences;
+  }, [transformedAndFilteredPresences, defaultChannelType]);
+
   const gamePresence = useMemo(() => {
     if (defaultChannelType === "lobby") {
       return [];
@@ -484,6 +498,8 @@ export const Players = React.memo((props: Props) => {
         return "OBSERVERS";
       case "tournament":
         return "CLUB/TOURNAMENT";
+      case "league":
+        return "LEAGUE";
       case "puzzle":
         return "SOLVING PUZZLES";
     }
@@ -544,8 +560,13 @@ export const Players = React.memo((props: Props) => {
             <div className="breadcrumb">{getPresenceLabel("tournament")}</div>
           )}
           {renderPlayerList(tournamentPresences)}
+          {leaguePresences.length > 0 && (
+            <div className="breadcrumb">{getPresenceLabel("league")}</div>
+          )}
+          {renderPlayerList(leaguePresences)}
           {!gamePresence.length &&
             !tournamentPresences.length &&
+            !leaguePresences.length &&
             transformedAndFilteredPresences.length > 0 && (
               <>
                 <div className="breadcrumb">

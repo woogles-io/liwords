@@ -86,7 +86,6 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 		return nil, err
 	}
 	stores.PresenceStore = redis.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	stores.PuzzleStore, err = puzzles.NewDBStore(dbPool)
 	if err != nil {
@@ -110,6 +109,9 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize ChatStore after LeagueStore is ready
+	stores.ChatStore = redis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, stores.LeagueStore)
 
 	stores.Queries = models.New(dbPool)
 

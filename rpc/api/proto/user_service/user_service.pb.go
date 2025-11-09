@@ -2568,7 +2568,10 @@ type GetActiveChatChannelsRequest struct {
 	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	// If a tournament_id is provided, we get active chat channels (private
 	// message channels) in addition to the given tournament channel.
-	TournamentId  string `protobuf:"bytes,3,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
+	TournamentId string `protobuf:"bytes,3,opt,name=tournament_id,json=tournamentId,proto3" json:"tournament_id,omitempty"`
+	// If a league_id is provided, we get active chat channels (private
+	// message channels) in addition to the given league channel.
+	LeagueId      string `protobuf:"bytes,4,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2620,6 +2623,13 @@ func (x *GetActiveChatChannelsRequest) GetOffset() int32 {
 func (x *GetActiveChatChannelsRequest) GetTournamentId() string {
 	if x != nil {
 		return x.TournamentId
+	}
+	return ""
+}
+
+func (x *GetActiveChatChannelsRequest) GetLeagueId() string {
+	if x != nil {
+		return x.LeagueId
 	}
 	return ""
 }
@@ -4223,11 +4233,12 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x11BasicFollowedUser\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x18\n" +
-	"\achannel\x18\x03 \x03(\tR\achannel\"s\n" +
+	"\achannel\x18\x03 \x03(\tR\achannel\"\x90\x01\n" +
 	"\x1cGetActiveChatChannelsRequest\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x05R\x06number\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12#\n" +
-	"\rtournament_id\x18\x03 \x01(\tR\ftournamentId\"\x80\x02\n" +
+	"\rtournament_id\x18\x03 \x01(\tR\ftournamentId\x12\x1b\n" +
+	"\tleague_id\x18\x04 \x01(\tR\bleagueId\"\x80\x02\n" +
 	"\x12ActiveChatChannels\x12D\n" +
 	"\bchannels\x18\x01 \x03(\v2(.user_service.ActiveChatChannels.ChannelR\bchannels\x1a\xa3\x01\n" +
 	"\aChannel\x12\x12\n" +

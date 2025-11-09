@@ -98,6 +98,11 @@ export const getPlayerLeagueHistory = LeagueService.method.getPlayerLeagueHistor
 export const getPlayerSeasonGames = LeagueService.method.getPlayerSeasonGames;
 
 /**
+ * @generated from rpc league_service.LeagueService.InviteUserToLeagues
+ */
+export const inviteUserToLeagues = LeagueService.method.inviteUserToLeagues;
+
+/**
  * Statistics (Phase 8)
  *
  * @generated from rpc league_service.LeagueService.GetLeagueStatistics

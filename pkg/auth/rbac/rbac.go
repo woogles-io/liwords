@@ -25,6 +25,8 @@ const (
 	CanManageUserRoles              Permission = "can_manage_user_roles"
 	CanViewUserRoles                Permission = "can_view_user_roles"
 	CanManageLeagues                Permission = "can_manage_leagues"
+	CanPlayLeagues                  Permission = "can_play_leagues"
+	CanInviteToLeagues              Permission = "can_invite_to_leagues"
 )
 
 // These Roles are also defined in the database.
@@ -50,6 +52,8 @@ const (
 	TournamentCreator   Role = "Tournament Creator"
 	TournamentManager   Role = "Tournament Manager"
 	SpecialAccessPlayer Role = "Special Access Player"
+	LeaguePlayer        Role = "League Player"
+	LeaguePromoter      Role = "League Promoter"
 )
 
 const LowHierarchyRoleValue = 0

@@ -11,6 +11,7 @@ import {
   Select,
   Space,
   Alert,
+  notification,
 } from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import { useMutation } from "@connectrpc/connect-query";
@@ -41,7 +42,10 @@ export const LeagueAdmin = () => {
       if (response.league) {
         setCreatedLeagueSlug(response.league.slug);
         leagueForm.resetFields();
-        alert(`League created successfully! Slug: ${response.league.slug}`);
+        notification.success({
+          message: "League Created",
+          description: `League created successfully! Slug: ${response.league.slug}`,
+        });
       }
     },
     onError: (error) => {
@@ -52,7 +56,10 @@ export const LeagueAdmin = () => {
   const bootstrapSeasonMutation = useMutation(bootstrapSeason, {
     onSuccess: () => {
       seasonForm.resetFields();
-      alert("Season bootstrapped successfully!");
+      notification.success({
+        message: "Season Bootstrapped",
+        description: "Season has been bootstrapped successfully!",
+      });
     },
     onError: (error) => {
       flashError(error);

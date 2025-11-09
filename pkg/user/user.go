@@ -98,7 +98,7 @@ type PresenceStore interface {
 type ChatStore interface {
 	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
-	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
+	LatestChannels(ctx context.Context, count, offset int, uid, tid, lid string) (*upb.ActiveChatChannels, error)
 
 	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
 	DeleteChat(ctx context.Context, channel string, msgID string) error

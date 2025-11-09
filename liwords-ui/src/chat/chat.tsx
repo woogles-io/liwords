@@ -43,6 +43,7 @@ export type Props = {
   highlight?: Array<string>;
   highlightText?: string;
   tournamentID?: string;
+  leagueID?: string;
   suppressDefault?: boolean;
 };
 
@@ -71,10 +72,11 @@ const getDefaultTab = (
   // Check channel type
   const channelType = defaultChannel?.split(".")[1];
 
-  // Tournament channels, game channels, and gametv channels should default to CHAT
+  // Tournament channels, league channels, game channels, and gametv channels should default to CHAT
   if (
     tournamentID ||
     channelType === "tournament" ||
+    channelType === "league" ||
     channelType === "game" ||
     channelType === "gametv"
   ) {
@@ -290,9 +292,9 @@ export const Chat = React.memo((props: Props) => {
         number: 20,
         offset: 0,
         tournamentId: props.tournamentID || "",
+        leagueId: props.leagueID || "",
       });
 
-      console.log("Fetched channels:", resp.channels);
       setChatChannels(resp);
       enableChatAutoScroll();
       if (initial) {

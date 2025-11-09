@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -756,6 +757,15 @@ func (ls *LeagueService) RegisterForSeason(
 		return nil, err
 	}
 
+	// Check if user has can_play_leagues permission
+	hasPermission, err := rbac.HasPermission(ctx, ls.queries, uint(user.ID), rbac.CanPlayLeagues)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to check league permissions: %w", err))
+	}
+	if !hasPermission {
+		return nil, apiserver.PermissionDenied("You need permission to play in leagues. Please contact a League Promoter for access.")
+	}
+
 	// Parse season ID (required)
 	if req.Msg.SeasonId == "" {
 		return nil, apiserver.InvalidArg("season_id is required")
@@ -910,6 +920,57 @@ func (ls *LeagueService) GetSeasonRegistrations(
 
 	return connect.NewResponse(&pb.SeasonRegistrationsResponse{
 		Registrations: protoRegistrations,
+	}), nil
+}
+
+func (ls *LeagueService) InviteUserToLeagues(
+	ctx context.Context,
+	req *connect.Request[pb.InviteUserRequest],
+) (*connect.Response[pb.InviteUserResponse], error) {
+	// Authenticate and check for can_invite_to_leagues permission
+	inviter, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanInviteToLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate user_id
+	if req.Msg.UserId == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+
+	// Get the target user
+	targetUser, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
+	}
+
+	// Assign the League Player role (which grants can_play_leagues permission)
+	err = ls.queries.AssignRole(ctx, models.AssignRoleParams{
+		Username: targetUser.Username,
+		RoleName: string(rbac.LeaguePlayer),
+	})
+	if err != nil {
+		// Check if this is a duplicate key error (user already has the role)
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") ||
+			strings.Contains(err.Error(), "user_roles_pkey") {
+			return connect.NewResponse(&pb.InviteUserResponse{
+				Success: true,
+				Message: fmt.Sprintf("%s already has league access", targetUser.Username),
+			}), nil
+		}
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to assign league player role: %w", err))
+	}
+
+	log.Info().
+		Str("inviterID", inviter.UUID).
+		Str("inviterUsername", inviter.Username).
+		Str("invitedUserID", targetUser.UUID).
+		Str("invitedUsername", targetUser.Username).
+		Msg("user-invited-to-leagues")
+
+	return connect.NewResponse(&pb.InviteUserResponse{
+		Success: true,
+		Message: fmt.Sprintf("%s has been granted access to leagues", targetUser.Username),
 	}), nil
 }
 

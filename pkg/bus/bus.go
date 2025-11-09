@@ -436,7 +436,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			if err != nil {
 				return err
 			}
-			currentLeagueID := league.Uuid.String()
+			currentLeagueID := strings.ReplaceAll(league.Uuid.String(), "-", "")
 			leagueRealm := "league-" + currentLeagueID
 			resp.Realms = append(resp.Realms, leagueRealm, "chat-"+leagueRealm)
 		} else if strings.HasPrefix(path, "/puzzle/") {

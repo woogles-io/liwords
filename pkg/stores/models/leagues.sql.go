@@ -182,12 +182,25 @@ func (q *Queries) DeleteDivisionStandings(ctx context.Context, divisionID uuid.U
 }
 
 const forceFinishGame = `-- name: ForceFinishGame :exec
-UPDATE games
+WITH game_update AS (
+    UPDATE games
+    SET game_end_reason = 8,  -- FORCE_FORFEIT
+        winner_idx = $2,
+        loser_idx = $3,
+        updated_at = NOW()
+    WHERE uuid = $1
+    RETURNING uuid, winner_idx, loser_idx
+)
+UPDATE game_players gp
 SET game_end_reason = 8,  -- FORCE_FORFEIT
-    winner_idx = $2,
-    loser_idx = $3,
-    updated_at = NOW()
-WHERE uuid = $1
+    won = CASE
+        WHEN gu.winner_idx IS NULL THEN NULL  -- Tie: both players get NULL
+        WHEN gp.player_index = gu.winner_idx THEN true
+        WHEN gp.player_index = gu.loser_idx THEN false
+        ELSE NULL
+    END
+FROM game_update gu
+WHERE gp.game_uuid = gu.uuid
 `
 
 type ForceFinishGameParams struct {

@@ -60,8 +60,6 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 
 	// Force-finish each game
 	for _, gameRow := range unfinishedGames {
-		var winnerIdx, loserIdx int32
-
 		// Load the game entity to get current scores
 		gameEntity, err := ffm.stores.GameStore.Get(ctx, gameRow.GameID.String)
 		if err != nil {
@@ -74,24 +72,24 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 		player1Score := gameEntity.PointsFor(1)
 
 		// Determine winner/loser based on current scores
+		var winnerIdx, loserIdx pgtype.Int4
 		if player0Score > player1Score {
-			winnerIdx = 0
-			loserIdx = 1
+			winnerIdx = pgtype.Int4{Int32: 0, Valid: true}
+			loserIdx = pgtype.Int4{Int32: 1, Valid: true}
 		} else if player1Score > player0Score {
-			winnerIdx = 1
-			loserIdx = 0
+			winnerIdx = pgtype.Int4{Int32: 1, Valid: true}
+			loserIdx = pgtype.Int4{Int32: 0, Valid: true}
 		} else {
-			// Tied game - mark player 0 as winner (arbitrary choice)
-			// In practice, this shouldn't happen often
-			winnerIdx = 0
-			loserIdx = 1
+			// Tied game - both winner and loser are NULL to indicate tie
+			winnerIdx = pgtype.Int4{Valid: false}
+			loserIdx = pgtype.Int4{Valid: false}
 		}
 
 		// Force-finish the game with FORCE_FORFEIT reason
 		err = ffm.stores.LeagueStore.ForceFinishGame(ctx, models.ForceFinishGameParams{
 			Uuid:      gameRow.GameID,
-			WinnerIdx: pgtype.Int4{Int32: winnerIdx, Valid: true},
-			LoserIdx:  pgtype.Int4{Int32: loserIdx, Valid: true},
+			WinnerIdx: winnerIdx,
+			LoserIdx:  loserIdx,
 		})
 		if err != nil {
 			// Record error but continue processing other games

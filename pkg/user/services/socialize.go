@@ -257,7 +257,7 @@ func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *conn
 		return nil, err
 	}
 
-	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID, req.Msg.TournamentId)
+	resp, err := ss.chatStore.LatestChannels(ctx, int(req.Msg.Number), int(req.Msg.Offset), sess.UserUUID, req.Msg.TournamentId, req.Msg.LeagueId)
 	if err != nil {
 		return nil, err
 	}

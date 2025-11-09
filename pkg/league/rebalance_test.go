@@ -29,8 +29,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 				PreviousRank:        3,
 				HiatusSeasons:       0,
 			},
-			expectedScore: 4_400_012,
-			description:   "((1,000,000 * (5 - 1)) + 400,000 + (15 - 3)) * 1 = 4,400,012",
+			expectedScore: 4_312,
+			description:   "((1,000 * (5 - 1)) + 300 + (15 - 3)) * 1 = 4,312",
 		},
 		{
 			name: "Bob - Stayed in Div 1, 10th out of 15",
@@ -42,8 +42,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 				PreviousRank:        10,
 				HiatusSeasons:       0,
 			},
-			expectedScore: 4_500_005,
-			description:   "((1,000,000 * (5 - 1)) + 500,000 + (15 - 10)) * 1 = 4,500,005",
+			expectedScore: 4_405,
+			description:   "((1,000 * (5 - 1)) + 400 + (15 - 10)) * 1 = 4,405",
 		},
 		{
 			name: "Charlie - Relegated to Div 2, 14th out of 15",
@@ -55,8 +55,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 				PreviousRank:        14,
 				HiatusSeasons:       0,
 			},
-			expectedScore: 3_300_001,
-			description:   "((1,000,000 * (5 - 2)) + 300,000 + (15 - 14)) * 1 = 3,300,001",
+			expectedScore: 3_501,
+			description:   "((1,000 * (5 - 2)) + 500 + (15 - 14)) * 1 = 3,501",
 		},
 		{
 			name: "Dora - Stayed in Div 2, 12th out of 15",
@@ -68,8 +68,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 				PreviousRank:        12,
 				HiatusSeasons:       0,
 			},
-			expectedScore: 3_500_003,
-			description:   "((1,000,000 * (5 - 2)) + 500,000 + (15 - 12)) * 1 = 3,500,003",
+			expectedScore: 3_403,
+			description:   "((1,000 * (5 - 2)) + 400 + (15 - 12)) * 1 = 3,403",
 		},
 		{
 			name: "Frankie - 4 seasons off, was in Div 2",
@@ -81,8 +81,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 				PreviousRank:        0,  // Use 0 for hiatus players
 				HiatusSeasons:       4,
 			},
-			expectedScore: 2_277_042, // (3,005,000 * 0.933^4) = 2,277,042
-			description:   "((1,000,000 * (5 - 2)) + 5,000 + 0) * (0.933^4) = 2,277,042",
+			expectedScore: 2_349, // ((1,000 * (5 - 2)) + 100 + 0) * (0.933^4) = 2,349
+			description:   "((1,000 * (5 - 2)) + 100 + 0) * (0.933^4) = 2,349",
 		},
 	}
 
@@ -134,8 +134,8 @@ func TestCalculatePriorityScores_Sorting(t *testing.T) {
 
 	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs)
 
-	// Verify sorting: should be Bob > Alice > Dora > Charlie > Frankie
-	expectedOrder := []string{"bob", "alice", "dora", "charlie", "frankie"}
+	// Verify sorting: should be Bob > Alice > Charlie > Dora > Frankie
+	expectedOrder := []string{"bob", "alice", "charlie", "dora", "frankie"}
 
 	for i, expectedUserID := range expectedOrder {
 		assert.Equal(t, expectedUserID, playersWithPriority[i].UserID,
@@ -287,11 +287,11 @@ func TestSequentialAssignment(t *testing.T) {
 
 func TestPriorityBonusConstants(t *testing.T) {
 	// Verify the priority bonus constants match the spec
-	assert.Equal(t, 500_000, PriorityBonusStayed, "STAYED bonus")
-	assert.Equal(t, 400_000, PriorityBonusPromoted, "PROMOTED bonus")
-	assert.Equal(t, 300_000, PriorityBonusRelegated, "RELEGATED bonus")
-	assert.Equal(t, 5_000, PriorityBonusHiatusReturning, "HIATUS bonus")
-	assert.Equal(t, -50_000, PriorityBonusNew, "NEW bonus - lowest priority")
+	assert.Equal(t, 400, PriorityBonusStayed, "STAYED bonus")
+	assert.Equal(t, 300, PriorityBonusPromoted, "PROMOTED bonus")
+	assert.Equal(t, 500, PriorityBonusRelegated, "RELEGATED bonus")
+	assert.Equal(t, 100, PriorityBonusHiatusReturning, "HIATUS bonus")
+	assert.Equal(t, 50, PriorityBonusNew, "NEW bonus - lowest priority")
 }
 
 func TestDivisionSizeConstants(t *testing.T) {

@@ -1,10 +1,26 @@
-import React, { useState, useMemo } from "react";
-import { Col, Row, Card, Spin, Button, Select, Space, Tag, Alert } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import {
+  Col,
+  Row,
+  Card,
+  Spin,
+  Button,
+  Select,
+  Space,
+  Tag,
+  Alert,
+  notification,
+  Modal,
+} from "antd";
+import { ArrowLeftOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
+import moment from "moment";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { TopBar } from "../navigation/topbar";
+import { Chat } from "../chat/chat";
 import {
   getLeague,
   getAllSeasons,
@@ -17,6 +33,7 @@ import {
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
+import { DivisionSelector, getDefaultDivisionId } from "./division_selector";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -27,6 +44,25 @@ type Props = {
   sendChat: (msg: string, chan: string) => void;
 };
 
+// Helper function to format season dates in local time
+const formatSeasonDates = (
+  startDate: Timestamp | undefined,
+  endDate: Timestamp | undefined,
+): string => {
+  if (!startDate || !endDate) return "";
+
+  // Convert protobuf Timestamp to Date
+  const startDateObj = timestampDate(startDate);
+  const endDateObj = timestampDate(endDate);
+
+  // Format in user's local timezone (moment uses local timezone by default)
+  const start = moment(startDateObj);
+  const end = moment(endDateObj);
+
+  // Format: "Jan 15, 2025 3:00 PM - Feb 28, 2025 11:59 PM"
+  return `${start.format("MMM D, YYYY h:mm A")} - ${end.format("MMM D, YYYY h:mm A")}`;
+};
+
 export const LeaguePage = (props: Props) => {
   const { slug } = useParams<{ slug: string }>();
   const { loginState } = useLoginStateStoreContext();
@@ -34,6 +70,8 @@ export const LeaguePage = (props: Props) => {
   const queryClient = useQueryClient();
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
+  const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
 
   // Fetch league data
   const { data: leagueData, isLoading: leagueLoading } = useQuery(
@@ -87,6 +125,17 @@ export const LeaguePage = (props: Props) => {
     { enabled: !!displaySeasonId },
   );
 
+  // Set default selected division when standings data changes
+  useEffect(() => {
+    if (standingsData?.divisions && standingsData.divisions.length > 0) {
+      const defaultDivId = getDefaultDivisionId(
+        standingsData.divisions,
+        userID,
+      );
+      setSelectedDivisionId(defaultDivId);
+    }
+  }, [standingsData, userID]);
+
   // Fetch registrations for selected season
   const { data: registrationsData } = useQuery(
     getSeasonRegistrations,
@@ -101,6 +150,15 @@ export const LeaguePage = (props: Props) => {
     return allSeasons.find((s) => s.status === 4) || null;
   }, [allSeasons]);
 
+  // Fetch registrations for the registration-open season (to check if user is registered)
+  const { data: registrationOpenSeasonRegistrations } = useQuery(
+    getSeasonRegistrations,
+    {
+      seasonId: registrationOpenSeason?.uuid || "",
+    },
+    { enabled: !!registrationOpenSeason?.uuid },
+  );
+
   // Find the most recent SCHEDULED season (status = 0)
   const scheduledSeason = useMemo(() => {
     const scheduled = allSeasons.filter((s) => s.status === 0);
@@ -109,7 +167,15 @@ export const LeaguePage = (props: Props) => {
 
   // Get the displayed season object
   const displayedSeason = useMemo(() => {
-    return allSeasons.find((s) => s.uuid === displaySeasonId) || null;
+    const season = allSeasons.find((s) => s.uuid === displaySeasonId) || null;
+    console.log("Displayed Season:", {
+      season,
+      hasStartDate: !!season?.startDate,
+      hasEndDate: !!season?.endDate,
+      startDate: season?.startDate,
+      endDate: season?.endDate,
+    });
+    return season;
   }, [allSeasons, displaySeasonId]);
 
   // Check if user is registered for the displayed season
@@ -150,7 +216,10 @@ export const LeaguePage = (props: Props) => {
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
       });
-      alert("Successfully registered for the season!");
+      notification.success({
+        message: "Registration Successful",
+        description: "You have been successfully registered for the season!",
+      });
     },
     onError: (error) => {
       flashError(error);
@@ -163,7 +232,10 @@ export const LeaguePage = (props: Props) => {
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetSeasonRegistrations" }],
       });
-      alert("Successfully unregistered from the season!");
+      notification.success({
+        message: "Unregistration Successful",
+        description: "You have been successfully unregistered from the season.",
+      });
     },
     onError: (error) => {
       flashError(error);
@@ -178,7 +250,10 @@ export const LeaguePage = (props: Props) => {
         queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
       });
       const seasonNumber = response.season?.seasonNumber || "next";
-      alert(`Successfully opened registration for Season ${seasonNumber}!`);
+      notification.success({
+        message: "Registration Opened",
+        description: `Registration has been opened for Season ${seasonNumber}.`,
+      });
     },
     onError: (error) => {
       flashError(error);
@@ -260,72 +335,25 @@ export const LeaguePage = (props: Props) => {
         </Col>
       </Row>
       <div className="leagues-container">
-        <div className="league-header">
-          <Link to="/leagues">
-            <Button
-              type="link"
-              icon={<ArrowLeftOutlined />}
-              style={{ paddingLeft: 0, marginBottom: 8 }}
-            >
-              Back to Leagues
-            </Button>
-          </Link>
-          <h1>{league.name}</h1>
-          <p>{league.description}</p>
-        </div>
+        <Link to="/leagues" className="back-to-leagues-link">
+          <ArrowLeftOutlined style={{ marginRight: 8 }} />
+          Back to Leagues
+        </Link>
 
         <Row gutter={16}>
-          {/* Left Column - League Info & Registrants */}
+          {/* Left Column - Chat Only */}
           <Col xs={24} lg={6}>
-            {league.settings && (
-              <Card
-                className="league-settings-card"
-                style={{ marginBottom: 16 }}
-              >
-                <h3>League Settings</h3>
-                <div className="setting-item">
-                  <strong>Lexicon</strong>
-                  <div>{league.settings.lexicon}</div>
-                </div>
-                <div className="setting-item" style={{ marginTop: 12 }}>
-                  <strong>Season Length</strong>
-                  <div>{league.settings.seasonLengthDays} days</div>
-                </div>
-                <div className="setting-item" style={{ marginTop: 12 }}>
-                  <strong>Ideal Division Size</strong>
-                  <div>{league.settings.idealDivisionSize} players</div>
-                </div>
-              </Card>
+            {/* League Chat */}
+            {loggedIn && league && (
+              <div className="chat-area">
+                <Chat
+                  sendChat={props.sendChat}
+                  defaultChannel={`chat.league.${league.uuid.replace(/-/g, "")}`}
+                  defaultDescription={`League Chat: ${league.name}`}
+                  leagueID={league.uuid}
+                />
+              </div>
             )}
-
-            {/* Show registrants for seasons without divisions (SCHEDULED, REGISTRATION_OPEN) */}
-            {!standingsLoading &&
-              displayedSeason &&
-              registrants.length > 0 &&
-              standingsData?.divisions.length === 0 && (
-                <Card className="registrants-card">
-                  <h3>Registrants</h3>
-                  <p style={{ marginBottom: 12 }}>
-                    {registrants.length}{" "}
-                    {registrants.length === 1 ? "player" : "players"} registered
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "8px 16px",
-                    }}
-                  >
-                    {registrants.map((registrant) => (
-                      <UsernameWithContext
-                        key={registrant.userId}
-                        username={registrant.username}
-                        userID={registrant.userId}
-                      />
-                    ))}
-                  </div>
-                </Card>
-              )}
           </Col>
 
           {/* Center Column - Seasons & Standings */}
@@ -432,7 +460,107 @@ export const LeaguePage = (props: Props) => {
                     };
                   })}
                 />
+                {/* Show dates for selected season */}
+                {displayedSeason &&
+                  displayedSeason.startDate &&
+                  displayedSeason.endDate && (
+                    <div
+                      className="season-dates-selector"
+                      style={{ marginTop: 8, fontSize: "13px", color: "#666" }}
+                    >
+                      {formatSeasonDates(
+                        displayedSeason.startDate,
+                        displayedSeason.endDate,
+                      )}
+                    </div>
+                  )}
+
+                {/* Player count display */}
+                {displayedSeason && registrants.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <span
+                      className="clickable-link"
+                      onClick={() => setShowPlayersModal(true)}
+                    >
+                      ({registrants.length}{" "}
+                      {registrants.length === 1 ? "player" : "players"}
+                      {displayedSeason.status === 4 ||
+                      displayedSeason.status === 0
+                        ? " registered"
+                        : ""}
+                      )
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {/* Registration reminder banner - show when viewing a different season while registration is open */}
+              {registrationOpenSeason &&
+                displaySeasonId !== registrationOpenSeason.uuid &&
+                (() => {
+                  // Check if user is registered for the registration-open season
+                  const isRegisteredForNewSeason =
+                    registrationOpenSeasonRegistrations?.registrations.some(
+                      (reg) => reg.userId === userID,
+                    );
+
+                  return (
+                    <Alert
+                      message={
+                        isRegisteredForNewSeason
+                          ? `You're registered for Season ${registrationOpenSeason.seasonNumber}!`
+                          : `Registration is now open for Season ${registrationOpenSeason.seasonNumber}!`
+                      }
+                      description={
+                        <div>
+                          <p style={{ marginBottom: 8 }}>
+                            {isRegisteredForNewSeason
+                              ? "Season starts on "
+                              : "Registration closes on "}
+                            {registrationOpenSeason.startDate &&
+                              moment(
+                                timestampDate(registrationOpenSeason.startDate),
+                              ).format("MMMM D, YYYY [at] h:mm A")}
+                          </p>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() =>
+                              setSelectedSeasonId(registrationOpenSeason.uuid)
+                            }
+                          >
+                            {isRegisteredForNewSeason
+                              ? `View Season ${registrationOpenSeason.seasonNumber}`
+                              : `View & Register for Season ${registrationOpenSeason.seasonNumber}`}
+                          </Button>
+                        </div>
+                      }
+                      type={isRegisteredForNewSeason ? "success" : "info"}
+                      showIcon
+                      style={{ marginTop: 16 }}
+                    />
+                  );
+                })()}
+
+              {/* Help banner when viewing registration-open season but not registered */}
+              {displayedSeason?.status === 4 &&
+                !isUserRegistered &&
+                loggedIn && (
+                  <Alert
+                    message="Registration Instructions"
+                    description={
+                      <div>
+                        To register for this season, please click the 'Register
+                        for Season' button above.&nbsp;
+                        <strong>Note:</strong> Please only register if you are
+                        willing to play all league games without forfeits!
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginTop: 16 }}
+                  />
+                )}
             </Card>
 
             {standingsLoading && (
@@ -456,26 +584,57 @@ export const LeaguePage = (props: Props) => {
               standingsData &&
               standingsData.divisions.length > 0 && (
                 <div className="standings-container" style={{ marginTop: 16 }}>
-                  {standingsData.divisions.map((division) => (
-                    <DivisionStandings
-                      key={division.uuid}
-                      division={division}
-                      totalDivisions={standingsData.divisions.length}
-                      seasonId={displaySeasonId || ""}
-                      seasonNumber={displayedSeason?.seasonNumber || 0}
-                      currentUserId={userID}
-                    />
-                  ))}
+                  {/* Division Selector */}
+                  <DivisionSelector
+                    divisions={standingsData.divisions}
+                    selectedDivisionId={selectedDivisionId}
+                    onDivisionChange={setSelectedDivisionId}
+                    currentUserId={userID}
+                  />
+
+                  {/* Show champion banner for completed seasons */}
+                  {displayedSeason?.status === 2 &&
+                    standingsData.divisions.length > 0 &&
+                    standingsData.divisions[0].standings.length > 0 && (
+                      <div className="season-champion-banner">
+                        <div className="champion-content">
+                          <TrophyOutlined className="trophy-icon" />
+                          <div className="champion-text">
+                            <h3>
+                              Season {displayedSeason.seasonNumber} Champion
+                            </h3>
+                            <p className="champion-name">
+                              Congratulations to{" "}
+                              {standingsData.divisions[0].standings[0].username}
+                              !
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Show only selected division */}
+                  {standingsData.divisions
+                    .filter((division) => division.uuid === selectedDivisionId)
+                    .map((division) => (
+                      <DivisionStandings
+                        key={division.uuid}
+                        division={division}
+                        totalDivisions={standingsData.divisions.length}
+                        seasonId={displaySeasonId || ""}
+                        seasonNumber={displayedSeason?.seasonNumber || 0}
+                        currentUserId={userID}
+                      />
+                    ))}
                   <div className="standings-legend">
                     <p>
                       <strong>Promotion/Relegation Zones:</strong> Green
                       highlighted rows indicate players in the promotion zone
-                      (top{" "}
-                      {Math.ceil(
-                        (standingsData.divisions[0]?.standings.length || 0) / 6,
-                      )}{" "}
-                      players per division will move up). Red highlighted rows
-                      indicate relegation zones (bottom players will move down).
+                      (top players in each division that will move up to the
+                      next division). Red rows indicate relegation zones (bottom
+                      players will move down). The number of players in the
+                      promotion and relegation zones is determined by the size
+                      of the division.
                     </p>
                     <p>
                       <strong>Note:</strong> If additional divisions are added
@@ -500,13 +659,151 @@ export const LeaguePage = (props: Props) => {
               )}
           </Col>
 
-          {/* Right Column - League Games */}
+          {/* Right Column - Settings & Games */}
           <Col xs={24} lg={6}>
+            {/* League Info & Settings Card */}
+            {league && (
+              <Card className="league-info-card" style={{ marginBottom: 16 }}>
+                {/* League Name & Description */}
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    margin: 0,
+                    marginBottom: 6,
+                    fontWeight: 600,
+                  }}
+                >
+                  {league.name}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    margin: 0,
+                    marginBottom: 12,
+                    color: "#666",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  {league.description}
+                </p>
+
+                {/* Current Season Info */}
+                {displayedSeason &&
+                  displayedSeason.startDate &&
+                  displayedSeason.endDate && (
+                    <div className="season-info-compact">
+                      <strong>
+                        {displayedSeason.status === 1
+                          ? "Current Season"
+                          : `Season ${displayedSeason.seasonNumber}`}
+                        :
+                      </strong>{" "}
+                      {formatSeasonDates(
+                        displayedSeason.startDate,
+                        displayedSeason.endDate,
+                      )}
+                    </div>
+                  )}
+
+                {/* Settings Table */}
+                {league.settings && (
+                  <div className="settings-table">
+                    <div className="settings-row">
+                      <span className="settings-label">Lexicon:</span>
+                      <span className="settings-value">
+                        {league.settings.lexicon}
+                      </span>
+                    </div>
+                    <div className="settings-row">
+                      <span className="settings-label">Challenge:</span>
+                      <span className="settings-value">
+                        {league.settings.challengeRule === 5
+                          ? "Triple"
+                          : league.settings.challengeRule === 4
+                            ? "10pt"
+                            : league.settings.challengeRule === 3
+                              ? "5pt"
+                              : league.settings.challengeRule === 2
+                                ? "Double"
+                                : league.settings.challengeRule === 1
+                                  ? "Single"
+                                  : "Void"}
+                      </span>
+                    </div>
+                    <div className="settings-row">
+                      <span className="settings-label">Time Control:</span>
+                      <span className="settings-value">
+                        {league.settings.timeControl?.incrementSeconds
+                          ? `${league.settings.timeControl.incrementSeconds / 3600}h/turn`
+                          : "None"}
+                      </span>
+                    </div>
+                    <div className="settings-row">
+                      <span className="settings-label">Time Bank:</span>
+                      <span className="settings-value">
+                        {league.settings.timeControl?.timeBankMinutes
+                          ? `${league.settings.timeControl.timeBankMinutes / 60}h`
+                          : "None"}
+                      </span>
+                    </div>
+                    <div className="settings-row">
+                      <span className="settings-label">Season Length:</span>
+                      <span className="settings-value">
+                        {league.settings.seasonLengthDays} days
+                      </span>
+                    </div>
+                    <div className="settings-row">
+                      <span className="settings-label">Division Size:</span>
+                      <span className="settings-value">
+                        {league.settings.idealDivisionSize} players
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* League Games */}
             {loggedIn && slug && (
               <LeagueCorrespondenceGames leagueSlug={slug} />
             )}
           </Col>
         </Row>
+
+        {/* Players List Modal */}
+        <Modal
+          title={`Season ${displayedSeason?.seasonNumber} Players`}
+          open={showPlayersModal}
+          onCancel={() => setShowPlayersModal(false)}
+          footer={null}
+          width={500}
+          zIndex={1100}
+        >
+          <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <p style={{ marginBottom: 12 }}>
+              {registrants.length}{" "}
+              {registrants.length === 1 ? "player" : "players"}
+              {displayedSeason?.status === 4 || displayedSeason?.status === 0
+                ? " registered"
+                : ""}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "8px 16px",
+              }}
+            >
+              {registrants.map((registrant) => (
+                <UsernameWithContext
+                  key={registrant.userId}
+                  username={registrant.username}
+                  userID={registrant.userId}
+                />
+              ))}
+            </div>
+          </div>
+        </Modal>
       </div>
     </>
   );

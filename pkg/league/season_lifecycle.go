@@ -97,8 +97,11 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	}
 
 	// Create next season with REGISTRATION_OPEN status
+	// Preserve the time-of-day from the current season
+	// e.g., if current season is Jan 1 @ 8 AM to Jan 22 @ midnight,
+	// next season will be Jan 22 @ 8 AM to Feb 12 @ midnight
 	nextStartDate := currentSeason.StartDate.Time.AddDate(0, 0, 21)
-	nextEndDate := nextStartDate.AddDate(0, 0, 21)
+	nextEndDate := currentSeason.EndDate.Time.AddDate(0, 0, 21)
 
 	nextSeasonID := uuid.New()
 	_, err = slm.stores.LeagueStore.CreateSeason(ctx, models.CreateSeasonParams{
