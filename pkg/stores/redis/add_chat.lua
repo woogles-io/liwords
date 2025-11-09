@@ -11,7 +11,7 @@ local regulateChat = ARGV[7] -- "regulated", "unregulated"
 local MessageCooldownTime = 5
 local DuplicateMessageCooldownTime = 30 * 60
 local LongChannelExpiration = 86400 * 14
-local GameChatChannelExpiration = 86400
+local GameChatChannelExpiration = 86400 * 14
 local LobbyChatChannel = "chat.lobby"
 local LatestChatSeparator = ":"
 

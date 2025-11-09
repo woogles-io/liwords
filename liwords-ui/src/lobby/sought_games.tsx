@@ -284,7 +284,14 @@ export const SoughtGames = (props: Props) => {
               </div>
             </Popconfirm>
           ) : (
-            <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
+            <div>
+              {sg.receiverIsPermanent && (
+                <span style={{ fontWeight: 500, marginRight: 4 }}>
+                  Match request from{" "}
+                </span>
+              )}
+              <PlayerDisplay userID={sg.seekerID} username={sg.seeker} />
+            </div>
           ),
           rating: outgoing ? "" : sg.userRating,
           ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,

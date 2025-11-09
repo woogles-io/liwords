@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -20,7 +21,7 @@ import (
 // but will use Redis to keep a short history of previous chats in every channel.
 
 func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) error {
-	if len(evt.Message) > MaxMessageLength {
+	if utf8.RuneCountInString(evt.Message) > MaxMessageLength {
 		return errors.New("message-too-long")
 	}
 

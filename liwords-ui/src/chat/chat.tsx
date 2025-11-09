@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card, Input, Tabs } from "antd";
+import { Card, Input, Tabs, notification } from "antd";
 import { LeftOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
 import { ChatEntity } from "./chat_entity";
@@ -23,12 +23,15 @@ import {
   chatMessageToChatEntity,
 } from "../store/constants";
 import { Players } from "./players";
-import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
+import { ChatMessage, ChatMessageSchema } from "../gen/api/proto/ipc/chat_pb";
 import { useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { useCollectionContext } from "../collections/useCollectionContext";
 import { CollectionNavigationTab } from "../collections/CollectionNavigationTab";
+import { create, toBinary } from "@bufbuild/protobuf";
+import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
+import { encodeToSocketFmt } from "../utils/protobuf";
 
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
@@ -45,6 +48,9 @@ export type Props = {
 
 // userid -> channel -> string
 let globalUnsentChatCache: { [key: string]: { [key: string]: string } } = {};
+
+const MAX_MESSAGE_LENGTH = 500;
+const MAX_WEBSOCKET_MESSAGE_SIZE = 1800; // Conservative limit (backend is 2048)
 
 // Helper function to determine the correct default tab
 const getDefaultTab = (
@@ -660,7 +666,6 @@ export const Chat = React.memo((props: Props) => {
         e.preventDefault();
         // Send if non-trivial
         const msg = curMsg.trim();
-        setCurMsg("");
 
         if (msg === "") {
           return;
@@ -668,6 +673,36 @@ export const Chat = React.memo((props: Props) => {
         if (!loggedIn) {
           return;
         }
+
+        // Validate message length before clearing input
+        if (msg.length > MAX_MESSAGE_LENGTH) {
+          notification.error({
+            message: "Message too long",
+            description: `Messages must be ${MAX_MESSAGE_LENGTH} characters or less. Current length: ${msg.length}`,
+          });
+          return; // Keep message in input field
+        }
+
+        // Validate encoded message size to prevent WebSocket disconnect
+        const evt = create(ChatMessageSchema, {
+          message: msg,
+          channel: channel,
+        });
+        const encodedMsg = encodeToSocketFmt(
+          MessageType.CHAT_MESSAGE,
+          toBinary(ChatMessageSchema, evt),
+        );
+
+        if (encodedMsg.length > MAX_WEBSOCKET_MESSAGE_SIZE) {
+          notification.error({
+            message: "Message too large",
+            description: `Your message with metadata is ${encodedMsg.length} bytes, which exceeds the ${MAX_WEBSOCKET_MESSAGE_SIZE} byte limit. Please shorten your message.`,
+          });
+          return; // Keep message in input field
+        }
+
+        // Only clear input after validation passes
+        setCurMsg("");
         propsSendChat(msg, channel);
         // This may not be a good idea. User will miss unread messages.
         setChatAutoScroll(true);
