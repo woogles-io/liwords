@@ -20,7 +20,6 @@ import {
   useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
-  useLobbyStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
   useRematchRequestStoreContext,
@@ -269,7 +268,6 @@ export const Table = React.memo((props: Props) => {
     useExamineStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
-  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
@@ -292,6 +290,7 @@ export const Table = React.memo((props: Props) => {
     Array<GameInfoResponse>
   >([]);
   const [isObserver, setIsObserver] = useState(false);
+  const prevGameIDRef = useRef<string | undefined>();
 
   // Comments functionality
   const commentsClient = useClient(GameCommentService);
@@ -452,6 +451,14 @@ export const Table = React.memo((props: Props) => {
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
+    // Only reset state when gameID actually changes, not when other deps change
+    const gameIDChanged = prevGameIDRef.current !== gameID;
+    if (gameIDChanged) {
+      setGameInfo(defaultGameInfo);
+      setLocalCorresGames([]);
+      message.destroy("board-messages");
+      prevGameIDRef.current = gameID;
+    }
 
     const fetchGameMetadata = async () => {
       try {
@@ -477,12 +484,9 @@ export const Table = React.memo((props: Props) => {
           setGameEndMessage(endGameMessageFromGameInfo(resp));
         }
 
-        // If this is a correspondence game and we don't have correspondence games loaded,
-        // fetch active correspondence games to populate the next game button
-        if (
-          resp.gameRequest?.gameMode === GameMode.CORRESPONDENCE &&
-          lobbyContext.correspondenceGames.length === 0
-        ) {
+        // If this is a correspondence game, fetch active correspondence games
+        // to populate the next game button (single source of truth from API)
+        if (resp.gameRequest?.gameMode === GameMode.CORRESPONDENCE) {
           try {
             const activeCorresGames =
               await gmClient.getActiveCorrespondenceGames({});
@@ -503,16 +507,10 @@ export const Table = React.memo((props: Props) => {
     fetchGameMetadata();
 
     return () => {
-      setGameInfo(defaultGameInfo);
+      // Cleanup messages
       message.destroy("board-messages");
     };
-  }, [
-    gameID,
-    gmClient,
-    setGameEndMessage,
-    setPoolFormat,
-    lobbyContext.correspondenceGames.length,
-  ]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -909,8 +907,7 @@ export const Table = React.memo((props: Props) => {
   }, [gameDone, gameInfo.tournamentId, loggedIn]);
 
   // Calculate next correspondence game where it's user's turn
-  // Uses either lobbyContext.correspondenceGames (if loaded from lobby) or
-  // localCorresGames (fetched via API when navigating directly to a game)
+  // Uses localCorresGames as single source of truth (fetched via API)
   const { nextCorresGame, corresGamesWaiting } = useMemo(() => {
     const isCorrespondence =
       gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
@@ -919,30 +916,27 @@ export const Table = React.memo((props: Props) => {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
     }
 
-    // Use lobby context games if available, otherwise use locally fetched games
-    const corresGames =
-      lobbyContext.correspondenceGames.length > 0
-        ? lobbyContext.correspondenceGames
-        : localCorresGames.map((g) => ({
-            gameID: g.gameId,
-            players: g.players.map((p) => ({
-              uuid: p.userId,
-              nickname: p.nickname,
-            })),
-            playerOnTurn: g.playerOnTurn,
-            lastUpdate: g.lastUpdate
-              ? Number(g.lastUpdate.seconds) * 1000
-              : Date.now(),
-            incrementSecs: g.gameRequest?.incrementSeconds || 86400,
-            lexicon: g.gameRequest?.lexicon || "",
-            variant: g.gameRequest?.rules?.variantName || "",
-            initialTimeSecs: g.gameRequest?.initialTimeSeconds || 0,
-            challengeRule: g.gameRequest?.challengeRule || 0,
-            rated: g.gameRequest?.ratingMode === 0, // RatingMode.RATED = 0
-            maxOvertimeMinutes: g.gameRequest?.maxOvertimeMinutes || 0,
-            tournamentID: g.tournamentId,
-            gameMode: g.gameRequest?.gameMode || 0,
-          }));
+    // Convert localCorresGames to ActiveGame format
+    const corresGames = localCorresGames.map((g) => ({
+      gameID: g.gameId,
+      players: g.players.map((p) => ({
+        uuid: p.userId,
+        nickname: p.nickname,
+      })),
+      playerOnTurn: g.playerOnTurn,
+      lastUpdate: g.lastUpdate
+        ? Number(g.lastUpdate.seconds) * 1000
+        : Date.now(),
+      incrementSecs: g.gameRequest?.incrementSeconds || 86400,
+      lexicon: g.gameRequest?.lexicon || "",
+      variant: g.gameRequest?.rules?.variantName || "",
+      initialTimeSecs: g.gameRequest?.initialTimeSeconds || 0,
+      challengeRule: g.gameRequest?.challengeRule || 0,
+      rated: g.gameRequest?.ratingMode === 0, // RatingMode.RATED = 0
+      maxOvertimeMinutes: g.gameRequest?.maxOvertimeMinutes || 0,
+      tournamentID: g.tournamentId,
+      gameMode: g.gameRequest?.gameMode || 0,
+    }));
 
     if (corresGames.length === 0) {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
@@ -981,19 +975,14 @@ export const Table = React.memo((props: Props) => {
       nextCorresGame: gamesOnMyTurn.length > 0 ? gamesOnMyTurn[0].game : null,
       corresGamesWaiting: gamesOnMyTurn.length,
     };
-  }, [
-    gameInfo.gameRequest?.gameMode,
-    userID,
-    gameID,
-    lobbyContext.correspondenceGames,
-    localCorresGames,
-  ]);
+  }, [gameInfo.gameRequest?.gameMode, userID, gameID, localCorresGames]);
 
   const handleNextCorresGame = useCallback(() => {
     if (nextCorresGame) {
-      navigate(`/game/${encodeURIComponent(nextCorresGame.gameID)}`);
+      // Use full page navigation to ensure clean component mount
+      window.location.href = `/game/${encodeURIComponent(nextCorresGame.gameID)}`;
     }
-  }, [nextCorresGame, navigate]);
+  }, [nextCorresGame]);
 
   const gameEpilog = useMemo(() => {
     // XXX: this doesn't get updated when game ends, only when refresh?
