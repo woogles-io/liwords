@@ -96,7 +96,10 @@ export const CorrespondenceGames = (props: Props) => {
 
   const formatGameData = useCallback(
     (games: ActiveGame[]): CorrespondenceGameTableData[] => {
-      const gameData: CorrespondenceGameTableData[] = games.map(
+      const userGames = games.filter((ag: ActiveGame) =>
+        ag.players.some((player) => player.uuid === userID),
+      );
+      const gameData: CorrespondenceGameTableData[] = userGames.map(
         (ag: ActiveGame) => {
           const player1rating = ag.players[0]?.rating || "1500?";
           const player2rating = ag.players[1]?.rating || "1500?";
