@@ -244,6 +244,7 @@ export type Props = {
       ) => void)
     | null;
   tournamentPairedMode?: boolean;
+  isLeagueGame?: boolean;
   showNudge: boolean;
   showAbort: boolean;
   exitableExaminer?: boolean;
@@ -355,12 +356,16 @@ const GameControls = React.memo((props: Props) => {
   const { modal } = App.useApp();
 
   const optionsMenuItems = useMemo(() => {
-    const items = [
-      {
+    const items = [];
+
+    // Don't allow resign in league games
+    if (!props.isLeagueGame) {
+      items.push({
         label: "Resign",
         key: "resign",
-      },
-    ];
+      });
+    }
+
     if (props.showAbort) {
       items.push({
         label: "Cancel Game",
@@ -382,7 +387,7 @@ const GameControls = React.memo((props: Props) => {
       key: "download-animated-gif-turn",
     });
     return items;
-  }, [props.showAbort, props.showNudge]);
+  }, [props.showAbort, props.showNudge, props.isLeagueGame]);
 
   // this gameDone is slightly different from the one in table.tsx,
   // but it's good enough, otherwise we need to prop-drill further.

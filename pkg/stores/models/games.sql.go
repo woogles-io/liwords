@@ -8,6 +8,7 @@ package models
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/woogles-io/liwords/pkg/entity"
 )
@@ -143,8 +144,8 @@ SELECT EXISTS (
 ) AS exists
 `
 
-func (q *Queries) GameExists(ctx context.Context, uuid pgtype.Text) (bool, error) {
-	row := q.db.QueryRow(ctx, gameExists, uuid)
+func (q *Queries) GameExists(ctx context.Context, argUuid pgtype.Text) (bool, error) {
+	row := q.db.QueryRow(ctx, gameExists, argUuid)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -154,8 +155,8 @@ const getGame = `-- name: GetGame :one
 SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, league_division_id FROM games WHERE uuid = $1
 `
 
-func (q *Queries) GetGame(ctx context.Context, uuid pgtype.Text) (Game, error) {
-	row := q.db.QueryRow(ctx, getGame, uuid)
+func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error) {
+	row := q.db.QueryRow(ctx, getGame, argUuid)
 	var i Game
 	err := row.Scan(
 		&i.ID,
@@ -221,8 +222,8 @@ type GetGameMetadataRow struct {
 	LeagueDivisionID pgtype.UUID
 }
 
-func (q *Queries) GetGameMetadata(ctx context.Context, uuid pgtype.Text) (GetGameMetadataRow, error) {
-	row := q.db.QueryRow(ctx, getGameMetadata, uuid)
+func (q *Queries) GetGameMetadata(ctx context.Context, argUuid pgtype.Text) (GetGameMetadataRow, error) {
+	row := q.db.QueryRow(ctx, getGameMetadata, argUuid)
 	var i GetGameMetadataRow
 	err := row.Scan(
 		&i.ID,
@@ -276,8 +277,8 @@ SELECT history FROM games
 WHERE uuid = $1
 `
 
-func (q *Queries) GetHistory(ctx context.Context, uuid pgtype.Text) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getHistory, uuid)
+func (q *Queries) GetHistory(ctx context.Context, argUuid pgtype.Text) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getHistory, argUuid)
 	var history []byte
 	err := row.Scan(&history)
 	return history, err
@@ -901,6 +902,68 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 	var items []ListActiveCorrespondenceGamesForUserRow
 	for rows.Next() {
 		var i ListActiveCorrespondenceGamesForUserRow
+		if err := rows.Scan(
+			&i.Quickdata,
+			&i.Uuid,
+			&i.Started,
+			&i.TournamentData,
+			&i.GameRequest,
+			&i.PlayerOnTurn,
+			&i.UpdatedAt,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveCorrespondenceGamesForUserAndLeague = `-- name: ListActiveCorrespondenceGamesForUserAndLeague :many
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
+FROM games
+WHERE league_id = $1::uuid
+    AND game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND (
+        player0_id = (SELECT id FROM users WHERE uuid = $2::text)
+        OR player1_id = (SELECT id FROM users WHERE uuid = $2::text)
+    )
+ORDER BY id
+`
+
+type ListActiveCorrespondenceGamesForUserAndLeagueParams struct {
+	LeagueID uuid.UUID
+	UserUuid string
+}
+
+type ListActiveCorrespondenceGamesForUserAndLeagueRow struct {
+	Quickdata        entity.Quickdata
+	Uuid             pgtype.Text
+	Started          pgtype.Bool
+	TournamentData   entity.TournamentData
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	UpdatedAt        pgtype.Timestamptz
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+}
+
+func (q *Queries) ListActiveCorrespondenceGamesForUserAndLeague(ctx context.Context, arg ListActiveCorrespondenceGamesForUserAndLeagueParams) ([]ListActiveCorrespondenceGamesForUserAndLeagueRow, error) {
+	rows, err := q.db.Query(ctx, listActiveCorrespondenceGamesForUserAndLeague, arg.LeagueID, arg.UserUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveCorrespondenceGamesForUserAndLeagueRow
+	for rows.Next() {
+		var i ListActiveCorrespondenceGamesForUserAndLeagueRow
 		if err := rows.Scan(
 			&i.Quickdata,
 			&i.Uuid,

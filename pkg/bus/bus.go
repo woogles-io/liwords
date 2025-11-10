@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -1102,26 +1103,22 @@ func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*e
 
 // leagueCorrespondenceGamesForUser returns correspondence games for a specific league and user
 func (b *Bus) leagueCorrespondenceGamesForUser(ctx context.Context, userID, leagueID string) (*entity.EventWrapper, error) {
-	games, err := b.stores.GameStore.ListActiveCorrespondenceForUser(ctx, userID)
+	// Parse the league UUID (works with or without hyphens)
+	leagueUUID, err := uuid.Parse(leagueID)
+	if err != nil {
+		log.Error().Err(err).Str("leagueID", leagueID).Msg("invalid-league-uuid")
+		return nil, err
+	}
 
+	// Query games directly filtered by league ID in the database
+	games, err := b.stores.GameStore.ListActiveCorrespondenceForUserAndLeague(ctx, leagueUUID, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug().Int("total-correspondence-games", len(games.GameInfo)).Str("userID", userID).Str("leagueID", leagueID).Msg("filtering-league-games")
+	log.Debug().Int("num-league-correspondence-games", len(games.GameInfo)).Str("userID", userID).Str("leagueID", leagueID).Msg("league-correspondence-games-for-user")
 
-	// Filter games to only include those from this league
-	filteredGames := make([]*pb.GameInfoResponse, 0)
-	for _, game := range games.GameInfo {
-		log.Debug().Str("gameID", game.GameId).Str("gameLeagueId", game.LeagueId).Str("targetLeagueId", leagueID).Bool("matches", game.LeagueId == leagueID).Msg("checking-game")
-		if game.LeagueId == leagueID {
-			filteredGames = append(filteredGames, game)
-		}
-	}
-
-	log.Debug().Int("num-league-correspondence-games", len(filteredGames)).Str("userID", userID).Str("leagueID", leagueID).Msg("league-correspondence-games-for-user")
-
-	evt := entity.WrapEvent(&pb.GameInfoResponses{GameInfo: filteredGames}, pb.MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES)
+	evt := entity.WrapEvent(games, pb.MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES)
 	return evt, nil
 }
 

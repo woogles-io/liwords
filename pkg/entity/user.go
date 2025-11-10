@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/glicko"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -201,6 +203,7 @@ func InferChildStatus(dob string, now time.Time) pb.ChildStatus {
 	if err != nil {
 		// This means the birth date was either not defined or malformed
 		// Either way, the child status should be unknown
+		log.Debug().Str("dob", dob).Err(err).Msg("InferChildStatus parse error")
 		return pb.ChildStatus_UNKNOWN
 	} else {
 		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)

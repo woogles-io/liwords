@@ -98,18 +98,23 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 ) (*connect.Response[pb.LoginResponse], error) {
 
 	r.Msg.Username = strings.TrimSpace(r.Msg.Username)
+	log.Debug().Str("username", r.Msg.Username).Msg("Login: about to get user")
 	user, err := as.userStore.Get(ctx, r.Msg.Username)
 	if err != nil {
-		log.Err(err).Msg("getting-user")
+		log.Err(err).Str("username", r.Msg.Username).Msg("getting-user")
 		return nil, apiserver.Unauthenticated("bad login")
 	}
+	log.Debug().Str("username", r.Msg.Username).Msg("Login: user retrieved successfully")
+	log.Debug().Msg("Login: about to compare password")
 	matches, err := ComparePassword(r.Msg.Password, user.Password)
 	if err != nil {
+		log.Error().Err(err).Msg("Login: error comparing password")
 		return nil, apiserver.InternalErr(err)
 	}
 	if !matches {
 		return nil, apiserver.Unauthenticated("password incorrect")
 	}
+	log.Debug().Msg("Login: password matched, checking mod actions")
 
 	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
@@ -117,8 +122,10 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 		return nil, modActionExistsErr(err)
 	}
 
+	log.Debug().Msg("Login: creating session")
 	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
+		log.Error().Err(err).Msg("Login: error creating session")
 		return nil, apiserver.InternalErr(err)
 	}
 

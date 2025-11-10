@@ -848,6 +848,49 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
+// ListActiveCorrespondenceForUserAndLeague lists active correspondence games for a specific user in a specific league.
+func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error) {
+	var responses []*pb.GameInfoResponse
+
+	params := models.ListActiveCorrespondenceGamesForUserAndLeagueParams{
+		LeagueID: leagueID,
+		UserUuid: userID,
+	}
+
+	games, err := s.queries.ListActiveCorrespondenceGamesForUserAndLeague(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch league slug once
+	league, err := s.queries.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		log.Warn().Err(err).Str("league_id", leagueID.String()).Msg("failed to fetch league slug")
+		return nil, err
+	}
+
+	for _, g := range games {
+		info := &pb.GameInfoResponse{
+			Players:     g.Quickdata.PlayerInfo,
+			GameId:      g.Uuid.String,
+			GameRequest: g.GameRequest.GameRequest,
+			Type:        pb.GameType_NATIVE,
+			LastUpdate:  timestamppb.New(g.UpdatedAt.Time),
+			LeagueId:    leagueID.String(),
+			LeagueSlug:  league.Slug,
+		}
+
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+
+		responses = append(responses, info)
+	}
+	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Str("league", leagueID.String()).Msg("list-active-correspondence-for-user-and-league")
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
 // ListActiveCorrespondenceRaw returns raw DB rows with timer data.
 // This is used internally by ListActiveCorrespondence and the adjudication process.
 func (s *DBStore) ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error) {

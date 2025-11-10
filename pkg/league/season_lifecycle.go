@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
+	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -27,6 +28,23 @@ func NewSeasonLifecycleManager(allStores *stores.Stores) *SeasonLifecycleManager
 	return &SeasonLifecycleManager{
 		stores: allStores,
 	}
+}
+
+// GetRegisteredPlayerIDs returns the UUIDs of all players registered for a season
+func (slm *SeasonLifecycleManager) GetRegisteredPlayerIDs(ctx context.Context, seasonID uuid.UUID) ([]string, error) {
+	registrations, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+	}
+
+	userIDs := make([]string, 0, len(registrations))
+	for _, reg := range registrations {
+		if reg.UserUuid.Valid {
+			userIDs = append(userIDs, reg.UserUuid.String)
+		}
+	}
+
+	return userIDs, nil
 }
 
 // RegistrationOpenResult tracks the outcome of opening registration
@@ -70,6 +88,12 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		return nil, fmt.Errorf("failed to get league: %w", err)
 	}
 
+	// Parse league settings to get season length
+	var leagueSettings ipc.LeagueSettings
+	if err := json.Unmarshal(dbLeague.Settings, &leagueSettings); err != nil {
+		return nil, fmt.Errorf("failed to parse league settings: %w", err)
+	}
+
 	// Safety check: League must be active
 	if !dbLeague.IsActive.Valid || !dbLeague.IsActive.Bool {
 		return nil, fmt.Errorf("cannot open registration: league is not active")
@@ -98,10 +122,10 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 
 	// Create next season with REGISTRATION_OPEN status
 	// Preserve the time-of-day from the current season
-	// e.g., if current season is Jan 1 @ 8 AM to Jan 22 @ midnight,
-	// next season will be Jan 22 @ 8 AM to Feb 12 @ midnight
-	nextStartDate := currentSeason.StartDate.Time.AddDate(0, 0, 21)
-	nextEndDate := currentSeason.EndDate.Time.AddDate(0, 0, 21)
+	// Use the season length from league settings
+	seasonLengthDays := int(leagueSettings.SeasonLengthDays)
+	nextStartDate := currentSeason.StartDate.Time.AddDate(0, 0, seasonLengthDays)
+	nextEndDate := currentSeason.EndDate.Time.AddDate(0, 0, seasonLengthDays)
 
 	nextSeasonID := uuid.New()
 	_, err = slm.stores.LeagueStore.CreateSeason(ctx, models.CreateSeasonParams{
@@ -123,6 +147,162 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		NextSeasonNumber: nextSeasonNumber,
 		StartDate:        nextStartDate,
 	}, nil
+}
+
+// SendSeasonStartingSoonNotification sends reminder emails 1 day before season starts
+func (slm *SeasonLifecycleManager) SendSeasonStartingSoonNotification(
+	ctx context.Context,
+	cfg *config.Config,
+	leagueID uuid.UUID,
+	nextSeasonID uuid.UUID,
+) error {
+	// Get league info
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return fmt.Errorf("failed to get league: %w", err)
+	}
+
+	// Get next season info
+	nextSeason, err := slm.stores.LeagueStore.GetSeason(ctx, nextSeasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get next season: %w", err)
+	}
+
+	// Get registered players for the next season
+	registeredUserIDs, err := slm.GetRegisteredPlayerIDs(ctx, nextSeasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get registered players: %w", err)
+	}
+
+	if len(registeredUserIDs) == 0 {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", nextSeason.SeasonNumber).Msg("no-registered-players-for-season-starting-soon-notification")
+		return nil
+	}
+
+	// Send emails
+	SendSeasonStartingSoonEmail(
+		ctx,
+		cfg,
+		slm.stores.UserStore,
+		dbLeague.Name,
+		dbLeague.Slug,
+		int(nextSeason.SeasonNumber),
+		nextSeason.StartDate.Time,
+		registeredUserIDs,
+	)
+
+	log.Info().Str("leagueID", leagueID.String()).Int32("season", nextSeason.SeasonNumber).Int("count", len(registeredUserIDs)).Msg("sent-season-starting-soon-notifications")
+	return nil
+}
+
+// SendSeasonStartedNotification sends emails to players when season starts and games are created
+func (slm *SeasonLifecycleManager) SendSeasonStartedNotification(
+	ctx context.Context,
+	cfg *config.Config,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+) error {
+	// Get league info
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return fmt.Errorf("failed to get league: %w", err)
+	}
+
+	// Get season info
+	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
+	// Build player assignment map
+	playerAssignments, err := slm.buildPlayerAssignments(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to build player assignments: %w", err)
+	}
+
+	if len(playerAssignments) == 0 {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Msg("no-players-for-season-started-notification")
+		return nil
+	}
+
+	// Send emails
+	SendSeasonStartedEmail(
+		ctx,
+		cfg,
+		slm.stores.UserStore,
+		dbLeague.Name,
+		dbLeague.Slug,
+		int(season.SeasonNumber),
+		playerAssignments,
+	)
+
+	log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Int("count", len(playerAssignments)).Msg("sent-season-started-notifications")
+	return nil
+}
+
+// buildPlayerAssignments creates a map of player assignments with division and opponent info
+func (slm *SeasonLifecycleManager) buildPlayerAssignments(ctx context.Context, seasonID uuid.UUID) (map[string]*PlayerSeasonInfo, error) {
+	// Get all registrations for the season
+	registrations, err := slm.stores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+	}
+
+	// Group players by division
+	divisionPlayers := make(map[uuid.UUID][]string) // divisionID -> []userUUID
+	playerDivisions := make(map[string]uuid.UUID)   // userUUID -> divisionID
+	divisionNames := make(map[uuid.UUID]string)     // divisionID -> divisionName
+
+	for _, reg := range registrations {
+		if !reg.UserUuid.Valid || !reg.DivisionID.Valid {
+			continue
+		}
+
+		userUUID := reg.UserUuid.String
+		divisionID := uuid.UUID(reg.DivisionID.Bytes)
+
+		divisionPlayers[divisionID] = append(divisionPlayers[divisionID], userUUID)
+		playerDivisions[userUUID] = divisionID
+
+		// Fetch division name if we haven't yet
+		if _, exists := divisionNames[divisionID]; !exists {
+			division, err := slm.stores.LeagueStore.GetDivision(ctx, divisionID)
+			if err == nil {
+				if division.DivisionName.Valid {
+					divisionNames[divisionID] = division.DivisionName.String
+				} else {
+					divisionNames[divisionID] = fmt.Sprintf("Division %d", division.DivisionNumber)
+				}
+			} else {
+				divisionNames[divisionID] = fmt.Sprintf("Division %d", len(divisionNames)+1)
+			}
+		}
+	}
+
+	// Build the player assignment map
+	assignments := make(map[string]*PlayerSeasonInfo)
+	for userUUID, divisionID := range playerDivisions {
+		// Get all other players in the same division (opponents)
+		allPlayersInDivision := divisionPlayers[divisionID]
+		opponents := make([]string, 0)
+
+		for _, opponentUUID := range allPlayersInDivision {
+			if opponentUUID != userUUID {
+				// Fetch opponent username
+				opponent, err := slm.stores.UserStore.GetByUUID(ctx, opponentUUID)
+				if err == nil {
+					opponents = append(opponents, opponent.Username)
+				}
+			}
+		}
+
+		assignments[userUUID] = &PlayerSeasonInfo{
+			DivisionName:  divisionNames[divisionID],
+			OpponentNames: opponents,
+		}
+	}
+
+	return assignments, nil
 }
 
 // OpenRegistrationForSeason opens registration for a specific existing season
@@ -309,7 +489,7 @@ type PrepareAndScheduleSeasonResult struct {
 // Accepts seasons in REGISTRATION_OPEN or SCHEDULED status:
 // - REGISTRATION_OPEN: closes registration, creates divisions, sets to SCHEDULED
 // - SCHEDULED: recreates divisions (allows re-running if registrations changed)
-// This should be called on Day 21 at 7:45 AM (15 minutes before season start at 8:00 AM)
+// This should be called on Day 21 at midnight (8 hours before season start at 8:00 AM)
 // Returns nil if season is not in an appropriate status (silently skips)
 func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	ctx context.Context,
@@ -581,7 +761,7 @@ func (slm *SeasonLifecycleManager) RollbackSeasonToScheduled(ctx context.Context
 
 // ShouldRunTask checks if a maintenance task should run based on season dates
 // Returns (shouldRun bool, reason string)
-func ShouldRunTask(season *models.LeagueSeason, taskType string, forceRun bool, now time.Time) (bool, string) {
+func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDays int32, forceRun bool, now time.Time) (bool, string) {
 	// Force override for testing
 	if forceRun {
 		return true, "FORCE mode enabled"
@@ -597,8 +777,8 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, forceRun bool, 
 
 	switch taskType {
 	case "close-season":
-		// Should run at midnight on Day 21 (last day of season)
-		// The EndDate is the last day of the season (Day 21)
+		// Should run at midnight on the last day of season
+		// The EndDate is the last day of the season
 		seasonEndDate := endDate.Truncate(24 * time.Hour)
 		todayMidnight := now.Truncate(24 * time.Hour)
 
@@ -610,18 +790,18 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, forceRun bool, 
 			seasonEndDate.Format("2006-01-02"))
 
 	case "open-registration":
-		// Should run at 8am on Day 14 of current season
-		// Day 14 is 13 days after start (0-indexed)
+		// Should run at 8am at the halfway point of the season
 		seasonStartDate := startDate.Truncate(24 * time.Hour)
-		day14 := seasonStartDate.Add(13 * 24 * time.Hour)
+		daysUntilOpen := (seasonLengthDays / 2) - 1 // -1 because Day 1 is start date
+		registrationOpenDay := seasonStartDate.Add(time.Duration(daysUntilOpen) * 24 * time.Hour)
 		today := now.Truncate(24 * time.Hour)
 
-		if today.Equal(day14) {
-			return true, "Today is Day 14 of season"
+		if today.Equal(registrationOpenDay) {
+			return true, fmt.Sprintf("Today is registration open day (halfway through %d-day season)", seasonLengthDays)
 		}
-		return false, fmt.Sprintf("Today=%s, Day14=%s",
+		return false, fmt.Sprintf("Today=%s, RegistrationOpenDay=%s",
 			today.Format("2006-01-02"),
-			day14.Format("2006-01-02"))
+			registrationOpenDay.Format("2006-01-02"))
 
 	case "start-season":
 		// Should run at 8am on the season's start date
@@ -634,6 +814,19 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, forceRun bool, 
 		return false, fmt.Sprintf("Today=%s, SeasonStart=%s",
 			today.Format("2006-01-02"),
 			seasonStartDate.Format("2006-01-02"))
+
+	case "season-starting-soon":
+		// Should run at 8am on the last day of current season (1 day before next season starts)
+		seasonStartDate := startDate.Truncate(24 * time.Hour)
+		lastDay := seasonStartDate.Add(time.Duration(seasonLengthDays-1) * 24 * time.Hour)
+		today := now.Truncate(24 * time.Hour)
+
+		if today.Equal(lastDay) {
+			return true, fmt.Sprintf("Today is last day of %d-day season (1 day before next season starts)", seasonLengthDays)
+		}
+		return false, fmt.Sprintf("Today=%s, LastDay=%s",
+			today.Format("2006-01-02"),
+			lastDay.Format("2006-01-02"))
 	}
 
 	return false, "Unknown task type"

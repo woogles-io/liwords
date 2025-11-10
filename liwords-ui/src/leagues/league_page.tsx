@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Col,
   Row,
@@ -11,6 +11,7 @@ import {
   Alert,
   notification,
   Modal,
+  Checkbox,
 } from "antd";
 import { ArrowLeftOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
@@ -63,6 +64,25 @@ const formatSeasonDates = (
   return `${start.format("MMM D, YYYY h:mm A")} - ${end.format("MMM D, YYYY h:mm A")}`;
 };
 
+const formatLocalTime = (timestamp: Timestamp | undefined): string => {
+  if (!timestamp) return "TBD";
+
+  const date = timestampDate(timestamp);
+
+  // Format in user's local timezone
+  const localTime = date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "long",
+  });
+
+  return localTime;
+};
+
 export const LeaguePage = (props: Props) => {
   const { slug } = useParams<{ slug: string }>();
   const { loginState } = useLoginStateStoreContext();
@@ -72,6 +92,10 @@ export const LeaguePage = (props: Props) => {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
   const [showPlayersModal, setShowPlayersModal] = useState<boolean>(false);
+  const [showCommitmentModal, setShowCommitmentModal] =
+    useState<boolean>(false);
+  const [hasAgreedToCommitment, setHasAgreedToCommitment] =
+    useState<boolean>(false);
 
   // Fetch league data
   const { data: leagueData, isLoading: leagueLoading } = useQuery(
@@ -262,12 +286,20 @@ export const LeaguePage = (props: Props) => {
 
   // Handler functions
   const handleRegister = () => {
-    if (!slug || !displayedSeason?.uuid) return;
+    // Show commitment modal before registering
+    setShowCommitmentModal(true);
+    setHasAgreedToCommitment(false);
+  };
+
+  const handleConfirmRegistration = () => {
+    if (!slug || !displayedSeason?.uuid || !hasAgreedToCommitment) return;
     registerMutation.mutate({
       leagueId: slug,
       userId: userID,
       seasonId: displayedSeason.uuid,
     });
+    setShowCommitmentModal(false);
+    setHasAgreedToCommitment(false);
   };
 
   const handleUnregister = () => {
@@ -802,6 +834,93 @@ export const LeaguePage = (props: Props) => {
                 />
               ))}
             </div>
+          </div>
+        </Modal>
+
+        {/* Registration Commitment Modal */}
+        <Modal
+          title="League Registration Commitment"
+          open={showCommitmentModal}
+          onCancel={() => {
+            setShowCommitmentModal(false);
+            setHasAgreedToCommitment(false);
+          }}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => {
+                setShowCommitmentModal(false);
+                setHasAgreedToCommitment(false);
+              }}
+            >
+              Cancel
+            </Button>,
+            <Button
+              key="register"
+              type="primary"
+              disabled={!hasAgreedToCommitment}
+              onClick={handleConfirmRegistration}
+            >
+              Register
+            </Button>,
+          ]}
+          width={600}
+          zIndex={1100}
+        >
+          <div style={{ lineHeight: 1.8 }}>
+            <p style={{ marginBottom: 16, fontSize: "15px" }}>
+              Welcome to {league?.name}! Before registering for Season{" "}
+              {displayedSeason?.seasonNumber}, please read and agree to the
+              following commitment:
+            </p>
+
+            <div
+              style={{
+                padding: "16px",
+                backgroundColor: "#f9f9f9",
+                borderRadius: "4px",
+                marginBottom: 16,
+              }}
+            >
+              <p style={{ marginBottom: 12, fontWeight: 500 }}>
+                In order to keep the league fun and fair for everyone, I commit
+                to:
+              </p>
+              <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                <li>
+                  Checking the app regularly to avoid forfeiting games on time
+                </li>
+                <li>Playing fairly without external assistance</li>
+                <li>Completing all my games for the season</li>
+                <li>Having fun</li>
+              </ul>
+            </div>
+
+            <p style={{ marginBottom: 8, fontWeight: 500 }}>
+              Season {displayedSeason?.seasonNumber} starts at:
+            </p>
+            <div
+              style={{
+                padding: "12px",
+                backgroundColor: "#f5f5f5",
+                borderRadius: "4px",
+                fontSize: "14px",
+                marginBottom: 16,
+                fontWeight: 500,
+              }}
+            >
+              {formatLocalTime(displayedSeason?.startDate)}
+            </div>
+
+            <Checkbox
+              checked={hasAgreedToCommitment}
+              onChange={(e) => setHasAgreedToCommitment(e.target.checked)}
+              style={{ fontSize: "15px" }}
+            >
+              <strong>
+                I understand and commit to playing my games promptly and fairly
+              </strong>
+            </Checkbox>
           </div>
         </Modal>
       </div>

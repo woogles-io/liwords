@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
@@ -30,6 +32,7 @@ type backingStore interface {
 	ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
+	ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
@@ -247,6 +250,12 @@ func (c *Cache) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRespo
 // Don't cache correspondence game lists, always query DB.
 func (c *Cache) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
 	return c.backing.ListActiveCorrespondenceForUser(ctx, userID)
+}
+
+// ListActiveCorrespondenceForUserAndLeague lists active correspondence games for a specific user in a specific league.
+// Don't cache correspondence game lists, always query DB.
+func (c *Cache) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error) {
+	return c.backing.ListActiveCorrespondenceForUserAndLeague(ctx, leagueID, userID)
 }
 
 // ListActiveCorrespondenceRaw returns raw DB rows for correspondence games.

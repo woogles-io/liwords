@@ -15,6 +15,21 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+const (
+	// MaxLeagueGamesPerPlayer is the maximum number of games each player should play in a league season
+	MaxLeagueGamesPerPlayer = 14
+)
+
+// CalculateExpectedGamesPerPlayer returns the expected number of games per player
+// based on the number of players in the division
+func CalculateExpectedGamesPerPlayer(numPlayers int) int {
+	expectedGames := numPlayers - 1
+	if expectedGames > MaxLeagueGamesPerPlayer {
+		return MaxLeagueGamesPerPlayer
+	}
+	return expectedGames
+}
+
 // StandingsManager handles calculating and marking player standings
 type StandingsManager struct {
 	store league.Store
@@ -174,8 +189,16 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	// Mark outcomes based on rank
 	sm.markOutcomes(standings, division.DivisionNumber, highestRegularDivision)
 
+	// Calculate expected games per player based on division size
+	expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
+
 	// Save to database
 	for _, standing := range standings {
+		gamesRemaining := expectedGames - standing.GamesPlayed
+		if gamesRemaining < 0 {
+			gamesRemaining = 0 // Safety check
+		}
+
 		err := sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
 			DivisionID:     division.Uuid,
 			UserID:         standing.UserID,
@@ -185,7 +208,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 			Draws:          pgtype.Int4{Int32: int32(standing.Draws), Valid: true},
 			Spread:         pgtype.Int4{Int32: int32(standing.Spread), Valid: true},
 			GamesPlayed:    pgtype.Int4{Int32: int32(standing.GamesPlayed), Valid: true},
-			GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
+			GamesRemaining: pgtype.Int4{Int32: int32(gamesRemaining), Valid: true},
 			Result:         pgtype.Int4{Int32: int32(standing.Outcome), Valid: true},
 		})
 		if err != nil {
@@ -265,6 +288,17 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	// Use atomic operations to prevent race conditions when multiple games finish simultaneously
 	// Note: player IDs are database IDs (int32), not UUID strings
 
+	// Get division registrations to calculate expected games
+	registrations, err := sm.store.GetDivisionRegistrations(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to get division registrations: %w", err)
+	}
+
+	// Calculate expected games per player based on division size
+	expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
+	// When a player's first game completes, games_played will be 1, so games_remaining should be expectedGames - 1
+	initialGamesRemaining := expectedGames - 1
+
 	// Calculate deltas for player 0
 	var p0Wins, p0Losses, p0Draws int32
 	if winnerIdx == 0 {
@@ -288,14 +322,14 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	p1Spread := player1Score - player0Score
 
 	// Atomically increment player 0's standings
-	err := sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
+	err = sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
 		DivisionID:     divisionID,
 		UserID:         player0ID,
 		Wins:           pgtype.Int4{Int32: p0Wins, Valid: true},
 		Losses:         pgtype.Int4{Int32: p0Losses, Valid: true},
 		Draws:          pgtype.Int4{Int32: p0Draws, Valid: true},
 		Spread:         pgtype.Int4{Int32: p0Spread, Valid: true},
-		GamesRemaining: pgtype.Int4{Int32: 0, Valid: true}, // TODO: calculate from expected games
+		GamesRemaining: pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to increment standings for player %d: %w", player0ID, err)
@@ -309,7 +343,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 		Losses:         pgtype.Int4{Int32: p1Losses, Valid: true},
 		Draws:          pgtype.Int4{Int32: p1Draws, Valid: true},
 		Spread:         pgtype.Int4{Int32: p1Spread, Valid: true},
-		GamesRemaining: pgtype.Int4{Int32: 0, Valid: true}, // TODO: calculate from expected games
+		GamesRemaining: pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to increment standings for player %d: %w", player1ID, err)

@@ -363,6 +363,13 @@ func LeagueMidnightRunner(forceRun bool) error {
 	for _, dbLeague := range leagues {
 		log.Info().Str("league", dbLeague.Name).Msg("Checking league...")
 
+		// Parse league settings
+		leagueSettings, err := parseLeagueSettings(dbLeague.Settings)
+		if err != nil {
+			log.Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to parse league settings")
+			continue
+		}
+
 		// Get current active season
 		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
 		if err != nil {
@@ -371,7 +378,7 @@ func LeagueMidnightRunner(forceRun bool) error {
 		}
 
 		// Check if we should close the season
-		shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", forceRun, now)
+		shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", leagueSettings.SeasonLengthDays, forceRun, now)
 		log.Info().
 			Bool("shouldRun", shouldRun).
 			Str("reason", reason).
@@ -506,7 +513,7 @@ func LeagueMorningRunner(forceRun bool) error {
 		// TASK 1: Check if we should open registration
 		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
 		if err == nil {
-			shouldRun, reason := league.ShouldRunTask(&currentSeason, "open-registration", forceRun, now)
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "open-registration", leagueSettings.SeasonLengthDays, forceRun, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
 				Str("reason", reason).
@@ -531,6 +538,43 @@ func LeagueMorningRunner(forceRun bool) error {
 			}
 		}
 
+		// TASK 3: Check if we should send "season starting soon" reminder
+		// This runs on the last day of current season (1 day before next season starts)
+		currentSeason, err = allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
+		if err == nil {
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, forceRun, now)
+			log.Info().
+				Bool("shouldRun", shouldRun).
+				Str("reason", reason).
+				Str("seasonID", currentSeason.Uuid.String()).
+				Msg("Season starting soon check")
+
+			if shouldRun {
+				// Find the next season (should be in SCHEDULED status)
+				seasonsForReminder, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+				if err != nil {
+					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for reminder")
+				} else {
+					// Find the next season (current season number + 1)
+					nextSeasonNumber := currentSeason.SeasonNumber + 1
+					for _, season := range seasonsForReminder {
+						if season.SeasonNumber == nextSeasonNumber && season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) {
+							log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("nextSeason", season.SeasonNumber).Msg("Sending season starting soon notifications...")
+
+							err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+							if err != nil {
+								log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send season starting soon notifications")
+							} else {
+								log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("season", season.SeasonNumber).Msg("✓ Season starting soon notifications sent successfully")
+								tasksRun++
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+
 		// TASK 2: Check if we should start any scheduled seasons
 		allSeasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
 		if err != nil {
@@ -543,7 +587,7 @@ func LeagueMorningRunner(forceRun bool) error {
 				continue
 			}
 
-			shouldRun, reason := league.ShouldRunTask(&season, "start-season", forceRun, now)
+			shouldRun, reason := league.ShouldRunTask(&season, "start-season", leagueSettings.SeasonLengthDays, forceRun, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
 				Str("reason", reason).
@@ -588,6 +632,12 @@ func LeagueMorningRunner(forceRun bool) error {
 				Int("totalGames", gameResult.TotalGamesCreated).
 				Interface("gamesPerDivision", gameResult.GamesPerDivision).
 				Msg("✓ Successfully started league season and created all games")
+
+			// Send season started notifications to all registered players
+			err = lifecycleMgr.SendSeasonStartedNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+			if err != nil {
+				log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send season started notifications")
+			}
 
 			tasksRun++
 		}

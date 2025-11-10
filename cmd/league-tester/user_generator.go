@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/bcrypt"
 
+	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores"
@@ -39,6 +39,9 @@ func createTestUsers(ctx context.Context, count int, startID int, outputFile str
 
 	testUsers := []TestUser{}
 
+	// Create Argon2id config (matching default liwords config)
+	argonConfig := auth.NewPasswordConfig(1, 64*1024, 4, 32)
+
 	// Create users using the user store
 	for i := 0; i < count; i++ {
 		userNum := startID + i
@@ -46,8 +49,8 @@ func createTestUsers(ctx context.Context, count int, startID int, outputFile str
 		email := fmt.Sprintf("%s@example.com", username)
 		userUUID := shortuuid.New()
 
-		// Hash a simple password
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("testpassword123"), bcrypt.DefaultCost)
+		// Hash password using Argon2id (matching production hash algorithm)
+		hashedPassword, err := auth.GeneratePassword(argonConfig, "testpassword123")
 		if err != nil {
 			return fmt.Errorf("failed to hash password: %w", err)
 		}

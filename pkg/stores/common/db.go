@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/glicko"
@@ -308,6 +309,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
+		log.Error().Err(err).Interface("value", cfg.Value).Msg("GetUserBy: error scanning user row")
 		return nil, err
 	}
 
@@ -337,6 +339,7 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		if err == pgx.ErrNoRows {
 			return nil, errors.New("profile not found")
 		} else if err != nil {
+			log.Error().Err(err).Uint("user_id", id).Str("username", username).Msg("GetUserBy: error scanning profile row")
 			return nil, err
 		}
 

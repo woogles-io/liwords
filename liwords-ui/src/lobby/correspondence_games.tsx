@@ -52,7 +52,7 @@ export const CorrespondenceGames = (props: Props) => {
       try {
         const resp = await gameMetadataClient.getRecentCorrespondenceGames({
           username: props.username,
-          numGames: 10,
+          numGames: 20,
         });
         setRecentGames(resp.gameInfo);
       } catch (e) {

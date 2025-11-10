@@ -193,6 +193,18 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
     )
 ORDER BY id;
 
+-- name: ListActiveCorrespondenceGamesForUserAndLeague :many
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
+FROM games
+WHERE league_id = @league_id::uuid
+    AND game_end_reason = 0 -- NONE (ongoing games)
+    AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
+    AND (
+        player0_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+        OR player1_id = (SELECT id FROM users WHERE uuid = @user_uuid::text)
+    )
+ORDER BY id;
+
 -- name: CountActiveCorrespondenceGames :one
 SELECT COUNT(*)::int
 FROM games

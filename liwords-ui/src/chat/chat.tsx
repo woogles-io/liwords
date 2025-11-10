@@ -319,6 +319,7 @@ export const Chat = React.memo((props: Props) => {
     setNotificationCount,
     socializeClient,
     props.tournamentID,
+    props.leagueID,
   ]);
 
   useEffect(() => {
