@@ -328,6 +328,17 @@ export const ScoreCard = React.memo((props: Props) => {
   const [flipEnabled, setEnableFlip] = useState(isTablet());
   // Autoscroll code removed - comments now use drawer
 
+  // Scroll to bottom when turns change (after DOM updates)
+  useEffect(() => {
+    const currentEl = el.current;
+    if (currentEl && flipHidden) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        currentEl.scrollTop = currentEl.scrollHeight;
+      });
+    }
+  }, [turns, flipHidden]);
+
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
