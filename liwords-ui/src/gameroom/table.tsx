@@ -290,7 +290,7 @@ export const Table = React.memo((props: Props) => {
     Array<GameInfoResponse>
   >([]);
   const [isObserver, setIsObserver] = useState(false);
-  const prevGameIDRef = useRef<string | undefined>();
+  const prevGameIDRef = useRef<string | undefined>(undefined);
 
   // Comments functionality
   const commentsClient = useClient(GameCommentService);
