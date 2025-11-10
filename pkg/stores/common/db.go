@@ -27,6 +27,7 @@ const (
 	SelectByUserID
 	SelectByUsername
 	SelectByEmail
+	SelectByVerificationToken
 	SelectByAPIKey
 	SelectBySeekerID
 	SelectBySeekerConnID
@@ -63,16 +64,17 @@ type CommonDBConfig struct {
 }
 
 var SelectByTypeToString = map[SelectByType]string{
-	SelectByUUID:           "uuid",
-	SelectByID:             "id",
-	SelectByUserID:         "user_id",
-	SelectByUsername:       "lower(username)",
-	SelectByEmail:          "lower(email)",
-	SelectByAPIKey:         "api_key",
-	SelectBySeekerID:       "seeker",
-	SelectBySeekerConnID:   "seeker_conn_id",
-	SelectByReceiverID:     "receiver",
-	SelectByReceiverConnID: "receiver_conn_id",
+	SelectByUUID:              "uuid",
+	SelectByID:                "id",
+	SelectByUserID:            "user_id",
+	SelectByUsername:          "lower(username)",
+	SelectByEmail:             "lower(email)",
+	SelectByVerificationToken: "verification_token",
+	SelectByAPIKey:            "api_key",
+	SelectBySeekerID:          "seeker",
+	SelectBySeekerConnID:      "seeker_conn_id",
+	SelectByReceiverID:        "receiver",
+	SelectByReceiverConnID:    "receiver_conn_id",
 }
 
 var TableTypeToString = map[TableType]string{
@@ -297,6 +299,9 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	var password pgtype.Text
 	var internal_bot pgtype.Bool
 	var notoriety pgtype.Int8
+	var verified pgtype.Bool
+	var verificationToken pgtype.Text
+	var verificationExpiresAt pgtype.Timestamp
 
 	placeholder := "$1"
 
@@ -304,8 +309,8 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 		placeholder = "lower($1)"
 	}
 
-	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, notoriety FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
-	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &notoriety)
+	query := fmt.Sprintf("SELECT id, username, uuid, email, password, internal_bot, notoriety, verified, verification_token, verification_expires_at FROM users WHERE %s = %s", SelectByTypeToString[cfg.SelectByType], placeholder)
+	err := tx.QueryRow(ctx, query, cfg.Value).Scan(&id, &username, &uuid, &email, &password, &internal_bot, &notoriety, &verified, &verificationToken, &verificationExpiresAt)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	} else if err != nil {
@@ -314,14 +319,17 @@ func GetUserBy(ctx context.Context, tx pgx.Tx, cfg *CommonDBConfig) (*entity.Use
 	}
 
 	entu := &entity.User{
-		ID:        id,
-		Username:  username,
-		UUID:      uuid,
-		Email:     email.String,
-		Password:  password.String,
-		IsBot:     internal_bot.Bool,
-		Anonymous: false,
-		Notoriety: int(notoriety.Int64),
+		ID:                    id,
+		Username:              username,
+		UUID:                  uuid,
+		Email:                 email.String,
+		Password:              password.String,
+		IsBot:                 internal_bot.Bool,
+		Anonymous:             false,
+		Notoriety:             int(notoriety.Int64),
+		Verified:              verified.Bool,
+		VerificationToken:     verificationToken.String,
+		VerificationExpiresAt: verificationExpiresAt.Time,
 	}
 
 	if cfg.IncludeProfile {

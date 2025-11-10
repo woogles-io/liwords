@@ -79,6 +79,12 @@ const (
 	// RegistrationServiceRegisterProcedure is the fully-qualified name of the RegistrationService's
 	// Register RPC.
 	RegistrationServiceRegisterProcedure = "/user_service.RegistrationService/Register"
+	// RegistrationServiceVerifyEmailProcedure is the fully-qualified name of the RegistrationService's
+	// VerifyEmail RPC.
+	RegistrationServiceVerifyEmailProcedure = "/user_service.RegistrationService/VerifyEmail"
+	// RegistrationServiceResendVerificationEmailProcedure is the fully-qualified name of the
+	// RegistrationService's ResendVerificationEmail RPC.
+	RegistrationServiceResendVerificationEmailProcedure = "/user_service.RegistrationService/ResendVerificationEmail"
 	// ProfileServiceGetRatingsProcedure is the fully-qualified name of the ProfileService's GetRatings
 	// RPC.
 	ProfileServiceGetRatingsProcedure = "/user_service.ProfileService/GetRatings"
@@ -489,6 +495,8 @@ func (UnimplementedAuthenticationServiceHandler) GetAPIKey(context.Context, *con
 // RegistrationServiceClient is a client for the user_service.RegistrationService service.
 type RegistrationServiceClient interface {
 	Register(context.Context, *connect.Request[user_service.UserRegistrationRequest]) (*connect.Response[user_service.RegistrationResponse], error)
+	VerifyEmail(context.Context, *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error)
+	ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error)
 }
 
 // NewRegistrationServiceClient constructs a client for the user_service.RegistrationService
@@ -508,12 +516,26 @@ func NewRegistrationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(registrationServiceMethods.ByName("Register")),
 			connect.WithClientOptions(opts...),
 		),
+		verifyEmail: connect.NewClient[user_service.VerifyEmailRequest, user_service.VerifyEmailResponse](
+			httpClient,
+			baseURL+RegistrationServiceVerifyEmailProcedure,
+			connect.WithSchema(registrationServiceMethods.ByName("VerifyEmail")),
+			connect.WithClientOptions(opts...),
+		),
+		resendVerificationEmail: connect.NewClient[user_service.ResendVerificationEmailRequest, user_service.ResendVerificationEmailResponse](
+			httpClient,
+			baseURL+RegistrationServiceResendVerificationEmailProcedure,
+			connect.WithSchema(registrationServiceMethods.ByName("ResendVerificationEmail")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // registrationServiceClient implements RegistrationServiceClient.
 type registrationServiceClient struct {
-	register *connect.Client[user_service.UserRegistrationRequest, user_service.RegistrationResponse]
+	register                *connect.Client[user_service.UserRegistrationRequest, user_service.RegistrationResponse]
+	verifyEmail             *connect.Client[user_service.VerifyEmailRequest, user_service.VerifyEmailResponse]
+	resendVerificationEmail *connect.Client[user_service.ResendVerificationEmailRequest, user_service.ResendVerificationEmailResponse]
 }
 
 // Register calls user_service.RegistrationService.Register.
@@ -521,9 +543,21 @@ func (c *registrationServiceClient) Register(ctx context.Context, req *connect.R
 	return c.register.CallUnary(ctx, req)
 }
 
+// VerifyEmail calls user_service.RegistrationService.VerifyEmail.
+func (c *registrationServiceClient) VerifyEmail(ctx context.Context, req *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error) {
+	return c.verifyEmail.CallUnary(ctx, req)
+}
+
+// ResendVerificationEmail calls user_service.RegistrationService.ResendVerificationEmail.
+func (c *registrationServiceClient) ResendVerificationEmail(ctx context.Context, req *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error) {
+	return c.resendVerificationEmail.CallUnary(ctx, req)
+}
+
 // RegistrationServiceHandler is an implementation of the user_service.RegistrationService service.
 type RegistrationServiceHandler interface {
 	Register(context.Context, *connect.Request[user_service.UserRegistrationRequest]) (*connect.Response[user_service.RegistrationResponse], error)
+	VerifyEmail(context.Context, *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error)
+	ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error)
 }
 
 // NewRegistrationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -539,10 +573,26 @@ func NewRegistrationServiceHandler(svc RegistrationServiceHandler, opts ...conne
 		connect.WithSchema(registrationServiceMethods.ByName("Register")),
 		connect.WithHandlerOptions(opts...),
 	)
+	registrationServiceVerifyEmailHandler := connect.NewUnaryHandler(
+		RegistrationServiceVerifyEmailProcedure,
+		svc.VerifyEmail,
+		connect.WithSchema(registrationServiceMethods.ByName("VerifyEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	registrationServiceResendVerificationEmailHandler := connect.NewUnaryHandler(
+		RegistrationServiceResendVerificationEmailProcedure,
+		svc.ResendVerificationEmail,
+		connect.WithSchema(registrationServiceMethods.ByName("ResendVerificationEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.RegistrationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RegistrationServiceRegisterProcedure:
 			registrationServiceRegisterHandler.ServeHTTP(w, r)
+		case RegistrationServiceVerifyEmailProcedure:
+			registrationServiceVerifyEmailHandler.ServeHTTP(w, r)
+		case RegistrationServiceResendVerificationEmailProcedure:
+			registrationServiceResendVerificationEmailHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -554,6 +604,14 @@ type UnimplementedRegistrationServiceHandler struct{}
 
 func (UnimplementedRegistrationServiceHandler) Register(context.Context, *connect.Request[user_service.UserRegistrationRequest]) (*connect.Response[user_service.RegistrationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.RegistrationService.Register is not implemented"))
+}
+
+func (UnimplementedRegistrationServiceHandler) VerifyEmail(context.Context, *connect.Request[user_service.VerifyEmailRequest]) (*connect.Response[user_service.VerifyEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.RegistrationService.VerifyEmail is not implemented"))
+}
+
+func (UnimplementedRegistrationServiceHandler) ResendVerificationEmail(context.Context, *connect.Request[user_service.ResendVerificationEmailRequest]) (*connect.Response[user_service.ResendVerificationEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.RegistrationService.ResendVerificationEmail is not implemented"))
 }
 
 // ProfileServiceClient is a client for the user_service.ProfileService service.

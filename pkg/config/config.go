@@ -60,8 +60,9 @@ type Config struct {
 	// VDO.Ninja monitoring
 	VDOPollingIntervalSeconds int
 
-	Debug         bool
-	SecureCookies bool
+	Debug                 bool
+	SecureCookies         bool
+	SkipEmailVerification bool
 }
 
 type ctxKey string
@@ -80,6 +81,7 @@ func (c *Config) Load(args []string) error {
 
 	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
 	fs.BoolVar(&c.SecureCookies, "secure-cookies", false, "use Secure flag on cookies (set to true for HTTPS/production)")
+	fs.BoolVar(&c.SkipEmailVerification, "skip-email-verification", false, "skip email verification for new user registrations (for dev/testing)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")

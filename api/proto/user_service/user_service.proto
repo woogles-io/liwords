@@ -95,8 +95,16 @@ message UserRegistrationRequest {
 
 message RegistrationResponse { string message = 1; }
 
+message VerifyEmailRequest { string token = 1; }
+message VerifyEmailResponse { string message = 1; }
+
+message ResendVerificationEmailRequest { string email = 1; }
+message ResendVerificationEmailResponse { string message = 1; }
+
 service RegistrationService {
   rpc Register(UserRegistrationRequest) returns (RegistrationResponse);
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse);
+  rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (ResendVerificationEmailResponse);
 }
 
 message RatingsRequest { string username = 1; }

@@ -50,6 +50,11 @@ type User struct {
 	CurrentChannel string
 	IsBot          bool
 
+	// Email verification fields
+	Verified              bool
+	VerificationToken     string
+	VerificationExpiresAt time.Time
+
 	// DEPRECATED: use db actions
 	Actions      *Actions
 	Notoriety    int

@@ -116,6 +116,12 @@ func (as *AuthenticationService) Login(ctx context.Context, r *connect.Request[p
 	}
 	log.Debug().Msg("Login: password matched, checking mod actions")
 
+	// Check if email is verified
+	if !user.Verified {
+		log.Info().Str("username", r.Msg.Username).Msg("unverified-email-login-attempt")
+		return nil, apiserver.Unauthenticated("Please verify your email address before logging in. Check your inbox for the verification link, or request a new one")
+	}
+
 	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("username", r.Msg.Username).Str("userID", user.UUID).Msg("action-exists-login")

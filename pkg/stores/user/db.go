@@ -174,6 +174,129 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	return entu, nil
 }
 
+// GetByVerificationToken gets a user by their verification token
+func (s *DBStore) GetByVerificationToken(ctx context.Context, token string) (*entity.User, error) {
+	if token == "" {
+		return nil, errors.New("verification token is blank")
+	}
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{
+		TableType:      common.UsersTable,
+		SelectByType:   common.SelectByVerificationToken,
+		Value:          token,
+		IncludeProfile: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return entu, nil
+}
+
+// SetEmailVerified marks a user's email as verified or unverified
+func (s *DBStore) SetEmailVerified(ctx context.Context, uuid string, verified bool) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Set verified status (keep verification token for idempotency - it will be cleaned up by maintenance job)
+	if verified {
+		err = common.Update(ctx, tx, []string{"verified"},
+			[]interface{}{true},
+			&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	} else {
+		err = common.Update(ctx, tx, []string{"verified"},
+			[]interface{}{false},
+			&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateVerificationToken updates a user's verification token and expiration
+func (s *DBStore) UpdateVerificationToken(ctx context.Context, uuid string, token string, expiresAt time.Time) error {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = common.Update(ctx, tx, []string{"verification_token", "verification_expires_at"},
+		[]interface{}{token, expiresAt},
+		&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteUnverifiedUsers deletes users who haven't verified their email after the specified duration
+func (s *DBStore) DeleteUnverifiedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	cutoffTime := time.Now().Add(-olderThan)
+
+	// Delete profiles first (foreign key constraint)
+	_, err = tx.Exec(ctx, `
+		DELETE FROM profiles
+		WHERE user_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < $1
+		)
+	`, cutoffTime)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete unverified user profiles: %w", err)
+	}
+
+	// Delete users
+	result, err := tx.Exec(ctx, `
+		DELETE FROM users
+		WHERE verified = false AND created_at < $1
+	`, cutoffTime)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete unverified users: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+
+	rowsAffected := int(result.RowsAffected())
+	if rowsAffected > 0 {
+		log.Info().Int("count", rowsAffected).Dur("older_than", olderThan).Msg("deleted-unverified-users")
+	}
+
+	return rowsAffected, nil
+}
+
 // New creates a new user in the DB.
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
@@ -187,8 +310,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	var userId uint
-	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, notoriety, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
-		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.Notoriety).Scan(&userId)
+	err = tx.QueryRow(ctx, `INSERT INTO users (username, uuid, email, password, internal_bot, notoriety, verified, verification_token, verification_expires_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING id`,
+		u.Username, u.UUID, u.Email, u.Password, u.IsBot, u.Notoriety, u.Verified, u.VerificationToken, u.VerificationExpiresAt).Scan(&userId)
 	if err != nil {
 		return err
 	}

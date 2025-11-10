@@ -34,6 +34,7 @@ import { PlayerProfile } from "./profile/profile";
 import { Settings } from "./settings/settings";
 import { PasswordReset } from "./lobby/password_reset";
 import { NewPassword } from "./lobby/new_password";
+import { VerifyEmail } from "./lobby/verify_email";
 import { encodeToSocketFmt } from "./utils/protobuf";
 import { Clubs } from "./clubs";
 import { TournamentRoom } from "./tournament/room";
@@ -434,6 +435,7 @@ const App = React.memo(() => {
             <Route path="team" element={<Team />} />
             <Route path="terms" element={<TermsOfService />} />
             <Route path="register" element={<Register />} />
+            <Route path="verify-email" element={<VerifyEmail />} />
             <Route path="password">
               <Route path="reset" element={<PasswordReset />} />
               <Route path="new" element={<NewPassword />} />

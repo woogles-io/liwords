@@ -113,6 +113,9 @@ func main() {
 		case "league-morning-runner":
 			err := LeagueMorningRunner(forceRun)
 			log.Err(err).Msg("ran leagueMorningRunner")
+		case "unverified-users-cleanup":
+			err := UnverifiedUsersCleanup()
+			log.Err(err).Msg("ran unverifiedUsersCleanup")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -504,6 +507,62 @@ func MonitoringStreamsCleanup() error {
 
 	totalDeleted := rowsDeletedFinished + rowsDeletedOld
 	log.Info().Int64("totalDeleted", totalDeleted).Msg("monitoring streams cleanup complete")
+
+	return nil
+}
+
+// UnverifiedUsersCleanup deletes users who haven't verified their email after 48 hours
+func UnverifiedUsersCleanup() error {
+	log.Info().Msg("starting unverified users cleanup")
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Delete profiles first (foreign key constraint)
+	queryProfiles := `
+		DELETE FROM profiles
+		WHERE user_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+	`
+	resultProfiles, err := dbPool.Exec(ctx, queryProfiles)
+	if err != nil {
+		return err
+	}
+	profilesDeleted := resultProfiles.RowsAffected()
+	log.Info().Int64("profilesDeleted", profilesDeleted).Msg("deleted unverified user profiles")
+
+	// Delete users
+	queryUsers := `
+		DELETE FROM users
+		WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+	`
+	resultUsers, err := dbPool.Exec(ctx, queryUsers)
+	if err != nil {
+		return err
+	}
+	usersDeleted := resultUsers.RowsAffected()
+	log.Info().Int64("usersDeleted", usersDeleted).Msg("deleted unverified users")
+
+	log.Info().Int64("totalUsersDeleted", usersDeleted).Msg("unverified users cleanup complete")
 
 	return nil
 }

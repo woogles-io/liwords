@@ -8,3 +8,13 @@ import { RegistrationService } from "./user_service_pb";
  * @generated from rpc user_service.RegistrationService.Register
  */
 export const register = RegistrationService.method.register;
+
+/**
+ * @generated from rpc user_service.RegistrationService.VerifyEmail
+ */
+export const verifyEmail = RegistrationService.method.verifyEmail;
+
+/**
+ * @generated from rpc user_service.RegistrationService.ResendVerificationEmail
+ */
+export const resendVerificationEmail = RegistrationService.method.resendVerificationEmail;
