@@ -96,7 +96,6 @@ export const CorrespondenceGames = (props: Props) => {
 
   const formatGameData = useCallback(
     (games: ActiveGame[]): CorrespondenceGameTableData[] => {
-      // Filter to only show games where the current user is a participant
       const userGames = games.filter((ag: ActiveGame) =>
         ag.players.some((player) => player.uuid === userID),
       );
