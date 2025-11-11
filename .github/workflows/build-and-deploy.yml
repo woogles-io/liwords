@@ -32,6 +32,7 @@ jobs:
         with:
           files_yaml: |
             backend:
+              - "api/**"
               - "services/**"
               - "rpc/**"
               - "db/**"
