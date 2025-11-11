@@ -42,7 +42,7 @@ export const Login = React.memo(() => {
       flashError(e);
 
       // Check if error is due to unverified email
-      if (errorMsg.toLowerCase().includes('verify your email')) {
+      if (errorMsg.toLowerCase().includes("verify your email")) {
         setShowResendVerification(true);
         setResendExpanded(false); // Reset expansion state
       } else {
@@ -63,7 +63,9 @@ export const Login = React.memo(() => {
 
     try {
       await registrationClient.resendVerificationEmail({ email: resendEmail });
-      setResendMessage("Verification email sent! Please check your inbox and spam folder.");
+      setResendMessage(
+        "Verification email sent! Please check your inbox and spam folder.",
+      );
       setShowResendVerification(false);
     } catch (e) {
       setResendMessage(connectErrorMessage(e));
@@ -123,7 +125,7 @@ export const Login = React.memo(() => {
                 textDecoration: "underline",
                 color: "#1890ff",
                 display: "block",
-                marginBottom: resendExpanded ? "15px" : "0"
+                marginBottom: resendExpanded ? "15px" : "0",
               }}
             >
               Need a new verification email?
@@ -150,7 +152,7 @@ export const Login = React.memo(() => {
                 {resendMessage && (
                   <Alert
                     message={resendMessage}
-                    type={resendMessage.includes('sent') ? 'success' : 'error'}
+                    type={resendMessage.includes("sent") ? "success" : "error"}
                   />
                 )}
               </Form>

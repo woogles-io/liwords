@@ -227,20 +227,26 @@ export const Register = () => {
         const loginErrorMsg = connectErrorMessage(loginError);
 
         // Check if the error is due to email verification
-        if (loginErrorMsg.toLowerCase().includes('verify your email')) {
+        if (loginErrorMsg.toLowerCase().includes("verify your email")) {
           Modal.success({
-            title: 'Registration Successful!',
+            title: "Registration Successful!",
             content: (
               <div>
-                <p>Thank you for signing up! We've sent a verification email to <strong>{values.email}</strong>.</p>
-                <p>Please check your inbox (and spam folder) and click the verification link to activate your account.</p>
+                <p>
+                  Thank you for signing up! We've sent a verification email to{" "}
+                  <strong>{values.email}</strong>.
+                </p>
+                <p>
+                  Please check your inbox (and spam folder) and click the
+                  verification link to activate your account.
+                </p>
                 <p>The link will expire in 48 hours.</p>
               </div>
             ),
-            okText: 'Got it',
+            okText: "Got it",
             onOk: () => {
-              navigate('/', { replace: true });
-            }
+              navigate("/", { replace: true });
+            },
           });
         } else {
           // Some other login error occurred
