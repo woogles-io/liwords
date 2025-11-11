@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/woogles-io/liwords/pkg/entity"
 
@@ -17,10 +18,14 @@ type Store interface {
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
 	GetByAPIKey(ctx context.Context, apiKey string) (*entity.User, error)
+	GetByVerificationToken(ctx context.Context, token string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
 	Username(ctx context.Context, uuid string) (string, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
+	SetEmailVerified(ctx context.Context, uuid string, verified bool) error
+	UpdateVerificationToken(ctx context.Context, uuid string, token string, expiresAt time.Time) error
+	DeleteUnverifiedUsers(ctx context.Context, olderThan time.Duration) (int, error)
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error

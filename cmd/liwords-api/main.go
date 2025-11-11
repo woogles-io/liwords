@@ -208,7 +208,7 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.DiscordToken, cfg.ArgonConfig, cfg.SecureCookies, stores.Queries)
 	authorizationService := auth.NewAuthorizationService(stores.UserStore, stores.Queries)
-	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
+	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig, cfg.MailgunKey, cfg.SkipEmailVerification)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
 	wordService := words.NewWordService(cfg)

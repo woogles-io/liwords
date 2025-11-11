@@ -10,14 +10,25 @@ import {
   flashError,
   useClient,
 } from "../utils/hooks/connect";
-import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
+import {
+  AuthenticationService,
+  RegistrationService,
+} from "../gen/api/proto/user_service/user_service_pb";
 
 export const Login = React.memo(() => {
   const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendExpanded, setResendExpanded] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+
   const authClient = useClient(AuthenticationService);
+  const registrationClient = useClient(RegistrationService);
+
   const onFinish = async (values: { [key: string]: string }) => {
     try {
       await authClient.login({
@@ -26,8 +37,40 @@ export const Login = React.memo(() => {
       });
       setLoggedIn(true);
     } catch (e) {
-      setErr(connectErrorMessage(e));
+      const errorMsg = connectErrorMessage(e);
+      setErr(errorMsg);
       flashError(e);
+
+      // Check if error is due to unverified email
+      if (errorMsg.toLowerCase().includes("verify your email")) {
+        setShowResendVerification(true);
+        setResendExpanded(false); // Reset expansion state
+      } else {
+        setShowResendVerification(false);
+        setResendExpanded(false);
+      }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!resendEmail) {
+      setResendMessage("Please enter your email address");
+      return;
+    }
+
+    setResendLoading(true);
+    setResendMessage("");
+
+    try {
+      await registrationClient.resendVerificationEmail({ email: resendEmail });
+      setResendMessage(
+        "Verification email sent! Please check your inbox and spam folder.",
+      );
+      setShowResendVerification(false);
+    } catch (e) {
+      setResendMessage(connectErrorMessage(e));
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -72,8 +115,53 @@ export const Login = React.memo(() => {
           </Form.Item>
         </Form>
         {err !== "" ? <Alert message={err} type="error" /> : null}
+
+        {showResendVerification && (
+          <div style={{ marginTop: "15px", marginBottom: "15px" }}>
+            <a
+              onClick={() => setResendExpanded(!resendExpanded)}
+              style={{
+                cursor: "pointer",
+                textDecoration: "underline",
+                color: "#1890ff",
+                display: "block",
+                marginBottom: resendExpanded ? "15px" : "0",
+              }}
+            >
+              Need a new verification email?
+            </a>
+            {resendExpanded && (
+              <Form style={{ marginTop: "10px" }}>
+                <Form.Item>
+                  <Input
+                    placeholder="Enter your email address"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    size="large"
+                  />
+                </Form.Item>
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={handleResendVerification}
+                    loading={resendLoading}
+                  >
+                    Resend Verification Email
+                  </Button>
+                </Form.Item>
+                {resendMessage && (
+                  <Alert
+                    message={resendMessage}
+                    type={resendMessage.includes("sent") ? "success" : "error"}
+                  />
+                )}
+              </Form>
+            )}
+          </div>
+        )}
+
         <Link to="/password/reset">
-          I’m drawing a blank on my password. Help!
+          I'm drawing a blank on my password. Help!
         </Link>
       </div>
     </div>

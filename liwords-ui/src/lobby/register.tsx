@@ -9,6 +9,7 @@ import {
   Checkbox,
   Select,
   AutoComplete,
+  Modal,
 } from "antd";
 import { Rule } from "antd/lib/form";
 import "./accountForms.scss";
@@ -214,12 +215,46 @@ export const Register = () => {
         countryCode: values.countryCode,
       });
 
-      await authClient.login({
-        username: values.username,
-        password: values.password,
-      });
-      setSignedUp(true);
+      // Try to login - this will succeed if email verification is disabled (dev mode)
+      // or fail if email verification is required
+      try {
+        await authClient.login({
+          username: values.username,
+          password: values.password,
+        });
+        setSignedUp(true);
+      } catch (loginError) {
+        const loginErrorMsg = connectErrorMessage(loginError);
+
+        // Check if the error is due to email verification
+        if (loginErrorMsg.toLowerCase().includes("verify your email")) {
+          Modal.success({
+            title: "Registration Successful!",
+            content: (
+              <div>
+                <p>
+                  Thank you for signing up! We've sent a verification email to{" "}
+                  <strong>{values.email}</strong>.
+                </p>
+                <p>
+                  Please check your inbox (and spam folder) and click the
+                  verification link to activate your account.
+                </p>
+                <p>The link will expire in 48 hours.</p>
+              </div>
+            ),
+            okText: "Got it",
+            onOk: () => {
+              navigate("/", { replace: true });
+            },
+          });
+        } else {
+          // Some other login error occurred
+          setErr(loginErrorMsg);
+        }
+      }
     } catch (e) {
+      // Registration itself failed
       setErr(connectErrorMessage(e));
     }
   };

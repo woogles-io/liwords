@@ -14,12 +14,19 @@ import (
 )
 
 type RegistrationService struct {
-	userStore   user.Store
-	argonConfig config.ArgonConfig
+	userStore             user.Store
+	argonConfig           config.ArgonConfig
+	mailgunKey            string
+	skipEmailVerification bool
 }
 
-func NewRegistrationService(u user.Store, cfg config.ArgonConfig) *RegistrationService {
-	return &RegistrationService{userStore: u, argonConfig: cfg}
+func NewRegistrationService(u user.Store, cfg config.ArgonConfig, mailgunKey string, skipEmailVerification bool) *RegistrationService {
+	return &RegistrationService{
+		userStore:             u,
+		argonConfig:           cfg,
+		mailgunKey:            mailgunKey,
+		skipEmailVerification: skipEmailVerification,
+	}
 }
 
 // Register registers a new user.
@@ -36,9 +43,43 @@ func (rs *RegistrationService) Register(ctx context.Context, r *connect.Request[
 	// }
 	err := RegisterUser(ctx, r.Msg.Username, r.Msg.Password, r.Msg.Email,
 		r.Msg.FirstName, r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode,
-		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig)
+		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig, rs.mailgunKey, rs.skipEmailVerification)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	return connect.NewResponse(&pb.RegistrationResponse{}), nil
+}
+
+// VerifyEmail verifies a user's email address using the token
+func (rs *RegistrationService) VerifyEmail(ctx context.Context, r *connect.Request[pb.VerifyEmailRequest],
+) (*connect.Response[pb.VerifyEmailResponse], error) {
+	log := zerolog.Ctx(ctx)
+
+	err := VerifyUserEmail(ctx, r.Msg.Token, rs.userStore)
+	if err != nil {
+		log.Error().Err(err).Msg("email-verification-failed")
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	log.Info().Msg("email-verified")
+	return connect.NewResponse(&pb.VerifyEmailResponse{
+		Message: "Email verified successfully. You can now log in.",
+	}), nil
+}
+
+// ResendVerificationEmail resends the verification email to a user
+func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *connect.Request[pb.ResendVerificationEmailRequest],
+) (*connect.Response[pb.ResendVerificationEmailResponse], error) {
+	log := zerolog.Ctx(ctx)
+
+	err := ResendVerificationEmail(ctx, r.Msg.Email, rs.userStore, rs.mailgunKey)
+	if err != nil {
+		log.Error().Err(err).Str("email", r.Msg.Email).Msg("resend-verification-failed")
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	log.Info().Str("email", r.Msg.Email).Msg("verification-email-resent")
+	return connect.NewResponse(&pb.ResendVerificationEmailResponse{
+		Message: "Verification email sent. Please check your inbox.",
+	}), nil
 }

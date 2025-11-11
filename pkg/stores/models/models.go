@@ -367,18 +367,21 @@ type Tournament struct {
 }
 
 type User struct {
-	ID          int32
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	DeletedAt   pgtype.Timestamptz
-	Uuid        pgtype.Text
-	Username    pgtype.Text
-	Email       pgtype.Text
-	Password    pgtype.Text
-	InternalBot pgtype.Bool
-	ApiKey      pgtype.Text
-	Actions     []byte
-	Notoriety   pgtype.Int4
+	ID                    int32
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+	DeletedAt             pgtype.Timestamptz
+	Uuid                  pgtype.Text
+	Username              pgtype.Text
+	Email                 pgtype.Text
+	Password              pgtype.Text
+	InternalBot           pgtype.Bool
+	ApiKey                pgtype.Text
+	Actions               []byte
+	Notoriety             pgtype.Int4
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
 }
 
 type UserAction struct {
