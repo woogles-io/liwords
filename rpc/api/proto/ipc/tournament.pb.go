@@ -1791,13 +1791,12 @@ func (x *TournamentFinishedResponse) GetId() string {
 }
 
 type TournamentDataResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name              string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description       string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	ExecutiveDirector string                 `protobuf:"bytes,4,opt,name=executive_director,json=executiveDirector,proto3" json:"executive_director,omitempty"`
-	Directors         *TournamentPersons     `protobuf:"bytes,5,opt,name=directors,proto3" json:"directors,omitempty"`
-	IsStarted         bool                   `protobuf:"varint,6,opt,name=is_started,json=isStarted,proto3" json:"is_started,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Directors   *TournamentPersons     `protobuf:"bytes,5,opt,name=directors,proto3" json:"directors,omitempty"`
+	IsStarted   bool                   `protobuf:"varint,6,opt,name=is_started,json=isStarted,proto3" json:"is_started,omitempty"`
 	// Note: this field seems totally unused
 	StartTime          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
 	ScheduledStartTime *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=scheduled_start_time,json=scheduledStartTime,proto3" json:"scheduled_start_time,omitempty"`
@@ -1855,13 +1854,6 @@ func (x *TournamentDataResponse) GetName() string {
 func (x *TournamentDataResponse) GetDescription() string {
 	if x != nil {
 		return x.Description
-	}
-	return ""
-}
-
-func (x *TournamentDataResponse) GetExecutiveDirector() string {
-	if x != nil {
-		return x.ExecutiveDirector
 	}
 	return ""
 }
@@ -2453,12 +2445,11 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x129\n" +
 	"\x05value\x18\x02 \x01(\v2#.ipc.TournamentDivisionDataResponseR\x05value:\x028\x01\",\n" +
 	"\x1aTournamentFinishedResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x87\x04\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xde\x03\n" +
 	"\x16TournamentDataResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
-	"\x12executive_director\x18\x04 \x01(\tR\x11executiveDirector\x124\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x124\n" +
 	"\tdirectors\x18\x05 \x01(\v2\x16.ipc.TournamentPersonsR\tdirectors\x12\x1d\n" +
 	"\n" +
 	"is_started\x18\x06 \x01(\bR\tisStarted\x129\n" +
@@ -2468,7 +2459,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x12scheduled_end_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10scheduledEndTime\x12#\n" +
 	"\rcheckins_open\x18\n" +
 	" \x01(\bR\fcheckinsOpen\x12+\n" +
-	"\x11registration_open\x18\v \x01(\bR\x10registrationOpen\"O\n" +
+	"\x11registration_open\x18\v \x01(\bR\x10registrationOpenJ\x04\b\x04\x10\x05\"O\n" +
 	"!TournamentDivisionDeletedResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\"r\n" +

@@ -38,7 +38,6 @@ type tournament struct {
 	Description       string
 	AliasOf           string
 	Directors         datatypes.JSON
-	ExecutiveDirector string
 	IsStarted         *bool
 	IsFinished        *bool
 	Divisions         datatypes.JSON
@@ -113,7 +112,6 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		Description:        tm.Description,
 		AliasOf:            tm.AliasOf,
 		Directors:          &directors,
-		ExecutiveDirector:  tm.ExecutiveDirector,
 		IsStarted:          tm.IsStarted != nil && *tm.IsStarted,
 		IsFinished:         tm.IsFinished != nil && *tm.IsFinished,
 		Divisions:          divisions,
@@ -224,7 +222,6 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		Description:        t.Description,
 		AliasOf:            t.AliasOf,
 		Directors:          directors,
-		ExecutiveDirector:  t.ExecutiveDirector,
 		IsStarted:          &t.IsStarted,
 		IsFinished:         &t.IsFinished,
 		Divisions:          divisions,

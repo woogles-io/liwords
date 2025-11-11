@@ -95,7 +95,6 @@ type Tournament struct {
 	AliasOf string `json:"aliasOf"`
 	URL     string `json:"url"`
 	// XXX: Investigate above.
-	ExecutiveDirector  string                         `json:"execDirector"`
 	Directors          *pb.TournamentPersons          `json:"directors"`
 	IsStarted          bool                           `json:"started"`
 	IsFinished         bool                           `json:"finished"`

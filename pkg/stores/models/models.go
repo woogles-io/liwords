@@ -351,7 +351,6 @@ type Tournament struct {
 	Name               pgtype.Text
 	Description        pgtype.Text
 	Directors          []byte
-	ExecutiveDirector  pgtype.Text
 	IsStarted          pgtype.Bool
 	Divisions          []byte
 	Type               pgtype.Text
