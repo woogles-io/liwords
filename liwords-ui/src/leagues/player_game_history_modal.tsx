@@ -96,6 +96,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       onCancel={onClose}
       footer={null}
       width={700}
+      zIndex={2000}
     >
       {isLoading && (
         <div style={{ textAlign: "center", padding: "40px" }}>

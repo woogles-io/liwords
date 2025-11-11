@@ -98,7 +98,7 @@ export const LeaguePage = (props: Props) => {
     useState<boolean>(false);
 
   // Fetch league data
-  const { data: leagueData, isLoading: leagueLoading } = useQuery(
+  const { data: leagueData, isPending: leaguePending } = useQuery(
     getLeague,
     {
       leagueId: slug || "",
@@ -107,7 +107,7 @@ export const LeaguePage = (props: Props) => {
   );
 
   // Fetch all seasons (regardless of status)
-  const { data: allSeasonsData, isLoading: allSeasonsLoading } = useQuery(
+  const { data: allSeasonsData, isPending: allSeasonsPending } = useQuery(
     getAllSeasons,
     {
       leagueId: slug || "",
@@ -323,7 +323,7 @@ export const LeaguePage = (props: Props) => {
     return registrationOpenSeason !== null;
   }, [registrationOpenSeason]);
 
-  const isLoading = leagueLoading || allSeasonsLoading;
+  const isLoading = leaguePending || allSeasonsPending;
 
   if (isLoading) {
     return (
@@ -333,8 +333,10 @@ export const LeaguePage = (props: Props) => {
             <TopBar />
           </Col>
         </Row>
-        <div className="loading-container">
-          <Spin size="large" />
+        <div className="leagues-container">
+          <div className="loading-container">
+            <Spin size="large" />
+          </div>
         </div>
       </>
     );
@@ -809,7 +811,7 @@ export const LeaguePage = (props: Props) => {
           onCancel={() => setShowPlayersModal(false)}
           footer={null}
           width={500}
-          zIndex={1100}
+          zIndex={2000}
         >
           <div style={{ maxHeight: "400px", overflowY: "auto" }}>
             <p style={{ marginBottom: 12 }}>
@@ -865,7 +867,7 @@ export const LeaguePage = (props: Props) => {
             </Button>,
           ]}
           width={600}
-          zIndex={1100}
+          zIndex={2000}
         >
           <div style={{ lineHeight: 1.8 }}>
             <p style={{ marginBottom: 16, fontSize: "15px" }}>
