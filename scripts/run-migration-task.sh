@@ -91,10 +91,34 @@ RUN_TASK_CMD="aws ecs run-task \
   --launch-type $LAUNCH_TYPE \
   --region $REGION"
 
-# Add image override if specified
+# If image override is specified, we need to register a new task definition revision
+# (EC2 launch type doesn't support image overrides via --overrides parameter)
 if [[ -n "$IMAGE" ]]; then
-  OVERRIDES="{\"containerOverrides\":[{\"name\":\"db-migration\",\"image\":\"${IMAGE}\"}]}"
-  RUN_TASK_CMD="$RUN_TASK_CMD --overrides '$OVERRIDES'"
+  echo "Registering new task definition with image: $IMAGE"
+
+  # Get current task definition
+  TASK_DEF_JSON=$(aws ecs describe-task-definition \
+    --task-definition $TASK_DEF \
+    --region $REGION \
+    --query 'taskDefinition')
+
+  # Update the image and remove read-only fields
+  NEW_TASK_DEF=$(echo $TASK_DEF_JSON | jq \
+    --arg IMAGE "$IMAGE" \
+    '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+
+  # Register new task definition revision
+  NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+    --cli-input-json "$NEW_TASK_DEF" \
+    --region $REGION \
+    --query 'taskDefinition.taskDefinitionArn' \
+    --output text)
+
+  echo "Created new task definition revision: $NEW_TASK_DEF_ARN"
+
+  # Use the new task definition ARN instead
+  TASK_DEF="$NEW_TASK_DEF_ARN"
+  RUN_TASK_CMD="aws ecs run-task --cluster $CLUSTER --task-definition $TASK_DEF --launch-type $LAUNCH_TYPE --region $REGION"
 fi
 
 # Add network configuration if subnets/security groups are provided

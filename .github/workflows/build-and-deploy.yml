@@ -196,13 +196,34 @@ jobs:
 
           echo "Using Docker image: $DOCKER_IMAGE"
 
-          # Run the ECS task with image override to use the newly built image
+          # For EC2 launch type, we need to register a new task definition revision
+          # Get the current task definition
+          TASK_DEF_JSON=$(aws ecs describe-task-definition \
+            --task-definition $TASK_DEFINITION \
+            --region $AWS_REGION \
+            --query 'taskDefinition')
+
+          # Update the image in the task definition
+          NEW_TASK_DEF=$(echo $TASK_DEF_JSON | jq \
+            --arg IMAGE "$DOCKER_IMAGE" \
+            '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+
+          # Register the new task definition revision
+          echo "Registering new task definition with updated image..."
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --region $AWS_REGION \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "New task definition: $NEW_TASK_DEF_ARN"
+
+          # Run the ECS task with the new task definition revision
           TASK_OUTPUT=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
-            --task-definition $TASK_DEFINITION \
+            --task-definition $NEW_TASK_DEF_ARN \
             --launch-type EC2 \
-            --region $AWS_REGION \
-            --overrides "{\"containerOverrides\":[{\"name\":\"db-migration\",\"image\":\"${DOCKER_IMAGE}\"}]}")
+            --region $AWS_REGION)
 
           # Extract task ARN
           TASK_ARN=$(echo $TASK_OUTPUT | jq -r '.tasks[0].taskArn')
