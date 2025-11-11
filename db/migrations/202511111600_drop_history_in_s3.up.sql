@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE games DROP COLUMN history_in_s3;
+
+COMMIT;

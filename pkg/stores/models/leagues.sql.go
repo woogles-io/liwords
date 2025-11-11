@@ -546,7 +546,7 @@ func (q *Queries) GetLeagueByUUID(ctx context.Context, argUuid uuid.UUID) (Leagu
 
 const getLeagueGames = `-- name: GetLeagueGames :many
 
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, league_division_id FROM games
+SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, player_on_turn, league_id, season_id, league_division_id FROM games
 WHERE league_division_id = $1
 ORDER BY created_at
 `
@@ -583,7 +583,6 @@ func (q *Queries) GetLeagueGames(ctx context.Context, leagueDivisionID pgtype.UU
 			&i.MetaEvents,
 			&i.Type,
 			&i.GameRequest,
-			&i.HistoryInS3,
 			&i.PlayerOnTurn,
 			&i.LeagueID,
 			&i.SeasonID,
@@ -600,7 +599,7 @@ func (q *Queries) GetLeagueGames(ctx context.Context, leagueDivisionID pgtype.UU
 }
 
 const getLeagueGamesByStatus = `-- name: GetLeagueGamesByStatus :many
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, history_in_s3, player_on_turn, league_id, season_id, league_division_id FROM games
+SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, player_on_turn, league_id, season_id, league_division_id FROM games
 WHERE league_division_id = $1
   AND ($2::boolean = true OR game_end_reason = 0)
 ORDER BY created_at
@@ -642,7 +641,6 @@ func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGames
 			&i.MetaEvents,
 			&i.Type,
 			&i.GameRequest,
-			&i.HistoryInS3,
 			&i.PlayerOnTurn,
 			&i.LeagueID,
 			&i.SeasonID,

@@ -88,7 +88,6 @@ type Game struct {
 	MetaEvents       entity.MetaEventData
 	Type             pgtype.Int4
 	GameRequest      entity.GameRequest
-	HistoryInS3      bool
 	PlayerOnTurn     pgtype.Int4
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
