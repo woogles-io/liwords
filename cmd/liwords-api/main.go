@@ -120,9 +120,6 @@ func main() {
 	log.Info().Interface("config", cfg).
 		Str("build-date", BuildDate).Str("build-hash", BuildHash).Msg("started")
 
-	if cfg.SecretKey == "" {
-		panic("secret key must be non blank")
-	}
 	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
@@ -155,6 +152,13 @@ func main() {
 	} else {
 		log.Info().Msg("skipping migrations (run-migrations disabled)")
 	}
+
+	// Secret key is required for the main application (auth, sessions, etc.)
+	// but not for migrations, so we check after migrations complete
+	if cfg.SecretKey == "" {
+		panic("secret key must be non blank")
+	}
+
 	ctx, pubsubCancel := context.WithCancel(context.Background())
 
 	// Set up OpenTelemetry.
