@@ -63,6 +63,8 @@ type Config struct {
 	Debug                 bool
 	SecureCookies         bool
 	SkipEmailVerification bool
+	RunMigrations         bool
+	QuitAfterMigration    bool
 }
 
 type ctxKey string
@@ -82,6 +84,8 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.Debug, "debug", false, "debug logging on")
 	fs.BoolVar(&c.SecureCookies, "secure-cookies", false, "use Secure flag on cookies (set to true for HTTPS/production)")
 	fs.BoolVar(&c.SkipEmailVerification, "skip-email-verification", false, "skip email verification for new user registrations (for dev/testing)")
+	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
+	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")
