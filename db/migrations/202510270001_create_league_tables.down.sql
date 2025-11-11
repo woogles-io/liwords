@@ -1,3 +1,4 @@
+BEGIN;
 -- Remove league metadata from games table
 DROP INDEX IF EXISTS idx_games_league_division_id;
 DROP INDEX IF EXISTS idx_games_season_id;
@@ -24,3 +25,4 @@ DROP TABLE IF EXISTS league_registrations;
 DROP TABLE IF EXISTS league_divisions;
 DROP TABLE IF EXISTS league_seasons;
 DROP TABLE IF EXISTS leagues;
+COMMIT;

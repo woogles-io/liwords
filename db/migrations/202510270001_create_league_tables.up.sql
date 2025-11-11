@@ -1,3 +1,4 @@
+BEGIN;
 -- Leagues table
 CREATE TABLE leagues (
     id BIGSERIAL PRIMARY KEY,
@@ -94,3 +95,5 @@ ALTER TABLE games ADD COLUMN league_division_id UUID;
 CREATE INDEX idx_games_league_id ON games(league_id) WHERE league_id IS NOT NULL;
 CREATE INDEX idx_games_season_id ON games(season_id) WHERE season_id IS NOT NULL;
 CREATE INDEX idx_games_league_division_id ON games(league_division_id) WHERE league_division_id IS NOT NULL;
+
+COMMIT;

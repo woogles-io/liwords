@@ -1,3 +1,4 @@
+BEGIN;
 -- Add email verification columns to users table
 ALTER TABLE public.users ADD COLUMN verified BOOLEAN DEFAULT TRUE NOT NULL;
 ALTER TABLE public.users ADD COLUMN verification_token VARCHAR(255);
@@ -8,3 +9,4 @@ CREATE INDEX users_verification_token_idx ON public.users USING btree (verificat
 
 -- Index for cleanup of unverified users
 CREATE INDEX users_unverified_cleanup_idx ON public.users USING btree (created_at) WHERE verified = FALSE;
+COMMIT;

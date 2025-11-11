@@ -40,7 +40,8 @@ services:
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
       TWITCH_REDIRECT_URI: http://localhost/integrations/twitch/callback
-      # SKIP_EMAIL_VERIFICATION: 1
+      SKIP_EMAIL_VERIFICATION: 1
+      RUN_MIGRATIONS: 1
 
     volumes:
       - .:/opt/program:rw

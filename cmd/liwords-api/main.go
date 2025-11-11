@@ -130,18 +130,31 @@ func main() {
 	}
 	log.Debug().Msg("debug log is on")
 
-	log.Info().Msg("setting up migration")
-	m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
-	if err != nil {
-		panic(err)
+	// Run migrations if configured to do so.
+	// In production, migrations are run via a separate ECS task before deployment.
+	if cfg.RunMigrations {
+		log.Info().Msg("setting up migration")
+		m, err := migrate.New(cfg.DBMigrationsPath, cfg.DBConnUri)
+		if err != nil {
+			panic(err)
+		}
+		log.Info().Msg("bringing up migration")
+		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+			panic(err)
+		}
+		e1, e2 := m.Close()
+		log.Err(e1).Msg("close-source")
+		log.Err(e2).Msg("close-database")
+		log.Info().Msg("migrations completed successfully")
+
+		// If configured to quit after migration, exit now
+		if cfg.QuitAfterMigration {
+			log.Info().Msg("quit-after-migration enabled - exiting")
+			return
+		}
+	} else {
+		log.Info().Msg("skipping migrations (run-migrations disabled)")
 	}
-	log.Info().Msg("bringing up migration")
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		panic(err)
-	}
-	e1, e2 := m.Close()
-	log.Err(e1).Msg("close-source")
-	log.Err(e2).Msg("close-database")
 	ctx, pubsubCancel := context.WithCancel(context.Background())
 
 	// Set up OpenTelemetry.

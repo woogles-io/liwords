@@ -1,5 +1,12 @@
 name: Build and Deploy
 
+# Workflow optimization:
+# - detect_changes job identifies which parts of the codebase changed
+# - Backend jobs (build_api_srv, deploy_api_docker, run_db_migration) only run if backend files changed
+# - Frontend jobs (build_fe, deploy_fe) only run if liwords-ui/ changed
+# - Migration job only runs if db/ folder changed (in addition to backend changes)
+# This significantly speeds up deployments that only touch one part of the codebase
+
 on:
   push:
     branches:
@@ -9,8 +16,40 @@ permissions:
   packages: write
 
 jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check which parts of the codebase changed
+        id: filter
+        run: |
+          # Check if backend files changed (anything outside liwords-ui/)
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -v '^liwords-ui/' | grep -q .; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "✓ Backend changes detected"
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+            echo "✓ No backend changes"
+          fi
+
+          # Check if frontend files changed (anything inside liwords-ui/)
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^liwords-ui/'; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "✓ Frontend changes detected"
+          else
+            echo "frontend=false" >> $GITHUB_OUTPUT
+            echo "✓ No frontend changes"
+          fi
+
   build_api_srv:
     runs-on: ubuntu-latest
+    needs: detect_changes
+    if: needs.detect_changes.outputs.backend == 'true'
     env:
       MACONDO_DATA_PATH: ${{ github.workspace }}/data
       TEST_DB_HOST: localhost
@@ -123,8 +162,163 @@ jobs:
         run: ./scripts/utilities/notify-discord.sh
         continue-on-error: true
 
+  run_db_migration:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: deploy_api_docker
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-2
+      ECS_CLUSTER: woogles-prod
+      TASK_DEFINITION: liwords-db-migration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Check for database migration changes
+        id: check_db_changes
+        run: |
+          # Check if db/migrations folder has changed in this push
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^db/migrations/'; then
+            echo "db_changed=true" >> $GITHUB_OUTPUT
+            echo "✓ Database migrations detected in db/migrations folder"
+          else
+            echo "db_changed=false" >> $GITHUB_OUTPUT
+            echo "✓ No database migration changes detected - skipping migration task"
+          fi
+
+      - name: Run Database Migration Task
+        if: steps.check_db_changes.outputs.db_changed == 'true'
+        run: |
+          echo "Starting database migration task..."
+
+          # Calculate the Docker image tag (matches deploy/build-and-tag.sh format)
+          IMAGE_TAG="${GITHUB_REF_NAME}-gh${GITHUB_RUN_NUMBER}"
+          DOCKER_IMAGE="ghcr.io/woogles-io/liwords-api:${IMAGE_TAG}"
+
+          echo "Using Docker image: $DOCKER_IMAGE"
+
+          # Run the ECS task with image override to use the newly built image
+          TASK_OUTPUT=$(aws ecs run-task \
+            --cluster $ECS_CLUSTER \
+            --task-definition $TASK_DEFINITION \
+            --launch-type EC2 \
+            --region $AWS_REGION \
+            --overrides "{\"containerOverrides\":[{\"name\":\"db-migration\",\"image\":\"${DOCKER_IMAGE}\"}]}")
+
+          # Extract task ARN
+          TASK_ARN=$(echo $TASK_OUTPUT | jq -r '.tasks[0].taskArn')
+
+          if [[ -z "$TASK_ARN" ]] || [[ "$TASK_ARN" == "null" ]]; then
+            echo "ERROR: Failed to start migration task"
+            echo "$TASK_OUTPUT" | jq .
+            exit 1
+          fi
+
+          TASK_ID=$(echo $TASK_ARN | awk -F/ '{print $NF}')
+          echo "Migration task started: $TASK_ID"
+          echo "Task ARN: $TASK_ARN"
+
+          # Wait for task to complete (10 minute timeout)
+          TIMEOUT=600
+          ELAPSED=0
+          POLL_INTERVAL=10
+
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            TASK_STATUS=$(aws ecs describe-tasks \
+              --cluster $ECS_CLUSTER \
+              --tasks $TASK_ARN \
+              --region $AWS_REGION \
+              --query 'tasks[0].lastStatus' \
+              --output text)
+
+            echo "[${ELAPSED}s] Migration task status: $TASK_STATUS"
+
+            if [ "$TASK_STATUS" == "STOPPED" ]; then
+              EXIT_CODE=$(aws ecs describe-tasks \
+                --cluster $ECS_CLUSTER \
+                --tasks $TASK_ARN \
+                --region $AWS_REGION \
+                --query 'tasks[0].containers[0].exitCode' \
+                --output text)
+
+              STOP_REASON=$(aws ecs describe-tasks \
+                --cluster $ECS_CLUSTER \
+                --tasks $TASK_ARN \
+                --region $AWS_REGION \
+                --query 'tasks[0].stoppedReason' \
+                --output text)
+
+              echo "Migration task completed with exit code: $EXIT_CODE"
+              echo "Stop reason: $STOP_REASON"
+
+              if [ "$EXIT_CODE" == "0" ]; then
+                echo "✓ Database migration completed successfully!"
+                exit 0
+              else
+                echo "✗ Database migration failed!"
+
+                # Try to fetch logs
+                LOG_GROUP="/ecs/liwords-db-migration"
+                echo "Fetching CloudWatch logs from $LOG_GROUP..."
+
+                LOG_STREAM=$(aws logs describe-log-streams \
+                  --log-group-name $LOG_GROUP \
+                  --region $AWS_REGION \
+                  --order-by LastEventTime \
+                  --descending \
+                  --max-items 1 \
+                  --query 'logStreams[0].logStreamName' \
+                  --output text 2>/dev/null || echo "")
+
+                if [[ -n "$LOG_STREAM" ]] && [[ "$LOG_STREAM" != "None" ]]; then
+                  echo "Recent logs:"
+                  aws logs get-log-events \
+                    --log-group-name $LOG_GROUP \
+                    --log-stream-name $LOG_STREAM \
+                    --region $AWS_REGION \
+                    --limit 100 \
+                    --query 'events[*].message' \
+                    --output text 2>/dev/null || echo "Could not fetch logs"
+                fi
+
+                exit 1
+              fi
+            fi
+
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+
+          echo "✗ Migration task timeout reached after ${TIMEOUT}s"
+          exit 1
+
+      - name: Discord notification (success)
+        if: success() && steps.check_db_changes.outputs.db_changed == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "✓ Database migration completed successfully for branch {{GITHUB_REF_NAME}}."
+        continue-on-error: true
+
+      - name: Discord notification (failure)
+        if: failure() && steps.check_db_changes.outputs.db_changed == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: ./scripts/utilities/notify-discord.sh "✗ Database migration FAILED for branch {{GITHUB_REF_NAME}}. Check GitHub Actions logs."
+        continue-on-error: true
+
   build_fe:
     runs-on: ubuntu-latest
+    needs: detect_changes
+    if: needs.detect_changes.outputs.frontend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
