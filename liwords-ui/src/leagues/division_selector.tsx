@@ -1,6 +1,6 @@
 import React from "react";
 import { Select } from "antd";
-import { Division } from "../gen/api/proto/league_service/league_service_pb";
+import { Division } from "../gen/api/proto/ipc/league_pb";
 
 const { Option } = Select;
 
@@ -30,7 +30,7 @@ export const DivisionSelector: React.FC<DivisionSelectorProps> = ({
       >
         {divisions.map((division) => (
           <Option key={division.uuid} value={division.uuid}>
-            {division.name || `Division ${division.divisionNumber}`}
+            {division.divisionName || `Division ${division.divisionNumber}`}
           </Option>
         ))}
       </Select>
@@ -44,7 +44,9 @@ export const findUserDivision = (
   userId: string,
 ): Division | undefined => {
   return divisions.find((division) =>
-    division.standings.some((standing) => standing.userId === userId),
+    division.standings.some(
+      (standing: { userId: string }) => standing.userId === userId,
+    ),
   );
 };
 

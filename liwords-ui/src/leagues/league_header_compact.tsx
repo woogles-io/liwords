@@ -3,12 +3,13 @@ import { Card } from "antd";
 import {
   League,
   Season,
-} from "../gen/api/proto/league_service/league_service_pb";
+} from "../gen/api/proto/ipc/league_pb";
+import { Timestamp } from "@bufbuild/protobuf/wkt";
 
 type LeagueHeaderCompactProps = {
   league: League;
   displayedSeason: Season | undefined;
-  formatSeasonDates: (start: bigint, end: bigint) => string;
+  formatSeasonDates: (start: Timestamp | undefined, end: Timestamp | undefined) => string;
 };
 
 export const LeagueHeaderCompact: React.FC<LeagueHeaderCompactProps> = ({
