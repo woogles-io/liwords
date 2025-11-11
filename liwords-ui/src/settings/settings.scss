@@ -573,4 +573,32 @@
       background: m($card-background);
     }
   }
+
+  // Roles & Permissions styling
+  .description {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+    & {
+      color: #666;
+    }
+  }
+
+  .permission-item {
+    @include colorModed() {
+      background-color: m($card-background);
+    }
+    & {
+      background-color: #f5f5f5;
+    }
+
+    .permission-code {
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+      & {
+        color: #999;
+      }
+    }
+  }
 }

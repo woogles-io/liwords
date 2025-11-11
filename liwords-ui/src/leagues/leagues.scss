@@ -1,0 +1,809 @@
+@import "../base";
+
+.leagues-container {
+  margin: 24px 48px;
+  padding: 0;
+
+  h1 {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+
+  // Chat area styling for league pages
+  .chat-area {
+    // Stretch to fill available viewport height
+    height: calc(100vh - 140px); // Account for header, topbar, and padding
+    min-height: 500px; // Minimum height for usability
+    width: 100% !important; // Fill column width
+    min-width: 100% !important; // Override default min-width
+    max-width: 100% !important; // Override default max-width
+    padding: 0 !important; // Remove default padding
+    margin: 0 !important; // No margin, chat should fill column
+
+    .ant-card.chat {
+      height: 100%;
+      width: 100%; // Fill the chat-area
+
+      .ant-card-body {
+        height: calc(100% - 48px);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ant-tabs {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+
+        .ant-tabs-content-holder {
+          flex: 1;
+          overflow: hidden;
+
+          .ant-tabs-tabpane {
+            height: 100%;
+          }
+        }
+      }
+    }
+  }
+
+  .leagues-description {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 32px;
+
+    @include colorModed {
+      color: #aaa;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 120px);
+  }
+
+  .no-leagues {
+    text-align: center;
+    padding: 48px;
+    color: #999;
+  }
+
+  .league-card {
+    height: 100%;
+
+    .league-meta {
+      margin-top: 16px;
+      font-size: 14px;
+
+      div {
+        margin-bottom: 8px;
+      }
+    }
+  }
+
+  .league-header {
+    margin-bottom: 24px;
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 16px;
+      color: #666;
+
+      @include colorModed {
+        color: #aaa;
+      }
+    }
+
+    .season-dates-header {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 15px;
+
+      @include colorModed {
+        background-color: m($off-background);
+        border: 1px solid m($gray-subtle);
+      }
+
+      .season-dates-info {
+        strong {
+          @include colorModed {
+            color: m($primary-dark);
+          }
+        }
+      }
+    }
+  }
+
+  .league-settings-card {
+    margin-bottom: 24px;
+
+    .setting-item {
+      text-align: center;
+
+      strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #888;
+
+        @include colorModed {
+          color: #aaa;
+        }
+      }
+
+      div {
+        font-size: 16px;
+        font-weight: 500;
+      }
+    }
+
+    // Compact variant for right column
+    &.compact {
+      margin-bottom: 16px;
+
+      h3 {
+        font-size: 16px;
+        margin: 0 0 12px 0;
+      }
+
+      .setting-item {
+        text-align: left;
+        margin-top: 8px;
+
+        strong {
+          font-size: 12px;
+          margin-bottom: 4px;
+        }
+
+        div {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+
+  // League info card (combined header + settings)
+  .league-info-card {
+    margin-bottom: 16px;
+
+    .ant-card-body {
+      padding: 14px;
+    }
+
+    h3 {
+      font-size: 16px;
+      margin: 0 0 6px 0;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    p {
+      font-size: 12px;
+      line-height: 1.4;
+      margin: 0 0 12px 0;
+      color: #666;
+
+      @include colorModed {
+        color: #aaa;
+      }
+    }
+
+    // Season info compact box
+    .season-info-compact {
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 12px;
+
+      @include colorModed {
+        background-color: m($off-background);
+        border: 1px solid m($gray-subtle);
+      }
+
+      strong {
+        @include colorModed {
+          color: m($primary-dark);
+        }
+      }
+    }
+
+    // Settings table layout
+    .settings-table {
+      margin-top: 12px;
+      border-top: 1px solid #e8e8e8;
+      padding-top: 10px;
+
+      @include colorModed {
+        border-top-color: m($gray-subtle);
+      }
+
+      .settings-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 12px;
+        line-height: 1.4;
+
+        &:not(:last-child) {
+          border-bottom: 1px solid #f5f5f5;
+
+          @include colorModed {
+            border-bottom-color: m($gray-subtle);
+          }
+        }
+
+        .settings-label {
+          font-weight: 500;
+          color: #888;
+
+          @include colorModed {
+            color: m($gray-medium);
+          }
+        }
+
+        .settings-value {
+          font-weight: 400;
+          color: #333;
+          text-align: right;
+
+          @include colorModed {
+            color: m($gray-extreme);
+          }
+        }
+      }
+    }
+  }
+
+  // Compact header styles (legacy, may be removed)
+  .league-header-compact {
+    margin-bottom: 16px;
+
+    h3 {
+      font-size: 18px;
+      margin: 0 0 8px 0;
+      font-weight: 600;
+    }
+
+    p {
+      font-size: 13px;
+      line-height: 1.4;
+      margin: 0 0 12px 0;
+      color: #666;
+
+      @include colorModed {
+        color: #aaa;
+      }
+    }
+
+    .ant-card-body {
+      padding: 16px;
+    }
+  }
+
+  // Clickable link styling (for player count, etc.)
+  .clickable-link {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    font-size: 14px;
+
+    &:hover {
+      text-decoration: underline;
+      color: #1890ff;
+
+      @include colorModed {
+        color: #40a9ff;
+      }
+    }
+  }
+
+  // Back to leagues link styling
+  .back-to-leagues-link {
+    display: inline-block;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    font-size: 18px;
+    margin-bottom: 16px;
+    padding-left: 0;
+
+    &:hover {
+      text-decoration: underline;
+      color: #1890ff;
+
+      @include colorModed {
+        color: #40a9ff;
+      }
+    }
+  }
+
+  .season-navigation-card {
+    margin-bottom: 24px;
+
+    .season-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+
+      h2 {
+        margin: 0;
+      }
+    }
+  }
+
+  .standings-container {
+    h3 {
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    .season-champion-banner {
+      margin-bottom: 32px;
+      padding: 24px;
+      border-radius: 8px;
+      text-align: center;
+      background: linear-gradient(135deg, #fffbea 0%, #fff8dc 100%);
+      border: 1px solid #e6d8a8;
+
+      @include colorModed {
+        background: linear-gradient(135deg, #eee8d5 0%, #f5f0db 100%);
+        border-color: #d4c4a8;
+      }
+
+      .champion-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+
+        .trophy-icon {
+          font-size: 48px;
+          color: #d4af37;
+
+          @include colorModed {
+            color: #b8992e;
+          }
+        }
+
+        .champion-text {
+          h3 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #8b6914;
+
+            @include colorModed {
+              color: #2c2c2c;
+            }
+          }
+
+          .champion-name {
+            margin: 4px 0 0 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #6b5610;
+
+            @include colorModed {
+              color: #3a3a3a;
+            }
+          }
+        }
+      }
+    }
+
+    .division-standings {
+      margin-bottom: 32px;
+
+      h4 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+
+      .ant-table {
+        background: #ffffff;
+
+        @include colorModed {
+          background: m($card-background);
+        }
+
+        .ant-table-thead > tr > th {
+          background: #fafafa;
+          color: rgba(0, 0, 0, 0.85);
+
+          @include colorModed {
+            background: m($off-background);
+            color: m($gray-extreme);
+          }
+        }
+
+        .ant-table-tbody > tr > td {
+          background: #ffffff;
+          color: rgba(0, 0, 0, 0.85);
+          border-bottom: 1px solid #f0f0f0;
+
+          @include colorModed {
+            background: m($card-background);
+            color: m($gray-extreme);
+            border-bottom-color: m($gray-subtle);
+          }
+        }
+
+        .ant-table-tbody > tr:hover > td {
+          background: #fafafa !important;
+
+          @include colorModed {
+            background: m($off-background) !important;
+          }
+        }
+
+        // Promotion zone highlighting
+        .ant-table-tbody > tr.promotion-row > td {
+          @include colorModed {
+            background: m($profile-game-win) !important;
+          }
+        }
+
+        .ant-table-tbody > tr.promotion-row:hover > td {
+          @include colorModed {
+            background: lighten(m($profile-game-win), 5%) !important;
+          }
+        }
+
+        // Relegation zone highlighting
+        .ant-table-tbody > tr.relegation-row > td {
+          @include colorModed {
+            background: m($profile-game-loss) !important;
+          }
+        }
+
+        .ant-table-tbody > tr.relegation-row:hover > td {
+          @include colorModed {
+            background: lighten(m($profile-game-loss), 5%) !important;
+          }
+        }
+
+        // Clickable player names
+        .clickable-player {
+          cursor: pointer;
+          text-decoration: none;
+          color: inherit;
+
+          &:hover {
+            text-decoration: underline;
+            color: #1890ff;
+
+            @include colorModed {
+              color: #40a9ff;
+            }
+          }
+        }
+
+        // Points column styling
+        .points-column {
+          font-weight: 600;
+          font-size: 16px;
+        }
+      }
+    }
+
+    .standings-legend {
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+
+      @include colorModed {
+        background: m($primary-light);
+        border: 1px solid m($primary-middle);
+      }
+
+      p {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        line-height: 1.6;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        strong {
+          font-weight: 600;
+        }
+      }
+
+      .legend-item {
+        display: inline-block;
+        margin-right: 20px;
+        margin-bottom: 4px;
+
+        .promotion-indicator {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
+          margin-right: 6px;
+          vertical-align: middle;
+
+          @include colorModed {
+            background: m($profile-game-win);
+            border: 1px solid darken(m($profile-game-win), 20%);
+          }
+        }
+
+        .relegation-indicator {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
+          margin-right: 6px;
+          vertical-align: middle;
+
+          @include colorModed {
+            background: m($profile-game-loss);
+            border: 1px solid darken(m($profile-game-loss), 20%);
+          }
+        }
+      }
+    }
+  }
+
+  .leagues-memorial {
+    margin-top: 48px;
+    padding: 24px 32px;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #e8e8e8;
+
+    @include colorModed {
+      background: m($off-background);
+      border-color: m($gray-subtle);
+    }
+
+    p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #666;
+      font-style: italic;
+
+      @include colorModed {
+        color: m($gray-medium);
+      }
+
+      strong {
+        font-weight: 600;
+        font-style: normal;
+      }
+    }
+  }
+
+  .leagues-faq {
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid #e8e8e8;
+
+    @include colorModed {
+      border-top-color: m($gray-subtle);
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 24px;
+    }
+
+    .ant-collapse {
+      background: transparent;
+      border: none;
+
+      .ant-collapse-item {
+        margin-bottom: 16px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        background: #ffffff;
+
+        @include colorModed {
+          border-color: m($gray-subtle);
+          background: m($card-background);
+        }
+
+        .ant-collapse-header {
+          font-size: 16px;
+          font-weight: 600;
+          padding: 16px 24px;
+
+          @include colorModed {
+            color: m($gray-extreme);
+          }
+        }
+
+        .ant-collapse-content {
+          border-top: 1px solid #d9d9d9;
+
+          @include colorModed {
+            border-top-color: m($gray-subtle);
+            background: m($card-background);
+            color: m($gray-extreme);
+          }
+
+          .ant-collapse-content-box {
+            padding: 16px 24px;
+
+            p {
+              margin-bottom: 16px;
+              line-height: 1.6;
+
+              &:last-child {
+                margin-bottom: 0;
+              }
+            }
+
+            ul {
+              margin-bottom: 16px;
+              padding-left: 24px;
+
+              li {
+                margin-bottom: 8px;
+                line-height: 1.6;
+              }
+            }
+
+            strong {
+              font-weight: 600;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Invite user widget styles
+  .invite-user-card {
+    .invite-description {
+      font-size: 14px;
+      margin-bottom: 12px;
+
+      @include colorModed {
+        color: m($gray-medium);
+      }
+    }
+
+    .invite-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .invite-autocomplete {
+        flex: 1;
+      }
+    }
+  }
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .leagues-container {
+    padding: 0 16px;
+
+    h1 {
+      font-size: 24px;
+    }
+
+    .league-settings-card {
+      .ant-col {
+        margin-bottom: 16px;
+      }
+    }
+
+    .season-header {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 16px;
+
+      h2 {
+        margin-bottom: 8px !important;
+      }
+    }
+  }
+}
+
+// League correspondence games styles
+.league-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .league-game-item {
+    padding: 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    @include colorModed {
+      background: m($card-background);
+      border: 1px solid m($gray-subtle);
+
+      &:hover {
+        background: m($off-background);
+      }
+
+      &.user-turn {
+        background: m($off-background);
+        border-color: m($gray-medium);
+      }
+    }
+
+    // Compact variant for better vertical space usage
+    &.compact {
+      padding: 6px 8px;
+      margin-bottom: 4px;
+
+      &:not(.user-turn) {
+        // Single line for non-turn games
+        min-height: 32px;
+      }
+
+      &.user-turn {
+        // Two lines when it's user's turn
+        min-height: 50px;
+      }
+    }
+
+    .game-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .opponent-name {
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .turn-indicator {
+        font-size: 12px;
+        font-weight: 600;
+
+        @include colorModed {
+          color: m($gray-medium);
+        }
+
+        &.low-time {
+          color: #ff4d4f;
+        }
+      }
+    }
+
+    // Compact game info styles
+    .game-info-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.4;
+
+      .opponent-name-compact {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .turn-indicator-compact {
+        font-size: 11px;
+        font-weight: 600;
+
+        @include colorModed {
+          color: m($gray-medium);
+        }
+
+        .low-time {
+          color: #ff4d4f;
+        }
+      }
+    }
+  }
+}

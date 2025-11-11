@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -430,6 +431,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			currentTournamentID = t.UUID
 			tournamentRealm := "tournament-" + currentTournamentID
 			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
+		} else if strings.HasPrefix(path, "/leagues/") {
+			slug := strings.TrimPrefix(path, "/leagues/")
+			league, err := b.stores.LeagueStore.GetLeagueBySlug(ctx, slug)
+			if err != nil {
+				return err
+			}
+			currentLeagueID := strings.ReplaceAll(league.Uuid.String(), "-", "")
+			leagueRealm := "league-" + currentLeagueID
+			resp.Realms = append(resp.Realms, leagueRealm, "chat-"+leagueRealm)
 		} else if strings.HasPrefix(path, "/puzzle/") {
 			// We are appending a chat realm for two reasons:
 			// 1. In the future we could probably have a puzzle lobby chat
@@ -887,6 +897,11 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			if err != nil {
 				return err
 			}
+		} else if strings.HasPrefix(realm, "league-") {
+			err := b.sendLeagueContext(ctx, realm, evt.UserId, connID)
+			if err != nil {
+				return err
+			}
 		} else {
 			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}
@@ -1086,6 +1101,27 @@ func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*e
 	return evt, nil
 }
 
+// leagueCorrespondenceGamesForUser returns correspondence games for a specific league and user
+func (b *Bus) leagueCorrespondenceGamesForUser(ctx context.Context, userID, leagueID string) (*entity.EventWrapper, error) {
+	// Parse the league UUID (works with or without hyphens)
+	leagueUUID, err := uuid.Parse(leagueID)
+	if err != nil {
+		log.Error().Err(err).Str("leagueID", leagueID).Msg("invalid-league-uuid")
+		return nil, err
+	}
+
+	// Query games directly filtered by league ID in the database
+	games, err := b.stores.GameStore.ListActiveCorrespondenceForUserAndLeague(ctx, leagueUUID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug().Int("num-league-correspondence-games", len(games.GameInfo)).Str("userID", userID).Str("leagueID", leagueID).Msg("league-correspondence-games-for-user")
+
+	evt := entity.WrapEvent(games, pb.MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES)
+	return evt, nil
+}
+
 // Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
 // the other. Note, if they both block each other it will return 0.
 func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error) {
@@ -1203,6 +1239,22 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		if err != nil {
 			return err
 		}
+	}
+
+	return err
+}
+
+func (b *Bus) sendLeagueContext(ctx context.Context, realm, userID, connID string) error {
+	// Realm format is "league-{uuid}", extract the UUID part
+	leagueID := strings.TrimPrefix(realm, "league-")
+	// Send league correspondence games for this user
+	leagueGames, err := b.leagueCorrespondenceGamesForUser(ctx, userID, leagueID)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, leagueGames)
+	if err != nil {
+		return err
 	}
 
 	return err

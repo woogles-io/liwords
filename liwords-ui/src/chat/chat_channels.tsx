@@ -62,6 +62,12 @@ const getChannelIcon = (channelType: string): ReactNode => {
           <TrophyOutlined />
         </div>
       );
+    case "league":
+      return (
+        <div className={`player-avatar channel-icon ch-${channelType}`}>
+          <TrophyOutlined />
+        </div>
+      );
   }
   return <div className={`player-avatar channel-icon ch-unknown`}>?</div>;
 };
@@ -87,6 +93,13 @@ export const parseChannelLabel = (
         label: tokenized[0],
       };
     }
+    if (tokenized[0] === "league") {
+      tokenized.shift();
+      return {
+        title: `${tokenized[0]} chat`,
+        label: tokenized[0],
+      };
+    }
   }
   // Unsupported chat channel format
   return undefined;
@@ -103,6 +116,8 @@ const getLocationLabel = (defaultChannel: string): string => {
       return "";
     case "tournament":
       return "Tournament/Club Chat";
+    case "league":
+      return "League Chat";
   }
   return "";
 };

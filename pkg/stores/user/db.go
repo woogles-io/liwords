@@ -199,7 +199,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO profiles (user_id, first_name, last_name, country_code, title, about, ratings, stats, avatar_url, birth_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, entity.Ratings{}, entity.ProfileStats{}, prof.AvatarUrl, prof.BirthDate)
+		userId, prof.FirstName, prof.LastName, prof.CountryCode, prof.Title, prof.About, prof.Ratings, prof.Stats, prof.AvatarUrl, prof.BirthDate)
 	if err != nil {
 		return err
 	}

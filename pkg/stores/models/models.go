@@ -67,29 +67,32 @@ type Following struct {
 }
 
 type Game struct {
-	ID             int32
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	DeletedAt      pgtype.Timestamptz
-	Uuid           pgtype.Text
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	History        []byte
-	Stats          entity.Stats
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	TournamentID   pgtype.Text
-	ReadyFlag      pgtype.Int8
-	MetaEvents     entity.MetaEventData
-	Type           pgtype.Int4
-	GameRequest    entity.GameRequest
-	HistoryInS3    bool
-	PlayerOnTurn   pgtype.Int4
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	HistoryInS3      bool
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
 }
 
 type GameComment struct {
@@ -135,6 +138,74 @@ type IntegrationsGlobal struct {
 	IntegrationName string
 	Data            []byte
 	LastUpdated     pgtype.Timestamptz
+}
+
+type League struct {
+	ID              int64
+	Uuid            uuid.UUID
+	Name            string
+	Description     pgtype.Text
+	Slug            string
+	Settings        []byte
+	CurrentSeasonID pgtype.UUID
+	IsActive        pgtype.Bool
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	CreatedBy       pgtype.Int8
+}
+
+type LeagueDivision struct {
+	ID             int64
+	Uuid           uuid.UUID
+	SeasonID       uuid.UUID
+	DivisionNumber int32
+	DivisionName   pgtype.Text
+	IsComplete     pgtype.Bool
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type LeagueRegistration struct {
+	ID                   int64
+	UserID               int32
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Int4
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+}
+
+type LeagueSeason struct {
+	ID            int64
+	Uuid          uuid.UUID
+	LeagueID      uuid.UUID
+	SeasonNumber  int32
+	StartDate     pgtype.Timestamptz
+	EndDate       pgtype.Timestamptz
+	ActualEndDate pgtype.Timestamptz
+	Status        int32
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type LeagueStanding struct {
+	ID             int64
+	DivisionID     uuid.UUID
+	UserID         int32
+	Rank           pgtype.Int4
+	Wins           pgtype.Int4
+	Losses         pgtype.Int4
+	Draws          pgtype.Int4
+	Spread         pgtype.Int4
+	GamesPlayed    pgtype.Int4
+	GamesRemaining pgtype.Int4
+	Result         pgtype.Int4
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type Liststat struct {

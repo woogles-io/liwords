@@ -11,6 +11,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
@@ -206,6 +207,13 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	err = stores.GameStore.InsertGamePlayers(ctx, g)
 	if err != nil {
 		return err
+	}
+
+	// Update league standings if this is a league game
+	err = league.UpdateGameStandings(ctx, stores.LeagueStore, g.GameID())
+	if err != nil {
+		// Log error but don't fail game completion
+		log.Err(err).Str("gameID", g.GameID()).Msg("failed-to-update-league-standings")
 	}
 
 	log.Info().Msg("game-ended-unload-cache")

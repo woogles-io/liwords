@@ -501,6 +501,10 @@ func PlayMove(ctx context.Context,
 		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
 		sge.Playing = entGame.Game.Playing()
 		sge.UserId = userID
+		// Set time bank for the player who just moved (for correspondence/league games)
+		if len(entGame.Timers.TimeBank) > onTurn {
+			sge.TimeBank = int32(entGame.Timers.TimeBank[onTurn])
+		}
 		evts = append(evts, sge)
 	}
 

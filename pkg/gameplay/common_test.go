@@ -27,9 +27,5 @@ func setupNewGame(opts ...TestGameOption) *gamesetup {
 }
 
 func teardownGame(g *gamesetup) {
-	g.stores.UserStore.Disconnect()
-	g.stores.NotorietyStore.Disconnect()
-	g.stores.ListStatStore.Disconnect()
-	g.stores.GameStore.Disconnect()
-	g.stores.TournamentStore.Disconnect()
+	g.stores.Disconnect()
 }

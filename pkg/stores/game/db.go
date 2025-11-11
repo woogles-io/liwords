@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -119,6 +120,20 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	} else {
 		// Fallback to default if creator is nil
 		entGame.SetTimerModule(&entity.GameTimer{})
+	}
+
+	// Populate league-related fields if they exist
+	if g.LeagueID.Valid {
+		leagueID := uuid.UUID(g.LeagueID.Bytes)
+		entGame.LeagueID = &leagueID
+	}
+	if g.SeasonID.Valid {
+		seasonID := uuid.UUID(g.SeasonID.Bytes)
+		entGame.SeasonID = &seasonID
+	}
+	if g.LeagueDivisionID.Valid {
+		divisionID := uuid.UUID(g.LeagueDivisionID.Bytes)
+		entGame.LeagueDivisionID = &divisionID
 	}
 
 	// Then unmarshal the history and start a game from it.
@@ -253,6 +268,21 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*pb.GameInfoRespo
 		TournamentGameIndex: int32(tGameIndex),
 		Type:                gameType,
 	}
+
+	// Populate league fields if present
+	if g.LeagueID.Valid {
+		leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+		info.LeagueId = leagueUUID.String()
+
+		// Fetch league slug from database
+		league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+		if err == nil {
+			info.LeagueSlug = league.Slug
+		} else {
+			log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+		}
+	}
+
 	return info, nil
 }
 
@@ -371,6 +401,18 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 			TournamentGameIndex: int32(tGameIndex),
 			Type:                gType,
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			}
+		}
+
 		responses = append(responses, info)
 	}
 
@@ -521,25 +563,43 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
 	}
 
+	var leagueID pgtype.UUID
+	if g.LeagueID != nil {
+		leagueID = pgtype.UUID{Bytes: *g.LeagueID, Valid: true}
+	}
+
+	var seasonID pgtype.UUID
+	if g.SeasonID != nil {
+		seasonID = pgtype.UUID{Bytes: *g.SeasonID, Valid: true}
+	}
+
+	var leagueDivisionID pgtype.UUID
+	if g.LeagueDivisionID != nil {
+		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
+	}
+
 	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
-		UpdatedAt:      pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
-		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
-		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
-		Timers:         g.Timers,
-		Started:        pgtype.Bool{Bool: g.Started, Valid: true},
-		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
-		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
-		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
-		History:        hist,
-		Stats:          safeDerefStats(g.Stats),
-		Quickdata:      safeDerefQuickdata(g.Quickdata),
-		TournamentData: safeDerefTournamentData(g.TournamentData),
-		TournamentID:   tourneyID,
-		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
-		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
-		Uuid:           common.ToPGTypeText(g.GameID()),
-		GameRequest:    safeDerefGameRequest(g.GameReq),
-		PlayerOnTurn:   pgtype.Int4{Int32: int32(g.PlayerOnTurn()), Valid: true},
+		UpdatedAt:        pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
+		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
+		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
+		Timers:           g.Timers,
+		Started:          pgtype.Bool{Bool: g.Started, Valid: true},
+		GameEndReason:    pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		WinnerIdx:        pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
+		LoserIdx:         pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
+		History:          hist,
+		Stats:            safeDerefStats(g.Stats),
+		Quickdata:        safeDerefQuickdata(g.Quickdata),
+		TournamentData:   safeDerefTournamentData(g.TournamentData),
+		TournamentID:     tourneyID,
+		ReadyFlag:        pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
+		MetaEvents:       safeDerefMetaEvents(g.MetaEvents),
+		Uuid:             common.ToPGTypeText(g.GameID()),
+		GameRequest:      safeDerefGameRequest(g.GameReq),
+		PlayerOnTurn:     pgtype.Int4{Int32: int32(g.PlayerOnTurn()), Valid: true},
+		LeagueID:         leagueID,
+		SeasonID:         seasonID,
+		LeagueDivisionID: leagueDivisionID,
 	})
 }
 
@@ -564,27 +624,45 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		tourneyID = pgtype.Text{String: g.TournamentData.Id, Valid: true}
 	}
 
+	var leagueID pgtype.UUID
+	if g.LeagueID != nil {
+		leagueID = pgtype.UUID{Bytes: *g.LeagueID, Valid: true}
+	}
+
+	var seasonID pgtype.UUID
+	if g.SeasonID != nil {
+		seasonID = pgtype.UUID{Bytes: *g.SeasonID, Valid: true}
+	}
+
+	var leagueDivisionID pgtype.UUID
+	if g.LeagueDivisionID != nil {
+		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
+	}
+
 	return s.queries.CreateGame(ctx, models.CreateGameParams{
-		CreatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-		UpdatedAt:      pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
-		Uuid:           common.ToPGTypeText(g.GameID()),
-		Player0ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
-		Player1ID:      pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
-		Timers:         g.Timers,
-		Started:        pgtype.Bool{Bool: g.Started, Valid: true},
-		GameEndReason:  pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
-		WinnerIdx:      pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
-		LoserIdx:       pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
-		History:        hist,
-		Stats:          safeDerefStats(g.Stats),
-		Quickdata:      safeDerefQuickdata(g.Quickdata),
-		TournamentData: safeDerefTournamentData(g.TournamentData),
-		TournamentID:   tourneyID,
-		ReadyFlag:      pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
-		MetaEvents:     safeDerefMetaEvents(g.MetaEvents),
-		Type:           pgtype.Int4{Int32: int32(g.Type), Valid: true},
-		GameRequest:    safeDerefGameRequest(g.GameReq),
-		PlayerOnTurn:   pgtype.Int4{Int32: 0, Valid: true}, // First player starts
+		CreatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		UpdatedAt:        pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
+		Uuid:             common.ToPGTypeText(g.GameID()),
+		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
+		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
+		Timers:           g.Timers,
+		Started:          pgtype.Bool{Bool: g.Started, Valid: true},
+		GameEndReason:    pgtype.Int4{Int32: int32(g.GameEndReason), Valid: true},
+		WinnerIdx:        pgtype.Int4{Int32: int32(g.WinnerIdx), Valid: true},
+		LoserIdx:         pgtype.Int4{Int32: int32(g.LoserIdx), Valid: true},
+		History:          hist,
+		Stats:            safeDerefStats(g.Stats),
+		Quickdata:        safeDerefQuickdata(g.Quickdata),
+		TournamentData:   safeDerefTournamentData(g.TournamentData),
+		TournamentID:     tourneyID,
+		ReadyFlag:        pgtype.Int8{Int64: 0, Valid: true}, // Default to 0
+		MetaEvents:       safeDerefMetaEvents(g.MetaEvents),
+		Type:             pgtype.Int4{Int32: int32(g.Type), Valid: true},
+		GameRequest:      safeDerefGameRequest(g.GameReq),
+		PlayerOnTurn:     pgtype.Int4{Int32: 0, Valid: true}, // First player starts
+		LeagueID:         leagueID,
+		SeasonID:         seasonID,
+		LeagueDivisionID: leagueDivisionID,
 	})
 }
 
@@ -609,6 +687,7 @@ func (s *DBStore) CreateRaw(ctx context.Context, g *entity.Game, gt pb.GameType)
 	})
 }
 
+// ListActive lists all active games, except for correspondence games.
 func (s *DBStore) ListActive(ctx context.Context, tourneyID string, bust bool) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
 
@@ -696,6 +775,21 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
 			info.PlayerOnTurn = &playerOnTurn
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			// Fetch league slug from database
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			} else {
+				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+			}
+		}
+
 		responses = append(responses, info)
 	}
 	log.Debug().Int("num-correspondence", len(responses)).Msg("list-active-correspondence")
@@ -733,9 +827,67 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
 			info.PlayerOnTurn = &playerOnTurn
 		}
+
+		// Populate league fields if present
+		if g.LeagueID.Valid {
+			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
+			info.LeagueId = leagueUUID.String()
+
+			// Fetch league slug from database
+			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			if err == nil {
+				info.LeagueSlug = league.Slug
+			} else {
+				log.Warn().Err(err).Str("league_id", leagueUUID.String()).Msg("failed to fetch league slug")
+			}
+		}
+
 		responses = append(responses, info)
 	}
 	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Msg("list-active-correspondence-for-user")
+	return &pb.GameInfoResponses{GameInfo: responses}, nil
+}
+
+// ListActiveCorrespondenceForUserAndLeague lists active correspondence games for a specific user in a specific league.
+func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error) {
+	var responses []*pb.GameInfoResponse
+
+	params := models.ListActiveCorrespondenceGamesForUserAndLeagueParams{
+		LeagueID: leagueID,
+		UserUuid: userID,
+	}
+
+	games, err := s.queries.ListActiveCorrespondenceGamesForUserAndLeague(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch league slug once
+	league, err := s.queries.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		log.Warn().Err(err).Str("league_id", leagueID.String()).Msg("failed to fetch league slug")
+		return nil, err
+	}
+
+	for _, g := range games {
+		info := &pb.GameInfoResponse{
+			Players:     g.Quickdata.PlayerInfo,
+			GameId:      g.Uuid.String,
+			GameRequest: g.GameRequest.GameRequest,
+			Type:        pb.GameType_NATIVE,
+			LastUpdate:  timestamppb.New(g.UpdatedAt.Time),
+			LeagueId:    leagueID.String(),
+			LeagueSlug:  league.Slug,
+		}
+
+		if g.PlayerOnTurn.Valid {
+			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
+			info.PlayerOnTurn = &playerOnTurn
+		}
+
+		responses = append(responses, info)
+	}
+	log.Debug().Int("num-correspondence", len(responses)).Str("user", userID).Str("league", leagueID.String()).Msg("list-active-correspondence-for-user-and-league")
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 

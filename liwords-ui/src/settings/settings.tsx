@@ -33,6 +33,7 @@ import { PersonalInfoResponse } from "../gen/api/proto/user_service/user_service
 import { API } from "./api";
 import { create } from "@bufbuild/protobuf";
 import { Integrations } from "./integrations";
+import { RolesPermissions } from "./roles_permissions";
 
 enum Category {
   PersonalInfo = 1,
@@ -41,6 +42,7 @@ enum Category {
   Integrations,
   BlockedPlayers,
   Secret,
+  RolesPermissions,
   LogOut,
   Support,
   NoUser,
@@ -76,6 +78,8 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
       return Category.LogOut;
     case "api":
       return Category.API;
+    case "roles":
+      return Category.RolesPermissions;
   }
   // to be streaming-friendly, PersonalInfo should not be the default tab.
   return Category.Preferences;
@@ -217,6 +221,10 @@ export const Settings = React.memo(() => {
       />
       <CategoryChoice title="Secret features" category={Category.Secret} />
       <CategoryChoice title="API" category={Category.API} />
+      <CategoryChoice
+        title="Roles & Permissions"
+        category={Category.RolesPermissions}
+      />
       <CategoryChoice title="Log out" category={Category.LogOut} />
       <CategoryChoice
         title={
@@ -264,6 +272,9 @@ export const Settings = React.memo(() => {
             {category === Category.Secret ? <Secret /> : null}
             {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
             {category === Category.API ? <API /> : null}
+            {category === Category.RolesPermissions ? (
+              <RolesPermissions />
+            ) : null}
             {category === Category.LogOut ? (
               <LogOut player={player} handleLogout={handleLogout} />
             ) : null}

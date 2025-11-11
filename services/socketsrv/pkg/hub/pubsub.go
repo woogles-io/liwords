@@ -41,6 +41,8 @@ func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
 		"game.>",
 		// tourneys
 		"tournament.>",
+		// leagues
+		"league.>",
 		// chats
 		"chat.>",
 		// generic channels
@@ -97,6 +99,17 @@ func (h *Hub) PubsubProcess() {
 			}
 			tournamentID := subtopics[1]
 			h.sendToRealm(Realm("tournament-"+tournamentID), msg.Data)
+
+		case msg := <-h.pubsub.subchans["league.>"]:
+			log.Debug().Str("topic", msg.Subject).Int("type", int(msg.Data[2])).Msg("got league message, forwarding along")
+
+			subtopics := strings.Split(msg.Subject, ".")
+			if len(subtopics) < 2 {
+				log.Error().Msgf("league subtopics weird %v", msg.Subject)
+				continue
+			}
+			leagueID := subtopics[1]
+			h.sendToRealm(Realm("league-"+leagueID), msg.Data)
 
 		case msg := <-h.pubsub.subchans["user.>"]:
 			// If we get a user message, we should send it along to the given

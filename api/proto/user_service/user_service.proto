@@ -229,6 +229,9 @@ message GetActiveChatChannelsRequest {
   // If a tournament_id is provided, we get active chat channels (private
   // message channels) in addition to the given tournament channel.
   string tournament_id = 3;
+  // If a league_id is provided, we get active chat channels (private
+  // message channels) in addition to the given league channel.
+  string league_id = 4;
 }
 
 message ActiveChatChannels {

@@ -212,7 +212,7 @@ func createBus() (context.Context, *bus.Bus, context.CancelFunc, bus.Stores, *co
 	stores.SoughtGameStore, err = soughtgame.NewDBStore(cfg)
 
 	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
+	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore, nil)
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
 
 	if err != nil {

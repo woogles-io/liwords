@@ -154,6 +154,7 @@ const MsgTypesMap = {
   [MessageType.ONGOING_GAMES]: GameInfoResponsesSchema,
   [MessageType.OUR_CORRESPONDENCE_GAMES]: GameInfoResponsesSchema,
   [MessageType.OUR_CORRESPONDENCE_SEEKS]: SeekRequestsSchema,
+  [MessageType.OUR_LEAGUE_CORRESPONDENCE_GAMES]: GameInfoResponsesSchema,
   [MessageType.GAME_DELETION]: GameDeletionSchema,
   [MessageType.MATCH_REQUESTS]: SeekRequestsSchema,
   [MessageType.DECLINE_SEEK_REQUEST]: DeclineSeekRequestSchema,
@@ -977,6 +978,21 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.SetCorrespondenceSeeks,
               payload: {
                 correspondenceSeeks: soughtGames,
+              },
+            });
+            break;
+          }
+
+          case MessageType.OUR_LEAGUE_CORRESPONDENCE_GAMES: {
+            const leagueGames = parsedMsg as GameInfoResponses;
+            console.log("got league correspondence games", leagueGames);
+
+            dispatchLobbyContext({
+              actionType: ActionType.AddCorrespondenceGames,
+              payload: {
+                correspondenceGames: leagueGames.gameInfo.map((g) =>
+                  GameInfoResponseToActiveGame(g),
+                ),
               },
             });
             break;

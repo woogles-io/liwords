@@ -50,6 +50,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/embed"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/integrations"
+	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
@@ -67,6 +68,7 @@ import (
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/game_service/game_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/league_service/league_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/mod_service/mod_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/omgwords_service/omgwords_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/pair_service/pair_serviceconnect"
@@ -214,6 +216,12 @@ func main() {
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore, stores.Queries)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore, stores.Queries)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore, cfg, lambdaClient, stores.Queries)
+	gameCreatorAdapter := &GameCreatorAdapter{
+		stores:    stores,
+		cfg:       cfg,
+		eventChan: nil, // Set later after pubsubBus is created
+	}
+	leagueService := league.NewLeagueService(stores.LeagueStore, stores.UserStore, cfg, stores.Queries, stores, gameCreatorAdapter)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore, stores.Queries)
 	puzzleService := puzzles.NewPuzzleService(stores.PuzzleStore, stores.UserStore, cfg.PuzzleGenerationSecretKey, cfg.ECSClusterName, cfg.PuzzleGenerationTaskDefinition, stores.Queries)
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
@@ -298,6 +306,9 @@ func main() {
 		tournament_serviceconnect.NewTournamentServiceHandler(tournamentService, options),
 	)
 	connectapi.Handle(
+		league_serviceconnect.NewLeagueServiceHandler(leagueService, options),
+	)
+	connectapi.Handle(
 		mod_serviceconnect.NewModServiceHandler(modService, options),
 	)
 	connectapi.Handle(
@@ -371,6 +382,7 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 	omgwordsService.SetEventChannel(pubsubBus.GameEventChannel())
+	gameCreatorAdapter.eventChan = pubsubBus.GameEventChannel()
 
 	router.Handle(bus.GameEventStreamPrefix,
 		middlewares.Then(pubsubBus.EventAPIServerInstance()))

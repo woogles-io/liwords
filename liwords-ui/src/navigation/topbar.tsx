@@ -25,6 +25,10 @@ const TopMenu = React.memo((props: Props) => {
       label: <Link to="/">OMGWords</Link>,
     },
     {
+      key: "leagues",
+      label: <Link to="/leagues">Leagues</Link>,
+    },
+    {
       key: "puzzles",
       label: <Link to="/puzzle">Puzzles</Link>,
     },
@@ -161,6 +165,7 @@ const TopMenu = React.memo((props: Props) => {
 
 type Props = {
   tournamentID?: string;
+  leagueSlug?: string;
   nextCorresGameID?: string;
   corresGamesWaiting?: number;
 };
@@ -212,7 +217,11 @@ export const TopBar = React.memo((props: Props) => {
     },
   ];
 
-  const homeLink = props.tournamentID ? tournamentContext.metadata?.slug : "/";
+  const homeLink = props.tournamentID
+    ? tournamentContext.metadata?.slug
+    : props.leagueSlug
+      ? `/leagues/${props.leagueSlug}`
+      : "/";
 
   const handleNextCorresGame = () => {
     if (props.nextCorresGameID) {
@@ -225,7 +234,13 @@ export const TopBar = React.memo((props: Props) => {
       <div className="container">
         <Link
           to={homeLink}
-          className={`logo${props.tournamentID ? " tournament-mode" : ""}`}
+          className={`logo${
+            props.tournamentID
+              ? " tournament-mode"
+              : props.leagueSlug
+                ? " league-mode"
+                : ""
+          }`}
         >
           <div className="site-icon-rect">
             <div className="site-icon-w">W</div>
@@ -239,6 +254,8 @@ export const TopBar = React.memo((props: Props) => {
                 ? " Club"
                 : " Tournament"}
             </div>
+          ) : props.leagueSlug ? (
+            <div className="tournament">Back to League</div>
           ) : null}
         </Link>
         {props.nextCorresGameID && (

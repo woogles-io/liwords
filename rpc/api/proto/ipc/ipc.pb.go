@@ -85,6 +85,7 @@ const (
 	MessageType_OUR_CORRESPONDENCE_GAMES        MessageType = 47
 	MessageType_OUR_CORRESPONDENCE_SEEKS        MessageType = 48
 	MessageType_MONITORING_STREAM_STATUS_UPDATE MessageType = 49
+	MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES MessageType = 50
 )
 
 // Enum value maps for MessageType.
@@ -138,6 +139,7 @@ var (
 		47: "OUR_CORRESPONDENCE_GAMES",
 		48: "OUR_CORRESPONDENCE_SEEKS",
 		49: "MONITORING_STREAM_STATUS_UPDATE",
+		50: "OUR_LEAGUE_CORRESPONDENCE_GAMES",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                                 0,
@@ -188,6 +190,7 @@ var (
 		"OUR_CORRESPONDENCE_GAMES":                     47,
 		"OUR_CORRESPONDENCE_SEEKS":                     48,
 		"MONITORING_STREAM_STATUS_UPDATE":              49,
+		"OUR_LEAGUE_CORRESPONDENCE_GAMES":              50,
 	}
 )
 
@@ -607,7 +610,7 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\r\n" +
-	"\vUnjoinRealm*\xb5\n" +
+	"\vUnjoinRealm*\xda\n" +
 	"\n" +
 	"\vMessageType\x12\x10\n" +
 	"\fSEEK_REQUEST\x10\x00\x12\x11\n" +
@@ -658,7 +661,8 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x19TOURNAMENT_PLAYER_CHECKIN\x10.\x12\x1c\n" +
 	"\x18OUR_CORRESPONDENCE_GAMES\x10/\x12\x1c\n" +
 	"\x18OUR_CORRESPONDENCE_SEEKS\x100\x12#\n" +
-	"\x1fMONITORING_STREAM_STATUS_UPDATE\x101Bp\n" +
+	"\x1fMONITORING_STREAM_STATUS_UPDATE\x101\x12#\n" +
+	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102Bp\n" +
 	"\acom.ipcB\bIpcProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (

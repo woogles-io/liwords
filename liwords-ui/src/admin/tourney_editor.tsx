@@ -42,7 +42,6 @@ import {
   doesCurrentUserUse24HourTime,
   protobufTimestampToDayjsIgnoringNanos,
 } from "../utils/datetime";
-import { check } from "prettier";
 
 type DProps = {
   description: string;

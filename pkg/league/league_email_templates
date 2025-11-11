@@ -1,0 +1,26 @@
+{{if .IsStartingSoon}}Dear {{.Username}},
+
+This is a reminder that the {{.LeagueName}} Season {{.SeasonNumber}} will begin tomorrow at {{.StartTime}}.
+
+You are currently registered to participate in this season. If you need to withdraw, please visit the league page at {{.LeagueURL}} before the season starts.
+
+Once the season begins, you will be assigned to a division and your games will be created automatically.
+
+Good luck!
+
+{{- else}}Dear {{.Username}},
+
+The {{.LeagueName}} Season {{.SeasonNumber}} has officially started!
+
+You have been assigned to {{.DivisionName}}. You will be playing against the following opponents:
+{{range .Opponents}}
+  - {{.}}
+{{end}}
+Your games have been created and are ready to play. Visit the league page to view your standings and start playing:
+{{.LeagueURL}}
+
+Good luck and have fun!
+
+{{- end}}
+Sincerely,
+The Woogles Team

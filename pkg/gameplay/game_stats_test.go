@@ -96,6 +96,7 @@ func variantKey(req *pb.GameRequest) entity.VariantKey {
 func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
 	_, stores, _ := recreateDB()
+	defer stores.Disconnect()
 
 	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -140,17 +141,12 @@ func TestComputeGameStats(t *testing.T) {
 		},
 	})
 
-	stores.UserStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
 	_, stores, _ := recreateDB()
-
+	defer stores.Disconnect()
 	histjson, err := os.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
 	hist := &macondopb.GameHistory{}
@@ -190,18 +186,12 @@ func TestComputeGameStats2(t *testing.T) {
 			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
 		},
 	})
-
-	stores.UserStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
 }
 
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	_, stores, _ := recreateDB()
-
+	defer stores.Disconnect()
 	histjson, err := os.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
 	hist := &macondopb.GameHistory{}
@@ -253,18 +243,13 @@ func TestComputePlayerStats(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
-	stores.UserStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
 	_, stores, _ := recreateDB()
 	ctx := context.Background()
-
+	defer stores.Disconnect()
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := os.ReadFile("./testdata/" + g + "/history.json")
 		is.NoErr(err)
@@ -344,10 +329,5 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
-	stores.UserStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
 
 }

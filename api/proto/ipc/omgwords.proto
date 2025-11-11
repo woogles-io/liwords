@@ -168,6 +168,9 @@ message GameHistoryRefresher {
   // outstanding_event refers to any possible outstanding game meta event that
   // has not yet been responded to or expired.
   GameMetaEvent outstanding_event = 5;
+  // Time bank remaining for each player in correspondence games, in milliseconds
+  int32 time_bank_player1 = 6;
+  int32 time_bank_player2 = 7;
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
@@ -221,6 +224,9 @@ message GameInfoResponse {
   // Index of the player whose turn it is (0 or 1). Optional for backwards
   // compatibility.
   optional uint32 player_on_turn = 24;
+  // League information
+  string league_id = 25;
+  string league_slug = 26;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
@@ -262,6 +268,7 @@ message ServerGameplayEvent {
   int32 time_remaining = 4;
   macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
   string user_id = 6; // the event has the nickname, but not the userid.
+  int32 time_bank = 7; // time bank remaining for the player who just moved, in milliseconds
 }
 
 // ServerOMGWordsEvent is a new event type.

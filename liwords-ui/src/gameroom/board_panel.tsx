@@ -104,6 +104,8 @@ type Props = {
   tournamentPairedMode?: boolean;
   tournamentNonDirectorObserver?: boolean;
   tournamentPrivateAnalysis?: boolean;
+  leagueID?: string;
+  leagueSlug?: string;
   lexicon: string;
   alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
@@ -1210,6 +1212,7 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         tournamentSlug={props.tournamentSlug}
         tournamentPairedMode={props.tournamentPairedMode}
+        isLeagueGame={!!props.leagueID}
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
         setHandlePassShortcut={setHandlePassShortcut}

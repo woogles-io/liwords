@@ -76,14 +76,6 @@ func recreateDB() *stores.Stores {
 	return stores
 }
 
-func teardownStores(stores *stores.Stores) {
-	stores.UserStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-}
-
 type TestGameOption func(*pb.GameRequest)
 
 func WithCorrespondenceMode(incrementSeconds int32, timeBankMinutes int32) TestGameOption {
@@ -161,7 +153,7 @@ func TestMain(m *testing.M) {
 func TestCorrespondenceTimeoutWithoutTimeBank(t *testing.T) {
 	is := is.New(t)
 	stores := recreateDB()
-	defer teardownStores(stores)
+	defer stores.Disconnect()
 
 	cfg := DefaultConfig
 
@@ -197,7 +189,7 @@ func TestCorrespondenceTimeoutWithoutTimeBank(t *testing.T) {
 func TestCorrespondenceTimeoutWithExhaustedTimeBank(t *testing.T) {
 	is := is.New(t)
 	stores := recreateDB()
-	defer teardownStores(stores)
+	defer stores.Disconnect()
 
 	cfg := DefaultConfig
 
@@ -234,7 +226,7 @@ func TestCorrespondenceTimeoutWithExhaustedTimeBank(t *testing.T) {
 func TestCorrespondenceNoTimeoutWithTimeBank(t *testing.T) {
 	is := is.New(t)
 	stores := recreateDB()
-	defer teardownStores(stores)
+	defer stores.Disconnect()
 
 	cfg := DefaultConfig
 
@@ -263,7 +255,7 @@ func TestCorrespondenceNoTimeoutWithTimeBank(t *testing.T) {
 func TestCorrespondenceWithinAllowedTime(t *testing.T) {
 	is := is.New(t)
 	stores := recreateDB()
-	defer teardownStores(stores)
+	defer stores.Disconnect()
 
 	cfg := DefaultConfig
 

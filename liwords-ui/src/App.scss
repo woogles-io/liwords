@@ -351,7 +351,7 @@ ul {
 .ant-dropdown-menu,
 .ant-select-dropdown {
   //   padding: 0;
-  z-index: 1100;
+  z-index: 1050;
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
@@ -375,7 +375,7 @@ ul {
     color: m($gray-extreme);
   }
   & {
-    z-index: 1100;
+    z-index: 1050;
   }
   .hover-help {
     display: none;

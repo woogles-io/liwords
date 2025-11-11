@@ -1,4 +1,4 @@
-import { Table, Tooltip, Badge, Tag } from "antd";
+import { Table, Tag, Tooltip } from "antd";
 import {
   FundOutlined,
   ClockCircleOutlined,
@@ -52,7 +52,7 @@ export const CorrespondenceGames = (props: Props) => {
       try {
         const resp = await gameMetadataClient.getRecentCorrespondenceGames({
           username: props.username,
-          numGames: 10,
+          numGames: 20,
         });
         setRecentGames(resp.gameInfo);
       } catch (e) {
@@ -179,6 +179,15 @@ export const CorrespondenceGames = (props: Props) => {
             details:
               ag.tournamentID !== "" ? (
                 <span className="tourney-name">{ag.tournamentID}</span>
+              ) : ag.leagueSlug ? (
+                <span className="league-game">
+                  <Tooltip title={`League Game: ${ag.leagueSlug}`}>
+                    <TrophyOutlined
+                      style={{ color: "#faad14", marginRight: 4 }}
+                    />
+                  </Tooltip>
+                  League
+                </span>
               ) : (
                 <>
                   <VariantIcon vcode={ag.variant} />{" "}

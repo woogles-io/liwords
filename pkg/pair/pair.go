@@ -81,7 +81,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), members.Seed)
+	return GetRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), members.Seed)
 }
 
 func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -424,7 +424,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
 				"have odd group size of %d", numberOfPlayers, groupSize)
 		}
-		groupPairings, err := getRoundRobinPairings(groupSize, round, seed)
+		groupPairings, err := GetRoundRobinPairings(groupSize, round, seed)
 		if err != nil {
 			return nil, err
 		}
@@ -454,7 +454,8 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	return pairings, nil
 }
 
-func getRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, error) {
+// GetRoundRobinPairings generates round-robin pairings for a given number of players and round
+func GetRoundRobinPairings(numberOfPlayers int, round int, seed uint64) ([]int, error) {
 
 	/* Round Robin pairing algorithm:
 

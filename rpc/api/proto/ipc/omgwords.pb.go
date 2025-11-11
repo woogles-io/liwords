@@ -1033,8 +1033,11 @@ type GameHistoryRefresher struct {
 	// outstanding_event refers to any possible outstanding game meta event that
 	// has not yet been responded to or expired.
 	OutstandingEvent *GameMetaEvent `protobuf:"bytes,5,opt,name=outstanding_event,json=outstandingEvent,proto3" json:"outstanding_event,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Time bank remaining for each player in correspondence games, in milliseconds
+	TimeBankPlayer1 int32 `protobuf:"varint,6,opt,name=time_bank_player1,json=timeBankPlayer1,proto3" json:"time_bank_player1,omitempty"`
+	TimeBankPlayer2 int32 `protobuf:"varint,7,opt,name=time_bank_player2,json=timeBankPlayer2,proto3" json:"time_bank_player2,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GameHistoryRefresher) Reset() {
@@ -1100,6 +1103,20 @@ func (x *GameHistoryRefresher) GetOutstandingEvent() *GameMetaEvent {
 		return x.OutstandingEvent
 	}
 	return nil
+}
+
+func (x *GameHistoryRefresher) GetTimeBankPlayer1() int32 {
+	if x != nil {
+		return x.TimeBankPlayer1
+	}
+	return 0
+}
+
+func (x *GameHistoryRefresher) GetTimeBankPlayer2() int32 {
+	if x != nil {
+		return x.TimeBankPlayer2
+	}
+	return 0
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
@@ -1347,7 +1364,10 @@ type GameInfoResponse struct {
 	Type                GameType `protobuf:"varint,23,opt,name=type,proto3,enum=ipc.GameType" json:"type,omitempty"`
 	// Index of the player whose turn it is (0 or 1). Optional for backwards
 	// compatibility.
-	PlayerOnTurn  *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
+	PlayerOnTurn *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
+	// League information
+	LeagueId      string `protobuf:"bytes,25,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	LeagueSlug    string `protobuf:"bytes,26,opt,name=league_slug,json=leagueSlug,proto3" json:"league_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1485,6 +1505,20 @@ func (x *GameInfoResponse) GetPlayerOnTurn() uint32 {
 		return *x.PlayerOnTurn
 	}
 	return 0
+}
+
+func (x *GameInfoResponse) GetLeagueId() string {
+	if x != nil {
+		return x.LeagueId
+	}
+	return ""
+}
+
+func (x *GameInfoResponse) GetLeagueSlug() string {
+	if x != nil {
+		return x.LeagueSlug
+	}
+	return ""
 }
 
 type GameInfoResponses struct {
@@ -1815,6 +1849,7 @@ type ServerGameplayEvent struct {
 	TimeRemaining int32                  `protobuf:"varint,4,opt,name=time_remaining,json=timeRemaining,proto3" json:"time_remaining,omitempty"`
 	Playing       macondo.PlayState      `protobuf:"varint,5,opt,name=playing,proto3,enum=macondo.PlayState" json:"playing,omitempty"` // XXX: move to ipc.PlayState
 	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`             // the event has the nickname, but not the userid.
+	TimeBank      int32                  `protobuf:"varint,7,opt,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`      // time bank remaining for the player who just moved, in milliseconds
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1889,6 +1924,13 @@ func (x *ServerGameplayEvent) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *ServerGameplayEvent) GetTimeBank() int32 {
+	if x != nil {
+		return x.TimeBank
+	}
+	return 0
 }
 
 // ServerOMGWordsEvent is a new event type.
@@ -3236,13 +3278,15 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\vUNDO_DENIED\x10\t\x12\f\n" +
 	"\bADD_TIME\x10\n" +
 	"\x12\x11\n" +
-	"\rTIMER_EXPIRED\x10\v\"\xff\x01\n" +
+	"\rTIMER_EXPIRED\x10\v\"\xd7\x02\n" +
 	"\x14GameHistoryRefresher\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12!\n" +
 	"\ftime_player1\x18\x02 \x01(\x05R\vtimePlayer1\x12!\n" +
 	"\ftime_player2\x18\x03 \x01(\x05R\vtimePlayer2\x120\n" +
 	"\x14max_overtime_minutes\x18\x04 \x01(\x05R\x12maxOvertimeMinutes\x12?\n" +
-	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\"8\n" +
+	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\x12*\n" +
+	"\x11time_bank_player1\x18\x06 \x01(\x05R\x0ftimeBankPlayer1\x12*\n" +
+	"\x11time_bank_player2\x18\a \x01(\x05R\x0ftimeBankPlayer2\"8\n" +
 	"\x11GameDocumentEvent\x12#\n" +
 	"\x03doc\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\x03doc\"z\n" +
 	"\x15TournamentDataForGame\x12\x10\n" +
@@ -3260,7 +3304,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06rating\x18\x05 \x01(\tR\x06rating\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\x12\x15\n" +
 	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12\x18\n" +
-	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xb1\x05\n" +
+	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xef\x05\n" +
 	"\x10GameInfoResponse\x12)\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0f.ipc.PlayerInfoR\aplayers\x12*\n" +
 	"\x11time_control_name\x18\x04 \x01(\tR\x0ftimeControlName\x12#\n" +
@@ -3278,7 +3322,10 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x10tournament_round\x18\x15 \x01(\x05R\x0ftournamentRound\x122\n" +
 	"\x15tournament_game_index\x18\x16 \x01(\x05R\x13tournamentGameIndex\x12!\n" +
 	"\x04type\x18\x17 \x01(\x0e2\r.ipc.GameTypeR\x04type\x12)\n" +
-	"\x0eplayer_on_turn\x18\x18 \x01(\rH\x00R\fplayerOnTurn\x88\x01\x01B\x11\n" +
+	"\x0eplayer_on_turn\x18\x18 \x01(\rH\x00R\fplayerOnTurn\x88\x01\x01\x12\x1b\n" +
+	"\tleague_id\x18\x19 \x01(\tR\bleagueId\x12\x1f\n" +
+	"\vleague_slug\x18\x1a \x01(\tR\n" +
+	"leagueSlugB\x11\n" +
 	"\x0f_player_on_turn\"G\n" +
 	"\x11GameInfoResponses\x122\n" +
 	"\tgame_info\x18\x01 \x03(\v2\x15.ipc.GameInfoResponseR\bgameInfo\"\xcd\x01\n" +
@@ -3297,14 +3344,15 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06player\x18\x02 \x03(\v2\x15.ipc.ActiveGamePlayerR\x06player\x12\x10\n" +
 	"\x03ttl\x18\x03 \x01(\x03R\x03ttl\"'\n" +
 	"\fReadyForGame\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xe1\x01\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xfe\x01\n" +
 	"\x13ServerGameplayEvent\x12(\n" +
 	"\x05event\x18\x01 \x01(\v2\x12.macondo.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +
 	"\bnew_rack\x18\x03 \x01(\tR\anewRack\x12%\n" +
 	"\x0etime_remaining\x18\x04 \x01(\x05R\rtimeRemaining\x12,\n" +
 	"\aplaying\x18\x05 \x01(\x0e2\x12.macondo.PlayStateR\aplaying\x12\x17\n" +
-	"\auser_id\x18\x06 \x01(\tR\x06userId\"\xd9\x01\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12\x1b\n" +
+	"\ttime_bank\x18\a \x01(\x05R\btimeBank\"\xd9\x01\n" +
 	"\x13ServerOMGWordsEvent\x12$\n" +
 	"\x05event\x18\x01 \x01(\v2\x0e.ipc.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +

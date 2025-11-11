@@ -66,6 +66,7 @@ export type ActiveGame = {
   gameMode: number; // GameMode enum value
   playerOnTurn?: number; // Index of player whose turn it is (0 or 1)
   lastUpdate?: number; // Timestamp of last move in milliseconds
+  leagueSlug?: string; // League slug if this is a league game
 };
 
 export type LobbyState = {
@@ -173,6 +174,7 @@ export const GameInfoResponseToActiveGame = (
     gameMode: gameReq.gameMode ?? 0, // 0 = REAL_TIME
     playerOnTurn: gi.playerOnTurn,
     lastUpdate,
+    leagueSlug: gi.leagueSlug || undefined,
   };
 };
 

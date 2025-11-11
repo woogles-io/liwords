@@ -70,6 +70,8 @@ export const millisToTimeStr = (ms: number, showTenths = true): string => {
 export type Times = {
   p0: Millis;
   p1: Millis;
+  p0TimeBank?: Millis; // Time bank remaining for player 0 (correspondence games)
+  p1TimeBank?: Millis; // Time bank remaining for player 1 (correspondence games)
   activePlayer?: PlayerOrder; // the index of the player
   lastUpdate: Millis;
 };

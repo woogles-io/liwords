@@ -1023,6 +1023,7 @@ export const Table = React.memo((props: Props) => {
       <ManageWindowTitleAndTurnSound gameInfo={gameInfo} />
       <TopBar
         tournamentID={gameInfo.tournamentId}
+        leagueSlug={gameInfo.leagueSlug}
         nextCorresGameID={nextCorresGame?.gameID}
         corresGamesWaiting={corresGamesWaiting}
       />
@@ -1043,7 +1044,12 @@ export const Table = React.memo((props: Props) => {
                 alignItems: "center",
               }}
             >
-              {gameInfo.tournamentId ? (
+              {gameInfo.leagueId && gameInfo.leagueSlug ? (
+                <Link to={`/leagues/${gameInfo.leagueSlug}`}>
+                  <HomeOutlined />
+                  Back to League
+                </Link>
+              ) : gameInfo.tournamentId ? (
                 <Link to={tournamentContext.metadata?.slug}>
                   <HomeOutlined />
                   Back to
@@ -1147,6 +1153,8 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournamentId}
+            leagueID={gameInfo.leagueId}
+            leagueSlug={gameInfo.leagueSlug}
             vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
             gameMode={gameInfo.gameRequest?.gameMode}
             tournamentSlug={tournamentContext.metadata?.slug}

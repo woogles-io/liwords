@@ -6,13 +6,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
-
-	"github.com/rs/zerolog/log"
-	"github.com/woogles-io/liwords/pkg/entity"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
@@ -99,6 +100,22 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 				}
 			}
 		}
+	} else if strings.HasPrefix(evt.Channel, "chat.league.") {
+		leagueID := strings.TrimPrefix(evt.Channel, "chat.league.")
+		if len(leagueID) == 0 {
+			return errors.New("nonexistent league")
+		}
+		leagueUUID, err := uuid.Parse(leagueID)
+		if err != nil {
+			return err
+		}
+		league, err := b.stores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID)
+		if err != nil {
+			return err
+		}
+		userFriendlyChannelName = "league:" + league.Name
+		// TODO: League managers could bypass chat regulation similar to tournament directors
+		// This would require adding a GetLeagueManagers query or including managers in the league model
 	}
 
 	chatMessage, err := b.stores.ChatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)

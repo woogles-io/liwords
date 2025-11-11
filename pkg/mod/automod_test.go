@@ -283,6 +283,7 @@ func TestNotoriety(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
 	_, stores, cfg := recreateDB()
+	defer stores.Disconnect()
 	ctx := DefaultConfig.WithContext(context.Background())
 
 	defaultTurns := []*pb.ClientGameplayEvent{
@@ -796,9 +797,4 @@ func TestNotoriety(t *testing.T) {
 	}, stores)
 	is.NoErr(err)
 
-	stores.UserStore.Disconnect()
-	stores.NotorietyStore.Disconnect()
-	stores.ListStatStore.Disconnect()
-	stores.GameStore.Disconnect()
-	stores.TournamentStore.Disconnect()
 }
