@@ -233,7 +233,7 @@ message TournamentDataResponse {
   string id = 1;
   string name = 2;
   string description = 3;
-  string executive_director = 4;
+  reserved 4; // Removed: executive_director (replaced by directors field)
   TournamentPersons directors = 5;
   bool is_started = 6;
   // Note: this field seems totally unused
