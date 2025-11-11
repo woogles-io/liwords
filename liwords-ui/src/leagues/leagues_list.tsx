@@ -148,10 +148,10 @@ export const LeaguesList = () => {
             >
               <p>
                 Each league season consists of roughly 14 games, which must all
-                be completed within 21 days. The turns are relatively
-                fast-paced, with each turn usually taking between 6 to 8 hours.
-                You have a "time bank", usually several days long, to use if you
-                need extra time for a turn.
+                be completed within a certain time limit, usually 2 to 3 weeks.
+                The turns are relatively fast-paced, with each turn usually
+                taking between 6 to 8 hours. You have a "time bank", usually
+                several days long, to use if you need extra time for a turn.
               </p>
               <p>
                 However, it's important to note that if you run out of time in
@@ -198,26 +198,30 @@ export const LeaguesList = () => {
             <Panel header="How do time banks and timing work?" key="4">
               <p>
                 League games use a correspondence time control designed to
-                complete 14 games within 3 weeks while accommodating real-life
-                schedules:
+                complete 14 games within a few weeks while accommodating
+                real-life schedules:
               </p>
               <ul>
                 <li>
-                  <strong>8 hours per turn:</strong> You have 8 hours to make
-                  each move under normal circumstances
+                  <strong>6 to 8 hours per turn:</strong> Depending on the
+                  league settings, you have 6 to 8 hours to make each move under
+                  normal circumstances.
                 </li>
                 <li>
-                  <strong>72-hour time bank:</strong> Each player starts with a
-                  72-hour (3-day) time bank that provides flexibility
+                  <strong>48 to 96-hour time bank:</strong> Each player starts
+                  with a 48 to 96-hour (2 to 4-day) time bank that provides
+                  flexibility. The exact value depends on the settings of the
+                  league.
                 </li>
               </ul>
               <p>
-                <strong>How the time bank helps:</strong> When your 8-hour
-                per-turn timer runs out, time starts consuming from your 72-hour
-                time bank. This means if you're busy for a day or two and can't
-                make your moves within 8 hours, you have plenty of buffer time
-                available. Even if you have a hectic couple of days, you won't
-                lose games on time as long as you manage your time bank wisely.
+                <strong>How the time bank helps:</strong> When your 6-to-8 hour
+                per-turn timer runs out, time starts consuming from your 48 to
+                96-hour time bank. This means if you're busy for a day or two
+                and can't make your moves within your initial allotted hours,
+                you have plenty of buffer time available. Even if you have a
+                hectic couple of days, you won't lose games on time as long as
+                you manage your time bank wisely.
               </p>
               <p>
                 This timing system strikes a balance between keeping games
