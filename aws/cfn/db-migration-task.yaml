@@ -59,7 +59,7 @@ Resources:
           Essential: true
           Command:
             - /opt/liwords-api
-            - -db-migrations-path=/opt/db/migrations
+            - -db-migrations-path=file:///opt/db/migrations
             - -run-migrations=true
             - -quit-after-migration=true
           LogConfiguration:
@@ -68,22 +68,21 @@ Resources:
               awslogs-group: /ecs/liwords-db-migration
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: migration
-          Secrets:
-            - Name: DB_HOST
-              ValueFrom: !Ref DBHostParameter
-            - Name: DB_PORT
-              ValueFrom: !Ref DBPortParameter
-            - Name: DB_USER
-              ValueFrom: !Ref DBUserParameter
-            - Name: DB_PASSWORD
-              ValueFrom: !Ref DBPasswordParameter
-            - Name: DB_NAME
-              ValueFrom: !Ref DBNameParameter
-            - Name: DB_SSL_MODE
-              ValueFrom: !Ref DBSSLModeParameter
           Environment:
             - Name: DB_MIGRATIONS_PATH
-              Value: /opt/db/migrations
+              Value: file:///opt/db/migrations
+            - Name: DB_HOST
+              Value: !Sub '{{resolve:ssm:${DBHostParameter}}}'
+            - Name: DB_PORT
+              Value: !Sub '{{resolve:ssm:${DBPortParameter}}}'
+            - Name: DB_USER
+              Value: !Sub '{{resolve:ssm:${DBUserParameter}}}'
+            - Name: DB_PASSWORD
+              Value: !Sub '{{resolve:ssm:${DBPasswordParameter}}}'
+            - Name: DB_NAME
+              Value: !Sub '{{resolve:ssm:${DBNameParameter}}}'
+            - Name: DB_SSL_MODE
+              Value: !Sub '{{resolve:ssm:${DBSSLModeParameter}}}'
 
   MigrationLogGroup:
     Type: AWS::Logs::LogGroup
