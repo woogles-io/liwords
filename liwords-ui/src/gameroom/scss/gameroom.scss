@@ -1661,6 +1661,21 @@ p.rune {
       flex: 2;
       min-width: 66px;
       max-width: 66px;
+
+      &.correspondence {
+        max-width: 100px;
+        min-width: 100px;
+      }
+
+      .time-bank-icon {
+        color: #15803d; // green-700 for light mode
+        margin-left: 4px;
+        font-size: 0.85em;
+
+        body.mode--dark & {
+          color: #22c55e; // green-500 for dark mode
+        }
+      }
     }
 
     .play {

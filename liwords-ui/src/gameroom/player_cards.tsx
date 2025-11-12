@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router";
 import { Card, Row, Button, Tooltip } from "antd";
+import { HourglassOutlined } from "@ant-design/icons";
 import { RawPlayerInfo } from "../store/reducers/game_reducer";
 import {
   useExaminableGameContextStoreContext,
@@ -19,7 +20,6 @@ import {
   PlayerInfo,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { MachineLetter } from "../utils/cwgame/common";
-import { CorrespondenceTimer } from "./correspondence_timer";
 
 import variables from "../base.module.scss";
 import { DisplayUserBadges } from "../profile/badge";
@@ -34,8 +34,8 @@ type CardProps = {
   score: number;
   spread: number;
   hideProfileLink?: boolean;
-  isCorrespondence?: boolean;
   timeBank?: number | bigint;
+  usingTimeBank?: boolean;
 };
 
 const timepenalty = (time: Millis) => {
@@ -61,14 +61,31 @@ const PlayerCard = React.memo((props: CardProps) => {
   const meta = props.meta.find((pi) => pi.userId === props.player?.userID);
   const timeStr =
     isExamining || props.playing ? millisToTimeStr(props.time) : "--:--";
+
+  // Check if we have a time bank
+  const hasTimeBank = props.timeBank !== undefined && props.timeBank > 0;
+  const timeBankMs =
+    typeof props.timeBank === "bigint"
+      ? Number(props.timeBank)
+      : props.timeBank || 0;
+
+  // Format time bank for tooltip
+  const formatTimeBankTooltip = (ms: number): string => {
+    return millisToTimeStr(ms, false);
+  };
+
+  // Check if we're counting from time bank (tracked by ClockController)
+  const inTimeBank = props.usingTimeBank ?? false;
+
   // TODO: what we consider low time likely be set somewhere and not a magic number
   const timeLowCutoff = Math.max(props.initialTimeSeconds / 5, 30000);
-  const timeLow = props.time <= timeLowCutoff && props.time > 0;
+  const timeLow = props.time <= timeLowCutoff && props.time > 0 && !inTimeBank;
   const timeOut = props.time <= 0;
+
   return (
     <div
       className={`player-card${props.player.onturn ? " on-turn" : ""}
-      ${timeLow ? " time-low" : ""}${timeOut ? " time-out" : ""}`}
+      ${timeLow ? " time-low" : ""}${timeOut ? " time-out" : ""}${inTimeBank ? " using-time-bank" : ""}`}
     >
       <Row className="player">
         <PlayerAvatar player={meta} />
@@ -104,19 +121,25 @@ const PlayerCard = React.memo((props: CardProps) => {
             {props.score}
           </Button>
         </Tooltip>
-        {props.isCorrespondence ? (
-          <div className="correspondence-timer-wrapper">
-            <CorrespondenceTimer
-              timeRemaining={props.time}
-              timeBank={props.timeBank}
-              isOnTurn={props.player?.onturn ?? false}
-            />
-          </div>
-        ) : (
+        <div className="timer-container">
           <Button className="timer" type="primary">
             {timeStr}
+            {(() => {
+              const shouldShow = hasTimeBank && !inTimeBank && props.time > 0;
+              return shouldShow ? (
+                <Tooltip
+                  title={`Time bank: ${formatTimeBankTooltip(timeBankMs)}`}
+                  trigger="hover"
+                >
+                  <span>
+                    <HourglassOutlined className="time-bank-indicator" />
+                  </span>
+                </Tooltip>
+              ) : null;
+            })()}
           </Button>
-        )}
+          {inTimeBank && <div className="time-bank-label">using time bank</div>}
+        </div>
       </Row>
     </div>
   );
@@ -179,6 +202,8 @@ export const PlayerCards = React.memo((props: Props) => {
   // Get time bank values for correspondence games
   const p0TimeBank = examinableTimerContext.p0TimeBank;
   const p1TimeBank = examinableTimerContext.p1TimeBank;
+  const p0UsingTimeBank = examinableTimerContext.p0UsingTimeBank;
+  const p1UsingTimeBank = examinableTimerContext.p1UsingTimeBank;
 
   const applyTimePenalty = !isExamining && playing && !isCorrespondence;
   let p0Score = p0?.score ?? 0;
@@ -203,8 +228,8 @@ export const PlayerCards = React.memo((props: Props) => {
         spread={p0Spread}
         playing={playing}
         hideProfileLink={props.hideProfileLink}
-        isCorrespondence={isCorrespondence}
         timeBank={p0TimeBank}
+        usingTimeBank={p0UsingTimeBank}
       />
       <PlayerCard
         player={p1}
@@ -215,8 +240,8 @@ export const PlayerCards = React.memo((props: Props) => {
         spread={-p0Spread}
         playing={playing}
         hideProfileLink={props.hideProfileLink}
-        isCorrespondence={isCorrespondence}
         timeBank={p1TimeBank}
+        usingTimeBank={p1UsingTimeBank}
       />
     </Card>
   );

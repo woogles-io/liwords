@@ -25,10 +25,44 @@ export interface ClockData {
   moretime: number;
 }
 
-export const millisToTimeStr = (ms: number, showTenths = true): string => {
+export const millisToTimeStr = (
+  ms: number,
+  showTenths = true,
+  daysDecimalPlaces = 1,
+): string => {
   const neg = ms < 0;
   const absms = Math.abs(ms);
-  // const mins = Math.floor(ms / 60000);
+
+  // Calculate total seconds first
+  let totalSecs;
+  if (!neg) {
+    totalSecs = Math.ceil(absms / 1000);
+  } else {
+    totalSecs = Math.floor(absms / 1000);
+  }
+
+  // > 24 hours: show as "X.X days" (calculate directly from seconds for precision)
+  const totalHours = totalSecs / 3600;
+  if (totalHours >= 24) {
+    const days = totalHours / 24;
+    const daysStr = days.toFixed(daysDecimalPlaces);
+    return `${neg ? "-" : ""}${daysStr} ${daysStr === "1.0" && daysDecimalPlaces === 1 ? "day" : "days"}`;
+  }
+
+  // >= 1 hour: show as "hh:mm:ss"
+  if (totalHours >= 1) {
+    const hours = Math.floor(totalHours);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const hh = hours.toString().padStart(2, "0");
+    const mm = mins.toString().padStart(2, "0");
+    const ss = secs.toString().padStart(2, "0");
+    return `${neg ? "-" : ""}${hh}:${mm}:${ss}`;
+  }
+
+  const totalMins = Math.floor(totalSecs / 60);
+
+  // < 1 hour: show as "mm:ss" or "mm:ss.d" (original behavior)
   let secs;
   let secStr;
   let mins;
@@ -40,12 +74,6 @@ export const millisToTimeStr = (ms: number, showTenths = true): string => {
     ms <= negativeShowTenthsCutoff ||
     !showTenths
   ) {
-    let totalSecs;
-    if (!neg) {
-      totalSecs = Math.ceil(absms / 1000);
-    } else {
-      totalSecs = Math.floor(absms / 1000);
-    }
     secs = totalSecs % 60;
     mins = Math.floor(totalSecs / 60);
     secStr = secs.toString().padStart(2, "0");
@@ -72,6 +100,8 @@ export type Times = {
   p1: Millis;
   p0TimeBank?: Millis; // Time bank remaining for player 0 (correspondence games)
   p1TimeBank?: Millis; // Time bank remaining for player 1 (correspondence games)
+  p0UsingTimeBank?: boolean; // True when player 0 is counting from time bank
+  p1UsingTimeBank?: boolean; // True when player 1 is counting from time bank
   activePlayer?: PlayerOrder; // the index of the player
   lastUpdate: Millis;
 };
@@ -101,7 +131,6 @@ export class ClockController {
     this.onTick = onTick;
     this.setClock(PlayState.PLAYING, this.times);
     this.maxOvertimeMinutes = 0;
-    console.log("in timer controller constructor", this.times);
   }
 
   setClock = (playState: number, ts: Times, delay: Centis = 0) => {
@@ -120,13 +149,10 @@ export class ClockController {
   };
 
   setMaxOvertime = (maxOTMinutes: number | undefined) => {
-    console.log("Set max overtime mins", maxOTMinutes);
     this.maxOvertimeMinutes = maxOTMinutes || 0;
   };
 
   stopClock = (): Millis | null => {
-    console.log("stopClock");
-
     const { activePlayer } = this.times;
     if (activePlayer) {
       const curElapse = this.elapsed();
@@ -145,8 +171,15 @@ export class ClockController {
       clearTimeout(this.tickCallback);
     }
 
+    const totalMins = Math.floor(Math.abs(time) / 60000);
+    const totalHours = Math.floor(totalMins / 60);
+
     let delay; // millis to next millisToTimeStr change.
-    if (time > positiveShowTenthsCutoff) {
+
+    // For times >= 24 hours (shown as days), tick every ten seconds
+    if (totalHours >= 24) {
+      delay = 10000;
+    } else if (time > positiveShowTenthsCutoff) {
       // 1000ms resolution, non-negative remainder.
       delay = Math.min(
         ((time + 999) % 1000) + 1,
@@ -183,16 +216,36 @@ export class ClockController {
     }
 
     const now = performance.now();
-    const millis = Math.max(
+    const elapsed = this.elapsed(now);
+    let millis = Math.max(
       -minsToMillis(this.maxOvertimeMinutes),
-      this.times[activePlayer] - this.elapsed(now),
+      this.times[activePlayer] - elapsed,
     );
+
+    // Check if we're hit 0 and have a time bank
+    const timeBankKey = activePlayer === "p0" ? "p0TimeBank" : "p1TimeBank";
+    const usingTimeBankKey =
+      activePlayer === "p0" ? "p0UsingTimeBank" : "p1UsingTimeBank";
+    const timeBank = this.times[timeBankKey];
+
+    // Check if we're already using time bank (persistent state)
+    if (this.times[usingTimeBankKey]) {
+      // Already in time bank mode - just count down normally
+      millis = this.times[activePlayer] - elapsed;
+    } else if (millis <= 0 && timeBank && timeBank > 0) {
+      // First time entering time bank - reset the clock
+      this.times[activePlayer] = timeBank + millis; // Account for overage
+      this.times.lastUpdate = now;
+      this.times[usingTimeBankKey] = true;
+      millis = this.times[activePlayer];
+    }
+
     this.onTick(activePlayer, millis);
 
-    if (millis !== -minsToMillis(this.maxOvertimeMinutes)) {
+    if (millis > -minsToMillis(this.maxOvertimeMinutes)) {
       this.scheduleTick(millis, 0);
     } else {
-      // we timed out.
+      // we timed out (both main time and time bank exhausted).
       this.onTimeout(activePlayer);
     }
   };
@@ -203,11 +256,32 @@ export class ClockController {
       now - this.times.lastUpdate,
     );
 
-  millisOf = (p: PlayerOrder): Millis =>
-    this.times.activePlayer === p
-      ? Math.max(
-          -minsToMillis(this.maxOvertimeMinutes),
-          this.times[p] - this.elapsed(),
-        )
-      : this.times[p];
+  millisOf = (p: PlayerOrder): Millis => {
+    if (this.times.activePlayer !== p) {
+      return this.times[p];
+    }
+
+    const elapsed = this.elapsed();
+    let millis = Math.max(
+      -minsToMillis(this.maxOvertimeMinutes),
+      this.times[p] - elapsed,
+    );
+
+    // Check if we've hit 0 and have a time bank
+    const timeBankKey = p === "p0" ? "p0TimeBank" : "p1TimeBank";
+    const usingTimeBankKey = p === "p0" ? "p0UsingTimeBank" : "p1UsingTimeBank";
+    const timeBank = this.times[timeBankKey];
+
+    if (millis <= 0 && timeBank && timeBank > 0) {
+      // If we're using time bank, just return the current time
+      // (tick() already handles the transition)
+      if (this.times[usingTimeBankKey]) {
+        millis = this.times[p] - elapsed;
+      } else {
+        millis = timeBank + millis;
+      }
+    }
+
+    return millis;
+  };
 }

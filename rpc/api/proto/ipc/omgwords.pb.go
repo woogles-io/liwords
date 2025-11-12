@@ -1036,8 +1036,10 @@ type GameHistoryRefresher struct {
 	// Time bank remaining for each player in correspondence games, in milliseconds
 	TimeBankPlayer1 int32 `protobuf:"varint,6,opt,name=time_bank_player1,json=timeBankPlayer1,proto3" json:"time_bank_player1,omitempty"`
 	TimeBankPlayer2 int32 `protobuf:"varint,7,opt,name=time_bank_player2,json=timeBankPlayer2,proto3" json:"time_bank_player2,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Initial time bank for correspondence games, in minutes (similar to max_overtime_minutes)
+	InitialTimeBankMinutes int32 `protobuf:"varint,8,opt,name=initial_time_bank_minutes,json=initialTimeBankMinutes,proto3" json:"initial_time_bank_minutes,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *GameHistoryRefresher) Reset() {
@@ -1115,6 +1117,13 @@ func (x *GameHistoryRefresher) GetTimeBankPlayer1() int32 {
 func (x *GameHistoryRefresher) GetTimeBankPlayer2() int32 {
 	if x != nil {
 		return x.TimeBankPlayer2
+	}
+	return 0
+}
+
+func (x *GameHistoryRefresher) GetInitialTimeBankMinutes() int32 {
+	if x != nil {
+		return x.InitialTimeBankMinutes
 	}
 	return 0
 }
@@ -3278,7 +3287,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\vUNDO_DENIED\x10\t\x12\f\n" +
 	"\bADD_TIME\x10\n" +
 	"\x12\x11\n" +
-	"\rTIMER_EXPIRED\x10\v\"\xd7\x02\n" +
+	"\rTIMER_EXPIRED\x10\v\"\x92\x03\n" +
 	"\x14GameHistoryRefresher\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12!\n" +
 	"\ftime_player1\x18\x02 \x01(\x05R\vtimePlayer1\x12!\n" +
@@ -3286,7 +3295,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x14max_overtime_minutes\x18\x04 \x01(\x05R\x12maxOvertimeMinutes\x12?\n" +
 	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\x12*\n" +
 	"\x11time_bank_player1\x18\x06 \x01(\x05R\x0ftimeBankPlayer1\x12*\n" +
-	"\x11time_bank_player2\x18\a \x01(\x05R\x0ftimeBankPlayer2\"8\n" +
+	"\x11time_bank_player2\x18\a \x01(\x05R\x0ftimeBankPlayer2\x129\n" +
+	"\x19initial_time_bank_minutes\x18\b \x01(\x05R\x16initialTimeBankMinutes\"8\n" +
 	"\x11GameDocumentEvent\x12#\n" +
 	"\x03doc\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\x03doc\"z\n" +
 	"\x15TournamentDataForGame\x12\x10\n" +

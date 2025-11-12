@@ -162,37 +162,9 @@ FROM games
 WHERE uuid = $1
 `
 
-type GetGameRow struct {
-	ID               int32
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	DeletedAt        pgtype.Timestamptz
-	Uuid             pgtype.Text
-	Player0ID        pgtype.Int4
-	Player1ID        pgtype.Int4
-	Timers           entity.Timers
-	Started          pgtype.Bool
-	GameEndReason    pgtype.Int4
-	WinnerIdx        pgtype.Int4
-	LoserIdx         pgtype.Int4
-	History          []byte
-	Stats            entity.Stats
-	Quickdata        entity.Quickdata
-	TournamentData   entity.TournamentData
-	TournamentID     pgtype.Text
-	ReadyFlag        pgtype.Int8
-	MetaEvents       entity.MetaEventData
-	Type             pgtype.Int4
-	GameRequest      entity.GameRequest
-	PlayerOnTurn     pgtype.Int4
-	LeagueID         pgtype.UUID
-	SeasonID         pgtype.UUID
-	LeagueDivisionID pgtype.UUID
-}
-
-func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (GetGameRow, error) {
+func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error) {
 	row := q.db.QueryRow(ctx, getGame, argUuid)
-	var i GetGameRow
+	var i Game
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

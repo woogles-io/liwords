@@ -510,7 +510,7 @@ export const Table = React.memo((props: Props) => {
       // Cleanup messages
       message.destroy("board-messages");
     };
-  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat, dispatchGameContext]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
@@ -658,9 +658,6 @@ export const Table = React.memo((props: Props) => {
     if (isObserver) return;
     if (!gameID) return;
 
-    // Don't send timeout signals for correspondence games - let the backend adjudicator handle it
-    if (gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE) return;
-
     let timedout = "";
 
     gameInfo.players.forEach((p) => {
@@ -681,7 +678,6 @@ export const Table = React.memo((props: Props) => {
     gameContext.uidToPlayerOrder,
     gameID,
     gameInfo.players,
-    gameInfo.gameRequest?.gameMode,
     isObserver,
     pTimedOut,
     sendSocketMsg,
@@ -1246,6 +1242,16 @@ export const Table = React.memo((props: Props) => {
             deleteComment={deleteComment}
             isCorrespondence={
               gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE
+            }
+            timeBankP0={
+              gameInfo.gameRequest?.timeBankMinutes
+                ? gameInfo.gameRequest.timeBankMinutes * 60000
+                : undefined
+            }
+            timeBankP1={
+              gameInfo.gameRequest?.timeBankMinutes
+                ? gameInfo.gameRequest.timeBankMinutes * 60000
+                : undefined
             }
           />
         </div>

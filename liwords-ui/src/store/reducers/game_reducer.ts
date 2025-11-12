@@ -92,6 +92,8 @@ export type GameState = {
   // Raw timer values from GameHistoryRefresher (for correspondence games)
   timePlayer1?: number;
   timePlayer2?: number;
+  // Initial time bank for correspondence games (in milliseconds)
+  initialTimeBankMs?: number;
 };
 
 const makePool = (alphabet: Alphabet): TileDistribution => {
@@ -719,6 +721,11 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // Store raw timer values from GameHistoryRefresher
       newState.timePlayer1 = ghr.timePlayer1;
       newState.timePlayer2 = ghr.timePlayer2;
+
+      // Set initial time bank for correspondence games from the GHR
+      if (ghr.initialTimeBankMinutes > 0) {
+        newState.initialTimeBankMs = ghr.initialTimeBankMinutes * 60000;
+      }
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
