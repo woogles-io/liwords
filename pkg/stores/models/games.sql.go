@@ -152,12 +152,47 @@ func (q *Queries) GameExists(ctx context.Context, argUuid pgtype.Text) (bool, er
 }
 
 const getGame = `-- name: GetGame :one
-SELECT id, created_at, updated_at, deleted_at, uuid, player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, history, stats, quickdata, tournament_data, tournament_id, ready_flag, meta_events, type, game_request, player_on_turn, league_id, season_id, league_division_id FROM games WHERE uuid = $1
+SELECT
+    id, created_at, updated_at, deleted_at, uuid,
+    player0_id, player1_id, timers, started, game_end_reason,
+    winner_idx, loser_idx, history, stats, quickdata,
+    tournament_data, tournament_id, ready_flag, meta_events, type,
+    game_request, player_on_turn, league_id, season_id, league_division_id
+FROM games
+WHERE uuid = $1
 `
 
-func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error) {
+type GetGameRow struct {
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+}
+
+func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (GetGameRow, error) {
 	row := q.db.QueryRow(ctx, getGame, argUuid)
-	var i Game
+	var i GetGameRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

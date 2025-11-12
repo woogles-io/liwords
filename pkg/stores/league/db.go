@@ -248,11 +248,79 @@ func (s *DBStore) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) er
 // Game queries
 
 func (s *DBStore) GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error) {
-	return s.queries.GetLeagueGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+	rows, err := s.queries.GetLeagueGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	games := make([]models.Game, len(rows))
+	for i, row := range rows {
+		games[i] = models.Game{
+			ID:               row.ID,
+			CreatedAt:        row.CreatedAt,
+			UpdatedAt:        row.UpdatedAt,
+			DeletedAt:        row.DeletedAt,
+			Uuid:             row.Uuid,
+			Player0ID:        row.Player0ID,
+			Player1ID:        row.Player1ID,
+			Timers:           row.Timers,
+			Started:          row.Started,
+			GameEndReason:    row.GameEndReason,
+			WinnerIdx:        row.WinnerIdx,
+			LoserIdx:         row.LoserIdx,
+			History:          row.History,
+			Stats:            row.Stats,
+			Quickdata:        row.Quickdata,
+			TournamentData:   row.TournamentData,
+			TournamentID:     row.TournamentID,
+			ReadyFlag:        row.ReadyFlag,
+			MetaEvents:       row.MetaEvents,
+			Type:             row.Type,
+			GameRequest:      row.GameRequest,
+			PlayerOnTurn:     row.PlayerOnTurn,
+			LeagueID:         row.LeagueID,
+			SeasonID:         row.SeasonID,
+			LeagueDivisionID: row.LeagueDivisionID,
+		}
+	}
+	return games, nil
 }
 
 func (s *DBStore) GetLeagueGamesByStatus(ctx context.Context, arg models.GetLeagueGamesByStatusParams) ([]models.Game, error) {
-	return s.queries.GetLeagueGamesByStatus(ctx, arg)
+	rows, err := s.queries.GetLeagueGamesByStatus(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	games := make([]models.Game, len(rows))
+	for i, row := range rows {
+		games[i] = models.Game{
+			ID:               row.ID,
+			CreatedAt:        row.CreatedAt,
+			UpdatedAt:        row.UpdatedAt,
+			DeletedAt:        row.DeletedAt,
+			Uuid:             row.Uuid,
+			Player0ID:        row.Player0ID,
+			Player1ID:        row.Player1ID,
+			Timers:           row.Timers,
+			Started:          row.Started,
+			GameEndReason:    row.GameEndReason,
+			WinnerIdx:        row.WinnerIdx,
+			LoserIdx:         row.LoserIdx,
+			History:          row.History,
+			Stats:            row.Stats,
+			Quickdata:        row.Quickdata,
+			TournamentData:   row.TournamentData,
+			TournamentID:     row.TournamentID,
+			ReadyFlag:        row.ReadyFlag,
+			MetaEvents:       row.MetaEvents,
+			Type:             row.Type,
+			GameRequest:      row.GameRequest,
+			PlayerOnTurn:     row.PlayerOnTurn,
+			LeagueID:         row.LeagueID,
+			SeasonID:         row.SeasonID,
+			LeagueDivisionID: row.LeagueDivisionID,
+		}
+	}
+	return games, nil
 }
 
 func (s *DBStore) CountDivisionGamesComplete(ctx context.Context, divisionID uuid.UUID) (int64, error) {
