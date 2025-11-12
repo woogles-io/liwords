@@ -5,18 +5,27 @@ import { TopBar } from "../navigation/topbar";
 import { LoginModal } from "./login";
 import { connectErrorMessage, useClient } from "../utils/hooks/connect";
 import { RegistrationService } from "../gen/api/proto/user_service/user_service_pb";
+import { useLoginStateStoreContext } from "../store/store";
 import "./accountForms.scss";
 
 export const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const registrationClient = useClient(RegistrationService);
+  const { loginState } = useLoginStateStoreContext();
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
   );
   const [errorMessage, setErrorMessage] = useState("");
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+
+  // Redirect to home after successful login
+  useEffect(() => {
+    if (loginState.loggedIn) {
+      navigate("/", { replace: true });
+    }
+  }, [loginState.loggedIn, navigate]);
 
   useEffect(() => {
     const verifyEmail = async () => {

@@ -131,6 +131,7 @@ const useBirthBox = (
         onChange={handleChange}
         onSearch={handleSearch}
         onDropdownVisibleChange={handleDropdownVisibleChange}
+        popupClassName="birthdate-dropdown"
       >
         <Input variant="borderless" {...{ placeholder }} />
       </AutoComplete>
@@ -270,7 +271,12 @@ export const Register = () => {
   // XXX: This is copied from settings/personal_info.tsx (with added placeholder).
   // It has the same issues (such as the emoji not displaying on Windows).
   const countrySelector = (
-    <Select size="large" bordered={false} placeholder="Country">
+    <Select
+      size="large"
+      bordered={false}
+      placeholder="Country"
+      popupClassName="country-dropdown"
+    >
       {countryArray.map((country) => {
         return (
           <Select.Option key={country.code} value={country.code.toLowerCase()}>

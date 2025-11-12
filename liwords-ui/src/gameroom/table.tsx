@@ -431,12 +431,16 @@ export const Table = React.memo((props: Props) => {
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
   useEffect(() => {
-    if (gameDone || isObserver) {
+    const isCorrespondence =
+      gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+
+    // Don't add beforeunload for correspondence games, finished games, or observers
+    if (gameDone || isObserver || isCorrespondence) {
       return () => {};
     }
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
-      if (!gameDone && !isObserver) {
+      if (!gameDone && !isObserver && !isCorrespondence) {
         const msg = "You are currently in a game!";
         evt.returnValue = msg;
         return msg;
@@ -447,7 +451,7 @@ export const Table = React.memo((props: Props) => {
     return () => {
       window.removeEventListener("beforeunload", evtHandler);
     };
-  }, [gameDone, isObserver]);
+  }, [gameDone, isObserver, gameInfo.gameRequest?.gameMode]);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
