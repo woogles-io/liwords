@@ -232,12 +232,24 @@ WHERE league_standings.division_id = ranked.division_id
 -- Game queries for league games
 
 -- name: GetLeagueGames :many
-SELECT * FROM games
+SELECT
+    id, created_at, updated_at, deleted_at, uuid,
+    player0_id, player1_id, timers, started, game_end_reason,
+    winner_idx, loser_idx, history, stats, quickdata,
+    tournament_data, tournament_id, ready_flag, meta_events, type,
+    game_request, player_on_turn, league_id, season_id, league_division_id
+FROM games
 WHERE league_division_id = $1
 ORDER BY created_at;
 
 -- name: GetLeagueGamesByStatus :many
-SELECT * FROM games
+SELECT
+    id, created_at, updated_at, deleted_at, uuid,
+    player0_id, player1_id, timers, started, game_end_reason,
+    winner_idx, loser_idx, history, stats, quickdata,
+    tournament_data, tournament_id, ready_flag, meta_events, type,
+    game_request, player_on_turn, league_id, season_id, league_division_id
+FROM games
 WHERE league_division_id = $1
   AND (@include_finished::boolean = true OR game_end_reason = 0)
 ORDER BY created_at;

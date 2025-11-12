@@ -1,5 +1,12 @@
 -- name: GetGame :one
-SELECT * FROM games WHERE uuid = @uuid; -- this is not even a uuid, sigh.
+SELECT
+    id, created_at, updated_at, deleted_at, uuid,
+    player0_id, player1_id, timers, started, game_end_reason,
+    winner_idx, loser_idx, history, stats, quickdata,
+    tournament_data, tournament_id, ready_flag, meta_events, type,
+    game_request, player_on_turn, league_id, season_id, league_division_id
+FROM games
+WHERE uuid = @uuid; -- this is not even a uuid, sigh.
 
 -- name: GetGameOwner :one
 SELECT
