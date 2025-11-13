@@ -182,7 +182,8 @@ const ScorecardTurn = (props: turnProps) => {
           timeRemaining = millisToTimeStr(timeBankValue, false);
           isUsingTimeBank = true;
         } else {
-          timeRemaining = millisToTimeStr(0, false);
+          // For real-time games with overtime, display the negative time
+          timeRemaining = millisToTimeStr(millisRemaining, false);
         }
       } else {
         timeRemaining = millisToTimeStr(millisRemaining, false);
