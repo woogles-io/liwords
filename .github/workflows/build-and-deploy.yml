@@ -387,27 +387,102 @@ jobs:
           sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/artifact/config.js
           echo "UI_HASH=$UI_HASH" >> $GITHUB_ENV
 
-      - name: Sync to S3 (Cache Everything)
+      - name: Deploy Frontend to S3
         run: |
-          cd /tmp/liwords-ui/artifact &&
-          aws s3 sync --cache-control 'max-age=3024000' \
-          --exclude index.html --exclude config.js --exclude '*.wasm' \
-          --metadata FEHash=${UI_HASH} \
-          . s3://woogles.io
+          cd /tmp/liwords-ui/artifact
 
-      - name: Sync to S3 (No Cache Except Wasm)
-        run: |
-          cd /tmp/liwords-ui/artifact &&
-          aws s3 sync --cache-control 'no-cache' --exclude '*.wasm' \
-          --metadata FEHash=${UI_HASH} \
-          . s3://woogles.io
+          echo "=========================================="
+          echo "Deploying frontend to S3"
+          echo "=========================================="
 
-      - name: Cache Wasm File Separately
-        run: |
-          cd /tmp/liwords-ui/artifact &&
-          aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include '*.wasm' \
-          --metadata FEHash=${UI_HASH} \
-          --content-type 'application/wasm' . s3://woogles.io
+          # Upload static assets with long cache (35 days)
+          if [ -d "static" ]; then
+            echo "Uploading static assets..."
+            aws s3 sync ./static s3://woogles.io/static \
+              --cache-control 'max-age=3024000' \
+              --metadata "FEHash=${UI_HASH}" \
+              --exclude '*.wasm'
+          fi
+
+          # Upload WASM files with correct content-type
+          echo "Uploading WASM files..."
+          find . -name "*.wasm" -type f | while read wasm_file; do
+            aws s3 cp "$wasm_file" "s3://woogles.io/${wasm_file#./}" \
+              --cache-control 'max-age=3024000' \
+              --content-type 'application/wasm' \
+              --metadata "FEHash=${UI_HASH}"
+          done
+
+          # Upload root files with no-cache
+          echo "Uploading root files..."
+          for file in index.html config.js robots.txt favicon.ico manifest.json sw.js; do
+            if [ -f "$file" ]; then
+              aws s3 cp "$file" "s3://woogles.io/$file" \
+                --cache-control 'no-cache' \
+                --metadata "FEHash=${UI_HASH}"
+            fi
+          done
+
+          # Upload any other directories (like assets/)
+          for item in *; do
+            if [ "$item" != "static" ] && [ -d "$item" ]; then
+              echo "Uploading $item/..."
+              aws s3 sync "./$item" "s3://woogles.io/$item" \
+                --cache-control 'max-age=3024000' \
+                --metadata "FEHash=${UI_HASH}" \
+                --exclude '*.wasm'
+            fi
+          done
+
+          echo ""
+          echo "=========================================="
+          echo "Cleaning up old files"
+          echo "=========================================="
+
+          # Generate list of files that were just deployed
+          find . -type f | sed 's|^\./||' | sort > /tmp/deployed-files.txt
+          echo "Current deployment has $(wc -l < /tmp/deployed-files.txt) files"
+
+          # Get all files in S3 with their LastModified dates (one API call)
+          aws s3api list-objects-v2 --bucket woogles.io --query 'Contents[].[Key,LastModified]' --output text > /tmp/s3-files-with-dates.txt
+          awk '{print $1}' /tmp/s3-files-with-dates.txt | sort > /tmp/s3-files.txt
+          echo "S3 bucket has $(wc -l < /tmp/s3-files.txt) total files"
+
+          # Find files in S3 that are NOT in current deployment
+          comm -23 /tmp/s3-files.txt /tmp/deployed-files.txt > /tmp/files-to-delete.txt
+          DELETE_COUNT=$(wc -l < /tmp/files-to-delete.txt)
+
+          if [ "$DELETE_COUNT" -gt 0 ]; then
+            echo "Found $DELETE_COUNT old files to delete"
+
+            # Calculate cutoff date (60 days ago)
+            # Why 60 days? Files have 35-day cache headers, so we need to wait for:
+            #   - 35 days for cached files to expire in browsers
+            #   - 25 days safety buffer for users who loaded the old site
+            CUTOFF_DATE=$(date -u -d '60 days ago' '+%Y-%m-%d' 2>/dev/null || date -u -v-60d '+%Y-%m-%d')
+            DELETED=0
+
+            # Delete old files (only if older than 60 days)
+            while IFS= read -r file; do
+              # Look up file's LastModified date from our earlier query
+              FILE_DATE=$(grep "^${file}[[:space:]]" /tmp/s3-files-with-dates.txt | awk '{print $2}' | cut -d'T' -f1)
+
+              if [ -n "$FILE_DATE" ] && [[ "$FILE_DATE" < "$CUTOFF_DATE" ]]; then
+                aws s3 rm "s3://woogles.io/$file" 2>/dev/null && ((DELETED++)) || true
+              fi
+            done < /tmp/files-to-delete.txt
+
+            echo "Deleted $DELETED old files (>60 days old, not in current deployment)"
+          else
+            echo "No old files to delete"
+          fi
+
+          echo ""
+          echo "=========================================="
+          echo "Deployment complete!"
+          echo "=========================================="
+          echo "UI Hash: $UI_HASH"
+          echo "Deleted old files: $DELETED"
 
       - name: Update Frontend Hash
         run: |

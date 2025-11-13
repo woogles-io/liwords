@@ -21,6 +21,11 @@ UPDATE leagues
 SET settings = $2, updated_at = NOW()
 WHERE uuid = $1;
 
+-- name: UpdateLeagueMetadata :exec
+UPDATE leagues
+SET name = $2, description = $3, updated_at = NOW()
+WHERE uuid = $1;
+
 -- name: SetCurrentSeason :exec
 UPDATE leagues
 SET current_season_id = $2, updated_at = NOW()

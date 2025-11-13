@@ -47,6 +47,26 @@
     &:last-child .player {
       order: 0;
     }
+
+    // In horizontal layout, both time bank labels should be above their timers
+    .score-timer .timer-container .time-bank-label {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 2px;
+    }
+  }
+}
+
+// In vertical layout, move label to top for first player (top of screen)
+.player-cards.ant-card.vertical {
+  .player-card:first-child {
+    .score-timer .timer-container .time-bank-label {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 2px;
+    }
   }
 }
 
@@ -184,15 +204,6 @@
           line-height: 1;
           margin-top: 2px;
         }
-      }
-    }
-    &:first-child {
-      .timer-container .time-bank-label {
-        // Move label to top for the first player (top of screen)
-        top: auto;
-        bottom: 100%;
-        margin-top: 0;
-        margin-bottom: 2px;
       }
     }
     &:last-child {

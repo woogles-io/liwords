@@ -1374,6 +1374,23 @@ func (q *Queries) UpdateDivisionNumber(ctx context.Context, arg UpdateDivisionNu
 	return err
 }
 
+const updateLeagueMetadata = `-- name: UpdateLeagueMetadata :exec
+UPDATE leagues
+SET name = $2, description = $3, updated_at = NOW()
+WHERE uuid = $1
+`
+
+type UpdateLeagueMetadataParams struct {
+	Uuid        uuid.UUID
+	Name        string
+	Description pgtype.Text
+}
+
+func (q *Queries) UpdateLeagueMetadata(ctx context.Context, arg UpdateLeagueMetadataParams) error {
+	_, err := q.db.Exec(ctx, updateLeagueMetadata, arg.Uuid, arg.Name, arg.Description)
+	return err
+}
+
 const updateLeagueSettings = `-- name: UpdateLeagueSettings :exec
 UPDATE leagues
 SET settings = $2, updated_at = NOW()

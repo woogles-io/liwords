@@ -27,6 +27,11 @@ export const getAllLeagues = LeagueService.method.getAllLeagues;
 export const updateLeagueSettings = LeagueService.method.updateLeagueSettings;
 
 /**
+ * @generated from rpc league_service.LeagueService.UpdateLeagueMetadata
+ */
+export const updateLeagueMetadata = LeagueService.method.updateLeagueMetadata;
+
+/**
  * Season management
  *
  * @generated from rpc league_service.LeagueService.BootstrapSeason

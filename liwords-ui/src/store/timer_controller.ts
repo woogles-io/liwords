@@ -144,6 +144,9 @@ export class ClockController {
     };
 
     if (isClockRunning && this.times.activePlayer) {
+      // Update the display immediately so we don't show 00:00
+      this.onTick(this.times.activePlayer, this.times[this.times.activePlayer]);
+
       this.scheduleTick(this.times[this.times.activePlayer], delayMs);
     }
   };
