@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { TopBar } from "../navigation/topbar";
 
@@ -19,18 +19,48 @@ type Props = {
   DISCONNECT: () => void;
 };
 
+const LOBBY_TAB_STORAGE_KEY = "lastLobbyTab";
+
+const getInitialTab = (loggedIn: boolean): string => {
+  if (!loggedIn) return "WATCH";
+
+  const savedTab = localStorage.getItem(LOBBY_TAB_STORAGE_KEY);
+  if (savedTab === "CORRESPONDENCE") {
+    return "CORRESPONDENCE";
+  }
+
+  return "PLAY";
+};
+
 export const Lobby = (props: Props) => {
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
 
   const { loggedIn, username, userID } = loginState;
 
-  const [selectedGameTab, setSelectedGameTab] = useState(
-    loggedIn ? "PLAY" : "WATCH",
+  const [selectedGameTab, setSelectedGameTabState] = useState(
+    getInitialTab(loggedIn),
   );
+  const prevLoggedIn = useRef(loggedIn);
 
+  // Wrapper that saves to localStorage when tab changes
+  const setSelectedGameTab = useCallback((tab: string) => {
+    setSelectedGameTabState(tab);
+    localStorage.setItem(LOBBY_TAB_STORAGE_KEY, tab);
+  }, []);
+
+  // Update tab when login state changes
   useEffect(() => {
-    setSelectedGameTab(loggedIn ? "PLAY" : "WATCH");
+    const wasLoggedIn = prevLoggedIn.current;
+    prevLoggedIn.current = loggedIn;
+
+    if (!wasLoggedIn && loggedIn) {
+      // Login state just loaded - restore from localStorage
+      setSelectedGameTabState(getInitialTab(true));
+    } else if (wasLoggedIn && !loggedIn) {
+      // User logged out - switch to WATCH
+      setSelectedGameTabState("WATCH");
+    }
   }, [loggedIn]);
 
   const handleNewGame = useCallback(
