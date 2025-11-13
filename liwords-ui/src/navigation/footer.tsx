@@ -60,6 +60,7 @@ const Footer = React.memo(() => {
         <div className="links-play-learn link-group">
           <h4>Play</h4>
           <Link to="/">OMGWords</Link>
+          <Link to="/leagues">Leagues</Link>
           <Link to="/puzzle">Puzzles</Link>
           <Link to="/editor">Board editor</Link>
           <a

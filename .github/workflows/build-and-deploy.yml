@@ -423,6 +423,16 @@ jobs:
             fi
           done
 
+          # Upload root-level images and other static files with long cache
+          echo "Uploading root-level static files..."
+          for file in *.png *.jpg *.jpeg *.gif *.svg *.webp; do
+            if [ -f "$file" ]; then
+              aws s3 cp "$file" "s3://woogles.io/$file" \
+                --cache-control 'max-age=3024000' \
+                --metadata "FEHash=${UI_HASH}"
+            fi
+          done
+
           # Upload any other directories (like assets/)
           for item in *; do
             if [ "$item" != "static" ] && [ -d "$item" ]; then

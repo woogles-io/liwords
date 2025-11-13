@@ -126,6 +126,11 @@ export class ClockController {
     onTimeout: (activePlayer: PlayerOrder) => void,
     onTick: (p: PlayerOrder, t: Millis) => void,
   ) {
+    console.log("[ClockController] constructor called with:", {
+      p0: ts.p0,
+      p1: ts.p1,
+      activePlayer: ts.activePlayer,
+    });
     this.times = { ...ts };
     this.onTimeout = onTimeout;
     this.onTick = onTick;
@@ -137,6 +142,15 @@ export class ClockController {
     const isClockRunning = playState !== PlayState.GAME_OVER;
     const delayMs = delay * 10;
 
+    console.log("[setClock] called with:", {
+      playState,
+      isClockRunning,
+      activePlayer: ts.activePlayer,
+      p0: ts.p0,
+      p1: ts.p1,
+      delay,
+    });
+
     this.times = {
       ...ts,
       activePlayer: isClockRunning ? ts.activePlayer : undefined,
@@ -144,10 +158,19 @@ export class ClockController {
     };
 
     if (isClockRunning && this.times.activePlayer) {
+      console.log(
+        "[setClock] calling immediate onTick for",
+        this.times.activePlayer,
+      );
       // Update the display immediately so we don't show 00:00
       this.onTick(this.times.activePlayer, this.times[this.times.activePlayer]);
 
       this.scheduleTick(this.times[this.times.activePlayer], delayMs);
+    } else {
+      console.log("[setClock] skipping immediate onTick:", {
+        isClockRunning,
+        activePlayer: this.times.activePlayer,
+      });
     }
   };
 
