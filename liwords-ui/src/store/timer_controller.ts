@@ -157,17 +157,19 @@ export class ClockController {
       lastUpdate: performance.now() + delayMs,
     };
 
+    // Update both players' times immediately so we don't show 00:00
+    console.log("[setClock] calling immediate onTick for both players");
+    this.onTick("p0", this.times.p0);
+    this.onTick("p1", this.times.p1);
+
     if (isClockRunning && this.times.activePlayer) {
       console.log(
-        "[setClock] calling immediate onTick for",
+        "[setClock] scheduling tick for active player",
         this.times.activePlayer,
       );
-      // Update the display immediately so we don't show 00:00
-      this.onTick(this.times.activePlayer, this.times[this.times.activePlayer]);
-
       this.scheduleTick(this.times[this.times.activePlayer], delayMs);
     } else {
-      console.log("[setClock] skipping immediate onTick:", {
+      console.log("[setClock] no active player, no tick scheduled:", {
         isClockRunning,
         activePlayer: this.times.activePlayer,
       });

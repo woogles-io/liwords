@@ -26,6 +26,7 @@ import {
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
 import { SeasonStatus } from "../gen/api/proto/ipc/league_pb";
+import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { dayjsToProtobufTimestampIgnoringNanos } from "../utils/datetime";
 import "./leagues.scss";
 
@@ -110,6 +111,7 @@ export const LeagueAdmin = () => {
     lexicon: string;
     variant: string;
     idealDivisionSize: number;
+    challengeRule: number;
   }) => {
     createLeagueMutation.mutate({
       name: values.name,
@@ -124,7 +126,7 @@ export const LeagueAdmin = () => {
         lexicon: values.lexicon,
         variant: values.variant,
         idealDivisionSize: values.idealDivisionSize,
-        challengeRule: 0, // ChallengeRule.DOUBLE
+        challengeRule: values.challengeRule,
       },
     });
   };
@@ -162,6 +164,7 @@ export const LeagueAdmin = () => {
         lexicon: selectedLeague.settings.lexicon,
         variant: selectedLeague.settings.variant,
         idealDivisionSize: selectedLeague.settings.idealDivisionSize,
+        challengeRule: selectedLeague.settings.challengeRule,
       });
     }
   };
@@ -175,6 +178,7 @@ export const LeagueAdmin = () => {
     lexicon: string;
     variant: string;
     idealDivisionSize: number;
+    challengeRule: number;
   }) => {
     // Update both metadata and settings
     try {
@@ -195,7 +199,7 @@ export const LeagueAdmin = () => {
           lexicon: values.lexicon,
           variant: values.variant,
           idealDivisionSize: values.idealDivisionSize,
-          challengeRule: 0, // ChallengeRule.DOUBLE
+          challengeRule: values.challengeRule,
         },
       });
 
@@ -255,6 +259,7 @@ export const LeagueAdmin = () => {
                 lexicon: "NWL23",
                 variant: "classic",
                 idealDivisionSize: 15,
+                challengeRule: ChallengeRule.ChallengeRule_DOUBLE,
               }}
             >
               <Form.Item
@@ -342,6 +347,33 @@ export const LeagueAdmin = () => {
                 help="Target size for divisions (actual sizes will range from 13-20 players). Promotion/relegation is automatically calculated as ceil(size/6)."
               >
                 <InputNumber min={10} max={20} style={{ width: "100%" }} />
+              </Form.Item>
+
+              <Form.Item
+                label="Challenge Rule"
+                name="challengeRule"
+                rules={[
+                  { required: true, message: "Please select challenge rule" },
+                ]}
+              >
+                <Select>
+                  <Option value={ChallengeRule.ChallengeRule_VOID}>Void</Option>
+                  <Option value={ChallengeRule.ChallengeRule_SINGLE}>
+                    Single
+                  </Option>
+                  <Option value={ChallengeRule.ChallengeRule_DOUBLE}>
+                    Double
+                  </Option>
+                  <Option value={ChallengeRule.ChallengeRule_FIVE_POINT}>
+                    Five Point
+                  </Option>
+                  <Option value={ChallengeRule.ChallengeRule_TEN_POINT}>
+                    Ten Point
+                  </Option>
+                  <Option value={ChallengeRule.ChallengeRule_TRIPLE}>
+                    Triple
+                  </Option>
+                </Select>
               </Form.Item>
 
               <Form.Item>
@@ -501,6 +533,35 @@ export const LeagueAdmin = () => {
                   ]}
                 >
                   <InputNumber min={2} max={50} style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Form.Item
+                  label="Challenge Rule"
+                  name="challengeRule"
+                  rules={[
+                    { required: true, message: "Please select challenge rule" },
+                  ]}
+                >
+                  <Select>
+                    <Option value={ChallengeRule.ChallengeRule_VOID}>
+                      Void
+                    </Option>
+                    <Option value={ChallengeRule.ChallengeRule_SINGLE}>
+                      Single
+                    </Option>
+                    <Option value={ChallengeRule.ChallengeRule_DOUBLE}>
+                      Double
+                    </Option>
+                    <Option value={ChallengeRule.ChallengeRule_FIVE_POINT}>
+                      Five Point
+                    </Option>
+                    <Option value={ChallengeRule.ChallengeRule_TEN_POINT}>
+                      Ten Point
+                    </Option>
+                    <Option value={ChallengeRule.ChallengeRule_TRIPLE}>
+                      Triple
+                    </Option>
+                  </Select>
                 </Form.Item>
 
                 <Form.Item>
