@@ -19,6 +19,19 @@ type Props = {
   DISCONNECT: () => void;
 };
 
+const LOBBY_TAB_STORAGE_KEY = "lastLobbyTab";
+
+const getInitialTab = (loggedIn: boolean): string => {
+  if (!loggedIn) return "WATCH";
+
+  const savedTab = localStorage.getItem(LOBBY_TAB_STORAGE_KEY);
+  if (savedTab === "CORRESPONDENCE") {
+    return "CORRESPONDENCE";
+  }
+
+  return "PLAY";
+};
+
 export const Lobby = (props: Props) => {
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
@@ -26,11 +39,19 @@ export const Lobby = (props: Props) => {
   const { loggedIn, username, userID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(
-    loggedIn ? "PLAY" : "WATCH",
+    getInitialTab(loggedIn),
   );
 
+  // Save tab selection to localStorage
   useEffect(() => {
-    setSelectedGameTab(loggedIn ? "PLAY" : "WATCH");
+    if (selectedGameTab) {
+      localStorage.setItem(LOBBY_TAB_STORAGE_KEY, selectedGameTab);
+    }
+  }, [selectedGameTab]);
+
+  // Update tab when login status changes
+  useEffect(() => {
+    setSelectedGameTab(getInitialTab(loggedIn));
   }, [loggedIn]);
 
   const handleNewGame = useCallback(
