@@ -828,7 +828,12 @@ const RealStore = ({ children, ...props }: Props) => {
   const clockController = useRef<ClockController | null>(null);
 
   const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
-    if (!clockController || !clockController.current) {
+    if (!clockController.current) {
+      console.log(
+        "[onClockTick] clockController.current is null, creating temp context",
+      );
+      // ClockController is being constructed, create a minimal context
+      setTimerContext((prev) => ({ ...prev, [p]: t }));
       return;
     }
     const newCtx = { ...clockController.current.times, [p]: t };

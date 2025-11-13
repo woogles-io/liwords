@@ -621,11 +621,7 @@ const initializeTimerController = (
       state.onClockTick,
     );
   }
-  // And send out a tick right now.
-  newState.onClockTick(
-    onturn,
-    newState.clockController.current.millisOf(onturn),
-  );
+  // setClock already calls onTick immediately, so no need to call it again here
   newState.clockController.current.setMaxOvertime(ghr.maxOvertimeMinutes);
 };
 
