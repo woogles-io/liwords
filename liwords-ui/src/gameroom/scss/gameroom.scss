@@ -55,6 +55,27 @@ p.streak-loss {
     }
   }
 
+  // Left menu styling when in data-area (mobile view)
+  .data-area {
+    .ant-card.left-menu {
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+      padding: 3px 12px;
+      height: 50px;
+      margin-bottom: 12px;
+
+      .ant-card-body {
+        padding: 12px;
+      }
+
+      .anticon {
+        font-size: 16px;
+        margin-right: 9px;
+      }
+    }
+  }
+
   .end-message {
     width: 100%;
     padding: 12px;
@@ -1407,6 +1428,15 @@ p.rune {
         letter-spacing: 0em;
       }
     }
+  }
+}
+
+// Game Info - move below scorecard in mobile
+.game-info {
+  order: 10;
+
+  @media (min-width: $screen-tablet-min) {
+    order: 0;
   }
 }
 

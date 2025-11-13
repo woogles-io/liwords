@@ -19,8 +19,8 @@
   position: -webkit-sticky; /* Safari */
   top: 0;
   z-index: 4;
-  padding: 24px 24px 0px;
-  margin: -16px -24px 0px;
+  padding: 24px 8px 0px; // Reduced horizontal padding from 24px to 8px for more card width
+  margin: -16px -8px 0px; // Adjusted margin to match padding
   @include colorModed() {
     background-color: m($background);
   }
@@ -31,6 +31,13 @@
 .player-cards.ant-card.horizontal {
   display: flex;
   margin-bottom: 12px;
+
+  // In mobile, make cards wider to accommodate time widgets
+  @media (max-width: $screen-tablet-min - 1) {
+    width: calc(100% + 32px); // Extend 16px on each side
+    margin-left: -16px;
+    margin-right: -16px;
+  }
 
   .ant-card-body {
     display: flex;
