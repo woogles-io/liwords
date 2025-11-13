@@ -527,7 +527,7 @@ export const Table = React.memo((props: Props) => {
       // Cleanup messages
       message.destroy("board-messages");
     };
-  }, [gameID, gmClient, setGameEndMessage, setPoolFormat, dispatchGameContext]);
+  }, [gameID, gmClient, setGameEndMessage, setPoolFormat]);
 
   useEffect(() => {
     // If we are in annotated mode, we must explicitly fetch the GameDocument
