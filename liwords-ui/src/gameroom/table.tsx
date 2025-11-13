@@ -44,6 +44,7 @@ import { Notepad, NotepadContextProvider } from "./notepad";
 import { Analyzer, AnalyzerContextProvider } from "./analyzer";
 import { isClubType, isPairedMode, sortTiles } from "../store/constants";
 import { readyForTournamentGame } from "../tournament/ready";
+import { isMobile } from "../utils/cwgame/common";
 import { CompetitorStatus } from "../tournament/competitor_status";
 import { MonitoringWidget } from "../tournament/monitoring/monitoring_widget";
 import { MonitoringModal } from "../tournament/monitoring/monitoring_modal";
@@ -311,6 +312,9 @@ export const Table = React.memo((props: Props) => {
   // Monitoring modal state
   const monitoringModalVisible = searchParams.get("monitoring") === "true";
 
+  // Mobile detection state
+  const [isInMobileView, setIsInMobileView] = useState(isMobile());
+
   const closeMonitoringModal = useCallback(() => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("monitoring");
@@ -431,12 +435,16 @@ export const Table = React.memo((props: Props) => {
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
   useEffect(() => {
-    if (gameDone || isObserver) {
+    const isCorrespondence =
+      gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+
+    // Don't add beforeunload for correspondence games, finished games, or observers
+    if (gameDone || isObserver || isCorrespondence) {
       return () => {};
     }
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
-      if (!gameDone && !isObserver) {
+      if (!gameDone && !isObserver && !isCorrespondence) {
         const msg = "You are currently in a game!";
         evt.returnValue = msg;
         return msg;
@@ -447,7 +455,16 @@ export const Table = React.memo((props: Props) => {
     return () => {
       window.removeEventListener("beforeunload", evtHandler);
     };
-  }, [gameDone, isObserver]);
+  }, [gameDone, isObserver, gameInfo.gameRequest?.gameMode]);
+
+  // Track window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsInMobileView(isMobile());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
@@ -658,9 +675,6 @@ export const Table = React.memo((props: Props) => {
     if (isObserver) return;
     if (!gameID) return;
 
-    // Don't send timeout signals for correspondence games - let the backend adjudicator handle it
-    if (gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE) return;
-
     let timedout = "";
 
     gameInfo.players.forEach((p) => {
@@ -681,7 +695,6 @@ export const Table = React.memo((props: Props) => {
     gameContext.uidToPlayerOrder,
     gameID,
     gameInfo.players,
-    gameInfo.gameRequest?.gameMode,
     isObserver,
     pTimedOut,
     sendSocketMsg,
@@ -1007,6 +1020,69 @@ export const Table = React.memo((props: Props) => {
     );
   }, [gameInfo.gameEndReason, showingFinalTurn]);
 
+  // Navigation card (Back to League/NEXT button) - rendered in different locations for mobile/desktop
+  const navigationCard = useMemo(
+    () => (
+      <Card className="left-menu">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          {gameInfo.leagueId && gameInfo.leagueSlug ? (
+            <Link to={`/leagues/${gameInfo.leagueSlug}`}>
+              <HomeOutlined />
+              Back to League
+            </Link>
+          ) : gameInfo.tournamentId ? (
+            <Link to={tournamentContext.metadata?.slug}>
+              <HomeOutlined />
+              Back to
+              {isClubType(tournamentContext.metadata?.type)
+                ? " Club"
+                : " Tournament"}
+            </Link>
+          ) : (
+            <Link to="/">
+              <HomeOutlined />
+              Back to lobby
+            </Link>
+          )}
+          {nextCorresGame && (
+            <div
+              className="next-corres-game"
+              onClick={handleNextCorresGame}
+              style={{
+                cursor: "pointer",
+                marginLeft: "12px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <RightOutlined /> Next
+              {corresGamesWaiting > 1 && (
+                <span style={{ marginLeft: "4px" }}>
+                  ({corresGamesWaiting})
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+    ),
+    [
+      gameInfo.leagueId,
+      gameInfo.leagueSlug,
+      gameInfo.tournamentId,
+      tournamentContext.metadata?.slug,
+      tournamentContext.metadata?.type,
+      nextCorresGame,
+      corresGamesWaiting,
+      handleNextCorresGame,
+    ],
+  );
+
   if (!gameID) {
     return (
       <div className="game-container">
@@ -1036,53 +1112,8 @@ export const Table = React.memo((props: Props) => {
           }`}
           id="left-sidebar"
         >
-          <Card className="left-menu">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              {gameInfo.leagueId && gameInfo.leagueSlug ? (
-                <Link to={`/leagues/${gameInfo.leagueSlug}`}>
-                  <HomeOutlined />
-                  Back to League
-                </Link>
-              ) : gameInfo.tournamentId ? (
-                <Link to={tournamentContext.metadata?.slug}>
-                  <HomeOutlined />
-                  Back to
-                  {isClubType(tournamentContext.metadata?.type)
-                    ? " Club"
-                    : " Tournament"}
-                </Link>
-              ) : (
-                <Link to="/">
-                  <HomeOutlined />
-                  Back to lobby
-                </Link>
-              )}
-              {nextCorresGame && (
-                <div
-                  className="next-corres-game"
-                  onClick={handleNextCorresGame}
-                  style={{
-                    cursor: "pointer",
-                    marginLeft: "12px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <RightOutlined /> Next
-                  {corresGamesWaiting > 1 && (
-                    <span style={{ marginLeft: "4px" }}>
-                      ({corresGamesWaiting})
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </Card>
+          {/* Navigation card (Back/NEXT) - only in chat-area for desktop */}
+          {!isInMobileView && navigationCard}
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
@@ -1184,7 +1215,8 @@ export const Table = React.memo((props: Props) => {
               gameID={gameID}
             />
           )}
-          <StreakWidget streakInfo={streakGameInfo} />
+          {/* StreakWidget in play-area for desktop view */}
+          {!isInMobileView && <StreakWidget streakInfo={streakGameInfo} />}
         </div>
         <div className="data-area" id="right-sidebar">
           {/* There are two competitor cards, css hides one of them. */}
@@ -1221,6 +1253,10 @@ export const Table = React.memo((props: Props) => {
             setPoolFormat={setPoolFormat}
             alphabet={alphabet}
           />
+          {/* Navigation card (Back/NEXT) in data-area for mobile view (after Pool) */}
+          {isInMobileView && navigationCard}
+          {/* StreakWidget in data-area for mobile view (after navigation) */}
+          {isInMobileView && <StreakWidget streakInfo={streakGameInfo} />}
           <Popconfirm
             title={`${rematchRequest.user?.displayName} sent you a rematch request`}
             open={rematchRequest.rematchFor !== ""}
@@ -1246,6 +1282,16 @@ export const Table = React.memo((props: Props) => {
             deleteComment={deleteComment}
             isCorrespondence={
               gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE
+            }
+            timeBankP0={
+              gameInfo.gameRequest?.timeBankMinutes
+                ? gameInfo.gameRequest.timeBankMinutes * 60000
+                : undefined
+            }
+            timeBankP1={
+              gameInfo.gameRequest?.timeBankMinutes
+                ? gameInfo.gameRequest.timeBankMinutes * 60000
+                : undefined
             }
           />
         </div>

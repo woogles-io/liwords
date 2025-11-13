@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Col, Row, Card, Spin, Collapse } from "antd";
-import { TrophyOutlined } from "@ant-design/icons";
+import { TrophyOutlined, HourglassOutlined } from "@ant-design/icons";
 import { Link } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
@@ -222,6 +222,14 @@ export const LeaguesList = () => {
                 you have plenty of buffer time available. Even if you have a
                 hectic couple of days, you won't lose games on time as long as
                 you manage your time bank wisely.
+              </p>
+              <p>
+                <strong>Time bank indicator:</strong> You'll see a green
+                hourglass icon{" "}
+                <HourglassOutlined style={{ color: "#22c55e" }} /> next to your
+                timer showing your remaining time bank. Hover over it to see the
+                exact time bank value. When you're actively using your time
+                bank, a "USING TIME BANK" indicator will appear near your timer.
               </p>
               <p>
                 This timing system strikes a balance between keeping games

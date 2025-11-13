@@ -876,14 +876,7 @@ export const LeaguePage = (props: Props) => {
               following commitment:
             </p>
 
-            <div
-              style={{
-                padding: "16px",
-                backgroundColor: "#f9f9f9",
-                borderRadius: "4px",
-                marginBottom: 16,
-              }}
-            >
+            <div className="registration-commitment-box">
               <p style={{ marginBottom: 12, fontWeight: 500 }}>
                 In order to keep the league fun and fair for everyone, I commit
                 to:
@@ -901,16 +894,7 @@ export const LeaguePage = (props: Props) => {
             <p style={{ marginBottom: 8, fontWeight: 500 }}>
               Season {displayedSeason?.seasonNumber} starts at:
             </p>
-            <div
-              style={{
-                padding: "12px",
-                backgroundColor: "#f5f5f5",
-                borderRadius: "4px",
-                fontSize: "14px",
-                marginBottom: 16,
-                fontWeight: 500,
-              }}
-            >
+            <div className="registration-time-box">
               {formatLocalTime(displayedSeason?.startDate)}
             </div>
 

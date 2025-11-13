@@ -46,6 +46,7 @@ import { ServerChallengeResultEvent } from "../gen/api/proto/ipc/omgwords_pb";
 import { message } from "antd";
 import { GameEvent_Type } from "../gen/api/vendor/macondo/macondo_pb";
 import { create } from "@bufbuild/protobuf";
+import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
 
 const MaxChatLength = 150;
 
@@ -512,7 +513,20 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       });
     }
     // Fix players and clockController.
-    const times = { p0: 0, p1: 0, lastUpdate: 0 };
+    const times: Times = { p0: 0, p1: 0, lastUpdate: 0 };
+
+    // Calculate time bank history if this is a correspondence game with time banks
+    let timeBankHistory: ReturnType<
+      typeof calculateHistoricalTimeBanks
+    > | null = null;
+    if (gameContext.initialTimeBankMs && gameContext.initialTimeBankMs > 0) {
+      timeBankHistory = calculateHistoricalTimeBanks(
+        gameContext.turns,
+        gameContext.initialTimeBankMs,
+        gameContext.initialTimeBankMs,
+      );
+    }
+
     for (let i = 0; i < ret.players.length; ++i) {
       const playerOrder = indexToPlayerOrder(i);
       // Score comes from the most recent past.
@@ -560,7 +574,53 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         }
       }
       times[playerOrder] = time;
+    }
 
+    // Add time bank values to times if available
+    if (timeBankHistory && replayedTurns.length > 0) {
+      // Get the time bank state for the last replayed turn
+      const lastEventIdx = replayedTurns.length - 1;
+      const timeBankState = timeBankHistory.get(lastEventIdx);
+      if (timeBankState) {
+        // Always set time bank amounts (for the + indicator)
+        times.p0TimeBank = timeBankState.p0TimeBank;
+        times.p1TimeBank = timeBankState.p1TimeBank;
+
+        // Only set "using time bank" state for players who have actually moved
+        // (i.e., their time is not Infinity)
+        if (times.p0 !== Infinity) {
+          times.p0UsingTimeBank = timeBankState.p0UsingTimeBank;
+          // If using time bank, replace the negative time with the time bank remaining
+          if (timeBankState.p0UsingTimeBank) {
+            times.p0 = timeBankState.p0TimeBank || 0;
+          }
+        } else {
+          times.p0UsingTimeBank = false;
+        }
+
+        if (times.p1 !== Infinity) {
+          times.p1UsingTimeBank = timeBankState.p1UsingTimeBank;
+          // If using time bank, replace the negative time with the time bank remaining
+          if (timeBankState.p1UsingTimeBank) {
+            times.p1 = timeBankState.p1TimeBank || 0;
+          }
+        } else {
+          times.p1UsingTimeBank = false;
+        }
+      }
+    } else if (
+      gameContext.initialTimeBankMs &&
+      gameContext.initialTimeBankMs > 0
+    ) {
+      // If no turns replayed yet (at turn 0), use initial values
+      times.p0TimeBank = gameContext.initialTimeBankMs;
+      times.p1TimeBank = gameContext.initialTimeBankMs;
+      times.p0UsingTimeBank = false;
+      times.p1UsingTimeBank = false;
+    }
+
+    for (let i = 0; i < ret.players.length; ++i) {
+      const playerOrder = indexToPlayerOrder(i);
       ret.players[i].onturn = i === ret.onturn;
 
       // Rack comes from the closest future.
@@ -581,6 +641,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }
       ret.players[i].currentRack = rack;
     }
+
     ret.clockController = {
       current: new ClockController(times, doNothing, doNothing),
     };

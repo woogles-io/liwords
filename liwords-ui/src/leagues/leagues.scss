@@ -806,4 +806,27 @@
       }
     }
   }
+
+  // Registration modal styles
+  .registration-commitment-box {
+    padding: 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+
+    @include colorModed {
+      background-color: m($off-background);
+    }
+  }
+
+  .registration-time-box {
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 500;
+
+    @include colorModed {
+      background-color: m($off-background);
+    }
+  }
 }

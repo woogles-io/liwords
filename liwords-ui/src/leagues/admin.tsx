@@ -14,11 +14,14 @@ import {
   notification,
 } from "antd";
 import { Store } from "rc-field-form/lib/interface";
-import { useMutation } from "@connectrpc/connect-query";
+import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import {
   createLeague,
   bootstrapSeason,
+  getAllLeagues,
+  updateLeagueSettings,
+  updateLeagueMetadata,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -35,7 +38,14 @@ export const LeagueAdmin = () => {
 
   const [leagueForm] = Form.useForm();
   const [seasonForm] = Form.useForm();
+  const [editForm] = Form.useForm();
   const [createdLeagueSlug, setCreatedLeagueSlug] = useState<string>("");
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string>("");
+
+  // Fetch all leagues for the edit dropdown
+  const { data: leaguesData } = useQuery(getAllLeagues, {
+    activeOnly: false,
+  });
 
   const createLeagueMutation = useMutation(createLeague, {
     onSuccess: (response) => {
@@ -47,6 +57,30 @@ export const LeagueAdmin = () => {
           description: `League created successfully! Slug: ${response.league.slug}`,
         });
       }
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const updateLeagueSettingsMutation = useMutation(updateLeagueSettings, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "League Settings Updated",
+        description: `League settings updated successfully!`,
+      });
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const updateLeagueMetadataMutation = useMutation(updateLeagueMetadata, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "League Metadata Updated",
+        description: `League "${response.league?.name}" updated successfully!`,
+      });
     },
     onError: (error) => {
       flashError(error);
@@ -109,6 +143,69 @@ export const LeagueAdmin = () => {
       endDate: endTimestamp,
       status: vals.status,
     });
+  };
+
+  const handleLeagueSelect = (leagueId: string) => {
+    setSelectedLeagueId(leagueId);
+    const selectedLeague = leaguesData?.leagues?.find(
+      (l) => l.uuid === leagueId,
+    );
+    if (selectedLeague && selectedLeague.settings) {
+      editForm.setFieldsValue({
+        name: selectedLeague.name,
+        description: selectedLeague.description,
+        seasonLengthDays: selectedLeague.settings.seasonLengthDays,
+        incrementSeconds:
+          selectedLeague.settings.timeControl?.incrementSeconds || 0,
+        timeBankMinutes:
+          selectedLeague.settings.timeControl?.timeBankMinutes || 0,
+        lexicon: selectedLeague.settings.lexicon,
+        variant: selectedLeague.settings.variant,
+        idealDivisionSize: selectedLeague.settings.idealDivisionSize,
+      });
+    }
+  };
+
+  const handleUpdateLeague = async (values: {
+    name: string;
+    description: string;
+    seasonLengthDays: number;
+    incrementSeconds: number;
+    timeBankMinutes: number;
+    lexicon: string;
+    variant: string;
+    idealDivisionSize: number;
+  }) => {
+    // Update both metadata and settings
+    try {
+      await updateLeagueMetadataMutation.mutateAsync({
+        leagueId: selectedLeagueId,
+        name: values.name,
+        description: values.description,
+      });
+
+      await updateLeagueSettingsMutation.mutateAsync({
+        leagueId: selectedLeagueId,
+        settings: {
+          seasonLengthDays: values.seasonLengthDays,
+          timeControl: {
+            incrementSeconds: values.incrementSeconds,
+            timeBankMinutes: values.timeBankMinutes,
+          },
+          lexicon: values.lexicon,
+          variant: values.variant,
+          idealDivisionSize: values.idealDivisionSize,
+          challengeRule: 0, // ChallengeRule.DOUBLE
+        },
+      });
+
+      notification.success({
+        message: "League Updated",
+        description: `League "${values.name}" updated successfully!`,
+      });
+    } catch (error) {
+      // Errors are already handled by individual mutations
+    }
   };
 
   if (!loggedIn) {
@@ -272,6 +369,146 @@ export const LeagueAdmin = () => {
                 type="success"
                 closable
               />
+            )}
+          </Card>
+
+          {/* Edit Existing League */}
+          <Card title="Edit Existing League">
+            <Alert
+              message="Edit League"
+              description="Select a league to edit its name, description, and settings."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league to edit"
+                onChange={handleLeagueSelect}
+                value={selectedLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                    {league.isActive ? "" : " - INACTIVE"}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedLeagueId && (
+              <Form
+                form={editForm}
+                layout="vertical"
+                onFinish={handleUpdateLeague}
+              >
+                <Form.Item
+                  label="League Name"
+                  name="name"
+                  rules={[
+                    { required: true, message: "Please enter a league name" },
+                  ]}
+                >
+                  <Input placeholder="League name" />
+                </Form.Item>
+
+                <Form.Item label="Description" name="description">
+                  <TextArea rows={3} placeholder="Description" />
+                </Form.Item>
+
+                <Form.Item
+                  label="Season Length (days)"
+                  name="seasonLengthDays"
+                  rules={[
+                    { required: true, message: "Please enter season length" },
+                  ]}
+                >
+                  <InputNumber min={1} max={90} style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Time per turn (seconds)"
+                      name="incrementSeconds"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please enter time per turn",
+                        },
+                      ]}
+                    >
+                      <InputNumber min={1} style={{ width: "100%" }} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Time Bank (minutes)"
+                      name="timeBankMinutes"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please enter time bank minutes",
+                        },
+                      ]}
+                    >
+                      <InputNumber min={0} style={{ width: "100%" }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Lexicon"
+                      name="lexicon"
+                      rules={[
+                        { required: true, message: "Please select lexicon" },
+                      ]}
+                    >
+                      <Select>
+                        <Option value="NWL23">NWL23</Option>
+                        <Option value="CSW21">CSW21</Option>
+                        <Option value="ECWL">ECWL</Option>
+                        <Option value="FRA20">FRA20</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Variant"
+                      name="variant"
+                      rules={[
+                        { required: true, message: "Please select variant" },
+                      ]}
+                    >
+                      <Select>
+                        <Option value="classic">Classic</Option>
+                        <Option value="wordsmog">Wordsmog</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item
+                  label="Ideal Division Size"
+                  name="idealDivisionSize"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please enter ideal division size",
+                    },
+                  ]}
+                >
+                  <InputNumber min={2} max={50} style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button type="primary" htmlType="submit">
+                    Update League Settings
+                  </Button>
+                </Form.Item>
+              </Form>
             )}
           </Card>
 

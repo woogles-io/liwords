@@ -55,6 +55,27 @@ p.streak-loss {
     }
   }
 
+  // Left menu styling when in data-area (mobile view)
+  .data-area {
+    .ant-card.left-menu {
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+      padding: 3px 12px;
+      height: 50px;
+      margin-bottom: 12px;
+
+      .ant-card-body {
+        padding: 12px;
+      }
+
+      .anticon {
+        font-size: 16px;
+        margin-right: 9px;
+      }
+    }
+  }
+
   .end-message {
     width: 100%;
     padding: 12px;
@@ -1410,6 +1431,15 @@ p.rune {
   }
 }
 
+// Game Info - move below scorecard in mobile
+.game-info {
+  order: 10;
+
+  @media (min-width: $screen-tablet-min) {
+    order: 0;
+  }
+}
+
 .exchange {
   .rack {
     width: 100%;
@@ -1661,6 +1691,21 @@ p.rune {
       flex: 2;
       min-width: 66px;
       max-width: 66px;
+
+      &.correspondence {
+        max-width: 100px;
+        min-width: 100px;
+      }
+
+      .time-bank-icon {
+        color: #15803d; // green-700 for light mode
+        margin-left: 4px;
+        font-size: 0.85em;
+
+        body.mode--dark & {
+          color: #22c55e; // green-500 for dark mode
+        }
+      }
     }
 
     .play {

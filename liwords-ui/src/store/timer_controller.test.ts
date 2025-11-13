@@ -1,8 +1,8 @@
 import { millisToTimeStr } from "./timer_controller";
 
 it("tests millis to time", () => {
-  expect(millisToTimeStr(3600000)).toEqual("60:00");
-  expect(millisToTimeStr(3599001)).toEqual("60:00");
+  expect(millisToTimeStr(3600000)).toEqual("01:00:00");
+  expect(millisToTimeStr(3599001)).toEqual("01:00:00");
   expect(millisToTimeStr(3599000)).toEqual("59:59");
   expect(millisToTimeStr(479900)).toEqual("08:00");
   expect(millisToTimeStr(479000)).toEqual("07:59");
@@ -40,5 +40,5 @@ it("tests millis to time", () => {
   expect(millisToTimeStr(-60000)).toEqual("-01:00");
   expect(millisToTimeStr(-3599000)).toEqual("-59:59");
   expect(millisToTimeStr(-3599999)).toEqual("-59:59");
-  expect(millisToTimeStr(-3600000)).toEqual("-60:00");
+  expect(millisToTimeStr(-3600000)).toEqual("-01:00:00");
 });

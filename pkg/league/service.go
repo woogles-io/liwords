@@ -340,7 +340,144 @@ func (ls *LeagueService) UpdateLeagueSettings(
 	ctx context.Context,
 	req *connect.Request[pb.UpdateLeagueSettingsRequest],
 ) (*connect.Response[pb.LeagueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("UpdateLeagueSettings not yet implemented"))
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.LeagueId == "" {
+		return nil, apiserver.InvalidArg("league_id is required")
+	}
+	if req.Msg.Settings == nil {
+		return nil, apiserver.InvalidArg("settings is required")
+	}
+
+	// Parse league ID
+	leagueID, err := uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid league_id")
+	}
+
+	// Marshal settings to JSON
+	settingsJSON, err := json.Marshal(req.Msg.Settings)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to marshal settings: %w", err))
+	}
+
+	// Update league settings
+	err = ls.queries.UpdateLeagueSettings(ctx, models.UpdateLeagueSettingsParams{
+		Uuid:     leagueID,
+		Settings: settingsJSON,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to update league settings: %w", err))
+	}
+
+	log.Info().
+		Str("leagueID", leagueID.String()).
+		Msg("league-settings-updated")
+
+	// Fetch and return updated league
+	league, err := ls.store.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to fetch updated league: %w", err))
+	}
+
+	// Convert to proto
+	description := ""
+	if league.Description.Valid {
+		description = league.Description.String
+	}
+	isActive := false
+	if league.IsActive.Valid {
+		isActive = league.IsActive.Bool
+	}
+
+	protoLeague := &ipc.League{
+		Uuid:        league.Uuid.String(),
+		Name:        league.Name,
+		Description: description,
+		Slug:        league.Slug,
+		Settings:    req.Msg.Settings,
+		IsActive:    isActive,
+	}
+
+	return connect.NewResponse(&pb.LeagueResponse{League: protoLeague}), nil
+}
+
+func (ls *LeagueService) UpdateLeagueMetadata(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateLeagueMetadataRequest],
+) (*connect.Response[pb.LeagueResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.LeagueId == "" {
+		return nil, apiserver.InvalidArg("league_id is required")
+	}
+	if req.Msg.Name == "" {
+		return nil, apiserver.InvalidArg("name is required")
+	}
+
+	// Parse league ID
+	leagueID, err := uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid league_id")
+	}
+
+	// Update league metadata
+	err = ls.queries.UpdateLeagueMetadata(ctx, models.UpdateLeagueMetadataParams{
+		Uuid:        leagueID,
+		Name:        req.Msg.Name,
+		Description: pgtype.Text{String: req.Msg.Description, Valid: req.Msg.Description != ""},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to update league metadata: %w", err))
+	}
+
+	log.Info().
+		Str("leagueID", leagueID.String()).
+		Str("name", req.Msg.Name).
+		Msg("league-metadata-updated")
+
+	// Fetch and return updated league
+	league, err := ls.store.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to fetch updated league: %w", err))
+	}
+
+	// Unmarshal settings
+	var settings ipc.LeagueSettings
+	if err := json.Unmarshal(league.Settings, &settings); err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to unmarshal settings: %w", err))
+	}
+
+	// Convert to proto
+	description := ""
+	if league.Description.Valid {
+		description = league.Description.String
+	}
+	isActive := false
+	if league.IsActive.Valid {
+		isActive = league.IsActive.Bool
+	}
+
+	protoLeague := &ipc.League{
+		Uuid:        league.Uuid.String(),
+		Name:        league.Name,
+		Description: description,
+		Slug:        league.Slug,
+		Settings:    &settings,
+		IsActive:    isActive,
+	}
+
+	return connect.NewResponse(&pb.LeagueResponse{League: protoLeague}), nil
 }
 
 func (ls *LeagueService) GetSeason(

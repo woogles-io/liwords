@@ -24,7 +24,7 @@ import { Notepad } from "./notepad";
 import { sortTiles } from "../store/constants";
 import { getVW, isTablet } from "../utils/cwgame/common";
 import { Analyzer } from "./analyzer";
-import { HeartFilled } from "@ant-design/icons";
+import { HeartFilled, HourglassOutlined } from "@ant-design/icons";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
 import { useGameContextStoreContext } from "../store/store";
@@ -34,6 +34,7 @@ import {
   machineWordToRunes,
   runesToMachineWord,
 } from "../constants/alphabets";
+import { calculateHistoricalTimeBanks } from "../utils/time_bank_calculator";
 import variables from "../base.module.scss";
 const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
 
@@ -56,6 +57,8 @@ type Props = {
   ) => Promise<void>;
   deleteComment?: (cid: string) => Promise<void>;
   isCorrespondence?: boolean;
+  timeBankP0?: number; // Time bank in milliseconds for player 0
+  timeBankP1?: number; // Time bank in milliseconds for player 1
 };
 
 type turnProps = {
@@ -68,6 +71,9 @@ type turnProps = {
   turnIndex: number;
   onOpenCommentsDrawer?: (turnIndex: number) => void;
   isCorrespondence?: boolean;
+  timeBankP0?: number;
+  timeBankP1?: number;
+  eventIndex: number; // Index in the full events array (not turn index)
 };
 
 type MoveEntityObj = {
@@ -84,6 +90,7 @@ type MoveEntityObj = {
   endRackPts: number;
   lostScore: number;
   isBingo: boolean;
+  isUsingTimeBank: boolean;
 };
 
 function sortStringRack(rack: string, alphabet: Alphabet): string {
@@ -156,13 +163,31 @@ const ScorecardTurn = (props: turnProps) => {
       oldScore = evts[0].cumulative - evts[0].score;
     }
     let timeRemaining = "";
-    // Don't show time for correspondence games
+    let isUsingTimeBank = false;
+    // Show time for all moves except end rack events
     if (
-      !props.isCorrespondence &&
       evts[0].type !== GameEvent_Type.END_RACK_PTS &&
       evts[0].type !== GameEvent_Type.END_RACK_PENALTY
     ) {
-      timeRemaining = millisToTimeStr(evts[0].millisRemaining, false);
+      const millisRemaining = evts[0].millisRemaining;
+
+      // If time is negative, player was using time bank
+      // The time bank value will be passed from the parent component
+      if (millisRemaining < 0) {
+        const playerIndex = evts[0].playerIndex;
+        const timeBankValue =
+          playerIndex === 0 ? props.timeBankP0 : props.timeBankP1;
+
+        if (timeBankValue && timeBankValue > 0) {
+          timeRemaining = millisToTimeStr(timeBankValue, false);
+          isUsingTimeBank = true;
+        } else {
+          // For real-time games with overtime, display the negative time
+          timeRemaining = millisToTimeStr(millisRemaining, false);
+        }
+      } else {
+        timeRemaining = millisToTimeStr(millisRemaining, false);
+      }
     }
 
     const turnNickname = nicknameFromEvt(evts[0], props.playerMeta);
@@ -187,6 +212,7 @@ const ScorecardTurn = (props: turnProps) => {
       endRackPts: evts[0].endRackPoints,
       oldScore: oldScore,
       isBingo: evts[0].isBingo,
+      isUsingTimeBank: isUsingTimeBank,
     };
     if (evts.length === 1) {
       turn.rack = sortStringRack(turn.rack, props.alphabet);
@@ -243,7 +269,8 @@ const ScorecardTurn = (props: turnProps) => {
     props.playerMeta,
     props.turn,
     props.alphabet,
-    props.isCorrespondence,
+    props.timeBankP0,
+    props.timeBankP1,
   ]);
 
   let scoreChange;
@@ -265,13 +292,20 @@ const ScorecardTurn = (props: turnProps) => {
     <>
       <div {...divProps}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
-        <div className="coords-time">
+        <div
+          className={`coords-time${props.isCorrespondence ? " correspondence" : ""}`}
+        >
           {memoizedTurn.coords ? (
             <p className="coord">{memoizedTurn.coords}</p>
           ) : (
             <p className="move-type">{memoizedTurn.moveType}</p>
           )}
-          <p className="time-left">{memoizedTurn.timeRemaining}</p>
+          <p className="time-left">
+            {memoizedTurn.timeRemaining}
+            {memoizedTurn.isUsingTimeBank && (
+              <HourglassOutlined className="time-bank-icon" />
+            )}
+          </p>
         </div>
         <div className="play">
           <p className="main-word">
@@ -329,6 +363,18 @@ export const ScoreCard = React.memo((props: Props) => {
   // Autoscroll code removed - comments now use drawer
 
   const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
+
+  // Calculate time bank history for all events
+  const timeBankHistory = useMemo(() => {
+    if (!props.timeBankP0 && !props.timeBankP1) {
+      return null;
+    }
+    return calculateHistoricalTimeBanks(
+      props.events,
+      props.timeBankP0 || 0,
+      props.timeBankP1 || 0,
+    );
+  }, [props.events, props.timeBankP0, props.timeBankP1]);
 
   // Scroll to bottom when turns change (after DOM updates)
   useEffect(() => {
@@ -444,6 +490,11 @@ export const ScoreCard = React.memo((props: Props) => {
       }
       // for each turn, show only the relevant comments - comments for
       // event indexes encompassed by those turns.
+
+      // Get time bank state for this turn's first event
+      const eventIdx = t.firstEvtIdx;
+      const timeBankState = timeBankHistory?.get(eventIdx);
+
       return (
         <ScorecardTurn
           turn={t}
@@ -464,6 +515,9 @@ export const ScoreCard = React.memo((props: Props) => {
           turnIndex={idx}
           onOpenCommentsDrawer={props.onOpenCommentsDrawer}
           isCorrespondence={props.isCorrespondence}
+          timeBankP0={timeBankState?.p0TimeBank}
+          timeBankP1={timeBankState?.p1TimeBank}
+          eventIndex={eventIdx}
         />
       );
     };

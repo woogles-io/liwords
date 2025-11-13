@@ -19,8 +19,8 @@
   position: -webkit-sticky; /* Safari */
   top: 0;
   z-index: 4;
-  padding: 24px 24px 0px;
-  margin: -16px -24px 0px;
+  padding: 24px 8px 0px; // Reduced horizontal padding from 24px to 8px for more card width
+  margin: -16px -8px 0px; // Adjusted margin to match padding
   @include colorModed() {
     background-color: m($background);
   }
@@ -32,6 +32,13 @@
   display: flex;
   margin-bottom: 12px;
 
+  // In mobile, make cards wider to accommodate time widgets
+  @media (max-width: $screen-tablet-min - 1) {
+    width: calc(100% + 32px); // Extend 16px on each side
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+
   .ant-card-body {
     display: flex;
   }
@@ -39,6 +46,26 @@
     width: 50%;
     &:last-child .player {
       order: 0;
+    }
+
+    // In horizontal layout, both time bank labels should be above their timers
+    .score-timer .timer-container .time-bank-label {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 2px;
+    }
+  }
+}
+
+// In vertical layout, move label to top for first player (top of screen)
+.player-cards.ant-card.vertical {
+  .player-card:first-child {
+    .score-timer .timer-container .time-bank-label {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 2px;
     }
   }
 }
@@ -137,31 +164,45 @@
           }
           & {
             font-weight: 500;
+            height: 32px;
+            font-size: 22px;
+            line-height: 28px;
+          }
+          .time-bank-indicator {
+            color: #15803d; // green-700 for light mode
+            margin-left: 2px;
+            font-size: 0.7em;
+            cursor: help;
+
+            body.mode--dark & {
+              color: #22c55e; // green-500 for dark mode
+            }
           }
         }
       }
-      .correspondence-timer-wrapper {
+      .timer-container {
         flex: 1;
         margin: 3px;
-        .correspondence-timer {
-          @include colorModed() {
-            background-color: m($card-background);
-            color: m($primary-dark);
-            border: 1px solid m($primary-dark);
-          }
+        position: relative;
+        button.timer {
+          margin: 0;
+          width: 100%;
           height: 32px;
-          border-radius: 4px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          font-size: 12px;
-          line-height: 14px;
-          font-weight: 500;
-          padding: 2px 4px;
-          .deadline {
-            white-space: nowrap;
-          }
+          font-size: 22px;
+          line-height: 28px;
+        }
+        .time-bank-label {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          font-size: 8px;
+          text-align: center;
+          color: #414141;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          line-height: 1;
+          margin-top: 2px;
         }
       }
     }
@@ -185,13 +226,6 @@
             color: m($timer-dark);
             border-color: m($timer-dark);
           }
-        }
-      }
-      .correspondence-timer {
-        @include colorModed() {
-          background-color: m($card-background);
-          color: m($timer-dark);
-          border-color: m($timer-dark);
         }
       }
       &.time-low {
@@ -220,13 +254,6 @@
             }
           }
         }
-        .correspondence-timer {
-          color: #414141; // theming outlier
-          background: white; // theming outlier
-          @include colorModed() {
-            border-color: m($timer-low-dark);
-          }
-        }
       }
       &.time-out {
         @include colorModed() {
@@ -245,11 +272,31 @@
             }
           }
         }
-        .correspondence-timer {
+      }
+      &.using-time-bank {
+        color: #414141; // theming outlier
+        @include colorModed() {
+          background: m($timer-low-light);
+        }
+        p,
+        .player-details {
+          color: #414141; // theming outlier
+        }
+        a {
+          color: #2d6a9e;
+        }
+        button.ant-btn {
+          color: #414141; // theming outlier
+
           @include colorModed() {
-            background: m($background);
-            border-color: m($timer-out-dark);
-            color: m($timer-out-dark);
+            background: m($timer-low-dark);
+          }
+          &.timer {
+            color: #414141 !important; // theming outlier - override any green
+            @include colorModed() {
+              border-color: m($timer-low-dark);
+              color: #414141; // theming outlier
+            }
           }
         }
       }

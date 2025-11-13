@@ -13,6 +13,8 @@ service LeagueService {
   rpc GetAllLeagues(GetAllLeaguesRequest) returns (GetAllLeaguesResponse);
   rpc UpdateLeagueSettings(UpdateLeagueSettingsRequest)
       returns (LeagueResponse);
+  rpc UpdateLeagueMetadata(UpdateLeagueMetadataRequest)
+      returns (LeagueResponse);
 
   // Season management
   rpc BootstrapSeason(BootstrapSeasonRequest) returns (SeasonResponse);
@@ -61,6 +63,12 @@ message LeagueResponse { ipc.League league = 1; }
 message UpdateLeagueSettingsRequest {
   string league_id = 1;
   ipc.LeagueSettings settings = 2;
+}
+
+message UpdateLeagueMetadataRequest {
+  string league_id = 1;
+  string name = 2;
+  string description = 3;
 }
 
 message SeasonRequest { string season_id = 1; }

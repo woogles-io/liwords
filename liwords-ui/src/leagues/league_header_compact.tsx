@@ -1,15 +1,15 @@
 import React from "react";
 import { Card } from "antd";
-import {
-  League,
-  Season,
-} from "../gen/api/proto/ipc/league_pb";
+import { League, Season } from "../gen/api/proto/ipc/league_pb";
 import { Timestamp } from "@bufbuild/protobuf/wkt";
 
 type LeagueHeaderCompactProps = {
   league: League;
   displayedSeason: Season | undefined;
-  formatSeasonDates: (start: Timestamp | undefined, end: Timestamp | undefined) => string;
+  formatSeasonDates: (
+    start: Timestamp | undefined,
+    end: Timestamp | undefined,
+  ) => string;
 };
 
 export const LeagueHeaderCompact: React.FC<LeagueHeaderCompactProps> = ({

@@ -44,6 +44,9 @@ const (
 	// LeagueServiceUpdateLeagueSettingsProcedure is the fully-qualified name of the LeagueService's
 	// UpdateLeagueSettings RPC.
 	LeagueServiceUpdateLeagueSettingsProcedure = "/league_service.LeagueService/UpdateLeagueSettings"
+	// LeagueServiceUpdateLeagueMetadataProcedure is the fully-qualified name of the LeagueService's
+	// UpdateLeagueMetadata RPC.
+	LeagueServiceUpdateLeagueMetadataProcedure = "/league_service.LeagueService/UpdateLeagueMetadata"
 	// LeagueServiceBootstrapSeasonProcedure is the fully-qualified name of the LeagueService's
 	// BootstrapSeason RPC.
 	LeagueServiceBootstrapSeasonProcedure = "/league_service.LeagueService/BootstrapSeason"
@@ -97,6 +100,7 @@ type LeagueServiceClient interface {
 	GetLeague(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueResponse], error)
 	GetAllLeagues(context.Context, *connect.Request[league_service.GetAllLeaguesRequest]) (*connect.Response[league_service.GetAllLeaguesResponse], error)
 	UpdateLeagueSettings(context.Context, *connect.Request[league_service.UpdateLeagueSettingsRequest]) (*connect.Response[league_service.LeagueResponse], error)
+	UpdateLeagueMetadata(context.Context, *connect.Request[league_service.UpdateLeagueMetadataRequest]) (*connect.Response[league_service.LeagueResponse], error)
 	// Season management
 	BootstrapSeason(context.Context, *connect.Request[league_service.BootstrapSeasonRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	GetSeason(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonResponse], error)
@@ -151,6 +155,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+LeagueServiceUpdateLeagueSettingsProcedure,
 			connect.WithSchema(leagueServiceMethods.ByName("UpdateLeagueSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateLeagueMetadata: connect.NewClient[league_service.UpdateLeagueMetadataRequest, league_service.LeagueResponse](
+			httpClient,
+			baseURL+LeagueServiceUpdateLeagueMetadataProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("UpdateLeagueMetadata")),
 			connect.WithClientOptions(opts...),
 		),
 		bootstrapSeason: connect.NewClient[league_service.BootstrapSeasonRequest, league_service.SeasonResponse](
@@ -252,6 +262,7 @@ type leagueServiceClient struct {
 	getLeague               *connect.Client[league_service.LeagueRequest, league_service.LeagueResponse]
 	getAllLeagues           *connect.Client[league_service.GetAllLeaguesRequest, league_service.GetAllLeaguesResponse]
 	updateLeagueSettings    *connect.Client[league_service.UpdateLeagueSettingsRequest, league_service.LeagueResponse]
+	updateLeagueMetadata    *connect.Client[league_service.UpdateLeagueMetadataRequest, league_service.LeagueResponse]
 	bootstrapSeason         *connect.Client[league_service.BootstrapSeasonRequest, league_service.SeasonResponse]
 	getSeason               *connect.Client[league_service.SeasonRequest, league_service.SeasonResponse]
 	getCurrentSeason        *connect.Client[league_service.LeagueRequest, league_service.SeasonResponse]
@@ -287,6 +298,11 @@ func (c *leagueServiceClient) GetAllLeagues(ctx context.Context, req *connect.Re
 // UpdateLeagueSettings calls league_service.LeagueService.UpdateLeagueSettings.
 func (c *leagueServiceClient) UpdateLeagueSettings(ctx context.Context, req *connect.Request[league_service.UpdateLeagueSettingsRequest]) (*connect.Response[league_service.LeagueResponse], error) {
 	return c.updateLeagueSettings.CallUnary(ctx, req)
+}
+
+// UpdateLeagueMetadata calls league_service.LeagueService.UpdateLeagueMetadata.
+func (c *leagueServiceClient) UpdateLeagueMetadata(ctx context.Context, req *connect.Request[league_service.UpdateLeagueMetadataRequest]) (*connect.Response[league_service.LeagueResponse], error) {
+	return c.updateLeagueMetadata.CallUnary(ctx, req)
 }
 
 // BootstrapSeason calls league_service.LeagueService.BootstrapSeason.
@@ -371,6 +387,7 @@ type LeagueServiceHandler interface {
 	GetLeague(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueResponse], error)
 	GetAllLeagues(context.Context, *connect.Request[league_service.GetAllLeaguesRequest]) (*connect.Response[league_service.GetAllLeaguesResponse], error)
 	UpdateLeagueSettings(context.Context, *connect.Request[league_service.UpdateLeagueSettingsRequest]) (*connect.Response[league_service.LeagueResponse], error)
+	UpdateLeagueMetadata(context.Context, *connect.Request[league_service.UpdateLeagueMetadataRequest]) (*connect.Response[league_service.LeagueResponse], error)
 	// Season management
 	BootstrapSeason(context.Context, *connect.Request[league_service.BootstrapSeasonRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	GetSeason(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonResponse], error)
@@ -421,6 +438,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		LeagueServiceUpdateLeagueSettingsProcedure,
 		svc.UpdateLeagueSettings,
 		connect.WithSchema(leagueServiceMethods.ByName("UpdateLeagueSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	leagueServiceUpdateLeagueMetadataHandler := connect.NewUnaryHandler(
+		LeagueServiceUpdateLeagueMetadataProcedure,
+		svc.UpdateLeagueMetadata,
+		connect.WithSchema(leagueServiceMethods.ByName("UpdateLeagueMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	leagueServiceBootstrapSeasonHandler := connect.NewUnaryHandler(
@@ -523,6 +546,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetAllLeaguesHandler.ServeHTTP(w, r)
 		case LeagueServiceUpdateLeagueSettingsProcedure:
 			leagueServiceUpdateLeagueSettingsHandler.ServeHTTP(w, r)
+		case LeagueServiceUpdateLeagueMetadataProcedure:
+			leagueServiceUpdateLeagueMetadataHandler.ServeHTTP(w, r)
 		case LeagueServiceBootstrapSeasonProcedure:
 			leagueServiceBootstrapSeasonHandler.ServeHTTP(w, r)
 		case LeagueServiceGetSeasonProcedure:
@@ -576,6 +601,10 @@ func (UnimplementedLeagueServiceHandler) GetAllLeagues(context.Context, *connect
 
 func (UnimplementedLeagueServiceHandler) UpdateLeagueSettings(context.Context, *connect.Request[league_service.UpdateLeagueSettingsRequest]) (*connect.Response[league_service.LeagueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.UpdateLeagueSettings is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) UpdateLeagueMetadata(context.Context, *connect.Request[league_service.UpdateLeagueMetadataRequest]) (*connect.Response[league_service.LeagueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.UpdateLeagueMetadata is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) BootstrapSeason(context.Context, *connect.Request[league_service.BootstrapSeasonRequest]) (*connect.Response[league_service.SeasonResponse], error) {

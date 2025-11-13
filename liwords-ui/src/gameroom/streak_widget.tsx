@@ -103,7 +103,7 @@ export const StreakWidget = React.memo((props: Props) => {
   };
 
   return (
-    <Card style={{ marginTop: 10 }}>
+    <Card className="streak-widget" style={{ marginTop: 10 }}>
       <Row>
         <Col span={16} style={{ justifyContent: "right", textAlign: "right" }}>
           {pergame}
