@@ -131,7 +131,7 @@ export const LeaguesList = () => {
               <p>
                 Each season, players in a division play{" "}
                 <strong>14 games</strong> over approximately{" "}
-                <strong>3 weeks</strong>. Games are correspondence-style,
+                <strong>2 to 3 weeks</strong>. Games are correspondence-style,
                 meaning you don't need to be online at the same time as your
                 opponent - you make your moves when it's convenient for you.
               </p>
@@ -237,8 +237,48 @@ export const LeaguesList = () => {
                 that correspondence word games provide.
               </p>
             </Panel>
-
-            <Panel header="Do I need to register for each season?" key="5">
+            <Panel
+              header="Isn't 8 hours per turn too little? I need to sleep!"
+              key="5"
+            >
+              <p>
+                While 8 hours per turn might sound tight at first, the time bank
+                makes the timing very forgiving in practice. Let's look at the
+                math:
+              </p>
+              <p>
+                Imagine the worst-case scenario: your opponent makes their move
+                right when you go to bed, and you don't check the game until 4
+                hours after you wake up. That means you'd use 4 hours from your
+                time bank for that turn (the 8 hours expired while you slept,
+                plus 4 more hours).
+              </p>
+              <p>
+                With a 96-hour (4-day) time bank, you would need this worst case
+                to happen <strong>24 consecutive times</strong> to completely
+                run out of time (4 hours × 24 turns = 96 hours). Since most
+                games finish in only 12-15 turns per player, even if this
+                unlucky timing happened on <em>every single turn</em>, you'd
+                only use 48-60 hours of your 96-hour time bank - leaving plenty
+                of buffer remaining.
+              </p>
+              <p>
+                In reality, you'll often check games at different times of day,
+                your opponents move at varying times, and many turns take just a
+                few minutes to play. This means your time bank rarely gets
+                depleted significantly. Even if we make leagues faster in the
+                future with slightly condensed timers, the same principle
+                applies - the time bank provides enough cushion that running out
+                of time is very unlikely unless you're consistently delaying
+                your moves for extended periods.
+              </p>
+              <p>
+                The system is designed to keep games moving at a steady pace
+                while still being very accommodating of normal life schedules,
+                including sleep!
+              </p>
+            </Panel>
+            <Panel header="Do I need to register for each season?" key="6">
               <p>
                 <strong>Yes, registration is required for each season.</strong>{" "}
                 Seasons are not auto-enrollment - you must actively register for
@@ -266,7 +306,7 @@ export const LeaguesList = () => {
               </p>
             </Panel>
 
-            <Panel header="What is a League Promoter?" key="6">
+            <Panel header="What is a League Promoter?" key="7">
               <p>
                 A League Promoter is a volunteer who invites people to leagues.
                 You may find that you can't register for a league by clicking
@@ -283,7 +323,7 @@ export const LeaguesList = () => {
               </p>
             </Panel>
 
-            <Panel header="What do you mean by Fair Play?" key="7">
+            <Panel header="What do you mean by Fair Play?" key="8">
               <p>
                 These are rated games in which you are not allowed to use any
                 external assistance to make your moves. It is very important
@@ -291,6 +331,56 @@ export const LeaguesList = () => {
                 anyone is cheating. Woogles runs periodic anti-cheat algorithms
                 that will suspend you if you are determined to be cheating.
                 Let's keep it fun for everyone and play fair.
+              </p>
+            </Panel>
+
+            <Panel
+              header="How does the season schedule and timeline work?"
+              key="9"
+            >
+              <p>
+                League seasons follow an automated schedule with key events
+                happening at specific times (all times US Eastern):
+              </p>
+              <ul>
+                <li>
+                  <strong>Day 1, 8am:</strong> Season begins. All games for the
+                  season are created and ready to play.
+                </li>
+                <li>
+                  <strong>Halfway point, 8am:</strong> Registration opens for
+                  the next season. Players can start signing up for the upcoming
+                  season while still completing their current games.
+                </li>
+                <li>
+                  <strong>Last day, 8am:</strong> A reminder email is sent to
+                  all registered players for the next season, letting them know
+                  the season starts tomorrow.
+                </li>
+                <li>
+                  <strong>Last day, midnight:</strong> Current season closes.
+                  Any unfinished games are force-finished, final standings are
+                  calculated, and divisions for the next season are prepared
+                  based on registrations and performance.
+                </li>
+                <li>
+                  <strong>Following day, 8am:</strong> The next season begins,
+                  and the cycle repeats.
+                </li>
+              </ul>
+              <p>
+                <strong>Example with a 21-day season:</strong> Season starts on
+                Monday (Day 1, 8am). Registration for the next season opens on
+                Thursday of the second week (Day 11, 8am). Players get a
+                reminder email on Sunday morning of the third week (Day 21,
+                8am). That Sunday at midnight, the season closes and divisions
+                are prepared. The next season begins Monday morning (8am),
+                exactly 21 days after the previous season started.
+              </p>
+              <p>
+                This automated timeline ensures consistent, predictable season
+                transitions and gives everyone enough time to register and
+                prepare for upcoming seasons.
               </p>
             </Panel>
           </Collapse>

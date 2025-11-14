@@ -21,13 +21,14 @@ const (
 )
 
 type LeagueEmailInfo struct {
-	Username      string
-	LeagueName    string
-	SeasonNumber  int
-	StartTime     string
-	LeagueURL     string
-	DivisionName  string
-	Opponents     []string
+	Username       string
+	LeagueName     string
+	SeasonNumber   int
+	StartTime      string
+	StartTimeZones string // Formatted string with multiple timezones
+	LeagueURL      string
+	DivisionName   string
+	Opponents      []string
 	IsStartingSoon bool
 }
 
@@ -35,6 +36,34 @@ const LeagueEmailTemplateName = "league_email"
 
 //go:embed league_email_templates
 var LeagueEmailTemplate string
+
+// formatTimeInTimezones converts a UTC time to multiple timezones and returns a formatted string
+func formatTimeInTimezones(utcTime time.Time) string {
+	timezones := []struct {
+		name     string
+		location string
+	}{
+		{"US Eastern", "America/New_York"},
+		{"US Pacific", "America/Los_Angeles"},
+		{"UK", "Europe/London"},
+		{"Singapore", "Asia/Singapore"},
+		{"India", "Asia/Kolkata"},
+		{"Australia (Sydney)", "Australia/Sydney"},
+	}
+
+	var result string
+	for _, tz := range timezones {
+		loc, err := time.LoadLocation(tz.location)
+		if err != nil {
+			log.Warn().Err(err).Str("location", tz.location).Msg("failed to load timezone")
+			continue
+		}
+		localTime := utcTime.In(loc)
+		formatted := localTime.Format("Monday, January 2, 2006 at 3:04 PM MST")
+		result += fmt.Sprintf("  • %s: %s\n", tz.name, formatted)
+	}
+	return result
+}
 
 // instantiateLeagueEmail creates the email content from the template
 func instantiateLeagueEmail(info *LeagueEmailInfo) (string, string, error) {
@@ -68,6 +97,7 @@ func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userSt
 
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 	startTimeString := startTime.Format("Monday, January 2, 2006 at 3:04 PM MST")
+	startTimeZones := formatTimeInTimezones(startTime)
 
 	// Semaphore for concurrency control and WaitGroup to wait for completion
 	sem := make(chan struct{}, maxConcurrentEmails)
@@ -91,6 +121,7 @@ func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userSt
 			LeagueName:     leagueName,
 			SeasonNumber:   seasonNumber,
 			StartTime:      startTimeString,
+			StartTimeZones: startTimeZones,
 			LeagueURL:      leagueURL,
 			IsStartingSoon: true,
 		}

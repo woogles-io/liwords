@@ -667,7 +667,7 @@ func (ls *LeagueService) OpenRegistration(
 		return nil, apiserver.InvalidArg(fmt.Sprintf("invalid season_id: %s", req.Msg.SeasonId))
 	}
 
-	lifecycleMgr := NewSeasonLifecycleManager(ls.stores)
+	lifecycleMgr := NewSeasonLifecycleManager(ls.stores, RealClock{})
 	result, err := lifecycleMgr.OpenRegistrationForSeason(ctx, seasonID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to open registration: %w", err))
@@ -924,7 +924,7 @@ func (ls *LeagueService) RegisterForSeason(
 	}
 
 	// Register the player
-	regMgr := NewRegistrationManager(ls.store)
+	regMgr := NewRegistrationManager(ls.store, RealClock{})
 	err = regMgr.RegisterPlayer(ctx, int32(user.ID), season.Uuid)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to register player: %w", err))
@@ -1016,7 +1016,7 @@ func (ls *LeagueService) GetSeasonRegistrations(
 	}
 
 	// Get all registrations for the season
-	rm := NewRegistrationManager(ls.store)
+	rm := NewRegistrationManager(ls.store, RealClock{})
 	registrations, err := rm.GetSeasonRegistrations(ctx, seasonID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season registrations: %w", err))

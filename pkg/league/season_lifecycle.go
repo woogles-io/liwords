@@ -21,12 +21,14 @@ import (
 // SeasonLifecycleManager handles automated season lifecycle operations
 type SeasonLifecycleManager struct {
 	stores *stores.Stores
+	clock  Clock
 }
 
 // NewSeasonLifecycleManager creates a new season lifecycle manager
-func NewSeasonLifecycleManager(allStores *stores.Stores) *SeasonLifecycleManager {
+func NewSeasonLifecycleManager(allStores *stores.Stores, clock Clock) *SeasonLifecycleManager {
 	return &SeasonLifecycleManager{
 		stores: allStores,
+		clock:  clock,
 	}
 }
 
@@ -61,7 +63,6 @@ type RegistrationOpenResult struct {
 func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
-	now time.Time,
 ) (*RegistrationOpenResult, error) {
 	// Get current season (try current_season_id first, fall back to latest season)
 	currentSeason, err := slm.stores.LeagueStore.GetCurrentSeason(ctx, leagueID)
@@ -360,7 +361,6 @@ type SeasonCloseResult struct {
 func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
-	now time.Time,
 ) (*SeasonCloseResult, error) {
 	// Get current season
 	currentSeason, err := slm.stores.LeagueStore.GetCurrentSeason(ctx, leagueID)
@@ -495,7 +495,6 @@ func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
-	now time.Time,
 ) (*PrepareAndScheduleSeasonResult, error) {
 	// Get season
 	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
@@ -662,7 +661,6 @@ func (slm *SeasonLifecycleManager) StartScheduledSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
-	now time.Time,
 ) (*SeasonStartResult, error) {
 	// Get season
 	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
@@ -761,12 +759,7 @@ func (slm *SeasonLifecycleManager) RollbackSeasonToScheduled(ctx context.Context
 
 // ShouldRunTask checks if a maintenance task should run based on season dates
 // Returns (shouldRun bool, reason string)
-func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDays int32, forceRun bool, now time.Time) (bool, string) {
-	// Force override for testing
-	if forceRun {
-		return true, "FORCE mode enabled"
-	}
-
+func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDays int32, now time.Time) (bool, string) {
 	// Ensure season has valid dates
 	if !season.StartDate.Valid || !season.EndDate.Valid {
 		return false, "Season has invalid start/end dates"

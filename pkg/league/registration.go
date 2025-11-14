@@ -2,7 +2,6 @@ package league
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,12 +13,14 @@ import (
 // RegistrationManager handles player registration for league seasons
 type RegistrationManager struct {
 	store league.Store
+	clock Clock
 }
 
 // NewRegistrationManager creates a new registration manager
-func NewRegistrationManager(store league.Store) *RegistrationManager {
+func NewRegistrationManager(store league.Store, clock Clock) *RegistrationManager {
 	return &RegistrationManager{
 		store: store,
+		clock: clock,
 	}
 }
 
@@ -34,7 +35,7 @@ func (rm *RegistrationManager) RegisterPlayer(
 		UserID:           userID,
 		SeasonID:         seasonID,
 		DivisionID:       pgtype.UUID{Valid: false}, // No division assigned yet
-		RegistrationDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		RegistrationDate: pgtype.Timestamptz{Time: rm.clock.Now(), Valid: true},
 		FirstsCount:      pgtype.Int4{Int32: 0, Valid: true},
 		Status:           pgtype.Text{String: "REGISTERED", Valid: true},
 		SeasonsAway:      pgtype.Int4{Int32: 0, Valid: true}, // Will be calculated during placement

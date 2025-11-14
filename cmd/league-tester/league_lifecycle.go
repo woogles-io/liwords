@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -58,7 +57,8 @@ func openRegistration(ctx context.Context, leagueSlugOrUUID string, seasonNumber
 		return fmt.Errorf("failed to get season %d: %w", seasonNumber, err)
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 	result, err := lifecycleMgr.OpenRegistrationForSeason(ctx, season.Uuid)
 	if err != nil {
 		return fmt.Errorf("failed to open registration: %w", err)
@@ -92,8 +92,9 @@ func closeSeason(ctx context.Context, leagueSlugOrUUID string) error {
 	}
 
 	// Close season
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
-	result, err := lifecycleMgr.CloseCurrentSeason(ctx, leagueUUID, time.Now())
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+	result, err := lifecycleMgr.CloseCurrentSeason(ctx, leagueUUID)
 	if err != nil {
 		return fmt.Errorf("failed to close season: %w", err)
 	}
@@ -137,8 +138,9 @@ func prepareDivisions(ctx context.Context, leagueSlugOrUUID string, seasonNumber
 	}
 
 	// Prepare divisions
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
-	result, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, leagueUUID, season.Uuid, time.Now())
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+	result, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, leagueUUID, season.Uuid)
 	if err != nil {
 		return fmt.Errorf("failed to prepare divisions: %w", err)
 	}
@@ -189,8 +191,9 @@ func startSeason(ctx context.Context, leagueSlugOrUUID string, seasonNumber int3
 	cfg.Load(nil)
 
 	// Start season
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
-	result, err := lifecycleMgr.StartScheduledSeason(ctx, leagueUUID, season.Uuid, time.Now())
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+	result, err := lifecycleMgr.StartScheduledSeason(ctx, leagueUUID, season.Uuid)
 	if err != nil {
 		return fmt.Errorf("failed to start season: %w", err)
 	}
