@@ -378,7 +378,7 @@ export const LeaguePage = (props: Props) => {
           {/* Left Column - Chat Only */}
           <Col xs={24} lg={6}>
             {/* League Chat */}
-            {loggedIn && league && (
+            {league && (
               <div className="chat-area">
                 <Chat
                   sendChat={props.sendChat}

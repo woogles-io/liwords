@@ -884,7 +884,7 @@ export const Chat = React.memo((props: Props) => {
                   <div
                     className={`entities ${channelType}`}
                     style={
-                      maxEntitiesHeight
+                      maxEntitiesHeight && channelType !== "league"
                         ? {
                             maxHeight: maxEntitiesHeight,
                           }
