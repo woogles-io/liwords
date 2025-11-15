@@ -52,11 +52,42 @@ const NotepadContext = React.createContext({
 export const NotepadContextProvider = ({
   children,
   feRackInfo,
+  gameID,
 }: {
   children: React.ReactNode;
   feRackInfo: boolean;
+  gameID?: string;
 }) => {
   const [curNotepad, setCurNotepad] = useState("");
+
+  // Load saved notepad from localStorage when gameID changes
+  useEffect(() => {
+    if (!gameID) return;
+
+    const savedNotes = localStorage.getItem(`notepad_${gameID}`);
+    if (savedNotes) {
+      setCurNotepad(savedNotes);
+    } else {
+      setCurNotepad("");
+    }
+  }, [gameID]);
+
+  // Auto-save notepad to localStorage when content changes (debounced)
+  useEffect(() => {
+    if (!gameID) return;
+
+    const timer = setTimeout(() => {
+      if (curNotepad) {
+        localStorage.setItem(`notepad_${gameID}`, curNotepad);
+      } else {
+        // Remove from localStorage if notepad is cleared
+        localStorage.removeItem(`notepad_${gameID}`);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [curNotepad, gameID]);
+
   const contextValue = useMemo(
     () => ({ curNotepad, setCurNotepad, feRackInfo }),
     [curNotepad, setCurNotepad, feRackInfo],

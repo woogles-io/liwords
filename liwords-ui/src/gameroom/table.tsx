@@ -1329,7 +1329,13 @@ export const Table = React.memo((props: Props) => {
     </>
   );
 
-  ret = <NotepadContextProvider children={ret} feRackInfo={feRackInfo} />;
+  ret = (
+    <NotepadContextProvider
+      children={ret}
+      feRackInfo={feRackInfo}
+      gameID={gameID}
+    />
+  );
   ret = (
     <AnalyzerContextProvider
       children={ret}
