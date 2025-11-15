@@ -65,7 +65,8 @@ func LeagueRegistrationOpener() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -73,11 +74,10 @@ func LeagueRegistrationOpener() error {
 		return err
 	}
 
-	now := time.Now()
 	registrationsOpened := 0
 
 	for _, dbLeague := range leagues {
-		result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid, now)
+		result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid)
 		if err != nil {
 			log.Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to open registration")
 			continue
@@ -112,7 +112,8 @@ func LeagueSeasonCloser() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -120,11 +121,10 @@ func LeagueSeasonCloser() error {
 		return err
 	}
 
-	now := time.Now()
 	seasonsClosed := 0
 
 	for _, dbLeague := range leagues {
-		result, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid, now)
+		result, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid)
 		if err != nil {
 			log.Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to close season")
 			continue
@@ -159,7 +159,8 @@ func LeagueDivisionPreparer() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -167,7 +168,6 @@ func LeagueDivisionPreparer() error {
 		return err
 	}
 
-	now := time.Now()
 	seasonsPrepared := 0
 
 	for _, dbLeague := range leagues {
@@ -185,7 +185,7 @@ func LeagueDivisionPreparer() error {
 				continue // Skip ACTIVE/COMPLETED seasons
 			}
 
-			result, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid, now)
+			result, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid)
 			if err != nil {
 				log.Err(err).
 					Str("seasonID", season.Uuid.String()).
@@ -226,7 +226,8 @@ func LeagueSeasonStarter() error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -234,7 +235,6 @@ func LeagueSeasonStarter() error {
 		return err
 	}
 
-	now := time.Now()
 	seasonsStarted := 0
 
 	// Create event channel for game events (will be nil for maintenance, but required)
@@ -276,7 +276,7 @@ func LeagueSeasonStarter() error {
 			}
 
 			// Step 1: Start the season (changes status to ACTIVE)
-			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid, now)
+			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid)
 			if err != nil {
 				log.Info().
 					Str("seasonID", season.Uuid.String()).
@@ -330,15 +330,10 @@ func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
 	return &settings, nil
 }
 
-// LeagueMidnightRunner runs at midnight daily and checks if it should:
-// 1. Close the current season (Day 21)
-// 2. Prepare divisions for the next season
-func LeagueMidnightRunner(forceRun bool) error {
-	log.Info().Bool("force", forceRun).Msg("starting league midnight runner maintenance task")
-
-	if forceRun {
-		log.Warn().Msg("⚠️  FORCE MODE ENABLED - Skipping time checks")
-	}
+// LeagueSeasonStartingSoon sends "season starting soon" notifications
+// This runs on the last day of current season (1 day before next season starts)
+func LeagueSeasonStartingSoon() error {
+	log.Info().Msg("starting league season starting soon maintenance task")
 
 	ctx := context.Background()
 	cfg := &config.Config{}
@@ -349,7 +344,8 @@ func LeagueMidnightRunner(forceRun bool) error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -357,7 +353,112 @@ func LeagueMidnightRunner(forceRun bool) error {
 		return err
 	}
 
-	now := time.Now()
+	now := clock.Now()
+	notificationsSent := 0
+
+	for _, dbLeague := range leagues {
+		log.Info().Str("league", dbLeague.Name).Msg("Checking league...")
+
+		// Parse league settings
+		leagueSettings, err := parseLeagueSettings(dbLeague.Settings)
+		if err != nil {
+			log.Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to parse league settings")
+			continue
+		}
+
+		// Get current active season
+		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
+		if err != nil {
+			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("No current season, skipping")
+			continue
+		}
+
+		shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, now)
+		log.Info().
+			Bool("shouldRun", shouldRun).
+			Str("reason", reason).
+			Str("seasonID", currentSeason.Uuid.String()).
+			Msg("Season starting soon check")
+
+		if !shouldRun {
+			continue
+		}
+
+		// Find the next season (should be in SCHEDULED status)
+		seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+		if err != nil {
+			log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for reminder")
+			continue
+		}
+
+		// Find the next season (current season number + 1)
+		nextSeasonNumber := currentSeason.SeasonNumber + 1
+
+		// Debug: Log all seasons found
+		log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("currentSeasonNumber", currentSeason.SeasonNumber).Int32("lookingForSeasonNumber", nextSeasonNumber).Msg("Searching for next season")
+		for _, s := range seasons {
+			log.Info().
+				Str("seasonID", s.Uuid.String()).
+				Int32("seasonNumber", s.SeasonNumber).
+				Int32("status", s.Status).
+				Str("statusName", pb.SeasonStatus(s.Status).String()).
+				Msg("Found season")
+		}
+
+		foundNextSeason := false
+		for _, season := range seasons {
+			// Accept both REGISTRATION_OPEN and SCHEDULED status since this runs before season starts
+			if season.SeasonNumber == nextSeasonNumber &&
+				(season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) ||
+					season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED)) {
+				log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("nextSeason", season.SeasonNumber).Str("status", pb.SeasonStatus(season.Status).String()).Msg("Sending season starting soon notifications...")
+
+				err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+				if err != nil {
+					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send season starting soon notifications")
+				} else {
+					log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("season", season.SeasonNumber).Msg("✓ Season starting soon notifications sent successfully")
+					notificationsSent++
+				}
+				foundNextSeason = true
+				break
+			}
+		}
+
+		if !foundNextSeason {
+			log.Warn().Str("leagueID", dbLeague.Uuid.String()).Int32("expectedSeasonNumber", nextSeasonNumber).Msg("No scheduled next season found for notifications")
+		}
+	}
+
+	log.Info().Int("notificationsSent", notificationsSent).Msg("completed league season starting soon")
+	return nil
+}
+
+// LeagueMidnightRunner runs at midnight daily and checks if it should:
+// 1. Close the current season (Day 21)
+// 2. Prepare divisions for the next season
+func LeagueMidnightRunner() error {
+	log.Info().Msg("starting league midnight runner maintenance task")
+
+	ctx := context.Background()
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	allStores, err := initLeagueStores(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+
+	// Get all active leagues
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
+	if err != nil {
+		return err
+	}
+
+	now := clock.Now()
 	tasksRun := 0
 
 	for _, dbLeague := range leagues {
@@ -378,7 +479,7 @@ func LeagueMidnightRunner(forceRun bool) error {
 		}
 
 		// Check if we should close the season
-		shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", leagueSettings.SeasonLengthDays, forceRun, now)
+		shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", leagueSettings.SeasonLengthDays, now)
 		log.Info().
 			Bool("shouldRun", shouldRun).
 			Str("reason", reason).
@@ -391,7 +492,7 @@ func LeagueMidnightRunner(forceRun bool) error {
 
 		// PHASE 1: Close current season
 		log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Closing current season...")
-		closeResult, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid, now)
+		closeResult, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid)
 		if err != nil {
 			log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to close season")
 			continue // Don't proceed to phase 2 if phase 1 fails
@@ -422,7 +523,7 @@ func LeagueMidnightRunner(forceRun bool) error {
 			}
 
 			foundRegOpenSeason = true
-			prepareResult, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid, now)
+			prepareResult, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid)
 			if err != nil {
 				log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to prepare season")
 				continue
@@ -456,12 +557,8 @@ func LeagueMidnightRunner(forceRun bool) error {
 // LeagueMorningRunner runs at 8am daily and checks if it should:
 // 1. Open registration for next season (Day 14)
 // 2. Start any scheduled seasons (Day 1 of new season)
-func LeagueMorningRunner(forceRun bool) error {
-	log.Info().Bool("force", forceRun).Msg("starting league morning runner maintenance task")
-
-	if forceRun {
-		log.Warn().Msg("⚠️  FORCE MODE ENABLED - Skipping time checks")
-	}
+func LeagueMorningRunner() error {
+	log.Info().Msg("starting league morning runner maintenance task")
 
 	ctx := context.Background()
 	cfg := &config.Config{}
@@ -472,7 +569,8 @@ func LeagueMorningRunner(forceRun bool) error {
 		return err
 	}
 
-	lifecycleMgr := league.NewSeasonLifecycleManager(allStores)
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
 
 	// Get all active leagues
 	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
@@ -480,7 +578,7 @@ func LeagueMorningRunner(forceRun bool) error {
 		return err
 	}
 
-	now := time.Now()
+	now := clock.Now()
 	tasksRun := 0
 
 	// Create event channel for game events (needed for season starter)
@@ -513,7 +611,7 @@ func LeagueMorningRunner(forceRun bool) error {
 		// TASK 1: Check if we should open registration
 		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
 		if err == nil {
-			shouldRun, reason := league.ShouldRunTask(&currentSeason, "open-registration", leagueSettings.SeasonLengthDays, forceRun, now)
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "open-registration", leagueSettings.SeasonLengthDays, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
 				Str("reason", reason).
@@ -522,7 +620,7 @@ func LeagueMorningRunner(forceRun bool) error {
 
 			if shouldRun {
 				log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Opening registration for next season...")
-				result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid, now)
+				result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid)
 				if err != nil {
 					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to open registration")
 					// Continue to check for season start anyway
@@ -542,7 +640,7 @@ func LeagueMorningRunner(forceRun bool) error {
 		// This runs on the last day of current season (1 day before next season starts)
 		currentSeason, err = allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
 		if err == nil {
-			shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, forceRun, now)
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
 				Str("reason", reason).
@@ -558,7 +656,7 @@ func LeagueMorningRunner(forceRun bool) error {
 					// Find the next season (current season number + 1)
 					nextSeasonNumber := currentSeason.SeasonNumber + 1
 					for _, season := range seasonsForReminder {
-						if season.SeasonNumber == nextSeasonNumber && season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) {
+						if season.SeasonNumber == nextSeasonNumber && (season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) || season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN)) {
 							log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("nextSeason", season.SeasonNumber).Msg("Sending season starting soon notifications...")
 
 							err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
@@ -587,7 +685,7 @@ func LeagueMorningRunner(forceRun bool) error {
 				continue
 			}
 
-			shouldRun, reason := league.ShouldRunTask(&season, "start-season", leagueSettings.SeasonLengthDays, forceRun, now)
+			shouldRun, reason := league.ShouldRunTask(&season, "start-season", leagueSettings.SeasonLengthDays, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
 				Str("reason", reason).
@@ -601,7 +699,7 @@ func LeagueMorningRunner(forceRun bool) error {
 			log.Info().Str("seasonID", season.Uuid.String()).Msg("Starting season...")
 
 			// Step 1: Start the season (changes status to ACTIVE)
-			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid, now)
+			result, err := lifecycleMgr.StartScheduledSeason(ctx, dbLeague.Uuid, season.Uuid)
 			if err != nil {
 				log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to start season")
 				continue
@@ -646,4 +744,3 @@ func LeagueMorningRunner(forceRun bool) error {
 	log.Info().Int("tasksRun", tasksRun).Msg("completed league morning runner")
 	return nil
 }
-

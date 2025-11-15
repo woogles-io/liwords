@@ -124,7 +124,7 @@ func TestRegisterPlayer(t *testing.T) {
 	is.NoErr(err)
 
 	// Test registration
-	rm := NewRegistrationManager(store)
+	rm := NewRegistrationManager(store, RealClock{})
 
 	userID := int32(1)
 
@@ -172,7 +172,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 50 players
-	rm := NewRegistrationManager(store)
+	rm := NewRegistrationManager(store, RealClock{})
 
 	for i := 0; i < 50; i++ {
 		userID := int32(i + 1)
@@ -218,7 +218,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 10 new players (first season, so all should be "NEW")
-	rm := NewRegistrationManager(store)
+	rm := NewRegistrationManager(store, RealClock{})
 
 	for i := 0; i < 10; i++ {
 		userID := int32(i + 1)
@@ -273,7 +273,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 5 players in Season 1
-	rm := NewRegistrationManager(store)
+	rm := NewRegistrationManager(store, RealClock{})
 	returningPlayerIDs := []int32{}
 	for i := 0; i < 5; i++ {
 		userID := int32(i + 1)

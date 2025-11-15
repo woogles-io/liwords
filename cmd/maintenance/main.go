@@ -39,23 +39,11 @@ var WooglesAPIBasePath = os.Getenv("WOOGLES_API_BASE_PATH")
 // A set of maintenance functions on Woogles that can run at some given
 // cadence.
 
-// getForceRun checks both CLI flag and environment variable for force run mode
-func getForceRun(forceFlag *bool) bool {
-	if forceFlag != nil && *forceFlag {
-		return true
-	}
-	return os.Getenv("LEAGUE_FORCE_RUN") == "true"
-}
-
 // go run . blogrss-updater,foo,bar,baz
-// Or: go run . league-midnight-runner --force
+// Use LEAGUE_NOW environment variable to override current time for testing:
+//   LEAGUE_NOW="2025-01-15T08:00:00Z" go run . league-midnight-runner
 func main() {
-	// Define flags
-	forceFlag := flag.Bool("force", false, "Force run without time checks (for testing)")
 	flag.Parse()
-
-	// Check for force mode from env var as well
-	forceRun := getForceRun(forceFlag)
 
 	// Get commands - either from flag args or old-style first arg
 	var commands []string
@@ -76,7 +64,7 @@ func main() {
 		panic("need at least one command")
 	}
 
-	log.Info().Interface("commands", commands).Bool("force", forceRun).Msg("starting maintenance")
+	log.Info().Interface("commands", commands).Msg("starting maintenance")
 
 	for _, command := range commands {
 		switch strings.ToLower(command) {
@@ -108,11 +96,14 @@ func main() {
 			err := LeagueSeasonStarter()
 			log.Err(err).Msg("ran leagueSeasonStarter")
 		case "league-midnight-runner":
-			err := LeagueMidnightRunner(forceRun)
+			err := LeagueMidnightRunner()
 			log.Err(err).Msg("ran leagueMidnightRunner")
 		case "league-morning-runner":
-			err := LeagueMorningRunner(forceRun)
+			err := LeagueMorningRunner()
 			log.Err(err).Msg("ran leagueMorningRunner")
+		case "league-season-starting-soon":
+			err := LeagueSeasonStartingSoon()
+			log.Err(err).Msg("ran leagueSeasonStartingSoon")
 		case "unverified-users-cleanup":
 			err := UnverifiedUsersCleanup()
 			log.Err(err).Msg("ran unverifiedUsersCleanup")

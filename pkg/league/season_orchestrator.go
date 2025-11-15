@@ -20,7 +20,7 @@ type SeasonOrchestrator struct {
 func NewSeasonOrchestrator(allStores *stores.Stores) *SeasonOrchestrator {
 	return &SeasonOrchestrator{
 		stores:          allStores,
-		registrationMgr: NewRegistrationManager(allStores.LeagueStore),
+		registrationMgr: NewRegistrationManager(allStores.LeagueStore, RealClock{}),
 		placementMgr:    NewPlacementManager(allStores.LeagueStore),
 	}
 }
