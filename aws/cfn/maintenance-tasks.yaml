@@ -45,7 +45,7 @@ Resources:
       Name: liwords-daily-midnight-maintenance
       ScheduleExpression: cron(0 5 * * ? *)
       State: ENABLED
-      Description: Daily midnight (US Eastern) maintenance for liwords. Runs integrations refresh, game cleanup, league midnight tasks, and user cleanup.
+      Description: Daily midnight (US Eastern) maintenance for liwords. Runs integrations refresh, game cleanup, league midnight tasks, session cleanup, and user cleanup.
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-DailyMidnightTarget"
@@ -63,7 +63,7 @@ Resources:
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
-                              "integrations-refresher,cancelled-games-cleanup,league-midnight-runner,monitoring-streams-cleanup,unverified-users-cleanup"
+                              "integrations-refresher,cancelled-games-cleanup,league-midnight-runner,monitoring-streams-cleanup,expired-sessions-cleanup,unverified-users-cleanup"
                           ]
                       }
                   ]

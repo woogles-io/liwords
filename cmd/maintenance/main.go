@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"io"
 	"net/http"
 	"net/url"
@@ -43,26 +42,11 @@ var WooglesAPIBasePath = os.Getenv("WOOGLES_API_BASE_PATH")
 // Use LEAGUE_NOW environment variable to override current time for testing:
 //   LEAGUE_NOW="2025-01-15T08:00:00Z" go run . league-midnight-runner
 func main() {
-	flag.Parse()
-
-	// Get commands - either from flag args or old-style first arg
-	var commands []string
-	args := flag.Args()
-
-	if len(args) > 0 {
-		// New style: commands after flags
-		commands = args
-	} else if len(os.Args) >= 2 {
-		// Old style: comma-separated first argument
-		// Check if first arg is a flag
-		if !strings.HasPrefix(os.Args[1], "-") {
-			commands = strings.Split(os.Args[1], ",")
-		}
-	}
-
-	if len(commands) == 0 {
+	if len(os.Args) < 2 {
 		panic("need at least one command")
 	}
+
+	commands := strings.Split(os.Args[1], ",")
 
 	log.Info().Interface("commands", commands).Msg("starting maintenance")
 
@@ -107,6 +91,9 @@ func main() {
 		case "unverified-users-cleanup":
 			err := UnverifiedUsersCleanup()
 			log.Err(err).Msg("ran unverifiedUsersCleanup")
+		case "expired-sessions-cleanup":
+			err := ExpiredSessionsCleanup()
+			log.Err(err).Msg("ran expiredSessionsCleanup")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}
@@ -196,7 +183,7 @@ func IntegrationsRefresher() error {
 	log.Info().Msg("before load")
 	cfg := &config.Config{}
 	log.Info().Msg("after cfg")
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 	log.Info().Msg("after load")
 	log.Info().Interface("config", cfg).Msg("started")
 
@@ -227,7 +214,7 @@ func SubBadgeUpdater() error {
 	log.Info().Msg("before load")
 	cfg := &config.Config{}
 	log.Info().Msg("after cfg")
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 	log.Info().Msg("after load")
 	log.Info().Interface("config", cfg).Msg("started")
 
@@ -337,7 +324,7 @@ type PatreonBadge struct {
 func CancelledGamesCleanup() error {
 	log.Info().Msg("starting cancelled games cleanup")
 	cfg := &config.Config{}
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 
 	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -450,7 +437,7 @@ func updateBadges(q *models.Queries, pool *pgxpool.Pool) error {
 func MonitoringStreamsCleanup() error {
 	log.Info().Msg("starting monitoring streams cleanup")
 	cfg := &config.Config{}
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 
 	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -506,7 +493,7 @@ func MonitoringStreamsCleanup() error {
 func UnverifiedUsersCleanup() error {
 	log.Info().Msg("starting unverified users cleanup")
 	cfg := &config.Config{}
-	cfg.Load(os.Args[1:])
+	cfg.Load(nil)
 
 	if cfg.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -554,6 +541,46 @@ func UnverifiedUsersCleanup() error {
 	log.Info().Int64("usersDeleted", usersDeleted).Msg("deleted unverified users")
 
 	log.Info().Int64("totalUsersDeleted", usersDeleted).Msg("unverified users cleanup complete")
+
+	return nil
+}
+
+// ExpiredSessionsCleanup deletes sessions that have already expired
+func ExpiredSessionsCleanup() error {
+	log.Info().Msg("starting expired sessions cleanup")
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	if cfg.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
+
+	// Delete sessions that have expired
+	query := `
+		DELETE FROM db_sessions
+		WHERE expires_at < NOW()
+	`
+	result, err := dbPool.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	rowsDeleted := result.RowsAffected()
+	log.Info().Int64("rowsDeleted", rowsDeleted).Msg("deleted expired sessions")
 
 	return nil
 }
