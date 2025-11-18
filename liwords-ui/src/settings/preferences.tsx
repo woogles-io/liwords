@@ -11,9 +11,7 @@ import { BoardPreview } from "./board_preview";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { DndProvider } from "react-dnd";
-import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "../store/redux_store";
-import { setDarkMode } from "../store/theme";
+import { useUIStore } from "../stores/ui-store";
 import {
   getTurnNotificationPreference,
   setTurnNotificationPreference,
@@ -168,8 +166,8 @@ const makeTileOrderValue = (tileOrder: string, autoShuffle: boolean) =>
   JSON.stringify({ tileOrder, autoShuffle });
 
 export const Preferences = React.memo(() => {
-  const darkMode = useSelector((state: RootState) => state.theme.darkMode);
-  const dispatch = useDispatch();
+  const themeMode = useUIStore((state) => state.themeMode);
+  const setThemeMode = useUIStore((state) => state.setThemeMode);
 
   const initialTileStyle = localStorage?.getItem("userTile") || "Default";
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
@@ -383,8 +381,8 @@ export const Preferences = React.memo(() => {
             <div>
               <div>Use the dark version of the Woogles UI on Woogles.io</div>
               <Switch
-                defaultChecked={darkMode}
-                onChange={(checked: boolean) => dispatch(setDarkMode(checked))}
+                checked={themeMode === 'dark'}
+                onChange={(checked: boolean) => setThemeMode(checked ? 'dark' : 'light')}
                 className="dark-toggle"
               />
             </div>
