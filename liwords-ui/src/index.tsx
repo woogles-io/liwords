@@ -5,15 +5,14 @@ import App from "./App";
 import { Store as LegacyStore } from "./store/store";
 import { BriefProfiles } from "./utils/brief_profiles";
 
-import { Provider } from "react-redux";
 import "@ant-design/v5-patch-for-react-19";
 
 import "antd/dist/reset.css";
 import "./index.css";
-import { store } from "./store/redux_store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { transport } from "./utils/hooks/connect";
+import { AppProviders } from "./providers/AppProviders";
 
 declare global {
   interface Window {
@@ -69,18 +68,18 @@ const queryClient = new QueryClient();
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Provider store={store}>
-        {/* legacy store will be slowly decommissioned */}
-        <LegacyStore>
-          <TransportProvider transport={transport}>
-            <QueryClientProvider client={queryClient}>
+      {/* legacy context store will be slowly decommissioned */}
+      <LegacyStore>
+        <TransportProvider transport={transport}>
+          <QueryClientProvider client={queryClient}>
+            <AppProviders>
               <BriefProfiles>
                 <App />
               </BriefProfiles>
-            </QueryClientProvider>
-          </TransportProvider>
-        </LegacyStore>
-      </Provider>
+            </AppProviders>
+          </QueryClientProvider>
+        </TransportProvider>
+      </LegacyStore>
     </BrowserRouter>
   </React.StrictMode>,
 );

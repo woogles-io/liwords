@@ -48,11 +48,6 @@ import { ChatMessageSchema } from "./gen/api/proto/ipc/chat_pb";
 import { MessageType } from "./gen/api/proto/ipc/ipc_pb";
 import Footer from "./navigation/footer";
 import { Embed } from "./embed/embed";
-import { useSelector } from "react-redux";
-
-import { App as AntDApp } from "antd";
-import { ConfigProvider } from "antd";
-import { liwordsDefaultTheme, liwordsDarkTheme } from "./themes";
 
 import {
   connectErrorMessage,
@@ -64,7 +59,6 @@ import {
   SocializeService,
 } from "./gen/api/proto/user_service/user_service_pb";
 import { BoardEditor } from "./boardwizard/editor";
-import { RootState } from "./store/redux_store";
 import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
 import { CollectionViewer } from "./collections/CollectionViewer";
 import { create, toBinary } from "@bufbuild/protobuf";
@@ -180,25 +174,6 @@ const App = React.memo(() => {
   );
   // get badge metadata into internal cache.
   useQuery(getBadgesMetadata, {}, { enabled: !isEmbeddedPath });
-
-  const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
-  useEffect(() => {
-    console.log("Detected useDarkMode = ", useDarkMode);
-    localStorage.setItem("darkMode", useDarkMode ? "true" : "false");
-    document?.body?.classList?.add(`mode--${useDarkMode ? "dark" : "default"}`);
-    document?.body?.classList?.remove(
-      `mode--${useDarkMode ? "default" : "dark"}`,
-    );
-  }, [useDarkMode]);
-
-  const antdTheme = useMemo(() => {
-    if (useDarkMode) {
-      console.log("Using antd dark theme");
-      return liwordsDarkTheme;
-    }
-    console.log("Using antd-default-theme");
-    return liwordsDefaultTheme;
-  }, [useDarkMode]);
 
   // See store.tsx for how this works.
   const [socketId, setSocketId] = useState(0);
@@ -346,17 +321,15 @@ const App = React.memo(() => {
   if (!isCurrentLocation) return null;
 
   return (
-    <ConfigProvider theme={antdTheme}>
-      <AntDApp>
-        <div className="App">
-          {!isEmbeddedPath && (
-            <LiwordsSocket
-              key={socketId}
-              resetSocket={resetSocket}
-              setValues={setLiwordsSocketValues}
-            />
-          )}
-          <Routes>
+    <div className="App">
+      {!isEmbeddedPath && (
+        <LiwordsSocket
+          key={socketId}
+          resetSocket={resetSocket}
+          setValues={setLiwordsSocketValues}
+        />
+      )}
+      <Routes>
             <Route
               path="/"
               element={
@@ -458,11 +431,9 @@ const App = React.memo(() => {
               path="handover-signed-cookie"
               element={<HandoverSignedCookie />}
             />
-          </Routes>
-          {!isEmbeddedPath && <Footer />}
-        </div>
-      </AntDApp>
-    </ConfigProvider>
+      </Routes>
+      {!isEmbeddedPath && <Footer />}
+    </div>
   );
 });
 
