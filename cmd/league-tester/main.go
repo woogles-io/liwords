@@ -28,6 +28,8 @@ func main() {
 	switch command {
 	case "create-users":
 		err = createUsersCommand(ctx, os.Args[2:])
+	case "create-rated-users":
+		err = createRatedUsersCommand(ctx, os.Args[2:])
 	case "create-league":
 		err = createLeagueCommand(ctx, os.Args[2:])
 	case "register-users":
@@ -67,7 +69,8 @@ func printUsage() {
 	fmt.Println("Usage: go run cmd/league-tester <command> [options]")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  create-users       Create fake test users")
+	fmt.Println("  create-users       Create fake test users with default 1500 rating")
+	fmt.Println("  create-rated-users Create fake test users with varied ratings (1200-2000)")
 	fmt.Println("  create-league      Create a test league")
 	fmt.Println("  register-users     Register users for a league season")
 	fmt.Println("  unregister-user    Unregister a specific user from a season")
@@ -97,6 +100,16 @@ func createUsersCommand(ctx context.Context, args []string) error {
 	fs.Parse(args)
 
 	return createTestUsers(ctx, *count, *startID, *output)
+}
+
+func createRatedUsersCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("create-rated-users", flag.ExitOnError)
+	count := fs.Int("count", 20, "Number of test users to create")
+	startID := fs.Int("start-id", 1, "Starting ID number for usernames (default: 1)")
+	output := fs.String("output", "test_users.json", "Output file for user UUIDs")
+	fs.Parse(args)
+
+	return createRatedTestUsers(ctx, *count, *startID, *output)
 }
 
 func createLeagueCommand(ctx context.Context, args []string) error {

@@ -924,7 +924,7 @@ func (ls *LeagueService) RegisterForSeason(
 	}
 
 	// Register the player
-	regMgr := NewRegistrationManager(ls.store, RealClock{})
+	regMgr := NewRegistrationManager(ls.store, RealClock{}, ls.stores)
 	err = regMgr.RegisterPlayer(ctx, int32(user.ID), season.Uuid)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to register player: %w", err))
@@ -1016,7 +1016,7 @@ func (ls *LeagueService) GetSeasonRegistrations(
 	}
 
 	// Get all registrations for the season
-	rm := NewRegistrationManager(ls.store, RealClock{})
+	rm := NewRegistrationManager(ls.store, RealClock{}, ls.stores)
 	registrations, err := rm.GetSeasonRegistrations(ctx, seasonID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season registrations: %w", err))

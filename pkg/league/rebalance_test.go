@@ -91,7 +91,8 @@ func TestCalculatePriorityScores(t *testing.T) {
 		players[i] = tt.player
 	}
 
-	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs)
+	// Test with Season 2 to avoid Season 1 special rating logic
+	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs, 2)
 
 	// Create a map by UserID for easier lookup after sorting
 	scoreMap := make(map[string]float64)
@@ -132,7 +133,8 @@ func TestCalculatePriorityScores_Sorting(t *testing.T) {
 		{UserID: "frankie", VirtualDivision: 2, PlacementStatus: ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, HiatusSeasons: 4},
 	}
 
-	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs)
+	// Test with Season 2 to avoid Season 1 special rating logic
+	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs, 2)
 
 	// Verify sorting: should be Bob > Alice > Charlie > Dora > Frankie
 	expectedOrder := []string{"bob", "alice", "charlie", "dora", "frankie"}
@@ -141,6 +143,49 @@ func TestCalculatePriorityScores_Sorting(t *testing.T) {
 		assert.Equal(t, expectedUserID, playersWithPriority[i].UserID,
 			"Player at position %d should be %s, got %s (score: %.2f)",
 			i, expectedUserID, playersWithPriority[i].UserID, playersWithPriority[i].PriorityScore)
+	}
+}
+
+func TestCalculatePriorityScores_Season1RatingBased(t *testing.T) {
+	rm := &RebalanceManager{}
+	numVirtualDivs := int32(1) // Season 1: no previous divisions
+
+	// Create NEW players for Season 1 with different ratings
+	// All players have same base priority (50), but different ratings
+	players := []PlayerWithVirtualDiv{
+		{UserID: "alice", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1800},
+		{UserID: "bob", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1600},
+		{UserID: "charlie", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 2000},
+		{UserID: "dora", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1400},
+		{UserID: "eve", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 0}, // No rating
+		{UserID: "frank", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1700},
+	}
+
+	// Test Season 1: should be sorted by rating
+	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs, 1)
+
+	// Expected order: charlie(2000) > alice(1800) > frank(1700) > bob(1600) > dora(1400) > eve(0)
+	expectedOrder := []string{"charlie", "alice", "frank", "bob", "dora", "eve"}
+	expectedScores := []float64{2050, 1850, 1750, 1650, 1450, 50} // base(50) + rating
+
+	for i, expectedUserID := range expectedOrder {
+		assert.Equal(t, expectedUserID, playersWithPriority[i].UserID,
+			"Player at position %d should be %s, got %s (score: %.2f)",
+			i, expectedUserID, playersWithPriority[i].UserID, playersWithPriority[i].PriorityScore)
+
+		assert.Equal(t, expectedScores[i], playersWithPriority[i].PriorityScore,
+			"Score for %s should be %.2f, got %.2f",
+			expectedUserID, expectedScores[i], playersWithPriority[i].PriorityScore)
+	}
+
+	// Test Season 2+: NEW players should NOT be sorted by rating
+	playersWithPriority2 := rm.CalculatePriorityScores(players, numVirtualDivs, 2)
+
+	// All should have the same score (50) regardless of rating
+	for i, p := range playersWithPriority2 {
+		assert.Equal(t, 50.0, p.PriorityScore,
+			"Season 2 NEW player %d (%s) should have score 50, got %.2f",
+			i, p.UserID, p.PriorityScore)
 	}
 }
 

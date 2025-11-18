@@ -757,7 +757,7 @@ func (slm *SeasonLifecycleManager) RollbackSeasonToScheduled(ctx context.Context
 	return nil
 }
 
-// ShouldRunTask checks if a maintenance task should run based on season dates
+// ShouldRunTask checks if a maintenance task should run based on season dates and time
 // Returns (shouldRun bool, reason string)
 func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDays int32, now time.Time) (bool, string) {
 	// Ensure season has valid dates
@@ -770,56 +770,84 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDay
 
 	switch taskType {
 	case "close-season":
-		// Should run at midnight on the last day of season
+		// Should run at midnight (or later) on the last day of season
 		// The EndDate is the last day of the season
 		seasonEndDate := endDate.Truncate(24 * time.Hour)
 		todayMidnight := now.Truncate(24 * time.Hour)
 
-		if todayMidnight.Equal(seasonEndDate) {
-			return true, "Today is last day of season"
+		if !todayMidnight.Equal(seasonEndDate) {
+			return false, fmt.Sprintf("Today=%s, SeasonEnd=%s",
+				todayMidnight.Format("2006-01-02"),
+				seasonEndDate.Format("2006-01-02"))
 		}
-		return false, fmt.Sprintf("Today=%s, SeasonEnd=%s",
-			todayMidnight.Format("2006-01-02"),
-			seasonEndDate.Format("2006-01-02"))
+
+		// Date matches - midnight tasks can run any time on the correct day
+		return true, "Today is last day of season"
 
 	case "open-registration":
-		// Should run at 8am at the halfway point of the season
-		seasonStartDate := startDate.Truncate(24 * time.Hour)
+		// Should run at the same time as season start, but halfway through the season
+		// Calculate registration open time: start time + (seasonLength / 2) days
+		// This preserves the time-of-day and timezone from the start date
 		daysUntilOpen := (seasonLengthDays / 2) - 1 // -1 because Day 1 is start date
-		registrationOpenDay := seasonStartDate.Add(time.Duration(daysUntilOpen) * 24 * time.Hour)
-		today := now.Truncate(24 * time.Hour)
+		registrationOpenTime := startDate.Add(time.Duration(daysUntilOpen) * 24 * time.Hour)
 
-		if today.Equal(registrationOpenDay) {
-			return true, fmt.Sprintf("Today is registration open day (halfway through %d-day season)", seasonLengthDays)
+		if now.Before(registrationOpenTime) {
+			return false, fmt.Sprintf("Current time %s is before registration open time %s",
+				now.Format("2006-01-02 15:04:05 MST"),
+				registrationOpenTime.Format("2006-01-02 15:04:05 MST"))
 		}
-		return false, fmt.Sprintf("Today=%s, RegistrationOpenDay=%s",
-			today.Format("2006-01-02"),
-			registrationOpenDay.Format("2006-01-02"))
+
+		return true, fmt.Sprintf("Current time has reached registration open time (%s, halfway through %d-day season)",
+			registrationOpenTime.Format("2006-01-02 15:04:05 MST"), seasonLengthDays)
 
 	case "start-season":
-		// Should run at 8am on the season's start date
-		seasonStartDate := startDate.Truncate(24 * time.Hour)
-		today := now.Truncate(24 * time.Hour)
-
-		if today.Equal(seasonStartDate) {
-			return true, "Today is season start date"
+		// Should run at or after the season's start date/time
+		// The start date includes the time (e.g., 2025-11-19 08:00:00-05:00 for 8 AM Eastern)
+		if now.Before(startDate) {
+			return false, fmt.Sprintf("Current time %s is before season start %s",
+				now.Format("2006-01-02 15:04:05 MST"),
+				startDate.Format("2006-01-02 15:04:05 MST"))
 		}
-		return false, fmt.Sprintf("Today=%s, SeasonStart=%s",
-			today.Format("2006-01-02"),
-			seasonStartDate.Format("2006-01-02"))
+
+		return true, fmt.Sprintf("Current time has reached season start time (%s)",
+			startDate.Format("2006-01-02 15:04:05 MST"))
 
 	case "season-starting-soon":
-		// Should run at 8am on the last day of current season (1 day before next season starts)
-		seasonStartDate := startDate.Truncate(24 * time.Hour)
-		lastDay := seasonStartDate.Add(time.Duration(seasonLengthDays-1) * 24 * time.Hour)
-		today := now.Truncate(24 * time.Hour)
+		// Should run at the same time as season start, but on the last day of the season (1 day before next season starts)
+		// Calculate: start time + (seasonLength - 1) days
+		// This preserves the time-of-day and timezone from the start date
+		lastDayTime := startDate.Add(time.Duration(seasonLengthDays-1) * 24 * time.Hour)
 
-		if today.Equal(lastDay) {
-			return true, fmt.Sprintf("Today is last day of %d-day season (1 day before next season starts)", seasonLengthDays)
+		if now.Before(lastDayTime) {
+			return false, fmt.Sprintf("Current time %s is before last day time %s",
+				now.Format("2006-01-02 15:04:05 MST"),
+				lastDayTime.Format("2006-01-02 15:04:05 MST"))
 		}
-		return false, fmt.Sprintf("Today=%s, LastDay=%s",
-			today.Format("2006-01-02"),
-			lastDay.Format("2006-01-02"))
+
+		return true, fmt.Sprintf("Current time has reached last day of season (%s, 1 day before next season starts)",
+			lastDayTime.Format("2006-01-02 15:04:05 MST"))
+
+	case "prepare-divisions":
+		// Should run at midnight (or later) on the day the season starts (before the actual start time)
+		// Calculate midnight on the start date by truncating to the day
+		// This runs before the season actually starts (e.g., midnight before 8 AM start)
+		midnightBeforeStart := startDate.Truncate(24 * time.Hour)
+
+		if now.Before(midnightBeforeStart) {
+			return false, fmt.Sprintf("Current time %s is before midnight on start day %s",
+				now.Format("2006-01-02 15:04:05 MST"),
+				midnightBeforeStart.Format("2006-01-02 15:04:05 MST"))
+		}
+
+		// Make sure we haven't passed the actual start time yet
+		// (divisions should be prepared BEFORE the season starts)
+		if now.After(startDate) {
+			return false, fmt.Sprintf("Current time %s is after season start %s (too late to prepare divisions)",
+				now.Format("2006-01-02 15:04:05 MST"),
+				startDate.Format("2006-01-02 15:04:05 MST"))
+		}
+
+		return true, fmt.Sprintf("Current time is between midnight and season start (prepare divisions now)")
 	}
 
 	return false, "Unknown task type"
