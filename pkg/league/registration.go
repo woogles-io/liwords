@@ -6,21 +6,31 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
+const (
+	// StableRatingDeviation is the threshold for considering a rating "stable"
+	// Ratings with RD below this value will be included in the average
+	StableRatingDeviation = entity.RatingDeviationConfidence // 90
+)
+
 // RegistrationManager handles player registration for league seasons
 type RegistrationManager struct {
-	store league.Store
-	clock Clock
+	store      league.Store
+	clock      Clock
+	allStores  *stores.Stores
 }
 
 // NewRegistrationManager creates a new registration manager
-func NewRegistrationManager(store league.Store, clock Clock) *RegistrationManager {
+func NewRegistrationManager(store league.Store, clock Clock, allStores *stores.Stores) *RegistrationManager {
 	return &RegistrationManager{
-		store: store,
-		clock: clock,
+		store:     store,
+		clock:     clock,
+		allStores: allStores,
 	}
 }
 
@@ -67,6 +77,56 @@ type CategorizedPlayer struct {
 	Rating       int32
 }
 
+// calculateAverageRating calculates the average Woogles rating for a user
+// following these rules:
+// 1. Use average of all ratings where RD < 90 (stable ratings)
+// 2. If no stable ratings but has unstable ratings, use average of unstable ratings
+// 3. If no rated games at all, return 0 (not 1500)
+func (rm *RegistrationManager) calculateAverageRating(ctx context.Context, userUUID string) (int32, error) {
+	// Get user with ratings
+	user, err := rm.allStores.UserStore.GetByUUID(ctx, userUUID)
+	if err != nil {
+		return 0, err
+	}
+
+	if user.Profile == nil || user.Profile.Ratings.Data == nil || len(user.Profile.Ratings.Data) == 0 {
+		// No ratings at all - return 0 instead of 1500
+		return 0, nil
+	}
+
+	// Collect stable and unstable ratings
+	var stableRatings []float64
+	var unstableRatings []float64
+
+	for _, rating := range user.Profile.Ratings.Data {
+		if rating.RatingDeviation < StableRatingDeviation {
+			stableRatings = append(stableRatings, rating.Rating)
+		} else {
+			unstableRatings = append(unstableRatings, rating.Rating)
+		}
+	}
+
+	// Calculate average based on what's available
+	if len(stableRatings) > 0 {
+		// Use stable ratings
+		sum := 0.0
+		for _, r := range stableRatings {
+			sum += r
+		}
+		return int32(sum / float64(len(stableRatings))), nil
+	} else if len(unstableRatings) > 0 {
+		// No stable ratings, use unstable ratings
+		sum := 0.0
+		for _, r := range unstableRatings {
+			sum += r
+		}
+		return int32(sum / float64(len(unstableRatings))), nil
+	}
+
+	// No ratings at all
+	return 0, nil
+}
+
 // CategorizeRegistrations determines which players are new vs returning
 // for a given season. A player is "new" (rookie) if they have never participated
 // in any previous season of this league.
@@ -101,10 +161,20 @@ func (rm *RegistrationManager) CategorizeRegistrations(
 			category = PlayerCategoryReturning
 		}
 
+		// Calculate average rating for this player
+		avgRating := int32(0)
+		if reg.UserUuid.Valid {
+			avgRating, err = rm.calculateAverageRating(ctx, reg.UserUuid.String)
+			if err != nil {
+				// If we can't get the rating, default to 0
+				avgRating = 0
+			}
+		}
+
 		categorized = append(categorized, CategorizedPlayer{
 			Registration: reg,
 			Category:     category,
-			Rating:       0, // Rating removed from system
+			Rating:       avgRating,
 		})
 	}
 

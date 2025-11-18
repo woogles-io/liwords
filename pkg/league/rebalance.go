@@ -118,7 +118,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	}
 
 	// Step 3: Calculate priority scores
-	playersWithPriority := rm.CalculatePriorityScores(playersWithVirtualDivs, numVirtualDivs)
+	playersWithPriority := rm.CalculatePriorityScores(playersWithVirtualDivs, numVirtualDivs, newSeasonNumber)
 
 	// Step 4: Determine number of divisions to create
 	numDivisions := int(math.Round(float64(len(playersWithPriority)) / float64(idealDivisionSize)))
@@ -445,6 +445,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 func (rm *RebalanceManager) CalculatePriorityScores(
 	players []PlayerWithVirtualDiv,
 	numVirtualDivs int32,
+	seasonNumber int32,
 ) []PlayerWithPriority {
 	result := make([]PlayerWithPriority, len(players))
 
@@ -485,6 +486,12 @@ func (rm *RebalanceManager) CalculatePriorityScores(
 				priorityBonus+
 				rankComponent,
 		) * weight
+
+		// For NEW players in Season 1 ONLY, add their rating to prioritize by skill
+		// This ensures that in the initial season, higher-rated players are placed in higher divisions
+		if p.PlacementStatus == ipc.PlacementStatus_PLACEMENT_NEW && seasonNumber == 1 {
+			score += float64(p.Rating)
+		}
 
 		result[i] = PlayerWithPriority{
 			PlayerWithVirtualDiv: p,

@@ -96,7 +96,7 @@ func TestRegisterPlayer(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	_, store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create a test league and season
@@ -124,7 +124,7 @@ func TestRegisterPlayer(t *testing.T) {
 	is.NoErr(err)
 
 	// Test registration
-	rm := NewRegistrationManager(store, RealClock{})
+	rm := NewRegistrationManager(store, RealClock{}, allStores)
 
 	userID := int32(1)
 
@@ -144,7 +144,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	_, store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league and season
@@ -172,7 +172,7 @@ func TestRegisterMultiplePlayers(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 50 players
-	rm := NewRegistrationManager(store, RealClock{})
+	rm := NewRegistrationManager(store, RealClock{}, allStores)
 
 	for i := 0; i < 50; i++ {
 		userID := int32(i + 1)
@@ -190,7 +190,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	_, store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league and season
@@ -218,7 +218,7 @@ func TestCategorizeRegistrations_AllNew(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 10 new players (first season, so all should be "NEW")
-	rm := NewRegistrationManager(store, RealClock{})
+	rm := NewRegistrationManager(store, RealClock{}, allStores)
 
 	for i := 0; i < 10; i++ {
 		userID := int32(i + 1)
@@ -244,7 +244,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
-	_, store, cleanup := setupTest(t)
+	allStores, store, cleanup := setupTest(t)
 	defer cleanup()
 
 	// Create league
@@ -273,7 +273,7 @@ func TestCategorizeRegistrations_Mixed(t *testing.T) {
 	is.NoErr(err)
 
 	// Register 5 players in Season 1
-	rm := NewRegistrationManager(store, RealClock{})
+	rm := NewRegistrationManager(store, RealClock{}, allStores)
 	returningPlayerIDs := []int32{}
 	for i := 0; i < 5; i++ {
 		userID := int32(i + 1)

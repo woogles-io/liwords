@@ -471,43 +471,48 @@ func LeagueMidnightRunner() error {
 			continue
 		}
 
-		// Get current active season
+		// Get current active season (if any)
 		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
-		if err != nil {
-			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("No current season, skipping")
-			continue
+		hasCurrentSeason := (err == nil)
+
+		if !hasCurrentSeason {
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("No current season found - checking for REGISTRATION_OPEN seasons to prepare")
 		}
 
-		// Check if we should close the season
-		shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", leagueSettings.SeasonLengthDays, now)
-		log.Info().
-			Bool("shouldRun", shouldRun).
-			Str("reason", reason).
-			Str("seasonID", currentSeason.Uuid.String()).
-			Msg("Close season check")
-
-		if !shouldRun {
-			continue
-		}
-
-		// PHASE 1: Close current season
-		log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Closing current season...")
-		closeResult, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid)
-		if err != nil {
-			log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to close season")
-			continue // Don't proceed to phase 2 if phase 1 fails
-		}
-
-		if closeResult != nil {
+		// PHASE 1: Close current season (only if we have one)
+		if hasCurrentSeason {
+			// Check if we should close the season
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "close-season", leagueSettings.SeasonLengthDays, now)
 			log.Info().
-				Str("currentSeasonID", closeResult.CurrentSeasonID.String()).
-				Str("leagueID", closeResult.LeagueID.String()).
-				Int("forceFinished", closeResult.ForceFinishedGames).
-				Msg("✓ Successfully closed season")
+				Bool("shouldRun", shouldRun).
+				Str("reason", reason).
+				Str("seasonID", currentSeason.Uuid.String()).
+				Msg("Close season check")
+
+			if !shouldRun {
+				continue
+			}
+
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Closing current season...")
+			closeResult, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid)
+			if err != nil {
+				log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to close season")
+				continue // Don't proceed to phase 2 if phase 1 fails
+			}
+
+			if closeResult != nil {
+				log.Info().
+					Str("currentSeasonID", closeResult.CurrentSeasonID.String()).
+					Str("leagueID", closeResult.LeagueID.String()).
+					Int("forceFinished", closeResult.ForceFinishedGames).
+					Msg("✓ Successfully closed season")
+			}
 		}
 
-		// PHASE 2: Prepare divisions for next season
-		log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Preparing divisions for next season...")
+		// PHASE 2: Prepare divisions for next season (or first season if no current season)
+		// This should only run if:
+		// - We just closed the current season (hasCurrentSeason && ran PHASE 1), OR
+		// - It's time to prepare Season 1 (no current season, midnight on the day Season 1 starts)
 
 		// Find and process REGISTRATION_OPEN season
 		allSeasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
@@ -522,6 +527,23 @@ func LeagueMidnightRunner() error {
 				continue
 			}
 
+			// Check if it's time to prepare this season
+			// For Season 1 (no current season), check if it's midnight on the day the season starts
+			// For Season 2+ (has current season), we already checked timing in PHASE 1
+			if !hasCurrentSeason {
+				shouldRun, reason := league.ShouldRunTask(&season, "prepare-divisions", leagueSettings.SeasonLengthDays, now)
+				log.Info().
+					Bool("shouldRun", shouldRun).
+					Str("reason", reason).
+					Str("seasonID", season.Uuid.String()).
+					Msg("Prepare divisions check (no current season)")
+
+				if !shouldRun {
+					continue
+				}
+			}
+
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Preparing divisions for season...")
 			foundRegOpenSeason = true
 			prepareResult, err := lifecycleMgr.PrepareAndScheduleSeason(ctx, dbLeague.Uuid, season.Uuid)
 			if err != nil {

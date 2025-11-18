@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	maxConcurrentEmails = 5                       // Max simultaneous email sends
-	emailSendDelay      = 200 * time.Millisecond // Delay between email launches (max 5/sec)
+	maxConcurrentEmails = 5                // Max simultaneous email sends
+	emailSendDelay      = 2 * time.Second  // Delay between email launches (~1 every 2 seconds)
 )
 
 type LeagueEmailInfo struct {
