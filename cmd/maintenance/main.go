@@ -513,7 +513,34 @@ func UnverifiedUsersCleanup() error {
 	}
 	defer dbPool.Close()
 
-	// Delete profiles first (foreign key constraint)
+	// Begin transaction
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete followings first (foreign key constraint)
+	// Remove both where unverified users are being followed AND where they're following others
+	queryFollowings := `
+		DELETE FROM followings
+		WHERE user_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+		OR follower_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+	`
+	resultFollowings, err := tx.Exec(ctx, queryFollowings)
+	if err != nil {
+		return err
+	}
+	followingsDeleted := resultFollowings.RowsAffected()
+	log.Info().Int64("followingsDeleted", followingsDeleted).Msg("deleted unverified user followings")
+
+	// Delete profiles (foreign key constraint)
 	queryProfiles := `
 		DELETE FROM profiles
 		WHERE user_id IN (
@@ -521,7 +548,7 @@ func UnverifiedUsersCleanup() error {
 			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
 		)
 	`
-	resultProfiles, err := dbPool.Exec(ctx, queryProfiles)
+	resultProfiles, err := tx.Exec(ctx, queryProfiles)
 	if err != nil {
 		return err
 	}
@@ -533,14 +560,23 @@ func UnverifiedUsersCleanup() error {
 		DELETE FROM users
 		WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
 	`
-	resultUsers, err := dbPool.Exec(ctx, queryUsers)
+	resultUsers, err := tx.Exec(ctx, queryUsers)
 	if err != nil {
 		return err
 	}
 	usersDeleted := resultUsers.RowsAffected()
 	log.Info().Int64("usersDeleted", usersDeleted).Msg("deleted unverified users")
 
-	log.Info().Int64("totalUsersDeleted", usersDeleted).Msg("unverified users cleanup complete")
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	log.Info().
+		Int64("followingsDeleted", followingsDeleted).
+		Int64("profilesDeleted", profilesDeleted).
+		Int64("usersDeleted", usersDeleted).
+		Msg("unverified users cleanup complete")
 
 	return nil
 }
