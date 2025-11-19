@@ -32,6 +32,7 @@ import { Team } from "./about/team";
 import { Register } from "./lobby/register";
 import { PlayerProfile } from "./profile/profile";
 import { Settings } from "./settings/settings";
+import { SettingsV2 } from "./settings-v2/SettingsV2";
 import { PasswordReset } from "./lobby/password_reset";
 import { NewPassword } from "./lobby/new_password";
 import { VerifyEmail } from "./lobby/verify_email";
@@ -417,6 +418,9 @@ const App = React.memo(() => {
             <Route path="profile/" element={<PlayerProfile />} />
             <Route path="settings" element={<Settings />}>
               <Route path=":section" element={<Settings />} />
+            </Route>
+            <Route path="settings-v2" element={<SettingsV2 />}>
+              <Route path=":section" element={<SettingsV2 />} />
             </Route>
             <Route path="tile_images" element={<TileImages />}>
               <Route path=":letterDistribution" element={<TileImages />} />

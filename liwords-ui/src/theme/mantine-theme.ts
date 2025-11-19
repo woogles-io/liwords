@@ -127,12 +127,12 @@ export const mantineTheme = createTheme({
     fontFamily: typography.fontFamily.default,
     fontWeight: '700',
     sizes: {
-      h1: { fontSize: rem(typography.fontSize.xxl * 1.5), lineHeight: '1.2' },
-      h2: { fontSize: rem(typography.fontSize.xxl), lineHeight: '1.3' },
-      h3: { fontSize: rem(typography.fontSize.xl), lineHeight: '1.4' },
-      h4: { fontSize: rem(typography.fontSize.lg), lineHeight: '1.4' },
-      h5: { fontSize: rem(typography.fontSize.md), lineHeight: '1.5' },
-      h6: { fontSize: rem(typography.fontSize.sm), lineHeight: '1.5' },
+      h1: { fontSize: rem(32), lineHeight: '1.2' },
+      h2: { fontSize: rem(30), lineHeight: '1.3' },
+      h3: { fontSize: rem(28), lineHeight: '1.4' },
+      h4: { fontSize: rem(24), lineHeight: '1.4' },
+      h5: { fontSize: rem(20), lineHeight: '1.5' },
+      h6: { fontSize: rem(18), lineHeight: '1.5' },
     },
   },
 
