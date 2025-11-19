@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Box, Switch, Select, Title, Text, Group, Grid } from "@mantine/core";
+import { Box, Switch, Select, Title, Text, Group, Grid, Stack } from "@mantine/core";
 import { DndProvider } from "react-dnd";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { useUIStore } from "../stores/ui-store";
@@ -58,6 +58,21 @@ const KNOWN_TILE_STYLES = [
   { name: "Slate", value: "slate" },
   { name: "Teal", value: "teal" },
 ];
+
+// Section header component to avoid repetition
+const SectionHeader: React.FC<{ children: React.ReactNode; themeMode: 'light' | 'dark' }> = ({ children, themeMode }) => (
+  <Text
+    mt={24}
+    mb={12}
+    fz={12}
+    fw="bold"
+    tt="uppercase"
+    c={themeMode === "dark" ? "gray.0" : "gray.7"}
+    style={{ letterSpacing: "0.16em" }}
+  >
+    {children}
+  </Text>
+);
 
 export const PreferencesV2: React.FC = () => {
   // Theme state from Zustand
@@ -229,89 +244,63 @@ export const PreferencesV2: React.FC = () => {
       </Title>
 
       {/* Display section */}
-      <Text
-        mt={24}
-        mb={12}
-        fz={12}
-        fw="bold"
-        tt="uppercase"
-        c={themeMode === "dark" ? "gray.0" : "gray.7"}
-        style={{ letterSpacing: "0.16em" }}
-      >
-        Display
-      </Text>
+      <SectionHeader themeMode={themeMode}>Display</SectionHeader>
 
-      <Box style={{ display: "flex" }}>
-        <div>
-          {/* Dark mode toggle */}
-          <Box mb={24}>
-            <Group gap={12} align="flex-start">
-              <Box style={{ flex: 1 }}>
-                <Text className="title" fw="bold" mb={8} fz={16}>
-                  Dark mode
-                </Text>
-                <Text>Use the dark version of the Woogles UI on Woogles.io</Text>
-              </Box>
-              <Switch
-                checked={themeMode === "dark"}
-                onChange={(event) =>
-                  setThemeMode(event.currentTarget.checked ? "dark" : "light")
-                }
-              />
-            </Group>
+      <Stack gap={24}>
+        {/* Dark mode toggle */}
+        <Group gap={12} align="flex-start">
+          <Box style={{ flex: 1 }}>
+            <Text fw="bold" mb={8} fz={16}>
+              Dark mode
+            </Text>
+            <Text>Use the dark version of the Woogles UI on Woogles.io</Text>
           </Box>
+          <Switch
+            checked={themeMode === "dark"}
+            onChange={(event) =>
+              setThemeMode(event.currentTarget.checked ? "dark" : "light")
+            }
+          />
+        </Group>
 
-          {/* Turn notifications */}
-          <Box mb={24}>
-            <Group gap={12} align="flex-start">
-              <Box style={{ flex: 1 }}>
-                <Text className="title" fw="bold" mb={8} fz={16}>
-                  Turn notifications
-                </Text>
-                <Text>
-                  Get a notification when it's your turn (works when tab is
-                  unfocused)
-                </Text>
-                {permissionState === "denied" && (
-                  <Text mt={8} fz={12} c="red.6">
-                    Permission blocked. Please enable in browser settings.
-                  </Text>
-                )}
-              </Box>
-              <Switch
-                checked={turnNotifications}
-                onChange={(event) =>
-                  handleTurnNotificationsChange(event.currentTarget.checked)
-                }
-                disabled={
-                  permissionState === "denied" ||
-                  permissionState === "unsupported"
-                }
-              />
-            </Group>
+        {/* Turn notifications */}
+        <Group gap={12} align="flex-start">
+          <Box style={{ flex: 1 }}>
+            <Text fw="bold" mb={8} fz={16}>
+              Turn notifications
+            </Text>
+            <Text>
+              Get a notification when it's your turn (works when tab is
+              unfocused)
+            </Text>
+            {permissionState === "denied" && (
+              <Text mt={8} fz={12} c="red.6">
+                Permission blocked. Please enable in browser settings.
+              </Text>
+            )}
           </Box>
-        </div>
-      </Box>
+          <Switch
+            checked={turnNotifications}
+            onChange={(event) =>
+              handleTurnNotificationsChange(event.currentTarget.checked)
+            }
+            disabled={
+              permissionState === "denied" ||
+              permissionState === "unsupported"
+            }
+          />
+        </Group>
+      </Stack>
 
       {/* OMGWords settings section */}
-      <Text
-        mt={24}
-        mb={12}
-        fz={12}
-        fw="bold"
-        tt="uppercase"
-        c={themeMode === "dark" ? "gray.0" : "gray.7"}
-        style={{ letterSpacing: "0.16em" }}
-      >
-        OMGWords settings
-      </Text>
+      <SectionHeader themeMode={themeMode}>OMGWords settings</SectionHeader>
 
       {/* Grid layout - 50% width like original Col span={12} */}
       <Grid>
         <Grid.Col span={6}>
           {/* Default tile order */}
           <Box mb={18}>
-            <Text className="tile-order" fw="bold" mb={6} fz={16}>
+            <Text fw="bold" mb={6} fz={16}>
               Default tile order
             </Text>
             <Select
@@ -323,7 +312,7 @@ export const PreferencesV2: React.FC = () => {
 
           {/* Tile style */}
           <Box mb={18}>
-            <Text className="tile-style" fw="bold" mb={6} fz={16}>
+            <Text fw="bold" mb={6} fz={16}>
               Tile style
             </Text>
             <Select
@@ -338,7 +327,7 @@ export const PreferencesV2: React.FC = () => {
 
           {/* Board style */}
           <Box mb={18}>
-            <Text className="board-style" fw="bold" mb={6} fz={16}>
+            <Text fw="bold" mb={6} fz={16}>
               Board style
             </Text>
             <Select
@@ -364,17 +353,7 @@ export const PreferencesV2: React.FC = () => {
       </Grid>
 
       {/* OMGWords Puzzle Mode settings section */}
-      <Text
-        mt={24}
-        mb={12}
-        fz={12}
-        fw="bold"
-        tt="uppercase"
-        c={themeMode === "dark" ? "gray.0" : "gray.7"}
-        style={{ letterSpacing: "0.16em" }}
-      >
-        OMGWords Puzzle Mode Settings
-      </Text>
+      <SectionHeader themeMode={themeMode}>OMGWords Puzzle Mode Settings</SectionHeader>
 
       {/* Puzzle lexicon */}
       <Grid>
