@@ -410,51 +410,17 @@ export const LeaguePage = (props: Props) => {
                   )}
               </div>
 
-              {/* Player registration status/buttons for displayed season */}
-              {loggedIn && displayedSeason && (
-                <div style={{ marginBottom: 16 }}>
-                  {isUserRegistered ? (
-                    <Space>
-                      <Tag color="green">
-                        Registered for Season {displayedSeason.seasonNumber}
-                      </Tag>
-                      {/* Only allow unregister if season is REGISTRATION_OPEN */}
-                      {displayedSeason.status === 4 && (
-                        <Button
-                          onClick={handleUnregister}
-                          loading={unregisterMutation.isPending}
-                        >
-                          Unregister
-                        </Button>
-                      )}
-                    </Space>
-                  ) : (
-                    <>
-                      {/* Only allow registration if season is REGISTRATION_OPEN */}
-                      {displayedSeason.status === 4 && (
-                        <Button
-                          type="primary"
-                          onClick={handleRegister}
-                          loading={registerMutation.isPending}
-                        >
-                          Register for Season {displayedSeason.seasonNumber}
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ marginRight: 8, fontWeight: 500 }}>
-                  Select Season:
-                </label>
-                <Select
-                  value={displaySeasonId || undefined}
-                  onChange={setSelectedSeasonId}
-                  style={{ width: 350 }}
-                  popupMatchSelectWidth={true}
-                  options={allSeasons.map((season) => {
+              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    Select Season:
+                  </label>
+                  <Select
+                    value={displaySeasonId || undefined}
+                    onChange={setSelectedSeasonId}
+                    style={{ width: 350 }}
+                    popupMatchSelectWidth={true}
+                    options={allSeasons.map((season) => {
                     // Determine status label
                     let statusLabel = "";
                     let statusColor = "";
@@ -494,39 +460,76 @@ export const LeaguePage = (props: Props) => {
                     };
                   })}
                 />
-                {/* Show dates for selected season */}
-                {displayedSeason &&
-                  displayedSeason.startDate &&
-                  displayedSeason.endDate && (
-                    <div
-                      className="season-dates-selector"
-                      style={{ marginTop: 8, fontSize: "13px", color: "#666" }}
-                    >
-                      {formatSeasonDates(
-                        displayedSeason.startDate,
-                        displayedSeason.endDate,
-                      )}
-                    </div>
-                  )}
+                </div>
 
-                {/* Player count display */}
-                {displayedSeason && registrants.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <span
-                      className="clickable-link"
-                      onClick={() => setShowPlayersModal(true)}
-                    >
-                      ({registrants.length}{" "}
-                      {registrants.length === 1 ? "player" : "players"}
-                      {displayedSeason.status === 4 ||
-                      displayedSeason.status === 0
-                        ? " registered"
-                        : ""}
-                      )
-                    </span>
-                  </div>
+                {/* Player registration status/buttons for displayed season */}
+                {loggedIn && displayedSeason && (
+                  <>
+                    {isUserRegistered ? (
+                      <Space>
+                        <Tag color="green">
+                          Registered for Season {displayedSeason.seasonNumber}
+                        </Tag>
+                        {/* Only allow unregister if season is REGISTRATION_OPEN */}
+                        {displayedSeason.status === 4 && (
+                          <Button
+                            onClick={handleUnregister}
+                            loading={unregisterMutation.isPending}
+                          >
+                            Unregister
+                          </Button>
+                        )}
+                      </Space>
+                    ) : (
+                      <>
+                        {/* Only allow registration if season is REGISTRATION_OPEN */}
+                        {displayedSeason.status === 4 && (
+                          <Button
+                            type="primary"
+                            onClick={handleRegister}
+                            loading={registerMutation.isPending}
+                          >
+                            Register for Season {displayedSeason.seasonNumber}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
+
+              {/* Show dates for selected season */}
+              {displayedSeason &&
+                displayedSeason.startDate &&
+                displayedSeason.endDate && (
+                  <div
+                    className="season-dates-selector"
+                    style={{ marginBottom: 8, fontSize: "13px", color: "#666" }}
+                  >
+                    {formatSeasonDates(
+                      displayedSeason.startDate,
+                      displayedSeason.endDate,
+                    )}
+                  </div>
+                )}
+
+              {/* Player count display */}
+              {displayedSeason && registrants.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <span
+                    className="clickable-link"
+                    onClick={() => setShowPlayersModal(true)}
+                  >
+                    ({registrants.length}{" "}
+                    {registrants.length === 1 ? "player" : "players"}
+                    {displayedSeason.status === 4 ||
+                    displayedSeason.status === 0
+                      ? " registered"
+                      : ""}
+                    )
+                  </span>
+                </div>
+              )}
 
               {/* Registration reminder banner - show when viewing a different season while registration is open */}
               {registrationOpenSeason &&
@@ -695,6 +698,13 @@ export const LeaguePage = (props: Props) => {
 
           {/* Right Column - Settings & Games */}
           <Col xs={24} lg={6}>
+            {/* League Games */}
+            {loggedIn && slug && (
+              <div style={{ marginBottom: 16 }}>
+                <LeagueCorrespondenceGames leagueSlug={slug} />
+              </div>
+            )}
+
             {/* League Info & Settings Card */}
             {league && (
               <Card className="league-info-card" style={{ marginBottom: 16 }}>
@@ -796,11 +806,6 @@ export const LeaguePage = (props: Props) => {
                 )}
               </Card>
             )}
-
-            {/* League Games */}
-            {loggedIn && slug && (
-              <LeagueCorrespondenceGames leagueSlug={slug} />
-            )}
           </Col>
         </Row>
 
@@ -881,20 +886,20 @@ export const LeaguePage = (props: Props) => {
                 In order to keep the league fun and fair for everyone, I commit
                 to:
               </p>
-              <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-                <li>
+              <ul style={{ paddingLeft: 24, listStyleType: 'disc' }}>
+                <li style={{ marginBottom: 6 }}>
                   Checking the app regularly to avoid forfeiting games on time
                 </li>
-                <li>Playing fairly without external assistance</li>
-                <li>Completing all my games for the season</li>
-                <li>Having fun</li>
+                <li style={{ marginBottom: 6 }}>Playing fairly without external assistance</li>
+                <li style={{ marginBottom: 6 }}>Completing all my games for the season</li>
+                <li style={{ marginBottom: 6 }}>Having fun</li>
               </ul>
             </div>
 
             <p style={{ marginBottom: 8, fontWeight: 500 }}>
               Season {displayedSeason?.seasonNumber} starts at:
             </p>
-            <div className="registration-time-box">
+            <div className="registration-time-box" style={{ marginBottom: 24 }}>
               {formatLocalTime(displayedSeason?.startDate)}
             </div>
 

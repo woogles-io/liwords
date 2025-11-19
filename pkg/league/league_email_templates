@@ -4,7 +4,7 @@ This is a reminder that the {{.LeagueName}} Season {{.SeasonNumber}} will begin 
 
 Here are the start times in various timezones:
 {{.StartTimeZones}}
-You are currently registered to participate in this season. If you need to withdraw, please visit the league page at {{.LeagueURL}} before the season starts.
+You are currently registered to participate in this season. If you need to withdraw, please visit the league page at {{.LeagueURL}} before the season starts and unregister.
 
 Once the season begins, you will be assigned to a division and your games will be created automatically.
 

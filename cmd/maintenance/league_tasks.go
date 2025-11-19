@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -368,65 +369,124 @@ func LeagueSeasonStartingSoon() error {
 
 		// Get current active season
 		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
-		if err != nil {
-			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("No current season, skipping")
-			continue
-		}
+		hasCurrentSeason := err == nil
 
-		shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, now)
-		log.Info().
-			Bool("shouldRun", shouldRun).
-			Str("reason", reason).
-			Str("seasonID", currentSeason.Uuid.String()).
-			Msg("Season starting soon check")
-
-		if !shouldRun {
-			continue
-		}
-
-		// Find the next season (should be in SCHEDULED status)
-		seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
-		if err != nil {
-			log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for reminder")
-			continue
-		}
-
-		// Find the next season (current season number + 1)
-		nextSeasonNumber := currentSeason.SeasonNumber + 1
-
-		// Debug: Log all seasons found
-		log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("currentSeasonNumber", currentSeason.SeasonNumber).Int32("lookingForSeasonNumber", nextSeasonNumber).Msg("Searching for next season")
-		for _, s := range seasons {
+		if hasCurrentSeason {
+			shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, now)
 			log.Info().
-				Str("seasonID", s.Uuid.String()).
-				Int32("seasonNumber", s.SeasonNumber).
-				Int32("status", s.Status).
-				Str("statusName", pb.SeasonStatus(s.Status).String()).
-				Msg("Found season")
-		}
+				Bool("shouldRun", shouldRun).
+				Str("reason", reason).
+				Str("seasonID", currentSeason.Uuid.String()).
+				Msg("Season starting soon check")
 
-		foundNextSeason := false
-		for _, season := range seasons {
-			// Accept both REGISTRATION_OPEN and SCHEDULED status since this runs before season starts
-			if season.SeasonNumber == nextSeasonNumber &&
-				(season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) ||
-					season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED)) {
-				log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("nextSeason", season.SeasonNumber).Str("status", pb.SeasonStatus(season.Status).String()).Msg("Sending season starting soon notifications...")
-
-				err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
-				if err != nil {
-					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send season starting soon notifications")
-				} else {
-					log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("season", season.SeasonNumber).Msg("✓ Season starting soon notifications sent successfully")
-					notificationsSent++
-				}
-				foundNextSeason = true
-				break
+			if !shouldRun {
+				continue
 			}
-		}
 
-		if !foundNextSeason {
-			log.Warn().Str("leagueID", dbLeague.Uuid.String()).Int32("expectedSeasonNumber", nextSeasonNumber).Msg("No scheduled next season found for notifications")
+			// Find the next season (should be in SCHEDULED status)
+			seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+			if err != nil {
+				log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for reminder")
+				continue
+			}
+
+			// Find the next season (current season number + 1)
+			nextSeasonNumber := currentSeason.SeasonNumber + 1
+
+			// Debug: Log all seasons found
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("currentSeasonNumber", currentSeason.SeasonNumber).Int32("lookingForSeasonNumber", nextSeasonNumber).Msg("Searching for next season")
+			for _, s := range seasons {
+				log.Info().
+					Str("seasonID", s.Uuid.String()).
+					Int32("seasonNumber", s.SeasonNumber).
+					Int32("status", s.Status).
+					Str("statusName", pb.SeasonStatus(s.Status).String()).
+					Msg("Found season")
+			}
+
+			foundNextSeason := false
+			for _, season := range seasons {
+				// Accept both REGISTRATION_OPEN and SCHEDULED status since this runs before season starts
+				if season.SeasonNumber == nextSeasonNumber &&
+					(season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) ||
+						season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED)) {
+					log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("nextSeason", season.SeasonNumber).Str("status", pb.SeasonStatus(season.Status).String()).Msg("Sending season starting soon notifications...")
+
+					err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+					if err != nil {
+						log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send season starting soon notifications")
+					} else {
+						log.Info().Str("leagueID", dbLeague.Uuid.String()).Int32("season", season.SeasonNumber).Msg("✓ Season starting soon notifications sent successfully")
+						notificationsSent++
+					}
+					foundNextSeason = true
+					break
+				}
+			}
+
+			if !foundNextSeason {
+				log.Warn().Str("leagueID", dbLeague.Uuid.String()).Int32("expectedSeasonNumber", nextSeasonNumber).Msg("No scheduled next season found for notifications")
+			}
+		} else {
+			// No current season - check if we should send notification for Season 1
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("No current season, checking for Season 1 notification")
+
+			seasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+			if err != nil {
+				log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for Season 1 reminder check")
+				continue
+			}
+
+			// Look for Season 1 in SCHEDULED or REGISTRATION_OPEN status
+			foundSeason1 := false
+			for _, season := range seasons {
+				if season.SeasonNumber == 1 && (season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) || season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN)) {
+					// For Season 1, we need to check if we're 1 day before it starts
+					// (not the last day OF Season 1, which is what season-starting-soon normally checks)
+					startDate := season.StartDate.Time
+					oneDayBeforeStart := startDate.Add(-24 * time.Hour)
+
+					// Check if we're at or after 1 day before start (and before the actual start)
+					shouldRun := now.After(oneDayBeforeStart) && now.Before(startDate)
+					reason := ""
+					if now.Before(oneDayBeforeStart) {
+						reason = fmt.Sprintf("Current time %s is before 1 day before start %s",
+							now.Format("2006-01-02 15:04:05 MST"),
+							oneDayBeforeStart.Format("2006-01-02 15:04:05 MST"))
+					} else if now.After(startDate) {
+						reason = fmt.Sprintf("Current time %s is after season start %s (too late for reminder)",
+							now.Format("2006-01-02 15:04:05 MST"),
+							startDate.Format("2006-01-02 15:04:05 MST"))
+					} else {
+						reason = fmt.Sprintf("Current time is 1 day before Season 1 start (%s)",
+							startDate.Format("2006-01-02 15:04:05 MST"))
+					}
+
+					log.Info().
+						Bool("shouldRun", shouldRun).
+						Str("reason", reason).
+						Str("seasonID", season.Uuid.String()).
+						Msg("Season 1 starting soon check")
+
+					if shouldRun {
+						log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Sending Season 1 starting soon notifications...")
+
+						err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+						if err != nil {
+							log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send Season 1 starting soon notifications")
+						} else {
+							log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("✓ Season 1 starting soon notifications sent successfully")
+							notificationsSent++
+						}
+					}
+					foundSeason1 = true
+					break
+				}
+			}
+
+			if !foundSeason1 {
+				log.Warn().Str("leagueID", dbLeague.Uuid.String()).Msg("No Season 1 found for notifications")
+			}
 		}
 	}
 
@@ -661,7 +721,9 @@ func LeagueMorningRunner() error {
 		// TASK 3: Check if we should send "season starting soon" reminder
 		// This runs on the last day of current season (1 day before next season starts)
 		currentSeason, err = allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
-		if err == nil {
+		hasCurrentSeason := err == nil
+
+		if hasCurrentSeason {
 			shouldRun, reason := league.ShouldRunTask(&currentSeason, "season-starting-soon", leagueSettings.SeasonLengthDays, now)
 			log.Info().
 				Bool("shouldRun", shouldRun).
@@ -690,6 +752,59 @@ func LeagueMorningRunner() error {
 							}
 							break
 						}
+					}
+				}
+			}
+		} else {
+			// No current season - check if we should send notification for Season 1
+			log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("No current season, checking for Season 1 notification")
+
+			seasonsForReminder, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+			if err != nil {
+				log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to get seasons for Season 1 reminder check")
+			} else {
+				// Look for Season 1 in SCHEDULED or REGISTRATION_OPEN status
+				for _, season := range seasonsForReminder {
+					if season.SeasonNumber == 1 && (season.Status == int32(pb.SeasonStatus_SEASON_SCHEDULED) || season.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN)) {
+						// For Season 1, we need to check if we're 1 day before it starts
+						// (not the last day OF Season 1, which is what season-starting-soon normally checks)
+						startDate := season.StartDate.Time
+						oneDayBeforeStart := startDate.Add(-24 * time.Hour)
+
+						// Check if we're at or after 1 day before start (and before the actual start)
+						shouldRun := now.After(oneDayBeforeStart) && now.Before(startDate)
+						reason := ""
+						if now.Before(oneDayBeforeStart) {
+							reason = fmt.Sprintf("Current time %s is before 1 day before start %s",
+								now.Format("2006-01-02 15:04:05 MST"),
+								oneDayBeforeStart.Format("2006-01-02 15:04:05 MST"))
+						} else if now.After(startDate) {
+							reason = fmt.Sprintf("Current time %s is after season start %s (too late for reminder)",
+								now.Format("2006-01-02 15:04:05 MST"),
+								startDate.Format("2006-01-02 15:04:05 MST"))
+						} else {
+							reason = fmt.Sprintf("Current time is 1 day before Season 1 start (%s)",
+								startDate.Format("2006-01-02 15:04:05 MST"))
+						}
+
+						log.Info().
+							Bool("shouldRun", shouldRun).
+							Str("reason", reason).
+							Str("seasonID", season.Uuid.String()).
+							Msg("Season 1 starting soon check")
+
+						if shouldRun {
+							log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("Sending Season 1 starting soon notifications...")
+
+							err := lifecycleMgr.SendSeasonStartingSoonNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+							if err != nil {
+								log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to send Season 1 starting soon notifications")
+							} else {
+								log.Info().Str("leagueID", dbLeague.Uuid.String()).Msg("✓ Season 1 starting soon notifications sent successfully")
+								tasksRun++
+							}
+						}
+						break
 					}
 				}
 			}
