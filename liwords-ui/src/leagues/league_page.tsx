@@ -410,9 +410,17 @@ export const LeaguePage = (props: Props) => {
                   )}
               </div>
 
-              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <label style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
+              <div
+                style={{
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <label style={{ fontWeight: 500, whiteSpace: "nowrap" }}>
                     Select Season:
                   </label>
                   <Select
@@ -421,45 +429,45 @@ export const LeaguePage = (props: Props) => {
                     style={{ width: 350 }}
                     popupMatchSelectWidth={true}
                     options={allSeasons.map((season) => {
-                    // Determine status label
-                    let statusLabel = "";
-                    let statusColor = "";
-                    if (season.status === 0) {
-                      statusLabel = "Scheduled";
-                      statusColor = "";
-                    } else if (season.status === 1) {
-                      statusLabel = "Active";
-                      statusColor = "blue";
-                    } else if (season.status === 2) {
-                      statusLabel = "Completed";
-                      statusColor = "default";
-                    } else if (season.status === 3) {
-                      statusLabel = "Cancelled";
-                      statusColor = "red";
-                    } else if (season.status === 4) {
-                      statusLabel = "Registration Open";
-                      statusColor = "green";
-                    }
+                      // Determine status label
+                      let statusLabel = "";
+                      let statusColor = "";
+                      if (season.status === 0) {
+                        statusLabel = "Scheduled";
+                        statusColor = "";
+                      } else if (season.status === 1) {
+                        statusLabel = "Active";
+                        statusColor = "blue";
+                      } else if (season.status === 2) {
+                        statusLabel = "Completed";
+                        statusColor = "default";
+                      } else if (season.status === 3) {
+                        statusLabel = "Cancelled";
+                        statusColor = "red";
+                      } else if (season.status === 4) {
+                        statusLabel = "Registration Open";
+                        statusColor = "green";
+                      }
 
-                    return {
-                      value: season.uuid,
-                      label: (
-                        <span
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <span>Season {season.seasonNumber}</span>
-                          {statusLabel && (
-                            <Tag color={statusColor}>{statusLabel}</Tag>
-                          )}
-                        </span>
-                      ),
-                    };
-                  })}
-                />
+                      return {
+                        value: season.uuid,
+                        label: (
+                          <span
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <span>Season {season.seasonNumber}</span>
+                            {statusLabel && (
+                              <Tag color={statusColor}>{statusLabel}</Tag>
+                            )}
+                          </span>
+                        ),
+                      };
+                    })}
+                  />
                 </div>
 
                 {/* Player registration status/buttons for displayed season */}
@@ -886,12 +894,16 @@ export const LeaguePage = (props: Props) => {
                 In order to keep the league fun and fair for everyone, I commit
                 to:
               </p>
-              <ul style={{ paddingLeft: 24, listStyleType: 'disc' }}>
+              <ul style={{ paddingLeft: 24, listStyleType: "disc" }}>
                 <li style={{ marginBottom: 6 }}>
                   Checking the app regularly to avoid forfeiting games on time
                 </li>
-                <li style={{ marginBottom: 6 }}>Playing fairly without external assistance</li>
-                <li style={{ marginBottom: 6 }}>Completing all my games for the season</li>
+                <li style={{ marginBottom: 6 }}>
+                  Playing fairly without external assistance
+                </li>
+                <li style={{ marginBottom: 6 }}>
+                  Completing all my games for the season
+                </li>
                 <li style={{ marginBottom: 6 }}>Having fun</li>
               </ul>
             </div>
