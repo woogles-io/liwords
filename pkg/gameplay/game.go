@@ -107,7 +107,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	for {
 		// Overwrite the randomly generated macondo long ID with a shorter
 		// ID for Woogles usage.
-		turnplayer.Game.History().Uid = shortuuid.New()[2:10]
+		turnplayer.Game.History().Uid = shortuuid.New()[2:12]
 		turnplayer.Game.History().IdAuth = IdentificationAuthority
 
 		exists, err := gameStore.Exists(ctx, turnplayer.Game.Uid())
@@ -126,6 +126,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		// There's still a chance of a race condition here if another thread
 		// creates the same game ID at the same time, but the chances
 		// of that are so astronomically unlikely we won't bother.
+		// XXX: Actually if we create many games at ~ the same time, as in
+		// league starts, this could maybeeeee happen. So we should probably lock.
 	}
 
 	entGame := entity.NewGame(turnplayer.Game, req)

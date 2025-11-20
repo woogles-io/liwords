@@ -196,7 +196,7 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 			return gamesCreated, fmt.Errorf("failed to build game request: %w", err)
 		}
 
-		// Create the game (league games don't use TournamentData)
+		// Create the game
 		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
@@ -286,10 +286,6 @@ func (ssm *SeasonStartManager) buildGameRequest(settings *pb.LeagueSettings) (*p
 
 	// Determine challenge rule
 	challengeRule := settings.ChallengeRule
-	if challengeRule == pb.ChallengeRule_ChallengeRule_VOID {
-		// Use default based on lexicon
-		challengeRule = determineChallengeRule(lexicon)
-	}
 
 	// Determine letter distribution from lexicon
 	letterDistribution, err := tilemapping.ProbableLetterDistributionName(lexicon)
@@ -297,22 +293,24 @@ func (ssm *SeasonStartManager) buildGameRequest(settings *pb.LeagueSettings) (*p
 		return nil, fmt.Errorf("failed to determine letter distribution for lexicon %s: %w", lexicon, err)
 	}
 
+	reqID := shortuuid.New()
+
 	req := &pb.GameRequest{
 		Lexicon:       lexicon,
 		ChallengeRule: macondo.ChallengeRule(challengeRule),
 		Rules: &pb.GameRules{
-			BoardLayoutName:         "CrosswordGame",
-			LetterDistributionName:  letterDistribution,
-			VariantName:             variant,
+			BoardLayoutName:        "CrosswordGame",
+			LetterDistributionName: letterDistribution,
+			VariantName:            variant,
 		},
 		InitialTimeSeconds: timeControl.IncrementSeconds, // Same as increment for correspondence
 		IncrementSeconds:   timeControl.IncrementSeconds,
-		MaxOvertimeMinutes: 0,                               // No overtime for league games
+		MaxOvertimeMinutes: 0,                                  // No overtime for league games
 		TimeBankMinutes:    int32(timeControl.TimeBankMinutes), // Time bank for correspondence
-		RatingMode:         pb.RatingMode_RATED,             // RATED = 0
+		RatingMode:         pb.RatingMode_RATED,                // RATED = 0
 		GameMode:           pb.GameMode_CORRESPONDENCE,
-		RequestId:          shortuuid.New(),
-		OriginalRequestId:  shortuuid.New(),
+		RequestId:          reqID,
+		OriginalRequestId:  reqID,
 	}
 
 	return req, nil
