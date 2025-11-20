@@ -41,6 +41,9 @@ service LeagueService {
 
   // Statistics (Phase 8)
   rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
+
+  // Admin operations
+  rpc MovePlayerToDivision(MovePlayerToDivisionRequest) returns (MovePlayerToDivisionResponse);
 }
 
 message CreateLeagueRequest {
@@ -181,6 +184,18 @@ message InviteUserRequest {
 }
 
 message InviteUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message MovePlayerToDivisionRequest {
+  string user_id = 1;        // UUID of player to move
+  string season_id = 2;       // UUID of season
+  string from_division_id = 3; // UUID of current division
+  string to_division_id = 4;   // UUID of target division
+}
+
+message MovePlayerToDivisionResponse {
   bool success = 1;
   string message = 2;
 }

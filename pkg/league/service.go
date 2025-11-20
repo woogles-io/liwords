@@ -1189,3 +1189,72 @@ func (ls *LeagueService) GetLeagueStatistics(
 ) (*connect.Response[pb.LeagueStatisticsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("GetLeagueStatistics not yet implemented"))
 }
+
+func (ls *LeagueService) MovePlayerToDivision(
+	ctx context.Context,
+	req *connect.Request[pb.MovePlayerToDivisionRequest],
+) (*connect.Response[pb.MovePlayerToDivisionResponse], error) {
+	// Authenticate - requires can_manage_leagues permission (admin only)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.UserId == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+	if req.Msg.FromDivisionId == "" {
+		return nil, apiserver.InvalidArg("from_division_id is required")
+	}
+	if req.Msg.ToDivisionId == "" {
+		return nil, apiserver.InvalidArg("to_division_id is required")
+	}
+
+	// Parse UUIDs
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+	fromDivID, err := uuid.Parse(req.Msg.FromDivisionId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid from_division_id")
+	}
+	toDivID, err := uuid.Parse(req.Msg.ToDivisionId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid to_division_id")
+	}
+
+	// Get the season to check status
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Only allow moving players when season is SCHEDULED
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("can only move players when season is SCHEDULED (current status: %s)", ipc.SeasonStatus(season.Status).String()))
+	}
+
+	// Use the ManualDivisionManager to move the player
+	mdm := NewManualDivisionManager(ls.stores)
+	result, err := mdm.MovePlayer(ctx, req.Msg.UserId, seasonID, fromDivID, toDivID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to move player: %w", err))
+	}
+
+	log.Info().
+		Str("userID", result.UserID).
+		Str("seasonID", seasonID.String()).
+		Str("fromDivisionID", result.PreviousDivisionID.String()).
+		Str("toDivisionID", result.NewDivisionID.String()).
+		Msg("player-moved-to-division")
+
+	return connect.NewResponse(&pb.MovePlayerToDivisionResponse{
+		Success: true,
+		Message: fmt.Sprintf("Player successfully moved to new division"),
+	}), nil
+}

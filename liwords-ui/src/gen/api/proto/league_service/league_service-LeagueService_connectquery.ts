@@ -113,3 +113,10 @@ export const inviteUserToLeagues = LeagueService.method.inviteUserToLeagues;
  * @generated from rpc league_service.LeagueService.GetLeagueStatistics
  */
 export const getLeagueStatistics = LeagueService.method.getLeagueStatistics;
+
+/**
+ * Admin operations
+ *
+ * @generated from rpc league_service.LeagueService.MovePlayerToDivision
+ */
+export const movePlayerToDivision = LeagueService.method.movePlayerToDivision;
