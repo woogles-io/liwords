@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Col,
   Row,
@@ -22,6 +22,10 @@ import {
   getAllLeagues,
   updateLeagueSettings,
   updateLeagueMetadata,
+  getSeasonRegistrations,
+  getAllDivisionStandings,
+  getAllSeasons,
+  movePlayerToDivision,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -40,13 +44,59 @@ export const LeagueAdmin = () => {
   const [leagueForm] = Form.useForm();
   const [seasonForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [movePlayerForm] = Form.useForm();
   const [createdLeagueSlug, setCreatedLeagueSlug] = useState<string>("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string>("");
+  const [selectedMoveLeagueId, setSelectedMoveLeagueId] = useState<string>("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const [selectedPlayerDivisionId, setSelectedPlayerDivisionId] =
+    useState<string>("");
 
   // Fetch all leagues for the edit dropdown
   const { data: leaguesData } = useQuery(getAllLeagues, {
     activeOnly: false,
   });
+
+  // Fetch all seasons for the selected league (for move player)
+  const { data: allSeasonsData } = useQuery(
+    getAllSeasons,
+    { leagueId: selectedMoveLeagueId },
+    { enabled: !!selectedMoveLeagueId },
+  );
+
+  // Find the latest season (try SCHEDULED first, then fall back to highest season number)
+  const latestSeason = useMemo(() => {
+    const seasons = allSeasonsData?.seasons || [];
+    if (seasons.length === 0) return null;
+
+    // Sort by season number descending (newest first)
+    const sortedSeasons = [...seasons].sort(
+      (a, b) => (b.seasonNumber || 0) - (a.seasonNumber || 0),
+    );
+
+    // Try to find SCHEDULED season first
+    const scheduledSeason = sortedSeasons.find(
+      (s) => s.status === SeasonStatus.SEASON_SCHEDULED,
+    );
+    if (scheduledSeason) return scheduledSeason;
+
+    // Otherwise return the latest season by number
+    return sortedSeasons[0];
+  }, [allSeasonsData?.seasons]);
+
+  // Fetch registrations for the latest season
+  const { data: registrationsData, refetch: refetchRegistrations } = useQuery(
+    getSeasonRegistrations,
+    { seasonId: latestSeason?.uuid || "" },
+    { enabled: !!latestSeason?.uuid },
+  );
+
+  // Fetch divisions for the latest season
+  const { data: divisionsData, refetch: refetchDivisions } = useQuery(
+    getAllDivisionStandings,
+    { seasonId: latestSeason?.uuid || "" },
+    { enabled: !!latestSeason?.uuid },
+  );
 
   const createLeagueMutation = useMutation(createLeague, {
     onSuccess: (response) => {
@@ -95,6 +145,25 @@ export const LeagueAdmin = () => {
         message: "Season Bootstrapped",
         description: "Season has been bootstrapped successfully!",
       });
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const movePlayerMutation = useMutation(movePlayerToDivision, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "Player Moved",
+        description: response.message || "Player moved successfully!",
+      });
+      // Refetch the data to show updated divisions
+      refetchRegistrations();
+      refetchDivisions();
+      // Reset selection
+      setSelectedPlayerId("");
+      setSelectedPlayerDivisionId("");
+      movePlayerForm.resetFields();
     },
     onError: (error) => {
       flashError(error);
@@ -210,6 +279,42 @@ export const LeagueAdmin = () => {
     } catch (error) {
       // Errors are already handled by individual mutations
     }
+  };
+
+  const handlePlayerSelect = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+    // Find the player's current division
+    const registration = registrationsData?.registrations?.find(
+      (r) => r.userId === playerId,
+    );
+    if (registration?.divisionId) {
+      setSelectedPlayerDivisionId(registration.divisionId);
+    }
+  };
+
+  const handleMovePlayer = (values: { toDivisionId: string }) => {
+    if (!selectedPlayerId || !selectedPlayerDivisionId) {
+      notification.error({
+        message: "Selection Error",
+        description: "Please select a player first",
+      });
+      return;
+    }
+
+    if (!latestSeason?.uuid) {
+      notification.error({
+        message: "Season Error",
+        description: "No season found for this league",
+      });
+      return;
+    }
+
+    movePlayerMutation.mutate({
+      userId: selectedPlayerId,
+      seasonId: latestSeason.uuid,
+      fromDivisionId: selectedPlayerDivisionId,
+      toDivisionId: values.toDivisionId,
+    });
   };
 
   if (!loggedIn) {
@@ -659,6 +764,128 @@ export const LeagueAdmin = () => {
                 </Button>
               </Form.Item>
             </Form>
+          </Card>
+
+          {/* Move Player Between Divisions */}
+          <Card title="Move Player Between Divisions">
+            <Alert
+              message="Move Player"
+              description="Move a player from one division to another. Only works when season is SCHEDULED."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league"
+                onChange={(value) => {
+                  setSelectedMoveLeagueId(value);
+                  setSelectedPlayerId("");
+                  setSelectedPlayerDivisionId("");
+                  movePlayerForm.resetFields();
+                }}
+                value={selectedMoveLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedMoveLeagueId && latestSeason && (
+              <>
+                <Alert
+                  message={`Latest Season: ${latestSeason.seasonNumber} (Status: ${SeasonStatus[latestSeason.status]})`}
+                  type="info"
+                  style={{ marginBottom: 16 }}
+                />
+
+                {latestSeason.status !== SeasonStatus.SEASON_SCHEDULED && (
+                  <Alert
+                    message="Season must be SCHEDULED to move players"
+                    type="warning"
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+
+                <Form
+                  form={movePlayerForm}
+                  layout="vertical"
+                  onFinish={handleMovePlayer}
+                >
+                  <Form.Item label="Select Player" required>
+                    <Select
+                      placeholder="Choose a player"
+                      onChange={handlePlayerSelect}
+                      value={selectedPlayerId || undefined}
+                      showSearch
+                      optionFilterProp="children"
+                      disabled={
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    >
+                      {registrationsData?.registrations?.map((reg) => {
+                        const divisionInfo = divisionsData?.divisions?.find(
+                          (d) => d.uuid === reg.divisionId,
+                        );
+                        const divisionLabel = divisionInfo
+                          ? `Division ${divisionInfo.divisionNumber}`
+                          : "No Division";
+                        return (
+                          <Option key={reg.userId} value={reg.userId}>
+                            {reg.username} ({divisionLabel})
+                          </Option>
+                        );
+                      })}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Target Division"
+                    name="toDivisionId"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Please select target division",
+                      },
+                    ]}
+                  >
+                    <Select
+                      placeholder="Choose target division"
+                      disabled={
+                        !selectedPlayerId ||
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    >
+                      {divisionsData?.divisions
+                        ?.filter((d) => d.uuid !== selectedPlayerDivisionId)
+                        .map((division) => (
+                          <Option key={division.uuid} value={division.uuid}>
+                            Division {division.divisionNumber} (
+                            {division.standings?.length || 0} players)
+                          </Option>
+                        ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={movePlayerMutation.isPending}
+                      disabled={
+                        !selectedPlayerId ||
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    >
+                      Move Player
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </>
+            )}
           </Card>
         </Space>
       </div>

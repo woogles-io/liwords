@@ -91,6 +91,9 @@ const (
 	// LeagueServiceGetLeagueStatisticsProcedure is the fully-qualified name of the LeagueService's
 	// GetLeagueStatistics RPC.
 	LeagueServiceGetLeagueStatisticsProcedure = "/league_service.LeagueService/GetLeagueStatistics"
+	// LeagueServiceMovePlayerToDivisionProcedure is the fully-qualified name of the LeagueService's
+	// MovePlayerToDivision RPC.
+	LeagueServiceMovePlayerToDivisionProcedure = "/league_service.LeagueService/MovePlayerToDivision"
 )
 
 // LeagueServiceClient is a client for the league_service.LeagueService service.
@@ -120,6 +123,8 @@ type LeagueServiceClient interface {
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
+	// Admin operations
+	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
 }
 
 // NewLeagueServiceClient constructs a client for the league_service.LeagueService service. By
@@ -253,6 +258,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetLeagueStatistics")),
 			connect.WithClientOptions(opts...),
 		),
+		movePlayerToDivision: connect.NewClient[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse](
+			httpClient,
+			baseURL+LeagueServiceMovePlayerToDivisionProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -278,6 +289,7 @@ type leagueServiceClient struct {
 	getPlayerSeasonGames    *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
 	inviteUserToLeagues     *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
 	getLeagueStatistics     *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
+	movePlayerToDivision    *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
 }
 
 // CreateLeague calls league_service.LeagueService.CreateLeague.
@@ -380,6 +392,11 @@ func (c *leagueServiceClient) GetLeagueStatistics(ctx context.Context, req *conn
 	return c.getLeagueStatistics.CallUnary(ctx, req)
 }
 
+// MovePlayerToDivision calls league_service.LeagueService.MovePlayerToDivision.
+func (c *leagueServiceClient) MovePlayerToDivision(ctx context.Context, req *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error) {
+	return c.movePlayerToDivision.CallUnary(ctx, req)
+}
+
 // LeagueServiceHandler is an implementation of the league_service.LeagueService service.
 type LeagueServiceHandler interface {
 	// League management
@@ -407,6 +424,8 @@ type LeagueServiceHandler interface {
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
+	// Admin operations
+	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
 }
 
 // NewLeagueServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -536,6 +555,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetLeagueStatistics")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceMovePlayerToDivisionHandler := connect.NewUnaryHandler(
+		LeagueServiceMovePlayerToDivisionProcedure,
+		svc.MovePlayerToDivision,
+		connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/league_service.LeagueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LeagueServiceCreateLeagueProcedure:
@@ -578,6 +603,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceInviteUserToLeaguesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetLeagueStatisticsProcedure:
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
+		case LeagueServiceMovePlayerToDivisionProcedure:
+			leagueServiceMovePlayerToDivisionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -665,4 +692,8 @@ func (UnimplementedLeagueServiceHandler) InviteUserToLeagues(context.Context, *c
 
 func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetLeagueStatistics is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.MovePlayerToDivision is not implemented"))
 }
