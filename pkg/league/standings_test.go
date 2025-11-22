@@ -247,21 +247,6 @@ func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg mode
 	return nil
 }
 
-func (m *mockLeagueStore) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
-	// Deprecated: rank is no longer stored in DB
-	// However, we still sort the standings for tests that call this
-	divStandings := m.standings[divisionID]
-	if len(divStandings) == 0 {
-		return nil
-	}
-
-	// Sort using the canonical sorting function
-	SortStandingsByRank(divStandings)
-
-	m.standings[divisionID] = divStandings
-	return nil
-}
-
 var _ league.Store = (*mockLeagueStore)(nil) // Compile-time interface check
 
 func TestStandingsCalculation_SimpleWinsLosses(t *testing.T) {

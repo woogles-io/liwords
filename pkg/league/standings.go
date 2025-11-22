@@ -380,10 +380,3 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 
 	return nil
 }
-
-// RecalculateRanks recalculates ranks for all players in a division
-// This can be called periodically or on-demand to ensure rankings are correct
-// The atomic SQL query uses a window function to rank players by wins (desc), spread (desc)
-func (sm *StandingsManager) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
-	return sm.store.RecalculateRanks(ctx, divisionID)
-}

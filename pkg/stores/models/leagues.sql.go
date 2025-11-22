@@ -1407,8 +1407,8 @@ func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.
 }
 
 const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec
-INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, 0, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,
@@ -1464,33 +1464,6 @@ WHERE uuid = $1
 
 func (q *Queries) MarkSeasonComplete(ctx context.Context, argUuid uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markSeasonComplete, argUuid)
-	return err
-}
-
-const recalculateRanks = `-- name: RecalculateRanks :exec
-WITH ranked AS (
-    SELECT
-        ls.division_id,
-        ls.user_id,
-        ROW_NUMBER() OVER (
-            PARTITION BY ls.division_id
-            ORDER BY (ls.wins * 2 + ls.draws) DESC, ls.spread DESC
-        ) as new_rank
-    FROM league_standings ls
-    WHERE ls.division_id = $1
-)
-UPDATE league_standings
-SET rank = ranked.new_rank,
-    updated_at = NOW()
-FROM ranked
-WHERE league_standings.division_id = ranked.division_id
-  AND league_standings.user_id = ranked.user_id
-`
-
-// Recalculate ranks for all players in a division
-// Ranks are based on: points (wins*2 + draws) DESC, then spread DESC
-func (q *Queries) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, recalculateRanks, divisionID)
 	return err
 }
 
