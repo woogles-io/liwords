@@ -304,9 +304,11 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       l.slug as league_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON g.league_id = l.uuid
 ORDER BY rgu.created_at DESC
 `
 
@@ -316,21 +318,25 @@ type GetRecentCorrespondenceGamesByUsernameParams struct {
 }
 
 type GetRecentCorrespondenceGamesByUsernameRow struct {
-	ID             int32
-	Uuid           pgtype.Text
-	Type           pgtype.Int4
-	Player0ID      pgtype.Int4
-	Player1ID      pgtype.Int4
-	Timers         entity.Timers
-	Started        pgtype.Bool
-	GameEndReason  pgtype.Int4
-	WinnerIdx      pgtype.Int4
-	LoserIdx       pgtype.Int4
-	Quickdata      entity.Quickdata
-	TournamentData entity.TournamentData
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	GameRequest    entity.GameRequest
+	ID               int32
+	Uuid             pgtype.Text
+	Type             pgtype.Int4
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	GameRequest      entity.GameRequest
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+	LeagueSlug       pgtype.Text
 }
 
 func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, arg GetRecentCorrespondenceGamesByUsernameParams) ([]GetRecentCorrespondenceGamesByUsernameRow, error) {
@@ -358,6 +364,10 @@ func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, ar
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GameRequest,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.LeagueDivisionID,
+			&i.LeagueSlug,
 		); err != nil {
 			return nil, err
 		}

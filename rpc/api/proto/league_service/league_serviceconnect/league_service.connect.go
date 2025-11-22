@@ -94,6 +94,12 @@ const (
 	// LeagueServiceMovePlayerToDivisionProcedure is the fully-qualified name of the LeagueService's
 	// MovePlayerToDivision RPC.
 	LeagueServiceMovePlayerToDivisionProcedure = "/league_service.LeagueService/MovePlayerToDivision"
+	// LeagueServiceGetSeasonZeroMoveGamesProcedure is the fully-qualified name of the LeagueService's
+	// GetSeasonZeroMoveGames RPC.
+	LeagueServiceGetSeasonZeroMoveGamesProcedure = "/league_service.LeagueService/GetSeasonZeroMoveGames"
+	// LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure is the fully-qualified name of the
+	// LeagueService's GetSeasonPlayersWithUnstartedGames RPC.
+	LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure = "/league_service.LeagueService/GetSeasonPlayersWithUnstartedGames"
 )
 
 // LeagueServiceClient is a client for the league_service.LeagueService service.
@@ -125,6 +131,8 @@ type LeagueServiceClient interface {
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
+	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
+	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
 }
 
 // NewLeagueServiceClient constructs a client for the league_service.LeagueService service. By
@@ -264,32 +272,46 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
 			connect.WithClientOptions(opts...),
 		),
+		getSeasonZeroMoveGames: connect.NewClient[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse](
+			httpClient,
+			baseURL+LeagueServiceGetSeasonZeroMoveGamesProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetSeasonZeroMoveGames")),
+			connect.WithClientOptions(opts...),
+		),
+		getSeasonPlayersWithUnstartedGames: connect.NewClient[league_service.SeasonRequest, league_service.SeasonPlayersWithUnstartedGamesResponse](
+			httpClient,
+			baseURL+LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetSeasonPlayersWithUnstartedGames")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // leagueServiceClient implements LeagueServiceClient.
 type leagueServiceClient struct {
-	createLeague            *connect.Client[league_service.CreateLeagueRequest, league_service.LeagueResponse]
-	getLeague               *connect.Client[league_service.LeagueRequest, league_service.LeagueResponse]
-	getAllLeagues           *connect.Client[league_service.GetAllLeaguesRequest, league_service.GetAllLeaguesResponse]
-	updateLeagueSettings    *connect.Client[league_service.UpdateLeagueSettingsRequest, league_service.LeagueResponse]
-	updateLeagueMetadata    *connect.Client[league_service.UpdateLeagueMetadataRequest, league_service.LeagueResponse]
-	bootstrapSeason         *connect.Client[league_service.BootstrapSeasonRequest, league_service.SeasonResponse]
-	getSeason               *connect.Client[league_service.SeasonRequest, league_service.SeasonResponse]
-	getCurrentSeason        *connect.Client[league_service.LeagueRequest, league_service.SeasonResponse]
-	getPastSeasons          *connect.Client[league_service.LeagueRequest, league_service.PastSeasonsResponse]
-	getAllSeasons           *connect.Client[league_service.LeagueRequest, league_service.AllSeasonsResponse]
-	openRegistration        *connect.Client[league_service.OpenRegistrationRequest, league_service.SeasonResponse]
-	getDivisionStandings    *connect.Client[league_service.DivisionRequest, league_service.DivisionStandingsResponse]
-	getAllDivisionStandings *connect.Client[league_service.SeasonRequest, league_service.AllDivisionStandingsResponse]
-	registerForSeason       *connect.Client[league_service.RegisterRequest, league_service.RegisterResponse]
-	unregisterFromSeason    *connect.Client[league_service.UnregisterRequest, league_service.UnregisterResponse]
-	getSeasonRegistrations  *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
-	getPlayerLeagueHistory  *connect.Client[league_service.PlayerHistoryRequest, league_service.PlayerHistoryResponse]
-	getPlayerSeasonGames    *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
-	inviteUserToLeagues     *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
-	getLeagueStatistics     *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
-	movePlayerToDivision    *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
+	createLeague                       *connect.Client[league_service.CreateLeagueRequest, league_service.LeagueResponse]
+	getLeague                          *connect.Client[league_service.LeagueRequest, league_service.LeagueResponse]
+	getAllLeagues                      *connect.Client[league_service.GetAllLeaguesRequest, league_service.GetAllLeaguesResponse]
+	updateLeagueSettings               *connect.Client[league_service.UpdateLeagueSettingsRequest, league_service.LeagueResponse]
+	updateLeagueMetadata               *connect.Client[league_service.UpdateLeagueMetadataRequest, league_service.LeagueResponse]
+	bootstrapSeason                    *connect.Client[league_service.BootstrapSeasonRequest, league_service.SeasonResponse]
+	getSeason                          *connect.Client[league_service.SeasonRequest, league_service.SeasonResponse]
+	getCurrentSeason                   *connect.Client[league_service.LeagueRequest, league_service.SeasonResponse]
+	getPastSeasons                     *connect.Client[league_service.LeagueRequest, league_service.PastSeasonsResponse]
+	getAllSeasons                      *connect.Client[league_service.LeagueRequest, league_service.AllSeasonsResponse]
+	openRegistration                   *connect.Client[league_service.OpenRegistrationRequest, league_service.SeasonResponse]
+	getDivisionStandings               *connect.Client[league_service.DivisionRequest, league_service.DivisionStandingsResponse]
+	getAllDivisionStandings            *connect.Client[league_service.SeasonRequest, league_service.AllDivisionStandingsResponse]
+	registerForSeason                  *connect.Client[league_service.RegisterRequest, league_service.RegisterResponse]
+	unregisterFromSeason               *connect.Client[league_service.UnregisterRequest, league_service.UnregisterResponse]
+	getSeasonRegistrations             *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
+	getPlayerLeagueHistory             *connect.Client[league_service.PlayerHistoryRequest, league_service.PlayerHistoryResponse]
+	getPlayerSeasonGames               *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
+	inviteUserToLeagues                *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
+	getLeagueStatistics                *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
+	movePlayerToDivision               *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
+	getSeasonZeroMoveGames             *connect.Client[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse]
+	getSeasonPlayersWithUnstartedGames *connect.Client[league_service.SeasonRequest, league_service.SeasonPlayersWithUnstartedGamesResponse]
 }
 
 // CreateLeague calls league_service.LeagueService.CreateLeague.
@@ -397,6 +419,17 @@ func (c *leagueServiceClient) MovePlayerToDivision(ctx context.Context, req *con
 	return c.movePlayerToDivision.CallUnary(ctx, req)
 }
 
+// GetSeasonZeroMoveGames calls league_service.LeagueService.GetSeasonZeroMoveGames.
+func (c *leagueServiceClient) GetSeasonZeroMoveGames(ctx context.Context, req *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error) {
+	return c.getSeasonZeroMoveGames.CallUnary(ctx, req)
+}
+
+// GetSeasonPlayersWithUnstartedGames calls
+// league_service.LeagueService.GetSeasonPlayersWithUnstartedGames.
+func (c *leagueServiceClient) GetSeasonPlayersWithUnstartedGames(ctx context.Context, req *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error) {
+	return c.getSeasonPlayersWithUnstartedGames.CallUnary(ctx, req)
+}
+
 // LeagueServiceHandler is an implementation of the league_service.LeagueService service.
 type LeagueServiceHandler interface {
 	// League management
@@ -426,6 +459,8 @@ type LeagueServiceHandler interface {
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
+	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
+	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
 }
 
 // NewLeagueServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -561,6 +596,18 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceGetSeasonZeroMoveGamesHandler := connect.NewUnaryHandler(
+		LeagueServiceGetSeasonZeroMoveGamesProcedure,
+		svc.GetSeasonZeroMoveGames,
+		connect.WithSchema(leagueServiceMethods.ByName("GetSeasonZeroMoveGames")),
+		connect.WithHandlerOptions(opts...),
+	)
+	leagueServiceGetSeasonPlayersWithUnstartedGamesHandler := connect.NewUnaryHandler(
+		LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure,
+		svc.GetSeasonPlayersWithUnstartedGames,
+		connect.WithSchema(leagueServiceMethods.ByName("GetSeasonPlayersWithUnstartedGames")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/league_service.LeagueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LeagueServiceCreateLeagueProcedure:
@@ -605,6 +652,10 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
 		case LeagueServiceMovePlayerToDivisionProcedure:
 			leagueServiceMovePlayerToDivisionHandler.ServeHTTP(w, r)
+		case LeagueServiceGetSeasonZeroMoveGamesProcedure:
+			leagueServiceGetSeasonZeroMoveGamesHandler.ServeHTTP(w, r)
+		case LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure:
+			leagueServiceGetSeasonPlayersWithUnstartedGamesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -696,4 +747,12 @@ func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *c
 
 func (UnimplementedLeagueServiceHandler) MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.MovePlayerToDivision is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetSeasonZeroMoveGames is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetSeasonPlayersWithUnstartedGames is not implemented"))
 }

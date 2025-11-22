@@ -44,6 +44,8 @@ service LeagueService {
 
   // Admin operations
   rpc MovePlayerToDivision(MovePlayerToDivisionRequest) returns (MovePlayerToDivisionResponse);
+  rpc GetSeasonZeroMoveGames(SeasonRequest) returns (SeasonZeroMoveGamesResponse);
+  rpc GetSeasonPlayersWithUnstartedGames(SeasonRequest) returns (SeasonPlayersWithUnstartedGamesResponse);
 }
 
 message CreateLeagueRequest {
@@ -198,4 +200,28 @@ message MovePlayerToDivisionRequest {
 message MovePlayerToDivisionResponse {
   bool success = 1;
   string message = 2;
+}
+
+message SeasonZeroMoveGamesResponse {
+  repeated ZeroMoveGame games = 1;
+}
+
+message ZeroMoveGame {
+  string game_id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  string player0_id = 3;
+  string player0_username = 4;
+  string player1_id = 5;
+  string player1_username = 6;
+  string division_id = 7;
+}
+
+message SeasonPlayersWithUnstartedGamesResponse {
+  repeated PlayerWithUnstartedGames players = 1;
+}
+
+message PlayerWithUnstartedGames {
+  string user_id = 1;
+  string username = 2;
+  int32 unstarted_game_count = 3;
 }

@@ -114,7 +114,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             <div
               style={{ textAlign: "center", padding: "40px", color: "#999" }}
             >
-              No completed games found for this season.
+              No games found for this season.
             </div>
           ) : (
             <Table

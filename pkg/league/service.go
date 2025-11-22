@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -15,7 +16,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
-	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -721,6 +721,9 @@ func (ls *LeagueService) GetDivisionStandings(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
 	}
 
+	// Sort standings by points, spread, username
+	SortStandingsByRank(standings)
+
 	// Convert standings to proto
 	protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 	for i, standing := range standings {
@@ -739,7 +742,7 @@ func (ls *LeagueService) GetDivisionStandings(
 		protoStandings[i] = &ipc.LeaguePlayerStanding{
 			UserId:         userUUID,
 			Username:       username,
-			Rank:           standing.Rank.Int32,
+			Rank:           int32(i + 1), // Rank is position in sorted array
 			Wins:           standing.Wins.Int32,
 			Losses:         standing.Losses.Int32,
 			Draws:          standing.Draws.Int32,
@@ -801,21 +804,30 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			return nil, apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
 		}
 
-		// If no standings exist yet (season not started), create initial standings from registrations
-		if len(standings) == 0 {
-			registrations, err := ls.store.GetDivisionRegistrations(ctx, divisionUUID)
-			if err != nil {
-				return nil, apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
-			}
+		// Get registrations for the division to ensure all players are shown
+		registrations, err := ls.store.GetDivisionRegistrations(ctx, divisionUUID)
+		if err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
+		}
 
-			// Convert registrations to "fake standings" with all zeros
-			standings = make([]models.GetStandingsRow, len(registrations))
-			for j, reg := range registrations {
-				standings[j] = models.GetStandingsRow{
+		// Build a map of existing standings by user ID
+		standingsMap := make(map[int32]models.GetStandingsRow)
+		for _, standing := range standings {
+			standingsMap[standing.UserID] = standing
+		}
+
+		// Merge standings with registrations - show all registered players
+		// Use actual standings where available, zeros for others
+		mergedStandings := make([]models.GetStandingsRow, len(registrations))
+		for j, reg := range registrations {
+			if existing, ok := standingsMap[reg.UserID]; ok {
+				mergedStandings[j] = existing
+			} else {
+				// Player has no standings yet (no finished games) - show zeros
+				mergedStandings[j] = models.GetStandingsRow{
 					UserID:         reg.UserID,
 					UserUuid:       reg.UserUuid,                          // From JOIN
-					Username:       pgtype.Text{String: "", Valid: false}, // Not included in registration JOIN, will fetch later
-					Rank:           pgtype.Int4{Int32: int32(j + 1), Valid: true},
+					Username:       pgtype.Text{String: "", Valid: false}, // Will fetch later
 					Wins:           pgtype.Int4{Int32: 0, Valid: true},
 					Losses:         pgtype.Int4{Int32: 0, Valid: true},
 					Draws:          pgtype.Int4{Int32: 0, Valid: true},
@@ -826,6 +838,11 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				}
 			}
 		}
+
+		standings = mergedStandings
+
+		// Sort standings by points, spread, username
+		SortStandingsByRank(standings)
 
 		// Convert standings to proto
 		protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
@@ -851,7 +868,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
 				UserId:         userUUID,
 				Username:       username,
-				Rank:           standing.Rank.Int32,
+				Rank:           int32(j + 1), // Rank is position in sorted array
 				Wins:           standing.Wins.Int32,
 				Losses:         standing.Losses.Int32,
 				Draws:          standing.Draws.Int32,
@@ -1025,11 +1042,10 @@ func (ls *LeagueService) GetSeasonRegistrations(
 	// Convert to proto
 	protoRegistrations := make([]*pb.SeasonRegistration, len(registrations))
 	for i, reg := range registrations {
-		// Get user info
-		user, err := ls.userStore.GetByUUID(ctx, reg.UserUuid.String)
-		if err != nil {
-			// If user not found, use placeholder
-			user = &entity.User{UUID: reg.UserUuid.String, Username: "Unknown"}
+		// Get user info from query result (already joined)
+		username := "Unknown"
+		if reg.Username.Valid {
+			username = reg.Username.String
 		}
 
 		divisionID := ""
@@ -1038,17 +1054,16 @@ func (ls *LeagueService) GetSeasonRegistrations(
 			divUUID, err := uuid.FromBytes(reg.DivisionID.Bytes[:])
 			if err == nil {
 				divisionID = divUUID.String()
-				// Get division to find division number
-				division, err := ls.store.GetDivision(ctx, divUUID)
-				if err == nil {
-					divisionNumber = division.DivisionNumber
-				}
 			}
+		}
+		// Division number comes from the query JOIN (no extra query needed!)
+		if reg.DivisionNumber.Valid {
+			divisionNumber = reg.DivisionNumber.Int32
 		}
 
 		protoRegistrations[i] = &pb.SeasonRegistration{
 			UserId:         reg.UserUuid.String,
-			Username:       user.Username,
+			Username:       username,
 			SeasonId:       reg.SeasonID.String(),
 			DivisionId:     divisionID,
 			DivisionNumber: divisionNumber,
@@ -1134,8 +1149,8 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		return nil, apiserver.InvalidArg("user_id is required")
 	}
 
-	// Use the new query that joins with game_players table
-	gameRows, err := ls.queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+	// Query finished games from game_players table (fast)
+	finishedGameRows, err := ls.queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
 		UserUuid: pgtype.Text{String: userID, Valid: true},
 	})
@@ -1143,9 +1158,18 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player season games: %w", err))
 	}
 
-	// Convert to proto
-	allGames := make([]*pb.PlayerSeasonGame, 0, len(gameRows))
-	for _, row := range gameRows {
+	// Query in-progress games from games table (fast, indexed)
+	inProgressGameRows, err := ls.queries.GetPlayerSeasonInProgressGames(ctx, models.GetPlayerSeasonInProgressGamesParams{
+		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+		UserUuid: pgtype.Text{String: userID, Valid: true},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player in-progress games: %w", err))
+	}
+
+	// Convert finished games to proto
+	allGames := make([]*pb.PlayerSeasonGame, 0, len(finishedGameRows)+len(inProgressGameRows))
+	for _, row := range finishedGameRows {
 		// Determine result from the won field and game_end_reason
 		result := "in_progress"
 		playerScore := int32(0)
@@ -1173,10 +1197,37 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           result,
-			GameDate:         timestamppb.New(row.CreatedAt.Time), // Game creation date
-			Round:            0,                                    // TODO: Add round info if available
+			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			Round:            0,
 		})
 	}
+
+	// Convert in-progress games to proto
+	for _, row := range inProgressGameRows {
+		// Determine opponent based on which player the user is
+		opponentUuid := row.Player1Uuid.String
+		opponentUsername := row.Player1Username.String
+		if row.Player1Uuid.String == userID {
+			opponentUuid = row.Player0Uuid.String
+			opponentUsername = row.Player0Username.String
+		}
+
+		allGames = append(allGames, &pb.PlayerSeasonGame{
+			GameId:           row.GameUuid.String,
+			OpponentUserId:   opponentUuid,
+			OpponentUsername: opponentUsername,
+			PlayerScore:      0,
+			OpponentScore:    0,
+			Result:           "in_progress",
+			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			Round:            0,
+		})
+	}
+
+	// Sort by creation date descending (most recent first)
+	sort.Slice(allGames, func(i, j int) bool {
+		return allGames[i].GameDate.AsTime().After(allGames[j].GameDate.AsTime())
+	})
 
 	return connect.NewResponse(&pb.GetPlayerSeasonGamesResponse{
 		Games: allGames,
@@ -1256,5 +1307,83 @@ func (ls *LeagueService) MovePlayerToDivision(
 	return connect.NewResponse(&pb.MovePlayerToDivisionResponse{
 		Success: true,
 		Message: fmt.Sprintf("Player successfully moved to new division"),
+	}), nil
+}
+
+func (ls *LeagueService) GetSeasonZeroMoveGames(
+	ctx context.Context,
+	req *connect.Request[pb.SeasonRequest],
+) (*connect.Response[pb.SeasonZeroMoveGamesResponse], error) {
+	// Authenticate - requires can_manage_leagues permission (admin or league manager)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Query games with zero moves
+	gameRows, err := ls.queries.GetSeasonZeroMoveGames(ctx, pgtype.UUID{Bytes: seasonID, Valid: true})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get zero-move games: %w", err))
+	}
+
+	// Convert to proto
+	games := make([]*pb.ZeroMoveGame, 0, len(gameRows))
+	for _, row := range gameRows {
+		games = append(games, &pb.ZeroMoveGame{
+			GameId:           row.GameUuid.String,
+			CreatedAt:        timestamppb.New(row.CreatedAt.Time),
+			Player0Id:        row.Player0Uuid.String,
+			Player0Username:  row.Player0Username.String,
+			Player1Id:        row.Player1Uuid.String,
+			Player1Username:  row.Player1Username.String,
+			DivisionId:       row.DivisionID.String(),
+		})
+	}
+
+	return connect.NewResponse(&pb.SeasonZeroMoveGamesResponse{
+		Games: games,
+	}), nil
+}
+
+func (ls *LeagueService) GetSeasonPlayersWithUnstartedGames(
+	ctx context.Context,
+	req *connect.Request[pb.SeasonRequest],
+) (*connect.Response[pb.SeasonPlayersWithUnstartedGamesResponse], error) {
+	// Authenticate - requires can_manage_leagues permission (admin or league manager)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Query players with unstarted games
+	playerRows, err := ls.queries.GetSeasonPlayersWithUnstartedGames(ctx, pgtype.UUID{Bytes: seasonID, Valid: true})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get players with unstarted games: %w", err))
+	}
+
+	// Convert to proto
+	players := make([]*pb.PlayerWithUnstartedGames, 0, len(playerRows))
+	for _, row := range playerRows {
+		players = append(players, &pb.PlayerWithUnstartedGames{
+			UserId:             row.UserUuid.String,
+			Username:           row.Username.String,
+			UnstartedGameCount: int32(row.UnstartedGameCount),
+		})
+	}
+
+	return connect.NewResponse(&pb.SeasonPlayersWithUnstartedGamesResponse{
+		Players: players,
 	}), nil
 }

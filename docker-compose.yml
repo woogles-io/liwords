@@ -57,7 +57,7 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`, `/gameimg/`, `/debug/`, `/integrations/`, `/embed/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`) || PathPrefix(`/gameimg/`) || PathPrefix(`/debug/`) || PathPrefix(`/integrations/`) || PathPrefix(`/embed/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
@@ -121,27 +121,39 @@ services:
   # socket2: *socketsetup
 
   jaeger:
-    image: jaegertracing/all-in-one:${JAEGER_VERSION:-latest}
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.12.0
+    command: ["--config", "/etc/jaeger/config.yaml"]
     ports:
-      - "16686:16686"
-      - "4318:4318"
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "14250:14250"  # Jaeger gRPC
+      - "14268:14268"  # Jaeger HTTP Thrift
+    volumes:
+      - ./jaeger-config.yaml:/etc/jaeger/config.yaml:ro
+      - ./jaeger-ui-config.json:/etc/jaeger/ui-config.json:ro
+      - jaeger-badger-data:/badger
     networks:
       - aeronet
 
   proxy:
-    image: "traefik:v2.2"
+    image: "traefik:v3.6"
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=liwords_aeronet"
       - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - aeronet
+    security_opt:
+      - no-new-privileges:true
 
   nats:
     image: "nats"
@@ -174,6 +186,11 @@ services:
       - 15432:5432
     networks:
       - aeronet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: docker.io/bitnami/minio
@@ -239,4 +256,6 @@ volumes:
   redis-data-volume:
     external: false
   minio_data:
+    driver: local
+  jaeger-badger-data:
     driver: local

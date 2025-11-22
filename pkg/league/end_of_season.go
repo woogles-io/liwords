@@ -76,8 +76,11 @@ func (em *EndOfSeasonManager) updateRegistrationOutcomes(
 		return fmt.Errorf("failed to get standings: %w", err)
 	}
 
+	// Sort standings to determine rank (rank is calculated from position, not stored)
+	SortStandingsByRank(standings)
+
 	// Update each player's registration with their outcome
-	for _, standing := range standings {
+	for i, standing := range standings {
 		// Map StandingResult to PlacementStatus
 		placementStatus := pgtype.Int4{}
 		if standing.Result.Valid {
@@ -99,11 +102,8 @@ func (em *EndOfSeasonManager) updateRegistrationOutcomes(
 			placementStatus = pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_STAYED), Valid: true}
 		}
 
-		// Get the rank (1-based)
-		rank := int32(0)
-		if standing.Rank.Valid {
-			rank = standing.Rank.Int32
-		}
+		// Rank is position in sorted array (1-based)
+		rank := int32(i + 1)
 
 		// Update the registration
 		err := em.store.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{

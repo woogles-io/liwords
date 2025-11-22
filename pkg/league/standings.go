@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -46,12 +46,13 @@ func NewStandingsManager(store league.Store) *StandingsManager {
 type PlayerStanding struct {
 	UserID      int32 // Database ID, not UUID
 	DivisionID  uuid.UUID
-	Wins        float64 // includes ties as 0.5
+	Username    string
+	Wins        int
 	Losses      int
 	Draws       int
 	Spread      int
 	GamesPlayed int
-	Rank        int
+	Rank        int // Deprecated: calculated from position in sorted array, not stored in DB
 	Outcome     pb.StandingResult
 }
 
@@ -116,9 +117,14 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	// Create a map to track player stats
 	playerStats := make(map[int32]*PlayerStanding)
 	for _, reg := range registrations {
+		username := ""
+		if reg.Username.Valid {
+			username = reg.Username.String
+		}
 		playerStats[reg.UserID] = &PlayerStanding{
 			UserID:      reg.UserID,
 			DivisionID:  division.Uuid,
+			Username:    username,
 			Wins:        0,
 			Losses:      0,
 			Draws:       0,
@@ -166,9 +172,6 @@ func (sm *StandingsManager) calculateDivisionStandings(
 			// Draw (won is null for both players)
 			p0Stats.Draws++
 			p1Stats.Draws++
-			// Draws count as 0.5 wins for ranking
-			p0Stats.Wins += 0.5
-			p1Stats.Wins += 0.5
 		}
 	}
 
@@ -178,10 +181,10 @@ func (sm *StandingsManager) calculateDivisionStandings(
 		standings = append(standings, *stats)
 	}
 
-	// Sort standings by wins (desc), then spread (desc), then randomly for ties
+	// Sort standings by points, spread, username
 	sm.sortStandings(standings)
 
-	// Assign ranks
+	// Assign ranks based on position (for marking promotion/relegation outcomes)
 	for i := range standings {
 		standings[i].Rank = i + 1
 	}
@@ -192,7 +195,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	// Calculate expected games per player based on division size
 	expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
 
-	// Save to database
+	// Save to database (rank is not saved - it's calculated on-demand when fetching)
 	for _, standing := range standings {
 		gamesRemaining := expectedGames - standing.GamesPlayed
 		if gamesRemaining < 0 {
@@ -202,7 +205,6 @@ func (sm *StandingsManager) calculateDivisionStandings(
 		err := sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
 			DivisionID:     division.Uuid,
 			UserID:         standing.UserID,
-			Rank:           pgtype.Int4{Int32: int32(standing.Rank), Valid: true},
 			Wins:           pgtype.Int4{Int32: int32(standing.Wins), Valid: true},
 			Losses:         pgtype.Int4{Int32: int32(standing.Losses), Valid: true},
 			Draws:          pgtype.Int4{Int32: int32(standing.Draws), Valid: true},
@@ -219,24 +221,48 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	return nil
 }
 
-// sortStandings sorts standings by wins (desc), spread (desc), then randomly
-func (sm *StandingsManager) sortStandings(standings []PlayerStanding) {
-	// Assign random tiebreaker values
-	for i := range standings {
-		standings[i].Rank = rand.Intn(1000000)
-	}
-
+// SortStandingsByRank sorts standings by points (wins*2+draws) desc, spread desc, then username asc
+// This is the canonical sorting function used everywhere for consistency
+func SortStandingsByRank(standings []models.GetStandingsRow) {
 	sort.Slice(standings, func(i, j int) bool {
-		// First by wins (descending)
-		if standings[i].Wins != standings[j].Wins {
-			return standings[i].Wins > standings[j].Wins
+		// First by points (descending) where points = wins*2 + draws
+		pointsI := int(standings[i].Wins.Int32)*2 + int(standings[i].Draws.Int32)
+		pointsJ := int(standings[j].Wins.Int32)*2 + int(standings[j].Draws.Int32)
+		if pointsI != pointsJ {
+			return pointsI > pointsJ
+		}
+		// Then by spread (descending)
+		if standings[i].Spread.Int32 != standings[j].Spread.Int32 {
+			return standings[i].Spread.Int32 > standings[j].Spread.Int32
+		}
+		// Finally by username (ascending) for deterministic tiebreaker
+		usernameI := ""
+		usernameJ := ""
+		if standings[i].Username.Valid {
+			usernameI = strings.ToLower(standings[i].Username.String)
+		}
+		if standings[j].Username.Valid {
+			usernameJ = strings.ToLower(standings[j].Username.String)
+		}
+		return usernameI < usernameJ
+	})
+}
+
+// sortStandings sorts PlayerStanding slices using the same logic as SortStandingsByRank
+func (sm *StandingsManager) sortStandings(standings []PlayerStanding) {
+	sort.Slice(standings, func(i, j int) bool {
+		// First by points (descending) where points = wins*2 + draws
+		pointsI := standings[i].Wins*2 + standings[i].Draws
+		pointsJ := standings[j].Wins*2 + standings[j].Draws
+		if pointsI != pointsJ {
+			return pointsI > pointsJ
 		}
 		// Then by spread (descending)
 		if standings[i].Spread != standings[j].Spread {
 			return standings[i].Spread > standings[j].Spread
 		}
-		// Finally by random rank (for true ties)
-		return standings[i].Rank < standings[j].Rank
+		// Finally by username (ascending) for deterministic tiebreaker
+		return strings.ToLower(standings[i].Username) < strings.ToLower(standings[j].Username)
 	})
 }
 
@@ -341,7 +367,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 		UserID:         player1ID,
 		Wins:           pgtype.Int4{Int32: p1Wins, Valid: true},
 		Losses:         pgtype.Int4{Int32: p1Losses, Valid: true},
-		Draws:          pgtype.Int4{Int32: p1Draws, Valid: true},
+		Draws:           pgtype.Int4{Int32: p1Draws, Valid: true},
 		Spread:         pgtype.Int4{Int32: p1Spread, Valid: true},
 		GamesRemaining: pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
 	})
@@ -349,12 +375,8 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 		return fmt.Errorf("failed to increment standings for player %d: %w", player1ID, err)
 	}
 
-	// Recalculate ranks for the entire division
-	// This uses a SQL window function to atomically update all ranks based on wins/spread
-	err = sm.store.RecalculateRanks(ctx, divisionID)
-	if err != nil {
-		return fmt.Errorf("failed to recalculate ranks: %w", err)
-	}
+	// Note: Rank is no longer stored in DB - it's calculated on-demand when fetching standings
+	// by sorting by (wins*2 + draws) DESC, spread DESC, username ASC
 
 	return nil
 }

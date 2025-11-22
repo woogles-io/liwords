@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { Card, Empty, Tooltip } from "antd";
 import { ClockCircleOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router";
-import { ActiveGame } from "../store/reducers/lobby_reducer";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
 
@@ -13,7 +11,6 @@ type LeagueCorrespondenceGamesProps = {
 export const LeagueCorrespondenceGames: React.FC<
   LeagueCorrespondenceGamesProps
 > = ({ leagueSlug }) => {
-  const navigate = useNavigate();
   const {
     loginState: { userID },
   } = useLoginStateStoreContext();
@@ -57,7 +54,7 @@ export const LeagueCorrespondenceGames: React.FC<
   }, [correspondenceGames, leagueSlug, userID]);
 
   const handleGameClick = (gameID: string) => {
-    navigate(`/game/${encodeURIComponent(gameID)}`);
+    window.open(`/game/${encodeURIComponent(gameID)}`, "_blank");
   };
 
   if (leagueGames.length === 0) {

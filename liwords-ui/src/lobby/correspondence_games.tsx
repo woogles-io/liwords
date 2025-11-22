@@ -77,6 +77,8 @@ export const CorrespondenceGames = (props: Props) => {
     timeRemaining: number; // Time remaining in seconds, or Infinity if not applicable
     finalScore?: ReactNode; // For finished games
     endReason?: ReactNode; // For finished games
+    isLeagueGame?: boolean; // Whether this is a league game
+    outcome?: ReactNode; // Combined outcome column for recently ended games
   };
 
   // Group games by variant
@@ -92,6 +94,25 @@ export const CorrespondenceGames = (props: Props) => {
       grouped[variant].push(game);
     });
     return grouped;
+  };
+
+  // Separate league games from regular games
+  const separateLeagueGames = (
+    games: CorrespondenceGameTableData[],
+  ): {
+    leagueGames: CorrespondenceGameTableData[];
+    regularGames: CorrespondenceGameTableData[];
+  } => {
+    const leagueGames: CorrespondenceGameTableData[] = [];
+    const regularGames: CorrespondenceGameTableData[] = [];
+    games.forEach((game) => {
+      if (game.isLeagueGame) {
+        leagueGames.push(game);
+      } else {
+        regularGames.push(game);
+      }
+    });
+    return { leagueGames, regularGames };
   };
 
   const formatGameData = useCallback(
@@ -176,6 +197,7 @@ export const CorrespondenceGames = (props: Props) => {
             onTurn,
             variant: ag.variant || "classic",
             timeRemaining: timeRemainingSecs,
+            isLeagueGame: !!ag.leagueSlug,
             details:
               ag.tournamentID !== "" ? (
                 <span className="tourney-name">{ag.tournamentID}</span>
@@ -223,58 +245,74 @@ export const CorrespondenceGames = (props: Props) => {
       return games.map((g: GameInfoResponse) => {
         const player1 = g.players[0];
         const player2 = g.players[1];
-        const player1rating = player1?.rating || "1500?";
-        const player2rating = player2?.rating || "1500?";
 
-        // Show final scores and end reason
+        // Show final scores
         const score1 = g.scores[0] ?? 0;
         const score2 = g.scores[1] ?? 0;
 
-        // Determine end reason text
-        let endReasonText = "";
+        // Determine user's result and opponent
+        const userPlayerIndex = g.players.findIndex((p) => p.userId === userID);
+        const opponentIndex = userPlayerIndex === 0 ? 1 : 0;
+        const opponent = g.players[opponentIndex];
+        const opponentName = opponent?.nickname || "Unknown";
+        const userScore = userPlayerIndex === 0 ? score1 : score2;
+        const opponentScore = userPlayerIndex === 0 ? score2 : score1;
+
+        // Determine result badge and text
+        let resultBadge: ReactNode = null;
+        let resultText = "";
+        const userWon = g.winner === userPlayerIndex;
+        const isTie = g.winner === -1;
+        const userLost = !userWon && !isTie;
+
+        if (userWon) {
+          resultBadge = <Tag color="green">Won</Tag>;
+        } else if (isTie) {
+          resultBadge = <Tag>Tie</Tag>;
+        } else {
+          resultBadge = <Tag color="red">Lost</Tag>;
+        }
+
+        // Build outcome text based on end reason
+        // Format: "[Won] over yaki 235-200" or "[Lost] to foo via resignation"
         switch (g.gameEndReason) {
           case GameEndReason.TIME:
-            endReasonText = "Time out";
-            break;
-          case GameEndReason.STANDARD:
-            endReasonText = "Completed";
+            if (userWon) {
+              resultText = `${opponentName} timed out`;
+            } else {
+              resultText = `to ${opponentName} on timeout`;
+            }
             break;
           case GameEndReason.RESIGNED:
-            endReasonText = "Resigned";
-            break;
-          case GameEndReason.CONSECUTIVE_ZEROES:
-            endReasonText = "Six zeroes";
-            break;
-          case GameEndReason.TRIPLE_CHALLENGE:
-            endReasonText = "Triple challenge";
+            if (userWon) {
+              resultText = `${opponentName} resigned`;
+            } else {
+              resultText = `to ${opponentName} via resignation`;
+            }
             break;
           case GameEndReason.FORCE_FORFEIT:
-            endReasonText = "Forfeit";
+            if (userWon) {
+              resultText = `${opponentName} forfeited`;
+            } else {
+              resultText = `to ${opponentName} via forfeit`;
+            }
             break;
           default:
-            endReasonText = "Ended";
+            // Standard completion - show scores
+            if (userWon) {
+              resultText = `over ${opponentName} ${userScore}–${opponentScore}`;
+            } else if (isTie) {
+              resultText = `with ${opponentName} ${userScore}–${opponentScore}`;
+            } else {
+              resultText = `to ${opponentName} ${userScore}–${opponentScore}`;
+            }
         }
 
-        // Determine if user won, lost, or tied
-        let resultBadge: ReactNode = null;
-        const userPlayerIndex = g.players.findIndex((p) => p.userId === userID);
-        if (userPlayerIndex !== -1) {
-          if (g.winner === userPlayerIndex) {
-            resultBadge = <Tag color="green">Won</Tag>;
-          } else if (g.winner === -1) {
-            resultBadge = <Tag>Tie</Tag>;
-          } else {
-            resultBadge = <Tag color="red">Lost</Tag>;
-          }
-        }
-
-        const finalScore = (
-          <span style={{ opacity: 0.8 }}>
-            {resultBadge} {score1}–{score2}
+        const outcome = (
+          <span>
+            {resultBadge} {resultText}
           </span>
         );
-
-        const endReason = <span style={{ opacity: 0.8 }}>{endReasonText}</span>;
 
         return {
           gameID: g.gameId,
@@ -294,16 +332,23 @@ export const CorrespondenceGames = (props: Props) => {
               </div>
             </>
           ),
-          turn: finalScore, // Keep for compatibility
-          finalScore,
-          endReason,
+          turn: outcome, // Keep for compatibility
+          outcome,
           lexicon: (
             <MatchLexiconDisplay lexiconCode={g.gameRequest?.lexicon || ""} />
           ),
           lexiconCode: g.gameRequest?.lexicon || "",
           onTurn: false, // Finished games aren't anyone's turn
+          isLeagueGame: !!g.leagueSlug,
           details: g.tournamentId ? (
             <span className="tourney-name">{g.tournamentId}</span>
+          ) : g.leagueSlug ? (
+            <span className="league-game">
+              <Tooltip title={`League Game: ${g.leagueSlug}`}>
+                <TrophyOutlined style={{ color: "#faad14", marginRight: 4 }} />
+              </Tooltip>
+              League
+            </span>
           ) : (
             <>
               <VariantIcon vcode={g.gameRequest?.rules?.variantName || ""} />{" "}
@@ -377,22 +422,10 @@ export const CorrespondenceGames = (props: Props) => {
 
   const finishedGameColumns = [
     {
-      title: "Players",
-      className: "players",
-      dataIndex: "players",
-      key: "players",
-    },
-    {
-      title: "Final Score",
-      className: "final-score",
-      dataIndex: "finalScore",
-      key: "finalScore",
-    },
-    {
-      title: "End",
-      className: "end-reason",
-      dataIndex: "endReason",
-      key: "endReason",
+      title: "Outcome",
+      className: "outcome",
+      dataIndex: "outcome",
+      key: "outcome",
     },
     {
       title: "Words",
@@ -417,8 +450,11 @@ export const CorrespondenceGames = (props: Props) => {
     },
   ];
 
-  // Group data by variant
-  const groupedGames = groupGamesByVariant(data);
+  // Separate league games from regular games
+  const { leagueGames, regularGames } = separateLeagueGames(data);
+
+  // Group regular games by variant
+  const groupedGames = groupGamesByVariant(regularGames);
 
   // Define variant order: classic, wordsmog, classic_super
   const variantOrder = ["classic", "wordsmog", "classic_super"];
@@ -429,6 +465,37 @@ export const CorrespondenceGames = (props: Props) => {
     if (indexB === -1) return -1;
     return indexA - indexB;
   });
+
+  // Common row handlers for game tables
+  const getRowHandlers = (record: CorrespondenceGameTableData) => ({
+    onClick: (event: React.MouseEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        window.open(`/game/${encodeURIComponent(record.gameID)}`);
+      } else {
+        navigate(`/game/${encodeURIComponent(record.gameID)}`);
+      }
+    },
+    onAuxClick: (event: React.MouseEvent) => {
+      if (event.button === 1) {
+        // middle-click
+        window.open(`/game/${encodeURIComponent(record.gameID)}`);
+      }
+    },
+  });
+
+  const getRowClassName = (record: CorrespondenceGameTableData) => {
+    const classes = ["game-listing"];
+    if (record.onTurn) {
+      classes.push("on-turn");
+    }
+    if (
+      props.username &&
+      (record.player1 === props.username || record.player2 === props.username)
+    ) {
+      classes.push("my-game");
+    }
+    return classes.join(" ");
+  };
 
   return (
     <>
@@ -444,6 +511,30 @@ export const CorrespondenceGames = (props: Props) => {
       )}
       <h4>My correspondence games</h4>
 
+      {/* League games section - shown first */}
+      {leagueGames.length > 0 && (
+        <>
+          <h5 style={{ marginTop: 16, marginBottom: 8 }}>
+            <TrophyOutlined style={{ color: "#faad14", marginRight: 8 }} />
+            League Games
+          </h5>
+          <Table
+            className="games observe correspondence-games league-games"
+            dataSource={leagueGames}
+            columns={columns}
+            pagination={false}
+            rowKey="gameID"
+            showSorterTooltip={false}
+            onRow={getRowHandlers}
+            rowClassName={getRowClassName}
+            locale={{
+              emptyText: "No league games",
+            }}
+          />
+        </>
+      )}
+
+      {/* Regular games by variant */}
       {sortedVariants.map((variant) => (
         <React.Fragment key={variant}>
           <VariantSectionHeader variant={variant} />
@@ -454,35 +545,8 @@ export const CorrespondenceGames = (props: Props) => {
             pagination={false}
             rowKey="gameID"
             showSorterTooltip={false}
-            onRow={(record) => ({
-              onClick: (event) => {
-                if (event.ctrlKey || event.altKey || event.metaKey) {
-                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
-                } else {
-                  navigate(`/game/${encodeURIComponent(record.gameID)}`);
-                }
-              },
-              onAuxClick: (event) => {
-                if (event.button === 1) {
-                  // middle-click
-                  window.open(`/game/${encodeURIComponent(record.gameID)}`);
-                }
-              },
-            })}
-            rowClassName={(record) => {
-              const classes = ["game-listing"];
-              if (record.onTurn) {
-                classes.push("on-turn");
-              }
-              if (
-                props.username &&
-                (record.player1 === props.username ||
-                  record.player2 === props.username)
-              ) {
-                classes.push("my-game");
-              }
-              return classes.join(" ");
-            }}
+            onRow={getRowHandlers}
+            rowClassName={getRowClassName}
             locale={{
               emptyText: "No correspondence games",
             }}
@@ -495,65 +559,29 @@ export const CorrespondenceGames = (props: Props) => {
           <h4 style={{ marginTop: "32px", opacity: 0.8 }}>
             Recently ended games
           </h4>
-          {Object.keys(groupGamesByVariant(recentData))
-            .sort((a, b) => {
-              const indexA = variantOrder.indexOf(a);
-              const indexB = variantOrder.indexOf(b);
-              if (indexA === -1) return 1;
-              if (indexB === -1) return -1;
-              return indexA - indexB;
-            })
-            .map((variant) => {
-              const variantGames = groupGamesByVariant(recentData)[variant];
-              return (
-                <React.Fragment key={`recent-${variant}`}>
-                  <VariantSectionHeader variant={variant} />
-                  <Table
-                    className="games observe correspondence-games finished-games"
-                    dataSource={variantGames}
-                    columns={finishedGameColumns}
-                    pagination={false}
-                    rowKey="gameID"
-                    showSorterTooltip={false}
-                    onRow={(record) => ({
-                      onClick: (event) => {
-                        if (event.ctrlKey || event.altKey || event.metaKey) {
-                          window.open(
-                            `/game/${encodeURIComponent(record.gameID)}`,
-                          );
-                        } else {
-                          navigate(
-                            `/game/${encodeURIComponent(record.gameID)}`,
-                          );
-                        }
-                      },
-                      onAuxClick: (event) => {
-                        if (event.button === 1) {
-                          // middle-click
-                          window.open(
-                            `/game/${encodeURIComponent(record.gameID)}`,
-                          );
-                        }
-                      },
-                    })}
-                    rowClassName={(record) => {
-                      const classes = ["game-listing", "finished-game"];
-                      if (
-                        props.username &&
-                        (record.player1 === props.username ||
-                          record.player2 === props.username)
-                      ) {
-                        classes.push("my-game");
-                      }
-                      return classes.join(" ");
-                    }}
-                    locale={{
-                      emptyText: "No recently ended correspondence games",
-                    }}
-                  />
-                </React.Fragment>
-              );
-            })}
+          <Table
+            className="games observe correspondence-games finished-games"
+            dataSource={recentData}
+            columns={finishedGameColumns}
+            pagination={false}
+            rowKey="gameID"
+            showSorterTooltip={false}
+            onRow={getRowHandlers}
+            rowClassName={(record) => {
+              const classes = ["game-listing", "finished-game"];
+              if (
+                props.username &&
+                (record.player1 === props.username ||
+                  record.player2 === props.username)
+              ) {
+                classes.push("my-game");
+              }
+              return classes.join(" ");
+            }}
+            locale={{
+              emptyText: "No recently ended correspondence games",
+            }}
+          />
         </>
       )}
     </>

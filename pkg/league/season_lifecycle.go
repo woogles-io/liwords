@@ -249,10 +249,9 @@ func (slm *SeasonLifecycleManager) buildPlayerAssignments(ctx context.Context, s
 		return nil, fmt.Errorf("failed to get season registrations: %w", err)
 	}
 
-	// Group players by division
-	divisionPlayers := make(map[uuid.UUID][]string) // divisionID -> []userUUID
-	playerDivisions := make(map[string]uuid.UUID)   // userUUID -> divisionID
-	divisionNames := make(map[uuid.UUID]string)     // divisionID -> divisionName
+	// Map players to their divisions
+	playerDivisions := make(map[string]uuid.UUID) // userUUID -> divisionID
+	divisionNames := make(map[uuid.UUID]string)   // divisionID -> divisionName
 
 	for _, reg := range registrations {
 		if !reg.UserUuid.Valid || !reg.DivisionID.Valid {
@@ -262,7 +261,6 @@ func (slm *SeasonLifecycleManager) buildPlayerAssignments(ctx context.Context, s
 		userUUID := reg.UserUuid.String
 		divisionID := uuid.UUID(reg.DivisionID.Bytes)
 
-		divisionPlayers[divisionID] = append(divisionPlayers[divisionID], userUUID)
 		playerDivisions[userUUID] = divisionID
 
 		// Fetch division name if we haven't yet
@@ -283,18 +281,11 @@ func (slm *SeasonLifecycleManager) buildPlayerAssignments(ctx context.Context, s
 	// Build the player assignment map
 	assignments := make(map[string]*PlayerSeasonInfo)
 	for userUUID, divisionID := range playerDivisions {
-		// Get all other players in the same division (opponents)
-		allPlayersInDivision := divisionPlayers[divisionID]
-		opponents := make([]string, 0)
-
-		for _, opponentUUID := range allPlayersInDivision {
-			if opponentUUID != userUUID {
-				// Fetch opponent username
-				opponent, err := slm.stores.UserStore.GetByUUID(ctx, opponentUUID)
-				if err == nil {
-					opponents = append(opponents, opponent.Username)
-				}
-			}
+		// Get actual opponents from games (not all division members)
+		opponents, err := slm.stores.LeagueStore.GetPlayerSeasonOpponents(ctx, seasonID, userUUID)
+		if err != nil {
+			log.Warn().Err(err).Str("userUUID", userUUID).Msg("failed-to-get-player-opponents")
+			opponents = []string{}
 		}
 
 		assignments[userUUID] = &PlayerSeasonInfo{
@@ -851,4 +842,61 @@ func ShouldRunTask(season *models.LeagueSeason, taskType string, seasonLengthDay
 	}
 
 	return false, "Unknown task type"
+}
+
+// SendUnstartedGameReminder sends reminder emails to players who haven't started their games
+// isFirm determines whether to send a gentle reminder (Day 1) or firm warning (Day 2)
+func (slm *SeasonLifecycleManager) SendUnstartedGameReminder(
+	ctx context.Context,
+	cfg *config.Config,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+	isFirm bool,
+) error {
+	// Get league info
+	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, leagueID)
+	if err != nil {
+		return fmt.Errorf("failed to get league: %w", err)
+	}
+
+	// Get season info
+	season, err := slm.stores.LeagueStore.GetSeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
+	// Get players with unstarted games using the new query
+	playersWithUnstartedGames, err := slm.stores.LeagueStore.GetSeasonPlayersWithUnstartedGames(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get players with unstarted games: %w", err)
+	}
+
+	if len(playersWithUnstartedGames) == 0 {
+		log.Info().Str("leagueID", leagueID.String()).Int32("season", season.SeasonNumber).Msg("no-players-with-unstarted-games")
+		return nil
+	}
+
+	// Send emails to each player
+	SendUnstartedGameReminderEmail(
+		ctx,
+		cfg,
+		slm.stores.UserStore,
+		dbLeague.Name,
+		dbLeague.Slug,
+		int(season.SeasonNumber),
+		playersWithUnstartedGames,
+		isFirm,
+	)
+
+	reminderType := "gentle"
+	if isFirm {
+		reminderType = "firm"
+	}
+	log.Info().
+		Str("leagueID", leagueID.String()).
+		Int32("season", season.SeasonNumber).
+		Int("count", len(playersWithUnstartedGames)).
+		Str("type", reminderType).
+		Msg("sent-unstarted-game-reminders")
+	return nil
 }

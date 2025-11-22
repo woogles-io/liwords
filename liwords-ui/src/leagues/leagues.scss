@@ -744,6 +744,24 @@
   }
 }
 
+// Column order for stacked layout (below lg breakpoint)
+@media (max-width: 991px) {
+  .leagues-container {
+    // Control column order when columns stack
+    .league-chat-column {
+      order: 2;
+    }
+
+    .league-center-column {
+      order: 1;
+    }
+
+    .league-sidebar-column {
+      order: 3;
+    }
+  }
+}
+
 // League correspondence games styles
 .league-games-list {
   display: flex;

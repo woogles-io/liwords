@@ -195,7 +195,37 @@ export const LeaguesList = () => {
               </p>
             </Panel>
 
-            <Panel header="How do time banks and timing work?" key="4">
+            <Panel header="How are points calculated?" key="4">
+              <p>
+                League standings are determined by a points system based on your
+                win-loss-draw record:
+              </p>
+              <ul>
+                <li>
+                  <strong>Win:</strong> 2 points
+                </li>
+                <li>
+                  <strong>Draw:</strong> 1 point
+                </li>
+                <li>
+                  <strong>Loss:</strong> 0 points
+                </li>
+              </ul>
+              <p>
+                If two or more players have the same number of points, their
+                ranking is determined by <strong>spread</strong> (the total
+                point differential across all games). If players are still tied
+                on both points and spread, they are ranked alphabetically by
+                username.
+              </p>
+              <p>
+                At the end of the season, your final points total determines
+                whether you'll be promoted, relegated, or stay in your current
+                division for the next season.
+              </p>
+            </Panel>
+
+            <Panel header="How do time banks and timing work?" key="5">
               <p>
                 League games use a correspondence time control designed to
                 complete 14 games within a few weeks while accommodating
@@ -239,7 +269,7 @@ export const LeaguesList = () => {
             </Panel>
             <Panel
               header="Isn't 8 hours per turn too little? I need to sleep!"
-              key="5"
+              key="6"
             >
               <p>
                 While 8 hours per turn might sound tight at first, the time bank
@@ -278,7 +308,7 @@ export const LeaguesList = () => {
                 including sleep!
               </p>
             </Panel>
-            <Panel header="Do I need to register for each season?" key="6">
+            <Panel header="Do I need to register for each season?" key="7">
               <p>
                 <strong>Yes, registration is required for each season.</strong>{" "}
                 Seasons are not auto-enrollment - you must actively register for
@@ -306,7 +336,7 @@ export const LeaguesList = () => {
               </p>
             </Panel>
 
-            <Panel header="What is a League Promoter?" key="7">
+            <Panel header="What is a League Promoter?" key="8">
               <p>
                 A League Promoter is a volunteer who invites people to leagues.
                 You may find that you can't register for a league by clicking
@@ -323,7 +353,7 @@ export const LeaguesList = () => {
               </p>
             </Panel>
 
-            <Panel header="What do you mean by Fair Play?" key="8">
+            <Panel header="What do you mean by Fair Play?" key="9">
               <p>
                 These are rated games in which you are not allowed to use any
                 external assistance to make your moves. It is very important
@@ -336,7 +366,7 @@ export const LeaguesList = () => {
 
             <Panel
               header="How does the season schedule and timeline work?"
-              key="9"
+              key="10"
             >
               <p>
                 League seasons follow an automated schedule with key events
