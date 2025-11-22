@@ -16,12 +16,12 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-func simulateGames(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32, all bool, rounds int, seed int64) error {
+func simulateGames(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32, all bool, count int, seed int64) error {
 	log.Info().
 		Str("league", leagueSlugOrUUID).
 		Int32("seasonNumber", seasonNumber).
 		Bool("all", all).
-		Int("rounds", rounds).
+		Int("count", count).
 		Int64("seed", seed).
 		Msg("simulating games")
 
@@ -86,6 +86,11 @@ func simulateGames(ctx context.Context, leagueSlugOrUUID string, seasonNumber in
 
 		gamesCompleted := 0
 		for _, gameRow := range games {
+			// Check if we've reached the count limit (across all divisions)
+			if !all && count > 0 && totalGamesCompleted >= count {
+				break
+			}
+
 			// Check if game is already complete
 			if gameRow.GameEndReason.Valid && gameRow.GameEndReason.Int32 != 0 {
 				// Game already ended
@@ -113,17 +118,17 @@ func simulateGames(ctx context.Context, leagueSlugOrUUID string, seasonNumber in
 				Str("gameUUID", gameUUIDStr).
 				Int("completed", gamesCompleted).
 				Msg("simulated game")
-
-			// If we're doing rounds, check if we've completed enough
-			if !all && rounds > 0 && gamesCompleted >= rounds {
-				break
-			}
 		}
 
 		log.Info().
 			Str("division", divisionUUID.String()).
 			Int("gamesCompleted", gamesCompleted).
 			Msg("completed division simulation")
+
+		// If we've reached the count limit, stop processing divisions
+		if !all && count > 0 && totalGamesCompleted >= count {
+			break
+		}
 	}
 
 	log.Info().

@@ -136,14 +136,10 @@ export const CorrespondenceGames = (props: Props) => {
           let turnIndicator = "";
           if (ag.playerOnTurn === 0) {
             turnIndicator =
-              ag.players[0]?.uuid === userID
-                ? "Your turn"
-                : ag.players[0]?.displayName || "";
+              ag.players[0]?.uuid === userID ? "Your turn" : "Opponent";
           } else if (ag.playerOnTurn === 1) {
             turnIndicator =
-              ag.players[1]?.uuid === userID
-                ? "Your turn"
-                : ag.players[1]?.displayName || "";
+              ag.players[1]?.uuid === userID ? "Your turn" : "Opponent";
           }
 
           // Calculate time remaining for low time warning (< 24 hours)
@@ -514,10 +510,10 @@ export const CorrespondenceGames = (props: Props) => {
       {/* League games section - shown first */}
       {leagueGames.length > 0 && (
         <>
-          <h5 style={{ marginTop: 16, marginBottom: 8 }}>
+          <h4>
             <TrophyOutlined style={{ color: "#faad14", marginRight: 8 }} />
             League Games
-          </h5>
+          </h4>
           <Table
             className="games observe correspondence-games league-games"
             dataSource={leagueGames}

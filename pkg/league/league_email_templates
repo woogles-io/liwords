@@ -15,8 +15,7 @@ Good luck!
 The {{.LeagueName}} Season {{.SeasonNumber}} has officially started!
 
 You have been assigned to {{.DivisionName}}. You will be playing against the following opponents:
-{{range .Opponents}}
-  - {{.}}
+{{range .Opponents}}  - {{.}}
 {{end}}
 Your games have been created and are ready to play. Visit the league page to view your standings and start playing:
 {{.LeagueURL}}
