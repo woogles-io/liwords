@@ -120,3 +120,13 @@ export const getLeagueStatistics = LeagueService.method.getLeagueStatistics;
  * @generated from rpc league_service.LeagueService.MovePlayerToDivision
  */
 export const movePlayerToDivision = LeagueService.method.movePlayerToDivision;
+
+/**
+ * @generated from rpc league_service.LeagueService.GetSeasonZeroMoveGames
+ */
+export const getSeasonZeroMoveGames = LeagueService.method.getSeasonZeroMoveGames;
+
+/**
+ * @generated from rpc league_service.LeagueService.GetSeasonPlayersWithUnstartedGames
+ */
+export const getSeasonPlayersWithUnstartedGames = LeagueService.method.getSeasonPlayersWithUnstartedGames;

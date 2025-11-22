@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
-import { Card, Row, Button, Tooltip } from "antd";
-import { HourglassOutlined } from "@ant-design/icons";
+import { Card, Row, Button, Tooltip, Modal } from "antd";
+import { HourglassOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { RawPlayerInfo } from "../store/reducers/game_reducer";
 import {
   useExaminableGameContextStoreContext,
@@ -53,6 +53,7 @@ const timepenalty = (time: Millis) => {
 const PlayerCard = React.memo((props: CardProps) => {
   const { isExamining } = useExamineStoreContext();
   const briefProfile = useBriefProfile(props.player?.userID);
+  const [showTimeBankModal, setShowTimeBankModal] = useState(false);
 
   if (!props.player) {
     return <Card />;
@@ -126,15 +127,72 @@ const PlayerCard = React.memo((props: CardProps) => {
             {timeStr}
             {(() => {
               const shouldShow = hasTimeBank && !inTimeBank && props.time > 0;
+
               return shouldShow ? (
-                <Tooltip
-                  title={`Time bank: ${formatTimeBankTooltip(timeBankMs)}`}
-                  trigger="hover"
-                >
-                  <span>
-                    <HourglassOutlined className="time-bank-indicator" />
-                  </span>
-                </Tooltip>
+                <>
+                  <Tooltip
+                    title={
+                      <span>
+                        Time bank: {formatTimeBankTooltip(timeBankMs)}
+                        <br />
+                        <a
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowTimeBankModal(true);
+                          }}
+                          style={{
+                            color: "#40a9ff",
+                            textDecoration: "underline",
+                            cursor: "pointer",
+                          }}
+                        >
+                          How does time bank work?
+                        </a>
+                      </span>
+                    }
+                    trigger="hover"
+                  >
+                    <span>
+                      <HourglassOutlined className="time-bank-indicator" />
+                    </span>
+                  </Tooltip>
+                  <Modal
+                    title="How does time bank work?"
+                    open={showTimeBankModal}
+                    onCancel={() => setShowTimeBankModal(false)}
+                    footer={null}
+                    width={600}
+                  >
+                    <div style={{ lineHeight: "1.6" }}>
+                      <p>
+                        <strong>Time bank</strong> is an additional time reserve
+                        available for correspondence games.
+                      </p>
+                      <p>
+                        When you use up your main thinking time for a turn, the
+                        game will automatically start using your time bank. Your
+                        time bank depletes only when you exceed the per-turn
+                        time.
+                      </p>
+                      <p>
+                        <strong>Example:</strong> If you have 8 hours of
+                        per-turn time and take 12 hours to make a move, only 4
+                        hours will be deducted from your time bank.
+                      </p>
+                      <p>
+                        The <HourglassOutlined style={{ color: "#15803d" }} />{" "}
+                        icon appears when you still have time bank available but
+                        are not currently using it. When you're actively using
+                        your time bank, you'll see "using time bank" displayed
+                        below your timer.
+                      </p>
+                      <p>
+                        <strong>Important:</strong> If your time bank runs out,
+                        you will lose the game on time.
+                      </p>
+                    </div>
+                  </Modal>
+                </>
               ) : null;
             })()}
           </Button>

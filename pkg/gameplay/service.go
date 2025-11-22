@@ -20,6 +20,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 // GameService is a service that contains functions relevant to a game's
@@ -102,8 +103,30 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *connect.Request[
 			return connect.NewResponse(&ipc.GameInfoResponses{}), nil
 		}
 	}
+
+	// Extract unique player UUIDs from all games for batch fetching actions
+	uniqueUUIDs := make(map[string]bool)
+	for _, gir := range resp.GameInfo {
+		if len(gir.Players) >= 2 {
+			uniqueUUIDs[gir.Players[0].UserId] = true
+			uniqueUUIDs[gir.Players[1].UserId] = true
+		}
+	}
+	userUUIDs := make([]string, 0, len(uniqueUUIDs))
+	for uuid := range uniqueUUIDs {
+		userUUIDs = append(userUUIDs, uuid)
+	}
+
+	// Batch fetch user actions for all unique players
+	userActions, err := gs.userStore.GetActionsBatch(ctx, userUUIDs)
+	if err != nil {
+		log.Err(err).Msg("failed-to-batch-fetch-user-actions")
+		// Fall back to empty map to avoid breaking the request
+		userActions = make(map[string]map[string]*ms.ModAction)
+	}
+
 	// Censors the responses in-place
-	censorGameInfoResponses(ctx, gs.userStore, resp)
+	censorGameInfoResponses(ctx, gs.userStore, resp, userActions)
 	return connect.NewResponse(resp), nil
 }
 
@@ -164,8 +187,30 @@ func (gs *GameService) GetRecentCorrespondenceGames(ctx context.Context, req *co
 			return connect.NewResponse(&ipc.GameInfoResponses{}), nil
 		}
 	}
+
+	// Extract unique player UUIDs from all games for batch fetching actions
+	uniqueUUIDs := make(map[string]bool)
+	for _, gir := range resp.GameInfo {
+		if len(gir.Players) >= 2 {
+			uniqueUUIDs[gir.Players[0].UserId] = true
+			uniqueUUIDs[gir.Players[1].UserId] = true
+		}
+	}
+	userUUIDs := make([]string, 0, len(uniqueUUIDs))
+	for uuid := range uniqueUUIDs {
+		userUUIDs = append(userUUIDs, uuid)
+	}
+
+	// Batch fetch user actions for all unique players
+	userActions, err := gs.userStore.GetActionsBatch(ctx, userUUIDs)
+	if err != nil {
+		log.Err(err).Msg("failed-to-batch-fetch-user-actions")
+		// Fall back to empty map to avoid breaking the request
+		userActions = make(map[string]map[string]*ms.ModAction)
+	}
+
 	// Censors the responses in-place
-	censorGameInfoResponses(ctx, gs.userStore, resp)
+	censorGameInfoResponses(ctx, gs.userStore, resp, userActions)
 	return connect.NewResponse(resp), nil
 }
 
@@ -273,7 +318,7 @@ func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.Streak
 	}
 }
 
-func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameInfoResponses) {
+func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameInfoResponses, userActions map[string]map[string]*ms.ModAction) {
 	knownUsers := make(map[string]bool)
 
 	for _, gir := range girs.GameInfo {
@@ -282,7 +327,7 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameI
 
 		_, known := knownUsers[playerOne]
 		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+			knownUsers[playerOne] = mod.IsCensorableFromCache(playerOne, userActions)
 		}
 		if knownUsers[playerOne] {
 			censorPlayer(gir, 0, utilities.CensoredUsername)
@@ -290,7 +335,7 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *ipc.GameI
 
 		_, known = knownUsers[playerTwo]
 		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+			knownUsers[playerTwo] = mod.IsCensorableFromCache(playerTwo, userActions)
 		}
 		if knownUsers[playerTwo] {
 			censoredUsername := utilities.CensoredUsername

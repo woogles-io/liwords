@@ -214,6 +214,25 @@ func IsCensorable(ctx context.Context, userStore user.Store, uuid string) bool {
 	return permaban
 }
 
+// IsCensorableFromCache checks if a user should be censored using pre-fetched action data
+// This avoids N+1 query problems when checking multiple users
+func IsCensorableFromCache(uuid string, userActions map[string]map[string]*ms.ModAction) bool {
+	// Don't censor if already censored
+	if uuid == utilities.CensoredUsername ||
+		uuid == utilities.AnotherCensoredUsername {
+		return false
+	}
+
+	// Check if user has permanent account suspension in cached actions
+	actions, exists := userActions[uuid]
+	if !exists {
+		return false
+	}
+
+	_, permaban := actions[ms.ModActionType_SUSPEND_ACCOUNT.String()]
+	return permaban
+}
+
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
 	censoredUsername := utilities.CensoredUsername
 	if bothCensorable && playerIndex == 1 {

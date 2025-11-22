@@ -35,6 +35,7 @@ import { getSelfRoles } from "../gen/api/proto/user_service/user_service-Authori
 import { DivisionStandings } from "./standings";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { DivisionSelector, getDefaultDivisionId } from "./division_selector";
+import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -374,9 +375,9 @@ export const LeaguePage = (props: Props) => {
           Back to Leagues
         </Link>
 
-        <Row gutter={16}>
+        <Row gutter={[16, 16]}>
           {/* Left Column - Chat Only */}
-          <Col xs={24} lg={6}>
+          <Col xs={24} lg={6} className="league-chat-column">
             {/* League Chat */}
             {league && (
               <div className="chat-area">
@@ -391,222 +392,124 @@ export const LeaguePage = (props: Props) => {
           </Col>
 
           {/* Center Column - Seasons & Standings */}
-          <Col xs={24} lg={12}>
-            <Card className="season-navigation-card">
-              <div className="season-header">
-                <h2>Seasons</h2>
-                {/* Admin button to open registration - show when there's a SCHEDULED season */}
-                {canManageLeagues &&
-                  loggedIn &&
-                  !isRegistrationOpen &&
-                  scheduledSeason && (
-                    <Button
-                      type="default"
-                      onClick={handleOpenRegistration}
-                      loading={openRegistrationMutation.isPending}
-                    >
-                      Open Registration
-                    </Button>
-                  )}
-              </div>
+          <Col xs={24} lg={12} className="league-center-column">
+            {/* Season Selector - Simple centered dropdown */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              <label style={{ fontWeight: 500, whiteSpace: "nowrap" }}>
+                Select Season:
+              </label>
+              <Select
+                value={displaySeasonId || undefined}
+                onChange={setSelectedSeasonId}
+                style={{ width: 300 }}
+                popupMatchSelectWidth={true}
+                options={allSeasons.map((season) => {
+                  // Determine status label
+                  let statusLabel = "";
+                  let statusColor = "";
+                  if (season.status === 0) {
+                    statusLabel = "Scheduled";
+                    statusColor = "";
+                  } else if (season.status === 1) {
+                    statusLabel = "Active";
+                    statusColor = "blue";
+                  } else if (season.status === 2) {
+                    statusLabel = "Completed";
+                    statusColor = "default";
+                  } else if (season.status === 3) {
+                    statusLabel = "Cancelled";
+                    statusColor = "red";
+                  } else if (season.status === 4) {
+                    statusLabel = "Registration Open";
+                    statusColor = "green";
+                  }
 
-              <div
-                style={{
-                  marginBottom: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <label style={{ fontWeight: 500, whiteSpace: "nowrap" }}>
-                    Select Season:
-                  </label>
-                  <Select
-                    value={displaySeasonId || undefined}
-                    onChange={setSelectedSeasonId}
-                    style={{ width: 350 }}
-                    popupMatchSelectWidth={true}
-                    options={allSeasons.map((season) => {
-                      // Determine status label
-                      let statusLabel = "";
-                      let statusColor = "";
-                      if (season.status === 0) {
-                        statusLabel = "Scheduled";
-                        statusColor = "";
-                      } else if (season.status === 1) {
-                        statusLabel = "Active";
-                        statusColor = "blue";
-                      } else if (season.status === 2) {
-                        statusLabel = "Completed";
-                        statusColor = "default";
-                      } else if (season.status === 3) {
-                        statusLabel = "Cancelled";
-                        statusColor = "red";
-                      } else if (season.status === 4) {
-                        statusLabel = "Registration Open";
-                        statusColor = "green";
-                      }
-
-                      return {
-                        value: season.uuid,
-                        label: (
-                          <span
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span>Season {season.seasonNumber}</span>
-                            {statusLabel && (
-                              <Tag color={statusColor}>{statusLabel}</Tag>
-                            )}
-                          </span>
-                        ),
-                      };
-                    })}
-                  />
-                </div>
-
-                {/* Player registration status/buttons for displayed season */}
-                {loggedIn && displayedSeason && (
-                  <>
-                    {isUserRegistered ? (
-                      <Space>
-                        <Tag color="green">
-                          Registered for Season {displayedSeason.seasonNumber}
-                        </Tag>
-                        {/* Only allow unregister if season is REGISTRATION_OPEN */}
-                        {displayedSeason.status === 4 && (
-                          <Button
-                            onClick={handleUnregister}
-                            loading={unregisterMutation.isPending}
-                          >
-                            Unregister
-                          </Button>
+                  return {
+                    value: season.uuid,
+                    label: (
+                      <span
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span>Season {season.seasonNumber}</span>
+                        {statusLabel && (
+                          <Tag color={statusColor}>{statusLabel}</Tag>
                         )}
-                      </Space>
-                    ) : (
-                      <>
-                        {/* Only allow registration if season is REGISTRATION_OPEN */}
-                        {displayedSeason.status === 4 && (
-                          <Button
-                            type="primary"
-                            onClick={handleRegister}
-                            loading={registerMutation.isPending}
-                          >
-                            Register for Season {displayedSeason.seasonNumber}
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </>
+                      </span>
+                    ),
+                  };
+                })}
+              />
+              {/* Admin button to open registration */}
+              {canManageLeagues &&
+                loggedIn &&
+                !isRegistrationOpen &&
+                scheduledSeason && (
+                  <Button
+                    type="default"
+                    size="small"
+                    onClick={handleOpenRegistration}
+                    loading={openRegistrationMutation.isPending}
+                  >
+                    Open Registration
+                  </Button>
                 )}
-              </div>
+            </div>
 
-              {/* Show dates for selected season */}
-              {displayedSeason &&
-                displayedSeason.startDate &&
-                displayedSeason.endDate && (
+            {/* Registration button for current season - centered */}
+            {loggedIn &&
+              displayedSeason &&
+              displayedSeason.status === 4 &&
+              !isUserRegistered && (
+                <div style={{ marginBottom: 24 }}>
                   <div
-                    className="season-dates-selector"
-                    style={{ marginBottom: 8, fontSize: "13px", color: "#666" }}
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: 12,
+                    }}
                   >
-                    {formatSeasonDates(
-                      displayedSeason.startDate,
-                      displayedSeason.endDate,
-                    )}
+                    <Button
+                      type="primary"
+                      size="large"
+                      onClick={handleRegister}
+                      loading={registerMutation.isPending}
+                      style={{ minWidth: 250 }}
+                    >
+                      Register for Season {displayedSeason.seasonNumber}
+                    </Button>
                   </div>
-                )}
-
-              {/* Player count display */}
-              {displayedSeason && registrants.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <span
-                    className="clickable-link"
-                    onClick={() => setShowPlayersModal(true)}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
                   >
-                    ({registrants.length}{" "}
-                    {registrants.length === 1 ? "player" : "players"}
-                    {displayedSeason.status === 4 ||
-                    displayedSeason.status === 0
-                      ? " registered"
-                      : ""}
-                    )
-                  </span>
-                </div>
-              )}
-
-              {/* Registration reminder banner - show when viewing a different season while registration is open */}
-              {registrationOpenSeason &&
-                displaySeasonId !== registrationOpenSeason.uuid &&
-                (() => {
-                  // Check if user is registered for the registration-open season
-                  const isRegisteredForNewSeason =
-                    registrationOpenSeasonRegistrations?.registrations.some(
-                      (reg) => reg.userId === userID,
-                    );
-
-                  return (
                     <Alert
                       message={
-                        isRegisteredForNewSeason
-                          ? `You're registered for Season ${registrationOpenSeason.seasonNumber}!`
-                          : `Registration is now open for Season ${registrationOpenSeason.seasonNumber}!`
+                        <span style={{ fontSize: "12px" }}>
+                          <strong>Note:</strong> Please only register if you can
+                          commit to playing all league games!
+                        </span>
                       }
-                      description={
-                        <div>
-                          <p style={{ marginBottom: 8 }}>
-                            {isRegisteredForNewSeason
-                              ? "Season starts on "
-                              : "Registration closes on "}
-                            {registrationOpenSeason.startDate &&
-                              moment(
-                                timestampDate(registrationOpenSeason.startDate),
-                              ).format("MMMM D, YYYY [at] h:mm A")}
-                          </p>
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() =>
-                              setSelectedSeasonId(registrationOpenSeason.uuid)
-                            }
-                          >
-                            {isRegisteredForNewSeason
-                              ? `View Season ${registrationOpenSeason.seasonNumber}`
-                              : `View & Register for Season ${registrationOpenSeason.seasonNumber}`}
-                          </Button>
-                        </div>
-                      }
-                      type={isRegisteredForNewSeason ? "success" : "info"}
+                      type="info"
                       showIcon
-                      style={{ marginTop: 16 }}
+                      style={{ maxWidth: 500 }}
                     />
-                  );
-                })()}
-
-              {/* Help banner when viewing registration-open season but not registered */}
-              {displayedSeason?.status === 4 &&
-                !isUserRegistered &&
-                loggedIn && (
-                  <Alert
-                    message="Registration Instructions"
-                    description={
-                      <div>
-                        To register for this season, please click the 'Register
-                        for Season' button above.&nbsp;
-                        <strong>Note:</strong> Please only register if you are
-                        willing to play all league games without forfeits!
-                      </div>
-                    }
-                    type="info"
-                    showIcon
-                    style={{ marginTop: 16 }}
-                  />
-                )}
-            </Card>
+                  </div>
+                </div>
+              )}
 
             {standingsLoading && (
               <div className="loading-container" style={{ marginTop: 16 }}>
@@ -700,17 +603,117 @@ export const LeaguePage = (props: Props) => {
                       </span>
                     </div>
                   </div>
+                  {/* Zero-move games dashboard for managers/admins */}
+                  {canManageLeagues && displaySeasonId && displayedSeason && (
+                    <ZeroMoveGamesDashboard
+                      seasonId={displaySeasonId}
+                      seasonNumber={displayedSeason.seasonNumber}
+                    />
+                  )}
                 </div>
               )}
           </Col>
 
           {/* Right Column - Settings & Games */}
-          <Col xs={24} lg={6}>
+          <Col xs={24} lg={6} className="league-sidebar-column">
             {/* League Games */}
             {loggedIn && slug && (
               <div style={{ marginBottom: 16 }}>
                 <LeagueCorrespondenceGames leagueSlug={slug} />
               </div>
+            )}
+
+            {/* Season Info Widget */}
+            {displayedSeason && (
+              <Card style={{ marginBottom: 16 }}>
+                <h3
+                  style={{ fontSize: "14px", marginTop: 0, marginBottom: 12 }}
+                >
+                  Season {displayedSeason.seasonNumber}
+                </h3>
+
+                {/* Season dates */}
+                {displayedSeason.startDate && displayedSeason.endDate && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#666",
+                      marginBottom: 12,
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {formatSeasonDates(
+                      displayedSeason.startDate,
+                      displayedSeason.endDate,
+                    )}
+                  </div>
+                )}
+
+                {/* Registration status for displayed season */}
+                {loggedIn && isUserRegistered && (
+                  <div style={{ marginBottom: 12 }}>
+                    <Tag color="green" style={{ marginBottom: 8 }}>
+                      ✓ Registered
+                    </Tag>
+                    {/* Only allow unregister if season is REGISTRATION_OPEN */}
+                    {displayedSeason.status === 4 && (
+                      <div style={{ marginTop: 8 }}>
+                        <Button
+                          size="small"
+                          onClick={handleUnregister}
+                          loading={unregisterMutation.isPending}
+                          block
+                        >
+                          Unregister
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Player count display */}
+                {registrants.length > 0 && (
+                  <div style={{ fontSize: "13px", color: "#666" }}>
+                    <span
+                      className="clickable-link"
+                      onClick={() => setShowPlayersModal(true)}
+                    >
+                      {registrants.length}{" "}
+                      {registrants.length === 1 ? "player" : "players"}
+                      {displayedSeason.status === 4 ||
+                      displayedSeason.status === 0
+                        ? " registered"
+                        : ""}
+                    </span>
+                  </div>
+                )}
+
+                {/* Registration reminder - show when viewing different season while registration is open */}
+                {registrationOpenSeason &&
+                  displaySeasonId !== registrationOpenSeason.uuid && (
+                    <Alert
+                      message={`Season ${registrationOpenSeason.seasonNumber} Registration Open`}
+                      description={
+                        <div style={{ fontSize: "12px" }}>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() =>
+                              setSelectedSeasonId(registrationOpenSeason.uuid)
+                            }
+                            block
+                            style={{ marginTop: 4 }}
+                          >
+                            View & Register
+                          </Button>
+                        </div>
+                      }
+                      type="info"
+                      showIcon
+                      style={{ marginTop: 12, fontSize: "12px" }}
+                    />
+                  )}
+              </Card>
             )}
 
             {/* League Info & Settings Card */}
@@ -738,24 +741,6 @@ export const LeaguePage = (props: Props) => {
                 >
                   {league.description}
                 </p>
-
-                {/* Current Season Info */}
-                {displayedSeason &&
-                  displayedSeason.startDate &&
-                  displayedSeason.endDate && (
-                    <div className="season-info-compact">
-                      <strong>
-                        {displayedSeason.status === 1
-                          ? "Current Season"
-                          : `Season ${displayedSeason.seasonNumber}`}
-                        :
-                      </strong>{" "}
-                      {formatSeasonDates(
-                        displayedSeason.startDate,
-                        displayedSeason.endDate,
-                      )}
-                    </div>
-                  )}
 
                 {/* Settings Table */}
                 {league.settings && (

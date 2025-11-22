@@ -2,7 +2,6 @@ package league
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -56,7 +55,6 @@ func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertS
 	for i := range divStandings {
 		if divStandings[i].UserID == arg.UserID {
 			// Update existing
-			divStandings[i].Rank = arg.Rank
 			divStandings[i].Wins = arg.Wins
 			divStandings[i].Losses = arg.Losses
 			divStandings[i].Draws = arg.Draws
@@ -71,7 +69,6 @@ func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertS
 		divStandings = append(divStandings, models.GetStandingsRow{
 			DivisionID:  arg.DivisionID,
 			UserID:      arg.UserID,
-			Rank:        arg.Rank,
 			Wins:        arg.Wins,
 			Losses:      arg.Losses,
 			Draws:       arg.Draws,
@@ -195,6 +192,27 @@ func (m *mockLeagueStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID
 func (m *mockLeagueStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
 	return nil
 }
+func (m *mockLeagueStore) GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetPlayerSeasonGames(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]models.GetPlayerSeasonGamesRow, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetPlayerSeasonInProgressGames(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]models.GetPlayerSeasonInProgressGamesRow, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetSeasonZeroMoveGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonZeroMoveGamesRow, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetRegistrationsByDivision(ctx context.Context, divisionID uuid.UUID) ([]models.LeagueRegistration, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) UpdateLeagueMetadata(ctx context.Context, arg models.UpdateLeagueMetadataParams) error {
+	return nil
+}
 
 func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error {
 	// Find existing or create new standing
@@ -217,7 +235,6 @@ func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg mode
 		divStandings = append(divStandings, models.GetStandingsRow{
 			DivisionID:     arg.DivisionID,
 			UserID:         arg.UserID,
-			Rank:           pgtype.Int4{Int32: 0, Valid: true},
 			Wins:           arg.Wins,
 			Losses:         arg.Losses,
 			Draws:          arg.Draws,
@@ -227,34 +244,6 @@ func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg mode
 		})
 	}
 	m.standings[arg.DivisionID] = divStandings
-	return nil
-}
-
-func (m *mockLeagueStore) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
-	divStandings := m.standings[divisionID]
-	if len(divStandings) == 0 {
-		return nil
-	}
-
-	// Sort by wins (desc), then spread (desc)
-	sort.Slice(divStandings, func(i, j int) bool {
-		// Calculate effective wins (wins + 0.5*draws)
-		iWins := float64(divStandings[i].Wins.Int32) + 0.5*float64(divStandings[i].Draws.Int32)
-		jWins := float64(divStandings[j].Wins.Int32) + 0.5*float64(divStandings[j].Draws.Int32)
-
-		if iWins != jWins {
-			return iWins > jWins
-		}
-		return divStandings[i].Spread.Int32 > divStandings[j].Spread.Int32
-	})
-
-	// Assign ranks
-	for i := range divStandings {
-		divStandings[i].Rank.Int32 = int32(i + 1)
-		divStandings[i].Rank.Valid = true
-	}
-
-	m.standings[divisionID] = divStandings
 	return nil
 }
 
@@ -313,39 +302,37 @@ func TestStandingsCalculation_SimpleWinsLosses(t *testing.T) {
 	standings := store.standings[divisionID]
 	require.Len(t, standings, 4)
 
-	// Expected: Alice 3-0 (+160), Carol 2-1 (+60), Dave 1-2 (-40), Bob 0-3 (-180)
-	standingsMap := make(map[int32]models.GetStandingsRow)
-	for _, s := range standings {
-		standingsMap[s.UserID] = s
-	}
+	// Sort standings to get ranks
+	SortStandingsByRank(standings)
 
-	// Alice should be rank 1
-	alice := standingsMap[1]
-	assert.Equal(t, int32(1), alice.Rank.Int32)
+	// Expected: Alice 3-0 (+180), Carol 2-1 (-40), Dave 1-2 (-50), Bob 0-3 (-90)
+	// Alice should be rank 1 (first in sorted array)
+	alice := standings[0]
+	assert.Equal(t, int32(1), alice.UserID)
 	assert.Equal(t, int32(3), alice.Wins.Int32)
 	assert.Equal(t, int32(0), alice.Losses.Int32)
 	assert.Equal(t, int32(180), alice.Spread.Int32) // (450-400)=50 + (460-380)=80 + (470-420)=50
 	assert.Equal(t, int32(3), alice.GamesPlayed.Int32)
 
 	// Carol should be rank 2
-	carol := standingsMap[3]
-	assert.Equal(t, int32(2), carol.Rank.Int32)
+	carol := standings[1]
+	assert.Equal(t, int32(3), carol.UserID)
 	assert.Equal(t, int32(2), carol.Wins.Int32)
 	assert.Equal(t, int32(1), carol.Losses.Int32)
 	assert.Equal(t, int32(-40), carol.Spread.Int32) // (380-460)=-80 + (420-410)=10 + (440-410)=30
 	assert.Equal(t, int32(3), carol.GamesPlayed.Int32)
 
 	// Dave should be rank 3
-	dave := standingsMap[4]
-	assert.Equal(t, int32(3), dave.Rank.Int32)
+	dave := standings[2]
+	assert.Equal(t, int32(4), dave.UserID)
 	assert.Equal(t, int32(1), dave.Wins.Int32)
 	assert.Equal(t, int32(2), dave.Losses.Int32)
 	assert.Equal(t, int32(-50), dave.Spread.Int32) // (430-400)=30 + (420-470)=-50 + (410-440)=-30
 	assert.Equal(t, int32(3), dave.GamesPlayed.Int32)
 
 	// Bob should be rank 4
-	bob := standingsMap[2]
-	assert.Equal(t, int32(4), bob.Rank.Int32)
+	bob := standings[3]
+	assert.Equal(t, int32(2), bob.UserID)
 	assert.Equal(t, int32(0), bob.Wins.Int32)
 	assert.Equal(t, int32(3), bob.Losses.Int32)
 	assert.Equal(t, int32(-90), bob.Spread.Int32) // (400-450)=-50 + (410-420)=-10 + (400-430)=-30
@@ -392,30 +379,28 @@ func TestStandingsCalculation_WithTies(t *testing.T) {
 	standings := store.standings[divisionID]
 	require.Len(t, standings, 3)
 
-	standingsMap := make(map[int32]models.GetStandingsRow)
-	for _, s := range standings {
-		standingsMap[s.UserID] = s
-	}
+	// Sort standings to get ranks
+	SortStandingsByRank(standings)
 
-	// Alice: 1 win, 1 tie = 1.5 wins, spread +50
-	alice := standingsMap[1]
-	assert.Equal(t, int32(1), alice.Rank.Int32)
+	// Alice: 1 win, 1 draw = 3 points, spread +50 (rank 1)
+	alice := standings[0]
+	assert.Equal(t, int32(1), alice.UserID)
 	assert.Equal(t, int32(1), alice.Wins.Int32) // Actual wins
 	assert.Equal(t, int32(0), alice.Losses.Int32)
 	assert.Equal(t, int32(1), alice.Draws.Int32)
 	assert.Equal(t, int32(50), alice.Spread.Int32) // (450-400) + (430-430)
 
-	// Carol: 1 win, 1 tie = 1.5 wins, spread +30
-	carol := standingsMap[3]
-	assert.Equal(t, int32(2), carol.Rank.Int32)
+	// Carol: 1 win, 1 draw = 3 points, spread +30 (rank 2, sorted by spread)
+	carol := standings[1]
+	assert.Equal(t, int32(3), carol.UserID)
 	assert.Equal(t, int32(1), carol.Wins.Int32)
 	assert.Equal(t, int32(0), carol.Losses.Int32)
 	assert.Equal(t, int32(1), carol.Draws.Int32)
 	assert.Equal(t, int32(30), carol.Spread.Int32) // (430-430) + (440-410)
 
-	// Bob: 0 wins, 2 losses = 0 wins, spread -80
-	bob := standingsMap[2]
-	assert.Equal(t, int32(3), bob.Rank.Int32)
+	// Bob: 0 wins, 2 losses = 0 points, spread -80 (rank 3)
+	bob := standings[2]
+	assert.Equal(t, int32(2), bob.UserID)
 	assert.Equal(t, int32(0), bob.Wins.Int32)
 	assert.Equal(t, int32(2), bob.Losses.Int32)
 	assert.Equal(t, int32(0), bob.Draws.Int32)
@@ -453,21 +438,20 @@ func TestStandingsCalculation_TimeoutLoss(t *testing.T) {
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
-	standingsMap := make(map[int32]models.GetStandingsRow)
-	for _, s := range standings {
-		standingsMap[s.UserID] = s
-	}
 
-	// Bob should win despite lower score
-	bob := standingsMap[2]
-	assert.Equal(t, int32(1), bob.Rank.Int32)
+	// Sort standings to get ranks
+	SortStandingsByRank(standings)
+
+	// Bob should win despite lower score (rank 1)
+	bob := standings[0]
+	assert.Equal(t, int32(2), bob.UserID)
 	assert.Equal(t, int32(1), bob.Wins.Int32)
 	assert.Equal(t, int32(0), bob.Losses.Int32)
 	assert.Equal(t, int32(-80), bob.Spread.Int32) // Spread still reflects actual scores
 
-	// Alice should lose despite higher score
-	alice := standingsMap[1]
-	assert.Equal(t, int32(2), alice.Rank.Int32)
+	// Alice should lose despite higher score (rank 2)
+	alice := standings[1]
+	assert.Equal(t, int32(1), alice.UserID)
 	assert.Equal(t, int32(0), alice.Wins.Int32)
 	assert.Equal(t, int32(1), alice.Losses.Int32)
 	assert.Equal(t, int32(80), alice.Spread.Int32) // Spread still reflects actual scores
@@ -481,6 +465,12 @@ func TestIncrementalStandings_FirstGame(t *testing.T) {
 	divisionID := uuid.New()
 
 	// No existing standings, first game of the season
+	// Setup registrations for expected games calculation
+	store.registrations[divisionID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+		{UserID: 2, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+	}
+
 	// Alice beats Bob 450-400
 	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, 0, 450, 400)
 	require.NoError(t, err)
@@ -488,22 +478,20 @@ func TestIncrementalStandings_FirstGame(t *testing.T) {
 	standings := store.standings[divisionID]
 	require.Len(t, standings, 2)
 
-	standingsMap := make(map[int32]models.GetStandingsRow)
-	for _, s := range standings {
-		standingsMap[s.UserID] = s
-	}
+	// Sort standings to get ranks
+	SortStandingsByRank(standings)
 
 	// Alice should be rank 1
-	alice := standingsMap[1]
-	assert.Equal(t, int32(1), alice.Rank.Int32)
+	alice := standings[0]
+	assert.Equal(t, int32(1), alice.UserID)
 	assert.Equal(t, int32(1), alice.Wins.Int32)
 	assert.Equal(t, int32(0), alice.Losses.Int32)
 	assert.Equal(t, int32(50), alice.Spread.Int32)
 	assert.Equal(t, int32(1), alice.GamesPlayed.Int32)
 
 	// Bob should be rank 2
-	bob := standingsMap[2]
-	assert.Equal(t, int32(2), bob.Rank.Int32)
+	bob := standings[1]
+	assert.Equal(t, int32(2), bob.UserID)
 	assert.Equal(t, int32(0), bob.Wins.Int32)
 	assert.Equal(t, int32(1), bob.Losses.Int32)
 	assert.Equal(t, int32(-50), bob.Spread.Int32)
@@ -517,17 +505,24 @@ func TestIncrementalStandings_RankChange(t *testing.T) {
 
 	divisionID := uuid.New()
 
+	// Setup registrations for expected games calculation
+	store.registrations[divisionID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+		{UserID: 2, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+		{UserID: 3, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+	}
+
 	// Setup initial standings after 2 games
 	// Alice beat Bob, Bob beat Carol
 	// Alice: 1-0, Bob: 1-1, Carol: 0-1
 	store.standings[divisionID] = []models.GetStandingsRow{
-		{DivisionID: divisionID, UserID: 1, Rank: pgtype.Int4{Int32: 1, Valid: true},
+		{DivisionID: divisionID, UserID: 1,
 			Wins: pgtype.Int4{Int32: 1, Valid: true}, Losses: pgtype.Int4{Int32: 0, Valid: true},
 			Spread: pgtype.Int4{Int32: 50, Valid: true}, GamesPlayed: pgtype.Int4{Int32: 1, Valid: true}},
-		{DivisionID: divisionID, UserID: 2, Rank: pgtype.Int4{Int32: 2, Valid: true},
+		{DivisionID: divisionID, UserID: 2,
 			Wins: pgtype.Int4{Int32: 1, Valid: true}, Losses: pgtype.Int4{Int32: 1, Valid: true},
 			Spread: pgtype.Int4{Int32: 0, Valid: true}, GamesPlayed: pgtype.Int4{Int32: 2, Valid: true}},
-		{DivisionID: divisionID, UserID: 3, Rank: pgtype.Int4{Int32: 3, Valid: true},
+		{DivisionID: divisionID, UserID: 3,
 			Wins: pgtype.Int4{Int32: 0, Valid: true}, Losses: pgtype.Int4{Int32: 1, Valid: true},
 			Spread: pgtype.Int4{Int32: -50, Valid: true}, GamesPlayed: pgtype.Int4{Int32: 1, Valid: true}},
 	}
@@ -538,29 +533,28 @@ func TestIncrementalStandings_RankChange(t *testing.T) {
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
-	standingsMap := make(map[int32]models.GetStandingsRow)
-	for _, s := range standings {
-		standingsMap[s.UserID] = s
-	}
 
-	// Now all three have 1-1, ranked by spread:
+	// Sort standings to get ranks
+	SortStandingsByRank(standings)
+
+	// Now all three have 1-1 (2 points each), ranked by spread:
 	// Carol: 1-1, +10 (rank 1)
 	// Bob: 1-1, +0 (rank 2)
 	// Alice: 1-1, -10 (rank 3)
-	carol := standingsMap[3]
-	assert.Equal(t, int32(1), carol.Rank.Int32, "Carol should be rank 1 (best spread)")
+	carol := standings[0]
+	assert.Equal(t, int32(3), carol.UserID, "Carol should be rank 1 (best spread)")
 	assert.Equal(t, int32(1), carol.Wins.Int32)
 	assert.Equal(t, int32(1), carol.Losses.Int32)
 	assert.Equal(t, int32(10), carol.Spread.Int32) // -50 + 60
 
-	bob := standingsMap[2]
-	assert.Equal(t, int32(2), bob.Rank.Int32, "Bob should be rank 2")
+	bob := standings[1]
+	assert.Equal(t, int32(2), bob.UserID, "Bob should be rank 2")
 	assert.Equal(t, int32(1), bob.Wins.Int32)
 	assert.Equal(t, int32(1), bob.Losses.Int32)
 	assert.Equal(t, int32(0), bob.Spread.Int32)
 
-	alice := standingsMap[1]
-	assert.Equal(t, int32(3), alice.Rank.Int32, "Alice should be rank 3 (worst spread)")
+	alice := standings[2]
+	assert.Equal(t, int32(1), alice.UserID, "Alice should be rank 3 (worst spread)")
 	assert.Equal(t, int32(1), alice.Wins.Int32)
 	assert.Equal(t, int32(1), alice.Losses.Int32)
 	assert.Equal(t, int32(-10), alice.Spread.Int32) // 50 - 60
@@ -572,6 +566,12 @@ func TestIncrementalStandings_TieGame(t *testing.T) {
 	mgr := NewStandingsManager(store)
 
 	divisionID := uuid.New()
+
+	// Setup registrations for expected games calculation
+	store.registrations[divisionID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+		{UserID: 2, DivisionID: pgtype.UUID{Bytes: divisionID, Valid: true}},
+	}
 
 	// Alice and Bob tie 420-420
 	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, -1, 420, 420)

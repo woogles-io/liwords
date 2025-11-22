@@ -103,17 +103,15 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 					"Rank", "Player", "W", "L", "D", "Spread", "Games")
 				fmt.Println("    " + "────────────────────────────────────────────────────────────")
 
-				for _, standing := range standings {
+				for i, standing := range standings {
 					// Get username from the JOIN (no need for separate lookup)
 					username := "Unknown"
 					if standing.Username.Valid {
 						username = standing.Username.String
 					}
 
-					rank := int32(0)
-					if standing.Rank.Valid {
-						rank = standing.Rank.Int32
-					}
+					// Calculate rank from position (standings are already ordered)
+					rank := int32(i + 1)
 
 					wins := int32(0)
 					if standing.Wins.Valid {

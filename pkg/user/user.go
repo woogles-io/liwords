@@ -62,6 +62,7 @@ type Store interface {
 	GetAPIKey(ctx context.Context, uuid string) (string, error)
 	ResetAPIKey(ctx context.Context, uuid string) (string, error)
 	GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error)
+	GetActionsBatch(ctx context.Context, userUUIDs []string) (map[string]map[string]*ms.ModAction, error)
 	GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error)
 	ApplyActions(ctx context.Context, actions []*ms.ModAction) error
 	RemoveActions(ctx context.Context, actions []*ms.ModAction) error

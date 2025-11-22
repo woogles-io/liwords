@@ -69,9 +69,11 @@ WITH recent_game_uuids AS (
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request
+       g.game_request, g.league_id, g.season_id, g.league_division_id,
+       l.slug as league_slug
 FROM recent_game_uuids rgu
 JOIN games g ON rgu.game_uuid = g.uuid
+LEFT JOIN leagues l ON g.league_id = l.uuid
 ORDER BY rgu.created_at DESC;
 
 -- name: GetRecentGamesByPlayerID :many

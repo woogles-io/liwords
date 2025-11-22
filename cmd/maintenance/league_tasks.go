@@ -881,3 +881,85 @@ func LeagueMorningRunner() error {
 	log.Info().Int("tasksRun", tasksRun).Msg("completed league morning runner")
 	return nil
 }
+
+// LeagueUnstartedGameReminder runs daily and sends reminders to players who haven't started their games
+// This checks seasons that are 16+ hours old and sends reminders at two intervals:
+// - Day 1 (16 hours after start): Gentle reminder
+// - Day 2 (40 hours after start): Firmer warning about potential suspension
+func LeagueUnstartedGameReminder() error {
+	log.Info().Msg("starting league unstarted game reminder maintenance task")
+
+	ctx := context.Background()
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	allStores, err := initLeagueStores(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+
+	// Get all active leagues
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
+	if err != nil {
+		return err
+	}
+
+	now := clock.Now()
+	remindersSent := 0
+
+	for _, dbLeague := range leagues {
+		log.Info().Str("league", dbLeague.Name).Msg("Checking for unstarted games...")
+
+		// Get current active season
+		currentSeason, err := allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
+		if err != nil {
+			continue // No active season, skip
+		}
+
+		// Only process ACTIVE seasons
+		if currentSeason.Status != int32(pb.SeasonStatus_SEASON_ACTIVE) {
+			continue
+		}
+
+		startTime := currentSeason.StartDate.Time
+		hoursSinceStart := now.Sub(startTime).Hours()
+
+		// Day 1 reminder: 16 hours after season start
+		if hoursSinceStart >= 16 && hoursSinceStart < 24 {
+			log.Info().
+				Str("seasonID", currentSeason.Uuid.String()).
+				Float64("hoursSinceStart", hoursSinceStart).
+				Msg("Sending Day 1 gentle reminder for unstarted games")
+
+			err := lifecycleMgr.SendUnstartedGameReminder(ctx, cfg, dbLeague.Uuid, currentSeason.Uuid, false)
+			if err != nil {
+				log.Error().Err(err).Str("seasonID", currentSeason.Uuid.String()).Msg("Failed to send Day 1 reminder")
+			} else {
+				log.Info().Str("seasonID", currentSeason.Uuid.String()).Msg("✓ Day 1 reminders sent successfully")
+				remindersSent++
+			}
+		}
+
+		// Day 2 reminder: 40 hours after season start
+		if hoursSinceStart >= 40 && hoursSinceStart < 48 {
+			log.Info().
+				Str("seasonID", currentSeason.Uuid.String()).
+				Float64("hoursSinceStart", hoursSinceStart).
+				Msg("Sending Day 2 firm reminder for unstarted games")
+
+			err := lifecycleMgr.SendUnstartedGameReminder(ctx, cfg, dbLeague.Uuid, currentSeason.Uuid, true)
+			if err != nil {
+				log.Error().Err(err).Str("seasonID", currentSeason.Uuid.String()).Msg("Failed to send Day 2 reminder")
+			} else {
+				log.Info().Str("seasonID", currentSeason.Uuid.String()).Msg("✓ Day 2 reminders sent successfully")
+				remindersSent++
+			}
+		}
+	}
+
+	log.Info().Int("remindersSent", remindersSent).Msg("completed league unstarted game reminder")
+	return nil
+}

@@ -1272,6 +1272,59 @@ func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*
 	return actions, nil
 }
 
+// GetActionsBatch fetches actions for multiple users in a single query
+// Returns map[userUUID]map[actionType]*ModAction
+func (s *DBStore) GetActionsBatch(ctx context.Context, userUUIDs []string) (map[string]map[string]*ms.ModAction, error) {
+	if len(userUUIDs) == 0 {
+		return make(map[string]map[string]*ms.ModAction), nil
+	}
+
+	rows, err := s.queries.GetActionsBatch(ctx, userUUIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group actions by user UUID, then by action type
+	result := make(map[string]map[string]*ms.ModAction)
+
+	for _, row := range rows {
+		// Convert pgtype.Text to string
+		if !row.UserUuid.Valid {
+			continue
+		}
+		userUUID := row.UserUuid.String
+
+		// Initialize map for this user if needed
+		if _, exists := result[userUUID]; !exists {
+			result[userUUID] = make(map[string]*ms.ModAction)
+		}
+
+		// Convert row to ModAction
+		action := &ms.ModAction{
+			Type: ms.ModActionType(row.ActionType),
+		}
+
+		if row.StartTime.Valid {
+			action.StartTime = timestamppb.New(row.StartTime.Time)
+		}
+		if row.EndTime.Valid {
+			action.EndTime = timestamppb.New(row.EndTime.Time)
+		}
+		if row.Note.Valid {
+			action.Note = row.Note.String
+		}
+		if row.ChatText.Valid {
+			action.ChatText = row.ChatText.String
+		}
+		// EmailType is not nullable in the query, use it directly
+		action.EmailType = ms.EmailType(row.EmailType)
+
+		result[userUUID][action.Type.String()] = action
+	}
+
+	return result, nil
+}
+
 func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {

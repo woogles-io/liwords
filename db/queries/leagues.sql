@@ -123,13 +123,19 @@ SELECT * FROM league_registrations
 WHERE season_id = $1 AND user_id = $2;
 
 -- name: GetSeasonRegistrations :many
-SELECT lr.*, u.uuid as user_uuid, u.username as username FROM league_registrations lr
+SELECT
+    lr.*,
+    u.uuid as user_uuid,
+    u.username as username,
+    ld.division_number as division_number
+FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
+LEFT JOIN league_divisions ld ON lr.division_id = ld.uuid
 WHERE lr.season_id = $1
 ORDER BY lr.registration_date;
 
 -- name: GetDivisionRegistrations :many
-SELECT lr.*, u.uuid as user_uuid FROM league_registrations lr
+SELECT lr.*, u.uuid as user_uuid, u.username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id
 WHERE lr.division_id = $1
 ORDER BY lr.registration_date;
@@ -170,11 +176,11 @@ ORDER BY ls.season_number DESC;
 -- Standings operations
 
 -- name: UpsertStanding :exec
-INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+-- Note: rank column is not upserted - it's calculated on-demand from wins/losses/draws/spread
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
-    rank = EXCLUDED.rank,
     wins = EXCLUDED.wins,
     losses = EXCLUDED.losses,
     draws = EXCLUDED.draws,
@@ -185,10 +191,13 @@ DO UPDATE SET
     updated_at = NOW();
 
 -- name: GetStandings :many
-SELECT ls.*, u.uuid as user_uuid, u.username FROM league_standings ls
+-- Note: rank column is deprecated and not queried. Sorting is done in Go code.
+SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
+       ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at,
+       u.uuid as user_uuid, u.username
+FROM league_standings ls
 JOIN users u ON ls.user_id = u.id
-WHERE ls.division_id = $1
-ORDER BY ls.rank ASC;
+WHERE ls.division_id = $1;
 
 -- name: GetPlayerStanding :one
 SELECT * FROM league_standings
@@ -201,8 +210,8 @@ WHERE division_id = $1;
 -- name: IncrementStandingsAtomic :exec
 -- Atomically increment standings for a player after a game completes
 -- This avoids race conditions by using database-level arithmetic
-INSERT INTO league_standings (division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, 0, $3, $4, $5, $6, 1, $7, 0, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,
@@ -212,27 +221,6 @@ DO UPDATE SET
     games_played = league_standings.games_played + 1,
     games_remaining = GREATEST(league_standings.games_remaining - 1, 0),
     updated_at = NOW();
-
--- name: RecalculateRanks :exec
--- Recalculate ranks for all players in a division
--- Ranks are based on: wins (DESC), then spread (DESC)
-WITH ranked AS (
-    SELECT
-        ls.division_id,
-        ls.user_id,
-        ROW_NUMBER() OVER (
-            PARTITION BY ls.division_id
-            ORDER BY ls.wins DESC, ls.spread DESC
-        ) as new_rank
-    FROM league_standings ls
-    WHERE ls.division_id = $1
-)
-UPDATE league_standings
-SET rank = ranked.new_rank,
-    updated_at = NOW()
-FROM ranked
-WHERE league_standings.division_id = ranked.division_id
-  AND league_standings.user_id = ranked.user_id;
 
 -- Game queries for league games
 
@@ -275,6 +263,46 @@ SELECT
 FROM games
 WHERE season_id = $1
   AND game_end_reason = 0;
+
+-- name: GetSeasonZeroMoveGames :many
+-- Get all in-progress games in a season that have zero moves
+-- Uses timers field: if lu (last update) == ts (time started), no moves have been made
+-- This helps league managers identify players who haven't started their games
+SELECT
+    g.uuid as game_uuid,
+    g.created_at,
+    g.player0_id,
+    g.player1_id,
+    u_player0.uuid as player0_uuid,
+    u_player0.username as player0_username,
+    u_player1.uuid as player1_uuid,
+    u_player1.username as player1_username,
+    g.league_division_id as division_id
+FROM games g
+INNER JOIN users u_player0 ON g.player0_id = u_player0.id
+INNER JOIN users u_player1 ON g.player1_id = u_player1.id
+WHERE g.season_id = $1
+  AND g.game_end_reason = 0
+  AND (g.timers->>'lu')::bigint = (g.timers->>'ts')::bigint
+ORDER BY g.created_at ASC;
+
+-- name: GetSeasonPlayersWithUnstartedGames :many
+-- Get players who are on turn but haven't made their first move yet
+-- Groups by player to show who needs reminders
+SELECT
+    u.uuid as user_uuid,
+    u.username,
+    COUNT(*) as unstarted_game_count
+FROM games g
+INNER JOIN users u ON (
+    (g.player_on_turn = 0 AND u.id = g.player0_id) OR
+    (g.player_on_turn = 1 AND u.id = g.player1_id)
+)
+WHERE g.season_id = $1
+  AND g.game_end_reason = 0
+  AND (g.timers->>'lu')::bigint = (g.timers->>'ts')::bigint
+GROUP BY u.uuid, u.username
+ORDER BY unstarted_game_count DESC, u.username;
 
 -- name: ForceFinishGame :exec
 WITH game_update AS (
@@ -333,7 +361,7 @@ LEFT JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
 WHERE g.uuid = $1;
 
 -- name: GetPlayerSeasonGames :many
--- Get all games for a specific player in a season with scores from game_players table
+-- Get finished games for a specific player in a season with scores from game_players table
 SELECT
     g.uuid as game_uuid,
     g.created_at,
@@ -352,3 +380,36 @@ INNER JOIN users u_opponent ON gp_opponent.player_id = u_opponent.id
 WHERE g.season_id = @season_id
   AND u_player.uuid = @user_uuid
 ORDER BY g.created_at DESC;
+
+-- name: GetPlayerSeasonInProgressGames :many
+-- Get in-progress games for a specific player in a season (fast query on indexed fields)
+SELECT
+    g.uuid as game_uuid,
+    g.created_at,
+    g.player0_id,
+    g.player1_id,
+    u_player0.uuid as player0_uuid,
+    u_player0.username as player0_username,
+    u_player1.uuid as player1_uuid,
+    u_player1.username as player1_username
+FROM games g
+INNER JOIN users u_player0 ON g.player0_id = u_player0.id
+INNER JOIN users u_player1 ON g.player1_id = u_player1.id
+WHERE g.season_id = @season_id
+  AND g.game_end_reason = 0
+  AND (u_player0.uuid = @user_uuid OR u_player1.uuid = @user_uuid)
+ORDER BY g.created_at DESC;
+
+-- name: GetPlayerSeasonOpponents :many
+-- Get distinct opponents for a player in a season (from games table)
+SELECT DISTINCT
+    (CASE
+        WHEN u_player0.uuid = @user_uuid THEN u_player1.username
+        ELSE u_player0.username
+    END)::text as opponent_username
+FROM games g
+INNER JOIN users u_player0 ON g.player0_id = u_player0.id
+INNER JOIN users u_player1 ON g.player1_id = u_player1.id
+WHERE g.season_id = @season_id
+  AND (u_player0.uuid = @user_uuid OR u_player1.uuid = @user_uuid)
+ORDER BY opponent_username;

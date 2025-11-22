@@ -186,11 +186,7 @@ func TestRebalanceDivisions_30ReturningPlayers(t *testing.T) {
 		is.NoErr(err)
 	}
 
-	// Recalculate ranks
-	err = store.RecalculateRanks(ctx, div1)
-	is.NoErr(err)
-	err = store.RecalculateRanks(ctx, div2)
-	is.NoErr(err)
+	// Ranks are calculated on-demand when fetching standings, no need to explicitly recalculate
 
 	// Create Season 2
 	season2ID := uuid.New()
@@ -312,11 +308,7 @@ func TestRebalanceDivisions_45Players(t *testing.T) {
 		is.NoErr(err)
 	}
 
-	// Recalculate ranks for all divisions
-	for _, divID := range divIDs {
-		err := store.RecalculateRanks(ctx, divID)
-		is.NoErr(err)
-	}
+	// Ranks are calculated on-demand when fetching standings, no need to explicitly recalculate
 
 	// Create Season 2
 	season2ID := uuid.New()

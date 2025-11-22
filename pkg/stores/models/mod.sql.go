@@ -11,6 +11,84 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getActionsBatch = `-- name: GetActionsBatch :many
+SELECT DISTINCT ON (users.uuid, user_actions.action_type)
+    users.uuid as user_uuid,
+    user_actions.id,
+    user_actions.user_id,
+    user_actions.action_type,
+    user_actions.start_time,
+    user_actions.end_time,
+    user_actions.removed_time,
+    user_actions.message_id,
+    user_actions.applier_id,
+    user_actions.remover_id,
+    user_actions.note,
+    user_actions.removal_note,
+    user_actions.chat_text,
+    user_actions.email_type
+FROM users
+JOIN user_actions ON users.id = user_actions.user_id
+WHERE users.uuid = ANY($1::text[])
+    AND user_actions.removed_time IS NULL
+    AND (user_actions.end_time IS NULL OR user_actions.end_time > NOW())
+ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC
+`
+
+type GetActionsBatchRow struct {
+	UserUuid    pgtype.Text
+	ID          int64
+	UserID      int64
+	ActionType  int32
+	StartTime   pgtype.Timestamptz
+	EndTime     pgtype.Timestamptz
+	RemovedTime pgtype.Timestamptz
+	MessageID   pgtype.Text
+	ApplierID   pgtype.Int8
+	RemoverID   pgtype.Int8
+	Note        pgtype.Text
+	RemovalNote pgtype.Text
+	ChatText    pgtype.Text
+	EmailType   int32
+}
+
+// Get current actions for multiple users in a single query
+// Returns one row per (user_uuid, action_type) combination
+func (q *Queries) GetActionsBatch(ctx context.Context, userUuids []string) ([]GetActionsBatchRow, error) {
+	rows, err := q.db.Query(ctx, getActionsBatch, userUuids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActionsBatchRow
+	for rows.Next() {
+		var i GetActionsBatchRow
+		if err := rows.Scan(
+			&i.UserUuid,
+			&i.ID,
+			&i.UserID,
+			&i.ActionType,
+			&i.StartTime,
+			&i.EndTime,
+			&i.RemovedTime,
+			&i.MessageID,
+			&i.ApplierID,
+			&i.RemoverID,
+			&i.Note,
+			&i.RemovalNote,
+			&i.ChatText,
+			&i.EmailType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNotoriousGames = `-- name: GetNotoriousGames :many
 SELECT game_id, type, timestamp FROM notoriousgames
 WHERE player_id = $1

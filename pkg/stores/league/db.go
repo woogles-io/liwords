@@ -57,7 +57,6 @@ type Store interface {
 	GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error)
 	DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error
 	IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error
-	RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error
 
 	// Game queries
 	GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error)
@@ -68,6 +67,8 @@ type Store interface {
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
+	GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error)
+	GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error)
 }
 
 // DBStore is a postgres-backed store for leagues.
@@ -241,10 +242,6 @@ func (s *DBStore) IncrementStandingsAtomic(ctx context.Context, arg models.Incre
 	return s.queries.IncrementStandingsAtomic(ctx, arg)
 }
 
-func (s *DBStore) RecalculateRanks(ctx context.Context, divisionID uuid.UUID) error {
-	return s.queries.RecalculateRanks(ctx, divisionID)
-}
-
 // Game queries
 
 func (s *DBStore) GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error) {
@@ -345,4 +342,15 @@ func (s *DBStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGam
 
 func (s *DBStore) GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error) {
 	return s.queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameUUID, Valid: true})
+}
+
+func (s *DBStore) GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error) {
+	return s.queries.GetSeasonPlayersWithUnstartedGames(ctx, pgtype.UUID{Bytes: seasonID, Valid: true})
+}
+
+func (s *DBStore) GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error) {
+	return s.queries.GetPlayerSeasonOpponents(ctx, models.GetPlayerSeasonOpponentsParams{
+		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+		UserUuid: pgtype.Text{String: userUUID, Valid: true},
+	})
 }

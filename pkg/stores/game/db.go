@@ -528,6 +528,19 @@ func (s *DBStore) GetRecentCorrespondenceGames(ctx context.Context, username str
 			gType = pb.GameType(g.Type.Int32)
 		}
 
+		// Get league info if this is a league game
+		leagueID := ""
+		leagueSlug := ""
+		if g.LeagueID.Valid {
+			leagueUUID, err := uuid.FromBytes(g.LeagueID.Bytes[:])
+			if err == nil {
+				leagueID = leagueUUID.String()
+			}
+		}
+		if g.LeagueSlug.Valid {
+			leagueSlug = g.LeagueSlug.String
+		}
+
 		info := &pb.GameInfoResponse{
 			Players:             mdata.PlayerInfo,
 			GameEndReason:       endReason,
@@ -543,6 +556,8 @@ func (s *DBStore) GetRecentCorrespondenceGames(ctx context.Context, username str
 			TournamentRound:     int32(tRound),
 			TournamentGameIndex: int32(tGameIndex),
 			Type:                gType,
+			LeagueId:            leagueID,
+			LeagueSlug:          leagueSlug,
 		}
 		responses = append(responses, info)
 	}
