@@ -124,7 +124,6 @@ services:
     image: cr.jaegertracing.io/jaegertracing/jaeger:2.12.0
     command: ["--config", "/etc/jaeger/config.yaml"]
     ports:
-      - "16686:16686"  # Jaeger UI
       - "4317:4317"    # OTLP gRPC
       - "4318:4318"    # OTLP HTTP
       - "14250:14250"  # Jaeger gRPC
@@ -132,9 +131,14 @@ services:
     volumes:
       - ./jaeger-config.yaml:/etc/jaeger/config.yaml:ro
       - ./jaeger-ui-config.json:/etc/jaeger/ui-config.json:ro
-      - jaeger-badger-data:/badger
     networks:
       - aeronet
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.jaeger.rule=Host(`jaeger.localhost`)"
+      - "traefik.http.routers.jaeger.entrypoints=web"
+      - "traefik.http.routers.jaeger.priority=200"
+      - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
 
   proxy:
     image: "traefik:v3.6"
@@ -256,6 +260,4 @@ volumes:
   redis-data-volume:
     external: false
   minio_data:
-    driver: local
-  jaeger-badger-data:
     driver: local

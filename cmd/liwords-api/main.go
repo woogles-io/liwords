@@ -31,14 +31,15 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	otelredisoption "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/option"
-	splunkredis "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/redis"
+	// Redis tracing imports (commented out when tracing disabled):
+	// otelredisoption "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/option"
+	// splunkredis "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/redis"
 
 	"go.akshayshah.org/connectproto"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	// "go.opentelemetry.io/otel/attribute"
+	// semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -96,11 +97,14 @@ func newPool(addr string) *redis.Pool {
 		IdleTimeout: 240 * time.Second,
 		// Dial or DialContext must be set. When both are set, DialContext takes precedence over Dial.
 		Dial: func() (redis.Conn, error) {
-			return splunkredis.DialURL(addr,
-				otelredisoption.WithAttributes([]attribute.KeyValue{
-					semconv.DBRedisDBIndexKey.Int(db),
-				}),
-			)
+			// Redis tracing disabled - too much noise for minimal value
+			// To re-enable, uncomment the splunkredis version below:
+			// return splunkredis.DialURL(addr,
+			// 	otelredisoption.WithAttributes([]attribute.KeyValue{
+			// 		semconv.DBRedisDBIndexKey.Int(db),
+			// 	}),
+			// )
+			return redis.DialURL(addr, redis.DialDatabase(db))
 		},
 	}
 }
