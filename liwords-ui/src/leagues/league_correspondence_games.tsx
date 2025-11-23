@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Card, Empty, Tooltip } from "antd";
 import { ClockCircleOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
 
@@ -11,6 +12,7 @@ type LeagueCorrespondenceGamesProps = {
 export const LeagueCorrespondenceGames: React.FC<
   LeagueCorrespondenceGamesProps
 > = ({ leagueSlug }) => {
+  const navigate = useNavigate();
   const {
     loginState: { userID },
   } = useLoginStateStoreContext();
@@ -53,8 +55,16 @@ export const LeagueCorrespondenceGames: React.FC<
     });
   }, [correspondenceGames, leagueSlug, userID]);
 
-  const handleGameClick = (gameID: string) => {
-    window.open(`/game/${encodeURIComponent(gameID)}`, "_blank");
+  const handleGameClick = (gameID: string, event: React.MouseEvent) => {
+    // Same technique as lobby correspondence games:
+    // - Regular click: navigate in same window
+    // - Ctrl/Alt/Meta + click: open in new window
+    // - Middle-click: open in new window
+    if (event.ctrlKey || event.altKey || event.metaKey) {
+      window.open(`/game/${encodeURIComponent(gameID)}`);
+    } else {
+      navigate(`/game/${encodeURIComponent(gameID)}`);
+    }
   };
 
   if (leagueGames.length === 0) {
@@ -98,7 +108,13 @@ export const LeagueCorrespondenceGames: React.FC<
             <div
               key={game.gameID}
               className={`league-game-item compact ${isUserTurn ? "user-turn" : ""}`}
-              onClick={() => handleGameClick(game.gameID)}
+              onClick={(event) => handleGameClick(game.gameID, event)}
+              onAuxClick={(event) => {
+                if (event.button === 1) {
+                  // middle-click
+                  window.open(`/game/${encodeURIComponent(game.gameID)}`);
+                }
+              }}
               style={{ cursor: "pointer" }}
             >
               <div className="game-info-compact">
