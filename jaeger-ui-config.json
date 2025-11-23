@@ -1,0 +1,9 @@
+{
+  "monitor": {
+    "menuEnabled": true
+  },
+  "dependencies": {
+    "menuEnabled": true
+  },
+  "basePath": "/"
+}

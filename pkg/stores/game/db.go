@@ -12,6 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -88,8 +91,18 @@ func (s *DBStore) SetTimerModuleCreator(creator TimerModuleCreator) {
 // Only API nodes that have this game in its cache should respond to requests.
 // XXX: The above comment is obsolete and we will likely redo the way we do caches in the future.
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
+	tracer := otel.Tracer("game-store")
+	ctx, span := tracer.Start(ctx, "game.Get",
+		trace.WithAttributes(
+			attribute.String("game.id", id),
+		),
+	)
+	defer span.End()
+
+	// Database query is already instrumented by otelpgx, but we track it in our span
 	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
+		span.RecordError(err)
 		log.Err(err).Msg("error-get-game")
 		return nil, err
 	}
@@ -137,12 +150,21 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 
 	// Then unmarshal the history and start a game from it.
+	_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
+		trace.WithAttributes(
+			attribute.Int("history.size_bytes", len(g.History)),
+		),
+	)
 	hist := &macondopb.GameHistory{}
 	err = proto.Unmarshal(g.History, hist)
+	unmarshalSpan.End()
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 	log.Debug().Interface("hist", hist).Msg("hist-unmarshal")
+
+	span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
 
 	// Check if history has no players. This can indicate a null history, like
 	// for an annotated game, which should not be handled by this code path.
@@ -170,11 +192,21 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		variantName = "classic"
 	}
 
+	_, rulesSpan := tracer.Start(ctx, "game.create_rules",
+		trace.WithAttributes(
+			attribute.String("lexicon", lexicon),
+			attribute.String("board_layout", boardLayoutName),
+			attribute.String("letter_dist", letterDistributionName),
+			attribute.String("variant", variantName),
+		),
+	)
 	rules, err := macondogame.NewBasicGameRules(
 		s.cfg.MacondoConfig(), lexicon, boardLayoutName,
 		letterDistributionName, macondogame.CrossScoreOnly,
 		macondogame.Variant(variantName))
+	rulesSpan.End()
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 
@@ -194,8 +226,15 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	// This function modifies the history. (XXX it probably shouldn't)
 	// It modifies the play state as it plays the game from the beginning.
+	_, historySpan := tracer.Start(ctx, "game.replay_from_history",
+		trace.WithAttributes(
+			attribute.Int("events.count", len(hist.Events)),
+		),
+	)
 	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
+	historySpan.End()
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
 	// XXX: We should probably move this to `NewFromHistory`:
@@ -213,6 +252,8 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	entGame.SetPlaying(histPlayState)
 	entGame.History().ChallengeRule = histChallRule
 	entGame.History().PlayState = histPlayState
+
+	span.SetAttributes(attribute.Bool("game.started", entGame.Started))
 
 	return entGame, nil
 }

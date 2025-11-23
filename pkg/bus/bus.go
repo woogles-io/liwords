@@ -15,6 +15,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	nats "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
@@ -151,13 +154,41 @@ outerfor:
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
-			log := log.With().Str("msg-subject", msg.Subject).Logger()
-			log.Debug().Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
 
-			go func(subtopics []string, data []byte) {
-				err := b.handleNatsPublish(log.WithContext(ctx), subtopics[2:], data)
+			// Extract message type for better span naming
+			msgType := "unknown"
+			if len(subtopics) > 2 {
+				msgTypeStr := subtopics[2]
+				if pnum, err := strconv.Atoi(msgTypeStr); err == nil {
+					msgType = pb.MessageType(pnum).String()
+				} else {
+					msgType = msgTypeStr
+				}
+			}
+
+			// Start a new trace for this message (makes DB queries visible in Jaeger)
+			tracer := otel.Tracer("bus-message-processor")
+			spanName := "nats.publish." + msgType
+			msgCtx, span := tracer.Start(ctx, spanName,
+				trace.WithAttributes(
+					attribute.String("msg.subject", msg.Subject),
+					attribute.String("msg.type", msgType),
+				),
+			)
+
+			// Create scoped logger from context logger
+			scopedLogger := zerolog.Ctx(msgCtx).With().Str("msg-subject", msg.Subject).Logger()
+			scopedLogger.Debug().Msg("got ipc.pb message")
+			// Update context with scoped logger
+			msgCtx = scopedLogger.WithContext(msgCtx)
+
+			go func(msgCtx context.Context, span trace.Span, subtopics []string, data []byte) {
+				defer span.End()
+				log := zerolog.Ctx(msgCtx)
+				err := b.handleNatsPublish(msgCtx, subtopics[2:], data)
 				if err != nil {
+					span.RecordError(err)
 					log.Err(err).Msg("process-message-publish-error")
 					// The user ID should have hopefully come in the topic name.
 					// It would be in subtopics[4]
@@ -168,18 +199,42 @@ outerfor:
 							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
-			}(subtopics, msg.Data)
+			}(msgCtx, span, subtopics, msg.Data)
 
 		// NATS message usually from socket service:
 		case msg := <-b.subchans["ipc.request.>"]:
-			log := log.With().Str("msg-subject", msg.Subject).Logger()
-			log.Debug().Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
 
-			go func() {
-				err := b.handleNatsRequest(log.WithContext(ctx), subtopics[2], msg.Reply, msg.Data)
+			// Extract request topic for better span naming
+			requestTopic := "unknown"
+			if len(subtopics) > 2 {
+				requestTopic = subtopics[2]
+			}
+
+			// Start a new trace for this request (makes DB queries visible in Jaeger)
+			tracer := otel.Tracer("bus-message-processor")
+			spanName := "nats.request." + requestTopic
+			reqCtx, span := tracer.Start(ctx, spanName,
+				trace.WithAttributes(
+					attribute.String("msg.subject", msg.Subject),
+					attribute.String("msg.request_topic", requestTopic),
+					attribute.String("msg.reply", msg.Reply),
+				),
+			)
+
+			// Create scoped logger from context logger
+			scopedLogger := zerolog.Ctx(reqCtx).With().Str("msg-subject", msg.Subject).Logger()
+			scopedLogger.Debug().Msg("got ipc.request")
+			// Update context with scoped logger
+			reqCtx = scopedLogger.WithContext(reqCtx)
+
+			go func(reqCtx context.Context, span trace.Span) {
+				defer span.End()
+				log := zerolog.Ctx(reqCtx)
+				err := b.handleNatsRequest(reqCtx, subtopics[2], msg.Reply, msg.Data)
 				if err != nil {
+					span.RecordError(err)
 					log.Err(err).Msg("process-message-request-error")
 					// just send a blank response so there isn't a timeout on
 					// the other side.
@@ -194,7 +249,7 @@ outerfor:
 						b.natsconn.Publish(msg.Reply, data)
 					}
 				}
-			}()
+			}(reqCtx, span)
 
 		// NATS message from macondo bot
 		case msg := <-b.subchans["bot.publish_event.>"]:
