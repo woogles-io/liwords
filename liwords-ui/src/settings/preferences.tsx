@@ -11,7 +11,11 @@ import { BoardPreview } from "./board_preview";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { DndProvider } from "react-dnd";
-import { useUIStore } from "../stores/ui-store";
+import {
+  useUIStore,
+  selectBoardMode,
+  selectTileMode,
+} from "../stores/ui-store";
 import {
   getTurnNotificationPreference,
   setTurnNotificationPreference,
@@ -169,11 +173,11 @@ export const Preferences = React.memo(() => {
   const themeMode = useUIStore((state) => state.themeMode);
   const setThemeMode = useUIStore((state) => state.setThemeMode);
 
-  const initialTileStyle = localStorage?.getItem("userTile") || "Default";
-  const [userTile, setUserTile] = useState<string>(initialTileStyle);
-
-  const initialBoardStyle = localStorage?.getItem("userBoard") || "Default";
-  const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
+  // Use Zustand store for board and tile modes
+  const boardMode = useUIStore(selectBoardMode);
+  const setBoardMode = useUIStore((state) => state.setBoardMode);
+  const tileMode = useUIStore(selectTileMode);
+  const setTileMode = useUIStore((state) => state.setTileMode);
 
   const initialPuzzleLexicon =
     localStorage?.getItem("puzzleLexicon") || undefined;
@@ -188,19 +192,13 @@ export const Preferences = React.memo(() => {
     getNotificationPermissionState(),
   );
 
-  const handleUserTileChange = useCallback((tileStyle: string) => {
-    const classes = document?.body?.className
-      .split(" ")
-      .filter((c) => !c.startsWith("tile--"));
-    document.body.className = classes.join(" ").trim();
-    if (tileStyle) {
-      localStorage.setItem("userTile", tileStyle);
-      document?.body?.classList?.add(`tile--${tileStyle}`);
-    } else {
-      localStorage.removeItem("userTile");
-    }
-    setUserTile(tileStyle);
-  }, []);
+  const handleUserTileChange = useCallback(
+    (tileStyle: string) => {
+      // Zustand store handles localStorage and body class updates
+      setTileMode(tileStyle || "default");
+    },
+    [setTileMode],
+  );
 
   const handlePuzzleLexiconChange = useCallback((lexicon: string) => {
     localStorage.setItem("puzzleLexicon", lexicon);
@@ -274,19 +272,13 @@ export const Preferences = React.memo(() => {
     [],
   );
 
-  const handleUserBoardChange = useCallback((boardStyle: string) => {
-    const classes = document?.body?.className
-      .split(" ")
-      .filter((c) => !c.startsWith("board--"));
-    document.body.className = classes.join(" ").trim();
-    if (boardStyle) {
-      localStorage.setItem("userBoard", boardStyle);
-      document?.body?.classList?.add(`board--${boardStyle}`);
-    } else {
-      localStorage.removeItem("userBoard");
-    }
-    setUserBoard(boardStyle);
-  }, []);
+  const handleUserBoardChange = useCallback(
+    (boardStyle: string) => {
+      // Zustand store handles localStorage and body class updates
+      setBoardMode(boardStyle || "default");
+    },
+    [setBoardMode],
+  );
 
   const [reevaluateTileOrderOptions, setReevaluateTileOrderOptions] =
     useState(0);
@@ -454,7 +446,7 @@ export const Preferences = React.memo(() => {
             <Select
               className="tile-style-select"
               size="large"
-              defaultValue={userTile}
+              value={tileMode}
               onChange={handleUserTileChange}
             >
               {KNOWN_TILE_STYLES.map(({ name, value }) => (
@@ -469,7 +461,7 @@ export const Preferences = React.memo(() => {
             <Select
               className="board-style-select"
               size="large"
-              defaultValue={userBoard}
+              value={boardMode}
               onChange={handleUserBoardChange}
             >
               {KNOWN_BOARD_STYLES.map(({ name, value }) => (

@@ -71,18 +71,9 @@ import { useQuery } from "@connectrpc/connect-query";
 import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { getBadgesMetadata } from "./gen/api/proto/user_service/user_service-ProfileService_connectquery";
 
-// const useDarkMode = localStorage?.getItem('darkMode') === 'true';
-// document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+// Theme, board, and tile classes are now managed by Zustand store (see stores/ui-store.ts)
+// The store automatically applies body classes on module load
 
-const userTile = localStorage?.getItem("userTile");
-if (userTile) {
-  document?.body?.classList?.add(`tile--${userTile}`);
-}
-
-const userBoard = localStorage?.getItem("userBoard");
-if (userBoard) {
-  document?.body?.classList?.add(`board--${userBoard}`);
-}
 const bnjyTile = localStorage?.getItem("bnjyMode") === "true";
 if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);

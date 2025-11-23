@@ -190,3 +190,14 @@ export const selectThemeMode = (state: UIState) => state.themeMode;
 export const selectActiveModal = (state: UIState) => state.activeModal;
 export const selectBoardMode = (state: UIState) => state.boardMode;
 export const selectTileMode = (state: UIState) => state.tileMode;
+
+/**
+ * Initialize body classes on module load (before React renders)
+ * This ensures themes are applied immediately without flicker
+ */
+if (typeof window !== "undefined") {
+  const initialState = useUIStore.getState();
+  updateBodyClass(initialState.themeMode);
+  updateBoardModeClass(initialState.boardMode);
+  updateTileModeClass(initialState.tileMode);
+}
