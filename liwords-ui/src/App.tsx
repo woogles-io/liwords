@@ -360,13 +360,19 @@ const App = React.memo(() => {
             <Route
               path="tournament/:partialSlug/*"
               element={
-                <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+                <TournamentRoom
+                  sendSocketMsg={sendMessage}
+                  sendChat={sendChat}
+                />
               }
             />
             <Route
               path="club/:partialSlug/*"
               element={
-                <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+                <TournamentRoom
+                  sendSocketMsg={sendMessage}
+                  sendChat={sendChat}
+                />
               }
             />
             <Route path="clubs" element={<Clubs />} />
@@ -406,7 +412,10 @@ const App = React.memo(() => {
               <Route path=":gameID" element={<BoardEditor />} />
             </Route>
             <Route path="collections/:uuid" element={<CollectionViewer />}>
-              <Route path="chapter/:chapterNumber" element={<CollectionViewer />} />
+              <Route
+                path="chapter/:chapterNumber"
+                element={<CollectionViewer />}
+              />
             </Route>
             <Route
               path="scrabblecam/callback"
@@ -440,8 +449,8 @@ const App = React.memo(() => {
               element={<HandoverSignedCookie />}
             />
           </Routes>
-        {!isEmbeddedPath && <Footer />}
-      </div>
+          {!isEmbeddedPath && <Footer />}
+        </div>
       </AntDApp>
     </ConfigProvider>
   );
