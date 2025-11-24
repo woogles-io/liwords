@@ -92,7 +92,7 @@ export const Donate = () => {
       userIntegrations?.integrations.some(
         (i) => i.integrationName === "patreon",
       ),
-    [userIntegrations?.integrations],
+    [userIntegrations],
   );
 
   const patreonButton = useCallback(() => {
@@ -136,11 +136,7 @@ export const Donate = () => {
         </p>
       );
     }
-  }, [
-    loginState.loggedIn,
-    hasPatreonIntegration,
-    subscriptionCriteria?.tierName,
-  ]);
+  }, [loginState.loggedIn, hasPatreonIntegration, subscriptionCriteria]);
 
   return (
     <>

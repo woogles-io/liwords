@@ -9,7 +9,7 @@ import {
   Row,
   Select,
   notification,
-  DatePicker as DatePickerWithDayJs,
+  DatePicker,
 } from "antd";
 import { Modal } from "../utils/focus_modal";
 import moment from "moment";
@@ -27,12 +27,6 @@ import {
   useClient,
 } from "../utils/hooks/connect";
 import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
-import type { Moment } from "moment";
-import momentGenerateConfig from "rc-picker/lib/generate/moment";
-
-// FIXME: antd has moved on to day.js, but we are still using moment.js :-(
-const DatePicker =
-  DatePickerWithDayJs.generatePicker<Moment>(momentGenerateConfig);
 
 type Props = {
   player: Partial<PlayerInfo> | undefined;

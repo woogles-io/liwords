@@ -32,6 +32,7 @@ import { useLoginStateStoreContext } from "../store/store";
 import { SeasonStatus } from "../gen/api/proto/ipc/league_pb";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { dayjsToProtobufTimestampIgnoringNanos } from "../utils/datetime";
+import { AllLexica } from "../shared/lexica";
 import "./leagues.scss";
 
 const { TextArea } = Input;
@@ -429,8 +430,20 @@ export const LeagueAdmin = () => {
 
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item label="Lexicon" name="lexicon">
-                    <Input placeholder="e.g., NWL23" />
+                  <Form.Item
+                    label="Lexicon"
+                    name="lexicon"
+                    rules={[
+                      { required: true, message: "Please select a lexicon" },
+                    ]}
+                  >
+                    <Select placeholder="Select a lexicon">
+                      {Object.entries(AllLexica).map(([code, lexicon]) => (
+                        <Option key={code} value={code}>
+                          {lexicon.shortDescription}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -603,11 +616,12 @@ export const LeagueAdmin = () => {
                         { required: true, message: "Please select lexicon" },
                       ]}
                     >
-                      <Select>
-                        <Option value="NWL23">NWL23</Option>
-                        <Option value="CSW21">CSW21</Option>
-                        <Option value="ECWL">ECWL</Option>
-                        <Option value="FRA20">FRA20</Option>
+                      <Select placeholder="Select a lexicon">
+                        {Object.entries(AllLexica).map(([code, lexicon]) => (
+                          <Option key={code} value={code}>
+                            {lexicon.shortDescription}
+                          </Option>
+                        ))}
                       </Select>
                     </Form.Item>
                   </Col>

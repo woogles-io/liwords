@@ -48,11 +48,11 @@ import { ChatMessageSchema } from "./gen/api/proto/ipc/chat_pb";
 import { MessageType } from "./gen/api/proto/ipc/ipc_pb";
 import Footer from "./navigation/footer";
 import { Embed } from "./embed/embed";
-import { useSelector } from "react-redux";
 
 import { App as AntDApp } from "antd";
 import { ConfigProvider } from "antd";
 import { liwordsDefaultTheme, liwordsDarkTheme } from "./themes";
+import { useUIStore, selectThemeMode } from "./stores/ui-store";
 
 import {
   connectErrorMessage,
@@ -64,7 +64,6 @@ import {
   SocializeService,
 } from "./gen/api/proto/user_service/user_service_pb";
 import { BoardEditor } from "./boardwizard/editor";
-import { RootState } from "./store/redux_store";
 import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
 import { CollectionViewer } from "./collections/CollectionViewer";
 import { create, toBinary } from "@bufbuild/protobuf";
@@ -72,18 +71,9 @@ import { useQuery } from "@connectrpc/connect-query";
 import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { getBadgesMetadata } from "./gen/api/proto/user_service/user_service-ProfileService_connectquery";
 
-// const useDarkMode = localStorage?.getItem('darkMode') === 'true';
-// document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+// Theme, board, and tile classes are now managed by Zustand store (see stores/ui-store.ts)
+// The store automatically applies body classes on module load
 
-const userTile = localStorage?.getItem("userTile");
-if (userTile) {
-  document?.body?.classList?.add(`tile--${userTile}`);
-}
-
-const userBoard = localStorage?.getItem("userBoard");
-if (userBoard) {
-  document?.body?.classList?.add(`board--${userBoard}`);
-}
 const bnjyTile = localStorage?.getItem("bnjyMode") === "true";
 if (bnjyTile) {
   document?.body?.classList?.add(`bnjyMode`);
@@ -181,24 +171,24 @@ const App = React.memo(() => {
   // get badge metadata into internal cache.
   useQuery(getBadgesMetadata, {}, { enabled: !isEmbeddedPath });
 
-  const useDarkMode = useSelector((state: RootState) => state.theme.darkMode);
+  // Get theme from Zustand store
+  const themeMode = useUIStore(selectThemeMode);
   useEffect(() => {
-    console.log("Detected useDarkMode = ", useDarkMode);
-    localStorage.setItem("darkMode", useDarkMode ? "true" : "false");
-    document?.body?.classList?.add(`mode--${useDarkMode ? "dark" : "default"}`);
-    document?.body?.classList?.remove(
-      `mode--${useDarkMode ? "default" : "dark"}`,
-    );
-  }, [useDarkMode]);
+    const isDark = themeMode === "dark";
+    console.log("Detected themeMode = ", themeMode);
+    localStorage.setItem("darkMode", isDark ? "true" : "false");
+    document?.body?.classList?.add(`mode--${isDark ? "dark" : "default"}`);
+    document?.body?.classList?.remove(`mode--${isDark ? "default" : "dark"}`);
+  }, [themeMode]);
 
   const antdTheme = useMemo(() => {
-    if (useDarkMode) {
+    if (themeMode === "dark") {
       console.log("Using antd dark theme");
       return liwordsDarkTheme;
     }
     console.log("Using antd-default-theme");
     return liwordsDefaultTheme;
-  }, [useDarkMode]);
+  }, [themeMode]);
 
   // See store.tsx for how this works.
   const [socketId, setSocketId] = useState(0);
