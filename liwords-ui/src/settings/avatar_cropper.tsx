@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, Slider } from "antd";
 import { Modal } from "../utils/focus_modal";
-import Cropper from "react-easy-crop";
-import { Area } from "react-easy-crop/types";
+import Cropper, { Area } from "react-easy-crop";
 
 type Props = {
   file?: Blob;
