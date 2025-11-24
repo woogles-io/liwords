@@ -112,6 +112,11 @@ export default defineConfig([
       "react/display-name": "off",
       "react/no-children-prop": "off",
       "react-hooks/exhaustive-deps": "error",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/static-components": "warn",
+      "react-hooks/immutability": "warn",
     },
   },
 ]);
