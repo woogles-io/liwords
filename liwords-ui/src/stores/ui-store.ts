@@ -53,16 +53,16 @@ const getInitialTheme = (): ThemeMode => {
  * Initialize board mode from legacy localStorage "userBoard" key
  */
 const getInitialBoardMode = (): string => {
-  if (typeof window === "undefined") return "default";
-  return localStorage.getItem("userBoard") || "default";
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("userBoard") || "";
 };
 
 /**
  * Initialize tile mode from legacy localStorage "userTile" key
  */
 const getInitialTileMode = (): string => {
-  if (typeof window === "undefined") return "default";
-  return localStorage.getItem("userTile") || "default";
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("userTile") || "";
 };
 
 /**

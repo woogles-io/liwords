@@ -195,7 +195,7 @@ export const Preferences = React.memo(() => {
   const handleUserTileChange = useCallback(
     (tileStyle: string) => {
       // Zustand store handles localStorage and body class updates
-      setTileMode(tileStyle || "default");
+      setTileMode(tileStyle || "");
     },
     [setTileMode],
   );
@@ -275,7 +275,7 @@ export const Preferences = React.memo(() => {
   const handleUserBoardChange = useCallback(
     (boardStyle: string) => {
       // Zustand store handles localStorage and body class updates
-      setBoardMode(boardStyle || "default");
+      setBoardMode(boardStyle || "");
     },
     [setBoardMode],
   );
