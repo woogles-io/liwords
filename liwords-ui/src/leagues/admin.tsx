@@ -26,6 +26,7 @@ import {
   getAllDivisionStandings,
   getAllSeasons,
   movePlayerToDivision,
+  updateSeasonDates,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -46,9 +47,14 @@ export const LeagueAdmin = () => {
   const [seasonForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [movePlayerForm] = Form.useForm();
+  const [editSeasonDatesForm] = Form.useForm();
   const [createdLeagueSlug, setCreatedLeagueSlug] = useState<string>("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string>("");
   const [selectedMoveLeagueId, setSelectedMoveLeagueId] = useState<string>("");
+  const [selectedEditDatesLeagueId, setSelectedEditDatesLeagueId] =
+    useState<string>("");
+  const [selectedEditDatesSeasonId, setSelectedEditDatesSeasonId] =
+    useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [selectedPlayerDivisionId, setSelectedPlayerDivisionId] =
     useState<string>("");
@@ -64,6 +70,14 @@ export const LeagueAdmin = () => {
     { leagueId: selectedMoveLeagueId },
     { enabled: !!selectedMoveLeagueId },
   );
+
+  // Fetch all seasons for the edit dates league
+  const { data: editDatesSeasonsData, refetch: refetchEditDatesSeasons } =
+    useQuery(
+      getAllSeasons,
+      { leagueId: selectedEditDatesLeagueId },
+      { enabled: !!selectedEditDatesLeagueId },
+    );
 
   // Find the latest season (try SCHEDULED first, then fall back to highest season number)
   const latestSeason = useMemo(() => {
@@ -165,6 +179,20 @@ export const LeagueAdmin = () => {
       setSelectedPlayerId("");
       setSelectedPlayerDivisionId("");
       movePlayerForm.resetFields();
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const updateSeasonDatesMutation = useMutation(updateSeasonDates, {
+    onSuccess: () => {
+      notification.success({
+        message: "Season Dates Updated",
+        description: "Season dates have been updated successfully!",
+      });
+      refetchEditDatesSeasons();
+      editSeasonDatesForm.resetFields(["startDate", "endDate"]);
     },
     onError: (error) => {
       flashError(error);
@@ -318,6 +346,29 @@ export const LeagueAdmin = () => {
     });
   };
 
+  const handleUpdateSeasonDates = (vals: Store) => {
+    if (!selectedEditDatesSeasonId) {
+      notification.error({
+        message: "Selection Error",
+        description: "Please select a season first",
+      });
+      return;
+    }
+
+    const startTimestamp = vals.startDate
+      ? dayjsToProtobufTimestampIgnoringNanos(vals.startDate)
+      : undefined;
+    const endTimestamp = vals.endDate
+      ? dayjsToProtobufTimestampIgnoringNanos(vals.endDate)
+      : undefined;
+
+    updateSeasonDatesMutation.mutate({
+      seasonId: selectedEditDatesSeasonId,
+      startDate: startTimestamp,
+      endDate: endTimestamp,
+    });
+  };
+
   if (!loggedIn) {
     return (
       <>
@@ -462,7 +513,7 @@ export const LeagueAdmin = () => {
                     message: "Please enter ideal division size",
                   },
                 ]}
-                help="Target size for divisions (actual sizes will range from 13-20 players). Promotion/relegation is automatically calculated as ceil(size/6)."
+                help="Target size for divisions (actual sizes will range from 13-20 players). Promotion/relegation is automatically calculated as ceil((size+1)/5)."
               >
                 <InputNumber min={10} max={20} style={{ width: "100%" }} />
               </Form.Item>
@@ -778,6 +829,136 @@ export const LeagueAdmin = () => {
                 </Button>
               </Form.Item>
             </Form>
+          </Card>
+
+          {/* Edit Season Dates */}
+          <Card title="Edit Season Dates">
+            <Alert
+              message="Edit Season Dates"
+              description="Update the start and end dates of a season. Only works when season is SCHEDULED or REGISTRATION_OPEN."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league"
+                onChange={(value) => {
+                  setSelectedEditDatesLeagueId(value);
+                  setSelectedEditDatesSeasonId("");
+                  editSeasonDatesForm.resetFields();
+                }}
+                value={selectedEditDatesLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedEditDatesLeagueId &&
+              editDatesSeasonsData?.seasons &&
+              editDatesSeasonsData.seasons.length > 0 && (
+                <>
+                  <Form.Item label="Select Season">
+                    <Select
+                      placeholder="Choose a season"
+                      onChange={(value) => {
+                        setSelectedEditDatesSeasonId(value);
+                        // Pre-populate the form with current dates
+                        const season = editDatesSeasonsData.seasons?.find(
+                          (s) => s.uuid === value,
+                        );
+                        if (season) {
+                          editSeasonDatesForm.setFieldsValue({
+                            startDate: season.startDate
+                              ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+                                require("dayjs")(season.startDate.toDate())
+                              : undefined,
+                            endDate: season.endDate
+                              ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+                                require("dayjs")(season.endDate.toDate())
+                              : undefined,
+                          });
+                        }
+                      }}
+                      value={selectedEditDatesSeasonId || undefined}
+                    >
+                      {editDatesSeasonsData.seasons
+                        .filter(
+                          (s) =>
+                            s.status === SeasonStatus.SEASON_SCHEDULED ||
+                            s.status === SeasonStatus.SEASON_REGISTRATION_OPEN,
+                        )
+                        .map((season) => (
+                          <Option key={season.uuid} value={season.uuid}>
+                            Season {season.seasonNumber} (
+                            {SeasonStatus[season.status]})
+                          </Option>
+                        ))}
+                    </Select>
+                  </Form.Item>
+
+                  {selectedEditDatesSeasonId && (
+                    <Form
+                      form={editSeasonDatesForm}
+                      layout="vertical"
+                      onFinish={handleUpdateSeasonDates}
+                    >
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            label="Start Date"
+                            name="startDate"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select start date",
+                              },
+                            ]}
+                          >
+                            <DatePicker
+                              showTime
+                              style={{ width: "100%" }}
+                              format="YYYY-MM-DD HH:mm:ss"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label="End Date"
+                            name="endDate"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select end date",
+                              },
+                            ]}
+                          >
+                            <DatePicker
+                              showTime
+                              style={{ width: "100%" }}
+                              format="YYYY-MM-DD HH:mm:ss"
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          loading={updateSeasonDatesMutation.isPending}
+                        >
+                          Update Season Dates
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                  )}
+                </>
+              )}
           </Card>
 
           {/* Move Player Between Divisions */}

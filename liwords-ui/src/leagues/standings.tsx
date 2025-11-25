@@ -32,14 +32,15 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     setSelectedPlayer(null);
   };
 
-  // Calculate promotion/relegation zones
+  // Calculate promotion/relegation zones: ceil((divisionSize + 1) / 5)
+  // Examples: 13 players -> 3, 15 players -> 4, 17 players -> 4, 20 players -> 5
   const divisionSize = division.standings.length;
   const promotionCount =
-    division.divisionNumber === 1 ? 0 : Math.ceil(divisionSize / 6);
+    division.divisionNumber === 1 ? 0 : Math.ceil((divisionSize + 1) / 5);
   const relegationCount =
     division.divisionNumber === totalDivisions
       ? 0
-      : Math.ceil(divisionSize / 6);
+      : Math.ceil((divisionSize + 1) / 5);
 
   const getRowClassName = (_record: unknown, index: number) => {
     const rank = index + 1;

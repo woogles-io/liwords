@@ -29,7 +29,15 @@ type Store interface {
 	GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error)
 	GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error)
 	UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error
+	UpdateSeasonDates(ctx context.Context, arg models.UpdateSeasonDatesParams) error
 	MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error
+
+	// Task tracking for hourly runner idempotency
+	MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error
+	MarkDivisionsPrepared(ctx context.Context, uuid uuid.UUID) error
+	MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error
+	MarkRegistrationOpenedForNextSeason(ctx context.Context, uuid uuid.UUID) error
+	MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error
 
 	// Division operations
 	CreateDivision(ctx context.Context, arg models.CreateDivisionParams) (models.LeagueDivision, error)
@@ -148,8 +156,34 @@ func (s *DBStore) UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeaso
 	return s.queries.UpdateSeasonStatus(ctx, arg)
 }
 
+func (s *DBStore) UpdateSeasonDates(ctx context.Context, arg models.UpdateSeasonDatesParams) error {
+	return s.queries.UpdateSeasonDates(ctx, arg)
+}
+
 func (s *DBStore) MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error {
 	return s.queries.MarkSeasonComplete(ctx, uuid)
+}
+
+// Task tracking for hourly runner idempotency
+
+func (s *DBStore) MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkSeasonClosed(ctx, uuid)
+}
+
+func (s *DBStore) MarkDivisionsPrepared(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkDivisionsPrepared(ctx, uuid)
+}
+
+func (s *DBStore) MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkSeasonStarted(ctx, uuid)
+}
+
+func (s *DBStore) MarkRegistrationOpenedForNextSeason(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkRegistrationOpenedForNextSeason(ctx, uuid)
+}
+
+func (s *DBStore) MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkStartingSoonNotificationSent(ctx, uuid)
 }
 
 // Division operations

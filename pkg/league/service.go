@@ -149,6 +149,93 @@ func (ls *LeagueService) BootstrapSeason(
 	}), nil
 }
 
+// UpdateSeasonDates updates the start and end dates of a season.
+// This can only be used when the season is in SCHEDULED or REGISTRATION_OPEN status.
+func (ls *LeagueService) UpdateSeasonDates(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateSeasonDatesRequest],
+) (*connect.Response[pb.SeasonResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+	if req.Msg.StartDate == nil || req.Msg.EndDate == nil {
+		return nil, apiserver.InvalidArg("start_date and end_date are required")
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Get the season
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Only allow updating dates when season is not ACTIVE or COMPLETED
+	status := ipc.SeasonStatus(season.Status)
+	if status == ipc.SeasonStatus_SEASON_ACTIVE || status == ipc.SeasonStatus_SEASON_COMPLETED {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("cannot update dates for a season with status %s", status.String()))
+	}
+
+	// Validate dates
+	startTime := req.Msg.StartDate.AsTime()
+	endTime := req.Msg.EndDate.AsTime()
+	if endTime.Before(startTime) {
+		return nil, apiserver.InvalidArg("end_date must be after start_date")
+	}
+
+	// Update the season dates
+	err = ls.store.UpdateSeasonDates(ctx, models.UpdateSeasonDatesParams{
+		Uuid:      seasonID,
+		StartDate: pgtype.Timestamptz{Time: startTime, Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: endTime, Valid: true},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to update season dates: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Time("startDate", startTime).
+		Time("endDate", endTime).
+		Msg("season-dates-updated")
+
+	// Fetch updated season
+	updatedSeason, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to fetch updated season: %w", err))
+	}
+
+	// Convert to proto response
+	protoSeason := &ipc.Season{
+		Uuid:         updatedSeason.Uuid.String(),
+		LeagueId:     updatedSeason.LeagueID.String(),
+		SeasonNumber: updatedSeason.SeasonNumber,
+		StartDate:    timestamppb.New(updatedSeason.StartDate.Time),
+		EndDate:      timestamppb.New(updatedSeason.EndDate.Time),
+		Status:       ipc.SeasonStatus(updatedSeason.Status),
+		Divisions:    []*ipc.Division{},
+	}
+
+	if updatedSeason.ActualEndDate.Valid {
+		protoSeason.ActualEndDate = timestamppb.New(updatedSeason.ActualEndDate.Time)
+	}
+
+	return connect.NewResponse(&pb.SeasonResponse{
+		Season: protoSeason,
+	}), nil
+}
+
 // Stub implementations for other RPC methods
 // These will be implemented in future phases
 

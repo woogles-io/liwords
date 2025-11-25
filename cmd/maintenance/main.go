@@ -88,6 +88,12 @@ func main() {
 		case "league-season-starting-soon":
 			err := LeagueSeasonStartingSoon()
 			log.Err(err).Msg("ran leagueSeasonStartingSoon")
+		case "league-hourly-runner":
+			err := LeagueHourlyRunner()
+			log.Err(err).Msg("ran leagueHourlyRunner")
+		case "league-unstarted-game-reminder":
+			err := LeagueUnstartedGameReminder()
+			log.Err(err).Msg("ran leagueUnstartedGameReminder")
 		case "unverified-users-cleanup":
 			err := UnverifiedUsersCleanup()
 			log.Err(err).Msg("ran unverifiedUsersCleanup")

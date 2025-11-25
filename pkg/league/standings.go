@@ -277,8 +277,9 @@ func (sm *StandingsManager) markOutcomes(
 		return
 	}
 
-	// Calculate number of promoted and relegated: ceil(div_size / 6)
-	promotionCount := int(math.Ceil(float64(divSize) / 6.0))
+	// Calculate number of promoted and relegated: ceil((div_size + 1) / 5)
+	// Examples: 13 players -> 3, 15 players -> 4, 17 players -> 4, 20 players -> 5
+	promotionCount := int(math.Ceil(float64(divSize+1) / 5.0))
 	relegationCount := promotionCount
 
 	isHighestDivision := divisionNumber == 1

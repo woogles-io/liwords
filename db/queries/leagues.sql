@@ -65,6 +65,39 @@ UPDATE league_seasons
 SET status = $2, updated_at = NOW()
 WHERE uuid = $1;
 
+-- name: UpdateSeasonDates :exec
+UPDATE league_seasons
+SET start_date = $2, end_date = $3, updated_at = NOW()
+WHERE uuid = $1;
+
+-- Task tracking queries for hourly runner idempotency
+
+-- name: MarkSeasonClosed :exec
+UPDATE league_seasons
+SET closed_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkDivisionsPrepared :exec
+UPDATE league_seasons
+SET divisions_prepared_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkSeasonStarted :exec
+UPDATE league_seasons
+SET started_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkRegistrationOpenedForNextSeason :exec
+-- Called on the CURRENT season to mark that registration for the NEXT season was opened
+UPDATE league_seasons
+SET registration_opened_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkStartingSoonNotificationSent :exec
+UPDATE league_seasons
+SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
 -- name: MarkSeasonComplete :exec
 UPDATE league_seasons
 SET status = 2, actual_end_date = NOW(), updated_at = NOW()  -- SeasonStatus.SEASON_COMPLETED
