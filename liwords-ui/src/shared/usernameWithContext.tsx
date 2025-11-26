@@ -252,9 +252,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           <SettingOutlined />
         ) : (
           <>
-            <DisplayUserTitle uuid={props.userID} />
             {props.fullName || props.username}
             {props.includeFlag && <DisplayUserFlag uuid={props.userID} />}
+            <DisplayUserTitle uuid={props.userID} />
             {!props.omitBadges && <DisplayUserBadges uuid={props.userID} />}
           </>
         )}

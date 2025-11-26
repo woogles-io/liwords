@@ -6,16 +6,31 @@ interface DisplayUserTitleProps {
   uuid?: string;
 }
 
-const titleColors: Record<string, string> = {
-  GM: "#faad14", // gold
-  Master: "#1890ff", // blue
-  Expert: "#52c41a", // green
+const titleStyles: Record<
+  string,
+  { background: string; border: string; color: string }
+> = {
+  GM: {
+    background: "#C9FFCB", // UI/Light/Green
+    border: "#449E2D", // UI/Dark/Green
+    color: "#449E2D",
+  },
+  Master: {
+    background: "#FFFDC9", // UI/Light/Yellow
+    border: "#F4B000", // UI/Dark/Yellow
+    color: "#F4B000",
+  },
+  Expert: {
+    background: "#FFC9C9", // UI/Light/Red
+    border: "#A92E2E", // UI/Dark/Red
+    color: "#A92E2E",
+  },
 };
 
 const titleAbbreviations: Record<string, string> = {
   GM: "GM",
   Master: "M",
-  Expert: "EX",
+  Expert: "E",
 };
 
 export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
@@ -27,16 +42,29 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
 
   const abbreviation =
     titleAbbreviations[briefProfile.title] || briefProfile.title;
-  const color = titleColors[briefProfile.title] || "#1890ff";
+  const styles = titleStyles[briefProfile.title] || {
+    background: "#e6f7ff",
+    border: "#1890ff",
+    color: "#1890ff",
+  };
 
   return (
-    <Tooltip title={briefProfile.title}>
+    <Tooltip title={`${briefProfile.title} title`}>
       <span
         style={{
-          marginRight: "6px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "24px",
+          height: "24px",
+          borderRadius: "50%",
+          backgroundColor: styles.background,
+          border: `1px solid ${styles.border}`,
+          color: styles.color,
+          fontSize: "11px",
           fontWeight: "bold",
-          color: color,
-          fontFamily: "monospace",
+          marginLeft: "4px",
+          marginRight: "4px",
         }}
       >
         {abbreviation}

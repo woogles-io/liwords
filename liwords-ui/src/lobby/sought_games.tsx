@@ -77,9 +77,9 @@ export const PlayerDisplay = (props: PlayerProps) => {
           nickname: props.username,
         }}
       />
-      <DisplayUserTitle uuid={props.userID} />
       <span className="player-name">{props.username}</span>
       <DisplayUserFlag uuid={props.userID} />
+      <DisplayUserTitle uuid={props.userID} />
       <DisplayUserBadges uuid={props.userID} />
     </div>
   );
