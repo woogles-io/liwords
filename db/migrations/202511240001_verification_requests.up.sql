@@ -25,10 +25,10 @@ VALUES ('can_verify_user_identities', 'Can verify user identity claims for organ
 
 -- Create user_verifier role with this permission
 INSERT INTO roles (name, description)
-VALUES ('user_verifier', 'Can verify user identity claims');
+VALUES ('User Verifier', 'Can verify user identity claims');
 
 -- Link the permission to the role
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT
-    (SELECT id FROM roles WHERE name = 'user_verifier'),
+    (SELECT id FROM roles WHERE name = 'User Verifier'),
     (SELECT id FROM permissions WHERE code = 'can_verify_user_identities');

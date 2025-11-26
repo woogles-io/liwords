@@ -23,6 +23,7 @@ import { MachineLetter } from "../utils/cwgame/common";
 
 import variables from "../base.module.scss";
 import { DisplayUserBadges } from "../profile/badge";
+import { DisplayUserTitle } from "../shared/display_title";
 const { colorPrimary } = variables;
 
 type CardProps = {
@@ -93,6 +94,7 @@ const PlayerCard = React.memo((props: CardProps) => {
         <div className="player-info">
           <p className="player-name">
             {briefProfile?.fullName || meta?.fullName || meta?.nickname}
+            <DisplayUserTitle uuid={props.player.userID} />
             <DisplayUserBadges uuid={props.player.userID} />
           </p>
           <div className="player-details">

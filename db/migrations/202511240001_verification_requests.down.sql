@@ -1,9 +1,9 @@
 -- Remove role permissions
 DELETE FROM role_permissions
-WHERE role_id = (SELECT id FROM roles WHERE name = 'user_verifier');
+WHERE role_id = (SELECT id FROM roles WHERE name = 'User Verifier');
 
 -- Remove role
-DELETE FROM roles WHERE name = 'user_verifier';
+DELETE FROM roles WHERE name = 'User Verifier';
 
 -- Remove permission
 DELETE FROM permissions WHERE code = 'can_verify_user_identities';

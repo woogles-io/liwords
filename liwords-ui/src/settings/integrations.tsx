@@ -410,7 +410,11 @@ export const Integrations = () => {
         create(RefreshTitlesRequestSchema, {}),
       );
       message.success(response.message || "Titles refreshed successfully");
-      setOrganizations(response.titles);
+      // Re-fetch all organizations since refreshTitles only returns orgs with APIs
+      const orgsResponse = await orgClient.getMyOrganizations(
+        create(GetMyOrganizationsRequestSchema, {}),
+      );
+      setOrganizations(orgsResponse.titles);
     } catch (e) {
       flashError(e);
     } finally {
