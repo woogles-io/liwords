@@ -361,6 +361,13 @@ func (s *OrganizationService) GetPublicOrganizations(
 	ctx context.Context,
 	req *connect.Request[pb.GetPublicOrganizationsRequest],
 ) (*connect.Response[pb.GetPublicOrganizationsResponse], error) {
+	// Check if the requesting user is an admin (can view sensitive fields)
+	isAdmin := false
+	if requestingUser, err := apiserver.AuthUser(ctx, s.userStore); err == nil {
+		hasPermission, _ := rbac.HasPermission(ctx, s.queries, requestingUser.ID, rbac.CanVerifyUserIdentities)
+		isAdmin = hasPermission
+	}
+
 	// Get user by username
 	user, err := s.userStore.Get(ctx, req.Msg.Username)
 	if err != nil {
@@ -383,8 +390,8 @@ func (s *OrganizationService) GetPublicOrganizations(
 			continue
 		}
 
-		// Only return verified organizations for public view
-		if !integData.Verified {
+		// Only return verified organizations for public view (admins can see all)
+		if !isAdmin && !integData.Verified {
 			continue
 		}
 
@@ -393,7 +400,16 @@ func (s *OrganizationService) GetPublicOrganizations(
 			OrganizationName: meta.Name,
 			NormalizedTitle:  string(integData.NormalizedTitle),
 			Verified:         integData.Verified,
-			// Omit sensitive fields like MemberId, FullName, RawTitle and LastFetched for public view
+		}
+
+		// Include sensitive fields for admins only
+		if isAdmin {
+			title.MemberId = integData.MemberID
+			title.FullName = integData.FullName
+			title.RawTitle = integData.RawTitle
+			if integData.LastFetched != nil {
+				title.LastFetched = timestamppb.New(*integData.LastFetched)
+			}
 		}
 
 		titles = append(titles, title)
