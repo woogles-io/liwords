@@ -407,3 +407,18 @@ type UserRole struct {
 	UserID int32
 	RoleID int32
 }
+
+type VerificationRequest struct {
+	ID              int64
+	UserID          int64
+	IntegrationName string
+	MemberID        string
+	FullName        string
+	ImageUrl        string
+	Title           pgtype.Text
+	Status          string
+	SubmittedAt     pgtype.Timestamptz
+	ReviewedBy      pgtype.Int8
+	ReviewedAt      pgtype.Timestamptz
+	Notes           pgtype.Text
+}

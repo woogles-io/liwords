@@ -1,0 +1,27 @@
+meta {
+  name: GetMyOrganizations
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/GetMyOrganizations
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+docs {
+  # GetMyOrganizations
+  
+  Returns all organization integrations for the authenticated user.
+  Shows member IDs, full names, titles, verification status, etc.
+}

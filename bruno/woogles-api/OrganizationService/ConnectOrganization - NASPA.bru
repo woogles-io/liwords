@@ -1,0 +1,37 @@
+meta {
+  name: ConnectOrganization - NASPA
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/ConnectOrganization
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "organization_code": "naspa",
+    "member_id": "AA000083",
+    "credentials": {
+      "username": "AA000083",
+      "password": "{{NASPA_PASSWORD}}"
+    }
+  }
+}
+
+docs {
+  # ConnectOrganization - NASPA
+  
+  Connects to NASPA using member ID and credentials.
+  The full name and title will be fetched from the NASPA API automatically.
+  
+  Note: This only works for organizations with APIs (currently only NASPA).
+  For WESPA/ABSP, use SubmitVerification instead.
+}

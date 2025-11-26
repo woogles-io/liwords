@@ -1,0 +1,40 @@
+meta {
+  name: ConnectOrganization - ABSP
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/ConnectOrganization
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "organization_code": "absp",
+    "member_id": "745"
+  }
+}
+
+docs {
+  # ConnectOrganization - ABSP (Expected to Fail)
+
+  This endpoint will fail with "requires identity verification" error because:
+  1. ABSP requires manual verification (RequiresVerification = true)
+  2. Even though ABSP has a publicly accessible database, we need to verify identity
+
+  To connect to ABSP, you must:
+  1. Use SubmitVerification endpoint with member ID, full name, and ID photo
+  2. Wait for admin approval via ApproveVerification
+  3. The approval process will fetch the real name from ABSP database and create the integration
+
+  Note: ABSP member IDs are normalized (leading zeros stripped), so "00745" and "745" are equivalent.
+
+  This test demonstrates the proper error handling for verification-required organizations.
+}

@@ -52,12 +52,14 @@ export const InviteUserToLeaguesWidget = () => {
         const response = await acClient.getCompletion({
           prefix: searchQuery,
         });
-        const users: UserSearchResult[] = (response.users || []).map(
-          (user) => ({
+        const users: UserSearchResult[] = (response.users || [])
+          .map((user) => ({
             uuid: user.uuid,
             username: user.username,
-          }),
-        );
+          }))
+          .sort((a, b) =>
+            a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
+          );
         setUsernameOptions(users);
       } catch (error) {
         console.error("Error searching usernames:", error);

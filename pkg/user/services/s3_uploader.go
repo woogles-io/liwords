@@ -79,3 +79,50 @@ func (s *S3Uploader) Delete(ctx context.Context, url string) error {
 	}
 	return nil
 }
+
+// GetPresignedURL generates a temporary presigned URL for private S3 objects
+// The URL expires after the specified duration (e.g., 15 minutes)
+func (s *S3Uploader) GetPresignedURL(ctx context.Context, url string, expiration time.Duration) (string, error) {
+	if !strings.HasPrefix(url, s.urlprefix()) {
+		return "", fmt.Errorf("this is not an S3 URL: %v", url)
+	}
+	key := strings.TrimPrefix(url, s.urlprefix())
+
+	// For local MinIO, create a new client with localhost endpoint for presigning
+	// This ensures the signature is calculated for localhost:9000, not minio:9000
+	var presignClient *s3.Client
+	if os.Getenv("USE_MINIO_S3") == "1" {
+		minioEndpoint := os.Getenv("MINIO_S3_ENDPOINT")
+		if strings.Contains(minioEndpoint, "minio:") {
+			// Create a new client with localhost endpoint for presigning
+			// This way the signature will be valid for localhost:9000
+			localhostEndpoint := strings.Replace(minioEndpoint, "minio:9000", "localhost:9000", 1)
+			presignClient = s3.NewFromConfig(aws.Config{
+				Region: "us-east-1",
+				Credentials: s.s3Client.Options().Credentials,
+				BaseEndpoint: aws.String(localhostEndpoint),
+			}, func(o *s3.Options) {
+				o.UsePathStyle = true
+			})
+		} else {
+			presignClient = s.s3Client
+		}
+	} else {
+		presignClient = s.s3Client
+	}
+
+	presigner := s3.NewPresignClient(presignClient)
+
+	presignedReq, err := presigner.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = expiration
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to create presigned URL: %w", err)
+	}
+
+	return presignedReq.URL, nil
+}

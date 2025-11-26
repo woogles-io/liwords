@@ -1,0 +1,38 @@
+meta {
+  name: ConnectOrganization - WESPA
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/ConnectOrganization
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "organization_code": "wespa",
+    "member_id": "215"
+  }
+}
+
+docs {
+  # ConnectOrganization - WESPA (Expected to Fail)
+
+  This endpoint will fail with "requires identity verification" error because:
+  1. WESPA requires manual verification (RequiresVerification = true)
+  2. We cannot fetch the user's real name without verification
+
+  To connect to WESPA, you must:
+  1. Use SubmitVerification endpoint with member ID, full name, and ID photo
+  2. Wait for admin approval via ApproveVerification
+  3. The approval process will fetch the real name from WESPA and create the integration
+
+  This test demonstrates the proper error handling for verification-required organizations.
+}

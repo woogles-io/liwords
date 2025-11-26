@@ -1,0 +1,38 @@
+meta {
+  name: ApproveVerification
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/ApproveVerification
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{ADMIN_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "request_id": 1,
+    "notes": "Verified identity with ID photo"
+  }
+}
+
+docs {
+  # ApproveVerification (Admin Only)
+
+  Requires: can_verify_user_identities permission
+
+  Approves a verification request:
+  1. Fetches real name from organization (WESPA scraping or ABSP database)
+  2. Creates integration with verified status
+  3. Updates user's profile title if this is their highest title
+  4. Deletes verification image from S3
+  5. Marks verification request as approved
+
+  Note: Update request_id to match a pending verification from GetPendingVerifications
+}

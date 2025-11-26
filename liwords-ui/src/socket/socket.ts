@@ -51,6 +51,82 @@ type DecodedToken = {
 // Returning undefined from useEffect is fine, but some linters dislike it.
 const doNothing = () => {};
 
+// Global counters to track socket issues over time
+const socketDebugCounters = {
+  failUrlReturns: 0,
+  patienceTimeouts: 0,
+  wsErrors: 0,
+  reconnectAttempts: 0,
+  successfulConnections: 0,
+  tokenFetchAttempts: 0,
+  tokenFetchSuccesses: 0,
+  componentMounts: 0,
+  componentUnmounts: 0,
+};
+
+// Track active WebSocket test to diagnose connection limit issues
+const testWebSocketConnectivity = async (url: string): Promise<void> => {
+  return new Promise((resolve) => {
+    console.log(
+      "🧪 Testing WebSocket connectivity to:",
+      url.substring(0, 50) + "...",
+    );
+    const testWs = new WebSocket(url);
+    const timeout = setTimeout(() => {
+      console.warn(
+        "🧪 TEST: WebSocket connection timed out after 5s - possible connection limit!",
+      );
+      testWs.close();
+      resolve();
+    }, 5000);
+
+    testWs.onopen = () => {
+      clearTimeout(timeout);
+      console.log("🧪 TEST: WebSocket connected successfully!");
+      testWs.close();
+      resolve();
+    };
+    testWs.onerror = () => {
+      clearTimeout(timeout);
+      console.error(
+        "🧪 TEST: WebSocket error - may be hitting browser connection limit!",
+      );
+      resolve();
+    };
+    testWs.onclose = (e) => {
+      clearTimeout(timeout);
+      console.log("🧪 TEST: WebSocket closed", {
+        code: e.code,
+        reason: e.reason,
+        wasClean: e.wasClean,
+      });
+      resolve();
+    };
+  });
+};
+
+// Expose counters and test function to window for easy console access
+declare global {
+  interface Window {
+    getSocketDebugCounters?: () => typeof socketDebugCounters;
+    testSocketConnection?: () => Promise<void>;
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.getSocketDebugCounters = () => {
+    console.table(socketDebugCounters);
+    return socketDebugCounters;
+  };
+  window.testSocketConnection = async () => {
+    const testUrl = `${socketUrl}?token=test&path=/test&cid=test-${Date.now()}`;
+    await testWebSocketConnectivity(testUrl);
+  };
+  console.log(
+    "💡 Debug tip: Type getSocketDebugCounters() to see stats, testSocketConnection() to test WS connectivity",
+  );
+}
+
 export const LiwordsSocket = (props: {
   resetSocket: () => void;
   setValues: (_: {
@@ -66,9 +142,29 @@ export const LiwordsSocket = (props: {
   const isMountedRef = useRef(false);
 
   useEffect(() => {
+    socketDebugCounters.componentMounts++;
+    console.log("🟢 LiwordsSocket MOUNTED", {
+      mountCount: socketDebugCounters.componentMounts,
+      unmountCount: socketDebugCounters.componentUnmounts,
+      timestamp: new Date().toISOString(),
+    });
     isMountedRef.current = true;
+
+    // Add beforeunload listener to help Chrome clean up WebSocket connections
+    const handleBeforeUnload = () => {
+      console.log("🚪 Page unloading, ensuring WebSocket cleanup...");
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
+      socketDebugCounters.componentUnmounts++;
+      console.log("🔵 LiwordsSocket UNMOUNTING", {
+        mountCount: socketDebugCounters.componentMounts,
+        unmountCount: socketDebugCounters.componentUnmounts,
+        timestamp: new Date().toISOString(),
+      });
       isMountedRef.current = false;
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
 
@@ -87,14 +183,32 @@ export const LiwordsSocket = (props: {
   const { dispatchLoginState } = loginStateStore;
   const authClient = useClient(AuthenticationService);
   const getFullSocketUrlAsync = useCallback(async () => {
-    console.log("About to request token");
+    socketDebugCounters.tokenFetchAttempts++;
+    console.log("About to request token", {
+      isMounted: isMountedRef.current,
+      pathname,
+      timestamp: new Date().toISOString(),
+      tokenFetchAttempt: socketDebugCounters.tokenFetchAttempts,
+    });
+    // Empty string will cause issues but react-use-websocket types don't support null for async functions
     const failUrl = "";
     try {
       const resp = await authClient.getSocketToken({});
 
       // Important: resetSocket does not resetStore, be very careful to avoid
       // dispatching stuffs from a decommissioned socket after client returns.
-      if (!isMountedRef.current) return failUrl;
+      if (!isMountedRef.current) {
+        socketDebugCounters.failUrlReturns++;
+        console.error(
+          "🚨 SOCKET BUG: Component unmounted during token fetch, returning null (no connection)!",
+          {
+            pathname,
+            totalFailUrlReturns: socketDebugCounters.failUrlReturns,
+            allCounters: socketDebugCounters,
+          },
+        );
+        return failUrl;
+      }
 
       const { cid, frontEndVersion, token } = resp;
 
@@ -133,7 +247,16 @@ export const LiwordsSocket = (props: {
         // Only warn them once a day
         localStorage.setItem("birthdateWarning", Date.now().toString());
       }
-      console.log("Got token, setting state, and will try to connect...");
+      socketDebugCounters.tokenFetchSuccesses++;
+      console.log("🎯 Got token, returning WebSocket URL to library...", {
+        socketUrl: ret.substring(0, 80) + "...",
+        baseSocketUrl: socketUrl,
+        protocol: ret.split("://")[0],
+        host: ret.split("//")[1]?.split("/")[0],
+        fullUrlLength: ret.length,
+        timestamp: new Date().toISOString(),
+        tokenFetchSuccess: socketDebugCounters.tokenFetchSuccesses,
+      });
       if (window.RUNTIME_CONFIGURATION.appVersion !== frontEndVersion) {
         console.log(
           "app version mismatch",
@@ -160,6 +283,16 @@ export const LiwordsSocket = (props: {
       } else {
         window.console.log("Unknown error", e);
       }
+      socketDebugCounters.failUrlReturns++;
+      console.error(
+        "🚨 SOCKET BUG: Error fetching socket token, returning null (no connection)!",
+        {
+          pathname,
+          error: e,
+          totalFailUrlReturns: socketDebugCounters.failUrlReturns,
+          allCounters: socketDebugCounters,
+        },
+      );
       return failUrl;
     }
   }, [dispatchLoginState, pathname, authClient]);
@@ -216,29 +349,70 @@ export const LiwordsSocket = (props: {
   );
   useEffect(() => {
     const t = setTimeout(() => {
-      console.log("reconnecting socket");
+      socketDebugCounters.patienceTimeouts++;
+      console.warn(
+        "⏱️ PATIENCE TIMEOUT: No connection after 15s, forcing socket reset",
+        {
+          patienceId,
+          isConnectedToSocket,
+          totalTimeouts: socketDebugCounters.patienceTimeouts,
+          allCounters: socketDebugCounters,
+        },
+      );
       resetSocket();
     }, 15000);
     return () => {
       clearTimeout(t);
     };
-  }, [patienceId, resetSocket]);
+  }, [patienceId, resetSocket, isConnectedToSocket]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
     {
       onOpen: () => {
+        socketDebugCounters.successfulConnections++;
+        console.log("✅ WebSocket opened successfully", {
+          totalSuccessfulConnections: socketDebugCounters.successfulConnections,
+          allCounters: socketDebugCounters,
+        });
         resetPatience();
         setIsConnectedToSocket(true);
       },
-      onClose: () => {
+      onClose: (event) => {
+        console.log("🔴 WebSocket closed", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          allCounters: socketDebugCounters,
+        });
         resetPatience();
         setIsConnectedToSocket(false);
+      },
+      onError: (event) => {
+        socketDebugCounters.wsErrors++;
+        console.error("❌ WebSocket error occurred", {
+          event,
+          totalWsErrors: socketDebugCounters.wsErrors,
+          allCounters: socketDebugCounters,
+        });
       },
       reconnectAttempts: Infinity,
       reconnectInterval: 1000,
       retryOnError: true,
-      shouldReconnect: (closeEvent) => isMountedRef.current,
+      shouldReconnect: (closeEvent) => {
+        const shouldReconn = isMountedRef.current;
+        if (shouldReconn) {
+          socketDebugCounters.reconnectAttempts++;
+        }
+        console.log("🔄 shouldReconnect?", {
+          isMounted: isMountedRef.current,
+          decision: shouldReconn,
+          closeCode: closeEvent?.code,
+          totalReconnectAttempts: socketDebugCounters.reconnectAttempts,
+          allCounters: socketDebugCounters,
+        });
+        return shouldReconn;
+      },
       onMessage: (event: MessageEvent) => {
         // Any incoming message resets the patience.
         resetPatience();

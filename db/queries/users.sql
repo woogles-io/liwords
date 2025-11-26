@@ -8,6 +8,7 @@ SELECT
     p.first_name,
     p.last_name,
     p.birth_date,
+    p.title,
     (COALESCE(b.badge_codes, '{}'::text[]))::text[] AS badge_codes
 FROM users u
 LEFT JOIN profiles p ON u.id = p.user_id

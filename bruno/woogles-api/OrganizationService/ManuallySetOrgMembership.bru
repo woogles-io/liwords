@@ -1,0 +1,59 @@
+meta {
+  name: ManuallySetOrgMembership
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/ManuallySetOrgMembership
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{ADMIN_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "user_uuid": "00000000-0000-0000-0000-000000000000",
+    "organization_code": "wespa",
+    "member_id": "215"
+  }
+}
+
+docs {
+  # ManuallySetOrgMembership (Admin Only)
+
+  Requires: can_verify_user_identities permission
+
+  Allows admins to manually set organization membership for any user.
+  The full name and title are automatically fetched from the organization.
+
+  **IMPORTANT: This endpoint does NOT work for NASPA.**
+  NASPA requires user credentials to authenticate and fetch data.
+  NASPA users should verify themselves using the ConnectOrganization endpoint
+  with their own NASPA username and password.
+
+  How it works:
+  1. Admin provides: user_uuid, organization_code, member_id
+  2. System fetches name and title from organization:
+     - WESPA: Scrapes name from HTML (no title available)
+     - ABSP: Fetches name and title from cached database
+  3. Creates verified integration with "admin" verification method
+  4. Updates user's profile title if this is their highest title
+
+  Use cases:
+  - Adding known trusted users without photo verification
+  - Bulk imports of existing members (WESPA/ABSP only)
+  - Setting up test accounts
+  - Fixing incorrect data
+
+  Supported organizations:
+  - WESPA: ✓ Works (HTML scraping)
+  - ABSP: ✓ Works (public database)
+  - NASPA: ✗ Not supported (requires credentials)
+
+  Note: Update user_uuid to the target user's UUID.
+}

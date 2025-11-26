@@ -38,6 +38,7 @@ import (
 	"go.akshayshah.org/connectproto"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	// "go.opentelemetry.io/otel/attribute"
 	// semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -55,6 +56,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/memento"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
+	"github.com/woogles-io/liwords/pkg/organization"
 	"github.com/woogles-io/liwords/pkg/pair"
 	pkgprofile "github.com/woogles-io/liwords/pkg/profile"
 	"github.com/woogles-io/liwords/pkg/puzzles"
@@ -64,6 +66,7 @@ import (
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
+	"github.com/woogles-io/liwords/pkg/verification"
 	"github.com/woogles-io/liwords/pkg/words"
 	"github.com/woogles-io/liwords/rpc/api/proto/collections_service/collections_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
@@ -113,6 +116,20 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write([]byte(`{"status":"copacetic"}`))
+}
+
+// WithTiming wraps a middleware with OpenTelemetry tracing to measure its duration.
+func WithTiming(name string, mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	tracer := otel.Tracer("middleware")
+	return func(next http.Handler) http.Handler {
+		wrapped := mw(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, span := tracer.Start(r.Context(), "middleware."+name)
+			defer span.End()
+			r = r.WithContext(ctx)
+			wrapped.ServeHTTP(w, r)
+		})
+	}
 }
 
 func main() {
@@ -191,13 +208,12 @@ func main() {
 	}
 
 	middlewares := alice.New(
-		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
-		apiserver.ExposeResponseWriterMiddleware,
-		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies),
-		apiserver.APIKeyMiddlewareGenerator(),
-		config.CtxMiddlewareGenerator(cfg),
-
-		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
+		WithTiming("hlog", hlog.NewHandler(log.With().Str("service", "liwords").Logger())),
+		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),
+		WithTiming("auth", apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore, cfg.SecureCookies)),
+		WithTiming("apikey", apiserver.APIKeyMiddlewareGenerator()),
+		WithTiming("config", config.CtxMiddlewareGenerator(cfg)),
+		WithTiming("accessLog", hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
 			hlog.FromRequest(r).Info().
@@ -205,8 +221,8 @@ func main() {
 				Int("status", status).
 				Dur("duration", d).
 				Msg("")
-		}),
-		ErrorReqResLoggingMiddleware,
+		})),
+		WithTiming("errorLogging", ErrorReqResLoggingMiddleware),
 	)
 
 	// s3 config
@@ -232,6 +248,12 @@ func main() {
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig, cfg.MailgunKey, cfg.SkipEmailVerification)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore, stores.GameDocumentStore, cfg, stores.Queries)
 	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
+
+	// Organization and verification services
+	verificationS3Uploader := userservices.NewS3Uploader(os.Getenv("VERIFICATION_UPLOAD_BUCKET"), s3Client)
+	verificationService := verification.NewVerificationService(stores.Queries, verificationS3Uploader)
+	organizationService := organization.NewOrganizationService(stores.UserStore, stores.Queries, verificationService)
+
 	wordService := words.NewWordService(cfg)
 	autocompleteService := userservices.NewAutocompleteService(stores.UserStore)
 	socializeService := userservices.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore, stores.Queries)
@@ -304,6 +326,9 @@ func main() {
 	)
 	connectapi.Handle(
 		user_serviceconnect.NewProfileServiceHandler(profileService, options),
+	)
+	connectapi.Handle(
+		user_serviceconnect.NewOrganizationServiceHandler(organizationService, options),
 	)
 	connectapi.Handle(
 		user_serviceconnect.NewAutocompleteServiceHandler(autocompleteService, options),

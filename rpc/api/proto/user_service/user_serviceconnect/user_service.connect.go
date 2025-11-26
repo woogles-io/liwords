@@ -36,6 +36,8 @@ const (
 	IntegrationServiceName = "user_service.IntegrationService"
 	// AuthorizationServiceName is the fully-qualified name of the AuthorizationService service.
 	AuthorizationServiceName = "user_service.AuthorizationService"
+	// OrganizationServiceName is the fully-qualified name of the OrganizationService service.
+	OrganizationServiceName = "user_service.OrganizationService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -183,6 +185,39 @@ const (
 	// AuthorizationServiceGetRoleMetadataProcedure is the fully-qualified name of the
 	// AuthorizationService's GetRoleMetadata RPC.
 	AuthorizationServiceGetRoleMetadataProcedure = "/user_service.AuthorizationService/GetRoleMetadata"
+	// OrganizationServiceConnectOrganizationProcedure is the fully-qualified name of the
+	// OrganizationService's ConnectOrganization RPC.
+	OrganizationServiceConnectOrganizationProcedure = "/user_service.OrganizationService/ConnectOrganization"
+	// OrganizationServiceDisconnectOrganizationProcedure is the fully-qualified name of the
+	// OrganizationService's DisconnectOrganization RPC.
+	OrganizationServiceDisconnectOrganizationProcedure = "/user_service.OrganizationService/DisconnectOrganization"
+	// OrganizationServiceRefreshTitlesProcedure is the fully-qualified name of the
+	// OrganizationService's RefreshTitles RPC.
+	OrganizationServiceRefreshTitlesProcedure = "/user_service.OrganizationService/RefreshTitles"
+	// OrganizationServiceGetMyOrganizationsProcedure is the fully-qualified name of the
+	// OrganizationService's GetMyOrganizations RPC.
+	OrganizationServiceGetMyOrganizationsProcedure = "/user_service.OrganizationService/GetMyOrganizations"
+	// OrganizationServiceGetPublicOrganizationsProcedure is the fully-qualified name of the
+	// OrganizationService's GetPublicOrganizations RPC.
+	OrganizationServiceGetPublicOrganizationsProcedure = "/user_service.OrganizationService/GetPublicOrganizations"
+	// OrganizationServiceSubmitVerificationProcedure is the fully-qualified name of the
+	// OrganizationService's SubmitVerification RPC.
+	OrganizationServiceSubmitVerificationProcedure = "/user_service.OrganizationService/SubmitVerification"
+	// OrganizationServiceGetPendingVerificationsProcedure is the fully-qualified name of the
+	// OrganizationService's GetPendingVerifications RPC.
+	OrganizationServiceGetPendingVerificationsProcedure = "/user_service.OrganizationService/GetPendingVerifications"
+	// OrganizationServiceGetVerificationImageUrlProcedure is the fully-qualified name of the
+	// OrganizationService's GetVerificationImageUrl RPC.
+	OrganizationServiceGetVerificationImageUrlProcedure = "/user_service.OrganizationService/GetVerificationImageUrl"
+	// OrganizationServiceApproveVerificationProcedure is the fully-qualified name of the
+	// OrganizationService's ApproveVerification RPC.
+	OrganizationServiceApproveVerificationProcedure = "/user_service.OrganizationService/ApproveVerification"
+	// OrganizationServiceRejectVerificationProcedure is the fully-qualified name of the
+	// OrganizationService's RejectVerification RPC.
+	OrganizationServiceRejectVerificationProcedure = "/user_service.OrganizationService/RejectVerification"
+	// OrganizationServiceManuallySetOrgMembershipProcedure is the fully-qualified name of the
+	// OrganizationService's ManuallySetOrgMembership RPC.
+	OrganizationServiceManuallySetOrgMembershipProcedure = "/user_service.OrganizationService/ManuallySetOrgMembership"
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -1711,4 +1746,346 @@ func (UnimplementedAuthorizationServiceHandler) GetUsersWithRoles(context.Contex
 
 func (UnimplementedAuthorizationServiceHandler) GetRoleMetadata(context.Context, *connect.Request[user_service.GetRoleMetadataRequest]) (*connect.Response[user_service.RoleMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.AuthorizationService.GetRoleMetadata is not implemented"))
+}
+
+// OrganizationServiceClient is a client for the user_service.OrganizationService service.
+type OrganizationServiceClient interface {
+	// User endpoints
+	ConnectOrganization(context.Context, *connect.Request[user_service.ConnectOrganizationRequest]) (*connect.Response[user_service.ConnectOrganizationResponse], error)
+	DisconnectOrganization(context.Context, *connect.Request[user_service.DisconnectOrganizationRequest]) (*connect.Response[user_service.DisconnectOrganizationResponse], error)
+	RefreshTitles(context.Context, *connect.Request[user_service.RefreshTitlesRequest]) (*connect.Response[user_service.RefreshTitlesResponse], error)
+	GetMyOrganizations(context.Context, *connect.Request[user_service.GetMyOrganizationsRequest]) (*connect.Response[user_service.GetMyOrganizationsResponse], error)
+	GetPublicOrganizations(context.Context, *connect.Request[user_service.GetPublicOrganizationsRequest]) (*connect.Response[user_service.GetPublicOrganizationsResponse], error)
+	SubmitVerification(context.Context, *connect.Request[user_service.SubmitVerificationRequest]) (*connect.Response[user_service.SubmitVerificationResponse], error)
+	// Admin endpoints (require can_verify_user_identities permission)
+	GetPendingVerifications(context.Context, *connect.Request[user_service.GetPendingVerificationsRequest]) (*connect.Response[user_service.GetPendingVerificationsResponse], error)
+	GetVerificationImageUrl(context.Context, *connect.Request[user_service.GetVerificationImageUrlRequest]) (*connect.Response[user_service.GetVerificationImageUrlResponse], error)
+	ApproveVerification(context.Context, *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error)
+	RejectVerification(context.Context, *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error)
+	ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error)
+}
+
+// NewOrganizationServiceClient constructs a client for the user_service.OrganizationService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewOrganizationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) OrganizationServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	organizationServiceMethods := user_service.File_proto_user_service_user_service_proto.Services().ByName("OrganizationService").Methods()
+	return &organizationServiceClient{
+		connectOrganization: connect.NewClient[user_service.ConnectOrganizationRequest, user_service.ConnectOrganizationResponse](
+			httpClient,
+			baseURL+OrganizationServiceConnectOrganizationProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("ConnectOrganization")),
+			connect.WithClientOptions(opts...),
+		),
+		disconnectOrganization: connect.NewClient[user_service.DisconnectOrganizationRequest, user_service.DisconnectOrganizationResponse](
+			httpClient,
+			baseURL+OrganizationServiceDisconnectOrganizationProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("DisconnectOrganization")),
+			connect.WithClientOptions(opts...),
+		),
+		refreshTitles: connect.NewClient[user_service.RefreshTitlesRequest, user_service.RefreshTitlesResponse](
+			httpClient,
+			baseURL+OrganizationServiceRefreshTitlesProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("RefreshTitles")),
+			connect.WithClientOptions(opts...),
+		),
+		getMyOrganizations: connect.NewClient[user_service.GetMyOrganizationsRequest, user_service.GetMyOrganizationsResponse](
+			httpClient,
+			baseURL+OrganizationServiceGetMyOrganizationsProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("GetMyOrganizations")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getPublicOrganizations: connect.NewClient[user_service.GetPublicOrganizationsRequest, user_service.GetPublicOrganizationsResponse](
+			httpClient,
+			baseURL+OrganizationServiceGetPublicOrganizationsProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("GetPublicOrganizations")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		submitVerification: connect.NewClient[user_service.SubmitVerificationRequest, user_service.SubmitVerificationResponse](
+			httpClient,
+			baseURL+OrganizationServiceSubmitVerificationProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("SubmitVerification")),
+			connect.WithClientOptions(opts...),
+		),
+		getPendingVerifications: connect.NewClient[user_service.GetPendingVerificationsRequest, user_service.GetPendingVerificationsResponse](
+			httpClient,
+			baseURL+OrganizationServiceGetPendingVerificationsProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("GetPendingVerifications")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getVerificationImageUrl: connect.NewClient[user_service.GetVerificationImageUrlRequest, user_service.GetVerificationImageUrlResponse](
+			httpClient,
+			baseURL+OrganizationServiceGetVerificationImageUrlProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("GetVerificationImageUrl")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		approveVerification: connect.NewClient[user_service.ApproveVerificationRequest, user_service.ApproveVerificationResponse](
+			httpClient,
+			baseURL+OrganizationServiceApproveVerificationProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("ApproveVerification")),
+			connect.WithClientOptions(opts...),
+		),
+		rejectVerification: connect.NewClient[user_service.RejectVerificationRequest, user_service.RejectVerificationResponse](
+			httpClient,
+			baseURL+OrganizationServiceRejectVerificationProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("RejectVerification")),
+			connect.WithClientOptions(opts...),
+		),
+		manuallySetOrgMembership: connect.NewClient[user_service.ManuallySetOrgMembershipRequest, user_service.ManuallySetOrgMembershipResponse](
+			httpClient,
+			baseURL+OrganizationServiceManuallySetOrgMembershipProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("ManuallySetOrgMembership")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// organizationServiceClient implements OrganizationServiceClient.
+type organizationServiceClient struct {
+	connectOrganization      *connect.Client[user_service.ConnectOrganizationRequest, user_service.ConnectOrganizationResponse]
+	disconnectOrganization   *connect.Client[user_service.DisconnectOrganizationRequest, user_service.DisconnectOrganizationResponse]
+	refreshTitles            *connect.Client[user_service.RefreshTitlesRequest, user_service.RefreshTitlesResponse]
+	getMyOrganizations       *connect.Client[user_service.GetMyOrganizationsRequest, user_service.GetMyOrganizationsResponse]
+	getPublicOrganizations   *connect.Client[user_service.GetPublicOrganizationsRequest, user_service.GetPublicOrganizationsResponse]
+	submitVerification       *connect.Client[user_service.SubmitVerificationRequest, user_service.SubmitVerificationResponse]
+	getPendingVerifications  *connect.Client[user_service.GetPendingVerificationsRequest, user_service.GetPendingVerificationsResponse]
+	getVerificationImageUrl  *connect.Client[user_service.GetVerificationImageUrlRequest, user_service.GetVerificationImageUrlResponse]
+	approveVerification      *connect.Client[user_service.ApproveVerificationRequest, user_service.ApproveVerificationResponse]
+	rejectVerification       *connect.Client[user_service.RejectVerificationRequest, user_service.RejectVerificationResponse]
+	manuallySetOrgMembership *connect.Client[user_service.ManuallySetOrgMembershipRequest, user_service.ManuallySetOrgMembershipResponse]
+}
+
+// ConnectOrganization calls user_service.OrganizationService.ConnectOrganization.
+func (c *organizationServiceClient) ConnectOrganization(ctx context.Context, req *connect.Request[user_service.ConnectOrganizationRequest]) (*connect.Response[user_service.ConnectOrganizationResponse], error) {
+	return c.connectOrganization.CallUnary(ctx, req)
+}
+
+// DisconnectOrganization calls user_service.OrganizationService.DisconnectOrganization.
+func (c *organizationServiceClient) DisconnectOrganization(ctx context.Context, req *connect.Request[user_service.DisconnectOrganizationRequest]) (*connect.Response[user_service.DisconnectOrganizationResponse], error) {
+	return c.disconnectOrganization.CallUnary(ctx, req)
+}
+
+// RefreshTitles calls user_service.OrganizationService.RefreshTitles.
+func (c *organizationServiceClient) RefreshTitles(ctx context.Context, req *connect.Request[user_service.RefreshTitlesRequest]) (*connect.Response[user_service.RefreshTitlesResponse], error) {
+	return c.refreshTitles.CallUnary(ctx, req)
+}
+
+// GetMyOrganizations calls user_service.OrganizationService.GetMyOrganizations.
+func (c *organizationServiceClient) GetMyOrganizations(ctx context.Context, req *connect.Request[user_service.GetMyOrganizationsRequest]) (*connect.Response[user_service.GetMyOrganizationsResponse], error) {
+	return c.getMyOrganizations.CallUnary(ctx, req)
+}
+
+// GetPublicOrganizations calls user_service.OrganizationService.GetPublicOrganizations.
+func (c *organizationServiceClient) GetPublicOrganizations(ctx context.Context, req *connect.Request[user_service.GetPublicOrganizationsRequest]) (*connect.Response[user_service.GetPublicOrganizationsResponse], error) {
+	return c.getPublicOrganizations.CallUnary(ctx, req)
+}
+
+// SubmitVerification calls user_service.OrganizationService.SubmitVerification.
+func (c *organizationServiceClient) SubmitVerification(ctx context.Context, req *connect.Request[user_service.SubmitVerificationRequest]) (*connect.Response[user_service.SubmitVerificationResponse], error) {
+	return c.submitVerification.CallUnary(ctx, req)
+}
+
+// GetPendingVerifications calls user_service.OrganizationService.GetPendingVerifications.
+func (c *organizationServiceClient) GetPendingVerifications(ctx context.Context, req *connect.Request[user_service.GetPendingVerificationsRequest]) (*connect.Response[user_service.GetPendingVerificationsResponse], error) {
+	return c.getPendingVerifications.CallUnary(ctx, req)
+}
+
+// GetVerificationImageUrl calls user_service.OrganizationService.GetVerificationImageUrl.
+func (c *organizationServiceClient) GetVerificationImageUrl(ctx context.Context, req *connect.Request[user_service.GetVerificationImageUrlRequest]) (*connect.Response[user_service.GetVerificationImageUrlResponse], error) {
+	return c.getVerificationImageUrl.CallUnary(ctx, req)
+}
+
+// ApproveVerification calls user_service.OrganizationService.ApproveVerification.
+func (c *organizationServiceClient) ApproveVerification(ctx context.Context, req *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error) {
+	return c.approveVerification.CallUnary(ctx, req)
+}
+
+// RejectVerification calls user_service.OrganizationService.RejectVerification.
+func (c *organizationServiceClient) RejectVerification(ctx context.Context, req *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error) {
+	return c.rejectVerification.CallUnary(ctx, req)
+}
+
+// ManuallySetOrgMembership calls user_service.OrganizationService.ManuallySetOrgMembership.
+func (c *organizationServiceClient) ManuallySetOrgMembership(ctx context.Context, req *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error) {
+	return c.manuallySetOrgMembership.CallUnary(ctx, req)
+}
+
+// OrganizationServiceHandler is an implementation of the user_service.OrganizationService service.
+type OrganizationServiceHandler interface {
+	// User endpoints
+	ConnectOrganization(context.Context, *connect.Request[user_service.ConnectOrganizationRequest]) (*connect.Response[user_service.ConnectOrganizationResponse], error)
+	DisconnectOrganization(context.Context, *connect.Request[user_service.DisconnectOrganizationRequest]) (*connect.Response[user_service.DisconnectOrganizationResponse], error)
+	RefreshTitles(context.Context, *connect.Request[user_service.RefreshTitlesRequest]) (*connect.Response[user_service.RefreshTitlesResponse], error)
+	GetMyOrganizations(context.Context, *connect.Request[user_service.GetMyOrganizationsRequest]) (*connect.Response[user_service.GetMyOrganizationsResponse], error)
+	GetPublicOrganizations(context.Context, *connect.Request[user_service.GetPublicOrganizationsRequest]) (*connect.Response[user_service.GetPublicOrganizationsResponse], error)
+	SubmitVerification(context.Context, *connect.Request[user_service.SubmitVerificationRequest]) (*connect.Response[user_service.SubmitVerificationResponse], error)
+	// Admin endpoints (require can_verify_user_identities permission)
+	GetPendingVerifications(context.Context, *connect.Request[user_service.GetPendingVerificationsRequest]) (*connect.Response[user_service.GetPendingVerificationsResponse], error)
+	GetVerificationImageUrl(context.Context, *connect.Request[user_service.GetVerificationImageUrlRequest]) (*connect.Response[user_service.GetVerificationImageUrlResponse], error)
+	ApproveVerification(context.Context, *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error)
+	RejectVerification(context.Context, *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error)
+	ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error)
+}
+
+// NewOrganizationServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	organizationServiceMethods := user_service.File_proto_user_service_user_service_proto.Services().ByName("OrganizationService").Methods()
+	organizationServiceConnectOrganizationHandler := connect.NewUnaryHandler(
+		OrganizationServiceConnectOrganizationProcedure,
+		svc.ConnectOrganization,
+		connect.WithSchema(organizationServiceMethods.ByName("ConnectOrganization")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceDisconnectOrganizationHandler := connect.NewUnaryHandler(
+		OrganizationServiceDisconnectOrganizationProcedure,
+		svc.DisconnectOrganization,
+		connect.WithSchema(organizationServiceMethods.ByName("DisconnectOrganization")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceRefreshTitlesHandler := connect.NewUnaryHandler(
+		OrganizationServiceRefreshTitlesProcedure,
+		svc.RefreshTitles,
+		connect.WithSchema(organizationServiceMethods.ByName("RefreshTitles")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceGetMyOrganizationsHandler := connect.NewUnaryHandler(
+		OrganizationServiceGetMyOrganizationsProcedure,
+		svc.GetMyOrganizations,
+		connect.WithSchema(organizationServiceMethods.ByName("GetMyOrganizations")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceGetPublicOrganizationsHandler := connect.NewUnaryHandler(
+		OrganizationServiceGetPublicOrganizationsProcedure,
+		svc.GetPublicOrganizations,
+		connect.WithSchema(organizationServiceMethods.ByName("GetPublicOrganizations")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceSubmitVerificationHandler := connect.NewUnaryHandler(
+		OrganizationServiceSubmitVerificationProcedure,
+		svc.SubmitVerification,
+		connect.WithSchema(organizationServiceMethods.ByName("SubmitVerification")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceGetPendingVerificationsHandler := connect.NewUnaryHandler(
+		OrganizationServiceGetPendingVerificationsProcedure,
+		svc.GetPendingVerifications,
+		connect.WithSchema(organizationServiceMethods.ByName("GetPendingVerifications")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceGetVerificationImageUrlHandler := connect.NewUnaryHandler(
+		OrganizationServiceGetVerificationImageUrlProcedure,
+		svc.GetVerificationImageUrl,
+		connect.WithSchema(organizationServiceMethods.ByName("GetVerificationImageUrl")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceApproveVerificationHandler := connect.NewUnaryHandler(
+		OrganizationServiceApproveVerificationProcedure,
+		svc.ApproveVerification,
+		connect.WithSchema(organizationServiceMethods.ByName("ApproveVerification")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceRejectVerificationHandler := connect.NewUnaryHandler(
+		OrganizationServiceRejectVerificationProcedure,
+		svc.RejectVerification,
+		connect.WithSchema(organizationServiceMethods.ByName("RejectVerification")),
+		connect.WithHandlerOptions(opts...),
+	)
+	organizationServiceManuallySetOrgMembershipHandler := connect.NewUnaryHandler(
+		OrganizationServiceManuallySetOrgMembershipProcedure,
+		svc.ManuallySetOrgMembership,
+		connect.WithSchema(organizationServiceMethods.ByName("ManuallySetOrgMembership")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/user_service.OrganizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case OrganizationServiceConnectOrganizationProcedure:
+			organizationServiceConnectOrganizationHandler.ServeHTTP(w, r)
+		case OrganizationServiceDisconnectOrganizationProcedure:
+			organizationServiceDisconnectOrganizationHandler.ServeHTTP(w, r)
+		case OrganizationServiceRefreshTitlesProcedure:
+			organizationServiceRefreshTitlesHandler.ServeHTTP(w, r)
+		case OrganizationServiceGetMyOrganizationsProcedure:
+			organizationServiceGetMyOrganizationsHandler.ServeHTTP(w, r)
+		case OrganizationServiceGetPublicOrganizationsProcedure:
+			organizationServiceGetPublicOrganizationsHandler.ServeHTTP(w, r)
+		case OrganizationServiceSubmitVerificationProcedure:
+			organizationServiceSubmitVerificationHandler.ServeHTTP(w, r)
+		case OrganizationServiceGetPendingVerificationsProcedure:
+			organizationServiceGetPendingVerificationsHandler.ServeHTTP(w, r)
+		case OrganizationServiceGetVerificationImageUrlProcedure:
+			organizationServiceGetVerificationImageUrlHandler.ServeHTTP(w, r)
+		case OrganizationServiceApproveVerificationProcedure:
+			organizationServiceApproveVerificationHandler.ServeHTTP(w, r)
+		case OrganizationServiceRejectVerificationProcedure:
+			organizationServiceRejectVerificationHandler.ServeHTTP(w, r)
+		case OrganizationServiceManuallySetOrgMembershipProcedure:
+			organizationServiceManuallySetOrgMembershipHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedOrganizationServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedOrganizationServiceHandler struct{}
+
+func (UnimplementedOrganizationServiceHandler) ConnectOrganization(context.Context, *connect.Request[user_service.ConnectOrganizationRequest]) (*connect.Response[user_service.ConnectOrganizationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.ConnectOrganization is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) DisconnectOrganization(context.Context, *connect.Request[user_service.DisconnectOrganizationRequest]) (*connect.Response[user_service.DisconnectOrganizationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.DisconnectOrganization is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) RefreshTitles(context.Context, *connect.Request[user_service.RefreshTitlesRequest]) (*connect.Response[user_service.RefreshTitlesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.RefreshTitles is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) GetMyOrganizations(context.Context, *connect.Request[user_service.GetMyOrganizationsRequest]) (*connect.Response[user_service.GetMyOrganizationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.GetMyOrganizations is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) GetPublicOrganizations(context.Context, *connect.Request[user_service.GetPublicOrganizationsRequest]) (*connect.Response[user_service.GetPublicOrganizationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.GetPublicOrganizations is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) SubmitVerification(context.Context, *connect.Request[user_service.SubmitVerificationRequest]) (*connect.Response[user_service.SubmitVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.SubmitVerification is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) GetPendingVerifications(context.Context, *connect.Request[user_service.GetPendingVerificationsRequest]) (*connect.Response[user_service.GetPendingVerificationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.GetPendingVerifications is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) GetVerificationImageUrl(context.Context, *connect.Request[user_service.GetVerificationImageUrlRequest]) (*connect.Response[user_service.GetVerificationImageUrlResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.GetVerificationImageUrl is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) ApproveVerification(context.Context, *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.ApproveVerification is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) RejectVerification(context.Context, *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.RejectVerification is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.ManuallySetOrgMembership is not implemented"))
 }

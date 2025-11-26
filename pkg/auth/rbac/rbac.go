@@ -27,6 +27,7 @@ const (
 	CanManageLeagues                Permission = "can_manage_leagues"
 	CanPlayLeagues                  Permission = "can_play_leagues"
 	CanInviteToLeagues              Permission = "can_invite_to_leagues"
+	CanVerifyUserIdentities         Permission = "can_verify_user_identities"
 )
 
 // These Roles are also defined in the database.

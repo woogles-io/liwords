@@ -118,13 +118,25 @@ message StatsRequest { string username = 1; }
 // See ratings JSON note above.
 message StatsResponse { string json = 1; }
 
+// Organization Title (defined early for use in ProfileResponse)
+message OrganizationTitle {
+  string organization_code = 1;
+  string organization_name = 2;
+  string member_id = 3;
+  string full_name = 4;
+  string raw_title = 5;
+  string normalized_title = 6;
+  google.protobuf.Timestamp last_fetched = 7;
+  bool verified = 8;
+}
+
 message ProfileRequest { string username = 1; }
 
 message ProfileResponse {
   string first_name = 1;
   string last_name = 2;
   string country_code = 3;
-  string title = 4;
+  string title = 4; // Highest normalized title
   string about = 5;
   string ratings_json = 6;
   string stats_json = 7;
@@ -134,6 +146,7 @@ message ProfileResponse {
   bool avatars_editable = 11;
   string birth_date = 12;
   repeated string badge_codes = 13;
+  repeated OrganizationTitle organization_titles = 15; // All titles from all orgs
 }
 
 message PersonalInfoRequest {}
@@ -179,6 +192,7 @@ message BriefProfile {
   string country_code = 3;
   string avatar_url = 9;
   repeated string badge_codes = 13;
+  string title = 14; // Highest normalized title
 }
 
 message BriefProfilesResponse { map<string, BriefProfile> response = 1; }
@@ -392,4 +406,151 @@ service AuthorizationService {
   rpc GetRoleMetadata(GetRoleMetadataRequest) returns (RoleMetadataResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+}
+
+// Organization Title Management
+
+message ConnectOrganizationRequest {
+  string organization_code = 1;
+  string member_id = 2;
+  map<string, string> credentials = 3; // For NASPA username/password
+}
+
+message ConnectOrganizationResponse {
+  bool success = 1;
+  string message = 2;
+  OrganizationTitle title = 3;
+}
+
+message DisconnectOrganizationRequest {
+  string organization_code = 1;
+  // Optional: for admins to disconnect another user's organization
+  optional string username = 2;
+}
+
+message DisconnectOrganizationResponse { bool success = 1; }
+
+message RefreshTitlesRequest {}
+
+message RefreshTitlesResponse {
+  repeated OrganizationTitle titles = 1;
+  string message = 2;
+}
+
+message GetMyOrganizationsRequest {}
+
+message GetMyOrganizationsResponse { repeated OrganizationTitle titles = 1; }
+
+message GetPublicOrganizationsRequest { string username = 1; }
+
+message GetPublicOrganizationsResponse {
+  repeated OrganizationTitle titles = 1;
+}
+
+message SubmitVerificationRequest {
+  string organization_code = 1;
+  string member_id = 2;
+  bytes image_data = 3;
+  string image_extension = 4; // e.g., ".jpg", ".png"
+}
+
+message SubmitVerificationResponse {
+  bool success = 1;
+  string message = 2;
+  int64 request_id = 3;
+}
+
+message GetPendingVerificationsRequest {}
+
+message VerificationRequestInfo {
+  int64 request_id = 1;
+  string user_uuid = 2;
+  string username = 3;
+  string organization_code = 4;
+  string member_id = 5;
+  string full_name = 6;
+  string image_url = 7;
+  google.protobuf.Timestamp submitted_at = 8;
+  string status = 9;
+  string title = 10; // Normalized title from organization
+  string notes = 11; // Review notes (if any)
+}
+
+message GetPendingVerificationsResponse {
+  repeated VerificationRequestInfo requests = 1;
+}
+
+message ApproveVerificationRequest {
+  int64 request_id = 1;
+  string notes = 2;
+}
+
+message ApproveVerificationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RejectVerificationRequest {
+  int64 request_id = 1;
+  string notes = 2;
+}
+
+message RejectVerificationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetVerificationImageUrlRequest {
+  int64 request_id = 1;
+}
+
+message GetVerificationImageUrlResponse {
+  string image_url = 1; // Presigned URL (expires in 15 minutes)
+}
+
+message ManuallySetOrgMembershipRequest {
+  string username = 1; // Username of the user to assign membership to
+  string organization_code = 2;
+  string member_id = 3;
+  // full_name and title will be fetched from the organization automatically
+}
+
+message ManuallySetOrgMembershipResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+service OrganizationService {
+  // User endpoints
+  rpc ConnectOrganization(ConnectOrganizationRequest)
+      returns (ConnectOrganizationResponse);
+  rpc DisconnectOrganization(DisconnectOrganizationRequest)
+      returns (DisconnectOrganizationResponse);
+  rpc RefreshTitles(RefreshTitlesRequest) returns (RefreshTitlesResponse);
+  rpc GetMyOrganizations(GetMyOrganizationsRequest)
+      returns (GetMyOrganizationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetPublicOrganizations(GetPublicOrganizationsRequest)
+      returns (GetPublicOrganizationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SubmitVerification(SubmitVerificationRequest)
+      returns (SubmitVerificationResponse);
+
+  // Admin endpoints (require can_verify_user_identities permission)
+  rpc GetPendingVerifications(GetPendingVerificationsRequest)
+      returns (GetPendingVerificationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetVerificationImageUrl(GetVerificationImageUrlRequest)
+      returns (GetVerificationImageUrlResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ApproveVerification(ApproveVerificationRequest)
+      returns (ApproveVerificationResponse);
+  rpc RejectVerification(RejectVerificationRequest)
+      returns (RejectVerificationResponse);
+  rpc ManuallySetOrgMembership(ManuallySetOrgMembershipRequest)
+      returns (ManuallySetOrgMembershipResponse);
 }

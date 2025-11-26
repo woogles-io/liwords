@@ -421,6 +421,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			AvatarUrl:   censoredAvatarUrl,
 			FullName:    censoredFullName,
 			BadgeCodes:  profiles[pi].BadgeCodes,
+			Title:       profiles[pi].Title.String,
 		}
 	}
 
