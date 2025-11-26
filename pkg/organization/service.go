@@ -80,10 +80,17 @@ func (s *OrganizationService) ConnectOrganization(
 		return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch title from %s: %v", meta.Name, err))
 	}
 
-	// Prepare integration data - full name MUST come from the organization
+	// Prepare integration data - full name and member ID come from the organization
+	// Use titleInfo.MemberID if available (e.g., ABSP fetches it from profile),
+	// otherwise fall back to the request's member ID (e.g., NASPA where user provides it)
+	memberID := titleInfo.MemberID
+	if memberID == "" {
+		memberID = req.Msg.MemberId
+	}
+
 	now := time.Now()
 	integrationData := organizations.OrganizationIntegrationData{
-		MemberID:           req.Msg.MemberId,
+		MemberID:           memberID,
 		FullName:           titleInfo.FullName,
 		RawTitle:           titleInfo.RawTitle,
 		NormalizedTitle:    titleInfo.NormalizedTitle,

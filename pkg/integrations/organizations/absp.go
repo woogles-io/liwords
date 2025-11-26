@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,7 +23,7 @@ type ABSPPlayer struct {
 	MemberID  string // Normalized (leading zeros stripped)
 }
 
-// ABSPIntegration handles ABSP with in-memory cached database
+// ABSPIntegration handles ABSP authentication and data fetching
 type ABSPIntegration struct {
 	BaseURL    string
 	HTTPClient *http.Client
@@ -30,10 +32,10 @@ type ABSPIntegration struct {
 
 // abspCache holds the in-memory database with TTL
 type abspCache struct {
-	mu         sync.RWMutex
-	players    map[string]*ABSPPlayer // Key: normalized member ID
-	lastFetch  time.Time
-	cacheTTL   time.Duration
+	mu        sync.RWMutex
+	players   map[string]*ABSPPlayer // Key: normalized member ID
+	lastFetch time.Time
+	cacheTTL  time.Duration
 }
 
 // NewABSPIntegration creates a new ABSP integration instance
@@ -44,41 +46,177 @@ func NewABSPIntegration() *ABSPIntegration {
 			Timeout: 30 * time.Second,
 		},
 		cache: &abspCache{
-			players:   make(map[string]*ABSPPlayer),
-			cacheTTL:  24 * time.Hour,
+			players:  make(map[string]*ABSPPlayer),
+			cacheTTL: 24 * time.Hour,
 		},
 	}
 }
 
-// FetchTitle fetches title from cached ABSP database
+// ABSPMemberInfo holds the parsed member information from the profile page
+type ABSPMemberInfo struct {
+	MemberID  string
+	FirstName string
+	LastName  string
+}
+
+// FetchTitle fetches title from ABSP using authentication to verify identity,
+// then looks up the title in the cached database
 func (a *ABSPIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
-	// Ensure cache is up to date
+	username, ok := credentials["username"]
+	if !ok {
+		return nil, fmt.Errorf("username not provided")
+	}
+
+	password, ok := credentials["password"]
+	if !ok {
+		return nil, fmt.Errorf("password not provided")
+	}
+
+	// Step 1: Authenticate with ABSP and get member info from profile
+	memberInfo, err := a.authenticateAndFetchProfile(username, password)
+	if err != nil {
+		return nil, fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Step 2: Ensure cache is up to date
 	if err := a.ensureCacheValid(); err != nil {
 		return nil, fmt.Errorf("failed to load ABSP database: %w", err)
 	}
 
-	// Look up player
-	player, err := a.getPlayer(memberID)
+	// Step 3: Look up title in the cached database using the member ID from profile
+	player, err := a.getPlayer(memberInfo.MemberID)
 	if err != nil {
-		return nil, err
-	}
+		// Player might not be in the ratings database yet, but auth succeeded
+		// Use info from profile page
+		now := time.Now()
+		fullName := memberInfo.FirstName + " " + memberInfo.LastName
 
-	if player.Title == "" {
-		return nil, fmt.Errorf("player has no title in ABSP database")
+		return &TitleInfo{
+			Organization:     OrgABSP,
+			OrganizationName: "ABSP",
+			RawTitle:         "",
+			NormalizedTitle:  TitleNone,
+			MemberID:         memberInfo.MemberID,
+			FullName:         fullName,
+			LastFetched:      &now,
+		}, nil
 	}
 
 	now := time.Now()
-	fullName := player.FirstName + " " + player.LastName
+	// Prefer name from profile page (more authoritative)
+	fullName := memberInfo.FirstName + " " + memberInfo.LastName
 
 	return &TitleInfo{
 		Organization:     OrgABSP,
 		OrganizationName: "ABSP",
 		RawTitle:         player.Title,
 		NormalizedTitle:  a.NormalizeTitle(player.Title),
-		MemberID:         player.MemberID,
+		MemberID:         memberInfo.MemberID,
 		FullName:         fullName,
 		LastFetched:      &now,
 	}, nil
+}
+
+// authenticateAndFetchProfile authenticates with ABSP and fetches the member's profile
+func (a *ABSPIntegration) authenticateAndFetchProfile(username, password string) (*ABSPMemberInfo, error) {
+	// Create a cookie jar to store the session cookie
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
+	}
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Jar:     jar,
+	}
+
+	// Step 1: Authenticate
+	formData := url.Values{}
+	formData.Set("username", username)
+	formData.Set("password", password)
+	formData.Set("action", "password_logon")
+
+	req, err := http.NewRequest("POST", a.BaseURL+"/absp_log_on_or_off.php", strings.NewReader(formData.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make auth request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("authentication failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Read the response body to check for successful login
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	bodyStr := string(body)
+
+	// Check for successful login indicator
+	if !strings.Contains(bodyStr, "<p style='color:green'>ABSP Member</p>") {
+		return nil, fmt.Errorf("invalid username or password")
+	}
+
+	// Step 2: Fetch profile page to get member info
+	profileResp, err := client.Get(a.BaseURL + "/edit_absp_member.php")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch profile page: %w", err)
+	}
+	defer profileResp.Body.Close()
+
+	if profileResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("profile page returned status %d", profileResp.StatusCode)
+	}
+
+	profileBody, err := io.ReadAll(profileResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read profile page: %w", err)
+	}
+
+	// Parse the member info from the HTML
+	memberInfo, err := a.parseProfilePage(string(profileBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse profile page: %w", err)
+	}
+
+	return memberInfo, nil
+}
+
+// parseProfilePage extracts member information from the ABSP profile page HTML
+func (a *ABSPIntegration) parseProfilePage(html string) (*ABSPMemberInfo, error) {
+	info := &ABSPMemberInfo{}
+
+	// Pattern to match table cells with label and value
+	// Format: <td>label:</td>\n<td>\nvalue</td>
+	extractValue := func(label string) string {
+		// Look for pattern: <td>label:</td> followed by <td> with the value
+		pattern := regexp.MustCompile(`(?s)<td>` + regexp.QuoteMeta(label) + `:</td>\s*<td>\s*([^<]+?)\s*</td>`)
+		matches := pattern.FindStringSubmatch(html)
+		if len(matches) >= 2 {
+			return strings.TrimSpace(matches[1])
+		}
+		return ""
+	}
+
+	info.MemberID = extractValue("absp_number")
+	info.FirstName = extractValue("first_name")
+	info.LastName = extractValue("last_name")
+
+	if info.MemberID == "" {
+		return nil, fmt.Errorf("could not find member ID in profile page")
+	}
+
+	return info, nil
 }
 
 // NormalizeTitle converts an ABSP title to a normalized title
@@ -90,7 +228,7 @@ func (a *ABSPIntegration) NormalizeTitle(rawTitle string) NormalizedTitle {
 	case "GM":
 		return TitleGrandmaster
 	case "EXP":
-		return TitleExpert // Note: Should be Master but user requested Expert
+		return TitleExpert
 	default:
 		return TitleNone
 	}
@@ -101,20 +239,25 @@ func (a *ABSPIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgABSP
 }
 
-// GetRealName fetches the user's real name from the cached ABSP database
+// GetRealName fetches the user's real name from ABSP using their credentials
 func (a *ABSPIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
-	// Ensure cache is up to date
-	if err := a.ensureCacheValid(); err != nil {
-		return "", fmt.Errorf("failed to load ABSP database: %w", err)
+	username, ok := credentials["username"]
+	if !ok {
+		return "", fmt.Errorf("username not provided")
 	}
 
-	// Look up player
-	player, err := a.getPlayer(memberID)
+	password, ok := credentials["password"]
+	if !ok {
+		return "", fmt.Errorf("password not provided")
+	}
+
+	// Authenticate and fetch profile
+	memberInfo, err := a.authenticateAndFetchProfile(username, password)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("authentication failed: %w", err)
 	}
 
-	fullName := player.FirstName + " " + player.LastName
+	fullName := memberInfo.FirstName + " " + memberInfo.LastName
 	return fullName, nil
 }
 

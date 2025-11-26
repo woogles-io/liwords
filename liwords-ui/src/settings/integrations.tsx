@@ -223,9 +223,9 @@ const organizationInfo = {
     name: "ABSP",
     fullName: "Association of British Scrabble Players",
     description:
-      "ABSP is the UK Scrabble organization. Connection requires identity verification with a photo ID.",
-    requiresCredentials: false,
-    requiresVerification: true,
+      "ABSP is the UK Scrabble organization. You can connect using your absp-database.org login credentials.",
+    requiresCredentials: true,
+    requiresVerification: false,
   },
 };
 
@@ -235,6 +235,7 @@ export const Integrations = () => {
   const [organizations, setOrganizations] = useState<OrganizationTitle[]>([]);
   const [connectingOrg, setConnectingOrg] = useState<string | null>(null);
   const [naspaForm] = Form.useForm();
+  const [abspForm] = Form.useForm();
   const [verificationForm] = Form.useForm();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -271,7 +272,7 @@ export const Integrations = () => {
 
   // Update the verification form when connectingOrg changes
   useEffect(() => {
-    if (connectingOrg === "wespa" || connectingOrg === "absp") {
+    if (connectingOrg === "wespa") {
       verificationForm.setFieldsValue({ organizationCode: connectingOrg });
     }
   }, [connectingOrg, verificationForm]);
@@ -306,6 +307,37 @@ export const Integrations = () => {
       );
       message.success("Successfully connected to NASPA!");
       naspaForm.resetFields();
+      setConnectingOrg(null);
+      // Refresh organizations
+      const response = await orgClient.getMyOrganizations(
+        create(GetMyOrganizationsRequestSchema, {}),
+      );
+      setOrganizations(response.titles);
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnectABSP = async (values: {
+    username: string;
+    password: string;
+  }) => {
+    setLoading(true);
+    try {
+      await orgClient.connectOrganization(
+        create(ConnectOrganizationRequestSchema, {
+          organizationCode: "absp",
+          memberId: "", // Will be fetched from profile after login
+          credentials: {
+            username: values.username,
+            password: values.password,
+          },
+        }),
+      );
+      message.success("Successfully connected to ABSP!");
+      abspForm.resetFields();
       setConnectingOrg(null);
       // Refresh organizations
       const response = await orgClient.getMyOrganizations(
@@ -671,9 +703,61 @@ export const Integrations = () => {
           </Card>
         )}
 
-        {(connectingOrg === "wespa" || connectingOrg === "absp") && (
+        {connectingOrg === "absp" && (
           <Card
-            title={`Connect to ${organizationInfo[connectingOrg as keyof typeof organizationInfo].name}`}
+            title="Connect to ABSP"
+            style={{ marginTop: "2rem", maxWidth: 500 }}
+            extra={
+              <Button size="small" onClick={() => setConnectingOrg(null)}>
+                Cancel
+              </Button>
+            }
+          >
+            <Form
+              form={abspForm}
+              onFinish={handleConnectABSP}
+              layout="vertical"
+            >
+              <Form.Item
+                label="Username (Email)"
+                name="username"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter your absp-database.org username",
+                  },
+                ]}
+                help="Your email address used to log in to absp-database.org"
+              >
+                <Input placeholder="you@example.com" />
+              </Form.Item>
+              <Form.Item
+                label="Password"
+                name="password"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter your absp-database.org password",
+                  },
+                ]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={loading}>
+                    Connect
+                  </Button>
+                  <Button onClick={() => setConnectingOrg(null)}>Cancel</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        )}
+
+        {connectingOrg === "wespa" && (
+          <Card
+            title="Connect to WESPA"
             style={{ marginTop: "2rem", maxWidth: 500 }}
             extra={
               <Button size="small" onClick={() => setConnectingOrg(null)}>
@@ -692,7 +776,7 @@ export const Integrations = () => {
               form={verificationForm}
               onFinish={handleSubmitVerification}
               layout="vertical"
-              initialValues={{ organizationCode: connectingOrg }}
+              initialValues={{ organizationCode: "wespa" }}
             >
               <Form.Item name="organizationCode" hidden>
                 <Input />
@@ -703,38 +787,21 @@ export const Integrations = () => {
                     Member ID{" "}
                     <Tooltip
                       title={
-                        connectingOrg === "wespa" ? (
-                          <span>
-                            Visit{" "}
-                            <a
-                              href="https://wespa.org/ratings.shtml"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "#1890ff" }}
-                            >
-                              wespa.org/ratings.shtml
-                            </a>
-                            , scroll down to "Find a player", enter your name,
-                            and click Submit. Your player ID is the number in
-                            the URL (e.g., <strong>2145</strong> from
-                            wespa.org/aardvark/html/players/2145.html).
-                          </span>
-                        ) : (
-                          <span>
-                            Visit{" "}
-                            <a
-                              href="https://absp-database.org/ratings"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "#1890ff" }}
-                            >
-                              absp-database.org/ratings
-                            </a>
-                            , find your name in the table. Your member ID is in
-                            the <strong>MemNo</strong> column, immediately to
-                            the right of your rating.
-                          </span>
-                        )
+                        <span>
+                          Visit{" "}
+                          <a
+                            href="https://wespa.org/ratings.shtml"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#1890ff" }}
+                          >
+                            wespa.org/ratings.shtml
+                          </a>
+                          , scroll down to "Find a player", enter your name, and
+                          click Submit. Your player ID is the number in the URL
+                          (e.g., <strong>2145</strong> from
+                          wespa.org/aardvark/html/players/2145.html).
+                        </span>
                       }
                       overlayStyle={{ maxWidth: 400 }}
                     >
@@ -746,15 +813,11 @@ export const Integrations = () => {
                 rules={[
                   {
                     required: true,
-                    message: `Please enter your ${organizationInfo[connectingOrg as keyof typeof organizationInfo].name} member ID`,
+                    message: "Please enter your WESPA member ID",
                   },
                 ]}
               >
-                <Input
-                  placeholder={
-                    connectingOrg === "wespa" ? "e.g., 2145" : "e.g., 745"
-                  }
-                />
+                <Input placeholder="e.g., 2145" />
               </Form.Item>
               <Form.Item
                 label="ID Photo"
