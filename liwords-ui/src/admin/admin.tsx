@@ -10,6 +10,8 @@ import { PuzzleGenerator } from "./puzzle_generator";
 import { UserDetails } from "./user_details";
 import { PermsAndRoles } from "./perms_and_roles";
 import { UserBadges } from "./user_badges";
+import { VerificationQueue } from "./verification_queue";
+import { ManualOrgAssignment } from "./manual_org_assignment";
 // import { TourneyManager } from './tourney_manager';
 
 type SiderProps = {
@@ -37,6 +39,11 @@ const Sider = (props: SiderProps) => {
         { key: "user-details", label: "See User Details" },
         { key: "perms-and-roles", label: "User Permissions and Roles" },
         { key: "badges", label: "Assign User Badges" },
+        { key: "verification-queue", label: "Identity Verification Queue" },
+        {
+          key: "manual-org-assignment",
+          label: "Manual Organization Assignment",
+        },
         //    { key: 'manage-tournament', label: 'Tournament Manager' },
         //    { key: 'user-editor', label: 'User Editor' },
         //  ],
@@ -64,6 +71,8 @@ export const Admin = () => {
             {visibleTab === "user-details" && <UserDetails />}
             {visibleTab === "perms-and-roles" && <PermsAndRoles />}
             {visibleTab === "badges" && <UserBadges />}
+            {visibleTab === "verification-queue" && <VerificationQueue />}
+            {visibleTab === "manual-org-assignment" && <ManualOrgAssignment />}
             {/* {visibleTab === 'user-editor' && <UserEditor />} */}
             {/* {visibleTab === 'manage-tournament' && <TourneyManager />} */}
           </Layout.Content>

@@ -1,0 +1,36 @@
+meta {
+  name: RejectVerification
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/RejectVerification
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{ADMIN_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "request_id": 1,
+    "notes": "Photo was unclear, please resubmit with better lighting"
+  }
+}
+
+docs {
+  # RejectVerification (Admin Only)
+
+  Requires: can_verify_user_identities permission
+
+  Rejects a verification request:
+  1. Marks verification request as rejected
+  2. Deletes verification image from S3
+  3. User can submit a new verification request
+
+  Note: Update request_id to match a pending verification from GetPendingVerifications
+}

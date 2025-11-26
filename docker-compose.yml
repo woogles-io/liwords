@@ -14,6 +14,7 @@ services:
       DB_PASSWORD: pass
       DB_SSL_MODE: disable
       SECRET_KEY: jqxztripletriple
+      CREDENTIALS_ENCRYPTION_KEY: ZZcByQlXmdAzXoXYooUxYCtxyvpMiI0o1su+id6qMx4=
       DEBUG: 1
       NATS_URL: nats://nats:4222
       REGISTRATION_CODE: foobar
@@ -26,6 +27,7 @@ services:
       AWS_ACCESS_KEY_ID: 'liwords'
       AWS_SECRET_KEY: 'liwords-pass'
       AVATAR_UPLOAD_BUCKET: woogles-uploads
+      IDENTITY_VERIFICATION_UPLOAD_BUCKET: woogles-verifications
       USE_MINIO_S3: 1
       MINIO_S3_ENDPOINT: http://minio:9000
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
@@ -197,24 +199,37 @@ services:
       retries: 5
 
   minio:
-    image: docker.io/bitnami/minio
+    image: minio/minio:latest
     ports:
       - 9000:9000
       - 9001:9001
     environment:
       MINIO_ROOT_USER: liwords
       MINIO_ROOT_PASSWORD: liwords-pass
+    command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
     networks:
       - aeronet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
   createbuckets:
     image: minio/mc
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
-      /bin/sh -c " /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass; /usr/bin/mc mb myminio/woogles-uploads; /usr/bin/mc anonymous set public myminio/woogles-uploads; exit 0; "
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 liwords liwords-pass;
+      /usr/bin/mc mb myminio/woogles-uploads --ignore-existing;
+      /usr/bin/mc anonymous set public myminio/woogles-uploads;
+      /usr/bin/mc mb myminio/woogles-verifications --ignore-existing;
+      exit 0;
+      "
     networks:
       - aeronet
 

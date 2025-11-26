@@ -1,0 +1,32 @@
+meta {
+  name: DisconnectOrganization
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/DisconnectOrganization
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "organization_code": "naspa"
+  }
+}
+
+docs {
+  # DisconnectOrganization
+
+  Removes an organization integration for the authenticated user.
+
+  - Deletes the integration from the database
+  - Removes encrypted credentials (if any)
+  - Updates profile title to the next highest title from remaining organizations
+}

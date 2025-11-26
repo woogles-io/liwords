@@ -1,0 +1,33 @@
+meta {
+  name: RefreshTitles
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseURL}}/api/user_service.OrganizationService/RefreshTitles
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{USER_API_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+docs {
+  # RefreshTitles
+
+  Manually refreshes titles from organization APIs/databases for the authenticated user.
+
+  - NASPA: Requires stored credentials, fetches from API
+  - ABSP: Fetches from cached database (no credentials needed)
+  - WESPA: Not supported (no titles)
+
+  Updates the user's profile title if the highest title changed.
+  Returns updated organization integrations.
+}

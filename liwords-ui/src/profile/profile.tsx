@@ -35,6 +35,7 @@ import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
 import { Badge } from "./badge";
+import { DisplayUserOrganizations } from "./organizations";
 const { screenSizeTablet } = variables;
 
 type Rating = {
@@ -556,6 +557,7 @@ export const PlayerProfile = React.memo(() => {
                   </span>
                 </div>
               ))}
+              {username && <DisplayUserOrganizations username={username} />}
               {missingBirthdate && viewer === username && (
                 <div className="bio">
                   <Link to={"/settings/personal"}>

@@ -21,6 +21,7 @@ SELECT
     p.first_name,
     p.last_name,
     p.birth_date,
+    p.title,
     (COALESCE(b.badge_codes, '{}'::text[]))::text[] AS badge_codes
 FROM users u
 LEFT JOIN profiles p ON u.id = p.user_id
@@ -42,6 +43,7 @@ type GetBriefProfilesRow struct {
 	FirstName   pgtype.Text
 	LastName    pgtype.Text
 	BirthDate   pgtype.Text
+	Title       pgtype.Text
 	BadgeCodes  []string
 }
 
@@ -63,6 +65,7 @@ func (q *Queries) GetBriefProfiles(ctx context.Context, userUuids []string) ([]G
 			&i.FirstName,
 			&i.LastName,
 			&i.BirthDate,
+			&i.Title,
 			&i.BadgeCodes,
 		); err != nil {
 			return nil, err

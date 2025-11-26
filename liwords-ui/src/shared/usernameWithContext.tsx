@@ -13,6 +13,7 @@ import { FollowerHandle, TheFollower } from "./follower";
 import { PettableContext } from "./player_avatar";
 import { HookAPI } from "antd/lib/modal/useModal";
 import { DisplayUserBadges } from "../profile/badge";
+import { DisplayUserTitle } from "./display_title";
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -253,6 +254,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           <>
             {props.fullName || props.username}
             {props.includeFlag && <DisplayUserFlag uuid={props.userID} />}
+            <DisplayUserTitle uuid={props.userID} />
             {!props.omitBadges && <DisplayUserBadges uuid={props.userID} />}
           </>
         )}
