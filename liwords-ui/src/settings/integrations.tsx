@@ -8,6 +8,7 @@ import {
   SubmitVerificationRequestSchema,
   GetMyOrganizationsRequestSchema,
   DisconnectOrganizationRequestSchema,
+  RefreshTitlesRequestSchema,
   OrganizationTitle,
 } from "../gen/api/proto/user_service/user_service_pb";
 import { useLoginStateStoreContext } from "../store/store";
@@ -17,6 +18,7 @@ import {
   TwitchOutlined,
   UploadOutlined,
   QuestionCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -362,7 +364,11 @@ export const Integrations = () => {
 
       // Show success modal
       Modal.success({
-        title: "Verification Request Submitted",
+        title: (
+          <div className="readable-text-color">
+            Verification Request Submitted
+          </div>
+        ),
         content: (
           <div className="readable-text-color">
             <p>
@@ -394,6 +400,21 @@ export const Integrations = () => {
       setOrganizations(response.titles);
     } catch (e) {
       flashError(e);
+    }
+  };
+
+  const handleRefreshTitles = async () => {
+    setLoading(true);
+    try {
+      const response = await orgClient.refreshTitles(
+        create(RefreshTitlesRequestSchema, {}),
+      );
+      message.success(response.message || "Titles refreshed successfully");
+      setOrganizations(response.titles);
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -478,12 +499,20 @@ export const Integrations = () => {
 
       <h4>Organization Memberships</h4>
       <p>
-        Connect your account to official Scrabble organizations to display your
-        titles and verify your identity.
+        Connect your account to official organizations to display your titles
+        and verify your identity.
       </p>
 
       {organizations.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
+        <div style={{ marginBottom: "2rem", marginTop: "2rem" }}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefreshTitles}
+            loading={loading}
+            style={{ marginBottom: 16 }}
+          >
+            Refresh All Titles
+          </Button>
           <Table
             dataSource={organizations}
             rowKey={(record) => record.organizationCode}
@@ -730,6 +759,13 @@ export const Integrations = () => {
               >
                 <Upload
                   beforeUpload={(file) => {
+                    const maxSize = 4 * 1024 * 1024; // 4MB
+                    if (file.size > maxSize) {
+                      message.error(
+                        "Image must be smaller than 4MB. Please compress or resize your image.",
+                      );
+                      return Upload.LIST_IGNORE;
+                    }
                     setUploadedFile(file);
                     return false;
                   }}

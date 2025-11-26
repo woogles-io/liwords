@@ -62,6 +62,36 @@ func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (st
 	return s.urlprefix() + id, nil
 }
 
+// UploadVerificationImage uploads verification images with a higher size limit (4MB)
+// and a more appropriate error message
+func (s *S3Uploader) UploadVerificationImage(ctx context.Context, prefix string, data []byte) (string, error) {
+	const maxVerificationImageSize = 4 * 1024 * 1024 // 4MB
+	if len(data) > maxVerificationImageSize {
+		return "", fmt.Errorf("image must be smaller than 4MB. Please compress or resize your image")
+	}
+
+	uploader := manager.NewUploader(s.s3Client)
+
+	// create a unique id
+	suffix := shortuuid.New()[1:10] + ".jpg"
+	id := prefix + "-" + suffix
+
+	// cache for a long time as this is a unique id.
+	_, err := uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(id),
+		Body:         bytes.NewReader(data),
+		ContentType:  aws.String("image/jpeg"),
+		Expires:      aws.Time(time.Now().Add(time.Hour * 24 * 365)),
+		CacheControl: aws.String("max-age=31536000"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return s.urlprefix() + id, nil
+}
+
 // Delete wipes out the avatar at the given URL.
 func (s *S3Uploader) Delete(ctx context.Context, url string) error {
 

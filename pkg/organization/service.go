@@ -391,11 +391,9 @@ func (s *OrganizationService) GetPublicOrganizations(
 		title := &pb.OrganizationTitle{
 			OrganizationCode: string(orgCode),
 			OrganizationName: meta.Name,
-			MemberId:         integData.MemberID,
-			FullName:         integData.FullName,
 			NormalizedTitle:  string(integData.NormalizedTitle),
 			Verified:         integData.Verified,
-			// Omit sensitive fields like RawTitle and LastFetched for public view
+			// Omit sensitive fields like MemberId, FullName, RawTitle and LastFetched for public view
 		}
 
 		titles = append(titles, title)

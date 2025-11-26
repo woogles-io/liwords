@@ -16,6 +16,7 @@ import (
 // S3Uploader is an interface for uploading/deleting files from S3
 type S3Uploader interface {
 	Upload(ctx context.Context, prefix string, data []byte) (string, error)
+	UploadVerificationImage(ctx context.Context, prefix string, data []byte) (string, error)
 	Delete(ctx context.Context, url string) error
 	GetPresignedURL(ctx context.Context, url string, expiration time.Duration) (string, error)
 }
@@ -83,9 +84,9 @@ func (s *VerificationService) SubmitVerificationRequest(
 		return nil, fmt.Errorf("failed to read image data: %w", err)
 	}
 
-	// Upload to S3
+	// Upload to S3 using the verification image uploader (supports up to 4MB)
 	prefix := fmt.Sprintf("verification/%s_%s", userUUID, integrationName)
-	imageURL, err := s.s3Uploader.Upload(ctx, prefix, imageBytes)
+	imageURL, err := s.s3Uploader.UploadVerificationImage(ctx, prefix, imageBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload verification image: %w", err)
 	}

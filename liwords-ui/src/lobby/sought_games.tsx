@@ -20,6 +20,7 @@ import {
 } from "../store/reducers/lobby_reducer";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
+import { DisplayUserTitle } from "../shared/display_title";
 import { RatingBadge } from "./rating_badge";
 import { VariantIcon } from "../shared/variant_icons";
 import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
@@ -76,6 +77,7 @@ export const PlayerDisplay = (props: PlayerProps) => {
           nickname: props.username,
         }}
       />
+      <DisplayUserTitle uuid={props.userID} />
       <span className="player-name">{props.username}</span>
       <DisplayUserFlag uuid={props.userID} />
       <DisplayUserBadges uuid={props.userID} />

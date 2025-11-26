@@ -31,6 +31,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+
 	// Redis tracing imports (commented out when tracing disabled):
 	// otelredisoption "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/option"
 	// splunkredis "github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo/redis"
@@ -39,6 +40,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+
 	// "go.opentelemetry.io/otel/attribute"
 	// semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -250,7 +252,7 @@ func main() {
 	profileService := pkgprofile.NewProfileService(stores.UserStore, userservices.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET"), s3Client), stores.Queries)
 
 	// Organization and verification services
-	verificationS3Uploader := userservices.NewS3Uploader(os.Getenv("VERIFICATION_UPLOAD_BUCKET"), s3Client)
+	verificationS3Uploader := userservices.NewS3Uploader(os.Getenv("IDENTITY_VERIFICATION_UPLOAD_BUCKET"), s3Client)
 	verificationService := verification.NewVerificationService(stores.Queries, verificationS3Uploader)
 	organizationService := organization.NewOrganizationService(stores.UserStore, stores.Queries, verificationService)
 

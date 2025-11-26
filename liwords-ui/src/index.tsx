@@ -65,21 +65,20 @@ const root = createRoot(container!);
 const queryClient = new QueryClient();
 
 root.render(
-  // TODO: StrictMode temporarily disabled - causes WebSocket issues in dev
-  // <React.StrictMode>
-  <BrowserRouter>
-    {/* legacy context store will be slowly decommissioned */}
-    <LegacyStore>
-      <TransportProvider transport={transport}>
-        <QueryClientProvider client={queryClient}>
-          <BriefProfiles>
-            <App />
-          </BriefProfiles>
-        </QueryClientProvider>
-      </TransportProvider>
-    </LegacyStore>
-  </BrowserRouter>,
-  // </React.StrictMode>,
+  <React.StrictMode>
+    <BrowserRouter>
+      {/* legacy context store will be slowly decommissioned */}
+      <LegacyStore>
+        <TransportProvider transport={transport}>
+          <QueryClientProvider client={queryClient}>
+            <BriefProfiles>
+              <App />
+            </BriefProfiles>
+          </QueryClientProvider>
+        </TransportProvider>
+      </LegacyStore>
+    </BrowserRouter>
+  </React.StrictMode>,
 );
 
 // Register service worker for PWA support
