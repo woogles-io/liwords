@@ -60,9 +60,9 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 	OrgABSP: {
 		Code:                 OrgABSP,
 		Name:                 "ABSP",
-		HasAPI:               true, // Has publicly accessible database
-		RequiresAuth:         false,
-		RequiresVerification: true, // Still needs manual verification to prove identity
+		HasAPI:               true,
+		RequiresAuth:         true,  // Uses login to absp-database.org
+		RequiresVerification: false,
 	},
 }
 
