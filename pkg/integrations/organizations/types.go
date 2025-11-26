@@ -9,7 +9,7 @@ import (
 type NormalizedTitle string
 
 const (
-	TitleGrandmaster NormalizedTitle = "GM"
+	TitleGrandmaster NormalizedTitle = "Grandmaster"
 	TitleMaster      NormalizedTitle = "Master"
 	TitleExpert      NormalizedTitle = "Expert"
 	TitleNone        NormalizedTitle = ""
@@ -34,10 +34,10 @@ const (
 
 // OrganizationMetadata contains information about an organization
 type OrganizationMetadata struct {
-	Code            OrganizationCode
-	Name            string
-	HasAPI          bool
-	RequiresAuth    bool
+	Code                 OrganizationCode
+	Name                 string
+	HasAPI               bool
+	RequiresAuth         bool
 	RequiresVerification bool
 }
 
@@ -60,7 +60,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 	OrgABSP: {
 		Code:                 OrgABSP,
 		Name:                 "ABSP",
-		HasAPI:               true,  // Has publicly accessible database
+		HasAPI:               true, // Has publicly accessible database
 		RequiresAuth:         false,
 		RequiresVerification: true, // Still needs manual verification to prove identity
 	},
@@ -68,16 +68,16 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 
 // OrganizationIntegrationData represents the JSONB data stored in integrations table
 type OrganizationIntegrationData struct {
-	MemberID            string          `json:"member_id"`
-	FullName            string          `json:"full_name"`
+	MemberID             string          `json:"member_id"`
+	FullName             string          `json:"full_name"`
 	EncryptedCredentials string          `json:"encrypted_credentials,omitempty"`
-	Verified            bool            `json:"verified"`
-	VerificationMethod  string          `json:"verification_method"` // "api", "manual", "admin"
-	VerifiedAt          *time.Time      `json:"verified_at,omitempty"`
-	VerifiedBy          string          `json:"verified_by,omitempty"` // UUID of verifier
-	RawTitle            string          `json:"raw_title"`
-	NormalizedTitle     NormalizedTitle `json:"normalized_title"`
-	LastFetched         *time.Time      `json:"last_fetched,omitempty"`
+	Verified             bool            `json:"verified"`
+	VerificationMethod   string          `json:"verification_method"` // "api", "manual", "admin"
+	VerifiedAt           *time.Time      `json:"verified_at,omitempty"`
+	VerifiedBy           string          `json:"verified_by,omitempty"` // UUID of verifier
+	RawTitle             string          `json:"raw_title"`
+	NormalizedTitle      NormalizedTitle `json:"normalized_title"`
+	LastFetched          *time.Time      `json:"last_fetched,omitempty"`
 }
 
 // MarshalJSON serializes OrganizationIntegrationData to JSON
@@ -92,13 +92,13 @@ func (d *OrganizationIntegrationData) FromJSON(data []byte) error {
 
 // TitleInfo represents title information for display
 type TitleInfo struct {
-	Organization    OrganizationCode
+	Organization     OrganizationCode
 	OrganizationName string
-	RawTitle        string
-	NormalizedTitle NormalizedTitle
-	MemberID        string
-	FullName        string
-	LastFetched     *time.Time
+	RawTitle         string
+	NormalizedTitle  NormalizedTitle
+	MemberID         string
+	FullName         string
+	LastFetched      *time.Time
 }
 
 // OrganizationIntegration is the interface that all organization integrations must implement

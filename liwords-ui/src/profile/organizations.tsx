@@ -19,7 +19,7 @@ const organizationNames: Record<string, string> = {
 };
 
 const titleColors: Record<string, string> = {
-  GM: "gold",
+  Grandmaster: "gold",
   Master: "blue",
   Expert: "green",
 };

@@ -10,7 +10,7 @@ const titleStyles: Record<
   string,
   { background: string; border: string; color: string }
 > = {
-  GM: {
+  Grandmaster: {
     background: "#C9FFCB", // UI/Light/Green
     border: "#449E2D", // UI/Dark/Green
     color: "#449E2D",
@@ -28,7 +28,7 @@ const titleStyles: Record<
 };
 
 const titleAbbreviations: Record<string, string> = {
-  GM: "GM",
+  Grandmaster: "GM",
   Master: "M",
   Expert: "E",
 };
