@@ -97,12 +97,24 @@ export const LeagueCorrespondenceGames: React.FC<
             isLowTime = timeRemainingSecs < 86400; // 24 hours
           }
 
-          // Get opponent name
+          // Get opponent name and scores
           const userPlayerIndex = game.players.findIndex(
             (p) => p.uuid === userID,
           );
           const opponentIndex = userPlayerIndex === 0 ? 1 : 0;
           const opponentName = game.players[opponentIndex]?.displayName || "?";
+
+          // Get scores (user's score first)
+          const userScore =
+            game.scores && userPlayerIndex >= 0
+              ? game.scores[userPlayerIndex]
+              : undefined;
+          const opponentScore =
+            game.scores && opponentIndex >= 0
+              ? game.scores[opponentIndex]
+              : undefined;
+          const hasScores =
+            userScore !== undefined && opponentScore !== undefined;
 
           return (
             <div
@@ -124,9 +136,24 @@ export const LeagueCorrespondenceGames: React.FC<
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-                  vs {opponentName}
+                  <span>vs {opponentName}</span>
+                  {hasScores && (
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {userScore}-{opponentScore}
+                    </span>
+                  )}
                 </div>
                 {isUserTurn && (
                   <div className="turn-indicator-compact">

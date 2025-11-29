@@ -46,6 +46,8 @@ service LeagueService {
   rpc MovePlayerToDivision(MovePlayerToDivisionRequest) returns (MovePlayerToDivisionResponse);
   rpc GetSeasonZeroMoveGames(SeasonRequest) returns (SeasonZeroMoveGamesResponse);
   rpc GetSeasonPlayersWithUnstartedGames(SeasonRequest) returns (SeasonPlayersWithUnstartedGamesResponse);
+  rpc UpdateSeasonDates(UpdateSeasonDatesRequest) returns (SeasonResponse);
+  rpc UpdateSeasonPromotionFormula(UpdateSeasonPromotionFormulaRequest) returns (SeasonResponse);
 }
 
 message CreateLeagueRequest {
@@ -224,4 +226,15 @@ message PlayerWithUnstartedGames {
   string user_id = 1;
   string username = 2;
   int32 unstarted_game_count = 3;
+}
+
+message UpdateSeasonDatesRequest {
+  string season_id = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+}
+
+message UpdateSeasonPromotionFormulaRequest {
+  string season_id = 1;
+  ipc.PromotionFormula promotion_formula = 2;
 }

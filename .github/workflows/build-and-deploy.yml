@@ -10,7 +10,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - "*"
+      - "**"
 
 permissions:
   packages: write

@@ -885,7 +885,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 }
 
 const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -907,6 +907,7 @@ type ListActiveCorrespondenceGamesForUserRow struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	History          []byte
 }
 
 func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, userUuid string) ([]ListActiveCorrespondenceGamesForUserRow, error) {
@@ -929,6 +930,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 			&i.LeagueID,
 			&i.SeasonID,
 			&i.LeagueDivisionID,
+			&i.History,
 		); err != nil {
 			return nil, err
 		}
@@ -941,7 +943,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 }
 
 const listActiveCorrespondenceGamesForUserAndLeague = `-- name: ListActiveCorrespondenceGamesForUserAndLeague :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE league_id = $1::uuid
     AND game_end_reason = 0 -- NONE (ongoing games)
@@ -969,6 +971,7 @@ type ListActiveCorrespondenceGamesForUserAndLeagueRow struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	History          []byte
 }
 
 func (q *Queries) ListActiveCorrespondenceGamesForUserAndLeague(ctx context.Context, arg ListActiveCorrespondenceGamesForUserAndLeagueParams) ([]ListActiveCorrespondenceGamesForUserAndLeagueRow, error) {
@@ -991,6 +994,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUserAndLeague(ctx context.Cont
 			&i.LeagueID,
 			&i.SeasonID,
 			&i.LeagueDivisionID,
+			&i.History,
 		); err != nil {
 			return nil, err
 		}

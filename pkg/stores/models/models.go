@@ -180,16 +180,22 @@ type LeagueRegistration struct {
 }
 
 type LeagueSeason struct {
-	ID            int64
-	Uuid          uuid.UUID
-	LeagueID      uuid.UUID
-	SeasonNumber  int32
-	StartDate     pgtype.Timestamptz
-	EndDate       pgtype.Timestamptz
-	ActualEndDate pgtype.Timestamptz
-	Status        int32
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID                             int64
+	Uuid                           uuid.UUID
+	LeagueID                       uuid.UUID
+	SeasonNumber                   int32
+	StartDate                      pgtype.Timestamptz
+	EndDate                        pgtype.Timestamptz
+	ActualEndDate                  pgtype.Timestamptz
+	Status                         int32
+	CreatedAt                      pgtype.Timestamptz
+	UpdatedAt                      pgtype.Timestamptz
+	ClosedAt                       pgtype.Timestamptz
+	DivisionsPreparedAt            pgtype.Timestamptz
+	StartedAt                      pgtype.Timestamptz
+	RegistrationOpenedAt           pgtype.Timestamptz
+	StartingSoonNotificationSentAt pgtype.Timestamptz
+	PromotionFormula               int32
 }
 
 type LeagueStanding struct {

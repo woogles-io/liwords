@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
@@ -78,12 +79,16 @@ type GameCreationResult struct {
 	Errors            []string
 }
 
-// CreateGamesForSeason creates all games for all divisions in a season
+// CreateGamesForSeason creates all games for all divisions in a season.
+// If batchSize > 0, sleeps for delayBetweenBatches after every batchSize games to reduce DB strain.
+// If batchSize == 0, creates all games without delays.
 func (ssm *SeasonStartManager) CreateGamesForSeason(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
 	leagueSettings *pb.LeagueSettings,
+	delayBetweenBatches time.Duration,
+	batchSize int,
 ) (*GameCreationResult, error) {
 	result := &GameCreationResult{
 		GamesPerDivision: make(map[uuid.UUID]int),
@@ -99,11 +104,13 @@ func (ssm *SeasonStartManager) CreateGamesForSeason(
 	log.Info().
 		Str("seasonID", seasonID.String()).
 		Int("divisionCount", len(divisions)).
+		Dur("delayBetweenBatches", delayBetweenBatches).
+		Int("batchSize", batchSize).
 		Msg("creating-games-for-season")
 
 	// Process each division
 	for _, division := range divisions {
-		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings)
+		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings, delayBetweenBatches, batchSize)
 		if err != nil {
 			errMsg := fmt.Sprintf("division %s: %v", division.Uuid.String(), err)
 			result.Errors = append(result.Errors, errMsg)
@@ -124,13 +131,16 @@ func (ssm *SeasonStartManager) CreateGamesForSeason(
 	return result, nil
 }
 
-// createGamesForDivision creates all games for a single division
+// createGamesForDivision creates all games for a single division.
+// If batchSize > 0, sleeps for delayBetweenBatches after every batchSize games.
 func (ssm *SeasonStartManager) createGamesForDivision(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
 	division models.LeagueDivision,
 	leagueSettings *pb.LeagueSettings,
+	delayBetweenBatches time.Duration,
+	batchSize int,
 ) (int, error) {
 	// Get players in division
 	registrations, err := ssm.store.GetDivisionRegistrations(ctx, division.Uuid)
@@ -166,7 +176,7 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 
 	// Create games for each pairing
 	gamesCreated := 0
-	for _, pairing := range pairings {
+	for i, pairing := range pairings {
 		// Get player registrations
 		player1Reg := registrations[pairing.Player1Index]
 		player2Reg := registrations[pairing.Player2Index]
@@ -214,6 +224,16 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		}
 
 		gamesCreated++
+
+		// Sleep between batches to reduce DB strain (if batching enabled)
+		if batchSize > 0 && gamesCreated%batchSize == 0 && i < len(pairings)-1 {
+			log.Debug().
+				Str("divisionID", division.Uuid.String()).
+				Int("gamesCreated", gamesCreated).
+				Dur("sleeping", delayBetweenBatches).
+				Msg("batch-complete-sleeping")
+			time.Sleep(delayBetweenBatches)
+		}
 	}
 
 	log.Info().

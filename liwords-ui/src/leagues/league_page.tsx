@@ -572,6 +572,7 @@ export const LeaguePage = (props: Props) => {
                         seasonId={displaySeasonId || ""}
                         seasonNumber={displayedSeason?.seasonNumber || 0}
                         currentUserId={userID}
+                        promotionFormula={displayedSeason?.promotionFormula}
                       />
                     ))}
                   <div className="standings-legend">
@@ -646,6 +647,21 @@ export const LeaguePage = (props: Props) => {
                       displayedSeason.startDate,
                       displayedSeason.endDate,
                     )}
+                  </div>
+                )}
+
+                {/* Season UUID - subtle, for admins/managers only */}
+                {canManageLeagues && (
+                  <div
+                    style={{
+                      fontSize: "9px",
+                      color: "#999",
+                      marginBottom: 8,
+                      fontFamily: "monospace",
+                      opacity: 0.6,
+                    }}
+                  >
+                    {displayedSeason.uuid}
                   </div>
                 )}
 

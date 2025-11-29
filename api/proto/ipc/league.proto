@@ -39,6 +39,7 @@ message Season {
     google.protobuf.Timestamp actual_end_date = 6;
     SeasonStatus status = 7;
     repeated Division divisions = 8;
+    PromotionFormula promotion_formula = 9;  // How to calculate promotion/relegation counts
 }
 
 enum SeasonStatus {
@@ -47,6 +48,13 @@ enum SeasonStatus {
     SEASON_COMPLETED = 2;
     SEASON_CANCELLED = 3;
     SEASON_REGISTRATION_OPEN = 4;
+}
+
+// PromotionFormula defines how many players are promoted/relegated per division
+enum PromotionFormula {
+    PROMO_N_DIV_6 = 0;       // ceil(N/6) - default, e.g. 15 players = 3 promoted/relegated
+    PROMO_N_PLUS_1_DIV_5 = 1; // ceil((N+1)/5), e.g. 15 players = 4 promoted/relegated
+    PROMO_N_DIV_5 = 2;       // ceil(N/5), e.g. 15 players = 3 promoted/relegated
 }
 
 message Division {

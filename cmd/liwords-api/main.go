@@ -224,7 +224,7 @@ func main() {
 				Dur("duration", d).
 				Msg("")
 		})),
-		WithTiming("errorLogging", ErrorReqResLoggingMiddleware),
+		// WithTiming("errorLogging", ErrorReqResLoggingMiddleware), // disabled: blocks on reading entire request body upfront
 	)
 
 	// s3 config

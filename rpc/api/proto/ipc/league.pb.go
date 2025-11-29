@@ -77,6 +77,56 @@ func (SeasonStatus) EnumDescriptor() ([]byte, []int) {
 	return file_proto_ipc_league_proto_rawDescGZIP(), []int{0}
 }
 
+// PromotionFormula defines how many players are promoted/relegated per division
+type PromotionFormula int32
+
+const (
+	PromotionFormula_PROMO_N_DIV_6        PromotionFormula = 0 // ceil(N/6) - default, e.g. 15 players = 3 promoted/relegated
+	PromotionFormula_PROMO_N_PLUS_1_DIV_5 PromotionFormula = 1 // ceil((N+1)/5), e.g. 15 players = 4 promoted/relegated
+	PromotionFormula_PROMO_N_DIV_5        PromotionFormula = 2 // ceil(N/5), e.g. 15 players = 3 promoted/relegated
+)
+
+// Enum value maps for PromotionFormula.
+var (
+	PromotionFormula_name = map[int32]string{
+		0: "PROMO_N_DIV_6",
+		1: "PROMO_N_PLUS_1_DIV_5",
+		2: "PROMO_N_DIV_5",
+	}
+	PromotionFormula_value = map[string]int32{
+		"PROMO_N_DIV_6":        0,
+		"PROMO_N_PLUS_1_DIV_5": 1,
+		"PROMO_N_DIV_5":        2,
+	}
+)
+
+func (x PromotionFormula) Enum() *PromotionFormula {
+	p := new(PromotionFormula)
+	*p = x
+	return p
+}
+
+func (x PromotionFormula) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PromotionFormula) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_ipc_league_proto_enumTypes[1].Descriptor()
+}
+
+func (PromotionFormula) Type() protoreflect.EnumType {
+	return &file_proto_ipc_league_proto_enumTypes[1]
+}
+
+func (x PromotionFormula) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PromotionFormula.Descriptor instead.
+func (PromotionFormula) EnumDescriptor() ([]byte, []int) {
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{1}
+}
+
 type StandingResult int32
 
 const (
@@ -116,11 +166,11 @@ func (x StandingResult) String() string {
 }
 
 func (StandingResult) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_ipc_league_proto_enumTypes[1].Descriptor()
+	return file_proto_ipc_league_proto_enumTypes[2].Descriptor()
 }
 
 func (StandingResult) Type() protoreflect.EnumType {
-	return &file_proto_ipc_league_proto_enumTypes[1]
+	return &file_proto_ipc_league_proto_enumTypes[2]
 }
 
 func (x StandingResult) Number() protoreflect.EnumNumber {
@@ -129,7 +179,7 @@ func (x StandingResult) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use StandingResult.Descriptor instead.
 func (StandingResult) EnumDescriptor() ([]byte, []int) {
-	return file_proto_ipc_league_proto_rawDescGZIP(), []int{1}
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{2}
 }
 
 // PlacementStatus indicates a player's status for next season placement
@@ -178,11 +228,11 @@ func (x PlacementStatus) String() string {
 }
 
 func (PlacementStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_ipc_league_proto_enumTypes[2].Descriptor()
+	return file_proto_ipc_league_proto_enumTypes[3].Descriptor()
 }
 
 func (PlacementStatus) Type() protoreflect.EnumType {
-	return &file_proto_ipc_league_proto_enumTypes[2]
+	return &file_proto_ipc_league_proto_enumTypes[3]
 }
 
 func (x PlacementStatus) Number() protoreflect.EnumNumber {
@@ -191,7 +241,7 @@ func (x PlacementStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PlacementStatus.Descriptor instead.
 func (PlacementStatus) EnumDescriptor() ([]byte, []int) {
-	return file_proto_ipc_league_proto_rawDescGZIP(), []int{2}
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{3}
 }
 
 type League struct {
@@ -423,17 +473,18 @@ func (x *TimeControl) GetTimeBankMinutes() int32 {
 }
 
 type Season struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	LeagueId      string                 `protobuf:"bytes,2,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
-	SeasonNumber  int32                  `protobuf:"varint,3,opt,name=season_number,json=seasonNumber,proto3" json:"season_number,omitempty"`
-	StartDate     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
-	ActualEndDate *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=actual_end_date,json=actualEndDate,proto3" json:"actual_end_date,omitempty"`
-	Status        SeasonStatus           `protobuf:"varint,7,opt,name=status,proto3,enum=ipc.SeasonStatus" json:"status,omitempty"`
-	Divisions     []*Division            `protobuf:"bytes,8,rep,name=divisions,proto3" json:"divisions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Uuid             string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	LeagueId         string                 `protobuf:"bytes,2,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	SeasonNumber     int32                  `protobuf:"varint,3,opt,name=season_number,json=seasonNumber,proto3" json:"season_number,omitempty"`
+	StartDate        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate          *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	ActualEndDate    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=actual_end_date,json=actualEndDate,proto3" json:"actual_end_date,omitempty"`
+	Status           SeasonStatus           `protobuf:"varint,7,opt,name=status,proto3,enum=ipc.SeasonStatus" json:"status,omitempty"`
+	Divisions        []*Division            `protobuf:"bytes,8,rep,name=divisions,proto3" json:"divisions,omitempty"`
+	PromotionFormula PromotionFormula       `protobuf:"varint,9,opt,name=promotion_formula,json=promotionFormula,proto3,enum=ipc.PromotionFormula" json:"promotion_formula,omitempty"` // How to calculate promotion/relegation counts
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Season) Reset() {
@@ -520,6 +571,13 @@ func (x *Season) GetDivisions() []*Division {
 		return x.Divisions
 	}
 	return nil
+}
+
+func (x *Season) GetPromotionFormula() PromotionFormula {
+	if x != nil {
+		return x.PromotionFormula
+	}
+	return PromotionFormula_PROMO_N_DIV_6
 }
 
 type Division struct {
@@ -844,7 +902,7 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\x0echallenge_rule\x18\t \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\"f\n" +
 	"\vTimeControl\x12+\n" +
 	"\x11increment_seconds\x18\x01 \x01(\x05R\x10incrementSeconds\x12*\n" +
-	"\x11time_bank_minutes\x18\x02 \x01(\x05R\x0ftimeBankMinutes\"\xec\x02\n" +
+	"\x11time_bank_minutes\x18\x02 \x01(\x05R\x0ftimeBankMinutes\"\xb0\x03\n" +
 	"\x06Season\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1b\n" +
 	"\tleague_id\x18\x02 \x01(\tR\bleagueId\x12#\n" +
@@ -854,7 +912,8 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\bend_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendDate\x12B\n" +
 	"\x0factual_end_date\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ractualEndDate\x12)\n" +
 	"\x06status\x18\a \x01(\x0e2\x11.ipc.SeasonStatusR\x06status\x12+\n" +
-	"\tdivisions\x18\b \x03(\v2\r.ipc.DivisionR\tdivisions\"\xb1\x02\n" +
+	"\tdivisions\x18\b \x03(\v2\r.ipc.DivisionR\tdivisions\x12B\n" +
+	"\x11promotion_formula\x18\t \x01(\x0e2\x15.ipc.PromotionFormulaR\x10promotionFormula\"\xb1\x02\n" +
 	"\bDivision\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1b\n" +
 	"\tseason_id\x18\x02 \x01(\tR\bseasonId\x12'\n" +
@@ -890,7 +949,11 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\rSEASON_ACTIVE\x10\x01\x12\x14\n" +
 	"\x10SEASON_COMPLETED\x10\x02\x12\x14\n" +
 	"\x10SEASON_CANCELLED\x10\x03\x12\x1c\n" +
-	"\x18SEASON_REGISTRATION_OPEN\x10\x04*t\n" +
+	"\x18SEASON_REGISTRATION_OPEN\x10\x04*R\n" +
+	"\x10PromotionFormula\x12\x11\n" +
+	"\rPROMO_N_DIV_6\x10\x00\x12\x18\n" +
+	"\x14PROMO_N_PLUS_1_DIV_5\x10\x01\x12\x11\n" +
+	"\rPROMO_N_DIV_5\x10\x02*t\n" +
 	"\x0eStandingResult\x12\x0f\n" +
 	"\vRESULT_NONE\x10\x00\x12\x13\n" +
 	"\x0fRESULT_PROMOTED\x10\x01\x12\x14\n" +
@@ -919,40 +982,42 @@ func file_proto_ipc_league_proto_rawDescGZIP() []byte {
 	return file_proto_ipc_league_proto_rawDescData
 }
 
-var file_proto_ipc_league_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_proto_ipc_league_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_proto_ipc_league_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_ipc_league_proto_goTypes = []any{
 	(SeasonStatus)(0),             // 0: ipc.SeasonStatus
-	(StandingResult)(0),           // 1: ipc.StandingResult
-	(PlacementStatus)(0),          // 2: ipc.PlacementStatus
-	(*League)(nil),                // 3: ipc.League
-	(*LeagueSettings)(nil),        // 4: ipc.LeagueSettings
-	(*TimeControl)(nil),           // 5: ipc.TimeControl
-	(*Season)(nil),                // 6: ipc.Season
-	(*Division)(nil),              // 7: ipc.Division
-	(*PlayerRegistration)(nil),    // 8: ipc.PlayerRegistration
-	(*LeaguePlayerStanding)(nil),  // 9: ipc.LeaguePlayerStanding
-	(ChallengeRule)(0),            // 10: ipc.ChallengeRule
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(PromotionFormula)(0),         // 1: ipc.PromotionFormula
+	(StandingResult)(0),           // 2: ipc.StandingResult
+	(PlacementStatus)(0),          // 3: ipc.PlacementStatus
+	(*League)(nil),                // 4: ipc.League
+	(*LeagueSettings)(nil),        // 5: ipc.LeagueSettings
+	(*TimeControl)(nil),           // 6: ipc.TimeControl
+	(*Season)(nil),                // 7: ipc.Season
+	(*Division)(nil),              // 8: ipc.Division
+	(*PlayerRegistration)(nil),    // 9: ipc.PlayerRegistration
+	(*LeaguePlayerStanding)(nil),  // 10: ipc.LeaguePlayerStanding
+	(ChallengeRule)(0),            // 11: ipc.ChallengeRule
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_proto_ipc_league_proto_depIdxs = []int32{
-	4,  // 0: ipc.League.settings:type_name -> ipc.LeagueSettings
-	5,  // 1: ipc.LeagueSettings.time_control:type_name -> ipc.TimeControl
-	10, // 2: ipc.LeagueSettings.challenge_rule:type_name -> ipc.ChallengeRule
-	11, // 3: ipc.Season.start_date:type_name -> google.protobuf.Timestamp
-	11, // 4: ipc.Season.end_date:type_name -> google.protobuf.Timestamp
-	11, // 5: ipc.Season.actual_end_date:type_name -> google.protobuf.Timestamp
+	5,  // 0: ipc.League.settings:type_name -> ipc.LeagueSettings
+	6,  // 1: ipc.LeagueSettings.time_control:type_name -> ipc.TimeControl
+	11, // 2: ipc.LeagueSettings.challenge_rule:type_name -> ipc.ChallengeRule
+	12, // 3: ipc.Season.start_date:type_name -> google.protobuf.Timestamp
+	12, // 4: ipc.Season.end_date:type_name -> google.protobuf.Timestamp
+	12, // 5: ipc.Season.actual_end_date:type_name -> google.protobuf.Timestamp
 	0,  // 6: ipc.Season.status:type_name -> ipc.SeasonStatus
-	7,  // 7: ipc.Season.divisions:type_name -> ipc.Division
-	8,  // 8: ipc.Division.players:type_name -> ipc.PlayerRegistration
-	9,  // 9: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
-	11, // 10: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
-	1,  // 11: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	8,  // 7: ipc.Season.divisions:type_name -> ipc.Division
+	1,  // 8: ipc.Season.promotion_formula:type_name -> ipc.PromotionFormula
+	9,  // 9: ipc.Division.players:type_name -> ipc.PlayerRegistration
+	10, // 10: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
+	12, // 11: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
+	2,  // 12: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_league_proto_init() }
@@ -966,7 +1031,7 @@ func file_proto_ipc_league_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_league_proto_rawDesc), len(file_proto_ipc_league_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
