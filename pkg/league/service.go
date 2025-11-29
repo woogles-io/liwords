@@ -17,6 +17,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -102,12 +103,13 @@ func (ls *LeagueService) BootstrapSeason(
 	// Create the first season
 	seasonID := uuid.New()
 	season, err := ls.store.CreateSeason(ctx, models.CreateSeasonParams{
-		Uuid:         seasonID,
-		LeagueID:     leagueID,
-		SeasonNumber: 1,
-		StartDate:    pgtype.Timestamptz{Time: startTime, Valid: true},
-		EndDate:      pgtype.Timestamptz{Time: endTime, Valid: true},
-		Status:       int32(req.Msg.Status),
+		Uuid:             seasonID,
+		LeagueID:         leagueID,
+		SeasonNumber:     1,
+		StartDate:        pgtype.Timestamptz{Time: startTime, Valid: true},
+		EndDate:          pgtype.Timestamptz{Time: endTime, Valid: true},
+		Status:           int32(req.Msg.Status),
+		PromotionFormula: int32(ipc.PromotionFormula_PROMO_N_DIV_6), // Default formula
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to create season: %w", err))
@@ -142,6 +144,161 @@ func (ls *LeagueService) BootstrapSeason(
 		EndDate:      timestamppb.New(season.EndDate.Time),
 		Status:       ipc.SeasonStatus(season.Status),
 		Divisions:    []*ipc.Division{}, // No divisions yet
+	}
+
+	return connect.NewResponse(&pb.SeasonResponse{
+		Season: protoSeason,
+	}), nil
+}
+
+// UpdateSeasonDates updates the start and end dates of a season.
+// Works for seasons in any state (admin use only).
+func (ls *LeagueService) UpdateSeasonDates(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateSeasonDatesRequest],
+) (*connect.Response[pb.SeasonResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+	if req.Msg.StartDate == nil || req.Msg.EndDate == nil {
+		return nil, apiserver.InvalidArg("start_date and end_date are required")
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Verify the season exists
+	_, err = ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Validate dates
+	startTime := req.Msg.StartDate.AsTime()
+	endTime := req.Msg.EndDate.AsTime()
+	if endTime.Before(startTime) {
+		return nil, apiserver.InvalidArg("end_date must be after start_date")
+	}
+
+	// Update the season dates
+	err = ls.store.UpdateSeasonDates(ctx, models.UpdateSeasonDatesParams{
+		Uuid:      seasonID,
+		StartDate: pgtype.Timestamptz{Time: startTime, Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: endTime, Valid: true},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to update season dates: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Time("startDate", startTime).
+		Time("endDate", endTime).
+		Msg("season-dates-updated")
+
+	// Fetch updated season
+	updatedSeason, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to fetch updated season: %w", err))
+	}
+
+	// Convert to proto response
+	protoSeason := &ipc.Season{
+		Uuid:         updatedSeason.Uuid.String(),
+		LeagueId:     updatedSeason.LeagueID.String(),
+		SeasonNumber: updatedSeason.SeasonNumber,
+		StartDate:    timestamppb.New(updatedSeason.StartDate.Time),
+		EndDate:      timestamppb.New(updatedSeason.EndDate.Time),
+		Status:       ipc.SeasonStatus(updatedSeason.Status),
+		Divisions:    []*ipc.Division{},
+	}
+
+	if updatedSeason.ActualEndDate.Valid {
+		protoSeason.ActualEndDate = timestamppb.New(updatedSeason.ActualEndDate.Time)
+	}
+
+	return connect.NewResponse(&pb.SeasonResponse{
+		Season: protoSeason,
+	}), nil
+}
+
+func (ls *LeagueService) UpdateSeasonPromotionFormula(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateSeasonPromotionFormulaRequest],
+) (*connect.Response[pb.SeasonResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Get the season
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Only allow updating formula when season is not COMPLETED
+	status := ipc.SeasonStatus(season.Status)
+	if status == ipc.SeasonStatus_SEASON_COMPLETED {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("cannot update promotion formula for a season with status %s", status.String()))
+	}
+
+	// Update the season promotion formula
+	err = ls.store.UpdateSeasonPromotionFormula(ctx, models.UpdateSeasonPromotionFormulaParams{
+		Uuid:             seasonID,
+		PromotionFormula: int32(req.Msg.PromotionFormula),
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to update season promotion formula: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Str("promotionFormula", req.Msg.PromotionFormula.String()).
+		Msg("season-promotion-formula-updated")
+
+	// Fetch updated season
+	updatedSeason, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to fetch updated season: %w", err))
+	}
+
+	// Convert to proto response
+	protoSeason := &ipc.Season{
+		Uuid:             updatedSeason.Uuid.String(),
+		LeagueId:         updatedSeason.LeagueID.String(),
+		SeasonNumber:     updatedSeason.SeasonNumber,
+		StartDate:        timestamppb.New(updatedSeason.StartDate.Time),
+		EndDate:          timestamppb.New(updatedSeason.EndDate.Time),
+		Status:           ipc.SeasonStatus(updatedSeason.Status),
+		PromotionFormula: ipc.PromotionFormula(updatedSeason.PromotionFormula),
+		Divisions:        []*ipc.Division{},
+	}
+
+	if updatedSeason.ActualEndDate.Valid {
+		protoSeason.ActualEndDate = timestamppb.New(updatedSeason.ActualEndDate.Time)
 	}
 
 	return connect.NewResponse(&pb.SeasonResponse{
@@ -1204,20 +1361,33 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 
 	// Convert in-progress games to proto
 	for _, row := range inProgressGameRows {
-		// Determine opponent based on which player the user is
+		// Determine opponent and player index based on which player the user is
 		opponentUuid := row.Player1Uuid.String
 		opponentUsername := row.Player1Username.String
+		userIsPlayer0 := true
 		if row.Player1Uuid.String == userID {
 			opponentUuid = row.Player0Uuid.String
 			opponentUsername = row.Player0Username.String
+			userIsPlayer0 = false
+		}
+
+		// Extract current scores from game history
+		scores := gamestore.ScoresFromHistory(row.History)
+		var playerScore, opponentScore int32
+		if userIsPlayer0 {
+			playerScore = scores[0]
+			opponentScore = scores[1]
+		} else {
+			playerScore = scores[1]
+			opponentScore = scores[0]
 		}
 
 		allGames = append(allGames, &pb.PlayerSeasonGame{
 			GameId:           row.GameUuid.String,
 			OpponentUserId:   opponentUuid,
 			OpponentUsername: opponentUsername,
-			PlayerScore:      0,
-			OpponentScore:    0,
+			PlayerScore:      playerScore,
+			OpponentScore:    opponentScore,
 			Result:           "in_progress",
 			GameDate:         timestamppb.New(row.CreatedAt.Time),
 			Round:            0,

@@ -34,8 +34,8 @@ WHERE uuid = $1;
 -- Season operations
 
 -- name: CreateSeason :one
-INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetSeason :one
@@ -63,6 +63,44 @@ WHERE league_id = $1 AND season_number = $2;
 -- name: UpdateSeasonStatus :exec
 UPDATE league_seasons
 SET status = $2, updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: UpdateSeasonDates :exec
+UPDATE league_seasons
+SET start_date = $2, end_date = $3, updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: UpdateSeasonPromotionFormula :exec
+UPDATE league_seasons
+SET promotion_formula = $2, updated_at = NOW()
+WHERE uuid = $1;
+
+-- Task tracking queries for hourly runner idempotency
+
+-- name: MarkSeasonClosed :exec
+UPDATE league_seasons
+SET closed_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkDivisionsPrepared :exec
+UPDATE league_seasons
+SET divisions_prepared_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkSeasonStarted :exec
+UPDATE league_seasons
+SET started_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkRegistrationOpened :exec
+-- Marks when registration was opened for this season
+UPDATE league_seasons
+SET registration_opened_at = NOW(), updated_at = NOW()
+WHERE uuid = $1;
+
+-- name: MarkStartingSoonNotificationSent :exec
+UPDATE league_seasons
+SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
 WHERE uuid = $1;
 
 -- name: MarkSeasonComplete :exec
@@ -391,7 +429,8 @@ SELECT
     u_player0.uuid as player0_uuid,
     u_player0.username as player0_username,
     u_player1.uuid as player1_uuid,
-    u_player1.username as player1_username
+    u_player1.username as player1_username,
+    g.history
 FROM games g
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id

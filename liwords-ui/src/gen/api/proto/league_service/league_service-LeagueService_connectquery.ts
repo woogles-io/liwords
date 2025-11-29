@@ -130,3 +130,13 @@ export const getSeasonZeroMoveGames = LeagueService.method.getSeasonZeroMoveGame
  * @generated from rpc league_service.LeagueService.GetSeasonPlayersWithUnstartedGames
  */
 export const getSeasonPlayersWithUnstartedGames = LeagueService.method.getSeasonPlayersWithUnstartedGames;
+
+/**
+ * @generated from rpc league_service.LeagueService.UpdateSeasonDates
+ */
+export const updateSeasonDates = LeagueService.method.updateSeasonDates;
+
+/**
+ * @generated from rpc league_service.LeagueService.UpdateSeasonPromotionFormula
+ */
+export const updateSeasonPromotionFormula = LeagueService.method.updateSeasonPromotionFormula;

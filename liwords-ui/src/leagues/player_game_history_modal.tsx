@@ -57,9 +57,6 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         _: unknown,
         record: { playerScore: number; opponentScore: number; result: string },
       ) => {
-        if (record.result === "in_progress") {
-          return "—";
-        }
         return `${record.playerScore}-${record.opponentScore}`;
       },
     },

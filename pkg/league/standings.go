@@ -20,6 +20,25 @@ const (
 	MaxLeagueGamesPerPlayer = 14
 )
 
+// CalculatePromotionCount returns the number of players to promote/relegate
+// based on the division size and the formula
+func CalculatePromotionCount(divSize int, formula pb.PromotionFormula) int {
+	if divSize == 0 {
+		return 0
+	}
+	switch formula {
+	case pb.PromotionFormula_PROMO_N_PLUS_1_DIV_5:
+		// ceil((N+1)/5): 13->3, 15->4, 17->4, 20->5
+		return int(math.Ceil(float64(divSize+1) / 5.0))
+	case pb.PromotionFormula_PROMO_N_DIV_5:
+		// ceil(N/5): 13->3, 15->3, 17->4, 20->4
+		return int(math.Ceil(float64(divSize) / 5.0))
+	default:
+		// PROMO_N_DIV_6 (default): ceil(N/6): 13->3, 15->3, 17->3, 20->4
+		return int(math.Ceil(float64(divSize) / 6.0))
+	}
+}
+
 // CalculateExpectedGamesPerPlayer returns the expected number of games per player
 // based on the number of players in the division
 func CalculateExpectedGamesPerPlayer(numPlayers int) int {
@@ -62,6 +81,12 @@ func (sm *StandingsManager) CalculateAndSaveStandings(
 	ctx context.Context,
 	seasonID uuid.UUID,
 ) error {
+	// Get the season to get its promotion formula
+	season, err := sm.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
 	// Get all divisions for this season
 	divisions, err := sm.store.GetDivisionsBySeason(ctx, seasonID)
 	if err != nil {
@@ -81,9 +106,12 @@ func (sm *StandingsManager) CalculateAndSaveStandings(
 		}
 	}
 
+	// Convert DB int32 to proto enum
+	promotionFormula := pb.PromotionFormula(season.PromotionFormula)
+
 	// Calculate standings for each division
 	for _, division := range divisions {
-		err := sm.calculateDivisionStandings(ctx, division, highestRegularDivision)
+		err := sm.calculateDivisionStandings(ctx, division, highestRegularDivision, promotionFormula)
 		if err != nil {
 			return fmt.Errorf("failed to calculate standings for division %d: %w", division.DivisionNumber, err)
 		}
@@ -97,6 +125,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	ctx context.Context,
 	division models.LeagueDivision,
 	highestRegularDivision int32,
+	promotionFormula pb.PromotionFormula,
 ) error {
 	// Get all registrations for this division
 	registrations, err := sm.store.GetDivisionRegistrations(ctx, division.Uuid)
@@ -190,7 +219,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	}
 
 	// Mark outcomes based on rank
-	sm.markOutcomes(standings, division.DivisionNumber, highestRegularDivision)
+	sm.markOutcomes(standings, division.DivisionNumber, highestRegularDivision, promotionFormula)
 
 	// Calculate expected games per player based on division size
 	expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
@@ -271,14 +300,15 @@ func (sm *StandingsManager) markOutcomes(
 	standings []PlayerStanding,
 	divisionNumber int32,
 	highestRegularDivision int32,
+	promotionFormula pb.PromotionFormula,
 ) {
 	divSize := len(standings)
 	if divSize == 0 {
 		return
 	}
 
-	// Calculate number of promoted and relegated: ceil(div_size / 6)
-	promotionCount := int(math.Ceil(float64(divSize) / 6.0))
+	// Calculate number of promoted and relegated based on the season's formula
+	promotionCount := CalculatePromotionCount(divSize, promotionFormula)
 	relegationCount := promotionCount
 
 	isHighestDivision := divisionNumber == 1

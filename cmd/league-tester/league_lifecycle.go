@@ -227,9 +227,9 @@ func startSeason(ctx context.Context, leagueSlugOrUUID string, seasonNumber int3
 		return fmt.Errorf("failed to parse league settings: %w", err)
 	}
 
-	// Create all games for the season
+	// Create all games for the season (no batching for tests)
 	startMgr := league.NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
-	gameResult, err := startMgr.CreateGamesForSeason(ctx, leagueUUID, season.Uuid, leagueSettings)
+	gameResult, err := startMgr.CreateGamesForSeason(ctx, leagueUUID, season.Uuid, leagueSettings, 0, 0)
 	if err != nil {
 		// Roll back the season status to SCHEDULED since game creation failed
 		rollbackErr := lifecycleMgr.RollbackSeasonToScheduled(ctx, season.Uuid)

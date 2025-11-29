@@ -1,0 +1,33 @@
+meta {
+  name: Update Season Promotion Formula
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/league_service.LeagueService/UpdateSeasonPromotionFormula
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "season_id": "07f7d60c-d72f-4003-b7b1-d26a2ba6095e",
+    "promotion_formula": 1
+  }
+}
+
+docs {
+  ## Update Season Promotion Formula
+  
+  Updates the promotion/relegation formula for a season.
+  
+  ### Promotion Formula Values:
+  - `0` = PROMO_N_DIV_6 (ceil(N/6)) - default, e.g. 15 players = 3 promoted/relegated
+  - `1` = PROMO_N_PLUS_1_DIV_5 (ceil((N+1)/5)), e.g. 15 players = 4 promoted/relegated
+  - `2` = PROMO_N_DIV_5 (ceil(N/5)), e.g. 15 players = 3 promoted/relegated
+  
+  ### Requirements:
+  - Must have can_manage_leagues permission
+  - Season cannot be COMPLETED
+}

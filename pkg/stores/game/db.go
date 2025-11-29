@@ -852,6 +852,37 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 	return &pb.GameInfoResponses{GameInfo: responses}, nil
 }
 
+// ScoresFromHistory extracts current scores from a serialized GameHistory proto.
+// Returns scores in order of player index [player0_score, player1_score].
+// Searches backwards from the end of events to find each player's last cumulative score.
+func ScoresFromHistory(historyBytes []byte) []int32 {
+	if len(historyBytes) == 0 {
+		return []int32{0, 0}
+	}
+
+	var history macondopb.GameHistory
+	if err := proto.Unmarshal(historyBytes, &history); err != nil {
+		log.Warn().Err(err).Msg("failed to unmarshal game history for scores")
+		return []int32{0, 0}
+	}
+
+	scores := []int32{0, 0}
+	found := [2]bool{false, false}
+
+	// Search backwards to find each player's last cumulative score
+	for i := len(history.Events) - 1; i >= 0; i-- {
+		evt := history.Events[i]
+		if evt.PlayerIndex < 2 && !found[evt.PlayerIndex] {
+			scores[evt.PlayerIndex] = evt.Cumulative
+			found[evt.PlayerIndex] = true
+			if found[0] && found[1] {
+				break
+			}
+		}
+	}
+	return scores
+}
+
 // ListActiveCorrespondenceForUser lists active correspondence games for a specific user.
 func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error) {
 	var responses []*pb.GameInfoResponse
@@ -878,6 +909,7 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 			TournamentRound:     int32(trdata.Round),
 			TournamentGameIndex: int32(trdata.GameIndex),
 			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
+			Scores:              ScoresFromHistory(g.History),
 		}
 		if g.PlayerOnTurn.Valid {
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
@@ -934,6 +966,7 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 			LastUpdate:  timestamppb.New(g.UpdatedAt.Time),
 			LeagueId:    leagueID.String(),
 			LeagueSlug:  league.Slug,
+			Scores:      ScoresFromHistory(g.History),
 		}
 
 		if g.PlayerOnTurn.Valid {

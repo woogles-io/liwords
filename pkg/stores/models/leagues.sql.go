@@ -121,18 +121,19 @@ func (q *Queries) CreateLeague(ctx context.Context, arg CreateLeagueParams) (Lea
 
 const createSeason = `-- name: CreateSeason :one
 
-INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at
+INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula
 `
 
 type CreateSeasonParams struct {
-	Uuid         uuid.UUID
-	LeagueID     uuid.UUID
-	SeasonNumber int32
-	StartDate    pgtype.Timestamptz
-	EndDate      pgtype.Timestamptz
-	Status       int32
+	Uuid             uuid.UUID
+	LeagueID         uuid.UUID
+	SeasonNumber     int32
+	StartDate        pgtype.Timestamptz
+	EndDate          pgtype.Timestamptz
+	Status           int32
+	PromotionFormula int32
 }
 
 // Season operations
@@ -144,6 +145,7 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 		arg.StartDate,
 		arg.EndDate,
 		arg.Status,
+		arg.PromotionFormula,
 	)
 	var i LeagueSeason
 	err := row.Scan(
@@ -157,6 +159,12 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClosedAt,
+		&i.DivisionsPreparedAt,
+		&i.StartedAt,
+		&i.RegistrationOpenedAt,
+		&i.StartingSoonNotificationSentAt,
+		&i.PromotionFormula,
 	)
 	return i, err
 }
@@ -253,7 +261,7 @@ func (q *Queries) GetAllLeagues(ctx context.Context, activeOnly bool) ([]League,
 }
 
 const getCurrentSeason = `-- name: GetCurrentSeason :one
-SELECT ls.id, ls.uuid, ls.league_id, ls.season_number, ls.start_date, ls.end_date, ls.actual_end_date, ls.status, ls.created_at, ls.updated_at FROM league_seasons ls
+SELECT ls.id, ls.uuid, ls.league_id, ls.season_number, ls.start_date, ls.end_date, ls.actual_end_date, ls.status, ls.created_at, ls.updated_at, ls.closed_at, ls.divisions_prepared_at, ls.started_at, ls.registration_opened_at, ls.starting_soon_notification_sent_at, ls.promotion_formula FROM league_seasons ls
 JOIN leagues l ON l.current_season_id = ls.uuid
 WHERE l.uuid = $1
 `
@@ -272,6 +280,12 @@ func (q *Queries) GetCurrentSeason(ctx context.Context, argUuid uuid.UUID) (Leag
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClosedAt,
+		&i.DivisionsPreparedAt,
+		&i.StartedAt,
+		&i.RegistrationOpenedAt,
+		&i.StartingSoonNotificationSentAt,
+		&i.PromotionFormula,
 	)
 	return i, err
 }
@@ -671,7 +685,7 @@ func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGames
 }
 
 const getPastSeasons = `-- name: GetPastSeasons :many
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1 AND status = 2  -- SeasonStatus.SEASON_COMPLETED
 ORDER BY season_number DESC
 `
@@ -696,6 +710,12 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ClosedAt,
+			&i.DivisionsPreparedAt,
+			&i.StartedAt,
+			&i.RegistrationOpenedAt,
+			&i.StartingSoonNotificationSentAt,
+			&i.PromotionFormula,
 		); err != nil {
 			return nil, err
 		}
@@ -881,7 +901,8 @@ SELECT
     u_player0.uuid as player0_uuid,
     u_player0.username as player0_username,
     u_player1.uuid as player1_uuid,
-    u_player1.username as player1_username
+    u_player1.username as player1_username,
+    g.history
 FROM games g
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id
@@ -905,6 +926,7 @@ type GetPlayerSeasonInProgressGamesRow struct {
 	Player0Username pgtype.Text
 	Player1Uuid     pgtype.Text
 	Player1Username pgtype.Text
+	History         []byte
 }
 
 // Get in-progress games for a specific player in a season (fast query on indexed fields)
@@ -926,6 +948,7 @@ func (q *Queries) GetPlayerSeasonInProgressGames(ctx context.Context, arg GetPla
 			&i.Player0Username,
 			&i.Player1Uuid,
 			&i.Player1Username,
+			&i.History,
 		); err != nil {
 			return nil, err
 		}
@@ -1047,7 +1070,7 @@ func (q *Queries) GetRegistrationsByDivision(ctx context.Context, divisionID pgt
 }
 
 const getSeason = `-- name: GetSeason :one
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons WHERE uuid = $1
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons WHERE uuid = $1
 `
 
 func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeason, error) {
@@ -1064,12 +1087,18 @@ func (q *Queries) GetSeason(ctx context.Context, argUuid uuid.UUID) (LeagueSeaso
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClosedAt,
+		&i.DivisionsPreparedAt,
+		&i.StartedAt,
+		&i.RegistrationOpenedAt,
+		&i.StartingSoonNotificationSentAt,
+		&i.PromotionFormula,
 	)
 	return i, err
 }
 
 const getSeasonByLeagueAndNumber = `-- name: GetSeasonByLeagueAndNumber :one
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1 AND season_number = $2
 `
 
@@ -1092,6 +1121,12 @@ func (q *Queries) GetSeasonByLeagueAndNumber(ctx context.Context, arg GetSeasonB
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClosedAt,
+		&i.DivisionsPreparedAt,
+		&i.StartedAt,
+		&i.RegistrationOpenedAt,
+		&i.StartingSoonNotificationSentAt,
+		&i.PromotionFormula,
 	)
 	return i, err
 }
@@ -1274,7 +1309,7 @@ func (q *Queries) GetSeasonZeroMoveGames(ctx context.Context, seasonID pgtype.UU
 }
 
 const getSeasonsByLeague = `-- name: GetSeasonsByLeague :many
-SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at FROM league_seasons
+SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1
 ORDER BY season_number DESC
 `
@@ -1299,6 +1334,12 @@ func (q *Queries) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ClosedAt,
+			&i.DivisionsPreparedAt,
+			&i.StartedAt,
+			&i.RegistrationOpenedAt,
+			&i.StartingSoonNotificationSentAt,
+			&i.PromotionFormula,
 		); err != nil {
 			return nil, err
 		}
@@ -1456,6 +1497,42 @@ func (q *Queries) MarkDivisionComplete(ctx context.Context, argUuid uuid.UUID) e
 	return err
 }
 
+const markDivisionsPrepared = `-- name: MarkDivisionsPrepared :exec
+UPDATE league_seasons
+SET divisions_prepared_at = NOW(), updated_at = NOW()
+WHERE uuid = $1
+`
+
+func (q *Queries) MarkDivisionsPrepared(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markDivisionsPrepared, argUuid)
+	return err
+}
+
+const markRegistrationOpened = `-- name: MarkRegistrationOpened :exec
+UPDATE league_seasons
+SET registration_opened_at = NOW(), updated_at = NOW()
+WHERE uuid = $1
+`
+
+// Marks when registration was opened for this season
+func (q *Queries) MarkRegistrationOpened(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markRegistrationOpened, argUuid)
+	return err
+}
+
+const markSeasonClosed = `-- name: MarkSeasonClosed :exec
+
+UPDATE league_seasons
+SET closed_at = NOW(), updated_at = NOW()
+WHERE uuid = $1
+`
+
+// Task tracking queries for hourly runner idempotency
+func (q *Queries) MarkSeasonClosed(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markSeasonClosed, argUuid)
+	return err
+}
+
 const markSeasonComplete = `-- name: MarkSeasonComplete :exec
 UPDATE league_seasons
 SET status = 2, actual_end_date = NOW(), updated_at = NOW()  -- SeasonStatus.SEASON_COMPLETED
@@ -1464,6 +1541,28 @@ WHERE uuid = $1
 
 func (q *Queries) MarkSeasonComplete(ctx context.Context, argUuid uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markSeasonComplete, argUuid)
+	return err
+}
+
+const markSeasonStarted = `-- name: MarkSeasonStarted :exec
+UPDATE league_seasons
+SET started_at = NOW(), updated_at = NOW()
+WHERE uuid = $1
+`
+
+func (q *Queries) MarkSeasonStarted(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markSeasonStarted, argUuid)
+	return err
+}
+
+const markStartingSoonNotificationSent = `-- name: MarkStartingSoonNotificationSent :exec
+UPDATE league_seasons
+SET starting_soon_notification_sent_at = NOW(), updated_at = NOW()
+WHERE uuid = $1
+`
+
+func (q *Queries) MarkStartingSoonNotificationSent(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markStartingSoonNotificationSent, argUuid)
 	return err
 }
 
@@ -1697,6 +1796,39 @@ func (q *Queries) UpdateRegistrationDivision(ctx context.Context, arg UpdateRegi
 		arg.FirstsCount,
 		arg.UserID,
 	)
+	return err
+}
+
+const updateSeasonDates = `-- name: UpdateSeasonDates :exec
+UPDATE league_seasons
+SET start_date = $2, end_date = $3, updated_at = NOW()
+WHERE uuid = $1
+`
+
+type UpdateSeasonDatesParams struct {
+	Uuid      uuid.UUID
+	StartDate pgtype.Timestamptz
+	EndDate   pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateSeasonDates(ctx context.Context, arg UpdateSeasonDatesParams) error {
+	_, err := q.db.Exec(ctx, updateSeasonDates, arg.Uuid, arg.StartDate, arg.EndDate)
+	return err
+}
+
+const updateSeasonPromotionFormula = `-- name: UpdateSeasonPromotionFormula :exec
+UPDATE league_seasons
+SET promotion_formula = $2, updated_at = NOW()
+WHERE uuid = $1
+`
+
+type UpdateSeasonPromotionFormulaParams struct {
+	Uuid             uuid.UUID
+	PromotionFormula int32
+}
+
+func (q *Queries) UpdateSeasonPromotionFormula(ctx context.Context, arg UpdateSeasonPromotionFormulaParams) error {
+	_, err := q.db.Exec(ctx, updateSeasonPromotionFormula, arg.Uuid, arg.PromotionFormula)
 	return err
 }
 

@@ -58,7 +58,7 @@ type RegistrationOpenResult struct {
 	StartDate        time.Time
 }
 
-// OpenRegistrationForNextSeason opens registration for the next season on Day 15
+// OpenRegistrationForNextSeason opens registration for the next season
 // Returns nil if conditions aren't met.
 func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 	ctx context.Context,
@@ -100,7 +100,18 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		return nil, fmt.Errorf("cannot open registration: league is not active")
 	}
 
+	// Idempotency check: if next season already exists, silently skip
+	nextSeasonNumber := currentSeason.SeasonNumber + 1
+	_, err = slm.stores.LeagueStore.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
+	if err == nil {
+		return nil, nil // Next season already exists, skip
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to check existing season: %w", err)
+	}
+
 	// Safety check: Verify no orphaned REGISTRATION_OPEN seasons exist
+	// (This would indicate a bug - we should have caught it above)
 	allSeasons, err := slm.stores.LeagueStore.GetSeasonsByLeague(ctx, leagueID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing seasons: %w", err)
@@ -109,16 +120,6 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 		if season.Status == int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN) {
 			return nil, fmt.Errorf("cannot open registration: another season (%d) is already in REGISTRATION_OPEN status", season.SeasonNumber)
 		}
-	}
-
-	// Check if next season already exists
-	nextSeasonNumber := currentSeason.SeasonNumber + 1
-	_, err = slm.stores.LeagueStore.GetSeasonByLeagueAndNumber(ctx, leagueID, nextSeasonNumber)
-	if err == nil {
-		return nil, nil // Next season already exists, skip
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("failed to check existing season: %w", err)
 	}
 
 	// Create next season with REGISTRATION_OPEN status
@@ -130,12 +131,13 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForNextSeason(
 
 	nextSeasonID := uuid.New()
 	_, err = slm.stores.LeagueStore.CreateSeason(ctx, models.CreateSeasonParams{
-		Uuid:         nextSeasonID,
-		LeagueID:     leagueID,
-		SeasonNumber: nextSeasonNumber,
-		StartDate:    pgtype.Timestamptz{Time: nextStartDate, Valid: true},
-		EndDate:      pgtype.Timestamptz{Time: nextEndDate, Valid: true},
-		Status:       int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
+		Uuid:             nextSeasonID,
+		LeagueID:         leagueID,
+		SeasonNumber:     nextSeasonNumber,
+		StartDate:        pgtype.Timestamptz{Time: nextStartDate, Valid: true},
+		EndDate:          pgtype.Timestamptz{Time: nextEndDate, Valid: true},
+		Status:           int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
+		PromotionFormula: currentSeason.PromotionFormula, // Copy from previous season
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create next season: %w", err)
@@ -480,7 +482,6 @@ type PrepareAndScheduleSeasonResult struct {
 // Accepts seasons in REGISTRATION_OPEN or SCHEDULED status:
 // - REGISTRATION_OPEN: closes registration, creates divisions, sets to SCHEDULED
 // - SCHEDULED: recreates divisions (allows re-running if registrations changed)
-// This should be called on Day 21 at midnight (8 hours before season start at 8:00 AM)
 // Returns nil if season is not in an appropriate status (silently skips)
 func (slm *SeasonLifecycleManager) PrepareAndScheduleSeason(
 	ctx context.Context,

@@ -7,7 +7,7 @@ Resources:
       Name: liwords-hourly-maintenance
       ScheduleExpression: cron(4 * * * ? *)
       State: ENABLED
-      Description: Hourly maintenance for liwords. Runs blog RSS updater and badge updater.
+      Description: Hourly maintenance for liwords. Runs blog RSS updater, badge updater, and league hourly runner.
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-HourlyMaintenanceTarget"
@@ -25,7 +25,7 @@ Resources:
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
-                              "blogrss-updater,sub-badge-updater"
+                              "blogrss-updater,sub-badge-updater,league-hourly-runner"
                           ]
                       }
                   ]
@@ -45,7 +45,7 @@ Resources:
       Name: liwords-daily-midnight-maintenance
       ScheduleExpression: cron(0 5 * * ? *)
       State: ENABLED
-      Description: Daily midnight (US Eastern) maintenance for liwords. Runs integrations refresh, game cleanup, league midnight tasks, session cleanup, and user cleanup.
+      Description: Daily midnight (US Eastern) maintenance for liwords. Runs integrations refresh, game cleanup, session cleanup, and user cleanup. League tasks now handled by hourly runner.
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-DailyMidnightTarget"
@@ -63,7 +63,7 @@ Resources:
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
-                              "integrations-refresher,cancelled-games-cleanup,league-midnight-runner,monitoring-streams-cleanup,expired-sessions-cleanup,unverified-users-cleanup"
+                              "integrations-refresher,cancelled-games-cleanup,monitoring-streams-cleanup,expired-sessions-cleanup,unverified-users-cleanup,league-unstarted-game-reminder"
                           ]
                       }
                   ]
@@ -77,13 +77,17 @@ Resources:
             EnableECSManagedTags: false
             EnableExecuteCommand: false
 
+  # Note: Daily8amMaintenanceRule has been replaced by the hourly runner.
+  # The league-hourly-runner now checks all leagues for tasks that need to run
+  # based on their actual start/end dates, not a fixed 8am Eastern schedule.
+  # Old 8am runner kept as disabled for rollback purposes if needed.
   Daily8amMaintenanceRule:
     Type: AWS::Events::Rule
     Properties:
       Name: liwords-daily-8am-maintenance
       ScheduleExpression: cron(0 13 * * ? *)
-      State: ENABLED
-      Description: Daily 8am (US Eastern) maintenance for liwords. Runs league morning tasks including season start and registration opening.
+      State: DISABLED
+      Description: "[DEPRECATED - replaced by hourly runner] Daily 8am (US Eastern) maintenance. League tasks now handled by league-hourly-runner."
       EventBusName: default
       Targets:
         - Id: !Sub "${AWS::StackName}-Daily8amTarget"
