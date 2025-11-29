@@ -30,13 +30,14 @@ type Store interface {
 	GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error)
 	UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error
 	UpdateSeasonDates(ctx context.Context, arg models.UpdateSeasonDatesParams) error
+	UpdateSeasonPromotionFormula(ctx context.Context, arg models.UpdateSeasonPromotionFormulaParams) error
 	MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error
 
 	// Task tracking for hourly runner idempotency
 	MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error
 	MarkDivisionsPrepared(ctx context.Context, uuid uuid.UUID) error
 	MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error
-	MarkRegistrationOpenedForNextSeason(ctx context.Context, uuid uuid.UUID) error
+	MarkRegistrationOpened(ctx context.Context, uuid uuid.UUID) error
 	MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error
 
 	// Division operations
@@ -160,6 +161,10 @@ func (s *DBStore) UpdateSeasonDates(ctx context.Context, arg models.UpdateSeason
 	return s.queries.UpdateSeasonDates(ctx, arg)
 }
 
+func (s *DBStore) UpdateSeasonPromotionFormula(ctx context.Context, arg models.UpdateSeasonPromotionFormulaParams) error {
+	return s.queries.UpdateSeasonPromotionFormula(ctx, arg)
+}
+
 func (s *DBStore) MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error {
 	return s.queries.MarkSeasonComplete(ctx, uuid)
 }
@@ -178,8 +183,8 @@ func (s *DBStore) MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error {
 	return s.queries.MarkSeasonStarted(ctx, uuid)
 }
 
-func (s *DBStore) MarkRegistrationOpenedForNextSeason(ctx context.Context, uuid uuid.UUID) error {
-	return s.queries.MarkRegistrationOpenedForNextSeason(ctx, uuid)
+func (s *DBStore) MarkRegistrationOpened(ctx context.Context, uuid uuid.UUID) error {
+	return s.queries.MarkRegistrationOpened(ctx, uuid)
 }
 
 func (s *DBStore) MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error {

@@ -1,8 +1,27 @@
 import React, { useState } from "react";
 import { Table, Tag } from "antd";
-import { Division } from "../gen/api/proto/ipc/league_pb";
+import { Division, PromotionFormula } from "../gen/api/proto/ipc/league_pb";
 import { StandingResult } from "../gen/api/proto/ipc/league_pb";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+
+// Calculate promotion/relegation count based on the formula
+function calculatePromotionCount(
+  divSize: number,
+  formula: PromotionFormula,
+): number {
+  if (divSize === 0) return 0;
+  switch (formula) {
+    case PromotionFormula.PROMO_N_PLUS_1_DIV_5:
+      // ceil((N+1)/5): 13->3, 15->4, 17->4, 20->5
+      return Math.ceil((divSize + 1) / 5);
+    case PromotionFormula.PROMO_N_DIV_5:
+      // ceil(N/5): 13->3, 15->3, 17->4, 20->4
+      return Math.ceil(divSize / 5);
+    default:
+      // PROMO_N_DIV_6 (default): ceil(N/6): 13->3, 15->3, 17->3, 20->4
+      return Math.ceil(divSize / 6);
+  }
+}
 
 type DivisionStandingsProps = {
   division: Division;
@@ -10,6 +29,7 @@ type DivisionStandingsProps = {
   seasonId: string;
   seasonNumber: number;
   currentUserId?: string;
+  promotionFormula?: PromotionFormula;
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -18,6 +38,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   seasonId,
   seasonNumber,
   currentUserId,
+  promotionFormula = PromotionFormula.PROMO_N_DIV_6,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -32,15 +53,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     setSelectedPlayer(null);
   };
 
-  // Calculate promotion/relegation zones: ceil((divisionSize + 1) / 5)
-  // Examples: 13 players -> 3, 15 players -> 4, 17 players -> 4, 20 players -> 5
+  // Calculate promotion/relegation zones using the season's formula
   const divisionSize = division.standings.length;
-  const promotionCount =
-    division.divisionNumber === 1 ? 0 : Math.ceil((divisionSize + 1) / 5);
+  const baseCount = calculatePromotionCount(divisionSize, promotionFormula);
+  const promotionCount = division.divisionNumber === 1 ? 0 : baseCount;
   const relegationCount =
-    division.divisionNumber === totalDivisions
-      ? 0
-      : Math.ceil((divisionSize + 1) / 5);
+    division.divisionNumber === totalDivisions ? 0 : baseCount;
 
   const getRowClassName = (_record: unknown, index: number) => {
     const rank = index + 1;

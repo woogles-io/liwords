@@ -79,56 +79,10 @@ type GameCreationResult struct {
 	Errors            []string
 }
 
-// CreateGamesForSeason creates all games for all divisions in a season
+// CreateGamesForSeason creates all games for all divisions in a season.
+// If batchSize > 0, sleeps for delayBetweenBatches after every batchSize games to reduce DB strain.
+// If batchSize == 0, creates all games without delays.
 func (ssm *SeasonStartManager) CreateGamesForSeason(
-	ctx context.Context,
-	leagueID uuid.UUID,
-	seasonID uuid.UUID,
-	leagueSettings *pb.LeagueSettings,
-) (*GameCreationResult, error) {
-	result := &GameCreationResult{
-		GamesPerDivision: make(map[uuid.UUID]int),
-		Errors:           []string{},
-	}
-
-	// Get all divisions for this season
-	divisions, err := ssm.store.GetDivisionsBySeason(ctx, seasonID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get divisions: %w", err)
-	}
-
-	log.Info().
-		Str("seasonID", seasonID.String()).
-		Int("divisionCount", len(divisions)).
-		Msg("creating-games-for-season")
-
-	// Process each division
-	for _, division := range divisions {
-		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings)
-		if err != nil {
-			errMsg := fmt.Sprintf("division %s: %v", division.Uuid.String(), err)
-			result.Errors = append(result.Errors, errMsg)
-			log.Error().Err(err).
-				Str("divisionID", division.Uuid.String()).
-				Msg("failed-to-create-games-for-division")
-			continue
-		}
-
-		result.GamesPerDivision[division.Uuid] = gamesCreated
-		result.TotalGamesCreated += gamesCreated
-	}
-
-	if len(result.Errors) > 0 {
-		return result, fmt.Errorf("encountered %d errors creating games", len(result.Errors))
-	}
-
-	return result, nil
-}
-
-// CreateGamesForSeasonWithDelay creates all games with batching and delays to reduce DB strain.
-// delayBetweenBatches: time to sleep between batches (e.g., 150ms)
-// batchSize: number of games to create before sleeping (e.g., 10)
-func (ssm *SeasonStartManager) CreateGamesForSeasonWithDelay(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
@@ -152,11 +106,11 @@ func (ssm *SeasonStartManager) CreateGamesForSeasonWithDelay(
 		Int("divisionCount", len(divisions)).
 		Dur("delayBetweenBatches", delayBetweenBatches).
 		Int("batchSize", batchSize).
-		Msg("creating-games-for-season-with-batching")
+		Msg("creating-games-for-season")
 
-	// Process each division with batching
+	// Process each division
 	for _, division := range divisions {
-		gamesCreated, err := ssm.createGamesForDivisionWithDelay(ctx, leagueID, seasonID, division, leagueSettings, delayBetweenBatches, batchSize)
+		gamesCreated, err := ssm.createGamesForDivision(ctx, leagueID, seasonID, division, leagueSettings, delayBetweenBatches, batchSize)
 		if err != nil {
 			errMsg := fmt.Sprintf("division %s: %v", division.Uuid.String(), err)
 			result.Errors = append(result.Errors, errMsg)
@@ -177,8 +131,9 @@ func (ssm *SeasonStartManager) CreateGamesForSeasonWithDelay(
 	return result, nil
 }
 
-// createGamesForDivisionWithDelay creates games with batching and delays
-func (ssm *SeasonStartManager) createGamesForDivisionWithDelay(
+// createGamesForDivision creates all games for a single division.
+// If batchSize > 0, sleeps for delayBetweenBatches after every batchSize games.
+func (ssm *SeasonStartManager) createGamesForDivision(
 	ctx context.Context,
 	leagueID uuid.UUID,
 	seasonID uuid.UUID,
@@ -217,9 +172,9 @@ func (ssm *SeasonStartManager) createGamesForDivisionWithDelay(
 		Int("playerCount", numPlayers).
 		Int("maxRounds", maxRounds).
 		Int("pairingsCount", len(pairings)).
-		Msg("generated-pairings-for-division-with-batching")
+		Msg("generated-pairings-for-division")
 
-	// Create games for each pairing with batching
+	// Create games for each pairing
 	gamesCreated := 0
 	for i, pairing := range pairings {
 		// Get player registrations
@@ -270,7 +225,7 @@ func (ssm *SeasonStartManager) createGamesForDivisionWithDelay(
 
 		gamesCreated++
 
-		// Sleep between batches to reduce DB strain
+		// Sleep between batches to reduce DB strain (if batching enabled)
 		if batchSize > 0 && gamesCreated%batchSize == 0 && i < len(pairings)-1 {
 			log.Debug().
 				Str("divisionID", division.Uuid.String()).
@@ -279,106 +234,6 @@ func (ssm *SeasonStartManager) createGamesForDivisionWithDelay(
 				Msg("batch-complete-sleeping")
 			time.Sleep(delayBetweenBatches)
 		}
-	}
-
-	log.Info().
-		Str("divisionID", division.Uuid.String()).
-		Int("gamesCreated", gamesCreated).
-		Msg("created-games-for-division-with-batching")
-
-	return gamesCreated, nil
-}
-
-// createGamesForDivision creates all games for a single division
-func (ssm *SeasonStartManager) createGamesForDivision(
-	ctx context.Context,
-	leagueID uuid.UUID,
-	seasonID uuid.UUID,
-	division models.LeagueDivision,
-	leagueSettings *pb.LeagueSettings,
-) (int, error) {
-	// Get players in division
-	registrations, err := ssm.store.GetDivisionRegistrations(ctx, division.Uuid)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get players: %w", err)
-	}
-
-	numPlayers := len(registrations)
-	if numPlayers < 2 {
-		log.Warn().
-			Str("divisionID", division.Uuid.String()).
-			Int("playerCount", numPlayers).
-			Msg("skipping-division-with-insufficient-players")
-		return 0, nil
-	}
-
-	// Calculate max rounds based on player count
-	maxRounds := calculateMaxRounds(numPlayers)
-
-	// Generate pairings
-	seed := generatePairingSeed(seasonID, division.Uuid)
-	pairings, err := GenerateAllLeaguePairings(numPlayers, seed, maxRounds)
-	if err != nil {
-		return 0, fmt.Errorf("failed to generate pairings: %w", err)
-	}
-
-	log.Info().
-		Str("divisionID", division.Uuid.String()).
-		Int("playerCount", numPlayers).
-		Int("maxRounds", maxRounds).
-		Int("pairingsCount", len(pairings)).
-		Msg("generated-pairings-for-division")
-
-	// Create games for each pairing
-	gamesCreated := 0
-	for _, pairing := range pairings {
-		// Get player registrations
-		player1Reg := registrations[pairing.Player1Index]
-		player2Reg := registrations[pairing.Player2Index]
-
-		// Look up user entities using the UUIDs from the JOIN
-		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid.String)
-		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player1Reg.UserID, err)
-		}
-
-		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserUuid.String)
-		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player2Reg.UserID, err)
-		}
-
-		// Determine order based on who goes first
-		var users [2]*entity.User
-		if pairing.IsPlayer1First {
-			users = [2]*entity.User{user1, user2}
-		} else {
-			users = [2]*entity.User{user2, user1}
-		}
-
-		// Build game request with unique request ID for each game
-		gameReq, err := ssm.buildGameRequest(leagueSettings)
-		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to build game request: %w", err)
-		}
-
-		// Create the game
-		game, err := ssm.gameCreator.InstantiateNewGame(ctx, users, gameReq, nil)
-		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to create game: %w", err)
-		}
-
-		// Set league-specific fields
-		game.LeagueID = &leagueID
-		game.SeasonID = &seasonID
-		game.LeagueDivisionID = &division.Uuid
-
-		// Start the game (starts timer for correspondence games)
-		err = ssm.gameCreator.StartGame(ctx, game)
-		if err != nil {
-			return gamesCreated, fmt.Errorf("failed to start game %s: %w", game.Uid(), err)
-		}
-
-		gamesCreated++
 	}
 
 	log.Info().

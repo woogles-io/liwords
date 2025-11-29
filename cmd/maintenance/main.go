@@ -67,27 +67,6 @@ func main() {
 		case "monitoring-streams-cleanup":
 			err := MonitoringStreamsCleanup()
 			log.Err(err).Msg("ran monitoringStreamsCleanup")
-		case "league-registration-opener":
-			err := LeagueRegistrationOpener()
-			log.Err(err).Msg("ran leagueRegistrationOpener")
-		case "league-season-closer":
-			err := LeagueSeasonCloser()
-			log.Err(err).Msg("ran leagueSeasonCloser")
-		case "league-division-preparer":
-			err := LeagueDivisionPreparer()
-			log.Err(err).Msg("ran leagueDivisionPreparer")
-		case "league-season-starter":
-			err := LeagueSeasonStarter()
-			log.Err(err).Msg("ran leagueSeasonStarter")
-		case "league-midnight-runner":
-			err := LeagueMidnightRunner()
-			log.Err(err).Msg("ran leagueMidnightRunner")
-		case "league-morning-runner":
-			err := LeagueMorningRunner()
-			log.Err(err).Msg("ran leagueMorningRunner")
-		case "league-season-starting-soon":
-			err := LeagueSeasonStartingSoon()
-			log.Err(err).Msg("ran leagueSeasonStartingSoon")
 		case "league-hourly-runner":
 			err := LeagueHourlyRunner()
 			log.Err(err).Msg("ran leagueHourlyRunner")

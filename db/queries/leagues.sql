@@ -34,8 +34,8 @@ WHERE uuid = $1;
 -- Season operations
 
 -- name: CreateSeason :one
-INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO league_seasons (uuid, league_id, season_number, start_date, end_date, status, promotion_formula)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetSeason :one
@@ -70,6 +70,11 @@ UPDATE league_seasons
 SET start_date = $2, end_date = $3, updated_at = NOW()
 WHERE uuid = $1;
 
+-- name: UpdateSeasonPromotionFormula :exec
+UPDATE league_seasons
+SET promotion_formula = $2, updated_at = NOW()
+WHERE uuid = $1;
+
 -- Task tracking queries for hourly runner idempotency
 
 -- name: MarkSeasonClosed :exec
@@ -87,8 +92,8 @@ UPDATE league_seasons
 SET started_at = NOW(), updated_at = NOW()
 WHERE uuid = $1;
 
--- name: MarkRegistrationOpenedForNextSeason :exec
--- Called on the CURRENT season to mark that registration for the NEXT season was opened
+-- name: MarkRegistrationOpened :exec
+-- Marks when registration was opened for this season
 UPDATE league_seasons
 SET registration_opened_at = NOW(), updated_at = NOW()
 WHERE uuid = $1;

@@ -33,6 +33,7 @@ import { useLoginStateStoreContext } from "../store/store";
 import { SeasonStatus } from "../gen/api/proto/ipc/league_pb";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { dayjsToProtobufTimestampIgnoringNanos } from "../utils/datetime";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { AllLexica } from "../shared/lexica";
 import "./leagues.scss";
 
@@ -875,29 +876,23 @@ export const LeagueAdmin = () => {
                           editSeasonDatesForm.setFieldsValue({
                             startDate: season.startDate
                               ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-                                require("dayjs")(season.startDate.toDate())
+                                require("dayjs")(timestampDate(season.startDate))
                               : undefined,
                             endDate: season.endDate
                               ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-                                require("dayjs")(season.endDate.toDate())
+                                require("dayjs")(timestampDate(season.endDate))
                               : undefined,
                           });
                         }
                       }}
                       value={selectedEditDatesSeasonId || undefined}
                     >
-                      {editDatesSeasonsData.seasons
-                        .filter(
-                          (s) =>
-                            s.status === SeasonStatus.SEASON_SCHEDULED ||
-                            s.status === SeasonStatus.SEASON_REGISTRATION_OPEN,
-                        )
-                        .map((season) => (
-                          <Option key={season.uuid} value={season.uuid}>
-                            Season {season.seasonNumber} (
-                            {SeasonStatus[season.status]})
-                          </Option>
-                        ))}
+                      {editDatesSeasonsData.seasons.map((season) => (
+                        <Option key={season.uuid} value={season.uuid}>
+                          Season {season.seasonNumber} (
+                          {SeasonStatus[season.status]})
+                        </Option>
+                      ))}
                     </Select>
                   </Form.Item>
 

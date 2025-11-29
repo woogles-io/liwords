@@ -90,12 +90,13 @@ func createTestLeague(ctx context.Context, name, slug string, divisionSize int32
 
 	seasonUUID := uuid.New()
 	season, err := queries.CreateSeason(ctx, models.CreateSeasonParams{
-		Uuid:         seasonUUID,
-		LeagueID:     leagueUUID,
-		SeasonNumber: 1,
-		StartDate:    pgtype.Timestamptz{Time: startDate, Valid: true},
-		EndDate:      pgtype.Timestamptz{Time: endDate, Valid: true},
-		Status:       int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
+		Uuid:             seasonUUID,
+		LeagueID:         leagueUUID,
+		SeasonNumber:     1,
+		StartDate:        pgtype.Timestamptz{Time: startDate, Valid: true},
+		EndDate:          pgtype.Timestamptz{Time: endDate, Valid: true},
+		Status:           int32(ipc.SeasonStatus_SEASON_REGISTRATION_OPEN),
+		PromotionFormula: int32(ipc.PromotionFormula_PROMO_N_DIV_6), // Default formula
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create season: %w", err)

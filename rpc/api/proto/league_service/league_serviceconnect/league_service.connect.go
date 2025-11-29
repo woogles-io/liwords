@@ -100,6 +100,12 @@ const (
 	// LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure is the fully-qualified name of the
 	// LeagueService's GetSeasonPlayersWithUnstartedGames RPC.
 	LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure = "/league_service.LeagueService/GetSeasonPlayersWithUnstartedGames"
+	// LeagueServiceUpdateSeasonDatesProcedure is the fully-qualified name of the LeagueService's
+	// UpdateSeasonDates RPC.
+	LeagueServiceUpdateSeasonDatesProcedure = "/league_service.LeagueService/UpdateSeasonDates"
+	// LeagueServiceUpdateSeasonPromotionFormulaProcedure is the fully-qualified name of the
+	// LeagueService's UpdateSeasonPromotionFormula RPC.
+	LeagueServiceUpdateSeasonPromotionFormulaProcedure = "/league_service.LeagueService/UpdateSeasonPromotionFormula"
 )
 
 // LeagueServiceClient is a client for the league_service.LeagueService service.
@@ -133,6 +139,8 @@ type LeagueServiceClient interface {
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
 	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
 	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
+	UpdateSeasonDates(context.Context, *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error)
+	UpdateSeasonPromotionFormula(context.Context, *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error)
 }
 
 // NewLeagueServiceClient constructs a client for the league_service.LeagueService service. By
@@ -284,6 +292,18 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetSeasonPlayersWithUnstartedGames")),
 			connect.WithClientOptions(opts...),
 		),
+		updateSeasonDates: connect.NewClient[league_service.UpdateSeasonDatesRequest, league_service.SeasonResponse](
+			httpClient,
+			baseURL+LeagueServiceUpdateSeasonDatesProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("UpdateSeasonDates")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSeasonPromotionFormula: connect.NewClient[league_service.UpdateSeasonPromotionFormulaRequest, league_service.SeasonResponse](
+			httpClient,
+			baseURL+LeagueServiceUpdateSeasonPromotionFormulaProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("UpdateSeasonPromotionFormula")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -312,6 +332,8 @@ type leagueServiceClient struct {
 	movePlayerToDivision               *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
 	getSeasonZeroMoveGames             *connect.Client[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse]
 	getSeasonPlayersWithUnstartedGames *connect.Client[league_service.SeasonRequest, league_service.SeasonPlayersWithUnstartedGamesResponse]
+	updateSeasonDates                  *connect.Client[league_service.UpdateSeasonDatesRequest, league_service.SeasonResponse]
+	updateSeasonPromotionFormula       *connect.Client[league_service.UpdateSeasonPromotionFormulaRequest, league_service.SeasonResponse]
 }
 
 // CreateLeague calls league_service.LeagueService.CreateLeague.
@@ -430,6 +452,16 @@ func (c *leagueServiceClient) GetSeasonPlayersWithUnstartedGames(ctx context.Con
 	return c.getSeasonPlayersWithUnstartedGames.CallUnary(ctx, req)
 }
 
+// UpdateSeasonDates calls league_service.LeagueService.UpdateSeasonDates.
+func (c *leagueServiceClient) UpdateSeasonDates(ctx context.Context, req *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error) {
+	return c.updateSeasonDates.CallUnary(ctx, req)
+}
+
+// UpdateSeasonPromotionFormula calls league_service.LeagueService.UpdateSeasonPromotionFormula.
+func (c *leagueServiceClient) UpdateSeasonPromotionFormula(ctx context.Context, req *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error) {
+	return c.updateSeasonPromotionFormula.CallUnary(ctx, req)
+}
+
 // LeagueServiceHandler is an implementation of the league_service.LeagueService service.
 type LeagueServiceHandler interface {
 	// League management
@@ -461,6 +493,8 @@ type LeagueServiceHandler interface {
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
 	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
 	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
+	UpdateSeasonDates(context.Context, *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error)
+	UpdateSeasonPromotionFormula(context.Context, *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error)
 }
 
 // NewLeagueServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -608,6 +642,18 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetSeasonPlayersWithUnstartedGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceUpdateSeasonDatesHandler := connect.NewUnaryHandler(
+		LeagueServiceUpdateSeasonDatesProcedure,
+		svc.UpdateSeasonDates,
+		connect.WithSchema(leagueServiceMethods.ByName("UpdateSeasonDates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	leagueServiceUpdateSeasonPromotionFormulaHandler := connect.NewUnaryHandler(
+		LeagueServiceUpdateSeasonPromotionFormulaProcedure,
+		svc.UpdateSeasonPromotionFormula,
+		connect.WithSchema(leagueServiceMethods.ByName("UpdateSeasonPromotionFormula")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/league_service.LeagueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LeagueServiceCreateLeagueProcedure:
@@ -656,6 +702,10 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetSeasonZeroMoveGamesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure:
 			leagueServiceGetSeasonPlayersWithUnstartedGamesHandler.ServeHTTP(w, r)
+		case LeagueServiceUpdateSeasonDatesProcedure:
+			leagueServiceUpdateSeasonDatesHandler.ServeHTTP(w, r)
+		case LeagueServiceUpdateSeasonPromotionFormulaProcedure:
+			leagueServiceUpdateSeasonPromotionFormulaHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -755,4 +805,12 @@ func (UnimplementedLeagueServiceHandler) GetSeasonZeroMoveGames(context.Context,
 
 func (UnimplementedLeagueServiceHandler) GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetSeasonPlayersWithUnstartedGames is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) UpdateSeasonDates(context.Context, *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.UpdateSeasonDates is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) UpdateSeasonPromotionFormula(context.Context, *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.UpdateSeasonPromotionFormula is not implemented"))
 }
