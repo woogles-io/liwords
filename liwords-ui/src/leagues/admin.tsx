@@ -32,7 +32,10 @@ import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
 import { SeasonStatus } from "../gen/api/proto/ipc/league_pb";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
-import { dayjsToProtobufTimestampIgnoringNanos } from "../utils/datetime";
+import {
+  dayjsToProtobufTimestampIgnoringNanos,
+  dayjs,
+} from "../utils/datetime";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { AllLexica } from "../shared/lexica";
 import "./leagues.scss";
@@ -306,7 +309,7 @@ export const LeagueAdmin = () => {
         message: "League Updated",
         description: `League "${values.name}" updated successfully!`,
       });
-    } catch (error) {
+    } catch {
       // Errors are already handled by individual mutations
     }
   };
@@ -875,12 +878,10 @@ export const LeagueAdmin = () => {
                         if (season) {
                           editSeasonDatesForm.setFieldsValue({
                             startDate: season.startDate
-                              ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-                                require("dayjs")(timestampDate(season.startDate))
+                              ? dayjs(timestampDate(season.startDate))
                               : undefined,
                             endDate: season.endDate
-                              ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-                                require("dayjs")(timestampDate(season.endDate))
+                              ? dayjs(timestampDate(season.endDate))
                               : undefined,
                           });
                         }
