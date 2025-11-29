@@ -901,7 +901,8 @@ SELECT
     u_player0.uuid as player0_uuid,
     u_player0.username as player0_username,
     u_player1.uuid as player1_uuid,
-    u_player1.username as player1_username
+    u_player1.username as player1_username,
+    g.history
 FROM games g
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
 INNER JOIN users u_player1 ON g.player1_id = u_player1.id
@@ -925,6 +926,7 @@ type GetPlayerSeasonInProgressGamesRow struct {
 	Player0Username pgtype.Text
 	Player1Uuid     pgtype.Text
 	Player1Username pgtype.Text
+	History         []byte
 }
 
 // Get in-progress games for a specific player in a season (fast query on indexed fields)
@@ -946,6 +948,7 @@ func (q *Queries) GetPlayerSeasonInProgressGames(ctx context.Context, arg GetPla
 			&i.Player0Username,
 			&i.Player1Uuid,
 			&i.Player1Username,
+			&i.History,
 		); err != nil {
 			return nil, err
 		}

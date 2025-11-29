@@ -17,6 +17,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
@@ -1360,20 +1361,33 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 
 	// Convert in-progress games to proto
 	for _, row := range inProgressGameRows {
-		// Determine opponent based on which player the user is
+		// Determine opponent and player index based on which player the user is
 		opponentUuid := row.Player1Uuid.String
 		opponentUsername := row.Player1Username.String
+		userIsPlayer0 := true
 		if row.Player1Uuid.String == userID {
 			opponentUuid = row.Player0Uuid.String
 			opponentUsername = row.Player0Username.String
+			userIsPlayer0 = false
+		}
+
+		// Extract current scores from game history
+		scores := gamestore.ScoresFromHistory(row.History)
+		var playerScore, opponentScore int32
+		if userIsPlayer0 {
+			playerScore = scores[0]
+			opponentScore = scores[1]
+		} else {
+			playerScore = scores[1]
+			opponentScore = scores[0]
 		}
 
 		allGames = append(allGames, &pb.PlayerSeasonGame{
 			GameId:           row.GameUuid.String,
 			OpponentUserId:   opponentUuid,
 			OpponentUsername: opponentUsername,
-			PlayerScore:      0,
-			OpponentScore:    0,
+			PlayerScore:      playerScore,
+			OpponentScore:    opponentScore,
 			Result:           "in_progress",
 			GameDate:         timestamppb.New(row.CreatedAt.Time),
 			Round:            0,
