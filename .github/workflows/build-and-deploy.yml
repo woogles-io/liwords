@@ -4,7 +4,7 @@ name: Build and Deploy
 # - detect_changes job identifies which parts of the codebase changed
 # - Backend jobs (build_api_srv, deploy_api_docker, run_db_migration) only run if backend files changed
 # - Frontend jobs (build_fe, deploy_fe) only run if liwords-ui/ changed
-# - Migration job only runs if db/ folder changed (in addition to backend changes)
+# - Migration job runs on every master deploy (migrations are idempotent)
 # This significantly speeds up deployments that only touch one part of the codebase
 
 on:
@@ -188,7 +188,6 @@ jobs:
           aws-region: us-east-2
 
       - name: Run Database Migration Task
-        if: ${{ needs.detect_changes.outputs.migrations == 'true' }}
         run: |
           echo "Starting database migration task..."
 
@@ -315,14 +314,14 @@ jobs:
           exit 1
 
       - name: Discord notification (success)
-        if: ${{ success() && needs.detect_changes.outputs.migrations == 'true' }}
+        if: ${{ success() }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: ./scripts/utilities/notify-discord.sh "✓ Database migration completed successfully for branch {{GITHUB_REF_NAME}}."
         continue-on-error: true
 
       - name: Discord notification (failure)
-        if: ${{ failure() && needs.detect_changes.outputs.migrations == 'true' }}
+        if: ${{ failure() }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: ./scripts/utilities/notify-discord.sh "✗ Database migration FAILED for branch {{GITHUB_REF_NAME}}. Check GitHub Actions logs."
