@@ -22,7 +22,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 			Rank:   i + 1,
 		}
 	}
-	sm.markOutcomes(div1Standings, 1, 3) // Division 1, highest regular = 3
+	sm.markOutcomes(div1Standings, 1, 3, pb.PromotionFormula_PROMO_N_DIV_6) // Division 1, highest regular = 3
 
 	div1Promoted := 0
 	div1Relegated := 0
@@ -50,7 +50,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 			Rank:   i + 1,
 		}
 	}
-	sm.markOutcomes(div2Standings, 2, 3) // Division 2, highest regular = 3
+	sm.markOutcomes(div2Standings, 2, 3, pb.PromotionFormula_PROMO_N_DIV_6) // Division 2, highest regular = 3
 
 	div2Promoted := 0
 	div2Relegated := 0
@@ -78,7 +78,7 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 			Rank:   i + 1,
 		}
 	}
-	sm.markOutcomes(div3Standings, 3, 3) // Division 3, highest regular = 3
+	sm.markOutcomes(div3Standings, 3, 3, pb.PromotionFormula_PROMO_N_DIV_6) // Division 3, highest regular = 3
 
 	div3Promoted := 0
 	div3Relegated := 0

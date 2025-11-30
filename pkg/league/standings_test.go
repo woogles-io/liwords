@@ -130,6 +130,21 @@ func (m *mockLeagueStore) UpdateSeasonStatus(ctx context.Context, arg models.Upd
 	return nil
 }
 func (m *mockLeagueStore) MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error { return nil }
+func (m *mockLeagueStore) MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error  { return nil }
+func (m *mockLeagueStore) MarkDivisionsPrepared(ctx context.Context, uuid uuid.UUID) error {
+	return nil
+}
+func (m *mockLeagueStore) MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error          { return nil }
+func (m *mockLeagueStore) MarkRegistrationOpened(ctx context.Context, uuid uuid.UUID) error     { return nil }
+func (m *mockLeagueStore) MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error {
+	return nil
+}
+func (m *mockLeagueStore) UpdateSeasonDates(ctx context.Context, arg models.UpdateSeasonDatesParams) error {
+	return nil
+}
+func (m *mockLeagueStore) UpdateSeasonPromotionFormula(ctx context.Context, arg models.UpdateSeasonPromotionFormulaParams) error {
+	return nil
+}
 func (m *mockLeagueStore) CreateDivision(ctx context.Context, arg models.CreateDivisionParams) (models.LeagueDivision, error) {
 	return models.LeagueDivision{}, nil
 }
