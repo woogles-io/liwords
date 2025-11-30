@@ -795,7 +795,7 @@ export const LeaguePage = (props: Props) => {
                       <span className="settings-label">Time Bank:</span>
                       <span className="settings-value">
                         {league.settings.timeControl?.timeBankMinutes
-                          ? `${league.settings.timeControl.timeBankMinutes / 60}h`
+                          ? `${league.settings.timeControl.timeBankMinutes / 60}h/game`
                           : "None"}
                       </span>
                     </div>
