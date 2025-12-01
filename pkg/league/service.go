@@ -786,13 +786,14 @@ func (ls *LeagueService) GetAllSeasons(
 	protoSeasons := make([]*ipc.Season, len(dbSeasons))
 	for i, season := range dbSeasons {
 		protoSeasons[i] = &ipc.Season{
-			Uuid:         season.Uuid.String(),
-			LeagueId:     season.LeagueID.String(),
-			SeasonNumber: season.SeasonNumber,
-			StartDate:    timestamppb.New(season.StartDate.Time),
-			EndDate:      timestamppb.New(season.EndDate.Time),
-			Status:       ipc.SeasonStatus(season.Status),
-			Divisions:    []*ipc.Division{},
+			Uuid:             season.Uuid.String(),
+			LeagueId:         season.LeagueID.String(),
+			SeasonNumber:     season.SeasonNumber,
+			StartDate:        timestamppb.New(season.StartDate.Time),
+			EndDate:          timestamppb.New(season.EndDate.Time),
+			Status:           ipc.SeasonStatus(season.Status),
+			PromotionFormula: ipc.PromotionFormula(season.PromotionFormula),
+			Divisions:        []*ipc.Division{},
 		}
 
 		if season.ActualEndDate.Valid {
