@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 	"github.com/woogles-io/liwords/pkg/common/testutils"
@@ -41,6 +42,8 @@ func TestExport(t *testing.T) {
 	ty, err := makeTournament(ctx, tstore, cfg, directors, "export")
 	is.NoErr(err)
 
+	startTime := time.Date(2025, time.November, 30, 9, 0, 0, 0, time.UTC)
+	ty.ScheduledStartTime = &startTime
 	for _, tc := range testcases {
 		cts, err := os.ReadFile("./testdata/" + tc.divisionfile)
 		is.NoErr(err)
