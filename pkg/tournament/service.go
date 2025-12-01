@@ -861,7 +861,11 @@ func (ts *TournamentService) ExportTournament(ctx context.Context, req *connect.
 	if req.Msg.Format == "" {
 		return nil, apiserver.InvalidArg("must provide a format")
 	}
-	ret, err := ExportTournament(ctx, t, ts.userStore, req.Msg.Format)
+	opts := &ExportOptions{
+		UseRealNames: req.Msg.UseRealNames,
+		Queries:      ts.queries,
+	}
+	ret, err := ExportTournament(ctx, t, ts.userStore, req.Msg.Format, opts)
 	if err != nil {
 		return nil, err
 	}

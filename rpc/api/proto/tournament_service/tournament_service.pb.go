@@ -2450,6 +2450,7 @@ type ExportTournamentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Format        string                 `protobuf:"bytes,2,opt,name=format,proto3" json:"format,omitempty"`
+	UseRealNames  bool                   `protobuf:"varint,3,opt,name=use_real_names,json=useRealNames,proto3" json:"use_real_names,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2496,6 +2497,13 @@ func (x *ExportTournamentRequest) GetFormat() string {
 		return x.Format
 	}
 	return ""
+}
+
+func (x *ExportTournamentRequest) GetUseRealNames() bool {
+	if x != nil {
+		return x.UseRealNames
+	}
+	return false
 }
 
 type ExportTournamentResponse struct {
@@ -3174,10 +3182,11 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	" \x01(\x05R\x0fcontrolLossSims\x12A\n" +
 	"\x1dcontrol_loss_activation_round\x18\v \x01(\x05R\x1acontrolLossActivationRound\x12*\n" +
 	"\x11allow_repeat_byes\x18\f \x01(\bR\x0fallowRepeatByes\x12#\n" +
-	"\rgibson_spread\x18\r \x01(\x05R\fgibsonSpread\"A\n" +
+	"\rgibson_spread\x18\r \x01(\x05R\fgibsonSpread\"g\n" +
 	"\x17ExportTournamentRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
-	"\x06format\x18\x02 \x01(\tR\x06format\"6\n" +
+	"\x06format\x18\x02 \x01(\tR\x06format\x12$\n" +
+	"\x0euse_real_names\x18\x03 \x01(\bR\fuseRealNames\"6\n" +
 	"\x18ExportTournamentResponse\x12\x1a\n" +
 	"\bexported\x18\x01 \x01(\tR\bexported\"`\n" +
 	"\x15NewClubSessionRequest\x12.\n" +
