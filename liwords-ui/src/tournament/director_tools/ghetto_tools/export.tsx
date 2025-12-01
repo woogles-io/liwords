@@ -9,6 +9,7 @@ import { flashError, useClient } from "../../../utils/hooks/connect";
 
 export const ExportTournament = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
+  const [selectedFormat, setSelectedFormat] = useState<string | undefined>();
   const formItemLayout = {
     labelCol: {
       span: 7,
@@ -22,6 +23,8 @@ export const ExportTournament = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       format: vals.format,
+      useRealNames:
+        vals.format === "tou" ? (vals.useRealNames ?? false) : false,
     };
     try {
       const resp = await tClient.exportTournament(obj);
@@ -33,6 +36,9 @@ export const ExportTournament = (props: { tournamentID: string }) => {
       switch (vals.format) {
         case "tsh":
           extension = "tsh";
+          break;
+        case "tou":
+          extension = "TOU";
           break;
         case "standingsonly":
           extension = "csv";
@@ -57,16 +63,33 @@ export const ExportTournament = (props: { tournamentID: string }) => {
     <>
       <Form onFinish={onSubmit}>
         <Form.Item {...formItemLayout} label="Select format" name="format">
-          <Select>
+          <Select onChange={(value) => setSelectedFormat(value)}>
             <Select.Option value="tsh">
               NASPA tournament submit format
             </Select.Option>
+            <Select.Option value="tou">TOU format</Select.Option>
             {/* <Select.Option value="aupair">AUPair format</Select.Option> */}
             <Select.Option value="standingsonly">
               Standings only (CSV)
             </Select.Option>
           </Select>
         </Form.Item>
+        {selectedFormat === "tou" && (
+          <Form.Item
+            {...formItemLayout}
+            label="Use real names"
+            name="useRealNames"
+            valuePropName="checked"
+            tooltip="For online tournaments only. Uses real names from WESPA/NASPA integrations or user profiles instead of usernames. If you're running an IRL tournament you should already be using real names, so don't enable this option, paradoxically enough."
+          >
+            <Switch />
+          </Form.Item>
+        )}
+        {selectedFormat === "tou" && (
+          <Form.Item {...formItemLayout} label=" " colon={false}>
+            <span style={{ color: "#888" }}>(online tournaments only)</span>
+          </Form.Item>
+        )}
         <Form.Item>
           <Button type="primary" htmlType="submit">
             Submit

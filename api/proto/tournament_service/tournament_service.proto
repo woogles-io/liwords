@@ -366,6 +366,7 @@ service TournamentService {
 message ExportTournamentRequest {
   string id = 1;
   string format = 2;
+  bool use_real_names = 3;
 }
 
 message ExportTournamentResponse { string exported = 1; }

@@ -34,6 +34,7 @@ func TestExport(t *testing.T) {
 	}{
 		{"wtf5-csv", "wtf5.json", "wtf5-standings.golden", "standingsonly"},
 		{"wtf5-tsh", "wtf5.json", "wtf5-tsh.golden", "tsh"},
+		{"wtf5-tou", "wtf5.json", "wtf5-tou.golden", "tou"},
 	}
 	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2})
 
@@ -56,7 +57,7 @@ func TestExport(t *testing.T) {
 			}
 		}
 		ty.Divisions = divisions
-		ret, err := tournament.ExportTournament(ctx, ty, us, tc.format)
+		ret, err := tournament.ExportTournament(ctx, ty, us, tc.format, nil)
 		is.NoErr(err)
 		testutils.CompareGolden(t, "./testdata/"+tc.goldenfile, []byte(ret), goldenFileUpdate)
 	}

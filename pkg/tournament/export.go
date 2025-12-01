@@ -2,23 +2,39 @@ package tournament
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/integrations/organizations"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-func ExportTournament(ctx context.Context, t *entity.Tournament, us user.Store, format string) (string, error) {
+// ExportOptions contains options for exporting a tournament
+type ExportOptions struct {
+	UseRealNames bool
+	Queries      *models.Queries
+}
+
+func ExportTournament(ctx context.Context, t *entity.Tournament, us user.Store, format string, opts *ExportOptions) (string, error) {
+	if opts == nil {
+		opts = &ExportOptions{}
+	}
 	switch format {
 	case "tsh":
 		return exportToTSH(ctx, t, us)
 	case "standingsonly":
 		return exportStandings(ctx, t)
+	case "tou":
+		return exportToTOU(ctx, t, us, opts)
 	// case "aupair":
 	// 	return exportToAUPair(ctx, t, us)
 	default:
@@ -175,5 +191,282 @@ func exportStandings(ctx context.Context, t *entity.Tournament) (string, error) 
 				std.Spread)
 		}
 	}
+	return sb.String(), nil
+}
+
+// toASCII converts a string to ASCII-only by replacing or removing non-ASCII characters.
+func toASCII(s string) string {
+	// Common replacements for accented characters
+	replacements := map[rune]string{
+		'á': "a", 'à': "a", 'ä': "a", 'â': "a", 'ã': "a", 'å': "a", 'ā': "a",
+		'Á': "A", 'À': "A", 'Ä': "A", 'Â': "A", 'Ã': "A", 'Å': "A", 'Ā': "A",
+		'é': "e", 'è': "e", 'ë': "e", 'ê': "e", 'ē': "e", 'ę': "e",
+		'É': "E", 'È': "E", 'Ë': "E", 'Ê': "E", 'Ē': "E", 'Ę': "E",
+		'í': "i", 'ì': "i", 'ï': "i", 'î': "i", 'ī': "i",
+		'Í': "I", 'Ì': "I", 'Ï': "I", 'Î': "I", 'Ī': "I",
+		'ó': "o", 'ò': "o", 'ö': "o", 'ô': "o", 'õ': "o", 'ō': "o", 'ø': "o",
+		'Ó': "O", 'Ò': "O", 'Ö': "O", 'Ô': "O", 'Õ': "O", 'Ō': "O", 'Ø': "O",
+		'ú': "u", 'ù': "u", 'ü': "u", 'û': "u", 'ū': "u",
+		'Ú': "U", 'Ù': "U", 'Ü': "U", 'Û': "U", 'Ū': "U",
+		'ñ': "n", 'Ñ': "N",
+		'ç': "c", 'Ç': "C",
+		'ß': "ss",
+		'ł': "l", 'Ł': "L",
+		'ž': "z", 'Ž': "Z",
+		'š': "s", 'Š': "S",
+		'ý': "y", 'Ý': "Y", 'ÿ': "y",
+		'đ': "d", 'Đ': "D",
+		'ř': "r", 'Ř': "R",
+		'ť': "t", 'Ť': "T",
+		'ň': "n", 'Ň': "N",
+		'ě': "e", 'Ě': "E",
+		'ů': "u", 'Ů': "U",
+		'ć': "c", 'Ć': "C",
+		'ą': "a", 'Ą': "A",
+		'ś': "s", 'Ś': "S",
+		'ź': "z", 'Ź': "Z",
+		'ż': "z", 'Ż': "Z",
+		'ń': "n", 'Ń': "N",
+		'æ': "ae", 'Æ': "AE",
+		'œ': "oe", 'Œ': "OE",
+		0x2018: "'", 0x2019: "'", 0x201C: "\"", 0x201D: "\"",
+		0x2013: "-", 0x2014: "-",
+	}
+
+	var result strings.Builder
+	for _, r := range s {
+		if r < 128 {
+			result.WriteRune(r)
+		} else if replacement, ok := replacements[r]; ok {
+			result.WriteString(replacement)
+		}
+		// Non-ASCII characters without a replacement are dropped
+	}
+	return result.String()
+}
+
+// getPlayerDisplayName returns the display name for a player based on export options.
+// If useRealNames is true, it tries to get the name from:
+// 1. WESPA integration (if available)
+// 2. NASPA integration (if available)
+// 3. User's first/last name from profile
+// 4. Username as fallback
+func getPlayerDisplayName(ctx context.Context, userUUID, username string, us user.Store, opts *ExportOptions) string {
+	if !opts.UseRealNames {
+		return username
+	}
+
+	// Try to get name from integrations (WESPA first, then NASPA)
+	if opts.Queries != nil {
+		for _, orgCode := range []string{"wespa", "naspa"} {
+			integData, err := opts.Queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
+				IntegrationName: orgCode,
+				UserUuid:        pgtype.Text{String: userUUID, Valid: true},
+			})
+			if err == nil && len(integData.Data) > 0 {
+				var orgData organizations.OrganizationIntegrationData
+				if err := json.Unmarshal(integData.Data, &orgData); err == nil && orgData.FullName != "" {
+					return orgData.FullName
+				}
+			}
+		}
+	}
+
+	// Try to get name from user profile
+	u, err := us.GetByUUID(ctx, userUUID)
+	if err == nil {
+		realName := u.RealName()
+		if realName != "" {
+			return realName
+		}
+	}
+
+	// Fall back to username
+	return username
+}
+
+// exportToTOU exports tournament data to TOU format.
+// TOU format is used by some tournament management software.
+// Output is ASCII-only with DOS-style CRLF line endings.
+func exportToTOU(ctx context.Context, t *entity.Tournament, us user.Store, opts *ExportOptions) (string, error) {
+	var sb strings.Builder
+	crlf := "\r\n"
+
+	// Get tournament date - use scheduled start time or current date
+	tournamentDate := time.Now()
+	if t.ScheduledStartTime != nil {
+		tournamentDate = *t.ScheduledStartTime
+	}
+
+	// Format date as DD.MM.YYYY
+	dateStr := tournamentDate.Format("02.01.2006")
+
+	// Get tournament name
+	tournamentName := toASCII(t.Name)
+
+	divNames := sortedDivNames(t)
+	for _, dname := range divNames {
+		division := t.Divisions[dname]
+
+		// Write header line: *MDD.MM.YYYY Tournament Name
+		fmt.Fprintf(&sb, "*M%s %s%s", dateStr, tournamentName, crlf)
+
+		// Write division name line
+		fmt.Fprintf(&sb, "*%s%s", toASCII(dname), crlf)
+
+		// Write high word line
+		// TODO: Implement high word tracking. For now, output placeholder.
+		sb.WriteString("                                      0")
+		sb.WriteString(crlf)
+
+		if division.DivisionManager == nil {
+			return "", errors.New("nil division manager")
+		}
+		xhr, err := division.DivisionManager.GetXHRResponse()
+		if err != nil {
+			return "", err
+		}
+
+		// Determine if we need 3-digit opponent IDs (9-char blocks instead of 8)
+		numPlayers := len(xhr.Players.Persons)
+		useThreeDigitIDs := numPlayers > 99
+
+		// Pre-parse pairing map for faster lookup
+		// Map: "playerIdx-round" -> pairing
+		pairingMap := map[string]*ipc.Pairing{}
+		for _, pairing := range xhr.PairingMap {
+			for _, p := range pairing.Players {
+				key := fmt.Sprintf("%d-%d", p, pairing.Round)
+				pairingMap[key] = pairing
+			}
+		}
+
+		// Write player data
+		for pidx, p := range xhr.Players.Persons {
+			split := strings.Split(p.Id, ":")
+			if len(split) != 2 {
+				return "", fmt.Errorf("unexpected badly formatted player id %s", p.Id)
+			}
+			userUUID := split[0]
+			username := split[1]
+
+			// Get display name and convert to ASCII
+			displayName := toASCII(getPlayerDisplayName(ctx, userUUID, username, us, opts))
+
+			// Pad/truncate name to 20 characters
+			if len(displayName) > 20 {
+				displayName = displayName[:20]
+			}
+			fmt.Fprintf(&sb, "%-20s", displayName)
+
+			// Write game data for each round
+			for rd := int32(0); rd <= xhr.CurrentRound; rd++ {
+				key := fmt.Sprintf("%d-%d", pidx, rd)
+				pairing := pairingMap[key]
+				if pairing == nil {
+					log.Info().Int32("rd", rd).Int("p", pidx).Msg("nil-pairing-tou")
+					continue
+				}
+
+				sb.WriteString(" ")
+
+				// Determine if this is a bye (player paired with themselves)
+				isBye := pairing.Players[0] == pairing.Players[1]
+
+				var score int
+				var opponentIdx int32
+				var wentFirst bool
+				var outcome ipc.TournamentGameResult
+
+				if isBye {
+					// For byes: opponent is self
+					opponentIdx = int32(pidx)
+					wentFirst = false
+					outcome = pairing.Outcomes[0]
+					// Handle different bye types
+				switch outcome {
+				case ipc.TournamentGameResult_BYE:
+					// True bye: score of 50, recorded as a loss (no outcome prefix)
+					score = 50
+					outcome = ipc.TournamentGameResult_LOSS // Force loss outcome for display
+				case ipc.TournamentGameResult_FORFEIT_WIN:
+					// Forfeit win: winner gets 150
+					score = 150
+				case ipc.TournamentGameResult_FORFEIT_LOSS:
+					// Forfeit loss: loser gets 100
+					score = 100
+				case ipc.TournamentGameResult_VOID:
+					score = 0
+				default:
+					// Default bye score
+					score = 50
+					outcome = ipc.TournamentGameResult_LOSS
+				}
+			} else {
+				// Regular game
+					// Find which index this player is in the pairing
+					var playerIdxInPairing int
+					for idx, opp := range pairing.Players {
+						if int32(pidx) == opp {
+							playerIdxInPairing = idx
+						} else {
+							opponentIdx = opp
+						}
+					}
+
+					// Player went first if they are Players[0]
+					wentFirst = pairing.Players[0] == int32(pidx)
+
+					// Get score and outcome
+					if len(pairing.Games) > 0 && len(pairing.Games[0].Scores) > playerIdxInPairing {
+						score = int(pairing.Games[0].Scores[playerIdxInPairing])
+					}
+					if len(pairing.Outcomes) > playerIdxInPairing {
+						outcome = pairing.Outcomes[playerIdxInPairing]
+					}
+				}
+
+				// Build the game block
+				// Format: <outcome><score> <start><opponent_id>
+				// Outcome: 2=win, 1=draw, space=loss
+				// Start: +=went first, space=went second
+
+				var outcomeChar string
+				switch outcome {
+				case ipc.TournamentGameResult_WIN, ipc.TournamentGameResult_BYE, ipc.TournamentGameResult_FORFEIT_WIN:
+					outcomeChar = "2"
+				case ipc.TournamentGameResult_DRAW:
+					outcomeChar = "1"
+				default:
+					outcomeChar = " "
+				}
+
+				// Opponent ID is 1-indexed (player 0 is opponent ID 1)
+				opponentID := opponentIdx + 1
+
+				// Format the start+opponent field (right-justified)
+				// The start indicator (+) is part of the opponent field
+				var oppField string
+				if wentFirst {
+					oppField = fmt.Sprintf("+%d", opponentID)
+				} else {
+					oppField = fmt.Sprintf("%d", opponentID)
+				}
+
+				// Format score (3 digits) and opponent ID field
+				if useThreeDigitIDs {
+					// 9-character block: <outcome:1><score:3><space:1><opponent-field:4>
+					fmt.Fprintf(&sb, "%s%3d %4s", outcomeChar, score%1000, oppField)
+				} else {
+					// 8-character block: <outcome:1><score:3><space:1><opponent-field:3>
+					fmt.Fprintf(&sb, "%s%3d %3s", outcomeChar, score%1000, oppField)
+				}
+			}
+			sb.WriteString(crlf)
+		}
+	}
+
+	sb.WriteString("*** END OF FILE ***")
+	sb.WriteString(crlf)
 	return sb.String(), nil
 }
