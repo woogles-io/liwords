@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/league.proto.
  */
 export const file_proto_ipc_league: GenFile = /*@__PURE__*/
-  fileDesc("ChZwcm90by9pcGMvbGVhZ3VlLnByb3RvEgNpcGMinAEKBkxlYWd1ZRIMCgR1dWlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDAoEc2x1ZxgEIAEoCRIlCghzZXR0aW5ncxgFIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncxIZChFjdXJyZW50X3NlYXNvbl9pZBgGIAEoCRIRCglpc19hY3RpdmUYByABKAgivwEKDkxlYWd1ZVNldHRpbmdzEhoKEnNlYXNvbl9sZW5ndGhfZGF5cxgBIAEoBRImCgx0aW1lX2NvbnRyb2wYAyABKAsyEC5pcGMuVGltZUNvbnRyb2wSDwoHbGV4aWNvbhgEIAEoCRIPCgd2YXJpYW50GAUgASgJEhsKE2lkZWFsX2RpdmlzaW9uX3NpemUYBiABKAUSKgoOY2hhbGxlbmdlX3J1bGUYCSABKA4yEi5pcGMuQ2hhbGxlbmdlUnVsZSJDCgtUaW1lQ29udHJvbBIZChFpbmNyZW1lbnRfc2Vjb25kcxgBIAEoBRIZChF0aW1lX2JhbmtfbWludXRlcxgCIAEoBSLKAgoGU2Vhc29uEgwKBHV1aWQYASABKAkSEQoJbGVhZ3VlX2lkGAIgASgJEhUKDXNlYXNvbl9udW1iZXIYAyABKAUSLgoKc3RhcnRfZGF0ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX2RhdGUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKD2FjdHVhbF9lbmRfZGF0ZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIQoGc3RhdHVzGAcgASgOMhEuaXBjLlNlYXNvblN0YXR1cxIgCglkaXZpc2lvbnMYCCADKAsyDS5pcGMuRGl2aXNpb24SMAoRcHJvbW90aW9uX2Zvcm11bGEYCSABKA4yFS5pcGMuUHJvbW90aW9uRm9ybXVsYSLaAQoIRGl2aXNpb24SDAoEdXVpZBgBIAEoCRIRCglzZWFzb25faWQYAiABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAMgASgFEhUKDWRpdmlzaW9uX25hbWUYBCABKAkSKAoHcGxheWVycxgFIAMoCzIXLmlwYy5QbGF5ZXJSZWdpc3RyYXRpb24SEAoIZ2FtZV9pZHMYBiADKAkSLAoJc3RhbmRpbmdzGAcgAygLMhkuaXBjLkxlYWd1ZVBsYXllclN0YW5kaW5nEhMKC2lzX2NvbXBsZXRlGAggASgIIqkBChJQbGF5ZXJSZWdpc3RyYXRpb24SDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtkaXZpc2lvbl9pZBgDIAEoCRI1ChFyZWdpc3RyYXRpb25fZGF0ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFAoMZmlyc3RzX2NvdW50GAUgASgFEg4KBnN0YXR1cxgGIAEoCSLYAQoUTGVhZ3VlUGxheWVyU3RhbmRpbmcSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIMCgRyYW5rGAMgASgFEgwKBHdpbnMYBCABKAUSDgoGbG9zc2VzGAUgASgFEg0KBWRyYXdzGAYgASgFEg4KBnNwcmVhZBgHIAEoBRIUCgxnYW1lc19wbGF5ZWQYCCABKAUSFwoPZ2FtZXNfcmVtYWluaW5nGAkgASgFEiMKBnJlc3VsdBgKIAEoDjITLmlwYy5TdGFuZGluZ1Jlc3VsdCqBAQoMU2Vhc29uU3RhdHVzEhQKEFNFQVNPTl9TQ0hFRFVMRUQQABIRCg1TRUFTT05fQUNUSVZFEAESFAoQU0VBU09OX0NPTVBMRVRFRBACEhQKEFNFQVNPTl9DQU5DRUxMRUQQAxIcChhTRUFTT05fUkVHSVNUUkFUSU9OX09QRU4QBCpSChBQcm9tb3Rpb25Gb3JtdWxhEhEKDVBST01PX05fRElWXzYQABIYChRQUk9NT19OX1BMVVNfMV9ESVZfNRABEhEKDVBST01PX05fRElWXzUQAip0Cg5TdGFuZGluZ1Jlc3VsdBIPCgtSRVNVTFRfTk9ORRAAEhMKD1JFU1VMVF9QUk9NT1RFRBABEhQKEFJFU1VMVF9SRUxFR0FURUQQAhIRCg1SRVNVTFRfU1RBWUVEEAMSEwoPUkVTVUxUX0NIQU1QSU9OEAQqygEKD1BsYWNlbWVudFN0YXR1cxISCg5QTEFDRU1FTlRfTk9ORRAAEhEKDVBMQUNFTUVOVF9ORVcQARIWChJQTEFDRU1FTlRfUFJPTU9URUQQAxIXChNQTEFDRU1FTlRfUkVMRUdBVEVEEAQSFAoQUExBQ0VNRU5UX1NUQVlFRBAFEiQKIFBMQUNFTUVOVF9TSE9SVF9ISUFUVVNfUkVUVVJOSU5HEAYSIwofUExBQ0VNRU5UX0xPTkdfSElBVFVTX1JFVFVSTklORxAHQnMKB2NvbS5pcGNCC0xlYWd1ZVByb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM", [file_proto_ipc_omgwords, file_google_protobuf_timestamp]);
+  fileDesc("ChZwcm90by9pcGMvbGVhZ3VlLnByb3RvEgNpcGMinAEKBkxlYWd1ZRIMCgR1dWlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDAoEc2x1ZxgEIAEoCRIlCghzZXR0aW5ncxgFIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncxIZChFjdXJyZW50X3NlYXNvbl9pZBgGIAEoCRIRCglpc19hY3RpdmUYByABKAgivwEKDkxlYWd1ZVNldHRpbmdzEhoKEnNlYXNvbl9sZW5ndGhfZGF5cxgBIAEoBRImCgx0aW1lX2NvbnRyb2wYAyABKAsyEC5pcGMuVGltZUNvbnRyb2wSDwoHbGV4aWNvbhgEIAEoCRIPCgd2YXJpYW50GAUgASgJEhsKE2lkZWFsX2RpdmlzaW9uX3NpemUYBiABKAUSKgoOY2hhbGxlbmdlX3J1bGUYCSABKA4yEi5pcGMuQ2hhbGxlbmdlUnVsZSJDCgtUaW1lQ29udHJvbBIZChFpbmNyZW1lbnRfc2Vjb25kcxgBIAEoBRIZChF0aW1lX2JhbmtfbWludXRlcxgCIAEoBSLKAgoGU2Vhc29uEgwKBHV1aWQYASABKAkSEQoJbGVhZ3VlX2lkGAIgASgJEhUKDXNlYXNvbl9udW1iZXIYAyABKAUSLgoKc3RhcnRfZGF0ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX2RhdGUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKD2FjdHVhbF9lbmRfZGF0ZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIQoGc3RhdHVzGAcgASgOMhEuaXBjLlNlYXNvblN0YXR1cxIgCglkaXZpc2lvbnMYCCADKAsyDS5pcGMuRGl2aXNpb24SMAoRcHJvbW90aW9uX2Zvcm11bGEYCSABKA4yFS5pcGMuUHJvbW90aW9uRm9ybXVsYSLaAQoIRGl2aXNpb24SDAoEdXVpZBgBIAEoCRIRCglzZWFzb25faWQYAiABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAMgASgFEhUKDWRpdmlzaW9uX25hbWUYBCABKAkSKAoHcGxheWVycxgFIAMoCzIXLmlwYy5QbGF5ZXJSZWdpc3RyYXRpb24SEAoIZ2FtZV9pZHMYBiADKAkSLAoJc3RhbmRpbmdzGAcgAygLMhkuaXBjLkxlYWd1ZVBsYXllclN0YW5kaW5nEhMKC2lzX2NvbXBsZXRlGAggASgIIqkBChJQbGF5ZXJSZWdpc3RyYXRpb24SDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtkaXZpc2lvbl9pZBgDIAEoCRI1ChFyZWdpc3RyYXRpb25fZGF0ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFAoMZmlyc3RzX2NvdW50GAUgASgFEg4KBnN0YXR1cxgGIAEoCSLlAwoUTGVhZ3VlUGxheWVyU3RhbmRpbmcSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIMCgRyYW5rGAMgASgFEgwKBHdpbnMYBCABKAUSDgoGbG9zc2VzGAUgASgFEg0KBWRyYXdzGAYgASgFEg4KBnNwcmVhZBgHIAEoBRIUCgxnYW1lc19wbGF5ZWQYCCABKAUSFwoPZ2FtZXNfcmVtYWluaW5nGAkgASgFEiMKBnJlc3VsdBgKIAEoDjITLmlwYy5TdGFuZGluZ1Jlc3VsdBITCgt0b3RhbF9zY29yZRgLIAEoBRIcChR0b3RhbF9vcHBvbmVudF9zY29yZRgMIAEoBRIUCgx0b3RhbF9iaW5nb3MYDSABKAUSHQoVdG90YWxfb3Bwb25lbnRfYmluZ29zGA4gASgFEhMKC3RvdGFsX3R1cm5zGA8gASgFEhEKCWhpZ2hfdHVybhgQIAEoBRIRCgloaWdoX2dhbWUYESABKAUSEAoIdGltZW91dHMYEiABKAUSFQoNYmxhbmtzX3BsYXllZBgTIAEoBRIaChJ0b3RhbF90aWxlc19wbGF5ZWQYFCABKAUSIwobdG90YWxfb3Bwb25lbnRfdGlsZXNfcGxheWVkGBUgASgFKoEBCgxTZWFzb25TdGF0dXMSFAoQU0VBU09OX1NDSEVEVUxFRBAAEhEKDVNFQVNPTl9BQ1RJVkUQARIUChBTRUFTT05fQ09NUExFVEVEEAISFAoQU0VBU09OX0NBTkNFTExFRBADEhwKGFNFQVNPTl9SRUdJU1RSQVRJT05fT1BFThAEKlIKEFByb21vdGlvbkZvcm11bGESEQoNUFJPTU9fTl9ESVZfNhAAEhgKFFBST01PX05fUExVU18xX0RJVl81EAESEQoNUFJPTU9fTl9ESVZfNRACKnQKDlN0YW5kaW5nUmVzdWx0Eg8KC1JFU1VMVF9OT05FEAASEwoPUkVTVUxUX1BST01PVEVEEAESFAoQUkVTVUxUX1JFTEVHQVRFRBACEhEKDVJFU1VMVF9TVEFZRUQQAxITCg9SRVNVTFRfQ0hBTVBJT04QBCrKAQoPUGxhY2VtZW50U3RhdHVzEhIKDlBMQUNFTUVOVF9OT05FEAASEQoNUExBQ0VNRU5UX05FVxABEhYKElBMQUNFTUVOVF9QUk9NT1RFRBADEhcKE1BMQUNFTUVOVF9SRUxFR0FURUQQBBIUChBQTEFDRU1FTlRfU1RBWUVEEAUSJAogUExBQ0VNRU5UX1NIT1JUX0hJQVRVU19SRVRVUk5JTkcQBhIjCh9QTEFDRU1FTlRfTE9OR19ISUFUVVNfUkVUVVJOSU5HEAdCcwoHY29tLmlwY0ILTGVhZ3VlUHJvdG9QAVovZ2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9pcGOiAgNJWFiqAgNJcGPKAgNJcGPiAg9JcGNcR1BCTWV0YWRhdGHqAgNJcGNiBnByb3RvMw", [file_proto_ipc_omgwords, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message ipc.League
@@ -333,6 +333,85 @@ export type LeaguePlayerStanding = Message<"ipc.LeaguePlayerStanding"> & {
    * @generated from field: ipc.StandingResult result = 10;
    */
   result: StandingResult;
+
+  /**
+   * Extended stats for richer leaderboard display
+   *
+   * Sum of scores (for ScAV = total_score / games_played)
+   *
+   * @generated from field: int32 total_score = 11;
+   */
+  totalScore: number;
+
+  /**
+   * Sum of opponent scores (for OScAV)
+   *
+   * @generated from field: int32 total_opponent_score = 12;
+   */
+  totalOpponentScore: number;
+
+  /**
+   * Sum of bingos (for BAV = total_bingos / games_played)
+   *
+   * @generated from field: int32 total_bingos = 13;
+   */
+  totalBingos: number;
+
+  /**
+   * Sum of opponent bingos (for OBAV)
+   *
+   * @generated from field: int32 total_opponent_bingos = 14;
+   */
+  totalOpponentBingos: number;
+
+  /**
+   * Sum of turns (for #TAV = total_turns / games_played)
+   *
+   * @generated from field: int32 total_turns = 15;
+   */
+  totalTurns: number;
+
+  /**
+   * Highest single turn score (HT)
+   *
+   * @generated from field: int32 high_turn = 16;
+   */
+  highTurn: number;
+
+  /**
+   * Highest game score (HG)
+   *
+   * @generated from field: int32 high_game = 17;
+   */
+  highGame: number;
+
+  /**
+   * Number of timeout losses (#TO)
+   *
+   * @generated from field: int32 timeouts = 18;
+   */
+  timeouts: number;
+
+  /**
+   * Number of blanks played (for ?AV = blanks_played / games_played)
+   *
+   * @generated from field: int32 blanks_played = 19;
+   */
+  blanksPlayed: number;
+
+  /**
+   * Sum of tiles played (for TAV = total_tiles_played / games_played)
+   *
+   * @generated from field: int32 total_tiles_played = 20;
+   */
+  totalTilesPlayed: number;
+
+  /**
+   * Sum of opponent tiles played (for OTAV)
+   *
+   * @generated from field: int32 total_opponent_tiles_played = 21;
+   */
+  totalOpponentTilesPlayed: number;
 };
 
 /**

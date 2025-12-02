@@ -57,7 +57,20 @@ const (
 	// That's in addition to about 200MB base.
 	// Reduced cache cap accordingly.
 	CacheCap = 400
+
+	// GameLockExpiration is how long a game lock can be idle before cleanup.
+	// This should be longer than any possible request duration.
+	GameLockExpiration = 30 * time.Minute
+
+	// GameLockCleanupInterval is how often we check for expired locks.
+	GameLockCleanupInterval = 5 * time.Minute
 )
+
+// gameLock holds a mutex and tracks when it was last used.
+type gameLock struct {
+	mu         sync.Mutex
+	lastAccess time.Time
+}
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
 // we will need to make sure only the right nodes respond to game requests.
@@ -70,6 +83,17 @@ type Cache struct {
 	activeGamesLastUpdated time.Time
 
 	backing backingStore
+
+	// gameLocks provides per-game-ID locks for correspondence games.
+	// Since correspondence games bypass the cache and each Get() returns a new
+	// instance, the game's internal Lock() doesn't protect against concurrent
+	// access from multiple goroutines. This map ensures only one goroutine can
+	// work on a correspondence game at a time.
+	gameLocks   map[string]*gameLock
+	gameLocksMu sync.Mutex
+
+	// stopCleanup is used to signal the cleanup goroutine to stop.
+	stopCleanup chan struct{}
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -79,7 +103,7 @@ func NewCache(backing backingStore) *Cache {
 		panic(err)
 	}
 
-	return &Cache{
+	c := &Cache{
 		backing: backing,
 		cache:   lrucache,
 
@@ -96,7 +120,15 @@ func NewCache(backing backingStore) *Cache {
 		// add multiple nodes we should probably have a Redis cache for a
 		// few things (especially game quickdata).
 		activeGamesTTL: time.Second * 5,
+
+		gameLocks:   make(map[string]*gameLock),
+		stopCleanup: make(chan struct{}),
 	}
+
+	// Start the cleanup goroutine
+	go c.cleanupExpiredLocks()
+
+	return c
 }
 
 // Unload unloads the game from the cache
@@ -291,4 +323,69 @@ func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 
 func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
 	c.backing.SetTimerModuleCreator(creator)
+}
+
+// LockGame acquires a lock for the given game ID.
+// This is used to serialize access to correspondence games which bypass the cache.
+// The caller MUST call UnlockGame when done.
+func (c *Cache) LockGame(gameID string) {
+	c.gameLocksMu.Lock()
+	gl, ok := c.gameLocks[gameID]
+	if !ok {
+		gl = &gameLock{}
+		c.gameLocks[gameID] = gl
+	}
+	c.gameLocksMu.Unlock()
+
+	gl.mu.Lock()
+
+	// Update last access time while holding the lock
+	c.gameLocksMu.Lock()
+	gl.lastAccess = time.Now()
+	c.gameLocksMu.Unlock()
+}
+
+// UnlockGame releases the lock for the given game ID.
+func (c *Cache) UnlockGame(gameID string) {
+	c.gameLocksMu.Lock()
+	gl, ok := c.gameLocks[gameID]
+	c.gameLocksMu.Unlock()
+
+	if ok {
+		gl.mu.Unlock()
+	}
+}
+
+// cleanupExpiredLocks periodically removes locks that haven't been accessed recently.
+// This prevents memory leaks from accumulating locks for games that are no longer active.
+func (c *Cache) cleanupExpiredLocks() {
+	ticker := time.NewTicker(GameLockCleanupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.gameLocksMu.Lock()
+			now := time.Now()
+			for gameID, gl := range c.gameLocks {
+				// Only remove if the lock is not currently held and has expired.
+				// TryLock returns true if we acquired the lock (meaning it wasn't held).
+				if gl.mu.TryLock() {
+					if now.Sub(gl.lastAccess) > GameLockExpiration {
+						delete(c.gameLocks, gameID)
+					}
+					gl.mu.Unlock()
+				}
+			}
+			c.gameLocksMu.Unlock()
+		case <-c.stopCleanup:
+			return
+		}
+	}
+}
+
+// StopCleanup stops the background lock cleanup goroutine.
+// This should be called when the cache is being shut down.
+func (c *Cache) StopCleanup() {
+	close(c.stopCleanup)
 }

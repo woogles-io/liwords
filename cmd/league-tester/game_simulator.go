@@ -202,7 +202,7 @@ func simulateSingleGame(ctx context.Context, allStores *stores.Stores, gameUUID 
 	// Manually update league standings
 	// This is what normally happens in performEndgameDuties
 	if allStores.LeagueStore != nil {
-		err = league.UpdateGameStandings(ctx, allStores.LeagueStore, entGame.GameID())
+		err = league.UpdateGameStandingsWithGame(ctx, allStores.LeagueStore, entGame)
 		if err != nil {
 			return fmt.Errorf("failed to update standings: %w", err)
 		}

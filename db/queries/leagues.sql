@@ -215,8 +215,10 @@ ORDER BY ls.season_number DESC;
 
 -- name: UpsertStanding :exec
 -- Note: rank column is not upserted - it's calculated on-demand from wins/losses/draws/spread
-INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
+    total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
+    total_tiles_played, total_opponent_tiles_played, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = EXCLUDED.wins,
@@ -226,12 +228,26 @@ DO UPDATE SET
     games_played = EXCLUDED.games_played,
     games_remaining = EXCLUDED.games_remaining,
     result = EXCLUDED.result,
+    total_score = EXCLUDED.total_score,
+    total_opponent_score = EXCLUDED.total_opponent_score,
+    total_bingos = EXCLUDED.total_bingos,
+    total_opponent_bingos = EXCLUDED.total_opponent_bingos,
+    total_turns = EXCLUDED.total_turns,
+    high_turn = EXCLUDED.high_turn,
+    high_game = EXCLUDED.high_game,
+    timeouts = EXCLUDED.timeouts,
+    blanks_played = EXCLUDED.blanks_played,
+    total_tiles_played = EXCLUDED.total_tiles_played,
+    total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
     updated_at = NOW();
 
 -- name: GetStandings :many
 -- Note: rank column is deprecated and not queried. Sorting is done in Go code.
 SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
        ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at,
+       ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
+       ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
+       ls.total_tiles_played, ls.total_opponent_tiles_played,
        u.uuid as user_uuid, u.username
 FROM league_standings ls
 JOIN users u ON ls.user_id = u.id
@@ -248,8 +264,10 @@ WHERE division_id = $1;
 -- name: IncrementStandingsAtomic :exec
 -- Atomically increment standings for a player after a game completes
 -- This avoids race conditions by using database-level arithmetic
-INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
+    total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
+    total_tiles_played, total_opponent_tiles_played, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,
@@ -258,6 +276,17 @@ DO UPDATE SET
     spread = league_standings.spread + EXCLUDED.spread,
     games_played = league_standings.games_played + 1,
     games_remaining = GREATEST(league_standings.games_remaining - 1, 0),
+    total_score = league_standings.total_score + EXCLUDED.total_score,
+    total_opponent_score = league_standings.total_opponent_score + EXCLUDED.total_opponent_score,
+    total_bingos = league_standings.total_bingos + EXCLUDED.total_bingos,
+    total_opponent_bingos = league_standings.total_opponent_bingos + EXCLUDED.total_opponent_bingos,
+    total_turns = league_standings.total_turns + EXCLUDED.total_turns,
+    high_turn = GREATEST(league_standings.high_turn, EXCLUDED.high_turn),
+    high_game = GREATEST(league_standings.high_game, EXCLUDED.high_game),
+    timeouts = league_standings.timeouts + EXCLUDED.timeouts,
+    blanks_played = league_standings.blanks_played + EXCLUDED.blanks_played,
+    total_tiles_played = league_standings.total_tiles_played + EXCLUDED.total_tiles_played,
+    total_opponent_tiles_played = league_standings.total_opponent_tiles_played + EXCLUDED.total_opponent_tiles_played,
     updated_at = NOW();
 
 -- Game queries for league games
@@ -373,6 +402,27 @@ SELECT
     gp0.won as player0_won,
     gp1.won as player1_won,
     gp0.game_end_reason
+FROM games g
+INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.league_division_id = $1
+  AND gp0.game_end_reason != 0  -- Only finished games
+  AND gp0.game_end_reason != 5  -- Exclude ABORTED
+  AND gp0.game_end_reason != 7; -- Exclude CANCELLED
+
+-- name: GetDivisionGamesWithStats :many
+-- Get all finished games for a division including the stats JSON blob
+-- Used for recalculating extended standings stats from historical games
+SELECT
+    g.uuid,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason,
+    g.stats
 FROM games g
 INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
 INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1

@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.90.2
 	github.com/aws/smithy-go v1.23.2
 	github.com/domino14/macondo v0.11.4-0.20250923011800-5e6c7078caf3
-	github.com/domino14/word-golib v0.2.15
+	github.com/domino14/word-golib v0.2.16
 	github.com/exaring/otelpgx v0.9.3
 	github.com/go-redsync/redsync/v4 v4.14.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -36,7 +36,6 @@ require (
 	github.com/nats-io/nats.go v1.47.0
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.52.0
-	github.com/signalfx/splunk-otel-go/instrumentation/github.com/gomodule/redigo/splunkredigo v1.28.0
 	github.com/stretchr/testify v1.11.1
 	go.akshayshah.org/connectproto v0.6.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.63.0
@@ -135,7 +134,6 @@ require (
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/signalfx/splunk-otel-go/instrumentation/internal v1.28.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -165,4 +163,5 @@ require (
 	gorm.io/driver/clickhouse v0.7.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 )
+
 // trigger

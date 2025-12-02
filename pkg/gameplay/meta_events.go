@@ -124,6 +124,10 @@ func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEve
 // it is not applicable.
 func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<- *entity.EventWrapper,
 	stores *stores.Stores) error {
+	// Lock at the cache level first for correspondence game safety
+	stores.GameStore.LockGame(evt.GameId)
+	defer stores.GameStore.UnlockGame(evt.GameId)
+
 	g, err := stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
 		return err

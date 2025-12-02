@@ -181,6 +181,11 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 				log.Err(err).Str("gid", gid).Msg("error-acknowledging")
 			}
 		}()
+
+		// Lock at the cache level first for correspondence game safety
+		b.stores.GameStore.LockGame(gid)
+		defer b.stores.GameStore.UnlockGame(gid)
+
 		g, err := b.stores.GameStore.Get(ctx, gid)
 		if err != nil {
 			log.Err(err).Str("gid", gid).Msg("cant-handle-bot-move")
@@ -219,6 +224,10 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 }
 
 func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
+	// Lock at the cache level first for correspondence game safety
+	b.stores.GameStore.LockGame(evt.GameId)
+	defer b.stores.GameStore.UnlockGame(evt.GameId)
+
 	g, err := b.stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
 		return err
@@ -562,10 +571,13 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 
 					// need to lock game to abort? maybe lock inside AbortGame?
 				log.Debug().Str("gid", g.GameId).Msg("locking")
+				// Lock at the cache level first for correspondence game safety
+				b.stores.GameStore.LockGame(g.GameId)
 				entGame.Lock()
 				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
 				log.Err(err).Msg("adjudicating-after-abort-game")
 				entGame.Unlock()
+				b.stores.GameStore.UnlockGame(g.GameId)
 				log.Debug().Str("gid", g.GameId).Msg("unlocking")
 
 				// Delete the game from the lobby. We do this here instead
