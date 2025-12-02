@@ -210,7 +210,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 
 	// Update league standings if this is a league game
-	err = league.UpdateGameStandings(ctx, stores.LeagueStore, g.GameID())
+	err = league.UpdateGameStandingsWithGame(ctx, stores.LeagueStore, g)
 	if err != nil {
 		// Log error but don't fail game completion
 		log.Err(err).Str("gameID", g.GameID()).Msg("failed-to-update-league-standings")

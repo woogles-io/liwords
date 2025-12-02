@@ -88,6 +88,18 @@ message LeaguePlayerStanding {
     int32 games_played = 8;
     int32 games_remaining = 9;
     StandingResult result = 10;
+    // Extended stats for richer leaderboard display
+    int32 total_score = 11;           // Sum of scores (for ScAV = total_score / games_played)
+    int32 total_opponent_score = 12;  // Sum of opponent scores (for OScAV)
+    int32 total_bingos = 13;          // Sum of bingos (for BAV = total_bingos / games_played)
+    int32 total_opponent_bingos = 14; // Sum of opponent bingos (for OBAV)
+    int32 total_turns = 15;           // Sum of turns (for #TAV = total_turns / games_played)
+    int32 high_turn = 16;             // Highest single turn score (HT)
+    int32 high_game = 17;             // Highest game score (HG)
+    int32 timeouts = 18;              // Number of timeout losses (#TO)
+    int32 blanks_played = 19;         // Number of blanks played (for ?AV = blanks_played / games_played)
+    int32 total_tiles_played = 20;    // Sum of tiles played (for TAV = total_tiles_played / games_played)
+    int32 total_opponent_tiles_played = 21; // Sum of opponent tiles played (for OTAV)
 }
 
 enum StandingResult {

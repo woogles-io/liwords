@@ -1,0 +1,49 @@
+meta {
+  name: Recalculate Season Extended Stats
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseURL}}/api/league_service.LeagueService/RecalculateSeasonExtendedStats
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{ADMIN_API_KEY}}
+}
+
+body:json {
+  {
+    "season_id": "07f7d60c-d72f-4003-b7b1-d26a2ba6095e"
+  }
+}
+
+docs {
+  ## Recalculate Season Extended Stats
+  
+  Recalculates extended stats (avg scores, bingos, high game, etc.) for all divisions in a season by re-processing all finished games.
+  
+  This is useful for migrating existing seasons that were created before the extended stats feature was added.
+  
+  ### Request Fields:
+  - `season_id` (required): UUID of the season to recalculate
+  
+  ### Response Fields:
+  - `success`: Boolean indicating if recalculation succeeded
+  - `divisions_processed`: Number of divisions that were processed
+  - `message`: Human-readable result message
+  
+  ### Requirements:
+  - Must have can_manage_leagues permission
+  
+  ### Extended Stats Recalculated:
+  - Total score / opponent score (for AVS/OAVS averages)
+  - Total bingos / opponent bingos (for BAV/OBAV averages)
+  - Total turns (for AVGT average)
+  - High game (HG)
+  - High turn (HT)
+  - Timeouts (#TO)
+  - Blanks played (?AV)
+}

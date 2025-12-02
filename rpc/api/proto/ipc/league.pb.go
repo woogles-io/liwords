@@ -776,8 +776,20 @@ type LeaguePlayerStanding struct {
 	GamesPlayed    int32                  `protobuf:"varint,8,opt,name=games_played,json=gamesPlayed,proto3" json:"games_played,omitempty"`
 	GamesRemaining int32                  `protobuf:"varint,9,opt,name=games_remaining,json=gamesRemaining,proto3" json:"games_remaining,omitempty"`
 	Result         StandingResult         `protobuf:"varint,10,opt,name=result,proto3,enum=ipc.StandingResult" json:"result,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Extended stats for richer leaderboard display
+	TotalScore               int32 `protobuf:"varint,11,opt,name=total_score,json=totalScore,proto3" json:"total_score,omitempty"`                                               // Sum of scores (for ScAV = total_score / games_played)
+	TotalOpponentScore       int32 `protobuf:"varint,12,opt,name=total_opponent_score,json=totalOpponentScore,proto3" json:"total_opponent_score,omitempty"`                     // Sum of opponent scores (for OScAV)
+	TotalBingos              int32 `protobuf:"varint,13,opt,name=total_bingos,json=totalBingos,proto3" json:"total_bingos,omitempty"`                                            // Sum of bingos (for BAV = total_bingos / games_played)
+	TotalOpponentBingos      int32 `protobuf:"varint,14,opt,name=total_opponent_bingos,json=totalOpponentBingos,proto3" json:"total_opponent_bingos,omitempty"`                  // Sum of opponent bingos (for OBAV)
+	TotalTurns               int32 `protobuf:"varint,15,opt,name=total_turns,json=totalTurns,proto3" json:"total_turns,omitempty"`                                               // Sum of turns (for #TAV = total_turns / games_played)
+	HighTurn                 int32 `protobuf:"varint,16,opt,name=high_turn,json=highTurn,proto3" json:"high_turn,omitempty"`                                                     // Highest single turn score (HT)
+	HighGame                 int32 `protobuf:"varint,17,opt,name=high_game,json=highGame,proto3" json:"high_game,omitempty"`                                                     // Highest game score (HG)
+	Timeouts                 int32 `protobuf:"varint,18,opt,name=timeouts,proto3" json:"timeouts,omitempty"`                                                                     // Number of timeout losses (#TO)
+	BlanksPlayed             int32 `protobuf:"varint,19,opt,name=blanks_played,json=blanksPlayed,proto3" json:"blanks_played,omitempty"`                                         // Number of blanks played (for ?AV = blanks_played / games_played)
+	TotalTilesPlayed         int32 `protobuf:"varint,20,opt,name=total_tiles_played,json=totalTilesPlayed,proto3" json:"total_tiles_played,omitempty"`                           // Sum of tiles played (for TAV = total_tiles_played / games_played)
+	TotalOpponentTilesPlayed int32 `protobuf:"varint,21,opt,name=total_opponent_tiles_played,json=totalOpponentTilesPlayed,proto3" json:"total_opponent_tiles_played,omitempty"` // Sum of opponent tiles played (for OTAV)
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *LeaguePlayerStanding) Reset() {
@@ -880,6 +892,83 @@ func (x *LeaguePlayerStanding) GetResult() StandingResult {
 	return StandingResult_RESULT_NONE
 }
 
+func (x *LeaguePlayerStanding) GetTotalScore() int32 {
+	if x != nil {
+		return x.TotalScore
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalOpponentScore() int32 {
+	if x != nil {
+		return x.TotalOpponentScore
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalBingos() int32 {
+	if x != nil {
+		return x.TotalBingos
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalOpponentBingos() int32 {
+	if x != nil {
+		return x.TotalOpponentBingos
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalTurns() int32 {
+	if x != nil {
+		return x.TotalTurns
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetHighTurn() int32 {
+	if x != nil {
+		return x.HighTurn
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetHighGame() int32 {
+	if x != nil {
+		return x.HighGame
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTimeouts() int32 {
+	if x != nil {
+		return x.Timeouts
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetBlanksPlayed() int32 {
+	if x != nil {
+		return x.BlanksPlayed
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalTilesPlayed() int32 {
+	if x != nil {
+		return x.TotalTilesPlayed
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetTotalOpponentTilesPlayed() int32 {
+	if x != nil {
+		return x.TotalOpponentTilesPlayed
+	}
+	return 0
+}
+
 var File_proto_ipc_league_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_league_proto_rawDesc = "" +
@@ -931,7 +1020,7 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"divisionId\x12G\n" +
 	"\x11registration_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10registrationDate\x12!\n" +
 	"\ffirsts_count\x18\x05 \x01(\x05R\vfirstsCount\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\xb2\x02\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xe5\x05\n" +
 	"\x14LeaguePlayerStanding\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -943,7 +1032,20 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\fgames_played\x18\b \x01(\x05R\vgamesPlayed\x12'\n" +
 	"\x0fgames_remaining\x18\t \x01(\x05R\x0egamesRemaining\x12+\n" +
 	"\x06result\x18\n" +
-	" \x01(\x0e2\x13.ipc.StandingResultR\x06result*\x81\x01\n" +
+	" \x01(\x0e2\x13.ipc.StandingResultR\x06result\x12\x1f\n" +
+	"\vtotal_score\x18\v \x01(\x05R\n" +
+	"totalScore\x120\n" +
+	"\x14total_opponent_score\x18\f \x01(\x05R\x12totalOpponentScore\x12!\n" +
+	"\ftotal_bingos\x18\r \x01(\x05R\vtotalBingos\x122\n" +
+	"\x15total_opponent_bingos\x18\x0e \x01(\x05R\x13totalOpponentBingos\x12\x1f\n" +
+	"\vtotal_turns\x18\x0f \x01(\x05R\n" +
+	"totalTurns\x12\x1b\n" +
+	"\thigh_turn\x18\x10 \x01(\x05R\bhighTurn\x12\x1b\n" +
+	"\thigh_game\x18\x11 \x01(\x05R\bhighGame\x12\x1a\n" +
+	"\btimeouts\x18\x12 \x01(\x05R\btimeouts\x12#\n" +
+	"\rblanks_played\x18\x13 \x01(\x05R\fblanksPlayed\x12,\n" +
+	"\x12total_tiles_played\x18\x14 \x01(\x05R\x10totalTilesPlayed\x12=\n" +
+	"\x1btotal_opponent_tiles_played\x18\x15 \x01(\x05R\x18totalOpponentTilesPlayed*\x81\x01\n" +
 	"\fSeasonStatus\x12\x14\n" +
 	"\x10SEASON_SCHEDULED\x10\x00\x12\x11\n" +
 	"\rSEASON_ACTIVE\x10\x01\x12\x14\n" +

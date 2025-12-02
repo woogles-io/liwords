@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 const countDivisionGamesComplete = `-- name: CountDivisionGamesComplete :one
@@ -358,6 +359,72 @@ func (q *Queries) GetDivisionGameResults(ctx context.Context, leagueDivisionID p
 			&i.Player0Won,
 			&i.Player1Won,
 			&i.GameEndReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDivisionGamesWithStats = `-- name: GetDivisionGamesWithStats :many
+
+SELECT
+    g.uuid,
+    g.player0_id,
+    g.player1_id,
+    gp0.score as player0_score,
+    gp1.score as player1_score,
+    gp0.won as player0_won,
+    gp1.won as player1_won,
+    gp0.game_end_reason,
+    g.stats
+FROM games g
+INNER JOIN game_players gp0 ON g.uuid = gp0.game_uuid AND gp0.player_index = 0
+INNER JOIN game_players gp1 ON g.uuid = gp1.game_uuid AND gp1.player_index = 1
+WHERE g.league_division_id = $1
+  AND gp0.game_end_reason != 0  -- Only finished games
+  AND gp0.game_end_reason != 5  -- Exclude ABORTED
+  AND gp0.game_end_reason != 7
+`
+
+type GetDivisionGamesWithStatsRow struct {
+	Uuid          pgtype.Text
+	Player0ID     pgtype.Int4
+	Player1ID     pgtype.Int4
+	Player0Score  int32
+	Player1Score  int32
+	Player0Won    pgtype.Bool
+	Player1Won    pgtype.Bool
+	GameEndReason int16
+	Stats         entity.Stats
+}
+
+// Exclude CANCELLED
+// Get all finished games for a division including the stats JSON blob
+// Used for recalculating extended standings stats from historical games
+func (q *Queries) GetDivisionGamesWithStats(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionGamesWithStatsRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionGamesWithStats, leagueDivisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionGamesWithStatsRow
+	for rows.Next() {
+		var i GetDivisionGamesWithStatsRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Player0Score,
+			&i.Player1Score,
+			&i.Player0Won,
+			&i.Player1Won,
+			&i.GameEndReason,
+			&i.Stats,
 		); err != nil {
 			return nil, err
 		}
@@ -1001,7 +1068,7 @@ func (q *Queries) GetPlayerSeasonOpponents(ctx context.Context, arg GetPlayerSea
 }
 
 const getPlayerStanding = `-- name: GetPlayerStanding :one
-SELECT id, division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at FROM league_standings
+SELECT id, division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at, total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played, total_tiles_played, total_opponent_tiles_played FROM league_standings
 WHERE division_id = $1 AND user_id = $2
 `
 
@@ -1026,6 +1093,17 @@ func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingPa
 		&i.GamesRemaining,
 		&i.Result,
 		&i.UpdatedAt,
+		&i.TotalScore,
+		&i.TotalOpponentScore,
+		&i.TotalBingos,
+		&i.TotalOpponentBingos,
+		&i.TotalTurns,
+		&i.HighTurn,
+		&i.HighGame,
+		&i.Timeouts,
+		&i.BlanksPlayed,
+		&i.TotalTilesPlayed,
+		&i.TotalOpponentTilesPlayed,
 	)
 	return i, err
 }
@@ -1354,6 +1432,9 @@ func (q *Queries) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([
 const getStandings = `-- name: GetStandings :many
 SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
        ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at,
+       ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
+       ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
+       ls.total_tiles_played, ls.total_opponent_tiles_played,
        u.uuid as user_uuid, u.username
 FROM league_standings ls
 JOIN users u ON ls.user_id = u.id
@@ -1361,19 +1442,30 @@ WHERE ls.division_id = $1
 `
 
 type GetStandingsRow struct {
-	ID             int64
-	DivisionID     uuid.UUID
-	UserID         int32
-	Wins           pgtype.Int4
-	Losses         pgtype.Int4
-	Draws          pgtype.Int4
-	Spread         pgtype.Int4
-	GamesPlayed    pgtype.Int4
-	GamesRemaining pgtype.Int4
-	Result         pgtype.Int4
-	UpdatedAt      pgtype.Timestamptz
-	UserUuid       pgtype.Text
-	Username       pgtype.Text
+	ID                       int64
+	DivisionID               uuid.UUID
+	UserID                   int32
+	Wins                     pgtype.Int4
+	Losses                   pgtype.Int4
+	Draws                    pgtype.Int4
+	Spread                   pgtype.Int4
+	GamesPlayed              pgtype.Int4
+	GamesRemaining           pgtype.Int4
+	Result                   pgtype.Int4
+	UpdatedAt                pgtype.Timestamptz
+	TotalScore               pgtype.Int4
+	TotalOpponentScore       pgtype.Int4
+	TotalBingos              pgtype.Int4
+	TotalOpponentBingos      pgtype.Int4
+	TotalTurns               pgtype.Int4
+	HighTurn                 pgtype.Int4
+	HighGame                 pgtype.Int4
+	Timeouts                 pgtype.Int4
+	BlanksPlayed             pgtype.Int4
+	TotalTilesPlayed         pgtype.Int4
+	TotalOpponentTilesPlayed pgtype.Int4
+	UserUuid                 pgtype.Text
+	Username                 pgtype.Text
 }
 
 // Note: rank column is deprecated and not queried. Sorting is done in Go code.
@@ -1398,6 +1490,17 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Get
 			&i.GamesRemaining,
 			&i.Result,
 			&i.UpdatedAt,
+			&i.TotalScore,
+			&i.TotalOpponentScore,
+			&i.TotalBingos,
+			&i.TotalOpponentBingos,
+			&i.TotalTurns,
+			&i.HighTurn,
+			&i.HighGame,
+			&i.Timeouts,
+			&i.BlanksPlayed,
+			&i.TotalTilesPlayed,
+			&i.TotalOpponentTilesPlayed,
 			&i.UserUuid,
 			&i.Username,
 		); err != nil {
@@ -1448,8 +1551,10 @@ func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.
 }
 
 const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec
-INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
+    total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
+    total_tiles_played, total_opponent_tiles_played, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = league_standings.wins + EXCLUDED.wins,
@@ -1458,17 +1563,39 @@ DO UPDATE SET
     spread = league_standings.spread + EXCLUDED.spread,
     games_played = league_standings.games_played + 1,
     games_remaining = GREATEST(league_standings.games_remaining - 1, 0),
+    total_score = league_standings.total_score + EXCLUDED.total_score,
+    total_opponent_score = league_standings.total_opponent_score + EXCLUDED.total_opponent_score,
+    total_bingos = league_standings.total_bingos + EXCLUDED.total_bingos,
+    total_opponent_bingos = league_standings.total_opponent_bingos + EXCLUDED.total_opponent_bingos,
+    total_turns = league_standings.total_turns + EXCLUDED.total_turns,
+    high_turn = GREATEST(league_standings.high_turn, EXCLUDED.high_turn),
+    high_game = GREATEST(league_standings.high_game, EXCLUDED.high_game),
+    timeouts = league_standings.timeouts + EXCLUDED.timeouts,
+    blanks_played = league_standings.blanks_played + EXCLUDED.blanks_played,
+    total_tiles_played = league_standings.total_tiles_played + EXCLUDED.total_tiles_played,
+    total_opponent_tiles_played = league_standings.total_opponent_tiles_played + EXCLUDED.total_opponent_tiles_played,
     updated_at = NOW()
 `
 
 type IncrementStandingsAtomicParams struct {
-	DivisionID     uuid.UUID
-	UserID         int32
-	Wins           pgtype.Int4
-	Losses         pgtype.Int4
-	Draws          pgtype.Int4
-	Spread         pgtype.Int4
-	GamesRemaining pgtype.Int4
+	DivisionID               uuid.UUID
+	UserID                   int32
+	Wins                     pgtype.Int4
+	Losses                   pgtype.Int4
+	Draws                    pgtype.Int4
+	Spread                   pgtype.Int4
+	GamesRemaining           pgtype.Int4
+	TotalScore               pgtype.Int4
+	TotalOpponentScore       pgtype.Int4
+	TotalBingos              pgtype.Int4
+	TotalOpponentBingos      pgtype.Int4
+	TotalTurns               pgtype.Int4
+	HighTurn                 pgtype.Int4
+	HighGame                 pgtype.Int4
+	Timeouts                 pgtype.Int4
+	BlanksPlayed             pgtype.Int4
+	TotalTilesPlayed         pgtype.Int4
+	TotalOpponentTilesPlayed pgtype.Int4
 }
 
 // Atomically increment standings for a player after a game completes
@@ -1482,6 +1609,17 @@ func (q *Queries) IncrementStandingsAtomic(ctx context.Context, arg IncrementSta
 		arg.Draws,
 		arg.Spread,
 		arg.GamesRemaining,
+		arg.TotalScore,
+		arg.TotalOpponentScore,
+		arg.TotalBingos,
+		arg.TotalOpponentBingos,
+		arg.TotalTurns,
+		arg.HighTurn,
+		arg.HighGame,
+		arg.Timeouts,
+		arg.BlanksPlayed,
+		arg.TotalTilesPlayed,
+		arg.TotalOpponentTilesPlayed,
 	)
 	return err
 }
@@ -1850,8 +1988,10 @@ func (q *Queries) UpdateSeasonStatus(ctx context.Context, arg UpdateSeasonStatus
 
 const upsertStanding = `-- name: UpsertStanding :exec
 
-INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
+    total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
+    total_tiles_played, total_opponent_tiles_played, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = EXCLUDED.wins,
@@ -1861,19 +2001,41 @@ DO UPDATE SET
     games_played = EXCLUDED.games_played,
     games_remaining = EXCLUDED.games_remaining,
     result = EXCLUDED.result,
+    total_score = EXCLUDED.total_score,
+    total_opponent_score = EXCLUDED.total_opponent_score,
+    total_bingos = EXCLUDED.total_bingos,
+    total_opponent_bingos = EXCLUDED.total_opponent_bingos,
+    total_turns = EXCLUDED.total_turns,
+    high_turn = EXCLUDED.high_turn,
+    high_game = EXCLUDED.high_game,
+    timeouts = EXCLUDED.timeouts,
+    blanks_played = EXCLUDED.blanks_played,
+    total_tiles_played = EXCLUDED.total_tiles_played,
+    total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
     updated_at = NOW()
 `
 
 type UpsertStandingParams struct {
-	DivisionID     uuid.UUID
-	UserID         int32
-	Wins           pgtype.Int4
-	Losses         pgtype.Int4
-	Draws          pgtype.Int4
-	Spread         pgtype.Int4
-	GamesPlayed    pgtype.Int4
-	GamesRemaining pgtype.Int4
-	Result         pgtype.Int4
+	DivisionID               uuid.UUID
+	UserID                   int32
+	Wins                     pgtype.Int4
+	Losses                   pgtype.Int4
+	Draws                    pgtype.Int4
+	Spread                   pgtype.Int4
+	GamesPlayed              pgtype.Int4
+	GamesRemaining           pgtype.Int4
+	Result                   pgtype.Int4
+	TotalScore               pgtype.Int4
+	TotalOpponentScore       pgtype.Int4
+	TotalBingos              pgtype.Int4
+	TotalOpponentBingos      pgtype.Int4
+	TotalTurns               pgtype.Int4
+	HighTurn                 pgtype.Int4
+	HighGame                 pgtype.Int4
+	Timeouts                 pgtype.Int4
+	BlanksPlayed             pgtype.Int4
+	TotalTilesPlayed         pgtype.Int4
+	TotalOpponentTilesPlayed pgtype.Int4
 }
 
 // Standings operations
@@ -1889,6 +2051,17 @@ func (q *Queries) UpsertStanding(ctx context.Context, arg UpsertStandingParams) 
 		arg.GamesPlayed,
 		arg.GamesRemaining,
 		arg.Result,
+		arg.TotalScore,
+		arg.TotalOpponentScore,
+		arg.TotalBingos,
+		arg.TotalOpponentBingos,
+		arg.TotalTurns,
+		arg.HighTurn,
+		arg.HighGame,
+		arg.Timeouts,
+		arg.BlanksPlayed,
+		arg.TotalTilesPlayed,
+		arg.TotalOpponentTilesPlayed,
 	)
 	return err
 }

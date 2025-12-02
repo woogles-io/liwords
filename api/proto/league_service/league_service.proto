@@ -48,6 +48,7 @@ service LeagueService {
   rpc GetSeasonPlayersWithUnstartedGames(SeasonRequest) returns (SeasonPlayersWithUnstartedGamesResponse);
   rpc UpdateSeasonDates(UpdateSeasonDatesRequest) returns (SeasonResponse);
   rpc UpdateSeasonPromotionFormula(UpdateSeasonPromotionFormulaRequest) returns (SeasonResponse);
+  rpc RecalculateSeasonExtendedStats(SeasonRequest) returns (RecalculateExtendedStatsResponse);
 }
 
 message CreateLeagueRequest {
@@ -237,4 +238,10 @@ message UpdateSeasonDatesRequest {
 message UpdateSeasonPromotionFormulaRequest {
   string season_id = 1;
   ipc.PromotionFormula promotion_formula = 2;
+}
+
+message RecalculateExtendedStatsResponse {
+  bool success = 1;
+  int32 divisions_processed = 2;
+  string message = 3;
 }

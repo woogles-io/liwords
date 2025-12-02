@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -73,6 +74,18 @@ type PlayerStanding struct {
 	GamesPlayed int
 	Rank        int // Deprecated: calculated from position in sorted array, not stored in DB
 	Outcome     pb.StandingResult
+	// Extended stats
+	TotalScore               int
+	TotalOpponentScore       int
+	TotalBingos              int
+	TotalOpponentBingos      int
+	TotalTurns               int
+	HighTurn                 int
+	HighGame                 int
+	Timeouts                 int
+	BlanksPlayed             int
+	TotalTilesPlayed         int
+	TotalOpponentTilesPlayed int
 }
 
 // CalculateAndSaveStandings calculates final standings for all divisions in a season
@@ -338,8 +351,8 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	player0ID int32,
 	player1ID int32,
 	winnerIdx int32, // 0, 1, or -1 for tie
-	player0Score int32,
-	player1Score int32,
+	p0Stats GameStats,
+	p1Stats GameStats,
 ) error {
 	// Use atomic operations to prevent race conditions when multiple games finish simultaneously
 	// Note: player IDs are database IDs (int32), not UUID strings
@@ -364,7 +377,7 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	} else {
 		p0Draws = 1
 	}
-	p0Spread := player0Score - player1Score
+	p0Spread := p0Stats.Score - p1Stats.Score
 
 	// Calculate deltas for player 1
 	var p1Wins, p1Losses, p1Draws int32
@@ -375,17 +388,37 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 	} else {
 		p1Draws = 1
 	}
-	p1Spread := player1Score - player0Score
+	p1Spread := p1Stats.Score - p0Stats.Score
+
+	// Convert timeout bool to int
+	var p0Timeouts, p1Timeouts int32
+	if p0Stats.TimedOut {
+		p0Timeouts = 1
+	}
+	if p1Stats.TimedOut {
+		p1Timeouts = 1
+	}
 
 	// Atomically increment player 0's standings
 	err = sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
-		DivisionID:     divisionID,
-		UserID:         player0ID,
-		Wins:           pgtype.Int4{Int32: p0Wins, Valid: true},
-		Losses:         pgtype.Int4{Int32: p0Losses, Valid: true},
-		Draws:          pgtype.Int4{Int32: p0Draws, Valid: true},
-		Spread:         pgtype.Int4{Int32: p0Spread, Valid: true},
-		GamesRemaining: pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
+		DivisionID:               divisionID,
+		UserID:                   player0ID,
+		Wins:                     pgtype.Int4{Int32: p0Wins, Valid: true},
+		Losses:                   pgtype.Int4{Int32: p0Losses, Valid: true},
+		Draws:                    pgtype.Int4{Int32: p0Draws, Valid: true},
+		Spread:                   pgtype.Int4{Int32: p0Spread, Valid: true},
+		GamesRemaining:           pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
+		TotalScore:               pgtype.Int4{Int32: p0Stats.Score, Valid: true},
+		TotalOpponentScore:       pgtype.Int4{Int32: p1Stats.Score, Valid: true},
+		TotalBingos:              pgtype.Int4{Int32: p0Stats.Bingos, Valid: true},
+		TotalOpponentBingos:      pgtype.Int4{Int32: p1Stats.Bingos, Valid: true},
+		TotalTurns:               pgtype.Int4{Int32: p0Stats.Turns, Valid: true},
+		HighTurn:                 pgtype.Int4{Int32: p0Stats.HighTurn, Valid: true},
+		HighGame:                 pgtype.Int4{Int32: p0Stats.HighGame, Valid: true},
+		Timeouts:                 pgtype.Int4{Int32: p0Timeouts, Valid: true},
+		BlanksPlayed:             pgtype.Int4{Int32: p0Stats.BlanksPlayed, Valid: true},
+		TotalTilesPlayed:         pgtype.Int4{Int32: p0Stats.TilesPlayed, Valid: true},
+		TotalOpponentTilesPlayed: pgtype.Int4{Int32: p1Stats.TilesPlayed, Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to increment standings for player %d: %w", player0ID, err)
@@ -393,13 +426,24 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 
 	// Atomically increment player 1's standings
 	err = sm.store.IncrementStandingsAtomic(ctx, models.IncrementStandingsAtomicParams{
-		DivisionID:     divisionID,
-		UserID:         player1ID,
-		Wins:           pgtype.Int4{Int32: p1Wins, Valid: true},
-		Losses:         pgtype.Int4{Int32: p1Losses, Valid: true},
-		Draws:           pgtype.Int4{Int32: p1Draws, Valid: true},
-		Spread:         pgtype.Int4{Int32: p1Spread, Valid: true},
-		GamesRemaining: pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
+		DivisionID:               divisionID,
+		UserID:                   player1ID,
+		Wins:                     pgtype.Int4{Int32: p1Wins, Valid: true},
+		Losses:                   pgtype.Int4{Int32: p1Losses, Valid: true},
+		Draws:                    pgtype.Int4{Int32: p1Draws, Valid: true},
+		Spread:                   pgtype.Int4{Int32: p1Spread, Valid: true},
+		GamesRemaining:           pgtype.Int4{Int32: int32(initialGamesRemaining), Valid: true},
+		TotalScore:               pgtype.Int4{Int32: p1Stats.Score, Valid: true},
+		TotalOpponentScore:       pgtype.Int4{Int32: p0Stats.Score, Valid: true},
+		TotalBingos:              pgtype.Int4{Int32: p1Stats.Bingos, Valid: true},
+		TotalOpponentBingos:      pgtype.Int4{Int32: p0Stats.Bingos, Valid: true},
+		TotalTurns:               pgtype.Int4{Int32: p1Stats.Turns, Valid: true},
+		HighTurn:                 pgtype.Int4{Int32: p1Stats.HighTurn, Valid: true},
+		HighGame:                 pgtype.Int4{Int32: p1Stats.HighGame, Valid: true},
+		Timeouts:                 pgtype.Int4{Int32: p1Timeouts, Valid: true},
+		BlanksPlayed:             pgtype.Int4{Int32: p1Stats.BlanksPlayed, Valid: true},
+		TotalTilesPlayed:         pgtype.Int4{Int32: p1Stats.TilesPlayed, Valid: true},
+		TotalOpponentTilesPlayed: pgtype.Int4{Int32: p0Stats.TilesPlayed, Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to increment standings for player %d: %w", player1ID, err)
@@ -407,6 +451,203 @@ func (sm *StandingsManager) UpdateStandingsIncremental(
 
 	// Note: Rank is no longer stored in DB - it's calculated on-demand when fetching standings
 	// by sorting by (wins*2 + draws) DESC, spread DESC, username ASC
+
+	return nil
+}
+
+// RecalculateSeasonExtendedStats recalculates all extended stats (bingos, turns, blanks, etc.)
+// for all divisions in a season. This is used to backfill stats for existing games.
+func (sm *StandingsManager) RecalculateSeasonExtendedStats(
+	ctx context.Context,
+	seasonID uuid.UUID,
+) error {
+	// Get all divisions for this season
+	divisions, err := sm.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get divisions: %w", err)
+	}
+
+	// Calculate stats for each division
+	for _, division := range divisions {
+		err := sm.recalculateDivisionExtendedStats(ctx, division.Uuid)
+		if err != nil {
+			return fmt.Errorf("failed to recalculate stats for division %d: %w", division.DivisionNumber, err)
+		}
+	}
+
+	return nil
+}
+
+// recalculateDivisionExtendedStats recalculates extended stats for a single division
+func (sm *StandingsManager) recalculateDivisionExtendedStats(
+	ctx context.Context,
+	divisionID uuid.UUID,
+) error {
+	// Get all registrations for this division
+	registrations, err := sm.store.GetDivisionRegistrations(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to get division registrations: %w", err)
+	}
+
+	if len(registrations) == 0 {
+		return nil // Nothing to do
+	}
+
+	// Get all games with stats for this division
+	games, err := sm.store.GetDivisionGamesWithStats(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to get games with stats: %w", err)
+	}
+
+	// Create a map to track player extended stats
+	playerStats := make(map[int32]*PlayerStanding)
+	for _, reg := range registrations {
+		playerStats[reg.UserID] = &PlayerStanding{
+			UserID:     reg.UserID,
+			DivisionID: divisionID,
+		}
+	}
+
+	// Process each game
+	for _, game := range games {
+		player0ID := game.Player0ID.Int32
+		player1ID := game.Player1ID.Int32
+
+		p0Standing, p0Exists := playerStats[player0ID]
+		p1Standing, p1Exists := playerStats[player1ID]
+		if !p0Exists || !p1Exists {
+			continue
+		}
+
+		// Extract scores
+		p0Score := int(game.Player0Score)
+		p1Score := int(game.Player1Score)
+
+		// Accumulate scores
+		p0Standing.TotalScore += p0Score
+		p0Standing.TotalOpponentScore += p1Score
+		p1Standing.TotalScore += p1Score
+		p1Standing.TotalOpponentScore += p0Score
+
+		// Track high game
+		if p0Score > p0Standing.HighGame {
+			p0Standing.HighGame = p0Score
+		}
+		if p1Score > p1Standing.HighGame {
+			p1Standing.HighGame = p1Score
+		}
+
+		// Track timeouts (game_end_reason 1 = TIME)
+		if game.GameEndReason == 1 {
+			// The loser timed out - determine who lost
+			if game.Player0Won.Valid {
+				if game.Player0Won.Bool {
+					// Player 0 won, so player 1 timed out
+					p1Standing.Timeouts++
+				} else {
+					// Player 1 won, so player 0 timed out
+					p0Standing.Timeouts++
+				}
+			}
+		}
+
+		// Extract stats from the game stats blob
+		// PlayerOneData = player who went first = player index 0
+		// PlayerTwoData = player who went second = player index 1
+		stats := &game.Stats
+
+		// Player 0 stats
+		if bingoStat, ok := stats.PlayerOneData[entity.BINGOS_STAT]; ok {
+			p0Standing.TotalBingos += bingoStat.Total
+		}
+		if bingoStat, ok := stats.PlayerTwoData[entity.BINGOS_STAT]; ok {
+			p0Standing.TotalOpponentBingos += bingoStat.Total
+		}
+		if turnsStat, ok := stats.PlayerOneData[entity.TURNS_STAT]; ok {
+			p0Standing.TotalTurns += turnsStat.Total
+		}
+		if highTurnStat, ok := stats.PlayerOneData[entity.HIGH_TURN_STAT]; ok {
+			if highTurnStat.Total > p0Standing.HighTurn {
+				p0Standing.HighTurn = highTurnStat.Total
+			}
+		}
+		if tilesStat, ok := stats.PlayerOneData[entity.TILES_PLAYED_STAT]; ok {
+			p0Standing.TotalTilesPlayed += tilesStat.Total
+			if tilesStat.Subitems != nil {
+				p0Standing.BlanksPlayed += tilesStat.Subitems["?"]
+			}
+		}
+		// Opponent tiles played for p0
+		if tilesStat, ok := stats.PlayerTwoData[entity.TILES_PLAYED_STAT]; ok {
+			p0Standing.TotalOpponentTilesPlayed += tilesStat.Total
+		}
+
+		// Player 1 stats
+		if bingoStat, ok := stats.PlayerTwoData[entity.BINGOS_STAT]; ok {
+			p1Standing.TotalBingos += bingoStat.Total
+		}
+		if bingoStat, ok := stats.PlayerOneData[entity.BINGOS_STAT]; ok {
+			p1Standing.TotalOpponentBingos += bingoStat.Total
+		}
+		if turnsStat, ok := stats.PlayerTwoData[entity.TURNS_STAT]; ok {
+			p1Standing.TotalTurns += turnsStat.Total
+		}
+		if highTurnStat, ok := stats.PlayerTwoData[entity.HIGH_TURN_STAT]; ok {
+			if highTurnStat.Total > p1Standing.HighTurn {
+				p1Standing.HighTurn = highTurnStat.Total
+			}
+		}
+		if tilesStat, ok := stats.PlayerTwoData[entity.TILES_PLAYED_STAT]; ok {
+			p1Standing.TotalTilesPlayed += tilesStat.Total
+			if tilesStat.Subitems != nil {
+				p1Standing.BlanksPlayed += tilesStat.Subitems["?"]
+			}
+		}
+		// Opponent tiles played for p1
+		if tilesStat, ok := stats.PlayerOneData[entity.TILES_PLAYED_STAT]; ok {
+			p1Standing.TotalOpponentTilesPlayed += tilesStat.Total
+		}
+	}
+
+	// Update each player's standings with the extended stats
+	for _, standing := range playerStats {
+		// Get the existing standing to preserve wins/losses/draws/spread/games_played
+		existingStanding, err := sm.store.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+			DivisionID: divisionID,
+			UserID:     standing.UserID,
+		})
+		if err != nil {
+			// Player might not have any standings yet, skip
+			continue
+		}
+
+		// Update with full data including extended stats
+		err = sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
+			DivisionID:               divisionID,
+			UserID:                   standing.UserID,
+			Wins:                     existingStanding.Wins,
+			Losses:                   existingStanding.Losses,
+			Draws:                    existingStanding.Draws,
+			Spread:                   existingStanding.Spread,
+			GamesPlayed:              existingStanding.GamesPlayed,
+			GamesRemaining:           existingStanding.GamesRemaining,
+			Result:                   existingStanding.Result,
+			TotalScore:               pgtype.Int4{Int32: int32(standing.TotalScore), Valid: true},
+			TotalOpponentScore:       pgtype.Int4{Int32: int32(standing.TotalOpponentScore), Valid: true},
+			TotalBingos:              pgtype.Int4{Int32: int32(standing.TotalBingos), Valid: true},
+			TotalOpponentBingos:      pgtype.Int4{Int32: int32(standing.TotalOpponentBingos), Valid: true},
+			TotalTurns:               pgtype.Int4{Int32: int32(standing.TotalTurns), Valid: true},
+			HighTurn:                 pgtype.Int4{Int32: int32(standing.HighTurn), Valid: true},
+			HighGame:                 pgtype.Int4{Int32: int32(standing.HighGame), Valid: true},
+			Timeouts:                 pgtype.Int4{Int32: int32(standing.Timeouts), Valid: true},
+			BlanksPlayed:             pgtype.Int4{Int32: int32(standing.BlanksPlayed), Valid: true},
+			TotalTilesPlayed:         pgtype.Int4{Int32: int32(standing.TotalTilesPlayed), Valid: true},
+			TotalOpponentTilesPlayed: pgtype.Int4{Int32: int32(standing.TotalOpponentTilesPlayed), Valid: true},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update standing for player %d: %w", standing.UserID, err)
+		}
+	}
 
 	return nil
 }

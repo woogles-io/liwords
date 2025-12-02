@@ -257,9 +257,10 @@ type Game struct {
 	CreatedAt      time.Time
 
 	// League-specific fields
-	LeagueID         *uuid.UUID
-	SeasonID         *uuid.UUID
-	LeagueDivisionID *uuid.UUID
+	LeagueID                 *uuid.UUID
+	SeasonID                 *uuid.UUID
+	LeagueDivisionID         *uuid.UUID
+	LeagueStandingsProcessed bool // Set to true after league standings have been updated for this game
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

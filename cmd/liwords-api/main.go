@@ -455,6 +455,7 @@ func main() {
 		}
 		shutdownCancel()
 		pubsubCancel()
+		stores.GameStore.StopCleanup()
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")

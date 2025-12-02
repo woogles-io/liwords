@@ -306,6 +306,56 @@ func (ls *LeagueService) UpdateSeasonPromotionFormula(
 	}), nil
 }
 
+// RecalculateSeasonExtendedStats recalculates extended stats (avg scores, bingos, etc.)
+// for all divisions in a season by re-processing all finished games.
+// This is useful for migrating existing seasons created before the extended stats feature.
+func (ls *LeagueService) RecalculateSeasonExtendedStats(
+	ctx context.Context,
+	req *connect.Request[pb.SeasonRequest],
+) (*connect.Response[pb.RecalculateExtendedStatsResponse], error) {
+	// Authenticate - requires can_manage_leagues permission
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id format")
+	}
+
+	// Verify season exists
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Get all divisions for this season to count them
+	divisions, err := ls.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get divisions: %w", err))
+	}
+
+	// Perform the recalculation
+	standingsManager := NewStandingsManager(ls.store)
+	if err := standingsManager.RecalculateSeasonExtendedStats(ctx, seasonID); err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate extended stats: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Int32("seasonNumber", season.SeasonNumber).
+		Int("divisions", len(divisions)).
+		Msg("recalculated-season-extended-stats")
+
+	return connect.NewResponse(&pb.RecalculateExtendedStatsResponse{
+		Success:            true,
+		DivisionsProcessed: int32(len(divisions)),
+		Message:            fmt.Sprintf("Successfully recalculated extended stats for season %d (%d divisions)", season.SeasonNumber, len(divisions)),
+	}), nil
+}
+
 // Stub implementations for other RPC methods
 // These will be implemented in future phases
 
@@ -898,16 +948,27 @@ func (ls *LeagueService) GetDivisionStandings(
 		}
 
 		protoStandings[i] = &ipc.LeaguePlayerStanding{
-			UserId:         userUUID,
-			Username:       username,
-			Rank:           int32(i + 1), // Rank is position in sorted array
-			Wins:           standing.Wins.Int32,
-			Losses:         standing.Losses.Int32,
-			Draws:          standing.Draws.Int32,
-			Spread:         standing.Spread.Int32,
-			GamesPlayed:    standing.GamesPlayed.Int32,
-			GamesRemaining: standing.GamesRemaining.Int32,
-			Result:         resultValue,
+			UserId:             userUUID,
+			Username:           username,
+			Rank:               int32(i + 1), // Rank is position in sorted array
+			Wins:               standing.Wins.Int32,
+			Losses:             standing.Losses.Int32,
+			Draws:              standing.Draws.Int32,
+			Spread:             standing.Spread.Int32,
+			GamesPlayed:        standing.GamesPlayed.Int32,
+			GamesRemaining:     standing.GamesRemaining.Int32,
+			Result:                   resultValue,
+			TotalScore:               standing.TotalScore.Int32,
+			TotalOpponentScore:       standing.TotalOpponentScore.Int32,
+			TotalBingos:              standing.TotalBingos.Int32,
+			TotalOpponentBingos:      standing.TotalOpponentBingos.Int32,
+			TotalTurns:               standing.TotalTurns.Int32,
+			HighTurn:                 standing.HighTurn.Int32,
+			HighGame:                 standing.HighGame.Int32,
+			Timeouts:                 standing.Timeouts.Int32,
+			BlanksPlayed:             standing.BlanksPlayed.Int32,
+			TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
+			TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 		}
 	}
 
@@ -974,6 +1035,9 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			standingsMap[standing.UserID] = standing
 		}
 
+		// Calculate expected games per player based on division size
+		expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
+
 		// Merge standings with registrations - show all registered players
 		// Use actual standings where available, zeros for others
 		mergedStandings := make([]models.GetStandingsRow, len(registrations))
@@ -981,7 +1045,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			if existing, ok := standingsMap[reg.UserID]; ok {
 				mergedStandings[j] = existing
 			} else {
-				// Player has no standings yet (no finished games) - show zeros
+				// Player has no standings yet (no finished games) - show zeros with expected games remaining
 				mergedStandings[j] = models.GetStandingsRow{
 					UserID:         reg.UserID,
 					UserUuid:       reg.UserUuid,                          // From JOIN
@@ -991,7 +1055,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 					Draws:          pgtype.Int4{Int32: 0, Valid: true},
 					Spread:         pgtype.Int4{Int32: 0, Valid: true},
 					GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
-					GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
+					GamesRemaining: pgtype.Int4{Int32: int32(expectedGames), Valid: true},
 					Result:         pgtype.Int4{Valid: false},
 				}
 			}
@@ -1024,16 +1088,27 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			}
 
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
-				UserId:         userUUID,
-				Username:       username,
-				Rank:           int32(j + 1), // Rank is position in sorted array
-				Wins:           standing.Wins.Int32,
-				Losses:         standing.Losses.Int32,
-				Draws:          standing.Draws.Int32,
-				Spread:         standing.Spread.Int32,
-				GamesPlayed:    standing.GamesPlayed.Int32,
-				GamesRemaining: standing.GamesRemaining.Int32,
-				Result:         resultValue,
+				UserId:                   userUUID,
+				Username:                 username,
+				Rank:                     int32(j + 1), // Rank is position in sorted array
+				Wins:                     standing.Wins.Int32,
+				Losses:                   standing.Losses.Int32,
+				Draws:                    standing.Draws.Int32,
+				Spread:                   standing.Spread.Int32,
+				GamesPlayed:              standing.GamesPlayed.Int32,
+				GamesRemaining:           standing.GamesRemaining.Int32,
+				Result:                   resultValue,
+				TotalScore:               standing.TotalScore.Int32,
+				TotalOpponentScore:       standing.TotalOpponentScore.Int32,
+				TotalBingos:              standing.TotalBingos.Int32,
+				TotalOpponentBingos:      standing.TotalOpponentBingos.Int32,
+				TotalTurns:               standing.TotalTurns.Int32,
+				HighTurn:                 standing.HighTurn.Int32,
+				HighGame:                 standing.HighGame.Int32,
+				Timeouts:                 standing.Timeouts.Int32,
+				BlanksPlayed:             standing.BlanksPlayed.Int32,
+				TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
+				TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 			}
 		}
 

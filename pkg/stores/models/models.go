@@ -199,18 +199,29 @@ type LeagueSeason struct {
 }
 
 type LeagueStanding struct {
-	ID             int64
-	DivisionID     uuid.UUID
-	UserID         int32
-	Rank           pgtype.Int4
-	Wins           pgtype.Int4
-	Losses         pgtype.Int4
-	Draws          pgtype.Int4
-	Spread         pgtype.Int4
-	GamesPlayed    pgtype.Int4
-	GamesRemaining pgtype.Int4
-	Result         pgtype.Int4
-	UpdatedAt      pgtype.Timestamptz
+	ID                       int64
+	DivisionID               uuid.UUID
+	UserID                   int32
+	Rank                     pgtype.Int4
+	Wins                     pgtype.Int4
+	Losses                   pgtype.Int4
+	Draws                    pgtype.Int4
+	Spread                   pgtype.Int4
+	GamesPlayed              pgtype.Int4
+	GamesRemaining           pgtype.Int4
+	Result                   pgtype.Int4
+	UpdatedAt                pgtype.Timestamptz
+	TotalScore               pgtype.Int4
+	TotalOpponentScore       pgtype.Int4
+	TotalBingos              pgtype.Int4
+	TotalOpponentBingos      pgtype.Int4
+	TotalTurns               pgtype.Int4
+	HighTurn                 pgtype.Int4
+	HighGame                 pgtype.Int4
+	Timeouts                 pgtype.Int4
+	BlanksPlayed             pgtype.Int4
+	TotalTilesPlayed         pgtype.Int4
+	TotalOpponentTilesPlayed pgtype.Int4
 }
 
 type Liststat struct {
