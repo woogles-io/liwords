@@ -8,4 +8,6 @@ ALTER TABLE league_standings
     DROP COLUMN IF EXISTS high_turn,
     DROP COLUMN IF EXISTS high_game,
     DROP COLUMN IF EXISTS timeouts,
-    DROP COLUMN IF EXISTS blanks_played;
+    DROP COLUMN IF EXISTS blanks_played,
+    DROP COLUMN IF EXISTS total_tiles_played,
+    DROP COLUMN IF EXISTS total_opponent_tiles_played;
