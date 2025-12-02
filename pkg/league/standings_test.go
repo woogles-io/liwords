@@ -15,18 +15,20 @@ import (
 
 // mockLeagueStore implements league.Store for testing
 type mockLeagueStore struct {
-	divisions     map[uuid.UUID]models.LeagueDivision
-	standings     map[uuid.UUID][]models.GetStandingsRow
-	gameResults   map[uuid.UUID][]models.GetDivisionGameResultsRow
-	registrations map[uuid.UUID][]models.GetDivisionRegistrationsRow
+	divisions      map[uuid.UUID]models.LeagueDivision
+	standings      map[uuid.UUID][]models.GetStandingsRow
+	gameResults    map[uuid.UUID][]models.GetDivisionGameResultsRow
+	registrations  map[uuid.UUID][]models.GetDivisionRegistrationsRow
+	gamesWithStats map[uuid.UUID][]models.GetDivisionGamesWithStatsRow
 }
 
 func newMockLeagueStore() *mockLeagueStore {
 	return &mockLeagueStore{
-		divisions:     make(map[uuid.UUID]models.LeagueDivision),
-		standings:     make(map[uuid.UUID][]models.GetStandingsRow),
-		gameResults:   make(map[uuid.UUID][]models.GetDivisionGameResultsRow),
-		registrations: make(map[uuid.UUID][]models.GetDivisionRegistrationsRow),
+		divisions:      make(map[uuid.UUID]models.LeagueDivision),
+		standings:      make(map[uuid.UUID][]models.GetStandingsRow),
+		gameResults:    make(map[uuid.UUID][]models.GetDivisionGameResultsRow),
+		registrations:  make(map[uuid.UUID][]models.GetDivisionRegistrationsRow),
+		gamesWithStats: make(map[uuid.UUID][]models.GetDivisionGamesWithStatsRow),
 	}
 }
 
@@ -46,6 +48,10 @@ func (m *mockLeagueStore) GetDivisionRegistrations(ctx context.Context, division
 
 func (m *mockLeagueStore) GetDivisionGameResults(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGameResultsRow, error) {
 	return m.gameResults[divisionID], nil
+}
+
+func (m *mockLeagueStore) GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error) {
+	return m.gamesWithStats[divisionID], nil
 }
 
 func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertStandingParams) error {
@@ -487,7 +493,8 @@ func TestIncrementalStandings_FirstGame(t *testing.T) {
 	}
 
 	// Alice beats Bob 450-400
-	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, 0, 450, 400)
+	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, 0,
+		GameStats{Score: 450}, GameStats{Score: 400})
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
@@ -544,7 +551,8 @@ func TestIncrementalStandings_RankChange(t *testing.T) {
 
 	// Carol beats Alice 460-400
 	// This should change the rankings!
-	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 3, 1, 0, 460, 400)
+	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 3, 1, 0,
+		GameStats{Score: 460}, GameStats{Score: 400})
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
@@ -589,7 +597,8 @@ func TestIncrementalStandings_TieGame(t *testing.T) {
 	}
 
 	// Alice and Bob tie 420-420
-	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, -1, 420, 420)
+	err := mgr.UpdateStandingsIncremental(ctx, divisionID, 1, 2, -1,
+		GameStats{Score: 420}, GameStats{Score: 420})
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
