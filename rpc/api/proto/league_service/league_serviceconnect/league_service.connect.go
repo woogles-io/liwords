@@ -61,6 +61,9 @@ const (
 	// LeagueServiceGetAllSeasonsProcedure is the fully-qualified name of the LeagueService's
 	// GetAllSeasons RPC.
 	LeagueServiceGetAllSeasonsProcedure = "/league_service.LeagueService/GetAllSeasons"
+	// LeagueServiceGetRecentSeasonsProcedure is the fully-qualified name of the LeagueService's
+	// GetRecentSeasons RPC.
+	LeagueServiceGetRecentSeasonsProcedure = "/league_service.LeagueService/GetRecentSeasons"
 	// LeagueServiceOpenRegistrationProcedure is the fully-qualified name of the LeagueService's
 	// OpenRegistration RPC.
 	LeagueServiceOpenRegistrationProcedure = "/league_service.LeagueService/OpenRegistration"
@@ -125,6 +128,7 @@ type LeagueServiceClient interface {
 	GetCurrentSeason(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	GetPastSeasons(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.PastSeasonsResponse], error)
 	GetAllSeasons(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.AllSeasonsResponse], error)
+	GetRecentSeasons(context.Context, *connect.Request[league_service.GetRecentSeasonsRequest]) (*connect.Response[league_service.RecentSeasonsResponse], error)
 	OpenRegistration(context.Context, *connect.Request[league_service.OpenRegistrationRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	// Division and standings
 	GetDivisionStandings(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionStandingsResponse], error)
@@ -216,6 +220,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+LeagueServiceGetAllSeasonsProcedure,
 			connect.WithSchema(leagueServiceMethods.ByName("GetAllSeasons")),
+			connect.WithClientOptions(opts...),
+		),
+		getRecentSeasons: connect.NewClient[league_service.GetRecentSeasonsRequest, league_service.RecentSeasonsResponse](
+			httpClient,
+			baseURL+LeagueServiceGetRecentSeasonsProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetRecentSeasons")),
 			connect.WithClientOptions(opts...),
 		),
 		openRegistration: connect.NewClient[league_service.OpenRegistrationRequest, league_service.SeasonResponse](
@@ -329,6 +339,7 @@ type leagueServiceClient struct {
 	getCurrentSeason                   *connect.Client[league_service.LeagueRequest, league_service.SeasonResponse]
 	getPastSeasons                     *connect.Client[league_service.LeagueRequest, league_service.PastSeasonsResponse]
 	getAllSeasons                      *connect.Client[league_service.LeagueRequest, league_service.AllSeasonsResponse]
+	getRecentSeasons                   *connect.Client[league_service.GetRecentSeasonsRequest, league_service.RecentSeasonsResponse]
 	openRegistration                   *connect.Client[league_service.OpenRegistrationRequest, league_service.SeasonResponse]
 	getDivisionStandings               *connect.Client[league_service.DivisionRequest, league_service.DivisionStandingsResponse]
 	getAllDivisionStandings            *connect.Client[league_service.SeasonRequest, league_service.AllDivisionStandingsResponse]
@@ -395,6 +406,11 @@ func (c *leagueServiceClient) GetPastSeasons(ctx context.Context, req *connect.R
 // GetAllSeasons calls league_service.LeagueService.GetAllSeasons.
 func (c *leagueServiceClient) GetAllSeasons(ctx context.Context, req *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.AllSeasonsResponse], error) {
 	return c.getAllSeasons.CallUnary(ctx, req)
+}
+
+// GetRecentSeasons calls league_service.LeagueService.GetRecentSeasons.
+func (c *leagueServiceClient) GetRecentSeasons(ctx context.Context, req *connect.Request[league_service.GetRecentSeasonsRequest]) (*connect.Response[league_service.RecentSeasonsResponse], error) {
+	return c.getRecentSeasons.CallUnary(ctx, req)
 }
 
 // OpenRegistration calls league_service.LeagueService.OpenRegistration.
@@ -492,6 +508,7 @@ type LeagueServiceHandler interface {
 	GetCurrentSeason(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	GetPastSeasons(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.PastSeasonsResponse], error)
 	GetAllSeasons(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.AllSeasonsResponse], error)
+	GetRecentSeasons(context.Context, *connect.Request[league_service.GetRecentSeasonsRequest]) (*connect.Response[league_service.RecentSeasonsResponse], error)
 	OpenRegistration(context.Context, *connect.Request[league_service.OpenRegistrationRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	// Division and standings
 	GetDivisionStandings(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionStandingsResponse], error)
@@ -579,6 +596,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		LeagueServiceGetAllSeasonsProcedure,
 		svc.GetAllSeasons,
 		connect.WithSchema(leagueServiceMethods.ByName("GetAllSeasons")),
+		connect.WithHandlerOptions(opts...),
+	)
+	leagueServiceGetRecentSeasonsHandler := connect.NewUnaryHandler(
+		LeagueServiceGetRecentSeasonsProcedure,
+		svc.GetRecentSeasons,
+		connect.WithSchema(leagueServiceMethods.ByName("GetRecentSeasons")),
 		connect.WithHandlerOptions(opts...),
 	)
 	leagueServiceOpenRegistrationHandler := connect.NewUnaryHandler(
@@ -699,6 +722,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetPastSeasonsHandler.ServeHTTP(w, r)
 		case LeagueServiceGetAllSeasonsProcedure:
 			leagueServiceGetAllSeasonsHandler.ServeHTTP(w, r)
+		case LeagueServiceGetRecentSeasonsProcedure:
+			leagueServiceGetRecentSeasonsHandler.ServeHTTP(w, r)
 		case LeagueServiceOpenRegistrationProcedure:
 			leagueServiceOpenRegistrationHandler.ServeHTTP(w, r)
 		case LeagueServiceGetDivisionStandingsProcedure:
@@ -778,6 +803,10 @@ func (UnimplementedLeagueServiceHandler) GetPastSeasons(context.Context, *connec
 
 func (UnimplementedLeagueServiceHandler) GetAllSeasons(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.AllSeasonsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetAllSeasons is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetRecentSeasons(context.Context, *connect.Request[league_service.GetRecentSeasonsRequest]) (*connect.Response[league_service.RecentSeasonsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetRecentSeasons is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) OpenRegistration(context.Context, *connect.Request[league_service.OpenRegistrationRequest]) (*connect.Response[league_service.SeasonResponse], error) {

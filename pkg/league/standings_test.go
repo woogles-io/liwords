@@ -234,6 +234,12 @@ func (m *mockLeagueStore) GetRegistrationsByDivision(ctx context.Context, divisi
 func (m *mockLeagueStore) UpdateLeagueMetadata(ctx context.Context, arg models.UpdateLeagueMetadataParams) error {
 	return nil
 }
+func (m *mockLeagueStore) GetRecentSeasons(ctx context.Context, arg models.GetRecentSeasonsParams) ([]models.LeagueSeason, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (models.GetSeasonChampionRow, error) {
+	return models.GetSeasonChampionRow{}, nil
+}
 
 func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error {
 	// Find existing or create new standing
