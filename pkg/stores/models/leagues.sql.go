@@ -2077,6 +2077,24 @@ func (q *Queries) UpdateSeasonStatus(ctx context.Context, arg UpdateSeasonStatus
 	return err
 }
 
+const updateStandingResult = `-- name: UpdateStandingResult :exec
+UPDATE league_standings
+SET result = $3, updated_at = NOW()
+WHERE division_id = $1 AND user_id = $2
+`
+
+type UpdateStandingResultParams struct {
+	DivisionID uuid.UUID
+	UserID     int32
+	Result     pgtype.Int4
+}
+
+// Updates only the result (outcome) field for a standing without touching other stats
+func (q *Queries) UpdateStandingResult(ctx context.Context, arg UpdateStandingResultParams) error {
+	_, err := q.db.Exec(ctx, updateStandingResult, arg.DivisionID, arg.UserID, arg.Result)
+	return err
+}
+
 const upsertStanding = `-- name: UpsertStanding :exec
 
 INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,

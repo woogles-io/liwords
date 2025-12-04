@@ -69,6 +69,7 @@ type Store interface {
 	GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error)
 	DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error
 	IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error
+	UpdateStandingResult(ctx context.Context, arg models.UpdateStandingResultParams) error
 
 	// Game queries
 	GetLeagueGames(ctx context.Context, divisionID uuid.UUID) ([]models.Game, error)
@@ -295,6 +296,10 @@ func (s *DBStore) DeleteDivisionStandings(ctx context.Context, divisionID uuid.U
 
 func (s *DBStore) IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error {
 	return s.queries.IncrementStandingsAtomic(ctx, arg)
+}
+
+func (s *DBStore) UpdateStandingResult(ctx context.Context, arg models.UpdateStandingResultParams) error {
+	return s.queries.UpdateStandingResult(ctx, arg)
 }
 
 // Game queries

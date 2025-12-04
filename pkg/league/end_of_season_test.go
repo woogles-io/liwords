@@ -123,22 +123,26 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 
 	// Verify Division 1 standings have correct outcomes
 	// Division 1 is the highest division, so:
-	// - Top player(s) should be STAYED (can't promote from top)
+	// - Rank 1 player should be CHAMPION
+	// - Other top players should be STAYED (can't promote from top)
 	// - Bottom player should be RELEGATED
 	div1Standings, err := store.GetStandings(ctx, div1ID)
 	is.NoErr(err)
 	is.Equal(len(div1Standings), 3)
 
-	var stayed, relegated int
+	var champion, stayed, relegated int
 	for _, standing := range div1Standings {
 		is.True(standing.Result.Valid)
-		if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_STAYED {
+		if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_CHAMPION {
+			champion++
+		} else if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_STAYED {
 			stayed++
 		} else if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_RELEGATED {
 			relegated++
 		}
 	}
-	is.Equal(stayed, 2)
+	is.Equal(champion, 1)
+	is.Equal(stayed, 1)
 	is.Equal(relegated, 1)
 
 	// Verify Division 2 standings have correct outcomes

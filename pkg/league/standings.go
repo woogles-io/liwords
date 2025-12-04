@@ -91,8 +91,9 @@ type PlayerStanding struct {
 	TotalOpponentTilesPlayed int
 }
 
-// CalculateAndSaveStandings calculates final standings for all divisions in a season
-// and marks players with their outcomes (promoted/relegated/stayed)
+// CalculateAndSaveStandings marks all players with their outcomes (promoted/relegated/stayed/champion)
+// This uses existing standings data (populated incrementally during the season) and only updates
+// the result field to preserve extended stats like bingos, high scores, etc.
 func (sm *StandingsManager) CalculateAndSaveStandings(
 	ctx context.Context,
 	seasonID uuid.UUID,
@@ -125,7 +126,132 @@ func (sm *StandingsManager) CalculateAndSaveStandings(
 	// Convert DB int32 to proto enum
 	promotionFormula := pb.PromotionFormula(season.PromotionFormula)
 
-	// Calculate standings for each division
+	// Mark outcomes for each division (using existing standings, not recalculating)
+	for _, division := range divisions {
+		err := sm.markDivisionOutcomes(ctx, division, highestRegularDivision, promotionFormula)
+		if err != nil {
+			return fmt.Errorf("failed to mark outcomes for division %d: %w", division.DivisionNumber, err)
+		}
+	}
+
+	return nil
+}
+
+// markDivisionOutcomes reads existing standings and updates only the result field
+func (sm *StandingsManager) markDivisionOutcomes(
+	ctx context.Context,
+	division models.LeagueDivision,
+	highestRegularDivision int32,
+	promotionFormula pb.PromotionFormula,
+) error {
+	// Get existing standings for this division
+	standings, err := sm.store.GetStandings(ctx, division.Uuid)
+	if err != nil {
+		return fmt.Errorf("failed to get standings: %w", err)
+	}
+
+	// If no standings exist (e.g., no games were played), create initial standings from registrations
+	if len(standings) == 0 {
+		registrations, err := sm.store.GetDivisionRegistrations(ctx, division.Uuid)
+		if err != nil {
+			return fmt.Errorf("failed to get registrations: %w", err)
+		}
+		if len(registrations) == 0 {
+			return nil // No players, nothing to do
+		}
+
+		// Create initial standings with 0-0-0 records for all registered players
+		for _, reg := range registrations {
+			err := sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
+				DivisionID:     division.Uuid,
+				UserID:         reg.UserID,
+				Wins:           pgtype.Int4{Int32: 0, Valid: true},
+				Losses:         pgtype.Int4{Int32: 0, Valid: true},
+				Draws:          pgtype.Int4{Int32: 0, Valid: true},
+				Spread:         pgtype.Int4{Int32: 0, Valid: true},
+				GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
+				GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
+				Result:         pgtype.Int4{Valid: false},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create initial standing: %w", err)
+			}
+		}
+
+		// Re-fetch standings
+		standings, err = sm.store.GetStandings(ctx, division.Uuid)
+		if err != nil {
+			return fmt.Errorf("failed to get standings after creation: %w", err)
+		}
+	}
+
+	// Sort standings to determine rank
+	SortStandingsByRank(standings)
+
+	// Convert to PlayerStanding for markOutcomes
+	playerStandings := make([]PlayerStanding, len(standings))
+	for i, s := range standings {
+		playerStandings[i] = PlayerStanding{
+			UserID:     s.UserID,
+			DivisionID: division.Uuid,
+			Rank:       i + 1,
+		}
+	}
+
+	// Mark outcomes based on rank
+	sm.markOutcomes(playerStandings, division.DivisionNumber, highestRegularDivision, promotionFormula)
+
+	// Update only the result field for each standing (preserving all other stats)
+	for i, standing := range playerStandings {
+		err := sm.store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: division.Uuid,
+			UserID:     standings[i].UserID,
+			Result:     pgtype.Int4{Int32: int32(standing.Outcome), Valid: true},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update standing result: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// RecalculateAndSaveStandings fully recalculates standings from game results.
+// This is used for bootstrapping or repairing standings, NOT for end-of-season marking.
+// For end-of-season, use CalculateAndSaveStandings which preserves extended stats.
+func (sm *StandingsManager) RecalculateAndSaveStandings(
+	ctx context.Context,
+	seasonID uuid.UUID,
+) error {
+	// Get the season to get its promotion formula
+	season, err := sm.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
+	// Get all divisions for this season
+	divisions, err := sm.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get divisions: %w", err)
+	}
+
+	// Sort divisions by division number to know which is highest/lowest
+	sort.Slice(divisions, func(i, j int) bool {
+		return divisions[i].DivisionNumber < divisions[j].DivisionNumber
+	})
+
+	// Find the highest division number
+	highestRegularDivision := int32(0)
+	for _, div := range divisions {
+		if div.DivisionNumber > highestRegularDivision {
+			highestRegularDivision = div.DivisionNumber
+		}
+	}
+
+	// Convert DB int32 to proto enum
+	promotionFormula := pb.PromotionFormula(season.PromotionFormula)
+
+	// Calculate standings for each division from game results
 	for _, division := range divisions {
 		err := sm.calculateDivisionStandings(ctx, division, highestRegularDivision, promotionFormula)
 		if err != nil {
@@ -136,7 +262,7 @@ func (sm *StandingsManager) CalculateAndSaveStandings(
 	return nil
 }
 
-// calculateDivisionStandings calculates standings for a single division
+// calculateDivisionStandings calculates standings for a single division from game results
 func (sm *StandingsManager) calculateDivisionStandings(
 	ctx context.Context,
 	division models.LeagueDivision,
@@ -333,7 +459,10 @@ func (sm *StandingsManager) markOutcomes(
 	for i := range standings {
 		rank := i + 1
 
-		if rank <= promotionCount && !isHighestDivision {
+		if rank == 1 && isHighestDivision {
+			// Rank 1 in Division 1 is the champion
+			standings[i].Outcome = pb.StandingResult_RESULT_CHAMPION
+		} else if rank <= promotionCount && !isHighestDivision {
 			// Top performers get promoted (unless already in Division 1)
 			standings[i].Outcome = pb.StandingResult_RESULT_PROMOTED
 		} else if rank > divSize-relegationCount && !isLowestDivision {

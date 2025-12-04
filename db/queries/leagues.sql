@@ -262,6 +262,12 @@ DO UPDATE SET
     total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
     updated_at = NOW();
 
+-- name: UpdateStandingResult :exec
+-- Updates only the result (outcome) field for a standing without touching other stats
+UPDATE league_standings
+SET result = $3, updated_at = NOW()
+WHERE division_id = $1 AND user_id = $2;
+
 -- name: GetStandings :many
 -- Note: rank column is deprecated and not queried. Sorting is done in Go code.
 SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,

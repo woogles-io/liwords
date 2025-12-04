@@ -144,7 +144,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 		result.DivisionsCreated--
 	}
 
-	// Get final division assignments for result
+	// Get final division assignments for result and correct placement statuses
 	for _, p := range playersWithPriority {
 		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
 			SeasonID: newSeasonID,
@@ -155,11 +155,71 @@ func (rm *RebalanceManager) RebalanceDivisions(
 			div, err := rm.stores.LeagueStore.GetDivision(ctx, reg.DivisionID.Bytes)
 			if err == nil {
 				result.FinalDivisions[p.UserID] = div.DivisionNumber
+
+				// Step 7: Correct placement status if actual movement differs from expected
+				// VirtualDivision is where they "should" go based on outcome
+				// FinalDivision is where they actually ended up
+				correctedStatus := rm.correctPlacementStatus(p.PlacementStatus, p.VirtualDivision, div.DivisionNumber)
+				if correctedStatus != p.PlacementStatus {
+					err := rm.stores.LeagueStore.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{
+						UserID:               p.UserDBID,
+						PlacementStatus:      pgtype.Int4{Int32: int32(correctedStatus), Valid: true},
+						PreviousDivisionRank: reg.PreviousDivisionRank,
+						SeasonID:             newSeasonID,
+					})
+					if err != nil {
+						log.Warn().Err(err).
+							Int32("user_id", p.UserDBID).
+							Str("old_status", p.PlacementStatus.String()).
+							Str("new_status", correctedStatus.String()).
+							Msg("failed to correct placement status")
+					} else {
+						log.Info().
+							Str("username", p.Username).
+							Int32("virtual_div", p.VirtualDivision).
+							Int32("final_div", div.DivisionNumber).
+							Str("old_status", p.PlacementStatus.String()).
+							Str("new_status", correctedStatus.String()).
+							Msg("corrected placement status based on actual division")
+					}
+				}
 			}
 		}
 	}
 
 	return result, nil
+}
+
+// correctPlacementStatus adjusts placement status if actual movement differs from expected
+// For example, if a player was marked RELEGATED but ended up in the same division
+// (because others didn't return), they should be marked as STAYED instead.
+//
+// VirtualDivision represents where they were *expected* to end up:
+// - RELEGATED from Div 1 -> virtualDivision = 2
+// - PROMOTED from Div 2 -> virtualDivision = 1
+// - STAYED in Div 1 -> virtualDivision = 1
+func (rm *RebalanceManager) correctPlacementStatus(
+	originalStatus ipc.PlacementStatus,
+	virtualDivision int32,
+	finalDivision int32,
+) ipc.PlacementStatus {
+	// Only correct PROMOTED/RELEGATED statuses
+	// NEW, STAYED, and RETURNING statuses don't need correction
+	switch originalStatus {
+	case ipc.PlacementStatus_PLACEMENT_RELEGATED:
+		// Player was supposed to be relegated (virtualDivision is their target, which is lower than before)
+		// If they ended up in a better (lower number) division than expected, mark as STAYED
+		if finalDivision < virtualDivision {
+			return ipc.PlacementStatus_PLACEMENT_STAYED
+		}
+	case ipc.PlacementStatus_PLACEMENT_PROMOTED:
+		// Player was supposed to be promoted (virtualDivision is their target, which is higher than before)
+		// If they ended up in a worse (higher number) division than expected, mark as STAYED
+		if finalDivision > virtualDivision {
+			return ipc.PlacementStatus_PLACEMENT_STAYED
+		}
+	}
+	return originalStatus
 }
 
 // UpdatePlacementStatuses sets placement_status for all players before rebalancing

@@ -24,11 +24,14 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 	}
 	sm.markOutcomes(div1Standings, 1, 3, pb.PromotionFormula_PROMO_N_DIV_6) // Division 1, highest regular = 3
 
+	div1Champion := 0
 	div1Promoted := 0
 	div1Relegated := 0
 	div1Stayed := 0
 	for _, s := range div1Standings {
 		switch s.Outcome {
+		case pb.StandingResult_RESULT_CHAMPION:
+			div1Champion++
 		case pb.StandingResult_RESULT_PROMOTED:
 			div1Promoted++
 		case pb.StandingResult_RESULT_RELEGATED:
@@ -37,10 +40,11 @@ func TestMarkOutcomes_ThreeDivisions(t *testing.T) {
 			div1Stayed++
 		}
 	}
-	// Division 1: Can't promote, can relegate
+	// Division 1: Rank 1 is champion, can't promote, can relegate
+	is.Equal(div1Champion, 1)
 	is.Equal(div1Promoted, 0)
 	is.Equal(div1Relegated, 3)
-	is.Equal(div1Stayed, 12)
+	is.Equal(div1Stayed, 11) // 15 - 1 champion - 3 relegated = 11
 
 	// Division 2: 13 players, middle division
 	div2Standings := make([]PlayerStanding, 13)
