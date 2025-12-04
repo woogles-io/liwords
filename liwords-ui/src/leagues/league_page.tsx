@@ -831,7 +831,9 @@ export const LeaguePage = (props: Props) => {
                       <div className="settings-row">
                         <span className="settings-label">Promotion:</span>
                         <span className="settings-value">
-                          {formatPromotionFormula(displayedSeason.promotionFormula)}
+                          {formatPromotionFormula(
+                            displayedSeason.promotionFormula,
+                          )}
                         </span>
                       </div>
                     )}
