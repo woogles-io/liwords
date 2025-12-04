@@ -1988,6 +1988,23 @@ func (q *Queries) UpdatePlayerDivision(ctx context.Context, arg UpdatePlayerDivi
 	return err
 }
 
+const updatePreviousDivisionRank = `-- name: UpdatePreviousDivisionRank :exec
+UPDATE league_registrations
+SET previous_division_rank = $2, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $3
+`
+
+type UpdatePreviousDivisionRankParams struct {
+	UserID               int32
+	PreviousDivisionRank pgtype.Int4
+	SeasonID             uuid.UUID
+}
+
+func (q *Queries) UpdatePreviousDivisionRank(ctx context.Context, arg UpdatePreviousDivisionRankParams) error {
+	_, err := q.db.Exec(ctx, updatePreviousDivisionRank, arg.UserID, arg.PreviousDivisionRank, arg.SeasonID)
+	return err
+}
+
 const updateRegistrationDivision = `-- name: UpdateRegistrationDivision :exec
 UPDATE league_registrations
 SET division_id = $2, firsts_count = $3, updated_at = NOW()

@@ -14,7 +14,7 @@ import (
 )
 
 // TestMarkSeasonOutcomes tests that end-of-season processing correctly
-// sets placement_status and previous_division_rank for all players
+// sets previous_division_rank for all players and calculates standings with outcomes
 func TestMarkSeasonOutcomes(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
@@ -99,47 +99,63 @@ func TestMarkSeasonOutcomes(t *testing.T) {
 	err = em.MarkSeasonOutcomes(ctx, seasonID)
 	is.NoErr(err)
 
-	// Verify Division 1 registrations
+	// Verify Division 1 registrations have previous_division_rank set
 	div1Regs, err := store.GetDivisionRegistrations(ctx, div1ID)
 	is.NoErr(err)
 	is.Equal(len(div1Regs), 3)
 
-	// Division 1 is the highest division, so:
-	// - Top player (rank 1) should be STAYED (can't promote)
-	// - Middle player (rank 2) should be STAYED
-	// - Bottom player (rank 3) should be RELEGATED
-	var stayed, relegated int
 	for _, reg := range div1Regs {
-		is.True(reg.PlacementStatus.Valid)
 		is.True(reg.PreviousDivisionRank.Valid)
+		// Rank should be between 1 and 3
+		is.True(reg.PreviousDivisionRank.Int32 >= 1 && reg.PreviousDivisionRank.Int32 <= 3)
+	}
 
-		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
+	// Verify Division 2 registrations have previous_division_rank set
+	div2Regs, err := store.GetDivisionRegistrations(ctx, div2ID)
+	is.NoErr(err)
+	is.Equal(len(div2Regs), 3)
+
+	for _, reg := range div2Regs {
+		is.True(reg.PreviousDivisionRank.Valid)
+		// Rank should be between 1 and 3
+		is.True(reg.PreviousDivisionRank.Int32 >= 1 && reg.PreviousDivisionRank.Int32 <= 3)
+	}
+
+	// Verify Division 1 standings have correct outcomes
+	// Division 1 is the highest division, so:
+	// - Top player(s) should be STAYED (can't promote from top)
+	// - Bottom player should be RELEGATED
+	div1Standings, err := store.GetStandings(ctx, div1ID)
+	is.NoErr(err)
+	is.Equal(len(div1Standings), 3)
+
+	var stayed, relegated int
+	for _, standing := range div1Standings {
+		is.True(standing.Result.Valid)
+		if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_STAYED {
 			stayed++
-		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_RELEGATED) {
+		} else if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_RELEGATED {
 			relegated++
 		}
 	}
 	is.Equal(stayed, 2)
 	is.Equal(relegated, 1)
 
-	// Verify Division 2 registrations
-	div2Regs, err := store.GetDivisionRegistrations(ctx, div2ID)
-	is.NoErr(err)
-	is.Equal(len(div2Regs), 3)
-
+	// Verify Division 2 standings have correct outcomes
 	// Division 2 is the lowest division, so:
-	// - Top player (rank 1) should be PROMOTED
-	// - Middle player (rank 2) should be STAYED
-	// - Bottom player (rank 3) should be STAYED (can't relegate)
+	// - Top player should be PROMOTED
+	// - Bottom player(s) should be STAYED (can't relegate from bottom)
+	div2Standings, err := store.GetStandings(ctx, div2ID)
+	is.NoErr(err)
+	is.Equal(len(div2Standings), 3)
+
 	var promoted int
 	stayed = 0
-	for _, reg := range div2Regs {
-		is.True(reg.PlacementStatus.Valid)
-		is.True(reg.PreviousDivisionRank.Valid)
-
-		if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_PROMOTED) {
+	for _, standing := range div2Standings {
+		is.True(standing.Result.Valid)
+		if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_PROMOTED {
 			promoted++
-		} else if reg.PlacementStatus.Int32 == int32(ipc.PlacementStatus_PLACEMENT_STAYED) {
+		} else if ipc.StandingResult(standing.Result.Int32) == ipc.StandingResult_RESULT_STAYED {
 			stayed++
 		}
 	}

@@ -34,6 +34,9 @@ func CalculatePromotionCount(divSize int, formula pb.PromotionFormula) int {
 	case pb.PromotionFormula_PROMO_N_DIV_5:
 		// ceil(N/5): 13->3, 15->3, 17->4, 20->4
 		return int(math.Ceil(float64(divSize) / 5.0))
+	case pb.PromotionFormula_PROMO_N_DIV_3:
+		// ceil(N/3): 13->5, 15->5, 17->6, 20->7
+		return int(math.Ceil(float64(divSize) / 3.0))
 	default:
 		// PROMO_N_DIV_6 (default): ceil(N/6): 13->3, 15->3, 17->3, 20->4
 		return int(math.Ceil(float64(divSize) / 6.0))

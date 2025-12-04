@@ -60,6 +60,7 @@ type Store interface {
 	UpdateRegistrationDivision(ctx context.Context, arg models.UpdateRegistrationDivisionParams) error
 	UpdatePlacementStatus(ctx context.Context, arg models.UpdatePlacementStatusParams) error
 	UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error
+	UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error
 	GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error)
 
 	// Standings operations
@@ -264,6 +265,10 @@ func (s *DBStore) UpdatePlacementStatus(ctx context.Context, arg models.UpdatePl
 
 func (s *DBStore) UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error {
 	return s.queries.UpdatePlacementStatusWithSeasonsAway(ctx, arg)
+}
+
+func (s *DBStore) UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error {
+	return s.queries.UpdatePreviousDivisionRank(ctx, arg)
 }
 
 func (s *DBStore) GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error) {

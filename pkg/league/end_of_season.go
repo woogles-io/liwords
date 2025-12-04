@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 )
@@ -26,14 +25,15 @@ func NewEndOfSeasonManager(store league.Store) *EndOfSeasonManager {
 	}
 }
 
-// MarkSeasonOutcomes calculates final standings and updates placement_status
+// MarkSeasonOutcomes calculates final standings and updates previous_division_rank
 // for all players in a season. This should be called when a season completes.
 //
 // For each player in the season:
-//   - Sets placement_status based on their outcome (PROMOTED/RELEGATED/STAYED)
 //   - Sets previous_division_rank based on their final rank
+//   - Does NOT modify placement_status (preserves entry status like NEW, RETURNING)
 //
-// This data is then used when placing players into the next season.
+// The outcome (PROMOTED/RELEGATED/STAYED) is stored in the standings table's result
+// field and should be read from there when determining next season placement.
 func (em *EndOfSeasonManager) MarkSeasonOutcomes(
 	ctx context.Context,
 	seasonID uuid.UUID,
@@ -51,11 +51,11 @@ func (em *EndOfSeasonManager) MarkSeasonOutcomes(
 		return fmt.Errorf("failed to get divisions: %w", err)
 	}
 
-	// For each division, update placement_status in league_registrations
+	// For each division, update previous_division_rank in league_registrations
 	for _, division := range divisions {
-		err := em.updateRegistrationOutcomes(ctx, seasonID, division.Uuid)
+		err := em.updateRegistrationRanks(ctx, seasonID, division.Uuid)
 		if err != nil {
-			return fmt.Errorf("failed to update registration outcomes for division %d: %w",
+			return fmt.Errorf("failed to update registration ranks for division %d: %w",
 				division.DivisionNumber, err)
 		}
 	}
@@ -63,9 +63,9 @@ func (em *EndOfSeasonManager) MarkSeasonOutcomes(
 	return nil
 }
 
-// updateRegistrationOutcomes updates placement_status in league_registrations
-// based on the outcomes calculated in league_standings
-func (em *EndOfSeasonManager) updateRegistrationOutcomes(
+// updateRegistrationRanks updates previous_division_rank in league_registrations
+// based on the standings. Does NOT update placement_status to preserve entry status.
+func (em *EndOfSeasonManager) updateRegistrationRanks(
 	ctx context.Context,
 	seasonID uuid.UUID,
 	divisionID uuid.UUID,
@@ -79,41 +79,19 @@ func (em *EndOfSeasonManager) updateRegistrationOutcomes(
 	// Sort standings to determine rank (rank is calculated from position, not stored)
 	SortStandingsByRank(standings)
 
-	// Update each player's registration with their outcome
+	// Update each player's registration with their rank only
 	for i, standing := range standings {
-		// Map StandingResult to PlacementStatus
-		placementStatus := pgtype.Int4{}
-		if standing.Result.Valid {
-			// Convert StandingResult to PlacementStatus
-			var ps ipc.PlacementStatus
-			switch ipc.StandingResult(standing.Result.Int32) {
-			case ipc.StandingResult_RESULT_PROMOTED:
-				ps = ipc.PlacementStatus_PLACEMENT_PROMOTED
-			case ipc.StandingResult_RESULT_RELEGATED:
-				ps = ipc.PlacementStatus_PLACEMENT_RELEGATED
-			case ipc.StandingResult_RESULT_STAYED:
-				ps = ipc.PlacementStatus_PLACEMENT_STAYED
-			default:
-				ps = ipc.PlacementStatus_PLACEMENT_STAYED
-			}
-			placementStatus = pgtype.Int4{Int32: int32(ps), Valid: true}
-		} else {
-			// Default to STAYED if not set
-			placementStatus = pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_STAYED), Valid: true}
-		}
-
 		// Rank is position in sorted array (1-based)
 		rank := int32(i + 1)
 
-		// Update the registration
-		err := em.store.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{
+		// Update the registration's rank only (preserve placement_status)
+		err := em.store.UpdatePreviousDivisionRank(ctx, models.UpdatePreviousDivisionRankParams{
 			UserID:               standing.UserID,
-			PlacementStatus:      placementStatus,
 			PreviousDivisionRank: pgtype.Int4{Int32: rank, Valid: true},
 			SeasonID:             seasonID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to update placement status for user %d: %w",
+			return fmt.Errorf("failed to update rank for user %d: %w",
 				standing.UserID, err)
 		}
 	}

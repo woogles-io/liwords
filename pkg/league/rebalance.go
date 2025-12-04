@@ -17,14 +17,13 @@ import (
 
 const (
 	// Priority score constants
-	DivisionMultiplier = 1_000
+	DivisionMultiplier = 100_000
 
-	PriorityBonusRelegated       = 500
-	PriorityBonusStayed          = 400
-	PriorityBonusPromoted        = 300
-	PriorityBonusHiatusReturning = 100
-	PriorityBonusNew             = 50 // Lowest priority - new players placed naturally via rebalancing
-
+	PriorityBonusRelegated       = 50_000
+	PriorityBonusStayed          = 40_000
+	PriorityBonusPromoted        = 30_000
+	PriorityBonusHiatusReturning = 10_000
+	PriorityBonusNew             = 5_000 // Lowest priority - new players placed naturally via rebalancing
 	// Hiatus weight: 0.933^N (halves every ~10 seasons)
 	HiatusWeightBase = 0.933
 
@@ -49,7 +48,7 @@ type PlayerWithVirtualDiv struct {
 	UserID               string // UUID string for external use
 	UserDBID             int32  // Database ID for internal queries
 	Username             string // Username for logging
-	VirtualDivision      int32
+	VirtualDivision      int32  // 1-indexed division
 	PlacementStatus      ipc.PlacementStatus
 	PreviousDivisionSize int
 	PreviousRank         int32
@@ -250,17 +249,45 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			continue
 		}
 
-		// Consecutive play - copy status from last season
-		// (PROMOTED/RELEGATED/STAYED already set by MarkSeasonOutcomes)
+		// Consecutive play - get outcome from standings (PROMOTED/RELEGATED/STAYED)
+		// and convert to placement status for the new season
+		var placementStatus ipc.PlacementStatus
+		if lastSeason.DivisionID.Valid {
+			// Get the player's standing from their previous division
+			standing, err := rm.stores.LeagueStore.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+				DivisionID: lastSeason.DivisionID.Bytes,
+				UserID:     player.Registration.UserID,
+			})
+			if err != nil {
+				// If no standing found (shouldn't happen), default to STAYED
+				log.Warn().Err(err).Int32("user_id", player.Registration.UserID).Msg("no standing found, defaulting to STAYED")
+				placementStatus = ipc.PlacementStatus_PLACEMENT_STAYED
+			} else if standing.Result.Valid {
+				// Convert StandingResult to PlacementStatus
+				switch ipc.StandingResult(standing.Result.Int32) {
+				case ipc.StandingResult_RESULT_PROMOTED, ipc.StandingResult_RESULT_CHAMPION:
+					placementStatus = ipc.PlacementStatus_PLACEMENT_PROMOTED
+				case ipc.StandingResult_RESULT_RELEGATED:
+					placementStatus = ipc.PlacementStatus_PLACEMENT_RELEGATED
+				default:
+					placementStatus = ipc.PlacementStatus_PLACEMENT_STAYED
+				}
+			} else {
+				placementStatus = ipc.PlacementStatus_PLACEMENT_STAYED
+			}
+		} else {
+			placementStatus = ipc.PlacementStatus_PLACEMENT_STAYED
+		}
+
 		err = rm.stores.LeagueStore.UpdatePlacementStatusWithSeasonsAway(ctx, models.UpdatePlacementStatusWithSeasonsAwayParams{
 			UserID:               player.Registration.UserID,
-			PlacementStatus:      lastSeason.PlacementStatus,
+			PlacementStatus:      pgtype.Int4{Int32: int32(placementStatus), Valid: true},
 			PreviousDivisionRank: lastSeason.PreviousDivisionRank,
 			SeasonsAway:          pgtype.Int4{Int32: 0, Valid: true},
 			SeasonID:             newSeasonID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to copy status for %d: %w", player.Registration.UserID, err)
+			return fmt.Errorf("failed to set placement status for %d: %w", player.Registration.UserID, err)
 		}
 	}
 
@@ -482,14 +509,13 @@ func (rm *RebalanceManager) CalculatePriorityScores(
 		// Calculate priority score
 		// score = ((DivMultiplier * (num_virtual_divs - our_virtual_div)) + PriorityBonus + rankComponent) * Weight
 		score := float64(
-			(int64(DivisionMultiplier)*int64(numVirtualDivs-p.VirtualDivision))+
+			(int64(DivisionMultiplier)*int64(numVirtualDivs-p.VirtualDivision+1))+
 				priorityBonus+
 				rankComponent,
 		) * weight
 
-		// For NEW players in Season 1 ONLY, add their rating to prioritize by skill
-		// This ensures that in the initial season, higher-rated players are placed in higher divisions
-		if p.PlacementStatus == ipc.PlacementStatus_PLACEMENT_NEW && seasonNumber == 1 {
+		// For NEW players, add their rating to prioritize by skill.
+		if p.PlacementStatus == ipc.PlacementStatus_PLACEMENT_NEW {
 			score += float64(p.Rating)
 		}
 

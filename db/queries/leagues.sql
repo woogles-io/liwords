@@ -209,6 +209,11 @@ UPDATE league_registrations
 SET placement_status = $2, previous_division_rank = $3, updated_at = NOW()
 WHERE user_id = $1 AND season_id = $4;
 
+-- name: UpdatePreviousDivisionRank :exec
+UPDATE league_registrations
+SET previous_division_rank = $2, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $3;
+
 -- name: UpdatePlacementStatusWithSeasonsAway :exec
 UPDATE league_registrations
 SET placement_status = $2, previous_division_rank = $3, seasons_away = $4, updated_at = NOW()

@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { Col, Row, Card, Spin, Collapse } from "antd";
 import { TrophyOutlined, HourglassOutlined } from "@ant-design/icons";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
@@ -38,6 +38,27 @@ export const LeaguesList = () => {
       roles.includes("Manager")
     );
   }, [selfRoles?.roles]);
+
+  const location = useLocation();
+  const [activeFaqKey, setActiveFaqKey] = useState<
+    string | string[] | undefined
+  >(location.hash === "#faq" ? "1" : undefined);
+
+  // Scroll to hash anchor on mount
+  useEffect(() => {
+    if (location.hash === "#faq") {
+      // Small delay to let the page render before scrolling
+      setTimeout(() => {
+        const element = document.getElementById("faq");
+        if (element) {
+          const yOffset = -60; // Offset so it doesn't scroll too far
+          const y =
+            element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, [location.hash]);
 
   return (
     <>
@@ -119,9 +140,13 @@ export const LeaguesList = () => {
         {/* Invite user widget - visible to league promoters and admins */}
         {loggedIn && canInviteToLeagues && <InviteUserToLeaguesWidget />}
 
-        <div className="leagues-faq">
+        <div className="leagues-faq" id="faq">
           <h2>Frequently Asked Questions</h2>
-          <Collapse accordion>
+          <Collapse
+            accordion
+            activeKey={activeFaqKey}
+            onChange={(key) => setActiveFaqKey(key)}
+          >
             <Panel header="What are leagues?" key="1">
               <p>
                 Leagues are competitive, correspondence-based competitions where
@@ -150,7 +175,7 @@ export const LeaguesList = () => {
                 Each league season consists of roughly 14 games, which must all
                 be completed within a certain time limit, usually 2 to 3 weeks.
                 The turns are relatively fast-paced, with each turn usually
-                taking between 6 to 8 hours. You have a "time bank", usually
+                taking between 8 to 10 hours. You have a "time bank", usually
                 several days long, to use if you need extra time for a turn.
               </p>
               <p>
@@ -233,9 +258,9 @@ export const LeaguesList = () => {
               </p>
               <ul>
                 <li>
-                  <strong>6 to 8 hours per turn:</strong> Depending on the
-                  league settings, you have 6 to 8 hours to make each move under
-                  normal circumstances.
+                  <strong>8 to 10 hours per turn:</strong> Depending on the
+                  league settings, you have 8 to 10 hours to make each move
+                  under normal circumstances.
                 </li>
                 <li>
                   <strong>48 to 96-hour time bank:</strong> Each player starts
@@ -243,9 +268,14 @@ export const LeaguesList = () => {
                   flexibility. The exact value depends on the settings of the
                   league.
                 </li>
+                <li>
+                  <strong>It's ok to use your time bank!</strong> Think of it
+                  like your time for the game and the hours per turn are a
+                  bonus.
+                </li>
               </ul>
               <p>
-                <strong>How the time bank helps:</strong> When your 6-to-8 hour
+                <strong>How the time bank helps:</strong> When your 8-to-10 hour
                 per-turn timer runs out, time starts consuming from your 48 to
                 96-hour time bank. This means if you're busy for a day or two
                 and can't make your moves within your initial allotted hours,

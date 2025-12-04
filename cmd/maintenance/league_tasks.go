@@ -335,7 +335,7 @@ func LeagueHourlyRunner() error {
 
 					// Step 2: Create ALL games for the season with batching
 					startMgr := league.NewSeasonStartManager(allStores.LeagueStore, allStores, cfg, gameCreator)
-					gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, 150*time.Millisecond, 10)
+					gameResult, err := startMgr.CreateGamesForSeason(ctx, dbLeague.Uuid, season.Uuid, leagueSettings, 100*time.Millisecond, 2)
 					if err != nil {
 						// Roll back the season status to SCHEDULED since game creation failed
 						rollbackErr := lifecycleMgr.RollbackSeasonToScheduled(ctx, season.Uuid)

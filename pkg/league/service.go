@@ -1110,6 +1110,12 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			standingsMap[standing.UserID] = standing
 		}
 
+		// Build a map of registrations by user ID to get placement status
+		registrationMap := make(map[int32]models.GetDivisionRegistrationsRow)
+		for _, reg := range registrations {
+			registrationMap[reg.UserID] = reg
+		}
+
 		// Calculate expected games per player based on division size
 		expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
 
@@ -1162,6 +1168,12 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				resultValue = ipc.StandingResult(standing.Result.Int32)
 			}
 
+			// Get placement status from registration
+			placementStatus := ipc.PlacementStatus_PLACEMENT_NONE
+			if reg, ok := registrationMap[standing.UserID]; ok && reg.PlacementStatus.Valid {
+				placementStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
+			}
+
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
 				UserId:                   userUUID,
 				Username:                 username,
@@ -1184,6 +1196,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				BlanksPlayed:             standing.BlanksPlayed.Int32,
 				TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
 				TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
+				PlacementStatus:          placementStatus,
 			}
 		}
 

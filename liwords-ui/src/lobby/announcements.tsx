@@ -210,7 +210,7 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
 
   return (
     <div className="league-status-card">
-      <Link to={`/league/${league.slug}`} className="league-name">
+      <Link to={`/leagues/${league.slug}`} className="league-name">
         <TrophyOutlined className="league-icon" />
         {league.name}
       </Link>
@@ -473,20 +473,20 @@ const AnnouncementsContent = () => {
 export const AnnouncementsWidget = () => {
   const items = [
     {
-      key: "announcements",
-      label: "Announcements",
-      children: <AnnouncementsContent />,
-    },
-    {
       key: "tournaments-leagues",
       label: "Events",
       children: <TournamentsAndLeaguesContent />,
+    },
+    {
+      key: "announcements",
+      label: "Announcements",
+      children: <AnnouncementsContent />,
     },
   ];
 
   return (
     <Card className="announcements-card">
-      <Tabs defaultActiveKey="announcements" items={items} centered />
+      <Tabs defaultActiveKey="tournaments-leagues" items={items} centered />
     </Card>
   );
 };
