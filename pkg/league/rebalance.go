@@ -335,8 +335,11 @@ func (rm *RebalanceManager) UpdatePlacementStatuses(
 			} else if standing.Result.Valid {
 				// Convert StandingResult to PlacementStatus
 				switch ipc.StandingResult(standing.Result.Int32) {
-				case ipc.StandingResult_RESULT_PROMOTED, ipc.StandingResult_RESULT_CHAMPION:
+				case ipc.StandingResult_RESULT_PROMOTED:
 					placementStatus = ipc.PlacementStatus_PLACEMENT_PROMOTED
+				case ipc.StandingResult_RESULT_CHAMPION:
+					// Champions stay in Division 1 - they can't be promoted any higher
+					placementStatus = ipc.PlacementStatus_PLACEMENT_STAYED
 				case ipc.StandingResult_RESULT_RELEGATED:
 					placementStatus = ipc.PlacementStatus_PLACEMENT_RELEGATED
 				default:
