@@ -203,8 +203,7 @@ func (rm *RebalanceManager) correctPlacementStatus(
 	virtualDivision int32,
 	finalDivision int32,
 ) ipc.PlacementStatus {
-	// Only correct PROMOTED/RELEGATED statuses
-	// NEW, STAYED, and RETURNING statuses don't need correction
+	// Correct placement statuses when final division differs from virtual division
 	switch originalStatus {
 	case ipc.PlacementStatus_PLACEMENT_RELEGATED:
 		// Player was supposed to be relegated (virtualDivision is their target, which is lower than before)
@@ -217,6 +216,17 @@ func (rm *RebalanceManager) correctPlacementStatus(
 		// If they ended up in a worse (higher number) division than expected, mark as STAYED
 		if finalDivision > virtualDivision {
 			return ipc.PlacementStatus_PLACEMENT_STAYED
+		}
+	case ipc.PlacementStatus_PLACEMENT_STAYED:
+		// Player was supposed to stay in same division
+		// If they ended up in a better (lower number) division, they got promoted to fill spots
+		if finalDivision < virtualDivision {
+			return ipc.PlacementStatus_PLACEMENT_PROMOTED
+		}
+		// If they ended up in a worse (higher number) division, they got relegated
+		// This can happen when a league grows and a new division is created below them
+		if finalDivision > virtualDivision {
+			return ipc.PlacementStatus_PLACEMENT_RELEGATED
 		}
 	}
 	return originalStatus
