@@ -58,6 +58,29 @@
 }
 
 .announcements {
+  .ant-card.announcements-card {
+    .ant-card-body {
+      padding: 0;
+      height: 100%;
+    }
+
+    .ant-tabs {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ant-tabs-content-holder {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .announcements-list {
+      padding: 12px 24px 0;
+    }
+  }
+
   a {
     li {
       padding-bottom: 18px;

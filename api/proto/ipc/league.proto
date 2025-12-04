@@ -55,6 +55,7 @@ enum PromotionFormula {
     PROMO_N_DIV_6 = 0;       // ceil(N/6) - default, e.g. 15 players = 3 promoted/relegated
     PROMO_N_PLUS_1_DIV_5 = 1; // ceil((N+1)/5), e.g. 15 players = 4 promoted/relegated
     PROMO_N_DIV_5 = 2;       // ceil(N/5), e.g. 15 players = 3 promoted/relegated
+    PROMO_N_DIV_3 = 3;       // ceil(N/3), e.g. 15 players = 5 promoted/relegated
 }
 
 message Division {
@@ -100,6 +101,7 @@ message LeaguePlayerStanding {
     int32 blanks_played = 19;         // Number of blanks played (for ?AV = blanks_played / games_played)
     int32 total_tiles_played = 20;    // Sum of tiles played (for TAV = total_tiles_played / games_played)
     int32 total_opponent_tiles_played = 21; // Sum of opponent tiles played (for OTAV)
+    PlacementStatus placement_status = 22;  // How player was placed in this division (NEW, PROMOTED, etc.)
 }
 
 enum StandingResult {

@@ -22,6 +22,7 @@ service LeagueService {
   rpc GetCurrentSeason(LeagueRequest) returns (SeasonResponse);
   rpc GetPastSeasons(LeagueRequest) returns (PastSeasonsResponse);
   rpc GetAllSeasons(LeagueRequest) returns (AllSeasonsResponse);
+  rpc GetRecentSeasons(GetRecentSeasonsRequest) returns (RecentSeasonsResponse);
   rpc OpenRegistration(OpenRegistrationRequest) returns (SeasonResponse);
 
   // Division and standings
@@ -86,6 +87,13 @@ message SeasonResponse { ipc.Season season = 1; }
 message PastSeasonsResponse { repeated ipc.Season seasons = 1; }
 
 message AllSeasonsResponse { repeated ipc.Season seasons = 1; }
+
+message GetRecentSeasonsRequest {
+  string league_id = 1; // UUID or slug
+  int32 limit = 2;      // Number of most recent seasons to return (by season_number desc)
+}
+
+message RecentSeasonsResponse { repeated ipc.Season seasons = 1; }
 
 message BootstrapSeasonRequest {
   string league_id = 1;

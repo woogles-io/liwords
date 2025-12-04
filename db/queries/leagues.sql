@@ -56,6 +56,22 @@ SELECT * FROM league_seasons
 WHERE league_id = $1
 ORDER BY season_number DESC;
 
+-- name: GetRecentSeasons :many
+SELECT * FROM league_seasons
+WHERE league_id = $1
+ORDER BY season_number DESC
+LIMIT $2;
+
+-- name: GetSeasonChampion :one
+-- Get the champion (result = RESULT_CHAMPION in division 1) for a completed season
+SELECT u.uuid as user_uuid, u.username
+FROM league_standings ls
+JOIN league_divisions ld ON ls.division_id = ld.uuid
+JOIN users u ON ls.user_id = u.id
+WHERE ld.season_id = $1
+  AND ld.division_number = 1
+  AND ls.result = 4;  -- RESULT_CHAMPION only
+
 -- name: GetSeasonByLeagueAndNumber :one
 SELECT * FROM league_seasons
 WHERE league_id = $1 AND season_number = $2;
@@ -192,6 +208,11 @@ WHERE season_id = $1 AND user_id = $4;
 UPDATE league_registrations
 SET placement_status = $2, previous_division_rank = $3, updated_at = NOW()
 WHERE user_id = $1 AND season_id = $4;
+
+-- name: UpdatePreviousDivisionRank :exec
+UPDATE league_registrations
+SET previous_division_rank = $2, updated_at = NOW()
+WHERE user_id = $1 AND season_id = $3;
 
 -- name: UpdatePlacementStatusWithSeasonsAway :exec
 UPDATE league_registrations

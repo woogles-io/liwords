@@ -13,6 +13,7 @@ func TestCalculatePriorityScores(t *testing.T) {
 	rm := &RebalanceManager{}
 	numVirtualDivs := int32(5)
 
+	// New formula: ((100,000 * (numVirtualDivs - virtualDiv + 1)) + bonus + rankComponent) * weight
 	tests := []struct {
 		name          string
 		player        PlayerWithVirtualDiv
@@ -22,67 +23,67 @@ func TestCalculatePriorityScores(t *testing.T) {
 		{
 			name: "Alice - Promoted to Div 1, 3rd out of 15",
 			player: PlayerWithVirtualDiv{
-				UserID:              "alice",
-				VirtualDivision:     1,
-				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_PROMOTED,
+				UserID:               "alice",
+				VirtualDivision:      1,
+				PlacementStatus:      ipc.PlacementStatus_PLACEMENT_PROMOTED,
 				PreviousDivisionSize: 15,
-				PreviousRank:        3,
-				HiatusSeasons:       0,
+				PreviousRank:         3,
+				HiatusSeasons:        0,
 			},
-			expectedScore: 4_312,
-			description:   "((1,000 * (5 - 1)) + 300 + (15 - 3)) * 1 = 4,312",
+			expectedScore: 530_012,
+			description:   "((100,000 * (5 - 1 + 1)) + 30,000 + (15 - 3)) * 1 = 530,012",
 		},
 		{
 			name: "Bob - Stayed in Div 1, 10th out of 15",
 			player: PlayerWithVirtualDiv{
-				UserID:              "bob",
-				VirtualDivision:     1,
-				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_STAYED,
+				UserID:               "bob",
+				VirtualDivision:      1,
+				PlacementStatus:      ipc.PlacementStatus_PLACEMENT_STAYED,
 				PreviousDivisionSize: 15,
-				PreviousRank:        10,
-				HiatusSeasons:       0,
+				PreviousRank:         10,
+				HiatusSeasons:        0,
 			},
-			expectedScore: 4_405,
-			description:   "((1,000 * (5 - 1)) + 400 + (15 - 10)) * 1 = 4,405",
+			expectedScore: 540_005,
+			description:   "((100,000 * (5 - 1 + 1)) + 40,000 + (15 - 10)) * 1 = 540,005",
 		},
 		{
 			name: "Charlie - Relegated to Div 2, 14th out of 15",
 			player: PlayerWithVirtualDiv{
-				UserID:              "charlie",
-				VirtualDivision:     2,
-				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_RELEGATED,
+				UserID:               "charlie",
+				VirtualDivision:      2,
+				PlacementStatus:      ipc.PlacementStatus_PLACEMENT_RELEGATED,
 				PreviousDivisionSize: 15,
-				PreviousRank:        14,
-				HiatusSeasons:       0,
+				PreviousRank:         14,
+				HiatusSeasons:        0,
 			},
-			expectedScore: 3_501,
-			description:   "((1,000 * (5 - 2)) + 500 + (15 - 14)) * 1 = 3,501",
+			expectedScore: 450_001,
+			description:   "((100,000 * (5 - 2 + 1)) + 50,000 + (15 - 14)) * 1 = 450,001",
 		},
 		{
 			name: "Dora - Stayed in Div 2, 12th out of 15",
 			player: PlayerWithVirtualDiv{
-				UserID:              "dora",
-				VirtualDivision:     2,
-				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_STAYED,
+				UserID:               "dora",
+				VirtualDivision:      2,
+				PlacementStatus:      ipc.PlacementStatus_PLACEMENT_STAYED,
 				PreviousDivisionSize: 15,
-				PreviousRank:        12,
-				HiatusSeasons:       0,
+				PreviousRank:         12,
+				HiatusSeasons:        0,
 			},
-			expectedScore: 3_403,
-			description:   "((1,000 * (5 - 2)) + 400 + (15 - 12)) * 1 = 3,403",
+			expectedScore: 440_003,
+			description:   "((100,000 * (5 - 2 + 1)) + 40,000 + (15 - 12)) * 1 = 440,003",
 		},
 		{
 			name: "Frankie - 4 seasons off, was in Div 2",
 			player: PlayerWithVirtualDiv{
-				UserID:              "frankie",
-				VirtualDivision:     2,
-				PlacementStatus:     ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING,
+				UserID:               "frankie",
+				VirtualDivision:      2,
+				PlacementStatus:      ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING,
 				PreviousDivisionSize: 0, // Use 0 for hiatus players
-				PreviousRank:        0,  // Use 0 for hiatus players
-				HiatusSeasons:       4,
+				PreviousRank:         0, // Use 0 for hiatus players
+				HiatusSeasons:        4,
 			},
-			expectedScore: 2_349, // ((1,000 * (5 - 2)) + 100 + 0) * (0.933^4) = 2,349
-			description:   "((1,000 * (5 - 2)) + 100 + 0) * (0.933^4) = 2,349",
+			expectedScore: 310_686, // ((100,000 * (5 - 2 + 1)) + 10,000 + 0) * (0.933^4) = 310,686
+			description:   "((100,000 * (5 - 2 + 1)) + 10,000 + 0) * (0.933^4) = 310,686",
 		},
 	}
 
@@ -146,12 +147,13 @@ func TestCalculatePriorityScores_Sorting(t *testing.T) {
 	}
 }
 
-func TestCalculatePriorityScores_Season1RatingBased(t *testing.T) {
+func TestCalculatePriorityScores_NewPlayersRatingBased(t *testing.T) {
 	rm := &RebalanceManager{}
-	numVirtualDivs := int32(1) // Season 1: no previous divisions
+	numVirtualDivs := int32(1) // Single division
 
-	// Create NEW players for Season 1 with different ratings
-	// All players have same base priority (50), but different ratings
+	// Create NEW players with different ratings
+	// Base score: ((100,000 * (1 - 1 + 1)) + 5,000 + 0) = 105,000
+	// Plus rating for NEW players
 	players := []PlayerWithVirtualDiv{
 		{UserID: "alice", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1800},
 		{UserID: "bob", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1600},
@@ -161,12 +163,13 @@ func TestCalculatePriorityScores_Season1RatingBased(t *testing.T) {
 		{UserID: "frank", VirtualDivision: 1, PlacementStatus: ipc.PlacementStatus_PLACEMENT_NEW, Rating: 1700},
 	}
 
-	// Test Season 1: should be sorted by rating
+	// Test Season 1: should be sorted by rating (rating is now added for all NEW players)
 	playersWithPriority := rm.CalculatePriorityScores(players, numVirtualDivs, 1)
 
 	// Expected order: charlie(2000) > alice(1800) > frank(1700) > bob(1600) > dora(1400) > eve(0)
 	expectedOrder := []string{"charlie", "alice", "frank", "bob", "dora", "eve"}
-	expectedScores := []float64{2050, 1850, 1750, 1650, 1450, 50} // base(50) + rating
+	// base = 100,000 + 5,000 = 105,000, plus rating
+	expectedScores := []float64{107_000, 106_800, 106_700, 106_600, 106_400, 105_000}
 
 	for i, expectedUserID := range expectedOrder {
 		assert.Equal(t, expectedUserID, playersWithPriority[i].UserID,
@@ -178,14 +181,18 @@ func TestCalculatePriorityScores_Season1RatingBased(t *testing.T) {
 			expectedUserID, expectedScores[i], playersWithPriority[i].PriorityScore)
 	}
 
-	// Test Season 2+: NEW players should NOT be sorted by rating
+	// Test Season 2+: NEW players should ALSO be sorted by rating (this changed!)
 	playersWithPriority2 := rm.CalculatePriorityScores(players, numVirtualDivs, 2)
 
-	// All should have the same score (50) regardless of rating
-	for i, p := range playersWithPriority2 {
-		assert.Equal(t, 50.0, p.PriorityScore,
-			"Season 2 NEW player %d (%s) should have score 50, got %.2f",
-			i, p.UserID, p.PriorityScore)
+	// Should have same order and scores as Season 1
+	for i, expectedUserID := range expectedOrder {
+		assert.Equal(t, expectedUserID, playersWithPriority2[i].UserID,
+			"Season 2 player at position %d should be %s, got %s",
+			i, expectedUserID, playersWithPriority2[i].UserID)
+
+		assert.Equal(t, expectedScores[i], playersWithPriority2[i].PriorityScore,
+			"Season 2 score for %s should be %.2f, got %.2f",
+			expectedUserID, expectedScores[i], playersWithPriority2[i].PriorityScore)
 	}
 }
 
@@ -332,11 +339,11 @@ func TestSequentialAssignment(t *testing.T) {
 
 func TestPriorityBonusConstants(t *testing.T) {
 	// Verify the priority bonus constants match the spec
-	assert.Equal(t, 400, PriorityBonusStayed, "STAYED bonus")
-	assert.Equal(t, 300, PriorityBonusPromoted, "PROMOTED bonus")
-	assert.Equal(t, 500, PriorityBonusRelegated, "RELEGATED bonus")
-	assert.Equal(t, 100, PriorityBonusHiatusReturning, "HIATUS bonus")
-	assert.Equal(t, 50, PriorityBonusNew, "NEW bonus - lowest priority")
+	assert.Equal(t, 40_000, PriorityBonusStayed, "STAYED bonus")
+	assert.Equal(t, 30_000, PriorityBonusPromoted, "PROMOTED bonus")
+	assert.Equal(t, 50_000, PriorityBonusRelegated, "RELEGATED bonus")
+	assert.Equal(t, 10_000, PriorityBonusHiatusReturning, "HIATUS bonus")
+	assert.Equal(t, 5_000, PriorityBonusNew, "NEW bonus - lowest priority")
 }
 
 func TestDivisionSizeConstants(t *testing.T) {

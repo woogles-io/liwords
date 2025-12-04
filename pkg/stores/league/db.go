@@ -27,6 +27,8 @@ type Store interface {
 	GetCurrentSeason(ctx context.Context, leagueUUID uuid.UUID) (models.LeagueSeason, error)
 	GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error)
 	GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error)
+	GetRecentSeasons(ctx context.Context, arg models.GetRecentSeasonsParams) ([]models.LeagueSeason, error)
+	GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (models.GetSeasonChampionRow, error)
 	GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error)
 	UpdateSeasonStatus(ctx context.Context, arg models.UpdateSeasonStatusParams) error
 	UpdateSeasonDates(ctx context.Context, arg models.UpdateSeasonDatesParams) error
@@ -58,6 +60,7 @@ type Store interface {
 	UpdateRegistrationDivision(ctx context.Context, arg models.UpdateRegistrationDivisionParams) error
 	UpdatePlacementStatus(ctx context.Context, arg models.UpdatePlacementStatusParams) error
 	UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error
+	UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error
 	GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error)
 
 	// Standings operations
@@ -145,6 +148,14 @@ func (s *DBStore) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]mod
 
 func (s *DBStore) GetSeasonsByLeague(ctx context.Context, leagueID uuid.UUID) ([]models.LeagueSeason, error) {
 	return s.queries.GetSeasonsByLeague(ctx, leagueID)
+}
+
+func (s *DBStore) GetRecentSeasons(ctx context.Context, arg models.GetRecentSeasonsParams) ([]models.LeagueSeason, error) {
+	return s.queries.GetRecentSeasons(ctx, arg)
+}
+
+func (s *DBStore) GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (models.GetSeasonChampionRow, error) {
+	return s.queries.GetSeasonChampion(ctx, seasonID)
 }
 
 func (s *DBStore) GetSeasonByLeagueAndNumber(ctx context.Context, leagueID uuid.UUID, seasonNumber int32) (models.LeagueSeason, error) {
@@ -254,6 +265,10 @@ func (s *DBStore) UpdatePlacementStatus(ctx context.Context, arg models.UpdatePl
 
 func (s *DBStore) UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error {
 	return s.queries.UpdatePlacementStatusWithSeasonsAway(ctx, arg)
+}
+
+func (s *DBStore) UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error {
+	return s.queries.UpdatePreviousDivisionRank(ctx, arg)
 }
 
 func (s *DBStore) GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error) {

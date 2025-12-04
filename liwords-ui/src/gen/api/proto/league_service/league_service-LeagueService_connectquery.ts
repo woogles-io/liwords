@@ -59,6 +59,11 @@ export const getPastSeasons = LeagueService.method.getPastSeasons;
 export const getAllSeasons = LeagueService.method.getAllSeasons;
 
 /**
+ * @generated from rpc league_service.LeagueService.GetRecentSeasons
+ */
+export const getRecentSeasons = LeagueService.method.getRecentSeasons;
+
+/**
  * @generated from rpc league_service.LeagueService.OpenRegistration
  */
 export const openRegistration = LeagueService.method.openRegistration;

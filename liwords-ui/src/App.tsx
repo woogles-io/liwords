@@ -210,6 +210,13 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
+  // Scroll to top on route change (unless there's a hash anchor)
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash]);
+
   const socializeClient = useClient(SocializeService);
   const getFullBlocks = useCallback(() => {
     void userID; // used only as effect dependency

@@ -854,6 +854,81 @@ func (ls *LeagueService) GetAllSeasons(
 	return connect.NewResponse(&pb.AllSeasonsResponse{Seasons: protoSeasons}), nil
 }
 
+func (ls *LeagueService) GetRecentSeasons(
+	ctx context.Context,
+	req *connect.Request[pb.GetRecentSeasonsRequest],
+) (*connect.Response[pb.RecentSeasonsResponse], error) {
+	// Parse league ID (UUID or slug)
+	var leagueID uuid.UUID
+	var err error
+
+	leagueID, err = uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		// Try as slug
+		league, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
+		}
+		leagueID = league.Uuid
+	}
+
+	// Default to 2 if no limit specified
+	limit := req.Msg.Limit
+	if limit <= 0 {
+		limit = 2
+	}
+
+	// Get recent seasons
+	dbSeasons, err := ls.store.GetRecentSeasons(ctx, models.GetRecentSeasonsParams{
+		LeagueID: leagueID,
+		Limit:    limit,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get recent seasons: %w", err))
+	}
+
+	// Convert to proto - include champion info for completed seasons
+	protoSeasons := make([]*ipc.Season, len(dbSeasons))
+	for i, season := range dbSeasons {
+		protoSeasons[i] = &ipc.Season{
+			Uuid:             season.Uuid.String(),
+			LeagueId:         season.LeagueID.String(),
+			SeasonNumber:     season.SeasonNumber,
+			StartDate:        timestamppb.New(season.StartDate.Time),
+			EndDate:          timestamppb.New(season.EndDate.Time),
+			Status:           ipc.SeasonStatus(season.Status),
+			PromotionFormula: ipc.PromotionFormula(season.PromotionFormula),
+			Divisions:        []*ipc.Division{},
+		}
+
+		if season.ActualEndDate.Valid {
+			protoSeasons[i].ActualEndDate = timestamppb.New(season.ActualEndDate.Time)
+		}
+
+		// For completed seasons, fetch champion directly
+		if season.Status == int32(ipc.SeasonStatus_SEASON_COMPLETED) {
+			champion, err := ls.store.GetSeasonChampion(ctx, season.Uuid)
+			if err == nil {
+				// Add a division with just the champion standing
+				protoSeasons[i].Divisions = []*ipc.Division{
+					{
+						DivisionNumber: 1,
+						Standings: []*ipc.LeaguePlayerStanding{
+							{
+								UserId:   champion.UserUuid.String,
+								Username: champion.Username.String,
+								Result:   ipc.StandingResult_RESULT_CHAMPION,
+							},
+						},
+					},
+				}
+			}
+		}
+	}
+
+	return connect.NewResponse(&pb.RecentSeasonsResponse{Seasons: protoSeasons}), nil
+}
+
 // OpenRegistration opens registration for a specific season
 func (ls *LeagueService) OpenRegistration(
 	ctx context.Context,
@@ -1035,6 +1110,12 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			standingsMap[standing.UserID] = standing
 		}
 
+		// Build a map of registrations by user ID to get placement status
+		registrationMap := make(map[int32]models.GetDivisionRegistrationsRow)
+		for _, reg := range registrations {
+			registrationMap[reg.UserID] = reg
+		}
+
 		// Calculate expected games per player based on division size
 		expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
 
@@ -1087,6 +1168,12 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				resultValue = ipc.StandingResult(standing.Result.Int32)
 			}
 
+			// Get placement status from registration
+			placementStatus := ipc.PlacementStatus_PLACEMENT_NONE
+			if reg, ok := registrationMap[standing.UserID]; ok && reg.PlacementStatus.Valid {
+				placementStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
+			}
+
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
 				UserId:                   userUUID,
 				Username:                 username,
@@ -1109,6 +1196,7 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				BlanksPlayed:             standing.BlanksPlayed.Int32,
 				TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
 				TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
+				PlacementStatus:          placementStatus,
 			}
 		}
 

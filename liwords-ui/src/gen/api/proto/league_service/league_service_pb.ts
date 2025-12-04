@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/league_service/league_service.proto.
  */
 export const file_proto_league_service_league_service: GenFile = /*@__PURE__*/
-  fileDesc("Cilwcm90by9sZWFndWVfc2VydmljZS9sZWFndWVfc2VydmljZS5wcm90bxIObGVhZ3VlX3NlcnZpY2UibQoTQ3JlYXRlTGVhZ3VlUmVxdWVzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEgwKBHNsdWcYAyABKAkSJQoIc2V0dGluZ3MYBCABKAsyEy5pcGMuTGVhZ3VlU2V0dGluZ3MiIgoNTGVhZ3VlUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkiKwoUR2V0QWxsTGVhZ3Vlc1JlcXVlc3QSEwoLYWN0aXZlX29ubHkYASABKAgiNQoVR2V0QWxsTGVhZ3Vlc1Jlc3BvbnNlEhwKB2xlYWd1ZXMYASADKAsyCy5pcGMuTGVhZ3VlIi0KDkxlYWd1ZVJlc3BvbnNlEhsKBmxlYWd1ZRgBIAEoCzILLmlwYy5MZWFndWUiVwobVXBkYXRlTGVhZ3VlU2V0dGluZ3NSZXF1ZXN0EhEKCWxlYWd1ZV9pZBgBIAEoCRIlCghzZXR0aW5ncxgCIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncyJTChtVcGRhdGVMZWFndWVNZXRhZGF0YVJlcXVlc3QSEQoJbGVhZ3VlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkiIgoNU2Vhc29uUmVxdWVzdBIRCglzZWFzb25faWQYASABKAkiLQoOU2Vhc29uUmVzcG9uc2USGwoGc2Vhc29uGAEgASgLMgsuaXBjLlNlYXNvbiIzChNQYXN0U2Vhc29uc1Jlc3BvbnNlEhwKB3NlYXNvbnMYASADKAsyCy5pcGMuU2Vhc29uIjIKEkFsbFNlYXNvbnNSZXNwb25zZRIcCgdzZWFzb25zGAEgAygLMgsuaXBjLlNlYXNvbiKsAQoWQm9vdHN0cmFwU2Vhc29uUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkSLgoKc3RhcnRfZGF0ZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX2RhdGUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiEKBnN0YXR1cxgEIAEoDjIRLmlwYy5TZWFzb25TdGF0dXMiPwoXT3BlblJlZ2lzdHJhdGlvblJlcXVlc3QSEQoJbGVhZ3VlX2lkGAEgASgJEhEKCXNlYXNvbl9pZBgCIAEoCSImCg9EaXZpc2lvblJlcXVlc3QSEwoLZGl2aXNpb25faWQYASABKAkiPAoZRGl2aXNpb25TdGFuZGluZ3NSZXNwb25zZRIfCghkaXZpc2lvbhgBIAEoCzINLmlwYy5EaXZpc2lvbiJAChxBbGxEaXZpc2lvblN0YW5kaW5nc1Jlc3BvbnNlEiAKCWRpdmlzaW9ucxgBIAMoCzINLmlwYy5EaXZpc2lvbiJICg9SZWdpc3RlclJlcXVlc3QSEQoJbGVhZ3VlX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSEQoJc2Vhc29uX2lkGAMgASgJIjYKEFJlZ2lzdGVyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIRCglzZWFzb25faWQYAiABKAkiNwoRVW5yZWdpc3RlclJlcXVlc3QSEQoJc2Vhc29uX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiJQoSVW5yZWdpc3RlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgiWAobU2Vhc29uUmVnaXN0cmF0aW9uc1Jlc3BvbnNlEjkKDXJlZ2lzdHJhdGlvbnMYASADKAsyIi5sZWFndWVfc2VydmljZS5TZWFzb25SZWdpc3RyYXRpb24ieAoSU2Vhc29uUmVnaXN0cmF0aW9uEg8KB3VzZXJfaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSEQoJc2Vhc29uX2lkGAMgASgJEhMKC2RpdmlzaW9uX2lkGAQgASgJEhcKD2RpdmlzaW9uX251bWJlchgFIAEoBSI6ChRQbGF5ZXJIaXN0b3J5UmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEhEKCWxlYWd1ZV9pZBgCIAEoCSJHChVQbGF5ZXJIaXN0b3J5UmVzcG9uc2USLgoHc2Vhc29ucxgBIAMoCzIdLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblN1bW1hcnkilAEKDVNlYXNvblN1bW1hcnkSEQoJc2Vhc29uX2lkGAEgASgJEhUKDXNlYXNvbl9udW1iZXIYAiABKAUSEwoLbGVhZ3VlX25hbWUYAyABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAQgASgFEisKCHN0YW5kaW5nGAUgASgLMhkuaXBjLkxlYWd1ZVBsYXllclN0YW5kaW5nIkUKGExlYWd1ZVN0YXRpc3RpY3NSZXNwb25zZRIpCgVzdGF0cxgBIAMoCzIaLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVN0YXQiewoKTGVhZ3VlU3RhdBIRCglzdGF0X3R5cGUYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIQCgh1c2VybmFtZRgDIAEoCRINCgV2YWx1ZRgEIAEoBRIPCgdnYW1lX2lkGAUgASgJEhcKD2RpdmlzaW9uX251bWJlchgGIAEoBSJBChtHZXRQbGF5ZXJTZWFzb25HYW1lc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIRCglzZWFzb25faWQYAiABKAkiTwocR2V0UGxheWVyU2Vhc29uR2FtZXNSZXNwb25zZRIvCgVnYW1lcxgBIAMoCzIgLmxlYWd1ZV9zZXJ2aWNlLlBsYXllclNlYXNvbkdhbWUi1AEKEFBsYXllclNlYXNvbkdhbWUSDwoHZ2FtZV9pZBgBIAEoCRIYChBvcHBvbmVudF91c2VyX2lkGAIgASgJEhkKEW9wcG9uZW50X3VzZXJuYW1lGAMgASgJEhQKDHBsYXllcl9zY29yZRgEIAEoBRIWCg5vcHBvbmVudF9zY29yZRgFIAEoBRIOCgZyZXN1bHQYBiABKAkSLQoJZ2FtZV9kYXRlGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVyb3VuZBgIIAEoBSIkChFJbnZpdGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIjYKEkludml0ZVVzZXJSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg8KB21lc3NhZ2UYAiABKAkicwobTW92ZVBsYXllclRvRGl2aXNpb25SZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSEQoJc2Vhc29uX2lkGAIgASgJEhgKEGZyb21fZGl2aXNpb25faWQYAyABKAkSFgoOdG9fZGl2aXNpb25faWQYBCABKAkiQAocTW92ZVBsYXllclRvRGl2aXNpb25SZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiSgobU2Vhc29uWmVyb01vdmVHYW1lc1Jlc3BvbnNlEisKBWdhbWVzGAEgAygLMhwubGVhZ3VlX3NlcnZpY2UuWmVyb01vdmVHYW1lIsABCgxaZXJvTW92ZUdhbWUSDwoHZ2FtZV9pZBgBIAEoCRIuCgpjcmVhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpwbGF5ZXIwX2lkGAMgASgJEhgKEHBsYXllcjBfdXNlcm5hbWUYBCABKAkSEgoKcGxheWVyMV9pZBgFIAEoCRIYChBwbGF5ZXIxX3VzZXJuYW1lGAYgASgJEhMKC2RpdmlzaW9uX2lkGAcgASgJImQKJ1NlYXNvblBsYXllcnNXaXRoVW5zdGFydGVkR2FtZXNSZXNwb25zZRI5CgdwbGF5ZXJzGAEgAygLMigubGVhZ3VlX3NlcnZpY2UuUGxheWVyV2l0aFVuc3RhcnRlZEdhbWVzIlsKGFBsYXllcldpdGhVbnN0YXJ0ZWRHYW1lcxIPCgd1c2VyX2lkGAEgASgJEhAKCHVzZXJuYW1lGAIgASgJEhwKFHVuc3RhcnRlZF9nYW1lX2NvdW50GAMgASgFIosBChhVcGRhdGVTZWFzb25EYXRlc1JlcXVlc3QSEQoJc2Vhc29uX2lkGAEgASgJEi4KCnN0YXJ0X2RhdGUYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZF9kYXRlGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJqCiNVcGRhdGVTZWFzb25Qcm9tb3Rpb25Gb3JtdWxhUmVxdWVzdBIRCglzZWFzb25faWQYASABKAkSMAoRcHJvbW90aW9uX2Zvcm11bGEYAiABKA4yFS5pcGMuUHJvbW90aW9uRm9ybXVsYSJhCiBSZWNhbGN1bGF0ZUV4dGVuZGVkU3RhdHNSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhsKE2RpdmlzaW9uc19wcm9jZXNzZWQYAiABKAUSDwoHbWVzc2FnZRgDIAEoCTL4EwoNTGVhZ3VlU2VydmljZRJTCgxDcmVhdGVMZWFndWUSIy5sZWFndWVfc2VydmljZS5DcmVhdGVMZWFndWVSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVzcG9uc2USSgoJR2V0TGVhZ3VlEh0ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVxdWVzdBoeLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVJlc3BvbnNlElwKDUdldEFsbExlYWd1ZXMSJC5sZWFndWVfc2VydmljZS5HZXRBbGxMZWFndWVzUmVxdWVzdBolLmxlYWd1ZV9zZXJ2aWNlLkdldEFsbExlYWd1ZXNSZXNwb25zZRJjChRVcGRhdGVMZWFndWVTZXR0aW5ncxIrLmxlYWd1ZV9zZXJ2aWNlLlVwZGF0ZUxlYWd1ZVNldHRpbmdzUmVxdWVzdBoeLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVJlc3BvbnNlEmMKFFVwZGF0ZUxlYWd1ZU1ldGFkYXRhEisubGVhZ3VlX3NlcnZpY2UuVXBkYXRlTGVhZ3VlTWV0YWRhdGFSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVzcG9uc2USWQoPQm9vdHN0cmFwU2Vhc29uEiYubGVhZ3VlX3NlcnZpY2UuQm9vdHN0cmFwU2Vhc29uUmVxdWVzdBoeLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlc3BvbnNlEkoKCUdldFNlYXNvbhIdLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlcXVlc3QaHi5sZWFndWVfc2VydmljZS5TZWFzb25SZXNwb25zZRJRChBHZXRDdXJyZW50U2Vhc29uEh0ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVxdWVzdBoeLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlc3BvbnNlElQKDkdldFBhc3RTZWFzb25zEh0ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVxdWVzdBojLmxlYWd1ZV9zZXJ2aWNlLlBhc3RTZWFzb25zUmVzcG9uc2USUgoNR2V0QWxsU2Vhc29ucxIdLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVJlcXVlc3QaIi5sZWFndWVfc2VydmljZS5BbGxTZWFzb25zUmVzcG9uc2USWwoQT3BlblJlZ2lzdHJhdGlvbhInLmxlYWd1ZV9zZXJ2aWNlLk9wZW5SZWdpc3RyYXRpb25SZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2USYgoUR2V0RGl2aXNpb25TdGFuZGluZ3MSHy5sZWFndWVfc2VydmljZS5EaXZpc2lvblJlcXVlc3QaKS5sZWFndWVfc2VydmljZS5EaXZpc2lvblN0YW5kaW5nc1Jlc3BvbnNlEmYKF0dldEFsbERpdmlzaW9uU3RhbmRpbmdzEh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVxdWVzdBosLmxlYWd1ZV9zZXJ2aWNlLkFsbERpdmlzaW9uU3RhbmRpbmdzUmVzcG9uc2USVgoRUmVnaXN0ZXJGb3JTZWFzb24SHy5sZWFndWVfc2VydmljZS5SZWdpc3RlclJlcXVlc3QaIC5sZWFndWVfc2VydmljZS5SZWdpc3RlclJlc3BvbnNlEl0KFFVucmVnaXN0ZXJGcm9tU2Vhc29uEiEubGVhZ3VlX3NlcnZpY2UuVW5yZWdpc3RlclJlcXVlc3QaIi5sZWFndWVfc2VydmljZS5VbnJlZ2lzdGVyUmVzcG9uc2USZAoWR2V0U2Vhc29uUmVnaXN0cmF0aW9ucxIdLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlcXVlc3QaKy5sZWFndWVfc2VydmljZS5TZWFzb25SZWdpc3RyYXRpb25zUmVzcG9uc2USZQoWR2V0UGxheWVyTGVhZ3VlSGlzdG9yeRIkLmxlYWd1ZV9zZXJ2aWNlLlBsYXllckhpc3RvcnlSZXF1ZXN0GiUubGVhZ3VlX3NlcnZpY2UuUGxheWVySGlzdG9yeVJlc3BvbnNlEnEKFEdldFBsYXllclNlYXNvbkdhbWVzEisubGVhZ3VlX3NlcnZpY2UuR2V0UGxheWVyU2Vhc29uR2FtZXNSZXF1ZXN0GiwubGVhZ3VlX3NlcnZpY2UuR2V0UGxheWVyU2Vhc29uR2FtZXNSZXNwb25zZRJcChNJbnZpdGVVc2VyVG9MZWFndWVzEiEubGVhZ3VlX3NlcnZpY2UuSW52aXRlVXNlclJlcXVlc3QaIi5sZWFndWVfc2VydmljZS5JbnZpdGVVc2VyUmVzcG9uc2USXgoTR2V0TGVhZ3VlU3RhdGlzdGljcxIdLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVJlcXVlc3QaKC5sZWFndWVfc2VydmljZS5MZWFndWVTdGF0aXN0aWNzUmVzcG9uc2UScQoUTW92ZVBsYXllclRvRGl2aXNpb24SKy5sZWFndWVfc2VydmljZS5Nb3ZlUGxheWVyVG9EaXZpc2lvblJlcXVlc3QaLC5sZWFndWVfc2VydmljZS5Nb3ZlUGxheWVyVG9EaXZpc2lvblJlc3BvbnNlEmQKFkdldFNlYXNvblplcm9Nb3ZlR2FtZXMSHS5sZWFndWVfc2VydmljZS5TZWFzb25SZXF1ZXN0GisubGVhZ3VlX3NlcnZpY2UuU2Vhc29uWmVyb01vdmVHYW1lc1Jlc3BvbnNlEnwKIkdldFNlYXNvblBsYXllcnNXaXRoVW5zdGFydGVkR2FtZXMSHS5sZWFndWVfc2VydmljZS5TZWFzb25SZXF1ZXN0GjcubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUGxheWVyc1dpdGhVbnN0YXJ0ZWRHYW1lc1Jlc3BvbnNlEl0KEVVwZGF0ZVNlYXNvbkRhdGVzEigubGVhZ3VlX3NlcnZpY2UuVXBkYXRlU2Vhc29uRGF0ZXNSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2UScwocVXBkYXRlU2Vhc29uUHJvbW90aW9uRm9ybXVsYRIzLmxlYWd1ZV9zZXJ2aWNlLlVwZGF0ZVNlYXNvblByb21vdGlvbkZvcm11bGFSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2UScQoeUmVjYWxjdWxhdGVTZWFzb25FeHRlbmRlZFN0YXRzEh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVxdWVzdBowLmxlYWd1ZV9zZXJ2aWNlLlJlY2FsY3VsYXRlRXh0ZW5kZWRTdGF0c1Jlc3BvbnNlQrgBChJjb20ubGVhZ3VlX3NlcnZpY2VCEkxlYWd1ZVNlcnZpY2VQcm90b1ABWjpnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2xlYWd1ZV9zZXJ2aWNlogIDTFhYqgINTGVhZ3VlU2VydmljZcoCDUxlYWd1ZVNlcnZpY2XiAhlMZWFndWVTZXJ2aWNlXEdQQk1ldGFkYXRh6gINTGVhZ3VlU2VydmljZWIGcHJvdG8z", [file_proto_ipc_league, file_google_protobuf_timestamp]);
+  fileDesc("Cilwcm90by9sZWFndWVfc2VydmljZS9sZWFndWVfc2VydmljZS5wcm90bxIObGVhZ3VlX3NlcnZpY2UibQoTQ3JlYXRlTGVhZ3VlUmVxdWVzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEgwKBHNsdWcYAyABKAkSJQoIc2V0dGluZ3MYBCABKAsyEy5pcGMuTGVhZ3VlU2V0dGluZ3MiIgoNTGVhZ3VlUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkiKwoUR2V0QWxsTGVhZ3Vlc1JlcXVlc3QSEwoLYWN0aXZlX29ubHkYASABKAgiNQoVR2V0QWxsTGVhZ3Vlc1Jlc3BvbnNlEhwKB2xlYWd1ZXMYASADKAsyCy5pcGMuTGVhZ3VlIi0KDkxlYWd1ZVJlc3BvbnNlEhsKBmxlYWd1ZRgBIAEoCzILLmlwYy5MZWFndWUiVwobVXBkYXRlTGVhZ3VlU2V0dGluZ3NSZXF1ZXN0EhEKCWxlYWd1ZV9pZBgBIAEoCRIlCghzZXR0aW5ncxgCIAEoCzITLmlwYy5MZWFndWVTZXR0aW5ncyJTChtVcGRhdGVMZWFndWVNZXRhZGF0YVJlcXVlc3QSEQoJbGVhZ3VlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkiIgoNU2Vhc29uUmVxdWVzdBIRCglzZWFzb25faWQYASABKAkiLQoOU2Vhc29uUmVzcG9uc2USGwoGc2Vhc29uGAEgASgLMgsuaXBjLlNlYXNvbiIzChNQYXN0U2Vhc29uc1Jlc3BvbnNlEhwKB3NlYXNvbnMYASADKAsyCy5pcGMuU2Vhc29uIjIKEkFsbFNlYXNvbnNSZXNwb25zZRIcCgdzZWFzb25zGAEgAygLMgsuaXBjLlNlYXNvbiI7ChdHZXRSZWNlbnRTZWFzb25zUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkSDQoFbGltaXQYAiABKAUiNQoVUmVjZW50U2Vhc29uc1Jlc3BvbnNlEhwKB3NlYXNvbnMYASADKAsyCy5pcGMuU2Vhc29uIqwBChZCb290c3RyYXBTZWFzb25SZXF1ZXN0EhEKCWxlYWd1ZV9pZBgBIAEoCRIuCgpzdGFydF9kYXRlGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfZGF0ZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASIQoGc3RhdHVzGAQgASgOMhEuaXBjLlNlYXNvblN0YXR1cyI/ChdPcGVuUmVnaXN0cmF0aW9uUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkSEQoJc2Vhc29uX2lkGAIgASgJIiYKD0RpdmlzaW9uUmVxdWVzdBITCgtkaXZpc2lvbl9pZBgBIAEoCSI8ChlEaXZpc2lvblN0YW5kaW5nc1Jlc3BvbnNlEh8KCGRpdmlzaW9uGAEgASgLMg0uaXBjLkRpdmlzaW9uIkAKHEFsbERpdmlzaW9uU3RhbmRpbmdzUmVzcG9uc2USIAoJZGl2aXNpb25zGAEgAygLMg0uaXBjLkRpdmlzaW9uIkgKD1JlZ2lzdGVyUmVxdWVzdBIRCglsZWFndWVfaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIRCglzZWFzb25faWQYAyABKAkiNgoQUmVnaXN0ZXJSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhEKCXNlYXNvbl9pZBgCIAEoCSI3ChFVbnJlZ2lzdGVyUmVxdWVzdBIRCglzZWFzb25faWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCSIlChJVbnJlZ2lzdGVyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJYChtTZWFzb25SZWdpc3RyYXRpb25zUmVzcG9uc2USOQoNcmVnaXN0cmF0aW9ucxgBIAMoCzIiLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlZ2lzdHJhdGlvbiJ4ChJTZWFzb25SZWdpc3RyYXRpb24SDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRIRCglzZWFzb25faWQYAyABKAkSEwoLZGl2aXNpb25faWQYBCABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAUgASgFIjoKFFBsYXllckhpc3RvcnlSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSEQoJbGVhZ3VlX2lkGAIgASgJIkcKFVBsYXllckhpc3RvcnlSZXNwb25zZRIuCgdzZWFzb25zGAEgAygLMh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uU3VtbWFyeSKUAQoNU2Vhc29uU3VtbWFyeRIRCglzZWFzb25faWQYASABKAkSFQoNc2Vhc29uX251bWJlchgCIAEoBRITCgtsZWFndWVfbmFtZRgDIAEoCRIXCg9kaXZpc2lvbl9udW1iZXIYBCABKAUSKwoIc3RhbmRpbmcYBSABKAsyGS5pcGMuTGVhZ3VlUGxheWVyU3RhbmRpbmciRQoYTGVhZ3VlU3RhdGlzdGljc1Jlc3BvbnNlEikKBXN0YXRzGAEgAygLMhoubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlU3RhdCJ7CgpMZWFndWVTdGF0EhEKCXN0YXRfdHlwZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhAKCHVzZXJuYW1lGAMgASgJEg0KBXZhbHVlGAQgASgFEg8KB2dhbWVfaWQYBSABKAkSFwoPZGl2aXNpb25fbnVtYmVyGAYgASgFIkEKG0dldFBsYXllclNlYXNvbkdhbWVzUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEhEKCXNlYXNvbl9pZBgCIAEoCSJPChxHZXRQbGF5ZXJTZWFzb25HYW1lc1Jlc3BvbnNlEi8KBWdhbWVzGAEgAygLMiAubGVhZ3VlX3NlcnZpY2UuUGxheWVyU2Vhc29uR2FtZSLUAQoQUGxheWVyU2Vhc29uR2FtZRIPCgdnYW1lX2lkGAEgASgJEhgKEG9wcG9uZW50X3VzZXJfaWQYAiABKAkSGQoRb3Bwb25lbnRfdXNlcm5hbWUYAyABKAkSFAoMcGxheWVyX3Njb3JlGAQgASgFEhYKDm9wcG9uZW50X3Njb3JlGAUgASgFEg4KBnJlc3VsdBgGIAEoCRItCglnYW1lX2RhdGUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXJvdW5kGAggASgFIiQKEUludml0ZVVzZXJSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiNgoSSW52aXRlVXNlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSDwoHbWVzc2FnZRgCIAEoCSJzChtNb3ZlUGxheWVyVG9EaXZpc2lvblJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIRCglzZWFzb25faWQYAiABKAkSGAoQZnJvbV9kaXZpc2lvbl9pZBgDIAEoCRIWCg50b19kaXZpc2lvbl9pZBgEIAEoCSJAChxNb3ZlUGxheWVyVG9EaXZpc2lvblJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSDwoHbWVzc2FnZRgCIAEoCSJKChtTZWFzb25aZXJvTW92ZUdhbWVzUmVzcG9uc2USKwoFZ2FtZXMYASADKAsyHC5sZWFndWVfc2VydmljZS5aZXJvTW92ZUdhbWUiwAEKDFplcm9Nb3ZlR2FtZRIPCgdnYW1lX2lkGAEgASgJEi4KCmNyZWF0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnBsYXllcjBfaWQYAyABKAkSGAoQcGxheWVyMF91c2VybmFtZRgEIAEoCRISCgpwbGF5ZXIxX2lkGAUgASgJEhgKEHBsYXllcjFfdXNlcm5hbWUYBiABKAkSEwoLZGl2aXNpb25faWQYByABKAkiZAonU2Vhc29uUGxheWVyc1dpdGhVbnN0YXJ0ZWRHYW1lc1Jlc3BvbnNlEjkKB3BsYXllcnMYASADKAsyKC5sZWFndWVfc2VydmljZS5QbGF5ZXJXaXRoVW5zdGFydGVkR2FtZXMiWwoYUGxheWVyV2l0aFVuc3RhcnRlZEdhbWVzEg8KB3VzZXJfaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSHAoUdW5zdGFydGVkX2dhbWVfY291bnQYAyABKAUiiwEKGFVwZGF0ZVNlYXNvbkRhdGVzUmVxdWVzdBIRCglzZWFzb25faWQYASABKAkSLgoKc3RhcnRfZGF0ZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX2RhdGUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImoKI1VwZGF0ZVNlYXNvblByb21vdGlvbkZvcm11bGFSZXF1ZXN0EhEKCXNlYXNvbl9pZBgBIAEoCRIwChFwcm9tb3Rpb25fZm9ybXVsYRgCIAEoDjIVLmlwYy5Qcm9tb3Rpb25Gb3JtdWxhImEKIFJlY2FsY3VsYXRlRXh0ZW5kZWRTdGF0c1Jlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSGwoTZGl2aXNpb25zX3Byb2Nlc3NlZBgCIAEoBRIPCgdtZXNzYWdlGAMgASgJMtwUCg1MZWFndWVTZXJ2aWNlElMKDENyZWF0ZUxlYWd1ZRIjLmxlYWd1ZV9zZXJ2aWNlLkNyZWF0ZUxlYWd1ZVJlcXVlc3QaHi5sZWFndWVfc2VydmljZS5MZWFndWVSZXNwb25zZRJKCglHZXRMZWFndWUSHS5sZWFndWVfc2VydmljZS5MZWFndWVSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVzcG9uc2USXAoNR2V0QWxsTGVhZ3VlcxIkLmxlYWd1ZV9zZXJ2aWNlLkdldEFsbExlYWd1ZXNSZXF1ZXN0GiUubGVhZ3VlX3NlcnZpY2UuR2V0QWxsTGVhZ3Vlc1Jlc3BvbnNlEmMKFFVwZGF0ZUxlYWd1ZVNldHRpbmdzEisubGVhZ3VlX3NlcnZpY2UuVXBkYXRlTGVhZ3VlU2V0dGluZ3NSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVzcG9uc2USYwoUVXBkYXRlTGVhZ3VlTWV0YWRhdGESKy5sZWFndWVfc2VydmljZS5VcGRhdGVMZWFndWVNZXRhZGF0YVJlcXVlc3QaHi5sZWFndWVfc2VydmljZS5MZWFndWVSZXNwb25zZRJZCg9Cb290c3RyYXBTZWFzb24SJi5sZWFndWVfc2VydmljZS5Cb290c3RyYXBTZWFzb25SZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2USSgoJR2V0U2Vhc29uEh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVxdWVzdBoeLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlc3BvbnNlElEKEEdldEN1cnJlbnRTZWFzb24SHS5sZWFndWVfc2VydmljZS5MZWFndWVSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2USVAoOR2V0UGFzdFNlYXNvbnMSHS5sZWFndWVfc2VydmljZS5MZWFndWVSZXF1ZXN0GiMubGVhZ3VlX3NlcnZpY2UuUGFzdFNlYXNvbnNSZXNwb25zZRJSCg1HZXRBbGxTZWFzb25zEh0ubGVhZ3VlX3NlcnZpY2UuTGVhZ3VlUmVxdWVzdBoiLmxlYWd1ZV9zZXJ2aWNlLkFsbFNlYXNvbnNSZXNwb25zZRJiChBHZXRSZWNlbnRTZWFzb25zEicubGVhZ3VlX3NlcnZpY2UuR2V0UmVjZW50U2Vhc29uc1JlcXVlc3QaJS5sZWFndWVfc2VydmljZS5SZWNlbnRTZWFzb25zUmVzcG9uc2USWwoQT3BlblJlZ2lzdHJhdGlvbhInLmxlYWd1ZV9zZXJ2aWNlLk9wZW5SZWdpc3RyYXRpb25SZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2USYgoUR2V0RGl2aXNpb25TdGFuZGluZ3MSHy5sZWFndWVfc2VydmljZS5EaXZpc2lvblJlcXVlc3QaKS5sZWFndWVfc2VydmljZS5EaXZpc2lvblN0YW5kaW5nc1Jlc3BvbnNlEmYKF0dldEFsbERpdmlzaW9uU3RhbmRpbmdzEh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVxdWVzdBosLmxlYWd1ZV9zZXJ2aWNlLkFsbERpdmlzaW9uU3RhbmRpbmdzUmVzcG9uc2USVgoRUmVnaXN0ZXJGb3JTZWFzb24SHy5sZWFndWVfc2VydmljZS5SZWdpc3RlclJlcXVlc3QaIC5sZWFndWVfc2VydmljZS5SZWdpc3RlclJlc3BvbnNlEl0KFFVucmVnaXN0ZXJGcm9tU2Vhc29uEiEubGVhZ3VlX3NlcnZpY2UuVW5yZWdpc3RlclJlcXVlc3QaIi5sZWFndWVfc2VydmljZS5VbnJlZ2lzdGVyUmVzcG9uc2USZAoWR2V0U2Vhc29uUmVnaXN0cmF0aW9ucxIdLmxlYWd1ZV9zZXJ2aWNlLlNlYXNvblJlcXVlc3QaKy5sZWFndWVfc2VydmljZS5TZWFzb25SZWdpc3RyYXRpb25zUmVzcG9uc2USZQoWR2V0UGxheWVyTGVhZ3VlSGlzdG9yeRIkLmxlYWd1ZV9zZXJ2aWNlLlBsYXllckhpc3RvcnlSZXF1ZXN0GiUubGVhZ3VlX3NlcnZpY2UuUGxheWVySGlzdG9yeVJlc3BvbnNlEnEKFEdldFBsYXllclNlYXNvbkdhbWVzEisubGVhZ3VlX3NlcnZpY2UuR2V0UGxheWVyU2Vhc29uR2FtZXNSZXF1ZXN0GiwubGVhZ3VlX3NlcnZpY2UuR2V0UGxheWVyU2Vhc29uR2FtZXNSZXNwb25zZRJcChNJbnZpdGVVc2VyVG9MZWFndWVzEiEubGVhZ3VlX3NlcnZpY2UuSW52aXRlVXNlclJlcXVlc3QaIi5sZWFndWVfc2VydmljZS5JbnZpdGVVc2VyUmVzcG9uc2USXgoTR2V0TGVhZ3VlU3RhdGlzdGljcxIdLmxlYWd1ZV9zZXJ2aWNlLkxlYWd1ZVJlcXVlc3QaKC5sZWFndWVfc2VydmljZS5MZWFndWVTdGF0aXN0aWNzUmVzcG9uc2UScQoUTW92ZVBsYXllclRvRGl2aXNpb24SKy5sZWFndWVfc2VydmljZS5Nb3ZlUGxheWVyVG9EaXZpc2lvblJlcXVlc3QaLC5sZWFndWVfc2VydmljZS5Nb3ZlUGxheWVyVG9EaXZpc2lvblJlc3BvbnNlEmQKFkdldFNlYXNvblplcm9Nb3ZlR2FtZXMSHS5sZWFndWVfc2VydmljZS5TZWFzb25SZXF1ZXN0GisubGVhZ3VlX3NlcnZpY2UuU2Vhc29uWmVyb01vdmVHYW1lc1Jlc3BvbnNlEnwKIkdldFNlYXNvblBsYXllcnNXaXRoVW5zdGFydGVkR2FtZXMSHS5sZWFndWVfc2VydmljZS5TZWFzb25SZXF1ZXN0GjcubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUGxheWVyc1dpdGhVbnN0YXJ0ZWRHYW1lc1Jlc3BvbnNlEl0KEVVwZGF0ZVNlYXNvbkRhdGVzEigubGVhZ3VlX3NlcnZpY2UuVXBkYXRlU2Vhc29uRGF0ZXNSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2UScwocVXBkYXRlU2Vhc29uUHJvbW90aW9uRm9ybXVsYRIzLmxlYWd1ZV9zZXJ2aWNlLlVwZGF0ZVNlYXNvblByb21vdGlvbkZvcm11bGFSZXF1ZXN0Gh4ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVzcG9uc2UScQoeUmVjYWxjdWxhdGVTZWFzb25FeHRlbmRlZFN0YXRzEh0ubGVhZ3VlX3NlcnZpY2UuU2Vhc29uUmVxdWVzdBowLmxlYWd1ZV9zZXJ2aWNlLlJlY2FsY3VsYXRlRXh0ZW5kZWRTdGF0c1Jlc3BvbnNlQrgBChJjb20ubGVhZ3VlX3NlcnZpY2VCEkxlYWd1ZVNlcnZpY2VQcm90b1ABWjpnaXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2xlYWd1ZV9zZXJ2aWNlogIDTFhYqgINTGVhZ3VlU2VydmljZcoCDUxlYWd1ZVNlcnZpY2XiAhlMZWFndWVTZXJ2aWNlXEdQQk1ldGFkYXRh6gINTGVhZ3VlU2VydmljZWIGcHJvdG8z", [file_proto_ipc_league, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message league_service.CreateLeagueRequest
@@ -236,6 +236,49 @@ export const AllSeasonsResponseSchema: GenMessage<AllSeasonsResponse> = /*@__PUR
   messageDesc(file_proto_league_service_league_service, 10);
 
 /**
+ * @generated from message league_service.GetRecentSeasonsRequest
+ */
+export type GetRecentSeasonsRequest = Message<"league_service.GetRecentSeasonsRequest"> & {
+  /**
+   * UUID or slug
+   *
+   * @generated from field: string league_id = 1;
+   */
+  leagueId: string;
+
+  /**
+   * Number of most recent seasons to return (by season_number desc)
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message league_service.GetRecentSeasonsRequest.
+ * Use `create(GetRecentSeasonsRequestSchema)` to create a new message.
+ */
+export const GetRecentSeasonsRequestSchema: GenMessage<GetRecentSeasonsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_league_service_league_service, 11);
+
+/**
+ * @generated from message league_service.RecentSeasonsResponse
+ */
+export type RecentSeasonsResponse = Message<"league_service.RecentSeasonsResponse"> & {
+  /**
+   * @generated from field: repeated ipc.Season seasons = 1;
+   */
+  seasons: Season[];
+};
+
+/**
+ * Describes the message league_service.RecentSeasonsResponse.
+ * Use `create(RecentSeasonsResponseSchema)` to create a new message.
+ */
+export const RecentSeasonsResponseSchema: GenMessage<RecentSeasonsResponse> = /*@__PURE__*/
+  messageDesc(file_proto_league_service_league_service, 12);
+
+/**
  * @generated from message league_service.BootstrapSeasonRequest
  */
 export type BootstrapSeasonRequest = Message<"league_service.BootstrapSeasonRequest"> & {
@@ -267,7 +310,7 @@ export type BootstrapSeasonRequest = Message<"league_service.BootstrapSeasonRequ
  * Use `create(BootstrapSeasonRequestSchema)` to create a new message.
  */
 export const BootstrapSeasonRequestSchema: GenMessage<BootstrapSeasonRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 11);
+  messageDesc(file_proto_league_service_league_service, 13);
 
 /**
  * @generated from message league_service.OpenRegistrationRequest
@@ -293,7 +336,7 @@ export type OpenRegistrationRequest = Message<"league_service.OpenRegistrationRe
  * Use `create(OpenRegistrationRequestSchema)` to create a new message.
  */
 export const OpenRegistrationRequestSchema: GenMessage<OpenRegistrationRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 12);
+  messageDesc(file_proto_league_service_league_service, 14);
 
 /**
  * @generated from message league_service.DivisionRequest
@@ -310,7 +353,7 @@ export type DivisionRequest = Message<"league_service.DivisionRequest"> & {
  * Use `create(DivisionRequestSchema)` to create a new message.
  */
 export const DivisionRequestSchema: GenMessage<DivisionRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 13);
+  messageDesc(file_proto_league_service_league_service, 15);
 
 /**
  * @generated from message league_service.DivisionStandingsResponse
@@ -327,7 +370,7 @@ export type DivisionStandingsResponse = Message<"league_service.DivisionStanding
  * Use `create(DivisionStandingsResponseSchema)` to create a new message.
  */
 export const DivisionStandingsResponseSchema: GenMessage<DivisionStandingsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 14);
+  messageDesc(file_proto_league_service_league_service, 16);
 
 /**
  * @generated from message league_service.AllDivisionStandingsResponse
@@ -344,7 +387,7 @@ export type AllDivisionStandingsResponse = Message<"league_service.AllDivisionSt
  * Use `create(AllDivisionStandingsResponseSchema)` to create a new message.
  */
 export const AllDivisionStandingsResponseSchema: GenMessage<AllDivisionStandingsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 15);
+  messageDesc(file_proto_league_service_league_service, 17);
 
 /**
  * @generated from message league_service.RegisterRequest
@@ -371,7 +414,7 @@ export type RegisterRequest = Message<"league_service.RegisterRequest"> & {
  * Use `create(RegisterRequestSchema)` to create a new message.
  */
 export const RegisterRequestSchema: GenMessage<RegisterRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 16);
+  messageDesc(file_proto_league_service_league_service, 18);
 
 /**
  * @generated from message league_service.RegisterResponse
@@ -393,7 +436,7 @@ export type RegisterResponse = Message<"league_service.RegisterResponse"> & {
  * Use `create(RegisterResponseSchema)` to create a new message.
  */
 export const RegisterResponseSchema: GenMessage<RegisterResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 17);
+  messageDesc(file_proto_league_service_league_service, 19);
 
 /**
  * @generated from message league_service.UnregisterRequest
@@ -415,7 +458,7 @@ export type UnregisterRequest = Message<"league_service.UnregisterRequest"> & {
  * Use `create(UnregisterRequestSchema)` to create a new message.
  */
 export const UnregisterRequestSchema: GenMessage<UnregisterRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 18);
+  messageDesc(file_proto_league_service_league_service, 20);
 
 /**
  * @generated from message league_service.UnregisterResponse
@@ -432,7 +475,7 @@ export type UnregisterResponse = Message<"league_service.UnregisterResponse"> & 
  * Use `create(UnregisterResponseSchema)` to create a new message.
  */
 export const UnregisterResponseSchema: GenMessage<UnregisterResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 19);
+  messageDesc(file_proto_league_service_league_service, 21);
 
 /**
  * @generated from message league_service.SeasonRegistrationsResponse
@@ -449,7 +492,7 @@ export type SeasonRegistrationsResponse = Message<"league_service.SeasonRegistra
  * Use `create(SeasonRegistrationsResponseSchema)` to create a new message.
  */
 export const SeasonRegistrationsResponseSchema: GenMessage<SeasonRegistrationsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 20);
+  messageDesc(file_proto_league_service_league_service, 22);
 
 /**
  * @generated from message league_service.SeasonRegistration
@@ -490,7 +533,7 @@ export type SeasonRegistration = Message<"league_service.SeasonRegistration"> & 
  * Use `create(SeasonRegistrationSchema)` to create a new message.
  */
 export const SeasonRegistrationSchema: GenMessage<SeasonRegistration> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 21);
+  messageDesc(file_proto_league_service_league_service, 23);
 
 /**
  * @generated from message league_service.PlayerHistoryRequest
@@ -514,7 +557,7 @@ export type PlayerHistoryRequest = Message<"league_service.PlayerHistoryRequest"
  * Use `create(PlayerHistoryRequestSchema)` to create a new message.
  */
 export const PlayerHistoryRequestSchema: GenMessage<PlayerHistoryRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 22);
+  messageDesc(file_proto_league_service_league_service, 24);
 
 /**
  * @generated from message league_service.PlayerHistoryResponse
@@ -531,7 +574,7 @@ export type PlayerHistoryResponse = Message<"league_service.PlayerHistoryRespons
  * Use `create(PlayerHistoryResponseSchema)` to create a new message.
  */
 export const PlayerHistoryResponseSchema: GenMessage<PlayerHistoryResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 23);
+  messageDesc(file_proto_league_service_league_service, 25);
 
 /**
  * @generated from message league_service.SeasonSummary
@@ -568,7 +611,7 @@ export type SeasonSummary = Message<"league_service.SeasonSummary"> & {
  * Use `create(SeasonSummarySchema)` to create a new message.
  */
 export const SeasonSummarySchema: GenMessage<SeasonSummary> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 24);
+  messageDesc(file_proto_league_service_league_service, 26);
 
 /**
  * @generated from message league_service.LeagueStatisticsResponse
@@ -587,7 +630,7 @@ export type LeagueStatisticsResponse = Message<"league_service.LeagueStatisticsR
  * Use `create(LeagueStatisticsResponseSchema)` to create a new message.
  */
 export const LeagueStatisticsResponseSchema: GenMessage<LeagueStatisticsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 25);
+  messageDesc(file_proto_league_service_league_service, 27);
 
 /**
  * @generated from message league_service.LeagueStat
@@ -629,7 +672,7 @@ export type LeagueStat = Message<"league_service.LeagueStat"> & {
  * Use `create(LeagueStatSchema)` to create a new message.
  */
 export const LeagueStatSchema: GenMessage<LeagueStat> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 26);
+  messageDesc(file_proto_league_service_league_service, 28);
 
 /**
  * @generated from message league_service.GetPlayerSeasonGamesRequest
@@ -651,7 +694,7 @@ export type GetPlayerSeasonGamesRequest = Message<"league_service.GetPlayerSeaso
  * Use `create(GetPlayerSeasonGamesRequestSchema)` to create a new message.
  */
 export const GetPlayerSeasonGamesRequestSchema: GenMessage<GetPlayerSeasonGamesRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 27);
+  messageDesc(file_proto_league_service_league_service, 29);
 
 /**
  * @generated from message league_service.GetPlayerSeasonGamesResponse
@@ -668,7 +711,7 @@ export type GetPlayerSeasonGamesResponse = Message<"league_service.GetPlayerSeas
  * Use `create(GetPlayerSeasonGamesResponseSchema)` to create a new message.
  */
 export const GetPlayerSeasonGamesResponseSchema: GenMessage<GetPlayerSeasonGamesResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 28);
+  messageDesc(file_proto_league_service_league_service, 30);
 
 /**
  * @generated from message league_service.PlayerSeasonGame
@@ -724,7 +767,7 @@ export type PlayerSeasonGame = Message<"league_service.PlayerSeasonGame"> & {
  * Use `create(PlayerSeasonGameSchema)` to create a new message.
  */
 export const PlayerSeasonGameSchema: GenMessage<PlayerSeasonGame> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 29);
+  messageDesc(file_proto_league_service_league_service, 31);
 
 /**
  * @generated from message league_service.InviteUserRequest
@@ -743,7 +786,7 @@ export type InviteUserRequest = Message<"league_service.InviteUserRequest"> & {
  * Use `create(InviteUserRequestSchema)` to create a new message.
  */
 export const InviteUserRequestSchema: GenMessage<InviteUserRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 30);
+  messageDesc(file_proto_league_service_league_service, 32);
 
 /**
  * @generated from message league_service.InviteUserResponse
@@ -765,7 +808,7 @@ export type InviteUserResponse = Message<"league_service.InviteUserResponse"> & 
  * Use `create(InviteUserResponseSchema)` to create a new message.
  */
 export const InviteUserResponseSchema: GenMessage<InviteUserResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 31);
+  messageDesc(file_proto_league_service_league_service, 33);
 
 /**
  * @generated from message league_service.MovePlayerToDivisionRequest
@@ -805,7 +848,7 @@ export type MovePlayerToDivisionRequest = Message<"league_service.MovePlayerToDi
  * Use `create(MovePlayerToDivisionRequestSchema)` to create a new message.
  */
 export const MovePlayerToDivisionRequestSchema: GenMessage<MovePlayerToDivisionRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 32);
+  messageDesc(file_proto_league_service_league_service, 34);
 
 /**
  * @generated from message league_service.MovePlayerToDivisionResponse
@@ -827,7 +870,7 @@ export type MovePlayerToDivisionResponse = Message<"league_service.MovePlayerToD
  * Use `create(MovePlayerToDivisionResponseSchema)` to create a new message.
  */
 export const MovePlayerToDivisionResponseSchema: GenMessage<MovePlayerToDivisionResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 33);
+  messageDesc(file_proto_league_service_league_service, 35);
 
 /**
  * @generated from message league_service.SeasonZeroMoveGamesResponse
@@ -844,7 +887,7 @@ export type SeasonZeroMoveGamesResponse = Message<"league_service.SeasonZeroMove
  * Use `create(SeasonZeroMoveGamesResponseSchema)` to create a new message.
  */
 export const SeasonZeroMoveGamesResponseSchema: GenMessage<SeasonZeroMoveGamesResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 34);
+  messageDesc(file_proto_league_service_league_service, 36);
 
 /**
  * @generated from message league_service.ZeroMoveGame
@@ -891,7 +934,7 @@ export type ZeroMoveGame = Message<"league_service.ZeroMoveGame"> & {
  * Use `create(ZeroMoveGameSchema)` to create a new message.
  */
 export const ZeroMoveGameSchema: GenMessage<ZeroMoveGame> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 35);
+  messageDesc(file_proto_league_service_league_service, 37);
 
 /**
  * @generated from message league_service.SeasonPlayersWithUnstartedGamesResponse
@@ -908,7 +951,7 @@ export type SeasonPlayersWithUnstartedGamesResponse = Message<"league_service.Se
  * Use `create(SeasonPlayersWithUnstartedGamesResponseSchema)` to create a new message.
  */
 export const SeasonPlayersWithUnstartedGamesResponseSchema: GenMessage<SeasonPlayersWithUnstartedGamesResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 36);
+  messageDesc(file_proto_league_service_league_service, 38);
 
 /**
  * @generated from message league_service.PlayerWithUnstartedGames
@@ -935,7 +978,7 @@ export type PlayerWithUnstartedGames = Message<"league_service.PlayerWithUnstart
  * Use `create(PlayerWithUnstartedGamesSchema)` to create a new message.
  */
 export const PlayerWithUnstartedGamesSchema: GenMessage<PlayerWithUnstartedGames> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 37);
+  messageDesc(file_proto_league_service_league_service, 39);
 
 /**
  * @generated from message league_service.UpdateSeasonDatesRequest
@@ -962,7 +1005,7 @@ export type UpdateSeasonDatesRequest = Message<"league_service.UpdateSeasonDates
  * Use `create(UpdateSeasonDatesRequestSchema)` to create a new message.
  */
 export const UpdateSeasonDatesRequestSchema: GenMessage<UpdateSeasonDatesRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 38);
+  messageDesc(file_proto_league_service_league_service, 40);
 
 /**
  * @generated from message league_service.UpdateSeasonPromotionFormulaRequest
@@ -984,7 +1027,7 @@ export type UpdateSeasonPromotionFormulaRequest = Message<"league_service.Update
  * Use `create(UpdateSeasonPromotionFormulaRequestSchema)` to create a new message.
  */
 export const UpdateSeasonPromotionFormulaRequestSchema: GenMessage<UpdateSeasonPromotionFormulaRequest> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 39);
+  messageDesc(file_proto_league_service_league_service, 41);
 
 /**
  * @generated from message league_service.RecalculateExtendedStatsResponse
@@ -1011,7 +1054,7 @@ export type RecalculateExtendedStatsResponse = Message<"league_service.Recalcula
  * Use `create(RecalculateExtendedStatsResponseSchema)` to create a new message.
  */
 export const RecalculateExtendedStatsResponseSchema: GenMessage<RecalculateExtendedStatsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_league_service_league_service, 40);
+  messageDesc(file_proto_league_service_league_service, 42);
 
 /**
  * @generated from service league_service.LeagueService
@@ -1100,6 +1143,14 @@ export const LeagueService: GenService<{
     methodKind: "unary";
     input: typeof LeagueRequestSchema;
     output: typeof AllSeasonsResponseSchema;
+  },
+  /**
+   * @generated from rpc league_service.LeagueService.GetRecentSeasons
+   */
+  getRecentSeasons: {
+    methodKind: "unary";
+    input: typeof GetRecentSeasonsRequestSchema;
+    output: typeof RecentSeasonsResponseSchema;
   },
   /**
    * @generated from rpc league_service.LeagueService.OpenRegistration

@@ -186,6 +186,9 @@ func (m *mockLeagueStore) UpdatePlacementStatus(ctx context.Context, arg models.
 func (m *mockLeagueStore) UpdatePlacementStatusWithSeasonsAway(ctx context.Context, arg models.UpdatePlacementStatusWithSeasonsAwayParams) error {
 	return nil
 }
+func (m *mockLeagueStore) UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error {
+	return nil
+}
 func (m *mockLeagueStore) GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error) {
 	return nil, nil
 }
@@ -233,6 +236,12 @@ func (m *mockLeagueStore) GetRegistrationsByDivision(ctx context.Context, divisi
 }
 func (m *mockLeagueStore) UpdateLeagueMetadata(ctx context.Context, arg models.UpdateLeagueMetadataParams) error {
 	return nil
+}
+func (m *mockLeagueStore) GetRecentSeasons(ctx context.Context, arg models.GetRecentSeasonsParams) ([]models.LeagueSeason, error) {
+	return nil, nil
+}
+func (m *mockLeagueStore) GetSeasonChampion(ctx context.Context, seasonID uuid.UUID) (models.GetSeasonChampionRow, error) {
+	return models.GetSeasonChampionRow{}, nil
 }
 
 func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg models.IncrementStandingsAtomicParams) error {

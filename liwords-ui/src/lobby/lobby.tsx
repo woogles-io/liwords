@@ -8,7 +8,6 @@ import { Chat } from "../chat/chat";
 import { useLoginStateStoreContext } from "../store/store";
 import "./lobby.scss";
 import { AnnouncementsWidget } from "./announcements";
-import { UpcomingTournamentsWidget } from "./upcoming_tournaments";
 import { sendAccept, sendSeek } from "./sought_game_interactions";
 import { PuzzlePreview } from "../puzzles/puzzle_preview";
 import { ConfigProvider } from "antd";
@@ -82,7 +81,6 @@ export const Lobby = (props: Props) => {
       <TopBar />
       <div className="lobby">
         <div className="chat-area">
-          <UpcomingTournamentsWidget />
           <Chat
             sendChat={props.sendChat}
             defaultChannel="chat.lobby"

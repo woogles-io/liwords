@@ -85,20 +85,6 @@ span.user-context-menu.ant-dropdown-trigger {
       height: calc(
         base.$main-container-width-tablet + 52px - $puzzleCardHeight
       );
-      .ant-card-body {
-        padding: 12px 24px;
-        height: calc(
-          base.$main-container-width-tablet + 48px - $puzzleCardHeight - 52px
-        );
-        max-height: calc(
-          base.$main-container-width-tablet + 48px - $puzzleCardHeight - 52px
-        );
-        overflow-y: auto;
-      }
-      .ant-card-head-title {
-        padding: 14px 0 6px;
-        font-size: 16px;
-      }
     }
   }
 }
@@ -177,19 +163,7 @@ span.user-context-menu.ant-dropdown-trigger {
     .tournament-info .ant-card.tournament {
       height: calc(100vh - #{base.$header-height-desktop + 48px});
     }
-    .chat-area {
-      .ant-card.upcoming-tournaments-widget {
-        height: calc(50% - 6px);
-        .ant-card-body {
-          height: calc(100% - 52px);
-          max-height: calc(100% - 52px);
-        }
-      }
-    }
-    &:not(.room) .chat-area .ant-card.chat {
-      height: calc(50% - 6px);
-    }
-    &.room .chat-area .ant-card.chat {
+    .chat-area .ant-card.chat {
       height: calc(100vh - #{base.$header-height-desktop + 48px});
     }
     .announcements {
@@ -198,14 +172,6 @@ span.user-context-menu.ant-dropdown-trigger {
         height: calc(
           100vh - #{base.$header-height-desktop + $puzzleCardHeight + 65px}
         );
-        .ant-card-body {
-          height: calc(
-            100vh - #{base.$header-height-desktop + $puzzleCardHeight + 120px}
-          );
-          max-height: calc(
-            100vh - #{base.$header-height-desktop + $puzzleCardHeight + 120px}
-          );
-        }
       }
     }
     &.competitor .tournament-info .ant-card.tournament {

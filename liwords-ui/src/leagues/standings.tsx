@@ -1,8 +1,59 @@
 import React, { useState } from "react";
 import { Table, Tag, Tooltip } from "antd";
-import { Division, PromotionFormula } from "../gen/api/proto/ipc/league_pb";
-import { StandingResult } from "../gen/api/proto/ipc/league_pb";
+import {
+  StarOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  MinusOutlined,
+  HistoryOutlined,
+} from "@ant-design/icons";
+import {
+  Division,
+  PromotionFormula,
+  StandingResult,
+  PlacementStatus,
+} from "../gen/api/proto/ipc/league_pb";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+
+// Get placement status icon and tooltip
+const getPlacementIndicator = (
+  status: PlacementStatus,
+): { icon: React.ReactNode; tooltip: string } | null => {
+  switch (status) {
+    case PlacementStatus.PLACEMENT_NEW:
+      return {
+        icon: <StarOutlined style={{ fontSize: 10, color: "#1890ff" }} />,
+        tooltip: "New to this league",
+      };
+    case PlacementStatus.PLACEMENT_PROMOTED:
+      return {
+        icon: <ArrowUpOutlined style={{ fontSize: 10, color: "#52c41a" }} />,
+        tooltip: "Promoted from lower division",
+      };
+    case PlacementStatus.PLACEMENT_RELEGATED:
+      return {
+        icon: <ArrowDownOutlined style={{ fontSize: 10, color: "#ff4d4f" }} />,
+        tooltip: "Relegated from higher division",
+      };
+    case PlacementStatus.PLACEMENT_STAYED:
+      return {
+        icon: <MinusOutlined style={{ fontSize: 10, color: "#8c8c8c" }} />,
+        tooltip: "Stayed in same division",
+      };
+    case PlacementStatus.PLACEMENT_SHORT_HIATUS_RETURNING:
+      return {
+        icon: <HistoryOutlined style={{ fontSize: 10, color: "#faad14" }} />,
+        tooltip: "Returning after short break (1-3 seasons)",
+      };
+    case PlacementStatus.PLACEMENT_LONG_HIATUS_RETURNING:
+      return {
+        icon: <HistoryOutlined style={{ fontSize: 10, color: "#d48806" }} />,
+        tooltip: "Returning after long break (4+ seasons)",
+      };
+    default:
+      return null;
+  }
+};
 
 // Column header with tooltip
 const ColHeader: React.FC<{ title: string; tooltip: string }> = ({
@@ -27,6 +78,9 @@ function calculatePromotionCount(
     case PromotionFormula.PROMO_N_DIV_5:
       // ceil(N/5): 13->3, 15->3, 17->4, 20->4
       return Math.ceil(divSize / 5);
+    case PromotionFormula.PROMO_N_DIV_3:
+      // ceil(N/3): 13->5, 15->5, 17->6, 20->7
+      return Math.ceil(divSize / 3);
     default:
       // PROMO_N_DIV_6 (default): ceil(N/6): 13->3, 15->3, 17->3, 20->4
       return Math.ceil(divSize / 6);
@@ -110,6 +164,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     blanksPlayed: standing.blanksPlayed,
     totalTilesPlayed: standing.totalTilesPlayed,
     totalOpponentTilesPlayed: standing.totalOpponentTilesPlayed,
+    placementStatus: standing.placementStatus,
   }));
 
   // Define the record type for sorter functions
@@ -134,8 +189,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) =>
         a.username.localeCompare(b.username),
       sortIcon: noSortIcon,
-      render: (username: string, record: { userId: string }) => {
+      render: (
+        username: string,
+        record: { userId: string; placementStatus: PlacementStatus },
+      ) => {
         const isCurrentUser = record.userId === currentUserId;
+        const placementIndicator = getPlacementIndicator(
+          record.placementStatus,
+        );
         return (
           <span
             className="clickable-player"
@@ -147,6 +208,13 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             }
           >
             <strong>{username}</strong>
+            {placementIndicator && (
+              <Tooltip title={placementIndicator.tooltip}>
+                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                  {placementIndicator.icon}
+                </span>
+              </Tooltip>
+            )}
           </span>
         );
       },
@@ -277,41 +345,22 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.totalOpponentBingos, record.gamesPlayed),
     },
     {
-      title: <ColHeader title="TAV" tooltip="Average tiles played per game" />,
-      key: "avgTiles",
+      title: <ColHeader title="TAV" tooltip="Turn average (points per turn)" />,
+      key: "turnAvg",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
-        const avgA = a.gamesPlayed > 0 ? a.totalTilesPlayed / a.gamesPlayed : 0;
-        const avgB = b.gamesPlayed > 0 ? b.totalTilesPlayed / b.gamesPlayed : 0;
+        const avgA = a.totalTurns > 0 ? a.totalScore / a.totalTurns : 0;
+        const avgB = b.totalTurns > 0 ? b.totalScore / b.totalTurns : 0;
         return avgA - avgB;
       },
       sortIcon: noSortIcon,
       render: (
         _: unknown,
-        record: { totalTilesPlayed: number; gamesPlayed: number },
-      ) => formatAvg(record.totalTilesPlayed, record.gamesPlayed),
-    },
-    {
-      title: (
-        <ColHeader
-          title="OTAV"
-          tooltip="Average opponent tiles played per game"
-        />
-      ),
-      key: "avgOppTiles",
-      width: 50,
-      sorter: (a: StandingRecord, b: StandingRecord) => {
-        const avgA =
-          a.gamesPlayed > 0 ? a.totalOpponentTilesPlayed / a.gamesPlayed : 0;
-        const avgB =
-          b.gamesPlayed > 0 ? b.totalOpponentTilesPlayed / b.gamesPlayed : 0;
-        return avgA - avgB;
-      },
-      sortIcon: noSortIcon,
-      render: (
-        _: unknown,
-        record: { totalOpponentTilesPlayed: number; gamesPlayed: number },
-      ) => formatAvg(record.totalOpponentTilesPlayed, record.gamesPlayed),
+        record: { totalScore: number; totalTurns: number; gamesPlayed: number },
+      ) =>
+        record.gamesPlayed > 0 && record.totalTurns > 0
+          ? (record.totalScore / record.totalTurns).toFixed(1)
+          : "-",
     },
     {
       title: <ColHeader title="HG" tooltip="High game score" />,
@@ -336,7 +385,46 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => (record.gamesPlayed > 0 ? record.highTurn : "-"),
     },
     {
-      title: <ColHeader title="#TAV" tooltip="Average turns per game" />,
+      title: <ColHeader title="TiAV" tooltip="Average tiles played per game" />,
+      key: "avgTiles",
+      width: 45,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        const avgA = a.gamesPlayed > 0 ? a.totalTilesPlayed / a.gamesPlayed : 0;
+        const avgB = b.gamesPlayed > 0 ? b.totalTilesPlayed / b.gamesPlayed : 0;
+        return avgA - avgB;
+      },
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { totalTilesPlayed: number; gamesPlayed: number },
+      ) => formatAvg(record.totalTilesPlayed, record.gamesPlayed),
+    },
+    {
+      title: (
+        <ColHeader
+          title="OTiAV"
+          tooltip="Average opponent tiles played per game"
+        />
+      ),
+      key: "avgOppTiles",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        const avgA =
+          a.gamesPlayed > 0 ? a.totalOpponentTilesPlayed / a.gamesPlayed : 0;
+        const avgB =
+          b.gamesPlayed > 0 ? b.totalOpponentTilesPlayed / b.gamesPlayed : 0;
+        return avgA - avgB;
+      },
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { totalOpponentTilesPlayed: number; gamesPlayed: number },
+      ) => formatAvg(record.totalOpponentTilesPlayed, record.gamesPlayed),
+    },
+    {
+      title: (
+        <ColHeader title="#TAV" tooltip="Average number of turns per game" />
+      ),
       key: "avgTurns",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {

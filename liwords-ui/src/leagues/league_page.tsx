@@ -34,6 +34,7 @@ import {
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
+import { PromotionFormula } from "../gen/api/proto/ipc/league_pb";
 import { DivisionSelector, getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
@@ -44,6 +45,21 @@ import "./leagues.scss";
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
+};
+
+// Helper function to format promotion formula in a user-friendly way
+const formatPromotionFormula = (formula: PromotionFormula): string => {
+  switch (formula) {
+    case PromotionFormula.PROMO_N_PLUS_1_DIV_5:
+      return "~20% (aggressive)";
+    case PromotionFormula.PROMO_N_DIV_5:
+      return "~20%";
+    case PromotionFormula.PROMO_N_DIV_3:
+      return "~33%";
+    default:
+      // PROMO_N_DIV_6
+      return "~17% (default)";
+  }
 };
 
 // Helper function to format season dates in local time
@@ -811,6 +827,16 @@ export const LeaguePage = (props: Props) => {
                         {league.settings.idealDivisionSize} players
                       </span>
                     </div>
+                    {displayedSeason && (
+                      <div className="settings-row">
+                        <span className="settings-label">Promotion:</span>
+                        <span className="settings-value">
+                          {formatPromotionFormula(
+                            displayedSeason.promotionFormula,
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
@@ -908,6 +934,18 @@ export const LeaguePage = (props: Props) => {
                 <li style={{ marginBottom: 6 }}>Having fun</li>
               </ul>
             </div>
+
+            <Alert
+              type="warning"
+              showIcon
+              message={
+                <>
+                  If you don't know what leagues are, please read the{" "}
+                  <Link to="/leagues#faq">Leagues FAQ</Link> before registering.
+                </>
+              }
+              style={{ marginBottom: 16 }}
+            />
 
             <p style={{ marginBottom: 8, fontWeight: 500 }}>
               Season {displayedSeason?.seasonNumber} starts at:

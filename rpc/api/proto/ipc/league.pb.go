@@ -84,6 +84,7 @@ const (
 	PromotionFormula_PROMO_N_DIV_6        PromotionFormula = 0 // ceil(N/6) - default, e.g. 15 players = 3 promoted/relegated
 	PromotionFormula_PROMO_N_PLUS_1_DIV_5 PromotionFormula = 1 // ceil((N+1)/5), e.g. 15 players = 4 promoted/relegated
 	PromotionFormula_PROMO_N_DIV_5        PromotionFormula = 2 // ceil(N/5), e.g. 15 players = 3 promoted/relegated
+	PromotionFormula_PROMO_N_DIV_3        PromotionFormula = 3 // ceil(N/3), e.g. 15 players = 5 promoted/relegated
 )
 
 // Enum value maps for PromotionFormula.
@@ -92,11 +93,13 @@ var (
 		0: "PROMO_N_DIV_6",
 		1: "PROMO_N_PLUS_1_DIV_5",
 		2: "PROMO_N_DIV_5",
+		3: "PROMO_N_DIV_3",
 	}
 	PromotionFormula_value = map[string]int32{
 		"PROMO_N_DIV_6":        0,
 		"PROMO_N_PLUS_1_DIV_5": 1,
 		"PROMO_N_DIV_5":        2,
+		"PROMO_N_DIV_3":        3,
 	}
 )
 
@@ -777,17 +780,18 @@ type LeaguePlayerStanding struct {
 	GamesRemaining int32                  `protobuf:"varint,9,opt,name=games_remaining,json=gamesRemaining,proto3" json:"games_remaining,omitempty"`
 	Result         StandingResult         `protobuf:"varint,10,opt,name=result,proto3,enum=ipc.StandingResult" json:"result,omitempty"`
 	// Extended stats for richer leaderboard display
-	TotalScore               int32 `protobuf:"varint,11,opt,name=total_score,json=totalScore,proto3" json:"total_score,omitempty"`                                               // Sum of scores (for ScAV = total_score / games_played)
-	TotalOpponentScore       int32 `protobuf:"varint,12,opt,name=total_opponent_score,json=totalOpponentScore,proto3" json:"total_opponent_score,omitempty"`                     // Sum of opponent scores (for OScAV)
-	TotalBingos              int32 `protobuf:"varint,13,opt,name=total_bingos,json=totalBingos,proto3" json:"total_bingos,omitempty"`                                            // Sum of bingos (for BAV = total_bingos / games_played)
-	TotalOpponentBingos      int32 `protobuf:"varint,14,opt,name=total_opponent_bingos,json=totalOpponentBingos,proto3" json:"total_opponent_bingos,omitempty"`                  // Sum of opponent bingos (for OBAV)
-	TotalTurns               int32 `protobuf:"varint,15,opt,name=total_turns,json=totalTurns,proto3" json:"total_turns,omitempty"`                                               // Sum of turns (for #TAV = total_turns / games_played)
-	HighTurn                 int32 `protobuf:"varint,16,opt,name=high_turn,json=highTurn,proto3" json:"high_turn,omitempty"`                                                     // Highest single turn score (HT)
-	HighGame                 int32 `protobuf:"varint,17,opt,name=high_game,json=highGame,proto3" json:"high_game,omitempty"`                                                     // Highest game score (HG)
-	Timeouts                 int32 `protobuf:"varint,18,opt,name=timeouts,proto3" json:"timeouts,omitempty"`                                                                     // Number of timeout losses (#TO)
-	BlanksPlayed             int32 `protobuf:"varint,19,opt,name=blanks_played,json=blanksPlayed,proto3" json:"blanks_played,omitempty"`                                         // Number of blanks played (for ?AV = blanks_played / games_played)
-	TotalTilesPlayed         int32 `protobuf:"varint,20,opt,name=total_tiles_played,json=totalTilesPlayed,proto3" json:"total_tiles_played,omitempty"`                           // Sum of tiles played (for TAV = total_tiles_played / games_played)
-	TotalOpponentTilesPlayed int32 `protobuf:"varint,21,opt,name=total_opponent_tiles_played,json=totalOpponentTilesPlayed,proto3" json:"total_opponent_tiles_played,omitempty"` // Sum of opponent tiles played (for OTAV)
+	TotalScore               int32           `protobuf:"varint,11,opt,name=total_score,json=totalScore,proto3" json:"total_score,omitempty"`                                               // Sum of scores (for ScAV = total_score / games_played)
+	TotalOpponentScore       int32           `protobuf:"varint,12,opt,name=total_opponent_score,json=totalOpponentScore,proto3" json:"total_opponent_score,omitempty"`                     // Sum of opponent scores (for OScAV)
+	TotalBingos              int32           `protobuf:"varint,13,opt,name=total_bingos,json=totalBingos,proto3" json:"total_bingos,omitempty"`                                            // Sum of bingos (for BAV = total_bingos / games_played)
+	TotalOpponentBingos      int32           `protobuf:"varint,14,opt,name=total_opponent_bingos,json=totalOpponentBingos,proto3" json:"total_opponent_bingos,omitempty"`                  // Sum of opponent bingos (for OBAV)
+	TotalTurns               int32           `protobuf:"varint,15,opt,name=total_turns,json=totalTurns,proto3" json:"total_turns,omitempty"`                                               // Sum of turns (for #TAV = total_turns / games_played)
+	HighTurn                 int32           `protobuf:"varint,16,opt,name=high_turn,json=highTurn,proto3" json:"high_turn,omitempty"`                                                     // Highest single turn score (HT)
+	HighGame                 int32           `protobuf:"varint,17,opt,name=high_game,json=highGame,proto3" json:"high_game,omitempty"`                                                     // Highest game score (HG)
+	Timeouts                 int32           `protobuf:"varint,18,opt,name=timeouts,proto3" json:"timeouts,omitempty"`                                                                     // Number of timeout losses (#TO)
+	BlanksPlayed             int32           `protobuf:"varint,19,opt,name=blanks_played,json=blanksPlayed,proto3" json:"blanks_played,omitempty"`                                         // Number of blanks played (for ?AV = blanks_played / games_played)
+	TotalTilesPlayed         int32           `protobuf:"varint,20,opt,name=total_tiles_played,json=totalTilesPlayed,proto3" json:"total_tiles_played,omitempty"`                           // Sum of tiles played (for TAV = total_tiles_played / games_played)
+	TotalOpponentTilesPlayed int32           `protobuf:"varint,21,opt,name=total_opponent_tiles_played,json=totalOpponentTilesPlayed,proto3" json:"total_opponent_tiles_played,omitempty"` // Sum of opponent tiles played (for OTAV)
+	PlacementStatus          PlacementStatus `protobuf:"varint,22,opt,name=placement_status,json=placementStatus,proto3,enum=ipc.PlacementStatus" json:"placement_status,omitempty"`       // How player was placed in this division (NEW, PROMOTED, etc.)
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -969,6 +973,13 @@ func (x *LeaguePlayerStanding) GetTotalOpponentTilesPlayed() int32 {
 	return 0
 }
 
+func (x *LeaguePlayerStanding) GetPlacementStatus() PlacementStatus {
+	if x != nil {
+		return x.PlacementStatus
+	}
+	return PlacementStatus_PLACEMENT_NONE
+}
+
 var File_proto_ipc_league_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_league_proto_rawDesc = "" +
@@ -1020,7 +1031,7 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"divisionId\x12G\n" +
 	"\x11registration_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10registrationDate\x12!\n" +
 	"\ffirsts_count\x18\x05 \x01(\x05R\vfirstsCount\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\xe5\x05\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xa6\x06\n" +
 	"\x14LeaguePlayerStanding\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -1045,17 +1056,19 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\btimeouts\x18\x12 \x01(\x05R\btimeouts\x12#\n" +
 	"\rblanks_played\x18\x13 \x01(\x05R\fblanksPlayed\x12,\n" +
 	"\x12total_tiles_played\x18\x14 \x01(\x05R\x10totalTilesPlayed\x12=\n" +
-	"\x1btotal_opponent_tiles_played\x18\x15 \x01(\x05R\x18totalOpponentTilesPlayed*\x81\x01\n" +
+	"\x1btotal_opponent_tiles_played\x18\x15 \x01(\x05R\x18totalOpponentTilesPlayed\x12?\n" +
+	"\x10placement_status\x18\x16 \x01(\x0e2\x14.ipc.PlacementStatusR\x0fplacementStatus*\x81\x01\n" +
 	"\fSeasonStatus\x12\x14\n" +
 	"\x10SEASON_SCHEDULED\x10\x00\x12\x11\n" +
 	"\rSEASON_ACTIVE\x10\x01\x12\x14\n" +
 	"\x10SEASON_COMPLETED\x10\x02\x12\x14\n" +
 	"\x10SEASON_CANCELLED\x10\x03\x12\x1c\n" +
-	"\x18SEASON_REGISTRATION_OPEN\x10\x04*R\n" +
+	"\x18SEASON_REGISTRATION_OPEN\x10\x04*e\n" +
 	"\x10PromotionFormula\x12\x11\n" +
 	"\rPROMO_N_DIV_6\x10\x00\x12\x18\n" +
 	"\x14PROMO_N_PLUS_1_DIV_5\x10\x01\x12\x11\n" +
-	"\rPROMO_N_DIV_5\x10\x02*t\n" +
+	"\rPROMO_N_DIV_5\x10\x02\x12\x11\n" +
+	"\rPROMO_N_DIV_3\x10\x03*t\n" +
 	"\x0eStandingResult\x12\x0f\n" +
 	"\vRESULT_NONE\x10\x00\x12\x13\n" +
 	"\x0fRESULT_PROMOTED\x10\x01\x12\x14\n" +
@@ -1115,11 +1128,12 @@ var file_proto_ipc_league_proto_depIdxs = []int32{
 	10, // 10: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
 	12, // 11: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
 	2,  // 12: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	3,  // 13: ipc.LeaguePlayerStanding.placement_status:type_name -> ipc.PlacementStatus
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_league_proto_init() }
