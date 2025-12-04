@@ -159,7 +159,8 @@ interface LeagueWithSeason {
 }
 
 const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
-  const { league, currentSeason, champion, previousSeasonChampion } = leagueData;
+  const { league, currentSeason, champion, previousSeasonChampion } =
+    leagueData;
 
   const getStatusMessage = () => {
     if (!currentSeason) return null;
