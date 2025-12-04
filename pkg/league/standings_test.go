@@ -189,6 +189,9 @@ func (m *mockLeagueStore) UpdatePlacementStatusWithSeasonsAway(ctx context.Conte
 func (m *mockLeagueStore) UpdatePreviousDivisionRank(ctx context.Context, arg models.UpdatePreviousDivisionRankParams) error {
 	return nil
 }
+func (m *mockLeagueStore) UpdateStandingResult(ctx context.Context, arg models.UpdateStandingResultParams) error {
+	return nil
+}
 func (m *mockLeagueStore) GetPlayerSeasonHistory(ctx context.Context, arg models.GetPlayerSeasonHistoryParams) ([]models.GetPlayerSeasonHistoryRow, error) {
 	return nil, nil
 }
@@ -324,8 +327,8 @@ func TestStandingsCalculation_SimpleWinsLosses(t *testing.T) {
 			Player0Score: 440, Player1Score: 410, Player0Won: pgtype.Bool{Bool: true, Valid: true}},
 	}
 
-	// Calculate standings
-	err := mgr.CalculateAndSaveStandings(ctx, seasonID)
+	// Recalculate standings from game results
+	err := mgr.RecalculateAndSaveStandings(ctx, seasonID)
 	require.NoError(t, err)
 
 	// Verify standings
@@ -403,7 +406,7 @@ func TestStandingsCalculation_WithTies(t *testing.T) {
 			Player0Score: 440, Player1Score: 410, Player0Won: pgtype.Bool{Bool: true, Valid: true}},
 	}
 
-	err := mgr.CalculateAndSaveStandings(ctx, seasonID)
+	err := mgr.RecalculateAndSaveStandings(ctx, seasonID)
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]
@@ -464,7 +467,7 @@ func TestStandingsCalculation_TimeoutLoss(t *testing.T) {
 			Player0Won: pgtype.Bool{Bool: false, Valid: true}}, // Alice timed out despite higher score
 	}
 
-	err := mgr.CalculateAndSaveStandings(ctx, seasonID)
+	err := mgr.RecalculateAndSaveStandings(ctx, seasonID)
 	require.NoError(t, err)
 
 	standings := store.standings[divisionID]

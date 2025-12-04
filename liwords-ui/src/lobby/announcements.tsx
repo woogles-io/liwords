@@ -156,11 +156,20 @@ interface LeagueWithSeason {
     seasonNumber: number;
     username: string;
   };
+  recentlyCompletedSeason?: {
+    seasonNumber: number;
+    champion: string;
+  };
 }
 
 const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
-  const { league, currentSeason, champion, previousSeasonChampion } =
-    leagueData;
+  const {
+    league,
+    currentSeason,
+    champion,
+    previousSeasonChampion,
+    recentlyCompletedSeason,
+  } = leagueData;
 
   const getStatusMessage = () => {
     if (!currentSeason) return null;
@@ -203,6 +212,20 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
       };
     }
 
+    // Check for scheduled season with recently completed previous season
+    if (currentSeason.status === 0 && recentlyCompletedSeason) {
+      // SEASON_SCHEDULED - show previous season's champion
+      const startDate = currentSeason.startDate
+        ? new Date(Number(currentSeason.startDate.seconds) * 1000)
+        : null;
+      return {
+        type: "completed" as const,
+        message: `Season ${recentlyCompletedSeason.seasonNumber} has ended!`,
+        champion: recentlyCompletedSeason.champion,
+        nextSeasonDate: startDate,
+      };
+    }
+
     return null;
   };
 
@@ -232,6 +255,14 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
             Champion: <strong>{status.champion}</strong>
           </span>
         )}
+        {status.type === "completed" &&
+          "nextSeasonDate" in status &&
+          status.nextSeasonDate && (
+            <span className="status-date">
+              <strong>Next season:</strong>{" "}
+              {formatLocalDate(status.nextSeasonDate)}
+            </span>
+          )}
         {previousSeasonChampion && status.type === "live" && (
           <span className="status-previous-champion">
             Season {previousSeasonChampion.seasonNumber} champion:{" "}
@@ -303,20 +334,49 @@ const TournamentsAndLeaguesContent = () => {
             // Most recent season is first (ordered by season_number DESC)
             const currentSeason = recentSeasons[0];
 
-            // Get champion if current season is completed
-            // The server includes champion in divisions[0].standings[0] for completed seasons
-            let champion: string | undefined;
-            if (currentSeason && currentSeason.status === 2) {
-              // SEASON_COMPLETED
-              const div1 = currentSeason.divisions.find(
-                (d) => d.divisionNumber === 1,
-              );
+            // Helper to extract champion from a season's divisions
+            const getChampionFromSeason = (
+              season: (typeof recentSeasons)[0],
+            ): string | undefined => {
+              const div1 = season.divisions.find((d) => d.divisionNumber === 1);
               if (div1 && div1.standings.length > 0) {
                 const championStanding = div1.standings.find(
                   (s) => s.result === 4,
                 );
                 if (championStanding) {
-                  champion = championStanding.username;
+                  return championStanding.username;
+                }
+              }
+              return undefined;
+            };
+
+            // Get champion if current season is completed
+            let champion: string | undefined;
+            if (currentSeason && currentSeason.status === 2) {
+              // SEASON_COMPLETED
+              champion = getChampionFromSeason(currentSeason);
+            }
+
+            // If current season is SCHEDULED (not started yet), check previous season
+            // This handles the case where Season N+1 is scheduled but Season N just completed
+            let recentlyCompletedSeason:
+              | { seasonNumber: number; champion: string }
+              | undefined;
+            if (
+              currentSeason &&
+              currentSeason.status === 0 &&
+              recentSeasons.length > 1
+            ) {
+              // SEASON_SCHEDULED
+              const prevSeason = recentSeasons[1];
+              if (prevSeason && prevSeason.status === 2) {
+                // Previous season is COMPLETED
+                const prevChampion = getChampionFromSeason(prevSeason);
+                if (prevChampion) {
+                  recentlyCompletedSeason = {
+                    seasonNumber: prevSeason.seasonNumber,
+                    champion: prevChampion,
+                  };
                 }
               }
             }
@@ -347,20 +407,12 @@ const TournamentsAndLeaguesContent = () => {
                   prevSeason &&
                   prevSeason.seasonNumber === currentSeason.seasonNumber - 1
                 ) {
-                  // Server includes champion in divisions for completed seasons
-                  const div1 = prevSeason.divisions.find(
-                    (d) => d.divisionNumber === 1,
-                  );
-                  if (div1 && div1.standings.length > 0) {
-                    const championStanding = div1.standings.find(
-                      (s) => s.result === 4,
-                    );
-                    if (championStanding) {
-                      previousSeasonChampion = {
-                        seasonNumber: prevSeason.seasonNumber,
-                        username: championStanding.username,
-                      };
-                    }
+                  const prevChampion = getChampionFromSeason(prevSeason);
+                  if (prevChampion) {
+                    previousSeasonChampion = {
+                      seasonNumber: prevSeason.seasonNumber,
+                      username: prevChampion,
+                    };
                   }
                 }
               }
@@ -371,6 +423,7 @@ const TournamentsAndLeaguesContent = () => {
               currentSeason,
               champion,
               previousSeasonChampion,
+              recentlyCompletedSeason,
             });
           } catch (error) {
             console.error(
@@ -393,6 +446,8 @@ const TournamentsAndLeaguesContent = () => {
     if (ls.currentSeason.status === 4) return true; // Registration open
     if (ls.currentSeason.status === 1) return true; // Active
     if (ls.currentSeason.status === 2 && ls.champion) return true; // Completed with champion
+    if (ls.currentSeason.status === 0 && ls.recentlyCompletedSeason)
+      return true; // Scheduled with recently completed prev season
     return false;
   });
 
