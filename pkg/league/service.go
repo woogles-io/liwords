@@ -36,6 +36,19 @@ type LeagueService struct {
 	gameCreator GameCreator
 }
 
+// authenticateLeaguePromoterOrAdmin checks if user has either CanManageLeagues or CanInviteToLeagues permission.
+// This allows League Promoters to access read-only league management endpoints.
+func (ls *LeagueService) authenticateLeaguePromoterOrAdmin(ctx context.Context) error {
+	// First try CanManageLeagues (admins/managers)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err == nil {
+		return nil
+	}
+	// Fall back to CanInviteToLeagues (league promoters)
+	_, err = apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanInviteToLeagues)
+	return err
+}
+
 // NewLeagueService creates a new LeagueService
 func NewLeagueService(store league.Store, userStore user.Store, cfg *config.Config, queries *models.Queries,
 	allStores *stores.Stores, gameCreator GameCreator) *LeagueService {
@@ -1648,9 +1661,8 @@ func (ls *LeagueService) GetSeasonZeroMoveGames(
 	ctx context.Context,
 	req *connect.Request[pb.SeasonRequest],
 ) (*connect.Response[pb.SeasonZeroMoveGamesResponse], error) {
-	// Authenticate - requires can_manage_leagues permission (admin or league manager)
-	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
-	if err != nil {
+	// Authenticate - requires can_manage_leagues or can_invite_to_leagues permission
+	if err := ls.authenticateLeaguePromoterOrAdmin(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1689,9 +1701,8 @@ func (ls *LeagueService) GetSeasonPlayersWithUnstartedGames(
 	ctx context.Context,
 	req *connect.Request[pb.SeasonRequest],
 ) (*connect.Response[pb.SeasonPlayersWithUnstartedGamesResponse], error) {
-	// Authenticate - requires can_manage_leagues permission (admin or league manager)
-	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
-	if err != nil {
+	// Authenticate - requires can_manage_leagues or can_invite_to_leagues permission
+	if err := ls.authenticateLeaguePromoterOrAdmin(ctx); err != nil {
 		return nil, err
 	}
 

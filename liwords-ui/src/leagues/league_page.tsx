@@ -240,10 +240,12 @@ export const LeaguePage = (props: Props) => {
     }));
   }, [registrationsData]);
 
-  // Check if user can manage leagues (Admin or Manager role)
+  // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
     return !!(
-      selfRoles?.roles.includes("Admin") || selfRoles?.roles.includes("Manager")
+      selfRoles?.roles.includes("Admin") ||
+      selfRoles?.roles.includes("Manager") ||
+      selfRoles?.roles.includes("League Promoter")
     );
   }, [selfRoles?.roles]);
 
