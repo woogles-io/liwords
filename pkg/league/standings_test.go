@@ -136,12 +136,14 @@ func (m *mockLeagueStore) UpdateSeasonStatus(ctx context.Context, arg models.Upd
 	return nil
 }
 func (m *mockLeagueStore) MarkSeasonComplete(ctx context.Context, uuid uuid.UUID) error { return nil }
-func (m *mockLeagueStore) MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error  { return nil }
+func (m *mockLeagueStore) MarkSeasonClosed(ctx context.Context, uuid uuid.UUID) error   { return nil }
 func (m *mockLeagueStore) MarkDivisionsPrepared(ctx context.Context, uuid uuid.UUID) error {
 	return nil
 }
-func (m *mockLeagueStore) MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error          { return nil }
-func (m *mockLeagueStore) MarkRegistrationOpened(ctx context.Context, uuid uuid.UUID) error     { return nil }
+func (m *mockLeagueStore) MarkSeasonStarted(ctx context.Context, uuid uuid.UUID) error { return nil }
+func (m *mockLeagueStore) MarkRegistrationOpened(ctx context.Context, uuid uuid.UUID) error {
+	return nil
+}
 func (m *mockLeagueStore) MarkStartingSoonNotificationSent(ctx context.Context, uuid uuid.UUID) error {
 	return nil
 }
@@ -278,6 +280,18 @@ func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg mode
 	}
 	m.standings[arg.DivisionID] = divStandings
 	return nil
+}
+
+func (m *mockLeagueStore) AddTimeBankSinglePlayer(ctx context.Context, arg models.AddTimeBankSinglePlayerParams) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockLeagueStore) AddTimeBankPlayerAndOpponent(ctx context.Context, arg models.AddTimeBankPlayerAndOpponentParams) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockLeagueStore) AddTimeBankAllPlayers(ctx context.Context, arg models.AddTimeBankAllPlayersParams) (int64, error) {
+	return 0, nil
 }
 
 var _ league.Store = (*mockLeagueStore)(nil) // Compile-time interface check

@@ -2,7 +2,9 @@ Dear Woogles.io user,
 {{if .IsDeletion}}
 The account associated with {{.Username}} has been closed. This action was either triggered at your request or made by an administrator. In accordance with the Woogles Terms of Service, which can be found at {{.TermsOfServiceURL}}, your personal data has been deleted. We will not delete the existence of games in which you participated; however, your username will no longer be associated with those games. We may also retain certain information as required by law or as necessary for our legitimate operating purposes.
 {{- else}}
-The account associated with {{.Username}} has violated the Woogles Terms of Service, which can be found at {{.TermsOfServiceURL}}.{{if .IsCheater}} You are receiving this email because the anti-cheating detection algorithm has flagged the account's play as suspicious. Upon further review of the evidence, it was determined that the account has been cheating on our platform.{{- end}} As such, the following action has been taken against the account:
+The account associated with {{.Username}} appears to have violated the rules of fair play in rated games.{{if .IsCheater}} You are receiving this email because the anti-cheating detection algorithm has flagged the account's play as suspicious. Upon further review of the evidence, it was determined that the account has been cheating on our platform.{{- else}} This may have been unintentional. In rated games, actions that can artificially inflate or deflate ratings are tracked (e.g. resignation, playing excessive phonies). This includes rated games against bots and rated blitz games. {{- end}}
+
+As such, the following action has been taken against the account:
 
 Action:     {{.Action}}
 Start Time: {{.StartTime}}
@@ -14,9 +16,13 @@ All cheating determinations are final and non-negotiable. However, the length of
 2. An explanation of when and how you cheated on Woogles.
 3. A promise to not cheat on our platform again.
 
+{{- else}}
+
+Unrated games are not monitored, so consider playing unrated when your games are less serious. More information about game settings can be found at https://blog.woogles.io/guides/2025-07-11-what-game-settings-should-i-use
+
 {{- end}}
 
-If you think this was done in error or would like to appeal, contact {{.AddressToContact}}. Do not reply directly to this email. Contacting Woogles team members privately (by email or on social media) may result in a lengthier ban.
+If you think this suspension was done in error or would like to appeal, contact {{.AddressToContact}}. Do not reply directly to this email. Contacting Woogles team members privately (by email or on social media) may result in a lengthier ban.
 {{- end}}
 
 Sincerely,

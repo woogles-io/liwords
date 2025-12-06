@@ -9,7 +9,7 @@ import {
   Space,
   Tag,
   Alert,
-  notification,
+  App,
   Modal,
   Checkbox,
 } from "antd";
@@ -105,6 +105,7 @@ export const LeaguePage = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
   const queryClient = useQueryClient();
+  const { notification } = App.useApp();
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
@@ -240,10 +241,12 @@ export const LeaguePage = (props: Props) => {
     }));
   }, [registrationsData]);
 
-  // Check if user can manage leagues (Admin or Manager role)
+  // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
     return !!(
-      selfRoles?.roles.includes("Admin") || selfRoles?.roles.includes("Manager")
+      selfRoles?.roles.includes("Admin") ||
+      selfRoles?.roles.includes("Manager") ||
+      selfRoles?.roles.includes("League Promoter")
     );
   }, [selfRoles?.roles]);
 

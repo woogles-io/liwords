@@ -11,7 +11,7 @@ import {
   Select,
   Space,
   Alert,
-  notification,
+  App,
 } from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
@@ -46,6 +46,7 @@ const { Option } = Select;
 export const LeagueAdmin = () => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn } = loginState;
+  const { notification } = App.useApp();
 
   const [leagueForm] = Form.useForm();
   const [seasonForm] = Form.useForm();

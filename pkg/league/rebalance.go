@@ -213,9 +213,9 @@ func (rm *RebalanceManager) correctPlacementStatus(
 		}
 	case ipc.PlacementStatus_PLACEMENT_PROMOTED:
 		// Player was supposed to be promoted (virtualDivision is their target, which is higher than before)
-		// If they ended up in a worse (higher number) division than expected, mark as STAYED
+		// If they ended up in a worse (higher number) division than expected, mark as RELEGATED
 		if finalDivision > virtualDivision {
-			return ipc.PlacementStatus_PLACEMENT_STAYED
+			return ipc.PlacementStatus_PLACEMENT_RELEGATED
 		}
 	case ipc.PlacementStatus_PLACEMENT_STAYED:
 		// Player was supposed to stay in same division

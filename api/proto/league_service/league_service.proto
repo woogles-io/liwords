@@ -50,6 +50,7 @@ service LeagueService {
   rpc UpdateSeasonDates(UpdateSeasonDatesRequest) returns (SeasonResponse);
   rpc UpdateSeasonPromotionFormula(UpdateSeasonPromotionFormulaRequest) returns (SeasonResponse);
   rpc RecalculateSeasonExtendedStats(SeasonRequest) returns (RecalculateExtendedStatsResponse);
+  rpc AddSeasonTimeBank(AddSeasonTimeBankRequest) returns (AddSeasonTimeBankResponse);
 }
 
 message CreateLeagueRequest {
@@ -251,5 +252,25 @@ message UpdateSeasonPromotionFormulaRequest {
 message RecalculateExtendedStatsResponse {
   bool success = 1;
   int32 divisions_processed = 2;
+  string message = 3;
+}
+
+// Scope for time bank additions
+enum TimeBankScope {
+  TIMEBANK_SCOPE_SINGLE_PLAYER = 0;       // Only the specified player's side in their games
+  TIMEBANK_SCOPE_PLAYER_AND_OPPONENT = 1; // Both sides of the player's games
+  TIMEBANK_SCOPE_ALL_PLAYERS = 2;         // All in-progress games in the season
+}
+
+message AddSeasonTimeBankRequest {
+  string season_id = 1;         // Required: UUID of the season
+  string user_id = 2;           // UUID of player (required unless scope is ALL_PLAYERS)
+  int32 additional_minutes = 3; // Minutes to add to time bank
+  TimeBankScope scope = 4;      // Which games/players to affect
+}
+
+message AddSeasonTimeBankResponse {
+  bool success = 1;
+  int32 games_updated = 2; // Number of games modified
   string message = 3;
 }

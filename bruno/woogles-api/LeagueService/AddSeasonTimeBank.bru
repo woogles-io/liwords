@@ -1,0 +1,78 @@
+meta {
+  name: Add Season Time Bank
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/league_service.LeagueService/AddSeasonTimeBank
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{ADMIN_API_KEY}}
+}
+
+body:json {
+  {
+    "season_id": "3bf106c5-2304-4d52-bd1f-9933e9967189",
+    "additional_minutes": 1440,
+    "scope": 2
+  }
+}
+
+docs {
+  ## Add Season Time Bank
+
+  Adds extra time bank (in minutes) to players' games in a season.
+  Use this for emergency situations where players need extra time.
+
+  ### Parameters:
+  - `season_id` (required): UUID of the season
+  - `additional_minutes` (required): Minutes to add (e.g., 1440 = 24 hours)
+  - `user_id` (optional): UUID of the player (required for scopes 0 and 1)
+  - `scope` (required): Which games/players to affect
+
+  ### Scope Values:
+  - `0` = SINGLE_PLAYER - Only the specified player's side in their games
+  - `1` = PLAYER_AND_OPPONENT - Both sides of the player's games
+  - `2` = ALL_PLAYERS - All in-progress games in the season
+
+  ### Examples:
+
+  Add 24 hours to all players in a season:
+  ```json
+  {
+    "season_id": "uuid-here",
+    "additional_minutes": 1440,
+    "scope": 2
+  }
+  ```
+
+  Add 24 hours to a specific player only:
+  ```json
+  {
+    "season_id": "uuid-here",
+    "user_id": "player-uuid",
+    "additional_minutes": 1440,
+    "scope": 0
+  }
+  ```
+
+  Add 24 hours to a player AND their opponents:
+  ```json
+  {
+    "season_id": "uuid-here",
+    "user_id": "player-uuid",
+    "additional_minutes": 1440,
+    "scope": 1
+  }
+  ```
+
+  ### Requirements:
+  - Must have can_manage_leagues permission (admin or league promoter)
+
+  ### Response:
+  Returns success status, number of games updated, and a message.
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useState } from "react";
 import { useParams } from "react-router";
-import { notification } from "antd";
+import { App } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { ChangePassword } from "./change_password";
 import { PersonalInfoWidget } from "./personal_info";
@@ -89,6 +89,7 @@ export const Settings = React.memo(() => {
   const { loginState } = useLoginStateStoreContext();
   const { userID, username: viewer, loggedIn } = loginState;
   const { resetStore } = useResetStoreContext();
+  const { notification } = App.useApp();
   let { section } = useParams();
   if (!section) {
     section = "";
@@ -168,7 +169,7 @@ export const Settings = React.memo(() => {
     } catch (e) {
       flashError(e);
     }
-  }, [authClient, navigate, resetStore]);
+  }, [authClient, navigate, resetStore, notification]);
 
   const updatedAvatar = useCallback(
     (avatarUrl: string) => {

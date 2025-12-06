@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Row, Col, Input, Form, Alert, notification, Button } from "antd";
+import { Row, Col, Input, Form, Alert, App, Button } from "antd";
 import { TopBar } from "../navigation/topbar";
 import { connectErrorMessage, useClient } from "../utils/hooks/connect";
 import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
@@ -22,6 +22,7 @@ const tailLayout = {
 export const PasswordReset = () => {
   const [err, setErr] = useState("");
   const authClient = useClient(AuthenticationService);
+  const { notification } = App.useApp();
 
   const onFinish = async (values: { [key: string]: string }) => {
     try {

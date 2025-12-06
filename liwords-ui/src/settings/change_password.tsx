@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Input, Form, Row, Col, notification } from "antd";
+import { Button, Input, Form, Row, Col, App } from "antd";
 import { Link } from "react-router";
 import { connectErrorMessage, useClient } from "../utils/hooks/connect";
 import { AuthenticationService } from "../gen/api/proto/user_service/user_service_pb";
@@ -16,6 +16,7 @@ const layout = {
 export const ChangePassword = React.memo(() => {
   const [err, setErr] = useState("");
   const [form] = Form.useForm();
+  const { notification } = App.useApp();
 
   const authClient = useClient(AuthenticationService);
 
