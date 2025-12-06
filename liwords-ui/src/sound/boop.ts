@@ -1,4 +1,4 @@
-import { Unrace } from "../utils/unrace";
+import { Howl } from "howler";
 import makemoveSound from "../assets/makemove.mp3";
 import oppmoveSound from "../assets/oppmove.mp3";
 import matchreqSound from "../assets/matchreq.mp3";
@@ -32,59 +32,23 @@ const soundIsEnabled = (soundName: string) => {
 };
 
 class Booper {
-  private audio: HTMLAudioElement;
-
-  private unrace = new Unrace();
-
-  private times = 0;
-
-  private unlocked = false;
+  private howl: Howl;
 
   constructor(
     readonly soundName: string,
     src: string,
   ) {
-    this.audio = new Audio(src);
-    // On iOS, if not yet loaded, audio.play() will silently play a short
-    // silent sound instead, and fire ended event on that.
-    // Try to load first, so hopefully it's already loaded when needed.
-    this.audio.load();
-    this.audio.addEventListener("ended", () => {
-      if (this.times > 0) this.unlock();
+    this.howl = new Howl({
+      src: [src],
+      preload: true,
     });
   }
 
-  callPlay = async () => {
-    const isPlaying = this.times > 0;
-    try {
-      // Use .muted, because iOS does not support .volume.
-      const thisAudioMuted = !(isPlaying && soundIsEnabled(this.soundName));
-      // Always unlock.
-      if (!thisAudioMuted || !this.unlocked) {
-        this.audio.muted = thisAudioMuted;
-        // On some browsers (desktop included), audio may start midway.
-        this.audio.currentTime = isPlaying ? 0 : this.audio.duration;
-        await this.audio.play();
-        this.unlocked = true;
-      }
-      if (isPlaying) --this.times;
-    } catch (e) {
-      console.warn(
-        `cannot ${isPlaying ? "play" : "initialize"} ${this.soundName}:`,
-        e,
-      );
+  play() {
+    if (soundIsEnabled(this.soundName)) {
+      this.howl.play();
     }
-  };
-
-  unlock = async () => {
-    await this.unrace.run(this.callPlay);
-    return this.unlocked;
-  };
-
-  play = async () => {
-    ++this.times;
-    return await this.unlock();
-  };
+  }
 }
 
 const playableSounds: { [key: string]: Booper } = {};
@@ -113,26 +77,6 @@ if (!window.location.pathname.startsWith("/embed/")) {
     playableSounds[booper.soundName] = booper;
   }
 }
-
-const unlockSounds = () => {
-  // Browser settings may disallow autoplay until user interacts with document.
-  // Use that chance to play() all known sounds muted.
-  (async () => {
-    if (
-      (
-        await Promise.all(
-          Object.values(playableSounds).map((booper) => booper.unlock()),
-        )
-      ).every((x) => x)
-    ) {
-      window.removeEventListener("click", unlockSounds, true);
-      window.removeEventListener("keydown", unlockSounds, true);
-    }
-  })();
-};
-
-window.addEventListener("click", unlockSounds, true);
-window.addEventListener("keydown", unlockSounds, true);
 
 const playSound = (soundName: string) => {
   const booper = playableSounds[soundName];
