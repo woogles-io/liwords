@@ -83,6 +83,11 @@ type Store interface {
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
 	GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error)
 	GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error)
+
+	// Time bank operations
+	AddTimeBankSinglePlayer(ctx context.Context, arg models.AddTimeBankSinglePlayerParams) (int64, error)
+	AddTimeBankPlayerAndOpponent(ctx context.Context, arg models.AddTimeBankPlayerAndOpponentParams) (int64, error)
+	AddTimeBankAllPlayers(ctx context.Context, arg models.AddTimeBankAllPlayersParams) (int64, error)
 }
 
 // DBStore is a postgres-backed store for leagues.
@@ -417,4 +422,18 @@ func (s *DBStore) GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UU
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
 		UserUuid: pgtype.Text{String: userUUID, Valid: true},
 	})
+}
+
+// Time bank operations
+
+func (s *DBStore) AddTimeBankSinglePlayer(ctx context.Context, arg models.AddTimeBankSinglePlayerParams) (int64, error) {
+	return s.queries.AddTimeBankSinglePlayer(ctx, arg)
+}
+
+func (s *DBStore) AddTimeBankPlayerAndOpponent(ctx context.Context, arg models.AddTimeBankPlayerAndOpponentParams) (int64, error) {
+	return s.queries.AddTimeBankPlayerAndOpponent(ctx, arg)
+}
+
+func (s *DBStore) AddTimeBankAllPlayers(ctx context.Context, arg models.AddTimeBankAllPlayersParams) (int64, error) {
+	return s.queries.AddTimeBankAllPlayers(ctx, arg)
 }

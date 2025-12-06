@@ -1721,3 +1721,114 @@ func (ls *LeagueService) GetSeasonPlayersWithUnstartedGames(
 		Players: players,
 	}), nil
 }
+
+func (ls *LeagueService) AddSeasonTimeBank(
+	ctx context.Context,
+	req *connect.Request[pb.AddSeasonTimeBankRequest],
+) (*connect.Response[pb.AddSeasonTimeBankResponse], error) {
+	// Authenticate - requires can_manage_leagues permission (admin or league manager)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+	if req.Msg.AdditionalMinutes <= 0 {
+		return nil, apiserver.InvalidArg("additional_minutes must be positive")
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Verify season exists
+	_, err = ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Convert minutes to milliseconds
+	additionalMs := int64(req.Msg.AdditionalMinutes) * 60 * 1000
+
+	var gamesUpdated int64
+	scope := req.Msg.Scope
+
+	switch scope {
+	case pb.TimeBankScope_TIMEBANK_SCOPE_ALL_PLAYERS:
+		// Update all in-progress games in the season
+		gamesUpdated, err = ls.store.AddTimeBankAllPlayers(ctx, models.AddTimeBankAllPlayersParams{
+			SeasonID:     pgtype.UUID{Bytes: seasonID, Valid: true},
+			AdditionalMs: additionalMs,
+		})
+		if err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to add time bank to all players: %w", err))
+		}
+
+		log.Info().
+			Str("seasonID", seasonID.String()).
+			Int32("additionalMinutes", req.Msg.AdditionalMinutes).
+			Int64("gamesUpdated", gamesUpdated).
+			Msg("time-bank-added-all-players")
+
+	case pb.TimeBankScope_TIMEBANK_SCOPE_SINGLE_PLAYER, pb.TimeBankScope_TIMEBANK_SCOPE_PLAYER_AND_OPPONENT:
+		// User ID is required for single player or player+opponent scope
+		if req.Msg.UserId == "" {
+			return nil, apiserver.InvalidArg("user_id is required for SINGLE_PLAYER or PLAYER_AND_OPPONENT scope")
+		}
+
+		// Get user's internal ID from UUID
+		targetUser, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
+		}
+		playerID := pgtype.Int4{Int32: int32(targetUser.ID), Valid: true}
+
+		if scope == pb.TimeBankScope_TIMEBANK_SCOPE_SINGLE_PLAYER {
+			gamesUpdated, err = ls.store.AddTimeBankSinglePlayer(ctx, models.AddTimeBankSinglePlayerParams{
+				SeasonID:     pgtype.UUID{Bytes: seasonID, Valid: true},
+				PlayerID:     playerID,
+				AdditionalMs: additionalMs,
+			})
+			if err != nil {
+				return nil, apiserver.InternalErr(fmt.Errorf("failed to add time bank to single player: %w", err))
+			}
+
+			log.Info().
+				Str("seasonID", seasonID.String()).
+				Str("userID", req.Msg.UserId).
+				Int32("additionalMinutes", req.Msg.AdditionalMinutes).
+				Int64("gamesUpdated", gamesUpdated).
+				Msg("time-bank-added-single-player")
+		} else {
+			gamesUpdated, err = ls.store.AddTimeBankPlayerAndOpponent(ctx, models.AddTimeBankPlayerAndOpponentParams{
+				SeasonID:     pgtype.UUID{Bytes: seasonID, Valid: true},
+				PlayerID:     playerID,
+				AdditionalMs: additionalMs,
+			})
+			if err != nil {
+				return nil, apiserver.InternalErr(fmt.Errorf("failed to add time bank to player and opponent: %w", err))
+			}
+
+			log.Info().
+				Str("seasonID", seasonID.String()).
+				Str("userID", req.Msg.UserId).
+				Int32("additionalMinutes", req.Msg.AdditionalMinutes).
+				Int64("gamesUpdated", gamesUpdated).
+				Msg("time-bank-added-player-and-opponent")
+		}
+
+	default:
+		return nil, apiserver.InvalidArg(fmt.Sprintf("unknown scope: %v", scope))
+	}
+
+	return connect.NewResponse(&pb.AddSeasonTimeBankResponse{
+		Success:      true,
+		GamesUpdated: int32(gamesUpdated),
+		Message:      fmt.Sprintf("Added %d minutes to time bank for %d games", req.Msg.AdditionalMinutes, gamesUpdated),
+	}), nil
+}

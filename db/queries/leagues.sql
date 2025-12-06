@@ -529,3 +529,47 @@ INNER JOIN users u_player1 ON g.player1_id = u_player1.id
 WHERE g.season_id = @season_id
   AND (u_player0.uuid = @user_uuid OR u_player1.uuid = @user_uuid)
 ORDER BY opponent_username;
+
+-- name: AddTimeBankSinglePlayer :execrows
+-- Add time bank to only the specified player's side in their in-progress games
+UPDATE games
+SET timers = jsonb_set(
+    timers,
+    CASE WHEN player0_id = @player_id THEN '{tb,0}' ELSE '{tb,1}' END,
+    to_jsonb((timers->'tb'->(CASE WHEN player0_id = @player_id THEN 0 ELSE 1 END))::bigint + @additional_ms::bigint)
+),
+updated_at = NOW()
+WHERE season_id = @season_id
+  AND game_end_reason = 0
+  AND (player0_id = @player_id OR player1_id = @player_id)
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2;
+
+-- name: AddTimeBankPlayerAndOpponent :execrows
+-- Add time bank to both sides of a player's in-progress games
+UPDATE games
+SET timers = jsonb_set(
+    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + @additional_ms::bigint)),
+    '{tb,1}',
+    to_jsonb((timers->'tb'->1)::bigint + @additional_ms::bigint)
+),
+updated_at = NOW()
+WHERE season_id = @season_id
+  AND game_end_reason = 0
+  AND (player0_id = @player_id OR player1_id = @player_id)
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2;
+
+-- name: AddTimeBankAllPlayers :execrows
+-- Add time bank to all in-progress games in a season
+UPDATE games
+SET timers = jsonb_set(
+    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + @additional_ms::bigint)),
+    '{tb,1}',
+    to_jsonb((timers->'tb'->1)::bigint + @additional_ms::bigint)
+),
+updated_at = NOW()
+WHERE season_id = @season_id
+  AND game_end_reason = 0
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2;

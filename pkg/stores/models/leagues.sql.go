@@ -13,6 +13,94 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
+const addTimeBankAllPlayers = `-- name: AddTimeBankAllPlayers :execrows
+UPDATE games
+SET timers = jsonb_set(
+    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + $1::bigint)),
+    '{tb,1}',
+    to_jsonb((timers->'tb'->1)::bigint + $1::bigint)
+),
+updated_at = NOW()
+WHERE season_id = $2
+  AND game_end_reason = 0
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2
+`
+
+type AddTimeBankAllPlayersParams struct {
+	AdditionalMs int64
+	SeasonID     pgtype.UUID
+}
+
+// Add time bank to all in-progress games in a season
+func (q *Queries) AddTimeBankAllPlayers(ctx context.Context, arg AddTimeBankAllPlayersParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addTimeBankAllPlayers, arg.AdditionalMs, arg.SeasonID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const addTimeBankPlayerAndOpponent = `-- name: AddTimeBankPlayerAndOpponent :execrows
+UPDATE games
+SET timers = jsonb_set(
+    jsonb_set(timers, '{tb,0}', to_jsonb((timers->'tb'->0)::bigint + $1::bigint)),
+    '{tb,1}',
+    to_jsonb((timers->'tb'->1)::bigint + $1::bigint)
+),
+updated_at = NOW()
+WHERE season_id = $2
+  AND game_end_reason = 0
+  AND (player0_id = $3 OR player1_id = $3)
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2
+`
+
+type AddTimeBankPlayerAndOpponentParams struct {
+	AdditionalMs int64
+	SeasonID     pgtype.UUID
+	PlayerID     pgtype.Int4
+}
+
+// Add time bank to both sides of a player's in-progress games
+func (q *Queries) AddTimeBankPlayerAndOpponent(ctx context.Context, arg AddTimeBankPlayerAndOpponentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addTimeBankPlayerAndOpponent, arg.AdditionalMs, arg.SeasonID, arg.PlayerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const addTimeBankSinglePlayer = `-- name: AddTimeBankSinglePlayer :execrows
+UPDATE games
+SET timers = jsonb_set(
+    timers,
+    CASE WHEN player0_id = $1 THEN '{tb,0}' ELSE '{tb,1}' END,
+    to_jsonb((timers->'tb'->(CASE WHEN player0_id = $1 THEN 0 ELSE 1 END))::bigint + $2::bigint)
+),
+updated_at = NOW()
+WHERE season_id = $3
+  AND game_end_reason = 0
+  AND (player0_id = $1 OR player1_id = $1)
+  AND timers->'tb' IS NOT NULL
+  AND jsonb_array_length(timers->'tb') = 2
+`
+
+type AddTimeBankSinglePlayerParams struct {
+	PlayerID     pgtype.Int4
+	AdditionalMs int64
+	SeasonID     pgtype.UUID
+}
+
+// Add time bank to only the specified player's side in their in-progress games
+func (q *Queries) AddTimeBankSinglePlayer(ctx context.Context, arg AddTimeBankSinglePlayerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addTimeBankSinglePlayer, arg.PlayerID, arg.AdditionalMs, arg.SeasonID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countDivisionGamesComplete = `-- name: CountDivisionGamesComplete :one
 SELECT COUNT(*) FROM games
 WHERE league_division_id = $1 AND game_end_reason != 0

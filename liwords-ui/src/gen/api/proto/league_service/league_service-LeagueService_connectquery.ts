@@ -150,3 +150,8 @@ export const updateSeasonPromotionFormula = LeagueService.method.updateSeasonPro
  * @generated from rpc league_service.LeagueService.RecalculateSeasonExtendedStats
  */
 export const recalculateSeasonExtendedStats = LeagueService.method.recalculateSeasonExtendedStats;
+
+/**
+ * @generated from rpc league_service.LeagueService.AddSeasonTimeBank
+ */
+export const addSeasonTimeBank = LeagueService.method.addSeasonTimeBank;
