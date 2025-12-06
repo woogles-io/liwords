@@ -8,7 +8,7 @@ import {
   Upload,
   Row,
   Select,
-  notification,
+  App,
   DatePicker,
 } from "antd";
 import { Modal } from "../utils/focus_modal";
@@ -37,6 +37,7 @@ type Props = {
 
 export const PersonalInfoWidget = React.memo((props: Props) => {
   const { TextArea } = Input;
+  const { notification } = App.useApp();
 
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] =
     useState(false);
@@ -87,7 +88,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
     } catch (e) {
       avatarErrorCatcher(e);
     }
-  }, [propsUpdatedAvatar, avatarErrorCatcher, profileClient]);
+  }, [propsUpdatedAvatar, avatarErrorCatcher, profileClient, notification]);
 
   const saveAvatar = useCallback(
     async (imageDataUrl: string) => {
@@ -114,7 +115,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
         avatarErrorCatcher(e);
       }
     },
-    [propsUpdatedAvatar, avatarErrorCatcher, profileClient],
+    [propsUpdatedAvatar, avatarErrorCatcher, profileClient, notification],
   );
 
   const updateFields = async (values: { [key: string]: string }) => {

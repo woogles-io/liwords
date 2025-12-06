@@ -280,6 +280,10 @@ func (m *mockLeagueStore) IncrementStandingsAtomic(ctx context.Context, arg mode
 	return nil
 }
 
+func (m *mockLeagueStore) AddTimeBankAllPlayers(ctx context.Context, arg models.AddTimeBankAllPlayersParams) (int64, error) {
+	return 0, nil
+}
+
 var _ league.Store = (*mockLeagueStore)(nil) // Compile-time interface check
 
 func TestStandingsCalculation_SimpleWinsLosses(t *testing.T) {

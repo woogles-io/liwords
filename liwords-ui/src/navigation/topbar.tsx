@@ -7,7 +7,7 @@ import {
   RightOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { notification, Dropdown } from "antd";
+import { App, Dropdown } from "antd";
 import {
   useLoginStateStoreContext,
   useResetStoreContext,
@@ -178,6 +178,7 @@ export const TopBar = React.memo((props: Props) => {
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const authClient = useClient(AuthenticationService);
   const navigate = useNavigate();
+  const { notification } = App.useApp();
 
   const handleLogout = async () => {
     try {

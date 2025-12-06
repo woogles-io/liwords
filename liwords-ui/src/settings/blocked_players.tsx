@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import iconx from "../assets/icon-x.png";
-import { notification } from "antd";
+import { App } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { SocializeService } from "../gen/api/proto/user_service/user_service_pb";
@@ -15,6 +15,7 @@ export const BlockedPlayers = React.memo(() => {
   const [confirmModalUser, setConfirmModalUser] = useState<user | undefined>(
     undefined,
   );
+  const { notification } = App.useApp();
 
   const socializeClient = useClient(SocializeService);
 
@@ -44,7 +45,7 @@ export const BlockedPlayers = React.memo(() => {
         flashError(e);
       }
     },
-    [blockedUsers, socializeClient],
+    [blockedUsers, socializeClient, notification],
   );
 
   useEffect(refreshBlocks, [refreshBlocks]);

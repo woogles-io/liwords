@@ -521,6 +521,32 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   }
 }
 
+// Dark mode notification/message styling
+// These are rendered in portals at body level, so we style from body.mode--dark
+body.mode--dark {
+  .ant-notification-notice {
+    background-color: #C9F0FF;
+    .ant-notification-notice-message,
+    .ant-notification-notice-description,
+    .ant-notification-notice-description p {
+      color: #282828;
+    }
+    .ant-notification-notice-close {
+      color: #282828;
+    }
+    .anticon {
+      color: #282828;
+    }
+  }
+  .ant-message-notice-content {
+    background-color: #C9F0FF;
+    color: #282828;
+    .anticon {
+      color: #135380;
+    }
+  }
+}
+
 .ant-popconfirm-buttons > .ant-btn-sm {
   height: 36px;
 }

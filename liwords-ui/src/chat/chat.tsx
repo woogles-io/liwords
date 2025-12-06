@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card, Input, Tabs, notification } from "antd";
+import { Card, Input, Tabs, App } from "antd";
 import { LeftOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
 import { ChatEntity } from "./chat_entity";
@@ -92,6 +92,7 @@ export const Chat = React.memo((props: Props) => {
   const competitorState = useTournamentCompetitorState();
   const { loggedIn, userID } = loginState;
   const collectionContext = useCollectionContext();
+  const { notification } = App.useApp();
   const [hasScroll, setHasScroll] = useState(false);
   const [channelsFetched, setChannelsFetched] = useState(false);
   const [presenceVisible, setPresenceVisible] = useState(false);
@@ -712,7 +713,15 @@ export const Chat = React.memo((props: Props) => {
         doChatAutoScroll();
       }
     },
-    [curMsg, doChatAutoScroll, loggedIn, propsSendChat, channel, setCurMsg],
+    [
+      curMsg,
+      doChatAutoScroll,
+      loggedIn,
+      propsSendChat,
+      channel,
+      setCurMsg,
+      notification,
+    ],
   );
 
   const gameChannel = useMemo(

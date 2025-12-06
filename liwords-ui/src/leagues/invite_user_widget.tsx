@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Card, AutoComplete, Button, notification } from "antd";
+import { Card, AutoComplete, Button, App } from "antd";
 import { useMutation } from "@connectrpc/connect-query";
 import { useClient } from "../utils/hooks/connect";
 import { useDebounce } from "../utils/debounce";
@@ -13,6 +13,7 @@ type UserSearchResult = {
 
 export const InviteUserToLeaguesWidget = () => {
   const acClient = useClient(AutocompleteService);
+  const { notification } = App.useApp();
   const [usernameOptions, setUsernameOptions] = useState<UserSearchResult[]>(
     [],
   );

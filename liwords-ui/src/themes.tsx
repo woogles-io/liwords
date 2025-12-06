@@ -59,6 +59,12 @@ const darkComponentOverrides = {
     colorTextHeading: "#282828",
     colorInfo: "#135380",
     colorIcon: "#282828",
+    // Correct token names for antd 5.x
+    notificationBg: "#C9F0FF",
+    colorInfoBg: "#C9F0FF",
+    colorSuccessBg: "#C9F0FF",
+    colorWarningBg: "#C9F0FF",
+    colorErrorBg: "#C9F0FF",
   },
   Message: {
     colorText: "#282828",
@@ -78,7 +84,7 @@ const darkComponentOverrides = {
 };
 
 export const liwordsDefaultTheme = {
-  ...theme.defaultAlgorithm,
+  algorithm: theme.defaultAlgorithm,
   token: {
     ...tokenoverrides,
   },
@@ -86,7 +92,6 @@ export const liwordsDefaultTheme = {
 };
 
 export const liwordsDarkTheme = {
-  ...theme.darkAlgorithm,
   algorithm: theme.darkAlgorithm,
   token: {
     ...tokenoverrides,
