@@ -124,8 +124,8 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   const relegationCount =
     division.divisionNumber === totalDivisions ? 0 : baseCount;
 
-  const getRowClassName = (_record: unknown, index: number) => {
-    const rank = index + 1;
+  const getRowClassName = (record: { rank: number }) => {
+    const rank = record.rank;
     if (promotionCount > 0 && rank <= promotionCount) {
       return "promotion-row";
     }
