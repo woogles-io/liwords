@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2/types"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -60,6 +61,10 @@ func SendSimpleMessage(debugMode bool, recipient, subject, body string) (string,
 	if err != nil {
 		return "", fmt.Errorf("failed to send email via SES: %w", err)
 	}
+	log.Debug().Str("message_id", aws.ToString(result.MessageId)).
+		Str("recipient", recipient).
+		Str("subject", subject).
+		Msg("Email sent via SES")
 
 	return aws.ToString(result.MessageId), nil
 }

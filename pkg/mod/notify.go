@@ -24,6 +24,7 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 		log.Err(err).Str("userID", user.UUID).Msg("notification-nil-config")
 		return
 	}
+	log.Debug().Str("userID", user.UUID).Str("action", actionEmailText).Msg("preparing to send mod action notification")
 
 	if !IsRemoval(action) {
 		emailContent, emailSubject, err := instantiateEmail(user.Username,
@@ -33,7 +34,9 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 			action.EndTime,
 			action.EmailType)
 		if err == nil {
+			log.Debug().Str("email", user.Email).Msg("generated mod action email content")
 			go func() {
+				log.Debug().Str("email", user.Email).Msg("going to send mod action email")
 				_, err := emailer.SendSimpleMessage(config.EmailDebugMode,
 					user.Email,
 					emailSubject,

@@ -23,9 +23,9 @@ services:
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
       ARGON_MEMORY: 1024
-      AWS_REGION: "us-east-2"
-      AWS_ACCESS_KEY_ID: 'liwords'
-      AWS_SECRET_KEY: 'liwords-pass'
+      AWS_REGION: ${AWS_REGION:-"us-east-2"}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-'liwords'}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY:-'liwords-pass'}
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       IDENTITY_VERIFICATION_UPLOAD_BUCKET: woogles-verifications
       USE_MINIO_S3: 1
