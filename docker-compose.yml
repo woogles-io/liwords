@@ -18,7 +18,7 @@ services:
       DEBUG: 1
       NATS_URL: nats://nats:4222
       REGISTRATION_CODE: foobar
-      MAILGUN_KEY: ${MAILGUN_KEY:-default}
+      EMAIL_DEBUG: "true"
       DISCORD_TOKEN: ${DISCORD_TOKEN:-default}
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7

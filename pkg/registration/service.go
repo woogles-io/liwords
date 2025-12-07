@@ -16,15 +16,15 @@ import (
 type RegistrationService struct {
 	userStore             user.Store
 	argonConfig           config.ArgonConfig
-	mailgunKey            string
+	emailDebugMode        bool
 	skipEmailVerification bool
 }
 
-func NewRegistrationService(u user.Store, cfg config.ArgonConfig, mailgunKey string, skipEmailVerification bool) *RegistrationService {
+func NewRegistrationService(u user.Store, cfg config.ArgonConfig, emailDebugMode bool, skipEmailVerification bool) *RegistrationService {
 	return &RegistrationService{
 		userStore:             u,
 		argonConfig:           cfg,
-		mailgunKey:            mailgunKey,
+		emailDebugMode:        emailDebugMode,
 		skipEmailVerification: skipEmailVerification,
 	}
 }
@@ -43,7 +43,7 @@ func (rs *RegistrationService) Register(ctx context.Context, r *connect.Request[
 	// }
 	err := RegisterUser(ctx, r.Msg.Username, r.Msg.Password, r.Msg.Email,
 		r.Msg.FirstName, r.Msg.LastName, r.Msg.BirthDate, r.Msg.CountryCode,
-		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig, rs.mailgunKey, rs.skipEmailVerification)
+		rs.userStore, r.Msg.RegistrationCode == codebot, rs.argonConfig, rs.emailDebugMode, rs.skipEmailVerification)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -72,7 +72,7 @@ func (rs *RegistrationService) ResendVerificationEmail(ctx context.Context, r *c
 ) (*connect.Response[pb.ResendVerificationEmailResponse], error) {
 	log := zerolog.Ctx(ctx)
 
-	err := ResendVerificationEmail(ctx, r.Msg.Email, rs.userStore, rs.mailgunKey)
+	err := ResendVerificationEmail(ctx, r.Msg.Email, rs.userStore, rs.emailDebugMode)
 	if err != nil {
 		log.Error().Err(err).Str("email", r.Msg.Email).Msg("resend-verification-failed")
 		return nil, apiserver.InvalidArg(err.Error())

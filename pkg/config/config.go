@@ -34,11 +34,11 @@ type Config struct {
 	DBConnUri        string
 	DBConnDSN        string
 
-	ListenAddr   string
-	SecretKey    string
-	NatsURL      string
-	MailgunKey   string
-	RedisURL     string
+	ListenAddr     string
+	SecretKey      string
+	NatsURL        string
+	EmailDebugMode bool
+	RedisURL       string
 	DiscordToken string
 	// Puzzles
 	PuzzleGenerationSecretKey      string
@@ -96,7 +96,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.ListenAddr, "listen-addr", ":8001", "listen on this address")
 	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
-	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
+	fs.BoolVar(&c.EmailDebugMode, "email-debug", false, "print emails to stdout instead of sending via SES")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
 	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
 	fs.StringVar(&c.DBMigrationsPath, "db-migrations-path", "", "the path where migrations are stored")
