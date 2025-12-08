@@ -96,14 +96,26 @@ type Client struct {
 	lastPingSent time.Time
 	// The round-trip lag; it is a sort of average.
 	avglag time.Duration
+
+	// protocolVersion: 1 = legacy (2-byte length, realm from URL path)
+	//                  2 = new (3-byte length, dynamic subscriptions via messages)
+	protocolVersion int
+}
+
+// serializeEvent serializes an event using the client's protocol version.
+func (c *Client) serializeEvent(evt *entity.EventWrapper) ([]byte, error) {
+	if c.protocolVersion == 2 {
+		return evt.SerializeV2()
+	}
+	return evt.Serialize()
 }
 
 func (c *Client) sendError(err error) {
 	evt := entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()}, pb.MessageType_ERROR_MESSAGE)
-	bts, err := evt.Serialize()
-	if err != nil {
+	bts, serErr := c.serializeEvent(evt)
+	if serErr != nil {
 		// This really shouldn't happen.
-		log.Err(err).Msg("error serializing error, lol")
+		log.Err(serErr).Msg("error serializing error, lol")
 		return
 	}
 	c.send <- bts
@@ -113,7 +125,7 @@ func (c *Client) sendLatency() {
 	evt := entity.WrapEvent(
 		&pb.LagMeasurement{LagMs: int32(c.avglag / time.Millisecond)},
 		pb.MessageType_LAG_MEASUREMENT)
-	bts, err := evt.Serialize()
+	bts, err := c.serializeEvent(evt)
 	if err != nil {
 		// This really shouldn't happen.
 		log.Err(err).Msg("error serializing lag...")
@@ -279,11 +291,6 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Error().Msg("token is missing")
 		return
 	}
-	paths, ok := r.URL.Query()["path"]
-	if !ok || len(paths[0]) < 1 {
-		log.Error().Msg("path is missing")
-		return
-	}
 
 	connIDs, ok := r.URL.Query()["cid"]
 	if !ok || len(connIDs[0]) < 1 {
@@ -291,8 +298,25 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check protocol version - v=2 means new protocol with dynamic subscriptions
+	versionParam := r.URL.Query().Get("v")
+	protocolVersion := 1
+	if versionParam == "2" {
+		protocolVersion = 2
+	}
+
+	// For v1, path is required. For v2, it's optional (subscriptions come via messages)
+	var path string
+	if protocolVersion == 1 {
+		paths, ok := r.URL.Query()["path"]
+		if !ok || len(paths[0]) < 1 {
+			log.Error().Msg("path is missing")
+			return
+		}
+		path = paths[0]
+	}
+
 	token := tokens[0]
-	path := paths[0]
 	connID := connIDs[0]
 
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -302,12 +326,13 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &Client{
-		hub:          hub,
-		conn:         conn,
-		send:         make(chan []byte, 256),
-		connID:       connID,
-		connToken:    token,
-		forwardedFor: strings.Join(fwd, ","),
+		hub:             hub,
+		conn:            conn,
+		send:            make(chan []byte, 256),
+		connID:          connID,
+		connToken:       token,
+		forwardedFor:    strings.Join(fwd, ","),
+		protocolVersion: protocolVersion,
 	}
 
 	// First, verify connection token
@@ -318,19 +343,23 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Then try to register the realm with the connection path that was
-	// passed in.
-	err = registerRealm(client, path, hub)
-	if err != nil {
-		log.Err(err).Msg("register-realm-error")
-		client.conn.Close()
+	// For v1: register realm from URL path (legacy behavior)
+	// For v2: don't register realm now - client will send SubscribeRequest after handshake
+	if protocolVersion == 1 {
+		err = registerRealm(client, path, hub)
+		if err != nil {
+			log.Err(err).Msg("register-realm-error")
+			client.conn.Close()
+			return
+		}
 	}
 
 	client.hub.register <- client
+
+	log.Debug().Str("connID", connID).Int("protocolVersion", protocolVersion).Msg("leaving-servews")
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
-	log.Debug().Str("connID", connID).Msg("leaving-servews")
 }

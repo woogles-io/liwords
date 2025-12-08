@@ -67,6 +67,13 @@ enum MessageType {
   OUR_CORRESPONDENCE_SEEKS = 48;
   MONITORING_STREAM_STATUS_UPDATE = 49;
   OUR_LEAGUE_CORRESPONDENCE_GAMES = 50;
+
+  // Protocol V2 messages for persistent socket connections
+  HANDSHAKE = 60;             // Client -> Server (first message for v2)
+  HANDSHAKE_ACK = 61;         // Server -> Client
+  SUBSCRIBE_REQUEST = 62;     // Client -> Server
+  SUBSCRIBE_RESPONSE = 63;    // Server -> Client
+  UNSUBSCRIBE_REQUEST = 64;   // Client -> Server
 }
 
 message RegisterRealmRequest {
@@ -100,3 +107,41 @@ message ServerMessage { string message = 1; }
 message JoinPath { string path = 1; }
 
 message UnjoinRealm {}
+
+// Protocol V2: Persistent socket connections with dynamic subscriptions
+// Instead of reconnecting when navigating, clients send Subscribe/Unsubscribe messages
+
+enum ProtocolVersion {
+  PROTOCOL_V1 = 0;  // Legacy: 2-byte length prefix, reconnect per page
+  PROTOCOL_V2 = 1;  // New: 3-byte length prefix, dynamic subscriptions
+}
+
+// Sent by client as first message after connecting with v=2
+message Handshake {
+  ProtocolVersion version = 1;
+}
+
+// Server acknowledges handshake
+message HandshakeAck {
+  ProtocolVersion version = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+// Client requests to subscribe using URL path as identifier
+// Server parses path and determines appropriate channels
+message SubscribeRequest {
+  string path = 1;  // "/game/abc123", "/tournament/xyz", "/"
+}
+
+// Server responds with subscription result
+message SubscribeResponse {
+  bool success = 1;
+  repeated string channels = 2;  // Actual channels subscribed to
+  string error_message = 3;
+}
+
+// Client requests to unsubscribe
+message UnsubscribeRequest {
+  string path = 1;  // Path to unsubscribe from, or empty for "unsubscribe all"
+}

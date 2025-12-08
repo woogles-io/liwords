@@ -86,6 +86,12 @@ const (
 	MessageType_OUR_CORRESPONDENCE_SEEKS        MessageType = 48
 	MessageType_MONITORING_STREAM_STATUS_UPDATE MessageType = 49
 	MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES MessageType = 50
+	// Protocol V2 messages for persistent socket connections
+	MessageType_HANDSHAKE           MessageType = 60 // Client -> Server (first message for v2)
+	MessageType_HANDSHAKE_ACK       MessageType = 61 // Server -> Client
+	MessageType_SUBSCRIBE_REQUEST   MessageType = 62 // Client -> Server
+	MessageType_SUBSCRIBE_RESPONSE  MessageType = 63 // Server -> Client
+	MessageType_UNSUBSCRIBE_REQUEST MessageType = 64 // Client -> Server
 )
 
 // Enum value maps for MessageType.
@@ -140,6 +146,11 @@ var (
 		48: "OUR_CORRESPONDENCE_SEEKS",
 		49: "MONITORING_STREAM_STATUS_UPDATE",
 		50: "OUR_LEAGUE_CORRESPONDENCE_GAMES",
+		60: "HANDSHAKE",
+		61: "HANDSHAKE_ACK",
+		62: "SUBSCRIBE_REQUEST",
+		63: "SUBSCRIBE_RESPONSE",
+		64: "UNSUBSCRIBE_REQUEST",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                                 0,
@@ -191,6 +202,11 @@ var (
 		"OUR_CORRESPONDENCE_SEEKS":                     48,
 		"MONITORING_STREAM_STATUS_UPDATE":              49,
 		"OUR_LEAGUE_CORRESPONDENCE_GAMES":              50,
+		"HANDSHAKE":                                    60,
+		"HANDSHAKE_ACK":                                61,
+		"SUBSCRIBE_REQUEST":                            62,
+		"SUBSCRIBE_RESPONSE":                           63,
+		"UNSUBSCRIBE_REQUEST":                          64,
 	}
 )
 
@@ -219,6 +235,52 @@ func (x MessageType) Number() protoreflect.EnumNumber {
 // Deprecated: Use MessageType.Descriptor instead.
 func (MessageType) EnumDescriptor() ([]byte, []int) {
 	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{0}
+}
+
+type ProtocolVersion int32
+
+const (
+	ProtocolVersion_PROTOCOL_V1 ProtocolVersion = 0 // Legacy: 2-byte length prefix, reconnect per page
+	ProtocolVersion_PROTOCOL_V2 ProtocolVersion = 1 // New: 3-byte length prefix, dynamic subscriptions
+)
+
+// Enum value maps for ProtocolVersion.
+var (
+	ProtocolVersion_name = map[int32]string{
+		0: "PROTOCOL_V1",
+		1: "PROTOCOL_V2",
+	}
+	ProtocolVersion_value = map[string]int32{
+		"PROTOCOL_V1": 0,
+		"PROTOCOL_V2": 1,
+	}
+)
+
+func (x ProtocolVersion) Enum() *ProtocolVersion {
+	p := new(ProtocolVersion)
+	*p = x
+	return p
+}
+
+func (x ProtocolVersion) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ProtocolVersion) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_ipc_ipc_proto_enumTypes[1].Descriptor()
+}
+
+func (ProtocolVersion) Type() protoreflect.EnumType {
+	return &file_proto_ipc_ipc_proto_enumTypes[1]
+}
+
+func (x ProtocolVersion) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ProtocolVersion.Descriptor instead.
+func (ProtocolVersion) EnumDescriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{1}
 }
 
 type RegisterRealmRequest struct {
@@ -589,6 +651,264 @@ func (*UnjoinRealm) Descriptor() ([]byte, []int) {
 	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{7}
 }
 
+// Sent by client as first message after connecting with v=2
+type Handshake struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       ProtocolVersion        `protobuf:"varint,1,opt,name=version,proto3,enum=ipc.ProtocolVersion" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Handshake) Reset() {
+	*x = Handshake{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Handshake) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Handshake) ProtoMessage() {}
+
+func (x *Handshake) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Handshake.ProtoReflect.Descriptor instead.
+func (*Handshake) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Handshake) GetVersion() ProtocolVersion {
+	if x != nil {
+		return x.Version
+	}
+	return ProtocolVersion_PROTOCOL_V1
+}
+
+// Server acknowledges handshake
+type HandshakeAck struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       ProtocolVersion        `protobuf:"varint,1,opt,name=version,proto3,enum=ipc.ProtocolVersion" json:"version,omitempty"`
+	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandshakeAck) Reset() {
+	*x = HandshakeAck{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandshakeAck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandshakeAck) ProtoMessage() {}
+
+func (x *HandshakeAck) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandshakeAck.ProtoReflect.Descriptor instead.
+func (*HandshakeAck) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *HandshakeAck) GetVersion() ProtocolVersion {
+	if x != nil {
+		return x.Version
+	}
+	return ProtocolVersion_PROTOCOL_V1
+}
+
+func (x *HandshakeAck) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *HandshakeAck) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+// Client requests to subscribe using URL path as identifier
+// Server parses path and determines appropriate channels
+type SubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"` // "/game/abc123", "/tournament/xyz", "/"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeRequest) Reset() {
+	*x = SubscribeRequest{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeRequest) ProtoMessage() {}
+
+func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SubscribeRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+// Server responds with subscription result
+type SubscribeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Channels      []string               `protobuf:"bytes,2,rep,name=channels,proto3" json:"channels,omitempty"` // Actual channels subscribed to
+	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeResponse) Reset() {
+	*x = SubscribeResponse{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeResponse) ProtoMessage() {}
+
+func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
+func (*SubscribeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SubscribeResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SubscribeResponse) GetChannels() []string {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+func (x *SubscribeResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+// Client requests to unsubscribe
+type UnsubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"` // Path to unsubscribe from, or empty for "unsubscribe all"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsubscribeRequest) Reset() {
+	*x = UnsubscribeRequest{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsubscribeRequest) ProtoMessage() {}
+
+func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
+func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UnsubscribeRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 var File_proto_ipc_ipc_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_ipc_proto_rawDesc = "" +
@@ -610,8 +930,21 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\r\n" +
-	"\vUnjoinRealm*\xda\n" +
-	"\n" +
+	"\vUnjoinRealm\";\n" +
+	"\tHandshake\x12.\n" +
+	"\aversion\x18\x01 \x01(\x0e2\x14.ipc.ProtocolVersionR\aversion\"}\n" +
+	"\fHandshakeAck\x12.\n" +
+	"\aversion\x18\x01 \x01(\x0e2\x14.ipc.ProtocolVersionR\aversion\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"&\n" +
+	"\x10SubscribeRequest\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\"n\n" +
+	"\x11SubscribeResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1a\n" +
+	"\bchannels\x18\x02 \x03(\tR\bchannels\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"(\n" +
+	"\x12UnsubscribeRequest\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path*\xc4\v\n" +
 	"\vMessageType\x12\x10\n" +
 	"\fSEEK_REQUEST\x10\x00\x12\x11\n" +
 	"\rMATCH_REQUEST\x10\x01\x12\x1d\n" +
@@ -662,7 +995,15 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x18OUR_CORRESPONDENCE_GAMES\x10/\x12\x1c\n" +
 	"\x18OUR_CORRESPONDENCE_SEEKS\x100\x12#\n" +
 	"\x1fMONITORING_STREAM_STATUS_UPDATE\x101\x12#\n" +
-	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102Bp\n" +
+	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102\x12\r\n" +
+	"\tHANDSHAKE\x10<\x12\x11\n" +
+	"\rHANDSHAKE_ACK\x10=\x12\x15\n" +
+	"\x11SUBSCRIBE_REQUEST\x10>\x12\x16\n" +
+	"\x12SUBSCRIBE_RESPONSE\x10?\x12\x17\n" +
+	"\x13UNSUBSCRIBE_REQUEST\x10@*3\n" +
+	"\x0fProtocolVersion\x12\x0f\n" +
+	"\vPROTOCOL_V1\x10\x00\x12\x0f\n" +
+	"\vPROTOCOL_V2\x10\x01Bp\n" +
 	"\acom.ipcB\bIpcProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (
@@ -677,25 +1018,33 @@ func file_proto_ipc_ipc_proto_rawDescGZIP() []byte {
 	return file_proto_ipc_ipc_proto_rawDescData
 }
 
-var file_proto_ipc_ipc_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_ipc_ipc_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_proto_ipc_ipc_proto_goTypes = []any{
 	(MessageType)(0),              // 0: ipc.MessageType
-	(*RegisterRealmRequest)(nil),  // 1: ipc.RegisterRealmRequest
-	(*RegisterRealmResponse)(nil), // 2: ipc.RegisterRealmResponse
-	(*InitRealmInfo)(nil),         // 3: ipc.InitRealmInfo
-	(*LagMeasurement)(nil),        // 4: ipc.LagMeasurement
-	(*Pong)(nil),                  // 5: ipc.Pong
-	(*ServerMessage)(nil),         // 6: ipc.ServerMessage
-	(*JoinPath)(nil),              // 7: ipc.JoinPath
-	(*UnjoinRealm)(nil),           // 8: ipc.UnjoinRealm
+	(ProtocolVersion)(0),          // 1: ipc.ProtocolVersion
+	(*RegisterRealmRequest)(nil),  // 2: ipc.RegisterRealmRequest
+	(*RegisterRealmResponse)(nil), // 3: ipc.RegisterRealmResponse
+	(*InitRealmInfo)(nil),         // 4: ipc.InitRealmInfo
+	(*LagMeasurement)(nil),        // 5: ipc.LagMeasurement
+	(*Pong)(nil),                  // 6: ipc.Pong
+	(*ServerMessage)(nil),         // 7: ipc.ServerMessage
+	(*JoinPath)(nil),              // 8: ipc.JoinPath
+	(*UnjoinRealm)(nil),           // 9: ipc.UnjoinRealm
+	(*Handshake)(nil),             // 10: ipc.Handshake
+	(*HandshakeAck)(nil),          // 11: ipc.HandshakeAck
+	(*SubscribeRequest)(nil),      // 12: ipc.SubscribeRequest
+	(*SubscribeResponse)(nil),     // 13: ipc.SubscribeResponse
+	(*UnsubscribeRequest)(nil),    // 14: ipc.UnsubscribeRequest
 }
 var file_proto_ipc_ipc_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: ipc.Handshake.version:type_name -> ipc.ProtocolVersion
+	1, // 1: ipc.HandshakeAck.version:type_name -> ipc.ProtocolVersion
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_ipc_proto_init() }
@@ -708,8 +1057,8 @@ func file_proto_ipc_ipc_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_ipc_proto_rawDesc), len(file_proto_ipc_ipc_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   8,
+			NumEnums:      2,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

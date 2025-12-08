@@ -324,6 +324,7 @@ func (h *Hub) addToRealm(realms []string, client *Client) {
 	// a client can be in a set of realms, but these realms are basically
 	// immutable (for now). If the client wants to change realms, we have
 	// to create new client connection.
+	// NOTE: For protocol v2, use JoinRealms/LeaveRealms instead for dynamic realm management.
 
 	h.clients[client] = []Realm{}
 	for _, realm := range realms {
@@ -336,6 +337,87 @@ func (h *Hub) addToRealm(realms []string, client *Client) {
 		h.clients[client] = append(h.clients[client], realm)
 	}
 
+}
+
+// JoinRealms adds client to specified realms dynamically (for protocol v2).
+// This is thread-safe and can be called during the connection lifetime.
+func (h *Hub) JoinRealms(client *Client, realmStrs []string) {
+	h.realmMutex.Lock()
+	defer h.realmMutex.Unlock()
+
+	for _, realmStr := range realmStrs {
+		realm := Realm(realmStr)
+
+		// Check if already in realm
+		alreadyIn := false
+		for _, r := range client.realms {
+			if r == realm {
+				alreadyIn = true
+				break
+			}
+		}
+		if alreadyIn {
+			continue
+		}
+
+		// Add to realm
+		if h.realms[realm] == nil {
+			h.realms[realm] = make(map[*Client]bool)
+		}
+		h.realms[realm][client] = true
+		client.realms = append(client.realms, realm)
+		h.clients[client] = append(h.clients[client], realm)
+
+		log.Debug().Str("connID", client.connID).Str("realm", realmStr).Msg("joined-realm")
+	}
+}
+
+// LeaveRealms removes client from specified realms dynamically (for protocol v2).
+// This is thread-safe and can be called during the connection lifetime.
+func (h *Hub) LeaveRealms(client *Client, realmStrs []string) {
+	h.realmMutex.Lock()
+	defer h.realmMutex.Unlock()
+
+	for _, realmStr := range realmStrs {
+		realm := Realm(realmStr)
+
+		// Remove from realm map
+		delete(h.realms[realm], client)
+
+		// Clean up empty realms
+		if len(h.realms[realm]) == 0 {
+			delete(h.realms, realm)
+		}
+
+		// Remove from client's realm list
+		newRealms := make([]Realm, 0, len(client.realms))
+		for _, r := range client.realms {
+			if r != realm {
+				newRealms = append(newRealms, r)
+			}
+		}
+		client.realms = newRealms
+
+		// Update h.clients as well
+		newClientRealms := make([]Realm, 0)
+		for _, r := range h.clients[client] {
+			if r != realm {
+				newClientRealms = append(newClientRealms, r)
+			}
+		}
+		h.clients[client] = newClientRealms
+
+		log.Debug().Str("connID", client.connID).Str("realm", realmStr).Msg("left-realm")
+	}
+}
+
+// LeaveAllRealms removes client from all realms (for protocol v2 unsubscribe all).
+func (h *Hub) LeaveAllRealms(client *Client) {
+	realmStrs := make([]string, len(client.realms))
+	for i, r := range client.realms {
+		realmStrs[i] = string(r)
+	}
+	h.LeaveRealms(client, realmStrs)
 }
 
 func (h *Hub) socketLogin(c *Client) error {

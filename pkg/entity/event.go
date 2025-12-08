@@ -98,11 +98,24 @@ func (e *EventWrapper) AddExcludedUsers(ids []string) {
 	e.excludeUsers = ids
 }
 
-// Serialize serializes the event to a byte array.
+// Serialize serializes the event to a byte array (V1 format: 2-byte length prefix).
 // Our encoding inserts a two byte big-endian number indicating the length
 // of the coming bytes, then a byte representing the message type to the
 // start of the event.
 func (e *EventWrapper) Serialize() ([]byte, error) {
+	return e.SerializeWithVersion(1)
+}
+
+// SerializeV2 serializes the event using V2 format (3-byte length prefix).
+// This supports larger messages (up to ~16MB instead of ~64KB).
+func (e *EventWrapper) SerializeV2() ([]byte, error) {
+	return e.SerializeWithVersion(2)
+}
+
+// SerializeWithVersion serializes the event with the specified protocol version.
+// Version 1: 2-byte big-endian length prefix
+// Version 2: 3-byte big-endian length prefix
+func (e *EventWrapper) SerializeWithVersion(version int) ([]byte, error) {
 	var b bytes.Buffer
 
 	var data []byte
@@ -114,7 +127,16 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 		if e.protocol == EvtSerializationProtoWithHeader {
-			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			msgLen := len(data) + 1 // +1 for type byte
+			if version == 2 {
+				// 3-byte length prefix (big-endian)
+				b.WriteByte(byte(msgLen >> 16))
+				b.WriteByte(byte(msgLen >> 8))
+				b.WriteByte(byte(msgLen))
+			} else {
+				// 2-byte length prefix (big-endian)
+				binary.Write(&b, binary.BigEndian, int16(msgLen))
+			}
 			binary.Write(&b, binary.BigEndian, int8(e.Type))
 		}
 
@@ -124,7 +146,16 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 		if e.protocol == EvtSerializationJSONWithHeader {
-			binary.Write(&b, binary.BigEndian, int16(len(data)+1))
+			msgLen := len(data) + 1 // +1 for type byte
+			if version == 2 {
+				// 3-byte length prefix (big-endian)
+				b.WriteByte(byte(msgLen >> 16))
+				b.WriteByte(byte(msgLen >> 8))
+				b.WriteByte(byte(msgLen))
+			} else {
+				// 2-byte length prefix (big-endian)
+				binary.Write(&b, binary.BigEndian, int16(msgLen))
+			}
 			binary.Write(&b, binary.BigEndian, int8(e.Type))
 		}
 	}
@@ -187,12 +218,32 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 }
 
 // BytesFromSerializedEvent takes in a serialized event (without header) and
-// adds a header to it, returning the new byte array.
+// adds a header to it, returning the new byte array (V1 format: 2-byte length).
 // XXX: Using this function is a bit of a code smell / hack and we need
 // to refactor the code that uses it in the future.
 func BytesFromSerializedEvent(evt []byte, evtType byte) []byte {
+	return BytesFromSerializedEventWithVersion(evt, evtType, 1)
+}
+
+// BytesFromSerializedEventV2 is like BytesFromSerializedEvent but uses V2 format
+// (3-byte length prefix).
+func BytesFromSerializedEventV2(evt []byte, evtType byte) []byte {
+	return BytesFromSerializedEventWithVersion(evt, evtType, 2)
+}
+
+// BytesFromSerializedEventWithVersion adds a header with the specified version.
+func BytesFromSerializedEventWithVersion(evt []byte, evtType byte, version int) []byte {
 	var b bytes.Buffer
-	binary.Write(&b, binary.BigEndian, int16(len(evt)+1))
+	msgLen := len(evt) + 1 // +1 for type byte
+	if version == 2 {
+		// 3-byte length prefix (big-endian)
+		b.WriteByte(byte(msgLen >> 16))
+		b.WriteByte(byte(msgLen >> 8))
+		b.WriteByte(byte(msgLen))
+	} else {
+		// 2-byte length prefix (big-endian)
+		binary.Write(&b, binary.BigEndian, int16(msgLen))
+	}
 	binary.Write(&b, binary.BigEndian, int8(evtType))
 	b.Write(evt)
 	return b.Bytes()

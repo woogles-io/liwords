@@ -10,7 +10,11 @@ import {
   enableShowSocket,
   parseMsgs,
 } from "../store/socket_handlers";
-import { decodeToMsg, encodeToSocketFmt } from "../utils/protobuf";
+import {
+  decodeToMsg,
+  encodeToSocketFmt,
+  setProtocolVersion,
+} from "../utils/protobuf";
 import { ActionType } from "../actions/actions";
 import { reloadAction } from "./reload";
 import { birthdateWarning } from "./birthdateWarning";
@@ -22,7 +26,19 @@ import {
   MessageInitShape,
   toBinary,
 } from "@bufbuild/protobuf";
-import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
+import {
+  MessageType,
+  HandshakeSchema,
+  ProtocolVersion,
+  HandshakeAck,
+  SubscribeResponse,
+} from "../gen/api/proto/ipc/ipc_pb";
+import { useSubscription } from "./useSubscription";
+
+// Feature flag for v2 protocol - can be enabled via localStorage or runtime config
+const useProtocolV2 =
+  localStorage?.getItem("useProtocolV2") === "true" ||
+  String(window.RUNTIME_CONFIGURATION?.socketProtocolV2) === "true";
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -180,6 +196,8 @@ export const LiwordsSocket = (props: {
 
   // Source-of-truth must be local, not the store.
   const [isConnectedToSocket, setIsConnectedToSocket] = useState(false);
+  // For v2 protocol: track handshake completion
+  const [handshakeComplete, setHandshakeComplete] = useState(!useProtocolV2);
   const { dispatchLoginState } = loginStateStore;
   const authClient = useClient(AuthenticationService);
   const getFullSocketUrlAsync = useCallback(async () => {
@@ -212,11 +230,14 @@ export const LiwordsSocket = (props: {
 
       const { cid, frontEndVersion, token } = resp;
 
-      const ret = `${socketUrl}?${new URLSearchParams({
-        token,
-        path: pathname,
-        cid,
-      })}`;
+      // Build socket URL based on protocol version
+      const urlParams: Record<string, string> = { token, cid };
+      if (useProtocolV2) {
+        urlParams.v = "2"; // Use v2 protocol - no path, subscriptions via messages
+      } else {
+        urlParams.path = pathname; // v1: path determines initial realm
+      }
+      const ret = `${socketUrl}?${new URLSearchParams(urlParams)}`;
 
       const decoded = jwtDecode<DecodedToken>(token);
       dispatchLoginState({
@@ -295,6 +316,7 @@ export const LiwordsSocket = (props: {
       );
       return failUrl;
     }
+    // For v1, we need pathname. For v2, we don't (subscriptions via messages).
   }, [dispatchLoginState, pathname, authClient]);
 
   useEffect(() => {
@@ -366,6 +388,9 @@ export const LiwordsSocket = (props: {
     };
   }, [patienceId, resetSocket, isConnectedToSocket]);
 
+  // Ref to hold sendMessage for use in onOpen callback
+  const sendMessageRef = useRef<((msg: Uint8Array) => void) | null>(null);
+
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
     {
@@ -377,6 +402,19 @@ export const LiwordsSocket = (props: {
         });
         resetPatience();
         setIsConnectedToSocket(true);
+
+        // For v2 protocol: send handshake message immediately after connection
+        if (useProtocolV2 && sendMessageRef.current) {
+          console.log("Sending v2 handshake...");
+          const handshake = create(HandshakeSchema, {
+            version: ProtocolVersion.PROTOCOL_V2,
+          });
+          const encodedHandshake = encodeToSocketFmt(
+            MessageType.HANDSHAKE,
+            toBinary(HandshakeSchema, handshake)
+          );
+          sendMessageRef.current(encodedHandshake);
+        }
       },
       onClose: (event) => {
         console.log("🔴 WebSocket closed", {
@@ -387,6 +425,10 @@ export const LiwordsSocket = (props: {
         });
         resetPatience();
         setIsConnectedToSocket(false);
+        // Reset handshake state on disconnect for v2
+        if (useProtocolV2) {
+          setHandshakeComplete(false);
+        }
       },
       onError: (event) => {
         socketDebugCounters.wsErrors++;
@@ -416,7 +458,38 @@ export const LiwordsSocket = (props: {
       onMessage: (event: MessageEvent) => {
         // Any incoming message resets the patience.
         resetPatience();
-        return decodeToMsg(event.data, onSocketMsg);
+        return decodeToMsg(event.data, (reader: FileReader) => {
+          // Handle v2-specific messages before passing to general handler
+          if (useProtocolV2 && reader.result) {
+            const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
+            for (const msg of msgs) {
+              if (msg.msgType === MessageType.HANDSHAKE_ACK) {
+                const ack = msg.parsedMsg as HandshakeAck;
+                if (ack.success) {
+                  console.log("V2 handshake successful");
+                  setProtocolVersion(2);
+                  setHandshakeComplete(true);
+                } else {
+                  console.error("V2 handshake failed:", ack.errorMessage);
+                }
+                // Don't pass HANDSHAKE_ACK to general handler
+                return;
+              }
+              if (msg.msgType === MessageType.SUBSCRIBE_RESPONSE) {
+                const resp = msg.parsedMsg as SubscribeResponse;
+                console.log(
+                  "Subscribe response:",
+                  resp.success ? "success" : "failed",
+                  resp.channels
+                );
+                // Don't pass SUBSCRIBE_RESPONSE to general handler for now
+                return;
+              }
+            }
+          }
+          // Pass to general message handler
+          onSocketMsg(reader);
+        });
       },
     },
   );
@@ -441,6 +514,14 @@ export const LiwordsSocket = (props: {
       return originalSendMessage(msg);
     };
   }, [originalSendMessage]);
+
+  // Update the ref so onOpen callback can send handshake
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  // For v2 protocol: use subscription hook to manage realm subscriptions
+  useSubscription(sendMessage, isConnectedToSocket, handshakeComplete);
 
   const sendProtoSocketMsg = useCallback(
     <T extends DescMessage>(

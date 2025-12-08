@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/ipc.proto.
  */
 export const file_proto_ipc_ipc: GenFile = /*@__PURE__*/
-  fileDesc("ChNwcm90by9pcGMvaXBjLnByb3RvEgNpcGMiNQoUUmVnaXN0ZXJSZWFsbVJlcXVlc3QSDAoEcGF0aBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIicKFVJlZ2lzdGVyUmVhbG1SZXNwb25zZRIOCgZyZWFsbXMYAiADKAkiMAoNSW5pdFJlYWxtSW5mbxIPCgd1c2VyX2lkGAIgASgJEg4KBnJlYWxtcxgDIAMoCSIgCg5MYWdNZWFzdXJlbWVudBIOCgZsYWdfbXMYASABKAUiEwoEUG9uZxILCgNpcHMYASABKAkiIAoNU2VydmVyTWVzc2FnZRIPCgdtZXNzYWdlGAEgASgJIhgKCEpvaW5QYXRoEgwKBHBhdGgYASABKAkiDQoLVW5qb2luUmVhbG0q2goKC01lc3NhZ2VUeXBlEhAKDFNFRUtfUkVRVUVTVBAAEhEKDU1BVENIX1JFUVVFU1QQARIdChlTT1VHSFRfR0FNRV9QUk9DRVNTX0VWRU5UEAISGQoVQ0xJRU5UX0dBTUVQTEFZX0VWRU5UEAMSGQoVU0VSVkVSX0dBTUVQTEFZX0VWRU5UEAQSFAoQR0FNRV9FTkRFRF9FVkVOVBAFEhoKFkdBTUVfSElTVE9SWV9SRUZSRVNIRVIQBhIRCg1FUlJPUl9NRVNTQUdFEAcSEgoOTkVXX0dBTUVfRVZFTlQQCBIhCh1TRVJWRVJfQ0hBTExFTkdFX1JFU1VMVF9FVkVOVBAJEhEKDVNFRUtfUkVRVUVTVFMQChIWChJPTkdPSU5HX0dBTUVfRVZFTlQQDBINCglUSU1FRF9PVVQQDRIRCg1PTkdPSU5HX0dBTUVTEA4SHQoZUkVBRFlfRk9SX1RPVVJOQU1FTlRfR0FNRRAPEhwKGFRPVVJOQU1FTlRfUk9VTkRfU1RBUlRFRBAQEhEKDUdBTUVfREVMRVRJT04QERISCg5NQVRDSF9SRVFVRVNUUxASEhgKFERFQ0xJTkVfU0VFS19SRVFVRVNUEBMSEAoMQ0hBVF9NRVNTQUdFEBQSGAoUQ0hBVF9NRVNTQUdFX0RFTEVURUQQFRIRCg1VU0VSX1BSRVNFTkNFEBYSEgoOVVNFUl9QUkVTRU5DRVMQFxISCg5TRVJWRVJfTUVTU0FHRRAYEhIKDlJFQURZX0ZPUl9HQU1FEBkSEwoPTEFHX01FQVNVUkVNRU5UEBoSHwobVE9VUk5BTUVOVF9HQU1FX0VOREVEX0VWRU5UEBsSFgoSVE9VUk5BTUVOVF9NRVNTQUdFEBwSEwoPUkVNQVRDSF9TVEFSVEVEEB0SHwobVE9VUk5BTUVOVF9ESVZJU0lPTl9NRVNTQUdFEB4SJwojVE9VUk5BTUVOVF9ESVZJU0lPTl9ERUxFVEVEX01FU1NBR0UQHxIlCiFUT1VSTkFNRU5UX0ZVTExfRElWSVNJT05TX01FU1NBR0UQIBIuCipUT1VSTkFNRU5UX0RJVklTSU9OX1JPVU5EX0NPTlRST0xTX01FU1NBR0UQIhIoCiRUT1VSTkFNRU5UX0RJVklTSU9OX1BBSVJJTkdTX01FU1NBR0UQIxIoCiRUT1VSTkFNRU5UX0RJVklTSU9OX0NPTlRST0xTX01FU1NBR0UQJBItCilUT1VSTkFNRU5UX0RJVklTSU9OX1BMQVlFUl9DSEFOR0VfTUVTU0FHRRAlEh8KG1RPVVJOQU1FTlRfRklOSVNIRURfTUVTU0FHRRAmEjAKLFRPVVJOQU1FTlRfRElWSVNJT05fUEFJUklOR1NfREVMRVRFRF9NRVNTQUdFECcSEgoOUFJFU0VOQ0VfRU5UUlkQKBIVChFBQ1RJVkVfR0FNRV9FTlRSWRApEhMKD0dBTUVfTUVUQV9FVkVOVBAqEhgKFFBST0ZJTEVfVVBEQVRFX0VWRU5UECsSGwoXT01HV09SRFNfR0FNRVBMQVlfRVZFTlQQLBIZChVPTUdXT1JEU19HQU1FRE9DVU1FTlQQLRIdChlUT1VSTkFNRU5UX1BMQVlFUl9DSEVDS0lOEC4SHAoYT1VSX0NPUlJFU1BPTkRFTkNFX0dBTUVTEC8SHAoYT1VSX0NPUlJFU1BPTkRFTkNFX1NFRUtTEDASIwofTU9OSVRPUklOR19TVFJFQU1fU1RBVFVTX1VQREFURRAxEiMKH09VUl9MRUFHVUVfQ09SUkVTUE9OREVOQ0VfR0FNRVMQMkJwCgdjb20uaXBjQghJcGNQcm90b1ABWi9naXRodWIuY29tL3dvb2dsZXMtaW8vbGl3b3Jkcy9ycGMvYXBpL3Byb3RvL2lwY6ICA0lYWKoCA0lwY8oCA0lwY+ICD0lwY1xHUEJNZXRhZGF0YeoCA0lwY2IGcHJvdG8z");
+  fileDesc("ChNwcm90by9pcGMvaXBjLnByb3RvEgNpcGMiNQoUUmVnaXN0ZXJSZWFsbVJlcXVlc3QSDAoEcGF0aBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIicKFVJlZ2lzdGVyUmVhbG1SZXNwb25zZRIOCgZyZWFsbXMYAiADKAkiMAoNSW5pdFJlYWxtSW5mbxIPCgd1c2VyX2lkGAIgASgJEg4KBnJlYWxtcxgDIAMoCSIgCg5MYWdNZWFzdXJlbWVudBIOCgZsYWdfbXMYASABKAUiEwoEUG9uZxILCgNpcHMYASABKAkiIAoNU2VydmVyTWVzc2FnZRIPCgdtZXNzYWdlGAEgASgJIhgKCEpvaW5QYXRoEgwKBHBhdGgYASABKAkiDQoLVW5qb2luUmVhbG0iMgoJSGFuZHNoYWtlEiUKB3ZlcnNpb24YASABKA4yFC5pcGMuUHJvdG9jb2xWZXJzaW9uIl0KDEhhbmRzaGFrZUFjaxIlCgd2ZXJzaW9uGAEgASgOMhQuaXBjLlByb3RvY29sVmVyc2lvbhIPCgdzdWNjZXNzGAIgASgIEhUKDWVycm9yX21lc3NhZ2UYAyABKAkiIAoQU3Vic2NyaWJlUmVxdWVzdBIMCgRwYXRoGAEgASgJIk0KEVN1YnNjcmliZVJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEAoIY2hhbm5lbHMYAiADKAkSFQoNZXJyb3JfbWVzc2FnZRgDIAEoCSIiChJVbnN1YnNjcmliZVJlcXVlc3QSDAoEcGF0aBgBIAEoCSrECwoLTWVzc2FnZVR5cGUSEAoMU0VFS19SRVFVRVNUEAASEQoNTUFUQ0hfUkVRVUVTVBABEh0KGVNPVUdIVF9HQU1FX1BST0NFU1NfRVZFTlQQAhIZChVDTElFTlRfR0FNRVBMQVlfRVZFTlQQAxIZChVTRVJWRVJfR0FNRVBMQVlfRVZFTlQQBBIUChBHQU1FX0VOREVEX0VWRU5UEAUSGgoWR0FNRV9ISVNUT1JZX1JFRlJFU0hFUhAGEhEKDUVSUk9SX01FU1NBR0UQBxISCg5ORVdfR0FNRV9FVkVOVBAIEiEKHVNFUlZFUl9DSEFMTEVOR0VfUkVTVUxUX0VWRU5UEAkSEQoNU0VFS19SRVFVRVNUUxAKEhYKEk9OR09JTkdfR0FNRV9FVkVOVBAMEg0KCVRJTUVEX09VVBANEhEKDU9OR09JTkdfR0FNRVMQDhIdChlSRUFEWV9GT1JfVE9VUk5BTUVOVF9HQU1FEA8SHAoYVE9VUk5BTUVOVF9ST1VORF9TVEFSVEVEEBASEQoNR0FNRV9ERUxFVElPThAREhIKDk1BVENIX1JFUVVFU1RTEBISGAoUREVDTElORV9TRUVLX1JFUVVFU1QQExIQCgxDSEFUX01FU1NBR0UQFBIYChRDSEFUX01FU1NBR0VfREVMRVRFRBAVEhEKDVVTRVJfUFJFU0VOQ0UQFhISCg5VU0VSX1BSRVNFTkNFUxAXEhIKDlNFUlZFUl9NRVNTQUdFEBgSEgoOUkVBRFlfRk9SX0dBTUUQGRITCg9MQUdfTUVBU1VSRU1FTlQQGhIfChtUT1VSTkFNRU5UX0dBTUVfRU5ERURfRVZFTlQQGxIWChJUT1VSTkFNRU5UX01FU1NBR0UQHBITCg9SRU1BVENIX1NUQVJURUQQHRIfChtUT1VSTkFNRU5UX0RJVklTSU9OX01FU1NBR0UQHhInCiNUT1VSTkFNRU5UX0RJVklTSU9OX0RFTEVURURfTUVTU0FHRRAfEiUKIVRPVVJOQU1FTlRfRlVMTF9ESVZJU0lPTlNfTUVTU0FHRRAgEi4KKlRPVVJOQU1FTlRfRElWSVNJT05fUk9VTkRfQ09OVFJPTFNfTUVTU0FHRRAiEigKJFRPVVJOQU1FTlRfRElWSVNJT05fUEFJUklOR1NfTUVTU0FHRRAjEigKJFRPVVJOQU1FTlRfRElWSVNJT05fQ09OVFJPTFNfTUVTU0FHRRAkEi0KKVRPVVJOQU1FTlRfRElWSVNJT05fUExBWUVSX0NIQU5HRV9NRVNTQUdFECUSHwobVE9VUk5BTUVOVF9GSU5JU0hFRF9NRVNTQUdFECYSMAosVE9VUk5BTUVOVF9ESVZJU0lPTl9QQUlSSU5HU19ERUxFVEVEX01FU1NBR0UQJxISCg5QUkVTRU5DRV9FTlRSWRAoEhUKEUFDVElWRV9HQU1FX0VOVFJZECkSEwoPR0FNRV9NRVRBX0VWRU5UECoSGAoUUFJPRklMRV9VUERBVEVfRVZFTlQQKxIbChdPTUdXT1JEU19HQU1FUExBWV9FVkVOVBAsEhkKFU9NR1dPUkRTX0dBTUVET0NVTUVOVBAtEh0KGVRPVVJOQU1FTlRfUExBWUVSX0NIRUNLSU4QLhIcChhPVVJfQ09SUkVTUE9OREVOQ0VfR0FNRVMQLxIcChhPVVJfQ09SUkVTUE9OREVOQ0VfU0VFS1MQMBIjCh9NT05JVE9SSU5HX1NUUkVBTV9TVEFUVVNfVVBEQVRFEDESIwofT1VSX0xFQUdVRV9DT1JSRVNQT05ERU5DRV9HQU1FUxAyEg0KCUhBTkRTSEFLRRA8EhEKDUhBTkRTSEFLRV9BQ0sQPRIVChFTVUJTQ1JJQkVfUkVRVUVTVBA+EhYKElNVQlNDUklCRV9SRVNQT05TRRA/EhcKE1VOU1VCU0NSSUJFX1JFUVVFU1QQQCozCg9Qcm90b2NvbFZlcnNpb24SDwoLUFJPVE9DT0xfVjEQABIPCgtQUk9UT0NPTF9WMhABQnAKB2NvbS5pcGNCCElwY1Byb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM");
 
 /**
  * @generated from message ipc.RegisterRealmRequest
@@ -169,6 +169,128 @@ export type UnjoinRealm = Message<"ipc.UnjoinRealm"> & {
  */
 export const UnjoinRealmSchema: GenMessage<UnjoinRealm> = /*@__PURE__*/
   messageDesc(file_proto_ipc_ipc, 7);
+
+/**
+ * Sent by client as first message after connecting with v=2
+ *
+ * @generated from message ipc.Handshake
+ */
+export type Handshake = Message<"ipc.Handshake"> & {
+  /**
+   * @generated from field: ipc.ProtocolVersion version = 1;
+   */
+  version: ProtocolVersion;
+};
+
+/**
+ * Describes the message ipc.Handshake.
+ * Use `create(HandshakeSchema)` to create a new message.
+ */
+export const HandshakeSchema: GenMessage<Handshake> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 8);
+
+/**
+ * Server acknowledges handshake
+ *
+ * @generated from message ipc.HandshakeAck
+ */
+export type HandshakeAck = Message<"ipc.HandshakeAck"> & {
+  /**
+   * @generated from field: ipc.ProtocolVersion version = 1;
+   */
+  version: ProtocolVersion;
+
+  /**
+   * @generated from field: bool success = 2;
+   */
+  success: boolean;
+
+  /**
+   * @generated from field: string error_message = 3;
+   */
+  errorMessage: string;
+};
+
+/**
+ * Describes the message ipc.HandshakeAck.
+ * Use `create(HandshakeAckSchema)` to create a new message.
+ */
+export const HandshakeAckSchema: GenMessage<HandshakeAck> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 9);
+
+/**
+ * Client requests to subscribe using URL path as identifier
+ * Server parses path and determines appropriate channels
+ *
+ * @generated from message ipc.SubscribeRequest
+ */
+export type SubscribeRequest = Message<"ipc.SubscribeRequest"> & {
+  /**
+   * "/game/abc123", "/tournament/xyz", "/"
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message ipc.SubscribeRequest.
+ * Use `create(SubscribeRequestSchema)` to create a new message.
+ */
+export const SubscribeRequestSchema: GenMessage<SubscribeRequest> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 10);
+
+/**
+ * Server responds with subscription result
+ *
+ * @generated from message ipc.SubscribeResponse
+ */
+export type SubscribeResponse = Message<"ipc.SubscribeResponse"> & {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success: boolean;
+
+  /**
+   * Actual channels subscribed to
+   *
+   * @generated from field: repeated string channels = 2;
+   */
+  channels: string[];
+
+  /**
+   * @generated from field: string error_message = 3;
+   */
+  errorMessage: string;
+};
+
+/**
+ * Describes the message ipc.SubscribeResponse.
+ * Use `create(SubscribeResponseSchema)` to create a new message.
+ */
+export const SubscribeResponseSchema: GenMessage<SubscribeResponse> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 11);
+
+/**
+ * Client requests to unsubscribe
+ *
+ * @generated from message ipc.UnsubscribeRequest
+ */
+export type UnsubscribeRequest = Message<"ipc.UnsubscribeRequest"> & {
+  /**
+   * Path to unsubscribe from, or empty for "unsubscribe all"
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message ipc.UnsubscribeRequest.
+ * Use `create(UnsubscribeRequestSchema)` to create a new message.
+ */
+export const UnsubscribeRequestSchema: GenMessage<UnsubscribeRequest> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 12);
 
 /**
  * In order to make socket messages as small and simple as possible,
@@ -432,6 +554,43 @@ export enum MessageType {
    * @generated from enum value: OUR_LEAGUE_CORRESPONDENCE_GAMES = 50;
    */
   OUR_LEAGUE_CORRESPONDENCE_GAMES = 50,
+
+  /**
+   * Protocol V2 messages for persistent socket connections
+   *
+   * Client -> Server (first message for v2)
+   *
+   * @generated from enum value: HANDSHAKE = 60;
+   */
+  HANDSHAKE = 60,
+
+  /**
+   * Server -> Client
+   *
+   * @generated from enum value: HANDSHAKE_ACK = 61;
+   */
+  HANDSHAKE_ACK = 61,
+
+  /**
+   * Client -> Server
+   *
+   * @generated from enum value: SUBSCRIBE_REQUEST = 62;
+   */
+  SUBSCRIBE_REQUEST = 62,
+
+  /**
+   * Server -> Client
+   *
+   * @generated from enum value: SUBSCRIBE_RESPONSE = 63;
+   */
+  SUBSCRIBE_RESPONSE = 63,
+
+  /**
+   * Client -> Server
+   *
+   * @generated from enum value: UNSUBSCRIBE_REQUEST = 64;
+   */
+  UNSUBSCRIBE_REQUEST = 64,
 }
 
 /**
@@ -439,4 +598,29 @@ export enum MessageType {
  */
 export const MessageTypeSchema: GenEnum<MessageType> = /*@__PURE__*/
   enumDesc(file_proto_ipc_ipc, 0);
+
+/**
+ * @generated from enum ipc.ProtocolVersion
+ */
+export enum ProtocolVersion {
+  /**
+   * Legacy: 2-byte length prefix, reconnect per page
+   *
+   * @generated from enum value: PROTOCOL_V1 = 0;
+   */
+  PROTOCOL_V1 = 0,
+
+  /**
+   * New: 3-byte length prefix, dynamic subscriptions
+   *
+   * @generated from enum value: PROTOCOL_V2 = 1;
+   */
+  PROTOCOL_V2 = 1,
+}
+
+/**
+ * Describes the enum ipc.ProtocolVersion.
+ */
+export const ProtocolVersionSchema: GenEnum<ProtocolVersion> = /*@__PURE__*/
+  enumDesc(file_proto_ipc_ipc, 1);
 

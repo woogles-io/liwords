@@ -1,21 +1,43 @@
 // a serialization library
 
+// Protocol version: 1 = legacy (2-byte length), 2 = new (3-byte length)
+let protocolVersion = 1;
+
+export const setProtocolVersion = (v: number) => {
+  protocolVersion = v;
+};
+
+export const getProtocolVersion = () => protocolVersion;
+
 // SocketFmt is just the protobuf, with an extra byte prepended,
 // indicating the message type.
+// V1: 2-byte length prefix (max ~64KB)
+// V2: 3-byte length prefix (max ~16MB)
 export const encodeToSocketFmt = (
   msgTypeCode: number,
   serializedPBPacket: Uint8Array,
 ): Uint8Array => {
   // 1 byte for the msg type.
   const packetLength = serializedPBPacket.length + 1;
-  // 2 bytes for the packetLength
-  const overallLength = packetLength + 2;
 
+  if (protocolVersion === 2) {
+    // V2: 3-byte length prefix (big-endian)
+    const overallLength = packetLength + 3;
+    const newArr = new Uint8Array(overallLength);
+    newArr[0] = (packetLength >> 16) & 255;
+    newArr[1] = (packetLength >> 8) & 255;
+    newArr[2] = packetLength & 255;
+    newArr[3] = msgTypeCode;
+    newArr.set(serializedPBPacket, 4);
+    return newArr;
+  }
+
+  // V1: 2-byte length prefix (big-endian)
+  const overallLength = packetLength + 2;
   const newArr = new Uint8Array(overallLength);
   newArr[0] = Math.floor(packetLength / 256);
   newArr[1] = packetLength & 255;
   newArr[2] = msgTypeCode;
-
   newArr.set(serializedPBPacket, 3);
   return newArr;
 };

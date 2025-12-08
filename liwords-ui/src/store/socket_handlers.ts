@@ -34,7 +34,10 @@ import {
   MessageType,
   ServerMessage,
   ServerMessageSchema,
+  HandshakeAckSchema,
+  SubscribeResponseSchema,
 } from "../gen/api/proto/ipc/ipc_pb";
+import { getProtocolVersion } from "../utils/protobuf";
 import {
   DeclineSeekRequest,
   DeclineSeekRequestSchema,
@@ -195,6 +198,9 @@ const MsgTypesMap = {
   [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
   [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
     MonitoringStreamStatusUpdateSchema,
+  // Protocol V2 messages
+  [MessageType.HANDSHAKE_ACK]: HandshakeAckSchema,
+  [MessageType.SUBSCRIBE_RESPONSE]: SubscribeResponseSchema,
 };
 
 export const parseMsgs = (
@@ -205,21 +211,31 @@ export const parseMsgs = (
   msgLength: number;
 }> => {
   // Multiple msgs can come in the same packet.
-
   const msgs = [];
+  const protocolVersion = getProtocolVersion();
 
   while (msg.length > 0) {
-    // Extract message length from the first two bytes
-    const msgLength = msg[0] * 256 + msg[1];
+    let msgLength: number;
+    let headerSize: number;
 
-    // Extract message type from the third byte
-    const msgType = msg[2] as MessageType;
+    if (protocolVersion === 2) {
+      // V2: 3-byte length prefix (big-endian)
+      msgLength = (msg[0] << 16) + (msg[1] << 8) + msg[2];
+      headerSize = 3;
+    } else {
+      // V1: 2-byte length prefix (big-endian)
+      msgLength = msg[0] * 256 + msg[1];
+      headerSize = 2;
+    }
 
-    // Extract the payload for the message
-    const msgBytes = msg.slice(3, 3 + (msgLength - 1));
+    // Extract message type from the byte after the length prefix
+    const msgType = msg[headerSize] as MessageType;
+
+    // Extract the payload for the message (msgLength includes the type byte)
+    const msgBytes = msg.slice(headerSize + 1, headerSize + msgLength);
 
     // Parse the message using the appropriate schema
-    const schema = MsgTypesMap[msgType];
+    const schema = MsgTypesMap[msgType as keyof typeof MsgTypesMap];
     if (!schema) {
       throw new Error(`No schema found for message type: ${msgType} (${msg})`);
     }
@@ -234,7 +250,7 @@ export const parseMsgs = (
     });
 
     // Remove the processed message from the input buffer
-    msg = msg.slice(3 + (msgLength - 1));
+    msg = msg.slice(headerSize + msgLength);
   }
   return msgs;
 };
