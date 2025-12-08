@@ -272,7 +272,7 @@ var weightPolicies = []weightPolicy{
 			// for minimizing repeats, which means we leave the diff
 			// as is instead of cubed so it doesn't overwhelm the repeat penalty.
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
-				ri > pargs.lowestPossibleAbsCasher {
+				ri >= int(pargs.req.PlacePrizes) {
 				return diff
 			}
 			return diff * diff * diff
@@ -288,7 +288,7 @@ var weightPolicies = []weightPolicy{
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
-				ri > pargs.lowestPossibleHopeCasher {
+				ri >= int(pargs.req.PlacePrizes) {
 				return 0
 			}
 			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
@@ -463,9 +463,9 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 	}
 
 	return &pb.PairResponse{
-		ErrorCode:          pb.PairError_SUCCESS,
-		Pairings:           pairings,
-		GibsonizedPlayers:  copdata.GibsonizedPlayers,
+		ErrorCode:         pb.PairError_SUCCESS,
+		Pairings:          pairings,
+		GibsonizedPlayers: copdata.GibsonizedPlayers,
 	}
 }
 
@@ -558,6 +558,8 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
+	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", numDivPairings))
+	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
