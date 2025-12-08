@@ -91,10 +91,6 @@ func instantiateLeagueEmail(info *LeagueEmailInfo) (string, string, error) {
 
 // SendSeasonStartingSoonEmail sends reminder email 1 day before season starts
 func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, startTime time.Time, registeredUserIDs []string) {
-	if cfg.MailgunKey == "" {
-		log.Debug().Msg("mailgun-key-not-set-skipping-league-email")
-		return
-	}
 
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 	startTimeString := startTime.Format("Monday, January 2, 2006 at 3:04 PM MST")
@@ -143,7 +139,7 @@ func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userSt
 			defer func() { <-sem }() // Release semaphore
 
 			_, err := emailer.SendSimpleMessage(
-				cfg.MailgunKey,
+				cfg.EmailDebugMode,
 				email,
 				subject,
 				body)
@@ -165,10 +161,6 @@ func SendSeasonStartingSoonEmail(ctx context.Context, cfg *config.Config, userSt
 
 // SendSeasonStartedEmail sends notification when season starts and games are created
 func SendSeasonStartedEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, playerAssignments map[string]*PlayerSeasonInfo) {
-	if cfg.MailgunKey == "" {
-		log.Debug().Msg("mailgun-key-not-set-skipping-league-email")
-		return
-	}
 
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 
@@ -215,7 +207,7 @@ func SendSeasonStartedEmail(ctx context.Context, cfg *config.Config, userStore u
 			defer func() { <-sem }() // Release semaphore
 
 			_, err := emailer.SendSimpleMessage(
-				cfg.MailgunKey,
+				cfg.EmailDebugMode,
 				email,
 				subject,
 				body)
@@ -251,11 +243,6 @@ func SendUnstartedGameReminderEmail(
 	playersWithUnstartedGames []models.GetSeasonPlayersWithUnstartedGamesRow,
 	isFirm bool,
 ) {
-	if cfg.MailgunKey == "" {
-		log.Debug().Msg("mailgun-key-not-set-skipping-unstarted-game-reminder-email")
-		return
-	}
-
 	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
 	reminderType := "gentle"
 	if isFirm {
@@ -336,7 +323,7 @@ The Woogles Team
 			defer wg.Done()
 			defer func() { <-sem }() // Release semaphore
 
-			_, err := emailer.SendSimpleMessage(cfg.MailgunKey, email, subject, body)
+			_, err := emailer.SendSimpleMessage(cfg.EmailDebugMode, email, subject, body)
 			if err != nil {
 				log.Err(err).Str("username", username).Msg("failed-to-send-unstarted-game-reminder-email")
 			} else {

@@ -619,14 +619,14 @@ func TestNotoriety(t *testing.T) {
 		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx = apiserver.PlaceInContext(ctx, session)
 
-	cfg.MailgunKey = os.Getenv("TEST_MAILGUN_KEY")
+	cfg.EmailDebugMode = true
 	cfg.DiscordToken = os.Getenv("TEST_DISCORD_TOKEN")
 
 	err = playGame(ctx, g, stores, nil, 1, pb.GameEndReason_RESIGNED, false)
 	is.NoErr(err)
 
 	// Set the context back so the tests do not give excessive notifications
-	cfg.MailgunKey = ""
+	cfg.EmailDebugMode = true
 	cfg.DiscordToken = ""
 
 	err = comparePlayerNotorieties([]*ms.NotorietyReport{

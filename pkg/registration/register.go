@@ -53,7 +53,7 @@ func generateVerificationToken() (string, error) {
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
 	firstName string, lastName string, birthDate string, countryCode string,
-	userStore user.Store, bot bool, argonConfig config.ArgonConfig, mailgunKey string, skipEmailVerification bool) error {
+	userStore user.Store, bot bool, argonConfig config.ArgonConfig, emailDebugMode bool, skipEmailVerification bool) error {
 	// username = strings.Rep
 	if len(username) < 3 || len(username) > 20 {
 		return errors.New("username must be between 3 and 20 letters in length")
@@ -140,11 +140,11 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	}
 
 	// Send verification email for non-bot, non-skip users
-	if !verified && mailgunKey != "" {
+	if !verified {
 		verificationURL := fmt.Sprintf("https://woogles.io/verify-email?token=%s", verificationToken)
 		emailBody := fmt.Sprintf(VerificationEmailTemplate, username, verificationURL)
 
-		_, err = emailer.SendSimpleMessage(mailgunKey, email, "Verify your Woogles.io email", emailBody)
+		_, err = emailer.SendSimpleMessage(emailDebugMode, email, "Verify your Woogles.io email", emailBody)
 		if err != nil {
 			log.Error().Err(err).Str("email", email).Str("emailBody", emailBody).Msg("failed to send verification email")
 			// Don't fail registration if email sending fails - user can resend later
@@ -190,7 +190,7 @@ func VerifyUserEmail(ctx context.Context, token string, userStore user.Store) er
 }
 
 // ResendVerificationEmail generates a new token and resends the verification email
-func ResendVerificationEmail(ctx context.Context, email string, userStore user.Store, mailgunKey string) error {
+func ResendVerificationEmail(ctx context.Context, email string, userStore user.Store, emailDebugMode bool) error {
 	if email == "" {
 		return errors.New("email is required")
 	}
@@ -223,18 +223,15 @@ func ResendVerificationEmail(ctx context.Context, email string, userStore user.S
 	}
 
 	// Send verification email
-	if mailgunKey != "" {
-		verificationURL := fmt.Sprintf("https://woogles.io/verify-email?token=%s", verificationToken)
-		emailBody := fmt.Sprintf(VerificationEmailTemplate, u.Username, verificationURL)
+	verificationURL := fmt.Sprintf("https://woogles.io/verify-email?token=%s", verificationToken)
+	emailBody := fmt.Sprintf(VerificationEmailTemplate, u.Username, verificationURL)
 
-		_, err = emailer.SendSimpleMessage(mailgunKey, email, "Verify your Woogles.io email", emailBody)
-		if err != nil {
-			log.Error().Err(err).Str("email", email).Str("emailBody", emailBody).Msg("failed to send verification email")
-			return errors.New("failed to send verification email. Please try again later")
-		}
-
-		log.Info().Str("email", email).Str("username", u.Username).Msg("verification-email-resent")
+	_, err = emailer.SendSimpleMessage(emailDebugMode, email, "Verify your Woogles.io email", emailBody)
+	if err != nil {
+		log.Error().Err(err).Str("email", email).Str("emailBody", emailBody).Msg("failed to send verification email")
+		return errors.New("failed to send verification email. Please try again later")
 	}
 
+	log.Info().Str("email", email).Str("username", u.Username).Msg("verification-email-resent")
 	return nil
 }

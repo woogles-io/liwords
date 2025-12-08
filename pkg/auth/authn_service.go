@@ -59,30 +59,30 @@ Email: %s
 var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
 
 type AuthenticationService struct {
-	userStore     user.Store
-	sessionStore  sessions.SessionStore
-	configStore   config.ConfigStore
-	secretKey     string
-	mailgunKey    string
-	discordToken  string
-	argonConfig   config.ArgonConfig
-	secureCookies bool
-	q             *models.Queries
+	userStore      user.Store
+	sessionStore   sessions.SessionStore
+	configStore    config.ConfigStore
+	secretKey      string
+	emailDebugMode bool
+	discordToken   string
+	argonConfig    config.ArgonConfig
+	secureCookies  bool
+	q              *models.Queries
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string, discordToken string, cfg config.ArgonConfig,
+	secretKey string, emailDebugMode bool, discordToken string, cfg config.ArgonConfig,
 	secureCookies bool, q *models.Queries) *AuthenticationService {
 	return &AuthenticationService{
-		userStore:     u,
-		sessionStore:  ss,
-		configStore:   cs,
-		secretKey:     secretKey,
-		mailgunKey:    mailgunKey,
-		discordToken:  discordToken,
-		argonConfig:   cfg,
-		secureCookies: secureCookies,
-		q:             q}
+		userStore:      u,
+		sessionStore:   ss,
+		configStore:    cs,
+		secretKey:      secretKey,
+		emailDebugMode: emailDebugMode,
+		discordToken:   discordToken,
+		argonConfig:    cfg,
+		secureCookies:  secureCookies,
+		q:              q}
 }
 
 func modActionExistsErr(err error) error {
@@ -353,7 +353,7 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *conn
 	emailBody := fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username)
 	log.Debug().Str("email-body", emailBody).Msg("generated-body")
 	id, err := emailer.SendSimpleMessage(
-		as.mailgunKey, email, "Password reset for Woogles.io", emailBody)
+		as.emailDebugMode, email, "Password reset for Woogles.io", emailBody)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}

@@ -369,7 +369,7 @@ func TestNotifications(t *testing.T) {
 	ctx := context.Background()
 	ctx = apiserver.PlaceInContext(ctx, session)
 
-	testcfg := &config.Config{MailgunKey: os.Getenv("TEST_MAILGUN_KEY"), DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")}
+	testcfg := &config.Config{EmailDebugMode: true, DiscordToken: os.Getenv("TEST_DISCORD_TOKEN")}
 	ctx = testcfg.WithContext(ctx)
 
 	recreateDB()

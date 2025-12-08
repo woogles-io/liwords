@@ -24,8 +24,9 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 		log.Err(err).Str("userID", user.UUID).Msg("notification-nil-config")
 		return
 	}
+	log.Debug().Str("userID", user.UUID).Str("action", actionEmailText).Msg("preparing to send mod action notification")
 
-	if config.MailgunKey != "" && !IsRemoval(action) {
+	if !IsRemoval(action) {
 		emailContent, emailSubject, err := instantiateEmail(user.Username,
 			actionEmailText,
 			action.Note,
@@ -33,8 +34,10 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 			action.EndTime,
 			action.EmailType)
 		if err == nil {
+			log.Debug().Str("email", user.Email).Msg("generated mod action email content")
 			go func() {
-				_, err := emailer.SendSimpleMessage(config.MailgunKey,
+				log.Debug().Str("email", user.Email).Msg("going to send mod action email")
+				_, err := emailer.SendSimpleMessage(config.EmailDebugMode,
 					user.Email,
 					emailSubject,
 					emailContent)
@@ -46,7 +49,6 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 		} else {
 			log.Err(err).Str("userID", user.UUID).Msg("mod-action-generate-user-email")
 		}
-
 	}
 	if config.DiscordToken != "" {
 		var modUsername string
