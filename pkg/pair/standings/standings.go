@@ -406,6 +406,7 @@ func (standings *Standings) simToEndAndRecordResults(roundsRemaining int, copRan
 	for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 		timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, -1, stopTimeNano)
 		if timeLimitExceeded {
+			standings.RestoreFromBackup()
 			return true
 		}
 	}
