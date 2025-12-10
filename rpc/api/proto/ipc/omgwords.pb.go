@@ -1038,8 +1038,10 @@ type GameHistoryRefresher struct {
 	TimeBankPlayer2 int32 `protobuf:"varint,7,opt,name=time_bank_player2,json=timeBankPlayer2,proto3" json:"time_bank_player2,omitempty"`
 	// Initial time bank for correspondence games, in minutes (similar to max_overtime_minutes)
 	InitialTimeBankMinutes int32 `protobuf:"varint,8,opt,name=initial_time_bank_minutes,json=initialTimeBankMinutes,proto3" json:"initial_time_bank_minutes,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Game mode (real-time or correspondence)
+	GameMode      GameMode `protobuf:"varint,9,opt,name=game_mode,json=gameMode,proto3,enum=ipc.GameMode" json:"game_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GameHistoryRefresher) Reset() {
@@ -1126,6 +1128,13 @@ func (x *GameHistoryRefresher) GetInitialTimeBankMinutes() int32 {
 		return x.InitialTimeBankMinutes
 	}
 	return 0
+}
+
+func (x *GameHistoryRefresher) GetGameMode() GameMode {
+	if x != nil {
+		return x.GameMode
+	}
+	return GameMode_REAL_TIME
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For
@@ -3287,7 +3296,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\vUNDO_DENIED\x10\t\x12\f\n" +
 	"\bADD_TIME\x10\n" +
 	"\x12\x11\n" +
-	"\rTIMER_EXPIRED\x10\v\"\x92\x03\n" +
+	"\rTIMER_EXPIRED\x10\v\"\xbe\x03\n" +
 	"\x14GameHistoryRefresher\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12!\n" +
 	"\ftime_player1\x18\x02 \x01(\x05R\vtimePlayer1\x12!\n" +
@@ -3296,7 +3305,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x11outstanding_event\x18\x05 \x01(\v2\x12.ipc.GameMetaEventR\x10outstandingEvent\x12*\n" +
 	"\x11time_bank_player1\x18\x06 \x01(\x05R\x0ftimeBankPlayer1\x12*\n" +
 	"\x11time_bank_player2\x18\a \x01(\x05R\x0ftimeBankPlayer2\x129\n" +
-	"\x19initial_time_bank_minutes\x18\b \x01(\x05R\x16initialTimeBankMinutes\"8\n" +
+	"\x19initial_time_bank_minutes\x18\b \x01(\x05R\x16initialTimeBankMinutes\x12*\n" +
+	"\tgame_mode\x18\t \x01(\x0e2\r.ipc.GameModeR\bgameMode\"8\n" +
 	"\x11GameDocumentEvent\x12#\n" +
 	"\x03doc\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\x03doc\"z\n" +
 	"\x15TournamentDataForGame\x12\x10\n" +
@@ -3622,47 +3632,48 @@ var file_proto_ipc_omgwords_proto_depIdxs = []int32{
 	7,  // 7: ipc.GameMetaEvent.type:type_name -> ipc.GameMetaEvent.EventType
 	46, // 8: ipc.GameHistoryRefresher.history:type_name -> macondo.GameHistory
 	13, // 9: ipc.GameHistoryRefresher.outstanding_event:type_name -> ipc.GameMetaEvent
-	38, // 10: ipc.GameDocumentEvent.doc:type_name -> ipc.GameDocument
-	17, // 11: ipc.GameInfoResponse.players:type_name -> ipc.PlayerInfo
-	0,  // 12: ipc.GameInfoResponse.game_end_reason:type_name -> ipc.GameEndReason
-	45, // 13: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
-	45, // 14: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
-	12, // 15: ipc.GameInfoResponse.game_request:type_name -> ipc.GameRequest
-	3,  // 16: ipc.GameInfoResponse.type:type_name -> ipc.GameType
-	18, // 17: ipc.GameInfoResponses.game_info:type_name -> ipc.GameInfoResponse
-	12, // 18: ipc.InstantiateGame.game_request:type_name -> ipc.GameRequest
-	16, // 19: ipc.InstantiateGame.tournament_data:type_name -> ipc.TournamentDataForGame
-	22, // 20: ipc.ActiveGameEntry.player:type_name -> ipc.ActiveGamePlayer
-	47, // 21: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	48, // 22: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	33, // 23: ipc.ServerOMGWordsEvent.event:type_name -> ipc.GameEvent
-	4,  // 24: ipc.ServerOMGWordsEvent.playing:type_name -> ipc.PlayState
-	43, // 25: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	5,  // 26: ipc.OMGWordsChallengeResultEvent.challenge_rule:type_name -> ipc.ChallengeRule
-	39, // 27: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
-	40, // 28: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
-	0,  // 29: ipc.GameEndedEvent.end_reason:type_name -> ipc.GameEndReason
-	41, // 30: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
-	46, // 31: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
-	8,  // 32: ipc.GameEvent.type:type_name -> ipc.GameEvent.Type
-	9,  // 33: ipc.GameEvent.direction:type_name -> ipc.GameEvent.Direction
-	13, // 34: ipc.MetaEventData.events:type_name -> ipc.GameMetaEvent
-	42, // 35: ipc.GameDocument.players:type_name -> ipc.GameDocument.MinimalPlayerInfo
-	33, // 36: ipc.GameDocument.events:type_name -> ipc.GameEvent
-	5,  // 37: ipc.GameDocument.challenge_rule:type_name -> ipc.ChallengeRule
-	4,  // 38: ipc.GameDocument.play_state:type_name -> ipc.PlayState
-	3,  // 39: ipc.GameDocument.type:type_name -> ipc.GameType
-	0,  // 40: ipc.GameDocument.end_reason:type_name -> ipc.GameEndReason
-	35, // 41: ipc.GameDocument.meta_event_data:type_name -> ipc.MetaEventData
-	45, // 42: ipc.GameDocument.created_at:type_name -> google.protobuf.Timestamp
-	36, // 43: ipc.GameDocument.board:type_name -> ipc.GameBoard
-	37, // 44: ipc.GameDocument.bag:type_name -> ipc.Bag
-	34, // 45: ipc.GameDocument.timers:type_name -> ipc.Timers
-	46, // [46:46] is the sub-list for method output_type
-	46, // [46:46] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	1,  // 10: ipc.GameHistoryRefresher.game_mode:type_name -> ipc.GameMode
+	38, // 11: ipc.GameDocumentEvent.doc:type_name -> ipc.GameDocument
+	17, // 12: ipc.GameInfoResponse.players:type_name -> ipc.PlayerInfo
+	0,  // 13: ipc.GameInfoResponse.game_end_reason:type_name -> ipc.GameEndReason
+	45, // 14: ipc.GameInfoResponse.created_at:type_name -> google.protobuf.Timestamp
+	45, // 15: ipc.GameInfoResponse.last_update:type_name -> google.protobuf.Timestamp
+	12, // 16: ipc.GameInfoResponse.game_request:type_name -> ipc.GameRequest
+	3,  // 17: ipc.GameInfoResponse.type:type_name -> ipc.GameType
+	18, // 18: ipc.GameInfoResponses.game_info:type_name -> ipc.GameInfoResponse
+	12, // 19: ipc.InstantiateGame.game_request:type_name -> ipc.GameRequest
+	16, // 20: ipc.InstantiateGame.tournament_data:type_name -> ipc.TournamentDataForGame
+	22, // 21: ipc.ActiveGameEntry.player:type_name -> ipc.ActiveGamePlayer
+	47, // 22: ipc.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	48, // 23: ipc.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	33, // 24: ipc.ServerOMGWordsEvent.event:type_name -> ipc.GameEvent
+	4,  // 25: ipc.ServerOMGWordsEvent.playing:type_name -> ipc.PlayState
+	43, // 26: ipc.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	5,  // 27: ipc.OMGWordsChallengeResultEvent.challenge_rule:type_name -> ipc.ChallengeRule
+	39, // 28: ipc.GameEndedEvent.scores:type_name -> ipc.GameEndedEvent.ScoresEntry
+	40, // 29: ipc.GameEndedEvent.new_ratings:type_name -> ipc.GameEndedEvent.NewRatingsEntry
+	0,  // 30: ipc.GameEndedEvent.end_reason:type_name -> ipc.GameEndReason
+	41, // 31: ipc.GameEndedEvent.rating_deltas:type_name -> ipc.GameEndedEvent.RatingDeltasEntry
+	46, // 32: ipc.GameEndedEvent.history:type_name -> macondo.GameHistory
+	8,  // 33: ipc.GameEvent.type:type_name -> ipc.GameEvent.Type
+	9,  // 34: ipc.GameEvent.direction:type_name -> ipc.GameEvent.Direction
+	13, // 35: ipc.MetaEventData.events:type_name -> ipc.GameMetaEvent
+	42, // 36: ipc.GameDocument.players:type_name -> ipc.GameDocument.MinimalPlayerInfo
+	33, // 37: ipc.GameDocument.events:type_name -> ipc.GameEvent
+	5,  // 38: ipc.GameDocument.challenge_rule:type_name -> ipc.ChallengeRule
+	4,  // 39: ipc.GameDocument.play_state:type_name -> ipc.PlayState
+	3,  // 40: ipc.GameDocument.type:type_name -> ipc.GameType
+	0,  // 41: ipc.GameDocument.end_reason:type_name -> ipc.GameEndReason
+	35, // 42: ipc.GameDocument.meta_event_data:type_name -> ipc.MetaEventData
+	45, // 43: ipc.GameDocument.created_at:type_name -> google.protobuf.Timestamp
+	36, // 44: ipc.GameDocument.board:type_name -> ipc.GameBoard
+	37, // 45: ipc.GameDocument.bag:type_name -> ipc.Bag
+	34, // 46: ipc.GameDocument.timers:type_name -> ipc.Timers
+	47, // [47:47] is the sub-list for method output_type
+	47, // [47:47] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_omgwords_proto_init() }

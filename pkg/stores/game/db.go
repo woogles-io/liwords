@@ -1013,6 +1013,21 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return gameIDs, nil
 }
 
+// ListFrozenGameIDs returns the UUIDs of games that were frozen for maintenance.
+// These games should be resumed after server restart.
+func (s *DBStore) ListFrozenGameIDs(ctx context.Context) ([]string, error) {
+	ids, err := s.queries.ListFrozenGameIDs(ctx)
+	if err != nil {
+		log.Err(err).Msg("error-listing-frozen-game-ids")
+		return nil, err
+	}
+	gameIDs := make([]string, len(ids))
+	for i, id := range ids {
+		gameIDs[i] = id.String
+	}
+	return gameIDs, nil
+}
+
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
 	readyFlag, err := s.queries.SetReady(ctx, models.SetReadyParams{
 		PlayerIdx: int32(pidx),

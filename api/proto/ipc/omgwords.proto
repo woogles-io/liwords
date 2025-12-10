@@ -173,6 +173,8 @@ message GameHistoryRefresher {
   int32 time_bank_player2 = 7;
   // Initial time bank for correspondence games, in minutes (similar to max_overtime_minutes)
   int32 initial_time_bank_minutes = 8;
+  // Game mode (real-time or correspondence)
+  GameMode game_mode = 9;
 }
 
 // A GameDocumentEvent should eventually replace the GameHistoryRefresher. For

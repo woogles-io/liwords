@@ -25,7 +25,11 @@ import {
   useModeratorStoreContext,
   FriendUser,
   useFriendsStoreContext,
+  useMaintenanceStoreContext,
+  useGameContextStoreContext,
 } from "./store/store";
+import { MaintenanceOverlay } from "./gameroom/maintenance_overlay";
+import { GameMode } from "./gen/api/proto/ipc/omgwords_pb";
 
 import { LiwordsSocket } from "./socket/socket";
 import { Team } from "./about/team";
@@ -156,12 +160,24 @@ const App = React.memo(() => {
     useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
+  const { maintenanceMode, maintenanceMessage, refreshCountdown, isPinging } =
+    useMaintenanceStoreContext();
+  const { gameContext } = useGameContextStoreContext();
   const location = useLocation();
 
   const isEmbeddedPath = useMemo(() => {
     const embedPrefixes = ["/embed"];
     return embedPrefixes.some((v) => location.pathname.startsWith(v));
   }, [location.pathname]);
+
+  // Check if we're on a game page (for maintenance overlay messaging)
+  const isInGame = useMemo(() => {
+    return location.pathname.startsWith("/game/");
+  }, [location.pathname]);
+
+  const isCorrespondence = useMemo(() => {
+    return gameContext.gameMode === GameMode.CORRESPONDENCE;
+  }, [gameContext.gameMode]);
 
   const { data: modList } = useQuery(
     getModList,
@@ -346,6 +362,15 @@ const App = React.memo(() => {
     <ConfigProvider theme={antdTheme}>
       <AntDApp>
         <div className="App">
+          {maintenanceMode && (
+            <MaintenanceOverlay
+              message={maintenanceMessage}
+              isInGame={isInGame}
+              isCorrespondence={isCorrespondence}
+              refreshCountdown={refreshCountdown}
+              isPinging={isPinging}
+            />
+          )}
           {!isEmbeddedPath && (
             <LiwordsSocket
               key={socketId}

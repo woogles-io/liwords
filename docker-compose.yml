@@ -50,7 +50,8 @@ services:
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
-    command: sh -c "go run -race cmd/liwords-api/*.go"
+    command: sh -c "go build -race -o /tmp/liwords-api cmd/liwords-api/*.go && exec /tmp/liwords-api"
+    stop_grace_period: 45s
     depends_on: [ "db", "proxy", "nats", "socket", "redis", "minio" ]
     networks:
       - aeronet
@@ -59,8 +60,9 @@ services:
     labels:
       - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
       - "traefik.http.routers.liwords.middlewares=floc"
-      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`) || PathPrefix(`/gameimg/`) || PathPrefix(`/debug/`) || PathPrefix(`/integrations/`) || PathPrefix(`/embed/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/api/`) || PathPrefix(`/ping`) || PathPrefix(`/gameimg/`) || PathPrefix(`/debug/`) || PathPrefix(`/integrations/`) || PathPrefix(`/embed/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
+      - "traefik.http.routers.liwords.priority=100"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
   bot:
@@ -77,7 +79,7 @@ services:
       # Use the same gaddag files we use for the WASM integration.
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
-    command: sh -c "go run -race cmd/bot/*.go"
+    command: sh -c "go build -race -o /tmp/bot cmd/bot/*.go && exec /tmp/bot"
     depends_on: [ "nats" ]
     networks:
       - aeronet

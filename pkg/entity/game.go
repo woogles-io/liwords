@@ -39,6 +39,9 @@ type Timers struct {
 	// ResetToIncrementAfterTurn resets the timer to increment_seconds after each turn.
 	// Used for correspondence games where each player has a fixed time per turn.
 	ResetToIncrementAfterTurn bool `json:"rtiat,omitempty"`
+	// FrozenForMaintenance indicates the game was frozen during a server deploy.
+	// When true, timers should not tick and TimeRemaining reflects the frozen state.
+	FrozenForMaintenance bool `json:"ffm,omitempty"`
 }
 
 func (t *Timers) Value() (driver.Value, error) {
@@ -481,6 +484,38 @@ func (g *Game) RecordTimeOfMove(idx int) {
 	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
+// FreezeTimers freezes the game timers for maintenance. It calculates the current
+// time remaining for the player on turn and stores it, then sets the frozen flag.
+// This should be called before server shutdown during deployments.
+func (g *Game) FreezeTimers() {
+	onTurn := g.PlayerOnTurn()
+	now := g.nower.Now()
+	// Calculate and store the current time remaining for the on-turn player
+	g.Timers.TimeRemaining[onTurn] = g.TimeRemaining(onTurn)
+	g.Timers.TimeOfLastUpdate = now
+	g.Timers.FrozenForMaintenance = true
+	log.Debug().Str("gameID", g.GameID()).Int("onTurn", onTurn).
+		Int("timeRemaining", g.Timers.TimeRemaining[onTurn]).Msg("froze game timers")
+}
+
+// UnfreezeTimers resumes the game timers after maintenance. It updates the
+// TimeOfLastUpdate to now so that the timer continues from the frozen state.
+// This should be called after server startup.
+func (g *Game) UnfreezeTimers() {
+	// Give the on-turn player 5 extra seconds as grace time after maintenance
+	onTurn := g.PlayerOnTurn()
+	g.Timers.TimeRemaining[onTurn] += 5000
+
+	g.Timers.TimeOfLastUpdate = g.nower.Now()
+	g.Timers.FrozenForMaintenance = false
+	log.Debug().Str("gameID", g.GameID()).Int("onTurn", onTurn).Msg("unfroze game timers with 5s grace")
+}
+
+// IsFrozenForMaintenance returns true if the game is currently frozen for maintenance.
+func (g *Game) IsFrozenForMaintenance() bool {
+	return g.Timers.FrozenForMaintenance
+}
+
 // LastOutstandingMetaRequest returns the last meta request that has not yet been responded to.
 // If a user ID is passed in, it only returns that user's last request, if it exists.
 // If no such event exists, it returns nil.
@@ -546,14 +581,15 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	}
 
 	return &pb.GameHistoryRefresher{
-		History:                 g.History(),
-		TimePlayer1:             int32(g.TimeRemaining(0)),
-		TimePlayer2:             int32(g.TimeRemaining(1)),
-		MaxOvertimeMinutes:      g.GameReq.MaxOvertimeMinutes,
-		OutstandingEvent:        outstandingEvent,
-		TimeBankPlayer1:         timeBankPlayer1,
-		TimeBankPlayer2:         timeBankPlayer2,
-		InitialTimeBankMinutes:  g.GameReq.TimeBankMinutes,
+		History:                g.History(),
+		TimePlayer1:            int32(g.TimeRemaining(0)),
+		TimePlayer2:            int32(g.TimeRemaining(1)),
+		MaxOvertimeMinutes:     g.GameReq.MaxOvertimeMinutes,
+		OutstandingEvent:       outstandingEvent,
+		TimeBankPlayer1:        timeBankPlayer1,
+		TimeBankPlayer2:        timeBankPlayer2,
+		InitialTimeBankMinutes: g.GameReq.TimeBankMinutes,
+		GameMode:               g.GameReq.GameMode,
 	}
 }
 

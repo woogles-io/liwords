@@ -1,9 +1,5 @@
 service:
-  extensions:
-    - jaeger_storage
-    - jaeger_query
-    - healthcheckv2
-
+  extensions: [jaeger_storage, jaeger_query, healthcheckv2]
   pipelines:
     traces:
       receivers: [otlp, jaeger]
@@ -13,14 +9,13 @@ service:
 extensions:
   jaeger_storage:
     backends:
-      primary_storage:
-        memory:
-          # Keep traces for 1 hour in memory (for local dev)
-          max_traces: 10000
+      some_storage:
+        elasticsearch:
+          server_urls: [http://opensearch:9200]
 
   jaeger_query:
     storage:
-      traces: primary_storage
+      traces: some_storage
 
   healthcheckv2:
     endpoint: :13133
@@ -32,7 +27,6 @@ receivers:
         endpoint: :4317
       http:
         endpoint: :4318
-
   jaeger:
     protocols:
       grpc:
@@ -51,4 +45,4 @@ processors:
 
 exporters:
   jaeger_storage_exporter:
-    trace_storage: primary_storage
+    trace_storage: some_storage

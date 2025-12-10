@@ -34,6 +34,7 @@ type backingStore interface {
 	ListActiveCorrespondenceForUser(ctx context.Context, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceForUserAndLeague(ctx context.Context, leagueID uuid.UUID, userID string) (*pb.GameInfoResponses, error)
 	ListActiveCorrespondenceRaw(ctx context.Context) ([]models.ListActiveCorrespondenceGamesRow, error)
+	ListFrozenGameIDs(ctx context.Context) ([]string, error)
 	Count(ctx context.Context) (int64, error)
 	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
@@ -323,6 +324,37 @@ func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 
 func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
 	c.backing.SetTimerModuleCreator(creator)
+}
+
+// FreezeAllGames freezes all active games in cache for maintenance.
+// It calculates and persists the current time remaining for each game.
+// Returns the number of games frozen and any error encountered.
+func (c *Cache) FreezeAllGames(ctx context.Context) (int, error) {
+	keys := c.cache.Keys()
+	count := 0
+	for _, key := range keys {
+		g, ok := c.cache.Get(key)
+		if !ok || g == nil {
+			continue
+		}
+		game := g.(*entity.Game)
+		// Only freeze games that are actively playing
+		if game.Playing() != macondopb.PlayState_PLAYING {
+			continue
+		}
+		game.FreezeTimers()
+		if err := c.backing.Set(ctx, game); err != nil {
+			log.Error().Err(err).Str("gameID", game.GameID()).Msg("failed to freeze game")
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
+// ListFrozenGameIDs returns the UUIDs of games that were frozen for maintenance.
+func (c *Cache) ListFrozenGameIDs(ctx context.Context) ([]string, error) {
+	return c.backing.ListFrozenGameIDs(ctx)
 }
 
 // LockGame acquires a lock for the given game ID.
