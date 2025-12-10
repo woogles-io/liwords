@@ -8,6 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	league_service "github.com/woogles-io/liwords/rpc/api/proto/league_service"
 	http "net/http"
 	strings "strings"
@@ -73,6 +74,9 @@ const (
 	// LeagueServiceGetAllDivisionStandingsProcedure is the fully-qualified name of the LeagueService's
 	// GetAllDivisionStandings RPC.
 	LeagueServiceGetAllDivisionStandingsProcedure = "/league_service.LeagueService/GetAllDivisionStandings"
+	// LeagueServiceGetDivisionTimeBankWarningsProcedure is the fully-qualified name of the
+	// LeagueService's GetDivisionTimeBankWarnings RPC.
+	LeagueServiceGetDivisionTimeBankWarningsProcedure = "/league_service.LeagueService/GetDivisionTimeBankWarnings"
 	// LeagueServiceRegisterForSeasonProcedure is the fully-qualified name of the LeagueService's
 	// RegisterForSeason RPC.
 	LeagueServiceRegisterForSeasonProcedure = "/league_service.LeagueService/RegisterForSeason"
@@ -136,6 +140,7 @@ type LeagueServiceClient interface {
 	// Division and standings
 	GetDivisionStandings(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionStandingsResponse], error)
 	GetAllDivisionStandings(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.AllDivisionStandingsResponse], error)
+	GetDivisionTimeBankWarnings(context.Context, *connect.Request[ipc.GetDivisionTimeBankWarningsRequest]) (*connect.Response[ipc.GetDivisionTimeBankWarningsResponse], error)
 	// Player management
 	RegisterForSeason(context.Context, *connect.Request[league_service.RegisterRequest]) (*connect.Response[league_service.RegisterResponse], error)
 	UnregisterFromSeason(context.Context, *connect.Request[league_service.UnregisterRequest]) (*connect.Response[league_service.UnregisterResponse], error)
@@ -250,6 +255,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetAllDivisionStandings")),
 			connect.WithClientOptions(opts...),
 		),
+		getDivisionTimeBankWarnings: connect.NewClient[ipc.GetDivisionTimeBankWarningsRequest, ipc.GetDivisionTimeBankWarningsResponse](
+			httpClient,
+			baseURL+LeagueServiceGetDivisionTimeBankWarningsProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetDivisionTimeBankWarnings")),
+			connect.WithClientOptions(opts...),
+		),
 		registerForSeason: connect.NewClient[league_service.RegisterRequest, league_service.RegisterResponse](
 			httpClient,
 			baseURL+LeagueServiceRegisterForSeasonProcedure,
@@ -353,6 +364,7 @@ type leagueServiceClient struct {
 	openRegistration                   *connect.Client[league_service.OpenRegistrationRequest, league_service.SeasonResponse]
 	getDivisionStandings               *connect.Client[league_service.DivisionRequest, league_service.DivisionStandingsResponse]
 	getAllDivisionStandings            *connect.Client[league_service.SeasonRequest, league_service.AllDivisionStandingsResponse]
+	getDivisionTimeBankWarnings        *connect.Client[ipc.GetDivisionTimeBankWarningsRequest, ipc.GetDivisionTimeBankWarningsResponse]
 	registerForSeason                  *connect.Client[league_service.RegisterRequest, league_service.RegisterResponse]
 	unregisterFromSeason               *connect.Client[league_service.UnregisterRequest, league_service.UnregisterResponse]
 	getSeasonRegistrations             *connect.Client[league_service.SeasonRequest, league_service.SeasonRegistrationsResponse]
@@ -437,6 +449,11 @@ func (c *leagueServiceClient) GetDivisionStandings(ctx context.Context, req *con
 // GetAllDivisionStandings calls league_service.LeagueService.GetAllDivisionStandings.
 func (c *leagueServiceClient) GetAllDivisionStandings(ctx context.Context, req *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.AllDivisionStandingsResponse], error) {
 	return c.getAllDivisionStandings.CallUnary(ctx, req)
+}
+
+// GetDivisionTimeBankWarnings calls league_service.LeagueService.GetDivisionTimeBankWarnings.
+func (c *leagueServiceClient) GetDivisionTimeBankWarnings(ctx context.Context, req *connect.Request[ipc.GetDivisionTimeBankWarningsRequest]) (*connect.Response[ipc.GetDivisionTimeBankWarningsResponse], error) {
+	return c.getDivisionTimeBankWarnings.CallUnary(ctx, req)
 }
 
 // RegisterForSeason calls league_service.LeagueService.RegisterForSeason.
@@ -529,6 +546,7 @@ type LeagueServiceHandler interface {
 	// Division and standings
 	GetDivisionStandings(context.Context, *connect.Request[league_service.DivisionRequest]) (*connect.Response[league_service.DivisionStandingsResponse], error)
 	GetAllDivisionStandings(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.AllDivisionStandingsResponse], error)
+	GetDivisionTimeBankWarnings(context.Context, *connect.Request[ipc.GetDivisionTimeBankWarningsRequest]) (*connect.Response[ipc.GetDivisionTimeBankWarningsResponse], error)
 	// Player management
 	RegisterForSeason(context.Context, *connect.Request[league_service.RegisterRequest]) (*connect.Response[league_service.RegisterResponse], error)
 	UnregisterFromSeason(context.Context, *connect.Request[league_service.UnregisterRequest]) (*connect.Response[league_service.UnregisterResponse], error)
@@ -637,6 +655,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		LeagueServiceGetAllDivisionStandingsProcedure,
 		svc.GetAllDivisionStandings,
 		connect.WithSchema(leagueServiceMethods.ByName("GetAllDivisionStandings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	leagueServiceGetDivisionTimeBankWarningsHandler := connect.NewUnaryHandler(
+		LeagueServiceGetDivisionTimeBankWarningsProcedure,
+		svc.GetDivisionTimeBankWarnings,
+		connect.WithSchema(leagueServiceMethods.ByName("GetDivisionTimeBankWarnings")),
 		connect.WithHandlerOptions(opts...),
 	)
 	leagueServiceRegisterForSeasonHandler := connect.NewUnaryHandler(
@@ -753,6 +777,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetDivisionStandingsHandler.ServeHTTP(w, r)
 		case LeagueServiceGetAllDivisionStandingsProcedure:
 			leagueServiceGetAllDivisionStandingsHandler.ServeHTTP(w, r)
+		case LeagueServiceGetDivisionTimeBankWarningsProcedure:
+			leagueServiceGetDivisionTimeBankWarningsHandler.ServeHTTP(w, r)
 		case LeagueServiceRegisterForSeasonProcedure:
 			leagueServiceRegisterForSeasonHandler.ServeHTTP(w, r)
 		case LeagueServiceUnregisterFromSeasonProcedure:
@@ -844,6 +870,10 @@ func (UnimplementedLeagueServiceHandler) GetDivisionStandings(context.Context, *
 
 func (UnimplementedLeagueServiceHandler) GetAllDivisionStandings(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.AllDivisionStandingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetAllDivisionStandings is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetDivisionTimeBankWarnings(context.Context, *connect.Request[ipc.GetDivisionTimeBankWarningsRequest]) (*connect.Response[ipc.GetDivisionTimeBankWarningsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetDivisionTimeBankWarnings is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) RegisterForSeason(context.Context, *connect.Request[league_service.RegisterRequest]) (*connect.Response[league_service.RegisterResponse], error) {

@@ -30,6 +30,7 @@ import {
   registerForSeason,
   unregisterFromSeason,
   openRegistration,
+  getDivisionTimeBankWarnings,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
@@ -186,6 +187,27 @@ export const LeaguePage = (props: Props) => {
     },
     { enabled: !!displaySeasonId },
   );
+
+  // Fetch time bank warnings for selected division
+  const { data: timeBankWarningsData } = useQuery(
+    getDivisionTimeBankWarnings,
+    {
+      divisionId: selectedDivisionId || "",
+      thresholdHours: 24,
+    },
+    { enabled: !!selectedDivisionId },
+  );
+
+  // Convert time bank warnings to a Map for efficient lookup
+  const timeBankWarningsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (timeBankWarningsData?.warnings) {
+      for (const warning of timeBankWarningsData.warnings) {
+        map.set(warning.userId, warning.lowTimebankGameCount);
+      }
+    }
+    return map;
+  }, [timeBankWarningsData]);
 
   // Find the season that has REGISTRATION_OPEN status from all seasons
   const registrationOpenSeason = useMemo(() => {
@@ -592,6 +614,7 @@ export const LeaguePage = (props: Props) => {
                         seasonNumber={displayedSeason?.seasonNumber || 0}
                         currentUserId={userID}
                         promotionFormula={displayedSeason?.promotionFormula}
+                        timeBankWarnings={timeBankWarningsMap}
                       />
                     ))}
                   <div className="standings-legend">

@@ -6,6 +6,7 @@ import {
   ArrowDownOutlined,
   MinusOutlined,
   HistoryOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import {
   Division,
@@ -94,6 +95,7 @@ type DivisionStandingsProps = {
   seasonNumber: number;
   currentUserId?: string;
   promotionFormula?: PromotionFormula;
+  timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -103,6 +105,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   seasonNumber,
   currentUserId,
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
+  timeBankWarnings,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -197,6 +200,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const placementIndicator = getPlacementIndicator(
           record.placementStatus,
         );
+        const lowTimebankGameCount = timeBankWarnings?.get(record.userId);
+        const hasLowTimebank = lowTimebankGameCount && lowTimebankGameCount > 0;
+
         return (
           <span
             className="clickable-player"
@@ -213,6 +219,15 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                 <span style={{ marginLeft: 4, opacity: 0.7 }}>
                   {placementIndicator.icon}
                 </span>
+              </Tooltip>
+            )}
+            {hasLowTimebank && (
+              <Tooltip
+                title={`${lowTimebankGameCount} ${lowTimebankGameCount === 1 ? "game" : "games"} with < 1 day remaining in time bank`}
+              >
+                <ClockCircleOutlined
+                  style={{ marginLeft: 4, color: "#ff4d4f", fontSize: 12 }}
+                />
               </Tooltip>
             )}
           </span>

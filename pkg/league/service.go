@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -1233,6 +1234,51 @@ func (ls *LeagueService) GetAllDivisionStandings(
 	}
 
 	return connect.NewResponse(&pb.AllDivisionStandingsResponse{Divisions: protoDivisions}), nil
+}
+
+func (ls *LeagueService) GetDivisionTimeBankWarnings(
+	ctx context.Context,
+	req *connect.Request[ipc.GetDivisionTimeBankWarningsRequest],
+) (*connect.Response[ipc.GetDivisionTimeBankWarningsResponse], error) {
+	// Parse division ID
+	divisionID, err := uuid.Parse(req.Msg.DivisionId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid division_id")
+	}
+
+	// Default to 24 hours if not specified
+	thresholdHours := req.Msg.ThresholdHours
+	if thresholdHours <= 0 {
+		thresholdHours = 24
+	}
+
+	// Convert hours to milliseconds for the query
+	thresholdMs := int64(thresholdHours) * 60 * 60 * 1000
+	nowMs := time.Now().UnixMilli()
+
+	// Query time bank status
+	rows, err := ls.queries.GetDivisionTimeBankStatus(ctx, models.GetDivisionTimeBankStatusParams{
+		DivisionID:  pgtype.UUID{Bytes: divisionID, Valid: true},
+		NowMs:       nowMs,
+		ThresholdMs: thresholdMs,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get time bank status: %w", err))
+	}
+
+	// Convert to proto
+	warnings := make([]*ipc.TimeBankWarning, 0, len(rows))
+	for _, row := range rows {
+		warnings = append(warnings, &ipc.TimeBankWarning{
+			UserId:               row.UserUuid.String,
+			Username:             row.Username.String,
+			LowTimebankGameCount: int32(row.LowTimebankGameCount),
+		})
+	}
+
+	return connect.NewResponse(&ipc.GetDivisionTimeBankWarningsResponse{
+		Warnings: warnings,
+	}), nil
 }
 
 func (ls *LeagueService) RegisterForSeason(
