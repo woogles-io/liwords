@@ -590,22 +590,27 @@ SELECT
     u.username,
     COUNT(*) as low_timebank_game_count
 FROM games g
-CROSS JOIN users u
+JOIN users u ON (
+    (g.player_on_turn = 0 AND u.id = g.player0_id) OR
+    (g.player_on_turn = 1 AND u.id = g.player1_id)
+)
 WHERE g.league_division_id = $1
   AND g.game_end_reason = 0
   AND g.timers->'tb' IS NOT NULL
   AND jsonb_array_length(g.timers->'tb') = 2
-  AND (u.id = g.player0_id OR u.id = g.player1_id)
-  AND CASE
-        WHEN g.player0_id = u.id THEN (g.timers->'tb'->0)::bigint
-        ELSE (g.timers->'tb'->1)::bigint
-      END < ($260 * 60 * 1000)  -- threshold_hours converted to milliseconds
+  AND (
+    CASE WHEN g.player_on_turn = 0
+         THEN (g.timers->'tb'->0)::bigint
+         ELSE (g.timers->'tb'->1)::bigint
+    END - ($2::bigint - (g.timers->>'lu')::bigint)
+  ) < $3::bigint
 GROUP BY u.id, u.uuid, u.username
 `
 
 type GetDivisionTimeBankStatusParams struct {
-	DivisionID     pgtype.UUID
-	ThresholdHours pgtype.Int4
+	DivisionID  pgtype.UUID
+	NowMs       int64
+	ThresholdMs int64
 }
 
 type GetDivisionTimeBankStatusRow struct {
@@ -616,9 +621,11 @@ type GetDivisionTimeBankStatusRow struct {
 }
 
 // Get time bank status for all players with active games in a division
-// Returns users who have at least one game with less than threshold_hours of time bank remaining
+// Returns users who have at least one game where it's their turn and they have less than threshold_ms of time bank remaining
+// The actual remaining time is calculated as: stored_tb - (now_ms - last_update)
+// Only the player on turn has their time bank ticking down
 func (q *Queries) GetDivisionTimeBankStatus(ctx context.Context, arg GetDivisionTimeBankStatusParams) ([]GetDivisionTimeBankStatusRow, error) {
-	rows, err := q.db.Query(ctx, getDivisionTimeBankStatus, arg.DivisionID, arg.ThresholdHours)
+	rows, err := q.db.Query(ctx, getDivisionTimeBankStatus, arg.DivisionID, arg.NowMs, arg.ThresholdMs)
 	if err != nil {
 		return nil, err
 	}

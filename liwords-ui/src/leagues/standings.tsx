@@ -223,7 +223,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             )}
             {hasLowTimebank && (
               <Tooltip
-                title={`${lowTimebankGameCount} ${lowTimebankGameCount === 1 ? "game" : "games"} with < 1 day remaining`}
+                title={`${lowTimebankGameCount} ${lowTimebankGameCount === 1 ? "game" : "games"} with < 1 day remaining in time bank`}
               >
                 <ClockCircleOutlined
                   style={{ marginLeft: 4, color: "#ff4d4f", fontSize: 12 }}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -1251,10 +1252,15 @@ func (ls *LeagueService) GetDivisionTimeBankWarnings(
 		thresholdHours = 24
 	}
 
+	// Convert hours to milliseconds for the query
+	thresholdMs := int64(thresholdHours) * 60 * 60 * 1000
+	nowMs := time.Now().UnixMilli()
+
 	// Query time bank status
 	rows, err := ls.queries.GetDivisionTimeBankStatus(ctx, models.GetDivisionTimeBankStatusParams{
-		DivisionID:     pgtype.UUID{Bytes: divisionID, Valid: true},
-		ThresholdHours: pgtype.Int4{Int32: thresholdHours, Valid: true},
+		DivisionID:  pgtype.UUID{Bytes: divisionID, Valid: true},
+		NowMs:       nowMs,
+		ThresholdMs: thresholdMs,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get time bank status: %w", err))

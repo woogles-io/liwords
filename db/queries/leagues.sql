@@ -532,23 +532,29 @@ ORDER BY opponent_username;
 
 -- name: GetDivisionTimeBankStatus :many
 -- Get time bank status for all players with active games in a division
--- Returns users who have at least one game with less than threshold_hours of time bank remaining
+-- Returns users who have at least one game where it's their turn and they have less than threshold_ms of time bank remaining
+-- The actual remaining time is calculated as: stored_tb - (now_ms - last_update)
+-- Only the player on turn has their time bank ticking down
 SELECT
     u.id as user_id,
     u.uuid as user_uuid,
     u.username,
     COUNT(*) as low_timebank_game_count
 FROM games g
-CROSS JOIN users u
+JOIN users u ON (
+    (g.player_on_turn = 0 AND u.id = g.player0_id) OR
+    (g.player_on_turn = 1 AND u.id = g.player1_id)
+)
 WHERE g.league_division_id = @division_id
   AND g.game_end_reason = 0
   AND g.timers->'tb' IS NOT NULL
   AND jsonb_array_length(g.timers->'tb') = 2
-  AND (u.id = g.player0_id OR u.id = g.player1_id)
-  AND CASE
-        WHEN g.player0_id = u.id THEN (g.timers->'tb'->0)::bigint
-        ELSE (g.timers->'tb'->1)::bigint
-      END < (@threshold_hours * 60 * 60 * 1000)  -- threshold_hours converted to milliseconds
+  AND (
+    CASE WHEN g.player_on_turn = 0
+         THEN (g.timers->'tb'->0)::bigint
+         ELSE (g.timers->'tb'->1)::bigint
+    END - (sqlc.arg(now_ms)::bigint - (g.timers->>'lu')::bigint)
+  ) < sqlc.arg(threshold_ms)::bigint
 GROUP BY u.id, u.uuid, u.username;
 
 -- name: AddTimeBankSinglePlayer :execrows
