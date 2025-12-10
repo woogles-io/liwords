@@ -583,6 +583,65 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 	return items, nil
 }
 
+const getDivisionTimeBankStatus = `-- name: GetDivisionTimeBankStatus :many
+SELECT
+    u.id as user_id,
+    u.uuid as user_uuid,
+    u.username,
+    COUNT(*) as low_timebank_game_count
+FROM games g
+CROSS JOIN users u
+WHERE g.league_division_id = $1
+  AND g.game_end_reason = 0
+  AND g.timers->'tb' IS NOT NULL
+  AND jsonb_array_length(g.timers->'tb') = 2
+  AND (u.id = g.player0_id OR u.id = g.player1_id)
+  AND CASE
+        WHEN g.player0_id = u.id THEN (g.timers->'tb'->0)::bigint
+        ELSE (g.timers->'tb'->1)::bigint
+      END < ($260 * 60 * 1000)  -- threshold_hours converted to milliseconds
+GROUP BY u.id, u.uuid, u.username
+`
+
+type GetDivisionTimeBankStatusParams struct {
+	DivisionID     pgtype.UUID
+	ThresholdHours pgtype.Int4
+}
+
+type GetDivisionTimeBankStatusRow struct {
+	UserID               int32
+	UserUuid             pgtype.Text
+	Username             pgtype.Text
+	LowTimebankGameCount int64
+}
+
+// Get time bank status for all players with active games in a division
+// Returns users who have at least one game with less than threshold_hours of time bank remaining
+func (q *Queries) GetDivisionTimeBankStatus(ctx context.Context, arg GetDivisionTimeBankStatusParams) ([]GetDivisionTimeBankStatusRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionTimeBankStatus, arg.DivisionID, arg.ThresholdHours)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionTimeBankStatusRow
+	for rows.Next() {
+		var i GetDivisionTimeBankStatusRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.UserUuid,
+			&i.Username,
+			&i.LowTimebankGameCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDivisionsBySeason = `-- name: GetDivisionsBySeason :many
 SELECT id, uuid, season_id, division_number, division_name, is_complete, created_at, updated_at FROM league_divisions
 WHERE season_id = $1

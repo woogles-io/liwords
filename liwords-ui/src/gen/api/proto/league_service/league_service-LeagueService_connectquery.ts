@@ -81,6 +81,11 @@ export const getDivisionStandings = LeagueService.method.getDivisionStandings;
 export const getAllDivisionStandings = LeagueService.method.getAllDivisionStandings;
 
 /**
+ * @generated from rpc league_service.LeagueService.GetDivisionTimeBankWarnings
+ */
+export const getDivisionTimeBankWarnings = LeagueService.method.getDivisionTimeBankWarnings;
+
+/**
  * Player management
  *
  * @generated from rpc league_service.LeagueService.RegisterForSeason

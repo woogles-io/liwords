@@ -980,6 +980,162 @@ func (x *LeaguePlayerStanding) GetPlacementStatus() PlacementStatus {
 	return PlacementStatus_PLACEMENT_NONE
 }
 
+type TimeBankWarning struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	UserId               string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username             string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	LowTimebankGameCount int32                  `protobuf:"varint,3,opt,name=low_timebank_game_count,json=lowTimebankGameCount,proto3" json:"low_timebank_game_count,omitempty"` // Number of games with time bank below threshold
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *TimeBankWarning) Reset() {
+	*x = TimeBankWarning{}
+	mi := &file_proto_ipc_league_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimeBankWarning) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimeBankWarning) ProtoMessage() {}
+
+func (x *TimeBankWarning) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_league_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimeBankWarning.ProtoReflect.Descriptor instead.
+func (*TimeBankWarning) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TimeBankWarning) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *TimeBankWarning) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *TimeBankWarning) GetLowTimebankGameCount() int32 {
+	if x != nil {
+		return x.LowTimebankGameCount
+	}
+	return 0
+}
+
+type GetDivisionTimeBankWarningsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	DivisionId     string                 `protobuf:"bytes,1,opt,name=division_id,json=divisionId,proto3" json:"division_id,omitempty"`
+	ThresholdHours int32                  `protobuf:"varint,2,opt,name=threshold_hours,json=thresholdHours,proto3" json:"threshold_hours,omitempty"` // Time bank threshold in hours (e.g., 24 for 1 day)
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetDivisionTimeBankWarningsRequest) Reset() {
+	*x = GetDivisionTimeBankWarningsRequest{}
+	mi := &file_proto_ipc_league_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDivisionTimeBankWarningsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDivisionTimeBankWarningsRequest) ProtoMessage() {}
+
+func (x *GetDivisionTimeBankWarningsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_league_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDivisionTimeBankWarningsRequest.ProtoReflect.Descriptor instead.
+func (*GetDivisionTimeBankWarningsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetDivisionTimeBankWarningsRequest) GetDivisionId() string {
+	if x != nil {
+		return x.DivisionId
+	}
+	return ""
+}
+
+func (x *GetDivisionTimeBankWarningsRequest) GetThresholdHours() int32 {
+	if x != nil {
+		return x.ThresholdHours
+	}
+	return 0
+}
+
+type GetDivisionTimeBankWarningsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Warnings      []*TimeBankWarning     `protobuf:"bytes,1,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDivisionTimeBankWarningsResponse) Reset() {
+	*x = GetDivisionTimeBankWarningsResponse{}
+	mi := &file_proto_ipc_league_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDivisionTimeBankWarningsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDivisionTimeBankWarningsResponse) ProtoMessage() {}
+
+func (x *GetDivisionTimeBankWarningsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_league_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDivisionTimeBankWarningsResponse.ProtoReflect.Descriptor instead.
+func (*GetDivisionTimeBankWarningsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_league_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetDivisionTimeBankWarningsResponse) GetWarnings() []*TimeBankWarning {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
 var File_proto_ipc_league_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_league_proto_rawDesc = "" +
@@ -1057,7 +1213,17 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\rblanks_played\x18\x13 \x01(\x05R\fblanksPlayed\x12,\n" +
 	"\x12total_tiles_played\x18\x14 \x01(\x05R\x10totalTilesPlayed\x12=\n" +
 	"\x1btotal_opponent_tiles_played\x18\x15 \x01(\x05R\x18totalOpponentTilesPlayed\x12?\n" +
-	"\x10placement_status\x18\x16 \x01(\x0e2\x14.ipc.PlacementStatusR\x0fplacementStatus*\x81\x01\n" +
+	"\x10placement_status\x18\x16 \x01(\x0e2\x14.ipc.PlacementStatusR\x0fplacementStatus\"}\n" +
+	"\x0fTimeBankWarning\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x125\n" +
+	"\x17low_timebank_game_count\x18\x03 \x01(\x05R\x14lowTimebankGameCount\"n\n" +
+	"\"GetDivisionTimeBankWarningsRequest\x12\x1f\n" +
+	"\vdivision_id\x18\x01 \x01(\tR\n" +
+	"divisionId\x12'\n" +
+	"\x0fthreshold_hours\x18\x02 \x01(\x05R\x0ethresholdHours\"W\n" +
+	"#GetDivisionTimeBankWarningsResponse\x120\n" +
+	"\bwarnings\x18\x01 \x03(\v2\x14.ipc.TimeBankWarningR\bwarnings*\x81\x01\n" +
 	"\fSeasonStatus\x12\x14\n" +
 	"\x10SEASON_SCHEDULED\x10\x00\x12\x11\n" +
 	"\rSEASON_ACTIVE\x10\x01\x12\x14\n" +
@@ -1098,42 +1264,46 @@ func file_proto_ipc_league_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_league_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_proto_ipc_league_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_proto_ipc_league_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_proto_ipc_league_proto_goTypes = []any{
-	(SeasonStatus)(0),             // 0: ipc.SeasonStatus
-	(PromotionFormula)(0),         // 1: ipc.PromotionFormula
-	(StandingResult)(0),           // 2: ipc.StandingResult
-	(PlacementStatus)(0),          // 3: ipc.PlacementStatus
-	(*League)(nil),                // 4: ipc.League
-	(*LeagueSettings)(nil),        // 5: ipc.LeagueSettings
-	(*TimeControl)(nil),           // 6: ipc.TimeControl
-	(*Season)(nil),                // 7: ipc.Season
-	(*Division)(nil),              // 8: ipc.Division
-	(*PlayerRegistration)(nil),    // 9: ipc.PlayerRegistration
-	(*LeaguePlayerStanding)(nil),  // 10: ipc.LeaguePlayerStanding
-	(ChallengeRule)(0),            // 11: ipc.ChallengeRule
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(SeasonStatus)(0),                           // 0: ipc.SeasonStatus
+	(PromotionFormula)(0),                       // 1: ipc.PromotionFormula
+	(StandingResult)(0),                         // 2: ipc.StandingResult
+	(PlacementStatus)(0),                        // 3: ipc.PlacementStatus
+	(*League)(nil),                              // 4: ipc.League
+	(*LeagueSettings)(nil),                      // 5: ipc.LeagueSettings
+	(*TimeControl)(nil),                         // 6: ipc.TimeControl
+	(*Season)(nil),                              // 7: ipc.Season
+	(*Division)(nil),                            // 8: ipc.Division
+	(*PlayerRegistration)(nil),                  // 9: ipc.PlayerRegistration
+	(*LeaguePlayerStanding)(nil),                // 10: ipc.LeaguePlayerStanding
+	(*TimeBankWarning)(nil),                     // 11: ipc.TimeBankWarning
+	(*GetDivisionTimeBankWarningsRequest)(nil),  // 12: ipc.GetDivisionTimeBankWarningsRequest
+	(*GetDivisionTimeBankWarningsResponse)(nil), // 13: ipc.GetDivisionTimeBankWarningsResponse
+	(ChallengeRule)(0),                          // 14: ipc.ChallengeRule
+	(*timestamppb.Timestamp)(nil),               // 15: google.protobuf.Timestamp
 }
 var file_proto_ipc_league_proto_depIdxs = []int32{
 	5,  // 0: ipc.League.settings:type_name -> ipc.LeagueSettings
 	6,  // 1: ipc.LeagueSettings.time_control:type_name -> ipc.TimeControl
-	11, // 2: ipc.LeagueSettings.challenge_rule:type_name -> ipc.ChallengeRule
-	12, // 3: ipc.Season.start_date:type_name -> google.protobuf.Timestamp
-	12, // 4: ipc.Season.end_date:type_name -> google.protobuf.Timestamp
-	12, // 5: ipc.Season.actual_end_date:type_name -> google.protobuf.Timestamp
+	14, // 2: ipc.LeagueSettings.challenge_rule:type_name -> ipc.ChallengeRule
+	15, // 3: ipc.Season.start_date:type_name -> google.protobuf.Timestamp
+	15, // 4: ipc.Season.end_date:type_name -> google.protobuf.Timestamp
+	15, // 5: ipc.Season.actual_end_date:type_name -> google.protobuf.Timestamp
 	0,  // 6: ipc.Season.status:type_name -> ipc.SeasonStatus
 	8,  // 7: ipc.Season.divisions:type_name -> ipc.Division
 	1,  // 8: ipc.Season.promotion_formula:type_name -> ipc.PromotionFormula
 	9,  // 9: ipc.Division.players:type_name -> ipc.PlayerRegistration
 	10, // 10: ipc.Division.standings:type_name -> ipc.LeaguePlayerStanding
-	12, // 11: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
+	15, // 11: ipc.PlayerRegistration.registration_date:type_name -> google.protobuf.Timestamp
 	2,  // 12: ipc.LeaguePlayerStanding.result:type_name -> ipc.StandingResult
 	3,  // 13: ipc.LeaguePlayerStanding.placement_status:type_name -> ipc.PlacementStatus
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	11, // 14: ipc.GetDivisionTimeBankWarningsResponse.warnings:type_name -> ipc.TimeBankWarning
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_proto_ipc_league_proto_init() }
@@ -1148,7 +1318,7 @@ func file_proto_ipc_league_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_league_proto_rawDesc), len(file_proto_ipc_league_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

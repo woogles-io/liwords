@@ -29,6 +29,8 @@ service LeagueService {
   rpc GetDivisionStandings(DivisionRequest) returns (DivisionStandingsResponse);
   rpc GetAllDivisionStandings(SeasonRequest)
       returns (AllDivisionStandingsResponse);
+  rpc GetDivisionTimeBankWarnings(ipc.GetDivisionTimeBankWarningsRequest)
+      returns (ipc.GetDivisionTimeBankWarningsResponse);
 
   // Player management
   rpc RegisterForSeason(RegisterRequest) returns (RegisterResponse);
