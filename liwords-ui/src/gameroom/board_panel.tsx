@@ -159,6 +159,8 @@ export const BoardPanel = React.memo((props: Props) => {
     setBlindfoldCommand,
     blindfoldUseNPA,
     setBlindfoldUseNPA,
+    pendingExchangeTiles,
+    setPendingExchangeTiles,
     observer,
     isMyTurn,
   } = useBoardPanelState({
@@ -180,6 +182,7 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack,
     board: props.board,
     currentRack: props.currentRack,
+    setPendingExchangeTiles,
   });
 
   const {
@@ -232,10 +235,21 @@ export const BoardPanel = React.memo((props: Props) => {
           moveEvt = challengeMoveEvent(gameID);
           break;
         case "commit":
-          moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
-          if (!moveEvt) {
-            // this is an invalid play
-            return;
+          // Check if we have pending exchange tiles from the analyzer
+          if (pendingExchangeTiles) {
+            moveEvt = exchangeMoveEvent(
+              pendingExchangeTiles,
+              gameID,
+              gameContext.alphabet,
+            );
+            // Clear the pending exchange tiles
+            setPendingExchangeTiles(null);
+          } else {
+            moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
+            if (!moveEvt) {
+              // this is an invalid play
+              return;
+            }
           }
           clearBackupRef.current = true;
           break;
@@ -267,6 +281,8 @@ export const BoardPanel = React.memo((props: Props) => {
       sendGameplayEvent,
       username,
       message,
+      pendingExchangeTiles,
+      setPendingExchangeTiles,
     ],
   );
 

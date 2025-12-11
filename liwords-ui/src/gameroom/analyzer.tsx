@@ -508,8 +508,12 @@ export const AnalyzerContextProvider = (
 export const usePlaceMoveCallback = () => {
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
-  const { setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore } =
-    useTentativeTileContext();
+  const {
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+    setPendingExchangeTiles,
+  } = useTentativeTileContext();
 
   const placeMove = useCallback(
     (move: AnalyzerMove) => {
@@ -554,12 +558,15 @@ export const usePlaceMoveCallback = () => {
       setDisplayedRack(move.leaveWithGaps);
       setPlacedTiles(newPlacedTiles);
       setPlacedTilesTempScore(move.score);
+      // Set pending exchange tiles if this is an exchange move
+      setPendingExchangeTiles(move.isExchange ? move.tiles : null);
     },
     [
       examinableGameContext,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
+      setPendingExchangeTiles,
     ],
   );
 

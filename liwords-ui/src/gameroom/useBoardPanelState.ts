@@ -118,6 +118,8 @@ export function useBoardPanelState(props: UseBoardPanelStateProps) {
     setBlindfoldCommand,
     blindfoldUseNPA,
     setBlindfoldUseNPA,
+    pendingExchangeTiles,
+    setPendingExchangeTiles,
   } = useTentativeTileContext();
 
   // Observer and turn logic
@@ -172,6 +174,8 @@ export function useBoardPanelState(props: UseBoardPanelStateProps) {
     setBlindfoldCommand,
     blindfoldUseNPA,
     setBlindfoldUseNPA,
+    pendingExchangeTiles,
+    setPendingExchangeTiles,
     observer,
     isMyTurn,
   };

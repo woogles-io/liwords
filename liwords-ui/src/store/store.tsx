@@ -177,11 +177,13 @@ type TentativePlayData = {
   displayedRack: Array<MachineLetter>;
   blindfoldCommand: string;
   blindfoldUseNPA: boolean;
+  pendingExchangeTiles: Array<MachineLetter> | null;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
   setDisplayedRack: (l: Array<MachineLetter>) => void;
   setBlindfoldCommand: (l: string) => void;
   setBlindfoldUseNPA: (l: boolean) => void;
+  setPendingExchangeTiles: (t: Array<MachineLetter> | null) => void;
 };
 
 type PoolFormatStoreData = {
@@ -254,11 +256,13 @@ const TentativePlayContext = createContext<TentativePlayData>({
   displayedRack: new Array<MachineLetter>(),
   blindfoldCommand: "",
   blindfoldUseNPA: false,
+  pendingExchangeTiles: null,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
   setDisplayedRack: defaultFunction,
   setBlindfoldCommand: defaultFunction,
   setBlindfoldUseNPA: defaultFunction,
+  setPendingExchangeTiles: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -893,6 +897,9 @@ const RealStore = ({ children, ...props }: Props) => {
   );
   const [blindfoldCommand, setBlindfoldCommand] = useState("");
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
+  const [pendingExchangeTiles, setPendingExchangeTiles] = useState<
+    Array<MachineLetter> | null
+  >(null);
 
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout),
@@ -1091,11 +1098,13 @@ const RealStore = ({ children, ...props }: Props) => {
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
+      pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
+      setPendingExchangeTiles,
     }),
     [
       placedTilesTempScore,
@@ -1103,11 +1112,13 @@ const RealStore = ({ children, ...props }: Props) => {
       displayedRack,
       blindfoldCommand,
       blindfoldUseNPA,
+      pendingExchangeTiles,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
       setBlindfoldCommand,
       setBlindfoldUseNPA,
+      setPendingExchangeTiles,
     ],
   );
   const excludedPlayersStore = useMemo(
