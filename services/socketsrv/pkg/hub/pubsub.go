@@ -51,6 +51,8 @@ func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
 		"presence.changed.>",
 		// Efficient seek notifications to followed users
 		"seek.followed.>",
+		// Broadcast messages to ALL connected clients (e.g., maintenance notifications)
+		"broadcast.>",
 	}
 	pubSub := &PubSub{
 		natsconn:      natsconn,
@@ -216,6 +218,11 @@ func (h *Hub) PubsubProcess() {
 			}
 			seekerUserID := subtopics[2]
 			h.handleSeekFollowed(seekerUserID, msg.Data)
+
+		case msg := <-h.pubsub.subchans["broadcast.>"]:
+			// Broadcast message to ALL connected clients
+			log.Info().Str("topic", msg.Subject).Msg("broadcasting to all clients")
+			h.broadcastToAllClients(msg.Data)
 		}
 
 	}

@@ -1210,6 +1210,38 @@ func (q *Queries) ListAllIDs(ctx context.Context) ([]pgtype.Text, error) {
 	return items, nil
 }
 
+const listFrozenGameIDs = `-- name: ListFrozenGameIDs :many
+SELECT uuid
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((timers->>'ffm')::boolean, false) = true
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id
+`
+
+// Lists game UUIDs that were frozen for maintenance (timers->>'ffm' = 'true')
+// These games should be resumed after server restart
+// Excludes correspondence games since they don't need timer resumption
+func (q *Queries) ListFrozenGameIDs(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listFrozenGameIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setReady = `-- name: SetReady :one
 UPDATE games
 SET ready_flag = ready_flag | (1 << $1::integer)

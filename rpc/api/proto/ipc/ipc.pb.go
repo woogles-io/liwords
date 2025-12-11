@@ -86,6 +86,8 @@ const (
 	MessageType_OUR_CORRESPONDENCE_SEEKS        MessageType = 48
 	MessageType_MONITORING_STREAM_STATUS_UPDATE MessageType = 49
 	MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES MessageType = 50
+	MessageType_MAINTENANCE_STARTING            MessageType = 51
+	MessageType_MAINTENANCE_COMPLETE            MessageType = 52
 )
 
 // Enum value maps for MessageType.
@@ -140,6 +142,8 @@ var (
 		48: "OUR_CORRESPONDENCE_SEEKS",
 		49: "MONITORING_STREAM_STATUS_UPDATE",
 		50: "OUR_LEAGUE_CORRESPONDENCE_GAMES",
+		51: "MAINTENANCE_STARTING",
+		52: "MAINTENANCE_COMPLETE",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                                 0,
@@ -191,6 +195,8 @@ var (
 		"OUR_CORRESPONDENCE_SEEKS":                     48,
 		"MONITORING_STREAM_STATUS_UPDATE":              49,
 		"OUR_LEAGUE_CORRESPONDENCE_GAMES":              50,
+		"MAINTENANCE_STARTING":                         51,
+		"MAINTENANCE_COMPLETE":                         52,
 	}
 )
 
@@ -507,6 +513,60 @@ func (x *ServerMessage) GetMessage() string {
 	return ""
 }
 
+// MaintenanceNotification is sent when the server is about to go down for
+// maintenance or when it comes back up. Used to freeze/resume game timers.
+type MaintenanceNotification struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsStarting    bool                   `protobuf:"varint,1,opt,name=is_starting,json=isStarting,proto3" json:"is_starting,omitempty"` // true = going down, false = back up
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`                          // Optional message to display
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MaintenanceNotification) Reset() {
+	*x = MaintenanceNotification{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MaintenanceNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MaintenanceNotification) ProtoMessage() {}
+
+func (x *MaintenanceNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MaintenanceNotification.ProtoReflect.Descriptor instead.
+func (*MaintenanceNotification) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *MaintenanceNotification) GetIsStarting() bool {
+	if x != nil {
+		return x.IsStarting
+	}
+	return false
+}
+
+func (x *MaintenanceNotification) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
 // path, we send an Unjoin realm. d
 type JoinPath struct {
@@ -518,7 +578,7 @@ type JoinPath struct {
 
 func (x *JoinPath) Reset() {
 	*x = JoinPath{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -530,7 +590,7 @@ func (x *JoinPath) String() string {
 func (*JoinPath) ProtoMessage() {}
 
 func (x *JoinPath) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -543,7 +603,7 @@ func (x *JoinPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinPath.ProtoReflect.Descriptor instead.
 func (*JoinPath) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{6}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *JoinPath) GetPath() string {
@@ -561,7 +621,7 @@ type UnjoinRealm struct {
 
 func (x *UnjoinRealm) Reset() {
 	*x = UnjoinRealm{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -573,7 +633,7 @@ func (x *UnjoinRealm) String() string {
 func (*UnjoinRealm) ProtoMessage() {}
 
 func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -586,7 +646,7 @@ func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnjoinRealm.ProtoReflect.Descriptor instead.
 func (*UnjoinRealm) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{7}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{8}
 }
 
 var File_proto_ipc_ipc_proto protoreflect.FileDescriptor
@@ -607,11 +667,14 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x04Pong\x12\x10\n" +
 	"\x03ips\x18\x01 \x01(\tR\x03ips\")\n" +
 	"\rServerMessage\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"T\n" +
+	"\x17MaintenanceNotification\x12\x1f\n" +
+	"\vis_starting\x18\x01 \x01(\bR\n" +
+	"isStarting\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\r\n" +
-	"\vUnjoinRealm*\xda\n" +
-	"\n" +
+	"\vUnjoinRealm*\x8e\v\n" +
 	"\vMessageType\x12\x10\n" +
 	"\fSEEK_REQUEST\x10\x00\x12\x11\n" +
 	"\rMATCH_REQUEST\x10\x01\x12\x1d\n" +
@@ -662,7 +725,9 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x18OUR_CORRESPONDENCE_GAMES\x10/\x12\x1c\n" +
 	"\x18OUR_CORRESPONDENCE_SEEKS\x100\x12#\n" +
 	"\x1fMONITORING_STREAM_STATUS_UPDATE\x101\x12#\n" +
-	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102Bp\n" +
+	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102\x12\x18\n" +
+	"\x14MAINTENANCE_STARTING\x103\x12\x18\n" +
+	"\x14MAINTENANCE_COMPLETE\x104Bp\n" +
 	"\acom.ipcB\bIpcProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (
@@ -678,17 +743,18 @@ func file_proto_ipc_ipc_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_ipc_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_ipc_ipc_proto_goTypes = []any{
-	(MessageType)(0),              // 0: ipc.MessageType
-	(*RegisterRealmRequest)(nil),  // 1: ipc.RegisterRealmRequest
-	(*RegisterRealmResponse)(nil), // 2: ipc.RegisterRealmResponse
-	(*InitRealmInfo)(nil),         // 3: ipc.InitRealmInfo
-	(*LagMeasurement)(nil),        // 4: ipc.LagMeasurement
-	(*Pong)(nil),                  // 5: ipc.Pong
-	(*ServerMessage)(nil),         // 6: ipc.ServerMessage
-	(*JoinPath)(nil),              // 7: ipc.JoinPath
-	(*UnjoinRealm)(nil),           // 8: ipc.UnjoinRealm
+	(MessageType)(0),                // 0: ipc.MessageType
+	(*RegisterRealmRequest)(nil),    // 1: ipc.RegisterRealmRequest
+	(*RegisterRealmResponse)(nil),   // 2: ipc.RegisterRealmResponse
+	(*InitRealmInfo)(nil),           // 3: ipc.InitRealmInfo
+	(*LagMeasurement)(nil),          // 4: ipc.LagMeasurement
+	(*Pong)(nil),                    // 5: ipc.Pong
+	(*ServerMessage)(nil),           // 6: ipc.ServerMessage
+	(*MaintenanceNotification)(nil), // 7: ipc.MaintenanceNotification
+	(*JoinPath)(nil),                // 8: ipc.JoinPath
+	(*UnjoinRealm)(nil),             // 9: ipc.UnjoinRealm
 }
 var file_proto_ipc_ipc_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -709,7 +775,7 @@ func file_proto_ipc_ipc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_ipc_proto_rawDesc), len(file_proto_ipc_ipc_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -12,6 +12,7 @@ import {
   useLagStoreContext,
   useLobbyStoreContext,
   useLoginStateStoreContext,
+  useMaintenanceStoreContext,
   usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
@@ -34,6 +35,8 @@ import {
   MessageType,
   ServerMessage,
   ServerMessageSchema,
+  MaintenanceNotification,
+  MaintenanceNotificationSchema,
 } from "../gen/api/proto/ipc/ipc_pb";
 import {
   DeclineSeekRequest,
@@ -195,6 +198,8 @@ const MsgTypesMap = {
   [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
   [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
     MonitoringStreamStatusUpdateSchema,
+  [MessageType.MAINTENANCE_STARTING]: MaintenanceNotificationSchema,
+  [MessageType.MAINTENANCE_COMPLETE]: MaintenanceNotificationSchema,
 };
 
 export const parseMsgs = (
@@ -256,6 +261,8 @@ export const useOnSocketMsg = () => {
     useGameMetaEventContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
+  const { setMaintenanceMode, setMaintenanceMessage } =
+    useMaintenanceStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
@@ -1074,6 +1081,28 @@ export const useOnSocketMsg = () => {
             });
             break;
           }
+
+          case MessageType.MAINTENANCE_STARTING: {
+            const mn = parsedMsg as MaintenanceNotification;
+            console.log("Maintenance starting:", mn.message);
+            setMaintenanceMode(true);
+            setMaintenanceMessage(
+              mn.message || "Brief maintenance in progress...",
+            );
+            // Stop the clock since timers are frozen on the server
+            stopClock();
+            break;
+          }
+
+          case MessageType.MAINTENANCE_COMPLETE: {
+            const mn = parsedMsg as MaintenanceNotification;
+            console.log("Maintenance complete:", mn.message);
+            setMaintenanceMode(false);
+            setMaintenanceMessage("");
+            // The game state will be refreshed via GAME_HISTORY_REFRESHER
+            // when the player reconnects or the server sends updated state
+            break;
+          }
         }
       });
     },
@@ -1095,6 +1124,8 @@ export const useOnSocketMsg = () => {
       setCurrentLagMs,
       setGameEndMessage,
       setGameMetaEventContext,
+      setMaintenanceMessage,
+      setMaintenanceMode,
       setPresence,
       setRematchRequest,
       stopClock,

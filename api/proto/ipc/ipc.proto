@@ -67,6 +67,8 @@ enum MessageType {
   OUR_CORRESPONDENCE_SEEKS = 48;
   MONITORING_STREAM_STATUS_UPDATE = 49;
   OUR_LEAGUE_CORRESPONDENCE_GAMES = 50;
+  MAINTENANCE_STARTING = 51;
+  MAINTENANCE_COMPLETE = 52;
 }
 
 message RegisterRealmRequest {
@@ -94,6 +96,13 @@ message LagMeasurement { int32 lag_ms = 1; }
 message Pong { string ips = 1; }
 
 message ServerMessage { string message = 1; }
+
+// MaintenanceNotification is sent when the server is about to go down for
+// maintenance or when it comes back up. Used to freeze/resume game timers.
+message MaintenanceNotification {
+  bool is_starting = 1;   // true = going down, false = back up
+  string message = 2;     // Optional message to display
+}
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
 // path, we send an Unjoin realm. d

@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -80,6 +81,15 @@ type LoginStateStoreData = {
 type LagStoreData = {
   currentLagMs: number;
   setCurrentLagMs: React.Dispatch<React.SetStateAction<number>>;
+};
+
+type MaintenanceStoreData = {
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  setMaintenanceMode: React.Dispatch<React.SetStateAction<boolean>>;
+  setMaintenanceMessage: React.Dispatch<React.SetStateAction<string>>;
+  refreshCountdown: number | null;
+  isPinging: boolean;
 };
 
 type ExcludedPlayersStoreData = {
@@ -248,6 +258,15 @@ const LoginStateContext = createContext<LoginStateStoreData>({
 const LagContext = createContext<LagStoreData>({
   currentLagMs: NaN,
   setCurrentLagMs: defaultFunction,
+});
+
+const MaintenanceContext = createContext<MaintenanceStoreData>({
+  maintenanceMode: false,
+  maintenanceMessage: "",
+  setMaintenanceMode: defaultFunction,
+  setMaintenanceMessage: defaultFunction,
+  refreshCountdown: null,
+  isPinging: false,
 });
 
 const TentativePlayContext = createContext<TentativePlayData>({
@@ -887,6 +906,76 @@ const RealStore = ({ children, ...props }: Props) => {
   }, []);
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [refreshCountdown, setRefreshCountdown] = useState<number | null>(null);
+  const [isPinging, setIsPinging] = useState(false);
+
+  // Maintenance mode polling and auto-refresh logic
+  useEffect(() => {
+    if (!maintenanceMode) {
+      // If we exit maintenance mode (via MAINTENANCE_COMPLETE), cancel any pending refresh
+      setRefreshCountdown(null);
+      setIsPinging(false);
+      return;
+    }
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    // After 30 seconds in maintenance mode, start polling /ping
+    const startPollingTimeout = setTimeout(() => {
+      setIsPinging(true);
+      pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch("/ping");
+          if (response.ok) {
+            // Verify this is actually the API response, not a frontend fallback
+            const contentType = response.headers.get("content-type");
+            if (contentType?.includes("application/json")) {
+              const data = await response.json();
+              if (data.status === "copacetic") {
+                // Server is back! Start countdown to refresh
+                if (pollInterval) {
+                  clearInterval(pollInterval);
+                  pollInterval = null;
+                }
+                setIsPinging(false);
+                setRefreshCountdown(5);
+              }
+            }
+            // If content-type is not JSON or status is wrong, keep polling
+          }
+        } catch {
+          // Server still down, keep polling
+        }
+      }, 5000);
+    }, 30000);
+
+    return () => {
+      clearTimeout(startPollingTimeout);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [maintenanceMode]);
+
+  // Handle the refresh countdown
+  useEffect(() => {
+    if (refreshCountdown === null) {
+      return;
+    }
+
+    if (refreshCountdown <= 0) {
+      window.location.reload();
+      return;
+    }
+
+    const countdownInterval = setInterval(() => {
+      setRefreshCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [refreshCountdown]);
 
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
     number | undefined
@@ -1090,6 +1179,24 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [currentLagMs, setCurrentLagMs],
   );
+  const maintenanceStore = useMemo(
+    () => ({
+      maintenanceMode,
+      maintenanceMessage,
+      setMaintenanceMode,
+      setMaintenanceMessage,
+      refreshCountdown,
+      isPinging,
+    }),
+    [
+      maintenanceMode,
+      maintenanceMessage,
+      setMaintenanceMode,
+      setMaintenanceMessage,
+      refreshCountdown,
+      isPinging,
+    ],
+  );
   const tentativePlayStore = useMemo(
     () => ({
       placedTilesTempScore,
@@ -1251,6 +1358,7 @@ const RealStore = ({ children, ...props }: Props) => {
   ret = <LobbyContext.Provider value={lobbyStore} children={ret} />;
   ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
   ret = <LagContext.Provider value={lagStore} children={ret} />;
+  ret = <MaintenanceContext.Provider value={maintenanceStore} children={ret} />;
   ret = (
     <TournamentContext.Provider value={tournamentStateStore} children={ret} />
   );
@@ -1329,6 +1437,7 @@ export const useContextMatchContext = () => useContext(ContextMatchContext);
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
+export const useMaintenanceStoreContext = () => useContext(MaintenanceContext);
 export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>

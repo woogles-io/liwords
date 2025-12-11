@@ -435,6 +435,18 @@ func main() {
 	router.Handle(bus.GameEventStreamPrefix,
 		middlewares.Then(pubsubBus.EventAPIServerInstance()))
 
+	// Resume any games that were frozen during a previous maintenance shutdown
+	resumeCount, err := pubsubBus.ResumeGamesAfterMaintenance(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("error resuming games after maintenance")
+	} else if resumeCount > 0 {
+		log.Info().Int("count", resumeCount).Msg("resumed games after maintenance")
+		// Broadcast maintenance complete notification
+		if err := pubsubBus.BroadcastMaintenanceComplete(ctx, "Server maintenance complete"); err != nil {
+			log.Error().Err(err).Msg("error broadcasting maintenance complete")
+		}
+	}
+
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
@@ -448,22 +460,52 @@ func main() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 		log.Info().Msg("got quit signal...")
+
+		// Broadcast maintenance notification to all connected clients first
+		// so they see the overlay immediately
+		if err := pubsubBus.BroadcastMaintenanceStarting(context.Background(), "Server maintenance in progress"); err != nil {
+			log.Error().Err(err).Msg("error broadcasting maintenance starting")
+		}
+
+		// Stop accepting new HTTP requests
 		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
 		if err := srv.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
 		shutdownCancel()
+
+		// Cancel the pubsub context to signal ProcessMessages to exit
 		pubsubCancel()
+
+		// Wait for ProcessMessages to finish (with a timeout)
+		// This ensures no more game events are being processed before we freeze
+		select {
+		case <-pubsubBus.Done():
+			log.Info().Msg("bus ProcessMessages finished")
+		case <-time.After(10 * time.Second):
+			log.Warn().Msg("timeout waiting for bus ProcessMessages to finish")
+		}
+
+		// Now freeze all active games - safe because bus has stopped processing
+		freezeCtx, freezeCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		count, err := pubsubBus.FreezeAllGamesForMaintenance(freezeCtx)
+		if err != nil {
+			log.Error().Err(err).Msg("error freezing games for maintenance")
+		} else {
+			log.Info().Int("count", count).Msg("froze games for maintenance")
+		}
+		freezeCancel()
+
+		// Stop the game cache cleanup goroutine
 		stores.GameStore.StopCleanup()
+
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("")
 	}
-	// XXX: We need to wait until all goroutines end. Not just the pubsub but possibly the bot,
-	// etc.
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
 }

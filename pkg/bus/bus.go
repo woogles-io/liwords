@@ -26,6 +26,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
+	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/omgwords"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/tournament"
@@ -65,6 +66,9 @@ type Bus struct {
 
 	genericEventChan   chan *entity.EventWrapper
 	gameEventAPIServer *EventAPIServer
+
+	// done is closed when ProcessMessages exits, signaling shutdown is complete.
+	done chan struct{}
 }
 
 func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redisPool *redis.Pool) (*Bus, error) {
@@ -82,6 +86,7 @@ func NewBus(cfg *config.Config, natsconn *nats.Conn, stores *stores.Stores, redi
 		genericEventChan:   make(chan *entity.EventWrapper, 512),
 		redisPool:          redisPool,
 		gameEventAPIServer: NewEventApiServer(stores.UserStore, stores.GameStore),
+		done:               make(chan struct{}),
 	}
 	bus.stores.GameStore.SetGameEventChan(bus.gameEventChan)
 	bus.stores.TournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
@@ -128,9 +133,16 @@ func (b *Bus) EventAPIServerInstance() *EventAPIServer {
 	return b.gameEventAPIServer
 }
 
+// Done returns a channel that is closed when ProcessMessages exits.
+// Use this to wait for the bus to finish processing during shutdown.
+func (b *Bus) Done() <-chan struct{} {
+	return b.done
+}
+
 // ProcessMessages is very similar to the PubsubProcess in services/socketsrv,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
+	defer close(b.done)
 	ctx = b.config.WithContext(ctx)
 	ctx = log.Logger.WithContext(ctx)
 	log := zerolog.Ctx(ctx)
@@ -1328,4 +1340,110 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 	}
 	// Also send OUR presence to users in this channel.
 	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
+}
+
+// BroadcastMaintenanceStarting broadcasts a maintenance notification to all connected clients.
+// This is called before the server shuts down for deployment.
+func (b *Bus) BroadcastMaintenanceStarting(ctx context.Context, message string) error {
+	notification := &pb.MaintenanceNotification{
+		IsStarting: true,
+		Message:    message,
+	}
+	evt := entity.WrapEvent(notification, pb.MessageType_MAINTENANCE_STARTING)
+	data, err := evt.Serialize()
+	if err != nil {
+		return err
+	}
+	log.Info().Str("message", message).Msg("broadcasting-maintenance-starting")
+	return b.broadcastMaintenanceToAll(data)
+}
+
+// BroadcastMaintenanceComplete broadcasts that maintenance is complete.
+// This is called after the server starts up from a deployment.
+func (b *Bus) BroadcastMaintenanceComplete(ctx context.Context, message string) error {
+	notification := &pb.MaintenanceNotification{
+		IsStarting: false,
+		Message:    message,
+	}
+	evt := entity.WrapEvent(notification, pb.MessageType_MAINTENANCE_COMPLETE)
+	data, err := evt.Serialize()
+	if err != nil {
+		return err
+	}
+	log.Info().Str("message", message).Msg("broadcasting-maintenance-complete")
+	return b.broadcastMaintenanceToAll(data)
+}
+
+// broadcastMaintenanceToAll sends maintenance notification to all connected clients
+// via the broadcast topic, which socketsrv forwards to every websocket connection.
+func (b *Bus) broadcastMaintenanceToAll(data []byte) error {
+	return b.natsconn.Publish("broadcast.maintenance", data)
+}
+
+// FreezeAllGamesForMaintenance freezes all active games in preparation for shutdown.
+// Returns the number of games frozen.
+func (b *Bus) FreezeAllGamesForMaintenance(ctx context.Context) (int, error) {
+	return b.stores.GameStore.FreezeAllGames(ctx)
+}
+
+// ResumeGamesAfterMaintenance resumes all games that were frozen for maintenance.
+// It loads each frozen game, unfreezes its timers, persists the updated state,
+// and sends a history refresher to each player so their timers restart.
+// Returns the number of games resumed.
+func (b *Bus) ResumeGamesAfterMaintenance(ctx context.Context) (int, error) {
+	// Get list of frozen game IDs from database
+	gameIDs, err := b.stores.GameStore.ListFrozenGameIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, gameID := range gameIDs {
+		game, err := b.stores.GameStore.Get(ctx, gameID)
+		if err != nil {
+			log.Error().Err(err).Str("gameID", gameID).Msg("failed to load frozen game")
+			continue
+		}
+
+		// Unfreeze the timers
+		game.UnfreezeTimers()
+
+		// Persist the updated state
+		if err := b.stores.GameStore.Set(ctx, game); err != nil {
+			log.Error().Err(err).Str("gameID", gameID).Msg("failed to save unfrozen game")
+			continue
+		}
+
+		// Send history refresher to each player so their client updates the timers
+		b.sendHistoryRefresherToPlayers(ctx, game)
+
+		log.Info().Str("gameID", gameID).Msg("resumed frozen game")
+		count++
+	}
+
+	return count, nil
+}
+
+// sendHistoryRefresherToPlayers sends a GAME_HISTORY_REFRESHER to each player in the game.
+// This causes clients to update their game state including timers.
+func (b *Bus) sendHistoryRefresherToPlayers(ctx context.Context, game *entity.Game) {
+	hre := game.HistoryRefresherEvent()
+	gameChannel := "game." + game.GameID()
+
+	for _, player := range game.History().Players {
+		if player.UserId == "" {
+			continue
+		}
+		// Censor the history for this specific player
+		hreClone := proto.Clone(hre).(*pb.GameHistoryRefresher)
+		hreClone.History = mod.CensorHistory(ctx, b.stores.UserStore, hreClone.History)
+
+		evt := entity.WrapEvent(hreClone, pb.MessageType_GAME_HISTORY_REFRESHER)
+		if err := b.pubToUser(player.UserId, evt, gameChannel); err != nil {
+			log.Error().Err(err).
+				Str("gameID", game.GameID()).
+				Str("userID", player.UserId).
+				Msg("failed to send history refresher to player")
+		}
+	}
 }

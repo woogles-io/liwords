@@ -203,6 +203,24 @@ func (h *Hub) sendToUserChannel(userID string, msg []byte, channel string) error
 	return nil
 }
 
+// broadcastToAllClients sends a message to every connected client.
+// Used for system-wide notifications like maintenance mode.
+func (h *Hub) broadcastToAllClients(msg []byte) {
+	h.realmMutex.Lock()
+	defer h.realmMutex.Unlock()
+
+	count := 0
+	for client := range h.clients {
+		select {
+		case client.send <- msg:
+			count++
+		default:
+			log.Debug().Str("username", client.username).Msg("broadcast-to-all: client send buffer full, skipping")
+		}
+	}
+	log.Info().Int("clientCount", count).Msg("broadcast-to-all-complete")
+}
+
 func realmToChannel(realm Realm) string {
 	return strings.ReplaceAll(string(realm), "-", ".")
 }

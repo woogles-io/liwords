@@ -277,6 +277,17 @@ SELECT EXISTS (
 -- name: GameCount :one
 SELECT COUNT(*) FROM games;
 
+-- name: ListFrozenGameIDs :many
+-- Lists game UUIDs that were frozen for maintenance (timers->>'ffm' = 'true')
+-- These games should be resumed after server restart
+-- Excludes correspondence games since they don't need timer resumption
+SELECT uuid
+FROM games
+WHERE game_end_reason = 0 -- NONE (ongoing games)
+    AND COALESCE((timers->>'ffm')::boolean, false) = true
+    AND COALESCE((game_request->>'game_mode')::int, 0) != 1 -- Exclude CORRESPONDENCE games
+ORDER BY id;
+
 -- name: InsertGamePlayers :exec
 INSERT INTO game_players (
     game_uuid,
