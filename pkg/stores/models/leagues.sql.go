@@ -599,10 +599,13 @@ WHERE g.league_division_id = $1
   AND g.timers->'tb' IS NOT NULL
   AND jsonb_array_length(g.timers->'tb') = 2
   AND (
-    CASE WHEN g.player_on_turn = 0
-         THEN (g.timers->'tb'->0)::bigint
-         ELSE (g.timers->'tb'->1)::bigint
-    END - ($2::bigint - (g.timers->>'lu')::bigint)
+    -- Effective time bank = stored_tb + MIN(effective_tr, 0)
+    (g.timers->'tb'->(g.player_on_turn))::bigint +
+    LEAST(
+        (g.timers->'tr'->(g.player_on_turn))::bigint -
+        ($2::bigint - (g.timers->>'lu')::bigint),
+        0
+    )
   ) < $3::bigint
 GROUP BY u.id, u.uuid, u.username
 `
@@ -621,9 +624,10 @@ type GetDivisionTimeBankStatusRow struct {
 }
 
 // Get time bank status for all players with active games in a division
-// Returns users who have at least one game where it's their turn and they have less than threshold_ms of time bank remaining
-// The actual remaining time is calculated as: stored_tb - (now_ms - last_update)
-// Only the player on turn has their time bank ticking down
+// Returns users who have at least one game where it's their turn and their
+// effective time bank (accounting for deficit from main time) is below threshold
+// Effective time bank = stored_tb + MIN(effective_tr, 0)
+// This matches the adjudicator's calculation in timeRanOut()
 func (q *Queries) GetDivisionTimeBankStatus(ctx context.Context, arg GetDivisionTimeBankStatusParams) ([]GetDivisionTimeBankStatusRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionTimeBankStatus, arg.DivisionID, arg.NowMs, arg.ThresholdMs)
 	if err != nil {
