@@ -28,6 +28,7 @@ type UseTilePlacementParams = {
   setDisplayedRack: (rack: Array<MachineLetter>) => void;
   board: Board;
   currentRack: Array<MachineLetter>;
+  setPendingExchangeTiles?: (tiles: Array<MachineLetter> | null) => void;
 };
 
 export function useTilePlacement(params: UseTilePlacementParams) {
@@ -41,6 +42,7 @@ export function useTilePlacement(params: UseTilePlacementParams) {
     setDisplayedRack,
     board,
     currentRack,
+    setPendingExchangeTiles,
   } = params;
 
   // Recall all tiles to rack
@@ -111,6 +113,10 @@ export function useTilePlacement(params: UseTilePlacementParams) {
     setPlacedTilesTempScore(0);
     setPlacedTiles(new Set<EphemeralTile>());
     setDisplayedRack(currentRack);
+    // Clear pending exchange tiles if present
+    if (setPendingExchangeTiles) {
+      setPendingExchangeTiles(null);
+    }
   }, [
     arrowProperties,
     placedTiles,
@@ -121,6 +127,7 @@ export function useTilePlacement(params: UseTilePlacementParams) {
     setPlacedTiles,
     setDisplayedRack,
     setArrowProperties,
+    setPendingExchangeTiles,
   ]);
 
   // Shuffle the rack
