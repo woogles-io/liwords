@@ -897,9 +897,8 @@ const RealStore = ({ children, ...props }: Props) => {
   );
   const [blindfoldCommand, setBlindfoldCommand] = useState("");
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
-  const [pendingExchangeTiles, setPendingExchangeTiles] = useState<
-    Array<MachineLetter> | null
-  >(null);
+  const [pendingExchangeTiles, setPendingExchangeTiles] =
+    useState<Array<MachineLetter> | null>(null);
 
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout),
