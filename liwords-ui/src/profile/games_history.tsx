@@ -79,7 +79,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       ) : (
         ""
       );
-      let result = <Tag color="blue">Loss</Tag>;
+      let result = <Tag color="red">Loss</Tag>;
       const challenge =
         challengeRuleNamesShort[
           item.gameRequest?.challengeRule ?? ChallengeRule.VOID
@@ -103,7 +103,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       if (item.winner === -1) {
         result = <Tag color="gray">Tie</Tag>;
       } else if (item.winner === userplace) {
-        result = <Tag color="red">Win</Tag>;
+        result = <Tag color="green">Win</Tag>;
       }
       let turnOrder = null;
       if (item.players[userplace].first) {
