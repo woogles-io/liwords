@@ -686,7 +686,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	resp = cop.COPPair(req)
 	is.Equal(resp.Pairings[0], int32(4))
 	is.Equal(resp.Pairings[4], int32(0))
-	is.Equal(resp.Pairings[1], int32(1))
+	is.Equal(resp.Pairings[2], int32(2))
 
 	// Gibson Bye
 	req = pairtestutils.CreateAlbanyCSWAfterRound24OddPairRequest()
@@ -835,10 +835,11 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(verifyreq.Verify(req), nil)
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	// Matt T should be playing Michael F, since rank differences
-	// for pairings with a gibsonized player are not cubed.
-	is.Equal(resp.Pairings[9], int32(46))
-	is.Equal(resp.Pairings[46], int32(9))
+	fmt.Println(resp.Log)
+	// Matt T should be playing Rasheed, since rank differences
+	// for pairings with a gibsonized player are squared.
+	is.Equal(resp.Pairings[9], int32(25))
+	is.Equal(resp.Pairings[25], int32(9))
 }
 
 func TestCOPSuccess(t *testing.T) {

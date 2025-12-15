@@ -268,12 +268,11 @@ var weightPolicies = []weightPolicy{
 			// - either play is gibsonized, or
 			// - neither player cashed even once in the simulation, then
 			//
-			// the rank difference should only act as a tie breaker
-			// for minimizing repeats, which means we leave the diff
-			// as is instead of cubed so it doesn't overwhelm the repeat penalty.
+			// the rank difference should squared
+			// so it doesn't overwhelm the repeat penalty.
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
 				ri >= int(pargs.req.PlacePrizes) {
-				return diff
+				return diff * diff
 			}
 			return diff * diff * diff
 		},
@@ -291,9 +290,12 @@ var weightPolicies = []weightPolicy{
 				ri >= int(pargs.req.PlacePrizes) {
 				return 0
 			}
-			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
-				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
-				casherDiff := pargs.copdata.LowestPossibleHopeNth[ri] - rj
+			// For this weight, we want to consider the top 1.5 * numPlacePrizes players
+			// We add 0.5 to round up
+			lowestPC := int(float64(pargs.req.PlacePrizes)*1.5 + 0.5)
+			if rj <= lowestPC ||
+				(lowestPC == ri && ri == rj-1) {
+				casherDiff := lowestPC - rj
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
@@ -334,7 +336,14 @@ var weightPolicies = []weightPolicy{
 			pj := pargs.playerNodes[rj]
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
-			return int64(timesPlayed * 2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			unitWeight := int64(2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			totalWeight := int64(timesPlayed) * unitWeight
+			// If both players cannot cash, add an extra unit weight
+			// to the repeat weight.
+			if ri > pargs.lowestPossibleHopeCasher {
+				totalWeight += unitWeight
+			}
+			return totalWeight
 		},
 	},
 	{
