@@ -96,7 +96,8 @@ func TestCompare(t *testing.T) {
 
 	is := is.New(t)
 
-	tourneyName := "2025-07-03-Albany-CSW-ME"
+	tourneyName := "2025-12-12-Belleville-NWL-ME"
+	// tourneyName := "2025-07-03-Albany-CSW-ME"
 
 	previousRoundWasCOP := false
 	for round := 0; true; round++ {
