@@ -287,34 +287,24 @@ var weightPolicies = []weightPolicy{
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
 			lowestPCIndex := int(pargs.req.PlacePrizes*2) - 1
-			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
-				ri > lowestPCIndex {
-				return 0
-			}
-			casherDiff := lowestPCIndex - rj
-			if casherDiff < 0 {
-				casherDiff *= -1
-			}
-			return int64(math.Pow(float64(casherDiff), 3) * 2)
-		},
-	},
-	{
-		// Casher distance
-		name: "CD",
-		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			// rj might be the Bye, which is out of range for this array
-			rjGibsonized := false
-			if rj < len(pargs.copdata.GibsonizedPlayers) {
-				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
-			}
-			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
-				ri > pargs.lowestPossibleHopeCasher {
+			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
 			// Distance is ceil(numPlayers/3)
-			dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
-			if rj-ri <= dist {
-				return 0
+			if ri > lowestPCIndex {
+				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
+				if rj-ri <= dist {
+					return 0
+				}
+				return majorPenalty
+			}
+			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
+				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
+				casherDiff := pargs.copdata.LowestPossibleHopeNth[ri] - rj
+				if casherDiff < 0 {
+					casherDiff *= -1
+				}
+				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
 			return majorPenalty
 		},
