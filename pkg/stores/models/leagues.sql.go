@@ -952,6 +952,79 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 	return items, nil
 }
 
+const getPlayerHistoriesForUsers = `-- name: GetPlayerHistoriesForUsers :many
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, ls.season_number, ls.league_id
+FROM league_registrations lr
+JOIN league_seasons ls ON lr.season_id = ls.uuid
+WHERE lr.user_id = ANY($1::int[])
+  AND ls.league_id = $2
+  AND ls.season_number >= (
+    SELECT MAX(season_number) - 4
+    FROM league_seasons
+    WHERE league_id = $2
+  )
+ORDER BY lr.user_id, ls.season_number DESC
+`
+
+type GetPlayerHistoriesForUsersParams struct {
+	UserIds  []int32
+	LeagueID uuid.UUID
+}
+
+type GetPlayerHistoriesForUsersRow struct {
+	ID                   int64
+	UserID               int32
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Int4
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	SeasonNumber         int32
+	LeagueID             uuid.UUID
+}
+
+// Only fetch recent history (last 5 seasons per player) to avoid unbounded growth
+// This is enough to determine: most recent season, hiatus length, previous division
+func (q *Queries) GetPlayerHistoriesForUsers(ctx context.Context, arg GetPlayerHistoriesForUsersParams) ([]GetPlayerHistoriesForUsersRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerHistoriesForUsers, arg.UserIds, arg.LeagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerHistoriesForUsersRow
+	for rows.Next() {
+		var i GetPlayerHistoriesForUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SeasonID,
+			&i.DivisionID,
+			&i.RegistrationDate,
+			&i.FirstsCount,
+			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SeasonNumber,
+			&i.LeagueID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerRegistration = `-- name: GetPlayerRegistration :one
 SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1 AND user_id = $2

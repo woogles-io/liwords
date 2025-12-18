@@ -20,6 +20,14 @@ LEFT JOIN LATERAL (
 ) b ON TRUE
 WHERE u.uuid = ANY(@user_uuids::text[]);
 
+-- name: GetUserRatings :many
+SELECT
+    u.uuid,
+    p.ratings
+FROM users u
+LEFT JOIN profiles p ON u.id = p.user_id
+WHERE u.uuid = ANY(@user_uuids::text[]);
+
 -- name: GetUserDetails :one
 SELECT
     u.uuid, u.email, u.created_at, u.username, p.birth_date

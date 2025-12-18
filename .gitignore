@@ -18,6 +18,7 @@ scripts/**/*-linux-amd64
 
 data/lexica/words/*.txt
 local.env
+.env.prod
 
 cmd/convert-pb/convert-pb
 liwords-ui/public/wasm/macondo.wasm

@@ -27,6 +27,7 @@ import {
   getAllSeasons,
   movePlayerToDivision,
   updateSeasonDates,
+  unregisterFromSeason,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -176,6 +177,25 @@ export const LeagueAdmin = () => {
       notification.success({
         message: "Player Moved",
         description: response.message || "Player moved successfully!",
+      });
+      // Refetch the data to show updated divisions
+      refetchRegistrations();
+      refetchDivisions();
+      // Reset selection
+      setSelectedPlayerId("");
+      setSelectedPlayerDivisionId("");
+      movePlayerForm.resetFields();
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const unregisterUserMutation = useMutation(unregisterFromSeason, {
+    onSuccess: () => {
+      notification.success({
+        message: "User Removed",
+        description: "User has been removed from the season successfully!",
       });
       // Refetch the data to show updated divisions
       refetchRegistrations();
@@ -343,11 +363,40 @@ export const LeagueAdmin = () => {
       return;
     }
 
+    // Check if user selected "remove from league" option
+    if (values.toDivisionId === "REMOVE_USER") {
+      handleRemoveUser();
+      return;
+    }
+
     movePlayerMutation.mutate({
       userId: selectedPlayerId,
       seasonId: latestSeason.uuid,
       fromDivisionId: selectedPlayerDivisionId,
       toDivisionId: values.toDivisionId,
+    });
+  };
+
+  const handleRemoveUser = () => {
+    if (!selectedPlayerId) {
+      notification.error({
+        message: "Selection Error",
+        description: "Please select a player first",
+      });
+      return;
+    }
+
+    if (!latestSeason?.uuid) {
+      notification.error({
+        message: "Season Error",
+        description: "No season found for this league",
+      });
+      return;
+    }
+
+    unregisterUserMutation.mutate({
+      seasonId: latestSeason.uuid,
+      userId: selectedPlayerId,
     });
   };
 
@@ -962,7 +1011,7 @@ export const LeagueAdmin = () => {
           <Card title="Move Player Between Divisions">
             <Alert
               message="Move Player"
-              description="Move a player from one division to another. Only works when season is SCHEDULED."
+              description="Move a player from one division to another, or remove them from the league entirely. Only works when season is SCHEDULED."
               type="info"
               style={{ marginBottom: 16 }}
             />
@@ -1040,17 +1089,24 @@ export const LeagueAdmin = () => {
                     rules={[
                       {
                         required: true,
-                        message: "Please select target division",
+                        message: "Please select target division or remove user",
                       },
                     ]}
                   >
                     <Select
-                      placeholder="Choose target division"
+                      placeholder="Choose target division or remove user"
                       disabled={
                         !selectedPlayerId ||
                         latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
                       }
                     >
+                      <Option
+                        key="REMOVE_USER"
+                        value="REMOVE_USER"
+                        style={{ color: "red", fontWeight: "bold" }}
+                      >
+                        ⚠️ Remove user from league
+                      </Option>
                       {divisionsData?.divisions
                         ?.filter((d) => d.uuid !== selectedPlayerDivisionId)
                         .map((division) => (
@@ -1066,13 +1122,16 @@ export const LeagueAdmin = () => {
                     <Button
                       type="primary"
                       htmlType="submit"
-                      loading={movePlayerMutation.isPending}
+                      loading={
+                        movePlayerMutation.isPending ||
+                        unregisterUserMutation.isPending
+                      }
                       disabled={
                         !selectedPlayerId ||
                         latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
                       }
                     >
-                      Move Player
+                      Move Player / Remove User
                     </Button>
                   </Form.Item>
                 </Form>

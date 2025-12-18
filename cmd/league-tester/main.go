@@ -18,7 +18,10 @@ func main() {
 
 	// Configure logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{
+		Out:        os.Stderr,
+		TimeFormat: "3:04:05PM",
+	})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	command := os.Args[1]
@@ -52,6 +55,8 @@ func main() {
 		err = inspectCommand(ctx, os.Args[2:])
 	case "run-full-season":
 		err = runFullSeasonCommand(ctx, os.Args[2:])
+	case "test-dp-rebalance":
+		err = testDPRebalanceCommand(ctx, os.Args[2:])
 	default:
 		fmt.Printf("Unknown command: %s\n\n", command)
 		printUsage()
@@ -80,6 +85,7 @@ func printUsage() {
 	fmt.Println("  prepare-divisions  Prepare divisions for a season")
 	fmt.Println("  inspect            Inspect current league state")
 	fmt.Println("  run-full-season    Run complete season(s) end-to-end")
+	fmt.Println("  test-dp-rebalance  Test DP rebalancing algorithm with real league data")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  go run cmd/league-tester create-users --count 20")
@@ -89,6 +95,7 @@ func printUsage() {
 	fmt.Println("  go run cmd/league-tester unregister-user --league test-league --season 1 --username testuser5")
 	fmt.Println("  go run cmd/league-tester simulate-games --league test-league --season 2 --all")
 	fmt.Println("  go run cmd/league-tester simulate-games --league test-league --season 2 --count 5")
+	fmt.Println("  go run cmd/league-tester test-dp-rebalance --league test-league --season 3")
 	fmt.Println()
 	fmt.Println("Run 'go run cmd/league-tester <command> --help' for command-specific options")
 }
@@ -275,4 +282,21 @@ func runFullSeasonCommand(ctx context.Context, args []string) error {
 		Int64("seed", *seed).
 		Msg("run-full-season not yet implemented")
 	return fmt.Errorf("not implemented yet")
+}
+
+func testDPRebalanceCommand(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("test-dp-rebalance", flag.ExitOnError)
+	league := fs.String("league", "", "League slug or UUID (required)")
+	season := fs.Int("season", 0, "Season number to test (required)")
+	fs.Parse(args)
+
+	if *league == "" {
+		return fmt.Errorf("--league is required")
+	}
+
+	if *season == 0 {
+		return fmt.Errorf("--season is required")
+	}
+
+	return TestDPRebalance(ctx, *league, int32(*season))
 }

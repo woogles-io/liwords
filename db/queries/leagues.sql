@@ -232,6 +232,21 @@ WHERE lr.user_id = $1
   AND (@league_id::uuid IS NULL OR ls.league_id = @league_id)
 ORDER BY ls.season_number DESC;
 
+-- name: GetPlayerHistoriesForUsers :many
+-- Only fetch recent history (last 5 seasons per player) to avoid unbounded growth
+-- This is enough to determine: most recent season, hiatus length, previous division
+SELECT lr.*, ls.season_number, ls.league_id
+FROM league_registrations lr
+JOIN league_seasons ls ON lr.season_id = ls.uuid
+WHERE lr.user_id = ANY(@user_ids::int[])
+  AND ls.league_id = @league_id
+  AND ls.season_number >= (
+    SELECT MAX(season_number) - 4
+    FROM league_seasons
+    WHERE league_id = @league_id
+  )
+ORDER BY lr.user_id, ls.season_number DESC;
+
 -- Standings operations
 
 -- name: UpsertStanding :exec

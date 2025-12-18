@@ -150,6 +150,11 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	return entu, nil
 }
 
+// GetUserRatings gets ratings for multiple users by their UUIDs in a single query
+func (s *DBStore) GetUserRatings(ctx context.Context, userUUIDs []string) ([]models.GetUserRatingsRow, error) {
+	return s.queries.GetUserRatings(ctx, userUUIDs)
+}
+
 // GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
 // call this for API functions where we care about access levels, etc.
 func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error) {

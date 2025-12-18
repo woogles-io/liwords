@@ -123,17 +123,61 @@ func initStores(ctx context.Context) (*stores.Stores, error) {
 	cfg := &config.Config{}
 	cfg.Load(nil)
 
-	dbPool, err := pgxpool.New(ctx, cfg.DBConnDSN)
+	// Build DSN from environment variables (supports both test and production configs)
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbSSLMode := os.Getenv("DB_SSL_MODE")
+
+	// Defaults for local development
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	if dbPort == "" {
+		dbPort = "15432"
+	}
+	if dbName == "" {
+		dbName = "liwords"
+	}
+	if dbUser == "" {
+		dbUser = "postgres"
+	}
+	if dbPassword == "" {
+		dbPassword = "pass"
+	}
+	if dbSSLMode == "" {
+		dbSSLMode = "disable"
+	}
+
+	dbDSN := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
+		dbHost, dbPort, dbName, dbUser, dbPassword, dbSSLMode)
+
+	log.Info().
+		Str("host", dbHost).
+		Str("port", dbPort).
+		Str("dbname", dbName).
+		Str("user", dbUser).
+		Str("sslmode", dbSSLMode).
+		Msg("Connecting to database")
+
+	dbPool, err := pgxpool.New(ctx, dbDSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Initialize Redis pool (needed for some store operations)
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:16379/1"
+	}
+
 	redisPool := &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(cfg.RedisURL)
+			return redis.DialURL(redisURL)
 		},
 	}
 

@@ -235,6 +235,331 @@ func (rm *RebalanceManager) correctPlacementStatus(
 // UpdatePlacementStatuses sets placement_status for all players before rebalancing
 // This includes NEW, GRADUATED, SHORT_HIATUS_RETURNING, LONG_HIATUS_RETURNING
 // (PROMOTED/RELEGATED/STAYED are already set by MarkSeasonOutcomes at end of previous season)
+// placementCache holds pre-fetched data to avoid N+1 queries
+type playerStandingKey struct {
+	divisionID uuid.UUID
+	userID     int32
+}
+
+type placementCache struct {
+	divisionStandings    map[uuid.UUID][]models.GetStandingsRow            // divisionID -> standings
+	playerStandings      map[playerStandingKey]models.LeagueStanding       // (divisionID, userID) -> standing
+	divisions            map[uuid.UUID]models.LeagueDivision               // divisionID -> division
+	seasons              map[uuid.UUID]models.LeagueSeason                 // seasonID -> season
+	allDivisionsBySeason map[uuid.UUID][]models.LeagueDivision             // seasonID -> divisions
+	playerHistory        map[int32][]models.GetPlayerHistoriesForUsersRow // userID -> season history
+}
+
+// ComputePlayersWithPlacementStatus calculates placement status for all players WITHOUT writing to database
+// This is used by both the real rebalancing flow and read-only testing
+func (rm *RebalanceManager) ComputePlayersWithPlacementStatus(
+	ctx context.Context,
+	leagueID uuid.UUID,
+	previousSeasonID uuid.UUID,
+	newSeasonID uuid.UUID,
+	newSeasonNumber int32,
+	categorizedPlayers []CategorizedPlayer,
+) ([]PlayerWithVirtualDiv, error) {
+	// Pre-fetch all data we'll need to avoid N+1 queries
+	cache := &placementCache{
+		divisionStandings:    make(map[uuid.UUID][]models.GetStandingsRow),
+		playerStandings:      make(map[playerStandingKey]models.LeagueStanding),
+		divisions:            make(map[uuid.UUID]models.LeagueDivision),
+		seasons:              make(map[uuid.UUID]models.LeagueSeason),
+		allDivisionsBySeason: make(map[uuid.UUID][]models.LeagueDivision),
+		playerHistory:        make(map[int32][]models.GetPlayerHistoriesForUsersRow),
+	}
+
+	// Collect user IDs for batch history fetch
+	userIDs := make([]int32, 0, len(categorizedPlayers))
+	for _, cp := range categorizedPlayers {
+		userIDs = append(userIDs, cp.Registration.UserID)
+	}
+
+	// Pre-fetch player histories for registered players only (not entire league history)
+	if len(userIDs) > 0 {
+		histories, err := rm.stores.LeagueStore.GetPlayerHistoriesForUsers(ctx, models.GetPlayerHistoriesForUsersParams{
+			UserIds:  userIDs,
+			LeagueID: leagueID,
+		})
+		if err == nil {
+			for _, h := range histories {
+				cache.playerHistory[h.UserID] = append(cache.playerHistory[h.UserID], h)
+			}
+		}
+	}
+
+	// Pre-fetch all divisions and standings from previous season
+	if previousSeasonID != uuid.Nil {
+		prevDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, previousSeasonID)
+		if err == nil {
+			cache.allDivisionsBySeason[previousSeasonID] = prevDivisions
+			for _, div := range prevDivisions {
+				cache.divisions[div.Uuid] = div
+				// Pre-fetch standings for each division
+				standings, err := rm.stores.LeagueStore.GetStandings(ctx, div.Uuid)
+				if err == nil {
+					cache.divisionStandings[div.Uuid] = standings
+					// Also populate individual player standings map
+					for _, s := range standings {
+						key := playerStandingKey{divisionID: div.Uuid, userID: s.UserID}
+						cache.playerStandings[key] = models.LeagueStanding{
+							ID:                       s.ID,
+							DivisionID:               s.DivisionID,
+							UserID:                   s.UserID,
+							Rank:                     pgtype.Int4{}, // Not included in GetStandingsRow
+							Wins:                     s.Wins,
+							Losses:                   s.Losses,
+							Draws:                    s.Draws,
+							Spread:                   s.Spread,
+							GamesPlayed:              s.GamesPlayed,
+							GamesRemaining:           s.GamesRemaining,
+							Result:                   s.Result,
+							UpdatedAt:                s.UpdatedAt,
+							TotalScore:               s.TotalScore,
+							TotalOpponentScore:       s.TotalOpponentScore,
+							TotalBingos:              s.TotalBingos,
+							TotalOpponentBingos:      s.TotalOpponentBingos,
+							TotalTurns:               s.TotalTurns,
+							HighTurn:                 s.HighTurn,
+							HighGame:                 s.HighGame,
+							Timeouts:                 s.Timeouts,
+							BlanksPlayed:             s.BlanksPlayed,
+							TotalTilesPlayed:         s.TotalTilesPlayed,
+							TotalOpponentTilesPlayed: s.TotalOpponentTilesPlayed,
+						}
+					}
+				}
+			}
+		}
+
+		// Pre-fetch season info
+		season, err := rm.stores.LeagueStore.GetSeason(ctx, previousSeasonID)
+		if err == nil {
+			cache.seasons[previousSeasonID] = season
+		}
+	}
+
+	players := make([]PlayerWithVirtualDiv, 0, len(categorizedPlayers))
+
+	for _, catPlayer := range categorizedPlayers {
+		status, previousRank, seasonsAway, err := rm.computePlacementStatusForPlayer(ctx, leagueID, newSeasonID, newSeasonNumber, catPlayer, cache)
+		if err != nil {
+			return nil, err
+		}
+
+		reg := models.LeagueRegistration{
+			ID:               catPlayer.Registration.ID,
+			UserID:           catPlayer.Registration.UserID,
+			SeasonID:         catPlayer.Registration.SeasonID,
+			DivisionID:       catPlayer.Registration.DivisionID,
+			RegistrationDate: catPlayer.Registration.RegistrationDate,
+			FirstsCount:      catPlayer.Registration.FirstsCount,
+			Status:           catPlayer.Registration.Status,
+			CreatedAt:        catPlayer.Registration.CreatedAt,
+			UpdatedAt:        catPlayer.Registration.UpdatedAt,
+		}
+
+		player := PlayerWithVirtualDiv{
+			UserID:               catPlayer.Registration.UserUuid.String,
+			UserDBID:             catPlayer.Registration.UserID,
+			Username:             catPlayer.Registration.Username.String,
+			PlacementStatus:      status,
+			PreviousRank:         previousRank,
+			HiatusSeasons:        seasonsAway,
+			PreviousDivisionSize: 0,
+			Rating:               int(catPlayer.Rating),
+			RegistrationRow:      reg,
+		}
+
+		// Get previous division size for returning players from cache
+		if status != ipc.PlacementStatus_PLACEMENT_NEW {
+			if history, ok := cache.playerHistory[catPlayer.Registration.UserID]; ok && len(history) > 0 {
+				for _, h := range history {
+					if h.SeasonID != newSeasonID && h.DivisionID.Valid {
+						// Get standings from cache
+						if standings, ok := cache.divisionStandings[h.DivisionID.Bytes]; ok {
+							player.PreviousDivisionSize = len(standings)
+						}
+						break
+					}
+				}
+			}
+		}
+
+		players = append(players, player)
+	}
+
+	// Now calculate virtual divisions
+	return rm.calculateVirtualDivisions(ctx, leagueID, previousSeasonID, players, cache)
+}
+
+// computePlacementStatusForPlayer determines placement status for a single player (pure computation)
+func (rm *RebalanceManager) computePlacementStatusForPlayer(
+	ctx context.Context,
+	leagueID uuid.UUID,
+	newSeasonID uuid.UUID,
+	newSeasonNumber int32,
+	player CategorizedPlayer,
+	cache *placementCache,
+) (status ipc.PlacementStatus, previousRank int32, seasonsAway int32, err error) {
+	if player.Category == PlayerCategoryNew {
+		return ipc.PlacementStatus_PLACEMENT_NEW, 0, 0, nil
+	}
+
+	// RETURNING player - get their history from cache
+	history, ok := cache.playerHistory[player.Registration.UserID]
+	if !ok || len(history) == 0 {
+		return ipc.PlacementStatus_PLACEMENT_NEW, 0, 0, nil
+	}
+
+	// Find most recent season (not the new one)
+	var lastSeason models.GetPlayerHistoriesForUsersRow
+	found := false
+	for _, h := range history {
+		if h.SeasonID != newSeasonID {
+			lastSeason = h
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return ipc.PlacementStatus_PLACEMENT_NEW, 0, 0, nil
+	}
+
+	// Calculate hiatus
+	seasonsAway = newSeasonNumber - lastSeason.SeasonNumber - 1
+	if lastSeason.PreviousDivisionRank.Valid {
+		previousRank = lastSeason.PreviousDivisionRank.Int32
+	}
+
+	if seasonsAway > 0 {
+		// Returning from hiatus
+		if seasonsAway >= 1 && seasonsAway <= 3 {
+			return ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, previousRank, seasonsAway, nil
+		}
+		return ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING, previousRank, seasonsAway, nil
+	}
+
+	// Consecutive play - check their standing result
+	if lastSeason.DivisionID.Valid {
+		// Get standing from cache instead of making a DB query
+		key := playerStandingKey{divisionID: lastSeason.DivisionID.Bytes, userID: player.Registration.UserID}
+		standing, ok := cache.playerStandings[key]
+		if ok && standing.Result.Valid {
+			// Use pre-marked result if available (season was closed)
+			switch ipc.StandingResult(standing.Result.Int32) {
+			case ipc.StandingResult_RESULT_PROMOTED:
+				return ipc.PlacementStatus_PLACEMENT_PROMOTED, previousRank, 0, nil
+			case ipc.StandingResult_RESULT_CHAMPION:
+				return ipc.PlacementStatus_PLACEMENT_STAYED, previousRank, 0, nil
+			case ipc.StandingResult_RESULT_RELEGATED:
+				return ipc.PlacementStatus_PLACEMENT_RELEGATED, previousRank, 0, nil
+			default:
+				return ipc.PlacementStatus_PLACEMENT_STAYED, previousRank, 0, nil
+			}
+		} else if ok {
+			// Result not set yet (season in progress) - compute outcome on-the-fly
+			outcome, computedRank, computeErr := rm.computeOutcomeFromRank(ctx, lastSeason.DivisionID.Bytes, standing, lastSeason.SeasonID, cache)
+			if computeErr != nil {
+				return ipc.PlacementStatus_PLACEMENT_STAYED, previousRank, 0, fmt.Errorf("failed to compute outcome: %w", computeErr)
+			}
+			switch outcome {
+			case ipc.StandingResult_RESULT_PROMOTED:
+				return ipc.PlacementStatus_PLACEMENT_PROMOTED, computedRank, 0, nil
+			case ipc.StandingResult_RESULT_CHAMPION:
+				return ipc.PlacementStatus_PLACEMENT_STAYED, computedRank, 0, nil
+			case ipc.StandingResult_RESULT_RELEGATED:
+				return ipc.PlacementStatus_PLACEMENT_RELEGATED, computedRank, 0, nil
+			default:
+				return ipc.PlacementStatus_PLACEMENT_STAYED, computedRank, 0, nil
+			}
+		}
+	}
+
+	return ipc.PlacementStatus_PLACEMENT_STAYED, previousRank, 0, nil
+}
+
+// computeOutcomeFromRank computes a player's outcome (PROMOTED/RELEGATED/STAYED) and rank based on current standings
+// This is used when testing with in-progress seasons where Result hasn't been marked yet
+// Returns (outcome, rank, error)
+func (rm *RebalanceManager) computeOutcomeFromRank(
+	ctx context.Context,
+	divisionID uuid.UUID,
+	playerStanding models.LeagueStanding,
+	seasonID uuid.UUID,
+	cache *placementCache,
+) (ipc.StandingResult, int32, error) {
+	// Get all standings for this division from cache
+	allStandings, ok := cache.divisionStandings[divisionID]
+	if !ok {
+		return ipc.StandingResult_RESULT_STAYED, 0, fmt.Errorf("division standings not found in cache")
+	}
+
+	// Sort to determine ranks
+	SortStandingsByRank(allStandings)
+
+	// Find this player's rank
+	rank := int32(0)
+	for i, s := range allStandings {
+		if s.UserID == playerStanding.UserID {
+			rank = int32(i + 1) // 1-indexed
+			break
+		}
+	}
+
+	if rank == 0 {
+		return ipc.StandingResult_RESULT_STAYED, 0, fmt.Errorf("player not found in standings")
+	}
+
+	divSize := len(allStandings)
+
+	// Get division from cache
+	division, ok := cache.divisions[divisionID]
+	if !ok {
+		return ipc.StandingResult_RESULT_STAYED, 0, fmt.Errorf("division not found in cache")
+	}
+
+	// Get season from cache
+	season, ok := cache.seasons[seasonID]
+	if !ok {
+		return ipc.StandingResult_RESULT_STAYED, 0, fmt.Errorf("season not found in cache")
+	}
+
+	// Get all divisions from cache
+	allDivisions, ok := cache.allDivisionsBySeason[seasonID]
+	if !ok {
+		return ipc.StandingResult_RESULT_STAYED, 0, fmt.Errorf("divisions not found in cache")
+	}
+
+	highestDivisionNumber := int32(1)
+	for _, div := range allDivisions {
+		if div.DivisionNumber > highestDivisionNumber {
+			highestDivisionNumber = div.DivisionNumber
+		}
+	}
+
+	// Calculate promotion/relegation counts (same logic as in standings.go)
+	promotionFormula := ipc.PromotionFormula(season.PromotionFormula)
+	promotionCount := CalculatePromotionCount(divSize, promotionFormula)
+	relegationCount := promotionCount
+
+	isHighestDivision := division.DivisionNumber == 1
+	isLowestDivision := division.DivisionNumber >= highestDivisionNumber
+
+	// Apply same logic as markOutcomes in standings.go
+	if rank == 1 && isHighestDivision {
+		return ipc.StandingResult_RESULT_CHAMPION, rank, nil
+	} else if int(rank) <= promotionCount && !isHighestDivision {
+		return ipc.StandingResult_RESULT_PROMOTED, rank, nil
+	} else if int(rank) > divSize-relegationCount && !isLowestDivision {
+		return ipc.StandingResult_RESULT_RELEGATED, rank, nil
+	}
+
+	return ipc.StandingResult_RESULT_STAYED, rank, nil
+}
+
 func (rm *RebalanceManager) UpdatePlacementStatuses(
 	ctx context.Context,
 	leagueID uuid.UUID,
@@ -383,6 +708,42 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 		return nil, fmt.Errorf("failed to get season registrations: %w", err)
 	}
 
+	// Pre-fetch player histories and division standings
+	cache := &placementCache{
+		playerHistory:     make(map[int32][]models.GetPlayerHistoriesForUsersRow),
+		divisionStandings: make(map[uuid.UUID][]models.GetStandingsRow),
+	}
+
+	userIDs := make([]int32, 0, len(categorizedPlayers))
+	for _, cp := range categorizedPlayers {
+		userIDs = append(userIDs, cp.Registration.UserID)
+	}
+
+	if len(userIDs) > 0 {
+		histories, err := rm.stores.LeagueStore.GetPlayerHistoriesForUsers(ctx, models.GetPlayerHistoriesForUsersParams{
+			UserIds:  userIDs,
+			LeagueID: leagueID,
+		})
+		if err == nil {
+			for _, h := range histories {
+				cache.playerHistory[h.UserID] = append(cache.playerHistory[h.UserID], h)
+			}
+		}
+	}
+
+	// Pre-fetch division standings from previous season
+	if previousSeasonID != uuid.Nil {
+		prevDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, previousSeasonID)
+		if err == nil {
+			for _, div := range prevDivisions {
+				standings, err := rm.stores.LeagueStore.GetStandings(ctx, div.Uuid)
+				if err == nil {
+					cache.divisionStandings[div.Uuid] = standings
+				}
+			}
+		}
+	}
+
 	// Create a map for O(1) lookup by user_id
 	registrationMap := make(map[int32]models.GetSeasonRegistrationsRow)
 	for _, reg := range allRegistrations {
@@ -436,19 +797,13 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 			player.HiatusSeasons = reg.SeasonsAway.Int32
 		}
 
-		// Get previous division size (if applicable)
+		// Get previous division size from cache
 		if status != ipc.PlacementStatus_PLACEMENT_NEW {
-			history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
-				UserID:   catPlayer.Registration.UserID,
-				LeagueID: leagueID,
-			})
-			if err == nil && len(history) > 0 {
-				// Find most recent season
+			if history, ok := cache.playerHistory[catPlayer.Registration.UserID]; ok && len(history) > 0 {
 				for _, h := range history {
 					if h.SeasonID != newSeasonID && h.DivisionID.Valid {
-						// Count players in that division
-						standings, err := rm.stores.LeagueStore.GetStandings(ctx, h.DivisionID.Bytes)
-						if err == nil {
+						// Get standings count from cache
+						if standings, ok := cache.divisionStandings[h.DivisionID.Bytes]; ok {
 							player.PreviousDivisionSize = len(standings)
 						}
 						break
@@ -461,7 +816,7 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 	}
 
 	// Now assign virtual divisions based on status
-	return rm.calculateVirtualDivisions(ctx, leagueID, previousSeasonID, players)
+	return rm.calculateVirtualDivisions(ctx, leagueID, previousSeasonID, players, cache)
 }
 
 // calculateVirtualDivisions determines virtual division for each player
@@ -470,6 +825,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	leagueID uuid.UUID,
 	previousSeasonID uuid.UUID,
 	players []PlayerWithVirtualDiv,
+	cache *placementCache,
 ) ([]PlayerWithVirtualDiv, error) {
 	// Get previous season divisions to determine virtual division structure
 	prevDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, previousSeasonID)
@@ -491,13 +847,11 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	result := make([]PlayerWithVirtualDiv, len(players))
 
 	for i, p := range players {
-		// Get their previous division number
-		history, err := rm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
-			UserID:   p.UserDBID,
-			LeagueID: leagueID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get history for %s: %w", p.UserID, err)
+		// Get their previous division number from cache
+		history, ok := cache.playerHistory[p.UserDBID]
+		if !ok {
+			// No history, default to division 1
+			history = nil
 		}
 
 		prevDivNumber := int32(1) // Default
@@ -525,10 +879,22 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 		case ipc.PlacementStatus_PLACEMENT_RELEGATED:
 			result[i].VirtualDivision = prevDivNumber + 1
 		case ipc.PlacementStatus_PLACEMENT_NEW:
-			// New players start at the highest division and low priority pushes them down
-			if highestPrevDivNumber > 0 {
+			// NEW players: assign target based on rating match with existing divisions
+			// This prevents overrated rookies from dominating bottom divisions
+			// and helps rookies find their correct level faster
+			if highestPrevDivNumber > 0 && p.Rating > 0 {
+				// Calculate target based on rating similarity to returning players
+				result[i].VirtualDivision = rm.calculateRatingBasedTarget(
+					ctx,
+					p.Rating,
+					result[:i], // Already-processed returning players
+					highestPrevDivNumber,
+				)
+			} else if highestPrevDivNumber > 0 {
+				// Unrated NEW player (rating = 0) goes to bottom division
 				result[i].VirtualDivision = highestPrevDivNumber
 			} else {
+				// First season, no previous divisions
 				result[i].VirtualDivision = 1
 			}
 		case ipc.PlacementStatus_PLACEMENT_STAYED, ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING:
@@ -539,6 +905,77 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	}
 
 	return result, nil
+}
+
+// calculateRatingBasedTarget assigns a target division for NEW players based on their rating
+// compared to the average ratings of returning players in each division
+func (rm *RebalanceManager) calculateRatingBasedTarget(
+	ctx context.Context,
+	newPlayerRating int,
+	returningPlayers []PlayerWithVirtualDiv,
+	maxDivision int32,
+) int32 {
+	// Calculate average rating per virtual division from returning players
+	divisionRatingSums := make(map[int32]int)
+	divisionCounts := make(map[int32]int)
+
+	for _, player := range returningPlayers {
+		if player.Rating > 0 {
+			divisionRatingSums[player.VirtualDivision] += player.Rating
+			divisionCounts[player.VirtualDivision]++
+		}
+	}
+
+	// Calculate averages
+	divisionAverages := make(map[int32]float64)
+	for div := int32(1); div <= maxDivision; div++ {
+		if divisionCounts[div] > 0 {
+			divisionAverages[div] = float64(divisionRatingSums[div]) / float64(divisionCounts[div])
+		}
+	}
+
+	// If no returning players have ratings, fall back to bottom division
+	if len(divisionAverages) == 0 {
+		return maxDivision
+	}
+
+	// Find division with closest average rating
+	// Start from Division 2 unless there's only 1 division (keep Div 1 exclusive)
+	startDiv := int32(2)
+	if maxDivision == 1 {
+		startDiv = 1
+	}
+
+	closestDiv := maxDivision
+	smallestDiff := math.Inf(1)
+
+	for div := startDiv; div <= maxDivision; div++ {
+		if avg, exists := divisionAverages[div]; exists {
+			diff := math.Abs(float64(newPlayerRating) - avg)
+			if diff < smallestDiff {
+				smallestDiff = diff
+				closestDiv = div
+			}
+		}
+	}
+
+	// If we didn't find any division with ratings (very unlikely), default to Div 2 or max
+	if math.IsInf(smallestDiff, 1) {
+		if maxDivision >= 2 {
+			closestDiv = 2
+		} else {
+			closestDiv = maxDivision
+		}
+	}
+
+	log.Debug().
+		Int("newPlayerRating", newPlayerRating).
+		Int32("targetDivision", closestDiv).
+		Int32("maxDivision", maxDivision).
+		Interface("divisionAverages", divisionAverages).
+		Msg("Calculated rating-based target for NEW player (Div 1 excluded)")
+
+	return closestDiv
 }
 
 // CalculatePriorityScores calculates priority scores for all players

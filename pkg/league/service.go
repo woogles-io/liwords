@@ -1366,12 +1366,12 @@ func (ls *LeagueService) UnregisterFromSeason(
 		return nil, apiserver.InvalidArg("cannot unregister from an active season")
 	}
 
-	// Allow user to specify different user_id only if they have manage permission
+	// Allow user to specify different user_id only if they have manage or invite permission
 	userDBIDToUnregister := int32(user.ID)
 	userUUIDForLogging := user.UUID
 	if req.Msg.UserId != "" && req.Msg.UserId != user.UUID {
-		// Check if user has manage permission
-		_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+		// Check if user has manage or invite permission (admins or league promoters)
+		err := ls.authenticateLeaguePromoterOrAdmin(ctx)
 		if err != nil {
 			return nil, apiserver.PermissionDenied("cannot unregister other users")
 		}

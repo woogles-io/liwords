@@ -148,3 +148,37 @@ func (q *Queries) GetUserDetails(ctx context.Context, lowercasedUsername pgtype.
 	)
 	return i, err
 }
+
+const getUserRatings = `-- name: GetUserRatings :many
+SELECT
+    u.uuid,
+    p.ratings
+FROM users u
+LEFT JOIN profiles p ON u.id = p.user_id
+WHERE u.uuid = ANY($1::text[])
+`
+
+type GetUserRatingsRow struct {
+	Uuid    pgtype.Text
+	Ratings []byte
+}
+
+func (q *Queries) GetUserRatings(ctx context.Context, userUuids []string) ([]GetUserRatingsRow, error) {
+	rows, err := q.db.Query(ctx, getUserRatings, userUuids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserRatingsRow
+	for rows.Next() {
+		var i GetUserRatingsRow
+		if err := rows.Scan(&i.Uuid, &i.Ratings); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

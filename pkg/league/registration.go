@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -82,6 +83,97 @@ type CategorizedPlayer struct {
 // 1. Use average of all ratings where RD < 90 (stable ratings)
 // 2. If no stable ratings but has unstable ratings, use average of unstable ratings
 // 3. If no rated games at all, return 0 (not 1500)
+// batchFetchRatings fetches ratings for all users in batches to avoid N+1 queries
+func (rm *RegistrationManager) batchFetchRatings(ctx context.Context, registrations []models.GetSeasonRegistrationsRow) (map[string]int32, error) {
+	// Collect unique user UUIDs
+	uniqueUUIDs := make([]string, 0, len(registrations))
+	seenUUIDs := make(map[string]bool)
+
+	for _, reg := range registrations {
+		if reg.UserUuid.Valid && !seenUUIDs[reg.UserUuid.String] {
+			uniqueUUIDs = append(uniqueUUIDs, reg.UserUuid.String)
+			seenUUIDs[reg.UserUuid.String] = true
+		}
+	}
+
+	ratingCache := make(map[string]int32)
+
+	// Process in batches of 50
+	batchSize := 50
+	for i := 0; i < len(uniqueUUIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(uniqueUUIDs) {
+			end = len(uniqueUUIDs)
+		}
+		batch := uniqueUUIDs[i:end]
+
+		// Batch query for this set of UUIDs
+		ratingsRows, err := rm.allStores.UserStore.GetUserRatings(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+
+		// Process each user's ratings
+		for _, row := range ratingsRows {
+			if !row.Uuid.Valid {
+				continue
+			}
+
+			// Unmarshal ratings JSONB
+			var ratings entity.Ratings
+			if len(row.Ratings) > 0 {
+				if err := json.Unmarshal(row.Ratings, &ratings); err != nil {
+					// On error, default to 0
+					ratingCache[row.Uuid.String] = 0
+					continue
+				}
+			}
+
+			// Calculate average rating using same logic as calculateAverageRating
+			avgRating := calculateAverageFromRatings(ratings)
+			ratingCache[row.Uuid.String] = avgRating
+		}
+	}
+
+	return ratingCache, nil
+}
+
+// calculateAverageFromRatings computes the average rating from a Ratings object
+func calculateAverageFromRatings(ratings entity.Ratings) int32 {
+	if ratings.Data == nil || len(ratings.Data) == 0 {
+		return 0
+	}
+
+	// Collect stable and unstable ratings
+	var stableRatings []float64
+	var unstableRatings []float64
+
+	for _, rating := range ratings.Data {
+		if rating.RatingDeviation < StableRatingDeviation {
+			stableRatings = append(stableRatings, rating.Rating)
+		} else {
+			unstableRatings = append(unstableRatings, rating.Rating)
+		}
+	}
+
+	// Calculate average based on what's available
+	if len(stableRatings) > 0 {
+		sum := 0.0
+		for _, r := range stableRatings {
+			sum += r
+		}
+		return int32(sum / float64(len(stableRatings)))
+	} else if len(unstableRatings) > 0 {
+		sum := 0.0
+		for _, r := range unstableRatings {
+			sum += r
+		}
+		return int32(sum / float64(len(unstableRatings)))
+	}
+
+	return 0
+}
+
 func (rm *RegistrationManager) calculateAverageRating(ctx context.Context, userUUID string) (int32, error) {
 	// Get user with ratings
 	user, err := rm.allStores.UserStore.GetByUUID(ctx, userUUID)
@@ -138,36 +230,51 @@ func (rm *RegistrationManager) CategorizeRegistrations(
 ) ([]CategorizedPlayer, error) {
 	categorized := make([]CategorizedPlayer, 0, len(registrations))
 
+	// Collect user IDs
+	userIDs := make([]int32, 0, len(registrations))
 	for _, reg := range registrations {
-		// Check if player has history in this league (excluding current season)
-		history, err := rm.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
-			UserID:   reg.UserID,
+		userIDs = append(userIDs, reg.UserID)
+	}
+
+	// Batch fetch player histories for registered users only (limited to recent seasons)
+	userSeasonMap := make(map[int32][]uuid.UUID)
+	if len(userIDs) > 0 {
+		allHistories, err := rm.store.GetPlayerHistoriesForUsers(ctx, models.GetPlayerHistoriesForUsersParams{
+			UserIds:  userIDs,
 			LeagueID: leagueID,
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		// Filter out the current season from history
-		previousSeasons := 0
-		for _, season := range history {
-			if season.SeasonID != seasonID {
-				previousSeasons++
+		// Build a map of userID -> seasons (excluding current season)
+		for _, history := range allHistories {
+			if history.SeasonID != seasonID {
+				userSeasonMap[history.UserID] = append(userSeasonMap[history.UserID], history.SeasonID)
 			}
 		}
+	}
+
+	// Batch fetch all user ratings
+	ratingCache, err := rm.batchFetchRatings(ctx, registrations)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, reg := range registrations {
+		// Check if player has previous seasons (excluding current)
+		previousSeasons := len(userSeasonMap[reg.UserID])
 
 		category := PlayerCategoryNew
 		if previousSeasons > 0 {
 			category = PlayerCategoryReturning
 		}
 
-		// Calculate average rating for this player
+		// Get average rating from cache
 		avgRating := int32(0)
 		if reg.UserUuid.Valid {
-			avgRating, err = rm.calculateAverageRating(ctx, reg.UserUuid.String)
-			if err != nil {
-				// If we can't get the rating, default to 0
-				avgRating = 0
+			if cachedRating, ok := ratingCache[reg.UserUuid.String]; ok {
+				avgRating = cachedRating
 			}
 		}
 
