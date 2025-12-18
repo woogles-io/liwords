@@ -955,14 +955,10 @@ export const Table = React.memo((props: Props) => {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
     }
 
-    // Get all correspondence games where it's user's turn, excluding current game
+    // Get all correspondence games where it's user's turn, including current game
+    const now = Date.now(); // Use the same reference time during iteration
     const gamesOnMyTurn = corresGames
       .filter((ag) => {
-        // Exclude current game
-        if (ag.gameID === gameID) {
-          return false;
-        }
-
         // Check if it's user's turn
         const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
         if (playerIndex === -1) {
@@ -973,7 +969,6 @@ export const Table = React.memo((props: Props) => {
       })
       .map((ag) => {
         // Calculate time remaining for sorting
-        const now = Date.now();
         const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
         const timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
 
@@ -982,11 +977,31 @@ export const Table = React.memo((props: Props) => {
           timeRemaining: timeRemainingSecs,
         };
       })
-      .sort((a, b) => a.timeRemaining - b.timeRemaining); // Sort by most urgent first
+      .sort((a, b) => {
+        // Do not use a-b even if it should not overflow
+        if (a.timeRemaining < b.timeRemaining) return -1;
+        if (a.timeRemaining > b.timeRemaining) return 1;
+        // Tiebreak to stabilize order (this may not be the same as the backend)
+        if (a.game.gameID < b.game.gameID) return -1;
+        if (a.game.gameID > b.game.gameID) return 1;
+        return 0;
+      }); // Sort by most urgent first
 
+    // This should exist
+    const currentGameIndex = corresGames.findIndex(
+      (ag) => ag.gameID === gameID,
+    );
+
+    // But do not crash if it does not exist
     return {
-      nextCorresGame: gamesOnMyTurn.length > 0 ? gamesOnMyTurn[0].game : null,
-      corresGamesWaiting: gamesOnMyTurn.length,
+      nextCorresGame:
+        currentGameIndex >= 0
+          ? gamesOnMyTurn[(currentGameIndex + 1) % gamesOnMyTurn.length].game
+          : gamesOnMyTurn.length > 0
+            ? gamesOnMyTurn[0].game
+            : null,
+      corresGamesWaiting:
+        gamesOnMyTurn.length + (currentGameIndex >= 0 ? -1 : 0),
     };
   }, [gameInfo.gameRequest?.gameMode, userID, gameID, localCorresGames]);
 
