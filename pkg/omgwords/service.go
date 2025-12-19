@@ -3,6 +3,7 @@ package omgwords
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -122,6 +123,12 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	// Overwrite the type (NewGame assumes this is a native game)
 	g.Type = ipc.GameType_ANNOTATED
 
+	// Initialize racks for both players in annotated games
+	err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g, [][]byte{nil, nil}, cwgame.AlwaysAssignEmpty)
+	if err != nil {
+		return nil, err
+	}
+
 	qd := &entity.Quickdata{PlayerInfo: req.PlayersInfo}
 	g.CreatedAt = timestamppb.Now()
 
@@ -187,6 +194,16 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 	if req.Msg.Event == nil {
 		return nil, apiserver.InvalidArg("event is required")
 	}
+
+	// Log editor API request for debugging and replay
+	log.Info().
+		Str("editor_op", "send_game_event").
+		Str("game_id", req.Msg.Event.GameId).
+		Str("user_id", req.Msg.UserId).
+		Bool("amendment", req.Msg.Amendment).
+		Uint32("event_number", req.Msg.EventNumber).
+		Interface("event", req.Msg.Event).
+		Msg("editor-api-request")
 
 	justEnded, err := handleEvent(ctx, gs.cfg.WGLConfig(), req.Msg.UserId, req.Msg.Event, req.Msg.Amendment, req.Msg.EventNumber, gs.gameStore, gs.gameEventChan)
 	if err != nil {
@@ -416,6 +433,15 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Req
 // rack can be set before actually setting it.
 func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb.SetRacksEvent],
 ) (*connect.Response[pb.GameEventResponse], error) {
+	// Log editor API request for debugging and replay
+	log.Info().
+		Str("editor_op", "set_racks").
+		Str("game_id", req.Msg.GameId).
+		Bool("amendment", req.Msg.Amendment).
+		Uint32("event_number", req.Msg.EventNumber).
+		Interface("racks", req.Msg.Racks).
+		Msg("editor-api-request")
+
 	err := gs.failIfSessionDoesntOwn(ctx, req.Msg.GameId)
 	if err != nil {
 		return nil, err
@@ -448,12 +474,44 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, err
 		}
+
+		// Validate tile distribution after editing rack
+		if g.Type == ipc.GameType_ANNOTATED {
+			dist, distErr := cwgame.GetLetterDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
+			if distErr == nil {
+				if validationErr := cwgame.ValidateTileDistribution(g.GameDocument, dist); validationErr != nil {
+					log.Error().
+						Err(validationErr).
+						Str("game_id", req.Msg.GameId).
+						Str("editor_op", "set_racks_amendment").
+						Uint32("event_number", req.Msg.EventNumber).
+						Msg("editor-tile-distribution-mismatch-editrack")
+					gs.gameStore.UnlockDocument(ctx, g)
+					return nil, apiserver.InvalidArg(fmt.Sprintf("Cannot set rack: %v", validationErr))
+				}
+			}
+		}
 	} else {
 
-		err = cwgame.AssignRacks(g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
+		err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InvalidArg(err.Error())
+		}
+
+		// Validate tile distribution after setting racks
+		if g.Type == ipc.GameType_ANNOTATED {
+			dist, distErr := cwgame.GetLetterDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
+			if distErr == nil {
+				if validationErr := cwgame.ValidateTileDistribution(g.GameDocument, dist); validationErr != nil {
+					log.Error().
+						Err(validationErr).
+						Str("game_id", req.Msg.GameId).
+						Str("editor_op", "set_racks").
+						Msg("editor-tile-distribution-mismatch-setracks")
+					panic(fmt.Sprintf("TILE DISTRIBUTION CORRUPTION IN SETRACKS: %v", validationErr))
+				}
+			}
 		}
 	}
 
