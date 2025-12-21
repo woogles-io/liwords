@@ -192,8 +192,6 @@ divisionPairingLoop:
 		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
 			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
 			destinysChild = controlLossSimResults.HighestControlLossRankIdx
-		} else if lowestPossibleHopeNth[0] > 0 {
-			destinysChild = lowestPossibleHopeNth[0]
 		}
 	}
 

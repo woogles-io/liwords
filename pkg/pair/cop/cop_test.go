@@ -717,7 +717,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 		Pairings: pairings,
 	})
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	// This is the second round that control loss is active, so first will
 	// be force paired with the 2 lowest contenders. Therefore, prepairing the lowest
@@ -743,16 +743,15 @@ func TestCOPConstraintPolicies(t *testing.T) {
 
 	// With only 4 rounds to go, first will again be paired with only the lowest contender.
 	// Therefore, prepairing the lowest contender with someone else should result in an overconstrained error.
-	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
-	req.Rounds = 25
-	req.ControlLossActivationRound = 20
+	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
+	req.ControlLossActivationRound = 12
 	req.Seed = 1
 	pairings = make([]int32, req.AllPlayers)
 	for i := range pairings {
 		pairings[i] = -1
 	}
-	pairings[6] = 25
-	pairings[25] = 6
+	pairings[0] = 10
+	pairings[10] = 0
 	req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{
 		Pairings: pairings,
 	})
@@ -835,7 +834,6 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(verifyreq.Verify(req), nil)
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	fmt.Println(resp.Log)
 	// Matt T should be playing Rasheed, since rank differences
 	// for pairings with a gibsonized player are squared.
 	is.Equal(resp.Pairings[9], int32(25))

@@ -150,7 +150,7 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}
 	is.Equal(copdata.LowestRankAbsolutely[2], 2)
-	is.Equal(copdata.DestinysChild, 1)
+	is.Equal(copdata.DestinysChild, -1)
 
 	// 1st and 2nd gibsonized
 	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
@@ -197,7 +197,7 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}
 	is.Equal(copdata.LowestRankAbsolutely[3], 3)
-	is.Equal(copdata.DestinysChild, 2)
+	is.Equal(copdata.DestinysChild, -1)
 
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 26
@@ -249,7 +249,7 @@ func TestCOPPrecompData(t *testing.T) {
 	copRand.Seed(1)
 	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(copdata.DestinysChild, 2)
+	is.Equal(copdata.DestinysChild, -1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}

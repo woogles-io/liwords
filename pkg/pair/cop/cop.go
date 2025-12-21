@@ -345,7 +345,7 @@ var weightPolicies = []weightPolicy{
 			totalWeight := int64(timesPlayed) * unitWeight
 			// If both players cannot cash, add an extra unit weight
 			// to the repeat weight.
-			if ri > pargs.lowestPossibleHopeCasher {
+			if ri >= int(pargs.req.PlacePrizes*2) {
 				totalWeight += unitWeight
 			}
 			return totalWeight
