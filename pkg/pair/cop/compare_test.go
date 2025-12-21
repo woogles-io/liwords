@@ -420,8 +420,9 @@ func TestCompare(t *testing.T) {
 	var err error
 	useRandomScores := false
 	startRound := -1
-	if os.Getenv("COP_SR") != "" {
-		startRound, err = strconv.Atoi(os.Getenv("COP_SR"))
+	inputStartRoundStr := os.Getenv("COP_SR")
+	if inputStartRoundStr != "" {
+		startRound, err = strconv.Atoi(inputStartRoundStr)
 		if err != nil {
 			panic(err)
 		}
@@ -432,9 +433,6 @@ func TestCompare(t *testing.T) {
 	}
 
 	is := is.New(t)
-
-	// tourneyName = "2025-12-12-Belleville-NWL-ME"
-	// tourneyName = "2025-07-03-Albany-CSW-ME"
 
 	previousRoundWasCOP := false
 	var randomDivResults []*pb.RoundResults
