@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog"
 	wglconfig "github.com/domino14/word-golib/config"
+	"github.com/rs/zerolog"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/cwgame"
@@ -25,6 +25,7 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	if err != nil {
 		return false, err
 	}
+	// the game is locked now
 
 	// amendment is sent when we try to edit an already existing game event
 	// in the past. This can only be done for annotated games.
@@ -54,35 +55,6 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 		return false, apiserver.InvalidArg(err.Error())
 	}
 
-	// Validate tile counts after processing the event
-	if g.Type == ipc.GameType_ANNOTATED {
-		dist, distErr := cwgame.GetLetterDistribution(cfg, g.LetterDistribution)
-		if distErr == nil {
-			expectedTotal := int(dist.NumTotalLetters())
-			if validationErr := cwgame.ValidateTotalTiles(g.GameDocument, expectedTotal); validationErr != nil {
-				zerolog.Ctx(ctx).Error().
-					Err(validationErr).
-					Str("game_id", evt.GameId).
-					Str("editor_op", "send_game_event").
-					Int("expected", expectedTotal).
-					Int("bag", len(g.Bag.Tiles)).
-					Int("rack0", len(g.Racks[0])).
-					Int("rack1", len(g.Racks[1])).
-					Msg("editor-tile-mismatch")
-				panic(fmt.Sprintf("TILE CORRUPTION DETECTED: %v", validationErr))
-			}
-			// Also validate per-letter distribution
-			if validationErr := cwgame.ValidateTileDistribution(g.GameDocument, dist); validationErr != nil {
-				zerolog.Ctx(ctx).Error().
-					Err(validationErr).
-					Str("game_id", evt.GameId).
-					Str("editor_op", "send_game_event").
-					Msg("editor-tile-distribution-mismatch")
-				panic(fmt.Sprintf("TILE DISTRIBUTION CORRUPTION DETECTED: %v", validationErr))
-			}
-		}
-	}
-
 	// Now check for changes and send events accordingly.
 	if len(g.Events) != oldNumEvents {
 		// This will pretty much always happen if we didn't return an error.
@@ -95,6 +67,13 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 			sge.NewRack = g.Racks[evt.PlayerIndex]
 			sge.Playing = g.PlayState
 			sge.UserId = g.Players[evt.PlayerIndex].UserId
+
+			// For annotated games, include opponent's rack so frontend stays in sync
+			// This is needed when rack inference borrows tiles from opponent
+			if g.Type == ipc.GameType_ANNOTATED {
+				opponentIdx := 1 - evt.PlayerIndex
+				sge.OpponentRack = g.Racks[opponentIdx]
+			}
 
 			wrapped := entity.WrapEvent(sge, ipc.MessageType_OMGWORDS_GAMEPLAY_EVENT)
 			if g.Type == ipc.GameType_ANNOTATED {
@@ -109,7 +88,7 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 			evtChan <- wrapped
 		}
 	}
-
+	// updateDocument unlocks the game
 	err = gs.UpdateDocument(ctx, g)
 	if err != nil {
 		return false, err
@@ -222,11 +201,8 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 
 	err = gs.UpdateDocument(ctx, g)
 	if err != nil {
-		gs.UnlockDocument(ctx, g)
 		return false, err
 	}
-
-	gs.UnlockDocument(ctx, g)
 
 	gameEnded := g.PlayState == ipc.PlayState_GAME_OVER
 	return gameEnded, nil

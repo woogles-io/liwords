@@ -769,6 +769,8 @@ export const BoardPanel = React.memo((props: Props) => {
           displayedRack,
           placedTiles,
           props.alphabet,
+          props.boardEditingMode,
+          examinableGameContext.pool,
         );
 
         if (handlerReturn === null) {
@@ -789,11 +791,13 @@ export const BoardPanel = React.memo((props: Props) => {
       examinableGameContext.playState,
       examinableTimerContext.p0,
       examinableTimerContext.p1,
+      examinableGameContext.pool,
       gameContext.pool,
       gameContext.board,
       gameContext.players,
       gameContext.turns,
       props.alphabet,
+      props.boardEditingMode,
       playerMeta,
       username,
       currentMode,
@@ -1082,16 +1086,12 @@ export const BoardPanel = React.memo((props: Props) => {
     ],
   );
 
+  // Removed auto-open rack editor - users can now type directly on the board
+  // without setting a rack first in editor mode (rack inference handles it)
   useEffect(() => {
-    if (
-      currentMode !== "EDITING_RACK" &&
-      currentMode !== "WAITING_FOR_RACK_EDIT" &&
-      props.boardEditingMode &&
-      props.currentRack.filter((v) => v !== EmptyRackSpaceMachineLetter)
-        .length === 0
-    ) {
-      setCurrentMode("EDITING_RACK");
-    }
+    // This used to auto-open the rack editor when the rack was empty,
+    // but now we allow typing directly on the board in editor mode
+    // The backend will infer the rack from the placed tiles
   }, [currentMode, props.boardEditingMode, props.currentRack, setCurrentMode]);
 
   useEffect(() => {

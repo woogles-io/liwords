@@ -102,31 +102,20 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 		}
 
 	case ipc.GameEvent_EXCHANGE:
+		// Use TileInventory to handle the exchange
+		inv := NewTileInventory(gdoc, cfg.WGLConfig())
 
-		placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
-		err := tiles.Exchange(gdoc.Bag, tilemapping.FromByteArr(gevt.Exchanged), placeholder)
-		if err != nil {
-			return err
-		}
-		leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack),
-			tilemapping.FromByteArr(gevt.Exchanged), true)
-		if err != nil {
+		// Set the rack to what's in the event (in case it differs from current)
+		if err := inv.SetRack(int(gdoc.PlayerOnTurn), gevt.Rack); err != nil {
 			return err
 		}
 
-		copy(placeholder[len(gevt.Exchanged):], leave)
-		// // A partial rack could have been provided.
-		newRackLength := len(gdoc.Racks[gdoc.PlayerOnTurn])
-		if newRackLength < RackTileLimit {
-			// draw enough tiles to fill the rack.
-			err = tiles.Draw(gdoc.Bag, RackTileLimit-newRackLength,
-				placeholder[newRackLength:])
-			if err != nil {
-				return err
-			}
+		// Exchange the tiles
+		exchangedTiles := tilemapping.FromByteArr(gevt.Exchanged)
+		if err := inv.ExchangeTiles(int(gdoc.PlayerOnTurn), exchangedTiles); err != nil {
+			return err
 		}
 
-		gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(placeholder).ToByteArr()
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -189,29 +178,46 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gdoc.ScorelessTurns = 0
 	gdoc.CurrentScores[gdoc.PlayerOnTurn] += score
 
-	placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
-	drew, err := tiles.DrawAtMost(gdoc.Bag, tilesPlayed, placeholder)
+	// Calculate leave (tiles remaining in rack after playing)
+	// zeroIsPlaythrough=true: playing on board, tile 0 in tilesUsed represents play-through markers
+	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, true)
 	if err != nil {
 		return err
 	}
 
-	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, false)
+	// NOTE: board.PlayMove (above) has already placed tiles on gdoc.Board, so those
+	// tiles are counted on the board. We now update the rack to reflect what remains.
+	// This briefly creates an invalid state (tiles double-counted), but TileInventory's
+	// validation (below) will catch any issues. We keep board.PlayMove separate from
+	// TileInventory because they have different responsibilities:
+	//   - board.PlayMove = game rules (word validation, scoring, board placement)
+	//   - TileInventory = tile accounting (conservation, validation)
+	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(leave).ToByteArr()
+
+	// Use TileInventory to draw replacement tiles and validate tile conservation
+	inv := NewTileInventory(gdoc, cfg.WGLConfig())
+	_, err = inv.DrawToFillRack(int(gdoc.PlayerOnTurn))
 	if err != nil {
 		return err
 	}
 
-	copy(placeholder[drew:], leave)
-	newRack := placeholder[:drew+len(leave)]
-	// Fill the rack if possible. This can happen if we only had partial
-	// rack info for this play.
-	// if len(newRack) < RackTileLimit {
-	// 	drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit-len(newRack), placeholder[])
-	// }
+	// Get the new rack after drawing for end-game detection
+	newRack := gdoc.Racks[gdoc.PlayerOnTurn]
 
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
-	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(newRack).ToByteArr()
+
+	// In annotated games, auto-assign or top off the next player's rack
+	// This ensures the opponent always has a full rack after a play
+	if gdoc.Type == ipc.GameType_ANNOTATED {
+		nextPlayer := 1 - gdoc.PlayerOnTurn
+		_, err := inv.DrawToFillRack(int(nextPlayer))
+		if err != nil {
+			return err
+		}
+	}
+
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
 	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -463,11 +469,11 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 			winner = int32(gdoc.PlayerOnTurn)
 			// Take the play off the board.
 			gdoc.Events = append(gdoc.Events, offBoardEvent)
-			err := unplayLastMove(ctx, gdoc, dist)
+			err := unplayLastMove(ctx, cfg, gdoc, dist)
 			if err != nil {
 				return err
 			}
-			gdoc.Racks[challengee] = lastEvent.Rack
+			// Rack is already restored by unplayLastMove
 		}
 		gdoc.Winner = winner
 		gdoc.PlayState = ipc.PlayState_GAME_OVER
@@ -481,14 +487,13 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 
 		// Unplay the last move to restore everything as it was board-wise
 		// (and un-end the game if it had ended)
-		err := unplayLastMove(ctx, gdoc, dist)
+		err := unplayLastMove(ctx, cfg, gdoc, dist)
 		if err != nil {
 			return err
 		}
 
-		// We must also set the last known rack of the challengee back to
-		// their rack before they played the phony.
-		gdoc.Racks[challengee] = lastEvent.Rack
+		// Rack is already restored by unplayLastMove
+
 		if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
 			err = handleConsecutiveScorelessTurns(gdoc, dist)
 			if err != nil {
@@ -561,7 +566,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	return err
 }
 
-func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
+func unplayLastMove(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
 	// unplay the last move. This function already assumes the off-board event
 	// exists in the gdoc's History.
 
@@ -577,7 +582,6 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemappi
 
 	offboardEvent := gdoc.Events[nevt-1]
 	originalEvent := gdoc.Events[nevt-2]
-	postPhonyRack := gdoc.Racks[offboardEvent.PlayerIndex]
 
 	if offboardEvent.Type != ipc.GameEvent_PHONY_TILES_RETURNED {
 		return errors.New("wrong event type for offboard event")
@@ -597,19 +601,26 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemappi
 		return err
 	}
 
+	// Calculate what the rack was after playing the phony (before drawing new tiles)
+	// Use zeroIsPlaythrough=true because originalEvent.PlayedTiles may contain play-through markers
 	leaveAfterPhony, err := tilemapping.Leave(
-		tilemapping.FromByteArr(originalEvent.Rack), mw, false)
+		tilemapping.FromByteArr(originalEvent.Rack), mw, true)
 	if err != nil {
 		return err
 	}
 
+	// Calculate what was drawn after the phony
+	postPhonyRack := gdoc.Racks[offboardEvent.PlayerIndex]
 	drewPostPhony, err := tilemapping.Leave(tilemapping.FromByteArr(postPhonyRack),
 		leaveAfterPhony, false)
 	if err != nil {
 		return err
 	}
 
+	// Put back only the tiles that were drawn after the phony
+	// The tiles from the board (mw) go directly back to the rack via originalEvent.Rack
 	tiles.PutBack(gdoc.Bag, drewPostPhony)
+	gdoc.Racks[offboardEvent.PlayerIndex] = originalEvent.Rack
 	gdoc.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores[offboardEvent.PlayerIndex] = offboardEvent.Cumulative
 

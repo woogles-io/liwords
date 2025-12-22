@@ -193,7 +193,7 @@ func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocu
 
 // UpdateDocument makes an atomic update to document in the Redis store.
 // If the game is done, though, it will write it to S3 and expire it from the Redis
-// store.
+// store. This function unlocks the game after it's done.
 func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
 	saveToDatabase := doc.PlayState == ipc.PlayState_GAME_OVER
 	bts, err := proto.Marshal(doc.GameDocument)

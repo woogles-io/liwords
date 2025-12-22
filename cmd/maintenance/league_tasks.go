@@ -461,3 +461,77 @@ func LeagueUnstartedGameReminder() error {
 	log.Info().Int("remindersSent", remindersSent).Msg("completed league unstarted game reminder")
 	return nil
 }
+
+// ResendSeasonStartedEmails is a one-time fix to resend "season started" emails for seasons
+// that started recently but failed to send emails (e.g., due to SES permission issues).
+// This finds seasons that were started in the last N hours and resends their notifications.
+func ResendSeasonStartedEmails() error {
+	log.Info().Msg("starting resend season started emails maintenance task")
+
+	ctx := context.Background()
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	allStores, err := initLeagueStores(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+	now := clock.Now()
+
+	// Get all active leagues
+	leagues, err := allStores.LeagueStore.GetAllLeagues(ctx, true)
+	if err != nil {
+		return err
+	}
+
+	emailsSent := 0
+	cutoffTime := now.Add(-72 * time.Hour) // Look for seasons started in last 72 hours
+
+	for _, dbLeague := range leagues {
+		log.Info().Str("league", dbLeague.Name).Msg("Checking for recently started seasons...")
+
+		// Get all seasons for this league
+		allSeasons, err := allStores.LeagueStore.GetSeasonsByLeague(ctx, dbLeague.Uuid)
+		if err != nil {
+			log.Warn().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("failed to get seasons")
+			continue
+		}
+
+		for _, season := range allSeasons {
+			// Only process ACTIVE seasons that were started recently
+			if season.Status != int32(pb.SeasonStatus_SEASON_ACTIVE) {
+				continue
+			}
+
+			// Check if season was started in the last 72 hours
+			if !season.StartedAt.Valid {
+				continue
+			}
+
+			startedAt := season.StartedAt.Time
+			if startedAt.Before(cutoffTime) {
+				continue
+			}
+
+			log.Info().
+				Str("seasonID", season.Uuid.String()).
+				Time("startedAt", startedAt).
+				Msg("Resending season started notification for recently started season...")
+
+			// Send season started notifications
+			err = lifecycleMgr.SendSeasonStartedNotification(ctx, cfg, dbLeague.Uuid, season.Uuid)
+			if err != nil {
+				log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send season started notifications")
+			} else {
+				log.Info().Str("seasonID", season.Uuid.String()).Msg("✓ Successfully resent season started notifications")
+				emailsSent++
+			}
+		}
+	}
+
+	log.Info().Int("emailsSent", emailsSent).Msg("completed resending season started emails")
+	return nil
+}

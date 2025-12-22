@@ -192,6 +192,16 @@ const newGameStateFromGameplayEvent = (
     );
   }
 
+  // For annotated games, update opponent's rack if provided
+  // This keeps frontend in sync when rack inference borrows from opponent
+  if (sge.opponentRack && sge.opponentRack.length > 0) {
+    const opponentIdx = 1 - onturn;
+    players[opponentIdx].currentRack = runesToMachineWord(
+      sge.opponentRack,
+      state.alphabet,
+    );
+  }
+
   players[onturn].score = evt.cumulative;
   players[onturn].onturn = false;
   players[1 - onturn].onturn = true;
@@ -331,6 +341,9 @@ const convertToServerGameplayEvent = (
     timeRemaining: evt.timeRemaining,
     playing: evt.playing.valueOf(),
     userId: evt.userId,
+    opponentRack: evt.opponentRack.length > 0
+      ? machineWordToRunes(Array.from(evt.opponentRack), alphabet)
+      : "",
   });
 };
 

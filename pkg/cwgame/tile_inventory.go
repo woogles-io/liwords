@@ -3,6 +3,7 @@ package cwgame
 import (
 	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/domino14/word-golib/tilemapping"
 	wglconfig "github.com/domino14/word-golib/config"
 
@@ -33,7 +34,7 @@ func NewTileInventory(gdoc *ipc.GameDocument, cfg *wglconfig.Config) *TileInvent
 // are correct across bag, racks, and board.
 func (inv *TileInventory) ValidateInvariants() error {
 	// Get the letter distribution for this game
-	dist, err := tilemapping.NamedLetterDistribution(inv.cfg, inv.gdoc.LetterDistribution)
+	dist, err := tilemapping.GetDistribution(inv.cfg, inv.gdoc.LetterDistribution)
 	if err != nil {
 		return fmt.Errorf("failed to load letter distribution: %w", err)
 	}
@@ -73,7 +74,17 @@ func (inv *TileInventory) ValidateInvariants() error {
 	for tile, count := range tileCounts {
 		expected := int(dist.Distribution()[tilemapping.MachineLetter(tile)])
 		if count != expected {
-			return fmt.Errorf("tile %d count mismatch: expected %d, found %d", tile, expected, count)
+			return fmt.Errorf("tile %d count mismatch: expected %d, found %d (bag=%d, board=%d, racks=%v)",
+				tile, expected, count,
+				len(inv.gdoc.Bag.Tiles),
+				inv.GetBoardTileCount(),
+				func() []int {
+					counts := make([]int, len(inv.gdoc.Racks))
+					for i := range inv.gdoc.Racks {
+						counts[i] = len(inv.gdoc.Racks[i])
+					}
+					return counts
+				}())
 		}
 	}
 
@@ -103,6 +114,7 @@ func (inv *TileInventory) moveTilesFromRackToBag(playerIdx int, tilesToMove []ti
 
 	// Verify tiles exist in the rack and remove them
 	currentRack := tilemapping.FromByteArr(inv.gdoc.Racks[playerIdx])
+	// zeroIsPlaythrough=false: treat tile 0 as a regular blank, not a play-through marker
 	leave, err := tilemapping.Leave(currentRack, tilesToMove, false)
 	if err != nil {
 		return fmt.Errorf("rack doesn't contain tiles to move: %w", err)
@@ -240,6 +252,12 @@ func (inv *TileInventory) SetRack(playerIdx int, desiredRack []byte) error {
 			return fmt.Errorf("opponent doesn't have needed tiles %v: %w", tilesToBorrow, err)
 		}
 
+		log.Debug().
+			Interface("borrowed_tiles", tilesToBorrow).
+			Int("opponent_rack_size", len(inv.gdoc.Racks[opponentIdx])).
+			Int("bag_size", len(inv.gdoc.Bag.Tiles)).
+			Msg("borrowed-tiles-from-opponent")
+
 		// Now try again to get desired tiles from bag
 		err = inv.moveTilesFromBagToRack(playerIdx, desiredTiles)
 		if err != nil {
@@ -247,9 +265,16 @@ func (inv *TileInventory) SetRack(playerIdx int, desiredRack []byte) error {
 		}
 
 		// Top off opponent's rack (they lost some tiles)
-		if _, errFill := inv.DrawToFillRack(opponentIdx); errFill != nil {
+		tilesDrawn, errFill := inv.DrawToFillRack(opponentIdx)
+		if errFill != nil {
 			return fmt.Errorf("failed to fill opponent's rack after borrowing: %w", errFill)
 		}
+
+		log.Debug().
+			Int("tiles_drawn", tilesDrawn).
+			Interface("opponent_rack_after", inv.gdoc.Racks[opponentIdx]).
+			Int("bag_size_after", len(inv.gdoc.Bag.Tiles)).
+			Msg("filled-opponent-rack-after-borrowing")
 	}
 
 	// Validate invariants after the operation
@@ -264,7 +289,7 @@ func (inv *TileInventory) SetAllRacks(racks [][]byte) error {
 		return fmt.Errorf("racks length %d doesn't match player count %d", len(racks), len(inv.gdoc.Racks))
 	}
 
-	// Put back all current racks first
+	// Put back all current racks first and set to nil
 	for i := range inv.gdoc.Racks {
 		if len(inv.gdoc.Racks[i]) > 0 {
 			currentRack := tilemapping.FromByteArr(inv.gdoc.Racks[i])
@@ -272,6 +297,8 @@ func (inv *TileInventory) SetAllRacks(racks [][]byte) error {
 				return fmt.Errorf("failed to put back rack %d: %w", i, err)
 			}
 		}
+		// Set to nil after putting back (preserves nil/[] semantics)
+		inv.gdoc.Racks[i] = nil
 	}
 
 	// Now assign all new racks from the bag
@@ -282,6 +309,7 @@ func (inv *TileInventory) SetAllRacks(racks [][]byte) error {
 				return fmt.Errorf("failed to assign rack %d: %w", i, err)
 			}
 		}
+		// Note: nil or empty racks stay as nil (not assigned)
 	}
 
 	// Validate invariants after the operation

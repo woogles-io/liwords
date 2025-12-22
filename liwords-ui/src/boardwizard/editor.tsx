@@ -2,7 +2,7 @@
 
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionType } from "../actions/actions";
 import { alphabetFromName } from "../constants/alphabets";
@@ -65,8 +65,6 @@ export const BoardEditor = () => {
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
-
-  // const [previousNumberEvents, setPreviousNumberEvents] = useState(0);
 
   const {
     handleExamineStart,
@@ -320,7 +318,9 @@ export const BoardEditor = () => {
         amendment,
         eventNumber: evtIdx,
       });
-      // If we're sending a gameplay event, always skip the examiner to the end.
+      // Skip to the end after sending the event
+      // Note: This causes a brief flicker for amendments (showing end state before truncation)
+      // TODO: Fix the flicker by properly managing examiner position during document updates
       handleExamineLast();
     } catch (e) {
       flashError(e);

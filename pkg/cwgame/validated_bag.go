@@ -262,21 +262,10 @@ func countBoardTilesFromBoard(gdoc *ipc.GameDocument) int {
 	return count
 }
 
-// countBoardTiles counts tiles on the board using both methods and validates they match
+// countBoardTiles counts tiles on the board
 func countBoardTiles(gdoc *ipc.GameDocument) int {
-	fromEvents := countBoardTilesFromEvents(gdoc)
-	fromBoard := countBoardTilesFromBoard(gdoc)
-
-	if fromEvents != fromBoard {
-		log.Error().
-			Int("from_events", fromEvents).
-			Int("from_board", fromBoard).
-			Str("game_id", gdoc.Uid).
-			Msg("BOARD MISMATCH: tiles counted from events != tiles on actual board")
-	}
-
-	// Return the board count as it's the source of truth
-	return fromBoard
+	// Use actual board as source of truth
+	return countBoardTilesFromBoard(gdoc)
 }
 
 // LogTileState logs the current tile counts across bag, racks, and board for debugging

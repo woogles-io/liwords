@@ -101,10 +101,11 @@ export const handleTileDeletion = (
       }
       const emptyIndex = newUnplacedTiles.indexOf(EmptyRackSpaceMachineLetter);
       if (emptyIndex >= 0) {
+        // There's an empty slot, so this tile came from the rack - return it
         newUnplacedTiles[emptyIndex] = letter;
-      } else {
-        newUnplacedTiles.push(letter);
       }
+      // If no empty slot exists, the tile came from the pool in editor mode
+      // Don't add it back to the rack
     }
   });
 
@@ -164,6 +165,8 @@ export const handleKeyPress = (
   unplacedTiles: Array<MachineLetter>, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
   alphabet: Alphabet,
+  boardEditingMode?: boolean, // If true, allow placing tiles from bag when rack is empty
+  pool?: { [ml: MachineLetter]: number }, // Tile bag/pool for editor mode validation
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
@@ -261,57 +264,74 @@ export const handleKeyPress = (
   const blankIdx = unplacedTiles.indexOf(BlankMachineLetter);
   let existed = false;
   const typedML = getMachineLetterForKey(normalizedKey, alphabet);
+  const wantsBlank = normalizedKey === key; // User typed uppercase (Shift+letter)
 
-  if (blankIdx !== -1 && normalizedKey === key) {
-    // If there is a blank, and the user specifically requested to use it
-    // (by typing the letter with a Shift)
-    if (typedML == null) {
-      return null;
+  if (wantsBlank && typedML != null) {
+    // User specifically requested a blank (by typing with Shift)
+    if (blankIdx !== -1) {
+      // There's a blank in the rack, use it
+      newPlacedTiles.add({
+        row: arrowProperty.row,
+        col: arrowProperty.col,
+        letter: makeBlank(typedML),
+      });
+      newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
+      existed = true;
+    } else if (boardEditingMode && pool) {
+      // Editor mode: check if blank exists in the bag/pool
+      const blankCount = pool[BlankMachineLetter] || 0;
+      if (blankCount > 0) {
+        // Blank is available in the bag, allow placing it
+        newPlacedTiles.add({
+          row: arrowProperty.row,
+          col: arrowProperty.col,
+          letter: makeBlank(typedML),
+        });
+        existed = true;
+      }
     }
-    existed = true;
-    newPlacedTiles.add({
-      row: arrowProperty.row,
-      col: arrowProperty.col,
-      // Specifically designate it as a blanked letter.
-      letter: makeBlank(typedML),
-    });
-    newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
   } else {
-    // check if the key is in the unplaced tiles.
+    // Not requesting a blank, check if the key is in the unplaced tiles
     for (let i = 0; i < unplacedTiles.length; i++) {
       if (unplacedTiles[i] === typedML) {
-        // Only use the blank in one of two situations:
-        // - the original letter was uppercase (typed with a Shift)
-        // - last-case scenario (all tiles have been scanned first)
-
         newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
           letter: typedML,
         });
-
         newUnplacedTiles[i] = EmptyRackSpaceMachineLetter;
         existed = true;
         break;
       }
     }
   }
+
   if (!existed) {
-    // tile did not exist on rack. Check if there's a blank we can use.
-    if (blankIdx !== -1) {
-      if (typedML != null) {
+    // Tile did not exist on rack. Try alternatives.
+    if (blankIdx !== -1 && typedML != null) {
+      // Use blank as fallback if available
+      newPlacedTiles.add({
+        row: arrowProperty.row,
+        col: arrowProperty.col,
+        letter: makeBlank(typedML),
+      });
+      newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
+    } else if (boardEditingMode && pool && typedML != null) {
+      // Editor mode: check if tile exists in the bag/pool
+      const tileCount = pool[typedML] || 0;
+      if (tileCount > 0) {
+        // Tile is available in the bag, allow placing it
         newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
-          letter: makeBlank(typedML),
+          letter: typedML,
         });
-
-        newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
       } else {
+        // Tile not in bag either
         return null;
       }
     } else {
-      // Can't place this tile at all.
+      // Can't place this tile at all
       return null;
     }
   }

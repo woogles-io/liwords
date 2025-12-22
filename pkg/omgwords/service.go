@@ -463,6 +463,18 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		gs.gameStore.UnlockDocument(ctx, g)
 		return nil, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
+
+	// Validate that racks don't contain designated blanks (high bit set)
+	// Racks should only contain undesignated blanks (tile 0)
+	for i, rack := range req.Msg.Racks {
+		for _, tile := range rack {
+			if tile&0x80 != 0 {
+				gs.gameStore.UnlockDocument(ctx, g)
+				return nil, apiserver.InvalidArg(fmt.Sprintf("rack %d contains designated blank (tile %d). Racks should only contain undesignated blanks (tile 0)", i, tile))
+			}
+		}
+	}
+
 	// Put back the current racks, if any.
 	// Note that tiles.PutBack assumes the player racks are not adulterated in any way.
 	// This should be the case, because only cwgame is responsible for dealing

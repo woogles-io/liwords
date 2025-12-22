@@ -121,18 +121,20 @@ func NewGame(cfg *wglconfig.Config, rules *GameRules, playerinfo []*ipc.GameDocu
 	return gdoc, nil
 }
 
-func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
+func StartGame(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument) error {
 	if gdoc.PlayState != ipc.PlayState_UNSTARTED {
 		return errStartNotPermitted
 	}
+
+	// Use TileInventory to draw initial racks with validation
+	inv := NewTileInventory(gdoc, cfg)
 	for idx := range gdoc.Players {
-		t := make([]tilemapping.MachineLetter, RackTileLimit)
-		err := ValidatedDraw(gdoc, RackTileLimit, t)
+		_, err := inv.DrawToFillRack(idx)
 		if err != nil {
 			return err
 		}
-		gdoc.Racks[idx] = tilemapping.MachineWord(t).ToByteArr()
 	}
+
 	resetTimersAndStart(gdoc, globalNower)
 	// Outside of this:
 	// XXX: send changes to channel(s); see StartGame in gameplay package.
@@ -144,19 +146,54 @@ func StartGame(ctx context.Context, gdoc *ipc.GameDocument) error {
 // enhanceBagError converts technical bag errors into user-friendly messages
 func enhanceBagError(cfg *wglconfig.Config, gdoc *ipc.GameDocument, err error) error {
 	errMsg := err.Error()
+
+	// Check if this is an "opponent doesn't have needed tiles" error from rack inference
+	if strings.Contains(errMsg, "opponent doesn't have needed tiles") {
+		// The real error is in the wrapped message after the colon
+		// e.g., "opponent doesn't have needed tiles [16 14 9]: rack doesn't contain tiles to move: tile 9 not in rack"
+		// We want to extract the actual missing tile (9) not all the tiles that were attempted ([16 14 9])
+
+		// Try to extract the actual missing tile from "tile X not in rack"
+		var tileNum int
+		tileIdx := strings.LastIndex(errMsg, "tile ")
+		if tileIdx >= 0 {
+			_, parseErr := fmt.Sscanf(errMsg[tileIdx:], "tile %d not in rack", &tileNum)
+			if parseErr == nil {
+				// Get the letter distribution to convert machine letter to user letter
+				dist, distErr := tilemapping.NamedLetterDistribution(cfg, gdoc.LetterDistribution)
+				if distErr == nil {
+					tm := dist.TileMapping()
+					ml := tilemapping.MachineLetter(tileNum)
+					var userLetter string
+					if tileNum == 0 {
+						userLetter = "blank"
+					} else {
+						userLetter = tm.Letter(ml)
+					}
+					return fmt.Errorf("the tile %s is not available - it may already be on the board or in use", userLetter)
+				}
+			}
+		}
+	}
+
 	// Check if this is a "tried to remove tile X from bag" error
 	if strings.Contains(errMsg, "tried to remove tile") && strings.Contains(errMsg, "from bag that was not there") {
-		// Extract the tile number from the error message
+		// Extract the tile number from the error message using a more flexible pattern
+		// that works with wrapped errors
 		var tileNum int
-		_, parseErr := fmt.Sscanf(errMsg, "tried to remove tile %d from bag that was not there", &tileNum)
-		if parseErr == nil {
-			// Get the letter distribution to convert machine letter to user letter
-			dist, distErr := tilemapping.NamedLetterDistribution(cfg, gdoc.LetterDistribution)
-			if distErr == nil {
-				tm := dist.TileMapping()
-				ml := tilemapping.MachineLetter(tileNum)
-				userLetter := tm.Letter(ml)
-				return fmt.Errorf("your rack could not be set, you tried to add a tile (%s) that is not in the bag", userLetter)
+		startIdx := strings.Index(errMsg, "tried to remove tile")
+		if startIdx >= 0 {
+			// Scan from where the pattern starts
+			_, parseErr := fmt.Sscanf(errMsg[startIdx:], "tried to remove tile %d from bag that was not there", &tileNum)
+			if parseErr == nil {
+				// Get the letter distribution to convert machine letter to user letter
+				dist, distErr := tilemapping.NamedLetterDistribution(cfg, gdoc.LetterDistribution)
+				if distErr == nil {
+					tm := dist.TileMapping()
+					ml := tilemapping.MachineLetter(tileNum)
+					userLetter := tm.Letter(ml)
+					return fmt.Errorf("your rack could not be set, you tried to add a tile (%s) that is not in the bag", userLetter)
+				}
 			}
 		}
 	}
@@ -167,11 +204,25 @@ func enhanceBagError(cfg *wglconfig.Config, gdoc *ipc.GameDocument, err error) e
 // enhanceRackError converts technical rack validation errors into user-friendly messages
 func enhanceRackError(cfg *wglconfig.Config, gdoc *ipc.GameDocument, err error) error {
 	errMsg := err.Error()
-	// Check if this is a "tile in play but not in rack: X" error
-	if strings.Contains(errMsg, "tile in play but not in rack:") {
-		// Extract the tile number from the error message
+	// Check if this is a "tile X not in rack" error (new format from Leave function)
+	// or "tile in play but not in rack: X" error (old format)
+	if strings.Contains(errMsg, "not in rack") {
+		// Try new format first: "tile X not in rack"
 		var tileNum int
-		_, parseErr := fmt.Sscanf(errMsg, "tile in play but not in rack: %d", &tileNum)
+		var parseErr error
+		startIdx := strings.Index(errMsg, "tile ")
+		if startIdx >= 0 {
+			_, parseErr = fmt.Sscanf(errMsg[startIdx:], "tile %d not in rack", &tileNum)
+		}
+
+		// If that didn't work, try old format: "tile in play but not in rack: X"
+		if parseErr != nil {
+			startIdx = strings.Index(errMsg, "tile in play but not in rack:")
+			if startIdx >= 0 {
+				_, parseErr = fmt.Sscanf(errMsg[startIdx:], "tile in play but not in rack: %d", &tileNum)
+			}
+		}
+
 		if parseErr == nil {
 			// Get the letter distribution to convert machine letter to user letter
 			dist, distErr := tilemapping.NamedLetterDistribution(cfg, gdoc.LetterDistribution)
@@ -692,40 +743,11 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		}
 
 		if needsInference {
-			// Use rack inference: get tiles from pool, borrowing from opponent if needed
-			// Step 1: If player has a rack, put it back in the pool
-			if len(gdoc.Racks[playerid]) > 0 {
-				err = ValidatedPutBack(cfg, gdoc, rackmw)
-				if err != nil {
-					return nil, fmt.Errorf("failed to put back rack for inference: %w", err)
-				}
-			}
-
-			// Step 2: Try to remove inferred tiles from pool (for the board)
-			err = ValidatedRemoveTiles(gdoc, inferredMW)
+			// Use TileInventory to set the inferred rack, borrowing from opponent if needed
+			inv := NewTileInventory(gdoc, cfg)
+			err = inv.SetRack(int(playerid), inferredRack)
 			if err != nil {
-				// Step 3: If not available, put opponent's rack in pool and try again
-				opponentIdx := 1 - playerid
-				opponentRack := tilemapping.FromByteArr(gdoc.Racks[opponentIdx])
-
-				if len(opponentRack) > 0 {
-					errPutBack := ValidatedPutBack(cfg, gdoc, opponentRack)
-					if errPutBack != nil {
-						return nil, fmt.Errorf("failed to put back opponent rack: %w", errPutBack)
-					}
-					gdoc.Racks[opponentIdx] = nil
-
-					// Try again to remove inferred tiles from pool
-					err = ValidatedRemoveTiles(gdoc, inferredMW)
-					if err != nil {
-						return nil, enhanceBagError(cfg, gdoc, err)
-					}
-
-					// Success! Opponent's rack will be topped off in playTilePlacementMove
-				} else {
-					// No opponent rack to borrow from - fail
-					return nil, enhanceBagError(cfg, gdoc, err)
-				}
+				return nil, enhanceBagError(cfg, gdoc, err)
 			}
 			rackToUse = inferredRack
 		}
@@ -758,7 +780,8 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		} else {
 			mw = tilemapping.FromByteArr(evt.MachineLetters)
 		}
-		_, err = tilemapping.Leave(rackmw, mw, true)
+		// zeroIsPlaythrough=false: validating exchange move, tiles (including blanks) must be in rack
+		_, err = tilemapping.Leave(rackmw, mw, false)
 		if err != nil {
 			return nil, enhanceRackError(cfg, gdoc, err)
 		}

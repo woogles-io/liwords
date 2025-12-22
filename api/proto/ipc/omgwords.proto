@@ -271,6 +271,9 @@ message ServerGameplayEvent {
   macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
   string user_id = 6; // the event has the nickname, but not the userid.
   int32 time_bank = 7; // time bank remaining for the player who just moved, in milliseconds
+  // opponent_rack is populated for annotated games to keep frontend state in sync
+  // when rack inference borrows tiles from opponent
+  string opponent_rack = 8;
 }
 
 // ServerOMGWordsEvent is a new event type.
@@ -281,6 +284,9 @@ message ServerOMGWordsEvent {
   int32 time_remaining = 4;
   PlayState playing = 5;
   string user_id = 6;
+  // opponent_rack is populated for annotated games to keep frontend state in sync
+  // when rack inference borrows tiles from opponent
+  bytes opponent_rack = 7;
 }
 
 // The server will send back a challenge result event only in the case of
