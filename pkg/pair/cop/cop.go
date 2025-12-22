@@ -252,6 +252,10 @@ var constraintPolicies = []constraintPolicy{
 	},
 }
 
+func getLowestCasherIndex(pargs *policyArgs) int {
+	return int(pargs.req.PlacePrizes) - 1
+}
+
 var weightPolicies = []weightPolicy{
 	{
 		// Rank diff
@@ -286,11 +290,11 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
-			lowestPCIndex := int(pargs.req.PlacePrizes*2) - 1
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
 			// Distance is ceil(numPlayers/3)
+			lowestPCIndex := getLowestCasherIndex(pargs)
 			if ri > lowestPCIndex {
 				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
 				if rj-ri <= dist {
@@ -343,9 +347,9 @@ var weightPolicies = []weightPolicy{
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
 			unitWeight := int64(2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
 			totalWeight := int64(timesPlayed) * unitWeight
-			// If both players cannot cash, add an extra unit weight
+			// If both players are outside of cash, add an extra unit weight
 			// to the repeat weight.
-			if ri >= int(pargs.req.PlacePrizes*2) {
+			if ri > getLowestCasherIndex(pargs) {
 				totalWeight += unitWeight
 			}
 			return totalWeight
