@@ -266,32 +266,32 @@ export const handleKeyPress = (
   const typedML = getMachineLetterForKey(normalizedKey, alphabet);
   const wantsBlank = normalizedKey === key; // User typed uppercase (Shift+letter)
 
-  if (wantsBlank && typedML != null) {
-    // User specifically requested a blank (by typing with Shift)
-    if (blankIdx !== -1) {
-      // There's a blank in the rack, use it
+  // First priority: if user specifically requested a blank (uppercase) AND blank exists, use it
+  if (blankIdx !== -1 && wantsBlank && typedML != null) {
+    // There's a blank in the rack and user wants it, use it
+    newPlacedTiles.add({
+      row: arrowProperty.row,
+      col: arrowProperty.col,
+      letter: makeBlank(typedML),
+    });
+    newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
+    existed = true;
+  } else if (boardEditingMode && pool && wantsBlank && typedML != null) {
+    // Editor mode: check if blank exists in the bag/pool
+    const blankCount = pool[BlankMachineLetter] || 0;
+    if (blankCount > 0) {
+      // Blank is available in the bag, allow placing it
       newPlacedTiles.add({
         row: arrowProperty.row,
         col: arrowProperty.col,
         letter: makeBlank(typedML),
       });
-      newUnplacedTiles[blankIdx] = EmptyRackSpaceMachineLetter;
       existed = true;
-    } else if (boardEditingMode && pool) {
-      // Editor mode: check if blank exists in the bag/pool
-      const blankCount = pool[BlankMachineLetter] || 0;
-      if (blankCount > 0) {
-        // Blank is available in the bag, allow placing it
-        newPlacedTiles.add({
-          row: arrowProperty.row,
-          col: arrowProperty.col,
-          letter: makeBlank(typedML),
-        });
-        existed = true;
-      }
     }
-  } else {
-    // Not requesting a blank, check if the key is in the unplaced tiles
+  }
+
+  // Second priority: check if the regular tile is in the rack
+  if (!existed) {
     for (let i = 0; i < unplacedTiles.length; i++) {
       if (unplacedTiles[i] === typedML) {
         newPlacedTiles.add({
