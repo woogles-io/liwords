@@ -612,6 +612,21 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		}
 	}
 
+	// Recalculate end-game penalties if this is a CONSECUTIVE_ZEROES game
+	if g.PlayState == ipc.PlayState_GAME_OVER &&
+		g.EndReason == ipc.GameEndReason_CONSECUTIVE_ZEROES {
+		dist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
+		if err != nil {
+			gs.gameStore.UnlockDocument(ctx, g)
+			return nil, apiserver.InternalErr(err)
+		}
+		err = cwgame.RecalculateConsecutiveZeroesPenalties(g.GameDocument, dist)
+		if err != nil {
+			gs.gameStore.UnlockDocument(ctx, g)
+			return nil, apiserver.InternalErr(err)
+		}
+	}
+
 	err = gs.gameStore.UpdateDocument(ctx, g)
 	if err != nil {
 		return nil, err

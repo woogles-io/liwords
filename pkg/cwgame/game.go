@@ -399,6 +399,44 @@ func endRackPenaltyEvt(gdoc *ipc.GameDocument, pidx uint32, penalty int) *ipc.Ga
 	}
 }
 
+// RecalculateConsecutiveZeroesPenalties recalculates the end-game penalties
+// for a game that ended due to 6 consecutive scoreless turns.
+// This is used when editing racks after the game has ended.
+func RecalculateConsecutiveZeroesPenalties(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
+	if gdoc.EndReason != ipc.GameEndReason_CONSECUTIVE_ZEROES {
+		return nil // Not a consecutive zeroes game, nothing to do
+	}
+
+	// Strip existing END_RACK_PENALTY events and restore scores
+	newEvents := make([]*ipc.GameEvent, 0, len(gdoc.Events))
+	for _, evt := range gdoc.Events {
+		if evt.Type == ipc.GameEvent_END_RACK_PENALTY {
+			// Restore the score that was deducted
+			gdoc.CurrentScores[evt.PlayerIndex] += evt.LostScore
+		} else {
+			newEvents = append(newEvents, evt)
+		}
+	}
+	gdoc.Events = newEvents
+
+	// Re-apply penalties with current rack values
+	toIterate := make([]int, len(gdoc.Players))
+	for idx := range toIterate {
+		toIterate[idx] = idx
+	}
+	if gdoc.PlayerOnTurn != 0 {
+		// process player on turn's end rack penalty first.
+		toIterate[0], toIterate[gdoc.PlayerOnTurn] = toIterate[gdoc.PlayerOnTurn], toIterate[0]
+	}
+	for _, p := range toIterate {
+		ptsOnRack := dist.WordScore(tilemapping.FromByteArr(gdoc.Racks[p]))
+		gdoc.CurrentScores[p] -= int32(ptsOnRack)
+		penaltyEvt := endRackPenaltyEvt(gdoc, uint32(p), ptsOnRack)
+		gdoc.Events = append(gdoc.Events, penaltyEvt)
+	}
+	return nil
+}
+
 func endRackCalcs(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
 	unplayedPts := 0
 	var otherRack bytes.Buffer
