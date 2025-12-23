@@ -116,6 +116,16 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			return err
 		}
 
+		// In annotated games, auto-assign or top off the next player's rack
+		// This ensures the opponent always has a full rack after an exchange
+		if gdoc.Type == ipc.GameType_ANNOTATED {
+			nextPlayer := 1 - gdoc.PlayerOnTurn
+			_, err := inv.DrawToFillRack(int(nextPlayer))
+			if err != nil {
+				return err
+			}
+		}
+
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
