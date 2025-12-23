@@ -476,54 +476,139 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 	}
 
 	// Put back the current racks, if any.
-	// Note that tiles.PutBack assumes the player racks are not adulterated in any way.
-	// This should be the case, because only cwgame is responsible for dealing
-	// racks.
 	if req.Msg.Amendment {
 		evt := g.Events[req.Msg.EventNumber]
-		err = cwgame.EditOldRack(ctx, gs.cfg.WGLConfig(), g.GameDocument, req.Msg.EventNumber, req.Msg.Racks[evt.PlayerIndex])
-		if err != nil {
-			gs.gameStore.UnlockDocument(ctx, g)
-			return nil, err
+		evtIndex := req.Msg.EventNumber
+		newRack := req.Msg.Racks[evt.PlayerIndex]
+
+		log.Info().
+			Str("game_id", g.Uid).
+			Uint32("event_index", evtIndex).
+			Interface("old_rack", evt.Rack).
+			Interface("new_rack", newRack).
+			Msg("setracks-amendment-start")
+
+		// Update the rack in the original event before cloning
+		// This ensures gdocClone has the updated rack
+		originalRack := evt.Rack
+		evt.Rack = newRack
+
+		// Clone the document to work on - we'll only update the real document if everything succeeds
+		gdocClone := proto.Clone(g.GameDocument).(*ipc.GameDocument)
+		cwgame.LogTileState(gdocClone, "setracks-after-clone")
+
+		// Restore the original rack in g (in case we need to rollback)
+		evt.Rack = originalRack
+
+		// Save events after the edit point (before replay clears them)
+		var eventsAfter []*ipc.GameEvent
+		if int(evtIndex)+1 < len(gdocClone.Events) {
+			eventsAfter = make([]*ipc.GameEvent, len(gdocClone.Events)-int(evtIndex)-1)
+			copy(eventsAfter, gdocClone.Events[evtIndex+1:])
 		}
 
-		// Validate tile distribution after editing rack
-		if g.Type == ipc.GameType_ANNOTATED {
-			dist, distErr := cwgame.GetLetterDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
-			if distErr == nil {
-				if validationErr := cwgame.ValidateTileDistribution(g.GameDocument, dist); validationErr != nil {
-					log.Error().
-						Err(validationErr).
-						Str("game_id", req.Msg.GameId).
-						Str("editor_op", "set_racks_amendment").
-						Uint32("event_number", req.Msg.EventNumber).
-						Msg("editor-tile-distribution-mismatch-editrack")
-					gs.gameStore.UnlockDocument(ctx, g)
-					return nil, apiserver.InvalidArg(fmt.Sprintf("Cannot set rack: %v", validationErr))
-				}
-			}
-		}
-	} else {
+		// Get the edited event (which now has the new rack)
+		editedEvt := gdocClone.Events[evtIndex]
+		log.Info().
+			Str("game_id", g.Uid).
+			Uint32("event_index", evtIndex).
+			Interface("edited_evt_rack", editedEvt.Rack).
+			Int("num_events_after", len(eventsAfter)).
+			Msg("setracks-before-replay")
 
-		err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
+		// Replay events up to (but not including) the event we're editing
+		evts := gdocClone.Events[:evtIndex]
+		cwgame.LogTileState(gdocClone, "setracks-before-replay")
+		log.Info().
+			Str("game_id", g.Uid).
+			Int("num_events_to_replay", len(evts)).
+			Msg("setracks-about-to-replay")
+		err := cwgame.ReplayEvents(ctx, gs.cfg.WGLConfig(), gdocClone, evts, false)
 		if err != nil {
 			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InvalidArg(err.Error())
 		}
+		log.Info().
+			Str("game_id", g.Uid).
+			Int("bag_count", len(gdocClone.Bag.Tiles)).
+			Msg("setracks-after-replay-bag")
+		cwgame.LogTileState(gdocClone, "setracks-after-replay")
 
-		// Validate tile distribution after setting racks
-		if g.Type == ipc.GameType_ANNOTATED {
-			dist, distErr := cwgame.GetLetterDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
-			if distErr == nil {
-				if validationErr := cwgame.ValidateTileDistribution(g.GameDocument, dist); validationErr != nil {
-					log.Error().
-						Err(validationErr).
-						Str("game_id", req.Msg.GameId).
-						Str("editor_op", "set_racks").
-						Msg("editor-tile-distribution-mismatch-setracks")
-					panic(fmt.Sprintf("TILE DISTRIBUTION CORRUPTION IN SETRACKS: %v", validationErr))
+		// Try to re-apply the edited event with the new rack
+		// ApplyEventInEditorMode will assign the rack from the event, then try to play the move
+		log.Info().
+			Str("game_id", g.Uid).
+			Uint32("event_index", evtIndex).
+			Interface("applying_evt_rack", editedEvt.Rack).
+			Msg("setracks-before-apply-edited-event")
+
+		truncated := false
+		err = cwgame.ApplyEventInEditorMode(ctx, gs.cfg.WGLConfig(), gdocClone, editedEvt)
+		if err != nil {
+			cwgame.LogTileState(gdocClone, "setracks-after-apply-edited-event-FAILED")
+			log.Warn().
+				Err(err).
+				Str("game_id", g.Uid).
+				Int("event_index", int(evtIndex)).
+				Msg("game truncated: event could not be re-applied with new rack")
+			truncated = true
+		} else {
+			cwgame.LogTileState(gdocClone, "setracks-after-apply-edited-event-SUCCESS")
+			// The edited event succeeded, try to re-apply subsequent events
+			for i, savedEvt := range eventsAfter {
+				log.Info().
+					Str("game_id", g.Uid).
+					Int("subsequent_event_index", i).
+					Msg("setracks-applying-subsequent-event")
+				err := cwgame.ApplyEventInEditorMode(ctx, gs.cfg.WGLConfig(), gdocClone, savedEvt)
+				if err != nil {
+					cwgame.LogTileState(gdocClone, fmt.Sprintf("setracks-after-subsequent-event-%d-FAILED", i))
+					log.Warn().
+						Err(err).
+						Str("game_id", g.Uid).
+						Int("event_index", int(evtIndex)+1+i).
+						Msg("game truncated: subsequent event could not be re-applied after rack edit")
+					truncated = true
+					break
 				}
+				cwgame.LogTileState(gdocClone, fmt.Sprintf("setracks-after-subsequent-event-%d-SUCCESS", i))
 			}
+		}
+
+		// Only replenish racks if truncation occurred
+		// If no truncation, the racks are already correct from the replay process
+		// If truncation occurred, we need to set the user's rack to what they specified
+		// (otherwise it might be random tiles from the last successful event)
+		if truncated {
+			cwgame.LogTileState(gdocClone, "setracks-before-replenish")
+			racksToAssign := make([][]byte, len(g.Players))
+			racksToAssign[evt.PlayerIndex] = newRack
+			racksToAssign[1-evt.PlayerIndex] = nil // Will be filled from bag
+			err = cwgame.AssignRacks(gs.cfg.WGLConfig(), gdocClone, racksToAssign, cwgame.AlwaysAssignEmpty)
+			if err != nil {
+				gs.gameStore.UnlockDocument(ctx, g)
+				return nil, apiserver.InvalidArg(err.Error())
+			}
+			cwgame.LogTileState(gdocClone, "setracks-after-replenish")
+		} else {
+			log.Info().
+				Str("game_id", g.Uid).
+				Msg("setracks-no-truncation-skipping-replenish")
+		}
+
+		// All operations succeeded - copy the clone back to the real document
+		g.GameDocument = gdocClone
+
+		log.Info().
+			Str("game_id", g.Uid).
+			Uint32("event_index", evtIndex).
+			Int("final_num_events", len(g.Events)).
+			Msg("setracks-amendment-complete")
+	} else {
+		err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
+		if err != nil {
+			gs.gameStore.UnlockDocument(ctx, g)
+			return nil, apiserver.InvalidArg(err.Error())
 		}
 	}
 

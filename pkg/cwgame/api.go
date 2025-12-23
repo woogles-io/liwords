@@ -333,32 +333,6 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 	return nil
 }
 
-func EditOldRack(ctx context.Context, cfg *wglconfig.Config, gdoc *ipc.GameDocument, evtNumber uint32, rack []byte) error {
-
-	// Determine whether it is possible to edit the rack to the passed-in rack at this point in the game.
-	// First clone and truncate the document.
-	gc := proto.Clone(gdoc).(*ipc.GameDocument)
-	evt := gdoc.Events[evtNumber]
-
-	// replay until the event before evt.
-	err := ReplayEvents(ctx, cfg, gc, gc.Events[:evtNumber], false)
-	if err != nil {
-		return err
-	}
-	evtTurn := evt.PlayerIndex
-	racks := make([][]byte, len(gdoc.Players))
-	racks[evtTurn] = rack
-	err = AssignRacks(cfg, gc, racks, AssignEmptyIfUnambiguous)
-	if err != nil {
-		return err
-	}
-	// If it is possible to assign racks without issue, then do it on the
-	// real document.
-	evt.Rack = rack
-
-	return nil
-}
-
 // ReplayEvents plays the events on the game document. For simplicity,
 // assume these events replace every event in the game document; i.e.,
 // initialize from scratch.
@@ -887,3 +861,31 @@ func assignTurnToNextNonquitter(gdoc *ipc.GameDocument, start uint32) error {
 
 // XXX need a TimedOut function here as well.
 // XXX: no, put it in the top level.
+
+// LogTileState logs the current tile distribution for debugging
+func LogTileState(gdoc *ipc.GameDocument, label string) {
+	bagCount := len(gdoc.Bag.Tiles)
+	rack0Count := len(gdoc.Racks[0])
+	rack1Count := len(gdoc.Racks[1])
+
+	// Count tiles on board
+	boardCount := 0
+	if gdoc.Board != nil {
+		for _, tile := range gdoc.Board.Tiles {
+			if tile != 0 {
+				boardCount++
+			}
+		}
+	}
+
+	total := bagCount + rack0Count + rack1Count + boardCount
+
+	log.Debug().
+		Str("label", label).
+		Int("bag", bagCount).
+		Int("rack0", rack0Count).
+		Int("rack1", rack1Count).
+		Int("board", boardCount).
+		Int("total", total).
+		Msg("tile-state")
+}

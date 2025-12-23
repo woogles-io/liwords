@@ -341,9 +341,10 @@ const convertToServerGameplayEvent = (
     timeRemaining: evt.timeRemaining,
     playing: evt.playing.valueOf(),
     userId: evt.userId,
-    opponentRack: evt.opponentRack.length > 0
-      ? machineWordToRunes(Array.from(evt.opponentRack), alphabet)
-      : "",
+    opponentRack:
+      evt.opponentRack.length > 0
+        ? machineWordToRunes(Array.from(evt.opponentRack), alphabet)
+        : "",
   });
 };
 

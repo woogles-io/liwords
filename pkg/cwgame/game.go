@@ -157,6 +157,17 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 		return err
 	}
 	tilesUsed := tilemapping.FromByteArr(gevt.PlayedTiles)
+
+	// CRITICAL: Validate that the rack contains the needed tiles BEFORE placing them on the board
+	// This prevents tile corruption where board.PlayMove creates tiles on the board even if
+	// they're not in the rack. Without this check, tiles get placed on the board (creating extras),
+	// then the Leave validation fails, leaving us with a corrupted game state.
+	rackTiles := tilemapping.FromByteArr(gevt.Rack)
+	_, err = tilemapping.Leave(rackTiles, tilesUsed, true)
+	if err != nil {
+		return fmt.Errorf("rack doesn't contain tiles needed for move: %w", err)
+	}
+
 	score, err := board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist,
 		tilesUsed, int(gevt.Row), int(gevt.Column), gevt.Direction == ipc.GameEvent_VERTICAL)
 	if err != nil {

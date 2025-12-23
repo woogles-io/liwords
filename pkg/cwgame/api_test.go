@@ -1519,33 +1519,6 @@ func TestReplayEvents(t *testing.T) {
 	}
 }
 
-func TestEditOldRack(t *testing.T) {
-	is := is.New(t)
-	gdoc := loadGDoc("document-game-almost-over.json")
-	ctx := ctxForTests()
-
-	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
-	is.NoErr(err)
-	is.Equal(gdoc.Events[0].Rack, []byte{1, 2, 3, 4, 5, 6, 7})
-	is.Equal(gdoc.Events[0].PlayedTiles, []byte{1, 18, 5, 14, 15, 19, 5})
-	// The rack doesn't match the played tiles, but this is fine. I can't
-	// think of another way to edit an old play.
-}
-
-func TestEditOldRackDisallowed(t *testing.T) {
-	is := is.New(t)
-	gdoc := loadGDoc("document-game-almost-over.json")
-	ctx := ctxForTests()
-
-	// Try to set the rack for event indexed 8 to JKL. It shouldn't
-	// let you, because event index 7 already used a J.
-	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 8, []byte{10, 11, 12})
-	is.Equal(err.Error(), "your rack could not be set, you tried to add a tile (J) that is not in the bag")
-	err = EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 7, []byte{10, 11, 12})
-	is.NoErr(err)
-	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
-}
-
 func TestToCGP(t *testing.T) {
 	is := is.New(t)
 	gdoc := loadGDoc("document-game-almost-over.json")
