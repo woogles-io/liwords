@@ -99,16 +99,27 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			addWinnerToHistory(gdoc)
 		} else {
 			gdoc.ScorelessTurns += 1
+			// In annotated games, auto-assign or top off the next player's rack
+			// This ensures the opponent always has a full rack after a pass
+			if gdoc.Type == ipc.GameType_ANNOTATED {
+				inv := NewTileInventory(gdoc, cfg.WGLConfig())
+				nextPlayer := 1 - gdoc.PlayerOnTurn
+				_, err := inv.DrawToFillRack(int(nextPlayer))
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 	case ipc.GameEvent_EXCHANGE:
 		// Use TileInventory to handle the exchange
 		inv := NewTileInventory(gdoc, cfg.WGLConfig())
 
-		// Set the rack to what's in the event (in case it differs from current)
-		if err := inv.SetRack(int(gdoc.PlayerOnTurn), gevt.Rack); err != nil {
-			return err
-		}
+		log.Debug().
+			Uint32("current_player", gdoc.PlayerOnTurn).
+			Interface("current_player_rack", gdoc.Racks[gdoc.PlayerOnTurn]).
+			Interface("opponent_rack", gdoc.Racks[1-gdoc.PlayerOnTurn]).
+			Msg("exchange-before")
 
 		// Exchange the tiles
 		exchangedTiles := tilemapping.FromByteArr(gevt.Exchanged)
@@ -116,14 +127,23 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			return err
 		}
 
+		log.Debug().
+			Interface("current_player_rack_after", gdoc.Racks[gdoc.PlayerOnTurn]).
+			Interface("opponent_rack_after", gdoc.Racks[1-gdoc.PlayerOnTurn]).
+			Msg("exchange-after-exchange")
+
 		// In annotated games, auto-assign or top off the next player's rack
 		// This ensures the opponent always has a full rack after an exchange
 		if gdoc.Type == ipc.GameType_ANNOTATED {
 			nextPlayer := 1 - gdoc.PlayerOnTurn
-			_, err := inv.DrawToFillRack(int(nextPlayer))
+			tilesDrawn, err := inv.DrawToFillRack(int(nextPlayer))
 			if err != nil {
 				return err
 			}
+			log.Debug().
+				Int("tiles_drawn", tilesDrawn).
+				Interface("opponent_rack_final", gdoc.Racks[nextPlayer]).
+				Msg("exchange-after-fill-opponent")
 		}
 
 		gdoc.ScorelessTurns += 1

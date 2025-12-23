@@ -204,7 +204,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		GameId: gid,
 		Racks: [][]byte{
 			{},
-			{6, 1},
+			{6, 1, 26}, // FA + Z, so we can still make ZA
 		},
 		EventNumber: 1,
 		Amendment:   true,

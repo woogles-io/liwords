@@ -284,36 +284,135 @@ func (inv *TileInventory) SetRack(playerIdx int, desiredRack []byte) error {
 // SetAllRacks sets all players' racks at once.
 // This is more efficient than calling SetRack multiple times when you're
 // assigning racks for all players simultaneously.
+//
+// IMPORTANT: Empty or nil racks in the input array mean "don't touch this player's rack".
+// This is intentional - the annotation editor frontend may call SetRacks with
+// ["", "ABCDEFG"] to set player 1's rack without affecting player 0's rack.
+// Only racks with len(r) > 0 will be put back and reassigned.
+//
+// If tiles aren't available in the bag, this will attempt to borrow from racks
+// that are being preserved (empty/nil in input). If both racks are being set and
+// overlap, the operation will fail.
 func (inv *TileInventory) SetAllRacks(racks [][]byte) error {
 	if len(racks) != len(inv.gdoc.Racks) {
 		return fmt.Errorf("racks length %d doesn't match player count %d", len(racks), len(inv.gdoc.Racks))
 	}
 
-	// Put back all current racks first and set to nil
-	for i := range inv.gdoc.Racks {
-		if len(inv.gdoc.Racks[i]) > 0 {
+	// Put back only the racks that are being reassigned (non-empty in input)
+	// If a rack is nil or empty in the input, leave the current rack completely untouched
+	for i, newRack := range racks {
+		if len(newRack) > 0 && len(inv.gdoc.Racks[i]) > 0 {
 			currentRack := tilemapping.FromByteArr(inv.gdoc.Racks[i])
 			if err := inv.moveTilesFromRackToBag(i, currentRack); err != nil {
 				return fmt.Errorf("failed to put back rack %d: %w", i, err)
 			}
+			// Set to nil after putting back (preserves nil/[] semantics)
+			inv.gdoc.Racks[i] = nil
 		}
-		// Set to nil after putting back (preserves nil/[] semantics)
-		inv.gdoc.Racks[i] = nil
 	}
 
 	// Now assign all new racks from the bag
+	// If tiles aren't available, try to borrow from preserved racks
 	for i, r := range racks {
 		if len(r) > 0 {
 			desiredTiles := tilemapping.FromByteArr(r)
-			if err := inv.moveTilesFromBagToRack(i, desiredTiles); err != nil {
-				return fmt.Errorf("failed to assign rack %d: %w", i, err)
+			err := inv.moveTilesFromBagToRack(i, desiredTiles)
+
+			if err != nil {
+				// Try to borrow from preserved racks (those with empty/nil input)
+				if err := inv.borrowFromPreservedRacks(i, desiredTiles, racks); err != nil {
+					return fmt.Errorf("failed to assign rack %d: %w", i, err)
+				}
 			}
 		}
-		// Note: nil or empty racks stay as nil (not assigned)
+		// Note: nil or empty racks stay as-is (current rack is preserved)
 	}
 
 	// Validate invariants after the operation
 	return inv.ValidateInvariants()
+}
+
+// borrowFromPreservedRacks attempts to borrow tiles from racks that are being preserved.
+// A preserved rack is one where the input was nil or empty (meaning "don't touch this rack").
+// This matches the borrowing behavior in SetRack but works across all preserved racks.
+func (inv *TileInventory) borrowFromPreservedRacks(playerIdx int, desiredTiles []tilemapping.MachineLetter, racks [][]byte) error {
+	// Count what we need
+	needed := make(map[byte]int)
+	for _, t := range desiredTiles {
+		needed[byte(t)]++
+	}
+
+	// Subtract what's available in the bag
+	for _, t := range inv.gdoc.Bag.Tiles {
+		if needed[t] > 0 {
+			needed[t]--
+		}
+	}
+
+	// Build list of tiles we need to borrow
+	tilesToBorrow := []tilemapping.MachineLetter{}
+	for tile, count := range needed {
+		for i := 0; i < count; i++ {
+			tilesToBorrow = append(tilesToBorrow, tilemapping.MachineLetter(tile))
+		}
+	}
+
+	if len(tilesToBorrow) == 0 {
+		// Shouldn't happen, but just in case
+		return fmt.Errorf("failed to determine which tiles to borrow")
+	}
+
+	// Try to borrow from preserved racks (those with empty/nil input)
+	for opponentIdx, opponentRack := range racks {
+		if opponentIdx == playerIdx {
+			continue // Can't borrow from self
+		}
+
+		// Only borrow from preserved racks (empty/nil input)
+		if len(opponentRack) > 0 {
+			continue // This rack is being set, can't borrow from it
+		}
+
+		if len(inv.gdoc.Racks[opponentIdx]) == 0 {
+			continue // No rack to borrow from
+		}
+
+		// Try to borrow from this opponent
+		if err := inv.moveTilesFromRackToBag(opponentIdx, tilesToBorrow); err != nil {
+			// This opponent doesn't have the tiles, try next
+			continue
+		}
+
+		log.Debug().
+			Interface("borrowed_tiles", tilesToBorrow).
+			Int("from_player", opponentIdx).
+			Int("to_player", playerIdx).
+			Int("opponent_rack_size", len(inv.gdoc.Racks[opponentIdx])).
+			Int("bag_size", len(inv.gdoc.Bag.Tiles)).
+			Msg("borrowed-tiles-from-preserved-rack")
+
+		// Now try again to get desired tiles from bag
+		err := inv.moveTilesFromBagToRack(playerIdx, desiredTiles)
+		if err != nil {
+			return fmt.Errorf("failed to set rack even after borrowing: %w", err)
+		}
+
+		// Top off opponent's rack (they lost some tiles)
+		tilesDrawn, errFill := inv.DrawToFillRack(opponentIdx)
+		if errFill != nil {
+			return fmt.Errorf("failed to fill opponent's rack after borrowing: %w", errFill)
+		}
+
+		log.Debug().
+			Int("tiles_drawn", tilesDrawn).
+			Interface("opponent_rack_after", inv.gdoc.Racks[opponentIdx]).
+			Int("bag_size_after", len(inv.gdoc.Bag.Tiles)).
+			Msg("filled-preserved-rack-after-borrowing")
+
+		return nil // Success
+	}
+
+	return fmt.Errorf("tiles not available in bag and no preserved racks to borrow from")
 }
 
 // ExchangeTiles exchanges tiles from a player's rack with the bag.
