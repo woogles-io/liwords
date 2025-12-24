@@ -290,39 +290,54 @@ func (inv *TileInventory) SetRack(playerIdx int, desiredRack []byte) error {
 // ["", "ABCDEFG"] to set player 1's rack without affecting player 0's rack.
 // Only racks with len(r) > 0 will be put back and reassigned.
 //
-// If tiles aren't available in the bag, this will attempt to borrow from racks
-// that are being preserved (empty/nil in input). If both racks are being set and
-// overlap, the operation will fail.
-func (inv *TileInventory) SetAllRacks(racks [][]byte) error {
+// If tiles aren't available in the bag and allowBorrowing is true, this will attempt
+// to borrow from racks that are being preserved (empty/nil in input). If both racks are
+// being set and overlap, the operation will fail. Borrowing should only be enabled for
+// editor mode operations where rack inference is desired.
+func (inv *TileInventory) SetAllRacks(racks [][]byte, allowBorrowing bool) error {
 	if len(racks) != len(inv.gdoc.Racks) {
 		return fmt.Errorf("racks length %d doesn't match player count %d", len(racks), len(inv.gdoc.Racks))
 	}
 
-	// Put back only the racks that are being reassigned (non-empty in input)
-	// If a rack is nil or empty in the input, leave the current rack completely untouched
+	// Put back current racks based on mode:
+	// - If allowBorrowing (editor mode): Only put back racks being reassigned (non-empty in input)
+	//   This preserves racks where input is nil/empty - the "preserve rack" semantic
+	// - If !allowBorrowing (replay mode): Put back ALL current racks (old behavior)
+	//   This matches master where nil/empty input means "leave empty for now, don't preserve"
 	for i, newRack := range racks {
-		if len(newRack) > 0 && len(inv.gdoc.Racks[i]) > 0 {
+		shouldPutBack := false
+		if allowBorrowing {
+			// Editor mode: only put back if we're assigning a new rack
+			shouldPutBack = len(newRack) > 0 && len(inv.gdoc.Racks[i]) > 0
+		} else {
+			// Replay mode: always put back existing racks (master behavior)
+			shouldPutBack = len(inv.gdoc.Racks[i]) > 0
+		}
+
+		if shouldPutBack {
 			currentRack := tilemapping.FromByteArr(inv.gdoc.Racks[i])
 			if err := inv.moveTilesFromRackToBag(i, currentRack); err != nil {
 				return fmt.Errorf("failed to put back rack %d: %w", i, err)
 			}
-			// Set to nil after putting back (preserves nil/[] semantics)
 			inv.gdoc.Racks[i] = nil
 		}
 	}
 
 	// Now assign all new racks from the bag
-	// If tiles aren't available, try to borrow from preserved racks
+	// If tiles aren't available and borrowing is allowed, try to borrow from preserved racks
 	for i, r := range racks {
 		if len(r) > 0 {
 			desiredTiles := tilemapping.FromByteArr(r)
 			err := inv.moveTilesFromBagToRack(i, desiredTiles)
 
-			if err != nil {
+			if err != nil && allowBorrowing {
 				// Try to borrow from preserved racks (those with empty/nil input)
 				if err := inv.borrowFromPreservedRacks(i, desiredTiles, racks); err != nil {
 					return fmt.Errorf("failed to assign rack %d: %w", i, err)
 				}
+			} else if err != nil {
+				// Borrowing not allowed or not possible
+				return fmt.Errorf("failed to assign rack %d: %w", i, err)
 			}
 		}
 		// Note: nil or empty racks stay as-is (current rack is preserved)

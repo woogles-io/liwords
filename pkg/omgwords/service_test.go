@@ -646,10 +646,11 @@ func TestTileConsistencyDuringAmendments(t *testing.T) {
 
 	// Operation 5: AMENDMENT - 11G again but with different tiles
 	// decoded from CQAKBQMU -> [9, 0, 10, 5, 3, 20]
+	// The original play used blanks, so the new rack must also have blanks to replay the move
 	// This edits event at index 3 (0-based, the 4th event)
 	_, err = svc.SetRacks(ctx, connect.NewRequest(&omgwords_service.SetRacksEvent{
 		GameId:      gid,
-		Racks:       [][]byte{{}, {9, 10, 5, 3, 20}}, // 5 tiles, excluding the 0
+		Racks:       [][]byte{{}, {0, 10, 0, 3, 20}}, // blanks needed to match original play
 		EventNumber: 3,
 		Amendment:   true,
 	}))
@@ -658,7 +659,7 @@ func TestTileConsistencyDuringAmendments(t *testing.T) {
 		Event: &ipc.ClientGameplayEvent{
 			GameId:         gid,
 			PositionCoords: "11G",
-			MachineLetters: []byte{9, 0, 10, 5, 3, 20},
+			MachineLetters: []byte{9, 0, 10, 5, 3, 20}, // Still plays the same tiles (I, J, E, D, T)
 		},
 		UserId:      "internal-player2",
 		Amendment:   true,

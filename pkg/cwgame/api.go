@@ -291,7 +291,9 @@ func AssignRacks(cfg *wglconfig.Config, gdoc *ipc.GameDocument, racks [][]byte, 
 	inv := NewTileInventory(gdoc, cfg)
 
 	// Set all racks at once (puts back current racks, assigns new ones)
-	if err := inv.SetAllRacks(racks); err != nil {
+	// Only allow borrowing in editor mode (AlwaysAssignEmpty)
+	allowBorrowing := (assignEmpty == AlwaysAssignEmpty)
+	if err := inv.SetAllRacks(racks, allowBorrowing); err != nil {
 		return enhanceBagError(cfg, gdoc, err)
 	}
 
