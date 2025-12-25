@@ -889,6 +889,10 @@ func TestCOPProdBugs(t *testing.T) {
 	// Therefore, whatnoloan needs to play condorave since condorave is the player ranked just below whatnoloan
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
+
+	req = pairtestutils.CreateLG2025Round15PairRequest()
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
 func TestCOPProf(t *testing.T) {
