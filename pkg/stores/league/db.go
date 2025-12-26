@@ -80,6 +80,7 @@ type Store interface {
 	GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error)
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
+	GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error)
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
 	GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error)
 	GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error)
@@ -407,6 +408,10 @@ func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UU
 
 func (s *DBStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
 	return s.queries.ForceFinishGame(ctx, arg)
+}
+
+func (s *DBStore) GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]models.GetForceFinishedGamesMissingPlayersRow, error) {
+	return s.queries.GetForceFinishedGamesMissingPlayers(ctx, seasonID)
 }
 
 func (s *DBStore) GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error) {

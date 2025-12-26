@@ -1029,6 +1029,11 @@ export const Table = React.memo((props: Props) => {
                 Game ended in forfeit.{/* XXX: How to get winners? */}
               </React.Fragment>
             )}
+            {gameInfo.gameEndReason === GameEndReason.ADJUDICATED && (
+              <React.Fragment>
+                Game was adjudicated based on the score at the league deadline.
+              </React.Fragment>
+            )}
             {gameInfo.gameEndReason === GameEndReason.ABORTED && (
               <React.Fragment>
                 The game was cancelled. Rating and statistics were not affected.

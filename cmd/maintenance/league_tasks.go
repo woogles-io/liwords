@@ -48,7 +48,15 @@ func initLeagueStores(ctx context.Context, cfg *config.Config) (*stores.Stores, 
 		},
 	}
 
-	return stores.NewInitializedStores(dbPool, redisPool, cfg)
+	allStores, err := stores.NewInitializedStores(dbPool, redisPool, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wire up the league standings updater to avoid circular dependencies
+	allStores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(allStores.LeagueStore))
+
+	return allStores, nil
 }
 
 func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {

@@ -400,6 +400,7 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 }
 
 const getDivisionGameResults = `-- name: GetDivisionGameResults :many
+
 SELECT
     g.uuid,
     g.player0_id,
@@ -429,6 +430,7 @@ type GetDivisionGameResultsRow struct {
 	GameEndReason int16
 }
 
+// No game_players rows exist
 func (q *Queries) GetDivisionGameResults(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionGameResultsRow, error) {
 	rows, err := q.db.Query(ctx, getDivisionGameResults, leagueDivisionID)
 	if err != nil {
@@ -677,6 +679,53 @@ func (q *Queries) GetDivisionsBySeason(ctx context.Context, seasonID uuid.UUID) 
 			&i.IsComplete,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getForceFinishedGamesMissingPlayers = `-- name: GetForceFinishedGamesMissingPlayers :many
+SELECT
+    g.uuid as game_id,
+    g.player0_id,
+    g.player1_id,
+    g.game_end_reason
+FROM games g
+LEFT JOIN game_players gp ON g.uuid = gp.game_uuid
+WHERE g.season_id = $1
+  AND g.game_end_reason IN (8, 9)  -- FORCE_FORFEIT or ADJUDICATED
+  AND gp.game_uuid IS NULL
+`
+
+type GetForceFinishedGamesMissingPlayersRow struct {
+	GameID        pgtype.Text
+	Player0ID     pgtype.Int4
+	Player1ID     pgtype.Int4
+	GameEndReason pgtype.Int4
+}
+
+// Find force-finished or adjudicated games in a season that are missing game_players rows
+// This is used by the repair tool to backfill missing data
+func (q *Queries) GetForceFinishedGamesMissingPlayers(ctx context.Context, seasonID pgtype.UUID) ([]GetForceFinishedGamesMissingPlayersRow, error) {
+	rows, err := q.db.Query(ctx, getForceFinishedGamesMissingPlayers, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetForceFinishedGamesMissingPlayersRow
+	for rows.Next() {
+		var i GetForceFinishedGamesMissingPlayersRow
+		if err := rows.Scan(
+			&i.GameID,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.GameEndReason,
 		); err != nil {
 			return nil, err
 		}

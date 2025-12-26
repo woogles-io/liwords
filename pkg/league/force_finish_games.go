@@ -4,21 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores"
-	"github.com/woogles-io/liwords/pkg/stores/models"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
-// GameStore defines the minimal interface needed from a game store
-// This avoids circular imports with pkg/gameplay
-type GameStore interface {
-	Get(ctx context.Context, id string) (*entity.Game, error)
-}
-
-// ForceFinishManager handles force-finishing unfinished games
+// ForceFinishManager handles force-finishing and repair operations for league games
 type ForceFinishManager struct {
 	stores *stores.Stores
 }
@@ -37,10 +32,7 @@ type ForceFinishResult struct {
 	Errors            []string
 }
 
-// ForceFinishUnfinishedGames finds all unfinished games for a season and marks them
-// as complete with FORCE_FORFEIT reason. The player with the lower score is marked
-// as the loser.
-//
+// ForceFinishUnfinishedGames finds all unfinished games for a season and adjudicates them.
 // This is called on Day 20 at midnight when the season is force-closed.
 func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 	ctx context.Context,
@@ -58,42 +50,28 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 
 	result.TotalGames = len(unfinishedGames)
 
-	// Force-finish each game
+	// Adjudicate each game using the gameplay package
 	for _, gameRow := range unfinishedGames {
-		// Load the game entity to get current scores
+		// Load the game entity
 		gameEntity, err := ffm.stores.GameStore.Get(ctx, gameRow.GameID.String)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to load game %s: %v", gameRow.GameID.String, err))
 			continue
 		}
 
-		// Get scores from the game entity
-		player0Score := gameEntity.PointsFor(0)
-		player1Score := gameEntity.PointsFor(1)
-
-		// Determine winner/loser based on current scores
-		var winnerIdx, loserIdx pgtype.Int4
-		if player0Score > player1Score {
-			winnerIdx = pgtype.Int4{Int32: 0, Valid: true}
-			loserIdx = pgtype.Int4{Int32: 1, Valid: true}
-		} else if player1Score > player0Score {
-			winnerIdx = pgtype.Int4{Int32: 1, Valid: true}
-			loserIdx = pgtype.Int4{Int32: 0, Valid: true}
-		} else {
-			// Tied game - both winner and loser are NULL to indicate tie
-			winnerIdx = pgtype.Int4{Valid: false}
-			loserIdx = pgtype.Int4{Valid: false}
-		}
-
-		// Force-finish the game with FORCE_FORFEIT reason
-		err = ffm.stores.LeagueStore.ForceFinishGame(ctx, models.ForceFinishGameParams{
-			Uuid:      gameRow.GameID,
-			WinnerIdx: winnerIdx,
-			LoserIdx:  loserIdx,
-		})
+		// Adjudicate the game - gameplay.AdjudicateGame handles most of the work:
+		// - Sets game end reason to ADJUDICATED
+		// - Determines winner/loser based on current score
+		// - Adds final scores to history
+		// - Sets PlayState to GAME_OVER (stops timer)
+		// - Computes and updates ratings/stats
+		// - Saves game to DB
+		// - Inserts game_players rows
+		// - Updates league standings (via injected LeagueStandingsUpdater)
+		// - Sends events to clients
+		err = gameplay.AdjudicateGame(ctx, gameEntity, ffm.stores)
 		if err != nil {
-			// Record error but continue processing other games
-			result.Errors = append(result.Errors, fmt.Sprintf("failed to force-finish game %s: %v", gameRow.GameID.String, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to adjudicate game %s: %v", gameRow.GameID.String, err))
 			continue
 		}
 
@@ -103,15 +81,102 @@ func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 	return result, nil
 }
 
-// GetUnfinishedGameCount returns the number of unfinished games for a season
-// This can be used to check if a season is ready to close
-func (ffm *ForceFinishManager) GetUnfinishedGameCount(
+// RepairResult tracks the outcome of repairing force-finished games
+type RepairResult struct {
+	TotalGamesFound   int
+	GamesRepaired     int
+	AlreadyHadPlayers int
+	Errors            []string
+}
+
+// RepairForceFinishedGames finds force-finished or adjudicated games missing game_players rows
+// and creates them, then recalculates standings for the season.
+// This function is idempotent - safe to run multiple times.
+func (ffm *ForceFinishManager) RepairForceFinishedGames(
 	ctx context.Context,
 	seasonID uuid.UUID,
-) (int, error) {
-	unfinishedGames, err := ffm.stores.LeagueStore.GetUnfinishedLeagueGames(ctx, seasonID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get unfinished games: %w", err)
+) (*RepairResult, error) {
+	result := &RepairResult{
+		Errors: []string{},
 	}
-	return len(unfinishedGames), nil
+
+	// Find all force-finished/adjudicated games missing game_players rows
+	brokenGames, err := ffm.stores.LeagueStore.GetForceFinishedGamesMissingPlayers(ctx, pgtype.UUID{Bytes: seasonID, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get broken games: %w", err)
+	}
+
+	result.TotalGamesFound = len(brokenGames)
+
+	// Repair each broken game
+	for _, gameRow := range brokenGames {
+		// Load the game entity
+		gameEntity, err := ffm.stores.GameStore.Get(ctx, gameRow.GameID.String)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to load game %s: %v", gameRow.GameID.String, err))
+			continue
+		}
+
+		// Lock the game for modification
+		gameEntity.Lock()
+
+		// Migrate old FORCE_FORFEIT (8) to ADJUDICATED (9)
+		if gameEntity.GameEndReason == pb.GameEndReason_FORCE_FORFEIT {
+			gameEntity.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
+		}
+
+		// Ensure winner/loser is set based on scores if not already set
+		if !gameEntity.WinnerWasSet() {
+			player0Score := gameEntity.PointsFor(0)
+			player1Score := gameEntity.PointsFor(1)
+			if player0Score > player1Score {
+				gameEntity.SetWinnerIdx(0)
+				gameEntity.SetLoserIdx(1)
+			} else if player1Score > player0Score {
+				gameEntity.SetWinnerIdx(1)
+				gameEntity.SetLoserIdx(0)
+			} else {
+				gameEntity.SetWinnerIdx(-1)
+				gameEntity.SetLoserIdx(-1)
+			}
+		}
+
+		// Ensure final scores are in history
+		if len(gameEntity.History().FinalScores) == 0 {
+			gameEntity.AddFinalScoresToHistory()
+		}
+
+		// Ensure PlayState is GAME_OVER (fixes timer ticking issue)
+		gameEntity.History().PlayState = macondopb.PlayState_GAME_OVER
+		gameEntity.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+
+		// Ensure winner in history matches reality
+		gameEntity.History().Winner = int32(gameEntity.WinnerIdx)
+
+		// Save the updated game
+		err = ffm.stores.GameStore.Set(ctx, gameEntity)
+		gameEntity.Unlock()
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to save game %s: %v", gameRow.GameID.String, err))
+			continue
+		}
+
+		// Insert game_players rows (idempotent - has ON CONFLICT DO NOTHING)
+		err = ffm.stores.GameStore.InsertGamePlayers(ctx, gameEntity)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to insert game_players for game %s: %v", gameRow.GameID.String, err))
+			continue
+		}
+
+		result.GamesRepaired++
+	}
+
+	// Recalculate standings for the entire season to fix counts
+	standingsMgr := NewStandingsManager(ffm.stores.LeagueStore)
+	err = standingsMgr.RecalculateAndSaveStandings(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to recalculate standings: %w", err)
+	}
+
+	return result, nil
 }

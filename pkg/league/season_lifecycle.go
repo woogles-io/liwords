@@ -409,6 +409,11 @@ func (slm *SeasonLifecycleManager) CloseCurrentSeason(
 		return nil, fmt.Errorf("failed to force-finish games: %w", err)
 	}
 	result.ForceFinishedGames = ffResult.ForceForfeitGames
+	if len(ffResult.Errors) > 0 {
+		for _, errMsg := range ffResult.Errors {
+			log.Warn().Msg(errMsg)
+		}
+	}
 
 	// Post-operation check: Verify all games are finished
 	for _, division := range divisions {
