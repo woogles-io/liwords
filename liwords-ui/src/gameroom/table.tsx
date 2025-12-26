@@ -1031,7 +1031,8 @@ export const Table = React.memo((props: Props) => {
             )}
             {gameInfo.gameEndReason === GameEndReason.ADJUDICATED && (
               <React.Fragment>
-                Game was adjudicated based on the score at the league deadline.
+                Game was adjudicated based on the score at the league or
+                tournament deadline.
               </React.Fragment>
             )}
             {gameInfo.gameEndReason === GameEndReason.ABORTED && (
