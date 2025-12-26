@@ -43,6 +43,10 @@ type Stores struct {
 	// We probably are going to be moving everything to a single queries thingy
 	// like this:
 	Queries *models.Queries
+
+	// LeagueStandingsUpdater is injected to avoid circular dependencies between
+	// pkg/gameplay and pkg/league. It's set during initialization.
+	LeagueStandingsUpdater LeagueStandingsUpdater
 }
 
 func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg *cfg.Config) (*Stores, error) {
@@ -115,8 +119,19 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 
 	stores.Queries = models.New(dbPool)
 
+	// Note: LeagueStandingsUpdater is set separately after initialization to avoid
+	// circular import dependencies. See SetLeagueStandingsUpdater().
+
 	return stores, nil
 }
+
+// SetLeagueStandingsUpdater sets the league standings updater implementation.
+// This must be called after NewInitializedStores to wire up league standings updates.
+// It's separate from initialization to avoid circular import dependencies.
+func (s *Stores) SetLeagueStandingsUpdater(updater LeagueStandingsUpdater) {
+	s.LeagueStandingsUpdater = updater
+}
+
 
 // Disconnect disconnects from all stores
 func (s *Stores) Disconnect() {

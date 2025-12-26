@@ -419,6 +419,20 @@ SET game_end_reason = 8,  -- FORCE_FORFEIT
 FROM game_update gu
 WHERE gp.game_uuid = gu.uuid;
 
+-- name: GetForceFinishedGamesMissingPlayers :many
+-- Find force-finished or adjudicated games in a season that are missing game_players rows
+-- This is used by the repair tool to backfill missing data
+SELECT
+    g.uuid as game_id,
+    g.player0_id,
+    g.player1_id,
+    g.game_end_reason
+FROM games g
+LEFT JOIN game_players gp ON g.uuid = gp.game_uuid
+WHERE g.season_id = $1
+  AND g.game_end_reason IN (8, 9)  -- FORCE_FORFEIT or ADJUDICATED
+  AND gp.game_uuid IS NULL;  -- No game_players rows exist
+
 -- name: GetDivisionGameResults :many
 SELECT
     g.uuid,

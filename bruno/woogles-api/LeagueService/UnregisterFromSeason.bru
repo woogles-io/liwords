@@ -1,0 +1,65 @@
+meta {
+  name: Unregister From Season (Admin)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/league_service.LeagueService/UnregisterFromSeason
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{ADMIN_API_KEY}}
+}
+
+body:json {
+  {
+    "season_id": "69d03b8c-d9ad-4806-abcc-0b16e3ae83b3",
+    "user_id": "Arielle08"
+  }
+}
+
+docs {
+  ## Unregister User From Season (Admin)
+  
+  Unregisters a user from a season. This can be used by admins or league promoters
+  to remove users from leagues.
+  
+  ### Parameters:
+  - `season_id` (required): UUID of the season
+  - `user_id` (optional): UUID of the user to unregister
+    - If omitted or same as logged-in user: unregisters yourself
+    - If different from logged-in user: requires `can_manage_leagues` or `can_invite_to_leagues` permission
+  
+  ### Use Cases:
+  
+  **Admin/Promoter unregistering another user:**
+  ```json
+  {
+    "season_id": "season-uuid-here",
+    "user_id": "user-uuid-to-unregister"
+  }
+  ```
+  
+  **User unregistering themselves:**
+  ```json
+  {
+    "season_id": "season-uuid-here"
+  }
+  ```
+  
+  ### Requirements:
+  - User must be logged in
+  - To unregister someone else, must have `can_manage_leagues` or `can_invite_to_leagues` permission
+  - Season must not be ACTIVE (cannot unregister from active season)
+  
+  ### Response:
+  Returns success status.
+  
+  ### Notes:
+  - This endpoint can be used to remove players from divisions before the season starts
+  - Players who unregister or are unregistered will be removed from their division
+  - Cannot unregister from an active season
+}
