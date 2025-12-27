@@ -957,6 +957,7 @@ export const Table = React.memo((props: Props) => {
 
     // Get all correspondence games where it's user's turn, including current game
     const now = Date.now(); // Use the same reference time during iteration
+    // ("now" does not have to be Date.now(), it can be any const picked to minimize overflow)
     const gamesOnMyTurn = corresGames
       .filter((ag) => {
         // Check if it's user's turn
@@ -968,6 +969,7 @@ export const Table = React.memo((props: Props) => {
         return playerIndex === ag.playerOnTurn;
       })
       .map((ag) => {
+        // TODO: This cannot consider time banks unless backend sends them.
         // Calculate time remaining for sorting
         const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
         const timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
@@ -987,16 +989,19 @@ export const Table = React.memo((props: Props) => {
         return 0;
       }); // Sort by most urgent first
 
-    // This should exist
+    // This would exist if current game is on my turn.
     const currentGameIndex = corresGames.findIndex(
       (ag) => ag.gameID === gameID,
     );
 
-    // But do not crash if it does not exist
+    // If not on my turn (opponent's turn, completed game, others' game),
+    // next game is the first one that is on my turn.
     return {
       nextCorresGame:
         currentGameIndex >= 0
-          ? gamesOnMyTurn[(currentGameIndex + 1) % gamesOnMyTurn.length].game
+          ? gamesOnMyTurn.length > 1
+            ? gamesOnMyTurn[(currentGameIndex + 1) % gamesOnMyTurn.length].game
+            : null
           : gamesOnMyTurn.length > 0
             ? gamesOnMyTurn[0].game
             : null,
