@@ -256,12 +256,17 @@ export const LeaguePage = (props: Props) => {
   const registrants = useMemo(() => {
     if (!registrationsData?.registrations) return [];
 
+    const divisions = standingsData?.divisions ?? [];
+
     return registrationsData.registrations.map((reg) => ({
       userId: reg.userId || "",
       username: reg.username || "",
       divisionNumber: reg.divisionNumber || 0,
+      divisionIndex: divisions.findIndex(
+        (division) => division.divisionNumber === reg.divisionNumber,
+      ),
     }));
-  }, [registrationsData]);
+  }, [registrationsData, standingsData]);
 
   // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
@@ -894,18 +899,30 @@ export const LeaguePage = (props: Props) => {
                 gap: "8px 16px",
               }}
             >
-              {registrants.map((registrant) => (
-                <UsernameWithContext
-                  key={registrant.userId}
-                  username={registrant.username}
-                  userID={registrant.userId}
-                  infoText={
-                    registrant.divisionNumber
-                      ? `Division ${registrant.divisionNumber}`
-                      : null
-                  }
-                />
-              ))}
+              {registrants.map((registrant) => {
+                const division =
+                  standingsData?.divisions?.[registrant.divisionIndex];
+                return (
+                  <UsernameWithContext
+                    key={registrant.userId}
+                    username={registrant.username}
+                    userID={registrant.userId}
+                    infoText={
+                      division
+                        ? division.divisionName ||
+                          `Division ${division.divisionNumber}`
+                        : undefined
+                    }
+                    handleInfoText={
+                      division
+                        ? () => {
+                            setSelectedDivisionId(division.uuid);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         </Modal>

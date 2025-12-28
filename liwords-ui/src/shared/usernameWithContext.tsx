@@ -40,6 +40,7 @@ type UsernameWithContextProps = {
   currentlyPuzzling?: boolean;
   omitBadges?: boolean;
   infoText?: string;
+  handleInfoText?: () => void;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
@@ -244,7 +245,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
               blockerRef.current?.blockAction();
               break;
             case `info-${props.userID}`:
-              // do nothing
+              props.handleInfoText?.();
               break;
           }
         },
