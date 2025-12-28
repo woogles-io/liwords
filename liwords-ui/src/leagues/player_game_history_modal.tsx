@@ -66,7 +66,9 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       key: "date",
       render: (date?: Date) => {
         if (!date) return "—";
-        return date.toLocaleDateString();
+        return (
+          <span title={date.toLocaleString()}>{date.toLocaleDateString()}</span>
+        );
       },
     },
   ];
