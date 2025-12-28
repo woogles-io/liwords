@@ -986,6 +986,7 @@ const getPlayerSeasonGames = `-- name: GetPlayerSeasonGames :many
 SELECT
     g.uuid as game_uuid,
     g.created_at,
+    g.updated_at,
     gp_player.player_id,
     gp_player.score as player_score,
     gp_player.opponent_score,
@@ -1011,6 +1012,7 @@ type GetPlayerSeasonGamesParams struct {
 type GetPlayerSeasonGamesRow struct {
 	GameUuid         pgtype.Text
 	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 	PlayerID         int32
 	PlayerScore      int32
 	OpponentScore    int32
@@ -1033,6 +1035,7 @@ func (q *Queries) GetPlayerSeasonGames(ctx context.Context, arg GetPlayerSeasonG
 		if err := rows.Scan(
 			&i.GameUuid,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.PlayerID,
 			&i.PlayerScore,
 			&i.OpponentScore,
@@ -1121,6 +1124,7 @@ const getPlayerSeasonInProgressGames = `-- name: GetPlayerSeasonInProgressGames 
 SELECT
     g.uuid as game_uuid,
     g.created_at,
+    g.updated_at,
     g.player0_id,
     g.player1_id,
     u_player0.uuid as player0_uuid,
@@ -1145,6 +1149,7 @@ type GetPlayerSeasonInProgressGamesParams struct {
 type GetPlayerSeasonInProgressGamesRow struct {
 	GameUuid        pgtype.Text
 	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 	Player0ID       pgtype.Int4
 	Player1ID       pgtype.Int4
 	Player0Uuid     pgtype.Text
@@ -1167,6 +1172,7 @@ func (q *Queries) GetPlayerSeasonInProgressGames(ctx context.Context, arg GetPla
 		if err := rows.Scan(
 			&i.GameUuid,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.Player0ID,
 			&i.Player1ID,
 			&i.Player0Uuid,
