@@ -990,8 +990,8 @@ export const Table = React.memo((props: Props) => {
       }); // Sort by most urgent first
 
     // This would exist if current game is on my turn.
-    const currentGameIndex = corresGames.findIndex(
-      (ag) => ag.gameID === gameID,
+    const currentGameIndex = gamesOnMyTurn.findIndex(
+      (gomt) => gomt.game.gameID === gameID,
     );
 
     // If not on my turn (opponent's turn, completed game, others' game),
