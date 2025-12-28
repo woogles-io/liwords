@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Table, Tag, Spin } from "antd";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -88,7 +89,12 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
 
   return (
     <Modal
-      title={`${username}'s Season ${seasonNumber} Games`}
+      title={
+        <React.Fragment>
+          <UsernameWithContext username={username} userID={userId} />
+          's Season {seasonNumber} Games
+        </React.Fragment>
+      }
       open={visible}
       onCancel={onClose}
       footer={null}
