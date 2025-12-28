@@ -941,7 +941,9 @@ export const LeaguePage = (props: Props) => {
                       division
                         ? division.divisionName ||
                           `Division ${division.divisionNumber}`
-                        : undefined
+                        : !wantSortedRegistrants
+                          ? "(Sort)"
+                          : undefined
                     }
                     handleInfoText={
                       division
@@ -949,7 +951,11 @@ export const LeaguePage = (props: Props) => {
                             setSelectedDivisionId(division.uuid);
                             setWantSortedRegistrants(true);
                           }
-                        : undefined
+                        : !wantSortedRegistrants
+                          ? () => {
+                              setWantSortedRegistrants(true);
+                            }
+                          : undefined
                     }
                   />
                 );
