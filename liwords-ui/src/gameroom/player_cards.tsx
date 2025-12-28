@@ -8,7 +8,11 @@ import {
   useExaminableTimerStoreContext,
   useExamineStoreContext,
 } from "../store/store";
-import { Millis, millisToTimeStr } from "../store/timer_controller";
+import {
+  Millis,
+  millisToTimeStr,
+  millisToTimeStrWithoutDays,
+} from "../store/timer_controller";
 import { PlayerAvatar } from "../shared/player_avatar";
 import "./scss/playerCards.scss";
 import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
@@ -51,6 +55,28 @@ const timepenalty = (time: Millis) => {
   return minsOvertime * 10;
 };
 
+// same as scorecard.tsx
+const makeTimeRemainingFragment = (
+  timeRemainingMillis: number,
+  showTenths = true,
+) => {
+  const timeRemainingWithDays = millisToTimeStr(
+    timeRemainingMillis,
+    showTenths,
+  );
+  return (
+    <Tooltip
+      title={
+        timeRemainingWithDays.includes("day")
+          ? millisToTimeStrWithoutDays(timeRemainingMillis, showTenths)
+          : null
+      }
+    >
+      {timeRemainingWithDays}
+    </Tooltip>
+  );
+};
+
 const PlayerCard = React.memo((props: CardProps) => {
   const { isExamining } = useExamineStoreContext();
   const briefProfile = useBriefProfile(props.player?.userID);
@@ -61,8 +87,10 @@ const PlayerCard = React.memo((props: CardProps) => {
   }
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.userId === props.player?.userID);
-  const timeStr =
-    isExamining || props.playing ? millisToTimeStr(props.time) : "--:--";
+  const timeRemainingFragment =
+    isExamining || props.playing
+      ? makeTimeRemainingFragment(props.time)
+      : "--:--";
 
   // Check if we have a time bank
   const hasTimeBank = props.timeBank !== undefined && props.timeBank > 0;
@@ -72,8 +100,8 @@ const PlayerCard = React.memo((props: CardProps) => {
       : props.timeBank || 0;
 
   // Format time bank for tooltip
-  const formatTimeBankTooltip = (ms: number): string => {
-    return millisToTimeStr(ms, false);
+  const formatTimeBankTooltip = (ms: number): React.ReactNode => {
+    return makeTimeRemainingFragment(ms, false);
   };
 
   // Check if we're counting from time bank (tracked by ClockController)
@@ -126,7 +154,7 @@ const PlayerCard = React.memo((props: CardProps) => {
         </Tooltip>
         <div className="timer-container">
           <Button className="timer" type="primary">
-            {timeStr}
+            {timeRemainingFragment}
             {(() => {
               const shouldShow = hasTimeBank && !inTimeBank && props.time > 0;
 

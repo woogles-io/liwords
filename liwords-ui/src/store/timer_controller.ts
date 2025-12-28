@@ -25,10 +25,9 @@ export interface ClockData {
   moretime: number;
 }
 
-export const millisToTimeStr = (
+export const millisToTimeStrWithoutDays = (
   ms: number,
   showTenths = true,
-  daysDecimalPlaces = 1,
 ): string => {
   const neg = ms < 0;
   const absms = Math.abs(ms);
@@ -41,12 +40,17 @@ export const millisToTimeStr = (
     totalSecs = Math.floor(absms / 1000);
   }
 
-  // > 24 hours: show as "X.X days" (calculate directly from seconds for precision)
+  // > 24 hours: show as "d:hh:mm:ss"
   const totalHours = totalSecs / 3600;
   if (totalHours >= 24) {
-    const days = totalHours / 24;
-    const daysStr = days.toFixed(daysDecimalPlaces);
-    return `${neg ? "-" : ""}${daysStr} ${daysStr === "1.0" && daysDecimalPlaces === 1 ? "day" : "days"}`;
+    const days = Math.floor(totalHours / 24);
+    const hours = Math.floor(totalHours % 24);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const hh = hours.toString().padStart(2, "0");
+    const mm = mins.toString().padStart(2, "0");
+    const ss = secs.toString().padStart(2, "0");
+    return `${neg ? "-" : ""}${days}:${hh}:${mm}:${ss}`;
   }
 
   // >= 1 hour: show as "hh:mm:ss"
@@ -93,6 +97,42 @@ export const millisToTimeStr = (
   }
   const minStr = mins.toString().padStart(2, "0");
   return `${neg ? "-" : ""}${minStr}:${secStr}`;
+};
+
+export const millisToTimeStr = (
+  ms: number,
+  showTenths = true,
+  daysDecimalPlaces = 1,
+): string => {
+  const neg = ms < 0;
+  const absms = Math.abs(ms);
+
+  // Calculate total seconds first
+  let totalSecs;
+  if (!neg) {
+    totalSecs = Math.ceil(absms / 1000);
+  } else {
+    totalSecs = Math.floor(absms / 1000);
+  }
+
+  // > 24 hours: show as "X.X days" (calculate directly from seconds for precision)
+  const totalHours = totalSecs / 3600;
+  if (totalHours >= 24) {
+    const days = totalHours / 24;
+    const minimumPrecision = Math.max(daysDecimalPlaces, 9); // 1/86400 = 0.00115(740).
+    const daysFullStr = days.toFixed(minimumPrecision); // toFixed() rounds differently.
+    const daysStr =
+      daysDecimalPlaces <= 0
+        ? daysFullStr.slice(0, -minimumPrecision - 1)
+        : daysDecimalPlaces < minimumPrecision
+          ? daysFullStr.slice(0, daysDecimalPlaces - minimumPrecision)
+          : daysFullStr;
+    return `${neg ? "-" : ""}${daysStr} ${
+      /^1(?:\.0+)$/.test(daysStr) ? "day" : "days"
+    }`;
+  }
+
+  return millisToTimeStrWithoutDays(ms, showTenths);
 };
 
 export type Times = {
@@ -199,15 +239,10 @@ export class ClockController {
       clearTimeout(this.tickCallback);
     }
 
-    const totalMins = Math.floor(Math.abs(time) / 60000);
-    const totalHours = Math.floor(totalMins / 60);
-
     let delay; // millis to next millisToTimeStr change.
 
-    // For times >= 24 hours (shown as days), tick every ten seconds
-    if (totalHours >= 24) {
-      delay = 10000;
-    } else if (time > positiveShowTenthsCutoff) {
+    // For times >= 24 hours (shown as days), tick normally (every second), to keep the tooltip updated.
+    if (time > positiveShowTenthsCutoff) {
       // 1000ms resolution, non-negative remainder.
       delay = Math.min(
         ((time + 999) % 1000) + 1,
