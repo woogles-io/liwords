@@ -1577,7 +1577,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           result,
-			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 		})
 	}
@@ -1612,14 +1612,19 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           "in_progress",
-			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 		})
 	}
 
-	// Sort by creation date descending (most recent first)
+	// Sort by updated time descending (most recent first)
 	sort.Slice(allGames, func(i, j int) bool {
-		return allGames[i].GameDate.AsTime().After(allGames[j].GameDate.AsTime())
+		cmp := allGames[j].GameDate.AsTime().Compare(allGames[i].GameDate.AsTime())
+		if cmp == 0 {
+			// Tiebreak for stability
+			cmp = strings.Compare(allGames[i].GameId, allGames[j].GameId)
+		}
+		return cmp < 0
 	})
 
 	return connect.NewResponse(&pb.GetPlayerSeasonGamesResponse{
