@@ -1,6 +1,12 @@
-import { millisToTimeStr } from "./timer_controller";
+import {
+  millisToTimeStr,
+  millisToTimeStrWithoutDays,
+} from "./timer_controller";
 
-it("tests millis to time", () => {
+const milliday = (md: number) => 24 * 3600 * md;
+
+const testCommonBehavior = (millisToTimeStr: (ms: number) => string) => {
+  expect(millisToTimeStr(milliday(1000) - 1000)).toEqual("23:59:59");
   expect(millisToTimeStr(3600000)).toEqual("01:00:00");
   expect(millisToTimeStr(3599001)).toEqual("01:00:00");
   expect(millisToTimeStr(3599000)).toEqual("59:59");
@@ -41,4 +47,79 @@ it("tests millis to time", () => {
   expect(millisToTimeStr(-3599000)).toEqual("-59:59");
   expect(millisToTimeStr(-3599999)).toEqual("-59:59");
   expect(millisToTimeStr(-3600000)).toEqual("-01:00:00");
+  expect(millisToTimeStr(-milliday(1000) + 1)).toEqual("-23:59:59");
+};
+
+it("tests millis to time without days", () => {
+  const millisToTimeStr = millisToTimeStrWithoutDays;
+  expect(millisToTimeStr(milliday(4000) - 999)).toEqual("4:00:00:00");
+  expect(millisToTimeStr(milliday(4000) - 1000)).toEqual("3:23:59:59");
+  expect(millisToTimeStr(milliday(3950) - 999)).toEqual("3:22:48:00");
+  expect(millisToTimeStr(milliday(3950) - 1000)).toEqual("3:22:47:59");
+  expect(millisToTimeStr(milliday(3900) - 999)).toEqual("3:21:36:00");
+  expect(millisToTimeStr(milliday(3900) - 1000)).toEqual("3:21:35:59");
+  expect(millisToTimeStr(milliday(3850) - 999)).toEqual("3:20:24:00");
+  expect(millisToTimeStr(milliday(3850) - 1000)).toEqual("3:20:23:59");
+  expect(millisToTimeStr(milliday(1150) - 999)).toEqual("1:03:36:00");
+  expect(millisToTimeStr(milliday(1150) - 1000)).toEqual("1:03:35:59");
+  expect(millisToTimeStr(milliday(1100) - 999)).toEqual("1:02:24:00");
+  expect(millisToTimeStr(milliday(1100) - 1000)).toEqual("1:02:23:59");
+  expect(millisToTimeStr(milliday(1050) - 999)).toEqual("1:01:12:00");
+  expect(millisToTimeStr(milliday(1050) - 1000)).toEqual("1:01:11:59");
+  expect(millisToTimeStr(milliday(1000) - 999)).toEqual("1:00:00:00");
+  testCommonBehavior(millisToTimeStr);
+  expect(millisToTimeStr(-milliday(1000))).toEqual("-1:00:00:00");
+  expect(millisToTimeStr(-milliday(1050) + 1)).toEqual("-1:01:11:59");
+  expect(millisToTimeStr(-milliday(1050))).toEqual("-1:01:12:00");
+  expect(millisToTimeStr(-milliday(1100) + 1)).toEqual("-1:02:23:59");
+  expect(millisToTimeStr(-milliday(1100))).toEqual("-1:02:24:00");
+  expect(millisToTimeStr(-milliday(1150) + 1)).toEqual("-1:03:35:59");
+  expect(millisToTimeStr(-milliday(1150))).toEqual("-1:03:36:00");
+  expect(millisToTimeStr(-milliday(3850) + 1)).toEqual("-3:20:23:59");
+  expect(millisToTimeStr(-milliday(3850))).toEqual("-3:20:24:00");
+  expect(millisToTimeStr(-milliday(3900) + 1)).toEqual("-3:21:35:59");
+  expect(millisToTimeStr(-milliday(3900))).toEqual("-3:21:36:00");
+  expect(millisToTimeStr(-milliday(3950) + 1)).toEqual("-3:22:47:59");
+  expect(millisToTimeStr(-milliday(3950))).toEqual("-3:22:48:00");
+  expect(millisToTimeStr(-milliday(4000) + 1)).toEqual("-3:23:59:59");
+  expect(millisToTimeStr(-milliday(4000))).toEqual("-4:00:00:00");
+});
+
+it("tests millis to time", () => {
+  // for anything <= 4:00:00:00 and > 3:23:59:59 (for example 3:23:59:59.001),
+  // millisToTimeStrWithoutDays rounds up to "4:00:00:00".
+  // millisToTimeStr likewise returns "4.0 days" for 3:23:59:59.001.
+  // this is by design, because this way, millisToTimeStr gets invalidated only
+  // when millisToTimeStrWithoutDays does.
+  expect(millisToTimeStr(milliday(4000) - 999)).toEqual("4.0 days");
+  expect(millisToTimeStr(milliday(4000) - 1000)).toEqual("3.9 days");
+  expect(millisToTimeStr(milliday(3950) - 999)).toEqual("3.9 days");
+  expect(millisToTimeStr(milliday(3950) - 1000)).toEqual("3.9 days");
+  expect(millisToTimeStr(milliday(3900) - 999)).toEqual("3.9 days");
+  expect(millisToTimeStr(milliday(3900) - 1000)).toEqual("3.8 days");
+  expect(millisToTimeStr(milliday(3850) - 999)).toEqual("3.8 days");
+  expect(millisToTimeStr(milliday(3850) - 1000)).toEqual("3.8 days");
+  expect(millisToTimeStr(milliday(1150) - 999)).toEqual("1.1 days");
+  expect(millisToTimeStr(milliday(1150) - 1000)).toEqual("1.1 days");
+  expect(millisToTimeStr(milliday(1100) - 999)).toEqual("1.1 days");
+  expect(millisToTimeStr(milliday(1100) - 1000)).toEqual("1.0 day");
+  expect(millisToTimeStr(milliday(1050) - 999)).toEqual("1.0 day");
+  expect(millisToTimeStr(milliday(1050) - 1000)).toEqual("1.0 day");
+  expect(millisToTimeStr(milliday(1000) - 999)).toEqual("1.0 day");
+  testCommonBehavior(millisToTimeStr);
+  expect(millisToTimeStr(-milliday(1000))).toEqual("-1.0 day");
+  expect(millisToTimeStr(-milliday(1050) + 1)).toEqual("-1.0 day");
+  expect(millisToTimeStr(-milliday(1050))).toEqual("-1.0 day");
+  expect(millisToTimeStr(-milliday(1100) + 1)).toEqual("-1.0 day");
+  expect(millisToTimeStr(-milliday(1100))).toEqual("-1.1 days");
+  expect(millisToTimeStr(-milliday(1150) + 1)).toEqual("-1.1 days");
+  expect(millisToTimeStr(-milliday(1150))).toEqual("-1.1 days");
+  expect(millisToTimeStr(-milliday(3850) + 1)).toEqual("-3.8 days");
+  expect(millisToTimeStr(-milliday(3850))).toEqual("-3.8 days");
+  expect(millisToTimeStr(-milliday(3900) + 1)).toEqual("-3.8 days");
+  expect(millisToTimeStr(-milliday(3900))).toEqual("-3.9 days");
+  expect(millisToTimeStr(-milliday(3950) + 1)).toEqual("-3.9 days");
+  expect(millisToTimeStr(-milliday(3950))).toEqual("-3.9 days");
+  expect(millisToTimeStr(-milliday(4000) + 1)).toEqual("-3.9 days");
+  expect(millisToTimeStr(-milliday(4000))).toEqual("-4.0 days");
 });
