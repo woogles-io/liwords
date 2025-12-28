@@ -115,6 +115,7 @@ export const LeagueCorrespondenceGames: React.FC<
               : undefined;
           const hasScores =
             userScore !== undefined && opponentScore !== undefined;
+          const spread = hasScores ? userScore - opponentScore : 0;
 
           return (
             <div
@@ -151,7 +152,9 @@ export const LeagueCorrespondenceGames: React.FC<
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {userScore}-{opponentScore}
+                      <Tooltip title={`${spread >= 0 ? "+" : ""}${spread}`}>
+                        {userScore}-{opponentScore}
+                      </Tooltip>
                     </span>
                   )}
                 </div>
