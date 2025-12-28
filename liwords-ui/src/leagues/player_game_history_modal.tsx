@@ -1,9 +1,9 @@
 import React from "react";
 import { Modal, Table, Tag, Spin } from "antd";
-import { UsernameWithContext } from "../shared/usernameWithContext";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 
 type PlayerGameHistoryModalProps = {
   visible: boolean;
