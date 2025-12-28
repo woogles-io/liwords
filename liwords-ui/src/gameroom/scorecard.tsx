@@ -6,14 +6,17 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card } from "antd";
+import { Card, Tooltip } from "antd";
 import {
   GameEvent,
   GameEvent_Type,
 } from "../gen/api/vendor/macondo/macondo_pb";
 import { Board } from "../utils/cwgame/board";
 import { PlayerAvatar } from "../shared/player_avatar";
-import { millisToTimeStr } from "../store/timer_controller";
+import {
+  millisToTimeStr,
+  millisToTimeStrWithoutDays,
+} from "../store/timer_controller";
 import {
   nicknameFromEvt,
   tilePlacementEventDisplay,
@@ -79,7 +82,7 @@ type turnProps = {
 type MoveEntityObj = {
   player: Partial<PlayerInfo>;
   coords: string;
-  timeRemaining: string;
+  timeRemaining: ReactNode;
   moveType: string | ReactNode;
   rack: string;
   play: string | ReactNode;
@@ -148,6 +151,28 @@ const displayType = (evt: GameEvent) => {
   }
 };
 
+// same as player_cards.tsx
+const makeTimeRemainingFragment = (
+  timeRemainingMillis: number,
+  showTenths = true,
+) => {
+  const timeRemainingWithDays = millisToTimeStr(
+    timeRemainingMillis,
+    showTenths,
+  );
+  return (
+    <Tooltip
+      title={
+        timeRemainingWithDays.includes("day")
+          ? millisToTimeStrWithoutDays(timeRemainingMillis, showTenths)
+          : null
+      }
+    >
+      {timeRemainingWithDays}
+    </Tooltip>
+  );
+};
+
 const ScorecardTurn = (props: turnProps) => {
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
@@ -162,7 +187,7 @@ const ScorecardTurn = (props: turnProps) => {
     } else {
       oldScore = evts[0].cumulative - evts[0].score;
     }
-    let timeRemaining = "";
+    let timeRemainingMillis = 0;
     let isUsingTimeBank = false;
     // Show time for all moves except end rack events
     if (
@@ -179,16 +204,18 @@ const ScorecardTurn = (props: turnProps) => {
           playerIndex === 0 ? props.timeBankP0 : props.timeBankP1;
 
         if (timeBankValue && timeBankValue > 0) {
-          timeRemaining = millisToTimeStr(timeBankValue, false);
+          timeRemainingMillis = timeBankValue;
           isUsingTimeBank = true;
         } else {
           // For real-time games with overtime, display the negative time
-          timeRemaining = millisToTimeStr(millisRemaining, false);
+          timeRemainingMillis = millisRemaining;
         }
       } else {
-        timeRemaining = millisToTimeStr(millisRemaining, false);
+        timeRemainingMillis = millisRemaining;
       }
     }
+
+    const timeRemaining = makeTimeRemainingFragment(timeRemainingMillis, false);
 
     const turnNickname = nicknameFromEvt(evts[0], props.playerMeta);
     const turn = {

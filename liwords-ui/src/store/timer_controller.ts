@@ -239,15 +239,10 @@ export class ClockController {
       clearTimeout(this.tickCallback);
     }
 
-    const totalMins = Math.floor(Math.abs(time) / 60000);
-    const totalHours = Math.floor(totalMins / 60);
-
     let delay; // millis to next millisToTimeStr change.
 
-    // For times >= 24 hours (shown as days), tick every ten seconds
-    if (totalHours >= 24) {
-      delay = 10000;
-    } else if (time > positiveShowTenthsCutoff) {
+    // For times >= 24 hours (shown as days), tick normally (every second), to keep the tooltip updated.
+    if (time > positiveShowTenthsCutoff) {
       // 1000ms resolution, non-negative remainder.
       delay = Math.min(
         ((time + 999) % 1000) + 1,
