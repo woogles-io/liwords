@@ -899,6 +899,11 @@ export const LeaguePage = (props: Props) => {
                   key={registrant.userId}
                   username={registrant.username}
                   userID={registrant.userId}
+                  infoText={
+                    registrant.divisionNumber
+                      ? `Division ${registrant.divisionNumber}`
+                      : null
+                  }
                 />
               ))}
             </div>

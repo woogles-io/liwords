@@ -39,6 +39,7 @@ type UsernameWithContextProps = {
   currentWatchedAnnoGames?: Array<string>;
   currentlyPuzzling?: boolean;
   omitBadges?: boolean;
+  infoText?: string;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
@@ -112,6 +113,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   ]);
 
   const userMenuOptions = [];
+  if (props.infoText) {
+    userMenuOptions.push({
+      key: `info-${props.userID}`,
+      label: props.infoText,
+    });
+  }
   if (isPettable) {
     userMenuOptions.push({
       key: `pettable-${userID}`,
@@ -235,6 +242,9 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
               break;
             case `blocker-${props.userID}`:
               blockerRef.current?.blockAction();
+              break;
+            case `info-${props.userID}`:
+              // do nothing
               break;
           }
         },
