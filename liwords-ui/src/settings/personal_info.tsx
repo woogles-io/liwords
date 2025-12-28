@@ -12,7 +12,7 @@ import {
   DatePicker,
 } from "antd";
 import { Modal } from "../utils/focus_modal";
-import moment from "moment";
+import { dayjs } from "../utils/datetime";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { AvatarRemoveModal } from "./avatar_remove_modal";
 import { countryArray } from "./country_map";
@@ -120,7 +120,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
 
   const updateFields = async (values: { [key: string]: string }) => {
     const birthDate = values.birthDate
-      ? moment(values.birthDate).format("YYYY-MM-DD")
+      ? dayjs(values.birthDate).format("YYYY-MM-DD")
       : "";
     try {
       await profileClient.updatePersonalInfo({
@@ -204,7 +204,7 @@ export const PersonalInfoWidget = React.memo((props: Props) => {
       initialValues={{
         ...props.personalInfo,
         birthDate: props.personalInfo.birthDate
-          ? moment(props.personalInfo.birthDate, "YYYY-MM-DD")
+          ? dayjs(props.personalInfo.birthDate, "YYYY-MM-DD")
           : null,
       }}
     >
