@@ -141,54 +141,85 @@ export const CollectionViewer: React.FC = () => {
             onCollectionUpdate={handleCollectionUpdate}
           />
         </div>
-        <div className="collection-content">
-          <Card className="chapter-card" style={{ marginBottom: "24px" }}>
-            <div className="chapter-header">
-              <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
-              <p className="chapter-type">
-                {currentGame.isAnnotated ? "Annotated Game" : "Game Record"}
-              </p>
-            </div>
+        <div className="collection-content" style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "flex-start" }}>
+          <div style={{ flex: "1 1 400px", minWidth: 0 }}>
+            <Card className="chapter-card" style={{ marginBottom: "24px" }}>
+              <div className="chapter-header">
+                <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
+                <p className="chapter-type">
+                  {currentGame.isAnnotated ? "Annotated Game" : "Game Record"}
+                </p>
+              </div>
 
-            <div className="chapter-actions">
-              <Button
-                type="primary"
-                size="large"
-                icon={<PlayCircleOutlined />}
-                onClick={() => {
-                  const baseUrl = currentGame.isAnnotated
-                    ? `/anno/${currentGame.gameId}`
-                    : `/game/${currentGame.gameId}`;
-                  const params = new URLSearchParams({
-                    turn: "1",
-                    collection: uuid!,
-                    chapter: currentChapter.toString(),
-                    total: collection.games.length.toString(),
-                  });
-                  const gameUrl = `${baseUrl}?${params.toString()}`;
-                  navigate(gameUrl);
-                }}
-              >
-                View Game
-              </Button>
-            </div>
+              <div className="chapter-preview" style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+                <img
+                  src={`/gameimg/${currentGame.gameId}-v2.png`}
+                  alt={`Preview of ${currentGame.chapterTitle || `Chapter ${currentChapter}`}`}
+                  className="game-preview-image"
+                  style={{
+                    maxWidth: "375px",
+                    height: "auto",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    const baseUrl = currentGame.isAnnotated
+                      ? `/anno/${currentGame.gameId}`
+                      : `/game/${currentGame.gameId}`;
+                    const params = new URLSearchParams({
+                      turn: "1",
+                      collection: uuid!,
+                      chapter: currentChapter.toString(),
+                      total: collection.games.length.toString(),
+                    });
+                    const gameUrl = `${baseUrl}?${params.toString()}`;
+                    navigate(gameUrl);
+                  }}
+                />
+              </div>
 
-            <div className="chapter-info">
-              <p>
-                Click "View Game" to open this game. You can use the collection
-                navigation to move between chapters or return here to explore
-                other games in this collection.
-              </p>
-            </div>
-          </Card>
+              <div className="chapter-actions">
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => {
+                    const baseUrl = currentGame.isAnnotated
+                      ? `/anno/${currentGame.gameId}`
+                      : `/game/${currentGame.gameId}`;
+                    const params = new URLSearchParams({
+                      turn: "1",
+                      collection: uuid!,
+                      chapter: currentChapter.toString(),
+                      total: collection.games.length.toString(),
+                    });
+                    const gameUrl = `${baseUrl}?${params.toString()}`;
+                    navigate(gameUrl);
+                  }}
+                >
+                  View Game
+                </Button>
+              </div>
 
-          <RecentCommentsCard
-            comments={recentComments}
-            fetchPrev={fetchPrevComments}
-            fetchNext={fetchNextComments}
-            collection={collection}
-            titleOverride="Recent comments for this collection"
-          />
+              <div className="chapter-info">
+                <p>
+                  Click "View Game" to open this game. You can use the collection
+                  navigation to move between chapters or return here to explore
+                  other games in this collection.
+                </p>
+              </div>
+            </Card>
+          </div>
+
+          <div style={{ flex: "1 1 400px", minWidth: 0 }}>
+            <RecentCommentsCard
+              comments={recentComments}
+              fetchPrev={fetchPrevComments}
+              fetchNext={fetchNextComments}
+              collection={collection}
+              titleOverride="Recent comments for this collection"
+            />
+          </div>
         </div>
       </div>
     </div>

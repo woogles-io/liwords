@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
-import { Card, Button, Typography, Divider, message } from "antd";
-import { LeftOutlined, RightOutlined, BookOutlined } from "@ant-design/icons";
+import { Card, Button, Typography, Divider, message, Input, Space, App } from "antd";
+import { LeftOutlined, RightOutlined, BookOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { DndProvider } from "react-dnd";
 import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
 import { useLoginStateStoreContext } from "../store/store";
@@ -11,6 +11,7 @@ import { MultiBackend } from "react-dnd-multi-backend";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { TouchTransition, MouseTransition } from "react-dnd-multi-backend";
+import { useNavigate } from "react-router";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -49,7 +50,12 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
 }) => {
   const { loginState } = useLoginStateStoreContext();
   const collectionsClient = useClient(CollectionsService);
+  const navigate = useNavigate();
+  const { modal } = App.useApp();
   const [reordering, setReordering] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(collection.title);
+  const [editedDescription, setEditedDescription] = useState(collection.description);
 
   const handleRefreshCollection = useCallback(async () => {
     try {
@@ -63,6 +69,57 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
       console.error("Failed to refresh collection:", err);
     }
   }, [collectionsClient, collection.uuid, onCollectionUpdate]);
+
+  const handleUpdateCollection = useCallback(async () => {
+    const trimmedTitle = editedTitle.trim();
+
+    if (!trimmedTitle) {
+      message.error("Collection title cannot be empty");
+      return;
+    }
+
+    try {
+      await collectionsClient.updateCollection({
+        collectionUuid: collection.uuid,
+        title: trimmedTitle,
+        description: editedDescription,
+        isPublic: collection.isPublic,
+      });
+
+      message.success("Collection updated");
+      setIsEditingTitle(false);
+      await handleRefreshCollection();
+    } catch (err) {
+      console.error("Failed to update collection:", err);
+      message.error("Failed to update collection");
+    }
+  }, [collectionsClient, collection.uuid, collection.isPublic, editedTitle, editedDescription, handleRefreshCollection]);
+
+  const handleDeleteCollection = useCallback(() => {
+    modal.confirm({
+      title: <span className="readable-text-color">Delete Collection</span>,
+      content: (
+        <span className="readable-text-color">
+          Are you sure you want to delete "{collection.title}"? This action cannot be undone.
+        </span>
+      ),
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          await collectionsClient.deleteCollection({
+            collectionUuid: collection.uuid,
+          });
+          message.success("Collection deleted");
+          navigate("/editor");
+        } catch (err) {
+          console.error("Failed to delete collection:", err);
+          message.error("Failed to delete collection");
+        }
+      },
+    });
+  }, [collectionsClient, collection.uuid, collection.title, navigate, modal]);
 
   const totalChapters = collection.games.length;
   const hasPrevious = currentChapter > 1;
@@ -130,15 +187,70 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
     <Card className="collection-navigation">
       <div className="collection-header">
         <BookOutlined style={{ fontSize: "24px", marginBottom: "8px" }} />
-        <Title level={4}>{collection.title}</Title>
-        {collection.description && (
-          <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true }}>
-            {collection.description}
-          </Paragraph>
+        {isEditingTitle ? (
+          <Space direction="vertical" style={{ width: "100%", marginBottom: "16px" }}>
+            <Input
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              placeholder="Collection title"
+              autoFocus
+            />
+            <Input.TextArea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              placeholder="Collection description (optional)"
+              rows={3}
+            />
+            <Space>
+              <Button type="primary" size="small" onClick={handleUpdateCollection}>
+                Save
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  setIsEditingTitle(false);
+                  setEditedTitle(collection.title);
+                  setEditedDescription(collection.description);
+                }}
+              >
+                Cancel
+              </Button>
+            </Space>
+          </Space>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%" }}>
+              <Title level={4} style={{ margin: 0 }}>{collection.title}</Title>
+              {isOwner && (
+                <Space size="small">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Edit collection"
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={handleDeleteCollection}
+                    title="Delete collection"
+                  />
+                </Space>
+              )}
+            </div>
+            {collection.description && (
+              <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true }}>
+                {collection.description}
+              </Paragraph>
+            )}
+            <Text type="secondary">
+              Collection by {collection.creatorUsername} • {totalChapters} chapters
+            </Text>
+          </>
         )}
-        <Text type="secondary">
-          Collection by {collection.creatorUsername} • {totalChapters} chapters
-        </Text>
       </div>
 
       <Divider />

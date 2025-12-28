@@ -75,17 +75,28 @@ export const CollectionNavigationTab: React.FC = () => {
         <div className="collection-header">
           <BookOutlined className="collection-icon" />
           <div className="collection-details">
-            {loading ? (
-              <Skeleton.Input
-                style={{ width: "100%", height: 16 }}
-                active
-                size="small"
-              />
-            ) : (
-              <Text className="collection-title" ellipsis>
-                {collection?.title || "Collection"}
-              </Text>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {loading ? (
+                <Skeleton.Input
+                  style={{ width: "100%", height: 16 }}
+                  active
+                  size="small"
+                />
+              ) : (
+                <>
+                  <Text className="collection-title" ellipsis>
+                    {collection?.title || "Collection"}
+                  </Text>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={goBackToCollection}
+                    title="Back to Collection"
+                  />
+                </>
+              )}
+            </div>
             <Text type="secondary" className="chapter-indicator">
               Chapter {currentChapter} of {totalChapters}
             </Text>
@@ -153,15 +164,6 @@ export const CollectionNavigationTab: React.FC = () => {
             </Button>
           </div>
         </div>
-
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={goBackToCollection}
-          className="back-button"
-        >
-          Back to Collection
-        </Button>
       </div>
     </div>
   );
