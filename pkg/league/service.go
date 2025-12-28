@@ -1037,15 +1037,15 @@ func (ls *LeagueService) GetDivisionStandings(
 		}
 
 		protoStandings[i] = &ipc.LeaguePlayerStanding{
-			UserId:             userUUID,
-			Username:           username,
-			Rank:               int32(i + 1), // Rank is position in sorted array
-			Wins:               standing.Wins.Int32,
-			Losses:             standing.Losses.Int32,
-			Draws:              standing.Draws.Int32,
-			Spread:             standing.Spread.Int32,
-			GamesPlayed:        standing.GamesPlayed.Int32,
-			GamesRemaining:     standing.GamesRemaining.Int32,
+			UserId:                   userUUID,
+			Username:                 username,
+			Rank:                     int32(i + 1), // Rank is position in sorted array
+			Wins:                     standing.Wins.Int32,
+			Losses:                   standing.Losses.Int32,
+			Draws:                    standing.Draws.Int32,
+			Spread:                   standing.Spread.Int32,
+			GamesPlayed:              standing.GamesPlayed.Int32,
+			GamesRemaining:           standing.GamesRemaining.Int32,
 			Result:                   resultValue,
 			TotalScore:               standing.TotalScore.Int32,
 			TotalOpponentScore:       standing.TotalOpponentScore.Int32,
@@ -1577,7 +1577,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           result,
-			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 		})
 	}
@@ -1612,14 +1612,19 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           "in_progress",
-			GameDate:         timestamppb.New(row.CreatedAt.Time),
+			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 		})
 	}
 
-	// Sort by creation date descending (most recent first)
+	// Sort by updated time descending (most recent first)
 	sort.Slice(allGames, func(i, j int) bool {
-		return allGames[i].GameDate.AsTime().After(allGames[j].GameDate.AsTime())
+		cmp := allGames[j].GameDate.AsTime().Compare(allGames[i].GameDate.AsTime())
+		if cmp == 0 {
+			// Tiebreak for stability
+			cmp = strings.Compare(allGames[i].GameId, allGames[j].GameId)
+		}
+		return cmp < 0
 	})
 
 	return connect.NewResponse(&pb.GetPlayerSeasonGamesResponse{
@@ -1728,13 +1733,13 @@ func (ls *LeagueService) GetSeasonZeroMoveGames(
 	games := make([]*pb.ZeroMoveGame, 0, len(gameRows))
 	for _, row := range gameRows {
 		games = append(games, &pb.ZeroMoveGame{
-			GameId:           row.GameUuid.String,
-			CreatedAt:        timestamppb.New(row.CreatedAt.Time),
-			Player0Id:        row.Player0Uuid.String,
-			Player0Username:  row.Player0Username.String,
-			Player1Id:        row.Player1Uuid.String,
-			Player1Username:  row.Player1Username.String,
-			DivisionId:       row.DivisionID.String(),
+			GameId:          row.GameUuid.String,
+			CreatedAt:       timestamppb.New(row.CreatedAt.Time),
+			Player0Id:       row.Player0Uuid.String,
+			Player0Username: row.Player0Username.String,
+			Player1Id:       row.Player1Uuid.String,
+			Player1Username: row.Player1Username.String,
+			DivisionId:      row.DivisionID.String(),
 		})
 	}
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Table, Tag, Spin } from "antd";
+import { Modal, Spin, Table, Tag, Tooltip } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -66,7 +66,11 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       key: "date",
       render: (date?: Date) => {
         if (!date) return "—";
-        return date.toLocaleDateString();
+        return (
+          <Tooltip title={date.toLocaleString()}>
+            {date.toLocaleDateString()}
+          </Tooltip>
+        );
       },
     },
   ];
