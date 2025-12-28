@@ -34,6 +34,12 @@ const lightComponentOverrides = {
     colorTextHeading: "#ffffff",
     colorInfo: "#e2f8ff",
     colorIcon: "#ffffff",
+    // Correct token names for antd 5.x
+    notificationBg: undefined,
+    colorInfoBg: undefined,
+    colorSuccessBg: undefined,
+    colorWarningBg: undefined,
+    colorErrorBg: undefined,
   },
   Message: {
     colorText: "#ffffff",
