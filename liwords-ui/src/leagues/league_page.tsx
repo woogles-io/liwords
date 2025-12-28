@@ -256,12 +256,47 @@ export const LeaguePage = (props: Props) => {
   const registrants = useMemo(() => {
     if (!registrationsData?.registrations) return [];
 
+    const divisions = standingsData?.divisions ?? [];
+
     return registrationsData.registrations.map((reg) => ({
       userId: reg.userId || "",
       username: reg.username || "",
       divisionNumber: reg.divisionNumber || 0,
+      divisionIndex: divisions.findIndex(
+        (division) => division.divisionNumber === reg.divisionNumber,
+      ),
     }));
-  }, [registrationsData]);
+  }, [registrationsData, standingsData]);
+
+  // Sort on first use, pending approved UI.
+  const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
+
+  useEffect(() => {
+    // Reset registration-order ordering on reload (for example on season change).
+    setWantSortedRegistrants(false);
+  }, [registrants]);
+
+  // Possibly sort the registrants.
+  const sortedRegistrants = useMemo(() => {
+    if (wantSortedRegistrants && registrants) {
+      return [...registrants].sort((a, b) => {
+        const aun = a.username;
+        const bun = b.username;
+        const aunl = aun.toLowerCase();
+        const bunl = bun.toLowerCase();
+        if (aunl < bunl) return -1;
+        if (aunl > bunl) return 1;
+        if (aun < bun) return -1;
+        if (aun > bun) return 1;
+        const aui = a.userId;
+        const bui = b.userId;
+        if (aui < bui) return -1;
+        if (aui > bui) return 1;
+        return 0;
+      });
+    }
+    return registrants;
+  }, [registrants, wantSortedRegistrants]);
 
   // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
@@ -894,13 +929,31 @@ export const LeaguePage = (props: Props) => {
                 gap: "8px 16px",
               }}
             >
-              {registrants.map((registrant) => (
-                <UsernameWithContext
-                  key={registrant.userId}
-                  username={registrant.username}
-                  userID={registrant.userId}
-                />
-              ))}
+              {sortedRegistrants.map((registrant) => {
+                const division =
+                  standingsData?.divisions?.[registrant.divisionIndex];
+                return (
+                  <UsernameWithContext
+                    key={registrant.userId}
+                    username={registrant.username}
+                    userID={registrant.userId}
+                    infoText={
+                      division
+                        ? division.divisionName ||
+                          `Division ${division.divisionNumber}`
+                        : undefined
+                    }
+                    handleInfoText={
+                      division
+                        ? () => {
+                            setSelectedDivisionId(division.uuid);
+                            setWantSortedRegistrants(true);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         </Modal>
