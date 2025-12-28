@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router";
 import { Modal, Table, Tag, Spin } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
@@ -88,7 +89,14 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
 
   return (
     <Modal
-      title={`${username}'s Season ${seasonNumber} Games`}
+      title={
+        <React.Fragment>
+          <Link to={`/profile/${encodeURIComponent(username)}`}>
+            {username}
+          </Link>
+          's Season {seasonNumber} Games
+        </React.Fragment>
+      }
       open={visible}
       onCancel={onClose}
       footer={null}
