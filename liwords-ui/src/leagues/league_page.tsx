@@ -268,6 +268,36 @@ export const LeaguePage = (props: Props) => {
     }));
   }, [registrationsData, standingsData]);
 
+  // Sort on first use, pending approved UI.
+  const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
+
+  useEffect(() => {
+    // Reset registration-order ordering on reload (for example on season change).
+    setWantSortedRegistrants(false);
+  }, [registrants]);
+
+  // Possibly sort the registrants.
+  const sortedRegistrants = useMemo(() => {
+    if (wantSortedRegistrants && registrants) {
+      return [...registrants].sort((a, b) => {
+        const aun = a.username;
+        const bun = b.username;
+        const aunl = aun.toLowerCase();
+        const bunl = bun.toLowerCase();
+        if (aunl < bunl) return -1;
+        if (aunl > bunl) return 1;
+        if (aun < bun) return -1;
+        if (aun > bun) return 1;
+        const aui = a.userId;
+        const bui = b.userId;
+        if (aui < bui) return -1;
+        if (aui > bui) return 1;
+        return 0;
+      });
+    }
+    return registrants;
+  }, [registrants, wantSortedRegistrants]);
+
   // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
     return !!(
@@ -899,7 +929,7 @@ export const LeaguePage = (props: Props) => {
                 gap: "8px 16px",
               }}
             >
-              {registrants.map((registrant) => {
+              {sortedRegistrants.map((registrant) => {
                 const division =
                   standingsData?.divisions?.[registrant.divisionIndex];
                 return (
@@ -917,6 +947,7 @@ export const LeaguePage = (props: Props) => {
                       division
                         ? () => {
                             setSelectedDivisionId(division.uuid);
+                            setWantSortedRegistrants(true);
                           }
                         : undefined
                     }
