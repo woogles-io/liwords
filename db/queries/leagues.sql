@@ -480,6 +480,7 @@ WHERE g.uuid = $1;
 SELECT
     g.uuid as game_uuid,
     g.created_at,
+    g.updated_at,
     gp_player.player_id,
     gp_player.score as player_score,
     gp_player.opponent_score,
@@ -501,6 +502,7 @@ ORDER BY g.created_at DESC;
 SELECT
     g.uuid as game_uuid,
     g.created_at,
+    g.updated_at,
     g.player0_id,
     g.player1_id,
     u_player0.uuid as player0_uuid,
