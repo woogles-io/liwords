@@ -10,6 +10,7 @@ import {
   Tag,
   Typography,
 } from "antd";
+import { TablePaginationConfig } from "antd/lib/table/interface";
 import {
   assignRole,
   getRoleMetadata,
@@ -64,6 +65,10 @@ export const PermsAndRoles = () => {
       .map(([username, roleName]) => ({ username, roleName, key: username }))
       .sort((a, b) => a.username.localeCompare(b.username));
   }, [usersWithRoles]);
+
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
+    pageSize: 20,
+  });
 
   return (
     <>
@@ -128,7 +133,10 @@ export const PermsAndRoles = () => {
       <h3>Current users with roles</h3>
       <Table
         size="small"
-        pagination={{ pageSize: 20 }}
+        pagination={pagination}
+        onChange={(v) => {
+          setPagination(v);
+        }}
         dataSource={cachedUsersWithRoles}
         columns={[
           { title: "Username", dataIndex: "username", key: "username" },
