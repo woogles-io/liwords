@@ -83,7 +83,7 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
         collectionUuid: collection.uuid,
         title: trimmedTitle,
         description: editedDescription,
-        isPublic: collection.isPublic,
+        public: collection.public,
       });
 
       message.success("Collection updated");
@@ -93,7 +93,7 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
       console.error("Failed to update collection:", err);
       message.error("Failed to update collection");
     }
-  }, [collectionsClient, collection.uuid, collection.isPublic, editedTitle, editedDescription, handleRefreshCollection]);
+  }, [collectionsClient, collection.uuid, collection.public, editedTitle, editedDescription, handleRefreshCollection]);
 
   const handleDeleteCollection = useCallback(() => {
     modal.confirm({

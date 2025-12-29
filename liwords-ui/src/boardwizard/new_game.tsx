@@ -1,4 +1,4 @@
-import { Button, Dropdown, Layout } from "antd";
+import { Alert, Button, Dropdown, Layout } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { TopBar } from "../navigation/topbar";
 import { EditorControl } from "./editor_control";
@@ -190,6 +190,29 @@ export const EditorLandingPage = (props: Props) => {
                 Add an annotated game
               </Button>
             </Dropdown>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "0 24px 24px 24px",
+            }}
+          >
+            <Alert
+              message="The annotator UX has been updated!"
+              description={
+                <span>
+                  We've made improvements to the annotation interface.{" "}
+                  <a href="#" onClick={(e) => e.preventDefault()}>
+                    Watch our tutorial video
+                  </a>{" "}
+                  to learn about the new features.
+                </span>
+              }
+              type="info"
+              showIcon
+              style={{ maxWidth: "600px" }}
+            />
           </div>
           <div
             style={{
