@@ -144,7 +144,66 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return (total / gamesPlayed).toFixed(decimals);
   };
 
-  const dataSource = division.standings.map((standing) => ({
+  // may need to useMemo all these O(n^2) computations.
+  const possibleResults = division.standings.map((standing) => {
+    const gr = standing.gamesRemaining;
+    // worst case is to lose all remaining games by -Infinity.
+    const worstPoints = standing.wins * 2 + standing.draws;
+    const worstSpread = gr > 0 ? -Infinity : standing.spread;
+    // best case is to win all remaining games by Infinity.
+    const bestPoints = worstPoints + gr * 2;
+    const bestSpread = gr > 0 ? Infinity : standing.spread;
+    return { bestPoints, bestSpread, worstPoints, worstSpread };
+  });
+
+  // worse results < better results, i.e. reverse of rank.
+  const cmpResults = (p1: number, s1: number, p2: number, s2: number) => {
+    if (p1 < p2) return -1;
+    if (p1 > p2) return 1;
+    if (s1 < s2) return -1;
+    if (s1 > s2) return 1;
+    return 0;
+  };
+
+  const possibleRanks = division.standings.map((_, idx) => {
+    // best rank is 1 + number of others
+    // whose worst is strictly better than our best.
+    const bestRank =
+      1 +
+      division.standings.reduce(
+        (acc, _, idxOppo) =>
+          idxOppo !== idx &&
+          cmpResults(
+            possibleResults[idxOppo].worstPoints,
+            possibleResults[idxOppo].worstSpread,
+            possibleResults[idx].bestPoints,
+            possibleResults[idx].bestSpread,
+          ) > 0
+            ? acc + 1
+            : acc,
+        0,
+      );
+    // worst rank is 1 + number of others
+    // whose best is better than or equal to our worst.
+    const worstRank =
+      1 +
+      division.standings.reduce(
+        (acc, _, idxOppo) =>
+          idxOppo !== idx &&
+          cmpResults(
+            possibleResults[idxOppo].bestPoints,
+            possibleResults[idxOppo].bestSpread,
+            possibleResults[idx].worstPoints,
+            possibleResults[idx].worstSpread,
+          ) >= 0
+            ? acc + 1
+            : acc,
+        0,
+      );
+    return { bestRank, worstRank };
+  });
+
+  const dataSource = division.standings.map((standing, idx) => ({
     key: standing.userId,
     userId: standing.userId,
     rank: standing.rank,
@@ -184,6 +243,20 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.rank - b.rank,
       sortIcon: noSortIcon,
+      render: (rank: number, _: unknown, idx: number) => {
+        const { bestRank, worstRank } = possibleRanks[idx];
+        return (
+          <Tooltip
+            title={
+              worstRank === rank && bestRank === rank
+                ? null
+                : `${bestRank}-${worstRank}`
+            }
+          >
+            {rank}
+          </Tooltip>
+        );
+      },
     },
     {
       title: <ColHeader title="Player" tooltip="Player username" />,
