@@ -256,16 +256,32 @@ export const LeaguePage = (props: Props) => {
   const registrants = useMemo(() => {
     if (!registrationsData?.registrations) return [];
 
-    const divisions = standingsData?.divisions ?? [];
+    const divisionMap = new Map();
+    standingsData?.divisions?.forEach((division, divisionIndex) => {
+      if (!divisionMap.has(division.divisionNumber)) {
+        const standingMap = new Map();
+        division.standings?.forEach((standing, standingIndex) => {
+          if (!standingMap.has(standing.userId)) {
+            standingMap.set(standing.userId, standingIndex);
+          }
+        });
+        divisionMap.set(division.divisionNumber, {
+          idx: divisionIndex,
+          standings: standingMap,
+        });
+      }
+    });
 
-    return registrationsData.registrations.map((reg) => ({
-      userId: reg.userId || "",
-      username: reg.username || "",
-      divisionNumber: reg.divisionNumber || 0,
-      divisionIndex: divisions.findIndex(
-        (division) => division.divisionNumber === reg.divisionNumber,
-      ),
-    }));
+    return registrationsData.registrations.map((reg) => {
+      const elt = divisionMap.get(reg.divisionNumber);
+      return {
+        userId: reg.userId || "",
+        username: reg.username || "",
+        divisionNumber: reg.divisionNumber || 0,
+        divisionIndex: elt?.idx ?? -1,
+        standingIndex: elt?.standings?.get(reg.userId) ?? -1,
+      };
+    });
   }, [registrationsData, standingsData]);
 
   // Sort on first use, pending approved UI.
@@ -932,6 +948,9 @@ export const LeaguePage = (props: Props) => {
               {sortedRegistrants.map((registrant) => {
                 const division =
                   standingsData?.divisions?.[registrant.divisionIndex];
+                const standing =
+                  division?.standings?.[registrant.standingIndex];
+                const standingRank = standing?.rank;
                 return (
                   <UsernameWithContext
                     key={registrant.userId}
@@ -939,8 +958,10 @@ export const LeaguePage = (props: Props) => {
                     userID={registrant.userId}
                     infoText={
                       division
-                        ? division.divisionName ||
-                          `Division ${division.divisionNumber}`
+                        ? `${
+                            division.divisionName ||
+                            `Division ${division.divisionNumber}`
+                          }${standingRank != null ? ` (rank ${standingRank})` : ""}`
                         : !wantSortedRegistrants
                           ? "(Sort)"
                           : undefined
