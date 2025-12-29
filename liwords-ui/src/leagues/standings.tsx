@@ -203,7 +203,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return { bestRank, worstRank };
   });
 
-  const dataSource = division.standings.map((standing, idx) => ({
+  const dataSource = division.standings.map((standing) => ({
     key: standing.userId,
     userId: standing.userId,
     rank: standing.rank,
@@ -243,7 +243,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.rank - b.rank,
       sortIcon: noSortIcon,
-      render: (rank: number, _: unknown, idx: number) => {
+      render: (rank: number) => {
+        // render's third argument is the index after local frontend sorting.
+        // so we cannot do (rank, _, idx) => { ... }.
+        const idx = dataSource.findIndex((x) => x.rank === rank);
         const { bestRank, worstRank } = possibleRanks[idx];
         return (
           <Tooltip
