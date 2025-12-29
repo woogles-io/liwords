@@ -80,17 +80,14 @@ export const PermsAndRoles = () => {
     const lowerUsername = username.toLowerCase();
     const exactMatches: typeof cachedUsersWithRoles = [];
     const matches = cachedUsersWithRoles.filter((elt) => {
-      if (
+      if (lowerUsername && elt.lowerUsername === lowerUsername) {
+        exactMatches.push(elt); // put exact username match first, regardless of role.
+        return false;
+      }
+      return (
         (!lowerUsername || elt.lowerUsername.includes(lowerUsername)) &&
         (!role || elt.roleNames.includes(role))
-      ) {
-        if (lowerUsername && elt.lowerUsername === lowerUsername) {
-          exactMatches.push(elt); // put exact username match first.
-          return false;
-        }
-        return true;
-      }
-      return false;
+      );
     });
     return exactMatches.length > 0 ? [...exactMatches, ...matches] : matches;
   }, [cachedUsersWithRoles, username, role]);
