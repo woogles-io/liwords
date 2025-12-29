@@ -49,22 +49,51 @@ export const PermsAndRoles = () => {
       return [];
     }
 
-    const m: Record<string, string> = {};
+    const m: Record<string, string[]> = {};
 
     usersWithRoles.userAndRoleObjs.forEach(({ username, roleName }) => {
       if (username) {
-        if (m[username]) {
-          m[username] += ", " + roleName;
-        } else {
-          m[username] = roleName;
-        }
+        (m[username] ||= []).push(roleName);
       }
     });
 
     return Object.entries(m)
-      .map(([username, roleName]) => ({ username, roleName, key: username }))
-      .sort((a, b) => a.username.localeCompare(b.username));
+      .map(([username, roleNames]) => ({
+        username,
+        lowerUsername: username.toLowerCase(),
+        roleNames,
+        roleName: roleNames.join(", "),
+        priority: roleNames.some((r) => r !== "League Player") ? 1 : 2,
+        key: username,
+      }))
+      .sort((a, b) => {
+        if (a.priority < b.priority) return -1;
+        if (a.priority > b.priority) return 1;
+        return a.username.localeCompare(b.username);
+      });
   }, [usersWithRoles]);
+
+  const filteredUsersWithRoles = useMemo(() => {
+    if (!username && !role) {
+      return cachedUsersWithRoles;
+    }
+    const lowerUsername = username.toLowerCase();
+    const exactMatches: typeof cachedUsersWithRoles = [];
+    const matches = cachedUsersWithRoles.filter((elt) => {
+      if (
+        (!lowerUsername || elt.lowerUsername.includes(lowerUsername)) &&
+        (!role || elt.roleNames.includes(role))
+      ) {
+        if (lowerUsername && elt.lowerUsername === lowerUsername) {
+          exactMatches.push(elt); // put exact username match first.
+          return false;
+        }
+        return true;
+      }
+      return false;
+    });
+    return exactMatches.length > 0 ? [...exactMatches, ...matches] : matches;
+  }, [cachedUsersWithRoles, username, role]);
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     pageSize: 20,
@@ -80,6 +109,9 @@ export const PermsAndRoles = () => {
           </Form.Item>
           <Form.Item label="Role" name="role">
             <Select onChange={(v) => setRole(v)}>
+              <Select.Option value="">
+                {"" /* provide a blank option to reset the filter */}
+              </Select.Option>
               {roleMetadata?.rolesWithPermissions.map((v) => (
                 <Select.Option key={v.roleName} value={v.roleName}>
                   {v.roleName}
@@ -137,7 +169,7 @@ export const PermsAndRoles = () => {
         onChange={(v) => {
           setPagination(v);
         }}
-        dataSource={cachedUsersWithRoles}
+        dataSource={filteredUsersWithRoles}
         columns={[
           { title: "Username", dataIndex: "username", key: "username" },
           { title: "Role", dataIndex: "roleName", key: "roleName" },
