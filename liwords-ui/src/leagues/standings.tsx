@@ -365,7 +365,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { gamesPlayed: number; gamesRemaining: number },
       ) =>
-        `${record.gamesPlayed}/${record.gamesPlayed + record.gamesRemaining}`,
+        `${record.gamesPlayed}${record.gamesRemaining ? `/${record.gamesPlayed + record.gamesRemaining}` : ""}`,
     },
     {
       title: <ColHeader title="ScAV" tooltip="Average score per game" />,
