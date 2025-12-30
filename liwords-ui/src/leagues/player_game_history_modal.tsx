@@ -60,7 +60,10 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       ) => {
         const spread = record.playerScore - record.opponentScore;
         return (
-          <Tooltip title={`${spread >= 0 ? "+" : ""}${spread}`}>
+          <Tooltip
+            placement="left"
+            title={`${spread >= 0 ? "+" : ""}${spread}`}
+          >
             {record.playerScore}-{record.opponentScore}
           </Tooltip>
         );

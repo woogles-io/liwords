@@ -152,7 +152,10 @@ export const LeagueCorrespondenceGames: React.FC<
                         whiteSpace: "nowrap",
                       }}
                     >
-                      <Tooltip title={`${spread >= 0 ? "+" : ""}${spread}`}>
+                      <Tooltip
+                        placement="left"
+                        title={`${spread >= 0 ? "+" : ""}${spread}`}
+                      >
                         {userScore}-{opponentScore}
                       </Tooltip>
                     </span>
