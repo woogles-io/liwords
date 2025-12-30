@@ -2,15 +2,21 @@ import React from "react";
 import { Card, Table, Tag, Spin, Empty } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getSeasonPlayersWithUnstartedGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import { Division } from "../gen/api/proto/ipc/league_pb";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 
 type ZeroMoveGamesDashboardProps = {
   seasonId: string;
   seasonNumber: number;
+  playerToDivisionMap: Map<string, Division>;
+  setSelectedDivisionId: React.Dispatch<React.SetStateAction<string>>;
 };
 
 export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
   seasonId,
   seasonNumber,
+  playerToDivisionMap,
+  setSelectedDivisionId,
 }) => {
   const { data, isLoading, error } = useQuery(
     getSeasonPlayersWithUnstartedGames,
@@ -24,7 +30,59 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
       title: "Player",
       dataIndex: "username",
       key: "username",
-      render: (username: string) => <strong>{username}</strong>,
+      render: (_: unknown, player: (typeof dataSource)[0]) => {
+        const division = player.division;
+        return (
+          <UsernameWithContext
+            key={player.userId}
+            username={player.username}
+            userID={player.userId}
+            infoText={
+              division
+                ? division.divisionName || `Division ${division.divisionNumber}`
+                : undefined
+            }
+            handleInfoText={
+              division
+                ? () => {
+                    setSelectedDivisionId(division.uuid);
+                  }
+                : undefined
+            }
+          />
+        );
+      },
+      sorter: (a: (typeof dataSource)[0], b: (typeof dataSource)[0]) => {
+        const aun = a.username;
+        const bun = b.username;
+        const aunl = aun.toLowerCase();
+        const bunl = bun.toLowerCase();
+        if (aunl < bunl) return -1;
+        if (aunl > bunl) return 1;
+        if (aun < bun) return -1;
+        if (aun > bun) return 1;
+        const aui = a.userId;
+        const bui = b.userId;
+        if (aui < bui) return -1;
+        if (aui > bui) return 1;
+        return 0;
+      },
+    },
+    {
+      title: "Division",
+      dataIndex: "division",
+      key: "division",
+      render: (division: Division) =>
+        division
+          ? division.divisionName || `Division ${division.divisionNumber}`
+          : "-",
+      sorter: (a: (typeof dataSource)[0], b: (typeof dataSource)[0]) => {
+        const adnum = a.division?.divisionNumber ?? -Infinity;
+        const bdnum = b.division?.divisionNumber ?? -Infinity;
+        if (adnum < bdnum) return -1;
+        if (adnum > bdnum) return 1;
+        return 0;
+      },
     },
     {
       title: "Unstarted Games",
@@ -44,12 +102,16 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
   ];
 
   const dataSource =
-    data?.players.map((player) => ({
-      key: player.userId,
-      userId: player.userId,
-      username: player.username,
-      unstartedGameCount: player.unstartedGameCount,
-    })) || [];
+    data?.players.map((player) => {
+      const division = playerToDivisionMap.get(player.userId);
+      return {
+        key: player.userId,
+        userId: player.userId,
+        username: player.username,
+        division,
+        unstartedGameCount: player.unstartedGameCount,
+      };
+    }) || [];
 
   return (
     <Card

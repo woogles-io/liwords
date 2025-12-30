@@ -284,6 +284,16 @@ export const LeaguePage = (props: Props) => {
     });
   }, [registrationsData, standingsData]);
 
+  // For ZeroMoveGamesDashboard.
+  const playerToDivisionMap = useMemo(() => {
+    const ret = new Map();
+    for (const registrant of registrants) {
+      const division = standingsData?.divisions?.[registrant.divisionIndex];
+      ret.set(registrant.userId, division);
+    }
+    return ret;
+  }, [registrants, standingsData]);
+
   // Sort on first use, pending approved UI.
   const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
 
@@ -702,6 +712,8 @@ export const LeaguePage = (props: Props) => {
                     <ZeroMoveGamesDashboard
                       seasonId={displaySeasonId}
                       seasonNumber={displayedSeason.seasonNumber}
+                      playerToDivisionMap={playerToDivisionMap}
+                      setSelectedDivisionId={setSelectedDivisionId}
                     />
                   )}
                 </div>
