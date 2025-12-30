@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Select } from "antd";
 import { Division } from "../gen/api/proto/ipc/league_pb";
 
@@ -16,6 +16,20 @@ export const DivisionSelector: React.FC<DivisionSelectorProps> = ({
   selectedDivisionId,
   onDivisionChange,
 }) => {
+  const divisionProgresses = useMemo(
+    () =>
+      divisions.map((division) => {
+        let gamesPlayed = 0;
+        let gamesRemaining = 0;
+        division.standings?.forEach((standing) => {
+          gamesPlayed += standing.gamesPlayed;
+          gamesRemaining += standing.gamesRemaining;
+        });
+        return { gamesPlayed, gamesRemaining };
+      }) ?? [],
+    [divisions],
+  );
+
   if (divisions.length === 0) {
     return null;
   }
@@ -28,11 +42,17 @@ export const DivisionSelector: React.FC<DivisionSelectorProps> = ({
         style={{ width: 200 }}
         placeholder="Select Division"
       >
-        {divisions.map((division) => (
-          <Option key={division.uuid} value={division.uuid}>
-            {division.divisionName || `Division ${division.divisionNumber}`}
-          </Option>
-        ))}
+        {divisions.map((division, idx) => {
+          const { gamesRemaining, gamesPlayed } = divisionProgresses[idx];
+          return (
+            <Option key={division.uuid} value={division.uuid}>
+              {division.divisionName || `Division ${division.divisionNumber}`}
+              {gamesRemaining
+                ? ` (${gamesPlayed}/${gamesPlayed + gamesRemaining})`
+                : ""}
+            </Option>
+          );
+        })}
       </Select>
     </div>
   );
