@@ -52,7 +52,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	}
 
 	if gevt.Type == ipc.GameEvent_CHALLENGE {
-		return challengeEvent(ctx, cfg, gdoc, tr)
+		return challengeEvent(ctx, cfg, gdoc, tr, gevt.ChallengedWordIndices)
 	}
 
 	err = validateMove(cfg, gevt, gdoc)
@@ -484,7 +484,7 @@ func addWinnerToHistory(gdoc *ipc.GameDocument) {
 // Note that this event can change the history of the game, including
 // things like resetting the game ended state (for example if someone plays
 // out with a phony).
-func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64) error {
+func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64, challengedIndices []uint32) error {
 	if len(gdoc.Events) == 0 {
 		return errors.New("this game has no history")
 	}
@@ -495,6 +495,25 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	if len(lastWordsFormed) == 0 {
 		return errors.New("there are no words to challenge")
 	}
+
+	// Determine which words to validate based on challenged indices
+	var wordsToValidate [][]byte
+	challengingSubset := len(challengedIndices) > 0
+
+	if !challengingSubset {
+		// Empty indices means challenge all words (backward compatible)
+		wordsToValidate = lastWordsFormed
+	} else {
+		// Validate only the specified word indices
+		wordsToValidate = make([][]byte, 0, len(challengedIndices))
+		for _, idx := range challengedIndices {
+			if int(idx) >= len(lastWordsFormed) {
+				return errors.New("invalid word index in challenge")
+			}
+			wordsToValidate = append(wordsToValidate, lastWordsFormed[idx])
+		}
+	}
+
 	// record time of the challenge, but do not account for increments;
 	// a challenge event shouldn't modify the clock per se.
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
@@ -510,8 +529,8 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 
 	// Note that the player on turn right now needs to be the player
 	// who is making the challenge.
-	lastMWs := make([]tilemapping.MachineWord, len(lastWordsFormed))
-	for i, w := range lastWordsFormed {
+	lastMWs := make([]tilemapping.MachineWord, len(wordsToValidate))
+	for i, w := range wordsToValidate {
 		lastMWs[i] = tilemapping.FromByteArr(w)
 	}
 
@@ -611,7 +630,13 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		case ipc.ChallengeRule_ChallengeRule_FIVE_POINT:
 			// Append a bonus to the event.
 			shouldAddPts = true
-			addPts = 5
+			if challengingSubset {
+				// Per-word bonus: 5 points for each word challenged
+				addPts = int32(5 * len(wordsToValidate))
+			} else {
+				// Legacy behavior: flat 5 points when challenging all
+				addPts = 5
+			}
 
 		case ipc.ChallengeRule_ChallengeRule_TEN_POINT:
 			shouldAddPts = true

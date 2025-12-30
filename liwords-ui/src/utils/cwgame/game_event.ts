@@ -102,10 +102,14 @@ export const resignMoveEvent = (gameID: string) => {
   return evt;
 };
 
-export const challengeMoveEvent = (gameID: string) => {
+export const challengeMoveEvent = (
+  gameID: string,
+  challengedWordIndices?: number[],
+) => {
   const evt = create(ClientGameplayEventSchema, {
     type: ClientGameplayEvent_EventType.CHALLENGE_PLAY,
     gameId: gameID,
+    challengedWordIndices: challengedWordIndices ?? [],
   });
   return evt;
 };

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, Tooltip, Affix, App } from "antd";
 import { Modal } from "../utils/focus_modal";
 import { DndProvider } from "react-dnd";
@@ -22,6 +28,7 @@ import GameBoard from "./board";
 import GameControls from "./game_controls";
 import { Rack } from "./rack";
 import { ExchangeTiles } from "./exchange_tiles";
+import { ChallengeWordsModal } from "./challenge_words_modal";
 import {
   nextArrowPropertyState,
   handleKeyPress,
@@ -198,6 +205,20 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const { message, notification } = App.useApp();
 
+  // Challenge modal state
+  const [challengeModalVisible, setChallengeModalVisible] = useState(false);
+
+  // Get words from the last play for challenge modal
+  const lastWordsFormed = useMemo(() => {
+    if (examinableGameContext.turns.length > 0) {
+      const lastTurn =
+        examinableGameContext.turns[examinableGameContext.turns.length - 1];
+      // wordsFormed comes from backend via GameEvent, so indices match backend
+      return lastTurn?.wordsFormed ?? [];
+    }
+    return [];
+  }, [examinableGameContext.turns]);
+
   const makeMove = useCallback(
     (move: string, addl?: Array<MachineLetter>) => {
       if (isExamining && !boardEditingMode) return;
@@ -232,6 +253,18 @@ export const BoardPanel = React.memo((props: Props) => {
           moveEvt = resignMoveEvent(gameID);
           break;
         case "challenge":
+          // Show word selection modal ONLY for:
+          // 1. 5-point challenge rule AND
+          // 2. Editor mode (boardEditingMode prop)
+          if (
+            boardEditingMode &&
+            props.challengeRule === ChallengeRule.FIVE_POINT &&
+            lastWordsFormed.length > 0
+          ) {
+            setChallengeModalVisible(true);
+            return; // Don't send event yet, wait for modal confirmation
+          }
+          // For live games or non-5-point, challenge all words (current behavior)
           moveEvt = challengeMoveEvent(gameID);
           break;
         case "commit":
@@ -283,6 +316,8 @@ export const BoardPanel = React.memo((props: Props) => {
       message,
       pendingExchangeTiles,
       setPendingExchangeTiles,
+      props.challengeRule,
+      lastWordsFormed,
     ],
   );
 
@@ -1128,6 +1163,19 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode("NORMAL");
   }, [setCurrentMode]);
+
+  const handleChallengeConfirm = useCallback(
+    (selectedIndices: number[]) => {
+      const moveEvt = challengeMoveEvent(gameID, selectedIndices);
+      sendGameplayEvent(moveEvt);
+      setChallengeModalVisible(false);
+    },
+    [gameID, sendGameplayEvent],
+  );
+
+  const handleChallengeCancel = useCallback(() => {
+    setChallengeModalVisible(false);
+  }, []);
   const handleRequestAbort = useCallback(() => {
     sendMetaEvent(GameMetaEvent_EventType.REQUEST_ABORT);
   }, [sendMetaEvent]);
@@ -1364,6 +1412,13 @@ export const BoardPanel = React.memo((props: Props) => {
         modalVisible={currentMode === "EXCHANGE_MODAL"}
         onOk={handleExchangeModalOk}
         onCancel={handleExchangeTilesCancel}
+      />
+      <ChallengeWordsModal
+        wordsFormed={lastWordsFormed}
+        onCancel={handleChallengeCancel}
+        onConfirm={handleChallengeConfirm}
+        modalVisible={challengeModalVisible}
+        challengeRule={props.challengeRule}
       />
       <Modal
         className="blank-modal"

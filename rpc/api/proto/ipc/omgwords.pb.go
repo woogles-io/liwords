@@ -642,8 +642,12 @@ type ClientGameplayEvent struct {
 	Tiles string `protobuf:"bytes,4,opt,name=tiles,proto3" json:"tiles,omitempty"`
 	// machine_letters is tiles, but in binary.
 	MachineLetters []byte `protobuf:"bytes,5,opt,name=machine_letters,json=machineLetters,proto3" json:"machine_letters,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// For CHALLENGE_PLAY events, specifies which word indices to challenge.
+	// Indices correspond to the wordsFormed array from the last play.
+	// If empty or not set, challenges all words (default/backward compatible).
+	ChallengedWordIndices []uint32 `protobuf:"varint,6,rep,packed,name=challenged_word_indices,json=challengedWordIndices,proto3" json:"challenged_word_indices,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ClientGameplayEvent) Reset() {
@@ -708,6 +712,13 @@ func (x *ClientGameplayEvent) GetTiles() string {
 func (x *ClientGameplayEvent) GetMachineLetters() []byte {
 	if x != nil {
 		return x.MachineLetters
+	}
+	return nil
+}
+
+func (x *ClientGameplayEvent) GetChallengedWordIndices() []uint32 {
+	if x != nil {
+		return x.ChallengedWordIndices
 	}
 	return nil
 }
@@ -2495,8 +2506,11 @@ type GameEvent struct {
 	// be the index in GameDocument.players.
 	PlayerIndex         uint32   `protobuf:"varint,19,opt,name=player_index,json=playerIndex,proto3" json:"player_index,omitempty"`
 	WordsFormedFriendly []string `protobuf:"bytes,20,rep,name=words_formed_friendly,json=wordsFormedFriendly,proto3" json:"words_formed_friendly,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// For CHALLENGE events, indices of words that were challenged.
+	// Empty = challenged all words (backward compatible with existing games).
+	ChallengedWordIndices []uint32 `protobuf:"varint,21,rep,packed,name=challenged_word_indices,json=challengedWordIndices,proto3" json:"challenged_word_indices,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GameEvent) Reset() {
@@ -2658,6 +2672,13 @@ func (x *GameEvent) GetPlayerIndex() uint32 {
 func (x *GameEvent) GetWordsFormedFriendly() []string {
 	if x != nil {
 		return x.WordsFormedFriendly
+	}
+	return nil
+}
+
+func (x *GameEvent) GetChallengedWordIndices() []uint32 {
+	if x != nil {
+		return x.ChallengedWordIndices
 	}
 	return nil
 }
@@ -3252,13 +3273,14 @@ var File_proto_ipc_omgwords_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xab\x02\n" +
+	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
 	"\x13ClientGameplayEvent\x126\n" +
 	"\x04type\x18\x01 \x01(\x0e2\".ipc.ClientGameplayEvent.EventTypeR\x04type\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12'\n" +
 	"\x0fposition_coords\x18\x03 \x01(\tR\x0epositionCoords\x12\x18\n" +
 	"\x05tiles\x18\x04 \x01(\tB\x02\x18\x01R\x05tiles\x12'\n" +
-	"\x0fmachine_letters\x18\x05 \x01(\fR\x0emachineLetters\"W\n" +
+	"\x0fmachine_letters\x18\x05 \x01(\fR\x0emachineLetters\x126\n" +
+	"\x17challenged_word_indices\x18\x06 \x03(\rR\x15challengedWordIndices\"W\n" +
 	"\tEventType\x12\x12\n" +
 	"\x0eTILE_PLACEMENT\x10\x00\x12\b\n" +
 	"\x04PASS\x10\x01\x12\f\n" +
@@ -3435,7 +3457,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\faccepter_cid\x18\x03 \x01(\tR\vaccepterCid\"<\n" +
 	"\bTimedOut\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x8e\a\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xc6\a\n" +
 	"\tGameEvent\x12\x12\n" +
 	"\x04note\x18\x02 \x01(\tR\x04note\x12\x12\n" +
 	"\x04rack\x18\x03 \x01(\fR\x04rack\x12'\n" +
@@ -3459,7 +3481,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\fwords_formed\x18\x11 \x03(\fR\vwordsFormed\x12)\n" +
 	"\x10millis_remaining\x18\x12 \x01(\x05R\x0fmillisRemaining\x12!\n" +
 	"\fplayer_index\x18\x13 \x01(\rR\vplayerIndex\x122\n" +
-	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\"\xf2\x01\n" +
+	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\x126\n" +
+	"\x17challenged_word_indices\x18\x15 \x03(\rR\x15challengedWordIndices\"\xf2\x01\n" +
 	"\x04Type\x12\x17\n" +
 	"\x13TILE_PLACEMENT_MOVE\x10\x00\x12\x18\n" +
 	"\x14PHONY_TILES_RETURNED\x10\x01\x12\b\n" +

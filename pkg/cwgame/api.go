@@ -597,25 +597,65 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 			return fmt.Errorf("playMove failed: %w", err)
 		}
 
-	case ipc.GameEvent_PHONY_TILES_RETURNED,
-		ipc.GameEvent_CHALLENGE_BONUS,
-		ipc.GameEvent_TIME_PENALTY,
+	case ipc.GameEvent_CHALLENGE_BONUS:
+		// CHALLENGE_BONUS events are generated when a challenge is unsuccessful
+		// They reference the previously played TILE_PLACEMENT that was challenged
+		// If the previous event is not a TILE_PLACEMENT, this bonus is orphaned
+		// (the play it referenced was amended away) and should be skipped
+		if len(gdoc.Events) > 0 {
+			prevEvt := gdoc.Events[len(gdoc.Events)-1]
+			if prevEvt.Type != ipc.GameEvent_TILE_PLACEMENT_MOVE {
+				log.Debug().
+					Str("event_type", gevt.Type.String()).
+					Str("prev_event_type", prevEvt.Type.String()).
+					Msg("skipping orphaned CHALLENGE_BONUS - previous event is not a tile placement")
+				return nil
+			}
+		} else {
+			// No events yet - this bonus can't be valid
+			log.Debug().Str("event_type", gevt.Type.String()).Msg("skipping CHALLENGE_BONUS - no previous events")
+			return nil
+		}
+
+		// Recalculate cumulative score based on current score + bonus
+		gdoc.CurrentScores[gevt.PlayerIndex] += gevt.Bonus
+		gevt.Cumulative = gdoc.CurrentScores[gevt.PlayerIndex]
+		gdoc.Events = append(gdoc.Events, gevt)
+		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
+
+	case ipc.GameEvent_PHONY_TILES_RETURNED:
+		// PHONY_TILES_RETURNED events are generated when a challenge is successful
+		// They reference the TILE_PLACEMENT that was taken off the board
+		// If the previous event is not a TILE_PLACEMENT, this event is orphaned
+		if len(gdoc.Events) > 0 {
+			prevEvt := gdoc.Events[len(gdoc.Events)-1]
+			if prevEvt.Type != ipc.GameEvent_TILE_PLACEMENT_MOVE {
+				log.Debug().
+					Str("event_type", gevt.Type.String()).
+					Str("prev_event_type", prevEvt.Type.String()).
+					Msg("skipping orphaned PHONY_TILES_RETURNED - previous event is not a tile placement")
+				return nil
+			}
+		} else {
+			log.Debug().Str("event_type", gevt.Type.String()).Msg("skipping PHONY_TILES_RETURNED - no previous events")
+			return nil
+		}
+
+		// Recalculate cumulative score based on current score - lost score
+		gdoc.CurrentScores[gevt.PlayerIndex] -= gevt.LostScore
+		gevt.Cumulative = gdoc.CurrentScores[gevt.PlayerIndex]
+		gdoc.Events = append(gdoc.Events, gevt)
+		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
+
+	case ipc.GameEvent_TIME_PENALTY,
 		ipc.GameEvent_TIMED_OUT,
 		ipc.GameEvent_RESIGNED:
 		// These events just update scores, append to history
-		// (END_RACK_PENALTY and END_RACK_PTS are handled earlier and skipped)
 		gdoc.CurrentScores[gevt.PlayerIndex] = gevt.Cumulative
 		gdoc.Events = append(gdoc.Events, gevt)
 
-		// For phony tiles returned, we may need to adjust turn
-		if gevt.Type == ipc.GameEvent_PHONY_TILES_RETURNED ||
-			gevt.Type == ipc.GameEvent_CHALLENGE_BONUS {
-			assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
-		}
-
 	case ipc.GameEvent_CHALLENGE:
-		// Challenge events are complex, use the challenge handler
-		err := challengeEvent(ctx, localCfg, gdoc, tr)
+		err := challengeEvent(ctx, localCfg, gdoc, tr, gevt.ChallengedWordIndices)
 		if err != nil {
 			return fmt.Errorf("challenge failed: %w", err)
 		}
@@ -778,9 +818,10 @@ func clientEventToGameEvent(cfg *wglconfig.Config, evt *ipc.ClientGameplayEvent,
 		}, nil
 	case ipc.ClientGameplayEvent_CHALLENGE_PLAY:
 		return &ipc.GameEvent{
-			Type:        ipc.GameEvent_CHALLENGE,
-			PlayerIndex: gdoc.PlayerOnTurn,
-			Rack:        gdoc.Racks[playerid],
+			Type:                  ipc.GameEvent_CHALLENGE,
+			PlayerIndex:           gdoc.PlayerOnTurn,
+			Rack:                  gdoc.Racks[playerid],
+			ChallengedWordIndices: evt.ChallengedWordIndices,
 		}, nil
 
 	}

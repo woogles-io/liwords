@@ -46,6 +46,11 @@ message ClientGameplayEvent {
   string tiles = 4 [ deprecated = true ];
   // machine_letters is tiles, but in binary.
   bytes machine_letters = 5;
+
+  // For CHALLENGE_PLAY events, specifies which word indices to challenge.
+  // Indices correspond to the wordsFormed array from the last play.
+  // If empty or not set, challenges all words (default/backward compatible).
+  repeated uint32 challenged_word_indices = 6;
 }
 
 // A GameRules is just the name of a board layout + the name of a letter
@@ -402,6 +407,10 @@ message GameEvent {
   // be the index in GameDocument.players.
   uint32 player_index = 19;
   repeated string words_formed_friendly = 20;
+
+  // For CHALLENGE events, indices of words that were challenged.
+  // Empty = challenged all words (backward compatible with existing games).
+  repeated uint32 challenged_word_indices = 21;
 }
 
 enum PlayState {
