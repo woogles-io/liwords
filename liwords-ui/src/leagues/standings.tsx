@@ -203,6 +203,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return { bestRank, worstRank };
   });
 
+  const divisionCompleted = !division.standings.some(
+    (standing) => standing.gamesRemaining,
+  );
+
   const dataSource = division.standings.map((standing) => ({
     key: standing.userId,
     userId: standing.userId,
@@ -248,15 +252,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         // so we cannot do (rank, _, idx) => { ... }.
         const idx = dataSource.findIndex((x) => x.rank === rank);
         const { bestRank, worstRank } = possibleRanks[idx];
+        const rankIsKnown = worstRank === rank && bestRank === rank;
         return (
-          <Tooltip
-            title={
-              worstRank === rank && bestRank === rank
-                ? null
-                : `${bestRank}-${worstRank}`
-            }
-          >
-            {rank}
+          <Tooltip title={rankIsKnown ? null : `${bestRank}-${worstRank}`}>
+            {rankIsKnown !== divisionCompleted ? `${rank}.` : rank}
           </Tooltip>
         );
       },
