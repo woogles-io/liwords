@@ -1,6 +1,21 @@
 import React, { useState, useCallback } from "react";
-import { Card, Button, Typography, Divider, message, Input, Space, App } from "antd";
-import { LeftOutlined, RightOutlined, BookOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  Card,
+  Button,
+  Typography,
+  Divider,
+  message,
+  Input,
+  Space,
+  App,
+} from "antd";
+import {
+  LeftOutlined,
+  RightOutlined,
+  BookOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import { DndProvider } from "react-dnd";
 import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
 import { useLoginStateStoreContext } from "../store/store";
@@ -55,7 +70,9 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
   const [reordering, setReordering] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(collection.title);
-  const [editedDescription, setEditedDescription] = useState(collection.description);
+  const [editedDescription, setEditedDescription] = useState(
+    collection.description,
+  );
 
   const handleRefreshCollection = useCallback(async () => {
     try {
@@ -93,14 +110,22 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
       console.error("Failed to update collection:", err);
       message.error("Failed to update collection");
     }
-  }, [collectionsClient, collection.uuid, collection.public, editedTitle, editedDescription, handleRefreshCollection]);
+  }, [
+    collectionsClient,
+    collection.uuid,
+    collection.public,
+    editedTitle,
+    editedDescription,
+    handleRefreshCollection,
+  ]);
 
   const handleDeleteCollection = useCallback(() => {
     modal.confirm({
       title: <span className="readable-text-color">Delete Collection</span>,
       content: (
         <span className="readable-text-color">
-          Are you sure you want to delete "{collection.title}"? This action cannot be undone.
+          Are you sure you want to delete "{collection.title}"? This action
+          cannot be undone.
         </span>
       ),
       okText: "Delete",
@@ -188,7 +213,10 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
       <div className="collection-header">
         <BookOutlined style={{ fontSize: "24px", marginBottom: "8px" }} />
         {isEditingTitle ? (
-          <Space direction="vertical" style={{ width: "100%", marginBottom: "16px" }}>
+          <Space
+            direction="vertical"
+            style={{ width: "100%", marginBottom: "16px" }}
+          >
             <Input
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
@@ -202,7 +230,11 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
               rows={3}
             />
             <Space>
-              <Button type="primary" size="small" onClick={handleUpdateCollection}>
+              <Button
+                type="primary"
+                size="small"
+                onClick={handleUpdateCollection}
+              >
                 Save
               </Button>
               <Button
@@ -219,8 +251,17 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
           </Space>
         ) : (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%" }}>
-              <Title level={4} style={{ margin: 0 }}>{collection.title}</Title>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                width: "100%",
+              }}
+            >
+              <Title level={4} style={{ margin: 0 }}>
+                {collection.title}
+              </Title>
               {isOwner && (
                 <Space size="small">
                   <Button
@@ -242,12 +283,16 @@ export const CollectionNavigation: React.FC<CollectionNavigationProps> = ({
               )}
             </div>
             {collection.description && (
-              <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true }}>
+              <Paragraph
+                type="secondary"
+                ellipsis={{ rows: 2, expandable: true }}
+              >
                 {collection.description}
               </Paragraph>
             )}
             <Text type="secondary">
-              Collection by {collection.creatorUsername} • {totalChapters} chapters
+              Collection by {collection.creatorUsername} • {totalChapters}{" "}
+              chapters
             </Text>
           </>
         )}

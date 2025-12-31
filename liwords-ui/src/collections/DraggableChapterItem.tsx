@@ -163,7 +163,9 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
         style={itemStyle}
       >
         <Space direction="vertical" style={{ width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+          <div
+            style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}
+          >
             {isOwner && (
               <HolderOutlined
                 className="drag-handle"

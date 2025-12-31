@@ -141,17 +141,34 @@ export const CollectionViewer: React.FC = () => {
             onCollectionUpdate={handleCollectionUpdate}
           />
         </div>
-        <div className="collection-content" style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "flex-start" }}>
+        <div
+          className="collection-content"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "24px",
+            alignItems: "flex-start",
+          }}
+        >
           <div style={{ flex: "1 1 400px", minWidth: 0 }}>
             <Card className="chapter-card" style={{ marginBottom: "24px" }}>
               <div className="chapter-header">
-                <h2>{currentGame.chapterTitle || `Chapter ${currentChapter}`}</h2>
+                <h2>
+                  {currentGame.chapterTitle || `Chapter ${currentChapter}`}
+                </h2>
                 <p className="chapter-type">
                   {currentGame.isAnnotated ? "Annotated Game" : "Game Record"}
                 </p>
               </div>
 
-              <div className="chapter-preview" style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+              <div
+                className="chapter-preview"
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                }}
+              >
                 <img
                   src={`/gameimg/${currentGame.gameId}-v2.png`}
                   alt={`Preview of ${currentGame.chapterTitle || `Chapter ${currentChapter}`}`}
@@ -203,9 +220,9 @@ export const CollectionViewer: React.FC = () => {
 
               <div className="chapter-info">
                 <p>
-                  Click "View Game" to open this game. You can use the collection
-                  navigation to move between chapters or return here to explore
-                  other games in this collection.
+                  Click "View Game" to open this game. You can use the
+                  collection navigation to move between chapters or return here
+                  to explore other games in this collection.
                 </p>
               </div>
             </Card>
