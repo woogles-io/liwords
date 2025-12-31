@@ -25,7 +25,11 @@ export const DivisionSelector: React.FC<DivisionSelectorProps> = ({
           gamesPlayed += standing.gamesPlayed;
           gamesRemaining += standing.gamesRemaining;
         });
-        return { gamesPlayed, gamesRemaining };
+        // Every game is played by two players.
+        return {
+          gamesPlayed: gamesPlayed / 2,
+          gamesRemaining: gamesRemaining / 2,
+        };
       }) ?? [],
     [divisions],
   );
