@@ -126,40 +126,84 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 	// Clone the document to work on - we'll only update the real document if everything succeeds
 	gdocClone := proto.Clone(g.GameDocument).(*ipc.GameDocument)
 
+	// For CHALLENGE events, we use insert semantics (preserve the challenged play)
+	// For other events, we use replace semantics (replace the event at evtIndex)
+	isChallenge := evt.Type == ipc.ClientGameplayEvent_CHALLENGE_PLAY
+
 	// NON-DESTRUCTIVE: Save events after the edit point
 	var eventsAfter []*ipc.GameEvent
-	if int(evtIndex)+1 < len(g.Events) {
-		eventsAfter = make([]*ipc.GameEvent, len(g.Events)-int(evtIndex)-1)
-		copy(eventsAfter, g.Events[evtIndex+1:])
-	}
 
-	// Replay events up to (but not including) the event we're editing
-	evts := gdocClone.Events[:evtIndex]
-	cwgame.LogTileState(gdocClone, "before-replay")
-	err := cwgame.ReplayEvents(ctx, cfg, gdocClone, evts, false)
-	if err != nil {
-		gs.UnlockDocument(ctx, g)
-		return false, apiserver.InvalidArg(err.Error())
-	}
-	cwgame.LogTileState(gdocClone, "after-replay")
+	if isChallenge {
+		// For challenges, replay up to AND INCLUDING the event being challenged
+		// Note: evtIndex from frontend is turns.length, which equals the index+1 of the last event
+		// So Events[:evtIndex] gives us [E0..E(evtIndex-1)], which includes the event to challenge
+		evts := gdocClone.Events[:evtIndex]
+		cwgame.LogTileState(gdocClone, "before-replay-challenge")
+		err := cwgame.ReplayEvents(ctx, cfg, gdocClone, evts, false)
+		if err != nil {
+			gs.UnlockDocument(ctx, g)
+			return false, apiserver.InvalidArg(err.Error())
+		}
+		cwgame.LogTileState(gdocClone, "after-replay-challenge")
 
-	// Remember the rack we just saved. We need to re-assign it.
-	racks := make([][]byte, len(g.Players))
-	racks[pidx] = rack
-	err = cwgame.AssignRacks(cfg, gdocClone, racks, cwgame.AssignEmptyIfUnambiguous)
-	if err != nil {
-		gs.UnlockDocument(ctx, g)
-		return false, apiserver.InvalidArg(err.Error())
+		// Save events AFTER the challenged play
+		if int(evtIndex) < len(g.Events) {
+			eventsAfter = make([]*ipc.GameEvent, len(g.Events)-int(evtIndex))
+			copy(eventsAfter, g.Events[evtIndex:])
+		}
+	} else {
+		// Original logic for non-challenge events
+		if int(evtIndex)+1 < len(g.Events) {
+			eventsAfter = make([]*ipc.GameEvent, len(g.Events)-int(evtIndex)-1)
+			copy(eventsAfter, g.Events[evtIndex+1:])
+		}
+
+		// Replay events up to (but not including) the event we're editing
+		evts := gdocClone.Events[:evtIndex]
+		cwgame.LogTileState(gdocClone, "before-replay")
+		err := cwgame.ReplayEvents(ctx, cfg, gdocClone, evts, false)
+		if err != nil {
+			gs.UnlockDocument(ctx, g)
+			return false, apiserver.InvalidArg(err.Error())
+		}
+		cwgame.LogTileState(gdocClone, "after-replay")
+
+		// Remember the rack we just saved. We need to re-assign it.
+		racks := make([][]byte, len(g.Players))
+		racks[pidx] = rack
+		err = cwgame.AssignRacks(cfg, gdocClone, racks, cwgame.AssignEmptyIfUnambiguous)
+		if err != nil {
+			gs.UnlockDocument(ctx, g)
+			return false, apiserver.InvalidArg(err.Error())
+		}
+		cwgame.LogTileState(gdocClone, "after-assign-racks")
 	}
-	cwgame.LogTileState(gdocClone, "after-assign-racks")
 
 	// Process the new/edited event
-	err = cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, gdocClone)
+	err := cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, gdocClone)
 	if err != nil {
 		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg(err.Error())
 	}
 	cwgame.LogTileState(gdocClone, "after-process-event")
+
+	// After processing, check if this was a challenge that resulted in CHALLENGE_BONUS
+	// If so, adjust subsequent cumulative scores (insert semantics)
+	if isChallenge && len(gdocClone.Events) > 0 {
+		lastEvt := gdocClone.Events[len(gdocClone.Events)-1]
+		if lastEvt.Type == ipc.GameEvent_CHALLENGE_BONUS {
+			// Insert semantics: adjust subsequent cumulative scores
+			bonusAmount := lastEvt.Bonus
+			bonusPlayer := lastEvt.PlayerIndex
+			for _, savedEvt := range eventsAfter {
+				if savedEvt.PlayerIndex == bonusPlayer {
+					savedEvt.Cumulative += bonusAmount
+				}
+			}
+		}
+		// If phony detected (PHONY_TILES_RETURNED) or turn loss, use replace semantics
+		// (event at evtIndex is gone, subsequent events may fail to re-apply)
+	}
 
 	// Re-apply subsequent events in editor mode
 	// If any event fails to apply, truncate at that point
