@@ -468,11 +468,8 @@ func ProcessGameplayEvent(ctx context.Context, cfg *wglconfig.Config, evt *ipc.C
 	}
 	onTurn := gdoc.PlayerOnTurn
 
-	// For annotated games, skip turn validation since the annotator is not one of the players
-	if gdoc.Type != ipc.GameType_ANNOTATED {
-		if evt.Type != ipc.ClientGameplayEvent_RESIGN && gdoc.Players[onTurn].UserId != userID {
-			return errNotOnTurn
-		}
+	if evt.Type != ipc.ClientGameplayEvent_RESIGN && gdoc.Players[onTurn].UserId != userID {
+		return errNotOnTurn
 	}
 	tr := getTimeRemaining(gdoc, globalNower, onTurn)
 	log.Debug().Interface("cge", evt).Int64("now", globalNower.Now()).Int64("time-remaining", tr).Msg("process-gameplay-event")
