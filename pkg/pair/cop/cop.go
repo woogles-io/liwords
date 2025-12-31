@@ -76,8 +76,13 @@ var constraintPolicies = []constraintPolicy{
 			}
 			numPlayers := len(pargs.playerNodes)
 			forcedPairings := [][2]int{}
+
+			// First, compute the cash prize KOTH players
+
+			var highestNoncontender int
 			for playerRankIdx := 0; playerRankIdx < numPlayers-1; playerRankIdx++ {
 				if pargs.lowestPossibleAbsCasher < playerRankIdx {
+					highestNoncontender = playerRankIdx
 					break
 				}
 				pi := pargs.playerNodes[playerRankIdx]
@@ -89,28 +94,23 @@ var constraintPolicies = []constraintPolicy{
 					continue
 				}
 				forcedPairings = append(forcedPairings, [2]int{pi, pj})
+				// A pairing with pi and pj was forced, so we need to
+				// skip evaluation for player pj in the next iteration
+				// by incrementing playerRankIdx, which combined with
+				// this for loop effectively performs a playerRankIdx += 2
 				playerRankIdx++
 			}
-			return forcedPairings, [][2]int{}
-		},
-	},
-	{
-		// KOTH Class Prizes
-		name: "KC",
-		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if pargs.roundsRemaining != 1 {
-				return [][2]int{}, [][2]int{}
-			}
-			numPlayers := len(pargs.playerNodes)
+
+			// Then, compute the class prize KOTH players
+
 			// Do not consider the bye as a player in this case
 			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
 				numPlayers--
 			}
-			forcedPairings := [][2]int{}
 			for classPrizesIdx, classPrizes := range pargs.req.ClassPrizes {
 				classIdx := classPrizesIdx + 1
 				availableClassPrizes := int(classPrizes)
-				for pRankIdx := 0; pRankIdx <= pargs.lowestPossibleAbsCasher; pRankIdx++ {
+				for pRankIdx := 0; pRankIdx < highestNoncontender; pRankIdx++ {
 					pIdx := pargs.copdata.Standings.GetPlayerIndex(pRankIdx)
 					if int(pargs.req.PlayerClasses[pIdx]) == classIdx && pargs.copdata.LowestRankAbsolutely[pRankIdx] >= int(pargs.req.PlacePrizes) {
 						availableClassPrizes--
@@ -119,7 +119,7 @@ var constraintPolicies = []constraintPolicy{
 				if availableClassPrizes < 1 {
 					continue
 				}
-				ri := pargs.lowestPossibleAbsCasher + 1
+				ri := highestNoncontender
 				numPlayersAhead := 0
 				playerToCatch := -1
 				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpread * 2)
@@ -252,6 +252,10 @@ var constraintPolicies = []constraintPolicy{
 	},
 }
 
+func getLowestCasherIndex(pargs *policyArgs) int {
+	return int(pargs.req.PlacePrizes) - 1
+}
+
 var weightPolicies = []weightPolicy{
 	{
 		// Rank diff
@@ -268,12 +272,11 @@ var weightPolicies = []weightPolicy{
 			// - either play is gibsonized, or
 			// - neither player cashed even once in the simulation, then
 			//
-			// the rank difference should only act as a tie breaker
-			// for minimizing repeats, which means we leave the diff
-			// as is instead of cubed so it doesn't overwhelm the repeat penalty.
+			// the rank difference should squared
+			// so it doesn't overwhelm the repeat penalty.
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
 				ri >= int(pargs.req.PlacePrizes) {
-				return diff
+				return diff * diff
 			}
 			return diff * diff * diff
 		},
@@ -287,9 +290,17 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
-			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized ||
-				ri >= int(pargs.req.PlacePrizes) {
+			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
+			}
+			// Distance is ceil(numPlayers/3)
+			lowestPCIndex := getLowestCasherIndex(pargs)
+			if ri > lowestPCIndex {
+				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
+				if rj-ri <= dist {
+					return 0
+				}
+				return majorPenalty
 			}
 			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
 				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
@@ -334,7 +345,14 @@ var weightPolicies = []weightPolicy{
 			pj := pargs.playerNodes[rj]
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
-			return int64(timesPlayed * 2 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			unitWeight := int64(4 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
+			totalWeight := int64(timesPlayed) * unitWeight
+			// If both players are outside of cash, add an extra unit weight
+			// to the repeat weight.
+			if ri > getLowestCasherIndex(pargs) {
+				totalWeight += unitWeight
+			}
+			return totalWeight
 		},
 	},
 	{
