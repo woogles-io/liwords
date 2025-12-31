@@ -223,6 +223,18 @@ export const LeaguePage = (props: Props) => {
     { enabled: !!registrationOpenSeason?.uuid },
   );
 
+  // Check if user is registered for the registration-open season
+  const isUserRegisteredForRegistrationOpenSeason = useMemo(() => {
+    if (!userID || !registrationOpenSeasonRegistrations?.registrations) {
+      return false;
+    }
+
+    // Check if user appears in registrations list
+    return registrationOpenSeasonRegistrations.registrations.some(
+      (reg) => reg.userId === userID,
+    );
+  }, [userID, registrationOpenSeasonRegistrations]);
+
   // Find the most recent SCHEDULED season (status = 0)
   const scheduledSeason = useMemo(() => {
     const scheduled = allSeasons.filter((s) => s.status === 0);
@@ -340,6 +352,7 @@ export const LeaguePage = (props: Props) => {
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetSeasonRegistrations" }],
       });
+      // TODO: Explain why this invalidation is necessary, or remove it.
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
       });
@@ -813,7 +826,11 @@ export const LeaguePage = (props: Props) => {
                 {registrationOpenSeason &&
                   displaySeasonId !== registrationOpenSeason.uuid && (
                     <Alert
-                      message={`Season ${registrationOpenSeason.seasonNumber} Registration Open`}
+                      message={
+                        isUserRegisteredForRegistrationOpenSeason
+                          ? `You're registered for Season ${registrationOpenSeason.seasonNumber}!`
+                          : `Season ${registrationOpenSeason.seasonNumber} Registration Open`
+                      }
                       description={
                         <div style={{ fontSize: "12px" }}>
                           <Button
@@ -825,7 +842,9 @@ export const LeaguePage = (props: Props) => {
                             block
                             style={{ marginTop: 4 }}
                           >
-                            View & Register
+                            {isUserRegisteredForRegistrationOpenSeason
+                              ? "View"
+                              : "View & Register"}
                           </Button>
                         </div>
                       }

@@ -254,7 +254,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const { bestRank, worstRank } = possibleRanks[idx];
         const rankIsKnown = worstRank === rank && bestRank === rank;
         return (
-          <Tooltip title={rankIsKnown ? null : `${bestRank}-${worstRank}`}>
+          <Tooltip
+            placement="left"
+            title={rankIsKnown ? null : `${bestRank}-${worstRank}`}
+          >
             {rankIsKnown !== divisionCompleted ? `${rank}.` : rank}
           </Tooltip>
         );
@@ -267,6 +270,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) =>
         a.username.localeCompare(b.username),
       sortIcon: noSortIcon,
+      fixed: true,
       render: (
         username: string,
         record: { userId: string; placementStatus: PlacementStatus },
