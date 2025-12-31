@@ -352,6 +352,7 @@ export const LeaguePage = (props: Props) => {
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetSeasonRegistrations" }],
       });
+      // TODO: Explain why this invalidation is necessary, or remove it.
       await queryClient.refetchQueries({
         queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
       });
