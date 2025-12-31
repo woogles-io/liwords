@@ -254,7 +254,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const { bestRank, worstRank } = possibleRanks[idx];
         const rankIsKnown = worstRank === rank && bestRank === rank;
         return (
-          <Tooltip title={rankIsKnown ? null : `${bestRank}-${worstRank}`}>
+          <Tooltip
+            placement="left"
+            title={rankIsKnown ? null : `${bestRank}-${worstRank}`}
+          >
             {rankIsKnown !== divisionCompleted ? `${rank}.` : rank}
           </Tooltip>
         );
