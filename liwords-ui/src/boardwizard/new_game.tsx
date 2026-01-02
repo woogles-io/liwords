@@ -203,7 +203,11 @@ export const EditorLandingPage = (props: Props) => {
               description={
                 <span>
                   We've made improvements to the annotation interface.{" "}
-                  <a href="#" onClick={(e) => e.preventDefault()}>
+                  <a
+                    href="https://youtu.be/xdfh9JyGI0s"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Watch our tutorial video
                   </a>{" "}
                   to learn about the new features.
