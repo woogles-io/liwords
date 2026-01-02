@@ -210,7 +210,8 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 		if err != nil {
 			return nil, err
 		}
-		leaveMW, err := tilemapping.Leave(rack.TilesOn(), tiles, true)
+		// zeroIsPlaythrough=false: we're removing tiles (including blanks) from rack for exchange
+		leaveMW, err := tilemapping.Leave(rack.TilesOn(), tiles, false)
 		if err != nil {
 			return nil, err
 		}

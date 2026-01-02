@@ -52,7 +52,7 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 	}
 
 	if gevt.Type == ipc.GameEvent_CHALLENGE {
-		return challengeEvent(ctx, cfg, gdoc, tr)
+		return challengeEvent(ctx, cfg, gdoc, tr, gevt.ChallengedWordIndices)
 	}
 
 	err = validateMove(cfg, gevt, gdoc)
@@ -99,34 +99,53 @@ func playMove(ctx context.Context, gdoc *ipc.GameDocument, gevt *ipc.GameEvent, 
 			addWinnerToHistory(gdoc)
 		} else {
 			gdoc.ScorelessTurns += 1
-		}
-
-	case ipc.GameEvent_EXCHANGE:
-
-		placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
-		err := tiles.Exchange(gdoc.Bag, tilemapping.FromByteArr(gevt.Exchanged), placeholder)
-		if err != nil {
-			return err
-		}
-		leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack),
-			tilemapping.FromByteArr(gevt.Exchanged), true)
-		if err != nil {
-			return err
-		}
-
-		copy(placeholder[len(gevt.Exchanged):], leave)
-		// // A partial rack could have been provided.
-		newRackLength := len(gdoc.Racks[gdoc.PlayerOnTurn])
-		if newRackLength < RackTileLimit {
-			// draw enough tiles to fill the rack.
-			err = tiles.Draw(gdoc.Bag, RackTileLimit-newRackLength,
-				placeholder[newRackLength:])
-			if err != nil {
-				return err
+			// In annotated games, auto-assign or top off the next player's rack
+			// This ensures the opponent always has a full rack after a pass
+			if gdoc.Type == ipc.GameType_ANNOTATED {
+				inv := NewTileInventory(gdoc, cfg.WGLConfig())
+				nextPlayer := 1 - gdoc.PlayerOnTurn
+				_, err := inv.DrawToFillRack(int(nextPlayer))
+				if err != nil {
+					return err
+				}
 			}
 		}
 
-		gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(placeholder).ToByteArr()
+	case ipc.GameEvent_EXCHANGE:
+		// Use TileInventory to handle the exchange
+		inv := NewTileInventory(gdoc, cfg.WGLConfig())
+
+		log.Debug().
+			Uint32("current_player", gdoc.PlayerOnTurn).
+			Interface("current_player_rack", gdoc.Racks[gdoc.PlayerOnTurn]).
+			Interface("opponent_rack", gdoc.Racks[1-gdoc.PlayerOnTurn]).
+			Msg("exchange-before")
+
+		// Exchange the tiles
+		exchangedTiles := tilemapping.FromByteArr(gevt.Exchanged)
+		if err := inv.ExchangeTiles(int(gdoc.PlayerOnTurn), exchangedTiles); err != nil {
+			return err
+		}
+
+		log.Debug().
+			Interface("current_player_rack_after", gdoc.Racks[gdoc.PlayerOnTurn]).
+			Interface("opponent_rack_after", gdoc.Racks[1-gdoc.PlayerOnTurn]).
+			Msg("exchange-after-exchange")
+
+		// In annotated games, auto-assign or top off the next player's rack
+		// This ensures the opponent always has a full rack after an exchange
+		if gdoc.Type == ipc.GameType_ANNOTATED {
+			nextPlayer := 1 - gdoc.PlayerOnTurn
+			tilesDrawn, err := inv.DrawToFillRack(int(nextPlayer))
+			if err != nil {
+				return err
+			}
+			log.Debug().
+				Int("tiles_drawn", tilesDrawn).
+				Interface("opponent_rack_final", gdoc.Racks[nextPlayer]).
+				Msg("exchange-after-fill-opponent")
+		}
+
 		gdoc.ScorelessTurns += 1
 		gevt.MillisRemaining = int32(tr)
 		gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -168,6 +187,17 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 		return err
 	}
 	tilesUsed := tilemapping.FromByteArr(gevt.PlayedTiles)
+
+	// CRITICAL: Validate that the rack contains the needed tiles BEFORE placing them on the board
+	// This prevents tile corruption where board.PlayMove creates tiles on the board even if
+	// they're not in the rack. Without this check, tiles get placed on the board (creating extras),
+	// then the Leave validation fails, leaving us with a corrupted game state.
+	rackTiles := tilemapping.FromByteArr(gevt.Rack)
+	_, err = tilemapping.Leave(rackTiles, tilesUsed, true)
+	if err != nil {
+		return fmt.Errorf("rack doesn't contain tiles needed for move: %w", err)
+	}
+
 	score, err := board.PlayMove(gdoc.Board, gdoc.BoardLayout, dist,
 		tilesUsed, int(gevt.Row), int(gevt.Column), gevt.Direction == ipc.GameEvent_VERTICAL)
 	if err != nil {
@@ -189,29 +219,46 @@ func playTilePlacementMove(cfg *config.Config, gevt *ipc.GameEvent, gdoc *ipc.Ga
 	gdoc.ScorelessTurns = 0
 	gdoc.CurrentScores[gdoc.PlayerOnTurn] += score
 
-	placeholder := make([]tilemapping.MachineLetter, RackTileLimit)
-	drew, err := tiles.DrawAtMost(gdoc.Bag, tilesPlayed, placeholder)
+	// Calculate leave (tiles remaining in rack after playing)
+	// zeroIsPlaythrough=true: playing on board, tile 0 in tilesUsed represents play-through markers
+	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, true)
 	if err != nil {
 		return err
 	}
 
-	leave, err := tilemapping.Leave(tilemapping.FromByteArr(gevt.Rack), tilesUsed, false)
+	// NOTE: board.PlayMove (above) has already placed tiles on gdoc.Board, so those
+	// tiles are counted on the board. We now update the rack to reflect what remains.
+	// This briefly creates an invalid state (tiles double-counted), but TileInventory's
+	// validation (below) will catch any issues. We keep board.PlayMove separate from
+	// TileInventory because they have different responsibilities:
+	//   - board.PlayMove = game rules (word validation, scoring, board placement)
+	//   - TileInventory = tile accounting (conservation, validation)
+	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(leave).ToByteArr()
+
+	// Use TileInventory to draw replacement tiles and validate tile conservation
+	inv := NewTileInventory(gdoc, cfg.WGLConfig())
+	_, err = inv.DrawToFillRack(int(gdoc.PlayerOnTurn))
 	if err != nil {
 		return err
 	}
 
-	copy(placeholder[drew:], leave)
-	newRack := placeholder[:drew+len(leave)]
-	// Fill the rack if possible. This can happen if we only had partial
-	// rack info for this play.
-	// if len(newRack) < RackTileLimit {
-	// 	drew, err := tiles.DrawAtMost(gdoc.Bag, RackTileLimit-len(newRack), placeholder[])
-	// }
+	// Get the new rack after drawing for end-game detection
+	newRack := gdoc.Racks[gdoc.PlayerOnTurn]
 
 	gevt.Score = score
 	gevt.IsBingo = tilesPlayed == RackTileLimit
 	gevt.MillisRemaining = int32(tr)
-	gdoc.Racks[gdoc.PlayerOnTurn] = tilemapping.MachineWord(newRack).ToByteArr()
+
+	// In annotated games, auto-assign or top off the next player's rack
+	// This ensures the opponent always has a full rack after a play
+	if gdoc.Type == ipc.GameType_ANNOTATED {
+		nextPlayer := 1 - gdoc.PlayerOnTurn
+		_, err := inv.DrawToFillRack(int(nextPlayer))
+		if err != nil {
+			return err
+		}
+	}
+
 	gevt.WordsFormed = make([][]byte, len(wordsFormed))
 	gevt.WordsFormedFriendly = make([]string, len(wordsFormed))
 	gevt.Cumulative = gdoc.CurrentScores[gdoc.PlayerOnTurn]
@@ -352,6 +399,44 @@ func endRackPenaltyEvt(gdoc *ipc.GameDocument, pidx uint32, penalty int) *ipc.Ga
 	}
 }
 
+// RecalculateConsecutiveZeroesPenalties recalculates the end-game penalties
+// for a game that ended due to 6 consecutive scoreless turns.
+// This is used when editing racks after the game has ended.
+func RecalculateConsecutiveZeroesPenalties(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
+	if gdoc.EndReason != ipc.GameEndReason_CONSECUTIVE_ZEROES {
+		return nil // Not a consecutive zeroes game, nothing to do
+	}
+
+	// Strip existing END_RACK_PENALTY events and restore scores
+	newEvents := make([]*ipc.GameEvent, 0, len(gdoc.Events))
+	for _, evt := range gdoc.Events {
+		if evt.Type == ipc.GameEvent_END_RACK_PENALTY {
+			// Restore the score that was deducted
+			gdoc.CurrentScores[evt.PlayerIndex] += evt.LostScore
+		} else {
+			newEvents = append(newEvents, evt)
+		}
+	}
+	gdoc.Events = newEvents
+
+	// Re-apply penalties with current rack values
+	toIterate := make([]int, len(gdoc.Players))
+	for idx := range toIterate {
+		toIterate[idx] = idx
+	}
+	if gdoc.PlayerOnTurn != 0 {
+		// process player on turn's end rack penalty first.
+		toIterate[0], toIterate[gdoc.PlayerOnTurn] = toIterate[gdoc.PlayerOnTurn], toIterate[0]
+	}
+	for _, p := range toIterate {
+		ptsOnRack := dist.WordScore(tilemapping.FromByteArr(gdoc.Racks[p]))
+		gdoc.CurrentScores[p] -= int32(ptsOnRack)
+		penaltyEvt := endRackPenaltyEvt(gdoc, uint32(p), ptsOnRack)
+		gdoc.Events = append(gdoc.Events, penaltyEvt)
+	}
+	return nil
+}
+
 func endRackCalcs(gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution, wentout int) error {
 	unplayedPts := 0
 	var otherRack bytes.Buffer
@@ -399,7 +484,7 @@ func addWinnerToHistory(gdoc *ipc.GameDocument) {
 // Note that this event can change the history of the game, including
 // things like resetting the game ended state (for example if someone plays
 // out with a phony).
-func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64) error {
+func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, tr int64, challengedIndices []uint32) error {
 	if len(gdoc.Events) == 0 {
 		return errors.New("this game has no history")
 	}
@@ -410,6 +495,25 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	if len(lastWordsFormed) == 0 {
 		return errors.New("there are no words to challenge")
 	}
+
+	// Determine which words to validate based on challenged indices
+	var wordsToValidate [][]byte
+	challengingSubset := len(challengedIndices) > 0
+
+	if !challengingSubset {
+		// Empty indices means challenge all words (backward compatible)
+		wordsToValidate = lastWordsFormed
+	} else {
+		// Validate only the specified word indices
+		wordsToValidate = make([][]byte, 0, len(challengedIndices))
+		for _, idx := range challengedIndices {
+			if int(idx) >= len(lastWordsFormed) {
+				return errors.New("invalid word index in challenge")
+			}
+			wordsToValidate = append(wordsToValidate, lastWordsFormed[idx])
+		}
+	}
+
 	// record time of the challenge, but do not account for increments;
 	// a challenge event shouldn't modify the clock per se.
 	recordTimeOfMove(gdoc, globalNower, gdoc.PlayerOnTurn, false)
@@ -425,8 +529,8 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 
 	// Note that the player on turn right now needs to be the player
 	// who is making the challenge.
-	lastMWs := make([]tilemapping.MachineWord, len(lastWordsFormed))
-	for i, w := range lastWordsFormed {
+	lastMWs := make([]tilemapping.MachineWord, len(wordsToValidate))
+	for i, w := range wordsToValidate {
 		lastMWs[i] = tilemapping.FromByteArr(w)
 	}
 
@@ -463,11 +567,11 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 			winner = int32(gdoc.PlayerOnTurn)
 			// Take the play off the board.
 			gdoc.Events = append(gdoc.Events, offBoardEvent)
-			err := unplayLastMove(ctx, gdoc, dist)
+			err := unplayLastMove(ctx, cfg, gdoc, dist)
 			if err != nil {
 				return err
 			}
-			gdoc.Racks[challengee] = lastEvent.Rack
+			// Rack is already restored by unplayLastMove
 		}
 		gdoc.Winner = winner
 		gdoc.PlayState = ipc.PlayState_GAME_OVER
@@ -481,14 +585,13 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 
 		// Unplay the last move to restore everything as it was board-wise
 		// (and un-end the game if it had ended)
-		err := unplayLastMove(ctx, gdoc, dist)
+		err := unplayLastMove(ctx, cfg, gdoc, dist)
 		if err != nil {
 			return err
 		}
 
-		// We must also set the last known rack of the challengee back to
-		// their rack before they played the phony.
-		gdoc.Racks[challengee] = lastEvent.Rack
+		// Rack is already restored by unplayLastMove
+
 		if gdoc.ScorelessTurns == MaxConsecutiveScorelessTurns {
 			err = handleConsecutiveScorelessTurns(gdoc, dist)
 			if err != nil {
@@ -527,7 +630,13 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 		case ipc.ChallengeRule_ChallengeRule_FIVE_POINT:
 			// Append a bonus to the event.
 			shouldAddPts = true
-			addPts = 5
+			if challengingSubset {
+				// Per-word bonus: 5 points for each word challenged
+				addPts = int32(5 * len(wordsToValidate))
+			} else {
+				// Legacy behavior: flat 5 points when challenging all
+				addPts = 5
+			}
 
 		case ipc.ChallengeRule_ChallengeRule_TEN_POINT:
 			shouldAddPts = true
@@ -561,7 +670,7 @@ func challengeEvent(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocum
 	return err
 }
 
-func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
+func unplayLastMove(ctx context.Context, cfg *config.Config, gdoc *ipc.GameDocument, dist *tilemapping.LetterDistribution) error {
 	// unplay the last move. This function already assumes the off-board event
 	// exists in the gdoc's History.
 
@@ -577,7 +686,6 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemappi
 
 	offboardEvent := gdoc.Events[nevt-1]
 	originalEvent := gdoc.Events[nevt-2]
-	postPhonyRack := gdoc.Racks[offboardEvent.PlayerIndex]
 
 	if offboardEvent.Type != ipc.GameEvent_PHONY_TILES_RETURNED {
 		return errors.New("wrong event type for offboard event")
@@ -597,19 +705,26 @@ func unplayLastMove(ctx context.Context, gdoc *ipc.GameDocument, dist *tilemappi
 		return err
 	}
 
+	// Calculate what the rack was after playing the phony (before drawing new tiles)
+	// Use zeroIsPlaythrough=true because originalEvent.PlayedTiles may contain play-through markers
 	leaveAfterPhony, err := tilemapping.Leave(
-		tilemapping.FromByteArr(originalEvent.Rack), mw, false)
+		tilemapping.FromByteArr(originalEvent.Rack), mw, true)
 	if err != nil {
 		return err
 	}
 
+	// Calculate what was drawn after the phony
+	postPhonyRack := gdoc.Racks[offboardEvent.PlayerIndex]
 	drewPostPhony, err := tilemapping.Leave(tilemapping.FromByteArr(postPhonyRack),
 		leaveAfterPhony, false)
 	if err != nil {
 		return err
 	}
 
+	// Put back only the tiles that were drawn after the phony
+	// The tiles from the board (mw) go directly back to the rack via originalEvent.Rack
 	tiles.PutBack(gdoc.Bag, drewPostPhony)
+	gdoc.Racks[offboardEvent.PlayerIndex] = originalEvent.Rack
 	gdoc.PlayState = ipc.PlayState_PLAYING
 	gdoc.CurrentScores[offboardEvent.PlayerIndex] = offboardEvent.Cumulative
 

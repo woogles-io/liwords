@@ -642,8 +642,12 @@ type ClientGameplayEvent struct {
 	Tiles string `protobuf:"bytes,4,opt,name=tiles,proto3" json:"tiles,omitempty"`
 	// machine_letters is tiles, but in binary.
 	MachineLetters []byte `protobuf:"bytes,5,opt,name=machine_letters,json=machineLetters,proto3" json:"machine_letters,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// For CHALLENGE_PLAY events, specifies which word indices to challenge.
+	// Indices correspond to the wordsFormed array from the last play.
+	// If empty or not set, challenges all words (default/backward compatible).
+	ChallengedWordIndices []uint32 `protobuf:"varint,6,rep,packed,name=challenged_word_indices,json=challengedWordIndices,proto3" json:"challenged_word_indices,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ClientGameplayEvent) Reset() {
@@ -708,6 +712,13 @@ func (x *ClientGameplayEvent) GetTiles() string {
 func (x *ClientGameplayEvent) GetMachineLetters() []byte {
 	if x != nil {
 		return x.MachineLetters
+	}
+	return nil
+}
+
+func (x *ClientGameplayEvent) GetChallengedWordIndices() []uint32 {
+	if x != nil {
+		return x.ChallengedWordIndices
 	}
 	return nil
 }
@@ -1859,6 +1870,9 @@ type ServerGameplayEvent struct {
 	Playing       macondo.PlayState      `protobuf:"varint,5,opt,name=playing,proto3,enum=macondo.PlayState" json:"playing,omitempty"` // XXX: move to ipc.PlayState
 	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`             // the event has the nickname, but not the userid.
 	TimeBank      int32                  `protobuf:"varint,7,opt,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`      // time bank remaining for the player who just moved, in milliseconds
+	// opponent_rack is populated for annotated games to keep frontend state in sync
+	// when rack inference borrows tiles from opponent
+	OpponentRack  string `protobuf:"bytes,8,opt,name=opponent_rack,json=opponentRack,proto3" json:"opponent_rack,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1942,6 +1956,13 @@ func (x *ServerGameplayEvent) GetTimeBank() int32 {
 	return 0
 }
 
+func (x *ServerGameplayEvent) GetOpponentRack() string {
+	if x != nil {
+		return x.OpponentRack
+	}
+	return ""
+}
+
 // ServerOMGWordsEvent is a new event type.
 type ServerOMGWordsEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1951,6 +1972,9 @@ type ServerOMGWordsEvent struct {
 	TimeRemaining int32                  `protobuf:"varint,4,opt,name=time_remaining,json=timeRemaining,proto3" json:"time_remaining,omitempty"`
 	Playing       PlayState              `protobuf:"varint,5,opt,name=playing,proto3,enum=ipc.PlayState" json:"playing,omitempty"`
 	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// opponent_rack is populated for annotated games to keep frontend state in sync
+	// when rack inference borrows tiles from opponent
+	OpponentRack  []byte `protobuf:"bytes,7,opt,name=opponent_rack,json=opponentRack,proto3" json:"opponent_rack,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2025,6 +2049,13 @@ func (x *ServerOMGWordsEvent) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *ServerOMGWordsEvent) GetOpponentRack() []byte {
+	if x != nil {
+		return x.OpponentRack
+	}
+	return nil
 }
 
 // The server will send back a challenge result event only in the case of
@@ -2475,8 +2506,11 @@ type GameEvent struct {
 	// be the index in GameDocument.players.
 	PlayerIndex         uint32   `protobuf:"varint,19,opt,name=player_index,json=playerIndex,proto3" json:"player_index,omitempty"`
 	WordsFormedFriendly []string `protobuf:"bytes,20,rep,name=words_formed_friendly,json=wordsFormedFriendly,proto3" json:"words_formed_friendly,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// For CHALLENGE events, indices of words that were challenged.
+	// Empty = challenged all words (backward compatible with existing games).
+	ChallengedWordIndices []uint32 `protobuf:"varint,21,rep,packed,name=challenged_word_indices,json=challengedWordIndices,proto3" json:"challenged_word_indices,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GameEvent) Reset() {
@@ -2638,6 +2672,13 @@ func (x *GameEvent) GetPlayerIndex() uint32 {
 func (x *GameEvent) GetWordsFormedFriendly() []string {
 	if x != nil {
 		return x.WordsFormedFriendly
+	}
+	return nil
+}
+
+func (x *GameEvent) GetChallengedWordIndices() []uint32 {
+	if x != nil {
+		return x.ChallengedWordIndices
 	}
 	return nil
 }
@@ -3232,13 +3273,14 @@ var File_proto_ipc_omgwords_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xab\x02\n" +
+	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
 	"\x13ClientGameplayEvent\x126\n" +
 	"\x04type\x18\x01 \x01(\x0e2\".ipc.ClientGameplayEvent.EventTypeR\x04type\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12'\n" +
 	"\x0fposition_coords\x18\x03 \x01(\tR\x0epositionCoords\x12\x18\n" +
 	"\x05tiles\x18\x04 \x01(\tB\x02\x18\x01R\x05tiles\x12'\n" +
-	"\x0fmachine_letters\x18\x05 \x01(\fR\x0emachineLetters\"W\n" +
+	"\x0fmachine_letters\x18\x05 \x01(\fR\x0emachineLetters\x126\n" +
+	"\x17challenged_word_indices\x18\x06 \x03(\rR\x15challengedWordIndices\"W\n" +
 	"\tEventType\x12\x12\n" +
 	"\x0eTILE_PLACEMENT\x10\x00\x12\b\n" +
 	"\x04PASS\x10\x01\x12\f\n" +
@@ -3354,7 +3396,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06player\x18\x02 \x03(\v2\x15.ipc.ActiveGamePlayerR\x06player\x12\x10\n" +
 	"\x03ttl\x18\x03 \x01(\x03R\x03ttl\"'\n" +
 	"\fReadyForGame\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xfe\x01\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xa3\x02\n" +
 	"\x13ServerGameplayEvent\x12(\n" +
 	"\x05event\x18\x01 \x01(\v2\x12.macondo.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +
@@ -3362,14 +3404,16 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x0etime_remaining\x18\x04 \x01(\x05R\rtimeRemaining\x12,\n" +
 	"\aplaying\x18\x05 \x01(\x0e2\x12.macondo.PlayStateR\aplaying\x12\x17\n" +
 	"\auser_id\x18\x06 \x01(\tR\x06userId\x12\x1b\n" +
-	"\ttime_bank\x18\a \x01(\x05R\btimeBank\"\xd9\x01\n" +
+	"\ttime_bank\x18\a \x01(\x05R\btimeBank\x12#\n" +
+	"\ropponent_rack\x18\b \x01(\tR\fopponentRack\"\xfe\x01\n" +
 	"\x13ServerOMGWordsEvent\x12$\n" +
 	"\x05event\x18\x01 \x01(\v2\x0e.ipc.GameEventR\x05event\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x19\n" +
 	"\bnew_rack\x18\x03 \x01(\fR\anewRack\x12%\n" +
 	"\x0etime_remaining\x18\x04 \x01(\x05R\rtimeRemaining\x12(\n" +
 	"\aplaying\x18\x05 \x01(\x0e2\x0e.ipc.PlayStateR\aplaying\x12\x17\n" +
-	"\auser_id\x18\x06 \x01(\tR\x06userId\"\xb8\x01\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12#\n" +
+	"\ropponent_rack\x18\a \x01(\fR\fopponentRack\"\xb8\x01\n" +
 	"\x1aServerChallengeResultEvent\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1e\n" +
 	"\n" +
@@ -3413,7 +3457,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\faccepter_cid\x18\x03 \x01(\tR\vaccepterCid\"<\n" +
 	"\bTimedOut\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x8e\a\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xc6\a\n" +
 	"\tGameEvent\x12\x12\n" +
 	"\x04note\x18\x02 \x01(\tR\x04note\x12\x12\n" +
 	"\x04rack\x18\x03 \x01(\fR\x04rack\x12'\n" +
@@ -3437,7 +3481,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\fwords_formed\x18\x11 \x03(\fR\vwordsFormed\x12)\n" +
 	"\x10millis_remaining\x18\x12 \x01(\x05R\x0fmillisRemaining\x12!\n" +
 	"\fplayer_index\x18\x13 \x01(\rR\vplayerIndex\x122\n" +
-	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\"\xf2\x01\n" +
+	"\x15words_formed_friendly\x18\x14 \x03(\tR\x13wordsFormedFriendly\x126\n" +
+	"\x17challenged_word_indices\x18\x15 \x03(\rR\x15challengedWordIndices\"\xf2\x01\n" +
 	"\x04Type\x12\x17\n" +
 	"\x13TILE_PLACEMENT_MOVE\x10\x00\x12\x18\n" +
 	"\x14PHONY_TILES_RETURNED\x10\x01\x12\b\n" +

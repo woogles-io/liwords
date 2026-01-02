@@ -112,11 +112,13 @@ export default defineConfig([
       "react/display-name": "off",
       "react/no-children-prop": "off",
       "react-hooks/exhaustive-deps": "error",
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/purity": "warn",
-      "react-hooks/refs": "warn",
-      "react-hooks/static-components": "warn",
-      "react-hooks/immutability": "warn",
+      // Disable React Compiler rules - we're not using React Compiler
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/static-components": "off",
+      "react-hooks/immutability": "off",
     },
   },
 ]);

@@ -125,7 +125,7 @@ func TestStartGame(t *testing.T) {
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
-	err := StartGame(ctxForTests(), g)
+	err := StartGame(ctxForTests(), DefaultConfig.WGLConfig(), g)
 	is.NoErr(err)
 	is.True(g.TimersStarted)
 	is.Equal(g.Timers, &ipc.Timers{
@@ -249,7 +249,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				MachineLetters: englishBytes("KNI.ES"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
-			expectedErr: errors.New("tile in play but not in rack: 19"),
+			expectedErr: errors.New("you tried to play a tile (S) that is not in your rack"),
 		},
 		{
 			name: "Try exchanging a tile we don't have",
@@ -259,7 +259,7 @@ func TestProcessGameplayEventSanityChecks(t *testing.T) {
 				MachineLetters: englishBytes("Q"),
 			},
 			userID:      "2gJGaYnchL6LbQVTNQ6mjT",
-			expectedErr: errors.New("tile in play but not in rack: 17"),
+			expectedErr: errors.New("you tried to play a tile (Q) that is not in your rack"),
 		},
 		{
 			name: "Try playing as another player not on turn",
@@ -586,7 +586,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 		{Nickname: "Cesitar", RealName: "Cesar", UserId: "cesar1"},
 		{Nickname: "Lucas", RealName: "Lucas", UserId: "lucas1"},
 	})
-	err := StartGame(ctxForTests(), g)
+	err := StartGame(ctxForTests(), DefaultConfig.WGLConfig(), g)
 	is.NoErr(err)
 	is.True(g.TimersStarted)
 	is.Equal(g.Timers, &ipc.Timers{
@@ -613,7 +613,7 @@ func TestChallengeGoodWordNorwegian(t *testing.T) {
 	rack, err := tilemapping.ToMachineLetters("AÅM", ld.TileMapping())
 	is.NoErr(err)
 
-	err = AssignRacks(g, [][]byte{
+	err = AssignRacks(DefaultConfig.WGLConfig(), g, [][]byte{
 		tilemapping.MachineWord(rack).ToByteArr(),
 		{},
 	}, AlwaysAssignEmpty)
@@ -1343,7 +1343,7 @@ func TestExchangePartialRack(t *testing.T) {
 	defer restoreGlobalNower()
 	ctx := ctxForTests()
 
-	err := AssignRacks(gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, NeverAssignEmpty)
+	err := AssignRacks(DefaultConfig.WGLConfig(), gdoc, [][]byte{{9, 9, 9, 9, 9}, nil}, NeverAssignEmpty)
 	is.NoErr(err)
 
 	// This player's rack is IIIII
@@ -1379,7 +1379,7 @@ func TestExchangeBlank(t *testing.T) {
 	defer restoreGlobalNower()
 	ctx := ctxForTests()
 
-	err := AssignRacks(gdoc, [][]byte{{0, 1, 2, 3, 4, 5}, nil}, NeverAssignEmpty)
+	err := AssignRacks(DefaultConfig.WGLConfig(), gdoc, [][]byte{{0, 1, 2, 3, 4, 5}, nil}, NeverAssignEmpty)
 	is.NoErr(err)
 
 	// This player's rack is ?ABCDE
@@ -1415,10 +1415,11 @@ func TestAssignRacks(t *testing.T) {
 			{Nickname: "abc", RealName: "abc", UserId: "abc"},
 			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
 		},
-		Racks: make([][]byte, 2),
-		Bag:   tiles.TileBag(dist),
+		Racks:              make([][]byte, 2),
+		Bag:                tiles.TileBag(dist),
+		LetterDistribution: "English",
 	}
-	err = AssignRacks(doc, [][]byte{
+	err = AssignRacks(DefaultConfig.WGLConfig(), doc, [][]byte{
 		{1, 1, 1, 1, 1, 1, 1},
 		{5, 5, 5, 5, 5, 5, 5},
 	}, AlwaysAssignEmpty)
@@ -1439,10 +1440,11 @@ func TestAssignRacksEmptyRack(t *testing.T) {
 			{Nickname: "abc", RealName: "abc", UserId: "abc"},
 			{Nickname: "ijk", RealName: "ijk", UserId: "ijk"},
 		},
-		Racks: make([][]byte, 2),
-		Bag:   tiles.TileBag(dist),
+		Racks:              make([][]byte, 2),
+		Bag:                tiles.TileBag(dist),
+		LetterDistribution: "English",
 	}
-	err = AssignRacks(doc, [][]byte{
+	err = AssignRacks(DefaultConfig.WGLConfig(), doc, [][]byte{
 		nil,
 		{5, 5, 5, 5, 5, 5, 5},
 	}, AlwaysAssignEmpty)
@@ -1456,7 +1458,7 @@ func TestAssignRacksIfBagEmpty(t *testing.T) {
 
 	gdoc := loadGDoc("document-game-almost-over.json")
 
-	err := AssignRacks(gdoc, [][]byte{
+	err := AssignRacks(DefaultConfig.WGLConfig(), gdoc, [][]byte{
 		nil,
 		{1, 3, 5, 9, 15, 18, 20},
 	}, AssignEmptyIfUnambiguous)
@@ -1475,7 +1477,7 @@ func TestAssignRacksIfBagAmbiguous(t *testing.T) {
 
 	gdoc := loadGDoc("document-game-almost-over.json")
 
-	err := AssignRacks(gdoc, [][]byte{
+	err := AssignRacks(DefaultConfig.WGLConfig(), gdoc, [][]byte{
 		nil,
 		{1, 3, 5, 9},
 	}, AssignEmptyIfUnambiguous)
@@ -1517,33 +1519,6 @@ func TestReplayEvents(t *testing.T) {
 	}
 }
 
-func TestEditOldRack(t *testing.T) {
-	is := is.New(t)
-	gdoc := loadGDoc("document-game-almost-over.json")
-	ctx := ctxForTests()
-
-	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 0, []byte{1, 2, 3, 4, 5, 6, 7})
-	is.NoErr(err)
-	is.Equal(gdoc.Events[0].Rack, []byte{1, 2, 3, 4, 5, 6, 7})
-	is.Equal(gdoc.Events[0].PlayedTiles, []byte{1, 18, 5, 14, 15, 19, 5})
-	// The rack doesn't match the played tiles, but this is fine. I can't
-	// think of another way to edit an old play.
-}
-
-func TestEditOldRackDisallowed(t *testing.T) {
-	is := is.New(t)
-	gdoc := loadGDoc("document-game-almost-over.json")
-	ctx := ctxForTests()
-
-	// Try to set the rack for event indexed 8 to JKL. It shouldn't
-	// let you, because event index 7 already used a J.
-	err := EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 8, []byte{10, 11, 12})
-	is.Equal(err.Error(), "tried to remove tile 10 from bag that was not there")
-	err = EditOldRack(ctx, DefaultConfig.WGLConfig(), gdoc, 7, []byte{10, 11, 12})
-	is.NoErr(err)
-	is.Equal(gdoc.Events[7].Rack, []byte{10, 11, 12})
-}
-
 func TestToCGP(t *testing.T) {
 	is := is.New(t)
 	gdoc := loadGDoc("document-game-almost-over.json")
@@ -1575,4 +1550,69 @@ func BenchmarkLoadDocumentProto(b *testing.B) {
 		gdoc := &ipc.GameDocument{}
 		proto.Unmarshal(content, gdoc)
 	}
+}
+
+func TestInferRackForPlay(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig.WGLConfig()
+
+	// Create a fresh game with empty board
+	rules := &GameRules{
+		boardLayout:       "CrosswordGame",
+		distname:          "english",
+		lexicon:           "CSW21",
+		variant:           "classic",
+		secondsPerPlayer:  []int{900, 900},
+		maxOvertimeMins:   10,
+		incrementSeconds:  0,
+		untimed:           false,
+		challengeRule:     ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+	}
+
+	playerInfo := []*ipc.GameDocument_MinimalPlayerInfo{
+		{UserId: "player1", Nickname: "Player1"},
+		{UserId: "player2", Nickname: "Player2"},
+	}
+
+	gdoc, err := NewGame(cfg, rules, playerInfo)
+	is.NoErr(err)
+
+	// Scenario 1: Play a word without any through-tiles on empty board
+	// The inferred rack should contain all played tiles
+	playedTiles := []tilemapping.MachineLetter{1, 2, 3, 4} // A, B, C, D
+	inferredRack, err := InferRackForPlay(gdoc, 5, 5, ipc.GameEvent_HORIZONTAL, playedTiles)
+	is.NoErr(err)
+	is.Equal(len(inferredRack), 4) // All 4 tiles must be from rack
+
+	// Scenario 2: Play through an existing tile using the through-tile marker (0)
+	// First, manually place a tile on the board at position (10, 5)
+	gdoc.Board.Tiles[10*int(gdoc.Board.NumCols)+5] = byte(tilemapping.MachineLetter('E' - 'A' + 1))
+
+	// Now play "TEST" horizontally starting at (10, 4), which plays through the 'E' at (10, 5)
+	// T at (10, 4), 0 at (10, 5) [through-tile marker], S at (10, 6), T at (10, 7)
+	// The frontend sends 0 for through-tiles, not the actual tile value
+	playedTiles = []tilemapping.MachineLetter{
+		tilemapping.MachineLetter('T' - 'A' + 1),
+		0, // Through-tile marker
+		tilemapping.MachineLetter('S' - 'A' + 1),
+		tilemapping.MachineLetter('T' - 'A' + 1),
+	}
+	inferredRack, err = InferRackForPlay(gdoc, 10, 4, ipc.GameEvent_HORIZONTAL, playedTiles)
+	is.NoErr(err)
+	// Should only contain T, S, T (3 tiles), not the through-tile E
+	is.Equal(len(inferredRack), 3)
+
+	// Scenario 3: Multiple through-tiles
+	// Play "TESTS" with two through-tiles: "T0ST0"
+	playedTiles = []tilemapping.MachineLetter{
+		tilemapping.MachineLetter('T' - 'A' + 1),
+		0, // Through-tile marker
+		tilemapping.MachineLetter('S' - 'A' + 1),
+		tilemapping.MachineLetter('T' - 'A' + 1),
+		0, // Through-tile marker
+	}
+	inferredRack, err = InferRackForPlay(gdoc, 10, 4, ipc.GameEvent_HORIZONTAL, playedTiles)
+	is.NoErr(err)
+	// Should only contain T, S, T (3 tiles from rack, 2 through-tiles)
+	is.Equal(len(inferredRack), 3)
 }

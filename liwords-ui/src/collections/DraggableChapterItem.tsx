@@ -163,7 +163,9 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
         style={itemStyle}
       >
         <Space direction="vertical" style={{ width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div
+            style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}
+          >
             {isOwner && (
               <HolderOutlined
                 className="drag-handle"
@@ -172,52 +174,65 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
                   cursor: "grab",
                   opacity: isDragging ? 0 : 0.6,
                   transition: "opacity 0.2s",
+                  paddingTop: "4px",
                 }}
               />
             )}
-            {isEditing ? (
-              <Input
-                size="small"
-                value={editingTitle}
-                onChange={(e) => setEditingTitle(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={handleKeyPress}
-                style={{ flex: 1 }}
-                autoFocus
-                placeholder={`Chapter ${chapterNum}`}
-              />
-            ) : (
-              <div
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                <Text strong={isActive} style={{ flex: 1 }}>
-                  {chapterNum}. {game.chapterTitle || `Chapter ${chapterNum}`}
+            <img
+              src={`/gameimg/${game.gameId}-v2.png`}
+              alt={`Preview of ${game.chapterTitle || `Chapter ${chapterNum}`}`}
+              style={{
+                width: "60px",
+                height: "60px",
+                objectFit: "cover",
+                borderRadius: "4px",
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {isEditing ? (
+                <Input
+                  size="small"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={handleSaveTitle}
+                  onKeyDown={handleKeyPress}
+                  style={{ width: "100%" }}
+                  autoFocus
+                  placeholder={`Chapter ${chapterNum}`}
+                />
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Text strong={isActive} style={{ flex: 1 }}>
+                    {chapterNum}. {game.chapterTitle || `Chapter ${chapterNum}`}
+                  </Text>
+                  {isOwner && (
+                    <EditOutlined
+                      style={{
+                        color: "#888",
+                        cursor: "pointer",
+                        opacity: 0.6,
+                        fontSize: "12px",
+                      }}
+                      onClick={handleStartEdit}
+                      title="Edit chapter title"
+                    />
+                  )}
+                </div>
+              )}
+              {game.isAnnotated && (
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  Annotated Game
                 </Text>
-                {isOwner && (
-                  <EditOutlined
-                    style={{
-                      color: "#888",
-                      cursor: "pointer",
-                      opacity: 0.6,
-                      fontSize: "12px",
-                    }}
-                    onClick={handleStartEdit}
-                    title="Edit chapter title"
-                  />
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-          {game.isAnnotated && (
-            <Text type="secondary" style={{ fontSize: "12px" }}>
-              Annotated Game
-            </Text>
-          )}
         </Space>
       </List.Item>
     </div>

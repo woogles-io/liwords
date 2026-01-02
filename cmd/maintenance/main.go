@@ -79,6 +79,9 @@ func main() {
 		case "expired-sessions-cleanup":
 			err := ExpiredSessionsCleanup()
 			log.Err(err).Msg("ran expiredSessionsCleanup")
+		case "resend-season-started-emails":
+			err := ResendSeasonStartedEmails()
+			log.Err(err).Msg("ran resendSeasonStartedEmails")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}

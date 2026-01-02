@@ -537,39 +537,52 @@ const GameControls = React.memo((props: Props) => {
           )}
         </div>
         <div className="secondary-controls">
-          {!props.puzzleMode && (
-            <Popconfirm
-              title="Are you sure you wish to challenge?"
-              onCancel={() => {
-                setCurrentPopUp("NONE");
-              }}
-              onConfirm={() => {
-                props.onChallenge();
-                setCurrentPopUp("NONE");
-              }}
-              onOpenChange={(visible) => {
-                setCurrentPopUp(visible ? "CHALLENGE" : "NONE");
-              }}
-              okText="Yes"
-              cancelText="No"
-              open={currentPopUp === "CHALLENGE"}
-            >
+          {!props.puzzleMode &&
+            (props.isExamining &&
+            props.challengeRule === ChallengeRule.FIVE_POINT ? (
+              // For editor mode + 5-point challenges, skip the confirmation popover
+              // since the word selection modal already serves as confirmation
               <Button
                 ref={challengeButton}
-                onClick={() => {
-                  if (currentPopUp === "CHALLENGE") {
-                    props.onChallenge();
-                    setCurrentPopUp("NONE");
-                  }
-                }}
+                onClick={props.onChallenge}
                 disabled={!props.myTurn}
-                hidden={props.challengeRule === ChallengeRule.VOID}
               >
                 Challenge
                 <span className="key-command">3</span>
               </Button>
-            </Popconfirm>
-          )}
+            ) : (
+              <Popconfirm
+                title="Are you sure you wish to challenge?"
+                onCancel={() => {
+                  setCurrentPopUp("NONE");
+                }}
+                onConfirm={() => {
+                  props.onChallenge();
+                  setCurrentPopUp("NONE");
+                }}
+                onOpenChange={(visible) => {
+                  setCurrentPopUp(visible ? "CHALLENGE" : "NONE");
+                }}
+                okText="Yes"
+                cancelText="No"
+                open={currentPopUp === "CHALLENGE"}
+              >
+                <Button
+                  ref={challengeButton}
+                  onClick={() => {
+                    if (currentPopUp === "CHALLENGE") {
+                      props.onChallenge();
+                      setCurrentPopUp("NONE");
+                    }
+                  }}
+                  disabled={!props.myTurn}
+                  hidden={props.challengeRule === ChallengeRule.VOID}
+                >
+                  Challenge
+                  <span className="key-command">3</span>
+                </Button>
+              </Popconfirm>
+            ))}
           <Button
             onClick={props.showExchangeModal}
             disabled={!(props.myTurn && props.exchangeAllowed)}

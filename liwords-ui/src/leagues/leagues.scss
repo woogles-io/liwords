@@ -484,7 +484,10 @@
 
         .ant-table-tbody > tr.promotion-row:hover > td {
           @include colorModed {
-            background: color.adjust(m($profile-game-win), $lightness: 5%) !important;
+            background: color.adjust(
+              m($profile-game-win),
+              $lightness: 5%
+            ) !important;
           }
         }
 
@@ -497,7 +500,10 @@
 
         .ant-table-tbody > tr.relegation-row:hover > td {
           @include colorModed {
-            background: color.adjust(m($profile-game-loss), $lightness: 5%) !important;
+            background: color.adjust(
+              m($profile-game-loss),
+              $lightness: 5%
+            ) !important;
           }
         }
 
@@ -522,7 +528,6 @@
           font-weight: 600;
           font-size: 16px;
         }
-
       }
     }
 
@@ -565,7 +570,8 @@
 
           @include colorModed {
             background: m($profile-game-win);
-            border: 1px solid color.adjust(m($profile-game-win), $lightness: -20%);
+            border: 1px solid
+              color.adjust(m($profile-game-win), $lightness: -20%);
           }
         }
 
@@ -579,7 +585,8 @@
 
           @include colorModed {
             background: m($profile-game-loss);
-            border: 1px solid color.adjust(m($profile-game-loss), $lightness: -20%);
+            border: 1px solid
+              color.adjust(m($profile-game-loss), $lightness: -20%);
           }
         }
       }

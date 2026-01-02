@@ -525,7 +525,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
 // These are rendered in portals at body level, so we style from body.mode--dark
 body.mode--dark {
   .ant-notification-notice {
-    background-color: #C9F0FF;
+    background-color: #c9f0ff;
     .ant-notification-notice-message,
     .ant-notification-notice-description,
     .ant-notification-notice-description p {
@@ -539,7 +539,7 @@ body.mode--dark {
     }
   }
   .ant-message-notice-content {
-    background-color: #C9F0FF;
+    background-color: #c9f0ff;
     color: #282828;
     .anticon {
       color: #135380;
