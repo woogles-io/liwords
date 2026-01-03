@@ -12,6 +12,7 @@ import {
   App,
   Modal,
   Checkbox,
+  Tooltip,
 } from "antd";
 import { ArrowLeftOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
@@ -115,6 +116,8 @@ export const LeaguePage = (props: Props) => {
     useState<boolean>(false);
   const [hasAgreedToCommitment, setHasAgreedToCommitment] =
     useState<boolean>(false);
+  const [showUnregisterConfirm, setShowUnregisterConfirm] =
+    useState<boolean>(false);
 
   // Fetch league data
   const { data: leagueData, isPending: leaguePending } = useQuery(
@@ -178,6 +181,13 @@ export const LeaguePage = (props: Props) => {
       setSelectedDivisionId(defaultDivId);
     }
   }, [standingsData, userID]);
+
+  // Scroll to top when season changes
+  useEffect(() => {
+    if (selectedSeasonId) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [selectedSeasonId]);
 
   // Fetch registrations for selected season
   const { data: registrationsData } = useQuery(
@@ -263,6 +273,25 @@ export const LeaguePage = (props: Props) => {
     // Check if user appears in registrations list
     return registrationsData.registrations.some((reg) => reg.userId === userID);
   }, [displayedSeason, userID, registrationsData]);
+
+  // Get user's division and rank info for the displayed season
+  const userSeasonInfo = useMemo(() => {
+    if (!userID || !standingsData?.divisions) {
+      return null;
+    }
+
+    for (const division of standingsData.divisions) {
+      const standing = division.standings?.find((s) => s.userId === userID);
+      if (standing) {
+        return {
+          divisionName: division.divisionName,
+          divisionNumber: division.divisionNumber,
+          rank: standing.rank,
+        };
+      }
+    }
+    return null;
+  }, [userID, standingsData]);
 
   // Get all registrants for the displayed season
   const registrants = useMemo(() => {
@@ -419,11 +448,16 @@ export const LeaguePage = (props: Props) => {
   };
 
   const handleUnregister = () => {
+    setShowUnregisterConfirm(true);
+  };
+
+  const handleConfirmUnregister = () => {
     if (!displayedSeason?.uuid) return;
     unregisterMutation.mutate({
       seasonId: displayedSeason.uuid,
       userId: userID,
     });
+    setShowUnregisterConfirm(false);
   };
 
   const handleOpenRegistration = () => {
@@ -784,25 +818,83 @@ export const LeaguePage = (props: Props) => {
                 )}
 
                 {/* Registration status for displayed season */}
-                {loggedIn && isUserRegistered && (
-                  <div style={{ marginBottom: 12 }}>
-                    <Tag color="green" style={{ marginBottom: 8 }}>
-                      ✓ Registered
-                    </Tag>
-                    {/* Only allow unregister if season is REGISTRATION_OPEN */}
-                    {displayedSeason.status === 4 && (
-                      <div style={{ marginTop: 8 }}>
-                        <Button
-                          size="small"
-                          onClick={handleUnregister}
-                          loading={unregisterMutation.isPending}
-                          block
-                        >
-                          Unregister
-                        </Button>
+                {loggedIn && (
+                  <>
+                    {/* Show "Registered" badge for registration-open seasons */}
+                    {displayedSeason.status === 4 && isUserRegistered && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Tag color="green" style={{ marginBottom: 8 }}>
+                          ✓ Registered
+                        </Tag>
+                        <div style={{ marginTop: 8 }}>
+                          <Button
+                            size="small"
+                            onClick={handleUnregister}
+                            loading={unregisterMutation.isPending}
+                            block
+                          >
+                            Unregister
+                          </Button>
+                        </div>
                       </div>
                     )}
-                  </div>
+
+                    {/* Show "In Season" badge with rank for active seasons */}
+                    {displayedSeason.status === 1 && userSeasonInfo && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Tag color="blue" style={{ marginBottom: 8 }}>
+                          In Season
+                        </Tag>
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#666",
+                            marginTop: 4,
+                          }}
+                        >
+                          Currently {userSeasonInfo.rank}
+                          {userSeasonInfo.rank === 1
+                            ? "st"
+                            : userSeasonInfo.rank === 2
+                              ? "nd"
+                              : userSeasonInfo.rank === 3
+                                ? "rd"
+                                : "th"}{" "}
+                          in{" "}
+                          {userSeasonInfo.divisionName ||
+                            `Division ${userSeasonInfo.divisionNumber}`}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show "Completed" badge with final rank for finished seasons */}
+                    {displayedSeason.status === 2 && userSeasonInfo && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Tag color="default" style={{ marginBottom: 8 }}>
+                          Completed
+                        </Tag>
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#666",
+                            marginTop: 4,
+                          }}
+                        >
+                          Finished {userSeasonInfo.rank}
+                          {userSeasonInfo.rank === 1
+                            ? "st"
+                            : userSeasonInfo.rank === 2
+                              ? "nd"
+                              : userSeasonInfo.rank === 3
+                                ? "rd"
+                                : "th"}{" "}
+                          in{" "}
+                          {userSeasonInfo.divisionName ||
+                            `Division ${userSeasonInfo.divisionNumber}`}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Player count display */}
@@ -1034,14 +1126,23 @@ export const LeaguePage = (props: Props) => {
             >
               Cancel
             </Button>,
-            <Button
-              key="register"
-              type="primary"
-              disabled={!hasAgreedToCommitment}
-              onClick={handleConfirmRegistration}
+            <Tooltip
+              title={
+                !hasAgreedToCommitment
+                  ? "Please check the commitment checkbox to enable registration"
+                  : ""
+              }
+              key="register-tooltip"
             >
-              Register
-            </Button>,
+              <Button
+                key="register"
+                type="primary"
+                disabled={!hasAgreedToCommitment}
+                onClick={handleConfirmRegistration}
+              >
+                Register
+              </Button>
+            </Tooltip>,
           ]}
           width={600}
           zIndex={2000}
@@ -1091,6 +1192,14 @@ export const LeaguePage = (props: Props) => {
               {formatLocalTime(displayedSeason?.startDate)}
             </div>
 
+            <Alert
+              type="info"
+              showIcon
+              message="Please confirm your commitment"
+              description="Check the box below to confirm you agree to the commitment."
+              style={{ marginBottom: 16 }}
+            />
+
             <Checkbox
               checked={hasAgreedToCommitment}
               onChange={(e) => setHasAgreedToCommitment(e.target.checked)}
@@ -1101,6 +1210,40 @@ export const LeaguePage = (props: Props) => {
               </strong>
             </Checkbox>
           </div>
+        </Modal>
+
+        {/* Unregister Confirmation Modal */}
+        <Modal
+          title="Confirm Unregistration"
+          open={showUnregisterConfirm}
+          onCancel={() => setShowUnregisterConfirm(false)}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => setShowUnregisterConfirm(false)}
+            >
+              Take me back, I want to stay registered
+            </Button>,
+            <Button
+              key="unregister"
+              type="primary"
+              danger
+              onClick={handleConfirmUnregister}
+              loading={unregisterMutation.isPending}
+            >
+              Unregister
+            </Button>,
+          ]}
+          width={500}
+          zIndex={2000}
+        >
+          <p>
+            Are you sure you want to withdraw your registration for Season{" "}
+            {displayedSeason?.seasonNumber}?
+          </p>
+          <p style={{ marginTop: 12, color: "#666" }}>
+            This action will remove you from the upcoming season.
+          </p>
         </Modal>
       </div>
     </>
