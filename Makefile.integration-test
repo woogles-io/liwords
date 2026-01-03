@@ -1,0 +1,134 @@
+# Integration Test Makefile
+# Provides convenient commands for running end-to-end league integration tests
+
+.PHONY: help integration-test-up integration-test-down integration-test-logs \
+        integration-test-setup integration-test-inspect integration-test-force-finish \
+        integration-test-clean integration-test-restart integration-test-shell \
+        integration-test-start-season
+
+# Default configuration
+LEAGUE_SLUG ?= integration-test
+SEASON ?= 1
+NUM_USERS ?= 30
+DIVISION_SIZE ?= 15
+
+help:
+	@echo "Integration Test Commands"
+	@echo "========================="
+	@echo
+	@echo "Setup & Teardown:"
+	@echo "  make integration-test-up          - Start integration test environment"
+	@echo "  make integration-test-down        - Stop and remove containers"
+	@echo "  make integration-test-clean       - Down + remove volumes (fresh start)"
+	@echo "  make integration-test-restart     - Restart the environment"
+	@echo
+	@echo "League Setup:"
+	@echo "  make integration-test-setup       - Create users, league, and prepare season"
+	@echo "  make integration-test-inspect     - Inspect current league state"
+	@echo
+	@echo "Test Scenarios:"
+	@echo "  make integration-test-start-season - Start season (for manual exploration)"
+	@echo "  make integration-test-force-finish - Test force-finish season scenario"
+	@echo
+	@echo "Utilities:"
+	@echo "  make integration-test-logs        - Follow logs from all services"
+	@echo "  make integration-test-shell       - Open shell in app container"
+	@echo "  make integration-test-psql        - Connect to integration test database"
+	@echo
+	@echo "Full E2E Test:"
+	@echo "  make integration-test-full        - Run complete test: up + setup + force-finish"
+	@echo
+	@echo "Configuration (override with env vars):"
+	@echo "  LEAGUE_SLUG=$(LEAGUE_SLUG)"
+	@echo "  SEASON=$(SEASON)"
+	@echo "  NUM_USERS=$(NUM_USERS)"
+	@echo "  DIVISION_SIZE=$(DIVISION_SIZE)"
+	@echo
+
+# Start the integration test environment
+integration-test-up:
+	@echo "🚀 Starting integration test environment..."
+	@docker-compose -f docker-compose.integration-test.yml up -d
+	@echo "⏳ Waiting for services to be healthy..."
+	@sleep 10
+	@echo "✅ Integration test environment is running!"
+	@echo
+	@echo "Access points:"
+	@echo "  - Frontend: http://localhost:18080"
+	@echo "  - API: http://localhost:18001"
+	@echo "  - Traefik Dashboard: http://localhost:18888"
+	@echo "  - PostgreSQL: localhost:25432"
+	@echo
+	@echo "Next step: make integration-test-setup"
+
+# Stop the integration test environment
+integration-test-down:
+	@echo "🛑 Stopping integration test environment..."
+	@docker-compose -f docker-compose.integration-test.yml down
+	@echo "✅ Environment stopped"
+
+# Clean everything (including volumes)
+integration-test-clean:
+	@echo "🧹 Cleaning integration test environment (including volumes)..."
+	@docker-compose -f docker-compose.integration-test.yml down -v
+	@rm -f scripts/integration-test/test_users.json scripts/integration-test/test_league.json
+	@echo "✅ Environment cleaned"
+
+# Restart the environment
+integration-test-restart: integration-test-down integration-test-up
+
+# Follow logs
+integration-test-logs:
+	@docker-compose -f docker-compose.integration-test.yml logs -f
+
+# Setup league (create users, league, register, prepare divisions)
+integration-test-setup:
+	@echo "🏗️  Running league setup..."
+	@export NUM_USERS=$(NUM_USERS) LEAGUE_SLUG=$(LEAGUE_SLUG) DIVISION_SIZE=$(DIVISION_SIZE) && \
+	  ./scripts/integration-test/setup-league.sh
+
+# Inspect current league state
+integration-test-inspect:
+	@echo "🔍 Inspecting league state..."
+	@export DB_HOST=localhost DB_PORT=25432 DB_NAME=liwords_integration_test \
+	  DB_USER=postgres DB_PASSWORD=pass DB_SSL_MODE=disable && \
+	  go run cmd/league-tester/*.go inspect --league $(LEAGUE_SLUG)
+
+# Start season for manual exploration
+integration-test-start-season:
+	@echo "🎮 Starting season..."
+	@export LEAGUE_SLUG=$(LEAGUE_SLUG) SEASON=$(SEASON) && \
+	  ./scripts/integration-test/scenarios/start-season.sh
+
+# Run force-finish scenario
+integration-test-force-finish:
+	@echo "⏩ Running force-finish scenario..."
+	@export LEAGUE_SLUG=$(LEAGUE_SLUG) SEASON=$(SEASON) && \
+	  ./scripts/integration-test/scenarios/force-finish-season.sh
+
+# Open shell in app container
+integration-test-shell:
+	@docker-compose -f docker-compose.integration-test.yml exec app /bin/bash
+
+# Connect to PostgreSQL
+integration-test-psql:
+	@PGPASSWORD=pass psql -h localhost -p 25432 -U postgres -d liwords_integration_test
+
+# Run full end-to-end test
+integration-test-full: integration-test-clean integration-test-up
+	@echo "⏳ Waiting for environment to stabilize..."
+	@sleep 15
+	@$(MAKE) integration-test-setup
+	@echo
+	@echo "📊 Press Enter to run force-finish scenario (or Ctrl+C to browse manually first)..."
+	@read dummy
+	@$(MAKE) integration-test-force-finish
+	@echo
+	@echo "========================================="
+	@echo "✅ Full integration test complete!"
+	@echo "========================================="
+	@echo
+	@echo "The environment is still running at http://localhost:18080"
+	@echo "Browse around to verify everything looks correct."
+	@echo
+	@echo "When done: make integration-test-down"
