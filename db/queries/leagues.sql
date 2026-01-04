@@ -477,8 +477,9 @@ WHERE g.uuid = $1;
 
 -- name: GetPlayerSeasonGames :many
 -- Get finished games for a specific player in a season with scores from game_players table
+-- Optimized to use idx_game_players_player_league_season composite index
 SELECT
-    g.uuid as game_uuid,
+    gp_player.game_uuid,
     g.created_at,
     g.updated_at,
     gp_player.player_id,
@@ -488,14 +489,12 @@ SELECT
     gp_player.game_end_reason,
     u_opponent.uuid as opponent_uuid,
     u_opponent.username as opponent_username
-FROM games g
-INNER JOIN game_players gp_player ON g.uuid = gp_player.game_uuid
-INNER JOIN users u_player ON gp_player.player_id = u_player.id
-INNER JOIN game_players gp_opponent ON g.uuid = gp_opponent.game_uuid AND gp_opponent.player_index = (1 - gp_player.player_index)
-INNER JOIN users u_opponent ON gp_opponent.player_id = u_opponent.id
-WHERE g.season_id = @season_id
-  AND u_player.uuid = @user_uuid
-ORDER BY g.created_at DESC;
+FROM game_players gp_player
+INNER JOIN games g ON gp_player.game_uuid = g.uuid
+INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
+WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
+  AND gp_player.league_season_id = @season_id
+ORDER BY gp_player.created_at DESC;
 
 -- name: GetPlayerSeasonInProgressGames :many
 -- Get in-progress games for a specific player in a season (fast query on indexed fields)

@@ -121,6 +121,7 @@ type GamePlayer struct {
 	OpponentID        int32
 	OpponentScore     int32
 	OriginalRequestID pgtype.Text
+	LeagueSeasonID    pgtype.UUID
 }
 
 type Integration struct {

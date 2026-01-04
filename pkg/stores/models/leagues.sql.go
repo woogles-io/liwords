@@ -984,7 +984,7 @@ func (q *Queries) GetPlayerRegistration(ctx context.Context, arg GetPlayerRegist
 
 const getPlayerSeasonGames = `-- name: GetPlayerSeasonGames :many
 SELECT
-    g.uuid as game_uuid,
+    gp_player.game_uuid,
     g.created_at,
     g.updated_at,
     gp_player.player_id,
@@ -994,23 +994,21 @@ SELECT
     gp_player.game_end_reason,
     u_opponent.uuid as opponent_uuid,
     u_opponent.username as opponent_username
-FROM games g
-INNER JOIN game_players gp_player ON g.uuid = gp_player.game_uuid
-INNER JOIN users u_player ON gp_player.player_id = u_player.id
-INNER JOIN game_players gp_opponent ON g.uuid = gp_opponent.game_uuid AND gp_opponent.player_index = (1 - gp_player.player_index)
-INNER JOIN users u_opponent ON gp_opponent.player_id = u_opponent.id
-WHERE g.season_id = $1
-  AND u_player.uuid = $2
-ORDER BY g.created_at DESC
+FROM game_players gp_player
+INNER JOIN games g ON gp_player.game_uuid = g.uuid
+INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
+WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = $1)
+  AND gp_player.league_season_id = $2
+ORDER BY gp_player.created_at DESC
 `
 
 type GetPlayerSeasonGamesParams struct {
-	SeasonID pgtype.UUID
 	UserUuid pgtype.Text
+	SeasonID pgtype.UUID
 }
 
 type GetPlayerSeasonGamesRow struct {
-	GameUuid         pgtype.Text
+	GameUuid         string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	PlayerID         int32
@@ -1023,8 +1021,9 @@ type GetPlayerSeasonGamesRow struct {
 }
 
 // Get finished games for a specific player in a season with scores from game_players table
+// Optimized to use idx_game_players_player_league_season composite index
 func (q *Queries) GetPlayerSeasonGames(ctx context.Context, arg GetPlayerSeasonGamesParams) ([]GetPlayerSeasonGamesRow, error) {
-	rows, err := q.db.Query(ctx, getPlayerSeasonGames, arg.SeasonID, arg.UserUuid)
+	rows, err := q.db.Query(ctx, getPlayerSeasonGames, arg.UserUuid, arg.SeasonID)
 	if err != nil {
 		return nil, err
 	}
