@@ -524,7 +524,7 @@ export const LeaguePage = (props: Props) => {
           Back to Leagues
         </Link>
 
-        <Row gutter={[16, 16]}>
+        <Row gutter={{ xs: 0, lg: 16 }}>
           {/* Left Column - Chat Only */}
           <Col xs={24} lg={6} className="league-chat-column">
             {/* League Chat */}

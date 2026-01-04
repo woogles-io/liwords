@@ -352,6 +352,10 @@
         color: #40a9ff;
       }
     }
+
+    @media (max-width: 991px) {
+      padding-left: 16px;
+    }
   }
 
   .season-navigation-card {
@@ -729,7 +733,8 @@
 // Mobile responsive
 @media (max-width: 768px) {
   .leagues-container {
-    padding: 0 16px;
+    margin: 16px 8px;
+    padding: 0;
 
     h1 {
       font-size: 24px;
@@ -759,14 +764,31 @@
     // Control column order when columns stack
     .league-chat-column {
       order: 2;
+      margin-bottom: 16px;
+      padding: 0 16px;
     }
 
     .league-center-column {
       order: 1;
+      margin-bottom: 16px;
+      padding: 0;
+
+      // Add padding to center column content that's not in cards
+      > div:not(.standings-container) {
+        padding: 0 16px;
+      }
     }
 
     .league-sidebar-column {
       order: 3;
+      padding: 0 16px;
+
+      // Cards will have 16px from edge + their own internal 14px padding
+    }
+
+    // Add padding to standings container content
+    .standings-container {
+      padding: 0 16px;
     }
   }
 }
