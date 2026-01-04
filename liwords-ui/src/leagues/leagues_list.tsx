@@ -298,20 +298,35 @@ export const LeaguesList = () => {
               </p>
             </Panel>
             <Panel
-              header="Isn't 8 hours per turn too little? I need to sleep!"
+              header="Isn't 10 hours per turn too little? I need to sleep!"
               key="6"
             >
               <p>
-                While 8 hours per turn might sound tight at first, the time bank
-                makes the timing very forgiving in practice. Let's look at the
-                math:
+                While 10 hours per turn might sound tight at first, the time
+                bank makes the timing very forgiving in practice. Let's look at
+                the math:
               </p>
               <p>
                 Imagine the worst-case scenario: your opponent makes their move
-                right when you go to bed, and you don't check the game until 4
+                right when you go to bed, and you don't check the game until 6
                 hours after you wake up. That means you'd use 4 hours from your
-                time bank for that turn (the 8 hours expired while you slept,
-                plus 4 more hours).
+                time bank for that turn, assuming you sleep 8 hours: (14 hours -
+                10 hours = 4 hours).
+              </p>
+              <p>
+                Example timings:
+                <ul>
+                  <li>Opponent moves at 10pm. Your time starts running.</li>
+                  <li>You sleep from 11pm to 7am.</li>
+                  <li>
+                    At 8 am (10 hours after your opponent move), your time bank
+                    finally starts to be deducted.
+                  </li>
+                  <li>
+                    You check your game at noon. Only 4 hours have been deducted
+                    from your time bank.
+                  </li>
+                </ul>
               </p>
               <p>
                 With a 96-hour (4-day) time bank, you would need this worst case
