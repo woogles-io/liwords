@@ -6,7 +6,6 @@ import {
   Spin,
   Button,
   Select,
-  Space,
   Tag,
   Alert,
   App,
@@ -14,7 +13,7 @@ import {
   Checkbox,
   Tooltip,
 } from "antd";
-import { ArrowLeftOutlined, TrophyOutlined } from "@ant-design/icons";
+import { LeftOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +36,7 @@ import { getSelfRoles } from "../gen/api/proto/user_service/user_service-Authori
 import { DivisionStandings } from "./standings";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { PromotionFormula } from "../gen/api/proto/ipc/league_pb";
-import { DivisionSelector, getDefaultDivisionId } from "./division_selector";
+import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
@@ -519,12 +518,7 @@ export const LeaguePage = (props: Props) => {
         </Col>
       </Row>
       <div className="leagues-container">
-        <Link to="/leagues" className="back-to-leagues-link">
-          <ArrowLeftOutlined style={{ marginRight: 8 }} />
-          Back to Leagues
-        </Link>
-
-        <Row gutter={[16, 16]}>
+        <Row gutter={{ xs: 0, lg: 16 }}>
           {/* Left Column - Chat Only */}
           <Col xs={24} lg={6} className="league-chat-column">
             {/* League Chat */}
@@ -542,78 +536,110 @@ export const LeaguePage = (props: Props) => {
 
           {/* Center Column - Seasons & Standings */}
           <Col xs={24} lg={12} className="league-center-column">
-            {/* Season Selector - Simple centered dropdown */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
-              <label style={{ fontWeight: 500, whiteSpace: "nowrap" }}>
-                Select Season:
-              </label>
-              <Select
-                value={displaySeasonId || undefined}
-                onChange={setSelectedSeasonId}
-                style={{ width: 300 }}
-                popupMatchSelectWidth={true}
-                options={allSeasons.map((season) => {
-                  // Determine status label
-                  let statusLabel = "";
-                  let statusColor = "";
-                  if (season.status === 0) {
-                    statusLabel = "Scheduled";
-                    statusColor = "";
-                  } else if (season.status === 1) {
-                    statusLabel = "Active";
-                    statusColor = "blue";
-                  } else if (season.status === 2) {
-                    statusLabel = "Completed";
-                    statusColor = "default";
-                  } else if (season.status === 3) {
-                    statusLabel = "Cancelled";
-                    statusColor = "red";
-                  } else if (season.status === 4) {
-                    statusLabel = "Registration Open";
-                    statusColor = "green";
-                  }
+            {/* Breadcrumb */}
+            <Link to="/leagues" className="back-to-leagues-link">
+              <LeftOutlined style={{ marginRight: 4 }} />
+              All leagues
+            </Link>
 
-                  return {
-                    value: season.uuid,
-                    label: (
-                      <span
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span>Season {season.seasonNumber}</span>
-                        {statusLabel && (
-                          <Tag color={statusColor}>{statusLabel}</Tag>
-                        )}
-                      </span>
-                    ),
-                  };
-                })}
-              />
-              {/* Admin button to open registration */}
-              {canManageLeagues &&
-                loggedIn &&
-                !isRegistrationOpen &&
-                scheduledSeason && (
-                  <Button
-                    type="default"
-                    size="small"
-                    onClick={handleOpenRegistration}
-                    loading={openRegistrationMutation.isPending}
+            {/* League Header Row with Name and Selectors */}
+            <div className="league-header-row">
+              <h2 className="league-title">{league?.name}</h2>
+              <div className="league-selectors">
+                <Select
+                  value={displaySeasonId || undefined}
+                  onChange={setSelectedSeasonId}
+                  style={{ width: 200 }}
+                  popupMatchSelectWidth={true}
+                  options={allSeasons.map((season) => {
+                    // Determine status label
+                    let statusLabel = "";
+                    let statusColor = "";
+                    if (season.status === 0) {
+                      statusLabel = "Scheduled";
+                      statusColor = "";
+                    } else if (season.status === 1) {
+                      statusLabel = "Active";
+                      statusColor = "blue";
+                    } else if (season.status === 2) {
+                      statusLabel = "Completed";
+                      statusColor = "default";
+                    } else if (season.status === 3) {
+                      statusLabel = "Cancelled";
+                      statusColor = "red";
+                    } else if (season.status === 4) {
+                      statusLabel = "Registration Open";
+                      statusColor = "green";
+                    }
+
+                    return {
+                      value: season.uuid,
+                      label: (
+                        <span
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span>Season {season.seasonNumber}</span>
+                          {statusLabel && (
+                            <Tag color={statusColor}>{statusLabel}</Tag>
+                          )}
+                        </span>
+                      ),
+                    };
+                  })}
+                />
+                {/* Division Selector */}
+                {standingsData && standingsData.divisions.length > 0 && (
+                  <Select
+                    value={selectedDivisionId}
+                    onChange={setSelectedDivisionId}
+                    style={{ width: 200 }}
+                    placeholder="Select Division"
                   >
-                    Open Registration
-                  </Button>
+                    {standingsData.divisions.map((division, idx) => {
+                      // Calculate game progress
+                      let gamesPlayed = 0;
+                      let gamesRemaining = 0;
+                      division.standings?.forEach((standing) => {
+                        gamesPlayed += standing.gamesPlayed;
+                        gamesRemaining += standing.gamesRemaining;
+                      });
+                      const totalGamesPlayed = gamesPlayed / 2;
+                      const totalGamesRemaining = gamesRemaining / 2;
+
+                      return (
+                        <Select.Option
+                          key={division.uuid}
+                          value={division.uuid}
+                        >
+                          {division.divisionName ||
+                            `Division ${division.divisionNumber}`}
+                          {totalGamesRemaining
+                            ? ` (${totalGamesPlayed}/${totalGamesPlayed + totalGamesRemaining})`
+                            : ""}
+                        </Select.Option>
+                      );
+                    })}
+                  </Select>
                 )}
+                {/* Admin button to open registration */}
+                {canManageLeagues &&
+                  loggedIn &&
+                  !isRegistrationOpen &&
+                  scheduledSeason && (
+                    <Button
+                      type="default"
+                      size="small"
+                      onClick={handleOpenRegistration}
+                      loading={openRegistrationMutation.isPending}
+                    >
+                      Open Registration
+                    </Button>
+                  )}
+              </div>
             </div>
 
             {/* Registration button for current season - centered */}
@@ -681,14 +707,6 @@ export const LeaguePage = (props: Props) => {
               standingsData &&
               standingsData.divisions.length > 0 && (
                 <div className="standings-container" style={{ marginTop: 16 }}>
-                  {/* Division Selector */}
-                  <DivisionSelector
-                    divisions={standingsData.divisions}
-                    selectedDivisionId={selectedDivisionId}
-                    onDivisionChange={setSelectedDivisionId}
-                    currentUserId={userID}
-                  />
-
                   {/* Show champion banner for completed seasons */}
                   {displayedSeason?.status === 2 &&
                     standingsData.divisions.length > 0 &&

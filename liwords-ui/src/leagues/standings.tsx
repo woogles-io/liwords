@@ -325,6 +325,26 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         record.wins * 2 + record.draws,
     },
     {
+      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
+      key: "ppg",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        const ppgA =
+          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / a.gamesPlayed : 0;
+        const ppgB =
+          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
+        return ppgA - ppgB;
+      },
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { wins: number; draws: number; gamesPlayed: number },
+      ) => {
+        const points = record.wins * 2 + record.draws;
+        return formatAvg(points, record.gamesPlayed, 2);
+      },
+    },
+    {
       title: <ColHeader title="W" tooltip="Wins" />,
       dataIndex: "wins",
       key: "wins",
@@ -417,7 +437,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       render: (
         _: unknown,
         record: { totalBingos: number; gamesPlayed: number },
-      ) => formatAvg(record.totalBingos, record.gamesPlayed),
+      ) => formatAvg(record.totalBingos, record.gamesPlayed, 2),
     },
     {
       title: (
@@ -436,7 +456,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       render: (
         _: unknown,
         record: { totalOpponentBingos: number; gamesPlayed: number },
-      ) => formatAvg(record.totalOpponentBingos, record.gamesPlayed),
+      ) => formatAvg(record.totalOpponentBingos, record.gamesPlayed, 2),
     },
     {
       title: <ColHeader title="TAV" tooltip="Turn average (points per turn)" />,
@@ -545,7 +565,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       render: (
         _: unknown,
         record: { blanksPlayed: number; gamesPlayed: number },
-      ) => formatAvg(record.blanksPlayed, record.gamesPlayed),
+      ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
       title: <ColHeader title="#TO" tooltip="Number of timeouts" />,

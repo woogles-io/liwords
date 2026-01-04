@@ -1571,7 +1571,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		}
 
 		allGames = append(allGames, &pb.PlayerSeasonGame{
-			GameId:           row.GameUuid.String,
+			GameId:           row.GameUuid,
 			OpponentUserId:   row.OpponentUuid.String,
 			OpponentUsername: row.OpponentUsername.String,
 			PlayerScore:      playerScore,
