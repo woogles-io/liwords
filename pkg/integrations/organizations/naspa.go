@@ -186,6 +186,31 @@ func (n *NASPAIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgNASPA
 }
 
+// FetchTitleWithoutAuth fetches title information from the public NASPA API without authentication
+// This is used for admin purposes where we don't need to verify account ownership
+func (n *NASPAIntegration) FetchTitleWithoutAuth(memberID string) (*TitleInfo, error) {
+	playerData, err := n.fetchPlayerData(memberID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch player data: %w", err)
+	}
+
+	now := time.Now()
+	fullName := playerData.FirstName + " " + playerData.LastName
+	if playerData.Suffix != "" {
+		fullName += " " + playerData.Suffix
+	}
+
+	return &TitleInfo{
+		Organization:     OrgNASPA,
+		OrganizationName: "NASPA",
+		RawTitle:         playerData.Title,
+		NormalizedTitle:  n.NormalizeTitle(playerData.Title),
+		MemberID:         playerData.NASPA,
+		FullName:         fullName,
+		LastFetched:      &now,
+	}, nil
+}
+
 // GetRealName fetches the user's real name from NASPA using their credentials
 // Returns the full name in format "FirstName LastName" or "FirstName LastName Suffix"
 func (n *NASPAIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {

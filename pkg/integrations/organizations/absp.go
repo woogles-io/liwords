@@ -239,6 +239,34 @@ func (a *ABSPIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgABSP
 }
 
+// FetchTitleWithoutAuth fetches title information from the public ABSP database without authentication
+// This is used for admin purposes where we don't need to verify account ownership
+func (a *ABSPIntegration) FetchTitleWithoutAuth(memberID string) (*TitleInfo, error) {
+	// Ensure cache is up to date (downloads from public database)
+	if err := a.ensureCacheValid(); err != nil {
+		return nil, fmt.Errorf("failed to load ABSP database: %w", err)
+	}
+
+	// Look up player in the cached database
+	player, err := a.getPlayer(memberID)
+	if err != nil {
+		return nil, fmt.Errorf("player not found in ABSP database: %w", err)
+	}
+
+	now := time.Now()
+	fullName := player.FirstName + " " + player.LastName
+
+	return &TitleInfo{
+		Organization:     OrgABSP,
+		OrganizationName: "ABSP",
+		RawTitle:         player.Title,
+		NormalizedTitle:  a.NormalizeTitle(player.Title),
+		MemberID:         player.MemberID,
+		FullName:         fullName,
+		LastFetched:      &now,
+	}, nil
+}
+
 // GetRealName fetches the user's real name from ABSP using their credentials
 func (a *ABSPIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
 	username, ok := credentials["username"]

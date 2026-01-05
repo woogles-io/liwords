@@ -730,34 +730,38 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		return nil, apiserver.InternalErr(err)
 	}
 
-	// Note: This endpoint doesn't work for NASPA because NASPA requires credentials
-	// NASPA users should use ConnectOrganization with their own credentials
-	if orgCode == organizations.OrgNASPA {
-		return nil, apiserver.InvalidArg("NASPA requires user credentials. Users should connect their own NASPA account using ConnectOrganization endpoint.")
-	}
-
 	// Fetch name and title from organization
 	var fullName string
 	var rawTitle string
 	var normalizedTitle organizations.NormalizedTitle
 
-	// Try to fetch title (works for ABSP without credentials, has database)
-	if meta.HasAPI {
-		titleInfo, err := integration.FetchTitle(req.Msg.MemberId, nil)
-		if err == nil {
-			fullName = titleInfo.FullName
-			rawTitle = titleInfo.RawTitle
-			normalizedTitle = titleInfo.NormalizedTitle
-		} else {
-			// If FetchTitle fails, try GetRealName
-			log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title, trying GetRealName")
-			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
-			if err != nil {
-				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from %s: %v", meta.Name, err))
-			}
+	// For organizations with public data (NASPA, ABSP), use FetchTitleWithoutAuth
+	// This allows admins to set memberships without requiring user credentials
+	switch orgCode {
+	case organizations.OrgNASPA:
+		// NASPA has a public API that can be used without authentication
+		naspaIntegration := integration.(*organizations.NASPAIntegration)
+		titleInfo, err := naspaIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from NASPA: %v", err))
 		}
-	} else {
-		// No API, just fetch name (e.g., WESPA HTML scraping)
+		fullName = titleInfo.FullName
+		rawTitle = titleInfo.RawTitle
+		normalizedTitle = titleInfo.NormalizedTitle
+
+	case organizations.OrgABSP:
+		// ABSP has a public database that can be used without authentication
+		abspIntegration := integration.(*organizations.ABSPIntegration)
+		titleInfo, err := abspIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from ABSP: %v", err))
+		}
+		fullName = titleInfo.FullName
+		rawTitle = titleInfo.RawTitle
+		normalizedTitle = titleInfo.NormalizedTitle
+
+	default:
+		// For other orgs (like WESPA), use GetRealName for HTML scraping
 		fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
 		if err != nil {
 			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch name from %s: %v", meta.Name, err))

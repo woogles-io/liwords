@@ -616,6 +616,12 @@ export const Integrations = () => {
 
       <Flex gap="middle" wrap="wrap" style={{ marginBottom: "2rem" }}>
         {Object.entries(organizationInfo).map(([code, info]) => {
+          // Hide ABSP from user-facing connection options (potential deprecation)
+          // Admins can still assign ABSP memberships via the admin panel
+          if (code === "absp") {
+            return null;
+          }
+
           if (organizations.some((org) => org.organizationCode === code)) {
             return null;
           }
