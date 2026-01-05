@@ -512,7 +512,10 @@ message ManuallySetOrgMembershipRequest {
   string username = 1; // Username of the user to assign membership to
   string organization_code = 2;
   string member_id = 3;
-  // full_name and title will be fetched from the organization automatically
+  // Optional credentials - if provided, will be used for authenticated fetch
+  // and stored (encrypted) for future title refreshes. If not provided,
+  // public API/database will be used instead.
+  map<string, string> credentials = 4;
 }
 
 message ManuallySetOrgMembershipResponse {

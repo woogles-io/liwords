@@ -734,52 +734,76 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	var fullName string
 	var rawTitle string
 	var normalizedTitle organizations.NormalizedTitle
+	var encryptedCredentials string
 
-	// For organizations with public data (NASPA, ABSP), use FetchTitleWithoutAuth
-	// This allows admins to set memberships without requiring user credentials
-	switch orgCode {
-	case organizations.OrgNASPA:
-		// NASPA has a public API that can be used without authentication
-		naspaIntegration := integration.(*organizations.NASPAIntegration)
-		titleInfo, err := naspaIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
+	// Check if credentials were provided
+	hasCredentials := len(req.Msg.Credentials) > 0
+
+	// If credentials provided, use authenticated fetch; otherwise use public API/database
+	if hasCredentials {
+		// Use authenticated fetch - this also validates credentials
+		titleInfo, err := integration.FetchTitle(req.Msg.MemberId, req.Msg.Credentials)
 		if err != nil {
-			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from NASPA: %v", err))
+			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to authenticate with %s: %v", meta.Name, err))
 		}
 		fullName = titleInfo.FullName
 		rawTitle = titleInfo.RawTitle
 		normalizedTitle = titleInfo.NormalizedTitle
 
-	case organizations.OrgABSP:
-		// ABSP has a public database that can be used without authentication
-		abspIntegration := integration.(*organizations.ABSPIntegration)
-		titleInfo, err := abspIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
-		if err != nil {
-			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from ABSP: %v", err))
+		// Encrypt credentials for storage (for future title refreshes)
+		if meta.RequiresAuth {
+			encryptedCredentials, err = organizations.EncryptCredentials(req.Msg.Credentials)
+			if err != nil {
+				return nil, apiserver.InternalErr(fmt.Errorf("failed to encrypt credentials: %w", err))
+			}
 		}
-		fullName = titleInfo.FullName
-		rawTitle = titleInfo.RawTitle
-		normalizedTitle = titleInfo.NormalizedTitle
+	} else {
+		// No credentials provided - use public API/database where available
+		switch orgCode {
+		case organizations.OrgNASPA:
+			// NASPA has a public API that can be used without authentication
+			naspaIntegration := integration.(*organizations.NASPAIntegration)
+			titleInfo, err := naspaIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from NASPA: %v", err))
+			}
+			fullName = titleInfo.FullName
+			rawTitle = titleInfo.RawTitle
+			normalizedTitle = titleInfo.NormalizedTitle
 
-	default:
-		// For other orgs (like WESPA), use GetRealName for HTML scraping
-		fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
-		if err != nil {
-			return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch name from %s: %v", meta.Name, err))
+		case organizations.OrgABSP:
+			// ABSP has a public database that can be used without authentication
+			abspIntegration := integration.(*organizations.ABSPIntegration)
+			titleInfo, err := abspIntegration.FetchTitleWithoutAuth(req.Msg.MemberId)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from ABSP: %v", err))
+			}
+			fullName = titleInfo.FullName
+			rawTitle = titleInfo.RawTitle
+			normalizedTitle = titleInfo.NormalizedTitle
+
+		default:
+			// For other orgs (like WESPA), use GetRealName for HTML scraping
+			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch name from %s: %v", meta.Name, err))
+			}
 		}
 	}
 
 	// Create the integration with verified status
 	now := time.Now()
 	integrationData := organizations.OrganizationIntegrationData{
-		MemberID:           req.Msg.MemberId,
-		FullName:           fullName,
-		RawTitle:           rawTitle,
-		NormalizedTitle:    normalizedTitle,
-		Verified:           true,
-		VerificationMethod: "admin",
-		VerifiedAt:         &now,
-		VerifiedBy:         user.UUID,
-		LastFetched:        &now,
+		MemberID:             req.Msg.MemberId,
+		FullName:             fullName,
+		RawTitle:             rawTitle,
+		NormalizedTitle:      normalizedTitle,
+		EncryptedCredentials: encryptedCredentials,
+		Verified:             true,
+		VerificationMethod:   "admin",
+		VerifiedAt:           &now,
+		VerifiedBy:           user.UUID,
+		LastFetched:          &now,
 	}
 
 	dataJSON, err := integrationData.ToJSON()

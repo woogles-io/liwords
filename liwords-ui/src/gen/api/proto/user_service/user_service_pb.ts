@@ -2337,11 +2337,18 @@ export type ManuallySetOrgMembershipRequest = Message<"user_service.ManuallySetO
   organizationCode: string;
 
   /**
-   * full_name and title will be fetched from the organization automatically
-   *
    * @generated from field: string member_id = 3;
    */
   memberId: string;
+
+  /**
+   * Optional credentials - if provided, will be used for authenticated fetch
+   * and stored (encrypted) for future title refreshes. If not provided,
+   * public API/database will be used instead.
+   *
+   * @generated from field: map<string, string> credentials = 4;
+   */
+  credentials: { [key: string]: string };
 };
 
 /**

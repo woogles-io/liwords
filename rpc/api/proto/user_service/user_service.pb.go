@@ -5390,9 +5390,12 @@ type ManuallySetOrgMembershipRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Username         string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // Username of the user to assign membership to
 	OrganizationCode string                 `protobuf:"bytes,2,opt,name=organization_code,json=organizationCode,proto3" json:"organization_code,omitempty"`
-	MemberId         string                 `protobuf:"bytes,3,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"` // full_name and title will be fetched from the organization automatically
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	MemberId         string                 `protobuf:"bytes,3,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
+	// Optional credentials - if provided, will be used for authenticated fetch
+	// and stored (encrypted) for future title refreshes
+	Credentials   map[string]string `protobuf:"bytes,4,rep,name=credentials,proto3" json:"credentials,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ManuallySetOrgMembershipRequest) Reset() {
@@ -5444,6 +5447,13 @@ func (x *ManuallySetOrgMembershipRequest) GetMemberId() string {
 		return x.MemberId
 	}
 	return ""
+}
+
+func (x *ManuallySetOrgMembershipRequest) GetCredentials() map[string]string {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
 }
 
 type ManuallySetOrgMembershipResponse struct {

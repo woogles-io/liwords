@@ -162,10 +162,19 @@ export const ManualOrgAssignment = () => {
   const handleAssign = async (values: {
     organizationCode: string;
     memberId: string;
+    username?: string;
+    password?: string;
   }) => {
     if (!currentUser) {
       message.error("Please search for a user first");
       return;
+    }
+
+    // Build credentials map if username and password are both provided
+    const credentials: { [key: string]: string } = {};
+    if (values.username && values.password) {
+      credentials.username = values.username;
+      credentials.password = values.password;
     }
 
     setLoading(true);
@@ -175,6 +184,8 @@ export const ManualOrgAssignment = () => {
           username: currentUser,
           organizationCode: values.organizationCode,
           memberId: values.memberId,
+          credentials:
+            Object.keys(credentials).length > 0 ? credentials : undefined,
         }),
       );
 
@@ -360,41 +371,79 @@ export const ManualOrgAssignment = () => {
                     organizationInfo[
                       selectedOrg as keyof typeof organizationInfo
                     ];
+                  const supportsCredentials =
+                    selectedOrg === "naspa" || selectedOrg === "absp";
 
                   return selectedOrg && orgInfo ? (
-                    <Form.Item
-                      label={
-                        <span>
-                          Member ID{" "}
-                          <Tooltip
-                            title={orgInfo.helpTooltip}
-                            overlayStyle={{ maxWidth: 400 }}
-                          >
-                            <QuestionCircleOutlined
-                              style={{ cursor: "help" }}
-                            />
-                          </Tooltip>
-                        </span>
-                      }
-                      name="memberId"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please enter the member ID",
-                        },
-                      ]}
-                      help={orgInfo.help}
-                    >
-                      <Input
-                        placeholder={
-                          selectedOrg === "naspa"
-                            ? "AA000083"
-                            : selectedOrg === "wespa"
-                              ? "2145"
-                              : "745"
+                    <>
+                      <Form.Item
+                        label={
+                          <span>
+                            Member ID{" "}
+                            <Tooltip
+                              title={orgInfo.helpTooltip}
+                              overlayStyle={{ maxWidth: 400 }}
+                            >
+                              <QuestionCircleOutlined
+                                style={{ cursor: "help" }}
+                              />
+                            </Tooltip>
+                          </span>
                         }
-                      />
-                    </Form.Item>
+                        name="memberId"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please enter the member ID",
+                          },
+                        ]}
+                        help={orgInfo.help}
+                      >
+                        <Input
+                          placeholder={
+                            selectedOrg === "naspa"
+                              ? "AA000083"
+                              : selectedOrg === "wespa"
+                                ? "2145"
+                                : "745"
+                          }
+                        />
+                      </Form.Item>
+
+                      {supportsCredentials && (
+                        <>
+                          <Alert
+                            message="Optional: User Credentials"
+                            description="If you have the user's login credentials, you can enter them below. This allows automatic title refreshes in the future. If left blank, the public database will be used."
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                          />
+                          <Form.Item
+                            label={
+                              selectedOrg === "naspa"
+                                ? "NASPA Username (Member ID)"
+                                : "ABSP Username (Email)"
+                            }
+                            name="username"
+                          >
+                            <Input
+                              placeholder={
+                                selectedOrg === "naspa"
+                                  ? "AA000083"
+                                  : "user@example.com"
+                              }
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            label="Password"
+                            name="password"
+                          >
+                            <Input.Password />
+                          </Form.Item>
+                        </>
+                      )}
+                    </>
                   ) : null;
                 }}
               </Form.Item>
