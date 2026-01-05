@@ -636,6 +636,9 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 					Msg("skipping orphaned PHONY_TILES_RETURNED - previous event is not a tile placement")
 				return nil
 			}
+			// Recalculate LostScore based on the actual score of the previous (phony) play
+			// This is critical when the phony play was amended and its score changed
+			gevt.LostScore = prevEvt.Score
 		} else {
 			log.Debug().Str("event_type", gevt.Type.String()).Msg("skipping PHONY_TILES_RETURNED - no previous events")
 			return nil
@@ -645,6 +648,18 @@ func ApplyEventInEditorMode(ctx context.Context, cfg *wglconfig.Config,
 		gdoc.CurrentScores[gevt.PlayerIndex] -= gevt.LostScore
 		gevt.Cumulative = gdoc.CurrentScores[gevt.PlayerIndex]
 		gdoc.Events = append(gdoc.Events, gevt)
+
+		// Actually remove the phony tiles from the board and restore the rack
+		// This is critical to prevent tile duplication in the bag accounting
+		dist, err := tilemapping.GetDistribution(cfg, gdoc.LetterDistribution)
+		if err != nil {
+			return fmt.Errorf("get distribution failed: %w", err)
+		}
+		err = unplayLastMove(ctx, localCfg, gdoc, dist)
+		if err != nil {
+			return fmt.Errorf("unplayLastMove failed: %w", err)
+		}
+
 		assignTurnToNextNonquitter(gdoc, gdoc.PlayerOnTurn)
 
 	case ipc.GameEvent_TIME_PENALTY,
