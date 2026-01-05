@@ -247,7 +247,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "rank",
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.rank - b.rank,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (rank: number) => {
         // render's third argument is the index after local frontend sorting.
@@ -271,7 +271,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "username",
       sorter: (a: StandingRecord, b: StandingRecord) =>
         a.username.localeCompare(b.username),
-      sortDirections: ['ascend', 'descend'] as SortOrder[],
+      sortDirections: ["ascend", "descend"] as SortOrder[],
       sortIcon: noSortIcon,
       fixed: true,
       render: (
@@ -323,7 +323,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) =>
         a.wins * 2 + a.draws - (b.wins * 2 + b.draws),
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (_: unknown, record: { wins: number; draws: number }) =>
         record.wins * 2 + record.draws,
@@ -334,7 +334,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "wins",
       width: 35,
       sorter: (a: StandingRecord, b: StandingRecord) => a.wins - b.wins,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
     },
     {
@@ -343,7 +343,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "losses",
       width: 35,
       sorter: (a: StandingRecord, b: StandingRecord) => a.losses - b.losses,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
     },
     {
@@ -352,7 +352,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "draws",
       width: 35,
       sorter: (a: StandingRecord, b: StandingRecord) => a.draws - b.draws,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
     },
     {
@@ -361,7 +361,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "spread",
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) => a.spread - b.spread,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (spread: number) => (spread > 0 ? `+${spread}` : spread),
     },
@@ -371,7 +371,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       width: 55,
       sorter: (a: StandingRecord, b: StandingRecord) =>
         a.gamesPlayed - b.gamesPlayed,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -388,7 +388,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.gamesPlayed > 0 ? b.totalScore / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -408,7 +408,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           b.gamesPlayed > 0 ? b.totalOpponentScore / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -424,7 +424,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.gamesPlayed > 0 ? b.totalBingos / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -444,7 +444,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           b.gamesPlayed > 0 ? b.totalOpponentBingos / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -460,7 +460,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.totalTurns > 0 ? b.totalScore / b.totalTurns : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -475,7 +475,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "highGame",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highGame - b.highGame,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -487,7 +487,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "highTurn",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highTurn - b.highTurn,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -503,7 +503,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.gamesPlayed > 0 ? b.totalTilesPlayed / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -526,7 +526,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           b.gamesPlayed > 0 ? b.totalOpponentTilesPlayed / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -544,7 +544,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.gamesPlayed > 0 ? b.totalTurns / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -560,7 +560,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const avgB = b.gamesPlayed > 0 ? b.blanksPlayed / b.gamesPlayed : 0;
         return avgA - avgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -578,7 +578,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
         return ppgA - ppgB;
       },
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (
         _: unknown,
@@ -594,7 +594,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       key: "timeouts",
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => a.timeouts - b.timeouts,
-      sortDirections: ['descend', 'ascend'] as SortOrder[],
+      sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
     },
     {
