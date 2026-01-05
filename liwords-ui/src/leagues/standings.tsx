@@ -325,26 +325,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         record.wins * 2 + record.draws,
     },
     {
-      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
-      key: "ppg",
-      width: 50,
-      sorter: (a: StandingRecord, b: StandingRecord) => {
-        const ppgA =
-          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / a.gamesPlayed : 0;
-        const ppgB =
-          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
-        return ppgA - ppgB;
-      },
-      sortIcon: noSortIcon,
-      render: (
-        _: unknown,
-        record: { wins: number; draws: number; gamesPlayed: number },
-      ) => {
-        const points = record.wins * 2 + record.draws;
-        return formatAvg(points, record.gamesPlayed, 2);
-      },
-    },
-    {
       title: <ColHeader title="W" tooltip="Wins" />,
       dataIndex: "wins",
       key: "wins",
@@ -361,7 +341,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sortIcon: noSortIcon,
     },
     {
-      title: <ColHeader title="D" tooltip="Draws" />,
+      title: <ColHeader title="T" tooltip="Number of tied games" />,
       dataIndex: "draws",
       key: "draws",
       width: 35,
@@ -566,6 +546,26 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { blanksPlayed: number; gamesPlayed: number },
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
+    },
+    {
+      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
+      key: "ppg",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        const ppgA =
+          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / a.gamesPlayed : 0;
+        const ppgB =
+          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
+        return ppgA - ppgB;
+      },
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { wins: number; draws: number; gamesPlayed: number },
+      ) => {
+        const points = record.wins * 2 + record.draws;
+        return formatAvg(points, record.gamesPlayed, 2);
+      },
     },
     {
       title: <ColHeader title="#TO" tooltip="Number of timeouts" />,
