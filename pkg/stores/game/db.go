@@ -1143,6 +1143,12 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 	}
 	// If WinnerIdx is -1 (tie) or game was ABORTED, both remain null
 
+	// Extract league season ID for the new composite index
+	var leagueSeasonID pgtype.UUID
+	if g.SeasonID != nil {
+		leagueSeasonID = pgtype.UUID{Bytes: *g.SeasonID, Valid: true}
+	}
+
 	return s.queries.InsertGamePlayers(ctx, models.InsertGamePlayersParams{
 		GameUuid:          g.GameID(),
 		Player0ID:         int32(g.PlayerDBIDs[0]),
@@ -1155,5 +1161,6 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		CreatedAt:         pgtype.Timestamptz{Time: g.CreatedAt, Valid: true},
 		GameType:          int16(g.Type),
 		OriginalRequestID: originalRequestID,
+		LeagueSeasonID:    leagueSeasonID,
 	})
 }

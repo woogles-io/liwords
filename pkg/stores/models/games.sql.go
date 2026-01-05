@@ -764,7 +764,8 @@ INSERT INTO game_players (
     game_type,
     opponent_id,
     opponent_score,
-    original_request_id
+    original_request_id,
+    league_season_id
 ) VALUES
     -- Player 0
     (
@@ -778,7 +779,8 @@ INSERT INTO game_players (
         $7,
         $8,
         $9,
-        $10
+        $10,
+        $12
     ),
     -- Player 1
     (
@@ -792,7 +794,8 @@ INSERT INTO game_players (
         $7,
         $2,
         $3,
-        $10
+        $10,
+        $12
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING
 `
@@ -809,6 +812,7 @@ type InsertGamePlayersParams struct {
 	Player1Score      int32
 	OriginalRequestID pgtype.Text
 	Player1Won        pgtype.Bool
+	LeagueSeasonID    pgtype.UUID
 }
 
 func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersParams) error {
@@ -824,6 +828,7 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 		arg.Player1Score,
 		arg.OriginalRequestID,
 		arg.Player1Won,
+		arg.LeagueSeasonID,
 	)
 	return err
 }
