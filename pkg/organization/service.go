@@ -251,22 +251,47 @@ func (s *OrganizationService) RefreshTitles(
 			continue
 		}
 
-		// Decrypt credentials if needed
+		// Decrypt credentials if available
 		var credentials map[string]string
-		if integData.EncryptedCredentials != "" {
+		hasCredentials := integData.EncryptedCredentials != ""
+		if hasCredentials {
 			credentials, err = organizations.DecryptCredentials(integData.EncryptedCredentials)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("failed to decrypt credentials for %s", meta.Name))
-				continue
+				log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to decrypt credentials, will try public API")
+				hasCredentials = false
 			}
 		}
 
-		// Fetch title from API
-		titleInfo, err := integration.FetchTitle(integData.MemberID, credentials)
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
-			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from API")
-			continue
+		// Fetch title from API - use authenticated or public method based on credentials
+		var titleInfo *organizations.TitleInfo
+		if hasCredentials {
+			// Use authenticated fetch
+			titleInfo, err = integration.FetchTitle(integData.MemberID, credentials)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
+				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from API")
+				continue
+			}
+		} else {
+			// No credentials - use public API/database where available
+			switch orgCode {
+			case organizations.OrgNASPA:
+				naspaIntegration := integration.(*organizations.NASPAIntegration)
+				titleInfo, err = naspaIntegration.FetchTitleWithoutAuth(integData.MemberID)
+			case organizations.OrgABSP:
+				abspIntegration := integration.(*organizations.ABSPIntegration)
+				titleInfo, err = abspIntegration.FetchTitleWithoutAuth(integData.MemberID)
+			default:
+				// Other orgs with APIs but no public access - skip
+				log.Warn().Str("org", string(orgCode)).Msg("organization requires credentials for refresh but none stored")
+				errors = append(errors, fmt.Sprintf("%s requires credentials for refresh", meta.Name))
+				continue
+			}
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
+				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from public API")
+				continue
+			}
 		}
 
 		// Update integration data with latest from API
