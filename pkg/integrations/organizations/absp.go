@@ -95,7 +95,6 @@ func (a *ABSPIntegration) FetchTitle(memberID string, credentials map[string]str
 			Organization:     OrgABSP,
 			OrganizationName: "ABSP",
 			RawTitle:         "",
-			NormalizedTitle:  TitleNone,
 			MemberID:         memberInfo.MemberID,
 			FullName:         fullName,
 			LastFetched:      &now,
@@ -110,7 +109,6 @@ func (a *ABSPIntegration) FetchTitle(memberID string, credentials map[string]str
 		Organization:     OrgABSP,
 		OrganizationName: "ABSP",
 		RawTitle:         player.Title,
-		NormalizedTitle:  a.NormalizeTitle(player.Title),
 		MemberID:         memberInfo.MemberID,
 		FullName:         fullName,
 		LastFetched:      &now,
@@ -219,21 +217,6 @@ func (a *ABSPIntegration) parseProfilePage(html string) (*ABSPMemberInfo, error)
 	return info, nil
 }
 
-// NormalizeTitle converts an ABSP title to a normalized title
-// ABSP has two titles: GM (Grandmaster) and EXP (Expert)
-func (a *ABSPIntegration) NormalizeTitle(rawTitle string) NormalizedTitle {
-	upper := strings.ToUpper(strings.TrimSpace(rawTitle))
-
-	switch upper {
-	case "GM":
-		return TitleGrandmaster
-	case "EXP":
-		return TitleExpert
-	default:
-		return TitleNone
-	}
-}
-
 // GetOrganizationCode returns the organization code
 func (a *ABSPIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgABSP
@@ -260,7 +243,6 @@ func (a *ABSPIntegration) FetchTitleWithoutAuth(memberID string) (*TitleInfo, er
 		Organization:     OrgABSP,
 		OrganizationName: "ABSP",
 		RawTitle:         player.Title,
-		NormalizedTitle:  a.NormalizeTitle(player.Title),
 		MemberID:         player.MemberID,
 		FullName:         fullName,
 		LastFetched:      &now,

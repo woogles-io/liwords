@@ -25,26 +25,10 @@ func NewWESPAIntegration() *WESPAIntegration {
 	}
 }
 
-// FetchTitle returns an error since WESPA doesn't have titles yet
+// FetchTitle returns an error since WESPA doesn't have an API for titles
+// Titles are manually verified by admins
 func (w *WESPAIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
-	return nil, fmt.Errorf("WESPA does not support title fetching - titles not yet implemented by WESPA")
-}
-
-// NormalizeTitle converts a WESPA title to a normalized title
-func (w *WESPAIntegration) NormalizeTitle(rawTitle string) NormalizedTitle {
-	// WESPA title mapping
-	lower := strings.ToLower(strings.TrimSpace(rawTitle))
-
-	switch {
-	case strings.Contains(lower, "grandmaster") || strings.Contains(lower, "grand master") || lower == "gm":
-		return TitleGrandmaster
-	case strings.Contains(lower, "master"):
-		return TitleMaster
-	case strings.Contains(lower, "expert"):
-		return TitleExpert
-	default:
-		return TitleNone
-	}
+	return nil, fmt.Errorf("WESPA does not support automatic title fetching - titles must be manually verified")
 }
 
 // GetOrganizationCode returns the organization code

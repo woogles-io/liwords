@@ -35,13 +35,13 @@ type NASPAAPIResponse struct {
 	FirstName  string  `json:"firstName"`
 	ID         int     `json:"id"`
 	LastName   string  `json:"lastName"`
-	NASPA      string  `json:"naspa"`       // Member ID
+	NASPA      string  `json:"naspa"`    // Member ID
 	Photo      string  `json:"photo"`
 	RatingCSW  int     `json:"ratingCSW"`
 	RatingOWL  int     `json:"ratingOWL"`
 	State      string  `json:"state"`
 	Suffix     string  `json:"suffix"`
-	Title      string  `json:"title"`       // e.g., "SM", "GM", "M", "E"
+	Title      string  `json:"title"` // e.g., "SM", "GM", "EX"
 	Version    float64 `json:"version"`
 }
 
@@ -84,7 +84,6 @@ func (n *NASPAIntegration) FetchTitle(memberID string, credentials map[string]st
 		Organization:     OrgNASPA,
 		OrganizationName: "NASPA",
 		RawTitle:         playerData.Title,
-		NormalizedTitle:  n.NormalizeTitle(playerData.Title),
 		MemberID:         playerData.NASPA,
 		FullName:         fullName,
 		LastFetched:      &now,
@@ -164,23 +163,6 @@ func (n *NASPAIntegration) fetchPlayerData(memberID string) (*NASPAAPIResponse, 
 	return &apiResp, nil
 }
 
-// NormalizeTitle converts a NASPA title to a normalized title
-// NASPA uses three title codes: GM (Grandmaster), SM (Scrabble Master), EX (Expert)
-func (n *NASPAIntegration) NormalizeTitle(rawTitle string) NormalizedTitle {
-	upper := strings.ToUpper(strings.TrimSpace(rawTitle))
-
-	switch upper {
-	case "GM":
-		return TitleGrandmaster
-	case "SM":
-		return TitleMaster
-	case "EX":
-		return TitleExpert
-	default:
-		return TitleNone
-	}
-}
-
 // GetOrganizationCode returns the organization code
 func (n *NASPAIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgNASPA
@@ -204,7 +186,6 @@ func (n *NASPAIntegration) FetchTitleWithoutAuth(memberID string) (*TitleInfo, e
 		Organization:     OrgNASPA,
 		OrganizationName: "NASPA",
 		RawTitle:         playerData.Title,
-		NormalizedTitle:  n.NormalizeTitle(playerData.Title),
 		MemberID:         playerData.NASPA,
 		FullName:         fullName,
 		LastFetched:      &now,

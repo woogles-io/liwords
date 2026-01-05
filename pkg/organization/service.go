@@ -93,7 +93,6 @@ func (s *OrganizationService) ConnectOrganization(
 		MemberID:           memberID,
 		FullName:           titleInfo.FullName,
 		RawTitle:           titleInfo.RawTitle,
-		NormalizedTitle:    titleInfo.NormalizedTitle,
 		Verified:           true,
 		VerificationMethod: "api",
 		LastFetched:        &now,
@@ -123,7 +122,7 @@ func (s *OrganizationService) ConnectOrganization(
 		return nil, apiserver.InternalErr(err)
 	}
 
-	// Update profile title with highest normalized title
+	// Update profile title with highest title
 	if err := s.updateProfileTitle(ctx, user.UUID); err != nil {
 		log.Error().Err(err).Msg("failed to update profile title")
 	}
@@ -296,7 +295,6 @@ func (s *OrganizationService) RefreshTitles(
 
 		// Update integration data with latest from API
 		integData.RawTitle = titleInfo.RawTitle
-		integData.NormalizedTitle = titleInfo.NormalizedTitle
 		integData.FullName = titleInfo.FullName // Update full name in case it changed
 		now := time.Now()
 		integData.LastFetched = &now
@@ -319,7 +317,7 @@ func (s *OrganizationService) RefreshTitles(
 		titles = append(titles, convertTitleInfoToProto(titleInfo))
 	}
 
-	// Update profile title with highest normalized title
+	// Update profile title with highest title
 	if err := s.updateProfileTitle(ctx, user.UUID); err != nil {
 		log.Error().Err(err).Msg("failed to update profile title")
 	}
@@ -366,13 +364,20 @@ func (s *OrganizationService) GetMyOrganizations(
 			continue
 		}
 
+		// Get display info for the title
+		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
+		abbreviation := ""
+		if display != nil {
+			abbreviation = display.Abbreviation
+		}
+
 		title := &pb.OrganizationTitle{
 			OrganizationCode: string(orgCode),
 			OrganizationName: meta.Name,
 			MemberId:         integData.MemberID,
 			FullName:         integData.FullName,
 			RawTitle:         integData.RawTitle,
-			NormalizedTitle:  string(integData.NormalizedTitle),
+			NormalizedTitle:  abbreviation, // Use abbreviation for display
 			Verified:         integData.Verified,
 		}
 
@@ -427,10 +432,18 @@ func (s *OrganizationService) GetPublicOrganizations(
 			continue
 		}
 
+		// Get display info for the title
+		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
+		abbreviation := ""
+		if display != nil {
+			abbreviation = display.Abbreviation
+		}
+
 		title := &pb.OrganizationTitle{
 			OrganizationCode: string(orgCode),
 			OrganizationName: meta.Name,
-			NormalizedTitle:  string(integData.NormalizedTitle),
+			RawTitle:         integData.RawTitle,
+			NormalizedTitle:  abbreviation, // Use abbreviation for display
 			Verified:         integData.Verified,
 		}
 
@@ -438,7 +451,6 @@ func (s *OrganizationService) GetPublicOrganizations(
 		if isAdmin {
 			title.MemberId = integData.MemberID
 			title.FullName = integData.FullName
-			title.RawTitle = integData.RawTitle
 			if integData.LastFetched != nil {
 				title.LastFetched = timestamppb.New(*integData.LastFetched)
 			}
@@ -758,7 +770,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	// Fetch name and title from organization
 	var fullName string
 	var rawTitle string
-	var normalizedTitle organizations.NormalizedTitle
 	var encryptedCredentials string
 
 	// Check if credentials were provided
@@ -773,7 +784,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		}
 		fullName = titleInfo.FullName
 		rawTitle = titleInfo.RawTitle
-		normalizedTitle = titleInfo.NormalizedTitle
 
 		// Encrypt credentials for storage (for future title refreshes)
 		if meta.RequiresAuth {
@@ -794,7 +804,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			}
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
-			normalizedTitle = titleInfo.NormalizedTitle
 
 		case organizations.OrgABSP:
 			// ABSP has a public database that can be used without authentication
@@ -805,7 +814,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			}
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
-			normalizedTitle = titleInfo.NormalizedTitle
 
 		default:
 			// For other orgs (like WESPA), use GetRealName for HTML scraping
@@ -822,7 +830,6 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		MemberID:             req.Msg.MemberId,
 		FullName:             fullName,
 		RawTitle:             rawTitle,
-		NormalizedTitle:      normalizedTitle,
 		EncryptedCredentials: encryptedCredentials,
 		Verified:             true,
 		VerificationMethod:   "admin",
@@ -857,7 +864,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 		Str("org", req.Msg.OrganizationCode).
 		Str("member_id", req.Msg.MemberId).
 		Str("full_name", fullName).
-		Str("title", string(normalizedTitle)).
+		Str("title", rawTitle).
 		Msg("organization membership manually set")
 
 	return connect.NewResponse(&pb.ManuallySetOrgMembershipResponse{
@@ -897,35 +904,52 @@ func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID s
 		return err
 	}
 
-	var titles []organizations.NormalizedTitle
+	var titleInfos []organizations.TitleInfo
 
 	for _, integ := range integrations {
+		orgCode := organizations.OrganizationCode(integ.IntegrationName)
 		var integData organizations.OrganizationIntegrationData
 		if err := integData.FromJSON(integ.Data); err != nil {
 			continue
 		}
-		if integData.Verified {
-			titles = append(titles, integData.NormalizedTitle)
+		if integData.Verified && integData.RawTitle != "" {
+			titleInfos = append(titleInfos, organizations.TitleInfo{
+				Organization: orgCode,
+				RawTitle:     integData.RawTitle,
+			})
 		}
 	}
 
-	highestTitle := organizations.GetHighestTitle(titles)
+	// Get highest title display info
+	highestDisplay := organizations.GetHighestTitleDisplay(titleInfos)
 
-	// Update profile
+	// Update profile with abbreviation
+	abbreviation := ""
+	if highestDisplay != nil {
+		abbreviation = highestDisplay.Abbreviation
+	}
+
 	return s.queries.UpdateProfileTitle(ctx, models.UpdateProfileTitleParams{
 		UserUuid: pgtype.Text{String: userUUID, Valid: true},
-		Title:    pgtype.Text{String: string(highestTitle), Valid: highestTitle != ""},
+		Title:    pgtype.Text{String: abbreviation, Valid: abbreviation != ""},
 	})
 }
 
 func convertTitleInfoToProto(info *organizations.TitleInfo) *pb.OrganizationTitle {
+	// Get display info for the title
+	display := organizations.GetTitleDisplay(info.Organization, info.RawTitle)
+	abbreviation := ""
+	if display != nil {
+		abbreviation = display.Abbreviation
+	}
+
 	title := &pb.OrganizationTitle{
 		OrganizationCode: string(info.Organization),
 		OrganizationName: info.OrganizationName,
 		MemberId:         info.MemberID,
 		FullName:         info.FullName,
 		RawTitle:         info.RawTitle,
-		NormalizedTitle:  string(info.NormalizedTitle),
+		NormalizedTitle:  abbreviation, // Use abbreviation for display
 		Verified:         true,
 	}
 
