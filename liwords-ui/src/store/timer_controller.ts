@@ -128,7 +128,7 @@ export const millisToTimeStr = (
           ? daysFullStr.slice(0, daysDecimalPlaces - minimumPrecision)
           : daysFullStr;
     return `${neg ? "-" : ""}${daysStr} ${
-      /^1(?:\.0+)$/.test(daysStr) ? "day" : "days"
+      /^1(?:\.0+)?$/.test(daysStr) ? "day" : "days"
     }`;
   }
 
