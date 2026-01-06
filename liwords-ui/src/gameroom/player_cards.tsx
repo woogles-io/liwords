@@ -133,7 +133,6 @@ const PlayerCard = React.memo((props: CardProps) => {
           <div className="player-details">
             <DisplayUserFlag uuid={props.player.userID} />
             {meta?.rating || "Unrated"}
-            {nickname !== shownName && <> • {nickname}</>}
             {props.hideProfileLink ? null : (
               <>
                 {" "}
@@ -142,7 +141,7 @@ const PlayerCard = React.memo((props: CardProps) => {
                   target="_blank"
                   to={`/profile/${encodeURIComponent(nickname)}`}
                 >
-                  View profile
+                  {nickname === shownName ? "View profile" : nickname}
                 </Link>
               </>
             )}
