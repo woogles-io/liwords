@@ -133,6 +133,7 @@ const PlayerCard = React.memo((props: CardProps) => {
           <div className="player-details">
             <DisplayUserFlag uuid={props.player.userID} />
             {meta?.rating || "Unrated"}
+            {nickname !== shownName && <> • {nickname}</>}
             {props.hideProfileLink ? null : (
               <>
                 {" "}
