@@ -144,16 +144,18 @@ func (q *Queries) GetUsersWithExpiredTitles(ctx context.Context) ([]GetUsersWith
 
 const updateProfileTitle = `-- name: UpdateProfileTitle :exec
 UPDATE profiles
-SET title = $1
-WHERE user_id = (SELECT id FROM users WHERE uuid = $2)
+SET title = $1,
+    title_organization = $2
+WHERE user_id = (SELECT id FROM users WHERE uuid = $3)
 `
 
 type UpdateProfileTitleParams struct {
-	Title    pgtype.Text
-	UserUuid pgtype.Text
+	Title             pgtype.Text
+	TitleOrganization pgtype.Text
+	UserUuid          pgtype.Text
 }
 
 func (q *Queries) UpdateProfileTitle(ctx context.Context, arg UpdateProfileTitleParams) error {
-	_, err := q.db.Exec(ctx, updateProfileTitle, arg.Title, arg.UserUuid)
+	_, err := q.db.Exec(ctx, updateProfileTitle, arg.Title, arg.TitleOrganization, arg.UserUuid)
 	return err
 }

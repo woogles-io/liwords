@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/integrations/organizations"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 
@@ -415,13 +416,24 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 				censoredFullName = profiles[pi].LastName.String
 			}
 		}
+		// Derive title abbreviation from organization + full name
+		titleAbbreviation := ""
+		if profiles[pi].Title.Valid && profiles[pi].TitleOrganization.Valid {
+			titleAbbreviation = organizations.GetTitleAbbreviation(
+				organizations.OrganizationCode(profiles[pi].TitleOrganization.String),
+				profiles[pi].Title.String,
+			)
+		}
+
 		response[profiles[pi].Uuid.String] = &pb.BriefProfile{
-			Username:    username,
-			CountryCode: profiles[pi].CountryCode.String,
-			AvatarUrl:   censoredAvatarUrl,
-			FullName:    censoredFullName,
-			BadgeCodes:  profiles[pi].BadgeCodes,
-			Title:       profiles[pi].Title.String,
+			Username:              username,
+			CountryCode:           profiles[pi].CountryCode.String,
+			AvatarUrl:             censoredAvatarUrl,
+			FullName:              censoredFullName,
+			BadgeCodes:            profiles[pi].BadgeCodes,
+			Title:                 profiles[pi].Title.String,
+			TitleOrganizationCode: profiles[pi].TitleOrganization.String,
+			TitleAbbreviation:     titleAbbreviation,
 		}
 	}
 

@@ -40,6 +40,14 @@ func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (st
 		return "", fmt.Errorf("file size is too big; avatar must be a square JPG < %dKB", MaxFilesize/1024)
 	}
 
+	if s.s3Client == nil {
+		return "", fmt.Errorf("S3 client not initialized")
+	}
+
+	if s.bucket == "" {
+		return "", fmt.Errorf("S3 bucket not configured")
+	}
+
 	uploader := manager.NewUploader(s.s3Client)
 
 	// create a unique id
@@ -68,6 +76,14 @@ func (s *S3Uploader) UploadVerificationImage(ctx context.Context, prefix string,
 	const maxVerificationImageSize = 4 * 1024 * 1024 // 4MB
 	if len(data) > maxVerificationImageSize {
 		return "", fmt.Errorf("image must be smaller than 4MB. Please compress or resize your image")
+	}
+
+	if s.s3Client == nil {
+		return "", fmt.Errorf("S3 client not initialized")
+	}
+
+	if s.bucket == "" {
+		return "", fmt.Errorf("S3 bucket not configured")
 	}
 
 	uploader := manager.NewUploader(s.s3Client)

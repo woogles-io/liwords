@@ -124,10 +124,11 @@ message OrganizationTitle {
   string organization_name = 2;
   string member_id = 3;
   string full_name = 4;
-  string raw_title = 5;
-  string normalized_title = 6;
+  string raw_title = 5; // Organization's title string (e.g., "GM", "SM", "EX")
+  string normalized_title = 6; // Deprecated: same as raw_title
   google.protobuf.Timestamp last_fetched = 7;
   bool verified = 8;
+  string title_full_name = 9; // Human-readable title name (e.g., "Grandmaster", "NASPA Master")
 }
 
 message ProfileRequest { string username = 1; }
@@ -192,7 +193,9 @@ message BriefProfile {
   string country_code = 3;
   string avatar_url = 9;
   repeated string badge_codes = 13;
-  string title = 14; // Highest normalized title
+  string title = 14; // Highest title full name (e.g., "Grandmaster")
+  string title_organization_code = 15; // Organization that granted the highest title (e.g., "wespa", "naspa")
+  string title_abbreviation = 16; // Raw title abbreviation (e.g., "GM", "SM", "EX")
 }
 
 message BriefProfilesResponse { map<string, BriefProfile> response = 1; }
@@ -523,6 +526,15 @@ message ManuallySetOrgMembershipResponse {
   string message = 2;
 }
 
+message AdminRefreshUserTitlesRequest {
+  string username = 1; // Username of the user whose titles to refresh
+}
+
+message AdminRefreshUserTitlesResponse {
+  repeated OrganizationTitle titles = 1;
+  string message = 2;
+}
+
 service OrganizationService {
   // User endpoints
   rpc ConnectOrganization(ConnectOrganizationRequest)
@@ -556,4 +568,6 @@ service OrganizationService {
       returns (RejectVerificationResponse);
   rpc ManuallySetOrgMembership(ManuallySetOrgMembershipRequest)
       returns (ManuallySetOrgMembershipResponse);
+  rpc AdminRefreshUserTitles(AdminRefreshUserTitlesRequest)
+      returns (AdminRefreshUserTitlesResponse);
 }

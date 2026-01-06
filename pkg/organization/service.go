@@ -216,110 +216,9 @@ func (s *OrganizationService) RefreshTitles(
 		return nil, err
 	}
 
-	// Get all organization integrations for the user
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: user.UUID, Valid: true})
+	titles, errors, err := s.refreshTitlesForUser(ctx, user.UUID)
 	if err != nil {
-		return nil, apiserver.InternalErr(err)
-	}
-
-	var titles []*pb.OrganizationTitle
-	var errors []string
-
-	for _, integ := range integrations {
-		orgCode := organizations.OrganizationCode(integ.IntegrationName)
-		meta, err := organizations.GetOrganizationMetadata(orgCode)
-		if err != nil {
-			continue
-		}
-
-		// Skip organizations without APIs
-		if !meta.HasAPI {
-			continue
-		}
-
-		// Parse existing data
-		var integData organizations.OrganizationIntegrationData
-		if err := integData.FromJSON(integ.Data); err != nil {
-			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to parse integration data")
-			continue
-		}
-
-		// Get integration service
-		integration, err := organizations.GetIntegration(orgCode)
-		if err != nil {
-			continue
-		}
-
-		// Decrypt credentials if available
-		var credentials map[string]string
-		hasCredentials := integData.EncryptedCredentials != ""
-		if hasCredentials {
-			credentials, err = organizations.DecryptCredentials(integData.EncryptedCredentials)
-			if err != nil {
-				log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to decrypt credentials, will try public API")
-				hasCredentials = false
-			}
-		}
-
-		// Fetch title from API - use authenticated or public method based on credentials
-		var titleInfo *organizations.TitleInfo
-		if hasCredentials {
-			// Use authenticated fetch
-			titleInfo, err = integration.FetchTitle(integData.MemberID, credentials)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
-				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from API")
-				continue
-			}
-		} else {
-			// No credentials - use public API/database where available
-			switch orgCode {
-			case organizations.OrgNASPA:
-				naspaIntegration := integration.(*organizations.NASPAIntegration)
-				titleInfo, err = naspaIntegration.FetchTitleWithoutAuth(integData.MemberID)
-			case organizations.OrgABSP:
-				abspIntegration := integration.(*organizations.ABSPIntegration)
-				titleInfo, err = abspIntegration.FetchTitleWithoutAuth(integData.MemberID)
-			default:
-				// Other orgs with APIs but no public access - skip
-				log.Warn().Str("org", string(orgCode)).Msg("organization requires credentials for refresh but none stored")
-				errors = append(errors, fmt.Sprintf("%s requires credentials for refresh", meta.Name))
-				continue
-			}
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
-				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from public API")
-				continue
-			}
-		}
-
-		// Update integration data with latest from API
-		integData.RawTitle = titleInfo.RawTitle
-		integData.FullName = titleInfo.FullName // Update full name in case it changed
-		now := time.Now()
-		integData.LastFetched = &now
-
-		dataJSON, err := integData.ToJSON()
-		if err != nil {
-			continue
-		}
-
-		// Update in database
-		err = s.queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
-			Uuid: integ.Uuid,
-			Data: dataJSON,
-		})
-		if err != nil {
-			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to update integration data")
-			continue
-		}
-
-		titles = append(titles, convertTitleInfoToProto(titleInfo))
-	}
-
-	// Update profile title with highest title
-	if err := s.updateProfileTitle(ctx, user.UUID); err != nil {
-		log.Error().Err(err).Msg("failed to update profile title")
+		return nil, err
 	}
 
 	message := "Titles refreshed successfully"
@@ -367,8 +266,10 @@ func (s *OrganizationService) GetMyOrganizations(
 		// Get display info for the title
 		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
 		abbreviation := ""
+		titleFullName := ""
 		if display != nil {
 			abbreviation = display.Abbreviation
+			titleFullName = display.FullName
 		}
 
 		title := &pb.OrganizationTitle{
@@ -377,7 +278,8 @@ func (s *OrganizationService) GetMyOrganizations(
 			MemberId:         integData.MemberID,
 			FullName:         integData.FullName,
 			RawTitle:         integData.RawTitle,
-			NormalizedTitle:  abbreviation, // Use abbreviation for display
+			NormalizedTitle:  abbreviation, // Deprecated: use raw_title instead
+			TitleFullName:    titleFullName,
 			Verified:         integData.Verified,
 		}
 
@@ -435,15 +337,18 @@ func (s *OrganizationService) GetPublicOrganizations(
 		// Get display info for the title
 		display := organizations.GetTitleDisplay(orgCode, integData.RawTitle)
 		abbreviation := ""
+		titleFullName := ""
 		if display != nil {
 			abbreviation = display.Abbreviation
+			titleFullName = display.FullName
 		}
 
 		title := &pb.OrganizationTitle{
 			OrganizationCode: string(orgCode),
 			OrganizationName: meta.Name,
 			RawTitle:         integData.RawTitle,
-			NormalizedTitle:  abbreviation, // Use abbreviation for display
+			NormalizedTitle:  abbreviation, // Deprecated: use raw_title instead
+			TitleFullName:    titleFullName,
 			Verified:         integData.Verified,
 		}
 
@@ -631,21 +536,38 @@ func (s *OrganizationService) ApproveVerification(
 		return nil, apiserver.InternalErr(err)
 	}
 
-	// Fetch real name from organization if possible
+	// Fetch name and title from organization if possible
 	fullName := verReq.FullName // Default to submitted name
+	rawTitle := ""
 	orgCode := organizations.OrganizationCode(verReq.IntegrationName)
 	integration, err := organizations.GetIntegration(orgCode)
 	if err == nil {
-		// Try to fetch real name from organization (e.g., WESPA HTML scraping)
-		if fetchedName, err := integration.GetRealName(verReq.MemberID, nil); err == nil {
-			fullName = fetchedName
-			log.Info().
-				Str("submitted_name", verReq.FullName).
-				Str("fetched_name", fetchedName).
-				Str("org", string(orgCode)).
-				Msg("fetched real name from organization")
+		// For WESPA, use FetchTitle to get both name and title from titlists
+		if orgCode == organizations.OrgWESPA {
+			if titleInfo, err := integration.FetchTitle(verReq.MemberID, nil); err == nil {
+				fullName = titleInfo.FullName
+				rawTitle = titleInfo.RawTitle
+				log.Info().
+					Str("submitted_name", verReq.FullName).
+					Str("fetched_name", fullName).
+					Str("fetched_title", rawTitle).
+					Str("org", string(orgCode)).
+					Msg("fetched name and title from organization")
+			} else {
+				log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to fetch name and title from organization, using submitted name")
+			}
 		} else {
-			log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to fetch real name from organization, using submitted name")
+			// For other orgs, just fetch the real name
+			if fetchedName, err := integration.GetRealName(verReq.MemberID, nil); err == nil {
+				fullName = fetchedName
+				log.Info().
+					Str("submitted_name", verReq.FullName).
+					Str("fetched_name", fetchedName).
+					Str("org", string(orgCode)).
+					Msg("fetched real name from organization")
+			} else {
+				log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to fetch real name from organization, using submitted name")
+			}
 		}
 	}
 
@@ -654,6 +576,7 @@ func (s *OrganizationService) ApproveVerification(
 	integrationData := organizations.OrganizationIntegrationData{
 		MemberID:           verReq.MemberID,
 		FullName:           fullName,
+		RawTitle:           rawTitle,
 		Verified:           true,
 		VerificationMethod: "manual",
 		VerifiedAt:         &now,
@@ -815,8 +738,17 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			fullName = titleInfo.FullName
 			rawTitle = titleInfo.RawTitle
 
+		case organizations.OrgWESPA:
+			// WESPA uses titlists with HTML scraping (no auth required)
+			titleInfo, err := integration.FetchTitle(req.Msg.MemberId, nil)
+			if err != nil {
+				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from WESPA: %v", err))
+			}
+			fullName = titleInfo.FullName
+			rawTitle = titleInfo.RawTitle
+
 		default:
-			// For other orgs (like WESPA), use GetRealName for HTML scraping
+			// For other orgs, use GetRealName
 			fullName, err = integration.GetRealName(req.Msg.MemberId, nil)
 			if err != nil {
 				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch name from %s: %v", meta.Name, err))
@@ -873,7 +805,170 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	}), nil
 }
 
+// AdminRefreshUserTitles refreshes titles for a specific user (admin only)
+func (s *OrganizationService) AdminRefreshUserTitles(
+	ctx context.Context,
+	req *connect.Request[pb.AdminRefreshUserTitlesRequest],
+) (*connect.Response[pb.AdminRefreshUserTitlesResponse], error) {
+	admin, err := apiserver.AuthUser(ctx, s.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check permission
+	hasPermission, err := rbac.HasPermission(ctx, s.queries, admin.ID, rbac.CanVerifyUserIdentities)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	if !hasPermission {
+		return nil, apiserver.PermissionDenied("you do not have permission to refresh user titles")
+	}
+
+	// Get the target user by username
+	targetUser, err := s.userStore.Get(ctx, req.Msg.Username)
+	if err != nil {
+		return nil, apiserver.InvalidArg("user not found")
+	}
+
+	titles, errors, err := s.refreshTitlesForUser(ctx, targetUser.UUID)
+	if err != nil {
+		return nil, err
+	}
+
+	message := fmt.Sprintf("Titles refreshed successfully for %s", req.Msg.Username)
+	if len(errors) > 0 {
+		message = fmt.Sprintf("Titles partially refreshed for %s. Errors: %v", req.Msg.Username, errors)
+	}
+
+	log.Info().
+		Str("admin", admin.UUID).
+		Str("target_user", targetUser.UUID).
+		Int("count", len(titles)).
+		Msg("admin refreshed user titles")
+
+	return connect.NewResponse(&pb.AdminRefreshUserTitlesResponse{
+		Titles:  titles,
+		Message: message,
+	}), nil
+}
+
 // Helper functions
+
+// refreshTitlesForUser refreshes all organization titles for a specific user
+func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID string) ([]*pb.OrganizationTitle, []string, error) {
+	// Get all organization integrations for the user
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: userUUID, Valid: true})
+	if err != nil {
+		return nil, nil, apiserver.InternalErr(err)
+	}
+
+	var titles []*pb.OrganizationTitle
+	var errors []string
+
+	for _, integ := range integrations {
+		orgCode := organizations.OrganizationCode(integ.IntegrationName)
+		meta, err := organizations.GetOrganizationMetadata(orgCode)
+		if err != nil {
+			continue
+		}
+
+		// Skip organizations without APIs
+		if !meta.HasAPI {
+			continue
+		}
+
+		// Parse existing data
+		var integData organizations.OrganizationIntegrationData
+		if err := integData.FromJSON(integ.Data); err != nil {
+			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to parse integration data")
+			continue
+		}
+
+		// Get integration service
+		integration, err := organizations.GetIntegration(orgCode)
+		if err != nil {
+			continue
+		}
+
+		// Decrypt credentials if available
+		var credentials map[string]string
+		hasCredentials := integData.EncryptedCredentials != ""
+		if hasCredentials {
+			credentials, err = organizations.DecryptCredentials(integData.EncryptedCredentials)
+			if err != nil {
+				log.Warn().Err(err).Str("org", string(orgCode)).Msg("failed to decrypt credentials, will try public API")
+				hasCredentials = false
+			}
+		}
+
+		// Fetch title from API - use authenticated or public method based on credentials
+		var titleInfo *organizations.TitleInfo
+		if hasCredentials {
+			// Use authenticated fetch
+			titleInfo, err = integration.FetchTitle(integData.MemberID, credentials)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
+				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from API")
+				continue
+			}
+		} else {
+			// No credentials - use public API/database where available
+			switch orgCode {
+			case organizations.OrgNASPA:
+				naspaIntegration := integration.(*organizations.NASPAIntegration)
+				titleInfo, err = naspaIntegration.FetchTitleWithoutAuth(integData.MemberID)
+			case organizations.OrgABSP:
+				abspIntegration := integration.(*organizations.ABSPIntegration)
+				titleInfo, err = abspIntegration.FetchTitleWithoutAuth(integData.MemberID)
+			case organizations.OrgWESPA:
+				// WESPA uses titlists with HTML scraping (no auth required)
+				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
+			default:
+				// Other orgs with APIs but no public access - skip
+				log.Warn().Str("org", string(orgCode)).Msg("organization requires credentials for refresh but none stored")
+				errors = append(errors, fmt.Sprintf("%s requires credentials for refresh", meta.Name))
+				continue
+			}
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to fetch title from %s", meta.Name))
+				log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to fetch title from public API")
+				continue
+			}
+		}
+
+		// Update integration data with latest from API
+		integData.RawTitle = titleInfo.RawTitle
+		integData.FullName = titleInfo.FullName // Update full name in case it changed
+		now := time.Now()
+		integData.LastFetched = &now
+
+		dataJSON, err := integData.ToJSON()
+		if err != nil {
+			continue
+		}
+
+		// Update in database
+		err = s.queries.UpdateIntegrationData(ctx, models.UpdateIntegrationDataParams{
+			Uuid: integ.Uuid,
+			Data: dataJSON,
+		})
+		if err != nil {
+			log.Error().Err(err).Str("org", string(orgCode)).Msg("failed to update integration data")
+			continue
+		}
+
+		titles = append(titles, convertTitleInfoToProto(titleInfo))
+	}
+
+	// Update profile title with highest title
+	if err := s.updateProfileTitle(ctx, userUUID); err != nil {
+		log.Error().Err(err).Msg("failed to update profile title")
+	}
+
+	return titles, errors, nil
+}
+
 
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
@@ -920,18 +1015,24 @@ func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID s
 		}
 	}
 
-	// Get highest title display info
-	highestDisplay := organizations.GetHighestTitleDisplay(titleInfos)
+	// Get highest title info (includes organization)
+	highestTitleInfo := organizations.GetHighestTitleFromInfos(titleInfos)
 
-	// Update profile with abbreviation
-	abbreviation := ""
-	if highestDisplay != nil {
-		abbreviation = highestDisplay.Abbreviation
+	// Update profile with full name and organization
+	fullName := ""
+	orgCode := ""
+	if highestTitleInfo != nil {
+		display := organizations.GetTitleDisplay(highestTitleInfo.Organization, highestTitleInfo.RawTitle)
+		if display != nil {
+			fullName = display.FullName
+			orgCode = string(highestTitleInfo.Organization)
+		}
 	}
 
 	return s.queries.UpdateProfileTitle(ctx, models.UpdateProfileTitleParams{
-		UserUuid: pgtype.Text{String: userUUID, Valid: true},
-		Title:    pgtype.Text{String: abbreviation, Valid: abbreviation != ""},
+		UserUuid:          pgtype.Text{String: userUUID, Valid: true},
+		Title:             pgtype.Text{String: fullName, Valid: fullName != ""},
+		TitleOrganization: pgtype.Text{String: orgCode, Valid: orgCode != ""},
 	})
 }
 
@@ -939,8 +1040,10 @@ func convertTitleInfoToProto(info *organizations.TitleInfo) *pb.OrganizationTitl
 	// Get display info for the title
 	display := organizations.GetTitleDisplay(info.Organization, info.RawTitle)
 	abbreviation := ""
+	titleFullName := ""
 	if display != nil {
 		abbreviation = display.Abbreviation
+		titleFullName = display.FullName
 	}
 
 	title := &pb.OrganizationTitle{
@@ -949,7 +1052,8 @@ func convertTitleInfoToProto(info *organizations.TitleInfo) *pb.OrganizationTitl
 		MemberId:         info.MemberID,
 		FullName:         info.FullName,
 		RawTitle:         info.RawTitle,
-		NormalizedTitle:  abbreviation, // Use abbreviation for display
+		NormalizedTitle:  abbreviation, // Deprecated: use raw_title instead
+		TitleFullName:    titleFullName,
 		Verified:         true,
 	}
 

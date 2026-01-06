@@ -258,20 +258,21 @@ type Permission struct {
 }
 
 type Profile struct {
-	ID          int32
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	DeletedAt   pgtype.Timestamptz
-	UserID      pgtype.Int4
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	CountryCode pgtype.Text
-	Title       pgtype.Text
-	About       pgtype.Text
-	Ratings     []byte
-	Stats       []byte
-	AvatarUrl   pgtype.Text
-	BirthDate   pgtype.Text
+	ID                int32
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	DeletedAt         pgtype.Timestamptz
+	UserID            pgtype.Int4
+	FirstName         pgtype.Text
+	LastName          pgtype.Text
+	CountryCode       pgtype.Text
+	Title             pgtype.Text
+	About             pgtype.Text
+	Ratings           []byte
+	Stats             []byte
+	AvatarUrl         pgtype.Text
+	BirthDate         pgtype.Text
+	TitleOrganization pgtype.Text
 }
 
 type Puzzle struct {

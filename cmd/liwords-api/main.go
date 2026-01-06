@@ -229,9 +229,31 @@ func main() {
 
 	// s3 config
 
-	awscfg, err := awsconfig.LoadDefaultConfig(
-		context.Background(), awsconfig.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(utilities.CustomResolver)))
+	var configOpts []func(*awsconfig.LoadOptions) error
+	if os.Getenv("USE_MINIO_S3") == "1" {
+		// Force a region for MinIO
+		configOpts = append(configOpts, awsconfig.WithRegion("us-east-1"))
+
+		// Explicitly provide credentials for MinIO
+		accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+		secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+		if accessKey != "" && secretKey != "" {
+			configOpts = append(configOpts, awsconfig.WithCredentialsProvider(
+				aws.NewCredentialsCache(
+					aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+						return aws.Credentials{
+							AccessKeyID:     accessKey,
+							SecretAccessKey: secretKey,
+							Source:          "Environment",
+						}, nil
+					}),
+				),
+			))
+		}
+	}
+
+	awscfg, err := awsconfig.LoadDefaultConfig(context.Background(), configOpts...)
 	if err != nil {
 		panic(err)
 	}

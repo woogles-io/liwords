@@ -18,6 +18,7 @@ import {
   UserAddOutlined,
   DeleteOutlined,
   QuestionCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
@@ -25,6 +26,7 @@ import {
   ManuallySetOrgMembershipRequestSchema,
   GetPublicOrganizationsRequestSchema,
   DisconnectOrganizationRequestSchema,
+  AdminRefreshUserTitlesRequestSchema,
   OrganizationTitle,
   AutocompleteService,
 } from "../gen/api/proto/user_service/user_service_pb";
@@ -46,16 +48,16 @@ const organizationInfo = {
       <span>
         Visit{" "}
         <a
-          href="https://wespa.org/ratings.shtml"
+          href="https://legacy.wespa.org/ratings.shtml"
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#1890ff" }}
         >
-          wespa.org/ratings.shtml
+          legacy.wespa.org/ratings.shtml
         </a>
         , scroll down to "Find a player", enter the name, and click Submit. The
         player ID is the number in the URL (e.g., <strong>2145</strong> from
-        wespa.org/aardvark/html/players/2145.html).
+        legacy.wespa.org/aardvark/html/players/2145.html).
       </span>
     ),
   },
@@ -227,6 +229,26 @@ export const ManualOrgAssignment = () => {
     }
   };
 
+  const handleRefreshTitles = async () => {
+    if (!currentUser) return;
+
+    setLoading(true);
+    try {
+      const response = await orgClient.adminRefreshUserTitles(
+        create(AdminRefreshUserTitlesRequestSchema, {
+          username: currentUser,
+        }),
+      );
+      message.success(response.message);
+      // Refresh the organizations list to show updated titles
+      handleSearch();
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     {
       title: "Organization",
@@ -318,6 +340,17 @@ export const ManualOrgAssignment = () => {
           <Card
             title={`Current Memberships for ${currentUser}`}
             style={{ marginBottom: 20 }}
+            extra={
+              <Button
+                type="default"
+                icon={<ReloadOutlined />}
+                onClick={handleRefreshTitles}
+                loading={loading}
+                disabled={organizations.length === 0}
+              >
+                Refresh Titles
+              </Button>
+            }
           >
             {organizations.length > 0 ? (
               <Table
@@ -435,10 +468,7 @@ export const ManualOrgAssignment = () => {
                               }
                             />
                           </Form.Item>
-                          <Form.Item
-                            label="Password"
-                            name="password"
-                          >
+                          <Form.Item label="Password" name="password">
                             <Input.Password />
                           </Form.Item>
                         </>

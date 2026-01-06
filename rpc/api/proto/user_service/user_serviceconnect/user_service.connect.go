@@ -218,6 +218,9 @@ const (
 	// OrganizationServiceManuallySetOrgMembershipProcedure is the fully-qualified name of the
 	// OrganizationService's ManuallySetOrgMembership RPC.
 	OrganizationServiceManuallySetOrgMembershipProcedure = "/user_service.OrganizationService/ManuallySetOrgMembership"
+	// OrganizationServiceAdminRefreshUserTitlesProcedure is the fully-qualified name of the
+	// OrganizationService's AdminRefreshUserTitles RPC.
+	OrganizationServiceAdminRefreshUserTitlesProcedure = "/user_service.OrganizationService/AdminRefreshUserTitles"
 )
 
 // AuthenticationServiceClient is a client for the user_service.AuthenticationService service.
@@ -1763,6 +1766,7 @@ type OrganizationServiceClient interface {
 	ApproveVerification(context.Context, *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error)
 	RejectVerification(context.Context, *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error)
 	ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error)
+	AdminRefreshUserTitles(context.Context, *connect.Request[user_service.AdminRefreshUserTitlesRequest]) (*connect.Response[user_service.AdminRefreshUserTitlesResponse], error)
 }
 
 // NewOrganizationServiceClient constructs a client for the user_service.OrganizationService
@@ -1846,6 +1850,12 @@ func NewOrganizationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(organizationServiceMethods.ByName("ManuallySetOrgMembership")),
 			connect.WithClientOptions(opts...),
 		),
+		adminRefreshUserTitles: connect.NewClient[user_service.AdminRefreshUserTitlesRequest, user_service.AdminRefreshUserTitlesResponse](
+			httpClient,
+			baseURL+OrganizationServiceAdminRefreshUserTitlesProcedure,
+			connect.WithSchema(organizationServiceMethods.ByName("AdminRefreshUserTitles")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1862,6 +1872,7 @@ type organizationServiceClient struct {
 	approveVerification      *connect.Client[user_service.ApproveVerificationRequest, user_service.ApproveVerificationResponse]
 	rejectVerification       *connect.Client[user_service.RejectVerificationRequest, user_service.RejectVerificationResponse]
 	manuallySetOrgMembership *connect.Client[user_service.ManuallySetOrgMembershipRequest, user_service.ManuallySetOrgMembershipResponse]
+	adminRefreshUserTitles   *connect.Client[user_service.AdminRefreshUserTitlesRequest, user_service.AdminRefreshUserTitlesResponse]
 }
 
 // ConnectOrganization calls user_service.OrganizationService.ConnectOrganization.
@@ -1919,6 +1930,11 @@ func (c *organizationServiceClient) ManuallySetOrgMembership(ctx context.Context
 	return c.manuallySetOrgMembership.CallUnary(ctx, req)
 }
 
+// AdminRefreshUserTitles calls user_service.OrganizationService.AdminRefreshUserTitles.
+func (c *organizationServiceClient) AdminRefreshUserTitles(ctx context.Context, req *connect.Request[user_service.AdminRefreshUserTitlesRequest]) (*connect.Response[user_service.AdminRefreshUserTitlesResponse], error) {
+	return c.adminRefreshUserTitles.CallUnary(ctx, req)
+}
+
 // OrganizationServiceHandler is an implementation of the user_service.OrganizationService service.
 type OrganizationServiceHandler interface {
 	// User endpoints
@@ -1934,6 +1950,7 @@ type OrganizationServiceHandler interface {
 	ApproveVerification(context.Context, *connect.Request[user_service.ApproveVerificationRequest]) (*connect.Response[user_service.ApproveVerificationResponse], error)
 	RejectVerification(context.Context, *connect.Request[user_service.RejectVerificationRequest]) (*connect.Response[user_service.RejectVerificationResponse], error)
 	ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error)
+	AdminRefreshUserTitles(context.Context, *connect.Request[user_service.AdminRefreshUserTitlesRequest]) (*connect.Response[user_service.AdminRefreshUserTitlesResponse], error)
 }
 
 // NewOrganizationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -2013,6 +2030,12 @@ func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...conne
 		connect.WithSchema(organizationServiceMethods.ByName("ManuallySetOrgMembership")),
 		connect.WithHandlerOptions(opts...),
 	)
+	organizationServiceAdminRefreshUserTitlesHandler := connect.NewUnaryHandler(
+		OrganizationServiceAdminRefreshUserTitlesProcedure,
+		svc.AdminRefreshUserTitles,
+		connect.WithSchema(organizationServiceMethods.ByName("AdminRefreshUserTitles")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_service.OrganizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrganizationServiceConnectOrganizationProcedure:
@@ -2037,6 +2060,8 @@ func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...conne
 			organizationServiceRejectVerificationHandler.ServeHTTP(w, r)
 		case OrganizationServiceManuallySetOrgMembershipProcedure:
 			organizationServiceManuallySetOrgMembershipHandler.ServeHTTP(w, r)
+		case OrganizationServiceAdminRefreshUserTitlesProcedure:
+			organizationServiceAdminRefreshUserTitlesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2088,4 +2113,8 @@ func (UnimplementedOrganizationServiceHandler) RejectVerification(context.Contex
 
 func (UnimplementedOrganizationServiceHandler) ManuallySetOrgMembership(context.Context, *connect.Request[user_service.ManuallySetOrgMembershipRequest]) (*connect.Response[user_service.ManuallySetOrgMembershipResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.ManuallySetOrgMembership is not implemented"))
+}
+
+func (UnimplementedOrganizationServiceHandler) AdminRefreshUserTitles(context.Context, *connect.Request[user_service.AdminRefreshUserTitlesRequest]) (*connect.Response[user_service.AdminRefreshUserTitlesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_service.OrganizationService.AdminRefreshUserTitles is not implemented"))
 }

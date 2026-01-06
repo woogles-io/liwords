@@ -94,7 +94,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 	OrgWESPA: {
 		Code:                 OrgWESPA,
 		Name:                 "WESPA",
-		HasAPI:               false,
+		HasAPI:               true, // Uses titlists with HTML scraping (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
 	},
@@ -152,4 +152,22 @@ type OrganizationIntegration interface {
 	// For orgs with APIs (NASPA), credentials are required
 	// For orgs without APIs (WESPA), credentials can be nil and data is scraped from public pages
 	GetRealName(memberID string, credentials map[string]string) (string, error)
+}
+
+// GetTitleAbbreviation returns the abbreviation for a given organization and full title name
+// Returns empty string if not found
+func GetTitleAbbreviation(orgCode OrganizationCode, fullName string) string {
+	// Get titles for this organization
+	orgTitles, exists := TitleRegistry[orgCode]
+	if !exists {
+		return ""
+	}
+
+	// Find the matching title by full name
+	for _, display := range orgTitles {
+		if display.FullName == fullName {
+			return display.Abbreviation
+		}
+	}
+	return ""
 }
