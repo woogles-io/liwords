@@ -135,6 +135,7 @@ const PlayerCard = React.memo((props: CardProps) => {
             {meta?.rating || "Unrated"}
             {props.hideProfileLink ? null : (
               <>
+                {" "}
                 •{" "}
                 <Link
                   target="_blank"
