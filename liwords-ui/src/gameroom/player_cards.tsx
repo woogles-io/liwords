@@ -112,6 +112,9 @@ const PlayerCard = React.memo((props: CardProps) => {
   const timeLow = props.time <= timeLowCutoff && props.time > 0 && !inTimeBank;
   const timeOut = props.time <= 0;
 
+  const nickname = meta?.nickname ?? "";
+  const shownName = briefProfile?.fullName || meta?.fullName || nickname;
+
   return (
     <div
       className={`player-card${props.player.onturn ? " on-turn" : ""}
@@ -121,7 +124,9 @@ const PlayerCard = React.memo((props: CardProps) => {
         <PlayerAvatar player={meta} />
         <div className="player-info">
           <p className="player-name">
-            {briefProfile?.fullName || meta?.fullName || meta?.nickname}
+            <Tooltip title={nickname === shownName ? null : nickname}>
+              {shownName}
+            </Tooltip>
             <DisplayUserTitle uuid={props.player.userID} />
             <DisplayUserBadges uuid={props.player.userID} />
           </p>
@@ -130,12 +135,13 @@ const PlayerCard = React.memo((props: CardProps) => {
             {meta?.rating || "Unrated"}
             {props.hideProfileLink ? null : (
               <>
+                {" "}
                 •{" "}
                 <Link
                   target="_blank"
-                  to={`/profile/${encodeURIComponent(meta?.nickname ?? "")}`}
+                  to={`/profile/${encodeURIComponent(nickname)}`}
                 >
-                  View profile
+                  {nickname === shownName ? "View profile" : nickname}
                 </Link>
               </>
             )}
