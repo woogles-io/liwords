@@ -150,7 +150,7 @@ func TestSoughtGame(t *testing.T) {
 	is.NoErr(err)
 	sgOldUUID, err := sgOld.ID()
 	is.NoErr(err)
-	err = commondb.UpdateWithPool(ctx, pool, []string{"created_at"}, []interface{}{time.Now().Add(-time.Hour)}, &commondb.CommonDBConfig{TableType: commondb.SoughtGamesTable, SelectByType: commondb.SelectByUUID, Value: sgOldUUID})
+	err = commondb.UpdateWithPool(ctx, pool, []string{"created_at"}, []interface{}{time.Now().Add(-3 * time.Hour)}, &commondb.CommonDBConfig{TableType: commondb.SoughtGamesTable, SelectByType: commondb.SelectByUUID, Value: sgOldUUID})
 	is.NoErr(err)
 
 	listedSoughtGames, err = store.ListOpenSeeks(ctx, common.DefaultSeekRequest.ReceivingUser.UserId, "")
