@@ -1,6 +1,7 @@
 import { create, toBinary } from "@bufbuild/protobuf";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
+  DeclineSeekRequestSchema,
   SeekRequestSchema,
   SeekState,
   SoughtGameProcessEventSchema,
@@ -94,6 +95,19 @@ export const sendAccept = (
     encodeToSocketFmt(
       MessageType.SOUGHT_GAME_PROCESS_EVENT,
       toBinary(SoughtGameProcessEventSchema, sa),
+    ),
+  );
+};
+
+export const sendDecline = (
+  seekID: string,
+  sendSocketMsg: (msg: Uint8Array) => void,
+): void => {
+  const evt = create(DeclineSeekRequestSchema, { requestId: seekID });
+  sendSocketMsg(
+    encodeToSocketFmt(
+      MessageType.DECLINE_SEEK_REQUEST,
+      toBinary(DeclineSeekRequestSchema, evt),
     ),
   );
 };

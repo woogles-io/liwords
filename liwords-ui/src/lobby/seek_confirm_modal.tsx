@@ -23,11 +23,12 @@ type Props = {
   seek: SoughtGame | null;
   onAccept: () => void;
   onCancel: () => void;
+  onDecline?: () => void;
   userRatings: { [key: string]: ProfileUpdate_Rating };
 };
 
 export const SeekConfirmModal = (props: Props) => {
-  const { open, seek, onAccept, onCancel, userRatings } = props;
+  const { open, seek, onAccept, onCancel, onDecline, userRatings } = props;
   const [showVariantInfo, setShowVariantInfo] = useState(false);
   const { token } = theme.useToken();
 
@@ -124,9 +125,13 @@ export const SeekConfirmModal = (props: Props) => {
       open={open}
       onCancel={onCancel}
       footer={[
-        <Button key="cancel" onClick={onCancel}>
-          Cancel
-        </Button>,
+        ...(isMatchRequest && onDecline
+          ? [
+              <Button key="decline" danger onClick={onDecline}>
+                Decline
+              </Button>,
+            ]
+          : []),
         <Button key="accept" type="primary" onClick={onAccept}>
           {buttonText}
         </Button>,

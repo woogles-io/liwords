@@ -142,7 +142,7 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 
 // ExpireOld expires old seek requests. Usually this shouldn't be necessary
 // unless something weird happens.
-// Real-time seeks expire after 1 hour, correspondence seeks expire after 60 hours.
+// Real-time seeks expire after 2 hours, correspondence seeks expire after 60 hours.
 func (s *DBStore) ExpireOld(ctx context.Context) error {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
@@ -150,8 +150,8 @@ func (s *DBStore) ExpireOld(ctx context.Context) error {
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete real-time seeks older than 1 hour (game_mode IS NULL or game_mode = 0)
-	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_at < NOW() - INTERVAL '1 hour'`)
+	// Delete real-time seeks older than 2 hours (game_mode IS NULL or game_mode = 0)
+	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_at < NOW() - INTERVAL '2 hours'`)
 	if err != nil {
 		return err
 	}

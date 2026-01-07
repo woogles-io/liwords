@@ -33,6 +33,7 @@ type Props = {
   username?: string;
   userID?: string;
   newGame: (seekID: string) => void;
+  declineGame?: (seekID: string) => void;
   ratings?: { [key: string]: ProfileUpdate_Rating };
 };
 
@@ -501,6 +502,7 @@ export const CorrespondenceGames = (props: Props) => {
           userID={props.userID}
           username={props.username}
           newGame={props.newGame}
+          declineGame={props.declineGame}
           requests={props.correspondenceSeeks}
           ratings={props.ratings}
         />

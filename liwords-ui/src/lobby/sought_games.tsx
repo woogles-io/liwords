@@ -89,6 +89,7 @@ type Props = {
   isMatch?: boolean;
   isClubMatch?: boolean;
   newGame: (seekID: string) => void;
+  declineGame?: (seekID: string) => void;
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
@@ -515,6 +516,17 @@ export const SoughtGames = (props: Props) => {
           setConfirmModalVisible(false);
           setSelectedSeek(null);
         }}
+        onDecline={
+          props.declineGame
+            ? () => {
+                if (selectedSeek) {
+                  props.declineGame?.(selectedSeek.seekID);
+                }
+                setConfirmModalVisible(false);
+                setSelectedSeek(null);
+              }
+            : undefined
+        }
         userRatings={profile?.ratings || {}}
       />
     </>

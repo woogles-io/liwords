@@ -8,7 +8,7 @@ import { Chat } from "../chat/chat";
 import { useLoginStateStoreContext } from "../store/store";
 import "./lobby.scss";
 import { AnnouncementsWidget } from "./announcements";
-import { sendAccept, sendSeek } from "./sought_game_interactions";
+import { sendAccept, sendDecline, sendSeek } from "./sought_game_interactions";
 import { PuzzlePreview } from "../puzzles/puzzle_preview";
 import { ConfigProvider } from "antd";
 
@@ -68,6 +68,12 @@ export const Lobby = (props: Props) => {
     },
     [sendSocketMsg],
   );
+  const handleDeclineGame = useCallback(
+    (seekID: string) => {
+      sendDecline(seekID, sendSocketMsg);
+    },
+    [sendSocketMsg],
+  );
   const onSeekSubmit = useCallback(
     (g: SoughtGame) => {
       console.log("sought game", g);
@@ -104,6 +110,7 @@ export const Lobby = (props: Props) => {
             userID={userID}
             username={username}
             newGame={handleNewGame}
+            declineGame={handleDeclineGame}
             selectedGameTab={selectedGameTab}
             setSelectedGameTab={setSelectedGameTab}
             onSeekSubmit={onSeekSubmit}
