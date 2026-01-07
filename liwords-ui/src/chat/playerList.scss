@@ -102,6 +102,12 @@
         & {
           font-style: oblique;
         }
+        // Prevent badges from being italicized
+        .country-flag,
+        span[style*="border-radius: 50%"],
+        span > img[alt*="badge"] {
+          font-style: normal;
+        }
       }
       .player-avatar:after {
         background: transparent;

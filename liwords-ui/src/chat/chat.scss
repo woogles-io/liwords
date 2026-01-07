@@ -217,7 +217,7 @@ p {
       }
 
       .country-flag {
-        margin: 0 0 0 6px;
+        margin: 0 0 0 8px;
       }
       &.unread {
         .listing-name {
@@ -350,7 +350,7 @@ p {
         }
       }
       .country-flag {
-        margin: 0 0 0 6px;
+        margin: 0 0 0 8px;
       }
       .message-details {
         flex: 2;
@@ -369,7 +369,7 @@ p {
         }
         .ant-tag {
           position: relative;
-          top: -1px;
+          top: 0px;
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.16em;

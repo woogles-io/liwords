@@ -19,31 +19,37 @@ const titleStyles: Record<
   { background: string; border: string; color: string }
 > = {
   GM: {
+    // NASPA & WESPA
     background: "#C9FFCB", // Green/Light
     border: "#449E2D", // Green/Dark
     color: "#449E2D",
   },
   IM: {
+    // WESPA
     background: "#E1BEE7", // Purple/Light
     border: "#8E24AA", // Purple/Dark
     color: "#8E24AA",
   },
   SM: {
-    background: "#FFFDC9", // Yellow/Light
-    border: "#F4B000", // Yellow/Dark
-    color: "#F4B000",
+    // NASPA
+    background: "#FFC9C9",
+    border: "#A92E2D",
+    color: "#A92E2D",
   },
   M: {
+    // WESPA
     background: "#FFFDC9", // Yellow/Light
     border: "#F4B000", // Yellow/Dark
     color: "#F4B000",
   },
   EX: {
-    background: "#FFC9C9", // Red/Light
-    border: "#A92E2D", // Red/Dark
-    color: "#A92E2D",
+    // NASPA
+    background: "#FFFDC9", // Red/Light
+    border: "#F4B000", // Red/Dark
+    color: "#F4B000",
   },
   EXP: {
+    // ABSP
     background: "#FFC9C9", // Red/Light
     border: "#A92E2D", // Red/Dark
     color: "#A92E2D",
@@ -79,16 +85,15 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: "24px",
-          height: "24px",
+          width: "20px",
+          height: "20px",
           borderRadius: "50%",
           backgroundColor: styles.background,
           border: `1px solid ${styles.border}`,
           color: styles.color,
-          fontSize: "11px",
+          fontSize: "9px",
           fontWeight: "bold",
-          marginLeft: "4px",
-          marginRight: "4px",
+          marginLeft: "8px",
           cursor: "default",
           verticalAlign: "middle",
         }}
