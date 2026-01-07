@@ -74,7 +74,7 @@ func (s *VerificationService) SubmitVerificationRequest(
 	var title string
 	titleInfo, err := integration.FetchTitle(memberID, nil)
 	if err == nil && titleInfo != nil {
-		title = string(titleInfo.NormalizedTitle)
+		title = titleInfo.RawTitle
 	}
 	// If fetching title fails, we continue without it (title is optional)
 

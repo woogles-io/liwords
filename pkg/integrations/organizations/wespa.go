@@ -1,6 +1,7 @@
 package organizations
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,42 +10,58 @@ import (
 	"time"
 )
 
+// XXX: replace this with https://legacy.wespa.org/latest.txt soon, when titles are added to it.
+//
+//go:embed wespa-titlists.txt
+var wespaTitlistsData string
+
+// WESPATitlist represents a single entry in the WESPA titlists
+type WESPATitlist struct {
+	Country string
+	Title   string
+	Name    string
+	Norms   string
+}
+
 // WESPAIntegration handles WESPA (manual verification, scrapes HTML for name)
 type WESPAIntegration struct {
 	BaseURL    string
 	HTTPClient *http.Client
+	titlists   []WESPATitlist
 }
 
 // NewWESPAIntegration creates a new WESPA integration instance
 func NewWESPAIntegration() *WESPAIntegration {
-	return &WESPAIntegration{
-		BaseURL: "https://wespa.org",
+	w := &WESPAIntegration{
+		BaseURL: "https://legacy.wespa.org",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
+	w.titlists = parseTitlists(wespaTitlistsData)
+	return w
 }
 
-// FetchTitle returns an error since WESPA doesn't have titles yet
+// FetchTitle fetches title from the embedded WESPA titlists by matching the player's name
 func (w *WESPAIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
-	return nil, fmt.Errorf("WESPA does not support title fetching - titles not yet implemented by WESPA")
-}
-
-// NormalizeTitle converts a WESPA title to a normalized title
-func (w *WESPAIntegration) NormalizeTitle(rawTitle string) NormalizedTitle {
-	// WESPA title mapping
-	lower := strings.ToLower(strings.TrimSpace(rawTitle))
-
-	switch {
-	case strings.Contains(lower, "grandmaster") || strings.Contains(lower, "grand master") || lower == "gm":
-		return TitleGrandmaster
-	case strings.Contains(lower, "master"):
-		return TitleMaster
-	case strings.Contains(lower, "expert"):
-		return TitleExpert
-	default:
-		return TitleNone
+	// Fetch the player's full name from their WESPA page
+	fullName, err := w.GetRealName(memberID, credentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch player name: %w", err)
 	}
+
+	// Search for title in titlists using prefix matching
+	title := w.findTitleByName(fullName)
+
+	now := time.Now()
+	return &TitleInfo{
+		Organization:     OrgWESPA,
+		OrganizationName: "WESPA",
+		RawTitle:         title,
+		MemberID:         memberID,
+		FullName:         fullName,
+		LastFetched:      &now,
+	}, nil
 }
 
 // GetOrganizationCode returns the organization code
@@ -98,4 +115,69 @@ func (w *WESPAIntegration) extractNameFromHTML(html string) (string, error) {
 	}
 
 	return name, nil
+}
+
+// parseTitlists parses the embedded WESPA titlists data
+func parseTitlists(data string) []WESPATitlist {
+	var titlists []WESPATitlist
+	lines := strings.Split(data, "\n")
+
+	// Skip header lines (first 2 lines)
+	for i := 2; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Fields(line)
+		if len(parts) < 4 {
+			continue
+		}
+
+		// Format: [Country] [Title] [Name...] [Norms]
+		country := parts[0]
+		title := parts[1]
+		norms := parts[len(parts)-1]
+
+		// Skip entries with no title
+		if title == "--" {
+			continue
+		}
+
+		// Everything between title and norms is the name
+		nameParts := parts[2 : len(parts)-1]
+		name := strings.Join(nameParts, " ")
+
+		titlists = append(titlists, WESPATitlist{
+			Country: country,
+			Title:   title,
+			Name:    name,
+			Norms:   norms,
+		})
+	}
+
+	return titlists
+}
+
+// findTitleByName searches for a title by name using prefix matching
+// The WESPA page has the full real name, but titlist names may be shortened
+// e.g., "Conrad Bassett-Bouch" in titlist matches "Conrad Bassett-Bouchard" from page
+func (w *WESPAIntegration) findTitleByName(fullName string) string {
+	if fullName == "" {
+		return ""
+	}
+
+	// Normalize the full name for matching
+	normalizedFullName := strings.ToLower(strings.TrimSpace(fullName))
+
+	for _, entry := range w.titlists {
+		normalizedListName := strings.ToLower(entry.Name)
+
+		// Check if the titlist name is a prefix of the full name from WESPA page
+		if strings.HasPrefix(normalizedFullName, normalizedListName) {
+			return entry.Title
+		}
+	}
+
+	return ""
 }

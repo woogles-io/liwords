@@ -18,10 +18,18 @@ const organizationNames: Record<string, string> = {
   absp: "ABSP",
 };
 
-const titleColors: Record<string, string> = {
-  Grandmaster: "gold",
-  Master: "blue",
-  Expert: "green",
+// Title colors based on abbreviation
+// Colors: gold (grandmaster), purple (international master), blue (master), green (expert)
+const getTitleColor = (abbreviation: string): string => {
+  const colors: Record<string, string> = {
+    GM: "gold",
+    IM: "purple",
+    SM: "blue",
+    M: "blue",
+    EX: "green",
+    EXP: "green",
+  };
+  return colors[abbreviation] || "default";
 };
 
 export const DisplayUserOrganizations: React.FC<
@@ -56,7 +64,7 @@ export const DisplayUserOrganizations: React.FC<
   }
 
   // Filter to only show organizations with titles
-  const orgsWithTitles = organizations.filter((org) => org.normalizedTitle);
+  const orgsWithTitles = organizations.filter((org) => org.rawTitle);
 
   if (orgsWithTitles.length === 0) {
     return null;
@@ -66,19 +74,27 @@ export const DisplayUserOrganizations: React.FC<
     <>
       <h2>Titles</h2>
       <div style={{ marginBottom: 16, marginLeft: 16 }}>
-        {orgsWithTitles.map((org) => (
-          <div key={org.organizationCode} style={{ marginBottom: 8 }}>
-            <strong>
-              {organizationNames[org.organizationCode] || org.organizationCode}:
-            </strong>{" "}
-            <Tag
-              color={titleColors[org.normalizedTitle] || "default"}
-              style={{ fontWeight: "bold" }}
-            >
-              {org.normalizedTitle}
-            </Tag>
-          </div>
-        ))}
+        {orgsWithTitles.map((org) => {
+          const abbreviation = org.rawTitle; // e.g., "GM", "SM"
+          const fullName = org.titleFullName || abbreviation; // e.g., "Grandmaster"
+          const color = getTitleColor(abbreviation);
+
+          return (
+            <div key={org.organizationCode} style={{ marginBottom: 8 }}>
+              <strong>
+                {organizationNames[org.organizationCode] ||
+                  org.organizationCode}
+                :
+              </strong>{" "}
+              <Tag color={color} style={{ fontWeight: "bold" }}>
+                {fullName}
+              </Tag>
+              <span style={{ color: "#666", fontSize: "0.9em" }}>
+                ({abbreviation})
+              </span>
+            </div>
+          );
+        })}
       </div>
     </>
   );

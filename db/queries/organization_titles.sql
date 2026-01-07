@@ -19,7 +19,8 @@ AND (integrations.data->>'last_fetched')::timestamptz < CURRENT_TIMESTAMP - INTE
 
 -- name: UpdateProfileTitle :exec
 UPDATE profiles
-SET title = @title
+SET title = @title,
+    title_organization = @title_organization
 WHERE user_id = (SELECT id FROM users WHERE uuid = @user_uuid);
 
 -- name: GetUserProfileTitle :one

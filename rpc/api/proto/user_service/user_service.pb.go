@@ -1364,10 +1364,11 @@ type OrganizationTitle struct {
 	OrganizationName string                 `protobuf:"bytes,2,opt,name=organization_name,json=organizationName,proto3" json:"organization_name,omitempty"`
 	MemberId         string                 `protobuf:"bytes,3,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
 	FullName         string                 `protobuf:"bytes,4,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
-	RawTitle         string                 `protobuf:"bytes,5,opt,name=raw_title,json=rawTitle,proto3" json:"raw_title,omitempty"`
-	NormalizedTitle  string                 `protobuf:"bytes,6,opt,name=normalized_title,json=normalizedTitle,proto3" json:"normalized_title,omitempty"`
+	RawTitle         string                 `protobuf:"bytes,5,opt,name=raw_title,json=rawTitle,proto3" json:"raw_title,omitempty"`                      // Organization's title string (e.g., "GM", "SM", "EX")
+	NormalizedTitle  string                 `protobuf:"bytes,6,opt,name=normalized_title,json=normalizedTitle,proto3" json:"normalized_title,omitempty"` // Deprecated: same as raw_title
 	LastFetched      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_fetched,json=lastFetched,proto3" json:"last_fetched,omitempty"`
 	Verified         bool                   `protobuf:"varint,8,opt,name=verified,proto3" json:"verified,omitempty"`
+	TitleFullName    string                 `protobuf:"bytes,9,opt,name=title_full_name,json=titleFullName,proto3" json:"title_full_name,omitempty"` // Human-readable title name (e.g., "Grandmaster", "NASPA Master")
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1456,6 +1457,13 @@ func (x *OrganizationTitle) GetVerified() bool {
 		return x.Verified
 	}
 	return false
+}
+
+func (x *OrganizationTitle) GetTitleFullName() string {
+	if x != nil {
+		return x.TitleFullName
+	}
+	return ""
 }
 
 type ProfileRequest struct {
@@ -2128,15 +2136,17 @@ func (x *BriefProfilesRequest) GetUserIds() []string {
 
 // this is a subset of ProfileResponse
 type BriefProfile struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	FullName      string                 `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"` // omitted for non-adults
-	CountryCode   string                 `protobuf:"bytes,3,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
-	AvatarUrl     string                 `protobuf:"bytes,9,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	BadgeCodes    []string               `protobuf:"bytes,13,rep,name=badge_codes,json=badgeCodes,proto3" json:"badge_codes,omitempty"`
-	Title         string                 `protobuf:"bytes,14,opt,name=title,proto3" json:"title,omitempty"` // Highest normalized title
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Username              string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	FullName              string                 `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"` // omitted for non-adults
+	CountryCode           string                 `protobuf:"bytes,3,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
+	AvatarUrl             string                 `protobuf:"bytes,9,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	BadgeCodes            []string               `protobuf:"bytes,13,rep,name=badge_codes,json=badgeCodes,proto3" json:"badge_codes,omitempty"`
+	Title                 string                 `protobuf:"bytes,14,opt,name=title,proto3" json:"title,omitempty"`                                                                // Highest title full name (e.g., "Grandmaster")
+	TitleOrganizationCode string                 `protobuf:"bytes,15,opt,name=title_organization_code,json=titleOrganizationCode,proto3" json:"title_organization_code,omitempty"` // Organization that granted the highest title (e.g., "wespa", "naspa")
+	TitleAbbreviation     string                 `protobuf:"bytes,16,opt,name=title_abbreviation,json=titleAbbreviation,proto3" json:"title_abbreviation,omitempty"`               // Raw title abbreviation (e.g., "GM", "SM", "EX")
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *BriefProfile) Reset() {
@@ -2207,6 +2217,20 @@ func (x *BriefProfile) GetBadgeCodes() []string {
 func (x *BriefProfile) GetTitle() string {
 	if x != nil {
 		return x.Title
+	}
+	return ""
+}
+
+func (x *BriefProfile) GetTitleOrganizationCode() string {
+	if x != nil {
+		return x.TitleOrganizationCode
+	}
+	return ""
+}
+
+func (x *BriefProfile) GetTitleAbbreviation() string {
+	if x != nil {
+		return x.TitleAbbreviation
 	}
 	return ""
 }
@@ -5390,9 +5414,13 @@ type ManuallySetOrgMembershipRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Username         string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // Username of the user to assign membership to
 	OrganizationCode string                 `protobuf:"bytes,2,opt,name=organization_code,json=organizationCode,proto3" json:"organization_code,omitempty"`
-	MemberId         string                 `protobuf:"bytes,3,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"` // full_name and title will be fetched from the organization automatically
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	MemberId         string                 `protobuf:"bytes,3,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
+	// Optional credentials - if provided, will be used for authenticated fetch
+	// and stored (encrypted) for future title refreshes. If not provided,
+	// public API/database will be used instead.
+	Credentials   map[string]string `protobuf:"bytes,4,rep,name=credentials,proto3" json:"credentials,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ManuallySetOrgMembershipRequest) Reset() {
@@ -5444,6 +5472,13 @@ func (x *ManuallySetOrgMembershipRequest) GetMemberId() string {
 		return x.MemberId
 	}
 	return ""
+}
+
+func (x *ManuallySetOrgMembershipRequest) GetCredentials() map[string]string {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
 }
 
 type ManuallySetOrgMembershipResponse struct {
@@ -5498,6 +5533,102 @@ func (x *ManuallySetOrgMembershipResponse) GetMessage() string {
 	return ""
 }
 
+type AdminRefreshUserTitlesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // Username of the user whose titles to refresh
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminRefreshUserTitlesRequest) Reset() {
+	*x = AdminRefreshUserTitlesRequest{}
+	mi := &file_proto_user_service_user_service_proto_msgTypes[112]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminRefreshUserTitlesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminRefreshUserTitlesRequest) ProtoMessage() {}
+
+func (x *AdminRefreshUserTitlesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_service_user_service_proto_msgTypes[112]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminRefreshUserTitlesRequest.ProtoReflect.Descriptor instead.
+func (*AdminRefreshUserTitlesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_user_service_user_service_proto_rawDescGZIP(), []int{112}
+}
+
+func (x *AdminRefreshUserTitlesRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type AdminRefreshUserTitlesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Titles        []*OrganizationTitle   `protobuf:"bytes,1,rep,name=titles,proto3" json:"titles,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminRefreshUserTitlesResponse) Reset() {
+	*x = AdminRefreshUserTitlesResponse{}
+	mi := &file_proto_user_service_user_service_proto_msgTypes[113]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminRefreshUserTitlesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminRefreshUserTitlesResponse) ProtoMessage() {}
+
+func (x *AdminRefreshUserTitlesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_service_user_service_proto_msgTypes[113]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminRefreshUserTitlesResponse.ProtoReflect.Descriptor instead.
+func (*AdminRefreshUserTitlesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_user_service_user_service_proto_rawDescGZIP(), []int{113}
+}
+
+func (x *AdminRefreshUserTitlesResponse) GetTitles() []*OrganizationTitle {
+	if x != nil {
+		return x.Titles
+	}
+	return nil
+}
+
+func (x *AdminRefreshUserTitlesResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type ActiveChatChannels_Channel struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -5512,7 +5643,7 @@ type ActiveChatChannels_Channel struct {
 
 func (x *ActiveChatChannels_Channel) Reset() {
 	*x = ActiveChatChannels_Channel{}
-	mi := &file_proto_user_service_user_service_proto_msgTypes[114]
+	mi := &file_proto_user_service_user_service_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5524,7 +5655,7 @@ func (x *ActiveChatChannels_Channel) String() string {
 func (*ActiveChatChannels_Channel) ProtoMessage() {}
 
 func (x *ActiveChatChannels_Channel) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_service_user_service_proto_msgTypes[114]
+	mi := &file_proto_user_service_user_service_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5647,7 +5778,7 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\fStatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"#\n" +
 	"\rStatsResponse\x12\x12\n" +
-	"\x04json\x18\x01 \x01(\tR\x04json\"\xca\x02\n" +
+	"\x04json\x18\x01 \x01(\tR\x04json\"\xf2\x02\n" +
 	"\x11OrganizationTitle\x12+\n" +
 	"\x11organization_code\x18\x01 \x01(\tR\x10organizationCode\x12+\n" +
 	"\x11organization_name\x18\x02 \x01(\tR\x10organizationName\x12\x1b\n" +
@@ -5656,7 +5787,8 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\traw_title\x18\x05 \x01(\tR\brawTitle\x12)\n" +
 	"\x10normalized_title\x18\x06 \x01(\tR\x0fnormalizedTitle\x12=\n" +
 	"\flast_fetched\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vlastFetched\x12\x1a\n" +
-	"\bverified\x18\b \x01(\bR\bverified\",\n" +
+	"\bverified\x18\b \x01(\bR\bverified\x12&\n" +
+	"\x0ftitle_full_name\x18\t \x01(\tR\rtitleFullName\",\n" +
 	"\x0eProfileRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"\xf0\x03\n" +
 	"\x0fProfileResponse\x12\x1d\n" +
@@ -5714,7 +5846,7 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x13RemoveAvatarRequest\"\x16\n" +
 	"\x14RemoveAvatarResponse\"1\n" +
 	"\x14BriefProfilesRequest\x12\x19\n" +
-	"\buser_ids\x18\x01 \x03(\tR\auserIds\"\xc0\x01\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\"\xa7\x02\n" +
 	"\fBriefProfile\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1b\n" +
 	"\tfull_name\x18\x02 \x01(\tR\bfullName\x12!\n" +
@@ -5723,7 +5855,9 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"avatar_url\x18\t \x01(\tR\tavatarUrl\x12\x1f\n" +
 	"\vbadge_codes\x18\r \x03(\tR\n" +
 	"badgeCodes\x12\x14\n" +
-	"\x05title\x18\x0e \x01(\tR\x05title\"\xbf\x01\n" +
+	"\x05title\x18\x0e \x01(\tR\x05title\x126\n" +
+	"\x17title_organization_code\x18\x0f \x01(\tR\x15titleOrganizationCode\x12-\n" +
+	"\x12title_abbreviation\x18\x10 \x01(\tR\x11titleAbbreviation\"\xbf\x01\n" +
 	"\x15BriefProfilesResponse\x12M\n" +
 	"\bresponse\x18\x01 \x03(\v21.user_service.BriefProfilesResponse.ResponseEntryR\bresponse\x1aW\n" +
 	"\rResponseEntry\x12\x10\n" +
@@ -5911,13 +6045,22 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x01 \x01(\x03R\trequestId\">\n" +
 	"\x1fGetVerificationImageUrlResponse\x12\x1b\n" +
-	"\timage_url\x18\x01 \x01(\tR\bimageUrl\"\x87\x01\n" +
+	"\timage_url\x18\x01 \x01(\tR\bimageUrl\"\xa9\x02\n" +
 	"\x1fManuallySetOrgMembershipRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12+\n" +
 	"\x11organization_code\x18\x02 \x01(\tR\x10organizationCode\x12\x1b\n" +
-	"\tmember_id\x18\x03 \x01(\tR\bmemberId\"V\n" +
+	"\tmember_id\x18\x03 \x01(\tR\bmemberId\x12`\n" +
+	"\vcredentials\x18\x04 \x03(\v2>.user_service.ManuallySetOrgMembershipRequest.CredentialsEntryR\vcredentials\x1a>\n" +
+	"\x10CredentialsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"V\n" +
 	" ManuallySetOrgMembershipResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\";\n" +
+	"\x1dAdminRefreshUserTitlesRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"s\n" +
+	"\x1eAdminRefreshUserTitlesResponse\x127\n" +
+	"\x06titles\x18\x01 \x03(\v2\x1f.user_service.OrganizationTitleR\x06titles\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage2\xa2\a\n" +
 	"\x15AuthenticationService\x12D\n" +
 	"\x05Login\x12\x1e.user_service.UserLoginRequest\x1a\x1b.user_service.LoginResponse\x12G\n" +
@@ -5976,7 +6119,8 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\fGetUserRoles\x12!.user_service.GetUserRolesRequest\x1a\x1f.user_service.UserRolesResponse\"\x03\x90\x02\x01\x12W\n" +
 	"\fGetSelfRoles\x12!.user_service.GetSelfRolesRequest\x1a\x1f.user_service.UserRolesResponse\"\x03\x90\x02\x01\x12i\n" +
 	"\x11GetUsersWithRoles\x12&.user_service.GetUsersWithRolesRequest\x1a'.user_service.GetUsersWithRolesResponse\"\x03\x90\x02\x01\x12`\n" +
-	"\x0fGetRoleMetadata\x12$.user_service.GetRoleMetadataRequest\x1a\".user_service.RoleMetadataResponse\"\x03\x90\x02\x012\xeb\t\n" +
+	"\x0fGetRoleMetadata\x12$.user_service.GetRoleMetadataRequest\x1a\".user_service.RoleMetadataResponse\"\x03\x90\x02\x012\xe0\n" +
+	"\n" +
 	"\x13OrganizationService\x12j\n" +
 	"\x13ConnectOrganization\x12(.user_service.ConnectOrganizationRequest\x1a).user_service.ConnectOrganizationResponse\x12s\n" +
 	"\x16DisconnectOrganization\x12+.user_service.DisconnectOrganizationRequest\x1a,.user_service.DisconnectOrganizationResponse\x12X\n" +
@@ -5988,7 +6132,8 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x17GetVerificationImageUrl\x12,.user_service.GetVerificationImageUrlRequest\x1a-.user_service.GetVerificationImageUrlResponse\"\x03\x90\x02\x01\x12j\n" +
 	"\x13ApproveVerification\x12(.user_service.ApproveVerificationRequest\x1a).user_service.ApproveVerificationResponse\x12g\n" +
 	"\x12RejectVerification\x12'.user_service.RejectVerificationRequest\x1a(.user_service.RejectVerificationResponse\x12y\n" +
-	"\x18ManuallySetOrgMembership\x12-.user_service.ManuallySetOrgMembershipRequest\x1a..user_service.ManuallySetOrgMembershipResponseB\xaa\x01\n" +
+	"\x18ManuallySetOrgMembership\x12-.user_service.ManuallySetOrgMembershipRequest\x1a..user_service.ManuallySetOrgMembershipResponse\x12s\n" +
+	"\x16AdminRefreshUserTitles\x12+.user_service.AdminRefreshUserTitlesRequest\x1a,.user_service.AdminRefreshUserTitlesResponseB\xaa\x01\n" +
 	"\x10com.user_serviceB\x10UserServiceProtoP\x01Z8github.com/woogles-io/liwords/rpc/api/proto/user_service\xa2\x02\x03UXX\xaa\x02\vUserService\xca\x02\vUserService\xe2\x02\x17UserService\\GPBMetadata\xea\x02\vUserServiceb\x06proto3"
 
 var (
@@ -6003,7 +6148,7 @@ func file_proto_user_service_user_service_proto_rawDescGZIP() []byte {
 	return file_proto_user_service_user_service_proto_rawDescData
 }
 
-var file_proto_user_service_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 117)
+var file_proto_user_service_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 120)
 var file_proto_user_service_user_service_proto_goTypes = []any{
 	(*UserLoginRequest)(nil),                 // 0: user_service.UserLoginRequest
 	(*ChangePasswordRequest)(nil),            // 1: user_service.ChangePasswordRequest
@@ -6117,155 +6262,162 @@ var file_proto_user_service_user_service_proto_goTypes = []any{
 	(*GetVerificationImageUrlResponse)(nil),  // 109: user_service.GetVerificationImageUrlResponse
 	(*ManuallySetOrgMembershipRequest)(nil),  // 110: user_service.ManuallySetOrgMembershipRequest
 	(*ManuallySetOrgMembershipResponse)(nil), // 111: user_service.ManuallySetOrgMembershipResponse
-	nil,                                      // 112: user_service.BriefProfilesResponse.ResponseEntry
-	nil,                                      // 113: user_service.BadgeMetadataResponse.BadgesEntry
-	(*ActiveChatChannels_Channel)(nil),       // 114: user_service.ActiveChatChannels.Channel
-	nil,                                      // 115: user_service.Integration.IntegrationDetailsEntry
-	nil,                                      // 116: user_service.ConnectOrganizationRequest.CredentialsEntry
-	(*timestamppb.Timestamp)(nil),            // 117: google.protobuf.Timestamp
-	(*ipc.ChatMessages)(nil),                 // 118: ipc.ChatMessages
+	(*AdminRefreshUserTitlesRequest)(nil),    // 112: user_service.AdminRefreshUserTitlesRequest
+	(*AdminRefreshUserTitlesResponse)(nil),   // 113: user_service.AdminRefreshUserTitlesResponse
+	nil,                                      // 114: user_service.BriefProfilesResponse.ResponseEntry
+	nil,                                      // 115: user_service.BadgeMetadataResponse.BadgesEntry
+	(*ActiveChatChannels_Channel)(nil),       // 116: user_service.ActiveChatChannels.Channel
+	nil,                                      // 117: user_service.Integration.IntegrationDetailsEntry
+	nil,                                      // 118: user_service.ConnectOrganizationRequest.CredentialsEntry
+	nil,                                      // 119: user_service.ManuallySetOrgMembershipRequest.CredentialsEntry
+	(*timestamppb.Timestamp)(nil),            // 120: google.protobuf.Timestamp
+	(*ipc.ChatMessages)(nil),                 // 121: ipc.ChatMessages
 }
 var file_proto_user_service_user_service_proto_depIdxs = []int32{
-	117, // 0: user_service.OrganizationTitle.last_fetched:type_name -> google.protobuf.Timestamp
+	120, // 0: user_service.OrganizationTitle.last_fetched:type_name -> google.protobuf.Timestamp
 	29,  // 1: user_service.ProfileResponse.organization_titles:type_name -> user_service.OrganizationTitle
-	112, // 2: user_service.BriefProfilesResponse.response:type_name -> user_service.BriefProfilesResponse.ResponseEntry
-	113, // 3: user_service.BadgeMetadataResponse.badges:type_name -> user_service.BadgeMetadataResponse.BadgesEntry
+	114, // 2: user_service.BriefProfilesResponse.response:type_name -> user_service.BriefProfilesResponse.ResponseEntry
+	115, // 3: user_service.BadgeMetadataResponse.badges:type_name -> user_service.BadgeMetadataResponse.BadgesEntry
 	55,  // 4: user_service.UsernameSearchResponse.users:type_name -> user_service.BasicUser
-	114, // 5: user_service.ActiveChatChannels.channels:type_name -> user_service.ActiveChatChannels.Channel
+	116, // 5: user_service.ActiveChatChannels.channels:type_name -> user_service.ActiveChatChannels.Channel
 	56,  // 6: user_service.GetFollowsResponse.users:type_name -> user_service.BasicFollowedUser
 	55,  // 7: user_service.GetBlocksResponse.users:type_name -> user_service.BasicUser
-	115, // 8: user_service.Integration.integration_details:type_name -> user_service.Integration.IntegrationDetailsEntry
+	117, // 8: user_service.Integration.integration_details:type_name -> user_service.Integration.IntegrationDetailsEntry
 	63,  // 9: user_service.IntegrationsResponse.integrations:type_name -> user_service.Integration
-	117, // 10: user_service.GetSubscriptionCriteriaResponse.last_charge_date:type_name -> google.protobuf.Timestamp
+	120, // 10: user_service.GetSubscriptionCriteriaResponse.last_charge_date:type_name -> google.protobuf.Timestamp
 	79,  // 11: user_service.GetUsersWithRolesResponse.user_and_role_objs:type_name -> user_service.UserAndRole
 	87,  // 12: user_service.RoleMetadataResponse.roles_with_permissions:type_name -> user_service.RoleWithPermissions
-	116, // 13: user_service.ConnectOrganizationRequest.credentials:type_name -> user_service.ConnectOrganizationRequest.CredentialsEntry
+	118, // 13: user_service.ConnectOrganizationRequest.credentials:type_name -> user_service.ConnectOrganizationRequest.CredentialsEntry
 	29,  // 14: user_service.ConnectOrganizationResponse.title:type_name -> user_service.OrganizationTitle
 	29,  // 15: user_service.RefreshTitlesResponse.titles:type_name -> user_service.OrganizationTitle
 	29,  // 16: user_service.GetMyOrganizationsResponse.titles:type_name -> user_service.OrganizationTitle
 	29,  // 17: user_service.GetPublicOrganizationsResponse.titles:type_name -> user_service.OrganizationTitle
-	117, // 18: user_service.VerificationRequestInfo.submitted_at:type_name -> google.protobuf.Timestamp
+	120, // 18: user_service.VerificationRequestInfo.submitted_at:type_name -> google.protobuf.Timestamp
 	102, // 19: user_service.GetPendingVerificationsResponse.requests:type_name -> user_service.VerificationRequestInfo
-	41,  // 20: user_service.BriefProfilesResponse.ResponseEntry.value:type_name -> user_service.BriefProfile
-	0,   // 21: user_service.AuthenticationService.Login:input_type -> user_service.UserLoginRequest
-	10,  // 22: user_service.AuthenticationService.Logout:input_type -> user_service.UserLogoutRequest
-	8,   // 23: user_service.AuthenticationService.GetSocketToken:input_type -> user_service.SocketTokenRequest
-	4,   // 24: user_service.AuthenticationService.ResetPasswordStep1:input_type -> user_service.ResetPasswordRequestStep1
-	5,   // 25: user_service.AuthenticationService.ResetPasswordStep2:input_type -> user_service.ResetPasswordRequestStep2
-	1,   // 26: user_service.AuthenticationService.ChangePassword:input_type -> user_service.ChangePasswordRequest
-	12,  // 27: user_service.AuthenticationService.NotifyAccountClosure:input_type -> user_service.NotifyAccountClosureRequest
-	16,  // 28: user_service.AuthenticationService.GetSignedCookie:input_type -> user_service.GetSignedCookieRequest
-	17,  // 29: user_service.AuthenticationService.InstallSignedCookie:input_type -> user_service.SignedCookieResponse
-	14,  // 30: user_service.AuthenticationService.GetAPIKey:input_type -> user_service.GetAPIKeyRequest
-	19,  // 31: user_service.RegistrationService.Register:input_type -> user_service.UserRegistrationRequest
-	21,  // 32: user_service.RegistrationService.VerifyEmail:input_type -> user_service.VerifyEmailRequest
-	23,  // 33: user_service.RegistrationService.ResendVerificationEmail:input_type -> user_service.ResendVerificationEmailRequest
-	25,  // 34: user_service.ProfileService.GetRatings:input_type -> user_service.RatingsRequest
-	27,  // 35: user_service.ProfileService.GetStats:input_type -> user_service.StatsRequest
-	30,  // 36: user_service.ProfileService.GetProfile:input_type -> user_service.ProfileRequest
-	32,  // 37: user_service.ProfileService.GetPersonalInfo:input_type -> user_service.PersonalInfoRequest
-	34,  // 38: user_service.ProfileService.UpdatePersonalInfo:input_type -> user_service.UpdatePersonalInfoRequest
-	36,  // 39: user_service.ProfileService.UpdateAvatar:input_type -> user_service.UpdateAvatarRequest
-	38,  // 40: user_service.ProfileService.RemoveAvatar:input_type -> user_service.RemoveAvatarRequest
-	40,  // 41: user_service.ProfileService.GetBriefProfiles:input_type -> user_service.BriefProfilesRequest
-	43,  // 42: user_service.ProfileService.GetBadgesMetadata:input_type -> user_service.BadgeMetadataRequest
-	45,  // 43: user_service.AutocompleteService.GetCompletion:input_type -> user_service.UsernameSearchRequest
-	47,  // 44: user_service.SocializeService.AddFollow:input_type -> user_service.AddFollowRequest
-	48,  // 45: user_service.SocializeService.RemoveFollow:input_type -> user_service.RemoveFollowRequest
-	49,  // 46: user_service.SocializeService.GetFollows:input_type -> user_service.GetFollowsRequest
-	50,  // 47: user_service.SocializeService.AddBlock:input_type -> user_service.AddBlockRequest
-	51,  // 48: user_service.SocializeService.RemoveBlock:input_type -> user_service.RemoveBlockRequest
-	52,  // 49: user_service.SocializeService.GetBlocks:input_type -> user_service.GetBlocksRequest
-	53,  // 50: user_service.SocializeService.GetFullBlocks:input_type -> user_service.GetFullBlocksRequest
-	57,  // 51: user_service.SocializeService.GetActiveChatChannels:input_type -> user_service.GetActiveChatChannelsRequest
-	59,  // 52: user_service.SocializeService.GetChatsForChannel:input_type -> user_service.GetChatsRequest
-	64,  // 53: user_service.IntegrationService.GetIntegrations:input_type -> user_service.GetIntegrationsRequest
-	66,  // 54: user_service.IntegrationService.DeleteIntegration:input_type -> user_service.DeleteIntegrationRequest
-	70,  // 55: user_service.AuthorizationService.GetModList:input_type -> user_service.GetModListRequest
-	68,  // 56: user_service.AuthorizationService.GetSubscriptionCriteria:input_type -> user_service.GetSubscriptionCriteriaRequest
-	72,  // 57: user_service.AuthorizationService.AddRole:input_type -> user_service.AddRoleRequest
-	74,  // 58: user_service.AuthorizationService.AddPermission:input_type -> user_service.AddPermissionRequest
-	76,  // 59: user_service.AuthorizationService.LinkRoleAndPermission:input_type -> user_service.LinkRoleAndPermissionRequest
-	76,  // 60: user_service.AuthorizationService.UnlinkRoleAndPermission:input_type -> user_service.LinkRoleAndPermissionRequest
-	79,  // 61: user_service.AuthorizationService.AssignRole:input_type -> user_service.UserAndRole
-	79,  // 62: user_service.AuthorizationService.UnassignRole:input_type -> user_service.UserAndRole
-	81,  // 63: user_service.AuthorizationService.GetUserRoles:input_type -> user_service.GetUserRolesRequest
-	83,  // 64: user_service.AuthorizationService.GetSelfRoles:input_type -> user_service.GetSelfRolesRequest
-	84,  // 65: user_service.AuthorizationService.GetUsersWithRoles:input_type -> user_service.GetUsersWithRolesRequest
-	86,  // 66: user_service.AuthorizationService.GetRoleMetadata:input_type -> user_service.GetRoleMetadataRequest
-	89,  // 67: user_service.OrganizationService.ConnectOrganization:input_type -> user_service.ConnectOrganizationRequest
-	91,  // 68: user_service.OrganizationService.DisconnectOrganization:input_type -> user_service.DisconnectOrganizationRequest
-	93,  // 69: user_service.OrganizationService.RefreshTitles:input_type -> user_service.RefreshTitlesRequest
-	95,  // 70: user_service.OrganizationService.GetMyOrganizations:input_type -> user_service.GetMyOrganizationsRequest
-	97,  // 71: user_service.OrganizationService.GetPublicOrganizations:input_type -> user_service.GetPublicOrganizationsRequest
-	99,  // 72: user_service.OrganizationService.SubmitVerification:input_type -> user_service.SubmitVerificationRequest
-	101, // 73: user_service.OrganizationService.GetPendingVerifications:input_type -> user_service.GetPendingVerificationsRequest
-	108, // 74: user_service.OrganizationService.GetVerificationImageUrl:input_type -> user_service.GetVerificationImageUrlRequest
-	104, // 75: user_service.OrganizationService.ApproveVerification:input_type -> user_service.ApproveVerificationRequest
-	106, // 76: user_service.OrganizationService.RejectVerification:input_type -> user_service.RejectVerificationRequest
-	110, // 77: user_service.OrganizationService.ManuallySetOrgMembership:input_type -> user_service.ManuallySetOrgMembershipRequest
-	2,   // 78: user_service.AuthenticationService.Login:output_type -> user_service.LoginResponse
-	11,  // 79: user_service.AuthenticationService.Logout:output_type -> user_service.LogoutResponse
-	9,   // 80: user_service.AuthenticationService.GetSocketToken:output_type -> user_service.SocketTokenResponse
-	6,   // 81: user_service.AuthenticationService.ResetPasswordStep1:output_type -> user_service.ResetPasswordResponse
-	6,   // 82: user_service.AuthenticationService.ResetPasswordStep2:output_type -> user_service.ResetPasswordResponse
-	3,   // 83: user_service.AuthenticationService.ChangePassword:output_type -> user_service.ChangePasswordResponse
-	13,  // 84: user_service.AuthenticationService.NotifyAccountClosure:output_type -> user_service.NotifyAccountClosureResponse
-	17,  // 85: user_service.AuthenticationService.GetSignedCookie:output_type -> user_service.SignedCookieResponse
-	18,  // 86: user_service.AuthenticationService.InstallSignedCookie:output_type -> user_service.InstallSignedCookieResponse
-	15,  // 87: user_service.AuthenticationService.GetAPIKey:output_type -> user_service.GetAPIKeyResponse
-	20,  // 88: user_service.RegistrationService.Register:output_type -> user_service.RegistrationResponse
-	22,  // 89: user_service.RegistrationService.VerifyEmail:output_type -> user_service.VerifyEmailResponse
-	24,  // 90: user_service.RegistrationService.ResendVerificationEmail:output_type -> user_service.ResendVerificationEmailResponse
-	26,  // 91: user_service.ProfileService.GetRatings:output_type -> user_service.RatingsResponse
-	28,  // 92: user_service.ProfileService.GetStats:output_type -> user_service.StatsResponse
-	31,  // 93: user_service.ProfileService.GetProfile:output_type -> user_service.ProfileResponse
-	33,  // 94: user_service.ProfileService.GetPersonalInfo:output_type -> user_service.PersonalInfoResponse
-	35,  // 95: user_service.ProfileService.UpdatePersonalInfo:output_type -> user_service.UpdatePersonalInfoResponse
-	37,  // 96: user_service.ProfileService.UpdateAvatar:output_type -> user_service.UpdateAvatarResponse
-	39,  // 97: user_service.ProfileService.RemoveAvatar:output_type -> user_service.RemoveAvatarResponse
-	42,  // 98: user_service.ProfileService.GetBriefProfiles:output_type -> user_service.BriefProfilesResponse
-	44,  // 99: user_service.ProfileService.GetBadgesMetadata:output_type -> user_service.BadgeMetadataResponse
-	46,  // 100: user_service.AutocompleteService.GetCompletion:output_type -> user_service.UsernameSearchResponse
-	54,  // 101: user_service.SocializeService.AddFollow:output_type -> user_service.OKResponse
-	54,  // 102: user_service.SocializeService.RemoveFollow:output_type -> user_service.OKResponse
-	60,  // 103: user_service.SocializeService.GetFollows:output_type -> user_service.GetFollowsResponse
-	54,  // 104: user_service.SocializeService.AddBlock:output_type -> user_service.OKResponse
-	54,  // 105: user_service.SocializeService.RemoveBlock:output_type -> user_service.OKResponse
-	61,  // 106: user_service.SocializeService.GetBlocks:output_type -> user_service.GetBlocksResponse
-	62,  // 107: user_service.SocializeService.GetFullBlocks:output_type -> user_service.GetFullBlocksResponse
-	58,  // 108: user_service.SocializeService.GetActiveChatChannels:output_type -> user_service.ActiveChatChannels
-	118, // 109: user_service.SocializeService.GetChatsForChannel:output_type -> ipc.ChatMessages
-	65,  // 110: user_service.IntegrationService.GetIntegrations:output_type -> user_service.IntegrationsResponse
-	67,  // 111: user_service.IntegrationService.DeleteIntegration:output_type -> user_service.DeleteIntegrationResponse
-	71,  // 112: user_service.AuthorizationService.GetModList:output_type -> user_service.GetModListResponse
-	69,  // 113: user_service.AuthorizationService.GetSubscriptionCriteria:output_type -> user_service.GetSubscriptionCriteriaResponse
-	73,  // 114: user_service.AuthorizationService.AddRole:output_type -> user_service.AddRoleResponse
-	75,  // 115: user_service.AuthorizationService.AddPermission:output_type -> user_service.AddPermissionResponse
-	77,  // 116: user_service.AuthorizationService.LinkRoleAndPermission:output_type -> user_service.LinkRoleAndPermissionResponse
-	77,  // 117: user_service.AuthorizationService.UnlinkRoleAndPermission:output_type -> user_service.LinkRoleAndPermissionResponse
-	78,  // 118: user_service.AuthorizationService.AssignRole:output_type -> user_service.AssignRoleResponse
-	80,  // 119: user_service.AuthorizationService.UnassignRole:output_type -> user_service.UnassignRoleResponse
-	82,  // 120: user_service.AuthorizationService.GetUserRoles:output_type -> user_service.UserRolesResponse
-	82,  // 121: user_service.AuthorizationService.GetSelfRoles:output_type -> user_service.UserRolesResponse
-	85,  // 122: user_service.AuthorizationService.GetUsersWithRoles:output_type -> user_service.GetUsersWithRolesResponse
-	88,  // 123: user_service.AuthorizationService.GetRoleMetadata:output_type -> user_service.RoleMetadataResponse
-	90,  // 124: user_service.OrganizationService.ConnectOrganization:output_type -> user_service.ConnectOrganizationResponse
-	92,  // 125: user_service.OrganizationService.DisconnectOrganization:output_type -> user_service.DisconnectOrganizationResponse
-	94,  // 126: user_service.OrganizationService.RefreshTitles:output_type -> user_service.RefreshTitlesResponse
-	96,  // 127: user_service.OrganizationService.GetMyOrganizations:output_type -> user_service.GetMyOrganizationsResponse
-	98,  // 128: user_service.OrganizationService.GetPublicOrganizations:output_type -> user_service.GetPublicOrganizationsResponse
-	100, // 129: user_service.OrganizationService.SubmitVerification:output_type -> user_service.SubmitVerificationResponse
-	103, // 130: user_service.OrganizationService.GetPendingVerifications:output_type -> user_service.GetPendingVerificationsResponse
-	109, // 131: user_service.OrganizationService.GetVerificationImageUrl:output_type -> user_service.GetVerificationImageUrlResponse
-	105, // 132: user_service.OrganizationService.ApproveVerification:output_type -> user_service.ApproveVerificationResponse
-	107, // 133: user_service.OrganizationService.RejectVerification:output_type -> user_service.RejectVerificationResponse
-	111, // 134: user_service.OrganizationService.ManuallySetOrgMembership:output_type -> user_service.ManuallySetOrgMembershipResponse
-	78,  // [78:135] is the sub-list for method output_type
-	21,  // [21:78] is the sub-list for method input_type
-	21,  // [21:21] is the sub-list for extension type_name
-	21,  // [21:21] is the sub-list for extension extendee
-	0,   // [0:21] is the sub-list for field type_name
+	119, // 20: user_service.ManuallySetOrgMembershipRequest.credentials:type_name -> user_service.ManuallySetOrgMembershipRequest.CredentialsEntry
+	29,  // 21: user_service.AdminRefreshUserTitlesResponse.titles:type_name -> user_service.OrganizationTitle
+	41,  // 22: user_service.BriefProfilesResponse.ResponseEntry.value:type_name -> user_service.BriefProfile
+	0,   // 23: user_service.AuthenticationService.Login:input_type -> user_service.UserLoginRequest
+	10,  // 24: user_service.AuthenticationService.Logout:input_type -> user_service.UserLogoutRequest
+	8,   // 25: user_service.AuthenticationService.GetSocketToken:input_type -> user_service.SocketTokenRequest
+	4,   // 26: user_service.AuthenticationService.ResetPasswordStep1:input_type -> user_service.ResetPasswordRequestStep1
+	5,   // 27: user_service.AuthenticationService.ResetPasswordStep2:input_type -> user_service.ResetPasswordRequestStep2
+	1,   // 28: user_service.AuthenticationService.ChangePassword:input_type -> user_service.ChangePasswordRequest
+	12,  // 29: user_service.AuthenticationService.NotifyAccountClosure:input_type -> user_service.NotifyAccountClosureRequest
+	16,  // 30: user_service.AuthenticationService.GetSignedCookie:input_type -> user_service.GetSignedCookieRequest
+	17,  // 31: user_service.AuthenticationService.InstallSignedCookie:input_type -> user_service.SignedCookieResponse
+	14,  // 32: user_service.AuthenticationService.GetAPIKey:input_type -> user_service.GetAPIKeyRequest
+	19,  // 33: user_service.RegistrationService.Register:input_type -> user_service.UserRegistrationRequest
+	21,  // 34: user_service.RegistrationService.VerifyEmail:input_type -> user_service.VerifyEmailRequest
+	23,  // 35: user_service.RegistrationService.ResendVerificationEmail:input_type -> user_service.ResendVerificationEmailRequest
+	25,  // 36: user_service.ProfileService.GetRatings:input_type -> user_service.RatingsRequest
+	27,  // 37: user_service.ProfileService.GetStats:input_type -> user_service.StatsRequest
+	30,  // 38: user_service.ProfileService.GetProfile:input_type -> user_service.ProfileRequest
+	32,  // 39: user_service.ProfileService.GetPersonalInfo:input_type -> user_service.PersonalInfoRequest
+	34,  // 40: user_service.ProfileService.UpdatePersonalInfo:input_type -> user_service.UpdatePersonalInfoRequest
+	36,  // 41: user_service.ProfileService.UpdateAvatar:input_type -> user_service.UpdateAvatarRequest
+	38,  // 42: user_service.ProfileService.RemoveAvatar:input_type -> user_service.RemoveAvatarRequest
+	40,  // 43: user_service.ProfileService.GetBriefProfiles:input_type -> user_service.BriefProfilesRequest
+	43,  // 44: user_service.ProfileService.GetBadgesMetadata:input_type -> user_service.BadgeMetadataRequest
+	45,  // 45: user_service.AutocompleteService.GetCompletion:input_type -> user_service.UsernameSearchRequest
+	47,  // 46: user_service.SocializeService.AddFollow:input_type -> user_service.AddFollowRequest
+	48,  // 47: user_service.SocializeService.RemoveFollow:input_type -> user_service.RemoveFollowRequest
+	49,  // 48: user_service.SocializeService.GetFollows:input_type -> user_service.GetFollowsRequest
+	50,  // 49: user_service.SocializeService.AddBlock:input_type -> user_service.AddBlockRequest
+	51,  // 50: user_service.SocializeService.RemoveBlock:input_type -> user_service.RemoveBlockRequest
+	52,  // 51: user_service.SocializeService.GetBlocks:input_type -> user_service.GetBlocksRequest
+	53,  // 52: user_service.SocializeService.GetFullBlocks:input_type -> user_service.GetFullBlocksRequest
+	57,  // 53: user_service.SocializeService.GetActiveChatChannels:input_type -> user_service.GetActiveChatChannelsRequest
+	59,  // 54: user_service.SocializeService.GetChatsForChannel:input_type -> user_service.GetChatsRequest
+	64,  // 55: user_service.IntegrationService.GetIntegrations:input_type -> user_service.GetIntegrationsRequest
+	66,  // 56: user_service.IntegrationService.DeleteIntegration:input_type -> user_service.DeleteIntegrationRequest
+	70,  // 57: user_service.AuthorizationService.GetModList:input_type -> user_service.GetModListRequest
+	68,  // 58: user_service.AuthorizationService.GetSubscriptionCriteria:input_type -> user_service.GetSubscriptionCriteriaRequest
+	72,  // 59: user_service.AuthorizationService.AddRole:input_type -> user_service.AddRoleRequest
+	74,  // 60: user_service.AuthorizationService.AddPermission:input_type -> user_service.AddPermissionRequest
+	76,  // 61: user_service.AuthorizationService.LinkRoleAndPermission:input_type -> user_service.LinkRoleAndPermissionRequest
+	76,  // 62: user_service.AuthorizationService.UnlinkRoleAndPermission:input_type -> user_service.LinkRoleAndPermissionRequest
+	79,  // 63: user_service.AuthorizationService.AssignRole:input_type -> user_service.UserAndRole
+	79,  // 64: user_service.AuthorizationService.UnassignRole:input_type -> user_service.UserAndRole
+	81,  // 65: user_service.AuthorizationService.GetUserRoles:input_type -> user_service.GetUserRolesRequest
+	83,  // 66: user_service.AuthorizationService.GetSelfRoles:input_type -> user_service.GetSelfRolesRequest
+	84,  // 67: user_service.AuthorizationService.GetUsersWithRoles:input_type -> user_service.GetUsersWithRolesRequest
+	86,  // 68: user_service.AuthorizationService.GetRoleMetadata:input_type -> user_service.GetRoleMetadataRequest
+	89,  // 69: user_service.OrganizationService.ConnectOrganization:input_type -> user_service.ConnectOrganizationRequest
+	91,  // 70: user_service.OrganizationService.DisconnectOrganization:input_type -> user_service.DisconnectOrganizationRequest
+	93,  // 71: user_service.OrganizationService.RefreshTitles:input_type -> user_service.RefreshTitlesRequest
+	95,  // 72: user_service.OrganizationService.GetMyOrganizations:input_type -> user_service.GetMyOrganizationsRequest
+	97,  // 73: user_service.OrganizationService.GetPublicOrganizations:input_type -> user_service.GetPublicOrganizationsRequest
+	99,  // 74: user_service.OrganizationService.SubmitVerification:input_type -> user_service.SubmitVerificationRequest
+	101, // 75: user_service.OrganizationService.GetPendingVerifications:input_type -> user_service.GetPendingVerificationsRequest
+	108, // 76: user_service.OrganizationService.GetVerificationImageUrl:input_type -> user_service.GetVerificationImageUrlRequest
+	104, // 77: user_service.OrganizationService.ApproveVerification:input_type -> user_service.ApproveVerificationRequest
+	106, // 78: user_service.OrganizationService.RejectVerification:input_type -> user_service.RejectVerificationRequest
+	110, // 79: user_service.OrganizationService.ManuallySetOrgMembership:input_type -> user_service.ManuallySetOrgMembershipRequest
+	112, // 80: user_service.OrganizationService.AdminRefreshUserTitles:input_type -> user_service.AdminRefreshUserTitlesRequest
+	2,   // 81: user_service.AuthenticationService.Login:output_type -> user_service.LoginResponse
+	11,  // 82: user_service.AuthenticationService.Logout:output_type -> user_service.LogoutResponse
+	9,   // 83: user_service.AuthenticationService.GetSocketToken:output_type -> user_service.SocketTokenResponse
+	6,   // 84: user_service.AuthenticationService.ResetPasswordStep1:output_type -> user_service.ResetPasswordResponse
+	6,   // 85: user_service.AuthenticationService.ResetPasswordStep2:output_type -> user_service.ResetPasswordResponse
+	3,   // 86: user_service.AuthenticationService.ChangePassword:output_type -> user_service.ChangePasswordResponse
+	13,  // 87: user_service.AuthenticationService.NotifyAccountClosure:output_type -> user_service.NotifyAccountClosureResponse
+	17,  // 88: user_service.AuthenticationService.GetSignedCookie:output_type -> user_service.SignedCookieResponse
+	18,  // 89: user_service.AuthenticationService.InstallSignedCookie:output_type -> user_service.InstallSignedCookieResponse
+	15,  // 90: user_service.AuthenticationService.GetAPIKey:output_type -> user_service.GetAPIKeyResponse
+	20,  // 91: user_service.RegistrationService.Register:output_type -> user_service.RegistrationResponse
+	22,  // 92: user_service.RegistrationService.VerifyEmail:output_type -> user_service.VerifyEmailResponse
+	24,  // 93: user_service.RegistrationService.ResendVerificationEmail:output_type -> user_service.ResendVerificationEmailResponse
+	26,  // 94: user_service.ProfileService.GetRatings:output_type -> user_service.RatingsResponse
+	28,  // 95: user_service.ProfileService.GetStats:output_type -> user_service.StatsResponse
+	31,  // 96: user_service.ProfileService.GetProfile:output_type -> user_service.ProfileResponse
+	33,  // 97: user_service.ProfileService.GetPersonalInfo:output_type -> user_service.PersonalInfoResponse
+	35,  // 98: user_service.ProfileService.UpdatePersonalInfo:output_type -> user_service.UpdatePersonalInfoResponse
+	37,  // 99: user_service.ProfileService.UpdateAvatar:output_type -> user_service.UpdateAvatarResponse
+	39,  // 100: user_service.ProfileService.RemoveAvatar:output_type -> user_service.RemoveAvatarResponse
+	42,  // 101: user_service.ProfileService.GetBriefProfiles:output_type -> user_service.BriefProfilesResponse
+	44,  // 102: user_service.ProfileService.GetBadgesMetadata:output_type -> user_service.BadgeMetadataResponse
+	46,  // 103: user_service.AutocompleteService.GetCompletion:output_type -> user_service.UsernameSearchResponse
+	54,  // 104: user_service.SocializeService.AddFollow:output_type -> user_service.OKResponse
+	54,  // 105: user_service.SocializeService.RemoveFollow:output_type -> user_service.OKResponse
+	60,  // 106: user_service.SocializeService.GetFollows:output_type -> user_service.GetFollowsResponse
+	54,  // 107: user_service.SocializeService.AddBlock:output_type -> user_service.OKResponse
+	54,  // 108: user_service.SocializeService.RemoveBlock:output_type -> user_service.OKResponse
+	61,  // 109: user_service.SocializeService.GetBlocks:output_type -> user_service.GetBlocksResponse
+	62,  // 110: user_service.SocializeService.GetFullBlocks:output_type -> user_service.GetFullBlocksResponse
+	58,  // 111: user_service.SocializeService.GetActiveChatChannels:output_type -> user_service.ActiveChatChannels
+	121, // 112: user_service.SocializeService.GetChatsForChannel:output_type -> ipc.ChatMessages
+	65,  // 113: user_service.IntegrationService.GetIntegrations:output_type -> user_service.IntegrationsResponse
+	67,  // 114: user_service.IntegrationService.DeleteIntegration:output_type -> user_service.DeleteIntegrationResponse
+	71,  // 115: user_service.AuthorizationService.GetModList:output_type -> user_service.GetModListResponse
+	69,  // 116: user_service.AuthorizationService.GetSubscriptionCriteria:output_type -> user_service.GetSubscriptionCriteriaResponse
+	73,  // 117: user_service.AuthorizationService.AddRole:output_type -> user_service.AddRoleResponse
+	75,  // 118: user_service.AuthorizationService.AddPermission:output_type -> user_service.AddPermissionResponse
+	77,  // 119: user_service.AuthorizationService.LinkRoleAndPermission:output_type -> user_service.LinkRoleAndPermissionResponse
+	77,  // 120: user_service.AuthorizationService.UnlinkRoleAndPermission:output_type -> user_service.LinkRoleAndPermissionResponse
+	78,  // 121: user_service.AuthorizationService.AssignRole:output_type -> user_service.AssignRoleResponse
+	80,  // 122: user_service.AuthorizationService.UnassignRole:output_type -> user_service.UnassignRoleResponse
+	82,  // 123: user_service.AuthorizationService.GetUserRoles:output_type -> user_service.UserRolesResponse
+	82,  // 124: user_service.AuthorizationService.GetSelfRoles:output_type -> user_service.UserRolesResponse
+	85,  // 125: user_service.AuthorizationService.GetUsersWithRoles:output_type -> user_service.GetUsersWithRolesResponse
+	88,  // 126: user_service.AuthorizationService.GetRoleMetadata:output_type -> user_service.RoleMetadataResponse
+	90,  // 127: user_service.OrganizationService.ConnectOrganization:output_type -> user_service.ConnectOrganizationResponse
+	92,  // 128: user_service.OrganizationService.DisconnectOrganization:output_type -> user_service.DisconnectOrganizationResponse
+	94,  // 129: user_service.OrganizationService.RefreshTitles:output_type -> user_service.RefreshTitlesResponse
+	96,  // 130: user_service.OrganizationService.GetMyOrganizations:output_type -> user_service.GetMyOrganizationsResponse
+	98,  // 131: user_service.OrganizationService.GetPublicOrganizations:output_type -> user_service.GetPublicOrganizationsResponse
+	100, // 132: user_service.OrganizationService.SubmitVerification:output_type -> user_service.SubmitVerificationResponse
+	103, // 133: user_service.OrganizationService.GetPendingVerifications:output_type -> user_service.GetPendingVerificationsResponse
+	109, // 134: user_service.OrganizationService.GetVerificationImageUrl:output_type -> user_service.GetVerificationImageUrlResponse
+	105, // 135: user_service.OrganizationService.ApproveVerification:output_type -> user_service.ApproveVerificationResponse
+	107, // 136: user_service.OrganizationService.RejectVerification:output_type -> user_service.RejectVerificationResponse
+	111, // 137: user_service.OrganizationService.ManuallySetOrgMembership:output_type -> user_service.ManuallySetOrgMembershipResponse
+	113, // 138: user_service.OrganizationService.AdminRefreshUserTitles:output_type -> user_service.AdminRefreshUserTitlesResponse
+	81,  // [81:139] is the sub-list for method output_type
+	23,  // [23:81] is the sub-list for method input_type
+	23,  // [23:23] is the sub-list for extension type_name
+	23,  // [23:23] is the sub-list for extension extendee
+	0,   // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_proto_user_service_user_service_proto_init() }
@@ -6280,7 +6432,7 @@ func file_proto_user_service_user_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_service_user_service_proto_rawDesc), len(file_proto_user_service_user_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   117,
+			NumMessages:   120,
 			NumExtensions: 0,
 			NumServices:   8,
 		},

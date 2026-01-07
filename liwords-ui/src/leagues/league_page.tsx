@@ -545,7 +545,7 @@ export const LeaguePage = (props: Props) => {
                 <Select
                   value={displaySeasonId || undefined}
                   onChange={setSelectedSeasonId}
-                  style={{ width: 200 }}
+                  style={{ width: 250 }}
                   popupMatchSelectWidth={true}
                   options={allSeasons.map((season) => {
                     // Determine status label
@@ -576,6 +576,7 @@ export const LeaguePage = (props: Props) => {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
+                            gap: "12px",
                           }}
                         >
                           <span>Season {season.seasonNumber}</span>

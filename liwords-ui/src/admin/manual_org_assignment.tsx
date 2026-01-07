@@ -18,6 +18,7 @@ import {
   UserAddOutlined,
   DeleteOutlined,
   QuestionCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
@@ -25,6 +26,7 @@ import {
   ManuallySetOrgMembershipRequestSchema,
   GetPublicOrganizationsRequestSchema,
   DisconnectOrganizationRequestSchema,
+  AdminRefreshUserTitlesRequestSchema,
   OrganizationTitle,
   AutocompleteService,
 } from "../gen/api/proto/user_service/user_service_pb";
@@ -46,16 +48,16 @@ const organizationInfo = {
       <span>
         Visit{" "}
         <a
-          href="https://wespa.org/ratings.shtml"
+          href="https://legacy.wespa.org/ratings.shtml"
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#1890ff" }}
         >
-          wespa.org/ratings.shtml
+          legacy.wespa.org/ratings.shtml
         </a>
         , scroll down to "Find a player", enter the name, and click Submit. The
         player ID is the number in the URL (e.g., <strong>2145</strong> from
-        wespa.org/aardvark/html/players/2145.html).
+        legacy.wespa.org/aardvark/html/players/2145.html).
       </span>
     ),
   },
@@ -162,10 +164,19 @@ export const ManualOrgAssignment = () => {
   const handleAssign = async (values: {
     organizationCode: string;
     memberId: string;
+    username?: string;
+    password?: string;
   }) => {
     if (!currentUser) {
       message.error("Please search for a user first");
       return;
+    }
+
+    // Build credentials map if username and password are both provided
+    const credentials: { [key: string]: string } = {};
+    if (values.username && values.password) {
+      credentials.username = values.username;
+      credentials.password = values.password;
     }
 
     setLoading(true);
@@ -175,6 +186,8 @@ export const ManualOrgAssignment = () => {
           username: currentUser,
           organizationCode: values.organizationCode,
           memberId: values.memberId,
+          credentials:
+            Object.keys(credentials).length > 0 ? credentials : undefined,
         }),
       );
 
@@ -208,6 +221,26 @@ export const ManualOrgAssignment = () => {
       );
       message.success("Organization membership removed");
       // Refresh the organizations list
+      handleSearch();
+    } catch (e) {
+      flashError(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshTitles = async () => {
+    if (!currentUser) return;
+
+    setLoading(true);
+    try {
+      const response = await orgClient.adminRefreshUserTitles(
+        create(AdminRefreshUserTitlesRequestSchema, {
+          username: currentUser,
+        }),
+      );
+      message.success(response.message);
+      // Refresh the organizations list to show updated titles
       handleSearch();
     } catch (e) {
       flashError(e);
@@ -307,6 +340,17 @@ export const ManualOrgAssignment = () => {
           <Card
             title={`Current Memberships for ${currentUser}`}
             style={{ marginBottom: 20 }}
+            extra={
+              <Button
+                type="default"
+                icon={<ReloadOutlined />}
+                onClick={handleRefreshTitles}
+                loading={loading}
+                disabled={organizations.length === 0}
+              >
+                Refresh Titles
+              </Button>
+            }
           >
             {organizations.length > 0 ? (
               <Table
@@ -360,41 +404,76 @@ export const ManualOrgAssignment = () => {
                     organizationInfo[
                       selectedOrg as keyof typeof organizationInfo
                     ];
+                  const supportsCredentials =
+                    selectedOrg === "naspa" || selectedOrg === "absp";
 
                   return selectedOrg && orgInfo ? (
-                    <Form.Item
-                      label={
-                        <span>
-                          Member ID{" "}
-                          <Tooltip
-                            title={orgInfo.helpTooltip}
-                            overlayStyle={{ maxWidth: 400 }}
-                          >
-                            <QuestionCircleOutlined
-                              style={{ cursor: "help" }}
-                            />
-                          </Tooltip>
-                        </span>
-                      }
-                      name="memberId"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please enter the member ID",
-                        },
-                      ]}
-                      help={orgInfo.help}
-                    >
-                      <Input
-                        placeholder={
-                          selectedOrg === "naspa"
-                            ? "AA000083"
-                            : selectedOrg === "wespa"
-                              ? "2145"
-                              : "745"
+                    <>
+                      <Form.Item
+                        label={
+                          <span>
+                            Member ID{" "}
+                            <Tooltip
+                              title={orgInfo.helpTooltip}
+                              overlayStyle={{ maxWidth: 400 }}
+                            >
+                              <QuestionCircleOutlined
+                                style={{ cursor: "help" }}
+                              />
+                            </Tooltip>
+                          </span>
                         }
-                      />
-                    </Form.Item>
+                        name="memberId"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please enter the member ID",
+                          },
+                        ]}
+                        help={orgInfo.help}
+                      >
+                        <Input
+                          placeholder={
+                            selectedOrg === "naspa"
+                              ? "AA000083"
+                              : selectedOrg === "wespa"
+                                ? "2145"
+                                : "745"
+                          }
+                        />
+                      </Form.Item>
+
+                      {supportsCredentials && (
+                        <>
+                          <Alert
+                            message="Optional: User Credentials"
+                            description="If you have the user's login credentials, you can enter them below. This allows automatic title refreshes in the future. If left blank, the public database will be used."
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                          />
+                          <Form.Item
+                            label={
+                              selectedOrg === "naspa"
+                                ? "NASPA Username (Member ID)"
+                                : "ABSP Username (Email)"
+                            }
+                            name="username"
+                          >
+                            <Input
+                              placeholder={
+                                selectedOrg === "naspa"
+                                  ? "AA000083"
+                                  : "user@example.com"
+                              }
+                            />
+                          </Form.Item>
+                          <Form.Item label="Password" name="password">
+                            <Input.Password />
+                          </Form.Item>
+                        </>
+                      )}
+                    </>
                   ) : null;
                 }}
               </Form.Item>

@@ -410,6 +410,9 @@ export const Integrations = () => {
           </div>
         ),
       });
+
+      // Scroll back to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       flashError(e);
     } finally {
@@ -616,6 +619,12 @@ export const Integrations = () => {
 
       <Flex gap="middle" wrap="wrap" style={{ marginBottom: "2rem" }}>
         {Object.entries(organizationInfo).map(([code, info]) => {
+          // Hide ABSP from user-facing connection options (potential deprecation)
+          // Admins can still assign ABSP memberships via the admin panel
+          if (code === "absp") {
+            return null;
+          }
+
           if (organizations.some((org) => org.organizationCode === code)) {
             return null;
           }
@@ -790,17 +799,17 @@ export const Integrations = () => {
                         <span>
                           Visit{" "}
                           <a
-                            href="https://wespa.org/ratings.shtml"
+                            href="https://legacy.wespa.org/ratings.shtml"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: "#1890ff" }}
                           >
-                            wespa.org/ratings.shtml
+                            legacy.wespa.org/ratings.shtml
                           </a>
                           , scroll down to "Find a player", enter your name, and
                           click Submit. Your player ID is the number in the URL
                           (e.g., <strong>2145</strong> from
-                          wespa.org/aardvark/html/players/2145.html).
+                          legacy.wespa.org/aardvark/html/players/2145.html).
                         </span>
                       }
                       overlayStyle={{ maxWidth: 400 }}

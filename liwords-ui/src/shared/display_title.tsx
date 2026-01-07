@@ -6,50 +6,74 @@ interface DisplayUserTitleProps {
   uuid?: string;
 }
 
+// Map organization codes to display names
+const organizationNames: Record<string, string> = {
+  naspa: "NASPA",
+  wespa: "WESPA",
+  absp: "ABSP",
+};
+
+// Map abbreviations to their display colors
 const titleStyles: Record<
   string,
   { background: string; border: string; color: string }
 > = {
-  Grandmaster: {
-    background: "#C9FFCB", // UI/Light/Green
-    border: "#449E2D", // UI/Dark/Green
+  GM: {
+    background: "#C9FFCB", // Green/Light
+    border: "#449E2D", // Green/Dark
     color: "#449E2D",
   },
-  Master: {
-    background: "#FFFDC9", // UI/Light/Yellow
-    border: "#F4B000", // UI/Dark/Yellow
+  IM: {
+    background: "#E1BEE7", // Purple/Light
+    border: "#8E24AA", // Purple/Dark
+    color: "#8E24AA",
+  },
+  SM: {
+    background: "#FFFDC9", // Yellow/Light
+    border: "#F4B000", // Yellow/Dark
     color: "#F4B000",
   },
-  Expert: {
-    background: "#FFC9C9", // UI/Light/Red
-    border: "#A92E2E", // UI/Dark/Red
-    color: "#A92E2E",
+  M: {
+    background: "#FFFDC9", // Yellow/Light
+    border: "#F4B000", // Yellow/Dark
+    color: "#F4B000",
   },
-};
-
-const titleAbbreviations: Record<string, string> = {
-  Grandmaster: "GM",
-  Master: "M",
-  Expert: "E",
+  EX: {
+    background: "#FFC9C9", // Red/Light
+    border: "#A92E2D", // Red/Dark
+    color: "#A92E2D",
+  },
+  EXP: {
+    background: "#FFC9C9", // Red/Light
+    border: "#A92E2D", // Red/Dark
+    color: "#A92E2D",
+  },
 };
 
 export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
   const briefProfile = useBriefProfile(uuid);
 
-  if (!briefProfile || !briefProfile.title) {
+  if (!briefProfile || !briefProfile.titleAbbreviation) {
     return null;
   }
 
-  const abbreviation =
-    titleAbbreviations[briefProfile.title] || briefProfile.title;
-  const styles = titleStyles[briefProfile.title] || {
+  const abbreviation = briefProfile.titleAbbreviation;
+  const styles = titleStyles[abbreviation] || {
     background: "#e6f7ff",
     border: "#1890ff",
     color: "#1890ff",
   };
 
+  const orgName = briefProfile.titleOrganizationCode
+    ? organizationNames[briefProfile.titleOrganizationCode] ||
+      briefProfile.titleOrganizationCode
+    : "";
+  const tooltipText = orgName
+    ? `${briefProfile.title} (${orgName})`
+    : briefProfile.title;
+
   return (
-    <Tooltip title={`${briefProfile.title} title`}>
+    <Tooltip title={tooltipText} mouseEnterDelay={0.3}>
       <span
         style={{
           display: "inline-flex",
@@ -65,6 +89,7 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
           fontWeight: "bold",
           marginLeft: "4px",
           marginRight: "4px",
+          cursor: "default",
         }}
       >
         {abbreviation}

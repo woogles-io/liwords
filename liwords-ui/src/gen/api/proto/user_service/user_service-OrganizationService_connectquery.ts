@@ -62,3 +62,8 @@ export const rejectVerification = OrganizationService.method.rejectVerification;
  * @generated from rpc user_service.OrganizationService.ManuallySetOrgMembership
  */
 export const manuallySetOrgMembership = OrganizationService.method.manuallySetOrgMembership;
+
+/**
+ * @generated from rpc user_service.OrganizationService.AdminRefreshUserTitles
+ */
+export const adminRefreshUserTitles = OrganizationService.method.adminRefreshUserTitles;
