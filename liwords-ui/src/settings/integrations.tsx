@@ -412,7 +412,7 @@ export const Integrations = () => {
       });
 
       // Scroll back to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       flashError(e);
     } finally {

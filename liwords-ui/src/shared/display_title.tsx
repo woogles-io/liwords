@@ -65,9 +65,12 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
   };
 
   const orgName = briefProfile.titleOrganizationCode
-    ? organizationNames[briefProfile.titleOrganizationCode] || briefProfile.titleOrganizationCode
+    ? organizationNames[briefProfile.titleOrganizationCode] ||
+      briefProfile.titleOrganizationCode
     : "";
-  const tooltipText = orgName ? `${briefProfile.title} (${orgName})` : briefProfile.title;
+  const tooltipText = orgName
+    ? `${briefProfile.title} (${orgName})`
+    : briefProfile.title;
 
   return (
     <Tooltip title={tooltipText} mouseEnterDelay={0.3}>
