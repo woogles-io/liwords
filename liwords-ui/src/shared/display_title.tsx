@@ -90,6 +90,7 @@ export const DisplayUserTitle: React.FC<DisplayUserTitleProps> = ({ uuid }) => {
           marginLeft: "4px",
           marginRight: "4px",
           cursor: "default",
+          verticalAlign: "middle",
         }}
       >
         {abbreviation}
