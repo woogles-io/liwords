@@ -48,6 +48,10 @@ const (
 	// FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
 	// game early without resigning.
 	GameEndReason_FORCE_FORFEIT GameEndReason = 8
+	// ADJUDICATED means the game ended by external ruling (e.g., league deadline)
+	// based on the current score. Unlike FORCE_FORFEIT, this is neutral and can
+	// result in a win, loss, or tie for either player.
+	GameEndReason_ADJUDICATED GameEndReason = 9
 )
 
 // Enum value maps for GameEndReason.
@@ -62,6 +66,7 @@ var (
 		6: "TRIPLE_CHALLENGE",
 		7: "CANCELLED",
 		8: "FORCE_FORFEIT",
+		9: "ADJUDICATED",
 	}
 	GameEndReason_value = map[string]int32{
 		"NONE":               0,
@@ -73,6 +78,7 @@ var (
 		"TRIPLE_CHALLENGE":   6,
 		"CANCELLED":          7,
 		"FORCE_FORFEIT":      8,
+		"ADJUDICATED":        9,
 	}
 )
 
@@ -3552,7 +3558,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1b\n" +
 	"\treal_name\x18\x02 \x01(\tR\brealName\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04quit\x18\x04 \x01(\bR\x04quit*\x9c\x01\n" +
+	"\x04quit\x18\x04 \x01(\bR\x04quit*\xad\x01\n" +
 	"\rGameEndReason\x12\b\n" +
 	"\x04NONE\x10\x00\x12\b\n" +
 	"\x04TIME\x10\x01\x12\f\n" +
@@ -3562,7 +3568,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\aABORTED\x10\x05\x12\x14\n" +
 	"\x10TRIPLE_CHALLENGE\x10\x06\x12\r\n" +
 	"\tCANCELLED\x10\a\x12\x11\n" +
-	"\rFORCE_FORFEIT\x10\b*-\n" +
+	"\rFORCE_FORFEIT\x10\b\x12\x0f\n" +
+	"\vADJUDICATED\x10\t*-\n" +
 	"\bGameMode\x12\r\n" +
 	"\tREAL_TIME\x10\x00\x12\x12\n" +
 	"\x0eCORRESPONDENCE\x10\x01*#\n" +

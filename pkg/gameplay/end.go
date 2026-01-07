@@ -11,7 +11,6 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
@@ -19,6 +18,39 @@ import (
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+// PerformEndgameDuties handles all the duties that need to be done when a game ends.
+// This includes computing stats, ratings, saving the game, updating standings, etc.
+func PerformEndgameDuties(ctx context.Context, g *entity.Game,
+	stores *stores.Stores) error {
+	return performEndgameDuties(ctx, g, stores)
+}
+
+// AdjudicateGame finishes a game by adjudication based on current scores.
+// This is used when a league season ends or when players mutually agree to adjudicate.
+// The winner is determined by the current score.
+func AdjudicateGame(ctx context.Context, g *entity.Game, stores *stores.Stores) error {
+	log := zerolog.Ctx(ctx)
+
+	// Lock the game
+	g.Lock()
+	defer g.Unlock()
+
+	// Check if game is already finished
+	if g.GameEndReason != pb.GameEndReason_NONE {
+		log.Debug().Str("gameID", g.GameID()).Interface("reason", g.GameEndReason).Msg("game already finished")
+		return nil
+	}
+
+	// Set game end reason to ADJUDICATED
+	g.SetGameEndReason(pb.GameEndReason_ADJUDICATED)
+
+	// Get scores - winner/loser will be determined by performEndgameDuties
+	// We don't set winner/loser here because performEndgameDuties will do it
+
+	// Let performEndgameDuties handle everything else
+	return performEndgameDuties(ctx, g, stores)
+}
 
 func performEndgameDuties(ctx context.Context, g *entity.Game,
 	stores *stores.Stores) error {
@@ -210,10 +242,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 
 	// Update league standings if this is a league game
-	err = league.UpdateGameStandingsWithGame(ctx, stores.LeagueStore, g)
-	if err != nil {
-		// Log error but don't fail game completion
-		log.Err(err).Str("gameID", g.GameID()).Msg("failed-to-update-league-standings")
+	if stores.LeagueStandingsUpdater != nil {
+		err = stores.LeagueStandingsUpdater.UpdateGameStandings(ctx, g)
+		if err != nil {
+			// Log error but don't fail - standings can be recalculated later
+			log.Err(err).Msg("failed-to-update-league-standings")
+		}
 	}
 
 	log.Info().Msg("game-ended-unload-cache")

@@ -1,11 +1,39 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for all Liwords maintenance EventBridge scheduled tasks
 Resources:
+  # IAM Role for maintenance tasks - allows container code to access AWS services
+  MaintenanceTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: liwordsMaintenanceTaskRole
+      Description: Task role for liwords maintenance tasks - grants SES permissions for email sending
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SESSendEmailPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
+      Tags:
+        - Key: Application
+          Value: liwords
+        - Key: Component
+          Value: maintenance
   HourlyMaintenanceRule:
     Type: AWS::Events::Rule
     Properties:
       Name: liwords-hourly-maintenance
-      ScheduleExpression: cron(4 * * * ? *)
+      ScheduleExpression: cron(1 * * * ? *)
       State: ENABLED
       Description: Hourly maintenance for liwords. Runs blog RSS updater, badge updater, and league hourly runner.
       EventBusName: default
@@ -19,7 +47,6 @@ Resources:
           Input:
             Fn::Sub: |-
               {
-                  "taskRoleArn": "arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole",
                   "containerOverrides": [
                       {
                           "name": "maintenance",
@@ -57,55 +84,12 @@ Resources:
           Input:
             Fn::Sub: |-
               {
-                  "taskRoleArn": "arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole",
                   "containerOverrides": [
                       {
                           "name": "maintenance",
                           "command": [
                               "/opt/maintenance",
                               "integrations-refresher,cancelled-games-cleanup,monitoring-streams-cleanup,expired-sessions-cleanup,unverified-users-cleanup,league-unstarted-game-reminder"
-                          ]
-                      }
-                  ]
-              }
-          EcsParameters:
-            TaskDefinitionArn:
-              Fn::Sub: >-
-                arn:aws:ecs:us-east-2:${AWS::AccountId}:task-definition/liwords-maintenance
-            TaskCount: 1
-            LaunchType: EC2
-            EnableECSManagedTags: false
-            EnableExecuteCommand: false
-
-  # Note: Daily8amMaintenanceRule has been replaced by the hourly runner.
-  # The league-hourly-runner now checks all leagues for tasks that need to run
-  # based on their actual start/end dates, not a fixed 8am Eastern schedule.
-  # Old 8am runner kept as disabled for rollback purposes if needed.
-  Daily8amMaintenanceRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: liwords-daily-8am-maintenance
-      ScheduleExpression: cron(0 13 * * ? *)
-      State: DISABLED
-      Description: "[DEPRECATED - replaced by hourly runner] Daily 8am (US Eastern) maintenance. League tasks now handled by league-hourly-runner."
-      EventBusName: default
-      Targets:
-        - Id: !Sub "${AWS::StackName}-Daily8amTarget"
-          Arn:
-            Fn::Sub: >-
-              arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/woogles-prod
-          RoleArn:
-            Fn::Sub: arn:${AWS::Partition}:iam::${AWS::AccountId}:role/ecsEventsRole
-          Input:
-            Fn::Sub: |-
-              {
-                  "taskRoleArn": "arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole",
-                  "containerOverrides": [
-                      {
-                          "name": "maintenance",
-                          "command": [
-                              "/opt/maintenance",
-                              "league-morning-runner"
                           ]
                       }
                   ]
