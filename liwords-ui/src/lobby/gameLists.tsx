@@ -22,6 +22,7 @@ import "../shared/gameLists.scss";
 type Props = {
   loggedIn: boolean;
   newGame: (seekID: string) => void;
+  declineGame?: (seekID: string) => void;
   userID?: string;
   username?: string;
   selectedGameTab: string;
@@ -37,6 +38,7 @@ export const GameLists = React.memo((props: Props) => {
     userID,
     username,
     newGame,
+    declineGame,
     selectedGameTab,
     setSelectedGameTab,
     onSeekSubmit,
@@ -161,6 +163,7 @@ export const GameLists = React.memo((props: Props) => {
           correspondenceGames={lobbyContext?.correspondenceGames || []}
           correspondenceSeeks={lobbyContext?.correspondenceSeeks || []}
           newGame={newGame}
+          declineGame={declineGame}
           ratings={lobbyContext?.profile?.ratings}
         />
       );
@@ -186,6 +189,7 @@ export const GameLists = React.memo((props: Props) => {
               userID={userID}
               username={username}
               newGame={newGame}
+              declineGame={declineGame}
               requests={matchRequests}
             />
           ) : null}
@@ -195,6 +199,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
+            declineGame={declineGame}
             requests={soughtGames}
             ratings={lobbyContext?.profile?.ratings}
           />
@@ -212,6 +217,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
+            declineGame={declineGame}
             requests={matchRequestsForWatch}
           />
         ) : null}
