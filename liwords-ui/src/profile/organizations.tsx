@@ -82,7 +82,9 @@ export const DisplayUserOrganizations: React.FC<
           return (
             <div key={org.organizationCode} style={{ marginBottom: 8 }}>
               <strong>
-                {organizationNames[org.organizationCode] || org.organizationCode}:
+                {organizationNames[org.organizationCode] ||
+                  org.organizationCode}
+                :
               </strong>{" "}
               <Tag color={color} style={{ fontWeight: "bold" }}>
                 {fullName}

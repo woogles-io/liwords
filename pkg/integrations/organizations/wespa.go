@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// XXX: replace this with https://legacy.wespa.org/latest.txt soon, when titles are added to it.
+//
 //go:embed wespa-titlists.txt
 var wespaTitlistsData string
 
