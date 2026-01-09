@@ -535,7 +535,7 @@ export const LeaguePage = (props: Props) => {
             {/* Breadcrumb */}
             <Link to="/leagues" className="back-to-leagues-link">
               <LeftOutlined style={{ marginRight: 4 }} />
-              All leagues
+              All leagues / FAQ
             </Link>
 
             {/* League Header Row with Name and Selectors */}
