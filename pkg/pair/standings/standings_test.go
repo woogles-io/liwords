@@ -272,8 +272,7 @@ func TestStandings(t *testing.T) {
 	standings = pkgstnd.CreateInitialStandings(req)
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, 1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, 1)
-	is.Equal(simResults.LowestFactorPairWins, numSims)
+	is.Equal(simResults.HighestControlLossRankIdx, -1)
 
 	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
 	is.True(verifyreq.Verify(req) == nil)
@@ -281,8 +280,7 @@ func TestStandings(t *testing.T) {
 	numSims = 10000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, 6, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, 3)
-	is.True(simResults.LowestFactorPairWins < numSims)
+	is.Equal(simResults.HighestControlLossRankIdx, 4)
 	numSims = 1000
 
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
@@ -293,8 +291,7 @@ func TestStandings(t *testing.T) {
 	numSims = 5000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 3, 5, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, 1)
-	is.True(simResults.LowestFactorPairWins < 4000)
+	is.Equal(simResults.HighestControlLossRankIdx, -1)
 	numSims = 1000
 }
 

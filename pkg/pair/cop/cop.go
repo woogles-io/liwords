@@ -295,16 +295,16 @@ var weightPolicies = []weightPolicy{
 			}
 			// Distance is ceil(numPlayers/3)
 			lowestPCIndex := getLowestCasherIndex(pargs)
+			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
 			if ri > lowestPCIndex {
 				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
-				if rj-ri <= dist {
-					return 0
+				if rj-ri > dist {
+					return majorPenalty
 				}
-				return majorPenalty
+				lowestContender = pargs.copdata.LowestRankAbsolutely[ri]
 			}
-			if rj <= pargs.copdata.LowestPossibleHopeNth[ri] ||
-				(pargs.copdata.LowestPossibleHopeNth[ri] == ri && ri == rj-1) {
-				casherDiff := pargs.copdata.LowestPossibleHopeNth[ri] - rj
+			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
+				casherDiff := lowestContender - rj
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
@@ -346,7 +346,29 @@ var weightPolicies = []weightPolicy{
 			pairingKey := copdatapkg.GetPairingKey(pi, pj)
 			timesPlayed := pargs.copdata.PairingCounts[pairingKey]
 			unitWeight := int64(4 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
-			totalWeight := int64(timesPlayed) * unitWeight
+			// We would like the following to always be true:
+			//
+			// n-peat weight >= 2 * (n-1)-peat weight
+			//
+			// From this relationship and the existing code
+			// we can derive a recursive formula for what repeats should be:
+			//
+			// RE(1) = 1
+			// RE(n) = 2 * (RE(n-1) + 1)
+			//
+			// we use a +1 for when both players are outside of cash, which results
+			// in the following values for repeats:
+			// RE(1) = 1
+			// RE(2) = 4
+			// RE(3) = 10
+			// RE(4) = 22
+			// RE(5) = 46
+			// ...
+			multiplier := 0
+			if timesPlayed > 0 {
+				multiplier = 3*(1<<(timesPlayed-1)) - 2
+			}
+			totalWeight := int64(multiplier) * unitWeight
 			// If both players are outside of cash, add an extra unit weight
 			// to the repeat weight.
 			if ri > getLowestCasherIndex(pargs) {
