@@ -822,8 +822,6 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	// Billy should get the bye since Eric already received a bye
 	is.Equal(resp.Pairings[5], int32(5))
-
-	// FIXME: check that timeouts work
 }
 
 func TestCOPWeights(t *testing.T) {

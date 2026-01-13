@@ -44,8 +44,8 @@ type SimResults struct {
 	GibsonGroups              []int
 	GibsonizedPlayers         []bool
 	HighestControlLossRankIdx int
-	LowestFactorPairWins      int
 	AllControlLosses          map[int]int
+	VsFirstWins               map[int]int
 	SegmentRoundFactors       []int
 	TotalSims                 int
 }
@@ -325,8 +325,8 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
 	standings.Backup()
 	highestControlLossRankIdx := -1
-	lowestFactorPairWins := sims + 1
 	var allControlLosses map[int]int
+	var vsFirstWins map[int]int
 	totalSims := 0
 	if lowestHopeControlLosser < 0 {
 		initialSimStopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
@@ -357,6 +357,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		// number of tournament wins while always winning every game in factor pairings
 		// who also always wins every tournament while always play first place and win every game.\
 		allControlLosses = map[int]int{}
+		vsFirstWins = map[int]int{}
 		leftPlayerRankIdx := 1
 		rightPlayerRankIdx := lowestHopeControlLosser
 		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
@@ -368,23 +369,20 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				return nil, pairErr
 			}
 			totalSims++
-			if vsFirstTournamentWins < sims {
-				rightPlayerRankIdx = forcedWinnerRankIdx - 1
-				allControlLosses[forcedWinnerRankIdx] = -1
-				continue
-			}
+			vsFirstWins[forcedWinnerRankIdx] = vsFirstTournamentWins
 			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false, controlSimStopTime)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
 			totalSims++
 			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
-			if vsFactorPairTournamentWins < lowestFactorPairWins {
-				leftPlayerRankIdx = forcedWinnerRankIdx + 1
-				lowestFactorPairWins = vsFactorPairTournamentWins
-				highestControlLossRankIdx = forcedWinnerRankIdx
-			} else {
+			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
 				rightPlayerRankIdx = forcedWinnerRankIdx - 1
+				if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
+					highestControlLossRankIdx = forcedWinnerRankIdx
+				}
+			} else {
+				leftPlayerRankIdx = forcedWinnerRankIdx + 1
 			}
 		}
 	}
@@ -394,8 +392,8 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		GibsonGroups:              gibsonGroups,
 		GibsonizedPlayers:         gibsonizedPlayers,
 		HighestControlLossRankIdx: highestControlLossRankIdx,
-		LowestFactorPairWins:      lowestFactorPairWins,
 		AllControlLosses:          allControlLosses,
+		VsFirstWins:               vsFirstWins,
 		SegmentRoundFactors:       segmentRoundFactors,
 		TotalSims:                 totalSims,
 	}, pb.PairError_SUCCESS
@@ -519,9 +517,6 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 			tournamentWins++
 		}
 		standings.RestoreFromBackup()
-		if vsFirst && playerInFirst != forcedWinnerPlayerIdx {
-			return 0, pb.PairError_SUCCESS
-		}
 	}
 	return tournamentWins, pb.PairError_SUCCESS
 }

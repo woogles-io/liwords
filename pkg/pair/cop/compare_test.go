@@ -533,6 +533,8 @@ func TestCompare(t *testing.T) {
 				req.DivisionResults = randomDivResults[:roundResultsLength]
 			}
 		}
+		// Request override settings
+		req.ControlLossThreshold = 0.3
 		resp := cop.COPPair(req)
 		writeStringToFile(newLogFile, resp.Log)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)

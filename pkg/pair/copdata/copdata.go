@@ -182,6 +182,7 @@ divisionPairingLoop:
 
 	var controlLossSimResults *pkgstnd.SimResults
 	var allControlLosses map[int]int
+	var vsFirstWins map[int]int
 	destinysChild := -1
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 {
 		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
@@ -189,13 +190,13 @@ divisionPairingLoop:
 			return nil, pairErr
 		}
 		allControlLosses = controlLossSimResults.AllControlLosses
-		if controlLossSimResults.HighestControlLossRankIdx >= 0 &&
-			1.0-float64(controlLossSimResults.LowestFactorPairWins)/float64(req.ControlLossSims) >= req.ControlLossThreshold {
+		vsFirstWins = controlLossSimResults.VsFirstWins
+		if controlLossSimResults.HighestControlLossRankIdx >= 0 {
 			destinysChild = controlLossSimResults.HighestControlLossRankIdx
 		}
 	}
 
-	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
+	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, vsFirstWins, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
 		Standings:             standings,
@@ -225,7 +226,7 @@ func GetPairingKey(playerIdx int, oppIdx int) string {
 	return pairingKey
 }
 
-func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allControlLosses map[int]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
+func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allControlLosses map[int]int, vsFirstWins map[int]int, highestRankHopefully []int, highestRankAbsolutely []int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
 	numPlayers := len(highestRankHopefully)
 	matrix := make([][]string, numPlayers)
 
@@ -233,8 +234,8 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allCont
 	var header []string
 	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
 		if useControlLoss {
-			matrix[rankIdx] = make([]string, 5)
-			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A", "CLf"}...)
+			matrix[rankIdx] = make([]string, 6)
+			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A", "vs1st", "vsFactor"}...)
 		} else {
 			matrix[rankIdx] = make([]string, 4)
 			header = append(standingsHeader, []string{"Gb", "Gr", "H", "A"}...)
@@ -245,12 +246,21 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allCont
 		matrix[rankIdx][3] = strconv.Itoa(highestRankAbsolutely[rankIdx] + 1)
 		if useControlLoss {
 			matrix[rankIdx][4] = ""
+			matrix[rankIdx][5] = ""
+			vsFirstWinsCount, exists := vsFirstWins[rankIdx]
+			if exists {
+				if vsFirstWinsCount < 0 {
+					matrix[rankIdx][4] = "-"
+				} else {
+					matrix[rankIdx][4] = strconv.Itoa(vsFirstWinsCount)
+				}
+			}
 			playerControlLosses, exists := allControlLosses[rankIdx]
 			if exists {
 				if playerControlLosses < 0 {
-					matrix[rankIdx][4] = "-"
+					matrix[rankIdx][5] = "-"
 				} else {
-					matrix[rankIdx][4] = strconv.Itoa(playerControlLosses)
+					matrix[rankIdx][5] = strconv.Itoa(playerControlLosses)
 				}
 			}
 		}
