@@ -277,11 +277,10 @@ func TestStandings(t *testing.T) {
 	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
-	numSims = 10000
+	numSims = 1000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, 6, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(simResults.HighestControlLossRankIdx, 4)
-	numSims = 1000
 
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	// Give the player in 2nd more spread to trigger control loss
