@@ -1,45 +1,49 @@
 package organizations
 
 import (
-	_ "embed"
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
-// XXX: replace this with https://legacy.wespa.org/latest.txt soon, when titles are added to it.
-//
-//go:embed wespa-titlists.txt
-var wespaTitlistsData string
+// wespaPlayer represents a player in the WESPA database
+type wespaPlayer struct {
+	Name  string
+	Title string
+}
 
-// WESPATitlist represents a single entry in the WESPA titlists
-type WESPATitlist struct {
-	Country string
-	Title   string
-	Name    string
-	Norms   string
+// wespaCache holds the in-memory database with TTL
+type wespaCache struct {
+	mu        sync.RWMutex
+	players   map[string]*wespaPlayer // Key: lowercase normalized name
+	lastFetch time.Time
+	cacheTTL  time.Duration
 }
 
 // WESPAIntegration handles WESPA (manual verification, scrapes HTML for name)
 type WESPAIntegration struct {
 	BaseURL    string
 	HTTPClient *http.Client
-	titlists   []WESPATitlist
+	cache      *wespaCache
 }
 
 // NewWESPAIntegration creates a new WESPA integration instance
 func NewWESPAIntegration() *WESPAIntegration {
-	w := &WESPAIntegration{
+	return &WESPAIntegration{
 		BaseURL: "https://legacy.wespa.org",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		cache: &wespaCache{
+			players:  make(map[string]*wespaPlayer),
+			cacheTTL: 24 * time.Hour,
+		},
 	}
-	w.titlists = parseTitlists(wespaTitlistsData)
-	return w
 }
 
 // FetchTitle fetches title from the embedded WESPA titlists by matching the player's name
@@ -117,65 +121,121 @@ func (w *WESPAIntegration) extractNameFromHTML(html string) (string, error) {
 	return name, nil
 }
 
-// parseTitlists parses the embedded WESPA titlists data
-func parseTitlists(data string) []WESPATitlist {
-	var titlists []WESPATitlist
-	lines := strings.Split(data, "\n")
+// ensureCacheValid checks if cache needs refresh and updates if necessary
+func (w *WESPAIntegration) ensureCacheValid() error {
+	w.cache.mu.RLock()
+	needsRefresh := time.Since(w.cache.lastFetch) > w.cache.cacheTTL || len(w.cache.players) == 0
+	w.cache.mu.RUnlock()
 
-	// Skip header lines (first 2 lines)
-	for i := 2; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-
-		parts := strings.Fields(line)
-		if len(parts) < 4 {
-			continue
-		}
-
-		// Format: [Country] [Title] [Name...] [Norms]
-		country := parts[0]
-		title := parts[1]
-		norms := parts[len(parts)-1]
-
-		// Skip entries with no title
-		if title == "--" {
-			continue
-		}
-
-		// Everything between title and norms is the name
-		nameParts := parts[2 : len(parts)-1]
-		name := strings.Join(nameParts, " ")
-
-		titlists = append(titlists, WESPATitlist{
-			Country: country,
-			Title:   title,
-			Name:    name,
-			Norms:   norms,
-		})
+	if !needsRefresh {
+		return nil
 	}
 
-	return titlists
+	// Need to refresh - acquire write lock
+	return w.refreshCache()
+}
+
+// refreshCache downloads and parses the WESPA database
+func (w *WESPAIntegration) refreshCache() error {
+	// Download the database file
+	resp, err := w.HTTPClient.Get(w.BaseURL + "/latest.txt")
+	if err != nil {
+		return fmt.Errorf("failed to download WESPA database: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("WESPA database returned status %d", resp.StatusCode)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read WESPA database: %w", err)
+	}
+
+	// Parse the file
+	players := parseLatestTxt(string(body))
+
+	// Update cache with write lock
+	w.cache.mu.Lock()
+	w.cache.players = players
+	w.cache.lastFetch = time.Now()
+	w.cache.mu.Unlock()
+
+	return nil
+}
+
+// parseLatestTxt parses the WESPA latest.txt file
+func parseLatestTxt(data string) map[string]*wespaPlayer {
+	players := make(map[string]*wespaPlayer)
+	scanner := bufio.NewScanner(strings.NewReader(data))
+
+	// Skip header line (first line)
+	if !scanner.Scan() {
+		return players
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 30 {
+			continue // Line too short
+		}
+
+		// Extract name from fixed-width column (chars 9-29, 21 chars)
+		name := strings.TrimSpace(line[9:30])
+		if name == "" {
+			continue
+		}
+
+		// Extract remaining fields after position 30
+		remainder := strings.TrimSpace(line[30:])
+		fields := strings.Fields(remainder)
+
+		// Title is at index 4 of the remaining fields (column 8 overall)
+		title := ""
+		if len(fields) >= 5 {
+			title = fields[4]
+			if title == "--" {
+				title = ""
+			}
+		}
+
+		// Use lowercase name as key for prefix matching
+		key := strings.ToLower(name)
+		players[key] = &wespaPlayer{
+			Name:  name,
+			Title: title,
+		}
+	}
+
+	return players
 }
 
 // findTitleByName searches for a title by name using prefix matching
-// The WESPA page has the full real name, but titlist names may be shortened
-// e.g., "Conrad Bassett-Bouch" in titlist matches "Conrad Bassett-Bouchard" from page
+// The WESPA page has the full real name, but database names may be shortened
+// e.g., "Conrad Bassett-Bouch" in database matches "Conrad Bassett-Bouchard" from page
 func (w *WESPAIntegration) findTitleByName(fullName string) string {
 	if fullName == "" {
+		return ""
+	}
+
+	// Ensure cache is valid before lookup
+	if err := w.ensureCacheValid(); err != nil {
+		// If cache fetch fails, return empty title
 		return ""
 	}
 
 	// Normalize the full name for matching
 	normalizedFullName := strings.ToLower(strings.TrimSpace(fullName))
 
-	for _, entry := range w.titlists {
-		normalizedListName := strings.ToLower(entry.Name)
+	w.cache.mu.RLock()
+	defer w.cache.mu.RUnlock()
 
-		// Check if the titlist name is a prefix of the full name from WESPA page
-		if strings.HasPrefix(normalizedFullName, normalizedListName) {
-			return entry.Title
+	for key, player := range w.cache.players {
+		// Check if the database name is a prefix of the full name from WESPA page
+		if strings.HasPrefix(normalizedFullName, key) {
+			return player.Title
 		}
 	}
 
