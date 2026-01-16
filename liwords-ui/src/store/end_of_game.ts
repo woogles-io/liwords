@@ -66,6 +66,11 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       properEnding = true;
       summaryReason = " by forfeit";
       break;
+    case GameEndReason.ADJUDICATED:
+      properEnding = true;
+      summaryReason = " (adjudicated)";
+      summaryAddendum = `Final score: ${winscore} - ${losescore}`;
+      break;
   }
   if (!properEnding) {
     summary.push(summaryReason);

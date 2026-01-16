@@ -33,7 +33,7 @@ type ForceFinishResult struct {
 }
 
 // ForceFinishUnfinishedGames finds all unfinished games for a season and adjudicates them.
-// This is called on Day 20 at midnight when the season is force-closed.
+// This is called when the ongoing season is closed.
 func (ffm *ForceFinishManager) ForceFinishUnfinishedGames(
 	ctx context.Context,
 	seasonID uuid.UUID,
