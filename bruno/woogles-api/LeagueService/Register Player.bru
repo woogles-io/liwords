@@ -1,0 +1,37 @@
+meta {
+  name: Register Player
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/league_service.LeagueService/RegisterForSeason
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{ADMIN_API_KEY}}
+}
+
+body:json {
+  {
+    "season_id": "c1580cb7-55e0-44f7-afce-83d1cd7ff020",
+    "promotion_formula": 1
+  }
+}
+
+docs {
+  ## Update Season Promotion Formula
+  
+  Updates the promotion/relegation formula for a season.
+  
+  ### Promotion Formula Values:
+  - `0` = PROMO_N_DIV_6 (ceil(N/6)) - default, e.g. 15 players = 3 promoted/relegated
+  - `1` = PROMO_N_PLUS_1_DIV_5 (ceil((N+1)/5)), e.g. 15 players = 4 promoted/relegated
+  - `2` = PROMO_N_DIV_5 (ceil(N/5)), e.g. 15 players = 3 promoted/relegated
+  
+  ### Requirements:
+  - Must have can_manage_leagues permission
+  - Season cannot be COMPLETED
+}

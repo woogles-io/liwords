@@ -209,6 +209,9 @@ func main() {
 		panic(err)
 	}
 
+	// Wire up the league standings updater to avoid circular dependencies
+	stores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(stores.LeagueStore))
+
 	middlewares := alice.New(
 		WithTiming("hlog", hlog.NewHandler(log.With().Str("service", "liwords").Logger())),
 		WithTiming("exposeRW", apiserver.ExposeResponseWriterMiddleware),

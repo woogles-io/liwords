@@ -26,6 +26,10 @@ enum GameEndReason {
   // FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
   // game early without resigning.
   FORCE_FORFEIT = 8;
+  // ADJUDICATED means the game ended by external ruling (e.g., league deadline)
+  // based on the current score. Unlike FORCE_FORFEIT, this is neutral and can
+  // result in a win, loss, or tie for either player.
+  ADJUDICATED = 9;
 }
 
 message ClientGameplayEvent {

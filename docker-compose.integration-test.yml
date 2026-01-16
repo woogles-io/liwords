@@ -1,0 +1,186 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    environment:
+      MACONDO_DATA_PATH: /opt/program/data
+      MACONDO_DEBUG: 1
+      DB_HOST: db-integration-test
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_NAME: liwords_integration_test
+      DB_PASSWORD: pass
+      DB_SSL_MODE: disable
+      SECRET_KEY: integration-test-key
+      CREDENTIALS_ENCRYPTION_KEY: ZZcByQlXmdAzXoXYooUxYCtxyvpMiI0o1su+id6qMx4=
+      DEBUG: 1
+      NATS_URL: nats://nats-integration-test:4222
+      REGISTRATION_CODE: foobar
+      EMAIL_DEBUG: "true"
+      REDIS_URL: "redis://redis-integration-test:6379"
+      ARGON_MEMORY: 1024
+      AWS_REGION: "us-east-2"
+      AWS_ACCESS_KEY_ID: 'liwords'
+      AWS_SECRET_KEY: 'liwords-pass'
+      AVATAR_UPLOAD_BUCKET: woogles-uploads
+      USE_MINIO_S3: 1
+      MINIO_S3_ENDPOINT: http://minio-integration-test:9000
+      DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
+      SKIP_EMAIL_VERIFICATION: 1
+      RUN_MIGRATIONS: 1
+      # Time manipulation for testing
+      LEAGUE_NOW: ${LEAGUE_NOW:-}
+    volumes:
+      - .:/opt/program:rw
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
+      - ../macondo/data/strategy:/opt/program/data/strategy
+    command: sh -c "go run cmd/liwords-api/*.go"
+    depends_on:
+      db-integration-test:
+        condition: service_healthy
+      nats-integration-test:
+        condition: service_started
+      redis-integration-test:
+        condition: service_started
+      minio-integration-test:
+        condition: service_healthy
+    networks:
+      - integration-test-net
+    ports:
+      - "18001:8001"  # Different port to avoid conflicts with dev env
+
+  socket:
+    build:
+      context: .
+      dockerfile: services/socketsrv/Dockerfile-dev
+    environment:
+      SECRET_KEY: integration-test-key
+      DEBUG: 1
+      NATS_URL: nats://nats-integration-test:4222
+      FOLLOWERS_CACHE_SIZE: 0
+      FOLLOWERS_CACHE_TTL: 1m
+    volumes:
+      - .:/opt/program:rw
+    command: [ "go", "run", "cmd/socketsrv/main.go" ]
+    depends_on: [ "nats-integration-test" ]
+    networks:
+      - integration-test-net
+    labels:
+      - "traefik.http.routers.liwords-socket-it.rule=PathPrefix(`/ws`)"
+      - "traefik.http.routers.liwords-socket-it.entrypoints=web"
+      - "traefik.http.services.liwords-socket-it.loadbalancer.server.port=8087"
+      - traefik.enable=true
+
+  proxy:
+    image: "traefik:v3.6"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=liwords_integration-test-net"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "18080:80"    # Frontend accessible at localhost:18080
+      - "18888:8080"  # Traefik dashboard at localhost:18888
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - integration-test-net
+    security_opt:
+      - no-new-privileges:true
+
+  nats-integration-test:
+    image: "nats"
+    networks:
+      - integration-test-net
+
+  redis-integration-test:
+    image: "redis:alpine"
+    networks:
+      - integration-test-net
+
+  db-integration-test:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: liwords_integration_test
+    networks:
+      - integration-test-net
+    ports:
+      - "25432:5432"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-integration-test:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: liwords
+      MINIO_ROOT_PASSWORD: liwords-pass
+    command: server /data --console-address ":9001"
+    networks:
+      - integration-test-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  createbuckets-integration-test:
+    image: minio/mc
+    depends_on:
+      minio-integration-test:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio-integration-test:9000 liwords liwords-pass;
+      /usr/bin/mc mb myminio/woogles-uploads --ignore-existing;
+      /usr/bin/mc anonymous set public myminio/woogles-uploads;
+      exit 0;
+      "
+    networks:
+      - integration-test-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile-fe
+    volumes:
+      - ./liwords-ui:/opt/liwords-ui
+    working_dir: /opt/liwords-ui
+    command: bash -c "npm install && npm start"
+    networks:
+      - integration-test-net
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.liwords-fe-it.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.liwords-fe-it.service=liwords-fe-it-service"
+      - "traefik.http.routers.liwords-fe-it.entrypoints=web"
+      - "traefik.http.services.liwords-fe-it-service.loadbalancer.server.port=3000"
+
+  # Bot for playing against (optional, can be started separately)
+  bot:
+    build:
+      context: ../macondo
+      dockerfile: Dockerfile-bot-dev
+    environment:
+      MACONDO_DATA_PATH: /opt/program/data
+      MACONDO_NATS_URL: nats://nats-integration-test:4222
+      MACONDO_DEBUG: 1
+    volumes:
+      - ../macondo:/opt/program:rw
+      - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
+    command: sh -c "go run cmd/bot/*.go"
+    depends_on: [ "nats-integration-test" ]
+    networks:
+      - integration-test-net
+    profiles:
+      - with-bot  # Only starts if --profile with-bot is specified
+
+networks:
+  integration-test-net:
+    driver: bridge

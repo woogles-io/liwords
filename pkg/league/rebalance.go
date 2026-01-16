@@ -45,16 +45,17 @@ func NewRebalanceManager(allStores *stores.Stores) *RebalanceManager {
 
 // PlayerWithVirtualDiv represents a player with their assigned virtual division
 type PlayerWithVirtualDiv struct {
-	UserID               string // UUID string for external use
-	UserDBID             int32  // Database ID for internal queries
-	Username             string // Username for logging
-	VirtualDivision      int32  // 1-indexed division
-	PlacementStatus      ipc.PlacementStatus
-	PreviousDivisionSize int
-	PreviousRank         int32
-	HiatusSeasons        int32
-	Rating               int
-	RegistrationRow      models.LeagueRegistration
+	UserID                 string // UUID string for external use
+	UserDBID               int32  // Database ID for internal queries
+	Username               string // Username for logging
+	VirtualDivision        int32  // 1-indexed division
+	PreviousDivisionNumber int32  // Division number from previous season
+	PlacementStatus        ipc.PlacementStatus
+	PreviousDivisionSize   int
+	PreviousRank           int32
+	HiatusSeasons          int32
+	Rating                 int
+	RegistrationRow        models.LeagueRegistration
 }
 
 // PlayerWithPriority extends PlayerWithVirtualDiv with priority score
@@ -157,9 +158,9 @@ func (rm *RebalanceManager) RebalanceDivisions(
 				result.FinalDivisions[p.UserID] = div.DivisionNumber
 
 				// Step 7: Correct placement status if actual movement differs from expected
-				// VirtualDivision is where they "should" go based on outcome
+				// PreviousDivisionNumber is where they started
 				// FinalDivision is where they actually ended up
-				correctedStatus := rm.correctPlacementStatus(p.PlacementStatus, p.VirtualDivision, div.DivisionNumber)
+				correctedStatus := rm.correctPlacementStatus(p.PlacementStatus, p.PreviousDivisionNumber, div.DivisionNumber)
 				if correctedStatus != p.PlacementStatus {
 					err := rm.stores.LeagueStore.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{
 						UserID:               p.UserDBID,
@@ -176,6 +177,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 					} else {
 						log.Info().
 							Str("username", p.Username).
+							Int32("previous_div", p.PreviousDivisionNumber).
 							Int32("virtual_div", p.VirtualDivision).
 							Int32("final_div", div.DivisionNumber).
 							Str("old_status", p.PlacementStatus.String()).
@@ -190,46 +192,37 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	return result, nil
 }
 
-// correctPlacementStatus adjusts placement status if actual movement differs from expected
-// For example, if a player was marked RELEGATED but ended up in the same division
-// (because others didn't return), they should be marked as STAYED instead.
+// correctPlacementStatus adjusts placement status based on actual division movement
+// Compares where the player started (previousDivision) to where they ended up (finalDivision)
+// and sets the status to reflect the actual movement, not the expected movement.
 //
-// VirtualDivision represents where they were *expected* to end up:
-// - RELEGATED from Div 1 -> virtualDivision = 2
-// - PROMOTED from Div 2 -> virtualDivision = 1
-// - STAYED in Div 1 -> virtualDivision = 1
+// Examples:
+// - Player promoted from Div 10 but ended up in Div 10 due to crowding -> STAYED
+// - Player stayed in Div 5 but ended up in Div 4 due to openings -> PROMOTED
+// - Player stayed in Div 5 but ended up in Div 6 due to league growth -> RELEGATED
 func (rm *RebalanceManager) correctPlacementStatus(
 	originalStatus ipc.PlacementStatus,
-	virtualDivision int32,
+	previousDivision int32,
 	finalDivision int32,
 ) ipc.PlacementStatus {
-	// Correct placement statuses when final division differs from virtual division
-	switch originalStatus {
-	case ipc.PlacementStatus_PLACEMENT_RELEGATED:
-		// Player was supposed to be relegated (virtualDivision is their target, which is lower than before)
-		// If they ended up in a better (lower number) division than expected, mark as STAYED
-		if finalDivision < virtualDivision {
-			return ipc.PlacementStatus_PLACEMENT_STAYED
-		}
-	case ipc.PlacementStatus_PLACEMENT_PROMOTED:
-		// Player was supposed to be promoted (virtualDivision is their target, which is higher than before)
-		// If they ended up in a worse (higher number) division than expected, mark as RELEGATED
-		if finalDivision > virtualDivision {
-			return ipc.PlacementStatus_PLACEMENT_RELEGATED
-		}
-	case ipc.PlacementStatus_PLACEMENT_STAYED:
-		// Player was supposed to stay in same division
-		// If they ended up in a better (lower number) division, they got promoted to fill spots
-		if finalDivision < virtualDivision {
-			return ipc.PlacementStatus_PLACEMENT_PROMOTED
-		}
-		// If they ended up in a worse (higher number) division, they got relegated
-		// This can happen when a league grows and a new division is created below them
-		if finalDivision > virtualDivision {
-			return ipc.PlacementStatus_PLACEMENT_RELEGATED
-		}
+	// For NEW players and HIATUS returners, don't correct - their status is about their entry, not movement
+	if originalStatus == ipc.PlacementStatus_PLACEMENT_NEW ||
+		originalStatus == ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING ||
+		originalStatus == ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING {
+		return originalStatus
 	}
-	return originalStatus
+
+	// For all other statuses (PROMOTED, RELEGATED, STAYED), correct based on actual movement
+	if finalDivision < previousDivision {
+		// Ended up in a better (lower number) division - promoted
+		return ipc.PlacementStatus_PLACEMENT_PROMOTED
+	} else if finalDivision > previousDivision {
+		// Ended up in a worse (higher number) division - relegated
+		return ipc.PlacementStatus_PLACEMENT_RELEGATED
+	} else {
+		// Ended up in the same division - stayed
+		return ipc.PlacementStatus_PLACEMENT_STAYED
+	}
 }
 
 // UpdatePlacementStatuses sets placement_status for all players before rebalancing
@@ -514,6 +507,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 
 		// Copy player data to result
 		result[i] = p
+		result[i].PreviousDivisionNumber = prevDivNumber
 
 		// Apply outcome to determine virtual division
 		switch p.PlacementStatus {
