@@ -383,6 +383,13 @@ type Tournament struct {
 	CreatedBy          pgtype.Int4
 }
 
+type TournamentStat struct {
+	TournamentID int64
+	DivisionName string
+	PlayerID     string
+	Stats        []byte
+}
+
 type User struct {
 	ID                    int32
 	CreatedAt             pgtype.Timestamptz
