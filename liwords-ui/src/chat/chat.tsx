@@ -118,7 +118,6 @@ export const Chat = React.memo((props: Props) => {
   const {
     chat: chatEntities,
     clearChat,
-    addChat,
     addChats,
     setChatChannels,
   } = useChatStoreContext();
@@ -724,11 +723,6 @@ export const Chat = React.memo((props: Props) => {
     ],
   );
 
-  const gameChannel = useMemo(
-    () =>
-      defaultChannel?.startsWith("chat.game.") ? defaultChannel : undefined,
-    [defaultChannel],
-  );
   const peopleOnlineCounter = useMemo(
     () =>
       channel?.startsWith("chat.gametv.")

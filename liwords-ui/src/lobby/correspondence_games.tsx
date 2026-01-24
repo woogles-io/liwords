@@ -260,7 +260,6 @@ export const CorrespondenceGames = (props: Props) => {
         let resultText = "";
         const userWon = g.winner === userPlayerIndex;
         const isTie = g.winner === -1;
-        const userLost = !userWon && !isTie;
 
         if (userWon) {
           resultBadge = <Tag color="green">Won</Tag>;
@@ -376,10 +375,6 @@ export const CorrespondenceGames = (props: Props) => {
     () => formatRecentGameData(recentGames),
     [recentGames, formatRecentGameData],
   );
-
-  const handleRowClick = (record: CorrespondenceGameTableData) => {
-    navigate(`/game/${encodeURIComponent(record.gameID)}`);
-  };
 
   const columns = [
     {

@@ -4,10 +4,7 @@ import { Spin, message, Card, Button } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { useClient } from "../utils/hooks/connect";
 import { CollectionsService } from "../gen/api/proto/collections_service/collections_service_pb";
-import {
-  Collection,
-  CollectionGame,
-} from "../gen/api/proto/collections_service/collections_service_pb";
+import { Collection } from "../gen/api/proto/collections_service/collections_service_pb";
 import {
   GameComment,
   GameCommentService,

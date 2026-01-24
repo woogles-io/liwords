@@ -31,7 +31,7 @@ import { create, toJsonString } from "@bufbuild/protobuf";
 import { flashError, useClient } from "../utils/hooks/connect";
 import { PuzzleService } from "../gen/api/proto/puzzle_service/puzzle_service_pb";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
-import { enumToOptions, getEnumLabel } from "../utils/protobuf";
+import { enumToOptions } from "../utils/protobuf";
 
 const layout = {
   labelCol: {

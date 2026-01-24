@@ -62,7 +62,7 @@ export const DraggableChapterItem: React.FC<DraggableChapterItemProps> = ({
     canDrag: isOwner,
   });
 
-  const [{ isOver }, drop] = useDrop({
+  const [, drop] = useDrop({
     accept: CHAPTER_ITEM_TYPE,
     collect: (monitor) => ({
       isOver: monitor.isOver(),

@@ -1,10 +1,5 @@
-import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
-import {
-  MultiBackend,
-  TouchTransition,
-  MouseTransition,
-} from "react-dnd-multi-backend";
+import { MultiBackend, MouseTransition } from "react-dnd-multi-backend";
 
 export const MultiBackendOptions = {
   backends: [
