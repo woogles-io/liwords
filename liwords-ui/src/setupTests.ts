@@ -1,18 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { beforeAll } from "vitest";
+import ResizeObserver from "resize-observer-polyfill";
 
-// https://github.com/jsdom/jsdom/issues/3368#issuecomment-1147970817
+// https://github.com/jsdom/jsdom/issues/3368#issuecomment-1396749033
 
-beforeAll(() => {
-  global.ResizeObserver = class ResizeObserver {
-    observe() {
-      // do nothing
-    }
-    unobserve() {
-      // do nothing
-    }
-    disconnect() {
-      // do nothing
-    }
-  };
-});
+global.ResizeObserver = ResizeObserver;
