@@ -23,6 +23,7 @@ import {
   PlayerOrder,
   PresenceEntity,
   randomID,
+  sortTiles,
 } from "./constants";
 import { PoolFormatType } from "../constants/pool_formats";
 import { LoginState, LoginStateReducer } from "./login_state";
@@ -36,6 +37,7 @@ import {
 import { MetaEventState, MetaStates } from "./meta_game_events";
 import {
   StandardEnglishAlphabet,
+  machineWordToRunes,
   runesToMachineWord,
 } from "../constants/alphabets";
 import {
@@ -980,12 +982,12 @@ const RealStore = ({ children, ...props }: Props) => {
         sender: "",
         message: sge.valid
           ? "Challenged play was valid"
-          : "Play was challenged off the board!",
+          : `Play was challenged off the board! Returned tiles: ${machineWordToRunes(sortTiles(runesToMachineWord(sge.returnedTiles, gameContext.alphabet), gameContext.alphabet), gameContext.alphabet)}`,
         id: randomID(),
         channel: "server",
       });
     },
-    [addChat],
+    [addChat, gameContext.alphabet],
   );
 
   const addChats = useCallback((entities: Array<ChatEntityObj>) => {
