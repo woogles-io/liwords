@@ -255,7 +255,6 @@ type Game struct {
 	TournamentData *TournamentData
 	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
-	UpdatedAt      time.Time // hopefully this is the time the last move was made
 
 	// League-specific fields
 	LeagueID                 *uuid.UUID
