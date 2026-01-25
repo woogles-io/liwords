@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.59.1
 	github.com/aws/smithy-go v1.24.0
 	github.com/domino14/macondo v0.11.8
-	github.com/domino14/word-golib v0.2.18
+	github.com/domino14/word-golib v0.2.19
 	github.com/exaring/otelpgx v0.10.0
 	github.com/go-redsync/redsync/v4 v4.15.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
