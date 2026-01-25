@@ -468,6 +468,18 @@ export const LeaguePage = (props: Props) => {
     return registrationOpenSeason !== null;
   }, [registrationOpenSeason]);
 
+  // Define "next season".
+  const nextSeason = registrationOpenSeason ?? scheduledSeason;
+
+  // Fetch registrations for the next season.
+  const { data: nextSeasonRegistrations } = useQuery(
+    getSeasonRegistrations,
+    {
+      seasonId: nextSeason?.uuid || "",
+    },
+    { enabled: !!nextSeason?.uuid },
+  );
+
   const isLoading = leaguePending || allSeasonsPending;
 
   if (isLoading) {
@@ -738,6 +750,7 @@ export const LeaguePage = (props: Props) => {
                         currentUserId={userID}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
+                        nextSeasonRegistrations={nextSeasonRegistrations}
                       />
                     ))}
                   <div className="standings-legend">

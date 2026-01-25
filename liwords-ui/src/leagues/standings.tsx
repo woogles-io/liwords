@@ -8,6 +8,7 @@ import {
   MinusOutlined,
   HistoryOutlined,
   ClockCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
   Division,
@@ -15,6 +16,7 @@ import {
   StandingResult,
   PlacementStatus,
 } from "../gen/api/proto/ipc/league_pb";
+import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
 
 // Get placement status icon and tooltip
@@ -97,6 +99,7 @@ type DivisionStandingsProps = {
   currentUserId?: string;
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
+  nextSeasonRegistrations?: SeasonRegistrationsResponse;
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -107,6 +110,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   currentUserId,
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
+  nextSeasonRegistrations,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -208,6 +212,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     (standing) => standing.gamesRemaining,
   );
 
+  const nextSeasonRegisteredUsers = new Set(
+    nextSeasonRegistrations?.registrations?.map((x) => x.userId),
+  );
+
   const dataSource = division.standings.map((standing) => ({
     key: standing.userId,
     userId: standing.userId,
@@ -284,6 +292,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         );
         const lowTimebankGameCount = timeBankWarnings?.get(record.userId);
         const hasLowTimebank = lowTimebankGameCount && lowTimebankGameCount > 0;
+        const registeredForNextSeason = nextSeasonRegisteredUsers?.has(
+          record.userId,
+        );
 
         return (
           <span
@@ -310,6 +321,13 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                 <ClockCircleOutlined
                   style={{ marginLeft: 4, color: "#ff4d4f", fontSize: 12 }}
                 />
+              </Tooltip>
+            )}
+            {registeredForNextSeason && (
+              <Tooltip title="Registered for next season">
+                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                  <ReloadOutlined style={{ fontSize: 10 }} />,
+                </span>
               </Tooltip>
             )}
           </span>
