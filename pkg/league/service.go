@@ -1597,12 +1597,20 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 		// Extract current scores from game history
 		scores := gamestore.ScoresFromHistory(row.History)
 		var playerScore, opponentScore int32
+		userIsOnTurn := false
 		if userIsPlayer0 {
 			playerScore = scores[0]
 			opponentScore = scores[1]
+			userIsOnTurn = row.PlayerOnTurn.Valid && row.PlayerOnTurn.Int32 == 0
 		} else {
 			playerScore = scores[1]
 			opponentScore = scores[0]
+			userIsOnTurn = row.PlayerOnTurn.Valid && row.PlayerOnTurn.Int32 == 1
+		}
+
+		result := "in_progress"
+		if userIsOnTurn {
+			result = "turn"
 		}
 
 		allGames = append(allGames, &pb.PlayerSeasonGame{
@@ -1611,7 +1619,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			OpponentUsername: opponentUsername,
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
-			Result:           "in_progress",
+			Result:           result,
 			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 		})
