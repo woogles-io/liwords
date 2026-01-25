@@ -326,7 +326,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             {registeredForNextSeason && (
               <Tooltip title="Registered for next season">
                 <span style={{ marginLeft: 4, opacity: 0.7 }}>
-                  <ReloadOutlined style={{ fontSize: 10 }} />,
+                  <ReloadOutlined style={{ fontSize: 10 }} />
                 </span>
               </Tooltip>
             )}
