@@ -122,6 +122,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		MetaEvents:     &g.MetaEvents,
 		Quickdata:      &g.Quickdata,
 		CreatedAt:      g.CreatedAt.Time,
+		UpdatedAt:      g.UpdatedAt.Time,
 		Type:           pb.GameType(g.Type.Int32),
 		DBID:           uint(g.ID),
 		TournamentData: &g.TournamentData,
@@ -1162,5 +1163,6 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		GameType:          int16(g.Type),
 		OriginalRequestID: originalRequestID,
 		LeagueSeasonID:    leagueSeasonID,
+		UpdatedAt:         pgtype.Timestamptz{Time: g.UpdatedAt, Valid: true},
 	})
 }

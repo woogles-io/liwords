@@ -122,6 +122,7 @@ type GamePlayer struct {
 	OpponentScore     int32
 	OriginalRequestID pgtype.Text
 	LeagueSeasonID    pgtype.UUID
+	UpdatedAt         pgtype.Timestamptz
 }
 
 type Integration struct {
