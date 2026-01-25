@@ -26,19 +26,19 @@ func NewManualDivisionManager(allStores *stores.Stores) *ManualDivisionManager {
 
 // MergeResult tracks the outcome of merging two divisions
 type MergeResult struct {
-	PlayersAffected      int
-	DivisionsRenumbered  int
-	NewDivisionNumbers   map[uuid.UUID]int32 // Maps division UUID to new number
-	DeletedDivisionID    uuid.UUID
-	ReceivingDivisionID  uuid.UUID
+	PlayersAffected     int
+	DivisionsRenumbered int
+	NewDivisionNumbers  map[uuid.UUID]int32 // Maps division UUID to new number
+	DeletedDivisionID   uuid.UUID
+	ReceivingDivisionID uuid.UUID
 }
 
 // MoveResult tracks the outcome of moving a player
 type MoveResult struct {
-	Success             bool
-	UserID              string
-	PreviousDivisionID  uuid.UUID
-	NewDivisionID       uuid.UUID
+	Success            bool
+	UserID             string
+	PreviousDivisionID uuid.UUID
+	NewDivisionID      uuid.UUID
 }
 
 // MergeDivisions merges all players from mergingDiv into receivingDiv,
@@ -117,7 +117,7 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 			// Need to renumber this division
 			divName := fmt.Sprintf("Division %d", newNumber)
 			err := mdm.stores.LeagueStore.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
-				Uuid:         div.Uuid,
+				Uuid:           div.Uuid,
 				DivisionNumber: newNumber,
 				DivisionName:   pgtype.Text{String: divName, Valid: true},
 			})

@@ -13,12 +13,12 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/common"
 	leaguestore "github.com/woogles-io/liwords/pkg/stores/league"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/user"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 const pkg = "league_test"

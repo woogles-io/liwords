@@ -3,9 +3,9 @@ package cwgame
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
-	"github.com/domino14/word-golib/tilemapping"
 	wglconfig "github.com/domino14/word-golib/config"
+	"github.com/domino14/word-golib/tilemapping"
+	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/cwgame/tiles"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"

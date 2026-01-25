@@ -6,18 +6,18 @@ import (
 
 func TestGenerateAllLeaguePairings(t *testing.T) {
 	tests := []struct {
-		name            string
-		numPlayers      int
-		maxRounds       int
-		expectedGames   int
-		expectedRounds  int
-		minFirsts       int
-		maxFirsts       int
+		name           string
+		numPlayers     int
+		maxRounds      int
+		expectedGames  int
+		expectedRounds int
+		minFirsts      int
+		maxFirsts      int
 	}{
 		{
 			name:           "14 players (even)",
 			numPlayers:     14,
-			maxRounds:      0, // No cap
+			maxRounds:      0,  // No cap
 			expectedGames:  91, // 14*13/2 = 91 total games
 			expectedRounds: 13, // 14-1 = 13 rounds
 			minFirsts:      6,  // Each player should get 6 or 7 firsts
@@ -26,7 +26,7 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 		{
 			name:           "10 players (small even)",
 			numPlayers:     10,
-			maxRounds:      0, // No cap
+			maxRounds:      0,  // No cap
 			expectedGames:  45, // 10*9/2 = 45 total games
 			expectedRounds: 9,  // 10-1 = 9 rounds
 			minFirsts:      4,  // Each player should get 4 or 5 firsts
@@ -35,7 +35,7 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 		{
 			name:           "12 players (even)",
 			numPlayers:     12,
-			maxRounds:      0, // No cap
+			maxRounds:      0,  // No cap
 			expectedGames:  66, // 12*11/2 = 66 total games
 			expectedRounds: 11, // 12-1 = 11 rounds
 			minFirsts:      5,  // Each player should get 5 or 6 firsts
@@ -44,7 +44,7 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 		{
 			name:           "13 players (odd)",
 			numPlayers:     13,
-			maxRounds:      0, // No cap
+			maxRounds:      0,  // No cap
 			expectedGames:  78, // 13*12/2 = 78 total games
 			expectedRounds: 13, // Same as numPlayers when odd
 			minFirsts:      5,  // Odd numbers with byes make perfect balance harder
@@ -80,7 +80,7 @@ func TestGenerateAllLeaguePairings(t *testing.T) {
 		{
 			name:           "16 players with 14 round cap",
 			numPlayers:     16,
-			maxRounds:      14, // Cap at 14
+			maxRounds:      14,  // Cap at 14
 			expectedGames:  112, // 8 games per round * 14 rounds = 112
 			expectedRounds: 14,  // Capped at 14 instead of full 15
 			minFirsts:      6,   // With greedy balancing, most get 7, but some may get 6 or 8

@@ -23,14 +23,14 @@ type S3Uploader interface {
 
 // VerificationService handles identity verification for organization memberships
 type VerificationService struct {
-	queries   *models.Queries
+	queries    *models.Queries
 	s3Uploader S3Uploader
 }
 
 // NewVerificationService creates a new verification service
 func NewVerificationService(queries *models.Queries, s3Uploader S3Uploader) *VerificationService {
 	return &VerificationService{
-		queries:   queries,
+		queries:    queries,
 		s3Uploader: s3Uploader,
 	}
 }

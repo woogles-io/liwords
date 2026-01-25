@@ -546,14 +546,14 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	}
 
 	return &pb.GameHistoryRefresher{
-		History:                 g.History(),
-		TimePlayer1:             int32(g.TimeRemaining(0)),
-		TimePlayer2:             int32(g.TimeRemaining(1)),
-		MaxOvertimeMinutes:      g.GameReq.MaxOvertimeMinutes,
-		OutstandingEvent:        outstandingEvent,
-		TimeBankPlayer1:         timeBankPlayer1,
-		TimeBankPlayer2:         timeBankPlayer2,
-		InitialTimeBankMinutes:  g.GameReq.TimeBankMinutes,
+		History:                g.History(),
+		TimePlayer1:            int32(g.TimeRemaining(0)),
+		TimePlayer2:            int32(g.TimeRemaining(1)),
+		MaxOvertimeMinutes:     g.GameReq.MaxOvertimeMinutes,
+		OutstandingEvent:       outstandingEvent,
+		TimeBankPlayer1:        timeBankPlayer1,
+		TimeBankPlayer2:        timeBankPlayer2,
+		InitialTimeBankMinutes: g.GameReq.TimeBankMinutes,
 	}
 }
 

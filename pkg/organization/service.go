@@ -969,7 +969,6 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 	return titles, errors, nil
 }
 
-
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{

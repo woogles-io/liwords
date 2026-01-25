@@ -5,12 +5,13 @@
 package mod_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	mod_service "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	mod_service "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

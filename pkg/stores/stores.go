@@ -132,7 +132,6 @@ func (s *Stores) SetLeagueStandingsUpdater(updater LeagueStandingsUpdater) {
 	s.LeagueStandingsUpdater = updater
 }
 
-
 // Disconnect disconnects from all stores
 func (s *Stores) Disconnect() {
 	if s.UserStore != nil {

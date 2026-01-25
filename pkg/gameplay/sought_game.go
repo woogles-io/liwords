@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	errAlreadyOpenReq                = errors.New("You already have an open match or seek request")
+	errAlreadyOpenReq                  = errors.New("You already have an open match or seek request")
 	errCannotMixCorrespondenceRealtime = errors.New("You cannot create a correspondence match while you have a real-time seek open, or vice versa")
-	errCannotMixSeekAndMatch          = errors.New("You cannot create a match request while you have an open seek, or vice versa")
+	errCannotMixSeekAndMatch           = errors.New("You cannot create a match request while you have an open seek, or vice versa")
 )
 
 // SoughtGameStore is an interface for getting a sought game.

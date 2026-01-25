@@ -5,13 +5,14 @@
 package game_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	game_service "github.com/woogles-io/liwords/rpc/api/proto/game_service"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	game_service "github.com/woogles-io/liwords/rpc/api/proto/game_service"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

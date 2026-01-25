@@ -7,13 +7,14 @@
 package game_service
 
 import (
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
+
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
 )
 
 const (

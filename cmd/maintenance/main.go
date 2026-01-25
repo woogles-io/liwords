@@ -40,7 +40,8 @@ var WooglesAPIBasePath = os.Getenv("WOOGLES_API_BASE_PATH")
 
 // go run . blogrss-updater,foo,bar,baz
 // Use LEAGUE_NOW environment variable to override current time for testing:
-//   LEAGUE_NOW="2025-01-15T08:00:00Z" go run . league-midnight-runner
+//
+//	LEAGUE_NOW="2025-01-15T08:00:00Z" go run . league-midnight-runner
 func main() {
 	if len(os.Args) < 2 {
 		panic("need at least one command")

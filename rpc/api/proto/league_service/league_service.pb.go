@@ -7,13 +7,14 @@
 package league_service
 
 import (
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
+
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
 )
 
 const (

@@ -341,17 +341,17 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 	}
 
 	dbt := &tournament{
-		UUID:              t.UUID,
-		Name:              t.Name,
-		Description:       t.Description,
-		AliasOf:           t.AliasOf,
-		Directors:         directors,
-		IsStarted:         t.IsStarted,
-		IsFinished:        t.IsFinished,
-		Divisions:         divisions,
-		Type:              string(t.Type),
-		Parent:            t.ParentID,
-		Slug:              t.Slug,
+		UUID:        t.UUID,
+		Name:        t.Name,
+		Description: t.Description,
+		AliasOf:     t.AliasOf,
+		Directors:   directors,
+		IsStarted:   t.IsStarted,
+		IsFinished:  t.IsFinished,
+		Divisions:   divisions,
+		Type:        string(t.Type),
+		Parent:      t.ParentID,
+		Slug:        t.Slug,
 	}
 	return dbt, nil
 }
@@ -465,18 +465,18 @@ func main() {
 				finished = true
 			}
 			mt := &entity.Tournament{
-				UUID:              oldTournament.UUID,
-				Name:              oldTournament.Name,
-				Description:       oldTournament.Description,
-				AliasOf:           oldTournament.AliasOf,
-				URL:               oldTournament.URL,
-				Directors:         newDirectors,
-				IsStarted:         oldTournament.IsStarted,
-				IsFinished:        finished,
-				Divisions:         newDivisions,
-				Type:              oldTournament.Type,
-				ParentID:          oldTournament.ParentID,
-				Slug:              oldTournament.Slug,
+				UUID:        oldTournament.UUID,
+				Name:        oldTournament.Name,
+				Description: oldTournament.Description,
+				AliasOf:     oldTournament.AliasOf,
+				URL:         oldTournament.URL,
+				Directors:   newDirectors,
+				IsStarted:   oldTournament.IsStarted,
+				IsFinished:  finished,
+				Divisions:   newDivisions,
+				Type:        oldTournament.Type,
+				ParentID:    oldTournament.ParentID,
+				Slug:        oldTournament.Slug,
 			}
 
 			dbt, err := tournamentStore.toDBObj(mt)

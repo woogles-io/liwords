@@ -5,12 +5,13 @@
 package word_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	word_service "github.com/woogles-io/liwords/rpc/api/proto/word_service"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	word_service "github.com/woogles-io/liwords/rpc/api/proto/word_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

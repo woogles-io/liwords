@@ -1558,15 +1558,15 @@ func TestInferRackForPlay(t *testing.T) {
 
 	// Create a fresh game with empty board
 	rules := &GameRules{
-		boardLayout:       "CrosswordGame",
-		distname:          "english",
-		lexicon:           "CSW21",
-		variant:           "classic",
-		secondsPerPlayer:  []int{900, 900},
-		maxOvertimeMins:   10,
-		incrementSeconds:  0,
-		untimed:           false,
-		challengeRule:     ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
+		boardLayout:      "CrosswordGame",
+		distname:         "english",
+		lexicon:          "CSW21",
+		variant:          "classic",
+		secondsPerPlayer: []int{900, 900},
+		maxOvertimeMins:  10,
+		incrementSeconds: 0,
+		untimed:          false,
+		challengeRule:    ipc.ChallengeRule_ChallengeRule_FIVE_POINT,
 	}
 
 	playerInfo := []*ipc.GameDocument_MinimalPlayerInfo{

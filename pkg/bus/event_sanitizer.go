@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"google.golang.org/protobuf/proto"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
