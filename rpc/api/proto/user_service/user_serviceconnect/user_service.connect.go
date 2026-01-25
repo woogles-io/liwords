@@ -5,13 +5,14 @@
 package user_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	user_service "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	user_service "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

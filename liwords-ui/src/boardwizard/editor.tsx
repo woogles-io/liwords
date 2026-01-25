@@ -2,7 +2,7 @@
 
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionType } from "../actions/actions";
 import { alphabetFromName } from "../constants/alphabets";
@@ -42,7 +42,7 @@ import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create } from "@bufbuild/protobuf";
 import { useComments } from "../utils/hooks/comments";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
-import { Turn, gameEventsToTurns } from "../store/reducers/turns";
+import { gameEventsToTurns } from "../store/reducers/turns";
 
 const doNothing = () => {};
 

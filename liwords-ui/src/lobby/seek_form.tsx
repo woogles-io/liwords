@@ -3,7 +3,6 @@ import {
   Form,
   Radio,
   InputNumber,
-  Switch,
   Select,
   Tag,
   Slider,
@@ -211,9 +210,6 @@ export const SeekForm = (props: Props) => {
     () => localStorage.getItem("enableCSW24X") === "true",
     [],
   );
-
-  // Detect if user is new (no ratings)
-  const isNewPlayer = Object.keys(lobbyContext.profile.ratings).length === 0;
 
   let storageKey = "lastSeekForm";
   if (props.vsBot) {

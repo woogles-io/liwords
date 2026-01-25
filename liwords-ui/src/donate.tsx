@@ -73,6 +73,8 @@ export const Donate = () => {
     if (!stripe) {
       return;
     }
+    // https://github.com/stripe/stripe-js/releases/tag/v8.0.0
+    // FIXME: @stripe/stripe-js v8 removes redirectToCheckout
     await stripe
       .redirectToCheckout({
         mode,

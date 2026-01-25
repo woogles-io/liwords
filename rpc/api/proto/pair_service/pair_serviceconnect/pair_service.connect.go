@@ -5,13 +5,14 @@
 package pair_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
-	pair_service "github.com/woogles-io/liwords/rpc/api/proto/pair_service"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	pair_service "github.com/woogles-io/liwords/rpc/api/proto/pair_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

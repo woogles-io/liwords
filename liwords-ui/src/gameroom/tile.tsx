@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useDrag, useDragLayer, useDrop, useDragDropManager } from "react-dnd";
+import React, { useEffect, useMemo, useRef } from "react";
+import { useDrag, useDragLayer, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import TentativeScore from "./tentative_score";
 import {

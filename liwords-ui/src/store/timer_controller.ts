@@ -64,8 +64,6 @@ export const millisToTimeStrWithoutDays = (
     return `${neg ? "-" : ""}${hh}:${mm}:${ss}`;
   }
 
-  const totalMins = Math.floor(totalSecs / 60);
-
   // < 1 hour: show as "mm:ss" or "mm:ss.d" (original behavior)
   let secs;
   let secStr;

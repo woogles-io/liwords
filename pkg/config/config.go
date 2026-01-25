@@ -39,7 +39,7 @@ type Config struct {
 	NatsURL        string
 	EmailDebugMode bool
 	RedisURL       string
-	DiscordToken string
+	DiscordToken   string
 	// Puzzles
 	PuzzleGenerationSecretKey      string
 	ECSClusterName                 string

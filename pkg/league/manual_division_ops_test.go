@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/matryer/is"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // TestMergeDivisions_BasicMerge tests merging Division 3 into Division 2

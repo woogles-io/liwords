@@ -384,26 +384,26 @@ func exportToTOU(ctx context.Context, t *entity.Tournament, us user.Store, opts 
 					wentFirst = false
 					outcome = pairing.Outcomes[0]
 					// Handle different bye types
-				switch outcome {
-				case ipc.TournamentGameResult_BYE:
-					// True bye: score of 50, recorded as a loss (no outcome prefix)
-					score = 50
-					outcome = ipc.TournamentGameResult_LOSS // Force loss outcome for display
-				case ipc.TournamentGameResult_FORFEIT_WIN:
-					// Forfeit win: winner gets 150
-					score = 150
-				case ipc.TournamentGameResult_FORFEIT_LOSS:
-					// Forfeit loss: loser gets 100
-					score = 100
-				case ipc.TournamentGameResult_VOID:
-					score = 0
-				default:
-					// Default bye score
-					score = 50
-					outcome = ipc.TournamentGameResult_LOSS
-				}
-			} else {
-				// Regular game
+					switch outcome {
+					case ipc.TournamentGameResult_BYE:
+						// True bye: score of 50, recorded as a loss (no outcome prefix)
+						score = 50
+						outcome = ipc.TournamentGameResult_LOSS // Force loss outcome for display
+					case ipc.TournamentGameResult_FORFEIT_WIN:
+						// Forfeit win: winner gets 150
+						score = 150
+					case ipc.TournamentGameResult_FORFEIT_LOSS:
+						// Forfeit loss: loser gets 100
+						score = 100
+					case ipc.TournamentGameResult_VOID:
+						score = 0
+					default:
+						// Default bye score
+						score = 50
+						outcome = ipc.TournamentGameResult_LOSS
+					}
+				} else {
+					// Regular game
 					// Find which index this player is in the pairing
 					var playerIdxInPairing int
 					for idx, opp := range pairing.Players {

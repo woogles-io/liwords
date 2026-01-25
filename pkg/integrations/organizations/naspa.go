@@ -28,21 +28,21 @@ func NewNASPAIntegration(baseURL string) *NASPAIntegration {
 
 // NASPAAPIResponse represents the actual NASPA API response structure
 type NASPAAPIResponse struct {
-	Alive      int     `json:"alive"`
-	City       string  `json:"city"`
-	Country    string  `json:"country"`
-	Expiry     string  `json:"expiry"`
-	FirstName  string  `json:"firstName"`
-	ID         int     `json:"id"`
-	LastName   string  `json:"lastName"`
-	NASPA      string  `json:"naspa"`    // Member ID
-	Photo      string  `json:"photo"`
-	RatingCSW  int     `json:"ratingCSW"`
-	RatingOWL  int     `json:"ratingOWL"`
-	State      string  `json:"state"`
-	Suffix     string  `json:"suffix"`
-	Title      string  `json:"title"` // e.g., "SM", "GM", "EX"
-	Version    float64 `json:"version"`
+	Alive     int     `json:"alive"`
+	City      string  `json:"city"`
+	Country   string  `json:"country"`
+	Expiry    string  `json:"expiry"`
+	FirstName string  `json:"firstName"`
+	ID        int     `json:"id"`
+	LastName  string  `json:"lastName"`
+	NASPA     string  `json:"naspa"` // Member ID
+	Photo     string  `json:"photo"`
+	RatingCSW int     `json:"ratingCSW"`
+	RatingOWL int     `json:"ratingOWL"`
+	State     string  `json:"state"`
+	Suffix    string  `json:"suffix"`
+	Title     string  `json:"title"` // e.g., "SM", "GM", "EX"
+	Version   float64 `json:"version"`
 }
 
 // FetchTitle fetches the title for a user from NASPA's API

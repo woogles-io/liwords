@@ -163,7 +163,7 @@ export const RemovePlayer = (props: { tournamentID: string }) => {
 
 export const MovePlayer = (props: { tournamentID: string }) => {
   const [sourceDivision, setSourceDivision] = useState("");
-  const [targetDivision, setTargetDivision] = useState("");
+  const [, setTargetDivision] = useState("");
   const { tournamentContext } = useTournamentStoreContext();
   const tClient = useClient(TournamentService);
 

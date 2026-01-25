@@ -33,14 +33,14 @@ type DBStore struct {
 
 type tournament struct {
 	gorm.Model
-	UUID              string `gorm:"uniqueIndex"`
-	Name              string
-	Description       string
-	AliasOf           string
-	Directors         datatypes.JSON
-	IsStarted         *bool
-	IsFinished        *bool
-	Divisions         datatypes.JSON
+	UUID        string `gorm:"uniqueIndex"`
+	Name        string
+	Description string
+	AliasOf     string
+	Directors   datatypes.JSON
+	IsStarted   *bool
+	IsFinished  *bool
+	Divisions   datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
 	// ExtraMeta contains some extra metadata for the tournament,

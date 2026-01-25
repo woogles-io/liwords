@@ -18,10 +18,10 @@ import (
 )
 
 type TestLeagueOutput struct {
-	LeagueUUID  string `json:"league_uuid"`
-	LeagueSlug  string `json:"league_slug"`
-	SeasonUUID  string `json:"season_uuid"`
-	SeasonNumber int32 `json:"season_number"`
+	LeagueUUID   string `json:"league_uuid"`
+	LeagueSlug   string `json:"league_slug"`
+	SeasonUUID   string `json:"season_uuid"`
+	SeasonNumber int32  `json:"season_number"`
 }
 
 func createTestLeague(ctx context.Context, name, slug string, divisionSize int32, outputFile string) error {

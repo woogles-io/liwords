@@ -2,10 +2,8 @@ import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSass } from "@rsbuild/plugin-sass";
 
 export default {
-  plugins: [
-    pluginReact(),
-    pluginSass(),
-  ],
+  plugins: [pluginReact(), pluginSass()],
+  lazyCompilation: false,
   source: {
     entry: {
       embed: "./src/embed/embed-entry.tsx",

@@ -101,11 +101,11 @@ func parseSeasonStatus(statusName string) (pb.SeasonStatus, error) {
 
 	// Map status names to values
 	statusMap := map[string]pb.SeasonStatus{
-		"SEASON_SCHEDULED":          pb.SeasonStatus_SEASON_SCHEDULED,
-		"SEASON_ACTIVE":             pb.SeasonStatus_SEASON_ACTIVE,
-		"SEASON_COMPLETED":          pb.SeasonStatus_SEASON_COMPLETED,
-		"SEASON_CANCELLED":          pb.SeasonStatus_SEASON_CANCELLED,
-		"SEASON_REGISTRATION_OPEN":  pb.SeasonStatus_SEASON_REGISTRATION_OPEN,
+		"SEASON_SCHEDULED":         pb.SeasonStatus_SEASON_SCHEDULED,
+		"SEASON_ACTIVE":            pb.SeasonStatus_SEASON_ACTIVE,
+		"SEASON_COMPLETED":         pb.SeasonStatus_SEASON_COMPLETED,
+		"SEASON_CANCELLED":         pb.SeasonStatus_SEASON_CANCELLED,
+		"SEASON_REGISTRATION_OPEN": pb.SeasonStatus_SEASON_REGISTRATION_OPEN,
 	}
 
 	if status, ok := statusMap[statusName]; ok {

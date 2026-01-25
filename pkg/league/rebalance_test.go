@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 func TestCalculatePriorityScores(t *testing.T) {
@@ -113,9 +113,9 @@ func TestCalculatePriorityScores(t *testing.T) {
 
 			assert.InDelta(t, tt.expectedScore, actualScore, tolerance,
 				"Score mismatch for %s\n"+
-				"Expected: %.2f\n"+
-				"Actual: %.2f\n"+
-				"Calculation: %s",
+					"Expected: %.2f\n"+
+					"Actual: %.2f\n"+
+					"Calculation: %s",
 				tt.name, tt.expectedScore, actualScore, tt.description)
 		})
 	}
@@ -198,7 +198,7 @@ func TestCalculatePriorityScores_NewPlayersRatingBased(t *testing.T) {
 
 func TestCalculatePriorityScores_WeightCalculation(t *testing.T) {
 	tests := []struct {
-		hiatusSeasons int32
+		hiatusSeasons  int32
 		expectedWeight float64
 	}{
 		{0, 1.0},
@@ -220,9 +220,9 @@ func TestCalculatePriorityScores_WeightCalculation(t *testing.T) {
 
 func TestCalculateDivisionCount(t *testing.T) {
 	tests := []struct {
-		playerCount     int
-		expectedDivs    int
-		description     string
+		playerCount  int
+		expectedDivs int
+		description  string
 	}{
 		{15, 1, "15 players → 1 division (15/15 = 1.0)"},
 		{20, 1, "20 players → 1 division (20/15 = 1.33 rounds to 1)"},
@@ -284,9 +284,9 @@ func TestAssignVirtualDivisions_Outcomes(t *testing.T) {
 
 func TestMergeUndersizedFinalDivision(t *testing.T) {
 	tests := []struct {
-		name               string
-		finalDivisionSize  int
-		shouldMerge        bool
+		name              string
+		finalDivisionSize int
+		shouldMerge       bool
 	}{
 		{"11 players - should merge", 11, true},
 		{"12 players - should NOT merge (at threshold)", 12, false},
@@ -365,14 +365,14 @@ func TestHiatusWeight_HalvesEveryTenSeasons(t *testing.T) {
 func TestNewRookieSplitting(t *testing.T) {
 	// Test the logic for splitting <10 new rookies between bottom 2 divisions
 	tests := []struct {
-		numRookies       int
-		numVirtualDivs   int32
-		expectedTopHalf  int32 // Virtual div for top half
-		expectedBotHalf  int32 // Virtual div for bottom half
+		numRookies      int
+		numVirtualDivs  int32
+		expectedTopHalf int32 // Virtual div for top half
+		expectedBotHalf int32 // Virtual div for bottom half
 	}{
-		{8, 5, 4, 5},  // 8 rookies, 5 divs → top 4 to Div 4, bottom 4 to Div 5
-		{5, 3, 2, 3},  // 5 rookies, 3 divs → top 2 to Div 2, bottom 3 to Div 3
-		{9, 1, 1, 1},  // 9 rookies, 1 div → all to Div 1
+		{8, 5, 4, 5}, // 8 rookies, 5 divs → top 4 to Div 4, bottom 4 to Div 5
+		{5, 3, 2, 3}, // 5 rookies, 3 divs → top 2 to Div 2, bottom 3 to Div 3
+		{9, 1, 1, 1}, // 9 rookies, 1 div → all to Div 1
 	}
 
 	for _, tt := range tests {

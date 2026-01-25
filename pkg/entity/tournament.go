@@ -71,19 +71,19 @@ type TournamentDivision struct {
 }
 
 type TournamentMeta struct {
-	Disclaimer                string                         `json:"disclaimer"`
-	TileStyle                 string                         `json:"tileStyle"`
-	BoardStyle                string                         `json:"boardStyle"`
-	DefaultClubSettings       *pb.GameRequest                `json:"defaultClubSettings"`
-	FreeformClubSettingFields []string                       `json:"freeformClubSettingFields"`
-	Password                  string                         `json:"password"`
-	Logo                      string                         `json:"logo"`
-	Color                     string                         `json:"color"`
-	PrivateAnalysis           bool                           `json:"privateAnalysis"`
-	IRLMode                   bool                           `json:"irlMode"`
-	CheckinsOpen              bool                           `json:"checkinsOpen"`
-	RegistrationOpen          bool                           `json:"registrationOpen"`
-	Monitored                 bool                           `json:"monitored"`
+	Disclaimer                string          `json:"disclaimer"`
+	TileStyle                 string          `json:"tileStyle"`
+	BoardStyle                string          `json:"boardStyle"`
+	DefaultClubSettings       *pb.GameRequest `json:"defaultClubSettings"`
+	FreeformClubSettingFields []string        `json:"freeformClubSettingFields"`
+	Password                  string          `json:"password"`
+	Logo                      string          `json:"logo"`
+	Color                     string          `json:"color"`
+	PrivateAnalysis           bool            `json:"privateAnalysis"`
+	IRLMode                   bool            `json:"irlMode"`
+	CheckinsOpen              bool            `json:"checkinsOpen"`
+	RegistrationOpen          bool            `json:"registrationOpen"`
+	Monitored                 bool            `json:"monitored"`
 }
 
 type Tournament struct {

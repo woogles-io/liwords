@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { Card, Row, Button, Tooltip, Modal } from "antd";
-import { HourglassOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { HourglassOutlined } from "@ant-design/icons";
 import { RawPlayerInfo } from "../store/reducers/game_reducer";
 import {
   useExaminableGameContextStoreContext,

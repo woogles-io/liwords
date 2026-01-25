@@ -50,11 +50,11 @@ type DivisionPreparationResult struct {
 // 1. Get all registrations for the new season
 // 2. Categorize players (NEW vs RETURNING)
 // 3. Rebalance ALL players (new and returning together)
-//    - Updates placement statuses
-//    - Assigns virtual divisions
-//    - Calculates priority scores (NEW players have lowest priority)
-//    - Creates real divisions (round(count/idealDivisionSize))
-//    - Assigns players by priority
+//   - Updates placement statuses
+//   - Assigns virtual divisions
+//   - Calculates priority scores (NEW players have lowest priority)
+//   - Creates real divisions (round(count/idealDivisionSize))
+//   - Assigns players by priority
 //
 // Note: NEW players are placed naturally via rebalancing with lowest priority.
 func (so *SeasonOrchestrator) PrepareNextSeasonDivisions(

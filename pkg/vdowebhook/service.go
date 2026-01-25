@@ -15,8 +15,8 @@ import (
 
 // VDOWebhookService handles webhook callbacks from VDO.Ninja
 type VDOWebhookService struct {
-	tournamentStore           tournament.TournamentStore
-	pollingIntervalSeconds    int
+	tournamentStore        tournament.TournamentStore
+	pollingIntervalSeconds int
 }
 
 // NewVDOWebhookService creates a new VDO webhook service

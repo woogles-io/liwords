@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { getCollection } from "../gen/api/proto/collections_service/collections_service-CollectionsService_connectquery";

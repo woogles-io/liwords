@@ -41,9 +41,9 @@ func TestReplayEventsResetsGameEndState(t *testing.T) {
 	is.NoErr(err)
 
 	// Verify that ReplayEvents actually reset the game-end state
-	is.Equal(gdoc.PlayState, ipc.PlayState_PLAYING)      // Should be PLAYING, not GAME_OVER
-	is.Equal(gdoc.Winner, int32(0))                       // Should be reset to 0
-	is.Equal(gdoc.EndReason, ipc.GameEndReason_NONE)     // Should be NONE, not STANDARD
+	is.Equal(gdoc.PlayState, ipc.PlayState_PLAYING)  // Should be PLAYING, not GAME_OVER
+	is.Equal(gdoc.Winner, int32(0))                  // Should be reset to 0
+	is.Equal(gdoc.EndReason, ipc.GameEndReason_NONE) // Should be NONE, not STANDARD
 }
 
 // TestApplyEventInEditorModeDiscardsInvalid documents that when an event fails to apply,

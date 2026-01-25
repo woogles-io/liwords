@@ -8,7 +8,7 @@ import React, {
 import { Card, message, Popconfirm } from "antd";
 import { HomeOutlined, RightOutlined } from "@ant-design/icons";
 
-import { Link, useSearchParams, useParams, useNavigate } from "react-router";
+import { Link, useSearchParams, useParams } from "react-router";
 import { useFirefoxPatch } from "../utils/hooks/firefox";
 import { useDefinitionAndPhonyChecker } from "../utils/hooks/definitions";
 import { BoardPanel } from "./board_panel";
@@ -35,7 +35,7 @@ import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { useComments } from "../utils/hooks/comments";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
-import { Turn, gameEventsToTurns } from "../store/reducers/turns";
+import { gameEventsToTurns } from "../store/reducers/turns";
 import { BoopSounds } from "../sound/boop";
 import { StreakWidget } from "./streak_widget";
 import { ChallengeRule, PlayState } from "../gen/api/vendor/macondo/macondo_pb";
@@ -260,7 +260,6 @@ const getChatTitle = (
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
-  const navigate = useNavigate();
   const { addChat } = useChatStoreContext();
 
   const { gameContext: examinableGameContext } =

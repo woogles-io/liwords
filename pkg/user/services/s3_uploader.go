@@ -144,8 +144,8 @@ func (s *S3Uploader) GetPresignedURL(ctx context.Context, url string, expiration
 			// This way the signature will be valid for localhost:9000
 			localhostEndpoint := strings.Replace(minioEndpoint, "minio:9000", "localhost:9000", 1)
 			presignClient = s3.NewFromConfig(aws.Config{
-				Region: "us-east-1",
-				Credentials: s.s3Client.Options().Credentials,
+				Region:       "us-east-1",
+				Credentials:  s.s3Client.Options().Credentials,
 				BaseEndpoint: aws.String(localhostEndpoint),
 			}, func(o *s3.Options) {
 				o.UsePathStyle = true

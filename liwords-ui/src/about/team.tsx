@@ -180,13 +180,13 @@ export const Team = () => {
               <div className="team-info">
                 <h3>BriAnna "Lola" McKissen</h3>
                 <p>
-                  As someone who has been learning to play competitive
-                  Scrabble® since 2002, Lola considers herself the voice of the
-                  passionate non-expert on the team. She has been coding for 3
-                  decades, spending 12 of those years on her own startups. She
-                  currently works as a Principal Software Development Engineer
-                  creating user interfaces used by over a million experts in
-                  their fields. In 2016, she was a finalist for the Women’s Tech
+                  As someone who has been learning to play competitive Scrabble®
+                  since 2002, Lola considers herself the voice of the passionate
+                  non-expert on the team. She has been coding for 3 decades,
+                  spending 12 of those years on her own startups. She currently
+                  works as a Principal Software Development Engineer creating
+                  user interfaces used by over a million experts in their
+                  fields. In 2016, she was a finalist for the Women’s Tech
                   Council annual awards. Besides Scrabble®, she's also
                   enthusiastically bad at standup comedy, playing the bass
                   guitar, singing, and painting. Ketchup is gross.

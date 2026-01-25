@@ -21,7 +21,6 @@ import {
 } from "../gen/api/proto/ipc/tournament_pb";
 import { create } from "@bufbuild/protobuf";
 import { flashError, useClient } from "../utils/hooks/connect";
-import { useLoginStateStoreContext } from "../store/store";
 import { ActionType } from "../actions/actions";
 
 const { Title, Text } = Typography;
@@ -37,7 +36,6 @@ export const ManageDirectorsModal = ({
 }: ManageDirectorsModalProps) => {
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
-  const { loginState } = useLoginStateStoreContext();
   const tClient = useClient(TournamentService);
   const [form] = Form.useForm();
   const [addingDirector, setAddingDirector] = useState(false);

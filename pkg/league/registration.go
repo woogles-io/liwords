@@ -20,9 +20,9 @@ const (
 
 // RegistrationManager handles player registration for league seasons
 type RegistrationManager struct {
-	store      league.Store
-	clock      Clock
-	allStores  *stores.Stores
+	store     league.Store
+	clock     Clock
+	allStores *stores.Stores
 }
 
 // NewRegistrationManager creates a new registration manager

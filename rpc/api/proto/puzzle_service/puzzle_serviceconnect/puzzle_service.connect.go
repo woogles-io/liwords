@@ -5,12 +5,13 @@
 package puzzle_serviceconnect
 
 import (
-	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	puzzle_service "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 	http "net/http"
 	strings "strings"
+
+	connect "connectrpc.com/connect"
+	puzzle_service "github.com/woogles-io/liwords/rpc/api/proto/puzzle_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
