@@ -193,6 +193,110 @@ func (PuzzleTag) EnumDescriptor() ([]byte, []int) {
 	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{2}
 }
 
+type GamePhase int32
+
+const (
+	GamePhase_PHASE_EARLY_MID        GamePhase = 0
+	GamePhase_PHASE_EARLY_PREENDGAME GamePhase = 1
+	GamePhase_PHASE_PREENDGAME       GamePhase = 2
+	GamePhase_PHASE_ENDGAME          GamePhase = 3
+)
+
+// Enum value maps for GamePhase.
+var (
+	GamePhase_name = map[int32]string{
+		0: "PHASE_EARLY_MID",
+		1: "PHASE_EARLY_PREENDGAME",
+		2: "PHASE_PREENDGAME",
+		3: "PHASE_ENDGAME",
+	}
+	GamePhase_value = map[string]int32{
+		"PHASE_EARLY_MID":        0,
+		"PHASE_EARLY_PREENDGAME": 1,
+		"PHASE_PREENDGAME":       2,
+		"PHASE_ENDGAME":          3,
+	}
+)
+
+func (x GamePhase) Enum() *GamePhase {
+	p := new(GamePhase)
+	*p = x
+	return p
+}
+
+func (x GamePhase) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GamePhase) Descriptor() protoreflect.EnumDescriptor {
+	return file_vendor_macondo_macondo_proto_enumTypes[3].Descriptor()
+}
+
+func (GamePhase) Type() protoreflect.EnumType {
+	return &file_vendor_macondo_macondo_proto_enumTypes[3]
+}
+
+func (x GamePhase) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GamePhase.Descriptor instead.
+func (GamePhase) EnumDescriptor() ([]byte, []int) {
+	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{3}
+}
+
+type MistakeSize int32
+
+const (
+	MistakeSize_NO_MISTAKE MistakeSize = 0
+	MistakeSize_SMALL      MistakeSize = 1
+	MistakeSize_MEDIUM     MistakeSize = 2
+	MistakeSize_LARGE      MistakeSize = 3
+)
+
+// Enum value maps for MistakeSize.
+var (
+	MistakeSize_name = map[int32]string{
+		0: "NO_MISTAKE",
+		1: "SMALL",
+		2: "MEDIUM",
+		3: "LARGE",
+	}
+	MistakeSize_value = map[string]int32{
+		"NO_MISTAKE": 0,
+		"SMALL":      1,
+		"MEDIUM":     2,
+		"LARGE":      3,
+	}
+)
+
+func (x MistakeSize) Enum() *MistakeSize {
+	p := new(MistakeSize)
+	*p = x
+	return p
+}
+
+func (x MistakeSize) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MistakeSize) Descriptor() protoreflect.EnumDescriptor {
+	return file_vendor_macondo_macondo_proto_enumTypes[4].Descriptor()
+}
+
+func (MistakeSize) Type() protoreflect.EnumType {
+	return &file_vendor_macondo_macondo_proto_enumTypes[4]
+}
+
+func (x MistakeSize) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MistakeSize.Descriptor instead.
+func (MistakeSize) EnumDescriptor() ([]byte, []int) {
+	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{4}
+}
+
 type GameEvent_Type int32
 
 const (
@@ -251,11 +355,11 @@ func (x GameEvent_Type) String() string {
 }
 
 func (GameEvent_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[3].Descriptor()
+	return file_vendor_macondo_macondo_proto_enumTypes[5].Descriptor()
 }
 
 func (GameEvent_Type) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[3]
+	return &file_vendor_macondo_macondo_proto_enumTypes[5]
 }
 
 func (x GameEvent_Type) Number() protoreflect.EnumNumber {
@@ -297,11 +401,11 @@ func (x GameEvent_Direction) String() string {
 }
 
 func (GameEvent_Direction) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[4].Descriptor()
+	return file_vendor_macondo_macondo_proto_enumTypes[6].Descriptor()
 }
 
 func (GameEvent_Direction) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[4]
+	return &file_vendor_macondo_macondo_proto_enumTypes[6]
 }
 
 func (x GameEvent_Direction) Number() protoreflect.EnumNumber {
@@ -329,7 +433,14 @@ const (
 	BotRequest_NO_LEAVE_BOT           BotRequest_BotCode = 10
 	BotRequest_SIMMING_BOT            BotRequest_BotCode = 11
 	BotRequest_HASTY_PLUS_ENDGAME_BOT BotRequest_BotCode = 12
-	BotRequest_SIMMING_INFER_BOT      BotRequest_BotCode = 13 // harder bots here? inference? ml, etc.
+	BotRequest_SIMMING_INFER_BOT      BotRequest_BotCode = 13
+	// harder bots here? inference? ml, etc.
+	BotRequest_FAST_ML_BOT                 BotRequest_BotCode = 14
+	BotRequest_RANDOM_BOT_WITH_TEMPERATURE BotRequest_BotCode = 15
+	BotRequest_SIMMING_WITH_ML_EVAL_BOT    BotRequest_BotCode = 16
+	// custom bots can be used to run custom algorithms.
+	// They should be used with the BotSpec below.
+	BotRequest_CUSTOM_BOT BotRequest_BotCode = 20
 	// This should have probably been number 0.
 	BotRequest_UNKNOWN BotRequest_BotCode = 100
 )
@@ -351,24 +462,32 @@ var (
 		11:  "SIMMING_BOT",
 		12:  "HASTY_PLUS_ENDGAME_BOT",
 		13:  "SIMMING_INFER_BOT",
+		14:  "FAST_ML_BOT",
+		15:  "RANDOM_BOT_WITH_TEMPERATURE",
+		16:  "SIMMING_WITH_ML_EVAL_BOT",
+		20:  "CUSTOM_BOT",
 		100: "UNKNOWN",
 	}
 	BotRequest_BotCode_value = map[string]int32{
-		"HASTY_BOT":              0,
-		"LEVEL1_COMMON_WORD_BOT": 1,
-		"LEVEL2_COMMON_WORD_BOT": 2,
-		"LEVEL3_COMMON_WORD_BOT": 3,
-		"LEVEL4_COMMON_WORD_BOT": 4,
-		"LEVEL1_PROBABILISTIC":   5,
-		"LEVEL2_PROBABILISTIC":   6,
-		"LEVEL3_PROBABILISTIC":   7,
-		"LEVEL4_PROBABILISTIC":   8,
-		"LEVEL5_PROBABILISTIC":   9,
-		"NO_LEAVE_BOT":           10,
-		"SIMMING_BOT":            11,
-		"HASTY_PLUS_ENDGAME_BOT": 12,
-		"SIMMING_INFER_BOT":      13,
-		"UNKNOWN":                100,
+		"HASTY_BOT":                   0,
+		"LEVEL1_COMMON_WORD_BOT":      1,
+		"LEVEL2_COMMON_WORD_BOT":      2,
+		"LEVEL3_COMMON_WORD_BOT":      3,
+		"LEVEL4_COMMON_WORD_BOT":      4,
+		"LEVEL1_PROBABILISTIC":        5,
+		"LEVEL2_PROBABILISTIC":        6,
+		"LEVEL3_PROBABILISTIC":        7,
+		"LEVEL4_PROBABILISTIC":        8,
+		"LEVEL5_PROBABILISTIC":        9,
+		"NO_LEAVE_BOT":                10,
+		"SIMMING_BOT":                 11,
+		"HASTY_PLUS_ENDGAME_BOT":      12,
+		"SIMMING_INFER_BOT":           13,
+		"FAST_ML_BOT":                 14,
+		"RANDOM_BOT_WITH_TEMPERATURE": 15,
+		"SIMMING_WITH_ML_EVAL_BOT":    16,
+		"CUSTOM_BOT":                  20,
+		"UNKNOWN":                     100,
 	}
 )
 
@@ -383,11 +502,11 @@ func (x BotRequest_BotCode) String() string {
 }
 
 func (BotRequest_BotCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[5].Descriptor()
+	return file_vendor_macondo_macondo_proto_enumTypes[7].Descriptor()
 }
 
 func (BotRequest_BotCode) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[5]
+	return &file_vendor_macondo_macondo_proto_enumTypes[7]
 }
 
 func (x BotRequest_BotCode) Number() protoreflect.EnumNumber {
@@ -1405,6 +1524,407 @@ func (x *PuzzleGenerationRequest) GetBuckets() []*PuzzleBucket {
 	return nil
 }
 
+// GameAnalysisResult contains analysis results for a completed game
+type GameAnalysisResult struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Turns           []*TurnAnalysis        `protobuf:"bytes,1,rep,name=turns,proto3" json:"turns,omitempty"`
+	PlayerSummaries []*PlayerSummary       `protobuf:"bytes,2,rep,name=player_summaries,json=playerSummaries,proto3" json:"player_summaries,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GameAnalysisResult) Reset() {
+	*x = GameAnalysisResult{}
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameAnalysisResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameAnalysisResult) ProtoMessage() {}
+
+func (x *GameAnalysisResult) ProtoReflect() protoreflect.Message {
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameAnalysisResult.ProtoReflect.Descriptor instead.
+func (*GameAnalysisResult) Descriptor() ([]byte, []int) {
+	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GameAnalysisResult) GetTurns() []*TurnAnalysis {
+	if x != nil {
+		return x.Turns
+	}
+	return nil
+}
+
+func (x *GameAnalysisResult) GetPlayerSummaries() []*PlayerSummary {
+	if x != nil {
+		return x.PlayerSummaries
+	}
+	return nil
+}
+
+// TurnAnalysis contains analysis for a single turn
+type TurnAnalysis struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Turn context
+	TurnNumber  int32     `protobuf:"varint,1,opt,name=turn_number,json=turnNumber,proto3" json:"turn_number,omitempty"`
+	PlayerIndex int32     `protobuf:"varint,2,opt,name=player_index,json=playerIndex,proto3" json:"player_index,omitempty"`
+	PlayerName  string    `protobuf:"bytes,3,opt,name=player_name,json=playerName,proto3" json:"player_name,omitempty"`
+	Rack        string    `protobuf:"bytes,4,opt,name=rack,proto3" json:"rack,omitempty"`
+	Phase       GamePhase `protobuf:"varint,5,opt,name=phase,proto3,enum=macondo.GamePhase" json:"phase,omitempty"`
+	TilesInBag  int32     `protobuf:"varint,6,opt,name=tiles_in_bag,json=tilesInBag,proto3" json:"tiles_in_bag,omitempty"`
+	// Moves
+	PlayedMove   string `protobuf:"bytes,7,opt,name=played_move,json=playedMove,proto3" json:"played_move,omitempty"` // e.g., "8D QUIXOTIC" or "(exch AEI)"
+	PlayedScore  int32  `protobuf:"varint,8,opt,name=played_score,json=playedScore,proto3" json:"played_score,omitempty"`
+	OptimalMove  string `protobuf:"bytes,9,opt,name=optimal_move,json=optimalMove,proto3" json:"optimal_move,omitempty"`
+	OptimalScore int32  `protobuf:"varint,10,opt,name=optimal_score,json=optimalScore,proto3" json:"optimal_score,omitempty"`
+	// Loss metrics
+	WinProbLoss float64 `protobuf:"fixed64,11,opt,name=win_prob_loss,json=winProbLoss,proto3" json:"win_prob_loss,omitempty"` // For sim/PEG phases (0-1)
+	SpreadLoss  int32   `protobuf:"varint,12,opt,name=spread_loss,json=spreadLoss,proto3" json:"spread_loss,omitempty"`       // For endgame phase
+	// Mistake categorization
+	WasOptimal   bool        `protobuf:"varint,13,opt,name=was_optimal,json=wasOptimal,proto3" json:"was_optimal,omitempty"`
+	MistakeSize  MistakeSize `protobuf:"varint,14,opt,name=mistake_size,json=mistakeSize,proto3,enum=macondo.MistakeSize" json:"mistake_size,omitempty"`
+	BlownEndgame bool        `protobuf:"varint,15,opt,name=blown_endgame,json=blownEndgame,proto3" json:"blown_endgame,omitempty"`
+	// Phony tracking
+	IsPhony         bool `protobuf:"varint,16,opt,name=is_phony,json=isPhony,proto3" json:"is_phony,omitempty"`
+	PhonyChallenged bool `protobuf:"varint,17,opt,name=phony_challenged,json=phonyChallenged,proto3" json:"phony_challenged,omitempty"`
+	MissedChallenge bool `protobuf:"varint,18,opt,name=missed_challenge,json=missedChallenge,proto3" json:"missed_challenge,omitempty"`
+	// Bingo tracking
+	OptimalIsBingo bool `protobuf:"varint,19,opt,name=optimal_is_bingo,json=optimalIsBingo,proto3" json:"optimal_is_bingo,omitempty"`
+	PlayedIsBingo  bool `protobuf:"varint,20,opt,name=played_is_bingo,json=playedIsBingo,proto3" json:"played_is_bingo,omitempty"`
+	MissedBingo    bool `protobuf:"varint,21,opt,name=missed_bingo,json=missedBingo,proto3" json:"missed_bingo,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TurnAnalysis) Reset() {
+	*x = TurnAnalysis{}
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TurnAnalysis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TurnAnalysis) ProtoMessage() {}
+
+func (x *TurnAnalysis) ProtoReflect() protoreflect.Message {
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TurnAnalysis.ProtoReflect.Descriptor instead.
+func (*TurnAnalysis) Descriptor() ([]byte, []int) {
+	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TurnAnalysis) GetTurnNumber() int32 {
+	if x != nil {
+		return x.TurnNumber
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetPlayerIndex() int32 {
+	if x != nil {
+		return x.PlayerIndex
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetPlayerName() string {
+	if x != nil {
+		return x.PlayerName
+	}
+	return ""
+}
+
+func (x *TurnAnalysis) GetRack() string {
+	if x != nil {
+		return x.Rack
+	}
+	return ""
+}
+
+func (x *TurnAnalysis) GetPhase() GamePhase {
+	if x != nil {
+		return x.Phase
+	}
+	return GamePhase_PHASE_EARLY_MID
+}
+
+func (x *TurnAnalysis) GetTilesInBag() int32 {
+	if x != nil {
+		return x.TilesInBag
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetPlayedMove() string {
+	if x != nil {
+		return x.PlayedMove
+	}
+	return ""
+}
+
+func (x *TurnAnalysis) GetPlayedScore() int32 {
+	if x != nil {
+		return x.PlayedScore
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetOptimalMove() string {
+	if x != nil {
+		return x.OptimalMove
+	}
+	return ""
+}
+
+func (x *TurnAnalysis) GetOptimalScore() int32 {
+	if x != nil {
+		return x.OptimalScore
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetWinProbLoss() float64 {
+	if x != nil {
+		return x.WinProbLoss
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetSpreadLoss() int32 {
+	if x != nil {
+		return x.SpreadLoss
+	}
+	return 0
+}
+
+func (x *TurnAnalysis) GetWasOptimal() bool {
+	if x != nil {
+		return x.WasOptimal
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetMistakeSize() MistakeSize {
+	if x != nil {
+		return x.MistakeSize
+	}
+	return MistakeSize_NO_MISTAKE
+}
+
+func (x *TurnAnalysis) GetBlownEndgame() bool {
+	if x != nil {
+		return x.BlownEndgame
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetIsPhony() bool {
+	if x != nil {
+		return x.IsPhony
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetPhonyChallenged() bool {
+	if x != nil {
+		return x.PhonyChallenged
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetMissedChallenge() bool {
+	if x != nil {
+		return x.MissedChallenge
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetOptimalIsBingo() bool {
+	if x != nil {
+		return x.OptimalIsBingo
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetPlayedIsBingo() bool {
+	if x != nil {
+		return x.PlayedIsBingo
+	}
+	return false
+}
+
+func (x *TurnAnalysis) GetMissedBingo() bool {
+	if x != nil {
+		return x.MissedBingo
+	}
+	return false
+}
+
+// PlayerSummary contains aggregate statistics for one player
+type PlayerSummary struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	PlayerName   string                 `protobuf:"bytes,1,opt,name=player_name,json=playerName,proto3" json:"player_name,omitempty"`
+	TurnsPlayed  int32                  `protobuf:"varint,2,opt,name=turns_played,json=turnsPlayed,proto3" json:"turns_played,omitempty"`
+	OptimalMoves int32                  `protobuf:"varint,3,opt,name=optimal_moves,json=optimalMoves,proto3" json:"optimal_moves,omitempty"`
+	// Average losses
+	AvgWinProbLoss float64 `protobuf:"fixed64,4,opt,name=avg_win_prob_loss,json=avgWinProbLoss,proto3" json:"avg_win_prob_loss,omitempty"`
+	AvgSpreadLoss  float64 `protobuf:"fixed64,5,opt,name=avg_spread_loss,json=avgSpreadLoss,proto3" json:"avg_spread_loss,omitempty"`
+	// Mistake breakdown
+	SmallMistakes  int32 `protobuf:"varint,6,opt,name=small_mistakes,json=smallMistakes,proto3" json:"small_mistakes,omitempty"`
+	MediumMistakes int32 `protobuf:"varint,7,opt,name=medium_mistakes,json=mediumMistakes,proto3" json:"medium_mistakes,omitempty"`
+	LargeMistakes  int32 `protobuf:"varint,8,opt,name=large_mistakes,json=largeMistakes,proto3" json:"large_mistakes,omitempty"`
+	// Overall rating
+	MistakeIndex float64 `protobuf:"fixed64,9,opt,name=mistake_index,json=mistakeIndex,proto3" json:"mistake_index,omitempty"`
+	EstimatedElo float64 `protobuf:"fixed64,10,opt,name=estimated_elo,json=estimatedElo,proto3" json:"estimated_elo,omitempty"`
+	// Bingo tracking
+	AvailableBingos int32 `protobuf:"varint,11,opt,name=available_bingos,json=availableBingos,proto3" json:"available_bingos,omitempty"`
+	MissedBingos    int32 `protobuf:"varint,12,opt,name=missed_bingos,json=missedBingos,proto3" json:"missed_bingos,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PlayerSummary) Reset() {
+	*x = PlayerSummary{}
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerSummary) ProtoMessage() {}
+
+func (x *PlayerSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_vendor_macondo_macondo_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerSummary.ProtoReflect.Descriptor instead.
+func (*PlayerSummary) Descriptor() ([]byte, []int) {
+	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PlayerSummary) GetPlayerName() string {
+	if x != nil {
+		return x.PlayerName
+	}
+	return ""
+}
+
+func (x *PlayerSummary) GetTurnsPlayed() int32 {
+	if x != nil {
+		return x.TurnsPlayed
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetOptimalMoves() int32 {
+	if x != nil {
+		return x.OptimalMoves
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetAvgWinProbLoss() float64 {
+	if x != nil {
+		return x.AvgWinProbLoss
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetAvgSpreadLoss() float64 {
+	if x != nil {
+		return x.AvgSpreadLoss
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetSmallMistakes() int32 {
+	if x != nil {
+		return x.SmallMistakes
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetMediumMistakes() int32 {
+	if x != nil {
+		return x.MediumMistakes
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetLargeMistakes() int32 {
+	if x != nil {
+		return x.LargeMistakes
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetMistakeIndex() float64 {
+	if x != nil {
+		return x.MistakeIndex
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetEstimatedElo() float64 {
+	if x != nil {
+		return x.EstimatedElo
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetAvailableBingos() int32 {
+	if x != nil {
+		return x.AvailableBingos
+	}
+	return 0
+}
+
+func (x *PlayerSummary) GetMissedBingos() int32 {
+	if x != nil {
+		return x.MissedBingos
+	}
+	return 0
+}
+
 var File_vendor_macondo_macondo_proto protoreflect.FileDescriptor
 
 const file_vendor_macondo_macondo_proto_rawDesc = "" +
@@ -1476,13 +1996,13 @@ const file_vendor_macondo_macondo_proto_rawDesc = "" +
 	"PlayerInfo\x12\x1a\n" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1b\n" +
 	"\treal_name\x18\x02 \x01(\tR\brealName\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\"\xe3\x04\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"\xc3\x05\n" +
 	"\n" +
 	"BotRequest\x127\n" +
 	"\fgame_history\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\vgameHistory\x12I\n" +
 	"\x12evaluation_request\x18\x02 \x01(\v2\x1a.macondo.EvaluationRequestR\x11evaluationRequest\x126\n" +
 	"\bbot_type\x18\x03 \x01(\x0e2\x1b.macondo.BotRequest.BotCodeR\abotType\x12)\n" +
-	"\x10millis_remaining\x18\x04 \x01(\x05R\x0fmillisRemaining\"\xed\x02\n" +
+	"\x10millis_remaining\x18\x04 \x01(\x05R\x0fmillisRemaining\"\xcd\x03\n" +
 	"\aBotCode\x12\r\n" +
 	"\tHASTY_BOT\x10\x00\x12\x1a\n" +
 	"\x16LEVEL1_COMMON_WORD_BOT\x10\x01\x12\x1a\n" +
@@ -1498,7 +2018,12 @@ const file_vendor_macondo_macondo_proto_rawDesc = "" +
 	"\x12\x0f\n" +
 	"\vSIMMING_BOT\x10\v\x12\x1a\n" +
 	"\x16HASTY_PLUS_ENDGAME_BOT\x10\f\x12\x15\n" +
-	"\x11SIMMING_INFER_BOT\x10\r\x12\v\n" +
+	"\x11SIMMING_INFER_BOT\x10\r\x12\x0f\n" +
+	"\vFAST_ML_BOT\x10\x0e\x12\x1f\n" +
+	"\x1bRANDOM_BOT_WITH_TEMPERATURE\x10\x0f\x12\x1c\n" +
+	"\x18SIMMING_WITH_ML_EVAL_BOT\x10\x10\x12\x0e\n" +
+	"\n" +
+	"CUSTOM_BOT\x10\x14\x12\v\n" +
 	"\aUNKNOWN\x10d\"'\n" +
 	"\x11EvaluationRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\"D\n" +
@@ -1535,7 +2060,54 @@ const file_vendor_macondo_macondo_proto_rawDesc = "" +
 	"\bincludes\x18\x03 \x03(\x0e2\x12.macondo.PuzzleTagR\bincludes\x12.\n" +
 	"\bexcludes\x18\x04 \x03(\x0e2\x12.macondo.PuzzleTagR\bexcludes\"J\n" +
 	"\x17PuzzleGenerationRequest\x12/\n" +
-	"\abuckets\x18\x01 \x03(\v2\x15.macondo.PuzzleBucketR\abuckets*C\n" +
+	"\abuckets\x18\x01 \x03(\v2\x15.macondo.PuzzleBucketR\abuckets\"\x84\x01\n" +
+	"\x12GameAnalysisResult\x12+\n" +
+	"\x05turns\x18\x01 \x03(\v2\x15.macondo.TurnAnalysisR\x05turns\x12A\n" +
+	"\x10player_summaries\x18\x02 \x03(\v2\x16.macondo.PlayerSummaryR\x0fplayerSummaries\"\x89\x06\n" +
+	"\fTurnAnalysis\x12\x1f\n" +
+	"\vturn_number\x18\x01 \x01(\x05R\n" +
+	"turnNumber\x12!\n" +
+	"\fplayer_index\x18\x02 \x01(\x05R\vplayerIndex\x12\x1f\n" +
+	"\vplayer_name\x18\x03 \x01(\tR\n" +
+	"playerName\x12\x12\n" +
+	"\x04rack\x18\x04 \x01(\tR\x04rack\x12(\n" +
+	"\x05phase\x18\x05 \x01(\x0e2\x12.macondo.GamePhaseR\x05phase\x12 \n" +
+	"\ftiles_in_bag\x18\x06 \x01(\x05R\n" +
+	"tilesInBag\x12\x1f\n" +
+	"\vplayed_move\x18\a \x01(\tR\n" +
+	"playedMove\x12!\n" +
+	"\fplayed_score\x18\b \x01(\x05R\vplayedScore\x12!\n" +
+	"\foptimal_move\x18\t \x01(\tR\voptimalMove\x12#\n" +
+	"\roptimal_score\x18\n" +
+	" \x01(\x05R\foptimalScore\x12\"\n" +
+	"\rwin_prob_loss\x18\v \x01(\x01R\vwinProbLoss\x12\x1f\n" +
+	"\vspread_loss\x18\f \x01(\x05R\n" +
+	"spreadLoss\x12\x1f\n" +
+	"\vwas_optimal\x18\r \x01(\bR\n" +
+	"wasOptimal\x127\n" +
+	"\fmistake_size\x18\x0e \x01(\x0e2\x14.macondo.MistakeSizeR\vmistakeSize\x12#\n" +
+	"\rblown_endgame\x18\x0f \x01(\bR\fblownEndgame\x12\x19\n" +
+	"\bis_phony\x18\x10 \x01(\bR\aisPhony\x12)\n" +
+	"\x10phony_challenged\x18\x11 \x01(\bR\x0fphonyChallenged\x12)\n" +
+	"\x10missed_challenge\x18\x12 \x01(\bR\x0fmissedChallenge\x12(\n" +
+	"\x10optimal_is_bingo\x18\x13 \x01(\bR\x0eoptimalIsBingo\x12&\n" +
+	"\x0fplayed_is_bingo\x18\x14 \x01(\bR\rplayedIsBingo\x12!\n" +
+	"\fmissed_bingo\x18\x15 \x01(\bR\vmissedBingo\"\xdc\x03\n" +
+	"\rPlayerSummary\x12\x1f\n" +
+	"\vplayer_name\x18\x01 \x01(\tR\n" +
+	"playerName\x12!\n" +
+	"\fturns_played\x18\x02 \x01(\x05R\vturnsPlayed\x12#\n" +
+	"\roptimal_moves\x18\x03 \x01(\x05R\foptimalMoves\x12)\n" +
+	"\x11avg_win_prob_loss\x18\x04 \x01(\x01R\x0eavgWinProbLoss\x12&\n" +
+	"\x0favg_spread_loss\x18\x05 \x01(\x01R\ravgSpreadLoss\x12%\n" +
+	"\x0esmall_mistakes\x18\x06 \x01(\x05R\rsmallMistakes\x12'\n" +
+	"\x0fmedium_mistakes\x18\a \x01(\x05R\x0emediumMistakes\x12%\n" +
+	"\x0elarge_mistakes\x18\b \x01(\x05R\rlargeMistakes\x12#\n" +
+	"\rmistake_index\x18\t \x01(\x01R\fmistakeIndex\x12#\n" +
+	"\restimated_elo\x18\n" +
+	" \x01(\x01R\festimatedElo\x12)\n" +
+	"\x10available_bingos\x18\v \x01(\x05R\x0favailableBingos\x12#\n" +
+	"\rmissed_bingos\x18\f \x01(\x05R\fmissedBingos*C\n" +
 	"\tPlayState\x12\v\n" +
 	"\aPLAYING\x10\x00\x12\x1a\n" +
 	"\x16WAITING_FOR_FINAL_PASS\x10\x01\x12\r\n" +
@@ -1562,7 +2134,19 @@ const file_vendor_macondo_macondo_proto_rawDesc = "" +
 	"\n" +
 	"POWER_TILE\x10\x05\x12\x17\n" +
 	"\x13BINGO_NINE_OR_ABOVE\x10\x06\x12\f\n" +
-	"\bCEL_ONLY\x10\aB3Z1github.com/domino14/macondo/gen/api/proto/macondob\x06proto3"
+	"\bCEL_ONLY\x10\a*e\n" +
+	"\tGamePhase\x12\x13\n" +
+	"\x0fPHASE_EARLY_MID\x10\x00\x12\x1a\n" +
+	"\x16PHASE_EARLY_PREENDGAME\x10\x01\x12\x14\n" +
+	"\x10PHASE_PREENDGAME\x10\x02\x12\x11\n" +
+	"\rPHASE_ENDGAME\x10\x03*?\n" +
+	"\vMistakeSize\x12\x0e\n" +
+	"\n" +
+	"NO_MISTAKE\x10\x00\x12\t\n" +
+	"\x05SMALL\x10\x01\x12\n" +
+	"\n" +
+	"\x06MEDIUM\x10\x02\x12\t\n" +
+	"\x05LARGE\x10\x03B3Z1github.com/domino14/macondo/gen/api/proto/macondob\x06proto3"
 
 var (
 	file_vendor_macondo_macondo_proto_rawDescOnce sync.Once
@@ -1576,50 +2160,59 @@ func file_vendor_macondo_macondo_proto_rawDescGZIP() []byte {
 	return file_vendor_macondo_macondo_proto_rawDescData
 }
 
-var file_vendor_macondo_macondo_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_vendor_macondo_macondo_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_vendor_macondo_macondo_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_vendor_macondo_macondo_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_vendor_macondo_macondo_proto_goTypes = []any{
 	(PlayState)(0),                  // 0: macondo.PlayState
 	(ChallengeRule)(0),              // 1: macondo.ChallengeRule
 	(PuzzleTag)(0),                  // 2: macondo.PuzzleTag
-	(GameEvent_Type)(0),             // 3: macondo.GameEvent.Type
-	(GameEvent_Direction)(0),        // 4: macondo.GameEvent.Direction
-	(BotRequest_BotCode)(0),         // 5: macondo.BotRequest.BotCode
-	(*GameHistory)(nil),             // 6: macondo.GameHistory
-	(*GameEvent)(nil),               // 7: macondo.GameEvent
-	(*PlayerInfo)(nil),              // 8: macondo.PlayerInfo
-	(*BotRequest)(nil),              // 9: macondo.BotRequest
-	(*EvaluationRequest)(nil),       // 10: macondo.EvaluationRequest
-	(*Evaluation)(nil),              // 11: macondo.Evaluation
-	(*SingleEvaluation)(nil),        // 12: macondo.SingleEvaluation
-	(*BotResponse)(nil),             // 13: macondo.BotResponse
-	(*PuzzleCreationResponse)(nil),  // 14: macondo.PuzzleCreationResponse
-	(*PuzzleBucket)(nil),            // 15: macondo.PuzzleBucket
-	(*PuzzleGenerationRequest)(nil), // 16: macondo.PuzzleGenerationRequest
+	(GamePhase)(0),                  // 3: macondo.GamePhase
+	(MistakeSize)(0),                // 4: macondo.MistakeSize
+	(GameEvent_Type)(0),             // 5: macondo.GameEvent.Type
+	(GameEvent_Direction)(0),        // 6: macondo.GameEvent.Direction
+	(BotRequest_BotCode)(0),         // 7: macondo.BotRequest.BotCode
+	(*GameHistory)(nil),             // 8: macondo.GameHistory
+	(*GameEvent)(nil),               // 9: macondo.GameEvent
+	(*PlayerInfo)(nil),              // 10: macondo.PlayerInfo
+	(*BotRequest)(nil),              // 11: macondo.BotRequest
+	(*EvaluationRequest)(nil),       // 12: macondo.EvaluationRequest
+	(*Evaluation)(nil),              // 13: macondo.Evaluation
+	(*SingleEvaluation)(nil),        // 14: macondo.SingleEvaluation
+	(*BotResponse)(nil),             // 15: macondo.BotResponse
+	(*PuzzleCreationResponse)(nil),  // 16: macondo.PuzzleCreationResponse
+	(*PuzzleBucket)(nil),            // 17: macondo.PuzzleBucket
+	(*PuzzleGenerationRequest)(nil), // 18: macondo.PuzzleGenerationRequest
+	(*GameAnalysisResult)(nil),      // 19: macondo.GameAnalysisResult
+	(*TurnAnalysis)(nil),            // 20: macondo.TurnAnalysis
+	(*PlayerSummary)(nil),           // 21: macondo.PlayerSummary
 }
 var file_vendor_macondo_macondo_proto_depIdxs = []int32{
-	7,  // 0: macondo.GameHistory.events:type_name -> macondo.GameEvent
-	8,  // 1: macondo.GameHistory.players:type_name -> macondo.PlayerInfo
+	9,  // 0: macondo.GameHistory.events:type_name -> macondo.GameEvent
+	10, // 1: macondo.GameHistory.players:type_name -> macondo.PlayerInfo
 	1,  // 2: macondo.GameHistory.challenge_rule:type_name -> macondo.ChallengeRule
 	0,  // 3: macondo.GameHistory.play_state:type_name -> macondo.PlayState
-	3,  // 4: macondo.GameEvent.type:type_name -> macondo.GameEvent.Type
-	4,  // 5: macondo.GameEvent.direction:type_name -> macondo.GameEvent.Direction
-	6,  // 6: macondo.BotRequest.game_history:type_name -> macondo.GameHistory
-	10, // 7: macondo.BotRequest.evaluation_request:type_name -> macondo.EvaluationRequest
-	5,  // 8: macondo.BotRequest.bot_type:type_name -> macondo.BotRequest.BotCode
-	12, // 9: macondo.Evaluation.play_eval:type_name -> macondo.SingleEvaluation
-	7,  // 10: macondo.BotResponse.move:type_name -> macondo.GameEvent
-	11, // 11: macondo.BotResponse.eval:type_name -> macondo.Evaluation
-	7,  // 12: macondo.PuzzleCreationResponse.answer:type_name -> macondo.GameEvent
+	5,  // 4: macondo.GameEvent.type:type_name -> macondo.GameEvent.Type
+	6,  // 5: macondo.GameEvent.direction:type_name -> macondo.GameEvent.Direction
+	8,  // 6: macondo.BotRequest.game_history:type_name -> macondo.GameHistory
+	12, // 7: macondo.BotRequest.evaluation_request:type_name -> macondo.EvaluationRequest
+	7,  // 8: macondo.BotRequest.bot_type:type_name -> macondo.BotRequest.BotCode
+	14, // 9: macondo.Evaluation.play_eval:type_name -> macondo.SingleEvaluation
+	9,  // 10: macondo.BotResponse.move:type_name -> macondo.GameEvent
+	13, // 11: macondo.BotResponse.eval:type_name -> macondo.Evaluation
+	9,  // 12: macondo.PuzzleCreationResponse.answer:type_name -> macondo.GameEvent
 	2,  // 13: macondo.PuzzleCreationResponse.tags:type_name -> macondo.PuzzleTag
 	2,  // 14: macondo.PuzzleBucket.includes:type_name -> macondo.PuzzleTag
 	2,  // 15: macondo.PuzzleBucket.excludes:type_name -> macondo.PuzzleTag
-	15, // 16: macondo.PuzzleGenerationRequest.buckets:type_name -> macondo.PuzzleBucket
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	17, // 16: macondo.PuzzleGenerationRequest.buckets:type_name -> macondo.PuzzleBucket
+	20, // 17: macondo.GameAnalysisResult.turns:type_name -> macondo.TurnAnalysis
+	21, // 18: macondo.GameAnalysisResult.player_summaries:type_name -> macondo.PlayerSummary
+	3,  // 19: macondo.TurnAnalysis.phase:type_name -> macondo.GamePhase
+	4,  // 20: macondo.TurnAnalysis.mistake_size:type_name -> macondo.MistakeSize
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_vendor_macondo_macondo_proto_init() }
@@ -1636,8 +2229,8 @@ func file_vendor_macondo_macondo_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vendor_macondo_macondo_proto_rawDesc), len(file_vendor_macondo_macondo_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   11,
+			NumEnums:      8,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

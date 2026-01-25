@@ -16,6 +16,23 @@ type ActiveGameEvent struct {
 	Event    []byte
 }
 
+type AnalysisJob struct {
+	ID                uuid.UUID
+	GameID            string
+	Status            string
+	ClaimedByUserUuid pgtype.Text
+	ClaimedAt         pgtype.Timestamptz
+	HeartbeatAt       pgtype.Timestamptz
+	ConfigJson        []byte
+	ResultProto       []byte
+	ErrorMessage      pgtype.Text
+	RetryCount        pgtype.Int4
+	MaxRetries        pgtype.Int4
+	Priority          pgtype.Int4
+	CreatedAt         pgtype.Timestamptz
+	CompletedAt       pgtype.Timestamptz
+}
+
 type AnnotatedGameMetadatum struct {
 	GameUuid         string
 	CreatorUuid      string

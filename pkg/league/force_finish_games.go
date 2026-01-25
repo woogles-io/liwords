@@ -146,6 +146,10 @@ func (ffm *ForceFinishManager) RepairForceFinishedGames(
 			gameEntity.AddFinalScoresToHistory()
 		}
 
+		// Copy final scores to Quickdata (needed for frontend display)
+		gameEntity.Quickdata.FinalScores = gameEntity.History().FinalScores
+		// NOTE: this script does not calculate stats / ratings for these repaired
+		// games. Not crucial at this time.
 		// Ensure PlayState is GAME_OVER (fixes timer ticking issue)
 		gameEntity.History().PlayState = macondopb.PlayState_GAME_OVER
 		gameEntity.Game.SetPlaying(macondopb.PlayState_GAME_OVER)

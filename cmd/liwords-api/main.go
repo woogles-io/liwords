@@ -45,6 +45,7 @@ import (
 	// semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth"
 	"github.com/woogles-io/liwords/pkg/bus"
@@ -70,6 +71,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/vdowebhook"
 	"github.com/woogles-io/liwords/pkg/verification"
 	"github.com/woogles-io/liwords/pkg/words"
+	"github.com/woogles-io/liwords/rpc/api/proto/analysis_service/analysis_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/collections_service/collections_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
@@ -299,6 +301,7 @@ func main() {
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
+	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()
@@ -402,6 +405,9 @@ func main() {
 	connectapi.Handle(
 		user_serviceconnect.NewAuthorizationServiceHandler(authorizationService, options),
 	)
+	connectapi.Handle(
+		analysis_serviceconnect.NewAnalysisQueueServiceHandler(analysisService, options),
+	)
 
 	connectapichain := middlewares.Then(connectapi)
 
@@ -468,6 +474,7 @@ func main() {
 
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
+	go analysisService.StartReclaimWorker(ctx)
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

@@ -9,11 +9,13 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stats"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -247,6 +249,16 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		if err != nil {
 			// Log error but don't fail - standings can be recalculated later
 			log.Err(err).Msg("failed-to-update-league-standings")
+		}
+	}
+
+	// Enqueue league games for analysis
+	if g.LeagueDivisionID != nil {
+		const priority = 0 // Normal priority for league games
+		err = analysis.EnqueueGameForAnalysis(ctx, stores.Queries, g.GameID(), priority)
+		if err != nil {
+			// Log error but don't fail - analysis can be retried later
+			log.Err(err).Msg("failed-to-enqueue-game-for-analysis")
 		}
 	}
 
