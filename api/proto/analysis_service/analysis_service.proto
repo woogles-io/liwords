@@ -1,0 +1,70 @@
+syntax = "proto3";
+package analysis_service;
+
+import "vendor/macondo/macondo.proto";
+
+// Request to claim next available job
+message ClaimJobRequest {
+  // Worker authenticates via X-Api-Key header (existing middleware)
+}
+
+// Response with job details or no_jobs flag
+message ClaimJobResponse {
+  bool no_jobs = 1;
+
+  // Job details (populated if no_jobs = false)
+  string job_id = 2;
+  string game_id = 3;
+  AnalysisConfig config = 4;
+}
+
+// Analysis configuration
+message AnalysisConfig {
+  int32 sim_plays_early_mid = 1;
+  int32 sim_plies_early_mid = 2;
+  int32 sim_stop_early_mid = 3;
+
+  int32 sim_plays_early_preendgame = 4;
+  int32 sim_plies_early_preendgame = 5;
+  int32 sim_stop_early_preendgame = 6;
+
+  bool peg_early_cutoff = 7;
+  int32 threads = 8;
+}
+
+// Heartbeat to keep job alive
+message HeartbeatRequest {
+  string job_id = 1;
+
+  // Optional progress info
+  int32 current_turn = 2;
+  int32 total_turns = 3;
+}
+
+message HeartbeatResponse {
+  bool continue = 1;  // false if job was reclaimed
+}
+
+// Submit completed analysis
+message SubmitResultRequest {
+  string job_id = 1;
+
+  // Result as protobuf bytes (not base64)
+  bytes result_proto = 2;
+}
+
+message SubmitResultResponse {
+  bool accepted = 1;
+  string error = 2;  // Populated if accepted = false
+}
+
+service AnalysisQueueService {
+  // ClaimJob atomically claims next available job
+  rpc ClaimJob(ClaimJobRequest) returns (ClaimJobResponse);
+
+  // Heartbeat keeps job from being reclaimed due to timeout
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // SubmitResult submits completed analysis
+  rpc SubmitResult(SubmitResultRequest) returns (SubmitResultResponse);
+}
