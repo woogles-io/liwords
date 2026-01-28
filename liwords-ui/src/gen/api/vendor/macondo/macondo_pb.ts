@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vendor/macondo/macondo.proto.
  */
 export const file_vendor_macondo_macondo: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZW5kb3IvbWFjb25kby9tYWNvbmRvLnByb3RvEgdtYWNvbmRvIuIDCgtHYW1lSGlzdG9yeRIiCgZldmVudHMYASADKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIkCgdwbGF5ZXJzGAIgAygLMhMubWFjb25kby5QbGF5ZXJJbmZvEg8KB3ZlcnNpb24YAyABKAUSFAoMb3JpZ2luYWxfZ2NnGAQgASgJEg8KB2xleGljb24YBSABKAkSDwoHaWRfYXV0aBgGIAEoCRILCgN1aWQYByABKAkSDQoFdGl0bGUYCCABKAkSEwoLZGVzY3JpcHRpb24YCSABKAkSGAoQbGFzdF9rbm93bl9yYWNrcxgKIAMoCRIdChFzZWNvbmRfd2VudF9maXJzdBgLIAEoCEICGAESLgoOY2hhbGxlbmdlX3J1bGUYDCABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSJgoKcGxheV9zdGF0ZRgNIAEoDjISLm1hY29uZG8uUGxheVN0YXRlEhQKDGZpbmFsX3Njb3JlcxgOIAMoBRIPCgd2YXJpYW50GA8gASgJEg4KBndpbm5lchgQIAEoBRIUCgxib2FyZF9sYXlvdXQYESABKAkSGwoTbGV0dGVyX2Rpc3RyaWJ1dGlvbhgSIAEoCRIUCgxzdGFydGluZ19jZ3AYEyABKAkixAUKCUdhbWVFdmVudBIUCghuaWNrbmFtZRgBIAEoCUICGAESDAoEbm90ZRgCIAEoCRIMCgRyYWNrGAMgASgJEiUKBHR5cGUYBCABKA4yFy5tYWNvbmRvLkdhbWVFdmVudC5UeXBlEhIKCmN1bXVsYXRpdmUYBSABKAUSCwoDcm93GAYgASgFEg4KBmNvbHVtbhgHIAEoBRIvCglkaXJlY3Rpb24YCCABKA4yHC5tYWNvbmRvLkdhbWVFdmVudC5EaXJlY3Rpb24SEAoIcG9zaXRpb24YCSABKAkSFAoMcGxheWVkX3RpbGVzGAogASgJEhEKCWV4Y2hhbmdlZBgLIAEoCRINCgVzY29yZRgMIAEoBRINCgVib251cxgNIAEoBRIXCg9lbmRfcmFja19wb2ludHMYDiABKAUSEgoKbG9zdF9zY29yZRgPIAEoBRIQCghpc19iaW5nbxgQIAEoCBIUCgx3b3Jkc19mb3JtZWQYESADKAkSGAoQbWlsbGlzX3JlbWFpbmluZxgSIAEoBRIUCgxwbGF5ZXJfaW5kZXgYEyABKA0SGwoTbnVtX3RpbGVzX2Zyb21fcmFjaxgUIAEoDSLVAQoEVHlwZRIXChNUSUxFX1BMQUNFTUVOVF9NT1ZFEAASGAoUUEhPTllfVElMRVNfUkVUVVJORUQQARIICgRQQVNTEAISEwoPQ0hBTExFTkdFX0JPTlVTEAMSDAoIRVhDSEFOR0UQBBIQCgxFTkRfUkFDS19QVFMQBRIQCgxUSU1FX1BFTkFMVFkQBhIUChBFTkRfUkFDS19QRU5BTFRZEAcSJAogVU5TVUNDRVNTRlVMX0NIQUxMRU5HRV9UVVJOX0xPU1MQCBINCglDSEFMTEVOR0UQCSIpCglEaXJlY3Rpb24SDgoKSE9SSVpPTlRBTBAAEgwKCFZFUlRJQ0FMEAEiQgoKUGxheWVySW5mbxIQCghuaWNrbmFtZRgBIAEoCRIRCglyZWFsX25hbWUYAiABKAkSDwoHdXNlcl9pZBgDIAEoCSKpBAoKQm90UmVxdWVzdBIqCgxnYW1lX2hpc3RvcnkYASABKAsyFC5tYWNvbmRvLkdhbWVIaXN0b3J5EjYKEmV2YWx1YXRpb25fcmVxdWVzdBgCIAEoCzIaLm1hY29uZG8uRXZhbHVhdGlvblJlcXVlc3QSLQoIYm90X3R5cGUYAyABKA4yGy5tYWNvbmRvLkJvdFJlcXVlc3QuQm90Q29kZRIYChBtaWxsaXNfcmVtYWluaW5nGAQgASgFIu0CCgdCb3RDb2RlEg0KCUhBU1RZX0JPVBAAEhoKFkxFVkVMMV9DT01NT05fV09SRF9CT1QQARIaChZMRVZFTDJfQ09NTU9OX1dPUkRfQk9UEAISGgoWTEVWRUwzX0NPTU1PTl9XT1JEX0JPVBADEhoKFkxFVkVMNF9DT01NT05fV09SRF9CT1QQBBIYChRMRVZFTDFfUFJPQkFCSUxJU1RJQxAFEhgKFExFVkVMMl9QUk9CQUJJTElTVElDEAYSGAoUTEVWRUwzX1BST0JBQklMSVNUSUMQBxIYChRMRVZFTDRfUFJPQkFCSUxJU1RJQxAIEhgKFExFVkVMNV9QUk9CQUJJTElTVElDEAkSEAoMTk9fTEVBVkVfQk9UEAoSDwoLU0lNTUlOR19CT1QQCxIaChZIQVNUWV9QTFVTX0VOREdBTUVfQk9UEAwSFQoRU0lNTUlOR19JTkZFUl9CT1QQDRILCgdVTktOT1dOEGQiIQoRRXZhbHVhdGlvblJlcXVlc3QSDAoEdXNlchgBIAEoCSI6CgpFdmFsdWF0aW9uEiwKCXBsYXlfZXZhbBgBIAMoCzIZLm1hY29uZG8uU2luZ2xlRXZhbHVhdGlvbiKfAQoQU2luZ2xlRXZhbHVhdGlvbhITCgtlcXVpdHlfbG9zcxgBIAEoARIUCgx3aW5fcGN0X2xvc3MYAiABKAESFAoMbWlzc2VkX2JpbmdvGAMgASgIEhoKEnBvc3NpYmxlX3N0YXJfcGxheRgEIAEoCBIYChBtaXNzZWRfc3Rhcl9wbGF5GAUgASgIEhQKDHRvcF9pc19iaW5nbxgGIAEoCCKCAQoLQm90UmVzcG9uc2USIgoEbW92ZRgBIAEoCzISLm1hY29uZG8uR2FtZUV2ZW50SAASDwoFZXJyb3IYAiABKAlIABIhCgRldmFsGAMgASgLMhMubWFjb25kby5FdmFsdWF0aW9uEg8KB2dhbWVfaWQYBCABKAlCCgoIcmVzcG9uc2UimgEKFlB1enpsZUNyZWF0aW9uUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCRITCgt0dXJuX251bWJlchgCIAEoBRIiCgZhbnN3ZXIYAyABKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIgCgR0YWdzGAQgAygOMhIubWFjb25kby5QdXp6bGVUYWcSFAoMYnVja2V0X2luZGV4GAUgASgFIncKDFB1enpsZUJ1Y2tldBINCgVpbmRleBgBIAEoBRIMCgRzaXplGAIgASgFEiQKCGluY2x1ZGVzGAMgAygOMhIubWFjb25kby5QdXp6bGVUYWcSJAoIZXhjbHVkZXMYBCADKA4yEi5tYWNvbmRvLlB1enpsZVRhZyJBChdQdXp6bGVHZW5lcmF0aW9uUmVxdWVzdBImCgdidWNrZXRzGAEgAygLMhUubWFjb25kby5QdXp6bGVCdWNrZXQqQwoJUGxheVN0YXRlEgsKB1BMQVlJTkcQABIaChZXQUlUSU5HX0ZPUl9GSU5BTF9QQVNTEAESDQoJR0FNRV9PVkVSEAIqXAoNQ2hhbGxlbmdlUnVsZRIICgRWT0lEEAASCgoGU0lOR0xFEAESCgoGRE9VQkxFEAISDgoKRklWRV9QT0lOVBADEg0KCVRFTl9QT0lOVBAEEgoKBlRSSVBMRRAFKokBCglQdXp6bGVUYWcSCgoGRVFVSVRZEAASCQoFQklOR08QARIOCgpPTkxZX0JJTkdPEAISDwoLQkxBTktfQklOR08QAxINCglOT05fQklOR08QBBIOCgpQT1dFUl9USUxFEAUSFwoTQklOR09fTklORV9PUl9BQk9WRRAGEgwKCENFTF9PTkxZEAdCM1oxZ2l0aHViLmNvbS9kb21pbm8xNC9tYWNvbmRvL2dlbi9hcGkvcHJvdG8vbWFjb25kb2IGcHJvdG8z");
+  fileDesc("Chx2ZW5kb3IvbWFjb25kby9tYWNvbmRvLnByb3RvEgdtYWNvbmRvIuIDCgtHYW1lSGlzdG9yeRIiCgZldmVudHMYASADKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIkCgdwbGF5ZXJzGAIgAygLMhMubWFjb25kby5QbGF5ZXJJbmZvEg8KB3ZlcnNpb24YAyABKAUSFAoMb3JpZ2luYWxfZ2NnGAQgASgJEg8KB2xleGljb24YBSABKAkSDwoHaWRfYXV0aBgGIAEoCRILCgN1aWQYByABKAkSDQoFdGl0bGUYCCABKAkSEwoLZGVzY3JpcHRpb24YCSABKAkSGAoQbGFzdF9rbm93bl9yYWNrcxgKIAMoCRIdChFzZWNvbmRfd2VudF9maXJzdBgLIAEoCEICGAESLgoOY2hhbGxlbmdlX3J1bGUYDCABKA4yFi5tYWNvbmRvLkNoYWxsZW5nZVJ1bGUSJgoKcGxheV9zdGF0ZRgNIAEoDjISLm1hY29uZG8uUGxheVN0YXRlEhQKDGZpbmFsX3Njb3JlcxgOIAMoBRIPCgd2YXJpYW50GA8gASgJEg4KBndpbm5lchgQIAEoBRIUCgxib2FyZF9sYXlvdXQYESABKAkSGwoTbGV0dGVyX2Rpc3RyaWJ1dGlvbhgSIAEoCRIUCgxzdGFydGluZ19jZ3AYEyABKAkixAUKCUdhbWVFdmVudBIUCghuaWNrbmFtZRgBIAEoCUICGAESDAoEbm90ZRgCIAEoCRIMCgRyYWNrGAMgASgJEiUKBHR5cGUYBCABKA4yFy5tYWNvbmRvLkdhbWVFdmVudC5UeXBlEhIKCmN1bXVsYXRpdmUYBSABKAUSCwoDcm93GAYgASgFEg4KBmNvbHVtbhgHIAEoBRIvCglkaXJlY3Rpb24YCCABKA4yHC5tYWNvbmRvLkdhbWVFdmVudC5EaXJlY3Rpb24SEAoIcG9zaXRpb24YCSABKAkSFAoMcGxheWVkX3RpbGVzGAogASgJEhEKCWV4Y2hhbmdlZBgLIAEoCRINCgVzY29yZRgMIAEoBRINCgVib251cxgNIAEoBRIXCg9lbmRfcmFja19wb2ludHMYDiABKAUSEgoKbG9zdF9zY29yZRgPIAEoBRIQCghpc19iaW5nbxgQIAEoCBIUCgx3b3Jkc19mb3JtZWQYESADKAkSGAoQbWlsbGlzX3JlbWFpbmluZxgSIAEoBRIUCgxwbGF5ZXJfaW5kZXgYEyABKA0SGwoTbnVtX3RpbGVzX2Zyb21fcmFjaxgUIAEoDSLVAQoEVHlwZRIXChNUSUxFX1BMQUNFTUVOVF9NT1ZFEAASGAoUUEhPTllfVElMRVNfUkVUVVJORUQQARIICgRQQVNTEAISEwoPQ0hBTExFTkdFX0JPTlVTEAMSDAoIRVhDSEFOR0UQBBIQCgxFTkRfUkFDS19QVFMQBRIQCgxUSU1FX1BFTkFMVFkQBhIUChBFTkRfUkFDS19QRU5BTFRZEAcSJAogVU5TVUNDRVNTRlVMX0NIQUxMRU5HRV9UVVJOX0xPU1MQCBINCglDSEFMTEVOR0UQCSIpCglEaXJlY3Rpb24SDgoKSE9SSVpPTlRBTBAAEgwKCFZFUlRJQ0FMEAEiQgoKUGxheWVySW5mbxIQCghuaWNrbmFtZRgBIAEoCRIRCglyZWFsX25hbWUYAiABKAkSDwoHdXNlcl9pZBgDIAEoCSKJBQoKQm90UmVxdWVzdBIqCgxnYW1lX2hpc3RvcnkYASABKAsyFC5tYWNvbmRvLkdhbWVIaXN0b3J5EjYKEmV2YWx1YXRpb25fcmVxdWVzdBgCIAEoCzIaLm1hY29uZG8uRXZhbHVhdGlvblJlcXVlc3QSLQoIYm90X3R5cGUYAyABKA4yGy5tYWNvbmRvLkJvdFJlcXVlc3QuQm90Q29kZRIYChBtaWxsaXNfcmVtYWluaW5nGAQgASgFIs0DCgdCb3RDb2RlEg0KCUhBU1RZX0JPVBAAEhoKFkxFVkVMMV9DT01NT05fV09SRF9CT1QQARIaChZMRVZFTDJfQ09NTU9OX1dPUkRfQk9UEAISGgoWTEVWRUwzX0NPTU1PTl9XT1JEX0JPVBADEhoKFkxFVkVMNF9DT01NT05fV09SRF9CT1QQBBIYChRMRVZFTDFfUFJPQkFCSUxJU1RJQxAFEhgKFExFVkVMMl9QUk9CQUJJTElTVElDEAYSGAoUTEVWRUwzX1BST0JBQklMSVNUSUMQBxIYChRMRVZFTDRfUFJPQkFCSUxJU1RJQxAIEhgKFExFVkVMNV9QUk9CQUJJTElTVElDEAkSEAoMTk9fTEVBVkVfQk9UEAoSDwoLU0lNTUlOR19CT1QQCxIaChZIQVNUWV9QTFVTX0VOREdBTUVfQk9UEAwSFQoRU0lNTUlOR19JTkZFUl9CT1QQDRIPCgtGQVNUX01MX0JPVBAOEh8KG1JBTkRPTV9CT1RfV0lUSF9URU1QRVJBVFVSRRAPEhwKGFNJTU1JTkdfV0lUSF9NTF9FVkFMX0JPVBAQEg4KCkNVU1RPTV9CT1QQFBILCgdVTktOT1dOEGQiIQoRRXZhbHVhdGlvblJlcXVlc3QSDAoEdXNlchgBIAEoCSI6CgpFdmFsdWF0aW9uEiwKCXBsYXlfZXZhbBgBIAMoCzIZLm1hY29uZG8uU2luZ2xlRXZhbHVhdGlvbiKfAQoQU2luZ2xlRXZhbHVhdGlvbhITCgtlcXVpdHlfbG9zcxgBIAEoARIUCgx3aW5fcGN0X2xvc3MYAiABKAESFAoMbWlzc2VkX2JpbmdvGAMgASgIEhoKEnBvc3NpYmxlX3N0YXJfcGxheRgEIAEoCBIYChBtaXNzZWRfc3Rhcl9wbGF5GAUgASgIEhQKDHRvcF9pc19iaW5nbxgGIAEoCCKCAQoLQm90UmVzcG9uc2USIgoEbW92ZRgBIAEoCzISLm1hY29uZG8uR2FtZUV2ZW50SAASDwoFZXJyb3IYAiABKAlIABIhCgRldmFsGAMgASgLMhMubWFjb25kby5FdmFsdWF0aW9uEg8KB2dhbWVfaWQYBCABKAlCCgoIcmVzcG9uc2UimgEKFlB1enpsZUNyZWF0aW9uUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCRITCgt0dXJuX251bWJlchgCIAEoBRIiCgZhbnN3ZXIYAyABKAsyEi5tYWNvbmRvLkdhbWVFdmVudBIgCgR0YWdzGAQgAygOMhIubWFjb25kby5QdXp6bGVUYWcSFAoMYnVja2V0X2luZGV4GAUgASgFIncKDFB1enpsZUJ1Y2tldBINCgVpbmRleBgBIAEoBRIMCgRzaXplGAIgASgFEiQKCGluY2x1ZGVzGAMgAygOMhIubWFjb25kby5QdXp6bGVUYWcSJAoIZXhjbHVkZXMYBCADKA4yEi5tYWNvbmRvLlB1enpsZVRhZyJBChdQdXp6bGVHZW5lcmF0aW9uUmVxdWVzdBImCgdidWNrZXRzGAEgAygLMhUubWFjb25kby5QdXp6bGVCdWNrZXQibAoSR2FtZUFuYWx5c2lzUmVzdWx0EiQKBXR1cm5zGAEgAygLMhUubWFjb25kby5UdXJuQW5hbHlzaXMSMAoQcGxheWVyX3N1bW1hcmllcxgCIAMoCzIWLm1hY29uZG8uUGxheWVyU3VtbWFyeSKABAoMVHVybkFuYWx5c2lzEhMKC3R1cm5fbnVtYmVyGAEgASgFEhQKDHBsYXllcl9pbmRleBgCIAEoBRITCgtwbGF5ZXJfbmFtZRgDIAEoCRIMCgRyYWNrGAQgASgJEiEKBXBoYXNlGAUgASgOMhIubWFjb25kby5HYW1lUGhhc2USFAoMdGlsZXNfaW5fYmFnGAYgASgFEhMKC3BsYXllZF9tb3ZlGAcgASgJEhQKDHBsYXllZF9zY29yZRgIIAEoBRIUCgxvcHRpbWFsX21vdmUYCSABKAkSFQoNb3B0aW1hbF9zY29yZRgKIAEoBRIVCg13aW5fcHJvYl9sb3NzGAsgASgBEhMKC3NwcmVhZF9sb3NzGAwgASgFEhMKC3dhc19vcHRpbWFsGA0gASgIEioKDG1pc3Rha2Vfc2l6ZRgOIAEoDjIULm1hY29uZG8uTWlzdGFrZVNpemUSFQoNYmxvd25fZW5kZ2FtZRgPIAEoCBIQCghpc19waG9ueRgQIAEoCBIYChBwaG9ueV9jaGFsbGVuZ2VkGBEgASgIEhgKEG1pc3NlZF9jaGFsbGVuZ2UYEiABKAgSGAoQb3B0aW1hbF9pc19iaW5nbxgTIAEoCBIXCg9wbGF5ZWRfaXNfYmluZ28YFCABKAgSFAoMbWlzc2VkX2JpbmdvGBUgASgIIq0CCg1QbGF5ZXJTdW1tYXJ5EhMKC3BsYXllcl9uYW1lGAEgASgJEhQKDHR1cm5zX3BsYXllZBgCIAEoBRIVCg1vcHRpbWFsX21vdmVzGAMgASgFEhkKEWF2Z193aW5fcHJvYl9sb3NzGAQgASgBEhcKD2F2Z19zcHJlYWRfbG9zcxgFIAEoARIWCg5zbWFsbF9taXN0YWtlcxgGIAEoBRIXCg9tZWRpdW1fbWlzdGFrZXMYByABKAUSFgoObGFyZ2VfbWlzdGFrZXMYCCABKAUSFQoNbWlzdGFrZV9pbmRleBgJIAEoARIVCg1lc3RpbWF0ZWRfZWxvGAogASgBEhgKEGF2YWlsYWJsZV9iaW5nb3MYCyABKAUSFQoNbWlzc2VkX2JpbmdvcxgMIAEoBSpDCglQbGF5U3RhdGUSCwoHUExBWUlORxAAEhoKFldBSVRJTkdfRk9SX0ZJTkFMX1BBU1MQARINCglHQU1FX09WRVIQAipcCg1DaGFsbGVuZ2VSdWxlEggKBFZPSUQQABIKCgZTSU5HTEUQARIKCgZET1VCTEUQAhIOCgpGSVZFX1BPSU5UEAMSDQoJVEVOX1BPSU5UEAQSCgoGVFJJUExFEAUqiQEKCVB1enpsZVRhZxIKCgZFUVVJVFkQABIJCgVCSU5HTxABEg4KCk9OTFlfQklOR08QAhIPCgtCTEFOS19CSU5HTxADEg0KCU5PTl9CSU5HTxAEEg4KClBPV0VSX1RJTEUQBRIXChNCSU5HT19OSU5FX09SX0FCT1ZFEAYSDAoIQ0VMX09OTFkQByplCglHYW1lUGhhc2USEwoPUEhBU0VfRUFSTFlfTUlEEAASGgoWUEhBU0VfRUFSTFlfUFJFRU5ER0FNRRABEhQKEFBIQVNFX1BSRUVOREdBTUUQAhIRCg1QSEFTRV9FTkRHQU1FEAMqPwoLTWlzdGFrZVNpemUSDgoKTk9fTUlTVEFLRRAAEgkKBVNNQUxMEAESCgoGTUVESVVNEAISCQoFTEFSR0UQA0IzWjFnaXRodWIuY29tL2RvbWlubzE0L21hY29uZG8vZ2VuL2FwaS9wcm90by9tYWNvbmRvYgZwcm90bzM");
 
 /**
  * GameHistory encodes a whole history of a game, and it should also encode
@@ -497,11 +497,34 @@ export enum BotRequest_BotCode {
   HASTY_PLUS_ENDGAME_BOT = 12,
 
   /**
-   * harder bots here? inference? ml, etc.
-   *
    * @generated from enum value: SIMMING_INFER_BOT = 13;
    */
   SIMMING_INFER_BOT = 13,
+
+  /**
+   * harder bots here? inference? ml, etc.
+   *
+   * @generated from enum value: FAST_ML_BOT = 14;
+   */
+  FAST_ML_BOT = 14,
+
+  /**
+   * @generated from enum value: RANDOM_BOT_WITH_TEMPERATURE = 15;
+   */
+  RANDOM_BOT_WITH_TEMPERATURE = 15,
+
+  /**
+   * @generated from enum value: SIMMING_WITH_ML_EVAL_BOT = 16;
+   */
+  SIMMING_WITH_ML_EVAL_BOT = 16,
+
+  /**
+   * custom bots can be used to run custom algorithms.
+   * They should be used with the BotSpec below.
+   *
+   * @generated from enum value: CUSTOM_BOT = 20;
+   */
+  CUSTOM_BOT = 20,
 
   /**
    * This should have probably been number 0.
@@ -723,6 +746,249 @@ export const PuzzleGenerationRequestSchema: GenMessage<PuzzleGenerationRequest> 
   messageDesc(file_vendor_macondo_macondo, 10);
 
 /**
+ * GameAnalysisResult contains analysis results for a completed game
+ *
+ * @generated from message macondo.GameAnalysisResult
+ */
+export type GameAnalysisResult = Message<"macondo.GameAnalysisResult"> & {
+  /**
+   * @generated from field: repeated macondo.TurnAnalysis turns = 1;
+   */
+  turns: TurnAnalysis[];
+
+  /**
+   * @generated from field: repeated macondo.PlayerSummary player_summaries = 2;
+   */
+  playerSummaries: PlayerSummary[];
+};
+
+/**
+ * Describes the message macondo.GameAnalysisResult.
+ * Use `create(GameAnalysisResultSchema)` to create a new message.
+ */
+export const GameAnalysisResultSchema: GenMessage<GameAnalysisResult> = /*@__PURE__*/
+  messageDesc(file_vendor_macondo_macondo, 11);
+
+/**
+ * TurnAnalysis contains analysis for a single turn
+ *
+ * @generated from message macondo.TurnAnalysis
+ */
+export type TurnAnalysis = Message<"macondo.TurnAnalysis"> & {
+  /**
+   * Turn context
+   *
+   * @generated from field: int32 turn_number = 1;
+   */
+  turnNumber: number;
+
+  /**
+   * @generated from field: int32 player_index = 2;
+   */
+  playerIndex: number;
+
+  /**
+   * @generated from field: string player_name = 3;
+   */
+  playerName: string;
+
+  /**
+   * @generated from field: string rack = 4;
+   */
+  rack: string;
+
+  /**
+   * @generated from field: macondo.GamePhase phase = 5;
+   */
+  phase: GamePhase;
+
+  /**
+   * @generated from field: int32 tiles_in_bag = 6;
+   */
+  tilesInBag: number;
+
+  /**
+   * Moves
+   *
+   * e.g., "8D QUIXOTIC" or "(exch AEI)"
+   *
+   * @generated from field: string played_move = 7;
+   */
+  playedMove: string;
+
+  /**
+   * @generated from field: int32 played_score = 8;
+   */
+  playedScore: number;
+
+  /**
+   * @generated from field: string optimal_move = 9;
+   */
+  optimalMove: string;
+
+  /**
+   * @generated from field: int32 optimal_score = 10;
+   */
+  optimalScore: number;
+
+  /**
+   * Loss metrics
+   *
+   * For sim/PEG phases (0-1)
+   *
+   * @generated from field: double win_prob_loss = 11;
+   */
+  winProbLoss: number;
+
+  /**
+   * For endgame phase
+   *
+   * @generated from field: int32 spread_loss = 12;
+   */
+  spreadLoss: number;
+
+  /**
+   * Mistake categorization
+   *
+   * @generated from field: bool was_optimal = 13;
+   */
+  wasOptimal: boolean;
+
+  /**
+   * @generated from field: macondo.MistakeSize mistake_size = 14;
+   */
+  mistakeSize: MistakeSize;
+
+  /**
+   * @generated from field: bool blown_endgame = 15;
+   */
+  blownEndgame: boolean;
+
+  /**
+   * Phony tracking
+   *
+   * @generated from field: bool is_phony = 16;
+   */
+  isPhony: boolean;
+
+  /**
+   * @generated from field: bool phony_challenged = 17;
+   */
+  phonyChallenged: boolean;
+
+  /**
+   * @generated from field: bool missed_challenge = 18;
+   */
+  missedChallenge: boolean;
+
+  /**
+   * Bingo tracking
+   *
+   * @generated from field: bool optimal_is_bingo = 19;
+   */
+  optimalIsBingo: boolean;
+
+  /**
+   * @generated from field: bool played_is_bingo = 20;
+   */
+  playedIsBingo: boolean;
+
+  /**
+   * @generated from field: bool missed_bingo = 21;
+   */
+  missedBingo: boolean;
+};
+
+/**
+ * Describes the message macondo.TurnAnalysis.
+ * Use `create(TurnAnalysisSchema)` to create a new message.
+ */
+export const TurnAnalysisSchema: GenMessage<TurnAnalysis> = /*@__PURE__*/
+  messageDesc(file_vendor_macondo_macondo, 12);
+
+/**
+ * PlayerSummary contains aggregate statistics for one player
+ *
+ * @generated from message macondo.PlayerSummary
+ */
+export type PlayerSummary = Message<"macondo.PlayerSummary"> & {
+  /**
+   * @generated from field: string player_name = 1;
+   */
+  playerName: string;
+
+  /**
+   * @generated from field: int32 turns_played = 2;
+   */
+  turnsPlayed: number;
+
+  /**
+   * @generated from field: int32 optimal_moves = 3;
+   */
+  optimalMoves: number;
+
+  /**
+   * Average losses
+   *
+   * @generated from field: double avg_win_prob_loss = 4;
+   */
+  avgWinProbLoss: number;
+
+  /**
+   * @generated from field: double avg_spread_loss = 5;
+   */
+  avgSpreadLoss: number;
+
+  /**
+   * Mistake breakdown
+   *
+   * @generated from field: int32 small_mistakes = 6;
+   */
+  smallMistakes: number;
+
+  /**
+   * @generated from field: int32 medium_mistakes = 7;
+   */
+  mediumMistakes: number;
+
+  /**
+   * @generated from field: int32 large_mistakes = 8;
+   */
+  largeMistakes: number;
+
+  /**
+   * Overall rating
+   *
+   * @generated from field: double mistake_index = 9;
+   */
+  mistakeIndex: number;
+
+  /**
+   * @generated from field: double estimated_elo = 10;
+   */
+  estimatedElo: number;
+
+  /**
+   * Bingo tracking
+   *
+   * @generated from field: int32 available_bingos = 11;
+   */
+  availableBingos: number;
+
+  /**
+   * @generated from field: int32 missed_bingos = 12;
+   */
+  missedBingos: number;
+};
+
+/**
+ * Describes the message macondo.PlayerSummary.
+ * Use `create(PlayerSummarySchema)` to create a new message.
+ */
+export const PlayerSummarySchema: GenMessage<PlayerSummary> = /*@__PURE__*/
+  messageDesc(file_vendor_macondo_macondo, 13);
+
+/**
  * @generated from enum macondo.PlayState
  */
 export enum PlayState {
@@ -839,4 +1105,66 @@ export enum PuzzleTag {
  */
 export const PuzzleTagSchema: GenEnum<PuzzleTag> = /*@__PURE__*/
   enumDesc(file_vendor_macondo_macondo, 2);
+
+/**
+ * @generated from enum macondo.GamePhase
+ */
+export enum GamePhase {
+  /**
+   * @generated from enum value: PHASE_EARLY_MID = 0;
+   */
+  PHASE_EARLY_MID = 0,
+
+  /**
+   * @generated from enum value: PHASE_EARLY_PREENDGAME = 1;
+   */
+  PHASE_EARLY_PREENDGAME = 1,
+
+  /**
+   * @generated from enum value: PHASE_PREENDGAME = 2;
+   */
+  PHASE_PREENDGAME = 2,
+
+  /**
+   * @generated from enum value: PHASE_ENDGAME = 3;
+   */
+  PHASE_ENDGAME = 3,
+}
+
+/**
+ * Describes the enum macondo.GamePhase.
+ */
+export const GamePhaseSchema: GenEnum<GamePhase> = /*@__PURE__*/
+  enumDesc(file_vendor_macondo_macondo, 3);
+
+/**
+ * @generated from enum macondo.MistakeSize
+ */
+export enum MistakeSize {
+  /**
+   * @generated from enum value: NO_MISTAKE = 0;
+   */
+  NO_MISTAKE = 0,
+
+  /**
+   * @generated from enum value: SMALL = 1;
+   */
+  SMALL = 1,
+
+  /**
+   * @generated from enum value: MEDIUM = 2;
+   */
+  MEDIUM = 2,
+
+  /**
+   * @generated from enum value: LARGE = 3;
+   */
+  LARGE = 3,
+}
+
+/**
+ * Describes the enum macondo.MistakeSize.
+ */
+export const MistakeSizeSchema: GenEnum<MistakeSize> = /*@__PURE__*/
+  enumDesc(file_vendor_macondo_macondo, 4);
 

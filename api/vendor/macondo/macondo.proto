@@ -149,7 +149,12 @@ message BotRequest {
     HASTY_PLUS_ENDGAME_BOT = 12;
     SIMMING_INFER_BOT = 13;
     // harder bots here? inference? ml, etc.
-
+    FAST_ML_BOT = 14;
+    RANDOM_BOT_WITH_TEMPERATURE = 15;
+    SIMMING_WITH_ML_EVAL_BOT = 16;
+    // custom bots can be used to run custom algorithms.
+    // They should be used with the BotSpec below.
+    CUSTOM_BOT = 20;
     // This should have probably been number 0.
     UNKNOWN = 100;
   }
@@ -213,3 +218,87 @@ message PuzzleBucket {
 }
 
 message PuzzleGenerationRequest { repeated PuzzleBucket buckets = 1; }
+
+// ============================================================================
+// GAME ANALYSIS
+// ============================================================================
+
+// GameAnalysisResult contains analysis results for a completed game
+message GameAnalysisResult {
+  repeated TurnAnalysis turns = 1;
+  repeated PlayerSummary player_summaries = 2;
+}
+
+// TurnAnalysis contains analysis for a single turn
+message TurnAnalysis {
+  // Turn context
+  int32 turn_number = 1;
+  int32 player_index = 2;
+  string player_name = 3;
+  string rack = 4;
+  GamePhase phase = 5;
+  int32 tiles_in_bag = 6;
+
+  // Moves
+  string played_move = 7;       // e.g., "8D QUIXOTIC" or "(exch AEI)"
+  int32 played_score = 8;
+  string optimal_move = 9;
+  int32 optimal_score = 10;
+
+  // Loss metrics
+  double win_prob_loss = 11;    // For sim/PEG phases (0-1)
+  int32 spread_loss = 12;       // For endgame phase
+
+  // Mistake categorization
+  bool was_optimal = 13;
+  MistakeSize mistake_size = 14;
+  bool blown_endgame = 15;
+
+  // Phony tracking
+  bool is_phony = 16;
+  bool phony_challenged = 17;
+  bool missed_challenge = 18;
+
+  // Bingo tracking
+  bool optimal_is_bingo = 19;
+  bool played_is_bingo = 20;
+  bool missed_bingo = 21;
+}
+
+enum GamePhase {
+  PHASE_EARLY_MID = 0;
+  PHASE_EARLY_PREENDGAME = 1;
+  PHASE_PREENDGAME = 2;
+  PHASE_ENDGAME = 3;
+}
+
+enum MistakeSize {
+  NO_MISTAKE = 0;
+  SMALL = 1;
+  MEDIUM = 2;
+  LARGE = 3;
+}
+
+// PlayerSummary contains aggregate statistics for one player
+message PlayerSummary {
+  string player_name = 1;
+  int32 turns_played = 2;
+  int32 optimal_moves = 3;
+
+  // Average losses
+  double avg_win_prob_loss = 4;
+  double avg_spread_loss = 5;
+
+  // Mistake breakdown
+  int32 small_mistakes = 6;
+  int32 medium_mistakes = 7;
+  int32 large_mistakes = 8;
+
+  // Overall rating
+  double mistake_index = 9;
+  double estimated_elo = 10;
+
+  // Bingo tracking
+  int32 available_bingos = 11;
+  int32 missed_bingos = 12;
+}
