@@ -60,6 +60,7 @@ import {
   GameMetaEvent_EventType,
   GameMode,
   GameType,
+  RatingMode,
   ReadyForGameSchema,
   TimedOutSchema,
 } from "../gen/api/proto/ipc/omgwords_pb";
@@ -435,12 +436,13 @@ export const Table = React.memo((props: Props) => {
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
-  // Can add time if: casual real-time game only (not tournament, league, correspondence, or vs bot)
+  // Can add time if: unrated casual real-time game only (not tournament, league, correspondence, rated, or vs bot)
   const canAddTime = useMemo(() => {
     return (
       !gameDone &&
       !isObserver &&
       gameInfo.gameRequest?.gameMode !== GameMode.CORRESPONDENCE &&
+      gameInfo.gameRequest?.ratingMode !== RatingMode.RATED &&
       !gameInfo.gameRequest?.playerVsBot &&
       !gameInfo.tournamentId &&
       !gameInfo.leagueId
@@ -449,6 +451,7 @@ export const Table = React.memo((props: Props) => {
     gameDone,
     isObserver,
     gameInfo.gameRequest?.gameMode,
+    gameInfo.gameRequest?.ratingMode,
     gameInfo.gameRequest?.playerVsBot,
     gameInfo.tournamentId,
     gameInfo.leagueId,
