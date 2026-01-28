@@ -765,7 +765,8 @@ INSERT INTO game_players (
     opponent_id,
     opponent_score,
     original_request_id,
-    league_season_id
+    league_season_id,
+    updated_at
 ) VALUES
     -- Player 0
     (
@@ -780,7 +781,8 @@ INSERT INTO game_players (
         $8,
         $9,
         $10,
-        $11
+        $11,
+        (SELECT updated_at FROM games WHERE uuid = $1)
     ),
     -- Player 1
     (
@@ -795,7 +797,8 @@ INSERT INTO game_players (
         $2,
         $3,
         $10,
-        $11
+        $11,
+        (SELECT updated_at FROM games WHERE uuid = $1)
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING
 `

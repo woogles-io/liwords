@@ -290,7 +290,8 @@ INSERT INTO game_players (
     opponent_id,
     opponent_score,
     original_request_id,
-    league_season_id
+    league_season_id,
+    updated_at
 ) VALUES
     -- Player 0
     (
@@ -305,7 +306,8 @@ INSERT INTO game_players (
         @player1_id,
         @player1_score,
         @original_request_id,
-        @league_season_id
+        @league_season_id,
+        (SELECT updated_at FROM games WHERE uuid = @game_uuid)
     ),
     -- Player 1
     (
@@ -320,7 +322,8 @@ INSERT INTO game_players (
         @player0_id,
         @player0_score,
         @original_request_id,
-        @league_season_id
+        @league_season_id,
+        (SELECT updated_at FROM games WHERE uuid = @game_uuid)
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING;
 
