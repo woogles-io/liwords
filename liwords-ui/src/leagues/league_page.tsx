@@ -818,10 +818,10 @@ export const LeaguePage = (props: Props) => {
                   <div
                     style={{
                       fontSize: "12px",
-                      color: "#666",
                       marginBottom: 12,
                       lineHeight: "1.4",
                     }}
+                    className="league-color-666"
                   >
                     {formatSeasonDates(
                       displayedSeason.startDate,
@@ -835,11 +835,11 @@ export const LeaguePage = (props: Props) => {
                   <div
                     style={{
                       fontSize: "9px",
-                      color: "#999",
                       marginBottom: 8,
                       fontFamily: "monospace",
                       opacity: 0.6,
                     }}
+                    className="league-color-999"
                   >
                     {displayedSeason.uuid}
                   </div>
@@ -876,9 +876,9 @@ export const LeaguePage = (props: Props) => {
                         <div
                           style={{
                             fontSize: "12px",
-                            color: "#666",
                             marginTop: 4,
                           }}
+                          className="league-color-666"
                         >
                           Currently {userSeasonInfo.rank}
                           {userSeasonInfo.rank === 1
@@ -904,9 +904,9 @@ export const LeaguePage = (props: Props) => {
                         <div
                           style={{
                             fontSize: "12px",
-                            color: "#666",
                             marginTop: 4,
                           }}
+                          className="league-color-666"
                         >
                           Finished {userSeasonInfo.rank}
                           {userSeasonInfo.rank === 1
@@ -927,7 +927,10 @@ export const LeaguePage = (props: Props) => {
 
                 {/* Player count display */}
                 {registrants.length > 0 && (
-                  <div style={{ fontSize: "13px", color: "#666" }}>
+                  <div
+                    style={{ fontSize: "13px" }}
+                    className="league-color-666"
+                  >
                     <span
                       className="clickable-link"
                       onClick={() => setShowPlayersModal(true)}
@@ -995,9 +998,9 @@ export const LeaguePage = (props: Props) => {
                     fontSize: "12px",
                     margin: 0,
                     marginBottom: 12,
-                    color: "#666",
                     lineHeight: "1.4",
                   }}
+                  className="league-color-666"
                 >
                   {league.description}
                 </p>
@@ -1269,7 +1272,7 @@ export const LeaguePage = (props: Props) => {
             Are you sure you want to withdraw your registration for Season{" "}
             {displayedSeason?.seasonNumber}?
           </p>
-          <p style={{ marginTop: 12, color: "#666" }}>
+          <p style={{ marginTop: 12 }} className="league-color-666">
             This action will remove you from the upcoming season.
           </p>
         </Modal>

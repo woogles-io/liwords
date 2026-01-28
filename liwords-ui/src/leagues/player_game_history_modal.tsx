@@ -46,7 +46,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         } else if (result === "draw") {
           return <Tag color="blue">Draw</Tag>;
         } else if (result === "turn") {
-          return <Tag color="magenta">On Turn</Tag>;
+          return <Tag color="gold">On Turn</Tag>;
         } else if (result === "in_progress") {
           return <Tag color="orange">In Progress</Tag>;
         }
@@ -129,7 +129,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         <>
           {dataSource.length === 0 ? (
             <div
-              style={{ textAlign: "center", padding: "40px", color: "#999" }}
+              style={{ textAlign: "center", padding: "40px" }}
+              className="league-color-999"
             >
               No games found for this season.
             </div>
