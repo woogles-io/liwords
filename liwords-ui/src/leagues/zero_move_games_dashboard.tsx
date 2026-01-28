@@ -137,7 +137,7 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
             />
           ) : (
             <>
-              <div style={{ marginBottom: 16, color: "#666" }}>
+              <div style={{ marginBottom: 16 }} className="league-color-666">
                 <p>
                   These players are on turn but haven't made their first move
                   yet. They may need a reminder to start their games.

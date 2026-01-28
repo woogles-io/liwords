@@ -983,3 +983,19 @@
     }
   }
 }
+
+.league-color-666 {
+  color: #666;
+
+  @include colorModed {
+    color: m($gray-medium);
+  }
+}
+
+.league-color-999 {
+  color: #999;
+
+  @include colorModed {
+    color: m($gray-dark);
+  }
+}

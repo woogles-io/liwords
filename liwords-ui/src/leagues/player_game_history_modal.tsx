@@ -129,7 +129,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         <>
           {dataSource.length === 0 ? (
             <div
-              style={{ textAlign: "center", padding: "40px", color: "#999" }}
+              style={{ textAlign: "center", padding: "40px" }}
+              className="league-color-999"
             >
               No games found for this season.
             </div>
