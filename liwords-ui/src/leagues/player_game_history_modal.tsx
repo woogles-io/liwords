@@ -46,7 +46,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         } else if (result === "draw") {
           return <Tag color="blue">Draw</Tag>;
         } else if (result === "turn") {
-          return <Tag color="magenta">On Turn</Tag>;
+          return <Tag color="gold">On Turn</Tag>;
         } else if (result === "in_progress") {
           return <Tag color="orange">In Progress</Tag>;
         }
