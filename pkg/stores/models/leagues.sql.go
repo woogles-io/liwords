@@ -1179,6 +1179,7 @@ SELECT
     u_player0.username as player0_username,
     u_player1.uuid as player1_uuid,
     u_player1.username as player1_username,
+    g.player_on_turn,
     g.history
 FROM games g
 INNER JOIN users u_player0 ON g.player0_id = u_player0.id
@@ -1204,6 +1205,7 @@ type GetPlayerSeasonInProgressGamesRow struct {
 	Player0Username pgtype.Text
 	Player1Uuid     pgtype.Text
 	Player1Username pgtype.Text
+	PlayerOnTurn    pgtype.Int4
 	History         []byte
 }
 
@@ -1227,6 +1229,7 @@ func (q *Queries) GetPlayerSeasonInProgressGames(ctx context.Context, arg GetPla
 			&i.Player0Username,
 			&i.Player1Uuid,
 			&i.Player1Username,
+			&i.PlayerOnTurn,
 			&i.History,
 		); err != nil {
 			return nil, err

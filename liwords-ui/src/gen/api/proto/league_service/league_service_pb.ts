@@ -743,7 +743,7 @@ export type PlayerSeasonGame = Message<"league_service.PlayerSeasonGame"> & {
   opponentScore: number;
 
   /**
-   * "win", "loss", "draw", "in_progress"
+   * "win", "loss", "draw", "turn", "in_progress"
    *
    * @generated from field: string result = 6;
    */

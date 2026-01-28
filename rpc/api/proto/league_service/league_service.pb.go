@@ -1686,7 +1686,7 @@ type PlayerSeasonGame struct {
 	OpponentUsername string                 `protobuf:"bytes,3,opt,name=opponent_username,json=opponentUsername,proto3" json:"opponent_username,omitempty"`
 	PlayerScore      int32                  `protobuf:"varint,4,opt,name=player_score,json=playerScore,proto3" json:"player_score,omitempty"`
 	OpponentScore    int32                  `protobuf:"varint,5,opt,name=opponent_score,json=opponentScore,proto3" json:"opponent_score,omitempty"`
-	Result           string                 `protobuf:"bytes,6,opt,name=result,proto3" json:"result,omitempty"` // "win", "loss", "draw", "in_progress"
+	Result           string                 `protobuf:"bytes,6,opt,name=result,proto3" json:"result,omitempty"` // "win", "loss", "draw", "turn", "in_progress"
 	GameDate         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=game_date,json=gameDate,proto3" json:"game_date,omitempty"`
 	Round            int32                  `protobuf:"varint,8,opt,name=round,proto3" json:"round,omitempty"` // Optional round number
 	unknownFields    protoimpl.UnknownFields

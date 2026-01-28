@@ -190,7 +190,7 @@ message PlayerSeasonGame {
   string opponent_username = 3;
   int32 player_score = 4;
   int32 opponent_score = 5;
-  string result = 6; // "win", "loss", "draw", "in_progress"
+  string result = 6; // "win", "loss", "draw", "turn", "in_progress"
   google.protobuf.Timestamp game_date = 7;
   int32 round = 8; // Optional round number
 }
