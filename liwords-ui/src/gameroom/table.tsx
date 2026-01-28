@@ -56,8 +56,11 @@ import {
   ClientGameplayEventSchema,
   GameEndReason,
   GameInfoResponse,
+  GameMetaEventSchema,
+  GameMetaEvent_EventType,
   GameMode,
   GameType,
+  RatingMode,
   ReadyForGameSchema,
   TimedOutSchema,
 } from "../gen/api/proto/ipc/omgwords_pb";
@@ -433,6 +436,27 @@ export const Table = React.memo((props: Props) => {
   const gameDone =
     gameContext.playState === PlayState.GAME_OVER && !!gameContext.gameID;
 
+  // Can add time if: unrated casual real-time game only (not tournament, league, correspondence, rated, or vs bot)
+  const canAddTime = useMemo(() => {
+    return (
+      !gameDone &&
+      !isObserver &&
+      gameInfo.gameRequest?.gameMode !== GameMode.CORRESPONDENCE &&
+      gameInfo.gameRequest?.ratingMode !== RatingMode.RATED &&
+      !gameInfo.gameRequest?.playerVsBot &&
+      !gameInfo.tournamentId &&
+      !gameInfo.leagueId
+    );
+  }, [
+    gameDone,
+    isObserver,
+    gameInfo.gameRequest?.gameMode,
+    gameInfo.gameRequest?.ratingMode,
+    gameInfo.gameRequest?.playerVsBot,
+    gameInfo.tournamentId,
+    gameInfo.leagueId,
+  ]);
+
   useEffect(() => {
     const isCorrespondence =
       gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
@@ -777,6 +801,20 @@ export const Table = React.memo((props: Props) => {
       setRematchRequest(create(SeekRequestSchema, {}));
     }
   }, [declineRematch, rematchRequest, setRematchRequest]);
+
+  const handleAddTime = useCallback(() => {
+    const evt = create(GameMetaEventSchema, {
+      type: GameMetaEvent_EventType.ADD_TIME,
+      gameId: gameID,
+      playerId: userID,
+    });
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.GAME_META_EVENT,
+        toBinary(GameMetaEventSchema, evt),
+      ),
+    );
+  }, [gameID, userID, sendSocketMsg]);
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
@@ -1186,6 +1224,9 @@ export const Table = React.memo((props: Props) => {
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
             hideProfileLink={gameInfo.type === GameType.ANNOTATED}
+            onAddTime={handleAddTime}
+            currentUserId={userID}
+            canAddTime={canAddTime}
           />
         </div>
         <div className="play-area">
@@ -1260,6 +1301,9 @@ export const Table = React.memo((props: Props) => {
             gameMeta={gameInfo}
             playerMeta={gameInfo.players}
             hideProfileLink={gameInfo.type === GameType.ANNOTATED}
+            onAddTime={handleAddTime}
+            currentUserId={userID}
+            canAddTime={canAddTime}
           />
           <GameInfo
             meta={gameInfo}

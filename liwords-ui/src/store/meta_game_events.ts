@@ -111,6 +111,18 @@ export const metaStateFromMetaEvent = (
       evtId = "";
       break;
     }
+
+    case GameMetaEvent_EventType.ADD_TIME: {
+      let content: string;
+      if (us === metaEvent.playerId) {
+        content = "You added 15 seconds to your opponent's clock.";
+      } else {
+        content = "Your opponent added 15 seconds to your clock.";
+      }
+      message.info({ content });
+      // No state change needed - timer update comes via GameHistoryRefresher
+      break;
+    }
   }
 
   return {
