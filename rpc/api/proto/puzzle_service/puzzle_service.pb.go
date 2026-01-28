@@ -7,15 +7,14 @@
 package puzzle_service
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -1337,7 +1336,7 @@ var File_proto_puzzle_service_puzzle_service_proto protoreflect.FileDescriptor
 
 const file_proto_puzzle_service_puzzle_service_proto_rawDesc = "" +
 	"\n" +
-	")proto/puzzle_service/puzzle_service.proto\x12\x0epuzzle_service\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18proto/ipc/omgwords.proto\"0\n" +
+	")proto/puzzle_service/puzzle_service.proto\x12\x0epuzzle_service\x1a$proto/vendored/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18proto/ipc/omgwords.proto\"0\n" +
 	"\x14StartPuzzleIdRequest\x12\x18\n" +
 	"\alexicon\x18\x01 \x01(\tR\alexicon\"z\n" +
 	"\x15StartPuzzleIdResponse\x12\x1b\n" +

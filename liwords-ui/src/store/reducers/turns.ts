@@ -1,7 +1,7 @@
 import {
   GameEvent,
   GameEvent_Type,
-} from "../../gen/api/vendor/macondo/macondo_pb";
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
 
 export type Turn = {
   events: Array<GameEvent>;

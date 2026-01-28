@@ -7,7 +7,7 @@ import { PuzzleStatus } from "../gen/api/proto/puzzle_service/puzzle_service_pb"
 import { StarFilled, StarOutlined } from "@ant-design/icons";
 import { Hints } from "./hints";
 import { PuzzleShareButton } from "./puzzle_share";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { challengeRuleNames } from "../constants/challenge_rules";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 

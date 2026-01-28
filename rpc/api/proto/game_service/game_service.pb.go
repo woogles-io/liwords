@@ -7,14 +7,13 @@
 package game_service
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -849,7 +848,7 @@ var File_proto_game_service_game_service_proto protoreflect.FileDescriptor
 
 const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\n" +
-	"%proto/game_service/game_service.proto\x12\fgame_service\x1a\x18proto/ipc/omgwords.proto\x1a\x1cvendor/macondo/macondo.proto\"*\n" +
+	"%proto/game_service/game_service.proto\x12\fgame_service\x1a\x18proto/ipc/omgwords.proto\x1a$proto/vendored/macondo/macondo.proto\"*\n" +
 	"\x0fGameInfoRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"%\n" +
 	"\n" +

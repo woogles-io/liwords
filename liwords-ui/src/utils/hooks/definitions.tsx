@@ -9,7 +9,7 @@ import { GameState } from "../../store/reducers/game_reducer";
 import { ChatEntityType, ChatEntityObj } from "../../store/constants";
 import { Blank } from "../../utils/cwgame/common";
 import { Unrace } from "../../utils/unrace";
-import { GameEvent_Type } from "../../gen/api/vendor/macondo/macondo_pb";
+import { GameEvent_Type } from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import { useClient } from "./connect";
 import { WordService } from "../../gen/api/proto/word_service/word_service_pb";
 

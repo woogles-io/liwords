@@ -4,7 +4,7 @@ import {
   TournamentReducer,
 } from "./tournament_reducer";
 import { ftData } from "./testdata/tourney_1_divisions";
-import { ChallengeRule } from "../../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   TournamentMetadataSchema,
   TType,

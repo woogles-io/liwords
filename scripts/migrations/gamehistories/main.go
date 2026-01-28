@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/rpc/api/proto/vendored/macondo"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

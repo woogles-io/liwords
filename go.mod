@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.95.1
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.59.1
 	github.com/aws/smithy-go v1.24.0
-	github.com/domino14/macondo v0.11.8
+	github.com/domino14/macondo v0.11.9-0.20260128032653-fc5a39a0c856
 	github.com/domino14/word-golib v0.2.19
 	github.com/exaring/otelpgx v0.10.0
 	github.com/go-redsync/redsync/v4 v4.15.0
@@ -151,8 +151,8 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260122232226-8e98ce8d340d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260122232226-8e98ce8d340d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260126211449-d11affda4bed // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260126211449-d11affda4bed // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	gorgonia.org/cu v0.9.6 // indirect
 	gorgonia.org/dawson v1.2.0 // indirect

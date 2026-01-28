@@ -1,4 +1,4 @@
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 export const challengeRuleNames = {
   [ChallengeRule.FIVE_POINT]: "5 point",

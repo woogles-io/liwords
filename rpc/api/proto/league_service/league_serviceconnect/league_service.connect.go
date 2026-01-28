@@ -5,14 +5,13 @@
 package league_serviceconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	http "net/http"
-	strings "strings"
-
-	connect "connectrpc.com/connect"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	league_service "github.com/woogles-io/liwords/rpc/api/proto/league_service"
+	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

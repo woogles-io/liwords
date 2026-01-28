@@ -22,7 +22,7 @@ import {
   useTentativeTileContext,
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement("a");

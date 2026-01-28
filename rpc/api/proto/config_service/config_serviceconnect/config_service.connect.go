@@ -5,13 +5,12 @@
 package config_serviceconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	config_service "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 	http "net/http"
 	strings "strings"
-
-	connect "connectrpc.com/connect"
-	config_service "github.com/woogles-io/liwords/rpc/api/proto/config_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

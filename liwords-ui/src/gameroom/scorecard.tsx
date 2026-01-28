@@ -10,7 +10,7 @@ import { Card, Tooltip } from "antd";
 import {
   GameEvent,
   GameEvent_Type,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { Board } from "../utils/cwgame/board";
 import { PlayerAvatar } from "../shared/player_avatar";
 import {

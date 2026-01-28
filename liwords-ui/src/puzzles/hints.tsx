@@ -9,7 +9,7 @@ import React, {
 import {
   GameEvent,
   GameEvent_Direction,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   PuzzleRequestSchema,
   PuzzleStatus,

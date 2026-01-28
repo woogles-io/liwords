@@ -14,7 +14,7 @@ import {
   GameEvent_Type,
   ServerGameplayEvent,
 } from '../../gen/api/proto/ipc/omgwords_pb';
-import { GameEvent as MacondoGameEvent } from '../../gen/api/vendor/macondo/macondo_pb';
+import { GameEvent as MacondoGameEvent } from '../../gen/api/proto/vendored/macondo/macondo_pb';
 import {
   Direction,
   isBlank,

@@ -1,7 +1,7 @@
 syntax = "proto3";
 package analysis_service;
 
-import "vendor/macondo/macondo.proto";
+import "proto/vendored/macondo/macondo.proto";
 
 // Request to claim next available job
 message ClaimJobRequest {
@@ -42,7 +42,7 @@ message HeartbeatRequest {
 }
 
 message HeartbeatResponse {
-  bool continue = 1;  // false if job was reclaimed
+  bool continue = 1; // false if job was reclaimed
 }
 
 // Submit completed analysis
@@ -55,7 +55,7 @@ message SubmitResultRequest {
 
 message SubmitResultResponse {
   bool accepted = 1;
-  string error = 2;  // Populated if accepted = false
+  string error = 2; // Populated if accepted = false
 }
 
 service AnalysisQueueService {

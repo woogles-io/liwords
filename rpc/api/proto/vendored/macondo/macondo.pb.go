@@ -2,17 +2,22 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: vendor/macondo/macondo.proto
+// source: proto/vendored/macondo/macondo.proto
+
+// VENDORED FROM: github.com/domino14/macondo/api/proto/macondo/macondo.proto
+//
+// This file is vendored for TypeScript generation but uses the ORIGINAL go_package
+// to ensure Go code imports from the actual macondo package, not a vendored copy.
+// This prevents type mismatches between macondo.PlayState and our vendored version.
 
 package macondo
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -55,11 +60,11 @@ func (x PlayState) String() string {
 }
 
 func (PlayState) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[0].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[0].Descriptor()
 }
 
 func (PlayState) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[0]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[0]
 }
 
 func (x PlayState) Number() protoreflect.EnumNumber {
@@ -68,7 +73,7 @@ func (x PlayState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PlayState.Descriptor instead.
 func (PlayState) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{0}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{0}
 }
 
 type ChallengeRule int32
@@ -113,11 +118,11 @@ func (x ChallengeRule) String() string {
 }
 
 func (ChallengeRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[1].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[1].Descriptor()
 }
 
 func (ChallengeRule) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[1]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[1]
 }
 
 func (x ChallengeRule) Number() protoreflect.EnumNumber {
@@ -126,7 +131,7 @@ func (x ChallengeRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ChallengeRule.Descriptor instead.
 func (ChallengeRule) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{1}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{1}
 }
 
 type PuzzleTag int32
@@ -177,11 +182,11 @@ func (x PuzzleTag) String() string {
 }
 
 func (PuzzleTag) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[2].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[2].Descriptor()
 }
 
 func (PuzzleTag) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[2]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[2]
 }
 
 func (x PuzzleTag) Number() protoreflect.EnumNumber {
@@ -190,7 +195,7 @@ func (x PuzzleTag) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PuzzleTag.Descriptor instead.
 func (PuzzleTag) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{2}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{2}
 }
 
 type GamePhase int32
@@ -229,11 +234,11 @@ func (x GamePhase) String() string {
 }
 
 func (GamePhase) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[3].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[3].Descriptor()
 }
 
 func (GamePhase) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[3]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[3]
 }
 
 func (x GamePhase) Number() protoreflect.EnumNumber {
@@ -242,7 +247,7 @@ func (x GamePhase) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GamePhase.Descriptor instead.
 func (GamePhase) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{3}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{3}
 }
 
 type MistakeSize int32
@@ -281,11 +286,11 @@ func (x MistakeSize) String() string {
 }
 
 func (MistakeSize) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[4].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[4].Descriptor()
 }
 
 func (MistakeSize) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[4]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[4]
 }
 
 func (x MistakeSize) Number() protoreflect.EnumNumber {
@@ -294,7 +299,7 @@ func (x MistakeSize) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MistakeSize.Descriptor instead.
 func (MistakeSize) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{4}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{4}
 }
 
 type GameEvent_Type int32
@@ -355,11 +360,11 @@ func (x GameEvent_Type) String() string {
 }
 
 func (GameEvent_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[5].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[5].Descriptor()
 }
 
 func (GameEvent_Type) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[5]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[5]
 }
 
 func (x GameEvent_Type) Number() protoreflect.EnumNumber {
@@ -368,7 +373,7 @@ func (x GameEvent_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GameEvent_Type.Descriptor instead.
 func (GameEvent_Type) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{1, 0}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{1, 0}
 }
 
 type GameEvent_Direction int32
@@ -401,11 +406,11 @@ func (x GameEvent_Direction) String() string {
 }
 
 func (GameEvent_Direction) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[6].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[6].Descriptor()
 }
 
 func (GameEvent_Direction) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[6]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[6]
 }
 
 func (x GameEvent_Direction) Number() protoreflect.EnumNumber {
@@ -414,7 +419,7 @@ func (x GameEvent_Direction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GameEvent_Direction.Descriptor instead.
 func (GameEvent_Direction) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{1, 1}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{1, 1}
 }
 
 type BotRequest_BotCode int32
@@ -502,11 +507,11 @@ func (x BotRequest_BotCode) String() string {
 }
 
 func (BotRequest_BotCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_vendor_macondo_macondo_proto_enumTypes[7].Descriptor()
+	return file_proto_vendored_macondo_macondo_proto_enumTypes[7].Descriptor()
 }
 
 func (BotRequest_BotCode) Type() protoreflect.EnumType {
-	return &file_vendor_macondo_macondo_proto_enumTypes[7]
+	return &file_proto_vendored_macondo_macondo_proto_enumTypes[7]
 }
 
 func (x BotRequest_BotCode) Number() protoreflect.EnumNumber {
@@ -515,7 +520,7 @@ func (x BotRequest_BotCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use BotRequest_BotCode.Descriptor instead.
 func (BotRequest_BotCode) EnumDescriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{3, 0}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{3, 0}
 }
 
 // GameHistory encodes a whole history of a game, and it should also encode
@@ -539,7 +544,7 @@ type GameHistory struct {
 	// Add letter distribution (basically game name), board config, and more
 	// in the future.
 	//
-	// Deprecated: Marked as deprecated in vendor/macondo/macondo.proto.
+	// Deprecated: Marked as deprecated in proto/vendored/macondo/macondo.proto.
 	SecondWentFirst bool          `protobuf:"varint,11,opt,name=second_went_first,json=secondWentFirst,proto3" json:"second_went_first,omitempty"`
 	ChallengeRule   ChallengeRule `protobuf:"varint,12,opt,name=challenge_rule,json=challengeRule,proto3,enum=macondo.ChallengeRule" json:"challenge_rule,omitempty"`
 	PlayState       PlayState     `protobuf:"varint,13,opt,name=play_state,json=playState,proto3,enum=macondo.PlayState" json:"play_state,omitempty"`
@@ -566,7 +571,7 @@ type GameHistory struct {
 
 func (x *GameHistory) Reset() {
 	*x = GameHistory{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[0]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +583,7 @@ func (x *GameHistory) String() string {
 func (*GameHistory) ProtoMessage() {}
 
 func (x *GameHistory) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[0]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +596,7 @@ func (x *GameHistory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameHistory.ProtoReflect.Descriptor instead.
 func (*GameHistory) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{0}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GameHistory) GetEvents() []*GameEvent {
@@ -664,7 +669,7 @@ func (x *GameHistory) GetLastKnownRacks() []string {
 	return nil
 }
 
-// Deprecated: Marked as deprecated in vendor/macondo/macondo.proto.
+// Deprecated: Marked as deprecated in proto/vendored/macondo/macondo.proto.
 func (x *GameHistory) GetSecondWentFirst() bool {
 	if x != nil {
 		return x.SecondWentFirst
@@ -731,7 +736,7 @@ func (x *GameHistory) GetStartingCgp() string {
 // This should be merged into Move.
 type GameEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Deprecated: Marked as deprecated in vendor/macondo/macondo.proto.
+	// Deprecated: Marked as deprecated in proto/vendored/macondo/macondo.proto.
 	Nickname    string              `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
 	Note        string              `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`
 	Rack        string              `protobuf:"bytes,3,opt,name=rack,proto3" json:"rack,omitempty"`
@@ -766,7 +771,7 @@ type GameEvent struct {
 
 func (x *GameEvent) Reset() {
 	*x = GameEvent{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[1]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -778,7 +783,7 @@ func (x *GameEvent) String() string {
 func (*GameEvent) ProtoMessage() {}
 
 func (x *GameEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[1]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -791,10 +796,10 @@ func (x *GameEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameEvent.ProtoReflect.Descriptor instead.
 func (*GameEvent) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{1}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{1}
 }
 
-// Deprecated: Marked as deprecated in vendor/macondo/macondo.proto.
+// Deprecated: Marked as deprecated in proto/vendored/macondo/macondo.proto.
 func (x *GameEvent) GetNickname() string {
 	if x != nil {
 		return x.Nickname
@@ -948,7 +953,7 @@ type PlayerInfo struct {
 
 func (x *PlayerInfo) Reset() {
 	*x = PlayerInfo{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[2]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -960,7 +965,7 @@ func (x *PlayerInfo) String() string {
 func (*PlayerInfo) ProtoMessage() {}
 
 func (x *PlayerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[2]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -973,7 +978,7 @@ func (x *PlayerInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerInfo.ProtoReflect.Descriptor instead.
 func (*PlayerInfo) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{2}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PlayerInfo) GetNickname() string {
@@ -1009,7 +1014,7 @@ type BotRequest struct {
 
 func (x *BotRequest) Reset() {
 	*x = BotRequest{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[3]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1021,7 +1026,7 @@ func (x *BotRequest) String() string {
 func (*BotRequest) ProtoMessage() {}
 
 func (x *BotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[3]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1034,7 +1039,7 @@ func (x *BotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotRequest.ProtoReflect.Descriptor instead.
 func (*BotRequest) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{3}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *BotRequest) GetGameHistory() *GameHistory {
@@ -1075,7 +1080,7 @@ type EvaluationRequest struct {
 
 func (x *EvaluationRequest) Reset() {
 	*x = EvaluationRequest{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[4]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1087,7 +1092,7 @@ func (x *EvaluationRequest) String() string {
 func (*EvaluationRequest) ProtoMessage() {}
 
 func (x *EvaluationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[4]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1100,7 +1105,7 @@ func (x *EvaluationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationRequest.ProtoReflect.Descriptor instead.
 func (*EvaluationRequest) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{4}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EvaluationRequest) GetUser() string {
@@ -1119,7 +1124,7 @@ type Evaluation struct {
 
 func (x *Evaluation) Reset() {
 	*x = Evaluation{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[5]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1131,7 +1136,7 @@ func (x *Evaluation) String() string {
 func (*Evaluation) ProtoMessage() {}
 
 func (x *Evaluation) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[5]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1144,7 +1149,7 @@ func (x *Evaluation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Evaluation.ProtoReflect.Descriptor instead.
 func (*Evaluation) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{5}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Evaluation) GetPlayEval() []*SingleEvaluation {
@@ -1168,7 +1173,7 @@ type SingleEvaluation struct {
 
 func (x *SingleEvaluation) Reset() {
 	*x = SingleEvaluation{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[6]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1185,7 @@ func (x *SingleEvaluation) String() string {
 func (*SingleEvaluation) ProtoMessage() {}
 
 func (x *SingleEvaluation) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[6]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1198,7 @@ func (x *SingleEvaluation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SingleEvaluation.ProtoReflect.Descriptor instead.
 func (*SingleEvaluation) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{6}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SingleEvaluation) GetEquityLoss() float64 {
@@ -1253,7 +1258,7 @@ type BotResponse struct {
 
 func (x *BotResponse) Reset() {
 	*x = BotResponse{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[7]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1265,7 +1270,7 @@ func (x *BotResponse) String() string {
 func (*BotResponse) ProtoMessage() {}
 
 func (x *BotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[7]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1278,7 +1283,7 @@ func (x *BotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotResponse.ProtoReflect.Descriptor instead.
 func (*BotResponse) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{7}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *BotResponse) GetResponse() isBotResponse_Response {
@@ -1349,7 +1354,7 @@ type PuzzleCreationResponse struct {
 
 func (x *PuzzleCreationResponse) Reset() {
 	*x = PuzzleCreationResponse{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[8]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1361,7 +1366,7 @@ func (x *PuzzleCreationResponse) String() string {
 func (*PuzzleCreationResponse) ProtoMessage() {}
 
 func (x *PuzzleCreationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[8]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1374,7 +1379,7 @@ func (x *PuzzleCreationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleCreationResponse.ProtoReflect.Descriptor instead.
 func (*PuzzleCreationResponse) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{8}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PuzzleCreationResponse) GetGameId() string {
@@ -1424,7 +1429,7 @@ type PuzzleBucket struct {
 
 func (x *PuzzleBucket) Reset() {
 	*x = PuzzleBucket{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[9]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1441,7 @@ func (x *PuzzleBucket) String() string {
 func (*PuzzleBucket) ProtoMessage() {}
 
 func (x *PuzzleBucket) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[9]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1454,7 @@ func (x *PuzzleBucket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleBucket.ProtoReflect.Descriptor instead.
 func (*PuzzleBucket) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{9}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PuzzleBucket) GetIndex() int32 {
@@ -1489,7 +1494,7 @@ type PuzzleGenerationRequest struct {
 
 func (x *PuzzleGenerationRequest) Reset() {
 	*x = PuzzleGenerationRequest{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[10]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1501,7 +1506,7 @@ func (x *PuzzleGenerationRequest) String() string {
 func (*PuzzleGenerationRequest) ProtoMessage() {}
 
 func (x *PuzzleGenerationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[10]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +1519,7 @@ func (x *PuzzleGenerationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PuzzleGenerationRequest.ProtoReflect.Descriptor instead.
 func (*PuzzleGenerationRequest) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{10}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PuzzleGenerationRequest) GetBuckets() []*PuzzleBucket {
@@ -1535,7 +1540,7 @@ type GameAnalysisResult struct {
 
 func (x *GameAnalysisResult) Reset() {
 	*x = GameAnalysisResult{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[11]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1547,7 +1552,7 @@ func (x *GameAnalysisResult) String() string {
 func (*GameAnalysisResult) ProtoMessage() {}
 
 func (x *GameAnalysisResult) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[11]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1560,7 +1565,7 @@ func (x *GameAnalysisResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameAnalysisResult.ProtoReflect.Descriptor instead.
 func (*GameAnalysisResult) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{11}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GameAnalysisResult) GetTurns() []*TurnAnalysis {
@@ -1613,7 +1618,7 @@ type TurnAnalysis struct {
 
 func (x *TurnAnalysis) Reset() {
 	*x = TurnAnalysis{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[12]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1625,7 +1630,7 @@ func (x *TurnAnalysis) String() string {
 func (*TurnAnalysis) ProtoMessage() {}
 
 func (x *TurnAnalysis) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[12]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +1643,7 @@ func (x *TurnAnalysis) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnAnalysis.ProtoReflect.Descriptor instead.
 func (*TurnAnalysis) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{12}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TurnAnalysis) GetTurnNumber() int32 {
@@ -1813,7 +1818,7 @@ type PlayerSummary struct {
 
 func (x *PlayerSummary) Reset() {
 	*x = PlayerSummary{}
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[13]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1825,7 +1830,7 @@ func (x *PlayerSummary) String() string {
 func (*PlayerSummary) ProtoMessage() {}
 
 func (x *PlayerSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_vendor_macondo_macondo_proto_msgTypes[13]
+	mi := &file_proto_vendored_macondo_macondo_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1838,7 +1843,7 @@ func (x *PlayerSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerSummary.ProtoReflect.Descriptor instead.
 func (*PlayerSummary) Descriptor() ([]byte, []int) {
-	return file_vendor_macondo_macondo_proto_rawDescGZIP(), []int{13}
+	return file_proto_vendored_macondo_macondo_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PlayerSummary) GetPlayerName() string {
@@ -1925,11 +1930,11 @@ func (x *PlayerSummary) GetMissedBingos() int32 {
 	return 0
 }
 
-var File_vendor_macondo_macondo_proto protoreflect.FileDescriptor
+var File_proto_vendored_macondo_macondo_proto protoreflect.FileDescriptor
 
-const file_vendor_macondo_macondo_proto_rawDesc = "" +
+const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvendor/macondo/macondo.proto\x12\amacondo\"\xba\x05\n" +
+	"$proto/vendored/macondo/macondo.proto\x12\amacondo\"\xba\x05\n" +
 	"\vGameHistory\x12*\n" +
 	"\x06events\x18\x01 \x03(\v2\x12.macondo.GameEventR\x06events\x12-\n" +
 	"\aplayers\x18\x02 \x03(\v2\x13.macondo.PlayerInfoR\aplayers\x12\x18\n" +
@@ -2149,20 +2154,20 @@ const file_vendor_macondo_macondo_proto_rawDesc = "" +
 	"\x05LARGE\x10\x03B3Z1github.com/domino14/macondo/gen/api/proto/macondob\x06proto3"
 
 var (
-	file_vendor_macondo_macondo_proto_rawDescOnce sync.Once
-	file_vendor_macondo_macondo_proto_rawDescData []byte
+	file_proto_vendored_macondo_macondo_proto_rawDescOnce sync.Once
+	file_proto_vendored_macondo_macondo_proto_rawDescData []byte
 )
 
-func file_vendor_macondo_macondo_proto_rawDescGZIP() []byte {
-	file_vendor_macondo_macondo_proto_rawDescOnce.Do(func() {
-		file_vendor_macondo_macondo_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_vendor_macondo_macondo_proto_rawDesc), len(file_vendor_macondo_macondo_proto_rawDesc)))
+func file_proto_vendored_macondo_macondo_proto_rawDescGZIP() []byte {
+	file_proto_vendored_macondo_macondo_proto_rawDescOnce.Do(func() {
+		file_proto_vendored_macondo_macondo_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_vendored_macondo_macondo_proto_rawDesc), len(file_proto_vendored_macondo_macondo_proto_rawDesc)))
 	})
-	return file_vendor_macondo_macondo_proto_rawDescData
+	return file_proto_vendored_macondo_macondo_proto_rawDescData
 }
 
-var file_vendor_macondo_macondo_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_vendor_macondo_macondo_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_vendor_macondo_macondo_proto_goTypes = []any{
+var file_proto_vendored_macondo_macondo_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_proto_vendored_macondo_macondo_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_proto_vendored_macondo_macondo_proto_goTypes = []any{
 	(PlayState)(0),                  // 0: macondo.PlayState
 	(ChallengeRule)(0),              // 1: macondo.ChallengeRule
 	(PuzzleTag)(0),                  // 2: macondo.PuzzleTag
@@ -2186,7 +2191,7 @@ var file_vendor_macondo_macondo_proto_goTypes = []any{
 	(*TurnAnalysis)(nil),            // 20: macondo.TurnAnalysis
 	(*PlayerSummary)(nil),           // 21: macondo.PlayerSummary
 }
-var file_vendor_macondo_macondo_proto_depIdxs = []int32{
+var file_proto_vendored_macondo_macondo_proto_depIdxs = []int32{
 	9,  // 0: macondo.GameHistory.events:type_name -> macondo.GameEvent
 	10, // 1: macondo.GameHistory.players:type_name -> macondo.PlayerInfo
 	1,  // 2: macondo.GameHistory.challenge_rule:type_name -> macondo.ChallengeRule
@@ -2215,12 +2220,12 @@ var file_vendor_macondo_macondo_proto_depIdxs = []int32{
 	0,  // [0:21] is the sub-list for field type_name
 }
 
-func init() { file_vendor_macondo_macondo_proto_init() }
-func file_vendor_macondo_macondo_proto_init() {
-	if File_vendor_macondo_macondo_proto != nil {
+func init() { file_proto_vendored_macondo_macondo_proto_init() }
+func file_proto_vendored_macondo_macondo_proto_init() {
+	if File_proto_vendored_macondo_macondo_proto != nil {
 		return
 	}
-	file_vendor_macondo_macondo_proto_msgTypes[7].OneofWrappers = []any{
+	file_proto_vendored_macondo_macondo_proto_msgTypes[7].OneofWrappers = []any{
 		(*BotResponse_Move)(nil),
 		(*BotResponse_Error)(nil),
 	}
@@ -2228,18 +2233,18 @@ func file_vendor_macondo_macondo_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vendor_macondo_macondo_proto_rawDesc), len(file_vendor_macondo_macondo_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_vendored_macondo_macondo_proto_rawDesc), len(file_proto_vendored_macondo_macondo_proto_rawDesc)),
 			NumEnums:      8,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_vendor_macondo_macondo_proto_goTypes,
-		DependencyIndexes: file_vendor_macondo_macondo_proto_depIdxs,
-		EnumInfos:         file_vendor_macondo_macondo_proto_enumTypes,
-		MessageInfos:      file_vendor_macondo_macondo_proto_msgTypes,
+		GoTypes:           file_proto_vendored_macondo_macondo_proto_goTypes,
+		DependencyIndexes: file_proto_vendored_macondo_macondo_proto_depIdxs,
+		EnumInfos:         file_proto_vendored_macondo_macondo_proto_enumTypes,
+		MessageInfos:      file_proto_vendored_macondo_macondo_proto_msgTypes,
 	}.Build()
-	File_vendor_macondo_macondo_proto = out.File
-	file_vendor_macondo_macondo_proto_goTypes = nil
-	file_vendor_macondo_macondo_proto_depIdxs = nil
+	File_proto_vendored_macondo_macondo_proto = out.File
+	file_proto_vendored_macondo_macondo_proto_goTypes = nil
+	file_proto_vendored_macondo_macondo_proto_depIdxs = nil
 }

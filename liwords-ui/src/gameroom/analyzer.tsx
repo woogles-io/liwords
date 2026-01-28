@@ -29,7 +29,7 @@ import { sortTiles } from "../store/constants";
 import {
   GameEvent_Type,
   GameEvent_Direction,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameState } from "../store/reducers/game_reducer";
 import {
   Alphabet,

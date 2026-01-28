@@ -11,7 +11,7 @@ import {
 import { Board } from "../utils/cwgame/board";
 import { Alphabet } from "../constants/alphabets";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
-import { GameEvent_Type } from "../gen/api/vendor/macondo/macondo_pb";
+import { GameEvent_Type } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const { Title, Text } = Typography;
 

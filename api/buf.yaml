@@ -9,3 +9,11 @@ breaking:
 modules:
   - path: .
     name: buf.build/domino14/liwords
+
+# NOTE: We vendor macondo.proto in proto/vendored/macondo/ because:
+# - TypeScript generation needs the proto source to generate types
+# - buf generate runs in Docker and can't access ../macondo outside the context
+# - We don't publish macondo to buf.build
+# - The vendored proto uses go_package pointing to the ORIGINAL macondo package
+#   to avoid type mismatches in Go code
+
