@@ -1,4 +1,4 @@
-import { BotRequest_BotCode } from "../gen/api/vendor/macondo/macondo_pb";
+import { BotRequest_BotCode } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 import bestbot from "../assets/bots/best.png";
 import hastybot from "../assets/bots/macondog.png";

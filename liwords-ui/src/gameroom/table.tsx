@@ -38,7 +38,10 @@ import { GameCommentService } from "../gen/api/proto/comments_service/comments_s
 import { gameEventsToTurns } from "../store/reducers/turns";
 import { BoopSounds } from "../sound/boop";
 import { StreakWidget } from "./streak_widget";
-import { ChallengeRule, PlayState } from "../gen/api/vendor/macondo/macondo_pb";
+import {
+  ChallengeRule,
+  PlayState,
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { endGameMessageFromGameInfo } from "../store/end_of_game";
 import { Notepad, NotepadContextProvider } from "./notepad";
 import { Analyzer, AnalyzerContextProvider } from "./analyzer";

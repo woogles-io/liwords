@@ -8,7 +8,7 @@ import {
   GameEvent_Direction,
   GameEventSchema,
   PlayerInfoSchema,
-} from "../../gen/api/vendor/macondo/macondo_pb";
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import { Action, ActionType } from "../../actions/actions";
 import {
   PlayedTiles,

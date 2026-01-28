@@ -9,7 +9,7 @@ import { VariantIcon } from "../shared/variant_icons";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { challengeRuleNamesShort } from "../constants/challenge_rules";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { lexiconCodeToProfileRatingName } from "../shared/lexica";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 

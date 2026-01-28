@@ -3,7 +3,7 @@ import {
   ChallengeRule,
   GameEvent_Type,
   GameEventSchema,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import {
   ServerChallengeResultEvent,

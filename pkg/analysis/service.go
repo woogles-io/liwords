@@ -12,11 +12,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
-	macondo "github.com/woogles-io/liwords/rpc/vendor/macondo"
+	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
+	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
 )
 
 type AnalysisService struct {

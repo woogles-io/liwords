@@ -446,7 +446,7 @@ var File_proto_analysis_service_analysis_service_proto protoreflect.FileDescript
 
 const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\n" +
-	"-proto/analysis_service/analysis_service.proto\x12\x10analysis_service\x1a\x1cvendor/macondo/macondo.proto\"\x11\n" +
+	"-proto/analysis_service/analysis_service.proto\x12\x10analysis_service\x1a$proto/vendored/macondo/macondo.proto\"\x11\n" +
 	"\x0fClaimJobRequest\"\x95\x01\n" +
 	"\x10ClaimJobResponse\x12\x17\n" +
 	"\ano_jobs\x18\x01 \x01(\bR\x06noJobs\x12\x15\n" +
