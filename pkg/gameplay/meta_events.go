@@ -241,6 +241,48 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
 		eventChan <- wrapped
 
+	case pb.GameMetaEvent_ADD_TIME:
+		// Disallow for correspondence games
+		if g.IsCorrespondence() {
+			return ErrNotAllowed
+		}
+
+		// Find opponent index (the player who is NOT the sender)
+		hist := g.History()
+		opponentIdx := -1
+		for i, p := range hist.Players {
+			if p.UserId != evt.PlayerId {
+				opponentIdx = i
+				break
+			}
+		}
+		if opponentIdx == -1 {
+			return ErrNotAllowed
+		}
+
+		// Add 15 seconds to opponent's time
+		const addTimeMs = 15 * 1000
+		g.AddTimeToPlayer(opponentIdx, addTimeMs)
+
+		// Save the game
+		err := stores.GameStore.Set(ctx, g)
+		if err != nil {
+			return err
+		}
+
+		// Send meta event to notify both players
+		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
+		wrapped.AddAudience(entity.AudGame, evt.GameId)
+		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
+		eventChan <- wrapped
+
+		// Also send updated time info via GameHistoryRefresher
+		refresher := g.HistoryRefresherEvent()
+		refresherWrapped := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
+		refresherWrapped.AddAudience(entity.AudGame, evt.GameId)
+		refresherWrapped.AddAudience(entity.AudGameTV, evt.GameId)
+		eventChan <- refresherWrapped
+
 	case pb.GameMetaEvent_TIMER_EXPIRED:
 		// This event gets sent by the front end of the requester after
 		// the time for an event has expired.

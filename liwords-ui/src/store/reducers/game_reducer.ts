@@ -713,8 +713,17 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
 
       // If we've already seen a refresher AND this one has no events,
-      // ignore it as it's likely a duplicate from InitRealmInfo
-      if ((state.refresherCount || 0) > 0 && history.events.length === 0) {
+      // ignore it as it's likely a duplicate from InitRealmInfo.
+      // However, we should NOT ignore it if the timer values are different
+      // (e.g., from an ADD_TIME event).
+      const timesChanged =
+        ghr.timePlayer1 !== state.timePlayer1 ||
+        ghr.timePlayer2 !== state.timePlayer2;
+      if (
+        (state.refresherCount || 0) > 0 &&
+        history.events.length === 0 &&
+        !timesChanged
+      ) {
         console.log(
           "Ignoring subsequent empty GameRefresher - already processed",
           state.refresherCount,

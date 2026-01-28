@@ -41,6 +41,8 @@ type CardProps = {
   hideProfileLink?: boolean;
   timeBank?: number | bigint;
   usingTimeBank?: boolean;
+  onAddTime?: () => void;
+  canAddTime?: boolean;
 };
 
 const timepenalty = (time: Millis) => {
@@ -159,79 +161,91 @@ const PlayerCard = React.memo((props: CardProps) => {
           </Button>
         </Tooltip>
         <div className="timer-container">
-          <Button className="timer" type="primary">
-            {timeRemainingFragment}
-            {(() => {
-              const shouldShow = hasTimeBank && !inTimeBank && props.time > 0;
+          <div className="timer-with-add">
+            <Button className="timer" type="primary">
+              {timeRemainingFragment}
+              {(() => {
+                const shouldShow = hasTimeBank && !inTimeBank && props.time > 0;
 
-              return shouldShow ? (
-                <>
-                  <Tooltip
-                    title={
+                return shouldShow ? (
+                  <>
+                    <Tooltip
+                      title={
+                        <span>
+                          Time bank: {formatTimeBankTooltip(timeBankMs)}
+                          <br />
+                          <a
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setShowTimeBankModal(true);
+                            }}
+                            style={{
+                              color: "#40a9ff",
+                              textDecoration: "underline",
+                              cursor: "pointer",
+                            }}
+                          >
+                            How does time bank work?
+                          </a>
+                        </span>
+                      }
+                      trigger="hover"
+                    >
                       <span>
-                        Time bank: {formatTimeBankTooltip(timeBankMs)}
-                        <br />
-                        <a
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setShowTimeBankModal(true);
-                          }}
-                          style={{
-                            color: "#40a9ff",
-                            textDecoration: "underline",
-                            cursor: "pointer",
-                          }}
-                        >
-                          How does time bank work?
-                        </a>
+                        <HourglassOutlined className="time-bank-indicator" />
                       </span>
-                    }
-                    trigger="hover"
-                  >
-                    <span>
-                      <HourglassOutlined className="time-bank-indicator" />
-                    </span>
-                  </Tooltip>
-                  <Modal
-                    title="How does time bank work?"
-                    open={showTimeBankModal}
-                    onCancel={() => setShowTimeBankModal(false)}
-                    footer={null}
-                    width={600}
-                  >
-                    <div style={{ lineHeight: "1.6" }}>
-                      <p>
-                        <strong>Time bank</strong> is an additional time reserve
-                        available for correspondence games.
-                      </p>
-                      <p>
-                        When you use up your main thinking time for a turn, the
-                        game will automatically start using your time bank. Your
-                        time bank depletes only when you exceed the per-turn
-                        time.
-                      </p>
-                      <p>
-                        <strong>Example:</strong> If you have 8 hours of
-                        per-turn time and take 12 hours to make a move, only 4
-                        hours will be deducted from your time bank.
-                      </p>
-                      <p>
-                        The <HourglassOutlined style={{ color: "#15803d" }} />{" "}
-                        icon appears when you still have time bank available but
-                        are not currently using it. When you're actively using
-                        your time bank, you'll see "using time bank" displayed
-                        below your timer.
-                      </p>
-                      <p>
-                        <strong>Important:</strong> If your time bank runs out,
-                        you will lose the game on time.
-                      </p>
-                    </div>
-                  </Modal>
-                </>
-              ) : null;
-            })()}
-          </Button>
+                    </Tooltip>
+                    <Modal
+                      title="How does time bank work?"
+                      open={showTimeBankModal}
+                      onCancel={() => setShowTimeBankModal(false)}
+                      footer={null}
+                      width={600}
+                    >
+                      <div style={{ lineHeight: "1.6" }}>
+                        <p>
+                          <strong>Time bank</strong> is an additional time
+                          reserve available for correspondence games.
+                        </p>
+                        <p>
+                          When you use up your main thinking time for a turn,
+                          the game will automatically start using your time
+                          bank. Your time bank depletes only when you exceed the
+                          per-turn time.
+                        </p>
+                        <p>
+                          <strong>Example:</strong> If you have 8 hours of
+                          per-turn time and take 12 hours to make a move, only 4
+                          hours will be deducted from your time bank.
+                        </p>
+                        <p>
+                          The <HourglassOutlined style={{ color: "#15803d" }} />{" "}
+                          icon appears when you still have time bank available
+                          but are not currently using it. When you're actively
+                          using your time bank, you'll see "using time bank"
+                          displayed below your timer.
+                        </p>
+                        <p>
+                          <strong>Important:</strong> If your time bank runs
+                          out, you will lose the game on time.
+                        </p>
+                      </div>
+                    </Modal>
+                  </>
+                ) : null;
+              })()}
+            </Button>
+            {props.canAddTime && (
+              <Button
+                className="add-time-button"
+                size="small"
+                onClick={props.onAddTime}
+                title="Add 15 seconds to opponent's clock"
+              >
+                +
+              </Button>
+            )}
+          </div>
           {inTimeBank && <div className="time-bank-label">using time bank</div>}
         </div>
       </Row>
@@ -244,6 +258,9 @@ type Props = {
   playerMeta: Array<PlayerInfo>;
   horizontal?: boolean;
   hideProfileLink?: boolean;
+  onAddTime?: (opponentUserId: string) => void;
+  currentUserId?: string;
+  canAddTime?: boolean;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
@@ -306,6 +323,10 @@ export const PlayerCards = React.memo((props: Props) => {
   if (applyTimePenalty) p1Score -= timepenalty(p1Time);
   const p0Spread = p0Score - p1Score;
 
+  // Determine which player is the opponent (not the current user)
+  const p0IsOpponent = p0?.userID !== props.currentUserId;
+  const p1IsOpponent = p1?.userID !== props.currentUserId;
+
   return (
     <Card
       className={`player-cards${
@@ -324,6 +345,12 @@ export const PlayerCards = React.memo((props: Props) => {
         hideProfileLink={props.hideProfileLink}
         timeBank={p0TimeBank}
         usingTimeBank={p0UsingTimeBank}
+        canAddTime={props.canAddTime && p0IsOpponent}
+        onAddTime={
+          p0IsOpponent && p0?.userID
+            ? () => props.onAddTime?.(p0.userID)
+            : undefined
+        }
       />
       <PlayerCard
         player={p1}
@@ -336,6 +363,12 @@ export const PlayerCards = React.memo((props: Props) => {
         hideProfileLink={props.hideProfileLink}
         timeBank={p1TimeBank}
         usingTimeBank={p1UsingTimeBank}
+        canAddTime={props.canAddTime && p1IsOpponent}
+        onAddTime={
+          p1IsOpponent && p1?.userID
+            ? () => props.onAddTime?.(p1.userID)
+            : undefined
+        }
       />
     </Card>
   );
