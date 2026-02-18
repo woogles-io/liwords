@@ -52,6 +52,23 @@ func AdjudicateGame(ctx context.Context, g *entity.Game, stores *stores.Stores) 
 	return performEndgameDuties(ctx, g, stores)
 }
 
+// ForfeitGame ends a game with FORCE_FORFEIT, with the given player index as the loser.
+// The opponent automatically wins regardless of score.
+func ForfeitGame(ctx context.Context, g *entity.Game, loserIdx int, stores *stores.Stores) error {
+	g.Lock()
+	defer g.Unlock()
+
+	if g.GameEndReason != pb.GameEndReason_NONE {
+		return nil // already finished
+	}
+
+	g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
+	g.SetWinnerIdx(1 - loserIdx)
+	g.SetLoserIdx(loserIdx)
+
+	return performEndgameDuties(ctx, g, stores)
+}
+
 func performEndgameDuties(ctx context.Context, g *entity.Game,
 	stores *stores.Stores) error {
 	log := zerolog.Ctx(ctx)

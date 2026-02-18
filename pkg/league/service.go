@@ -17,6 +17,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
+	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/stores"
 	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/stores/league"
@@ -1366,13 +1367,12 @@ func (ls *LeagueService) UnregisterFromSeason(
 		return nil, apiserver.InvalidArg("cannot unregister from an active season")
 	}
 
-	// Allow user to specify different user_id only if they have manage permission
+	// Allow user to specify different user_id only if they have manage or promoter permission
 	userDBIDToUnregister := int32(user.ID)
 	userUUIDForLogging := user.UUID
 	if req.Msg.UserId != "" && req.Msg.UserId != user.UUID {
-		// Check if user has manage permission
-		_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
-		if err != nil {
+		// Check if user has manage or league promoter permission
+		if err := ls.authenticateLeaguePromoterOrAdmin(ctx); err != nil {
 			return nil, apiserver.PermissionDenied("cannot unregister other users")
 		}
 
@@ -1900,5 +1900,108 @@ func (ls *LeagueService) AddSeasonTimeBank(
 		Success:      true,
 		GamesUpdated: int32(gamesUpdated),
 		Message:      fmt.Sprintf("Added %d minutes to time bank for %d games", req.Msg.AdditionalMinutes, gamesUpdated),
+	}), nil
+}
+
+// CancelPlayerResults penalizes a cheater's games in a season:
+// - Ongoing games are force-forfeited (cheater loses)
+// - Completed games have the cheater's score lowered to at least 100 pts below the opponent's score
+// - Standings are fully recalculated
+func (ls *LeagueService) CancelPlayerResults(
+	ctx context.Context,
+	req *connect.Request[pb.CancelPlayerResultsRequest],
+) (*connect.Response[pb.CancelPlayerResultsResponse], error) {
+	// Authenticate - requires can_manage_leagues
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse season ID
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+
+	// Get the season and validate its status
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+	if season.Status != int32(ipc.SeasonStatus_SEASON_ACTIVE) && season.Status != int32(ipc.SeasonStatus_SEASON_COMPLETED) {
+		return nil, apiserver.InvalidArg("can only cancel results for an ACTIVE or COMPLETED season")
+	}
+
+	// Look up the cheater user by UUID to get their database ID
+	cheaterUser, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
+	}
+	cheaterDBID := int32(cheaterUser.ID)
+
+	// Step 1: Force-forfeit any ongoing games where the cheater is a player
+	ongoingGames, err := ls.queries.GetPlayerUnfinishedSeasonGames(ctx, models.GetPlayerUnfinishedSeasonGamesParams{
+		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
+		PlayerID: pgtype.Int4{Int32: cheaterDBID, Valid: true},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
+	}
+
+	gamesForfeited := int32(0)
+	for _, gameRow := range ongoingGames {
+		gameEntity, err := ls.stores.GameStore.Get(ctx, gameRow.GameID.String)
+		if err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to load game %s: %w", gameRow.GameID.String, err))
+		}
+
+		// Determine which player index is the cheater
+		loserIdx := 0
+		if gameRow.Player1ID.Int32 == cheaterDBID {
+			loserIdx = 1
+		}
+
+		if err := gameplay.ForfeitGame(ctx, gameEntity, loserIdx, ls.stores); err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to forfeit game %s: %w", gameRow.GameID.String, err))
+		}
+		gamesForfeited++
+	}
+
+	// Step 2: Penalize scores for all completed games
+	// Lowers cheater's score to (opponent_score - 100) for games where cheater didn't already lose by >= 100
+	gamesPenalized, err := ls.queries.PenalizePlayerSeasonGames(ctx, models.PenalizePlayerSeasonGamesParams{
+		CheaterID: pgtype.Int4{Int32: cheaterDBID, Valid: true},
+		SeasonID:  pgtype.UUID{Bytes: seasonID, Valid: true},
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to penalize player games: %w", err))
+	}
+
+	// Step 3: Recalculate basic standings from updated game_players data
+	standingsMgr := NewStandingsManager(ls.stores.LeagueStore)
+	if err := standingsMgr.RecalculateAndSaveStandings(ctx, seasonID); err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate standings: %w", err))
+	}
+
+	// Step 4: Restore extended stats from game stats blobs (RecalculateAndSaveStandings zeros them out)
+	if err := standingsMgr.RecalculateSeasonExtendedStats(ctx, seasonID); err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to recalculate extended stats: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Str("cheaterID", req.Msg.UserId).
+		Int32("gamesForfeited", gamesForfeited).
+		Int64("gamesPenalized", gamesPenalized).
+		Msg("player-results-cancelled")
+
+	return connect.NewResponse(&pb.CancelPlayerResultsResponse{
+		Success:        true,
+		GamesForfeited: gamesForfeited,
+		GamesPenalized: int32(gamesPenalized),
+		Message: fmt.Sprintf(
+			"Cancelled results: %d ongoing games forfeited, %d completed games penalized",
+			gamesForfeited, gamesPenalized,
+		),
 	}), nil
 }

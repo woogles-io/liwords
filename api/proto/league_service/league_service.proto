@@ -53,6 +53,7 @@ service LeagueService {
   rpc UpdateSeasonPromotionFormula(UpdateSeasonPromotionFormulaRequest) returns (SeasonResponse);
   rpc RecalculateSeasonExtendedStats(SeasonRequest) returns (RecalculateExtendedStatsResponse);
   rpc AddSeasonTimeBank(AddSeasonTimeBankRequest) returns (AddSeasonTimeBankResponse);
+  rpc CancelPlayerResults(CancelPlayerResultsRequest) returns (CancelPlayerResultsResponse);
 }
 
 message CreateLeagueRequest {
@@ -275,4 +276,16 @@ message AddSeasonTimeBankResponse {
   bool success = 1;
   int32 games_updated = 2; // Number of games modified
   string message = 3;
+}
+
+message CancelPlayerResultsRequest {
+  string season_id = 1;
+  string user_id = 2; // UUID of the cheater to penalize
+}
+
+message CancelPlayerResultsResponse {
+  bool success = 1;
+  int32 games_forfeited = 2;  // Ongoing games that were force-forfeited
+  int32 games_penalized = 3;  // Completed games with scores modified
+  string message = 4;
 }

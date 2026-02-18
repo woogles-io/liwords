@@ -5,13 +5,12 @@
 package collections_serviceconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	collections_service "github.com/woogles-io/liwords/rpc/api/proto/collections_service"
 	http "net/http"
 	strings "strings"
-
-	connect "connectrpc.com/connect"
-	collections_service "github.com/woogles-io/liwords/rpc/api/proto/collections_service"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
