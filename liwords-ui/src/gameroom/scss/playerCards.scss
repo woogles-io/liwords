@@ -209,7 +209,6 @@
         .timer-with-add {
           display: flex;
           align-items: center;
-          gap: 4px;
           height: 32px; // Fixed height for consistent alignment with/without add button
         }
 
@@ -235,22 +234,23 @@
           margin-top: 2px;
         }
 
-        .add-time-button {
+        button.ant-btn.add-time-button {
           @include type-monospace;
           width: 32px;
           min-width: 32px;
           max-width: 32px;
           height: 32px;
-          padding: 0 !important;
+          margin: 0 0 0 6px;
+          padding: 0;
           font-size: 20px;
           font-weight: bold;
           line-height: 32px;
           border-radius: 4px;
           flex-shrink: 0;
           flex-grow: 0;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           text-align: center;
 
           // Override Ant Design button inner span
@@ -350,10 +350,9 @@
             background: m($timer-low-dark);
           }
           &.timer {
-            color: #414141 !important; // theming outlier - override any green
             @include colorModed() {
               border-color: m($timer-low-dark);
-              color: #414141; // theming outlier
+              color: #414141; // theming outlier - override any green
             }
           }
         }
