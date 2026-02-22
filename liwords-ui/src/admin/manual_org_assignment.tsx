@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { Link } from "react-router";
 import {
   Card,
   Input,
@@ -338,7 +339,17 @@ export const ManualOrgAssignment = () => {
       {currentUser && (
         <>
           <Card
-            title={`Current Memberships for ${currentUser}`}
+            title={
+              <React.Fragment>
+                Current Memberships for{" "}
+                <Link
+                  to={`/profile/${encodeURIComponent(currentUser)}`}
+                  target="_blank"
+                >
+                  {currentUser}
+                </Link>
+              </React.Fragment>
+            }
             style={{ marginBottom: 20 }}
             extra={
               <Button
