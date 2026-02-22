@@ -18,6 +18,7 @@ import {
   unassignRole,
 } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 const layout = {
@@ -168,7 +169,19 @@ export const PermsAndRoles = () => {
         }}
         dataSource={filteredUsersWithRoles}
         columns={[
-          { title: "Username", dataIndex: "username", key: "username" },
+          {
+            title: "Username",
+            dataIndex: "username",
+            key: "username",
+            render: (username: string) => (
+              <Link
+                to={`/profile/${encodeURIComponent(username)}`}
+                target="_blank"
+              >
+                {username}
+              </Link>
+            ),
+          },
           { title: "Role", dataIndex: "roleName", key: "roleName" },
         ]}
       />
