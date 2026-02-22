@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router";
 import {
   Table,
   Button,
@@ -143,6 +144,11 @@ export const VerificationQueue = () => {
       dataIndex: "username",
       key: "username",
       width: 150,
+      render: (username: string) => (
+        <Link to={`/profile/${encodeURIComponent(username)}`} target="_blank">
+          {username}
+        </Link>
+      ),
     },
     {
       title: "Organization",
