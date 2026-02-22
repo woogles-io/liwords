@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
-import { useState } from "react";
+import React, { useState } from "react";
+import { Link } from "react-router";
 import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
 import {
   assignBadge,
@@ -73,7 +74,15 @@ export const UserBadges = () => {
           </Button>
         </Form.Item>
       </Form>
-      Users with badge {badgeCode}: {usersForBadgeData?.usernames.join(", ")}
+      Users with badge {badgeCode}:{" "}
+      {usersForBadgeData?.usernames.map((username, idx) => (
+        <React.Fragment key={username}>
+          {idx > 0 && ", "}
+          <Link to={`/profile/${encodeURIComponent(username)}`} target="_blank">
+            {username}
+          </Link>
+        </React.Fragment>
+      ))}
       <h3 style={{ marginTop: 32 }}>Add or remove a badge from a user</h3>
       <Form {...layout} style={{ marginBottom: 60 }}>
         <Form.Item label="Username" name="username">
