@@ -289,9 +289,8 @@ func players(entGame *entity.Game) []string {
 }
 
 // sorts MLs in place.
-func sortMLsInPlace(mls []tilemapping.MachineLetter) []tilemapping.MachineLetter {
+func sortMLsInPlace(mls []tilemapping.MachineLetter) {
 	sort.Slice(mls, func(i, j int) bool { return mls[i] < mls[j] })
-	return mls
 }
 
 // given two sorted arrays of machineletters, overwrite a with a-b, return the shortened slice
@@ -332,7 +331,10 @@ func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack strin
 		return "", err
 	}
 
-	returnedMLs := minusMLs(sortMLsInPlace(prackml), minusMLs(sortMLsInPlace(lastrackml), sortMLsInPlace(lastevtml)))
+	sortMLsInPlace(prackml)
+	sortMLsInPlace(lastrackml)
+	sortMLsInPlace(lastevtml)
+	returnedMLs := minusMLs(prackml, minusMLs(lastrackml, lastevtml))
 	return tilemapping.MachineWord(returnedMLs).UserVisible(dist.TileMapping()), nil
 }
 
