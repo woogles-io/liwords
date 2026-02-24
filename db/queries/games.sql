@@ -76,24 +76,6 @@ JOIN games g ON rgu.game_uuid = g.uuid
 LEFT JOIN leagues l ON g.league_id = l.uuid
 ORDER BY rgu.created_at DESC;
 
--- name: GetRecentGamesByUsernameOptimized :many
-WITH recent_game_uuids AS (
-  SELECT gp.game_uuid, gp.created_at
-  FROM game_players gp
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
-    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-  ORDER BY gp.created_at DESC
-  LIMIT @num_games::integer
-  OFFSET @offset_games::integer
-)
-SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
-       g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
-       g.quickdata, g.tournament_data, g.created_at, g.updated_at,
-       g.game_request, g.league_id, g.season_id, g.league_division_id
-FROM recent_game_uuids rgu
-JOIN games g ON rgu.game_uuid = g.uuid
-ORDER BY rgu.created_at DESC;
-
 -- name: GetRecentTourneyGames :many
 SELECT
     id, uuid, type, player0_id, player1_id,
