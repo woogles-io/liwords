@@ -1,3 +1,4 @@
+BEGIN;
 -- Analysis job queue table
 CREATE TABLE analysis_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -16,7 +17,7 @@ CREATE TABLE analysis_jobs (
     config_json JSONB NOT NULL,
 
     -- Results (protobuf bytes)
-    result_proto BYTEA,
+    result JSONB,
 
     -- Error tracking
     error_message TEXT,
@@ -48,3 +49,4 @@ CREATE INDEX idx_analysis_jobs_game_id ON analysis_jobs(game_id);
 
 -- Index for tracking user's jobs
 CREATE INDEX idx_analysis_jobs_user ON analysis_jobs(claimed_by_user_uuid);
+COMMIT;

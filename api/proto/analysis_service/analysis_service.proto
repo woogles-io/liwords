@@ -49,7 +49,7 @@ message HeartbeatResponse {
 message SubmitResultRequest {
   string job_id = 1;
 
-  // Result as protobuf bytes (not base64)
+  // Result as protojson
   bytes result_proto = 2;
 }
 
@@ -67,4 +67,70 @@ service AnalysisQueueService {
 
   // SubmitResult submits completed analysis
   rpc SubmitResult(SubmitResultRequest) returns (SubmitResultResponse);
+}
+
+// User-facing analysis service
+service AnalysisService {
+  // RequestAnalysis requests analysis for a completed game
+  rpc RequestAnalysis(RequestAnalysisRequest) returns (RequestAnalysisResponse);
+
+  // GetAnalysisStatus gets status of an analysis job
+  rpc GetAnalysisStatus(GetAnalysisStatusRequest) returns (GetAnalysisStatusResponse);
+
+  // GetAnalysisResult gets the completed analysis result
+  rpc GetAnalysisResult(GetAnalysisResultRequest) returns (GetAnalysisResultResponse);
+}
+
+// Request analysis for a game
+message RequestAnalysisRequest {
+  string game_id = 1;
+}
+
+message RequestAnalysisResponse {
+  // Status of the request
+  enum Status {
+    SUCCESS = 0;           // Analysis queued successfully
+    ALREADY_REQUESTED = 1; // Analysis already requested/exists for this game
+    GAME_NOT_ENDED = 2;    // Game hasn't ended yet
+    NOT_A_PLAYER = 3;      // Requester is not a player in this game
+    RATE_LIMITED = 4;      // User has exceeded daily limit
+    INVALID_VARIANT = 5;   // Game variant not supported
+  }
+
+  Status status = 1;
+  string message = 2;       // Human-readable message
+
+  // If successful or already requested:
+  string job_id = 3;        // Analysis job ID
+  int32 queue_position = 4; // Position in queue (0 if processing/completed)
+}
+
+// Get status of an analysis
+message GetAnalysisStatusRequest {
+  string game_id = 1;
+}
+
+message GetAnalysisStatusResponse {
+  enum JobStatus {
+    NOT_FOUND = 0;   // No analysis job exists
+    PENDING = 1;     // Waiting in queue
+    PROCESSING = 2;  // Currently being analyzed
+    COMPLETED = 3;   // Analysis complete
+    FAILED = 4;      // Analysis failed
+  }
+
+  JobStatus status = 1;
+  string job_id = 2;
+  int32 queue_position = 3;  // Position in queue (0 if not pending)
+  string error_message = 4;  // If failed
+}
+
+// Get analysis result
+message GetAnalysisResultRequest {
+  string game_id = 1;
+}
+
+message GetAnalysisResultResponse {
+  bool found = 1;
+  bytes result_proto = 2; // JSONB from database (protojson format)
 }

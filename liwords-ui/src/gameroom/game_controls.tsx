@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from "antd";
+import { Affix, App, Button, Dropdown, MenuProps, Popconfirm, Modal } from "antd";
 
 import {
   DoubleLeftOutlined,
@@ -23,6 +23,13 @@ import {
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { useClient, flashError } from "../utils/hooks/connect";
+import {
+  AnalysisService,
+  RequestAnalysisResponse_Status,
+  GetAnalysisStatusResponse_JobStatus,
+} from "../gen/api/proto/analysis_service/analysis_service_pb";
+import { create } from "@bufbuild/protobuf";
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement("a");
@@ -418,6 +425,7 @@ const GameControls = React.memo((props: Props) => {
         onExit={handleExitToLobby}
         darkMode={darkMode}
         puzzleMode={!!props.puzzleMode}
+        gameID={gameContext.gameID}
       />
     );
   }
@@ -626,84 +634,223 @@ type EGCProps = {
   tournamentPairedMode?: boolean;
   darkMode: boolean;
   puzzleMode: boolean;
+  gameID: string;
 };
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<GetAnalysisStatusResponse_JobStatus | null>(null);
+  const [queuePosition, setQueuePosition] = useState<number>(0);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const gameDone = true; // it is endgame controls after all
+  const analysisClient = useClient(AnalysisService);
+  const { modal } = App.useApp();
+
+  // Check analysis status on mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const response = await analysisClient.getAnalysisStatus({
+          gameId: props.gameID,
+        });
+        setAnalysisStatus(response.status);
+        setQueuePosition(response.queuePosition);
+      } catch (e) {
+        // No analysis exists, that's fine
+        setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.NOT_FOUND);
+      }
+    };
+    checkStatus();
+  }, [analysisClient, props.gameID]);
+
+  const handleRequestAnalysis = async () => {
+    try {
+      const response = await analysisClient.requestAnalysis({
+        gameId: props.gameID,
+      });
+
+      switch (response.status) {
+        case RequestAnalysisResponse_Status.SUCCESS:
+          setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
+          setQueuePosition(response.queuePosition);
+          modal.success({
+            title: "Analysis Requested!",
+            content: `Your game has been queued for analysis. You are #${response.queuePosition} in the queue.`,
+          });
+          break;
+        case RequestAnalysisResponse_Status.ALREADY_REQUESTED:
+          setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
+          setQueuePosition(response.queuePosition);
+          modal.info({
+            title: "Analysis Already Requested",
+            content: response.message,
+          });
+          break;
+        case RequestAnalysisResponse_Status.RATE_LIMITED:
+          modal.error({
+            title: "Rate Limited",
+            content: response.message,
+          });
+          break;
+        case RequestAnalysisResponse_Status.GAME_NOT_ENDED:
+        case RequestAnalysisResponse_Status.NOT_A_PLAYER:
+        case RequestAnalysisResponse_Status.INVALID_VARIANT:
+          modal.error({
+            title: "Cannot Request Analysis",
+            content: response.message,
+          });
+          break;
+      }
+    } catch (e) {
+      flashError(e);
+    }
+  };
+
+  const handleAnalysisButtonClick = () => {
+    if (analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED) {
+      // View analysis - just go to examine mode
+      props.onExamine();
+    } else if (analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND) {
+      // Request new analysis
+      handleRequestAnalysis();
+    } else {
+      // Show status
+      setStatusModalVisible(true);
+    }
+  };
+
+  const getRemoteAnalysisLabel = () => {
+    switch (analysisStatus) {
+      case GetAnalysisStatusResponse_JobStatus.COMPLETED:
+        return "View BestBot Analysis";
+      case GetAnalysisStatusResponse_JobStatus.PENDING:
+        return `BestBot Analysis Queued (#${queuePosition})`;
+      case GetAnalysisStatusResponse_JobStatus.PROCESSING:
+        return "BestBot Analysis In Progress...";
+      case GetAnalysisStatusResponse_JobStatus.FAILED:
+        return "BestBot Analysis Failed";
+      default:
+        return "Request BestBot Analysis";
+    }
+  };
 
   return (
-    <div className="game-controls">
-      <div className="secondary-controls">
-        {!props.puzzleMode && (
+    <>
+      <div className="game-controls">
+        <div className="secondary-controls">
+          {!props.puzzleMode && (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: "download-png",
+                    label: "PNG",
+                    disabled: gameHasNotStarted,
+                  },
+                  {
+                    key: "download-animated-gif",
+                    label: "Animated GIF of complete game",
+                    disabled: gameHasNotStarted,
+                  },
+                  {
+                    key: "download-gcg",
+                    label: "GCG",
+                    disabled: gameHasNotStarted,
+                  },
+                ],
+                onClick: ({ key }) => {
+                  switch (key) {
+                    case "download-png":
+                      downloadGameImg(
+                        `${gameContext.gameID}${gameDone ? "-v2" : ""}.png`,
+                      );
+                      break;
+                    case "download-animated-gif":
+                      downloadGameImg(
+                        `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}.gif`,
+                      );
+                      break;
+                    case "download-gcg":
+                      props.onExportGCG();
+                      break;
+                  }
+                },
+              }}
+              trigger={["click"]}
+              placement="topLeft"
+            >
+              <Button>Export</Button>
+            </Dropdown>
+          )}
           <Dropdown
             menu={{
               items: [
                 {
-                  key: "download-png",
-                  label: "PNG",
+                  key: "analyze-local",
+                  label: "Analyze Locally",
                   disabled: gameHasNotStarted,
                 },
                 {
-                  key: "download-animated-gif",
-                  label: "Animated GIF of complete game",
-                  disabled: gameHasNotStarted,
-                },
-                {
-                  key: "download-gcg",
-                  label: "GCG",
-                  disabled: gameHasNotStarted,
+                  key: "analyze-remote",
+                  label: getRemoteAnalysisLabel(),
+                  disabled: gameHasNotStarted || analysisStatus === GetAnalysisStatusResponse_JobStatus.FAILED,
                 },
               ],
               onClick: ({ key }) => {
-                switch (key) {
-                  case "download-png":
-                    downloadGameImg(
-                      `${gameContext.gameID}${gameDone ? "-v2" : ""}.png`,
-                    );
-                    break;
-                  case "download-animated-gif":
-                    downloadGameImg(
-                      `${gameContext.gameID}${gameDone ? "-v2-b" : "-a"}.gif`,
-                    );
-                    break;
-                  case "download-gcg":
-                    props.onExportGCG();
-                    break;
+                if (key === "analyze-local") {
+                  props.onExamine();
+                } else if (key === "analyze-remote") {
+                  handleAnalysisButtonClick();
                 }
               },
+              theme: props.darkMode ? "dark" : "light",
             }}
             trigger={["click"]}
             placement="topLeft"
+            disabled={gameHasNotStarted}
           >
-            <Button>Export</Button>
+            <Button disabled={gameHasNotStarted}>Analyze</Button>
           </Dropdown>
+        </div>
+        <div className="secondary-controls">
+          {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
+        </div>
+        {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
+          <Button
+            type="primary"
+            data-testid="rematch-button"
+            className="play"
+            onClick={() => {
+              setRematchDisabled(true);
+              if (!rematchDisabled) {
+                props.onRematch();
+              }
+            }}
+          >
+            Rematch
+          </Button>
         )}
-        <Button onClick={props.onExamine} disabled={gameHasNotStarted}>
-          Analyze
-        </Button>
       </div>
-      <div className="secondary-controls">
-        {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
-      </div>
-      {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
-        <Button
-          type="primary"
-          data-testid="rematch-button"
-          className="play"
-          onClick={() => {
-            setRematchDisabled(true);
-            if (!rematchDisabled) {
-              props.onRematch();
-            }
-          }}
-        >
-          Rematch
-        </Button>
-      )}
-    </div>
+      <Modal
+        title="Analysis Status"
+        open={statusModalVisible}
+        onCancel={() => setStatusModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setStatusModalVisible(false)}>
+            Close
+          </Button>,
+        ]}
+      >
+        {analysisStatus === GetAnalysisStatusResponse_JobStatus.PENDING && (
+          <p>Your game is queued for analysis. Position in queue: #{queuePosition}</p>
+        )}
+        {analysisStatus === GetAnalysisStatusResponse_JobStatus.PROCESSING && (
+          <p>Your game is currently being analyzed. This may take a few minutes.</p>
+        )}
+      </Modal>
+    </>
   );
 };
 

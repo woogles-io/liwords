@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// AnalysisQueueServiceName is the fully-qualified name of the AnalysisQueueService service.
 	AnalysisQueueServiceName = "analysis_service.AnalysisQueueService"
+	// AnalysisServiceName is the fully-qualified name of the AnalysisService service.
+	AnalysisServiceName = "analysis_service.AnalysisService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -42,6 +44,15 @@ const (
 	// AnalysisQueueServiceSubmitResultProcedure is the fully-qualified name of the
 	// AnalysisQueueService's SubmitResult RPC.
 	AnalysisQueueServiceSubmitResultProcedure = "/analysis_service.AnalysisQueueService/SubmitResult"
+	// AnalysisServiceRequestAnalysisProcedure is the fully-qualified name of the AnalysisService's
+	// RequestAnalysis RPC.
+	AnalysisServiceRequestAnalysisProcedure = "/analysis_service.AnalysisService/RequestAnalysis"
+	// AnalysisServiceGetAnalysisStatusProcedure is the fully-qualified name of the AnalysisService's
+	// GetAnalysisStatus RPC.
+	AnalysisServiceGetAnalysisStatusProcedure = "/analysis_service.AnalysisService/GetAnalysisStatus"
+	// AnalysisServiceGetAnalysisResultProcedure is the fully-qualified name of the AnalysisService's
+	// GetAnalysisResult RPC.
+	AnalysisServiceGetAnalysisResultProcedure = "/analysis_service.AnalysisService/GetAnalysisResult"
 )
 
 // AnalysisQueueServiceClient is a client for the analysis_service.AnalysisQueueService service.
@@ -171,4 +182,132 @@ func (UnimplementedAnalysisQueueServiceHandler) Heartbeat(context.Context, *conn
 
 func (UnimplementedAnalysisQueueServiceHandler) SubmitResult(context.Context, *connect.Request[analysis_service.SubmitResultRequest]) (*connect.Response[analysis_service.SubmitResultResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisQueueService.SubmitResult is not implemented"))
+}
+
+// AnalysisServiceClient is a client for the analysis_service.AnalysisService service.
+type AnalysisServiceClient interface {
+	// RequestAnalysis requests analysis for a completed game
+	RequestAnalysis(context.Context, *connect.Request[analysis_service.RequestAnalysisRequest]) (*connect.Response[analysis_service.RequestAnalysisResponse], error)
+	// GetAnalysisStatus gets status of an analysis job
+	GetAnalysisStatus(context.Context, *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error)
+	// GetAnalysisResult gets the completed analysis result
+	GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error)
+}
+
+// NewAnalysisServiceClient constructs a client for the analysis_service.AnalysisService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAnalysisServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AnalysisServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	analysisServiceMethods := analysis_service.File_proto_analysis_service_analysis_service_proto.Services().ByName("AnalysisService").Methods()
+	return &analysisServiceClient{
+		requestAnalysis: connect.NewClient[analysis_service.RequestAnalysisRequest, analysis_service.RequestAnalysisResponse](
+			httpClient,
+			baseURL+AnalysisServiceRequestAnalysisProcedure,
+			connect.WithSchema(analysisServiceMethods.ByName("RequestAnalysis")),
+			connect.WithClientOptions(opts...),
+		),
+		getAnalysisStatus: connect.NewClient[analysis_service.GetAnalysisStatusRequest, analysis_service.GetAnalysisStatusResponse](
+			httpClient,
+			baseURL+AnalysisServiceGetAnalysisStatusProcedure,
+			connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		getAnalysisResult: connect.NewClient[analysis_service.GetAnalysisResultRequest, analysis_service.GetAnalysisResultResponse](
+			httpClient,
+			baseURL+AnalysisServiceGetAnalysisResultProcedure,
+			connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisResult")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// analysisServiceClient implements AnalysisServiceClient.
+type analysisServiceClient struct {
+	requestAnalysis   *connect.Client[analysis_service.RequestAnalysisRequest, analysis_service.RequestAnalysisResponse]
+	getAnalysisStatus *connect.Client[analysis_service.GetAnalysisStatusRequest, analysis_service.GetAnalysisStatusResponse]
+	getAnalysisResult *connect.Client[analysis_service.GetAnalysisResultRequest, analysis_service.GetAnalysisResultResponse]
+}
+
+// RequestAnalysis calls analysis_service.AnalysisService.RequestAnalysis.
+func (c *analysisServiceClient) RequestAnalysis(ctx context.Context, req *connect.Request[analysis_service.RequestAnalysisRequest]) (*connect.Response[analysis_service.RequestAnalysisResponse], error) {
+	return c.requestAnalysis.CallUnary(ctx, req)
+}
+
+// GetAnalysisStatus calls analysis_service.AnalysisService.GetAnalysisStatus.
+func (c *analysisServiceClient) GetAnalysisStatus(ctx context.Context, req *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error) {
+	return c.getAnalysisStatus.CallUnary(ctx, req)
+}
+
+// GetAnalysisResult calls analysis_service.AnalysisService.GetAnalysisResult.
+func (c *analysisServiceClient) GetAnalysisResult(ctx context.Context, req *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error) {
+	return c.getAnalysisResult.CallUnary(ctx, req)
+}
+
+// AnalysisServiceHandler is an implementation of the analysis_service.AnalysisService service.
+type AnalysisServiceHandler interface {
+	// RequestAnalysis requests analysis for a completed game
+	RequestAnalysis(context.Context, *connect.Request[analysis_service.RequestAnalysisRequest]) (*connect.Response[analysis_service.RequestAnalysisResponse], error)
+	// GetAnalysisStatus gets status of an analysis job
+	GetAnalysisStatus(context.Context, *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error)
+	// GetAnalysisResult gets the completed analysis result
+	GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error)
+}
+
+// NewAnalysisServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAnalysisServiceHandler(svc AnalysisServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	analysisServiceMethods := analysis_service.File_proto_analysis_service_analysis_service_proto.Services().ByName("AnalysisService").Methods()
+	analysisServiceRequestAnalysisHandler := connect.NewUnaryHandler(
+		AnalysisServiceRequestAnalysisProcedure,
+		svc.RequestAnalysis,
+		connect.WithSchema(analysisServiceMethods.ByName("RequestAnalysis")),
+		connect.WithHandlerOptions(opts...),
+	)
+	analysisServiceGetAnalysisStatusHandler := connect.NewUnaryHandler(
+		AnalysisServiceGetAnalysisStatusProcedure,
+		svc.GetAnalysisStatus,
+		connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	analysisServiceGetAnalysisResultHandler := connect.NewUnaryHandler(
+		AnalysisServiceGetAnalysisResultProcedure,
+		svc.GetAnalysisResult,
+		connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisResult")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/analysis_service.AnalysisService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AnalysisServiceRequestAnalysisProcedure:
+			analysisServiceRequestAnalysisHandler.ServeHTTP(w, r)
+		case AnalysisServiceGetAnalysisStatusProcedure:
+			analysisServiceGetAnalysisStatusHandler.ServeHTTP(w, r)
+		case AnalysisServiceGetAnalysisResultProcedure:
+			analysisServiceGetAnalysisResultHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAnalysisServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAnalysisServiceHandler struct{}
+
+func (UnimplementedAnalysisServiceHandler) RequestAnalysis(context.Context, *connect.Request[analysis_service.RequestAnalysisRequest]) (*connect.Response[analysis_service.RequestAnalysisResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisService.RequestAnalysis is not implemented"))
+}
+
+func (UnimplementedAnalysisServiceHandler) GetAnalysisStatus(context.Context, *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisService.GetAnalysisStatus is not implemented"))
+}
+
+func (UnimplementedAnalysisServiceHandler) GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisService.GetAnalysisResult is not implemented"))
 }

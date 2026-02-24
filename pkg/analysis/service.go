@@ -10,23 +10,31 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+type GameStore interface {
+	Get(ctx context.Context, id string) (*entity.Game, error)
+}
 
 type AnalysisService struct {
 	userStore user.Store
+	gameStore GameStore
 	queries   *models.Queries
 }
 
-func NewAnalysisService(userStore user.Store, queries *models.Queries) *AnalysisService {
+func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries) *AnalysisService {
 	return &AnalysisService{
 		userStore: userStore,
+		gameStore: gameStore,
 		queries:   queries,
 	}
 }
@@ -139,10 +147,10 @@ func (s *AnalysisService) SubmitResult(
 
 	// Validate protobuf can be unmarshaled
 	var result macondo.GameAnalysisResult
-	if err := proto.Unmarshal(resultProto, &result); err != nil {
+	if err := protojson.Unmarshal(resultProto, &result); err != nil {
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
-			Error:    "invalid protobuf",
+			Error:    "invalid protojson",
 		}), nil
 	}
 
@@ -164,7 +172,7 @@ func (s *AnalysisService) SubmitResult(
 	// Store result
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
 	durationMS, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
-		ResultProto:       resultProto,
+		Result:            resultProto,
 		ID:                jobID,
 		ClaimedByUserUuid: userUUID,
 	})
@@ -202,6 +210,256 @@ func (s *AnalysisService) StartReclaimWorker(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// RequestAnalysis handles user request to analyze their game
+func (s *AnalysisService) RequestAnalysis(
+	ctx context.Context,
+	req *connect.Request[pb.RequestAnalysisRequest],
+) (*connect.Response[pb.RequestAnalysisResponse], error) {
+
+	// Get authenticated user
+	user, err := apiserver.AuthUser(ctx, s.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	gameID := req.Msg.GameId
+	if gameID == "" {
+		return nil, apiserver.InvalidArg("game_id is required")
+	}
+
+	// Fetch the game
+	g, err := s.gameStore.Get(ctx, gameID)
+	if err != nil {
+		return nil, apiserver.InvalidArg("game not found")
+	}
+
+	// Check if game has ended
+	if g.Playing() != macondo.PlayState_GAME_OVER {
+		return connect.NewResponse(&pb.RequestAnalysisResponse{
+			Status:  pb.RequestAnalysisResponse_GAME_NOT_ENDED,
+			Message: "Game must be completed before requesting analysis",
+		}), nil
+	}
+
+	// Check authorization:
+	// - For regular games: user must be a player
+	// - For annotated games: user must be the creator
+	isAuthorized := false
+
+	if g.Type == ipc.GameType_ANNOTATED {
+		// For annotated games, only the creator can request analysis
+		// Creator is stored in annotated_game_metadata table
+		owner, err := s.queries.GetGameOwner(ctx, gameID)
+		if err == nil && owner.CreatorUuid == user.UUID {
+			isAuthorized = true
+		}
+	} else {
+		// For regular games, user must be a player
+		for _, playerID := range g.PlayerDBIDs {
+			if playerID == user.ID {
+				isAuthorized = true
+				break
+			}
+		}
+	}
+
+	if !isAuthorized {
+		return connect.NewResponse(&pb.RequestAnalysisResponse{
+			Status:  pb.RequestAnalysisResponse_NOT_A_PLAYER,
+			Message: "You must be a player in this game (or creator for annotated games) to request analysis",
+		}), nil
+	}
+
+	// Check if variant is supported (only classic for now)
+	variantName := g.GameReq.Rules.VariantName
+	if variantName != "classic" && variantName != "" {
+		return connect.NewResponse(&pb.RequestAnalysisResponse{
+			Status:  pb.RequestAnalysisResponse_INVALID_VARIANT,
+			Message: "Analysis is only available for classic games",
+		}), nil
+	}
+
+	// Check for existing analysis job
+	existingJob, err := s.queries.GetJobByGameID(ctx, gameID)
+	if err == nil {
+		// Job exists
+		queuePos := int32(0)
+		if existingJob.Status == "pending" {
+			// Get queue position
+			pos, err := s.queries.GetQueuePosition(ctx, existingJob.ID)
+			if err == nil {
+				queuePos = int32(pos)
+			}
+		}
+
+		return connect.NewResponse(&pb.RequestAnalysisResponse{
+			Status:        pb.RequestAnalysisResponse_ALREADY_REQUESTED,
+			Message:       "Analysis has already been requested for this game",
+			JobId:         existingJob.ID.String(),
+			QueuePosition: queuePos,
+		}), nil
+	}
+
+	// Check rate limit (5 per day)
+	requestCount, err := s.queries.GetUserRequestCountToday(ctx, user.UUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to check rate limit: %w", err))
+	}
+
+	if requestCount >= 5 {
+		return connect.NewResponse(&pb.RequestAnalysisResponse{
+			Status:  pb.RequestAnalysisResponse_RATE_LIMITED,
+			Message: "You have reached the daily limit of 5 analysis requests. Please try again tomorrow.",
+		}), nil
+	}
+
+	// Create analysis job with higher priority for user requests
+	config := map[string]interface{}{
+		"sim_plays_early_mid":        40,
+		"sim_plies_early_mid":        5,
+		"sim_stop_early_mid":         99,
+		"sim_plays_early_preendgame": 80,
+		"sim_plies_early_preendgame": 10,
+		"sim_stop_early_preendgame":  99,
+		"peg_early_cutoff":           true,
+		"threads":                    0,
+	}
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to marshal config: %w", err))
+	}
+
+	// User requests get priority 5 (higher than automatic league analysis at 0)
+	priority := pgtype.Int4{Int32: 5, Valid: true}
+	requestedBy := pgtype.Text{String: user.UUID, Valid: true}
+
+	jobID, err := s.queries.CreateUserRequestedJob(ctx, models.CreateUserRequestedJobParams{
+		GameID:              gameID,
+		ConfigJson:          configJSON,
+		Priority:            priority,
+		RequestedByUserUuid: requestedBy,
+	})
+
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to create analysis job: %w", err))
+	}
+
+	// Record the request for rate limiting
+	err = s.queries.RecordUserAnalysisRequest(ctx, models.RecordUserAnalysisRequestParams{
+		UserUuid: user.UUID,
+		GameID:   gameID,
+		JobID:    pgtype.UUID{Bytes: jobID, Valid: true},
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to record user analysis request")
+		// Don't fail the request, job was created successfully
+	}
+
+	// Get queue position
+	queuePos, err := s.queries.GetQueuePosition(ctx, jobID)
+	if err != nil {
+		queuePos = 1 // fallback
+	}
+
+	log.Info().
+		Str("job_id", jobID.String()).
+		Str("game_id", gameID).
+		Str("user", user.Username).
+		Int32("queue_position", queuePos).
+		Msg("user requested analysis")
+
+	return connect.NewResponse(&pb.RequestAnalysisResponse{
+		Status:        pb.RequestAnalysisResponse_SUCCESS,
+		Message:       fmt.Sprintf("Analysis queued successfully! You are #%d in the queue.", queuePos),
+		JobId:         jobID.String(),
+		QueuePosition: queuePos,
+	}), nil
+}
+
+// GetAnalysisStatus returns the status of an analysis job for a game
+func (s *AnalysisService) GetAnalysisStatus(
+	ctx context.Context,
+	req *connect.Request[pb.GetAnalysisStatusRequest],
+) (*connect.Response[pb.GetAnalysisStatusResponse], error) {
+
+	gameID := req.Msg.GameId
+	if gameID == "" {
+		return nil, apiserver.InvalidArg("game_id is required")
+	}
+
+	job, err := s.queries.GetJobByGameID(ctx, gameID)
+	if err != nil {
+		return connect.NewResponse(&pb.GetAnalysisStatusResponse{
+			Status: pb.GetAnalysisStatusResponse_NOT_FOUND,
+		}), nil
+	}
+
+	var status pb.GetAnalysisStatusResponse_JobStatus
+	switch job.Status {
+	case "pending":
+		status = pb.GetAnalysisStatusResponse_PENDING
+	case "claimed", "processing":
+		status = pb.GetAnalysisStatusResponse_PROCESSING
+	case "completed":
+		status = pb.GetAnalysisStatusResponse_COMPLETED
+	case "failed":
+		status = pb.GetAnalysisStatusResponse_FAILED
+	default:
+		status = pb.GetAnalysisStatusResponse_NOT_FOUND
+	}
+
+	queuePos := int32(0)
+	if job.Status == "pending" {
+		pos, err := s.queries.GetQueuePosition(ctx, job.ID)
+		if err == nil {
+			queuePos = int32(pos)
+		}
+	}
+
+	errorMsg := ""
+	if job.ErrorMessage.Valid {
+		errorMsg = job.ErrorMessage.String
+	}
+
+	return connect.NewResponse(&pb.GetAnalysisStatusResponse{
+		Status:        status,
+		JobId:         job.ID.String(),
+		QueuePosition: queuePos,
+		ErrorMessage:  errorMsg,
+	}), nil
+}
+
+// GetAnalysisResult returns the completed analysis result
+func (s *AnalysisService) GetAnalysisResult(
+	ctx context.Context,
+	req *connect.Request[pb.GetAnalysisResultRequest],
+) (*connect.Response[pb.GetAnalysisResultResponse], error) {
+
+	gameID := req.Msg.GameId
+	if gameID == "" {
+		return nil, apiserver.InvalidArg("game_id is required")
+	}
+
+	job, err := s.queries.GetJobByGameID(ctx, gameID)
+	if err != nil || job.Status != "completed" {
+		return connect.NewResponse(&pb.GetAnalysisResultResponse{
+			Found: false,
+		}), nil
+	}
+
+	if len(job.Result) == 0 {
+		return connect.NewResponse(&pb.GetAnalysisResultResponse{
+			Found: false,
+		}), nil
+	}
+
+	return connect.NewResponse(&pb.GetAnalysisResultResponse{
+		Found:       true,
+		ResultProto: job.Result,
+	}), nil
 }
 
 // EnqueueGameForAnalysis creates an analysis job for a completed game

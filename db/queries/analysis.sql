@@ -32,7 +32,7 @@ WHERE id = $1 AND claimed_by_user_uuid = $2;
 UPDATE analysis_jobs
 SET
     status = 'completed',
-    result_proto = $1,
+    result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
 RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
@@ -71,7 +71,7 @@ RETURNING id;
 
 -- name: GetJobByGameID :one
 -- Get most recent job for a game
-SELECT id, status, result_proto, error_message, completed_at, created_at
+SELECT id, game_id, status, config_json, result, error_message, completed_at, created_at
 FROM analysis_jobs
 WHERE game_id = $1
 ORDER BY created_at DESC
@@ -82,3 +82,53 @@ LIMIT 1;
 SELECT COUNT(*) as total_jobs
 FROM analysis_jobs
 WHERE claimed_by_user_uuid = $1 AND completed_at IS NOT NULL;
+
+-- name: CreateUserRequestedJob :one
+-- Create a new user-requested analysis job
+INSERT INTO analysis_jobs (game_id, config_json, priority, requested_by_user_uuid, request_type)
+VALUES ($1, $2, $3, $4, 'user_requested')
+RETURNING id;
+
+-- name: RecordUserAnalysisRequest :exec
+-- Record that a user requested analysis for a game
+INSERT INTO user_analysis_requests (user_uuid, game_id, job_id)
+VALUES ($1, $2, $3);
+
+-- name: GetUserRequestCountToday :one
+-- Get count of analysis requests by user in last 24 hours
+SELECT COUNT(*) as request_count
+FROM user_analysis_requests
+WHERE user_uuid = $1
+  AND requested_at > NOW() - INTERVAL '24 hours';
+
+-- name: CheckExistingUserRequest :one
+-- Check if user already requested analysis for this game
+SELECT job_id
+FROM user_analysis_requests
+WHERE user_uuid = $1 AND game_id = $2
+LIMIT 1;
+
+-- name: GetQueuePosition :one
+-- Get position of a job in the queue (1-indexed)
+SELECT COUNT(*) + 1 as position
+FROM analysis_jobs aj
+WHERE aj.status = 'pending'
+  AND (aj.priority > (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
+       OR (aj.priority = (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
+           AND aj.created_at < (SELECT created_at FROM analysis_jobs target WHERE target.id = $1)));
+
+-- name: GetAnalysisJobWithDetails :one
+-- Get full details of an analysis job
+SELECT
+    id,
+    game_id,
+    status,
+    requested_by_user_uuid,
+    request_type,
+    result,
+    error_message,
+    created_at,
+    completed_at,
+    priority
+FROM analysis_jobs
+WHERE id = $1;

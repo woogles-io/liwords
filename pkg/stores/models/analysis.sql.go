@@ -12,6 +12,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkExistingUserRequest = `-- name: CheckExistingUserRequest :one
+SELECT job_id
+FROM user_analysis_requests
+WHERE user_uuid = $1 AND game_id = $2
+LIMIT 1
+`
+
+type CheckExistingUserRequestParams struct {
+	UserUuid string
+	GameID   string
+}
+
+// Check if user already requested analysis for this game
+func (q *Queries) CheckExistingUserRequest(ctx context.Context, arg CheckExistingUserRequestParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, checkExistingUserRequest, arg.UserUuid, arg.GameID)
+	var job_id pgtype.UUID
+	err := row.Scan(&job_id)
+	return job_id, err
+}
+
 const claimNextJob = `-- name: ClaimNextJob :one
 UPDATE analysis_jobs
 SET
@@ -48,21 +68,21 @@ const completeJob = `-- name: CompleteJob :one
 UPDATE analysis_jobs
 SET
     status = 'completed',
-    result_proto = $1,
+    result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
 RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
 `
 
 type CompleteJobParams struct {
-	ResultProto       []byte
+	Result            []byte
 	ID                uuid.UUID
 	ClaimedByUserUuid pgtype.Text
 }
 
 // Marks job as completed and returns processing duration
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (int32, error) {
-	row := q.db.QueryRow(ctx, completeJob, arg.ResultProto, arg.ID, arg.ClaimedByUserUuid)
+	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
 	var duration_ms int32
 	err := row.Scan(&duration_ms)
 	return duration_ms, err
@@ -83,6 +103,32 @@ type CreateAnalysisJobParams struct {
 // Create a new analysis job
 func (q *Queries) CreateAnalysisJob(ctx context.Context, arg CreateAnalysisJobParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createAnalysisJob, arg.GameID, arg.ConfigJson, arg.Priority)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createUserRequestedJob = `-- name: CreateUserRequestedJob :one
+INSERT INTO analysis_jobs (game_id, config_json, priority, requested_by_user_uuid, request_type)
+VALUES ($1, $2, $3, $4, 'user_requested')
+RETURNING id
+`
+
+type CreateUserRequestedJobParams struct {
+	GameID              string
+	ConfigJson          []byte
+	Priority            pgtype.Int4
+	RequestedByUserUuid pgtype.Text
+}
+
+// Create a new user-requested analysis job
+func (q *Queries) CreateUserRequestedJob(ctx context.Context, arg CreateUserRequestedJobParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createUserRequestedJob,
+		arg.GameID,
+		arg.ConfigJson,
+		arg.Priority,
+		arg.RequestedByUserUuid,
+	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -109,8 +155,56 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
 	return err
 }
 
+const getAnalysisJobWithDetails = `-- name: GetAnalysisJobWithDetails :one
+SELECT
+    id,
+    game_id,
+    status,
+    requested_by_user_uuid,
+    request_type,
+    result,
+    error_message,
+    created_at,
+    completed_at,
+    priority
+FROM analysis_jobs
+WHERE id = $1
+`
+
+type GetAnalysisJobWithDetailsRow struct {
+	ID                  uuid.UUID
+	GameID              string
+	Status              string
+	RequestedByUserUuid pgtype.Text
+	RequestType         pgtype.Text
+	Result              []byte
+	ErrorMessage        pgtype.Text
+	CreatedAt           pgtype.Timestamptz
+	CompletedAt         pgtype.Timestamptz
+	Priority            pgtype.Int4
+}
+
+// Get full details of an analysis job
+func (q *Queries) GetAnalysisJobWithDetails(ctx context.Context, id uuid.UUID) (GetAnalysisJobWithDetailsRow, error) {
+	row := q.db.QueryRow(ctx, getAnalysisJobWithDetails, id)
+	var i GetAnalysisJobWithDetailsRow
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.Status,
+		&i.RequestedByUserUuid,
+		&i.RequestType,
+		&i.Result,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.Priority,
+	)
+	return i, err
+}
+
 const getJobByGameID = `-- name: GetJobByGameID :one
-SELECT id, status, result_proto, error_message, completed_at, created_at
+SELECT id, game_id, status, config_json, result, error_message, completed_at, created_at
 FROM analysis_jobs
 WHERE game_id = $1
 ORDER BY created_at DESC
@@ -119,8 +213,10 @@ LIMIT 1
 
 type GetJobByGameIDRow struct {
 	ID           uuid.UUID
+	GameID       string
 	Status       string
-	ResultProto  []byte
+	ConfigJson   []byte
+	Result       []byte
 	ErrorMessage pgtype.Text
 	CompletedAt  pgtype.Timestamptz
 	CreatedAt    pgtype.Timestamptz
@@ -132,13 +228,32 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 	var i GetJobByGameIDRow
 	err := row.Scan(
 		&i.ID,
+		&i.GameID,
 		&i.Status,
-		&i.ResultProto,
+		&i.ConfigJson,
+		&i.Result,
 		&i.ErrorMessage,
 		&i.CompletedAt,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getQueuePosition = `-- name: GetQueuePosition :one
+SELECT COUNT(*) + 1 as position
+FROM analysis_jobs aj
+WHERE aj.status = 'pending'
+  AND (aj.priority > (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
+       OR (aj.priority = (SELECT priority FROM analysis_jobs target WHERE target.id = $1)
+           AND aj.created_at < (SELECT created_at FROM analysis_jobs target WHERE target.id = $1)))
+`
+
+// Get position of a job in the queue (1-indexed)
+func (q *Queries) GetQueuePosition(ctx context.Context, id uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, getQueuePosition, id)
+	var position int32
+	err := row.Scan(&position)
+	return position, err
 }
 
 const getUserJobCount = `-- name: GetUserJobCount :one
@@ -153,6 +268,21 @@ func (q *Queries) GetUserJobCount(ctx context.Context, claimedByUserUuid pgtype.
 	var total_jobs int64
 	err := row.Scan(&total_jobs)
 	return total_jobs, err
+}
+
+const getUserRequestCountToday = `-- name: GetUserRequestCountToday :one
+SELECT COUNT(*) as request_count
+FROM user_analysis_requests
+WHERE user_uuid = $1
+  AND requested_at > NOW() - INTERVAL '24 hours'
+`
+
+// Get count of analysis requests by user in last 24 hours
+func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserRequestCountToday, userUuid)
+	var request_count int64
+	err := row.Scan(&request_count)
+	return request_count, err
 }
 
 const reclaimStaleJobs = `-- name: ReclaimStaleJobs :exec
@@ -175,6 +305,23 @@ WHERE status IN ('claimed', 'processing')
 // Reclaim jobs that haven't sent heartbeat in timeout period
 func (q *Queries) ReclaimStaleJobs(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, reclaimStaleJobs)
+	return err
+}
+
+const recordUserAnalysisRequest = `-- name: RecordUserAnalysisRequest :exec
+INSERT INTO user_analysis_requests (user_uuid, game_id, job_id)
+VALUES ($1, $2, $3)
+`
+
+type RecordUserAnalysisRequestParams struct {
+	UserUuid string
+	GameID   string
+	JobID    pgtype.UUID
+}
+
+// Record that a user requested analysis for a game
+func (q *Queries) RecordUserAnalysisRequest(ctx context.Context, arg RecordUserAnalysisRequestParams) error {
+	_, err := q.db.Exec(ctx, recordUserAnalysisRequest, arg.UserUuid, arg.GameID, arg.JobID)
 	return err
 }
 
