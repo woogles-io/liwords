@@ -38,43 +38,32 @@ WHERE g.uuid IN (
 ORDER BY g.created_at DESC;
 
 -- name: GetRecentGamesByUsername :many
-WITH recent_game_uuids AS (
-  SELECT gp.game_uuid, gp.created_at
-  FROM game_players gp
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
-    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-  ORDER BY gp.created_at DESC
-  LIMIT @num_games::integer
-  OFFSET @offset_games::integer
-)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id
-FROM recent_game_uuids rgu
-JOIN games g ON rgu.game_uuid = g.uuid
-ORDER BY rgu.created_at DESC;
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+ORDER BY gp.updated_at DESC
+LIMIT @num_games::integer
+OFFSET @offset_games::integer;
 
 -- name: GetRecentCorrespondenceGamesByUsername :many
-WITH recent_game_uuids AS (
-  SELECT gp.game_uuid, gp.created_at
-  FROM game_players gp
-  JOIN games g ON gp.game_uuid = g.uuid
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
-    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
-  ORDER BY gp.created_at DESC
-  LIMIT @num_games::integer
-)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id,
        l.slug as league_slug
-FROM recent_game_uuids rgu
-JOIN games g ON rgu.game_uuid = g.uuid
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
 LEFT JOIN leagues l ON g.league_id = l.uuid
-ORDER BY rgu.created_at DESC;
+WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower(@username))
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+  AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+ORDER BY gp.updated_at DESC
+LIMIT @num_games::integer;
 
 -- name: GetRecentTourneyGames :many
 SELECT

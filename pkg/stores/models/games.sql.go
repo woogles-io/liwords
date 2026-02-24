@@ -291,25 +291,19 @@ func (q *Queries) GetHistory(ctx context.Context, argUuid pgtype.Text) ([]byte, 
 }
 
 const getRecentCorrespondenceGamesByUsername = `-- name: GetRecentCorrespondenceGamesByUsername :many
-WITH recent_game_uuids AS (
-  SELECT gp.game_uuid, gp.created_at
-  FROM game_players gp
-  JOIN games g ON gp.game_uuid = g.uuid
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
-    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
-  ORDER BY gp.created_at DESC
-  LIMIT $2::integer
-)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id,
        l.slug as league_slug
-FROM recent_game_uuids rgu
-JOIN games g ON rgu.game_uuid = g.uuid
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
 LEFT JOIN leagues l ON g.league_id = l.uuid
-ORDER BY rgu.created_at DESC
+WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+  AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+ORDER BY gp.updated_at DESC
+LIMIT $2::integer
 `
 
 type GetRecentCorrespondenceGamesByUsernameParams struct {
@@ -380,22 +374,17 @@ func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, ar
 }
 
 const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
-WITH recent_game_uuids AS (
-  SELECT gp.game_uuid, gp.created_at
-  FROM game_players gp
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
-    AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-  ORDER BY gp.created_at DESC
-  LIMIT $3::integer
-  OFFSET $2::integer
-)
 SELECT g.id, g.uuid, g.type, g.player0_id, g.player1_id,
        g.timers, g.started, g.game_end_reason, g.winner_idx, g.loser_idx,
        g.quickdata, g.tournament_data, g.created_at, g.updated_at,
        g.game_request, g.league_id, g.season_id, g.league_division_id
-FROM recent_game_uuids rgu
-JOIN games g ON rgu.game_uuid = g.uuid
-ORDER BY rgu.created_at DESC
+FROM game_players gp
+JOIN games g ON gp.game_uuid = g.uuid
+WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
+  AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
+ORDER BY gp.updated_at DESC
+LIMIT $3::integer
+OFFSET $2::integer
 `
 
 type GetRecentGamesByUsernameParams struct {
