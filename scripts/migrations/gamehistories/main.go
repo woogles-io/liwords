@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/woogles-io/liwords/rpc/api/proto/vendored/macondo"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,7 +29,7 @@ const (
 // change schemas, and thus we need to be able to migrate when these
 // change.
 
-func MigrateGameHistory(gh *macondo.GameHistory) (*macondo.GameHistory, bool) {
+func MigrateGameHistory(gh *macondopb.GameHistory) (*macondopb.GameHistory, bool) {
 	if gh.Version < 2 {
 		// Either 0 (unspecified) or 1
 		// Migrate to v2.
@@ -39,7 +39,7 @@ func MigrateGameHistory(gh *macondo.GameHistory) (*macondo.GameHistory, bool) {
 	return gh, false
 }
 
-func migrateToV2(gh *macondo.GameHistory) *macondo.GameHistory {
+func migrateToV2(gh *macondopb.GameHistory) *macondopb.GameHistory {
 	// Version 2 of a macondo GameHistory works as such:
 	// - id_auth should be set to `io.woogles`
 	// - second_went_first is deprecated. If it is true, we need to flip
@@ -48,7 +48,7 @@ func migrateToV2(gh *macondo.GameHistory) *macondo.GameHistory {
 	// - the `nickname` field in each GameEvent of the history is deprecated.
 	//    we should instead use player_index
 
-	gh2 := proto.Clone(gh).(*macondo.GameHistory)
+	gh2 := proto.Clone(gh).(*macondopb.GameHistory)
 
 	if len(gh.Players) != 2 {
 		log.Error().Interface("players", gh.Players).Str("gid", gh.Uid).
