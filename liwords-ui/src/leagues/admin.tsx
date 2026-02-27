@@ -143,14 +143,12 @@ export const LeagueAdmin = () => {
   );
 
   // Fetch registrations for kick card season
-  const {
-    data: kickRegistrationsData,
-    refetch: refetchKickRegistrations,
-  } = useQuery(
-    getSeasonRegistrations,
-    { seasonId: selectedKickSeasonId },
-    { enabled: !!selectedKickSeasonId },
-  );
+  const { data: kickRegistrationsData, refetch: refetchKickRegistrations } =
+    useQuery(
+      getSeasonRegistrations,
+      { seasonId: selectedKickSeasonId },
+      { enabled: !!selectedKickSeasonId },
+    );
 
   // Fetch seasons for cancel results card (only active/completed seasons)
   const { data: cancelSeasonsData } = useQuery(
@@ -1167,8 +1165,7 @@ export const LeagueAdmin = () => {
           <Card
             title={
               <span>
-                Cancel Player Results{" "}
-                <Tag color="red">Manager only</Tag>
+                Cancel Player Results <Tag color="red">Manager only</Tag>
               </span>
             }
           >
@@ -1185,8 +1182,8 @@ export const LeagueAdmin = () => {
                       loses)
                     </li>
                     <li>
-                      Lower the cheater&apos;s score in all completed games to at
-                      least 100 pts below the opponent&apos;s score (honest
+                      Lower the cheater&apos;s score in all completed games to
+                      at least 100 pts below the opponent&apos;s score (honest
                       player&apos;s score is preserved)
                     </li>
                     <li>Recalculate standings for the entire season</li>
@@ -1264,10 +1261,7 @@ export const LeagueAdmin = () => {
                       title="Cancel player results?"
                       description="This will forfeit ongoing games and penalize all completed game scores. Standings will be recalculated. This cannot be undone."
                       onConfirm={() => {
-                        if (
-                          selectedCancelPlayerId &&
-                          selectedCancelSeasonId
-                        ) {
+                        if (selectedCancelPlayerId && selectedCancelSeasonId) {
                           cancelPlayerResultsMutation.mutate({
                             seasonId: selectedCancelSeasonId,
                             userId: selectedCancelPlayerId,

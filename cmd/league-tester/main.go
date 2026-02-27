@@ -52,6 +52,8 @@ func main() {
 		err = inspectCommand(ctx, os.Args[2:])
 	case "run-full-season":
 		err = runFullSeasonCommand(ctx, os.Args[2:])
+	case "tui":
+		err = tuiCommand(ctx, os.Args[2:])
 	default:
 		fmt.Printf("Unknown command: %s\n\n", command)
 		printUsage()
@@ -80,6 +82,7 @@ func printUsage() {
 	fmt.Println("  prepare-divisions  Prepare divisions for a season")
 	fmt.Println("  inspect            Inspect current league state")
 	fmt.Println("  run-full-season    Run complete season(s) end-to-end")
+	fmt.Println("  tui                Interactive TUI (time control + all commands)")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  go run cmd/league-tester create-users --count 20")
