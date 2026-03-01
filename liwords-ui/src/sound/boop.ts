@@ -47,7 +47,11 @@ class Booper {
   play() {
     if (soundIsEnabled(this.soundName)) {
       const ctx = Howler.ctx;
-      if (ctx && (ctx.state === "suspended" || ctx.state === ("interrupted" as AudioContextState))) {
+      if (
+        ctx &&
+        (ctx.state === "suspended" ||
+          ctx.state === ("interrupted" as AudioContextState))
+      ) {
         ctx.resume().then(() => {
           this.howl.play();
         });
