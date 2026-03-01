@@ -151,3 +151,17 @@ func (q *Queries) GetUserDetails(ctx context.Context, lowercasedUsername pgtype.
 	)
 	return i, err
 }
+
+const getUserId = `-- name: GetUserId :one
+SELECT
+    u.id
+FROM users u
+WHERE lower(u.username) = lower($1)
+`
+
+func (q *Queries) GetUserId(ctx context.Context, username string) (int32, error) {
+	row := q.db.QueryRow(ctx, getUserId, username)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
