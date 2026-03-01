@@ -12,6 +12,8 @@ import {
   Space,
   Alert,
   App,
+  Popconfirm,
+  Tag,
 } from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
@@ -27,6 +29,8 @@ import {
   getAllSeasons,
   movePlayerToDivision,
   updateSeasonDates,
+  unregisterFromSeason,
+  cancelPlayerResults,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -62,6 +66,19 @@ export const LeagueAdmin = () => {
     useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [selectedPlayerDivisionId, setSelectedPlayerDivisionId] =
+    useState<string>("");
+
+  // Kick player from season state
+  const [selectedKickLeagueId, setSelectedKickLeagueId] = useState<string>("");
+  const [selectedKickSeasonId, setSelectedKickSeasonId] = useState<string>("");
+  const [selectedKickPlayerId, setSelectedKickPlayerId] = useState<string>("");
+
+  // Cancel player results state
+  const [selectedCancelLeagueId, setSelectedCancelLeagueId] =
+    useState<string>("");
+  const [selectedCancelSeasonId, setSelectedCancelSeasonId] =
+    useState<string>("");
+  const [selectedCancelPlayerId, setSelectedCancelPlayerId] =
     useState<string>("");
 
   // Fetch all leagues for the edit dropdown
@@ -116,6 +133,35 @@ export const LeagueAdmin = () => {
     getAllDivisionStandings,
     { seasonId: latestSeason?.uuid || "" },
     { enabled: !!latestSeason?.uuid },
+  );
+
+  // Fetch seasons for kick card (only pre-start seasons)
+  const { data: kickSeasonsData } = useQuery(
+    getAllSeasons,
+    { leagueId: selectedKickLeagueId },
+    { enabled: !!selectedKickLeagueId },
+  );
+
+  // Fetch registrations for kick card season
+  const { data: kickRegistrationsData, refetch: refetchKickRegistrations } =
+    useQuery(
+      getSeasonRegistrations,
+      { seasonId: selectedKickSeasonId },
+      { enabled: !!selectedKickSeasonId },
+    );
+
+  // Fetch seasons for cancel results card (only active/completed seasons)
+  const { data: cancelSeasonsData } = useQuery(
+    getAllSeasons,
+    { leagueId: selectedCancelLeagueId },
+    { enabled: !!selectedCancelLeagueId },
+  );
+
+  // Fetch registrations for cancel results season
+  const { data: cancelRegistrationsData } = useQuery(
+    getSeasonRegistrations,
+    { seasonId: selectedCancelSeasonId },
+    { enabled: !!selectedCancelSeasonId },
   );
 
   const createLeagueMutation = useMutation(createLeague, {
@@ -198,6 +244,33 @@ export const LeagueAdmin = () => {
       });
       refetchEditDatesSeasons();
       editSeasonDatesForm.resetFields(["startDate", "endDate"]);
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const kickPlayerMutation = useMutation(unregisterFromSeason, {
+    onSuccess: () => {
+      notification.success({
+        message: "Player Kicked",
+        description: "Player has been removed from the season.",
+      });
+      refetchKickRegistrations();
+      setSelectedKickPlayerId("");
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const cancelPlayerResultsMutation = useMutation(cancelPlayerResults, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "Player Results Cancelled",
+        description: response.message || "Player results have been cancelled.",
+      });
+      setSelectedCancelPlayerId("");
     },
     onError: (error) => {
       flashError(error);
@@ -409,7 +482,13 @@ export const LeagueAdmin = () => {
 
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           {/* Create League Form */}
-          <Card title="Create New League">
+          <Card
+            title={
+              <span>
+                Create New League <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
             <Form
               form={leagueForm}
               layout="vertical"
@@ -579,7 +658,13 @@ export const LeagueAdmin = () => {
           </Card>
 
           {/* Edit Existing League */}
-          <Card title="Edit Existing League">
+          <Card
+            title={
+              <span>
+                Edit Existing League <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
             <Alert
               message="Edit League"
               description="Select a league to edit its name, description, and settings."
@@ -749,7 +834,13 @@ export const LeagueAdmin = () => {
           </Card>
 
           {/* Bootstrap Season Form */}
-          <Card title="Bootstrap Initial Season">
+          <Card
+            title={
+              <span>
+                Bootstrap Initial Season <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
             <Alert
               message="Bootstrap Season"
               description="This creates the first season for a league. Can only be used when the league has zero seasons."
@@ -837,7 +928,13 @@ export const LeagueAdmin = () => {
           </Card>
 
           {/* Edit Season Dates */}
-          <Card title="Edit Season Dates">
+          <Card
+            title={
+              <span>
+                Edit Season Dates <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
             <Alert
               message="Edit Season Dates"
               description="Update the start and end dates of a season. Only works when season is SCHEDULED or REGISTRATION_OPEN."
@@ -958,8 +1055,246 @@ export const LeagueAdmin = () => {
               )}
           </Card>
 
+          {/* Kick Player from Season */}
+          <Card
+            title={
+              <span>
+                Kick Player from Season{" "}
+                <Tag color="blue">Manager or League Promoter</Tag>
+              </span>
+            }
+          >
+            <Alert
+              message="Kick Player"
+              description="Remove a player from a season that has not yet started (SCHEDULED or REGISTRATION_OPEN status only)."
+              type="warning"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league"
+                onChange={(value) => {
+                  setSelectedKickLeagueId(value);
+                  setSelectedKickSeasonId("");
+                  setSelectedKickPlayerId("");
+                }}
+                value={selectedKickLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedKickLeagueId && kickSeasonsData?.seasons && (
+              <>
+                <Form.Item label="Select Season">
+                  <Select
+                    placeholder="Choose a pre-start season"
+                    onChange={(value) => {
+                      setSelectedKickSeasonId(value);
+                      setSelectedKickPlayerId("");
+                    }}
+                    value={selectedKickSeasonId || undefined}
+                  >
+                    {kickSeasonsData.seasons
+                      .filter(
+                        (s) =>
+                          s.status === SeasonStatus.SEASON_SCHEDULED ||
+                          s.status === SeasonStatus.SEASON_REGISTRATION_OPEN,
+                      )
+                      .map((season) => (
+                        <Option key={season.uuid} value={season.uuid}>
+                          Season {season.seasonNumber} (
+                          {SeasonStatus[season.status]})
+                        </Option>
+                      ))}
+                  </Select>
+                </Form.Item>
+
+                {selectedKickSeasonId && (
+                  <>
+                    <Form.Item label="Select Player">
+                      <Select
+                        placeholder="Choose a player to kick"
+                        onChange={setSelectedKickPlayerId}
+                        value={selectedKickPlayerId || undefined}
+                        showSearch
+                        optionFilterProp="children"
+                      >
+                        {kickRegistrationsData?.registrations?.map((reg) => (
+                          <Option key={reg.userId} value={reg.userId}>
+                            {reg.username}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+
+                    <Popconfirm
+                      title="Kick player from season?"
+                      description="This will unregister the player from the season. This cannot be undone easily."
+                      onConfirm={() => {
+                        if (selectedKickPlayerId && selectedKickSeasonId) {
+                          kickPlayerMutation.mutate({
+                            seasonId: selectedKickSeasonId,
+                            userId: selectedKickPlayerId,
+                          });
+                        }
+                      }}
+                      okText="Yes, kick player"
+                      cancelText="Cancel"
+                    >
+                      <Button
+                        danger
+                        disabled={!selectedKickPlayerId}
+                        loading={kickPlayerMutation.isPending}
+                      >
+                        Kick Player
+                      </Button>
+                    </Popconfirm>
+                  </>
+                )}
+              </>
+            )}
+          </Card>
+
+          {/* Cancel Player Results */}
+          <Card
+            title={
+              <span>
+                Cancel Player Results <Tag color="red">Manager only</Tag>
+              </span>
+            }
+          >
+            <Alert
+              message="Cancel Player Results (Cheater Penalty)"
+              description={
+                <>
+                  <p>
+                    For a cheater in an ACTIVE or COMPLETED season. This will:
+                  </p>
+                  <ul>
+                    <li>
+                      Force-forfeit any ongoing games (opponent wins, cheater
+                      loses)
+                    </li>
+                    <li>
+                      Lower the cheater&apos;s score in all completed games to
+                      at least 100 pts below the opponent&apos;s score (honest
+                      player&apos;s score is preserved)
+                    </li>
+                    <li>Recalculate standings for the entire season</li>
+                  </ul>
+                  <strong>This action cannot be undone.</strong>
+                </>
+              }
+              type="error"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league"
+                onChange={(value) => {
+                  setSelectedCancelLeagueId(value);
+                  setSelectedCancelSeasonId("");
+                  setSelectedCancelPlayerId("");
+                }}
+                value={selectedCancelLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedCancelLeagueId && cancelSeasonsData?.seasons && (
+              <>
+                <Form.Item label="Select Season">
+                  <Select
+                    placeholder="Choose an active or completed season"
+                    onChange={(value) => {
+                      setSelectedCancelSeasonId(value);
+                      setSelectedCancelPlayerId("");
+                    }}
+                    value={selectedCancelSeasonId || undefined}
+                  >
+                    {cancelSeasonsData.seasons
+                      .filter(
+                        (s) =>
+                          s.status === SeasonStatus.SEASON_ACTIVE ||
+                          s.status === SeasonStatus.SEASON_COMPLETED,
+                      )
+                      .map((season) => (
+                        <Option key={season.uuid} value={season.uuid}>
+                          Season {season.seasonNumber} (
+                          {SeasonStatus[season.status]})
+                        </Option>
+                      ))}
+                  </Select>
+                </Form.Item>
+
+                {selectedCancelSeasonId && (
+                  <>
+                    <Form.Item label="Select Player (Cheater)">
+                      <Select
+                        placeholder="Choose the cheater"
+                        onChange={setSelectedCancelPlayerId}
+                        value={selectedCancelPlayerId || undefined}
+                        showSearch
+                        optionFilterProp="children"
+                      >
+                        {cancelRegistrationsData?.registrations?.map((reg) => (
+                          <Option key={reg.userId} value={reg.userId}>
+                            {reg.username}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+
+                    <Popconfirm
+                      title="Cancel player results?"
+                      description="This will forfeit ongoing games and penalize all completed game scores. Standings will be recalculated. This cannot be undone."
+                      onConfirm={() => {
+                        if (selectedCancelPlayerId && selectedCancelSeasonId) {
+                          cancelPlayerResultsMutation.mutate({
+                            seasonId: selectedCancelSeasonId,
+                            userId: selectedCancelPlayerId,
+                          });
+                        }
+                      }}
+                      okText="Yes, cancel results"
+                      cancelText="Cancel"
+                    >
+                      <Button
+                        danger
+                        type="primary"
+                        disabled={!selectedCancelPlayerId}
+                        loading={cancelPlayerResultsMutation.isPending}
+                      >
+                        Cancel Player Results
+                      </Button>
+                    </Popconfirm>
+                  </>
+                )}
+              </>
+            )}
+          </Card>
+
           {/* Move Player Between Divisions */}
-          <Card title="Move Player Between Divisions">
+          <Card
+            title={
+              <span>
+                Move Player Between Divisions{" "}
+                <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
             <Alert
               message="Move Player"
               description="Move a player from one division to another. Only works when season is SCHEDULED."

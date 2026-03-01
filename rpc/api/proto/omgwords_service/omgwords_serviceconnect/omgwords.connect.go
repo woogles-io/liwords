@@ -5,14 +5,13 @@
 package omgwords_serviceconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	http "net/http"
-	strings "strings"
-
-	connect "connectrpc.com/connect"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	omgwords_service "github.com/woogles-io/liwords/rpc/api/proto/omgwords_service"
+	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are

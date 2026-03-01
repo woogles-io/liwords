@@ -620,3 +620,51 @@ WHERE season_id = @season_id
   AND game_end_reason = 0
   AND timers->'tb' IS NOT NULL
   AND jsonb_array_length(timers->'tb') = 2;
+
+-- name: GetPlayerUnfinishedSeasonGames :many
+-- Get all unfinished (ongoing) games for a specific player in a season.
+-- Used when cancelling a cheater's results to find games that need to be force-forfeited.
+SELECT uuid as game_id, player0_id, player1_id
+FROM games
+WHERE season_id = @season_id
+  AND (player0_id = @player_id OR player1_id = @player_id)
+  AND game_end_reason = 0;
+
+-- name: PenalizePlayerSeasonGames :execrows
+-- Penalize a cheater's games in a season:
+-- Lower the cheater's score to (opponent_score - 100), keeping the honest player's score.
+-- Only applies to games where the cheater didn't already lose by >= 100 points.
+-- Updates game_players rows for both the cheater and their opponents,
+-- and updates the games table winner_idx/loser_idx for flipped results.
+WITH games_to_penalize AS (
+    SELECT gp_src.game_uuid
+    FROM game_players gp_src
+    WHERE gp_src.player_id = @cheater_id
+      AND gp_src.league_season_id = @season_id
+      AND gp_src.game_end_reason NOT IN (0, 5, 7)
+      AND (gp_src.won IS DISTINCT FROM false OR (gp_src.opponent_score - gp_src.score) < 100)
+),
+cheater_update AS (
+    UPDATE game_players gp
+    SET score = gp.opponent_score - 100,
+        won = false
+    FROM games_to_penalize gtp
+    WHERE gp.game_uuid = gtp.game_uuid
+      AND gp.player_id = @cheater_id
+    RETURNING gp.game_uuid
+),
+opponent_update AS (
+    UPDATE game_players gp
+    SET opponent_score = gp.score - 100,
+        won = true
+    FROM games_to_penalize gtp
+    WHERE gp.game_uuid = gtp.game_uuid
+      AND gp.opponent_id = @cheater_id
+    RETURNING gp.game_uuid
+)
+UPDATE games g
+SET winner_idx = CASE WHEN g.player0_id = @cheater_id THEN 1 ELSE 0 END,
+    loser_idx = CASE WHEN g.player0_id = @cheater_id THEN 0 ELSE 1 END,
+    updated_at = NOW()
+FROM games_to_penalize gtp
+WHERE g.uuid = gtp.game_uuid;

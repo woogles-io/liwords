@@ -160,3 +160,8 @@ export const recalculateSeasonExtendedStats = LeagueService.method.recalculateSe
  * @generated from rpc league_service.LeagueService.AddSeasonTimeBank
  */
 export const addSeasonTimeBank = LeagueService.method.addSeasonTimeBank;
+
+/**
+ * @generated from rpc league_service.LeagueService.CancelPlayerResults
+ */
+export const cancelPlayerResults = LeagueService.method.cancelPlayerResults;

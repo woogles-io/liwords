@@ -7,14 +7,13 @@
 package league_service
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -2535,6 +2534,126 @@ func (x *AddSeasonTimeBankResponse) GetMessage() string {
 	return ""
 }
 
+type CancelPlayerResultsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SeasonId      string                 `protobuf:"bytes,1,opt,name=season_id,json=seasonId,proto3" json:"season_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // UUID of the cheater to penalize
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelPlayerResultsRequest) Reset() {
+	*x = CancelPlayerResultsRequest{}
+	mi := &file_proto_league_service_league_service_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelPlayerResultsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelPlayerResultsRequest) ProtoMessage() {}
+
+func (x *CancelPlayerResultsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_league_service_league_service_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelPlayerResultsRequest.ProtoReflect.Descriptor instead.
+func (*CancelPlayerResultsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_league_service_league_service_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *CancelPlayerResultsRequest) GetSeasonId() string {
+	if x != nil {
+		return x.SeasonId
+	}
+	return ""
+}
+
+func (x *CancelPlayerResultsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type CancelPlayerResultsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Success        bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	GamesForfeited int32                  `protobuf:"varint,2,opt,name=games_forfeited,json=gamesForfeited,proto3" json:"games_forfeited,omitempty"` // Ongoing games that were force-forfeited
+	GamesPenalized int32                  `protobuf:"varint,3,opt,name=games_penalized,json=gamesPenalized,proto3" json:"games_penalized,omitempty"` // Completed games with scores modified
+	Message        string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CancelPlayerResultsResponse) Reset() {
+	*x = CancelPlayerResultsResponse{}
+	mi := &file_proto_league_service_league_service_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelPlayerResultsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelPlayerResultsResponse) ProtoMessage() {}
+
+func (x *CancelPlayerResultsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_league_service_league_service_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelPlayerResultsResponse.ProtoReflect.Descriptor instead.
+func (*CancelPlayerResultsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_league_service_league_service_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *CancelPlayerResultsResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CancelPlayerResultsResponse) GetGamesForfeited() int32 {
+	if x != nil {
+		return x.GamesForfeited
+	}
+	return 0
+}
+
+func (x *CancelPlayerResultsResponse) GetGamesPenalized() int32 {
+	if x != nil {
+		return x.GamesPenalized
+	}
+	return 0
+}
+
+func (x *CancelPlayerResultsResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_proto_league_service_league_service_proto protoreflect.FileDescriptor
 
 const file_proto_league_service_league_service_proto_rawDesc = "" +
@@ -2700,11 +2819,19 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\x19AddSeasonTimeBankResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rgames_updated\x18\x02 \x01(\x05R\fgamesUpdated\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage*y\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"R\n" +
+	"\x1aCancelPlayerResultsRequest\x12\x1b\n" +
+	"\tseason_id\x18\x01 \x01(\tR\bseasonId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xa3\x01\n" +
+	"\x1bCancelPlayerResultsResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12'\n" +
+	"\x0fgames_forfeited\x18\x02 \x01(\x05R\x0egamesForfeited\x12'\n" +
+	"\x0fgames_penalized\x18\x03 \x01(\x05R\x0egamesPenalized\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage*y\n" +
 	"\rTimeBankScope\x12 \n" +
 	"\x1cTIMEBANK_SCOPE_SINGLE_PLAYER\x10\x00\x12&\n" +
 	"\"TIMEBANK_SCOPE_PLAYER_AND_OPPONENT\x10\x01\x12\x1e\n" +
-	"\x1aTIMEBANK_SCOPE_ALL_PLAYERS\x10\x022\xb8\x16\n" +
+	"\x1aTIMEBANK_SCOPE_ALL_PLAYERS\x10\x022\xa8\x17\n" +
 	"\rLeagueService\x12S\n" +
 	"\fCreateLeague\x12#.league_service.CreateLeagueRequest\x1a\x1e.league_service.LeagueResponse\x12J\n" +
 	"\tGetLeague\x12\x1d.league_service.LeagueRequest\x1a\x1e.league_service.LeagueResponse\x12\\\n" +
@@ -2734,7 +2861,8 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\x11UpdateSeasonDates\x12(.league_service.UpdateSeasonDatesRequest\x1a\x1e.league_service.SeasonResponse\x12s\n" +
 	"\x1cUpdateSeasonPromotionFormula\x123.league_service.UpdateSeasonPromotionFormulaRequest\x1a\x1e.league_service.SeasonResponse\x12q\n" +
 	"\x1eRecalculateSeasonExtendedStats\x12\x1d.league_service.SeasonRequest\x1a0.league_service.RecalculateExtendedStatsResponse\x12h\n" +
-	"\x11AddSeasonTimeBank\x12(.league_service.AddSeasonTimeBankRequest\x1a).league_service.AddSeasonTimeBankResponseB\xb8\x01\n" +
+	"\x11AddSeasonTimeBank\x12(.league_service.AddSeasonTimeBankRequest\x1a).league_service.AddSeasonTimeBankResponse\x12n\n" +
+	"\x13CancelPlayerResults\x12*.league_service.CancelPlayerResultsRequest\x1a+.league_service.CancelPlayerResultsResponseB\xb8\x01\n" +
 	"\x12com.league_serviceB\x12LeagueServiceProtoP\x01Z:github.com/woogles-io/liwords/rpc/api/proto/league_service\xa2\x02\x03LXX\xaa\x02\rLeagueService\xca\x02\rLeagueService\xe2\x02\x19LeagueService\\GPBMetadata\xea\x02\rLeagueServiceb\x06proto3"
 
 var (
@@ -2750,7 +2878,7 @@ func file_proto_league_service_league_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_league_service_league_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_league_service_league_service_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_proto_league_service_league_service_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_proto_league_service_league_service_proto_goTypes = []any{
 	(TimeBankScope)(0),                              // 0: league_service.TimeBankScope
 	(*CreateLeagueRequest)(nil),                     // 1: league_service.CreateLeagueRequest
@@ -2798,43 +2926,45 @@ var file_proto_league_service_league_service_proto_goTypes = []any{
 	(*RecalculateExtendedStatsResponse)(nil),        // 43: league_service.RecalculateExtendedStatsResponse
 	(*AddSeasonTimeBankRequest)(nil),                // 44: league_service.AddSeasonTimeBankRequest
 	(*AddSeasonTimeBankResponse)(nil),               // 45: league_service.AddSeasonTimeBankResponse
-	(*ipc.LeagueSettings)(nil),                      // 46: ipc.LeagueSettings
-	(*ipc.League)(nil),                              // 47: ipc.League
-	(*ipc.Season)(nil),                              // 48: ipc.Season
-	(*timestamppb.Timestamp)(nil),                   // 49: google.protobuf.Timestamp
-	(ipc.SeasonStatus)(0),                           // 50: ipc.SeasonStatus
-	(*ipc.Division)(nil),                            // 51: ipc.Division
-	(*ipc.LeaguePlayerStanding)(nil),                // 52: ipc.LeaguePlayerStanding
-	(ipc.PromotionFormula)(0),                       // 53: ipc.PromotionFormula
-	(*ipc.GetDivisionTimeBankWarningsRequest)(nil),  // 54: ipc.GetDivisionTimeBankWarningsRequest
-	(*ipc.GetDivisionTimeBankWarningsResponse)(nil), // 55: ipc.GetDivisionTimeBankWarningsResponse
+	(*CancelPlayerResultsRequest)(nil),              // 46: league_service.CancelPlayerResultsRequest
+	(*CancelPlayerResultsResponse)(nil),             // 47: league_service.CancelPlayerResultsResponse
+	(*ipc.LeagueSettings)(nil),                      // 48: ipc.LeagueSettings
+	(*ipc.League)(nil),                              // 49: ipc.League
+	(*ipc.Season)(nil),                              // 50: ipc.Season
+	(*timestamppb.Timestamp)(nil),                   // 51: google.protobuf.Timestamp
+	(ipc.SeasonStatus)(0),                           // 52: ipc.SeasonStatus
+	(*ipc.Division)(nil),                            // 53: ipc.Division
+	(*ipc.LeaguePlayerStanding)(nil),                // 54: ipc.LeaguePlayerStanding
+	(ipc.PromotionFormula)(0),                       // 55: ipc.PromotionFormula
+	(*ipc.GetDivisionTimeBankWarningsRequest)(nil),  // 56: ipc.GetDivisionTimeBankWarningsRequest
+	(*ipc.GetDivisionTimeBankWarningsResponse)(nil), // 57: ipc.GetDivisionTimeBankWarningsResponse
 }
 var file_proto_league_service_league_service_proto_depIdxs = []int32{
-	46, // 0: league_service.CreateLeagueRequest.settings:type_name -> ipc.LeagueSettings
-	47, // 1: league_service.GetAllLeaguesResponse.leagues:type_name -> ipc.League
-	47, // 2: league_service.LeagueResponse.league:type_name -> ipc.League
-	46, // 3: league_service.UpdateLeagueSettingsRequest.settings:type_name -> ipc.LeagueSettings
-	48, // 4: league_service.SeasonResponse.season:type_name -> ipc.Season
-	48, // 5: league_service.PastSeasonsResponse.seasons:type_name -> ipc.Season
-	48, // 6: league_service.AllSeasonsResponse.seasons:type_name -> ipc.Season
-	48, // 7: league_service.RecentSeasonsResponse.seasons:type_name -> ipc.Season
-	49, // 8: league_service.BootstrapSeasonRequest.start_date:type_name -> google.protobuf.Timestamp
-	49, // 9: league_service.BootstrapSeasonRequest.end_date:type_name -> google.protobuf.Timestamp
-	50, // 10: league_service.BootstrapSeasonRequest.status:type_name -> ipc.SeasonStatus
-	51, // 11: league_service.DivisionStandingsResponse.division:type_name -> ipc.Division
-	51, // 12: league_service.AllDivisionStandingsResponse.divisions:type_name -> ipc.Division
+	48, // 0: league_service.CreateLeagueRequest.settings:type_name -> ipc.LeagueSettings
+	49, // 1: league_service.GetAllLeaguesResponse.leagues:type_name -> ipc.League
+	49, // 2: league_service.LeagueResponse.league:type_name -> ipc.League
+	48, // 3: league_service.UpdateLeagueSettingsRequest.settings:type_name -> ipc.LeagueSettings
+	50, // 4: league_service.SeasonResponse.season:type_name -> ipc.Season
+	50, // 5: league_service.PastSeasonsResponse.seasons:type_name -> ipc.Season
+	50, // 6: league_service.AllSeasonsResponse.seasons:type_name -> ipc.Season
+	50, // 7: league_service.RecentSeasonsResponse.seasons:type_name -> ipc.Season
+	51, // 8: league_service.BootstrapSeasonRequest.start_date:type_name -> google.protobuf.Timestamp
+	51, // 9: league_service.BootstrapSeasonRequest.end_date:type_name -> google.protobuf.Timestamp
+	52, // 10: league_service.BootstrapSeasonRequest.status:type_name -> ipc.SeasonStatus
+	53, // 11: league_service.DivisionStandingsResponse.division:type_name -> ipc.Division
+	53, // 12: league_service.AllDivisionStandingsResponse.divisions:type_name -> ipc.Division
 	24, // 13: league_service.SeasonRegistrationsResponse.registrations:type_name -> league_service.SeasonRegistration
 	27, // 14: league_service.PlayerHistoryResponse.seasons:type_name -> league_service.SeasonSummary
-	52, // 15: league_service.SeasonSummary.standing:type_name -> ipc.LeaguePlayerStanding
+	54, // 15: league_service.SeasonSummary.standing:type_name -> ipc.LeaguePlayerStanding
 	29, // 16: league_service.LeagueStatisticsResponse.stats:type_name -> league_service.LeagueStat
 	32, // 17: league_service.GetPlayerSeasonGamesResponse.games:type_name -> league_service.PlayerSeasonGame
-	49, // 18: league_service.PlayerSeasonGame.game_date:type_name -> google.protobuf.Timestamp
+	51, // 18: league_service.PlayerSeasonGame.game_date:type_name -> google.protobuf.Timestamp
 	38, // 19: league_service.SeasonZeroMoveGamesResponse.games:type_name -> league_service.ZeroMoveGame
-	49, // 20: league_service.ZeroMoveGame.created_at:type_name -> google.protobuf.Timestamp
+	51, // 20: league_service.ZeroMoveGame.created_at:type_name -> google.protobuf.Timestamp
 	40, // 21: league_service.SeasonPlayersWithUnstartedGamesResponse.players:type_name -> league_service.PlayerWithUnstartedGames
-	49, // 22: league_service.UpdateSeasonDatesRequest.start_date:type_name -> google.protobuf.Timestamp
-	49, // 23: league_service.UpdateSeasonDatesRequest.end_date:type_name -> google.protobuf.Timestamp
-	53, // 24: league_service.UpdateSeasonPromotionFormulaRequest.promotion_formula:type_name -> ipc.PromotionFormula
+	51, // 22: league_service.UpdateSeasonDatesRequest.start_date:type_name -> google.protobuf.Timestamp
+	51, // 23: league_service.UpdateSeasonDatesRequest.end_date:type_name -> google.protobuf.Timestamp
+	55, // 24: league_service.UpdateSeasonPromotionFormulaRequest.promotion_formula:type_name -> ipc.PromotionFormula
 	0,  // 25: league_service.AddSeasonTimeBankRequest.scope:type_name -> league_service.TimeBankScope
 	1,  // 26: league_service.LeagueService.CreateLeague:input_type -> league_service.CreateLeagueRequest
 	2,  // 27: league_service.LeagueService.GetLeague:input_type -> league_service.LeagueRequest
@@ -2850,7 +2980,7 @@ var file_proto_league_service_league_service_proto_depIdxs = []int32{
 	15, // 37: league_service.LeagueService.OpenRegistration:input_type -> league_service.OpenRegistrationRequest
 	16, // 38: league_service.LeagueService.GetDivisionStandings:input_type -> league_service.DivisionRequest
 	8,  // 39: league_service.LeagueService.GetAllDivisionStandings:input_type -> league_service.SeasonRequest
-	54, // 40: league_service.LeagueService.GetDivisionTimeBankWarnings:input_type -> ipc.GetDivisionTimeBankWarningsRequest
+	56, // 40: league_service.LeagueService.GetDivisionTimeBankWarnings:input_type -> ipc.GetDivisionTimeBankWarningsRequest
 	19, // 41: league_service.LeagueService.RegisterForSeason:input_type -> league_service.RegisterRequest
 	21, // 42: league_service.LeagueService.UnregisterFromSeason:input_type -> league_service.UnregisterRequest
 	8,  // 43: league_service.LeagueService.GetSeasonRegistrations:input_type -> league_service.SeasonRequest
@@ -2865,37 +2995,39 @@ var file_proto_league_service_league_service_proto_depIdxs = []int32{
 	42, // 52: league_service.LeagueService.UpdateSeasonPromotionFormula:input_type -> league_service.UpdateSeasonPromotionFormulaRequest
 	8,  // 53: league_service.LeagueService.RecalculateSeasonExtendedStats:input_type -> league_service.SeasonRequest
 	44, // 54: league_service.LeagueService.AddSeasonTimeBank:input_type -> league_service.AddSeasonTimeBankRequest
-	5,  // 55: league_service.LeagueService.CreateLeague:output_type -> league_service.LeagueResponse
-	5,  // 56: league_service.LeagueService.GetLeague:output_type -> league_service.LeagueResponse
-	4,  // 57: league_service.LeagueService.GetAllLeagues:output_type -> league_service.GetAllLeaguesResponse
-	5,  // 58: league_service.LeagueService.UpdateLeagueSettings:output_type -> league_service.LeagueResponse
-	5,  // 59: league_service.LeagueService.UpdateLeagueMetadata:output_type -> league_service.LeagueResponse
-	9,  // 60: league_service.LeagueService.BootstrapSeason:output_type -> league_service.SeasonResponse
-	9,  // 61: league_service.LeagueService.GetSeason:output_type -> league_service.SeasonResponse
-	9,  // 62: league_service.LeagueService.GetCurrentSeason:output_type -> league_service.SeasonResponse
-	10, // 63: league_service.LeagueService.GetPastSeasons:output_type -> league_service.PastSeasonsResponse
-	11, // 64: league_service.LeagueService.GetAllSeasons:output_type -> league_service.AllSeasonsResponse
-	13, // 65: league_service.LeagueService.GetRecentSeasons:output_type -> league_service.RecentSeasonsResponse
-	9,  // 66: league_service.LeagueService.OpenRegistration:output_type -> league_service.SeasonResponse
-	17, // 67: league_service.LeagueService.GetDivisionStandings:output_type -> league_service.DivisionStandingsResponse
-	18, // 68: league_service.LeagueService.GetAllDivisionStandings:output_type -> league_service.AllDivisionStandingsResponse
-	55, // 69: league_service.LeagueService.GetDivisionTimeBankWarnings:output_type -> ipc.GetDivisionTimeBankWarningsResponse
-	20, // 70: league_service.LeagueService.RegisterForSeason:output_type -> league_service.RegisterResponse
-	22, // 71: league_service.LeagueService.UnregisterFromSeason:output_type -> league_service.UnregisterResponse
-	23, // 72: league_service.LeagueService.GetSeasonRegistrations:output_type -> league_service.SeasonRegistrationsResponse
-	26, // 73: league_service.LeagueService.GetPlayerLeagueHistory:output_type -> league_service.PlayerHistoryResponse
-	31, // 74: league_service.LeagueService.GetPlayerSeasonGames:output_type -> league_service.GetPlayerSeasonGamesResponse
-	34, // 75: league_service.LeagueService.InviteUserToLeagues:output_type -> league_service.InviteUserResponse
-	28, // 76: league_service.LeagueService.GetLeagueStatistics:output_type -> league_service.LeagueStatisticsResponse
-	36, // 77: league_service.LeagueService.MovePlayerToDivision:output_type -> league_service.MovePlayerToDivisionResponse
-	37, // 78: league_service.LeagueService.GetSeasonZeroMoveGames:output_type -> league_service.SeasonZeroMoveGamesResponse
-	39, // 79: league_service.LeagueService.GetSeasonPlayersWithUnstartedGames:output_type -> league_service.SeasonPlayersWithUnstartedGamesResponse
-	9,  // 80: league_service.LeagueService.UpdateSeasonDates:output_type -> league_service.SeasonResponse
-	9,  // 81: league_service.LeagueService.UpdateSeasonPromotionFormula:output_type -> league_service.SeasonResponse
-	43, // 82: league_service.LeagueService.RecalculateSeasonExtendedStats:output_type -> league_service.RecalculateExtendedStatsResponse
-	45, // 83: league_service.LeagueService.AddSeasonTimeBank:output_type -> league_service.AddSeasonTimeBankResponse
-	55, // [55:84] is the sub-list for method output_type
-	26, // [26:55] is the sub-list for method input_type
+	46, // 55: league_service.LeagueService.CancelPlayerResults:input_type -> league_service.CancelPlayerResultsRequest
+	5,  // 56: league_service.LeagueService.CreateLeague:output_type -> league_service.LeagueResponse
+	5,  // 57: league_service.LeagueService.GetLeague:output_type -> league_service.LeagueResponse
+	4,  // 58: league_service.LeagueService.GetAllLeagues:output_type -> league_service.GetAllLeaguesResponse
+	5,  // 59: league_service.LeagueService.UpdateLeagueSettings:output_type -> league_service.LeagueResponse
+	5,  // 60: league_service.LeagueService.UpdateLeagueMetadata:output_type -> league_service.LeagueResponse
+	9,  // 61: league_service.LeagueService.BootstrapSeason:output_type -> league_service.SeasonResponse
+	9,  // 62: league_service.LeagueService.GetSeason:output_type -> league_service.SeasonResponse
+	9,  // 63: league_service.LeagueService.GetCurrentSeason:output_type -> league_service.SeasonResponse
+	10, // 64: league_service.LeagueService.GetPastSeasons:output_type -> league_service.PastSeasonsResponse
+	11, // 65: league_service.LeagueService.GetAllSeasons:output_type -> league_service.AllSeasonsResponse
+	13, // 66: league_service.LeagueService.GetRecentSeasons:output_type -> league_service.RecentSeasonsResponse
+	9,  // 67: league_service.LeagueService.OpenRegistration:output_type -> league_service.SeasonResponse
+	17, // 68: league_service.LeagueService.GetDivisionStandings:output_type -> league_service.DivisionStandingsResponse
+	18, // 69: league_service.LeagueService.GetAllDivisionStandings:output_type -> league_service.AllDivisionStandingsResponse
+	57, // 70: league_service.LeagueService.GetDivisionTimeBankWarnings:output_type -> ipc.GetDivisionTimeBankWarningsResponse
+	20, // 71: league_service.LeagueService.RegisterForSeason:output_type -> league_service.RegisterResponse
+	22, // 72: league_service.LeagueService.UnregisterFromSeason:output_type -> league_service.UnregisterResponse
+	23, // 73: league_service.LeagueService.GetSeasonRegistrations:output_type -> league_service.SeasonRegistrationsResponse
+	26, // 74: league_service.LeagueService.GetPlayerLeagueHistory:output_type -> league_service.PlayerHistoryResponse
+	31, // 75: league_service.LeagueService.GetPlayerSeasonGames:output_type -> league_service.GetPlayerSeasonGamesResponse
+	34, // 76: league_service.LeagueService.InviteUserToLeagues:output_type -> league_service.InviteUserResponse
+	28, // 77: league_service.LeagueService.GetLeagueStatistics:output_type -> league_service.LeagueStatisticsResponse
+	36, // 78: league_service.LeagueService.MovePlayerToDivision:output_type -> league_service.MovePlayerToDivisionResponse
+	37, // 79: league_service.LeagueService.GetSeasonZeroMoveGames:output_type -> league_service.SeasonZeroMoveGamesResponse
+	39, // 80: league_service.LeagueService.GetSeasonPlayersWithUnstartedGames:output_type -> league_service.SeasonPlayersWithUnstartedGamesResponse
+	9,  // 81: league_service.LeagueService.UpdateSeasonDates:output_type -> league_service.SeasonResponse
+	9,  // 82: league_service.LeagueService.UpdateSeasonPromotionFormula:output_type -> league_service.SeasonResponse
+	43, // 83: league_service.LeagueService.RecalculateSeasonExtendedStats:output_type -> league_service.RecalculateExtendedStatsResponse
+	45, // 84: league_service.LeagueService.AddSeasonTimeBank:output_type -> league_service.AddSeasonTimeBankResponse
+	47, // 85: league_service.LeagueService.CancelPlayerResults:output_type -> league_service.CancelPlayerResultsResponse
+	56, // [56:86] is the sub-list for method output_type
+	26, // [26:56] is the sub-list for method input_type
 	26, // [26:26] is the sub-list for extension type_name
 	26, // [26:26] is the sub-list for extension extendee
 	0,  // [0:26] is the sub-list for field type_name
@@ -2912,7 +3044,7 @@ func file_proto_league_service_league_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_league_service_league_service_proto_rawDesc), len(file_proto_league_service_league_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   45,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
