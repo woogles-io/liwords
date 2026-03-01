@@ -1,4 +1,4 @@
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 import makemoveSound from "../assets/makemove.mp3";
 import oppmoveSound from "../assets/oppmove.mp3";
 import matchreqSound from "../assets/matchreq.mp3";
@@ -46,7 +46,18 @@ class Booper {
 
   play() {
     if (soundIsEnabled(this.soundName)) {
-      this.howl.play();
+      const ctx = Howler.ctx;
+      if (
+        ctx &&
+        (ctx.state === "suspended" ||
+          ctx.state === ("interrupted" as AudioContextState))
+      ) {
+        ctx.resume().then(() => {
+          this.howl.play();
+        });
+      } else {
+        this.howl.play();
+      }
     }
   }
 }
@@ -77,6 +88,30 @@ if (!window.location.pathname.startsWith("/embed/")) {
     playableSounds[booper.soundName] = booper;
   }
 }
+
+// iOS Safari requires a user gesture to unlock the AudioContext.
+// Proactively resume it on first interaction so that sounds triggered
+// by non-gesture events (e.g. WebSocket messages) will work.
+const unlockAudioContext = () => {
+  const ctx = Howler.ctx;
+  if (ctx && ctx.state !== "running") {
+    ctx.resume().then(() => {
+      if (ctx.state === "running") {
+        window.removeEventListener("click", unlockAudioContext, true);
+        window.removeEventListener("touchend", unlockAudioContext, true);
+        window.removeEventListener("keydown", unlockAudioContext, true);
+      }
+    });
+  } else if (ctx && ctx.state === "running") {
+    window.removeEventListener("click", unlockAudioContext, true);
+    window.removeEventListener("touchend", unlockAudioContext, true);
+    window.removeEventListener("keydown", unlockAudioContext, true);
+  }
+};
+
+window.addEventListener("click", unlockAudioContext, true);
+window.addEventListener("touchend", unlockAudioContext, true);
+window.addEventListener("keydown", unlockAudioContext, true);
 
 const playSound = (soundName: string) => {
   const booper = playableSounds[soundName];
