@@ -798,38 +798,10 @@ const EndGameControls = (props: EGCProps) => {
               <Button>Export</Button>
             </Dropdown>
           )}
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: "analyze-local",
-                  label: "Analyze Locally",
-                  disabled: gameHasNotStarted,
-                },
-                {
-                  key: "analyze-remote",
-                  label: getRemoteAnalysisLabel(),
-                  disabled:
-                    gameHasNotStarted ||
-                    analysisStatus ===
-                      GetAnalysisStatusResponse_JobStatus.FAILED,
-                },
-              ],
-              onClick: ({ key }) => {
-                if (key === "analyze-local") {
-                  props.onExamine();
-                } else if (key === "analyze-remote") {
-                  handleAnalysisButtonClick();
-                }
-              },
-              theme: props.darkMode ? "dark" : "light",
-            }}
-            trigger={["click"]}
-            placement="topLeft"
-            disabled={gameHasNotStarted}
-          >
-            <Button disabled={gameHasNotStarted}>Analyze</Button>
-          </Dropdown>
+          {/* TODO: restore Dropdown with remote analysis when analysis UI is ready */}
+          <Button disabled={gameHasNotStarted} onClick={props.onExamine}>
+            Analyze
+          </Button>
         </div>
         <div className="secondary-controls">
           {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
