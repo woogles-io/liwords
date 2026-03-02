@@ -418,8 +418,18 @@ export class Board3DScene {
         this.scene.environment = envMap;
         this.scene.background = envMap;
         // backgroundBlurriness/backgroundIntensity exist on THREE.Scene in r160
-        (this.scene as THREE.Scene & { backgroundBlurriness: number; backgroundIntensity: number }).backgroundBlurriness = 0.25;
-        (this.scene as THREE.Scene & { backgroundBlurriness: number; backgroundIntensity: number }).backgroundIntensity = 0.5;
+        (
+          this.scene as THREE.Scene & {
+            backgroundBlurriness: number;
+            backgroundIntensity: number;
+          }
+        ).backgroundBlurriness = 0.25;
+        (
+          this.scene as THREE.Scene & {
+            backgroundBlurriness: number;
+            backgroundIntensity: number;
+          }
+        ).backgroundIntensity = 0.5;
         texture.dispose();
         pmremGenerator.dispose();
       },
