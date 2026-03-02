@@ -337,6 +337,10 @@ func (g *Game) TimeRemaining(idx int) int {
 	if g.Type == pb.GameType_ANNOTATED {
 		return LargeTime
 	}
+	// If game hasn't started, return cached value (TimeOfLastUpdate would be 0)
+	if !g.Started {
+		return g.Timers.TimeRemaining[idx]
+	}
 	if g.Game.PlayerOnTurn() == idx {
 		now := g.nower.Now()
 		return g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
@@ -409,6 +413,11 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		Int("remaining", g.Timers.TimeRemaining[pidx]).
 		Msg("calculate-and-set-remaining")
 	if g.Type == pb.GameType_ANNOTATED {
+		return
+	}
+	// If the game hasn't started yet, don't calculate elapsed time
+	// (TimeOfLastUpdate would be 0, causing incorrect calculations)
+	if !g.Started {
 		return
 	}
 	if g.Game.PlayerOnTurn() == pidx {
@@ -644,4 +653,11 @@ func (g *Game) IsCorrespondence() bool {
 		return false
 	}
 	return g.GameReq.GameMode == pb.GameMode_CORRESPONDENCE
+}
+
+// AddTimeToPlayer adds milliseconds to the specified player's remaining time.
+func (g *Game) AddTimeToPlayer(playerIdx int, milliseconds int) {
+	if playerIdx >= 0 && playerIdx < len(g.Timers.TimeRemaining) {
+		g.Timers.TimeRemaining[playerIdx] += milliseconds
+	}
 }
