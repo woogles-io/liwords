@@ -27,7 +27,8 @@ const boardColors: Record<string, number> = {
   purple: 0x9c27b0,
   green: 0x4caf50,
   yellow: 0xf0c000,
-  black: 0x1a1a1a,
+  red: 0xc62828,
+  slate: 0x455a64,
 };
 
 const bonusColors: Record<string, number> = {
@@ -57,6 +58,101 @@ const FONT_URL =
   "https://threejs.org/examples/fonts/droid/droid_sans_regular.typeface.json";
 const HDR_URL =
   "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr";
+
+// ─── Procedural normal-map generation ────────────────────────────────────────
+
+// Deterministic value noise: maps grid-integer coords → [0, 1]
+function vnoise2(ix: number, iy: number): number {
+  const s = Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+// Bilinearly-smoothed noise over continuous coords
+function snoise2(x: number, y: number): number {
+  const ix = Math.floor(x),
+    iy = Math.floor(y);
+  const fx = x - ix,
+    fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx); // smoothstep
+  const uy = fy * fy * (3 - 2 * fy);
+  return (
+    vnoise2(ix, iy) * (1 - ux) * (1 - uy) +
+    vnoise2(ix + 1, iy) * ux * (1 - uy) +
+    vnoise2(ix, iy + 1) * (1 - ux) * uy +
+    vnoise2(ix + 1, iy + 1) * ux * uy
+  );
+}
+
+// Fractional Brownian Motion — layered noise for organic surfaces
+function fbm2(x: number, y: number, octaves = 4): number {
+  let v = 0,
+    amp = 0.5,
+    freq = 1,
+    total = 0;
+  for (let i = 0; i < octaves; i++) {
+    v += snoise2(x * freq, y * freq) * amp;
+    total += amp;
+    amp *= 0.5;
+    freq *= 2.0;
+  }
+  return v / total;
+}
+
+// Fine Bakelite/resin grain — subtle multi-scale bumps
+function tileHeightAt(u: number, v: number): number {
+  return fbm2(u * 8, v * 8, 3) * 0.6 + fbm2(u * 20, v * 20, 2) * 0.4;
+}
+
+// Board surface — large-scale low-frequency undulation for a polished look
+function boardHeightAt(u: number, v: number): number {
+  return fbm2(u * 2, v * 2, 3) * 0.7 + fbm2(u * 5, v * 5, 2) * 0.3;
+}
+
+// Wood grain — gentle sine-ring structure warped by noise, with fine fiber overlay
+function woodHeightAt(u: number, v: number): number {
+  const wx = fbm2(u * 2, v * 2, 3) * 1.2;
+  const wy = fbm2(u * 2 + 4.1, v * 2 + 2.7, 3) * 1.2;
+  const rings = Math.sin((u * 3 + wx) * Math.PI * 5) * 0.5 + 0.5;
+  const fiber = fbm2(u * 10, v * 4, 2) * 0.25;
+  return rings * 0.5 + fiber;
+}
+
+// Convert a scalar height function to a tangent-space normal map DataTexture.
+// `strength` controls how pronounced the bumps appear (higher = more dramatic).
+function makeNormalMap(
+  heightFn: (u: number, v: number) => number,
+  size: number,
+  strength: number,
+): THREE.DataTexture {
+  const data = new Uint8Array(size * size * 4);
+  const eps = 1 / size;
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      const u = col / size,
+        v = row / size;
+      const h = heightFn(u, v);
+      const hx = heightFn(u + eps, v);
+      const hy = heightFn(u, v + eps);
+      // Finite-difference gradient → un-normalised tangent-space normal
+      let nx = (h - hx) * strength;
+      let ny = (h - hy) * strength;
+      let nz = 1.0;
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      nx /= len;
+      ny /= len;
+      nz /= len;
+      const i = (row * size + col) * 4;
+      data[i] = ((nx * 0.5 + 0.5) * 255) | 0;
+      data[i + 1] = ((ny * 0.5 + 0.5) * 255) | 0;
+      data[i + 2] = ((nz * 0.5 + 0.5) * 255) | 0;
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -122,11 +218,16 @@ function createTile(
   tileColor: string,
   squareSize: number,
   tileDepth: number,
+  tileNormalMap: THREE.DataTexture,
 ): THREE.Group {
   const group = new THREE.Group();
-  const width = squareSize - 0.75;
-  const height = squareSize - 0.25;
-  const radius = 0.5;
+  // Bevel constants — the bevel expands the tile outward in all directions, so
+  // we pre-shrink the shape and depth so the final bounding box stays the same.
+  const BEVEL_SIZE = 0.1;
+  const BEVEL_THICKNESS = 0.12;
+  const width = squareSize - 0.75 - 2 * BEVEL_SIZE;
+  const height = squareSize - 0.25 - 2 * BEVEL_SIZE;
+  const radius = Math.max(0.1, 0.5 - BEVEL_SIZE);
 
   // Rounded-rectangle shape (verbatim from macondo)
   const shape = new THREE.Shape();
@@ -142,13 +243,20 @@ function createTile(
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
     steps: 1,
-    depth: tileDepth,
-    bevelEnabled: false,
+    depth: tileDepth - 2 * BEVEL_THICKNESS,
+    bevelEnabled: true,
+    bevelThickness: BEVEL_THICKNESS,
+    bevelSize: BEVEL_SIZE,
+    bevelSegments: 3,
   });
-  const material = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     color: tileColorConfig.hex,
-    roughness: 0.7,
-    metalness: 0.1,
+    roughness: 0.55,
+    metalness: 0.0,
+    clearcoat: 0.25,
+    clearcoatRoughness: 0.3,
+    normalMap: tileNormalMap,
+    normalScale: new THREE.Vector2(0.3, 0.3),
     envMapIntensity: 1.5,
   });
   const tile = new THREE.Mesh(geometry, material);
@@ -193,16 +301,22 @@ function createTile(
   } else {
     xOffset = 0.15;
   }
-  letterMesh.position.set(xOffset * width, 0.2 * height, tileDepth);
+  const textZ = tileDepth - BEVEL_THICKNESS + 0.02; // front bevel tip + epsilon
+  letterMesh.position.set(xOffset * width, 0.2 * height, textZ);
   group.add(letterMesh);
 
   // Score
   if (score > 0) {
-    const scoreGeometry = makeTextGeo(score.toString(), font, squareSize * 0.2, 0.1);
+    const scoreGeometry = makeTextGeo(
+      score.toString(),
+      font,
+      squareSize * 0.2,
+      0.1,
+    );
     const scoreMesh = new THREE.Mesh(scoreGeometry, letterMaterial);
     scoreMesh.castShadow = true;
     const scoreXOffset = score >= 10 ? 0.62 : 0.75;
-    scoreMesh.position.set(scoreXOffset * width, 0.1 * height, tileDepth);
+    scoreMesh.position.set(scoreXOffset * width, 0.1 * height, textZ);
     group.add(scoreMesh);
   }
 
@@ -218,6 +332,10 @@ export class Board3DScene {
   private controls: OrbitControls;
   private animationId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private textures: THREE.DataTexture[] = [];
+  private boardGroup = new THREE.Group();
+  private spinEnabled = false;
+  private readonly spinSpeed = 0.005; // rad/frame ≈ one full rotation per ~20 s at 60 fps
 
   constructor(
     private container: HTMLElement,
@@ -237,6 +355,9 @@ export class Board3DScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
+    // Prevent the browser from consuming touch events (pinch-zoom, scroll) on the
+    // canvas — OrbitControls needs all pointer/touch events to reach it directly.
+    this.renderer.domElement.style.touchAction = "none";
     container.appendChild(this.renderer.domElement);
 
     // Camera — same as macondo: looking at board (XY plane) from +Z
@@ -306,6 +427,9 @@ export class Board3DScene {
     const animate = () => {
       this.animationId = requestAnimationFrame(animate);
       this.controls.update();
+      if (this.spinEnabled) {
+        this.boardGroup.rotation.z += this.spinSpeed;
+      }
       this.renderer.render(this.scene, this.camera);
     };
     animate();
@@ -322,6 +446,7 @@ export class Board3DScene {
   }
 
   private _buildScene() {
+    this.scene.add(this.boardGroup);
     const data = this.data;
     const gridSize = data.boardDimension;
     const squareSize = (5 * 15) / gridSize; // total board footprint ~75 units
@@ -341,20 +466,30 @@ export class Board3DScene {
     const boardColorHex = boardColors[data.boardColor] ?? boardColors["jade"];
     const labelColor = getLabelColor(boardColorHex);
 
+    // ── Procedural normal maps (generated once, shared across all tile/wood geometry)
+    const tileNormalMap = makeNormalMap(tileHeightAt, 256, 4);
+    const boardNormalMap = makeNormalMap(boardHeightAt, 256, 3);
+    const woodNormalMap = makeNormalMap(woodHeightAt, 512, 3);
+    this.textures.push(tileNormalMap, boardNormalMap, woodNormalMap);
+
     // ── Circular board base ───────────────────────────────────────────────────
     // CylinderGeometry axis is Y; rotating PI/2 around X makes axis Z (board in XY plane).
     const baseGeometry = new THREE.CylinderGeometry(55, 55, boardThickness, 64);
-    const baseMaterial = new THREE.MeshStandardMaterial({
+    const baseMaterial = new THREE.MeshPhysicalMaterial({
       color: boardColorHex,
-      roughness: 0.6,
+      roughness: 0.35,
       metalness: 0.05,
-      envMapIntensity: 0.8,
+      clearcoat: 0.5,
+      clearcoatRoughness: 0.2,
+      normalMap: boardNormalMap,
+      normalScale: new THREE.Vector2(0.12, 0.12),
+      envMapIntensity: 0.9,
     });
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
     base.rotation.x = Math.PI / 2;
     base.position.z = 0;
     base.receiveShadow = true;
-    this.scene.add(base);
+    this.boardGroup.add(base);
 
     // ── Grid squares + walls ──────────────────────────────────────────────────
     const gridBottomZPos = boardThickness / 2;
@@ -373,7 +508,11 @@ export class Board3DScene {
         const y = j * squareSize - offset;
         const z = gridBottomZPos + gridHeight / 2;
 
-        const squareGeom = new THREE.BoxGeometry(squareSize, squareSize, gridHeight);
+        const squareGeom = new THREE.BoxGeometry(
+          squareSize,
+          squareSize,
+          gridHeight,
+        );
         const squareMat = new THREE.MeshStandardMaterial({
           color,
           roughness: 0.8,
@@ -383,48 +522,108 @@ export class Board3DScene {
         const square = new THREE.Mesh(squareGeom, squareMat);
         square.position.set(x, y, z);
         square.receiveShadow = true;
-        this.scene.add(square);
+        this.boardGroup.add(square);
 
         // Grid walls (thin separators between squares)
         const wz = gridBottomZPos + gridHeight;
-        const addWall = (gx: number, gy: number, gz: number, wx: number, wy: number, wz: number) => {
-          const wall = new THREE.Mesh(new THREE.BoxGeometry(wx, wy, wallHeight), wallMat);
+        const addWall = (
+          gx: number,
+          gy: number,
+          gz: number,
+          wx: number,
+          wy: number,
+          wz: number,
+        ) => {
+          const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(wx, wy, wallHeight),
+            wallMat,
+          );
           wall.position.set(gx, gy, gz);
-          this.scene.add(wall);
+          this.boardGroup.add(wall);
         };
-        addWall(x, y + squareSize / 2, wz, squareSize, wallThickness, wallHeight);
-        addWall(x, y - squareSize / 2, wz, squareSize, wallThickness, wallHeight);
-        addWall(x - squareSize / 2, y, wz, wallThickness, squareSize, wallHeight);
-        addWall(x + squareSize / 2, y, wz, wallThickness, squareSize, wallHeight);
+        addWall(
+          x,
+          y + squareSize / 2,
+          wz,
+          squareSize,
+          wallThickness,
+          wallHeight,
+        );
+        addWall(
+          x,
+          y - squareSize / 2,
+          wz,
+          squareSize,
+          wallThickness,
+          wallHeight,
+        );
+        addWall(
+          x - squareSize / 2,
+          y,
+          wz,
+          wallThickness,
+          squareSize,
+          wallHeight,
+        );
+        addWall(
+          x + squareSize / 2,
+          y,
+          wz,
+          wallThickness,
+          squareSize,
+          wallHeight,
+        );
       }
     }
 
     // ── Wood table ────────────────────────────────────────────────────────────
+    // Clone the texture so table top and legs can have independent repeat settings.
+    const tableNormalMap = woodNormalMap.clone();
+    tableNormalMap.repeat.set(6, 4);
+    tableNormalMap.needsUpdate = true;
+    this.textures.push(tableNormalMap);
+
+    const tableMat = new THREE.MeshPhysicalMaterial({
+      color: 0x8b4513,
+      roughness: 0.6,
+      metalness: 0.0,
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.4,
+      normalMap: tableNormalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      envMapIntensity: 0.7,
+    });
+
     const tableTop = new THREE.Mesh(
       new THREE.BoxGeometry(180, 140, 4),
-      new THREE.MeshStandardMaterial({
-        color: 0x8b4513,
-        roughness: 0.6,
-        metalness: 0.1,
-        envMapIntensity: 0.7,
-      }),
+      tableMat,
     );
     tableTop.position.set(0, 0, -boardThickness / 2 - 2);
     tableTop.receiveShadow = true;
     tableTop.castShadow = true;
     this.scene.add(tableTop);
 
-    const legMaterial = new THREE.MeshStandardMaterial({
+    const legMaterial = new THREE.MeshPhysicalMaterial({
       color: 0x654321,
-      roughness: 0.5,
-      metalness: 0.1,
+      roughness: 0.65,
+      metalness: 0.0,
+      normalMap: woodNormalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
     });
-    for (const [lx, ly] of [[-80, -60], [80, -60], [-80, 60], [80, 60]] as [number, number][]) {
+    for (const [lx, ly] of [
+      [-80, -60],
+      [80, -60],
+      [-80, 60],
+      [80, 60],
+    ] as [number, number][]) {
       const leg = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 40), legMaterial);
       leg.position.set(lx, ly, -boardThickness / 2 - 22);
       leg.castShadow = true;
       this.scene.add(leg);
     }
+
+    // ── Logo decals on the board surface ─────────────────────────────────────
+    this._buildDecals(boardThickness);
 
     // ── Font-dependent content (tiles, rack, labels, unseen, scorepad) ────────
     const fontLoader = new FontLoader();
@@ -432,11 +631,41 @@ export class Board3DScene {
       FONT_URL,
       (font: Font) => {
         this._buildBoardContent(
-          font, gridSize, squareSize, offset, boardTileZPos, tileDepth,
-          gridBottomZPos, tileColorConfig, labelColor, data,
+          font,
+          gridSize,
+          squareSize,
+          offset,
+          boardTileZPos,
+          tileDepth,
+          gridBottomZPos,
+          tileColorConfig,
+          labelColor,
+          data,
+          tileNormalMap,
         );
-        this._buildRack(font, rackWidth, rackHeight, rackDepth, rackYPos, squareSize, tileDepth, tileColorConfig, data);
-        this._buildUnseenTiles(font, squareSize, offset, boardThickness, tileDepth, tileColorConfig, data);
+        this._buildRack(
+          font,
+          rackWidth,
+          rackHeight,
+          rackDepth,
+          rackYPos,
+          squareSize,
+          tileDepth,
+          tileColorConfig,
+          data,
+          tileNormalMap,
+          woodNormalMap,
+        );
+        this._buildUnseenTiles(
+          font,
+          squareSize,
+          offset,
+          boardThickness,
+          tileDepth,
+          tileColorConfig,
+          data,
+          tileNormalMap,
+        );
         this._buildScorepad(data);
       },
       undefined,
@@ -459,6 +688,7 @@ export class Board3DScene {
     tileColorConfig: { hex: number; textColor: number },
     labelColor: number,
     data: Board3DData,
+    tileNormalMap: THREE.DataTexture,
   ) {
     const labelMat = new THREE.MeshBasicMaterial({ color: labelColor });
 
@@ -472,7 +702,13 @@ export class Board3DScene {
         const x = i * squareSize - offset;
         const y = j * squareSize - offset;
 
-        const labelGeom = makeTextGeo(labelText, font, squareSize * 0.28, 0.02, 4);
+        const labelGeom = makeTextGeo(
+          labelText,
+          font,
+          squareSize * 0.28,
+          0.02,
+          4,
+        );
         labelGeom.computeBoundingBox();
         const bb = labelGeom.boundingBox!;
         const textWidth = bb.max.x - bb.min.x;
@@ -484,7 +720,7 @@ export class Board3DScene {
           y - textHeight / 2,
           gridBottomZPos + 1 + 0.01, // gridHeight = 1
         );
-        this.scene.add(labelMesh);
+        this.boardGroup.add(labelMesh);
       }
     }
 
@@ -497,11 +733,21 @@ export class Board3DScene {
         const tileStr = data.boardArray[y]?.[x] ?? "";
         if (!tileStr) continue;
         const score = getLetterScore(tileStr, data.alphabetScores);
-        const tileGroup = createTile(tileStr, score, font, tileColorConfig, data.tileColor, squareSize, tileDepth);
+        const tileGroup = createTile(
+          tileStr,
+          score,
+          font,
+          tileColorConfig,
+          data.tileColor,
+          squareSize,
+          tileDepth,
+          tileNormalMap,
+        );
         const posX = x * squareSize - offset - squareSize / 2 + 0.375;
-        const posY = (gridSize - 1 - y) * squareSize - offset - squareSize / 2 + 0.125;
+        const posY =
+          (gridSize - 1 - y) * squareSize - offset - squareSize / 2 + 0.125;
         tileGroup.position.set(posX, posY, boardTileZPos);
-        this.scene.add(tileGroup);
+        this.boardGroup.add(tileGroup);
       }
     }
 
@@ -515,7 +761,7 @@ export class Board3DScene {
         offset + squareSize * 0.8,
         1 + 0.01, // boardThickness/2 = 1
       );
-      this.scene.add(mesh);
+      this.boardGroup.add(mesh);
     }
 
     // Row labels (1-15)
@@ -529,7 +775,7 @@ export class Board3DScene {
         (gridSize - 1 - i) * squareSize - offset - squareSize / 4,
         1 + 0.01, // boardThickness/2 = 1
       );
-      this.scene.add(mesh);
+      this.boardGroup.add(mesh);
     }
   }
 
@@ -545,9 +791,12 @@ export class Board3DScene {
     tileDepth: number,
     tileColorConfig: { hex: number; textColor: number },
     data: Board3DData,
+    tileNormalMap: THREE.DataTexture,
+    woodNormalMap: THREE.DataTexture,
   ) {
     // Rack body (verbatim from macondo createRack)
-    const { height2, depth3, depth2, depth1, radius1, radius2 } = rackGeomParams(rackHeight, rackDepth);
+    const { height2, depth3, depth2, depth1, radius1, radius2 } =
+      rackGeomParams(rackHeight, rackDepth);
 
     const shape = new THREE.Shape();
     shape.moveTo(radius1, 0);
@@ -557,12 +806,24 @@ export class Board3DScene {
 
     const controlPointX = (rackDepth + depth3) / 2;
     const controlPointY = height2 + radius2;
-    shape.bezierCurveTo(controlPointX, controlPointY, controlPointX, height2, depth3, height2);
+    shape.bezierCurveTo(
+      controlPointX,
+      controlPointY,
+      controlPointX,
+      height2,
+      depth3,
+      height2,
+    );
 
     shape.lineTo(depth2 + radius1, rackHeight - radius1);
     shape.quadraticCurveTo(depth2, rackHeight, depth2 - radius1, rackHeight);
     shape.lineTo(depth1 + radius1, rackHeight);
-    shape.quadraticCurveTo(depth1, rackHeight, depth1 - radius1, rackHeight - radius1);
+    shape.quadraticCurveTo(
+      depth1,
+      rackHeight,
+      depth1 - radius1,
+      rackHeight - radius1,
+    );
     shape.lineTo(0, height2);
     shape.lineTo(0, radius1);
     shape.quadraticCurveTo(0, 0, radius1, 0);
@@ -572,33 +833,66 @@ export class Board3DScene {
       depth: rackWidth,
       bevelEnabled: false,
     });
-    const rackMat = new THREE.MeshStandardMaterial({
+    const rackMat = new THREE.MeshPhysicalMaterial({
       color: 0xc8a850,
-      roughness: 0.4,
-      metalness: 0.2,
-      envMapIntensity: 1.0,
+      roughness: 0.45,
+      metalness: 0.0,
+      clearcoat: 0.2,
+      clearcoatRoughness: 0.35,
+      normalMap: woodNormalMap,
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      envMapIntensity: 0.9,
     });
     const rack = new THREE.Mesh(rackGeom, rackMat);
     rack.position.set(rackWidth / 2, rackYPos, 2);
     rack.rotation.set(Math.PI / 2, (3 * Math.PI) / 2, 0);
     rack.receiveShadow = true;
     rack.castShadow = true;
-    this.scene.add(rack);
+    this.boardGroup.add(rack);
 
-    // Rack tiles
+    // Rack tiles — placed so the bottom-back bevel corner rests exactly on the ledge surface.
+    // BEVEL_SIZE / BEVEL_THICKNESS must match the constants inside createTile.
     if (data.rack.length > 0) {
-      const { slope } = rackGeomParams(rackHeight, rackDepth);
-      const rotation = -Math.atan(slope);
+      const BEVEL_SIZE = 0.1;
+      const BEVEL_THICKNESS = 0.12;
+      const { slope, height2, depth3 } = rackGeomParams(rackHeight, rackDepth);
+      // slope < 0, so theta = −atan(slope) > 0 (tile leans back into rack)
+      const theta = -Math.atan(slope);
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      const rackBodyZ = 2; // must match rack.position.z set above
+
+      // Ledge bottom point A in world (y, z):
+      //   world_y = rackYPos − depth3,   world_z = rackBodyZ + height2
+      // The tile group origin is offset so the bottom-back bevel corner
+      //   (local y=−BEVEL_SIZE, z=−BEVEL_THICKNESS) lands exactly on point A.
+      // After rotation.x = theta:
+      //   Δy_offset = −BEVEL_SIZE·cosT + BEVEL_THICKNESS·sinT
+      //   Δz_offset = −BEVEL_SIZE·sinT  − BEVEL_THICKNESS·cosT
+      // → group_y = point_A_y − Δy_offset
+      // → group_z = point_A_z − Δz_offset
+      const tileY =
+        rackYPos - depth3 + BEVEL_SIZE * cosT - BEVEL_THICKNESS * sinT;
+      const tileZ =
+        rackBodyZ + height2 + BEVEL_SIZE * sinT + BEVEL_THICKNESS * cosT;
+
       for (let i = 0; i < data.rack.length; i++) {
         const letter = data.rack[i];
         const score = getLetterScore(letter, data.alphabetScores);
-        const tileGroup = createTile(letter, score, font, tileColorConfig, data.tileColor, squareSize, tileDepth);
+        const tileGroup = createTile(
+          letter,
+          score,
+          font,
+          tileColorConfig,
+          data.tileColor,
+          squareSize,
+          tileDepth,
+          tileNormalMap,
+        );
         const xpos = -rackWidth / 2 + 2 * squareSize + i * (squareSize - 0.6);
-        const ypos = rackYPos - squareSize - 0.9;
-        const zpos = 1.8;
-        tileGroup.position.set(xpos, ypos, zpos);
-        tileGroup.rotation.x = rotation;
-        this.scene.add(tileGroup);
+        tileGroup.position.set(xpos, tileY, tileZ);
+        tileGroup.rotation.x = theta;
+        this.boardGroup.add(tileGroup);
       }
     }
   }
@@ -613,6 +907,7 @@ export class Board3DScene {
     tileDepth: number,
     tileColorConfig: { hex: number; textColor: number },
     data: Board3DData,
+    tileNormalMap: THREE.DataTexture,
   ) {
     const remaining = data.remainingTiles;
     if (!remaining || Object.keys(remaining).length === 0) return;
@@ -638,7 +933,16 @@ export class Board3DScene {
         const col = currentIndex % tilesPerRow;
         const x = startX + col * tileSpacing;
         const y = startY - row * tileSpacing;
-        const tileGroup = createTile(letter, score, font, tileColorConfig, data.tileColor, squareSize, tileDepth);
+        const tileGroup = createTile(
+          letter,
+          score,
+          font,
+          tileColorConfig,
+          data.tileColor,
+          squareSize,
+          tileDepth,
+          tileNormalMap,
+        );
         tileGroup.position.set(x, y, tableTopZ);
         this.scene.add(tileGroup);
         currentIndex++;
@@ -655,6 +959,92 @@ export class Board3DScene {
     const labelY = startY + squareSize * 1.5;
     labelMesh.position.set(labelX, labelY, tableTopZ + 0.1);
     this.scene.add(labelMesh);
+  }
+
+  // ── Logo decals ───────────────────────────────────────────────────────────
+  // Placed flush on the board's top surface between the grid edge and the rim.
+  // Left = dog face (logo512.png), right = tilted W badge.
+
+  private _buildDecals(boardThickness: number) {
+    const z = boardThickness / 2 + 0.05;
+    const size = 14; // decal square size in scene units
+
+    // Shared material factory — decals sit in the board's finish:
+    // slightly matte (roughness 0.5) relative to the clearcoated board, no metalness.
+    // polygonOffset prevents z-fighting without an ugly visible gap.
+    const makeMat = (tex: THREE.Texture) =>
+      new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        toneMapped: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      });
+
+    // ── Right side: tilted W badge ────────────────────────────────────────
+    const wCanvas = document.createElement("canvas");
+    wCanvas.width = 256;
+    wCanvas.height = 256;
+    const wCtx = wCanvas.getContext("2d")!;
+
+    // Blue rounded-rect background (matches topbar .site-icon-rect colour)
+    const pad = 18,
+      cr = 26;
+    const sw = 256 - pad * 2,
+      sh = 256 - pad * 2;
+    wCtx.fillStyle = "#1a5fa8";
+    wCtx.beginPath();
+    wCtx.moveTo(pad + cr, pad);
+    wCtx.lineTo(pad + sw - cr, pad);
+    wCtx.quadraticCurveTo(pad + sw, pad, pad + sw, pad + cr);
+    wCtx.lineTo(pad + sw, pad + sh - cr);
+    wCtx.quadraticCurveTo(pad + sw, pad + sh, pad + sw - cr, pad + sh);
+    wCtx.lineTo(pad + cr, pad + sh);
+    wCtx.quadraticCurveTo(pad, pad + sh, pad, pad + sh - cr);
+    wCtx.lineTo(pad, pad + cr);
+    wCtx.quadraticCurveTo(pad, pad, pad + cr, pad);
+    wCtx.closePath();
+    wCtx.fill();
+
+    // Bold W, rotated –11° (same as .site-icon-w CSS)
+    wCtx.save();
+    wCtx.translate(128, 136);
+    wCtx.rotate((-11 * Math.PI) / 180);
+    wCtx.fillStyle = "#ffffff";
+    wCtx.font = "bold 155px Arial, sans-serif";
+    wCtx.textAlign = "center";
+    wCtx.textBaseline = "middle";
+    wCtx.fillText("W", 0, 0);
+    wCtx.restore();
+
+    const wTex = new THREE.CanvasTexture(wCanvas);
+    wTex.needsUpdate = true;
+    const wMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      makeMat(wTex),
+    );
+    wMesh.position.set(47, 0, z);
+    this.boardGroup.add(wMesh);
+
+    // ── Left side: dog face ───────────────────────────────────────────────
+    // Load logo512.png from public/. Strip the white background via per-pixel
+    // alpha fade so the illustration blends cleanly onto the board surface.
+    new THREE.TextureLoader().load(
+      "/logo512.png",
+      (tex) => {
+        const img = tex.image as HTMLImageElement;
+        const aspect = img.height / img.width;
+        const dogMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(size, size * aspect),
+          makeMat(tex),
+        );
+        dogMesh.position.set(-47, 0, z);
+        this.boardGroup.add(dogMesh);
+      },
+      undefined,
+      () => {}, // silently skip if asset not found
+    );
   }
 
   // ── Scorepad ──────────────────────────────────────────────────────────────
@@ -750,9 +1140,15 @@ export class Board3DScene {
     });
     const scorepad = new THREE.Mesh(padGeometry, padMaterial);
     // Position to left/bottom of board, flat on the table (rotation.x = 0 means facing +Z = camera)
-    scorepad.position.set(-65, -55, -0.8);
+    scorepad.position.set(-70, -38, -0.8);
     scorepad.rotation.x = 0;
     this.scene.add(scorepad);
+  }
+
+  /** Toggles the lazy-susan board spin. Returns the new enabled state. */
+  toggleSpin(): boolean {
+    this.spinEnabled = !this.spinEnabled;
+    return this.spinEnabled;
   }
 
   saveAsPNG() {
@@ -787,5 +1183,7 @@ export class Board3DScene {
         }
       }
     });
+    this.textures.forEach((t) => t.dispose());
+    this.textures = [];
   }
 }

@@ -180,67 +180,67 @@ const ExamineGameControls = React.memo(
     };
     return (
       <>
-      <Affix offsetTop={210} className="examiner-controls">
-        <div className="game-controls">
-          <Dropdown
-            menu={{
-              items: exportMenuItems,
-              onClick: exportMenuOnClick,
-              theme: props.darkMode ? "dark" : "light",
-            }}
-            trigger={["click"]}
-            placement="topLeft"
-            disabled={props.puzzleMode}
-          >
-            <Button>Export</Button>
-          </Dropdown>
+        <Affix offsetTop={210} className="examiner-controls">
+          <div className="game-controls">
+            <Dropdown
+              menu={{
+                items: exportMenuItems,
+                onClick: exportMenuOnClick,
+                theme: props.darkMode ? "dark" : "light",
+              }}
+              trigger={["click"]}
+              placement="topLeft"
+              disabled={props.puzzleMode}
+            >
+              <Button>Export</Button>
+            </Dropdown>
 
-          <Button
-            shape="circle"
-            icon={<DoubleLeftOutlined />}
-            type="primary"
-            onClick={handleExamineFirst}
-            disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-          />
-          <Button
-            shape="circle"
-            icon={<LeftOutlined />}
-            type="primary"
-            onClick={handleExaminePrev}
-            disabled={examinedTurn <= 0 || numberOfTurns <= 0}
-          />
-          <Button
-            shape="circle"
-            icon={<RightOutlined />}
-            type="primary"
-            onClick={handleExamineNext}
-            disabled={examinedTurn >= numberOfTurns}
-          />
-          <Button
-            shape="circle"
-            icon={<DoubleRightOutlined />}
-            type="primary"
-            onClick={handleExamineLast}
-            disabled={examinedTurn >= numberOfTurns}
-          />
-          <Button
-            onClick={handleExamineEnd}
-            ref={doneButtonRef}
-            hidden={!props.exitable}
-          >
-            Done
-          </Button>
-        </div>
-      </Affix>
-      {board3DData && (
-        <React.Suspense fallback={null}>
-          <Board3DModal
-            open={board3DOpen}
-            onClose={() => setBoard3DOpen(false)}
-            data={board3DData}
-          />
-        </React.Suspense>
-      )}
+            <Button
+              shape="circle"
+              icon={<DoubleLeftOutlined />}
+              type="primary"
+              onClick={handleExamineFirst}
+              disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+            />
+            <Button
+              shape="circle"
+              icon={<LeftOutlined />}
+              type="primary"
+              onClick={handleExaminePrev}
+              disabled={examinedTurn <= 0 || numberOfTurns <= 0}
+            />
+            <Button
+              shape="circle"
+              icon={<RightOutlined />}
+              type="primary"
+              onClick={handleExamineNext}
+              disabled={examinedTurn >= numberOfTurns}
+            />
+            <Button
+              shape="circle"
+              icon={<DoubleRightOutlined />}
+              type="primary"
+              onClick={handleExamineLast}
+              disabled={examinedTurn >= numberOfTurns}
+            />
+            <Button
+              onClick={handleExamineEnd}
+              ref={doneButtonRef}
+              hidden={!props.exitable}
+            >
+              Done
+            </Button>
+          </div>
+        </Affix>
+        {board3DData && (
+          <React.Suspense fallback={null}>
+            <Board3DModal
+              open={board3DOpen}
+              onClose={() => setBoard3DOpen(false)}
+              data={board3DData}
+            />
+          </React.Suspense>
+        )}
       </>
     );
   },

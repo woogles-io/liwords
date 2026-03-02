@@ -23,7 +23,8 @@ const boardColorOptions = [
   { value: "purple", label: "Purple" },
   { value: "green", label: "Green" },
   { value: "yellow", label: "Yellow" },
-  { value: "black", label: "Black" },
+  { value: "red", label: "Red" },
+  { value: "slate", label: "Slate" },
 ];
 
 type Props = {
@@ -36,6 +37,7 @@ export const Board3DModal = React.memo((props: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tileColor, setTileColor] = useState("orange");
   const [boardColor, setBoardColor] = useState("jade");
+  const [isSpinning, setIsSpinning] = useState(false);
   const sceneRef = useRef<Board3DScene | null>(null);
   const isOpenRef = useRef(false);
 
@@ -44,6 +46,7 @@ export const Board3DModal = React.memo((props: Props) => {
       sceneRef.current.dispose();
       sceneRef.current = null;
     }
+    setIsSpinning(false);
   }, []);
 
   const createScene = useCallback(() => {
@@ -84,6 +87,11 @@ export const Board3DModal = React.memo((props: Props) => {
     sceneRef.current?.saveAsPNG();
   }, []);
 
+  const handleToggleSpin = useCallback(() => {
+    const next = sceneRef.current?.toggleSpin();
+    if (next !== undefined) setIsSpinning(next);
+  }, []);
+
   return (
     <Modal
       title="3D Board View"
@@ -92,30 +100,41 @@ export const Board3DModal = React.memo((props: Props) => {
       width="90vw"
       destroyOnClose
       afterOpenChange={handleAfterOpenChange}
-      footer={
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span>Tile color:</span>
-          <Select
-            value={tileColor}
-            onChange={setTileColor}
-            options={tileColorOptions}
-            style={{ width: 110 }}
-          />
-          <span>Board color:</span>
-          <Select
-            value={boardColor}
-            onChange={setBoardColor}
-            options={boardColorOptions}
-            style={{ width: 120 }}
-          />
-          <Button onClick={handleSavePNG}>Save as PNG</Button>
-          <Button onClick={props.onClose}>Close</Button>
-        </div>
-      }
+      footer={<Button onClick={props.onClose}>Close</Button>}
     >
+      {/* Controls toolbar — lives in the body so it scrolls with content on mobile
+          and doesn't fight the footer's fixed-position mobile CSS. */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
+          padding: "8px 0 8px",
+        }}
+      >
+        <span>Tile:</span>
+        <Select
+          value={tileColor}
+          onChange={setTileColor}
+          options={tileColorOptions}
+          style={{ width: 100 }}
+        />
+        <span>Board:</span>
+        <Select
+          value={boardColor}
+          onChange={setBoardColor}
+          options={boardColorOptions}
+          style={{ width: 100 }}
+        />
+        <Button onClick={handleToggleSpin}>
+          {isSpinning ? "Stop spin" : "Spin board"}
+        </Button>
+        <Button onClick={handleSavePNG}>Save as PNG</Button>
+      </div>
       <div
         ref={containerRef}
-        style={{ width: "100%", height: "75vh" }}
+        style={{ width: "100%", height: "min(70vh, calc(100dvh - 220px))" }}
       />
     </Modal>
   );
