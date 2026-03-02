@@ -83,6 +83,47 @@ if (!window.location.pathname.startsWith("/embed/")) {
   }
 }
 
+// Howler.js v2.2.4 has a state desynchronization bug on iOS: when iOS suspends
+// the AudioContext (backgrounding, tab switch, phone call, etc.), Howler.state
+// stays "running" while ctx.state becomes "suspended" or "interrupted".
+// This causes _autoResume() to be a no-op and play() to fire audio into a
+// dead context — silent failure with no error.
+//
+// Fix: sync Howler's internal state with the real AudioContext state, and
+// eagerly resume the context when the page regains visibility.
+const setupiOSAudioWorkarounds = () => {
+  const ctx = Howler.ctx;
+  if (!ctx) return;
+
+  // Keep Howler.state in sync with the real AudioContext state so that
+  // Howler's _autoResume() correctly detects suspension and queues sounds
+  // for replay once the context is running again.
+  ctx.addEventListener("statechange", () => {
+    const howler = Howler as unknown as { state: string };
+    if (ctx.state === "running") {
+      howler.state = "running";
+    } else {
+      howler.state = "suspended";
+    }
+  });
+};
+
+// Howler.ctx is created lazily when the first Howl is constructed, so it
+// exists by now (after the booperArray above).
+setupiOSAudioWorkarounds();
+
+// iOS suspends the AudioContext when the tab is backgrounded or the device is
+// locked. Attempt to resume when returning to the foreground.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  const ctx = Howler.ctx;
+  if (!ctx) return;
+  const state = ctx.state as string;
+  if (state === "suspended" || state === "interrupted") {
+    ctx.resume();
+  }
+});
+
 const playSound = (soundName: string) => {
   const booper = playableSounds[soundName];
   if (!booper) {
