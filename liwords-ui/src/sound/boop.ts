@@ -20,7 +20,6 @@ const soundIsEnabled = (soundName: string) => {
   let cachedToggle = soundToggleCache["all"];
   if (cachedToggle === undefined) {
     // localStorage is synchronous, try not to do it too often.
-    // Not sure if this is helpful...
     cachedToggle = localStorage.getItem("enableSilentSite") !== "true";
     soundToggleCache["all"] = cachedToggle;
     setTimeout(() => {
@@ -30,76 +29,43 @@ const soundIsEnabled = (soundName: string) => {
   return cachedToggle;
 };
 
-let audioCtx: AudioContext | null = null;
-let unlocked = false;
-
-const getAudioContext = (): AudioContext => {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
-  }
-  return audioCtx;
-};
-
-// iOS Safari requires a user gesture to unlock the AudioContext. We listen
-// for gestures and resume the context. Once running, we mark it as unlocked
-// but keep the listeners — iOS can re-suspend the context when the tab is
-// backgrounded or the device is locked, so we need to be able to resume again.
-const onUserGesture = () => {
-  const ctx = audioCtx;
-  if (!ctx) return;
-  if (ctx.state === "running") {
-    unlocked = true;
-    return;
-  }
-  ctx.resume().then(() => {
-    unlocked = true;
-  });
-};
-
-window.addEventListener("click", onUserGesture, true);
-window.addEventListener("touchend", onUserGesture, true);
-window.addEventListener("keydown", onUserGesture, true);
-
-// Eagerly resume when returning from background.
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    onUserGesture();
-  }
-});
-
 class Booper {
-  private buffer: AudioBuffer | null = null;
+  private audio: HTMLAudioElement;
+  private unlocked = false;
 
   constructor(
     readonly soundName: string,
     src: string,
   ) {
-    this.load(src);
+    this.audio = new Audio(src);
+    // Preload so the buffer is ready before it's needed.
+    this.audio.load();
   }
 
-  private async load(src: string) {
+  // Must be called from within a user gesture event handler.
+  // Plays the element muted so iOS will allow programmatic plays later.
+  async unlock(): Promise<boolean> {
+    if (this.unlocked) return true;
     try {
-      const response = await fetch(src);
-      const arrayBuffer = await response.arrayBuffer();
-      this.buffer = await getAudioContext().decodeAudioData(arrayBuffer);
-    } catch (e) {
-      console.warn(`cannot load ${this.soundName}:`, e);
+      this.audio.muted = true;
+      this.audio.currentTime = 0;
+      await this.audio.play();
+      this.audio.pause();
+      this.audio.muted = false;
+      this.unlocked = true;
+    } catch (_) {
+      // Audio not yet loaded or blocked — will retry on the next gesture.
     }
+    return this.unlocked;
   }
 
   play() {
     if (!soundIsEnabled(this.soundName)) return;
-    if (!this.buffer) return;
-    const ctx = getAudioContext();
-    // If the context is suspended, try to resume it. On iOS after the initial
-    // unlock, programmatic resume() works even outside user gestures.
-    if (ctx.state !== "running") {
-      ctx.resume();
-    }
-    const source = ctx.createBufferSource();
-    source.buffer = this.buffer;
-    source.connect(ctx.destination);
-    source.start();
+    if (!this.unlocked) return;
+    this.audio.currentTime = 0;
+    this.audio.play().catch((e) => {
+      console.warn(`cannot play ${this.soundName}:`, e);
+    });
   }
 }
 
@@ -129,6 +95,30 @@ if (!window.location.pathname.startsWith("/embed/")) {
     playableSounds[booper.soundName] = booper;
   }
 }
+
+// On the first user gesture, pre-unlock all audio elements so they can be
+// played later from non-gesture contexts (e.g. WebSocket events).
+//
+// We guard with soundIsEnabled so that when sounds are turned off we never
+// call audio.play() — even muted — which would activate the iOS audio session
+// and interrupt background music.
+const unlockAll = () => {
+  if (!soundIsEnabled("")) return;
+  Promise.all(Object.values(playableSounds).map((b) => b.unlock())).then(
+    (results) => {
+      if (results.every(Boolean)) {
+        // All elements unlocked; no need to keep trying on every gesture.
+        window.removeEventListener("click", unlockAll, true);
+        window.removeEventListener("touchend", unlockAll, true);
+        window.removeEventListener("keydown", unlockAll, true);
+      }
+    },
+  );
+};
+
+window.addEventListener("click", unlockAll, true);
+window.addEventListener("touchend", unlockAll, true);
+window.addEventListener("keydown", unlockAll, true);
 
 const playSound = (soundName: string) => {
   const booper = playableSounds[soundName];
