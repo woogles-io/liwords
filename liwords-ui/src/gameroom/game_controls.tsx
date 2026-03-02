@@ -38,6 +38,11 @@ import {
   GetAnalysisStatusResponse_JobStatus,
 } from "../gen/api/proto/analysis_service/analysis_service_pb";
 import { create } from "@bufbuild/protobuf";
+// React.lazy keeps Three.js (~600KB) out of the main bundle.
+// The chunk only loads the first time the user opens the 3D view.
+const Board3DModal = React.lazy(() => import("./board3d/Board3DModal"));
+import { convertGameStateTo3DData } from "./board3d/convert";
+import { Board3DData } from "./board3d/types";
 
 const downloadGameImg = (downloadFilename: string) => {
   const link = document.createElement("a");
@@ -77,6 +82,8 @@ const ExamineGameControls = React.memo(
     const { gameContext } = useGameContextStoreContext();
     const { setPlacedTiles, setPlacedTilesTempScore } =
       useTentativeTileContext();
+    const [board3DOpen, setBoard3DOpen] = useState(false);
+    const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
     useEffect(() => {
       setPlacedTilesTempScore(undefined);
       setPlacedTiles(new Set<EphemeralTile>());
@@ -122,6 +129,11 @@ const ExamineGameControls = React.memo(
           // add onclick to menu parent.
         });
       }
+      items.push({
+        label: "3D Board",
+        key: "view-3d-board",
+        disabled: gameHasNotStarted,
+      });
       return items;
     }, [gameDone, gameHasNotStarted, isAtLastTurn, props.editMode]);
 
@@ -154,9 +166,20 @@ const ExamineGameControls = React.memo(
         case "download-gcg":
           props.onExportGCG();
           break;
+        case "view-3d-board":
+          setBoard3DData(
+            convertGameStateTo3DData(
+              examinableGameContext,
+              examinableGameContext.alphabet,
+              gameContext.gameDocument,
+            ),
+          );
+          setBoard3DOpen(true);
+          break;
       }
     };
     return (
+      <>
       <Affix offsetTop={210} className="examiner-controls">
         <div className="game-controls">
           <Dropdown
@@ -209,6 +232,16 @@ const ExamineGameControls = React.memo(
           </Button>
         </div>
       </Affix>
+      {board3DData && (
+        <React.Suspense fallback={null}>
+          <Board3DModal
+            open={board3DOpen}
+            onClose={() => setBoard3DOpen(false)}
+            data={board3DData}
+          />
+        </React.Suspense>
+      )}
+      </>
     );
   },
 );
@@ -269,6 +302,8 @@ export type Props = {
 const GameControls = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
+  const [board3DOpen, setBoard3DOpen] = useState(false);
+  const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
@@ -401,6 +436,10 @@ const GameControls = React.memo((props: Props) => {
       label: "Animated GIF to this position",
       key: "download-animated-gif-turn",
     });
+    items.push({
+      label: "3D Board",
+      key: "view-3d-board",
+    });
     return items;
   }, [props.showAbort, props.showNudge, props.isLeagueGame]);
 
@@ -492,6 +531,16 @@ const GameControls = React.memo((props: Props) => {
             gameContext.turns.length + 1
           }.gif`,
         );
+        break;
+      case "view-3d-board":
+        setBoard3DData(
+          convertGameStateTo3DData(
+            gameContext,
+            gameContext.alphabet,
+            gameContext.gameDocument,
+          ),
+        );
+        setBoard3DOpen(true);
         break;
     }
   };
@@ -629,6 +678,15 @@ const GameControls = React.memo((props: Props) => {
           />
         </div>
       )}
+      {board3DData && (
+        <React.Suspense fallback={null}>
+          <Board3DModal
+            open={board3DOpen}
+            onClose={() => setBoard3DOpen(false)}
+            data={board3DData}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 });
@@ -651,6 +709,8 @@ const EndGameControls = (props: EGCProps) => {
     useState<GetAnalysisStatusResponse_JobStatus | null>(null);
   const [queuePosition, setQueuePosition] = useState<number>(0);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [board3DOpen, setBoard3DOpen] = useState(false);
+  const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const gameDone = true; // it is endgame controls after all
@@ -773,6 +833,11 @@ const EndGameControls = (props: EGCProps) => {
                     label: "GCG",
                     disabled: gameHasNotStarted,
                   },
+                  {
+                    key: "view-3d-board",
+                    label: "3D Board",
+                    disabled: gameHasNotStarted,
+                  },
                 ],
                 onClick: ({ key }) => {
                   switch (key) {
@@ -788,6 +853,16 @@ const EndGameControls = (props: EGCProps) => {
                       break;
                     case "download-gcg":
                       props.onExportGCG();
+                      break;
+                    case "view-3d-board":
+                      setBoard3DData(
+                        convertGameStateTo3DData(
+                          gameContext,
+                          gameContext.alphabet,
+                          gameContext.gameDocument,
+                        ),
+                      );
+                      setBoard3DOpen(true);
                       break;
                   }
                 },
@@ -846,6 +921,15 @@ const EndGameControls = (props: EGCProps) => {
           </p>
         )}
       </Modal>
+      {board3DData && (
+        <React.Suspense fallback={null}>
+          <Board3DModal
+            open={board3DOpen}
+            onClose={() => setBoard3DOpen(false)}
+            data={board3DData}
+          />
+        </React.Suspense>
+      )}
     </>
   );
 };
