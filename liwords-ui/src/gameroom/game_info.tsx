@@ -19,7 +19,7 @@ import {
 import {
   BotRequest_BotCode,
   ChallengeRule,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { challengeRuleNames } from "../constants/challenge_rules";
 import { GameInfoResponse } from "../gen/api/proto/ipc/omgwords_pb";

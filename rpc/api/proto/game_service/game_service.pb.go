@@ -848,7 +848,7 @@ var File_proto_game_service_game_service_proto protoreflect.FileDescriptor
 
 const file_proto_game_service_game_service_proto_rawDesc = "" +
 	"\n" +
-	"%proto/game_service/game_service.proto\x12\fgame_service\x1a\x18proto/ipc/omgwords.proto\x1a\x1cvendor/macondo/macondo.proto\"*\n" +
+	"%proto/game_service/game_service.proto\x12\fgame_service\x1a\x18proto/ipc/omgwords.proto\x1a$proto/vendored/macondo/macondo.proto\"*\n" +
 	"\x0fGameInfoRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"%\n" +
 	"\n" +

@@ -6,7 +6,7 @@ import {
   GameEventSchema,
   GameHistorySchema,
   PlayerInfoSchema,
-} from "../../gen/api/vendor/macondo/macondo_pb";
+} from "../../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   StandardEnglishAlphabet,
   runesToMachineWord,

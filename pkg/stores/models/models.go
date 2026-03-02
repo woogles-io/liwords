@@ -16,6 +16,25 @@ type ActiveGameEvent struct {
 	Event    []byte
 }
 
+type AnalysisJob struct {
+	ID                  uuid.UUID
+	GameID              string
+	Status              string
+	ClaimedByUserUuid   pgtype.Text
+	ClaimedAt           pgtype.Timestamptz
+	HeartbeatAt         pgtype.Timestamptz
+	ConfigJson          []byte
+	Result              []byte
+	ErrorMessage        pgtype.Text
+	RetryCount          pgtype.Int4
+	MaxRetries          pgtype.Int4
+	Priority            pgtype.Int4
+	CreatedAt           pgtype.Timestamptz
+	CompletedAt         pgtype.Timestamptz
+	RequestedByUserUuid pgtype.Text
+	RequestType         pgtype.Text
+}
+
 type AnnotatedGameMetadatum struct {
 	GameUuid         string
 	CreatorUuid      string
@@ -416,6 +435,14 @@ type UserAction struct {
 	Note        pgtype.Text
 	RemovalNote pgtype.Text
 	EmailType   int32
+}
+
+type UserAnalysisRequest struct {
+	ID          uuid.UUID
+	UserUuid    string
+	GameID      string
+	JobID       pgtype.UUID
+	RequestedAt pgtype.Timestamptz
 }
 
 type UserBadge struct {

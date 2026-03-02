@@ -1,4 +1,4 @@
-import { GameEvent } from "../gen/api/vendor/macondo/macondo_pb";
+import { GameEvent } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 export type TimeBankState = {
   p0Time: number;

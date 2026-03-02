@@ -1,6 +1,6 @@
 import { ChatMessage } from "../gen/api/proto/ipc/chat_pb";
 import { TType } from "../gen/api/proto/tournament_service/tournament_service_pb";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   BlankMachineLetter,
   EmptyRackSpaceMachineLetter,
