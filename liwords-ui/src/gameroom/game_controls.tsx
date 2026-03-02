@@ -6,7 +6,15 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import { Affix, App, Button, Dropdown, MenuProps, Popconfirm, Modal } from "antd";
+import {
+  Affix,
+  App,
+  Button,
+  Dropdown,
+  MenuProps,
+  Popconfirm,
+  Modal,
+} from "antd";
 
 import {
   DoubleLeftOutlined,
@@ -639,7 +647,8 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState<GetAnalysisStatusResponse_JobStatus | null>(null);
+  const [analysisStatus, setAnalysisStatus] =
+    useState<GetAnalysisStatusResponse_JobStatus | null>(null);
   const [queuePosition, setQueuePosition] = useState<number>(0);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const { gameContext } = useGameContextStoreContext();
@@ -649,21 +658,21 @@ const EndGameControls = (props: EGCProps) => {
   const { modal } = App.useApp();
 
   // Check analysis status on mount
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const response = await analysisClient.getAnalysisStatus({
-          gameId: props.gameID,
-        });
-        setAnalysisStatus(response.status);
-        setQueuePosition(response.queuePosition);
-      } catch (e) {
-        // No analysis exists, that's fine
-        setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.NOT_FOUND);
-      }
-    };
-    checkStatus();
-  }, [analysisClient, props.gameID]);
+  // TODO: re-enable when analysis UI is ready
+  // useEffect(() => {
+  //   const checkStatus = async () => {
+  //     try {
+  //       const response = await analysisClient.getAnalysisStatus({
+  //         gameId: props.gameID,
+  //       });
+  //       setAnalysisStatus(response.status);
+  //       setQueuePosition(response.queuePosition);
+  //     } catch (e) {
+  //       setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.NOT_FOUND);
+  //     }
+  //   };
+  //   checkStatus();
+  // }, [analysisClient, props.gameID]);
 
   const handleRequestAnalysis = async () => {
     try {
@@ -676,30 +685,36 @@ const EndGameControls = (props: EGCProps) => {
           setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
           setQueuePosition(response.queuePosition);
           modal.success({
-            title: "Analysis Requested!",
-            content: `Your game has been queued for analysis. You are #${response.queuePosition} in the queue.`,
+            title: <p className="readable-text-color">Analysis Requested!</p>,
+            content: (
+              <p className="readable-text-color">{`Your game has been queued for analysis. You are #${response.queuePosition} in the queue.`}</p>
+            ),
           });
           break;
         case RequestAnalysisResponse_Status.ALREADY_REQUESTED:
           setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
           setQueuePosition(response.queuePosition);
           modal.info({
-            title: "Analysis Already Requested",
-            content: response.message,
+            title: (
+              <p className="readable-text-color">Analysis Already Requested</p>
+            ),
+            content: <p className="readable-text-color">{response.message}</p>,
           });
           break;
         case RequestAnalysisResponse_Status.RATE_LIMITED:
           modal.error({
-            title: "Rate Limited",
-            content: response.message,
+            title: <p className="readable-text-color">Rate Limited</p>,
+            content: <p className="readable-text-color">{response.message}</p>,
           });
           break;
         case RequestAnalysisResponse_Status.GAME_NOT_ENDED:
         case RequestAnalysisResponse_Status.NOT_A_PLAYER:
         case RequestAnalysisResponse_Status.INVALID_VARIANT:
           modal.error({
-            title: "Cannot Request Analysis",
-            content: response.message,
+            title: (
+              <p className="readable-text-color">Cannot Request Analysis</p>
+            ),
+            content: <p className="readable-text-color">{response.message}</p>,
           });
           break;
       }
@@ -709,16 +724,15 @@ const EndGameControls = (props: EGCProps) => {
   };
 
   const handleAnalysisButtonClick = () => {
-    if (analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED) {
-      // View analysis - just go to examine mode
-      props.onExamine();
-    } else if (analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND) {
-      // Request new analysis
-      handleRequestAnalysis();
-    } else {
-      // Show status
-      setStatusModalVisible(true);
-    }
+    // TODO: re-enable queue behavior when analysis UI is ready
+    props.onExamine();
+    // if (analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED) {
+    //   props.onExamine();
+    // } else if (analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND) {
+    //   handleRequestAnalysis();
+    // } else {
+    //   setStatusModalVisible(true);
+    // }
   };
 
   const getRemoteAnalysisLabel = () => {
@@ -795,7 +809,10 @@ const EndGameControls = (props: EGCProps) => {
                 {
                   key: "analyze-remote",
                   label: getRemoteAnalysisLabel(),
-                  disabled: gameHasNotStarted || analysisStatus === GetAnalysisStatusResponse_JobStatus.FAILED,
+                  disabled:
+                    gameHasNotStarted ||
+                    analysisStatus ===
+                      GetAnalysisStatusResponse_JobStatus.FAILED,
                 },
               ],
               onClick: ({ key }) => {
@@ -817,21 +834,23 @@ const EndGameControls = (props: EGCProps) => {
         <div className="secondary-controls">
           {!props.puzzleMode && <Button onClick={props.onExit}>Exit</Button>}
         </div>
-        {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
-          <Button
-            type="primary"
-            data-testid="rematch-button"
-            className="play"
-            onClick={() => {
-              setRematchDisabled(true);
-              if (!rematchDisabled) {
-                props.onRematch();
-              }
-            }}
-          >
-            Rematch
-          </Button>
-        )}
+        {props.showRematch &&
+          !props.tournamentPairedMode &&
+          !rematchDisabled && (
+            <Button
+              type="primary"
+              data-testid="rematch-button"
+              className="play"
+              onClick={() => {
+                setRematchDisabled(true);
+                if (!rematchDisabled) {
+                  props.onRematch();
+                }
+              }}
+            >
+              Rematch
+            </Button>
+          )}
       </div>
       <Modal
         title="Analysis Status"
@@ -844,10 +863,15 @@ const EndGameControls = (props: EGCProps) => {
         ]}
       >
         {analysisStatus === GetAnalysisStatusResponse_JobStatus.PENDING && (
-          <p>Your game is queued for analysis. Position in queue: #{queuePosition}</p>
+          <p>
+            Your game is queued for analysis. Position in queue: #
+            {queuePosition}
+          </p>
         )}
         {analysisStatus === GetAnalysisStatusResponse_JobStatus.PROCESSING && (
-          <p>Your game is currently being analyzed. This may take a few minutes.</p>
+          <p>
+            Your game is currently being analyzed. This may take a few minutes.
+          </p>
         )}
       </Modal>
     </>
