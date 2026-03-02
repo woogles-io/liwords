@@ -313,28 +313,28 @@ func main() {
 		return r.Method + " " + r.URL.Path
 	}
 
-	router.Handle(memento.GameimgPrefix, otelhttp.WithRouteTag(memento.GameimgPrefix, otelhttp.NewHandler(
+	router.Handle(memento.GameimgPrefix, otelhttp.NewHandler(
 		middlewares.Then(mementoService),
 		"memento-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	)))
-	router.Handle(embed.EmbedServicePrefix, otelhttp.WithRouteTag(embed.EmbedServicePrefix, otelhttp.NewHandler(
+	))
+	router.Handle(embed.EmbedServicePrefix, otelhttp.NewHandler(
 		middlewares.Then(embedService),
 		"embed-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	)))
+	))
 	router.Handle(integrations.OAuthIntegrationServicePrefix,
-		otelhttp.WithRouteTag(integrations.OAuthIntegrationServicePrefix, otelhttp.NewHandler(
+		otelhttp.NewHandler(
 			middlewares.Then(oauthIntegrationService),
 			"oauth-integration-handlers",
 			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-		)))
+		))
 	// VDO webhook doesn't need authentication middleware - it handles CORS directly
-	router.Handle("/api/vdo-webhook", otelhttp.WithRouteTag("/api/vdo-webhook", otelhttp.NewHandler(
+	router.Handle("/api/vdo-webhook", otelhttp.NewHandler(
 		vdoWebhookService,
 		"vdo-webhook-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
-	)))
+	))
 
 	interceptors := connect.WithInterceptors(otcInterceptor)
 	// We want to emit default values for backwards compatibility.
@@ -414,10 +414,9 @@ func main() {
 
 	connectapichain := middlewares.Then(connectapi)
 
-	router.Handle("/api/", otelhttp.WithRouteTag("/api/",
-		otelhttp.NewHandler(http.StripPrefix("/api", connectapichain),
-			"api",
-			otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter))))
+	router.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", connectapichain),
+		"api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter)))
 
 	router.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	router.Handle(
