@@ -46,7 +46,7 @@ import {
   GameHistory,
   GameEvent_Direction,
   GameEvent_Type,
-} from "../gen/api/vendor/macondo/macondo_pb";
+} from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { MatchLexiconDisplay, puzzleLexica } from "../shared/lexicon_display";
 import { Store } from "antd/lib/form/interface";
 

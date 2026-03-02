@@ -5,14 +5,13 @@
 package league_serviceconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	http "net/http"
-	strings "strings"
-
-	connect "connectrpc.com/connect"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	league_service "github.com/woogles-io/liwords/rpc/api/proto/league_service"
+	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
@@ -120,6 +119,9 @@ const (
 	// LeagueServiceAddSeasonTimeBankProcedure is the fully-qualified name of the LeagueService's
 	// AddSeasonTimeBank RPC.
 	LeagueServiceAddSeasonTimeBankProcedure = "/league_service.LeagueService/AddSeasonTimeBank"
+	// LeagueServiceCancelPlayerResultsProcedure is the fully-qualified name of the LeagueService's
+	// CancelPlayerResults RPC.
+	LeagueServiceCancelPlayerResultsProcedure = "/league_service.LeagueService/CancelPlayerResults"
 )
 
 // LeagueServiceClient is a client for the league_service.LeagueService service.
@@ -159,6 +161,7 @@ type LeagueServiceClient interface {
 	UpdateSeasonPromotionFormula(context.Context, *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	RecalculateSeasonExtendedStats(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.RecalculateExtendedStatsResponse], error)
 	AddSeasonTimeBank(context.Context, *connect.Request[league_service.AddSeasonTimeBankRequest]) (*connect.Response[league_service.AddSeasonTimeBankResponse], error)
+	CancelPlayerResults(context.Context, *connect.Request[league_service.CancelPlayerResultsRequest]) (*connect.Response[league_service.CancelPlayerResultsResponse], error)
 }
 
 // NewLeagueServiceClient constructs a client for the league_service.LeagueService service. By
@@ -346,6 +349,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("AddSeasonTimeBank")),
 			connect.WithClientOptions(opts...),
 		),
+		cancelPlayerResults: connect.NewClient[league_service.CancelPlayerResultsRequest, league_service.CancelPlayerResultsResponse](
+			httpClient,
+			baseURL+LeagueServiceCancelPlayerResultsProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("CancelPlayerResults")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -380,6 +389,7 @@ type leagueServiceClient struct {
 	updateSeasonPromotionFormula       *connect.Client[league_service.UpdateSeasonPromotionFormulaRequest, league_service.SeasonResponse]
 	recalculateSeasonExtendedStats     *connect.Client[league_service.SeasonRequest, league_service.RecalculateExtendedStatsResponse]
 	addSeasonTimeBank                  *connect.Client[league_service.AddSeasonTimeBankRequest, league_service.AddSeasonTimeBankResponse]
+	cancelPlayerResults                *connect.Client[league_service.CancelPlayerResultsRequest, league_service.CancelPlayerResultsResponse]
 }
 
 // CreateLeague calls league_service.LeagueService.CreateLeague.
@@ -528,6 +538,11 @@ func (c *leagueServiceClient) AddSeasonTimeBank(ctx context.Context, req *connec
 	return c.addSeasonTimeBank.CallUnary(ctx, req)
 }
 
+// CancelPlayerResults calls league_service.LeagueService.CancelPlayerResults.
+func (c *leagueServiceClient) CancelPlayerResults(ctx context.Context, req *connect.Request[league_service.CancelPlayerResultsRequest]) (*connect.Response[league_service.CancelPlayerResultsResponse], error) {
+	return c.cancelPlayerResults.CallUnary(ctx, req)
+}
+
 // LeagueServiceHandler is an implementation of the league_service.LeagueService service.
 type LeagueServiceHandler interface {
 	// League management
@@ -565,6 +580,7 @@ type LeagueServiceHandler interface {
 	UpdateSeasonPromotionFormula(context.Context, *connect.Request[league_service.UpdateSeasonPromotionFormulaRequest]) (*connect.Response[league_service.SeasonResponse], error)
 	RecalculateSeasonExtendedStats(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.RecalculateExtendedStatsResponse], error)
 	AddSeasonTimeBank(context.Context, *connect.Request[league_service.AddSeasonTimeBankRequest]) (*connect.Response[league_service.AddSeasonTimeBankResponse], error)
+	CancelPlayerResults(context.Context, *connect.Request[league_service.CancelPlayerResultsRequest]) (*connect.Response[league_service.CancelPlayerResultsResponse], error)
 }
 
 // NewLeagueServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -748,6 +764,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("AddSeasonTimeBank")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceCancelPlayerResultsHandler := connect.NewUnaryHandler(
+		LeagueServiceCancelPlayerResultsProcedure,
+		svc.CancelPlayerResults,
+		connect.WithSchema(leagueServiceMethods.ByName("CancelPlayerResults")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/league_service.LeagueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LeagueServiceCreateLeagueProcedure:
@@ -808,6 +830,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceRecalculateSeasonExtendedStatsHandler.ServeHTTP(w, r)
 		case LeagueServiceAddSeasonTimeBankProcedure:
 			leagueServiceAddSeasonTimeBankHandler.ServeHTTP(w, r)
+		case LeagueServiceCancelPlayerResultsProcedure:
+			leagueServiceCancelPlayerResultsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -931,4 +955,8 @@ func (UnimplementedLeagueServiceHandler) RecalculateSeasonExtendedStats(context.
 
 func (UnimplementedLeagueServiceHandler) AddSeasonTimeBank(context.Context, *connect.Request[league_service.AddSeasonTimeBankRequest]) (*connect.Response[league_service.AddSeasonTimeBankResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.AddSeasonTimeBank is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) CancelPlayerResults(context.Context, *connect.Request[league_service.CancelPlayerResultsRequest]) (*connect.Response[league_service.CancelPlayerResultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.CancelPlayerResults is not implemented"))
 }

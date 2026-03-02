@@ -1,6 +1,6 @@
 import { Form, Select } from "antd";
 import React from "react";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 type Props = {
   disabled: boolean;

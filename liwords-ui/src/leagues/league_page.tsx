@@ -101,6 +101,13 @@ const formatLocalTime = (timestamp: Timestamp | undefined): string => {
   return localTime;
 };
 
+const stndrdth = (n: number) => {
+  if (n < 0) n = -n;
+  if (Math.floor(n / 10) % 10 === 1) return "th";
+  n %= 10;
+  return n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+};
+
 export const LeaguePage = (props: Props) => {
   const { slug } = useParams<{ slug: string }>();
   const { loginState } = useLoginStateStoreContext();
@@ -881,14 +888,7 @@ export const LeaguePage = (props: Props) => {
                           className="league-color-666"
                         >
                           Currently {userSeasonInfo.rank}
-                          {userSeasonInfo.rank === 1
-                            ? "st"
-                            : userSeasonInfo.rank === 2
-                              ? "nd"
-                              : userSeasonInfo.rank === 3
-                                ? "rd"
-                                : "th"}{" "}
-                          in{" "}
+                          {stndrdth(userSeasonInfo.rank)} in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -909,14 +909,7 @@ export const LeaguePage = (props: Props) => {
                           className="league-color-666"
                         >
                           Finished {userSeasonInfo.rank}
-                          {userSeasonInfo.rank === 1
-                            ? "st"
-                            : userSeasonInfo.rank === 2
-                              ? "nd"
-                              : userSeasonInfo.rank === 3
-                                ? "rd"
-                                : "th"}{" "}
-                          in{" "}
+                          {stndrdth(userSeasonInfo.rank)} in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>

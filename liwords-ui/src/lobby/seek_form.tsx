@@ -11,7 +11,7 @@ import {
 } from "antd";
 
 import { Store } from "antd/lib/form/interface";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import {
   initialTimeMinutesToSlider,
   initialTimeSecondsToSlider,

@@ -12,7 +12,7 @@ import { PlayerAvatar } from "../shared/player_avatar";
 import { DisplayUserFlag } from "../shared/display_flag";
 import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import { timeFormat, challengeFormat } from "./sought_games";
-import { ChallengeRule } from "../gen/api/vendor/macondo/macondo_pb";
+import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { RatingBadge } from "./rating_badge";
 import { timeCtrlToDisplayName } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";

@@ -1323,6 +1323,47 @@ func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingPa
 	return i, err
 }
 
+const getPlayerUnfinishedSeasonGames = `-- name: GetPlayerUnfinishedSeasonGames :many
+SELECT uuid as game_id, player0_id, player1_id
+FROM games
+WHERE season_id = $1
+  AND (player0_id = $2 OR player1_id = $2)
+  AND game_end_reason = 0
+`
+
+type GetPlayerUnfinishedSeasonGamesParams struct {
+	SeasonID pgtype.UUID
+	PlayerID pgtype.Int4
+}
+
+type GetPlayerUnfinishedSeasonGamesRow struct {
+	GameID    pgtype.Text
+	Player0ID pgtype.Int4
+	Player1ID pgtype.Int4
+}
+
+// Get all unfinished (ongoing) games for a specific player in a season.
+// Used when cancelling a cheater's results to find games that need to be force-forfeited.
+func (q *Queries) GetPlayerUnfinishedSeasonGames(ctx context.Context, arg GetPlayerUnfinishedSeasonGamesParams) ([]GetPlayerUnfinishedSeasonGamesRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerUnfinishedSeasonGames, arg.SeasonID, arg.PlayerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerUnfinishedSeasonGamesRow
+	for rows.Next() {
+		var i GetPlayerUnfinishedSeasonGamesRow
+		if err := rows.Scan(&i.GameID, &i.Player0ID, &i.Player1ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecentSeasons = `-- name: GetRecentSeasons :many
 SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1
@@ -1991,6 +2032,59 @@ WHERE uuid = $1
 func (q *Queries) MarkStartingSoonNotificationSent(ctx context.Context, argUuid uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markStartingSoonNotificationSent, argUuid)
 	return err
+}
+
+const penalizePlayerSeasonGames = `-- name: PenalizePlayerSeasonGames :execrows
+WITH games_to_penalize AS (
+    SELECT gp_src.game_uuid
+    FROM game_players gp_src
+    WHERE gp_src.player_id = $1
+      AND gp_src.league_season_id = $2
+      AND gp_src.game_end_reason NOT IN (0, 5, 7)
+      AND (gp_src.won IS DISTINCT FROM false OR (gp_src.opponent_score - gp_src.score) < 100)
+),
+cheater_update AS (
+    UPDATE game_players gp
+    SET score = gp.opponent_score - 100,
+        won = false
+    FROM games_to_penalize gtp
+    WHERE gp.game_uuid = gtp.game_uuid
+      AND gp.player_id = $1
+    RETURNING gp.game_uuid
+),
+opponent_update AS (
+    UPDATE game_players gp
+    SET opponent_score = gp.score - 100,
+        won = true
+    FROM games_to_penalize gtp
+    WHERE gp.game_uuid = gtp.game_uuid
+      AND gp.opponent_id = $1
+    RETURNING gp.game_uuid
+)
+UPDATE games g
+SET winner_idx = CASE WHEN g.player0_id = $1 THEN 1 ELSE 0 END,
+    loser_idx = CASE WHEN g.player0_id = $1 THEN 0 ELSE 1 END,
+    updated_at = NOW()
+FROM games_to_penalize gtp
+WHERE g.uuid = gtp.game_uuid
+`
+
+type PenalizePlayerSeasonGamesParams struct {
+	CheaterID pgtype.Int4
+	SeasonID  pgtype.UUID
+}
+
+// Penalize a cheater's games in a season:
+// Lower the cheater's score to (opponent_score - 100), keeping the honest player's score.
+// Only applies to games where the cheater didn't already lose by >= 100 points.
+// Updates game_players rows for both the cheater and their opponents,
+// and updates the games table winner_idx/loser_idx for flipped results.
+func (q *Queries) PenalizePlayerSeasonGames(ctx context.Context, arg PenalizePlayerSeasonGamesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, penalizePlayerSeasonGames, arg.CheaterID, arg.SeasonID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const registerPlayer = `-- name: RegisterPlayer :one

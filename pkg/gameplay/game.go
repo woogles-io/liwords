@@ -289,9 +289,8 @@ func players(entGame *entity.Game) []string {
 }
 
 // sorts MLs in place.
-func sortedMLs(mls []tilemapping.MachineLetter) []tilemapping.MachineLetter {
+func sortMLsInPlace(mls []tilemapping.MachineLetter) {
 	sort.Slice(mls, func(i, j int) bool { return mls[i] < mls[j] })
-	return mls
 }
 
 // given two sorted arrays of machineletters, overwrite a with a-b, return the shortened slice
@@ -332,7 +331,31 @@ func calculateReturnedTiles(cfg *config.Config, letdist string, playerRack strin
 		return "", err
 	}
 
-	returnedMLs := minusMLs(sortedMLs(prackml), minusMLs(sortedMLs(lastrackml), sortedMLs(lastevtml)))
+	// in prackml and lastrackml, 0 means BlankToken ('?').
+	{
+		l := len(lastevtml)
+		w := 0
+		for r := 0; r < l; r++ {
+			if lastevtml[r] == 0 {
+				// 0 means ASCIIPlayedThrough ('.').
+				// here, 0 does not mean BlankToken ('?').
+			} else {
+				if lastevtml[r].IsBlanked() {
+					// a blank tile was played.
+					lastevtml[w] = 0
+				} else {
+					lastevtml[w] = lastevtml[r]
+				}
+				w++
+			}
+		}
+		lastevtml = lastevtml[:w]
+	}
+
+	sortMLsInPlace(prackml)
+	sortMLsInPlace(lastrackml)
+	sortMLsInPlace(lastevtml)
+	returnedMLs := minusMLs(prackml, minusMLs(lastrackml, lastevtml))
 	return tilemapping.MachineWord(returnedMLs).UserVisible(dist.TileMapping()), nil
 }
 
@@ -351,7 +374,6 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		// this must be done before ChallengeEvent irreversibly modifies the history
 		lastEvent := entGame.Game.LastEvent()
 		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
-		// there is no need to remove tilemapping.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
 		cfg, err := config.Ctx(ctx)
 		if err != nil {
 			return err

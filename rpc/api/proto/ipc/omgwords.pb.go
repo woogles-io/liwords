@@ -11,14 +11,13 @@
 package ipc
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -3280,7 +3279,7 @@ var File_proto_ipc_omgwords_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a\x1cvendor/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
+	"\x18proto/ipc/omgwords.proto\x12\x03ipc\x1a$proto/vendored/macondo/macondo.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
 	"\x13ClientGameplayEvent\x126\n" +
 	"\x04type\x18\x01 \x01(\x0e2\".ipc.ClientGameplayEvent.EventTypeR\x04type\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12'\n" +

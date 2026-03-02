@@ -2,7 +2,7 @@ syntax = "proto3";
 package game_service;
 
 import "proto/ipc/omgwords.proto";
-import "vendor/macondo/macondo.proto";
+import "proto/vendored/macondo/macondo.proto";
 
 // Meta information about a game, including its players.
 message GameInfoRequest { string game_id = 1; }
@@ -55,7 +55,7 @@ enum UnfreezeBotMode {
 
 message UnfreezeBotRequest {
   UnfreezeBotMode mode = 1;
-  string game_id = 2;  // Required if mode is SPECIFIC_GAME
+  string game_id = 2; // Required if mode is SPECIFIC_GAME
 }
 
 message UnfreezeBotResponse {

@@ -3,8 +3,8 @@ clean: true
 managed:
   enabled: true
   disable:
-    # Use the go_package declaration that is in this directory's files.
-    - path: vendor
+    # Don't override go_package for vendored macondo - it should point to the original package
+    - path: proto/vendored
   override:
     - file_option: go_package_prefix
       value: github.com/woogles-io/liwords/rpc/api

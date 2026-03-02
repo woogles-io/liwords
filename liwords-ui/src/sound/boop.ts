@@ -1,4 +1,3 @@
-import { Unrace } from "../utils/unrace";
 import makemoveSound from "../assets/makemove.mp3";
 import oppmoveSound from "../assets/oppmove.mp3";
 import matchreqSound from "../assets/matchreq.mp3";
@@ -31,60 +30,77 @@ const soundIsEnabled = (soundName: string) => {
   return cachedToggle;
 };
 
+let audioCtx: AudioContext | null = null;
+let unlocked = false;
+
+const getAudioContext = (): AudioContext => {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  return audioCtx;
+};
+
+// iOS Safari requires a user gesture to unlock the AudioContext. We listen
+// for gestures and resume the context. Once running, we mark it as unlocked
+// but keep the listeners — iOS can re-suspend the context when the tab is
+// backgrounded or the device is locked, so we need to be able to resume again.
+const onUserGesture = () => {
+  const ctx = audioCtx;
+  if (!ctx) return;
+  if (ctx.state === "running") {
+    unlocked = true;
+    return;
+  }
+  ctx.resume().then(() => {
+    unlocked = true;
+  });
+};
+
+window.addEventListener("click", onUserGesture, true);
+window.addEventListener("touchend", onUserGesture, true);
+window.addEventListener("keydown", onUserGesture, true);
+
+// Eagerly resume when returning from background.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    onUserGesture();
+  }
+});
+
 class Booper {
-  private audio: HTMLAudioElement;
-
-  private unrace = new Unrace();
-
-  private times = 0;
-
-  private unlocked = false;
+  private buffer: AudioBuffer | null = null;
 
   constructor(
     readonly soundName: string,
     src: string,
   ) {
-    this.audio = new Audio(src);
-    // On iOS, if not yet loaded, audio.play() will silently play a short
-    // silent sound instead, and fire ended event on that.
-    // Try to load first, so hopefully it's already loaded when needed.
-    this.audio.load();
-    this.audio.addEventListener("ended", () => {
-      if (this.times > 0) this.unlock();
-    });
+    this.load(src);
   }
 
-  callPlay = async () => {
-    const isPlaying = this.times > 0;
+  private async load(src: string) {
     try {
-      // Use .muted, because iOS does not support .volume.
-      const thisAudioMuted = !(isPlaying && soundIsEnabled(this.soundName));
-      // Always unlock.
-      if (!thisAudioMuted || !this.unlocked) {
-        this.audio.muted = thisAudioMuted;
-        // On some browsers (desktop included), audio may start midway.
-        this.audio.currentTime = isPlaying ? 0 : this.audio.duration;
-        await this.audio.play();
-        this.unlocked = true;
-      }
-      if (isPlaying) --this.times;
+      const response = await fetch(src);
+      const arrayBuffer = await response.arrayBuffer();
+      this.buffer = await getAudioContext().decodeAudioData(arrayBuffer);
     } catch (e) {
-      console.warn(
-        `cannot ${isPlaying ? "play" : "initialize"} ${this.soundName}:`,
-        e,
-      );
+      console.warn(`cannot load ${this.soundName}:`, e);
     }
-  };
+  }
 
-  unlock = async () => {
-    await this.unrace.run(this.callPlay);
-    return this.unlocked;
-  };
-
-  play = async () => {
-    ++this.times;
-    return await this.unlock();
-  };
+  play() {
+    if (!soundIsEnabled(this.soundName)) return;
+    if (!this.buffer) return;
+    const ctx = getAudioContext();
+    // If the context is suspended, try to resume it. On iOS after the initial
+    // unlock, programmatic resume() works even outside user gestures.
+    if (ctx.state !== "running") {
+      ctx.resume();
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = this.buffer;
+    source.connect(ctx.destination);
+    source.start();
+  }
 }
 
 const playableSounds: { [key: string]: Booper } = {};
@@ -113,26 +129,6 @@ if (!window.location.pathname.startsWith("/embed/")) {
     playableSounds[booper.soundName] = booper;
   }
 }
-
-const unlockSounds = () => {
-  // Browser settings may disallow autoplay until user interacts with document.
-  // Use that chance to play() all known sounds muted.
-  (async () => {
-    if (
-      (
-        await Promise.all(
-          Object.values(playableSounds).map((booper) => booper.unlock()),
-        )
-      ).every((x) => x)
-    ) {
-      window.removeEventListener("click", unlockSounds, true);
-      window.removeEventListener("keydown", unlockSounds, true);
-    }
-  })();
-};
-
-window.addEventListener("click", unlockSounds, true);
-window.addEventListener("keydown", unlockSounds, true);
 
 const playSound = (soundName: string) => {
   const booper = playableSounds[soundName];

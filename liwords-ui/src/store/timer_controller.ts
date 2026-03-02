@@ -5,7 +5,7 @@
 
 import { PlayerOrder } from "./constants";
 // import { GameState } from './reducers/game_reducer';
-import { PlayState } from "../gen/api/vendor/macondo/macondo_pb";
+import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
 const positiveShowTenthsCutoff = 10000;
 const negativeShowTenthsCutoff = -1000;

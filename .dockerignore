@@ -1,6 +1,14 @@
 .git
-liwords-ui/node_modules
-liwords-ui/build
+liwords-ui
+data
+docs
 scripts
 .vscode
-data/lexica/words/*.txt
+# compiled binaries and test artifacts
+liwords-api
+liwords-socket
+cmd/league-tester/league-tester
+cmd/glicko/
+cmd/uuider/
+*.test
+db/migrations-wip

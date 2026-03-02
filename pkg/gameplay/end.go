@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -49,6 +50,23 @@ func AdjudicateGame(ctx context.Context, g *entity.Game, stores *stores.Stores) 
 	// We don't set winner/loser here because performEndgameDuties will do it
 
 	// Let performEndgameDuties handle everything else
+	return performEndgameDuties(ctx, g, stores)
+}
+
+// ForfeitGame ends a game with FORCE_FORFEIT, with the given player index as the loser.
+// The opponent automatically wins regardless of score.
+func ForfeitGame(ctx context.Context, g *entity.Game, loserIdx int, stores *stores.Stores) error {
+	g.Lock()
+	defer g.Unlock()
+
+	if g.GameEndReason != pb.GameEndReason_NONE {
+		return nil // already finished
+	}
+
+	g.SetGameEndReason(pb.GameEndReason_FORCE_FORFEIT)
+	g.SetWinnerIdx(1 - loserIdx)
+	g.SetLoserIdx(loserIdx)
+
 	return performEndgameDuties(ctx, g, stores)
 }
 
@@ -247,6 +265,16 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		if err != nil {
 			// Log error but don't fail - standings can be recalculated later
 			log.Err(err).Msg("failed-to-update-league-standings")
+		}
+	}
+
+	// Enqueue league games for analysis
+	if g.LeagueDivisionID != nil {
+		const priority = 0 // Normal priority for league games
+		err = analysis.EnqueueGameForAnalysis(ctx, stores.Queries, g.GameID(), priority)
+		if err != nil {
+			// Log error but don't fail - analysis can be retried later
+			log.Err(err).Msg("failed-to-enqueue-game-for-analysis")
 		}
 	}
 
