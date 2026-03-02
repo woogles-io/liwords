@@ -177,8 +177,16 @@ function getLetterScore(
 
 // three@0.160 TextGeometry uses 'height' for extrusion depth at runtime, but
 // @types/three (0.183+) renamed it to 'depth'. Passing 'depth' is silently
-// ignored and the runtime defaults to 50. We use 'as any' to pass 'height'.
+// ignored and the runtime defaults to 50. We use a type assertion to pass 'height'.
 // NOTE: ExtrudeGeometry correctly uses 'depth' — only TextGeometry is affected.
+interface TextGeometryParams {
+  font: Font;
+  size: number;
+  height: number;
+  curveSegments?: number;
+  bevelEnabled?: boolean;
+}
+
 function makeTextGeo(
   text: string,
   font: Font,
@@ -192,7 +200,7 @@ function makeTextGeo(
     height: extrusion,
     curveSegments,
     bevelEnabled: false,
-  } as any);
+  } as unknown as TextGeometryParams);
 }
 
 function rackGeomParams(rackHeight: number, rackDepth: number) {
@@ -410,8 +418,8 @@ export class Board3DScene {
         this.scene.environment = envMap;
         this.scene.background = envMap;
         // backgroundBlurriness/backgroundIntensity exist on THREE.Scene in r160
-        (this.scene as any).backgroundBlurriness = 0.25;
-        (this.scene as any).backgroundIntensity = 0.5;
+        (this.scene as THREE.Scene & { backgroundBlurriness: number; backgroundIntensity: number }).backgroundBlurriness = 0.25;
+        (this.scene as THREE.Scene & { backgroundBlurriness: number; backgroundIntensity: number }).backgroundIntensity = 0.5;
         texture.dispose();
         pmremGenerator.dispose();
       },
