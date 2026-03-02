@@ -5,6 +5,7 @@ import {
   searchEmail,
 } from "../gen/api/proto/config_service/config_service-ConfigService_connectquery";
 import { useState } from "react";
+import { Link } from "react-router";
 import moment from "moment";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { UserDetailsResponse } from "../gen/api/proto/config_service/config_service_pb";
@@ -38,6 +39,11 @@ export const UserDetails = () => {
       title: "Username",
       dataIndex: "username",
       key: "username",
+      render: (username: string) => (
+        <Link to={`/profile/${encodeURIComponent(username)}`} target="_blank">
+          {username}
+        </Link>
+      ),
     },
     {
       title: "Email",
