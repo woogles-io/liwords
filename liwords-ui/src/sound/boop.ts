@@ -35,21 +35,35 @@ let unlocked = false;
 
 const getAudioContext = (): AudioContext => {
   if (!audioCtx) {
-    audioCtx = new AudioContext();
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctor();
   }
   return audioCtx;
 };
 
-// iOS Safari requires a user gesture to unlock the AudioContext. We listen
-// for gestures and resume the context. Once running, we mark it as unlocked
-// but keep the listeners — iOS can re-suspend the context when the tab is
-// backgrounded or the device is locked, so we need to be able to resume again.
+// iOS Safari requires both resuming the AudioContext AND playing a buffer
+// through it during a user gesture to fully unlock audio. Calling resume()
+// alone is not sufficient — this is the same technique Howler.js and Tone.js
+// use internally. We keep the listeners active because iOS can re-suspend the
+// context when the tab is backgrounded or the device is locked.
 const onUserGesture = () => {
-  const ctx = audioCtx;
-  if (!ctx) return;
+  // Use getAudioContext() so the context is created during the gesture if it
+  // doesn't exist yet. Creating during a gesture is ideal on iOS.
+  const ctx = getAudioContext();
   if (ctx.state === "running") {
     unlocked = true;
     return;
+  }
+  // Play a short silent buffer through the context. On iOS Safari this is
+  // required in addition to resume() to fully unlock audio output.
+  try {
+    const silentBuffer = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
+    const source = ctx.createBufferSource();
+    source.buffer = silentBuffer;
+    source.connect(ctx.destination);
+    source.start();
+  } catch (_) {
+    // Ignore — the resume() below is still valuable on its own.
   }
   ctx.resume().then(() => {
     unlocked = true;
@@ -57,6 +71,7 @@ const onUserGesture = () => {
 };
 
 window.addEventListener("click", onUserGesture, true);
+window.addEventListener("touchstart", onUserGesture, true);
 window.addEventListener("touchend", onUserGesture, true);
 window.addEventListener("keydown", onUserGesture, true);
 
@@ -91,11 +106,17 @@ class Booper {
     if (!soundIsEnabled(this.soundName)) return;
     if (!this.buffer) return;
     const ctx = getAudioContext();
-    // If the context is suspended, try to resume it. On iOS after the initial
-    // unlock, programmatic resume() works even outside user gestures.
-    if (ctx.state !== "running") {
-      ctx.resume();
+    if (ctx.state === "running") {
+      this.playBuffer(ctx);
+    } else {
+      // On iOS, playing into a suspended context silently drops the sound.
+      // Wait for resume() to finish before scheduling the buffer.
+      ctx.resume().then(() => this.playBuffer(ctx));
     }
+  }
+
+  private playBuffer(ctx: AudioContext) {
+    if (!this.buffer) return;
     const source = ctx.createBufferSource();
     source.buffer = this.buffer;
     source.connect(ctx.destination);
