@@ -1579,6 +1579,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			Result:           result,
 			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
+			GameEndReason:    ipc.GameEndReason(row.GameEndReason),
 		})
 	}
 
@@ -1622,6 +1623,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			Result:           result,
 			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
+			GameEndReason:    ipc.GameEndReason_NONE,
 		})
 	}
 

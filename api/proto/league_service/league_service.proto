@@ -1,5 +1,6 @@
 syntax = "proto3";
 package league_service;
+import "proto/ipc/omgwords.proto";
 
 option go_package = "github.com/domino14/liwords/rpc/api/proto/league_service";
 
@@ -194,6 +195,7 @@ message PlayerSeasonGame {
   string result = 6; // "win", "loss", "draw", "turn", "in_progress"
   google.protobuf.Timestamp game_date = 7;
   int32 round = 8; // Optional round number
+  ipc.GameEndReason game_end_reason = 9;
 }
 
 message InviteUserRequest {
