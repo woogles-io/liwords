@@ -71,7 +71,7 @@ SET
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
+RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
 `
 
 type CompleteJobParams struct {
@@ -80,12 +80,17 @@ type CompleteJobParams struct {
 	ClaimedByUserUuid pgtype.Text
 }
 
-// Marks job as completed and returns processing duration
-func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (int32, error) {
+type CompleteJobRow struct {
+	GameID     string
+	DurationMs int32
+}
+
+// Marks job as completed and returns game_id and processing duration
+func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
-	var duration_ms int32
-	err := row.Scan(&duration_ms)
-	return duration_ms, err
+	var i CompleteJobRow
+	err := row.Scan(&i.GameID, &i.DurationMs)
+	return i, err
 }
 
 const createAnalysisJob = `-- name: CreateAnalysisJob :one
@@ -310,6 +315,45 @@ func (q *Queries) GetCompletedJobsList(ctx context.Context, arg GetCompletedJobs
 			&i.RequestType,
 			&i.RequestedByUsername,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContributorsLeaderboard = `-- name: GetContributorsLeaderboard :many
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.claimed_by_user_uuid IS NOT NULL
+  AND aj.status = 'completed'
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1
+`
+
+type GetContributorsLeaderboardRow struct {
+	Username      pgtype.Text
+	AnalysisCount int64
+}
+
+// Get top users who contributed the most analyses (i.e. ran the worker)
+func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) ([]GetContributorsLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getContributorsLeaderboard, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContributorsLeaderboardRow
+	for rows.Next() {
+		var i GetContributorsLeaderboardRow
+		if err := rows.Scan(&i.Username, &i.AnalysisCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

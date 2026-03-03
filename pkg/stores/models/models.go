@@ -243,6 +243,8 @@ type LeagueStanding struct {
 	BlanksPlayed             pgtype.Int4
 	TotalTilesPlayed         pgtype.Int4
 	TotalOpponentTilesPlayed pgtype.Int4
+	TotalMistakeIndex        pgtype.Float8
+	GamesAnalyzed            pgtype.Int4
 }
 
 type Liststat struct {

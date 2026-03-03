@@ -1,15 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import {
-  Card,
-  Col,
-  Modal,
-  Row,
-  Statistic,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+import { Card, Col, Modal, Row, Statistic, Table, Tag, Typography } from "antd";
 import { create, fromJsonString } from "@bufbuild/protobuf";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
@@ -96,9 +87,7 @@ const GameDetailModal = ({ gameId, onClose }: GameDetailModalProps) => {
     }
     setLoading(true);
     analysisClient
-      .getAnalysisResult(
-        create(GetAnalysisResultRequestSchema, { gameId })
-      )
+      .getAnalysisResult(create(GetAnalysisResultRequestSchema, { gameId }))
       .then((resp) => {
         if (resp.found && resp.resultProto.length > 0) {
           const jsonStr = new TextDecoder().decode(resp.resultProto);
@@ -322,6 +311,9 @@ export const AnalysisStats = () => {
   const [leaderboard, setLeaderboard] = useState<
     { username: string; analysisCount: number }[]
   >([]);
+  const [contributors, setContributors] = useState<
+    { username: string; analysisCount: number }[]
+  >([]);
   const [games, setGames] = useState<AnalyzedGameSummary[]>([]);
   const [totalGames, setTotalGames] = useState(0);
   const [page, setPage] = useState(0);
@@ -335,7 +327,7 @@ export const AnalysisStats = () => {
     setStatsLoading(true);
     try {
       const resp = await adminClient.getAdminStats(
-        create(GetAdminStatsRequestSchema, {})
+        create(GetAdminStatsRequestSchema, {}),
       );
       setTotalCompleted(resp.totalCompleted);
       setPendingCount(resp.pendingCount);
@@ -344,7 +336,13 @@ export const AnalysisStats = () => {
         resp.leaderboard.map((e) => ({
           username: e.username,
           analysisCount: e.analysisCount,
-        }))
+        })),
+      );
+      setContributors(
+        resp.contributors.map((e) => ({
+          username: e.username,
+          analysisCount: e.analysisCount,
+        })),
       );
     } catch (e) {
       flashError(e);
@@ -361,7 +359,7 @@ export const AnalysisStats = () => {
           create(ListAnalyzedGamesRequestSchema, {
             page: p,
             pageSize: PAGE_SIZE,
-          })
+          }),
         );
         setGames(resp.games);
         setTotalGames(resp.total);
@@ -371,7 +369,7 @@ export const AnalysisStats = () => {
         setGamesLoading(false);
       }
     },
-    [adminClient]
+    [adminClient],
   );
 
   useEffect(() => {
@@ -431,10 +429,7 @@ export const AnalysisStats = () => {
       width: 140,
       render: (username: string) =>
         username ? (
-          <Link
-            to={`/profile/${encodeURIComponent(username)}`}
-            target="_blank"
-          >
+          <Link to={`/profile/${encodeURIComponent(username)}`} target="_blank">
             {username}
           </Link>
         ) : (
@@ -520,13 +515,9 @@ export const AnalysisStats = () => {
         </Col>
       </Row>
 
-      <Row gutter={24}>
-        <Col span={8}>
-          <Card
-            title="Top Analysis Requesters"
-            size="small"
-            style={{ marginBottom: 24 }}
-          >
+      <Row gutter={24} style={{ marginBottom: 24 }}>
+        <Col span={12}>
+          <Card title="Top Analysis Requesters" size="small">
             <Table
               dataSource={leaderboard}
               columns={leaderboardColumns}
@@ -537,7 +528,48 @@ export const AnalysisStats = () => {
             />
           </Card>
         </Col>
-        <Col span={16}>
+        <Col span={12}>
+          <Card title="Top Contributors" size="small">
+            <Table
+              dataSource={contributors}
+              columns={[
+                {
+                  title: "Rank",
+                  key: "rank",
+                  width: 60,
+                  render: (_: unknown, __: unknown, index: number) => index + 1,
+                },
+                {
+                  title: "Username",
+                  dataIndex: "username",
+                  key: "username",
+                  render: (username: string) => (
+                    <Link
+                      to={`/profile/${encodeURIComponent(username)}`}
+                      target="_blank"
+                    >
+                      {username}
+                    </Link>
+                  ),
+                },
+                {
+                  title: "Analyses Run",
+                  dataIndex: "analysisCount",
+                  key: "analysisCount",
+                  width: 130,
+                },
+              ]}
+              rowKey="username"
+              loading={statsLoading}
+              pagination={false}
+              size="small"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col span={24}>
           <Card title="Analyzed Games" size="small">
             <Table
               dataSource={games}

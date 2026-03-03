@@ -1283,7 +1283,7 @@ func (q *Queries) GetPlayerSeasonOpponents(ctx context.Context, arg GetPlayerSea
 }
 
 const getPlayerStanding = `-- name: GetPlayerStanding :one
-SELECT id, division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at, total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played, total_tiles_played, total_opponent_tiles_played FROM league_standings
+SELECT id, division_id, user_id, rank, wins, losses, draws, spread, games_played, games_remaining, result, updated_at, total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played, total_tiles_played, total_opponent_tiles_played, total_mistake_index, games_analyzed FROM league_standings
 WHERE division_id = $1 AND user_id = $2
 `
 
@@ -1319,6 +1319,8 @@ func (q *Queries) GetPlayerStanding(ctx context.Context, arg GetPlayerStandingPa
 		&i.BlanksPlayed,
 		&i.TotalTilesPlayed,
 		&i.TotalOpponentTilesPlayed,
+		&i.TotalMistakeIndex,
+		&i.GamesAnalyzed,
 	)
 	return i, err
 }
@@ -1765,6 +1767,7 @@ SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
        ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
        ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
        ls.total_tiles_played, ls.total_opponent_tiles_played,
+       ls.total_mistake_index, ls.games_analyzed,
        u.uuid as user_uuid, u.username
 FROM league_standings ls
 JOIN users u ON ls.user_id = u.id
@@ -1794,6 +1797,8 @@ type GetStandingsRow struct {
 	BlanksPlayed             pgtype.Int4
 	TotalTilesPlayed         pgtype.Int4
 	TotalOpponentTilesPlayed pgtype.Int4
+	TotalMistakeIndex        pgtype.Float8
+	GamesAnalyzed            pgtype.Int4
 	UserUuid                 pgtype.Text
 	Username                 pgtype.Text
 }
@@ -1831,6 +1836,8 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Get
 			&i.BlanksPlayed,
 			&i.TotalTilesPlayed,
 			&i.TotalOpponentTilesPlayed,
+			&i.TotalMistakeIndex,
+			&i.GamesAnalyzed,
 			&i.UserUuid,
 			&i.Username,
 		); err != nil {
@@ -1878,6 +1885,25 @@ func (q *Queries) GetUnfinishedLeagueGames(ctx context.Context, seasonID pgtype.
 		return nil, err
 	}
 	return items, nil
+}
+
+const incrementStandingMistakeIndex = `-- name: IncrementStandingMistakeIndex :exec
+UPDATE league_standings
+SET total_mistake_index = total_mistake_index + $3,
+    games_analyzed = games_analyzed + 1,
+    updated_at = NOW()
+WHERE division_id = $1 AND user_id = $2
+`
+
+type IncrementStandingMistakeIndexParams struct {
+	DivisionID        uuid.UUID
+	UserID            int32
+	TotalMistakeIndex pgtype.Float8
+}
+
+func (q *Queries) IncrementStandingMistakeIndex(ctx context.Context, arg IncrementStandingMistakeIndexParams) error {
+	_, err := q.db.Exec(ctx, incrementStandingMistakeIndex, arg.DivisionID, arg.UserID, arg.TotalMistakeIndex)
+	return err
 }
 
 const incrementStandingsAtomic = `-- name: IncrementStandingsAtomic :exec

@@ -1189,6 +1189,11 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				placementStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
 			}
 
+			var avgMistakeIndex float64
+			if standing.GamesAnalyzed.Valid && standing.GamesAnalyzed.Int32 > 0 && standing.TotalMistakeIndex.Valid {
+				avgMistakeIndex = standing.TotalMistakeIndex.Float64 / float64(standing.GamesAnalyzed.Int32)
+			}
+
 			protoStandings[j] = &ipc.LeaguePlayerStanding{
 				UserId:                   userUUID,
 				Username:                 username,
@@ -1212,6 +1217,8 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
 				TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
 				PlacementStatus:          placementStatus,
+				AvgMistakeIndex:          avgMistakeIndex,
+				GamesAnalyzed:            standing.GamesAnalyzed.Int32,
 			}
 		}
 

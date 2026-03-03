@@ -171,7 +171,7 @@ func (s *AnalysisService) SubmitResult(
 
 	// Store result
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
-	durationMS, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
+	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
 		Result:            resultProto,
 		ID:                jobID,
 		ClaimedByUserUuid: userUUID,
@@ -186,13 +186,66 @@ func (s *AnalysisService) SubmitResult(
 
 	log.Info().
 		Str("job_id", jobID.String()).
+		Str("game_id", completedJob.GameID).
 		Str("user", user.Username).
-		Int32("duration_ms", durationMS).
+		Int32("duration_ms", completedJob.DurationMs).
 		Msg("result accepted")
+
+	// Update league standings with mistake index if this is a league game
+	go s.updateLeagueMistakeIndex(ctx, completedJob.GameID, &result)
 
 	return connect.NewResponse(&pb.SubmitResultResponse{
 		Accepted: true,
 	}), nil
+}
+
+// updateLeagueMistakeIndex updates league standings with mistake index for a completed analysis.
+// Runs asynchronously (best-effort) so failures don't affect the SubmitResult response.
+func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string, result *macondo.GameAnalysisResult) {
+	gameInfo, err := s.queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
+	if err != nil {
+		log.Debug().Str("game_id", gameID).Msg("game not found or not a league game for mistake index update")
+		return
+	}
+	if !gameInfo.LeagueDivisionID.Valid {
+		return // not a league game
+	}
+
+	divisionID, err := uuid.FromBytes(gameInfo.LeagueDivisionID.Bytes[:])
+	if err != nil {
+		log.Error().Err(err).Str("game_id", gameID).Msg("failed to parse division UUID for mistake index")
+		return
+	}
+
+	players := []struct {
+		playerID     pgtype.Int4
+		mistakeIndex float64
+	}{
+		{gameInfo.Player0ID, result.PlayerSummaries[0].GetMistakeIndex()},
+		{gameInfo.Player1ID, result.PlayerSummaries[1].GetMistakeIndex()},
+	}
+
+	for _, p := range players {
+		if !p.playerID.Valid {
+			continue
+		}
+		err := s.queries.IncrementStandingMistakeIndex(ctx, models.IncrementStandingMistakeIndexParams{
+			DivisionID:        divisionID,
+			UserID:            p.playerID.Int32,
+			TotalMistakeIndex: pgtype.Float8{Float64: p.mistakeIndex, Valid: true},
+		})
+		if err != nil {
+			log.Error().Err(err).
+				Str("game_id", gameID).
+				Int32("user_id", p.playerID.Int32).
+				Msg("failed to update league mistake index")
+		}
+	}
+
+	log.Info().
+		Str("game_id", gameID).
+		Str("division_id", divisionID.String()).
+		Msg("updated league standings with mistake index")
 }
 
 // StartReclaimWorker reclaims stale jobs in background

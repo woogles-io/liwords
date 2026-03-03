@@ -158,6 +158,7 @@ message GetAdminStatsResponse {
   int32 pending_count = 2;
   int32 processing_count = 3;
   repeated LeaderboardEntry leaderboard = 4;
+  repeated LeaderboardEntry contributors = 5;
 }
 
 message ListAnalyzedGamesRequest {

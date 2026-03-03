@@ -275,6 +275,7 @@ SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
        ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
        ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
        ls.total_tiles_played, ls.total_opponent_tiles_played,
+       ls.total_mistake_index, ls.games_analyzed,
        u.uuid as user_uuid, u.username
 FROM league_standings ls
 JOIN users u ON ls.user_id = u.id
@@ -282,6 +283,13 @@ WHERE ls.division_id = $1;
 
 -- name: GetPlayerStanding :one
 SELECT * FROM league_standings
+WHERE division_id = $1 AND user_id = $2;
+
+-- name: IncrementStandingMistakeIndex :exec
+UPDATE league_standings
+SET total_mistake_index = total_mistake_index + $3,
+    games_analyzed = games_analyzed + 1,
+    updated_at = NOW()
 WHERE division_id = $1 AND user_id = $2;
 
 -- name: DeleteDivisionStandings :exec

@@ -28,14 +28,14 @@ SET
 WHERE id = $1 AND claimed_by_user_uuid = $2;
 
 -- name: CompleteJob :one
--- Marks job as completed and returns processing duration
+-- Marks job as completed and returns game_id and processing duration
 UPDATE analysis_jobs
 SET
     status = 'completed',
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
+RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
 
 -- name: FailJob :exec
 -- Marks job as failed with error message
@@ -149,6 +149,19 @@ SELECT
 FROM analysis_jobs aj
 JOIN users u ON u.uuid = aj.requested_by_user_uuid
 WHERE aj.requested_by_user_uuid IS NOT NULL
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1;
+
+-- name: GetContributorsLeaderboard :many
+-- Get top users who contributed the most analyses (i.e. ran the worker)
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.claimed_by_user_uuid IS NOT NULL
+  AND aj.status = 'completed'
 GROUP BY u.uuid, u.username
 ORDER BY analysis_count DESC
 LIMIT $1;

@@ -45,9 +45,22 @@ func (s *AnalysisAdminService) GetAdminStats(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get leaderboard: %w", err))
 	}
 
+	contributorRows, err := s.queries.GetContributorsLeaderboard(ctx, 20)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get contributors: %w", err))
+	}
+
 	leaderboard := make([]*pb.LeaderboardEntry, 0, len(leaderboardRows))
 	for _, row := range leaderboardRows {
 		leaderboard = append(leaderboard, &pb.LeaderboardEntry{
+			Username:      row.Username.String,
+			AnalysisCount: int32(row.AnalysisCount),
+		})
+	}
+
+	contributors := make([]*pb.LeaderboardEntry, 0, len(contributorRows))
+	for _, row := range contributorRows {
+		contributors = append(contributors, &pb.LeaderboardEntry{
 			Username:      row.Username.String,
 			AnalysisCount: int32(row.AnalysisCount),
 		})
@@ -58,6 +71,7 @@ func (s *AnalysisAdminService) GetAdminStats(
 		PendingCount:    int32(stats.PendingCount),
 		ProcessingCount: int32(stats.ProcessingCount),
 		Leaderboard:     leaderboard,
+		Contributors:    contributors,
 	}), nil
 }
 

@@ -240,6 +240,8 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     totalTilesPlayed: standing.totalTilesPlayed,
     totalOpponentTilesPlayed: standing.totalOpponentTilesPlayed,
     placementStatus: standing.placementStatus,
+    avgMistakeIndex: standing.avgMistakeIndex,
+    gamesAnalyzed: standing.gamesAnalyzed,
   }));
 
   // Define the record type for sorter functions
@@ -605,6 +607,29 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const points = record.wins * 2 + record.draws;
         return formatAvg(points, record.gamesPlayed, 2);
       },
+    },
+    {
+      title: (
+        <ColHeader
+          title="MiAV"
+          tooltip="Average Mistake Index from BestBot analysis (lower is better; — if no analysis)"
+        />
+      ),
+      key: "avgMistakeIndex",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        // Players with no analysis sort to the bottom
+        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
+        if (a.gamesAnalyzed === 0) return 1;
+        if (b.gamesAnalyzed === 0) return -1;
+        return a.avgMistakeIndex - b.avgMistakeIndex;
+      },
+      sortDirections: ["ascend", "descend"] as SortOrder[],
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { avgMistakeIndex: number; gamesAnalyzed: number },
+      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "—"),
     },
     {
       title: <ColHeader title="#TO" tooltip="Number of timeouts" />,

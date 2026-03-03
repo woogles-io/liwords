@@ -974,6 +974,7 @@ type GetAdminStatsResponse struct {
 	PendingCount    int32                  `protobuf:"varint,2,opt,name=pending_count,json=pendingCount,proto3" json:"pending_count,omitempty"`
 	ProcessingCount int32                  `protobuf:"varint,3,opt,name=processing_count,json=processingCount,proto3" json:"processing_count,omitempty"`
 	Leaderboard     []*LeaderboardEntry    `protobuf:"bytes,4,rep,name=leaderboard,proto3" json:"leaderboard,omitempty"`
+	Contributors    []*LeaderboardEntry    `protobuf:"bytes,5,rep,name=contributors,proto3" json:"contributors,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1032,6 +1033,13 @@ func (x *GetAdminStatsResponse) GetProcessingCount() int32 {
 func (x *GetAdminStatsResponse) GetLeaderboard() []*LeaderboardEntry {
 	if x != nil {
 		return x.Leaderboard
+	}
+	return nil
+}
+
+func (x *GetAdminStatsResponse) GetContributors() []*LeaderboardEntry {
+	if x != nil {
+		return x.Contributors
 	}
 	return nil
 }
@@ -1294,12 +1302,13 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\x14GetAdminStatsRequest\"U\n" +
 	"\x10LeaderboardEntry\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12%\n" +
-	"\x0eanalysis_count\x18\x02 \x01(\x05R\ranalysisCount\"\xd6\x01\n" +
+	"\x0eanalysis_count\x18\x02 \x01(\x05R\ranalysisCount\"\x9e\x02\n" +
 	"\x15GetAdminStatsResponse\x12'\n" +
 	"\x0ftotal_completed\x18\x01 \x01(\x05R\x0etotalCompleted\x12#\n" +
 	"\rpending_count\x18\x02 \x01(\x05R\fpendingCount\x12)\n" +
 	"\x10processing_count\x18\x03 \x01(\x05R\x0fprocessingCount\x12D\n" +
-	"\vleaderboard\x18\x04 \x03(\v2\".analysis_service.LeaderboardEntryR\vleaderboard\"K\n" +
+	"\vleaderboard\x18\x04 \x03(\v2\".analysis_service.LeaderboardEntryR\vleaderboard\x12F\n" +
+	"\fcontributors\x18\x05 \x03(\v2\".analysis_service.LeaderboardEntryR\fcontributors\"K\n" +
 	"\x18ListAnalyzedGamesRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"\xe8\x01\n" +
@@ -1368,28 +1377,29 @@ var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	0,  // 1: analysis_service.RequestAnalysisResponse.status:type_name -> analysis_service.RequestAnalysisResponse.Status
 	1,  // 2: analysis_service.GetAnalysisStatusResponse.status:type_name -> analysis_service.GetAnalysisStatusResponse.JobStatus
 	16, // 3: analysis_service.GetAdminStatsResponse.leaderboard:type_name -> analysis_service.LeaderboardEntry
-	19, // 4: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
-	2,  // 5: analysis_service.AnalysisQueueService.ClaimJob:input_type -> analysis_service.ClaimJobRequest
-	5,  // 6: analysis_service.AnalysisQueueService.Heartbeat:input_type -> analysis_service.HeartbeatRequest
-	7,  // 7: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
-	15, // 8: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
-	18, // 9: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
-	9,  // 10: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
-	11, // 11: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
-	13, // 12: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
-	3,  // 13: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
-	6,  // 14: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
-	8,  // 15: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
-	17, // 16: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
-	20, // 17: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
-	10, // 18: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
-	12, // 19: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
-	14, // 20: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
-	13, // [13:21] is the sub-list for method output_type
-	5,  // [5:13] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	16, // 4: analysis_service.GetAdminStatsResponse.contributors:type_name -> analysis_service.LeaderboardEntry
+	19, // 5: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
+	2,  // 6: analysis_service.AnalysisQueueService.ClaimJob:input_type -> analysis_service.ClaimJobRequest
+	5,  // 7: analysis_service.AnalysisQueueService.Heartbeat:input_type -> analysis_service.HeartbeatRequest
+	7,  // 8: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
+	15, // 9: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
+	18, // 10: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
+	9,  // 11: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
+	11, // 12: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
+	13, // 13: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
+	3,  // 14: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
+	6,  // 15: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
+	8,  // 16: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
+	17, // 17: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
+	20, // 18: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
+	10, // 19: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
+	12, // 20: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
+	14, // 21: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
+	14, // [14:22] is the sub-list for method output_type
+	6,  // [6:14] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_analysis_service_analysis_service_proto_init() }
