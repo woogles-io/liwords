@@ -20,7 +20,18 @@ import (
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "Print games that would be updated without actually doing it")
+	seasonID := flag.String("season-id", "", "Season UUID to recompute (required)")
 	flag.Parse()
+
+	if *seasonID == "" {
+		fmt.Fprintln(os.Stderr, "error: --season-id is required")
+		flag.Usage()
+		os.Exit(1)
+	}
+	if _, err := uuid.Parse(*seasonID); err != nil {
+		fmt.Fprintf(os.Stderr, "error: invalid --season-id %q: %v\n", *seasonID, err)
+		os.Exit(1)
+	}
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -39,16 +50,17 @@ func main() {
 
 	queries := models.New(pool)
 
-	// Find all completed analysis jobs for league games.
+	// Find all completed analysis jobs for games in this season.
 	rows, err := pool.Query(ctx, `
 		SELECT aj.id, aj.game_id, aj.result
 		FROM analysis_jobs aj
 		JOIN games g ON g.uuid = aj.game_id
+		JOIN league_divisions ld ON ld.uuid = g.league_division_id
 		WHERE aj.status = 'completed'
 		  AND aj.result IS NOT NULL
-		  AND g.league_division_id IS NOT NULL
+		  AND ld.season_id = $1
 		ORDER BY aj.completed_at DESC
-	`)
+	`, *seasonID)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to query completed analysis jobs")
 	}
@@ -72,7 +84,11 @@ func main() {
 		log.Fatal().Err(err).Msg("error iterating rows")
 	}
 
-	log.Info().Int("count", len(jobs)).Bool("dry_run", *dryRun).Msg("completed analysis jobs for league games")
+	log.Info().
+		Str("season_id", *seasonID).
+		Int("count", len(jobs)).
+		Bool("dry_run", *dryRun).
+		Msg("completed analysis jobs found for season")
 
 	if *dryRun {
 		const preview = 10
@@ -81,10 +97,25 @@ func main() {
 				fmt.Printf("... and %d more\n", len(jobs)-preview)
 				break
 			}
-			fmt.Printf("job %s game %s\n", j.id, j.gameID)
+			fmt.Printf("job %s  game %s\n", j.id, j.gameID)
 		}
 		return
 	}
+
+	// Zero out mistake index columns for all standings in this season,
+	// so we recompute from scratch rather than double-counting.
+	_, err = pool.Exec(ctx, `
+		UPDATE league_standings ls
+		SET total_mistake_index = 0,
+		    games_analyzed = 0
+		FROM league_divisions ld
+		WHERE ls.division_id = ld.uuid
+		  AND ld.season_id = $1
+	`, *seasonID)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to zero out season standings")
+	}
+	log.Info().Str("season_id", *seasonID).Msg("zeroed out mistake index for season standings")
 
 	updated := 0
 	skipped := 0
