@@ -658,7 +658,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           });
       }
     },
-    onError: flashError,
+    onError: (e) => flashError(e),
   });
 
   const handleRequestAnalysis = useCallback(() => {
