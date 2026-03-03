@@ -6,15 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import {
-  Affix,
-  App,
-  Button,
-  Dropdown,
-  MenuProps,
-  Popconfirm,
-  Modal,
-} from "antd";
+import { Affix, App, Button, Dropdown, MenuProps, Popconfirm } from "antd";
 
 import {
   DoubleLeftOutlined,
@@ -31,13 +23,6 @@ import {
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
-import { useClient, flashError } from "../utils/hooks/connect";
-import {
-  AnalysisService,
-  RequestAnalysisResponse_Status,
-  GetAnalysisStatusResponse_JobStatus,
-} from "../gen/api/proto/analysis_service/analysis_service_pb";
-import { create } from "@bufbuild/protobuf";
 // React.lazy keeps Three.js (~600KB) out of the main bundle.
 // The chunk only loads the first time the user opens the 3D view.
 const Board3DModal = React.lazy(() => import("./board3d/Board3DModal"));
@@ -705,110 +690,11 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
-  const [analysisStatus, setAnalysisStatus] =
-    useState<GetAnalysisStatusResponse_JobStatus | null>(null);
-  const [queuePosition, setQueuePosition] = useState<number>(0);
-  const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [board3DOpen, setBoard3DOpen] = useState(false);
   const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
   const { gameContext } = useGameContextStoreContext();
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const gameDone = true; // it is endgame controls after all
-  const analysisClient = useClient(AnalysisService);
-  const { modal } = App.useApp();
-
-  // Check analysis status on mount
-  // TODO: re-enable when analysis UI is ready
-  // useEffect(() => {
-  //   const checkStatus = async () => {
-  //     try {
-  //       const response = await analysisClient.getAnalysisStatus({
-  //         gameId: props.gameID,
-  //       });
-  //       setAnalysisStatus(response.status);
-  //       setQueuePosition(response.queuePosition);
-  //     } catch (e) {
-  //       setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.NOT_FOUND);
-  //     }
-  //   };
-  //   checkStatus();
-  // }, [analysisClient, props.gameID]);
-
-  const handleRequestAnalysis = async () => {
-    try {
-      const response = await analysisClient.requestAnalysis({
-        gameId: props.gameID,
-      });
-
-      switch (response.status) {
-        case RequestAnalysisResponse_Status.SUCCESS:
-          setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
-          setQueuePosition(response.queuePosition);
-          modal.success({
-            title: <p className="readable-text-color">Analysis Requested!</p>,
-            content: (
-              <p className="readable-text-color">{`Your game has been queued for analysis. You are #${response.queuePosition} in the queue.`}</p>
-            ),
-          });
-          break;
-        case RequestAnalysisResponse_Status.ALREADY_REQUESTED:
-          setAnalysisStatus(GetAnalysisStatusResponse_JobStatus.PENDING);
-          setQueuePosition(response.queuePosition);
-          modal.info({
-            title: (
-              <p className="readable-text-color">Analysis Already Requested</p>
-            ),
-            content: <p className="readable-text-color">{response.message}</p>,
-          });
-          break;
-        case RequestAnalysisResponse_Status.RATE_LIMITED:
-          modal.error({
-            title: <p className="readable-text-color">Rate Limited</p>,
-            content: <p className="readable-text-color">{response.message}</p>,
-          });
-          break;
-        case RequestAnalysisResponse_Status.GAME_NOT_ENDED:
-        case RequestAnalysisResponse_Status.NOT_A_PLAYER:
-        case RequestAnalysisResponse_Status.INVALID_VARIANT:
-          modal.error({
-            title: (
-              <p className="readable-text-color">Cannot Request Analysis</p>
-            ),
-            content: <p className="readable-text-color">{response.message}</p>,
-          });
-          break;
-      }
-    } catch (e) {
-      flashError(e);
-    }
-  };
-
-  const handleAnalysisButtonClick = () => {
-    // TODO: re-enable queue behavior when analysis UI is ready
-    props.onExamine();
-    // if (analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED) {
-    //   props.onExamine();
-    // } else if (analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND) {
-    //   handleRequestAnalysis();
-    // } else {
-    //   setStatusModalVisible(true);
-    // }
-  };
-
-  const getRemoteAnalysisLabel = () => {
-    switch (analysisStatus) {
-      case GetAnalysisStatusResponse_JobStatus.COMPLETED:
-        return "View BestBot Analysis";
-      case GetAnalysisStatusResponse_JobStatus.PENDING:
-        return `BestBot Analysis Queued (#${queuePosition})`;
-      case GetAnalysisStatusResponse_JobStatus.PROCESSING:
-        return "BestBot Analysis In Progress...";
-      case GetAnalysisStatusResponse_JobStatus.FAILED:
-        return "BestBot Analysis Failed";
-      default:
-        return "Request BestBot Analysis";
-    }
-  };
 
   return (
     <>
@@ -873,7 +759,6 @@ const EndGameControls = (props: EGCProps) => {
               <Button>Export</Button>
             </Dropdown>
           )}
-          {/* TODO: restore Dropdown with remote analysis when analysis UI is ready */}
           <Button disabled={gameHasNotStarted} onClick={props.onExamine}>
             Analyze
           </Button>
@@ -899,28 +784,6 @@ const EndGameControls = (props: EGCProps) => {
             </Button>
           )}
       </div>
-      <Modal
-        title="Analysis Status"
-        open={statusModalVisible}
-        onCancel={() => setStatusModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setStatusModalVisible(false)}>
-            Close
-          </Button>,
-        ]}
-      >
-        {analysisStatus === GetAnalysisStatusResponse_JobStatus.PENDING && (
-          <p>
-            Your game is queued for analysis. Position in queue: #
-            {queuePosition}
-          </p>
-        )}
-        {analysisStatus === GetAnalysisStatusResponse_JobStatus.PROCESSING && (
-          <p>
-            Your game is currently being analyzed. This may take a few minutes.
-          </p>
-        )}
-      </Modal>
       {board3DData && (
         <React.Suspense fallback={null}>
           <Board3DModal

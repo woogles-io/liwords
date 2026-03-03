@@ -277,13 +277,13 @@ func TestCompleteJob(t *testing.T) {
 	// Complete the job with mock result
 	mockResult := []byte(`{"turns": [{"equity": 0.5}], "player_summaries": [{}, {}]}`)
 
-	durationMS, err := queries.CompleteJob(ctx, models.CompleteJobParams{
+	completedJob, err := queries.CompleteJob(ctx, models.CompleteJobParams{
 		Result:            mockResult,
 		ID:                job.ID,
 		ClaimedByUserUuid: testUserUUID,
 	})
 	is.NoErr(err)
-	is.True(durationMS >= 0) // Should have a duration
+	is.True(completedJob.DurationMs >= 0) // Should have a duration
 
 	// Verify job is completed
 	jobStatus, err := queries.GetJobByGameID(ctx, gameID)

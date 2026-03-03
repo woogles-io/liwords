@@ -102,6 +102,8 @@ message LeaguePlayerStanding {
     int32 total_tiles_played = 20;    // Sum of tiles played (for TAV = total_tiles_played / games_played)
     int32 total_opponent_tiles_played = 21; // Sum of opponent tiles played (for OTAV)
     PlacementStatus placement_status = 22;  // How player was placed in this division (NEW, PROMOTED, etc.)
+    double avg_mistake_index = 23;          // Average mistake index from BestBot analysis (0 if no analysis)
+    int32 games_analyzed = 24;              // Number of games with completed BestBot analysis
 }
 
 enum StandingResult {

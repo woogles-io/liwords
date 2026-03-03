@@ -302,6 +302,7 @@ func main() {
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries)
+	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	otcInterceptor, err := otelconnect.NewInterceptor()
@@ -410,6 +411,9 @@ func main() {
 	)
 	connectapi.Handle(
 		analysis_serviceconnect.NewAnalysisServiceHandler(analysisService, options),
+	)
+	connectapi.Handle(
+		analysis_serviceconnect.NewAnalysisAdminServiceHandler(analysisAdminService, options),
 	)
 
 	connectapichain := middlewares.Then(connectapi)

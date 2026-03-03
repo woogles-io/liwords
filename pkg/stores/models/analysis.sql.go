@@ -71,7 +71,7 @@ SET
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
+RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
 `
 
 type CompleteJobParams struct {
@@ -80,12 +80,17 @@ type CompleteJobParams struct {
 	ClaimedByUserUuid pgtype.Text
 }
 
-// Marks job as completed and returns processing duration
-func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (int32, error) {
+type CompleteJobRow struct {
+	GameID     string
+	DurationMs int32
+}
+
+// Marks job as completed and returns game_id and processing duration
+func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
-	var duration_ms int32
-	err := row.Scan(&duration_ms)
-	return duration_ms, err
+	var i CompleteJobRow
+	err := row.Scan(&i.GameID, &i.DurationMs)
+	return i, err
 }
 
 const createAnalysisJob = `-- name: CreateAnalysisJob :one
@@ -155,6 +160,28 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
 	return err
 }
 
+const getAdminAnalysisStats = `-- name: GetAdminAnalysisStats :one
+SELECT
+    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
+    COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+    COUNT(*) FILTER (WHERE status IN ('claimed', 'processing')) as processing_count
+FROM analysis_jobs
+`
+
+type GetAdminAnalysisStatsRow struct {
+	TotalCompleted  int64
+	PendingCount    int64
+	ProcessingCount int64
+}
+
+// Get overview stats for admin dashboard
+func (q *Queries) GetAdminAnalysisStats(ctx context.Context) (GetAdminAnalysisStatsRow, error) {
+	row := q.db.QueryRow(ctx, getAdminAnalysisStats)
+	var i GetAdminAnalysisStatsRow
+	err := row.Scan(&i.TotalCompleted, &i.PendingCount, &i.ProcessingCount)
+	return i, err
+}
+
 const getAnalysisJobWithDetails = `-- name: GetAnalysisJobWithDetails :one
 SELECT
     id,
@@ -201,6 +228,140 @@ func (q *Queries) GetAnalysisJobWithDetails(ctx context.Context, id uuid.UUID) (
 		&i.Priority,
 	)
 	return i, err
+}
+
+const getAnalysisLeaderboard = `-- name: GetAnalysisLeaderboard :many
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.requested_by_user_uuid IS NOT NULL
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1
+`
+
+type GetAnalysisLeaderboardRow struct {
+	Username      pgtype.Text
+	AnalysisCount int64
+}
+
+// Get top users who requested the most analyses
+func (q *Queries) GetAnalysisLeaderboard(ctx context.Context, limit int32) ([]GetAnalysisLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getAnalysisLeaderboard, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAnalysisLeaderboardRow
+	for rows.Next() {
+		var i GetAnalysisLeaderboardRow
+		if err := rows.Scan(&i.Username, &i.AnalysisCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCompletedJobsList = `-- name: GetCompletedJobsList :many
+SELECT
+    aj.id as job_id,
+    aj.game_id,
+    aj.created_at,
+    aj.completed_at,
+    COALESCE(aj.request_type, 'automatic') as request_type,
+    COALESCE(u.username, '') as requested_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.status = 'completed'
+ORDER BY aj.completed_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetCompletedJobsListParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetCompletedJobsListRow struct {
+	JobID               uuid.UUID
+	GameID              string
+	CreatedAt           pgtype.Timestamptz
+	CompletedAt         pgtype.Timestamptz
+	RequestType         string
+	RequestedByUsername string
+}
+
+// Get paginated list of completed analysis jobs
+func (q *Queries) GetCompletedJobsList(ctx context.Context, arg GetCompletedJobsListParams) ([]GetCompletedJobsListRow, error) {
+	rows, err := q.db.Query(ctx, getCompletedJobsList, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCompletedJobsListRow
+	for rows.Next() {
+		var i GetCompletedJobsListRow
+		if err := rows.Scan(
+			&i.JobID,
+			&i.GameID,
+			&i.CreatedAt,
+			&i.CompletedAt,
+			&i.RequestType,
+			&i.RequestedByUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContributorsLeaderboard = `-- name: GetContributorsLeaderboard :many
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.claimed_by_user_uuid IS NOT NULL
+  AND aj.status = 'completed'
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1
+`
+
+type GetContributorsLeaderboardRow struct {
+	Username      pgtype.Text
+	AnalysisCount int64
+}
+
+// Get top users who contributed the most analyses (i.e. ran the worker)
+func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) ([]GetContributorsLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getContributorsLeaderboard, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContributorsLeaderboardRow
+	for rows.Next() {
+		var i GetContributorsLeaderboardRow
+		if err := rows.Scan(&i.Username, &i.AnalysisCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getJobByGameID = `-- name: GetJobByGameID :one
@@ -256,6 +417,20 @@ func (q *Queries) GetQueuePosition(ctx context.Context, id uuid.UUID) (int32, er
 	return position, err
 }
 
+const getTotalCompletedCount = `-- name: GetTotalCompletedCount :one
+SELECT COUNT(*) as total
+FROM analysis_jobs
+WHERE status = 'completed'
+`
+
+// Get total count of completed analysis jobs
+func (q *Queries) GetTotalCompletedCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalCompletedCount)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getUserJobCount = `-- name: GetUserJobCount :one
 SELECT COUNT(*) as total_jobs
 FROM analysis_jobs
@@ -283,6 +458,40 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	var request_count int64
 	err := row.Scan(&request_count)
 	return request_count, err
+}
+
+const getVerticalOpenerJobs = `-- name: GetVerticalOpenerJobs :many
+SELECT id, game_id
+FROM analysis_jobs
+WHERE status = 'completed'
+  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]'
+`
+
+type GetVerticalOpenerJobsRow struct {
+	ID     uuid.UUID
+	GameID string
+}
+
+// Find completed jobs where the first turn was a vertical opening move
+// (column-first coordinates like A1, B3, etc. indicate vertical plays)
+func (q *Queries) GetVerticalOpenerJobs(ctx context.Context) ([]GetVerticalOpenerJobsRow, error) {
+	rows, err := q.db.Query(ctx, getVerticalOpenerJobs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetVerticalOpenerJobsRow
+	for rows.Next() {
+		var i GetVerticalOpenerJobsRow
+		if err := rows.Scan(&i.ID, &i.GameID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const reclaimStaleJobs = `-- name: ReclaimStaleJobs :exec
@@ -322,6 +531,25 @@ type RecordUserAnalysisRequestParams struct {
 // Record that a user requested analysis for a game
 func (q *Queries) RecordUserAnalysisRequest(ctx context.Context, arg RecordUserAnalysisRequestParams) error {
 	_, err := q.db.Exec(ctx, recordUserAnalysisRequest, arg.UserUuid, arg.GameID, arg.JobID)
+	return err
+}
+
+const resetAnalysisJob = `-- name: ResetAnalysisJob :exec
+UPDATE analysis_jobs
+SET status = 'pending',
+    result = NULL,
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0
+WHERE id = $1
+`
+
+// Reset an analysis job back to pending so it can be re-processed
+func (q *Queries) ResetAnalysisJob(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetAnalysisJob, id)
 	return err
 }
 

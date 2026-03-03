@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/analysis_service/analysis_service.proto.
  */
 export const file_proto_analysis_service_analysis_service: GenFile = /*@__PURE__*/
-  fileDesc("Ci1wcm90by9hbmFseXNpc19zZXJ2aWNlL2FuYWx5c2lzX3NlcnZpY2UucHJvdG8SEGFuYWx5c2lzX3NlcnZpY2UiEQoPQ2xhaW1Kb2JSZXF1ZXN0InYKEENsYWltSm9iUmVzcG9uc2USDwoHbm9fam9icxgBIAEoCBIOCgZqb2JfaWQYAiABKAkSDwoHZ2FtZV9pZBgDIAEoCRIwCgZjb25maWcYBCABKAsyIC5hbmFseXNpc19zZXJ2aWNlLkFuYWx5c2lzQ29uZmlnIvwBCg5BbmFseXNpc0NvbmZpZxIbChNzaW1fcGxheXNfZWFybHlfbWlkGAEgASgFEhsKE3NpbV9wbGllc19lYXJseV9taWQYAiABKAUSGgoSc2ltX3N0b3BfZWFybHlfbWlkGAMgASgFEiIKGnNpbV9wbGF5c19lYXJseV9wcmVlbmRnYW1lGAQgASgFEiIKGnNpbV9wbGllc19lYXJseV9wcmVlbmRnYW1lGAUgASgFEiEKGXNpbV9zdG9wX2Vhcmx5X3ByZWVuZGdhbWUYBiABKAUSGAoQcGVnX2Vhcmx5X2N1dG9mZhgHIAEoCBIPCgd0aHJlYWRzGAggASgFIk0KEEhlYXJ0YmVhdFJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhQKDGN1cnJlbnRfdHVybhgCIAEoBRITCgt0b3RhbF90dXJucxgDIAEoBSIlChFIZWFydGJlYXRSZXNwb25zZRIQCghjb250aW51ZRgBIAEoCCI7ChNTdWJtaXRSZXN1bHRSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIUCgxyZXN1bHRfcHJvdG8YAiABKAwiNwoUU3VibWl0UmVzdWx0UmVzcG9uc2USEAoIYWNjZXB0ZWQYASABKAgSDQoFZXJyb3IYAiABKAkiKQoWUmVxdWVzdEFuYWx5c2lzUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIo8CChdSZXF1ZXN0QW5hbHlzaXNSZXNwb25zZRJACgZzdGF0dXMYASABKA4yMC5hbmFseXNpc19zZXJ2aWNlLlJlcXVlc3RBbmFseXNpc1Jlc3BvbnNlLlN0YXR1cxIPCgdtZXNzYWdlGAIgASgJEg4KBmpvYl9pZBgDIAEoCRIWCg5xdWV1ZV9wb3NpdGlvbhgEIAEoBSJ5CgZTdGF0dXMSCwoHU1VDQ0VTUxAAEhUKEUFMUkVBRFlfUkVRVUVTVEVEEAESEgoOR0FNRV9OT1RfRU5ERUQQAhIQCgxOT1RfQV9QTEFZRVIQAxIQCgxSQVRFX0xJTUlURUQQBBITCg9JTlZBTElEX1ZBUklBTlQQBSIrChhHZXRBbmFseXNpc1N0YXR1c1JlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSL1AQoZR2V0QW5hbHlzaXNTdGF0dXNSZXNwb25zZRJFCgZzdGF0dXMYASABKA4yNS5hbmFseXNpc19zZXJ2aWNlLkdldEFuYWx5c2lzU3RhdHVzUmVzcG9uc2UuSm9iU3RhdHVzEg4KBmpvYl9pZBgCIAEoCRIWCg5xdWV1ZV9wb3NpdGlvbhgDIAEoBRIVCg1lcnJvcl9tZXNzYWdlGAQgASgJIlIKCUpvYlN0YXR1cxINCglOT1RfRk9VTkQQABILCgdQRU5ESU5HEAESDgoKUFJPQ0VTU0lORxACEg0KCUNPTVBMRVRFRBADEgoKBkZBSUxFRBAEIisKGEdldEFuYWx5c2lzUmVzdWx0UmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIkAKGUdldEFuYWx5c2lzUmVzdWx0UmVzcG9uc2USDQoFZm91bmQYASABKAgSFAoMcmVzdWx0X3Byb3RvGAIgASgMMp4CChRBbmFseXNpc1F1ZXVlU2VydmljZRJRCghDbGFpbUpvYhIhLmFuYWx5c2lzX3NlcnZpY2UuQ2xhaW1Kb2JSZXF1ZXN0GiIuYW5hbHlzaXNfc2VydmljZS5DbGFpbUpvYlJlc3BvbnNlElQKCUhlYXJ0YmVhdBIiLmFuYWx5c2lzX3NlcnZpY2UuSGVhcnRiZWF0UmVxdWVzdBojLmFuYWx5c2lzX3NlcnZpY2UuSGVhcnRiZWF0UmVzcG9uc2USXQoMU3VibWl0UmVzdWx0EiUuYW5hbHlzaXNfc2VydmljZS5TdWJtaXRSZXN1bHRSZXF1ZXN0GiYuYW5hbHlzaXNfc2VydmljZS5TdWJtaXRSZXN1bHRSZXNwb25zZTLVAgoPQW5hbHlzaXNTZXJ2aWNlEmYKD1JlcXVlc3RBbmFseXNpcxIoLmFuYWx5c2lzX3NlcnZpY2UuUmVxdWVzdEFuYWx5c2lzUmVxdWVzdBopLmFuYWx5c2lzX3NlcnZpY2UuUmVxdWVzdEFuYWx5c2lzUmVzcG9uc2USbAoRR2V0QW5hbHlzaXNTdGF0dXMSKi5hbmFseXNpc19zZXJ2aWNlLkdldEFuYWx5c2lzU3RhdHVzUmVxdWVzdBorLmFuYWx5c2lzX3NlcnZpY2UuR2V0QW5hbHlzaXNTdGF0dXNSZXNwb25zZRJsChFHZXRBbmFseXNpc1Jlc3VsdBIqLmFuYWx5c2lzX3NlcnZpY2UuR2V0QW5hbHlzaXNSZXN1bHRSZXF1ZXN0GisuYW5hbHlzaXNfc2VydmljZS5HZXRBbmFseXNpc1Jlc3VsdFJlc3BvbnNlQsYBChRjb20uYW5hbHlzaXNfc2VydmljZUIUQW5hbHlzaXNTZXJ2aWNlUHJvdG9QAVo8Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9hbmFseXNpc19zZXJ2aWNlogIDQVhYqgIPQW5hbHlzaXNTZXJ2aWNlygIPQW5hbHlzaXNTZXJ2aWNl4gIbQW5hbHlzaXNTZXJ2aWNlXEdQQk1ldGFkYXRh6gIPQW5hbHlzaXNTZXJ2aWNlYgZwcm90bzM", [file_proto_vendored_macondo_macondo]);
+  fileDesc("Ci1wcm90by9hbmFseXNpc19zZXJ2aWNlL2FuYWx5c2lzX3NlcnZpY2UucHJvdG8SEGFuYWx5c2lzX3NlcnZpY2UiEQoPQ2xhaW1Kb2JSZXF1ZXN0InYKEENsYWltSm9iUmVzcG9uc2USDwoHbm9fam9icxgBIAEoCBIOCgZqb2JfaWQYAiABKAkSDwoHZ2FtZV9pZBgDIAEoCRIwCgZjb25maWcYBCABKAsyIC5hbmFseXNpc19zZXJ2aWNlLkFuYWx5c2lzQ29uZmlnIvwBCg5BbmFseXNpc0NvbmZpZxIbChNzaW1fcGxheXNfZWFybHlfbWlkGAEgASgFEhsKE3NpbV9wbGllc19lYXJseV9taWQYAiABKAUSGgoSc2ltX3N0b3BfZWFybHlfbWlkGAMgASgFEiIKGnNpbV9wbGF5c19lYXJseV9wcmVlbmRnYW1lGAQgASgFEiIKGnNpbV9wbGllc19lYXJseV9wcmVlbmRnYW1lGAUgASgFEiEKGXNpbV9zdG9wX2Vhcmx5X3ByZWVuZGdhbWUYBiABKAUSGAoQcGVnX2Vhcmx5X2N1dG9mZhgHIAEoCBIPCgd0aHJlYWRzGAggASgFIk0KEEhlYXJ0YmVhdFJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhQKDGN1cnJlbnRfdHVybhgCIAEoBRITCgt0b3RhbF90dXJucxgDIAEoBSIlChFIZWFydGJlYXRSZXNwb25zZRIQCghjb250aW51ZRgBIAEoCCI7ChNTdWJtaXRSZXN1bHRSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIUCgxyZXN1bHRfcHJvdG8YAiABKAwiNwoUU3VibWl0UmVzdWx0UmVzcG9uc2USEAoIYWNjZXB0ZWQYASABKAgSDQoFZXJyb3IYAiABKAkiKQoWUmVxdWVzdEFuYWx5c2lzUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIo8CChdSZXF1ZXN0QW5hbHlzaXNSZXNwb25zZRJACgZzdGF0dXMYASABKA4yMC5hbmFseXNpc19zZXJ2aWNlLlJlcXVlc3RBbmFseXNpc1Jlc3BvbnNlLlN0YXR1cxIPCgdtZXNzYWdlGAIgASgJEg4KBmpvYl9pZBgDIAEoCRIWCg5xdWV1ZV9wb3NpdGlvbhgEIAEoBSJ5CgZTdGF0dXMSCwoHU1VDQ0VTUxAAEhUKEUFMUkVBRFlfUkVRVUVTVEVEEAESEgoOR0FNRV9OT1RfRU5ERUQQAhIQCgxOT1RfQV9QTEFZRVIQAxIQCgxSQVRFX0xJTUlURUQQBBITCg9JTlZBTElEX1ZBUklBTlQQBSIrChhHZXRBbmFseXNpc1N0YXR1c1JlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSL1AQoZR2V0QW5hbHlzaXNTdGF0dXNSZXNwb25zZRJFCgZzdGF0dXMYASABKA4yNS5hbmFseXNpc19zZXJ2aWNlLkdldEFuYWx5c2lzU3RhdHVzUmVzcG9uc2UuSm9iU3RhdHVzEg4KBmpvYl9pZBgCIAEoCRIWCg5xdWV1ZV9wb3NpdGlvbhgDIAEoBRIVCg1lcnJvcl9tZXNzYWdlGAQgASgJIlIKCUpvYlN0YXR1cxINCglOT1RfRk9VTkQQABILCgdQRU5ESU5HEAESDgoKUFJPQ0VTU0lORxACEg0KCUNPTVBMRVRFRBADEgoKBkZBSUxFRBAEIisKGEdldEFuYWx5c2lzUmVzdWx0UmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIkAKGUdldEFuYWx5c2lzUmVzdWx0UmVzcG9uc2USDQoFZm91bmQYASABKAgSFAoMcmVzdWx0X3Byb3RvGAIgASgMIhYKFEdldEFkbWluU3RhdHNSZXF1ZXN0IjwKEExlYWRlcmJvYXJkRW50cnkSEAoIdXNlcm5hbWUYASABKAkSFgoOYW5hbHlzaXNfY291bnQYAiABKAUi1AEKFUdldEFkbWluU3RhdHNSZXNwb25zZRIXCg90b3RhbF9jb21wbGV0ZWQYASABKAUSFQoNcGVuZGluZ19jb3VudBgCIAEoBRIYChBwcm9jZXNzaW5nX2NvdW50GAMgASgFEjcKC2xlYWRlcmJvYXJkGAQgAygLMiIuYW5hbHlzaXNfc2VydmljZS5MZWFkZXJib2FyZEVudHJ5EjgKDGNvbnRyaWJ1dG9ycxgFIAMoCzIiLmFuYWx5c2lzX3NlcnZpY2UuTGVhZGVyYm9hcmRFbnRyeSI7ChhMaXN0QW5hbHl6ZWRHYW1lc1JlcXVlc3QSDAoEcGFnZRgBIAEoBRIRCglwYWdlX3NpemUYAiABKAUimwEKE0FuYWx5emVkR2FtZVN1bW1hcnkSDgoGam9iX2lkGAEgASgJEg8KB2dhbWVfaWQYAiABKAkSFQoNY3JlYXRlZF9hdF9tcxgDIAEoAxIXCg9jb21wbGV0ZWRfYXRfbXMYBCABKAMSFAoMcmVxdWVzdF90eXBlGAUgASgJEh0KFXJlcXVlc3RlZF9ieV91c2VybmFtZRgGIAEoCSJgChlMaXN0QW5hbHl6ZWRHYW1lc1Jlc3BvbnNlEjQKBWdhbWVzGAEgAygLMiUuYW5hbHlzaXNfc2VydmljZS5BbmFseXplZEdhbWVTdW1tYXJ5Eg0KBXRvdGFsGAIgASgFIikKFlJlcXVldWVBbmFseXNpc1JlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSJBChdSZXF1ZXVlQW5hbHlzaXNSZXNwb25zZRIOCgZqb2JfaWQYASABKAkSFgoOcXVldWVfcG9zaXRpb24YAiABKAUyngIKFEFuYWx5c2lzUXVldWVTZXJ2aWNlElEKCENsYWltSm9iEiEuYW5hbHlzaXNfc2VydmljZS5DbGFpbUpvYlJlcXVlc3QaIi5hbmFseXNpc19zZXJ2aWNlLkNsYWltSm9iUmVzcG9uc2USVAoJSGVhcnRiZWF0EiIuYW5hbHlzaXNfc2VydmljZS5IZWFydGJlYXRSZXF1ZXN0GiMuYW5hbHlzaXNfc2VydmljZS5IZWFydGJlYXRSZXNwb25zZRJdCgxTdWJtaXRSZXN1bHQSJS5hbmFseXNpc19zZXJ2aWNlLlN1Ym1pdFJlc3VsdFJlcXVlc3QaJi5hbmFseXNpc19zZXJ2aWNlLlN1Ym1pdFJlc3VsdFJlc3BvbnNlMs4CChRBbmFseXNpc0FkbWluU2VydmljZRJgCg1HZXRBZG1pblN0YXRzEiYuYW5hbHlzaXNfc2VydmljZS5HZXRBZG1pblN0YXRzUmVxdWVzdBonLmFuYWx5c2lzX3NlcnZpY2UuR2V0QWRtaW5TdGF0c1Jlc3BvbnNlEmwKEUxpc3RBbmFseXplZEdhbWVzEiouYW5hbHlzaXNfc2VydmljZS5MaXN0QW5hbHl6ZWRHYW1lc1JlcXVlc3QaKy5hbmFseXNpc19zZXJ2aWNlLkxpc3RBbmFseXplZEdhbWVzUmVzcG9uc2USZgoPUmVxdWV1ZUFuYWx5c2lzEiguYW5hbHlzaXNfc2VydmljZS5SZXF1ZXVlQW5hbHlzaXNSZXF1ZXN0GikuYW5hbHlzaXNfc2VydmljZS5SZXF1ZXVlQW5hbHlzaXNSZXNwb25zZTLVAgoPQW5hbHlzaXNTZXJ2aWNlEmYKD1JlcXVlc3RBbmFseXNpcxIoLmFuYWx5c2lzX3NlcnZpY2UuUmVxdWVzdEFuYWx5c2lzUmVxdWVzdBopLmFuYWx5c2lzX3NlcnZpY2UuUmVxdWVzdEFuYWx5c2lzUmVzcG9uc2USbAoRR2V0QW5hbHlzaXNTdGF0dXMSKi5hbmFseXNpc19zZXJ2aWNlLkdldEFuYWx5c2lzU3RhdHVzUmVxdWVzdBorLmFuYWx5c2lzX3NlcnZpY2UuR2V0QW5hbHlzaXNTdGF0dXNSZXNwb25zZRJsChFHZXRBbmFseXNpc1Jlc3VsdBIqLmFuYWx5c2lzX3NlcnZpY2UuR2V0QW5hbHlzaXNSZXN1bHRSZXF1ZXN0GisuYW5hbHlzaXNfc2VydmljZS5HZXRBbmFseXNpc1Jlc3VsdFJlc3BvbnNlQsYBChRjb20uYW5hbHlzaXNfc2VydmljZUIUQW5hbHlzaXNTZXJ2aWNlUHJvdG9QAVo8Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9hbmFseXNpc19zZXJ2aWNlogIDQVhYqgIPQW5hbHlzaXNTZXJ2aWNlygIPQW5hbHlzaXNTZXJ2aWNl4gIbQW5hbHlzaXNTZXJ2aWNlXEdQQk1ldGFkYXRh6gIPQW5hbHlzaXNTZXJ2aWNlYgZwcm90bzM", [file_proto_vendored_macondo_macondo]);
 
 /**
  * Request to claim next available job
@@ -479,6 +479,207 @@ export const GetAnalysisResultResponseSchema: GenMessage<GetAnalysisResultRespon
   messageDesc(file_proto_analysis_service_analysis_service, 12);
 
 /**
+ * @generated from message analysis_service.GetAdminStatsRequest
+ */
+export type GetAdminStatsRequest = Message<"analysis_service.GetAdminStatsRequest"> & {
+};
+
+/**
+ * Describes the message analysis_service.GetAdminStatsRequest.
+ * Use `create(GetAdminStatsRequestSchema)` to create a new message.
+ */
+export const GetAdminStatsRequestSchema: GenMessage<GetAdminStatsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 13);
+
+/**
+ * @generated from message analysis_service.LeaderboardEntry
+ */
+export type LeaderboardEntry = Message<"analysis_service.LeaderboardEntry"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * @generated from field: int32 analysis_count = 2;
+   */
+  analysisCount: number;
+};
+
+/**
+ * Describes the message analysis_service.LeaderboardEntry.
+ * Use `create(LeaderboardEntrySchema)` to create a new message.
+ */
+export const LeaderboardEntrySchema: GenMessage<LeaderboardEntry> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 14);
+
+/**
+ * @generated from message analysis_service.GetAdminStatsResponse
+ */
+export type GetAdminStatsResponse = Message<"analysis_service.GetAdminStatsResponse"> & {
+  /**
+   * @generated from field: int32 total_completed = 1;
+   */
+  totalCompleted: number;
+
+  /**
+   * @generated from field: int32 pending_count = 2;
+   */
+  pendingCount: number;
+
+  /**
+   * @generated from field: int32 processing_count = 3;
+   */
+  processingCount: number;
+
+  /**
+   * @generated from field: repeated analysis_service.LeaderboardEntry leaderboard = 4;
+   */
+  leaderboard: LeaderboardEntry[];
+
+  /**
+   * @generated from field: repeated analysis_service.LeaderboardEntry contributors = 5;
+   */
+  contributors: LeaderboardEntry[];
+};
+
+/**
+ * Describes the message analysis_service.GetAdminStatsResponse.
+ * Use `create(GetAdminStatsResponseSchema)` to create a new message.
+ */
+export const GetAdminStatsResponseSchema: GenMessage<GetAdminStatsResponse> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 15);
+
+/**
+ * @generated from message analysis_service.ListAnalyzedGamesRequest
+ */
+export type ListAnalyzedGamesRequest = Message<"analysis_service.ListAnalyzedGamesRequest"> & {
+  /**
+   * @generated from field: int32 page = 1;
+   */
+  page: number;
+
+  /**
+   * @generated from field: int32 page_size = 2;
+   */
+  pageSize: number;
+};
+
+/**
+ * Describes the message analysis_service.ListAnalyzedGamesRequest.
+ * Use `create(ListAnalyzedGamesRequestSchema)` to create a new message.
+ */
+export const ListAnalyzedGamesRequestSchema: GenMessage<ListAnalyzedGamesRequest> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 16);
+
+/**
+ * @generated from message analysis_service.AnalyzedGameSummary
+ */
+export type AnalyzedGameSummary = Message<"analysis_service.AnalyzedGameSummary"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: string game_id = 2;
+   */
+  gameId: string;
+
+  /**
+   * Unix milliseconds
+   *
+   * @generated from field: int64 created_at_ms = 3;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * Unix milliseconds
+   *
+   * @generated from field: int64 completed_at_ms = 4;
+   */
+  completedAtMs: bigint;
+
+  /**
+   * @generated from field: string request_type = 5;
+   */
+  requestType: string;
+
+  /**
+   * @generated from field: string requested_by_username = 6;
+   */
+  requestedByUsername: string;
+};
+
+/**
+ * Describes the message analysis_service.AnalyzedGameSummary.
+ * Use `create(AnalyzedGameSummarySchema)` to create a new message.
+ */
+export const AnalyzedGameSummarySchema: GenMessage<AnalyzedGameSummary> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 17);
+
+/**
+ * @generated from message analysis_service.ListAnalyzedGamesResponse
+ */
+export type ListAnalyzedGamesResponse = Message<"analysis_service.ListAnalyzedGamesResponse"> & {
+  /**
+   * @generated from field: repeated analysis_service.AnalyzedGameSummary games = 1;
+   */
+  games: AnalyzedGameSummary[];
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total: number;
+};
+
+/**
+ * Describes the message analysis_service.ListAnalyzedGamesResponse.
+ * Use `create(ListAnalyzedGamesResponseSchema)` to create a new message.
+ */
+export const ListAnalyzedGamesResponseSchema: GenMessage<ListAnalyzedGamesResponse> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 18);
+
+/**
+ * @generated from message analysis_service.RequeueAnalysisRequest
+ */
+export type RequeueAnalysisRequest = Message<"analysis_service.RequeueAnalysisRequest"> & {
+  /**
+   * @generated from field: string game_id = 1;
+   */
+  gameId: string;
+};
+
+/**
+ * Describes the message analysis_service.RequeueAnalysisRequest.
+ * Use `create(RequeueAnalysisRequestSchema)` to create a new message.
+ */
+export const RequeueAnalysisRequestSchema: GenMessage<RequeueAnalysisRequest> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 19);
+
+/**
+ * @generated from message analysis_service.RequeueAnalysisResponse
+ */
+export type RequeueAnalysisResponse = Message<"analysis_service.RequeueAnalysisResponse"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: int32 queue_position = 2;
+   */
+  queuePosition: number;
+};
+
+/**
+ * Describes the message analysis_service.RequeueAnalysisResponse.
+ * Use `create(RequeueAnalysisResponseSchema)` to create a new message.
+ */
+export const RequeueAnalysisResponseSchema: GenMessage<RequeueAnalysisResponse> = /*@__PURE__*/
+  messageDesc(file_proto_analysis_service_analysis_service, 20);
+
+/**
  * @generated from service analysis_service.AnalysisQueueService
  */
 export const AnalysisQueueService: GenService<{
@@ -514,6 +715,45 @@ export const AnalysisQueueService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_analysis_service_analysis_service, 0);
+
+/**
+ * Admin-only analysis service
+ *
+ * @generated from service analysis_service.AnalysisAdminService
+ */
+export const AnalysisAdminService: GenService<{
+  /**
+   * GetAdminStats returns overview statistics for the analysis system
+   *
+   * @generated from rpc analysis_service.AnalysisAdminService.GetAdminStats
+   */
+  getAdminStats: {
+    methodKind: "unary";
+    input: typeof GetAdminStatsRequestSchema;
+    output: typeof GetAdminStatsResponseSchema;
+  },
+  /**
+   * ListAnalyzedGames returns a paginated list of completed analysis jobs
+   *
+   * @generated from rpc analysis_service.AnalysisAdminService.ListAnalyzedGames
+   */
+  listAnalyzedGames: {
+    methodKind: "unary";
+    input: typeof ListAnalyzedGamesRequestSchema;
+    output: typeof ListAnalyzedGamesResponseSchema;
+  },
+  /**
+   * RequeueAnalysis resets an analysis job back to pending for re-processing
+   *
+   * @generated from rpc analysis_service.AnalysisAdminService.RequeueAnalysis
+   */
+  requeueAnalysis: {
+    methodKind: "unary";
+    input: typeof RequeueAnalysisRequestSchema;
+    output: typeof RequeueAnalysisResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_proto_analysis_service_analysis_service, 1);
 
 /**
  * User-facing analysis service
@@ -552,5 +792,5 @@ export const AnalysisService: GenService<{
     output: typeof GetAnalysisResultResponseSchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_proto_analysis_service_analysis_service, 1);
+  serviceDesc(file_proto_analysis_service_analysis_service, 2);
 

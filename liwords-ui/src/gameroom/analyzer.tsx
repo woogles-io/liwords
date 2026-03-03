@@ -6,8 +6,20 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Card, Switch } from "antd";
-import { BulbOutlined } from "@ant-design/icons";
+import { App, Button, Card, Switch, Tooltip } from "antd";
+import { BulbOutlined, RobotOutlined } from "@ant-design/icons";
+import { useQuery, useMutation } from "@connectrpc/connect-query";
+import { flashError } from "../utils/hooks/connect";
+import {
+  GetAnalysisStatusResponse_JobStatus,
+  RequestAnalysisResponse_Status,
+} from "../gen/api/proto/analysis_service/analysis_service_pb";
+import {
+  getAnalysisStatus,
+  requestAnalysis as requestBestBotAnalysis,
+} from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
+import { PlayState } from "../gen/api/proto/vendored/macondo/macondo_pb";
+import { ComputerAnalysis } from "./computer_analysis";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
 import {
   useExaminableGameContextStoreContext,
@@ -591,6 +603,97 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
 
+  const [showComputerAnalysis, setShowComputerAnalysis] = useState(false);
+  const { modal } = App.useApp();
+
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+  const gameID = gameContext.gameID;
+
+  const { data: analysisStatusData, refetch: refetchStatus } = useQuery(
+    getAnalysisStatus,
+    { gameId: gameID },
+    { enabled: gameDone && !!gameID },
+  );
+  const analysisStatus = analysisStatusData?.status ?? null;
+
+  useEffect(() => {
+    if (!gameDone || !gameID) {
+      setShowComputerAnalysis(false);
+    }
+  }, [gameDone, gameID]);
+
+  const requestAnalysisMutation = useMutation(requestBestBotAnalysis, {
+    onSuccess: async (resp) => {
+      switch (resp.status) {
+        case RequestAnalysisResponse_Status.SUCCESS:
+          modal.success({
+            title: <p className="readable-text-color">Analysis Requested!</p>,
+            content: (
+              <p className="readable-text-color">{`Queued for analysis. You are #${resp.queuePosition} in the queue.`}</p>
+            ),
+          });
+          await refetchStatus();
+          break;
+        case RequestAnalysisResponse_Status.ALREADY_REQUESTED:
+          modal.info({
+            title: (
+              <p className="readable-text-color">Analysis Already Requested</p>
+            ),
+            content: <p className="readable-text-color">{resp.message}</p>,
+          });
+          await refetchStatus();
+          break;
+        case RequestAnalysisResponse_Status.RATE_LIMITED:
+          modal.error({
+            title: <p className="readable-text-color">Rate Limited</p>,
+            content: <p className="readable-text-color">{resp.message}</p>,
+          });
+          break;
+        default:
+          modal.error({
+            title: (
+              <p className="readable-text-color">Cannot Request Analysis</p>
+            ),
+            content: <p className="readable-text-color">{resp.message}</p>,
+          });
+      }
+    },
+    onError: flashError,
+  });
+
+  const handleRequestAnalysis = useCallback(() => {
+    requestAnalysisMutation.mutate({ gameId: gameID });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameID]); // requestAnalysisMutation.mutate is stable
+
+  const analysisButtonLabel = () => {
+    switch (analysisStatus) {
+      case GetAnalysisStatusResponse_JobStatus.COMPLETED:
+        return "View Computer Analysis";
+      case GetAnalysisStatusResponse_JobStatus.PENDING:
+        return "Analysis Queued…";
+      case GetAnalysisStatusResponse_JobStatus.PROCESSING:
+        return "Analyzing…";
+      case GetAnalysisStatusResponse_JobStatus.FAILED:
+        return "Analysis Failed";
+      default:
+        return "Request Computer Analysis";
+    }
+  };
+
+  const handleAnalysisButtonClick = useCallback(() => {
+    if (analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED) {
+      setShowComputerAnalysis(true);
+    } else if (
+      analysisStatus === null ||
+      analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND ||
+      analysisStatus === GetAnalysisStatusResponse_JobStatus.FAILED
+    ) {
+      handleRequestAnalysis();
+    }
+    // Pending/Processing: button is disabled, no action needed
+  }, [analysisStatus, handleRequestAnalysis]);
+
   const placeMove = usePlaceMoveCallback();
 
   const handleExaminer = useCallback(() => {
@@ -843,7 +946,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         icon={<BulbOutlined />}
         type="primary"
         onClick={handleExaminer}
-        disabled={autoMode || examinerLoading}
+        disabled={autoMode || examinerLoading || showComputerAnalysis}
       />
       <div className="auto-controls">
         <p className="auto-label">Auto</p>
@@ -852,10 +955,55 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           onChange={toggleAutoMode}
           className="auto-toggle"
           size="small"
+          disabled={showComputerAnalysis}
         />
       </div>
+      {gameDone && !variant?.includes("wordsmog") && (
+        <Tooltip title={analysisButtonLabel()}>
+          <Button
+            className="computer-analysis-btn"
+            shape="circle"
+            type="primary"
+            icon={<RobotOutlined />}
+            onClick={handleAnalysisButtonClick}
+            disabled={
+              analysisStatus === GetAnalysisStatusResponse_JobStatus.PENDING ||
+              analysisStatus === GetAnalysisStatusResponse_JobStatus.PROCESSING
+            }
+          />
+        </Tooltip>
+      )}
     </div>
   );
+
+  if (showComputerAnalysis && gameDone) {
+    const computerAnalysisContent = (
+      <ComputerAnalysis
+        gameID={gameID}
+        currentTurn={examinableGameContext.turns.length}
+        onBack={() => setShowComputerAnalysis(false)}
+      />
+    );
+    if (props.includeCard) {
+      return (
+        <Card
+          title="Analyzer"
+          className="analyzer-card"
+          extra={analyzerControls}
+          tabIndex={-1}
+        >
+          {computerAnalysisContent}
+        </Card>
+      );
+    }
+    return (
+      <div className="analyzer-container">
+        {computerAnalysisContent}
+        {analyzerControls}
+      </div>
+    );
+  }
+
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (

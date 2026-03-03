@@ -28,14 +28,14 @@ SET
 WHERE id = $1 AND claimed_by_user_uuid = $2;
 
 -- name: CompleteJob :one
--- Marks job as completed and returns processing duration
+-- Marks job as completed and returns game_id and processing duration
 UPDATE analysis_jobs
 SET
     status = 'completed',
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
+RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
 
 -- name: FailJob :exec
 -- Marks job as failed with error message
@@ -132,3 +132,78 @@ SELECT
     priority
 FROM analysis_jobs
 WHERE id = $1;
+
+-- name: GetAdminAnalysisStats :one
+-- Get overview stats for admin dashboard
+SELECT
+    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
+    COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+    COUNT(*) FILTER (WHERE status IN ('claimed', 'processing')) as processing_count
+FROM analysis_jobs;
+
+-- name: GetAnalysisLeaderboard :many
+-- Get top users who requested the most analyses
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.requested_by_user_uuid IS NOT NULL
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1;
+
+-- name: GetContributorsLeaderboard :many
+-- Get top users who contributed the most analyses (i.e. ran the worker)
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.claimed_by_user_uuid IS NOT NULL
+  AND aj.status = 'completed'
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1;
+
+-- name: GetCompletedJobsList :many
+-- Get paginated list of completed analysis jobs
+SELECT
+    aj.id as job_id,
+    aj.game_id,
+    aj.created_at,
+    aj.completed_at,
+    COALESCE(aj.request_type, 'automatic') as request_type,
+    COALESCE(u.username, '') as requested_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.status = 'completed'
+ORDER BY aj.completed_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: GetTotalCompletedCount :one
+-- Get total count of completed analysis jobs
+SELECT COUNT(*) as total
+FROM analysis_jobs
+WHERE status = 'completed';
+
+-- name: ResetAnalysisJob :exec
+-- Reset an analysis job back to pending so it can be re-processed
+UPDATE analysis_jobs
+SET status = 'pending',
+    result = NULL,
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0
+WHERE id = $1;
+
+-- name: GetVerticalOpenerJobs :many
+-- Find completed jobs where the first turn was a vertical opening move
+-- (column-first coordinates like A1, B3, etc. indicate vertical plays)
+SELECT id, game_id
+FROM analysis_jobs
+WHERE status = 'completed'
+  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]';

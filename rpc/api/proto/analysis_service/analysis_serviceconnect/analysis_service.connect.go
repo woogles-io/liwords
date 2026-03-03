@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// AnalysisQueueServiceName is the fully-qualified name of the AnalysisQueueService service.
 	AnalysisQueueServiceName = "analysis_service.AnalysisQueueService"
+	// AnalysisAdminServiceName is the fully-qualified name of the AnalysisAdminService service.
+	AnalysisAdminServiceName = "analysis_service.AnalysisAdminService"
 	// AnalysisServiceName is the fully-qualified name of the AnalysisService service.
 	AnalysisServiceName = "analysis_service.AnalysisService"
 )
@@ -44,6 +46,15 @@ const (
 	// AnalysisQueueServiceSubmitResultProcedure is the fully-qualified name of the
 	// AnalysisQueueService's SubmitResult RPC.
 	AnalysisQueueServiceSubmitResultProcedure = "/analysis_service.AnalysisQueueService/SubmitResult"
+	// AnalysisAdminServiceGetAdminStatsProcedure is the fully-qualified name of the
+	// AnalysisAdminService's GetAdminStats RPC.
+	AnalysisAdminServiceGetAdminStatsProcedure = "/analysis_service.AnalysisAdminService/GetAdminStats"
+	// AnalysisAdminServiceListAnalyzedGamesProcedure is the fully-qualified name of the
+	// AnalysisAdminService's ListAnalyzedGames RPC.
+	AnalysisAdminServiceListAnalyzedGamesProcedure = "/analysis_service.AnalysisAdminService/ListAnalyzedGames"
+	// AnalysisAdminServiceRequeueAnalysisProcedure is the fully-qualified name of the
+	// AnalysisAdminService's RequeueAnalysis RPC.
+	AnalysisAdminServiceRequeueAnalysisProcedure = "/analysis_service.AnalysisAdminService/RequeueAnalysis"
 	// AnalysisServiceRequestAnalysisProcedure is the fully-qualified name of the AnalysisService's
 	// RequestAnalysis RPC.
 	AnalysisServiceRequestAnalysisProcedure = "/analysis_service.AnalysisService/RequestAnalysis"
@@ -182,6 +193,135 @@ func (UnimplementedAnalysisQueueServiceHandler) Heartbeat(context.Context, *conn
 
 func (UnimplementedAnalysisQueueServiceHandler) SubmitResult(context.Context, *connect.Request[analysis_service.SubmitResultRequest]) (*connect.Response[analysis_service.SubmitResultResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisQueueService.SubmitResult is not implemented"))
+}
+
+// AnalysisAdminServiceClient is a client for the analysis_service.AnalysisAdminService service.
+type AnalysisAdminServiceClient interface {
+	// GetAdminStats returns overview statistics for the analysis system
+	GetAdminStats(context.Context, *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error)
+	// ListAnalyzedGames returns a paginated list of completed analysis jobs
+	ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error)
+	// RequeueAnalysis resets an analysis job back to pending for re-processing
+	RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error)
+}
+
+// NewAnalysisAdminServiceClient constructs a client for the analysis_service.AnalysisAdminService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAnalysisAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AnalysisAdminServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	analysisAdminServiceMethods := analysis_service.File_proto_analysis_service_analysis_service_proto.Services().ByName("AnalysisAdminService").Methods()
+	return &analysisAdminServiceClient{
+		getAdminStats: connect.NewClient[analysis_service.GetAdminStatsRequest, analysis_service.GetAdminStatsResponse](
+			httpClient,
+			baseURL+AnalysisAdminServiceGetAdminStatsProcedure,
+			connect.WithSchema(analysisAdminServiceMethods.ByName("GetAdminStats")),
+			connect.WithClientOptions(opts...),
+		),
+		listAnalyzedGames: connect.NewClient[analysis_service.ListAnalyzedGamesRequest, analysis_service.ListAnalyzedGamesResponse](
+			httpClient,
+			baseURL+AnalysisAdminServiceListAnalyzedGamesProcedure,
+			connect.WithSchema(analysisAdminServiceMethods.ByName("ListAnalyzedGames")),
+			connect.WithClientOptions(opts...),
+		),
+		requeueAnalysis: connect.NewClient[analysis_service.RequeueAnalysisRequest, analysis_service.RequeueAnalysisResponse](
+			httpClient,
+			baseURL+AnalysisAdminServiceRequeueAnalysisProcedure,
+			connect.WithSchema(analysisAdminServiceMethods.ByName("RequeueAnalysis")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// analysisAdminServiceClient implements AnalysisAdminServiceClient.
+type analysisAdminServiceClient struct {
+	getAdminStats     *connect.Client[analysis_service.GetAdminStatsRequest, analysis_service.GetAdminStatsResponse]
+	listAnalyzedGames *connect.Client[analysis_service.ListAnalyzedGamesRequest, analysis_service.ListAnalyzedGamesResponse]
+	requeueAnalysis   *connect.Client[analysis_service.RequeueAnalysisRequest, analysis_service.RequeueAnalysisResponse]
+}
+
+// GetAdminStats calls analysis_service.AnalysisAdminService.GetAdminStats.
+func (c *analysisAdminServiceClient) GetAdminStats(ctx context.Context, req *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error) {
+	return c.getAdminStats.CallUnary(ctx, req)
+}
+
+// ListAnalyzedGames calls analysis_service.AnalysisAdminService.ListAnalyzedGames.
+func (c *analysisAdminServiceClient) ListAnalyzedGames(ctx context.Context, req *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error) {
+	return c.listAnalyzedGames.CallUnary(ctx, req)
+}
+
+// RequeueAnalysis calls analysis_service.AnalysisAdminService.RequeueAnalysis.
+func (c *analysisAdminServiceClient) RequeueAnalysis(ctx context.Context, req *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error) {
+	return c.requeueAnalysis.CallUnary(ctx, req)
+}
+
+// AnalysisAdminServiceHandler is an implementation of the analysis_service.AnalysisAdminService
+// service.
+type AnalysisAdminServiceHandler interface {
+	// GetAdminStats returns overview statistics for the analysis system
+	GetAdminStats(context.Context, *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error)
+	// ListAnalyzedGames returns a paginated list of completed analysis jobs
+	ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error)
+	// RequeueAnalysis resets an analysis job back to pending for re-processing
+	RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error)
+}
+
+// NewAnalysisAdminServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAnalysisAdminServiceHandler(svc AnalysisAdminServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	analysisAdminServiceMethods := analysis_service.File_proto_analysis_service_analysis_service_proto.Services().ByName("AnalysisAdminService").Methods()
+	analysisAdminServiceGetAdminStatsHandler := connect.NewUnaryHandler(
+		AnalysisAdminServiceGetAdminStatsProcedure,
+		svc.GetAdminStats,
+		connect.WithSchema(analysisAdminServiceMethods.ByName("GetAdminStats")),
+		connect.WithHandlerOptions(opts...),
+	)
+	analysisAdminServiceListAnalyzedGamesHandler := connect.NewUnaryHandler(
+		AnalysisAdminServiceListAnalyzedGamesProcedure,
+		svc.ListAnalyzedGames,
+		connect.WithSchema(analysisAdminServiceMethods.ByName("ListAnalyzedGames")),
+		connect.WithHandlerOptions(opts...),
+	)
+	analysisAdminServiceRequeueAnalysisHandler := connect.NewUnaryHandler(
+		AnalysisAdminServiceRequeueAnalysisProcedure,
+		svc.RequeueAnalysis,
+		connect.WithSchema(analysisAdminServiceMethods.ByName("RequeueAnalysis")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/analysis_service.AnalysisAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AnalysisAdminServiceGetAdminStatsProcedure:
+			analysisAdminServiceGetAdminStatsHandler.ServeHTTP(w, r)
+		case AnalysisAdminServiceListAnalyzedGamesProcedure:
+			analysisAdminServiceListAnalyzedGamesHandler.ServeHTTP(w, r)
+		case AnalysisAdminServiceRequeueAnalysisProcedure:
+			analysisAdminServiceRequeueAnalysisHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAnalysisAdminServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAnalysisAdminServiceHandler struct{}
+
+func (UnimplementedAnalysisAdminServiceHandler) GetAdminStats(context.Context, *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisAdminService.GetAdminStats is not implemented"))
+}
+
+func (UnimplementedAnalysisAdminServiceHandler) ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisAdminService.ListAnalyzedGames is not implemented"))
+}
+
+func (UnimplementedAnalysisAdminServiceHandler) RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisAdminService.RequeueAnalysis is not implemented"))
 }
 
 // AnalysisServiceClient is a client for the analysis_service.AnalysisService service.
