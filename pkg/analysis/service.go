@@ -8,8 +8,12 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -20,6 +24,8 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+var tracer = otel.Tracer("analysis")
 
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
@@ -191,8 +197,10 @@ func (s *AnalysisService) SubmitResult(
 		Int32("duration_ms", completedJob.DurationMs).
 		Msg("result accepted")
 
-	// Update league standings with mistake index if this is a league game
-	go s.updateLeagueMistakeIndex(ctx, completedJob.GameID, &result)
+	// Update league standings with mistake index if this is a league game.
+	// context.WithoutCancel preserves the otel trace context while detaching from
+	// the request cancellation (which fires as soon as we return a response).
+	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, &result)
 
 	return connect.NewResponse(&pb.SubmitResultResponse{
 		Accepted: true,
@@ -202,6 +210,10 @@ func (s *AnalysisService) SubmitResult(
 // updateLeagueMistakeIndex updates league standings with mistake index for a completed analysis.
 // Runs asynchronously (best-effort) so failures don't affect the SubmitResult response.
 func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string, result *macondo.GameAnalysisResult) {
+	ctx, span := tracer.Start(ctx, "analysis.updateLeagueMistakeIndex",
+		trace.WithAttributes(attribute.String("game.id", gameID)),
+	)
+	defer span.End()
 	applyLeagueMistakeIndex(ctx, s.queries, gameID, result, false)
 }
 
@@ -210,7 +222,11 @@ func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID s
 func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string, result *macondo.GameAnalysisResult, decrement bool) {
 	gameInfo, err := queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
 	if err != nil {
-		log.Debug().Str("game_id", gameID).Msg("game not found or not a league game for mistake index update")
+		if err == pgx.ErrNoRows {
+			log.Debug().Str("game_id", gameID).Msg("game not found, skipping mistake index update")
+		} else {
+			log.Error().Err(err).Str("game_id", gameID).Msg("failed to get game league info for mistake index update")
+		}
 		return
 	}
 	if !gameInfo.LeagueDivisionID.Valid {
