@@ -132,3 +132,44 @@ SELECT
     priority
 FROM analysis_jobs
 WHERE id = $1;
+
+-- name: GetAdminAnalysisStats :one
+-- Get overview stats for admin dashboard
+SELECT
+    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
+    COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+    COUNT(*) FILTER (WHERE status IN ('claimed', 'processing')) as processing_count
+FROM analysis_jobs;
+
+-- name: GetAnalysisLeaderboard :many
+-- Get top users who requested the most analyses
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.requested_by_user_uuid IS NOT NULL
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1;
+
+-- name: GetCompletedJobsList :many
+-- Get paginated list of completed analysis jobs
+SELECT
+    aj.id as job_id,
+    aj.game_id,
+    aj.created_at,
+    aj.completed_at,
+    COALESCE(aj.request_type, 'automatic') as request_type,
+    COALESCE(u.username, '') as requested_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.status = 'completed'
+ORDER BY aj.completed_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: GetTotalCompletedCount :one
+-- Get total count of completed analysis jobs
+SELECT COUNT(*) as total
+FROM analysis_jobs
+WHERE status = 'completed';

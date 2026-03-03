@@ -155,6 +155,28 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
 	return err
 }
 
+const getAdminAnalysisStats = `-- name: GetAdminAnalysisStats :one
+SELECT
+    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
+    COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+    COUNT(*) FILTER (WHERE status IN ('claimed', 'processing')) as processing_count
+FROM analysis_jobs
+`
+
+type GetAdminAnalysisStatsRow struct {
+	TotalCompleted  int64
+	PendingCount    int64
+	ProcessingCount int64
+}
+
+// Get overview stats for admin dashboard
+func (q *Queries) GetAdminAnalysisStats(ctx context.Context) (GetAdminAnalysisStatsRow, error) {
+	row := q.db.QueryRow(ctx, getAdminAnalysisStats)
+	var i GetAdminAnalysisStatsRow
+	err := row.Scan(&i.TotalCompleted, &i.PendingCount, &i.ProcessingCount)
+	return i, err
+}
+
 const getAnalysisJobWithDetails = `-- name: GetAnalysisJobWithDetails :one
 SELECT
     id,
@@ -201,6 +223,101 @@ func (q *Queries) GetAnalysisJobWithDetails(ctx context.Context, id uuid.UUID) (
 		&i.Priority,
 	)
 	return i, err
+}
+
+const getAnalysisLeaderboard = `-- name: GetAnalysisLeaderboard :many
+SELECT
+    u.username,
+    COUNT(*) as analysis_count
+FROM analysis_jobs aj
+JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.requested_by_user_uuid IS NOT NULL
+GROUP BY u.uuid, u.username
+ORDER BY analysis_count DESC
+LIMIT $1
+`
+
+type GetAnalysisLeaderboardRow struct {
+	Username      pgtype.Text
+	AnalysisCount int64
+}
+
+// Get top users who requested the most analyses
+func (q *Queries) GetAnalysisLeaderboard(ctx context.Context, limit int32) ([]GetAnalysisLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getAnalysisLeaderboard, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAnalysisLeaderboardRow
+	for rows.Next() {
+		var i GetAnalysisLeaderboardRow
+		if err := rows.Scan(&i.Username, &i.AnalysisCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCompletedJobsList = `-- name: GetCompletedJobsList :many
+SELECT
+    aj.id as job_id,
+    aj.game_id,
+    aj.created_at,
+    aj.completed_at,
+    COALESCE(aj.request_type, 'automatic') as request_type,
+    COALESCE(u.username, '') as requested_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.requested_by_user_uuid
+WHERE aj.status = 'completed'
+ORDER BY aj.completed_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetCompletedJobsListParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetCompletedJobsListRow struct {
+	JobID               uuid.UUID
+	GameID              string
+	CreatedAt           pgtype.Timestamptz
+	CompletedAt         pgtype.Timestamptz
+	RequestType         string
+	RequestedByUsername string
+}
+
+// Get paginated list of completed analysis jobs
+func (q *Queries) GetCompletedJobsList(ctx context.Context, arg GetCompletedJobsListParams) ([]GetCompletedJobsListRow, error) {
+	rows, err := q.db.Query(ctx, getCompletedJobsList, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCompletedJobsListRow
+	for rows.Next() {
+		var i GetCompletedJobsListRow
+		if err := rows.Scan(
+			&i.JobID,
+			&i.GameID,
+			&i.CreatedAt,
+			&i.CompletedAt,
+			&i.RequestType,
+			&i.RequestedByUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getJobByGameID = `-- name: GetJobByGameID :one
@@ -254,6 +371,20 @@ func (q *Queries) GetQueuePosition(ctx context.Context, id uuid.UUID) (int32, er
 	var position int32
 	err := row.Scan(&position)
 	return position, err
+}
+
+const getTotalCompletedCount = `-- name: GetTotalCompletedCount :one
+SELECT COUNT(*) as total
+FROM analysis_jobs
+WHERE status = 'completed'
+`
+
+// Get total count of completed analysis jobs
+func (q *Queries) GetTotalCompletedCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalCompletedCount)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
 const getUserJobCount = `-- name: GetUserJobCount :one
