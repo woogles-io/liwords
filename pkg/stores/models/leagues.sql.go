@@ -258,6 +258,25 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (Lea
 	return i, err
 }
 
+const decrementStandingMistakeIndex = `-- name: DecrementStandingMistakeIndex :exec
+UPDATE league_standings
+SET total_mistake_index = total_mistake_index - $3,
+    games_analyzed = GREATEST(0, games_analyzed - 1),
+    updated_at = NOW()
+WHERE division_id = $1 AND user_id = $2
+`
+
+type DecrementStandingMistakeIndexParams struct {
+	DivisionID        uuid.UUID
+	UserID            int32
+	TotalMistakeIndex pgtype.Float8
+}
+
+func (q *Queries) DecrementStandingMistakeIndex(ctx context.Context, arg DecrementStandingMistakeIndexParams) error {
+	_, err := q.db.Exec(ctx, decrementStandingMistakeIndex, arg.DivisionID, arg.UserID, arg.TotalMistakeIndex)
+	return err
+}
+
 const deleteDivision = `-- name: DeleteDivision :exec
 DELETE FROM league_divisions
 WHERE uuid = $1

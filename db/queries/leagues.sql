@@ -292,6 +292,13 @@ SET total_mistake_index = total_mistake_index + $3,
     updated_at = NOW()
 WHERE division_id = $1 AND user_id = $2;
 
+-- name: DecrementStandingMistakeIndex :exec
+UPDATE league_standings
+SET total_mistake_index = total_mistake_index - $3,
+    games_analyzed = GREATEST(0, games_analyzed - 1),
+    updated_at = NOW()
+WHERE division_id = $1 AND user_id = $2;
+
 -- name: DeleteDivisionStandings :exec
 DELETE FROM league_standings
 WHERE division_id = $1;

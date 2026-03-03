@@ -76,6 +76,9 @@ service AnalysisAdminService {
 
   // ListAnalyzedGames returns a paginated list of completed analysis jobs
   rpc ListAnalyzedGames(ListAnalyzedGamesRequest) returns (ListAnalyzedGamesResponse);
+
+  // RequeueAnalysis resets an analysis job back to pending for re-processing
+  rpc RequeueAnalysis(RequeueAnalysisRequest) returns (RequeueAnalysisResponse);
 }
 
 // User-facing analysis service
@@ -178,4 +181,13 @@ message AnalyzedGameSummary {
 message ListAnalyzedGamesResponse {
   repeated AnalyzedGameSummary games = 1;
   int32 total = 2;
+}
+
+message RequeueAnalysisRequest {
+  string game_id = 1;
+}
+
+message RequeueAnalysisResponse {
+  string job_id = 1;
+  int32 queue_position = 2;
 }

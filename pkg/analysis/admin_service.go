@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -72,6 +74,45 @@ func (s *AnalysisAdminService) GetAdminStats(
 		ProcessingCount: int32(stats.ProcessingCount),
 		Leaderboard:     leaderboard,
 		Contributors:    contributors,
+	}), nil
+}
+
+func (s *AnalysisAdminService) RequeueAnalysis(
+	ctx context.Context,
+	req *connect.Request[pb.RequeueAnalysisRequest],
+) (*connect.Response[pb.RequeueAnalysisResponse], error) {
+
+	_, err := apiserver.AuthenticateWithPermission(ctx, s.userStore, s.queries, rbac.AdminAllAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	job, err := s.queries.GetJobByGameID(ctx, req.Msg.GameId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no analysis job found for game %s", req.Msg.GameId))
+	}
+
+	// If there's an existing completed result, subtract its mistake index contribution
+	// from league standings before resetting so it doesn't get double-counted.
+	if job.Status == "completed" && len(job.Result) > 0 {
+		var oldResult macondo.GameAnalysisResult
+		if err := protojson.Unmarshal(job.Result, &oldResult); err == nil {
+			applyLeagueMistakeIndex(ctx, s.queries, job.GameID, &oldResult, true)
+		}
+	}
+
+	if err := s.queries.ResetAnalysisJob(ctx, job.ID); err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to reset analysis job: %w", err))
+	}
+
+	position, err := s.queries.GetQueuePosition(ctx, job.ID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get queue position: %w", err))
+	}
+
+	return connect.NewResponse(&pb.RequeueAnalysisResponse{
+		JobId:         job.ID.String(),
+		QueuePosition: int32(position),
 	}), nil
 }
 

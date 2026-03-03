@@ -202,7 +202,13 @@ func (s *AnalysisService) SubmitResult(
 // updateLeagueMistakeIndex updates league standings with mistake index for a completed analysis.
 // Runs asynchronously (best-effort) so failures don't affect the SubmitResult response.
 func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID string, result *macondo.GameAnalysisResult) {
-	gameInfo, err := s.queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
+	applyLeagueMistakeIndex(ctx, s.queries, gameID, result, false)
+}
+
+// applyLeagueMistakeIndex adds (decrement=false) or subtracts (decrement=true) a game's
+// mistake index contribution from league standings.
+func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameID string, result *macondo.GameAnalysisResult, decrement bool) {
+	gameInfo, err := queries.GetGameLeagueInfo(ctx, pgtype.Text{String: gameID, Valid: true})
 	if err != nil {
 		log.Debug().Str("game_id", gameID).Msg("game not found or not a league game for mistake index update")
 		return
@@ -229,23 +235,37 @@ func (s *AnalysisService) updateLeagueMistakeIndex(ctx context.Context, gameID s
 		if !p.playerID.Valid {
 			continue
 		}
-		err := s.queries.IncrementStandingMistakeIndex(ctx, models.IncrementStandingMistakeIndexParams{
-			DivisionID:        divisionID,
-			UserID:            p.playerID.Int32,
-			TotalMistakeIndex: pgtype.Float8{Float64: p.mistakeIndex, Valid: true},
-		})
+		mistakeIndex := pgtype.Float8{Float64: p.mistakeIndex, Valid: true}
+		if decrement {
+			err = queries.DecrementStandingMistakeIndex(ctx, models.DecrementStandingMistakeIndexParams{
+				DivisionID:        divisionID,
+				UserID:            p.playerID.Int32,
+				TotalMistakeIndex: mistakeIndex,
+			})
+		} else {
+			err = queries.IncrementStandingMistakeIndex(ctx, models.IncrementStandingMistakeIndexParams{
+				DivisionID:        divisionID,
+				UserID:            p.playerID.Int32,
+				TotalMistakeIndex: mistakeIndex,
+			})
+		}
 		if err != nil {
 			log.Error().Err(err).
 				Str("game_id", gameID).
 				Int32("user_id", p.playerID.Int32).
+				Bool("decrement", decrement).
 				Msg("failed to update league mistake index")
 		}
 	}
 
+	action := "incremented"
+	if decrement {
+		action = "decremented"
+	}
 	log.Info().
 		Str("game_id", gameID).
 		Str("division_id", divisionID.String()).
-		Msg("updated league standings with mistake index")
+		Msg(action + " league standings mistake index")
 }
 
 // StartReclaimWorker reclaims stale jobs in background

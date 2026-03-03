@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Card, Col, Modal, Row, Statistic, Table, Tag, Typography } from "antd";
+import {
+  Button,
+  Card,
+  Col,
+  Modal,
+  Row,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import { create, fromJsonString } from "@bufbuild/protobuf";
 import { useClient, flashError } from "../utils/hooks/connect";
 import {
@@ -9,6 +19,7 @@ import {
   GetAdminStatsResponseSchema,
   GetAdminStatsRequestSchema,
   ListAnalyzedGamesRequestSchema,
+  RequeueAnalysisRequestSchema,
 } from "../gen/api/proto/analysis_service/analysis_service_pb";
 import {
   AnalysisService,
@@ -372,6 +383,24 @@ export const AnalysisStats = () => {
     [adminClient],
   );
 
+  const handleRequeue = useCallback(
+    async (gameId: string) => {
+      try {
+        const resp = await adminClient.requeueAnalysis(
+          create(RequeueAnalysisRequestSchema, { gameId }),
+        );
+        Modal.success({
+          title: "Re-queued",
+          content: `Job ${resp.jobId} reset to pending (queue position: ${resp.queuePosition}).`,
+        });
+        fetchGames(page);
+      } catch (e) {
+        flashError(e);
+      }
+    },
+    [adminClient, fetchGames, page],
+  );
+
   useEffect(() => {
     fetchStats();
     fetchGames(0);
@@ -467,6 +496,19 @@ export const AnalysisStats = () => {
               minute: "2-digit",
             })
           : "—",
+    },
+    {
+      title: "Action",
+      key: "action",
+      width: 110,
+      render: (_: unknown, row: AnalyzedGameSummary) => (
+        <Button
+          size="small"
+          onClick={() => handleRequeue(row.gameId)}
+        >
+          Re-analyze
+        </Button>
+      ),
     },
   ];
 

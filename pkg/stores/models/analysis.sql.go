@@ -460,6 +460,40 @@ func (q *Queries) GetUserRequestCountToday(ctx context.Context, userUuid string)
 	return request_count, err
 }
 
+const getVerticalOpenerJobs = `-- name: GetVerticalOpenerJobs :many
+SELECT id, game_id
+FROM analysis_jobs
+WHERE status = 'completed'
+  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]'
+`
+
+type GetVerticalOpenerJobsRow struct {
+	ID     uuid.UUID
+	GameID string
+}
+
+// Find completed jobs where the first turn was a vertical opening move
+// (column-first coordinates like A1, B3, etc. indicate vertical plays)
+func (q *Queries) GetVerticalOpenerJobs(ctx context.Context) ([]GetVerticalOpenerJobsRow, error) {
+	rows, err := q.db.Query(ctx, getVerticalOpenerJobs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetVerticalOpenerJobsRow
+	for rows.Next() {
+		var i GetVerticalOpenerJobsRow
+		if err := rows.Scan(&i.ID, &i.GameID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reclaimStaleJobs = `-- name: ReclaimStaleJobs :exec
 UPDATE analysis_jobs
 SET
@@ -497,6 +531,25 @@ type RecordUserAnalysisRequestParams struct {
 // Record that a user requested analysis for a game
 func (q *Queries) RecordUserAnalysisRequest(ctx context.Context, arg RecordUserAnalysisRequestParams) error {
 	_, err := q.db.Exec(ctx, recordUserAnalysisRequest, arg.UserUuid, arg.GameID, arg.JobID)
+	return err
+}
+
+const resetAnalysisJob = `-- name: ResetAnalysisJob :exec
+UPDATE analysis_jobs
+SET status = 'pending',
+    result = NULL,
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0
+WHERE id = $1
+`
+
+// Reset an analysis job back to pending so it can be re-processed
+func (q *Queries) ResetAnalysisJob(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetAnalysisJob, id)
 	return err
 }
 

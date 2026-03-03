@@ -52,6 +52,9 @@ const (
 	// AnalysisAdminServiceListAnalyzedGamesProcedure is the fully-qualified name of the
 	// AnalysisAdminService's ListAnalyzedGames RPC.
 	AnalysisAdminServiceListAnalyzedGamesProcedure = "/analysis_service.AnalysisAdminService/ListAnalyzedGames"
+	// AnalysisAdminServiceRequeueAnalysisProcedure is the fully-qualified name of the
+	// AnalysisAdminService's RequeueAnalysis RPC.
+	AnalysisAdminServiceRequeueAnalysisProcedure = "/analysis_service.AnalysisAdminService/RequeueAnalysis"
 	// AnalysisServiceRequestAnalysisProcedure is the fully-qualified name of the AnalysisService's
 	// RequestAnalysis RPC.
 	AnalysisServiceRequestAnalysisProcedure = "/analysis_service.AnalysisService/RequestAnalysis"
@@ -198,6 +201,8 @@ type AnalysisAdminServiceClient interface {
 	GetAdminStats(context.Context, *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error)
 	// ListAnalyzedGames returns a paginated list of completed analysis jobs
 	ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error)
+	// RequeueAnalysis resets an analysis job back to pending for re-processing
+	RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error)
 }
 
 // NewAnalysisAdminServiceClient constructs a client for the analysis_service.AnalysisAdminService
@@ -223,6 +228,12 @@ func NewAnalysisAdminServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(analysisAdminServiceMethods.ByName("ListAnalyzedGames")),
 			connect.WithClientOptions(opts...),
 		),
+		requeueAnalysis: connect.NewClient[analysis_service.RequeueAnalysisRequest, analysis_service.RequeueAnalysisResponse](
+			httpClient,
+			baseURL+AnalysisAdminServiceRequeueAnalysisProcedure,
+			connect.WithSchema(analysisAdminServiceMethods.ByName("RequeueAnalysis")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -230,6 +241,7 @@ func NewAnalysisAdminServiceClient(httpClient connect.HTTPClient, baseURL string
 type analysisAdminServiceClient struct {
 	getAdminStats     *connect.Client[analysis_service.GetAdminStatsRequest, analysis_service.GetAdminStatsResponse]
 	listAnalyzedGames *connect.Client[analysis_service.ListAnalyzedGamesRequest, analysis_service.ListAnalyzedGamesResponse]
+	requeueAnalysis   *connect.Client[analysis_service.RequeueAnalysisRequest, analysis_service.RequeueAnalysisResponse]
 }
 
 // GetAdminStats calls analysis_service.AnalysisAdminService.GetAdminStats.
@@ -242,6 +254,11 @@ func (c *analysisAdminServiceClient) ListAnalyzedGames(ctx context.Context, req 
 	return c.listAnalyzedGames.CallUnary(ctx, req)
 }
 
+// RequeueAnalysis calls analysis_service.AnalysisAdminService.RequeueAnalysis.
+func (c *analysisAdminServiceClient) RequeueAnalysis(ctx context.Context, req *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error) {
+	return c.requeueAnalysis.CallUnary(ctx, req)
+}
+
 // AnalysisAdminServiceHandler is an implementation of the analysis_service.AnalysisAdminService
 // service.
 type AnalysisAdminServiceHandler interface {
@@ -249,6 +266,8 @@ type AnalysisAdminServiceHandler interface {
 	GetAdminStats(context.Context, *connect.Request[analysis_service.GetAdminStatsRequest]) (*connect.Response[analysis_service.GetAdminStatsResponse], error)
 	// ListAnalyzedGames returns a paginated list of completed analysis jobs
 	ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error)
+	// RequeueAnalysis resets an analysis job back to pending for re-processing
+	RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error)
 }
 
 // NewAnalysisAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -270,12 +289,20 @@ func NewAnalysisAdminServiceHandler(svc AnalysisAdminServiceHandler, opts ...con
 		connect.WithSchema(analysisAdminServiceMethods.ByName("ListAnalyzedGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	analysisAdminServiceRequeueAnalysisHandler := connect.NewUnaryHandler(
+		AnalysisAdminServiceRequeueAnalysisProcedure,
+		svc.RequeueAnalysis,
+		connect.WithSchema(analysisAdminServiceMethods.ByName("RequeueAnalysis")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/analysis_service.AnalysisAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AnalysisAdminServiceGetAdminStatsProcedure:
 			analysisAdminServiceGetAdminStatsHandler.ServeHTTP(w, r)
 		case AnalysisAdminServiceListAnalyzedGamesProcedure:
 			analysisAdminServiceListAnalyzedGamesHandler.ServeHTTP(w, r)
+		case AnalysisAdminServiceRequeueAnalysisProcedure:
+			analysisAdminServiceRequeueAnalysisHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -291,6 +318,10 @@ func (UnimplementedAnalysisAdminServiceHandler) GetAdminStats(context.Context, *
 
 func (UnimplementedAnalysisAdminServiceHandler) ListAnalyzedGames(context.Context, *connect.Request[analysis_service.ListAnalyzedGamesRequest]) (*connect.Response[analysis_service.ListAnalyzedGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisAdminService.ListAnalyzedGames is not implemented"))
+}
+
+func (UnimplementedAnalysisAdminServiceHandler) RequeueAnalysis(context.Context, *connect.Request[analysis_service.RequeueAnalysisRequest]) (*connect.Response[analysis_service.RequeueAnalysisResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisAdminService.RequeueAnalysis is not implemented"))
 }
 
 // AnalysisServiceClient is a client for the analysis_service.AnalysisService service.

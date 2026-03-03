@@ -1232,6 +1232,102 @@ func (x *ListAnalyzedGamesResponse) GetTotal() int32 {
 	return 0
 }
 
+type RequeueAnalysisRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GameId        string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequeueAnalysisRequest) Reset() {
+	*x = RequeueAnalysisRequest{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequeueAnalysisRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequeueAnalysisRequest) ProtoMessage() {}
+
+func (x *RequeueAnalysisRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequeueAnalysisRequest.ProtoReflect.Descriptor instead.
+func (*RequeueAnalysisRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *RequeueAnalysisRequest) GetGameId() string {
+	if x != nil {
+		return x.GameId
+	}
+	return ""
+}
+
+type RequeueAnalysisResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	QueuePosition int32                  `protobuf:"varint,2,opt,name=queue_position,json=queuePosition,proto3" json:"queue_position,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequeueAnalysisResponse) Reset() {
+	*x = RequeueAnalysisResponse{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequeueAnalysisResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequeueAnalysisResponse) ProtoMessage() {}
+
+func (x *RequeueAnalysisResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequeueAnalysisResponse.ProtoReflect.Descriptor instead.
+func (*RequeueAnalysisResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RequeueAnalysisResponse) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *RequeueAnalysisResponse) GetQueuePosition() int32 {
+	if x != nil {
+		return x.QueuePosition
+	}
+	return 0
+}
+
 var File_proto_analysis_service_analysis_service_proto protoreflect.FileDescriptor
 
 const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
@@ -1321,14 +1417,20 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\x15requested_by_username\x18\x06 \x01(\tR\x13requestedByUsername\"n\n" +
 	"\x19ListAnalyzedGamesResponse\x12;\n" +
 	"\x05games\x18\x01 \x03(\v2%.analysis_service.AnalyzedGameSummaryR\x05games\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total2\x9e\x02\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"1\n" +
+	"\x16RequeueAnalysisRequest\x12\x17\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"W\n" +
+	"\x17RequeueAnalysisResponse\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12%\n" +
+	"\x0equeue_position\x18\x02 \x01(\x05R\rqueuePosition2\x9e\x02\n" +
 	"\x14AnalysisQueueService\x12Q\n" +
 	"\bClaimJob\x12!.analysis_service.ClaimJobRequest\x1a\".analysis_service.ClaimJobResponse\x12T\n" +
 	"\tHeartbeat\x12\".analysis_service.HeartbeatRequest\x1a#.analysis_service.HeartbeatResponse\x12]\n" +
-	"\fSubmitResult\x12%.analysis_service.SubmitResultRequest\x1a&.analysis_service.SubmitResultResponse2\xe6\x01\n" +
+	"\fSubmitResult\x12%.analysis_service.SubmitResultRequest\x1a&.analysis_service.SubmitResultResponse2\xce\x02\n" +
 	"\x14AnalysisAdminService\x12`\n" +
 	"\rGetAdminStats\x12&.analysis_service.GetAdminStatsRequest\x1a'.analysis_service.GetAdminStatsResponse\x12l\n" +
-	"\x11ListAnalyzedGames\x12*.analysis_service.ListAnalyzedGamesRequest\x1a+.analysis_service.ListAnalyzedGamesResponse2\xd5\x02\n" +
+	"\x11ListAnalyzedGames\x12*.analysis_service.ListAnalyzedGamesRequest\x1a+.analysis_service.ListAnalyzedGamesResponse\x12f\n" +
+	"\x0fRequeueAnalysis\x12(.analysis_service.RequeueAnalysisRequest\x1a).analysis_service.RequeueAnalysisResponse2\xd5\x02\n" +
 	"\x0fAnalysisService\x12f\n" +
 	"\x0fRequestAnalysis\x12(.analysis_service.RequestAnalysisRequest\x1a).analysis_service.RequestAnalysisResponse\x12l\n" +
 	"\x11GetAnalysisStatus\x12*.analysis_service.GetAnalysisStatusRequest\x1a+.analysis_service.GetAnalysisStatusResponse\x12l\n" +
@@ -1348,7 +1450,7 @@ func file_proto_analysis_service_analysis_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_analysis_service_analysis_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(RequestAnalysisResponse_Status)(0),      // 0: analysis_service.RequestAnalysisResponse.Status
 	(GetAnalysisStatusResponse_JobStatus)(0), // 1: analysis_service.GetAnalysisStatusResponse.JobStatus
@@ -1371,6 +1473,8 @@ var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(*ListAnalyzedGamesRequest)(nil),         // 18: analysis_service.ListAnalyzedGamesRequest
 	(*AnalyzedGameSummary)(nil),              // 19: analysis_service.AnalyzedGameSummary
 	(*ListAnalyzedGamesResponse)(nil),        // 20: analysis_service.ListAnalyzedGamesResponse
+	(*RequeueAnalysisRequest)(nil),           // 21: analysis_service.RequeueAnalysisRequest
+	(*RequeueAnalysisResponse)(nil),          // 22: analysis_service.RequeueAnalysisResponse
 }
 var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	4,  // 0: analysis_service.ClaimJobResponse.config:type_name -> analysis_service.AnalysisConfig
@@ -1384,19 +1488,21 @@ var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	7,  // 8: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
 	15, // 9: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
 	18, // 10: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
-	9,  // 11: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
-	11, // 12: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
-	13, // 13: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
-	3,  // 14: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
-	6,  // 15: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
-	8,  // 16: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
-	17, // 17: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
-	20, // 18: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
-	10, // 19: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
-	12, // 20: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
-	14, // 21: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
-	14, // [14:22] is the sub-list for method output_type
-	6,  // [6:14] is the sub-list for method input_type
+	21, // 11: analysis_service.AnalysisAdminService.RequeueAnalysis:input_type -> analysis_service.RequeueAnalysisRequest
+	9,  // 12: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
+	11, // 13: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
+	13, // 14: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
+	3,  // 15: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
+	6,  // 16: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
+	8,  // 17: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
+	17, // 18: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
+	20, // 19: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
+	22, // 20: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
+	10, // 21: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
+	12, // 22: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
+	14, // 23: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
+	15, // [15:24] is the sub-list for method output_type
+	6,  // [6:15] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -1413,7 +1519,7 @@ func file_proto_analysis_service_analysis_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_analysis_service_analysis_service_proto_rawDesc), len(file_proto_analysis_service_analysis_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

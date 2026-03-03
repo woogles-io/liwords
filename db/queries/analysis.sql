@@ -186,3 +186,24 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*) as total
 FROM analysis_jobs
 WHERE status = 'completed';
+
+-- name: ResetAnalysisJob :exec
+-- Reset an analysis job back to pending so it can be re-processed
+UPDATE analysis_jobs
+SET status = 'pending',
+    result = NULL,
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0
+WHERE id = $1;
+
+-- name: GetVerticalOpenerJobs :many
+-- Find completed jobs where the first turn was a vertical opening move
+-- (column-first coordinates like A1, B3, etc. indicate vertical plays)
+SELECT id, game_id
+FROM analysis_jobs
+WHERE status = 'completed'
+  AND result->'turns'->0->>'playedMove' ~ '^[A-O][0-9]';

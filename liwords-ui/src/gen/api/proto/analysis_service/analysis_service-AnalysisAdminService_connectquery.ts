@@ -17,3 +17,10 @@ export const getAdminStats = AnalysisAdminService.method.getAdminStats;
  * @generated from rpc analysis_service.AnalysisAdminService.ListAnalyzedGames
  */
 export const listAnalyzedGames = AnalysisAdminService.method.listAnalyzedGames;
+
+/**
+ * RequeueAnalysis resets an analysis job back to pending for re-processing
+ *
+ * @generated from rpc analysis_service.AnalysisAdminService.RequeueAnalysis
+ */
+export const requeueAnalysis = AnalysisAdminService.method.requeueAnalysis;

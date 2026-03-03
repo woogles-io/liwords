@@ -17,6 +17,7 @@ import (
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "Print games that would be enqueued without actually doing it")
+	limit := flag.Int("n", 0, "Max number of games to queue (0 = all)")
 	flag.Parse()
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
@@ -65,13 +66,20 @@ func main() {
 		log.Fatal().Err(err).Msg("error iterating rows")
 	}
 
-	log.Info().Int("count", len(gameIDs)).Bool("dry_run", *dryRun).Msg("league games without analysis jobs")
+	total := len(gameIDs)
+	toQueue := gameIDs
+	if *limit > 0 && *limit < total {
+		toQueue = gameIDs[:*limit]
+	}
+	remaining := total - len(toQueue)
+
+	log.Info().Int("total", total).Int("to_queue", len(toQueue)).Int("remaining", remaining).Bool("dry_run", *dryRun).Msg("league games without analysis jobs")
 
 	if *dryRun {
 		const preview = 10
-		for i, id := range gameIDs {
+		for i, id := range toQueue {
 			if i >= preview {
-				fmt.Printf("... and %d more\n", len(gameIDs)-preview)
+				fmt.Printf("... and %d more to queue (%d total remaining after)\n", len(toQueue)-preview, remaining)
 				break
 			}
 			fmt.Println(id)
@@ -80,7 +88,7 @@ func main() {
 	}
 
 	enqueued := 0
-	for _, id := range gameIDs {
+	for _, id := range toQueue {
 		if err := analysis.EnqueueGameForAnalysis(ctx, queries, id, 0); err != nil {
 			log.Error().Err(err).Str("game_id", id).Msg("failed to enqueue game")
 		} else {
@@ -88,5 +96,5 @@ func main() {
 		}
 	}
 
-	log.Info().Int("enqueued", enqueued).Int("total", len(gameIDs)).Msg("done")
+	fmt.Printf("queued: %d  |  still remaining: %d\n", enqueued, remaining)
 }
