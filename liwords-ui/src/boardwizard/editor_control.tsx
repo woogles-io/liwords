@@ -289,7 +289,15 @@ const CreationForm = (props: CreationFormProps) => {
       {/* exclude ECWL since that lexicon can't be played without VOID for now */}
       <LexiconFormItem
         excludedLexica={new Set(["ECWL"])}
-        additionalLexica={["NWL20", "NWL18", "CSW19", "CSW21", "OSPS49"]}
+        additionalLexica={[
+          "NWL20",
+          "NWL18",
+          "CSW19",
+          "CSW21",
+          "OSPS49",
+          "OSPS50",
+          "RD28",
+        ]}
       />
       <Form.Item
         label="Challenge rule"

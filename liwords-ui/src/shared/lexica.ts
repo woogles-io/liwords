@@ -61,12 +61,12 @@ export const AllLexica: { [code: string]: Lexicon } = {
     // us canada
     // flag: 'https://woogles-flags.s3.us-east-2.amazonaws.com/us.png',
   },
-  NSWL20: {
-    code: "NSWL20",
-    shortDescription: "NSWL 20 (NASPA School Word List)",
-    matchName: "NSWL20",
+  NSWL23: {
+    code: "NSWL23",
+    shortDescription: "NSWL 23 (NASPA School Word List)",
+    matchName: "NSWL23",
     longDescription:
-      "NASPA School Word List 2020 Edition (NSWL20), © 2020 North American Word Game Players Association. All rights reserved.",
+      "NASPA School Word List 2023 Edition (NSWL23), © 2023 North American Word Game Players Association. All rights reserved.",
   },
   CSW24: {
     code: "CSW24",
@@ -112,12 +112,12 @@ export const AllLexica: { [code: string]: Lexicon } = {
       "Copyright 2017 Federación Internacional de Léxico en Español",
     flagCode: "es",
   },
-  OSPS50: {
-    code: "OSPS50",
+  OSPS52: {
+    code: "OSPS52",
     shortDescription: "Polski (Polish)",
     matchName: "Polski",
     longDescription:
-      "Copyright 2025 Polska Federacja Scrabble. Used with permission.",
+      "Copyright 2026 Polska Federacja Scrabble. Used with permission.",
     flagCode: "pl",
   },
   CSW24X: {

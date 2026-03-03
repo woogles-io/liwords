@@ -100,6 +100,9 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "NSWL20.kad",
     "NSWL20.klv2",
     "NSWL20.kwg",
+    "NSWL23.kad",
+    "NSWL23.klv2",
+    "NSWL23.kwg",
     "NWL18.kad",
     "NWL18.klv2",
     "NWL18.kwg",
@@ -115,6 +118,9 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "OSPS50.kad",
     "OSPS50.klv2",
     "OSPS50.kwg",
+    "OSPS52.kad",
+    "OSPS52.klv2",
+    "OSPS52.kwg",
     "RD28.kad",
     "RD28.klv2",
     "RD28.kwg",
@@ -131,6 +137,7 @@ const loadablesByKey: { [key: string]: Array<Loadable> } = {};
     "super-NWL18.klv2",
     "super-NWL20.klv2",
     "super-NWL23.klv2",
+    "super-NSWL23.klv2",
   ];
 
   // convention-over-configuration.
