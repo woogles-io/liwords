@@ -44,9 +44,9 @@ export const lexiconOrder = [
   "FRA24",
   "FILE2017",
   "NSF25",
-  "NSWL20",
+  "NSWL23",
   "DISC2",
-  "OSPS50",
+  "OSPS52",
 ];
 
 export const puzzleLexica = ["CSW24", "NWL23", "RD29", "FRA24"];
@@ -96,7 +96,7 @@ export const excludedLexica = (
   enableCSW24X: boolean,
 ): Set<string> => {
   if (!enableAllLexicons) {
-    return new Set<string>(["NSWL20", "ECWL", "CSW24X"]);
+    return new Set<string>(["NSWL23", "ECWL", "CSW24X"]);
   } else if (!enableCSW24X) {
     return new Set<string>(["CSW24X"]);
   }

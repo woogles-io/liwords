@@ -10,10 +10,10 @@ func init() {
 		"FILE2017",
 		"FRA24",
 		"NSF25",
-		"NSWL20",
+		"NSWL23",
 		"NWL23",
 		"RD29",
 		"DISC2",
-		"OSPS50",
+		"OSPS52",
 	)
 }
