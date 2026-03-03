@@ -502,10 +502,7 @@ export const AnalysisStats = () => {
       key: "action",
       width: 110,
       render: (_: unknown, row: AnalyzedGameSummary) => (
-        <Button
-          size="small"
-          onClick={() => handleRequeue(row.gameId)}
-        >
+        <Button size="small" onClick={() => handleRequeue(row.gameId)}>
           Re-analyze
         </Button>
       ),
