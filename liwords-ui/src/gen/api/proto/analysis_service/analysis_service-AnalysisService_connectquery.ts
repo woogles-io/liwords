@@ -24,3 +24,10 @@ export const getAnalysisStatus = AnalysisService.method.getAnalysisStatus;
  * @generated from rpc analysis_service.AnalysisService.GetAnalysisResult
  */
 export const getAnalysisResult = AnalysisService.method.getAnalysisResult;
+
+/**
+ * GetGamesAnalysisStatus returns which of the given game IDs have completed analysis
+ *
+ * @generated from rpc analysis_service.AnalysisService.GetGamesAnalysisStatus
+ */
+export const getGamesAnalysisStatus = AnalysisService.method.getGamesAnalysisStatus;

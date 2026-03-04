@@ -158,11 +158,16 @@ func (s *AnalysisAdminService) ListAnalyzedGames(
 		if job.CompletedAt.Valid {
 			completedAtMs = job.CompletedAt.Time.UnixMilli()
 		}
+		var claimedAtMs int64
+		if job.ClaimedAt.Valid {
+			claimedAtMs = job.ClaimedAt.Time.UnixMilli()
+		}
 
 		games = append(games, &pb.AnalyzedGameSummary{
 			JobId:               job.JobID.String(),
 			GameId:              job.GameID,
 			CreatedAtMs:         createdAtMs,
+			ClaimedAtMs:         claimedAtMs,
 			CompletedAtMs:       completedAtMs,
 			RequestType:         job.RequestType,
 			RequestedByUsername: job.RequestedByUsername,

@@ -4,7 +4,7 @@ import { Card, Tag, Tooltip } from "antd";
 import { PlayerAvatar } from "../shared/player_avatar";
 import { Link } from "react-router";
 import { VariantIcon } from "../shared/variant_icons";
-import { FundOutlined } from "@ant-design/icons";
+import { FundOutlined, RobotOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { GameInfoResponse, RatingMode } from "../gen/api/proto/ipc/omgwords_pb";
 import { challengeRuleNamesShort } from "../constants/challenge_rules";
@@ -16,9 +16,10 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 type GameCardProps = {
   game: GameInfoResponse;
   userID: string;
+  hasAnalysis?: boolean;
 };
 export const GameCard = React.memo((props: GameCardProps) => {
-  const { game, userID } = props;
+  const { game, userID, hasAnalysis } = props;
   const special = ["Unwoogler", "AnotherUnwoogler", userID];
   const {
     createdAt,
@@ -98,6 +99,11 @@ export const GameCard = React.memo((props: GameCardProps) => {
         <span className={`challenge-rule mode_${challenge}`}>{challenge}</span>
       </Tooltip>
       {players[userplace].first && <Tag className="ant-tag-first">1st</Tag>}
+      {hasAnalysis && (
+        <Tooltip title="Computer analysis available">
+          <RobotOutlined />
+        </Tooltip>
+      )}
     </div>
   );
 

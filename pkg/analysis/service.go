@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	nats "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -35,6 +36,7 @@ type AnalysisService struct {
 	userStore user.Store
 	gameStore GameStore
 	queries   *models.Queries
+	natsconn  *nats.Conn
 }
 
 func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries) *AnalysisService {
@@ -43,6 +45,10 @@ func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *mode
 		gameStore: gameStore,
 		queries:   queries,
 	}
+}
+
+func (s *AnalysisService) SetNatsConn(nc *nats.Conn) {
+	s.natsconn = nc
 }
 
 func (s *AnalysisService) ClaimJob(
@@ -201,6 +207,16 @@ func (s *AnalysisService) SubmitResult(
 	// context.WithoutCancel preserves the otel trace context while detaching from
 	// the request cancellation (which fires as soon as we return a response).
 	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, &result)
+
+	// Notify the requesting user via WebSocket if this was a user-requested analysis.
+	if s.natsconn != nil && completedJob.RequestedByUserUuid.Valid {
+		evt := entity.WrapEvent(&ipc.AnalysisCompleteEvent{GameId: completedJob.GameID}, ipc.MessageType_ANALYSIS_COMPLETE)
+		if bts, err := evt.Serialize(); err == nil {
+			if err := s.natsconn.Publish("user."+completedJob.RequestedByUserUuid.String, bts); err != nil {
+				log.Err(err).Str("game_id", completedJob.GameID).Msg("failed to publish analysis complete notification")
+			}
+		}
+	}
 
 	return connect.NewResponse(&pb.SubmitResultResponse{
 		Accepted: true,
@@ -548,6 +564,25 @@ func (s *AnalysisService) GetAnalysisResult(
 	return connect.NewResponse(&pb.GetAnalysisResultResponse{
 		Found:       true,
 		ResultProto: job.Result,
+	}), nil
+}
+
+func (s *AnalysisService) GetGamesAnalysisStatus(
+	ctx context.Context,
+	req *connect.Request[pb.GetGamesAnalysisStatusRequest],
+) (*connect.Response[pb.GetGamesAnalysisStatusResponse], error) {
+
+	if len(req.Msg.GameIds) == 0 {
+		return connect.NewResponse(&pb.GetGamesAnalysisStatusResponse{}), nil
+	}
+
+	gameIDs, err := s.queries.GetAnalyzedGameIds(ctx, req.Msg.GameIds)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get analyzed game ids: %w", err))
+	}
+
+	return connect.NewResponse(&pb.GetGamesAnalysisStatusResponse{
+		AnalyzedGameIds: gameIDs,
 	}), nil
 }
 

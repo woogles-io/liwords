@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import {
   useChallengeResultEventStoreContext,
@@ -29,6 +30,8 @@ import { BoopSounds } from "../sound/boop";
 import { metaStateFromMetaEvent } from "./meta_game_events";
 import { parseWooglesError } from "../utils/parse_woogles_error";
 import {
+  AnalysisCompleteEvent,
+  AnalysisCompleteEventSchema,
   LagMeasurement,
   LagMeasurementSchema,
   MessageType,
@@ -195,6 +198,7 @@ const MsgTypesMap = {
   [MessageType.TOURNAMENT_PLAYER_CHECKIN]: PlayerCheckinResponseSchema,
   [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
     MonitoringStreamStatusUpdateSchema,
+  [MessageType.ANALYSIS_COMPLETE]: AnalysisCompleteEventSchema,
 };
 
 export const parseMsgs = (
@@ -269,6 +273,7 @@ export const useOnSocketMsg = () => {
   const navigate = useNavigate();
   const { message, notification } = App.useApp();
   const tourneyCompetitorState = useTournamentCompetitorState();
+  const queryClient = useQueryClient();
 
   return useCallback(
     (reader: FileReader) => {
@@ -1053,6 +1058,26 @@ export const useOnSocketMsg = () => {
             });
             break;
           }
+          case MessageType.ANALYSIS_COMPLETE: {
+            const ev = parsedMsg as AnalysisCompleteEvent;
+            queryClient.invalidateQueries({
+              queryKey: ["connect-query", { methodName: "GetAnalysisStatus" }],
+            });
+            if (ev.gameId !== gameContext.gameID) {
+              const key = `analysis-complete-${ev.gameId}`;
+              notification.success({
+                message: "Computer analysis ready",
+                description: "Click to view the analysis",
+                key,
+                duration: 0,
+                onClick: () => {
+                  navigate(`/game/${encodeURIComponent(ev.gameId)}`);
+                  notification.destroy(key);
+                },
+              });
+            }
+            break;
+          }
         }
       });
     },
@@ -1081,6 +1106,7 @@ export const useOnSocketMsg = () => {
       isExamining,
       message,
       notification,
+      queryClient,
       tourneyCompetitorState.division,
     ],
   );

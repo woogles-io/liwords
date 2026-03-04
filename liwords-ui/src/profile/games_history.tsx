@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router";
 import moment from "moment";
 import { Button, Card, InputNumber, Table, Tag, Tooltip } from "antd";
-import { CheckCircleTwoTone } from "@ant-design/icons";
+import { CheckCircleTwoTone, RobotOutlined } from "@ant-design/icons";
 import { FundOutlined } from "@ant-design/icons";
 import { timeToString } from "../store/constants";
 import { VariantIcon } from "../shared/variant_icons";
@@ -19,6 +19,7 @@ type Props = {
   fetchPrev?: () => void;
   fetchNext?: () => void;
   userID: string;
+  analyzedGameIds: Set<string>;
   currentOffset: number;
   currentPageSize: number;
   desiredOffset: number;
@@ -34,6 +35,8 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     desiredOffset,
     desiredPageSize,
   } = props;
+
+  const { analyzedGameIds } = props;
 
   // The view currently assumes:
   // currentPageSize === desiredPageSize
@@ -167,6 +170,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         ),
         time,
         when,
+        hasAnalysis: analyzedGameIds.has(item.gameId ?? ""),
       };
     })
     .filter((item) => item !== null);
@@ -224,6 +228,20 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       className: "details",
       dataIndex: "details",
       key: "details",
+    },
+    {
+      title: " ",
+      className: "analysis",
+      dataIndex: "hasAnalysis",
+      key: "hasAnalysis",
+      render: (hasAnalysis: boolean, row: { gameId: string }) =>
+        hasAnalysis ? (
+          <Tooltip title="Computer analysis available">
+            <Link to={`/game/${encodeURIComponent(row.gameId)}`}>
+              <RobotOutlined />
+            </Link>
+          </Tooltip>
+        ) : null,
     },
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total

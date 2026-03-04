@@ -35,7 +35,7 @@ SET
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
+RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms;
 
 -- name: FailJob :exec
 -- Marks job as failed with error message
@@ -172,6 +172,7 @@ SELECT
     aj.id as job_id,
     aj.game_id,
     aj.created_at,
+    aj.claimed_at,
     aj.completed_at,
     COALESCE(aj.request_type, 'automatic') as request_type,
     COALESCE(u.username, '') as requested_by_username
@@ -199,6 +200,13 @@ SET status = 'pending',
     completed_at = NULL,
     retry_count = 0
 WHERE id = $1;
+
+-- name: GetAnalyzedGameIds :many
+-- Get which of the given game IDs have completed analysis
+SELECT game_id
+FROM analysis_jobs
+WHERE game_id = ANY($1::text[])
+  AND status = 'completed';
 
 -- name: GetVerticalOpenerJobs :many
 -- Find completed jobs where the first turn was a vertical opening move

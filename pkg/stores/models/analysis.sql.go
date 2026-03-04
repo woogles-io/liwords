@@ -71,7 +71,7 @@ SET
     result = $1,
     completed_at = NOW()
 WHERE id = $2 AND claimed_by_user_uuid = $3 AND status IN ('claimed', 'processing')
-RETURNING game_id, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
+RETURNING game_id, requested_by_user_uuid, EXTRACT(EPOCH FROM (NOW() - claimed_at))::BIGINT * 1000 as duration_ms
 `
 
 type CompleteJobParams struct {
@@ -81,15 +81,16 @@ type CompleteJobParams struct {
 }
 
 type CompleteJobRow struct {
-	GameID     string
-	DurationMs int32
+	GameID              string
+	RequestedByUserUuid pgtype.Text
+	DurationMs          int32
 }
 
 // Marks job as completed and returns game_id and processing duration
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (CompleteJobRow, error) {
 	row := q.db.QueryRow(ctx, completeJob, arg.Result, arg.ID, arg.ClaimedByUserUuid)
 	var i CompleteJobRow
-	err := row.Scan(&i.GameID, &i.DurationMs)
+	err := row.Scan(&i.GameID, &i.RequestedByUserUuid, &i.DurationMs)
 	return i, err
 }
 
@@ -268,11 +269,40 @@ func (q *Queries) GetAnalysisLeaderboard(ctx context.Context, limit int32) ([]Ge
 	return items, nil
 }
 
+const getAnalyzedGameIds = `-- name: GetAnalyzedGameIds :many
+SELECT game_id
+FROM analysis_jobs
+WHERE game_id = ANY($1::text[])
+  AND status = 'completed'
+`
+
+// Get which of the given game IDs have completed analysis
+func (q *Queries) GetAnalyzedGameIds(ctx context.Context, dollar_1 []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getAnalyzedGameIds, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var game_id string
+		if err := rows.Scan(&game_id); err != nil {
+			return nil, err
+		}
+		items = append(items, game_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCompletedJobsList = `-- name: GetCompletedJobsList :many
 SELECT
     aj.id as job_id,
     aj.game_id,
     aj.created_at,
+    aj.claimed_at,
     aj.completed_at,
     COALESCE(aj.request_type, 'automatic') as request_type,
     COALESCE(u.username, '') as requested_by_username
@@ -292,6 +322,7 @@ type GetCompletedJobsListRow struct {
 	JobID               uuid.UUID
 	GameID              string
 	CreatedAt           pgtype.Timestamptz
+	ClaimedAt           pgtype.Timestamptz
 	CompletedAt         pgtype.Timestamptz
 	RequestType         string
 	RequestedByUsername string
@@ -311,6 +342,7 @@ func (q *Queries) GetCompletedJobsList(ctx context.Context, arg GetCompletedJobs
 			&i.JobID,
 			&i.GameID,
 			&i.CreatedAt,
+			&i.ClaimedAt,
 			&i.CompletedAt,
 			&i.RequestType,
 			&i.RequestedByUsername,

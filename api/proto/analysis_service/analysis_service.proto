@@ -91,6 +91,9 @@ service AnalysisService {
 
   // GetAnalysisResult gets the completed analysis result
   rpc GetAnalysisResult(GetAnalysisResultRequest) returns (GetAnalysisResultResponse);
+
+  // GetGamesAnalysisStatus returns which of the given game IDs have completed analysis
+  rpc GetGamesAnalysisStatus(GetGamesAnalysisStatusRequest) returns (GetGamesAnalysisStatusResponse);
 }
 
 // Request analysis for a game
@@ -176,6 +179,7 @@ message AnalyzedGameSummary {
   int64 completed_at_ms = 4; // Unix milliseconds
   string request_type = 5;
   string requested_by_username = 6;
+  int64 claimed_at_ms = 7;   // Unix milliseconds
 }
 
 message ListAnalyzedGamesResponse {
@@ -190,4 +194,12 @@ message RequeueAnalysisRequest {
 message RequeueAnalysisResponse {
   string job_id = 1;
   int32 queue_position = 2;
+}
+
+message GetGamesAnalysisStatusRequest {
+  repeated string game_ids = 1;
+}
+
+message GetGamesAnalysisStatusResponse {
+  repeated string analyzed_game_ids = 1;
 }
