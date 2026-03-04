@@ -1104,6 +1104,7 @@ type AnalyzedGameSummary struct {
 	CompletedAtMs       int64                  `protobuf:"varint,4,opt,name=completed_at_ms,json=completedAtMs,proto3" json:"completed_at_ms,omitempty"` // Unix milliseconds
 	RequestType         string                 `protobuf:"bytes,5,opt,name=request_type,json=requestType,proto3" json:"request_type,omitempty"`
 	RequestedByUsername string                 `protobuf:"bytes,6,opt,name=requested_by_username,json=requestedByUsername,proto3" json:"requested_by_username,omitempty"`
+	ClaimedAtMs         int64                  `protobuf:"varint,7,opt,name=claimed_at_ms,json=claimedAtMs,proto3" json:"claimed_at_ms,omitempty"` // Unix milliseconds
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1178,6 +1179,13 @@ func (x *AnalyzedGameSummary) GetRequestedByUsername() string {
 		return x.RequestedByUsername
 	}
 	return ""
+}
+
+func (x *AnalyzedGameSummary) GetClaimedAtMs() int64 {
+	if x != nil {
+		return x.ClaimedAtMs
+	}
+	return 0
 }
 
 type ListAnalyzedGamesResponse struct {
@@ -1328,6 +1336,94 @@ func (x *RequeueAnalysisResponse) GetQueuePosition() int32 {
 	return 0
 }
 
+type GetGamesAnalysisStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GameIds       []string               `protobuf:"bytes,1,rep,name=game_ids,json=gameIds,proto3" json:"game_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGamesAnalysisStatusRequest) Reset() {
+	*x = GetGamesAnalysisStatusRequest{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGamesAnalysisStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGamesAnalysisStatusRequest) ProtoMessage() {}
+
+func (x *GetGamesAnalysisStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGamesAnalysisStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetGamesAnalysisStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetGamesAnalysisStatusRequest) GetGameIds() []string {
+	if x != nil {
+		return x.GameIds
+	}
+	return nil
+}
+
+type GetGamesAnalysisStatusResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AnalyzedGameIds []string               `protobuf:"bytes,1,rep,name=analyzed_game_ids,json=analyzedGameIds,proto3" json:"analyzed_game_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetGamesAnalysisStatusResponse) Reset() {
+	*x = GetGamesAnalysisStatusResponse{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGamesAnalysisStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGamesAnalysisStatusResponse) ProtoMessage() {}
+
+func (x *GetGamesAnalysisStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGamesAnalysisStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetGamesAnalysisStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetGamesAnalysisStatusResponse) GetAnalyzedGameIds() []string {
+	if x != nil {
+		return x.AnalyzedGameIds
+	}
+	return nil
+}
+
 var File_proto_analysis_service_analysis_service_proto protoreflect.FileDescriptor
 
 const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
@@ -1407,14 +1503,15 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\fcontributors\x18\x05 \x03(\v2\".analysis_service.LeaderboardEntryR\fcontributors\"K\n" +
 	"\x18ListAnalyzedGamesRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
-	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"\xe8\x01\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"\x8c\x02\n" +
 	"\x13AnalyzedGameSummary\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\"\n" +
 	"\rcreated_at_ms\x18\x03 \x01(\x03R\vcreatedAtMs\x12&\n" +
 	"\x0fcompleted_at_ms\x18\x04 \x01(\x03R\rcompletedAtMs\x12!\n" +
 	"\frequest_type\x18\x05 \x01(\tR\vrequestType\x122\n" +
-	"\x15requested_by_username\x18\x06 \x01(\tR\x13requestedByUsername\"n\n" +
+	"\x15requested_by_username\x18\x06 \x01(\tR\x13requestedByUsername\x12\"\n" +
+	"\rclaimed_at_ms\x18\a \x01(\x03R\vclaimedAtMs\"n\n" +
 	"\x19ListAnalyzedGamesResponse\x12;\n" +
 	"\x05games\x18\x01 \x03(\v2%.analysis_service.AnalyzedGameSummaryR\x05games\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"1\n" +
@@ -1422,7 +1519,11 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"W\n" +
 	"\x17RequeueAnalysisResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12%\n" +
-	"\x0equeue_position\x18\x02 \x01(\x05R\rqueuePosition2\x9e\x02\n" +
+	"\x0equeue_position\x18\x02 \x01(\x05R\rqueuePosition\":\n" +
+	"\x1dGetGamesAnalysisStatusRequest\x12\x19\n" +
+	"\bgame_ids\x18\x01 \x03(\tR\agameIds\"L\n" +
+	"\x1eGetGamesAnalysisStatusResponse\x12*\n" +
+	"\x11analyzed_game_ids\x18\x01 \x03(\tR\x0fanalyzedGameIds2\x9e\x02\n" +
 	"\x14AnalysisQueueService\x12Q\n" +
 	"\bClaimJob\x12!.analysis_service.ClaimJobRequest\x1a\".analysis_service.ClaimJobResponse\x12T\n" +
 	"\tHeartbeat\x12\".analysis_service.HeartbeatRequest\x1a#.analysis_service.HeartbeatResponse\x12]\n" +
@@ -1430,11 +1531,12 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\x14AnalysisAdminService\x12`\n" +
 	"\rGetAdminStats\x12&.analysis_service.GetAdminStatsRequest\x1a'.analysis_service.GetAdminStatsResponse\x12l\n" +
 	"\x11ListAnalyzedGames\x12*.analysis_service.ListAnalyzedGamesRequest\x1a+.analysis_service.ListAnalyzedGamesResponse\x12f\n" +
-	"\x0fRequeueAnalysis\x12(.analysis_service.RequeueAnalysisRequest\x1a).analysis_service.RequeueAnalysisResponse2\xd5\x02\n" +
+	"\x0fRequeueAnalysis\x12(.analysis_service.RequeueAnalysisRequest\x1a).analysis_service.RequeueAnalysisResponse2\xd2\x03\n" +
 	"\x0fAnalysisService\x12f\n" +
 	"\x0fRequestAnalysis\x12(.analysis_service.RequestAnalysisRequest\x1a).analysis_service.RequestAnalysisResponse\x12l\n" +
 	"\x11GetAnalysisStatus\x12*.analysis_service.GetAnalysisStatusRequest\x1a+.analysis_service.GetAnalysisStatusResponse\x12l\n" +
-	"\x11GetAnalysisResult\x12*.analysis_service.GetAnalysisResultRequest\x1a+.analysis_service.GetAnalysisResultResponseB\xc6\x01\n" +
+	"\x11GetAnalysisResult\x12*.analysis_service.GetAnalysisResultRequest\x1a+.analysis_service.GetAnalysisResultResponse\x12{\n" +
+	"\x16GetGamesAnalysisStatus\x12/.analysis_service.GetGamesAnalysisStatusRequest\x1a0.analysis_service.GetGamesAnalysisStatusResponseB\xc6\x01\n" +
 	"\x14com.analysis_serviceB\x14AnalysisServiceProtoP\x01Z<github.com/woogles-io/liwords/rpc/api/proto/analysis_service\xa2\x02\x03AXX\xaa\x02\x0fAnalysisService\xca\x02\x0fAnalysisService\xe2\x02\x1bAnalysisService\\GPBMetadata\xea\x02\x0fAnalysisServiceb\x06proto3"
 
 var (
@@ -1450,7 +1552,7 @@ func file_proto_analysis_service_analysis_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_analysis_service_analysis_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(RequestAnalysisResponse_Status)(0),      // 0: analysis_service.RequestAnalysisResponse.Status
 	(GetAnalysisStatusResponse_JobStatus)(0), // 1: analysis_service.GetAnalysisStatusResponse.JobStatus
@@ -1475,6 +1577,8 @@ var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(*ListAnalyzedGamesResponse)(nil),        // 20: analysis_service.ListAnalyzedGamesResponse
 	(*RequeueAnalysisRequest)(nil),           // 21: analysis_service.RequeueAnalysisRequest
 	(*RequeueAnalysisResponse)(nil),          // 22: analysis_service.RequeueAnalysisResponse
+	(*GetGamesAnalysisStatusRequest)(nil),    // 23: analysis_service.GetGamesAnalysisStatusRequest
+	(*GetGamesAnalysisStatusResponse)(nil),   // 24: analysis_service.GetGamesAnalysisStatusResponse
 }
 var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	4,  // 0: analysis_service.ClaimJobResponse.config:type_name -> analysis_service.AnalysisConfig
@@ -1492,17 +1596,19 @@ var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	9,  // 12: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
 	11, // 13: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
 	13, // 14: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
-	3,  // 15: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
-	6,  // 16: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
-	8,  // 17: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
-	17, // 18: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
-	20, // 19: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
-	22, // 20: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
-	10, // 21: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
-	12, // 22: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
-	14, // 23: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
-	15, // [15:24] is the sub-list for method output_type
-	6,  // [6:15] is the sub-list for method input_type
+	23, // 15: analysis_service.AnalysisService.GetGamesAnalysisStatus:input_type -> analysis_service.GetGamesAnalysisStatusRequest
+	3,  // 16: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
+	6,  // 17: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
+	8,  // 18: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
+	17, // 19: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
+	20, // 20: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
+	22, // 21: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
+	10, // 22: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
+	12, // 23: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
+	14, // 24: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
+	24, // 25: analysis_service.AnalysisService.GetGamesAnalysisStatus:output_type -> analysis_service.GetGamesAnalysisStatusResponse
+	16, // [16:26] is the sub-list for method output_type
+	6,  // [6:16] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -1519,7 +1625,7 @@ func file_proto_analysis_service_analysis_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_analysis_service_analysis_service_proto_rawDesc), len(file_proto_analysis_service_analysis_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   21,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

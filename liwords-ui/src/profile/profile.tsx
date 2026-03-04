@@ -34,6 +34,7 @@ import { UserCollectionsCard } from "./user_collections";
 import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
 import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
+import { getGamesAnalysisStatus } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { Badge } from "./badge";
 import { DisplayUserOrganizations } from "./organizations";
 const { screenSizeTablet } = variables;
@@ -489,6 +490,23 @@ export const PlayerProfile = React.memo(() => {
     return ret;
   }, [ratings]);
 
+  const recentGameIds = useMemo(
+    () =>
+      (recentGames?.array ?? [])
+        .map((g) => g.gameId)
+        .filter(Boolean) as string[],
+    [recentGames],
+  );
+  const { data: analysisStatusData } = useQuery(
+    getGamesAnalysisStatus,
+    { gameIds: recentGameIds },
+    { enabled: recentGameIds.length > 0 },
+  );
+  const analyzedGameIds = useMemo(
+    () => new Set(analysisStatusData?.analyzedGameIds ?? []),
+    [analysisStatusData],
+  );
+
   const gameCards = useMemo(() => {
     if (!recentGames?.array) {
       return [];
@@ -497,9 +515,16 @@ export const PlayerProfile = React.memo(() => {
       ?.filter(
         (g) => g.players?.length && g.gameEndReason !== GameEndReason.CANCELLED,
       )
-      .map((g) => <GameCard game={g} key={g.gameId} userID={userID} />);
+      .map((g) => (
+        <GameCard
+          game={g}
+          key={g.gameId}
+          userID={userID}
+          hasAnalysis={analyzedGameIds.has(g.gameId ?? "")}
+        />
+      ));
     return ret;
-  }, [recentGames, userID]);
+  }, [recentGames, userID, analyzedGameIds]);
 
   const emptyCards = (n: number, f: (n: number) => boolean) => {
     const ret = [];
@@ -643,6 +668,7 @@ export const PlayerProfile = React.memo(() => {
               games={recentGames.array}
               username={username}
               userID={userID}
+              analyzedGameIds={analyzedGameIds}
               fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
               fetchNext={
                 recentGames.array.length < recentGames.numGames

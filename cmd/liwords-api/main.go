@@ -467,6 +467,7 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 	omgwordsService.SetEventChannel(pubsubBus.GameEventChannel())
+	analysisService.SetNatsConn(natsconn)
 	gameCreatorAdapter.eventChan = pubsubBus.GameEventChannel()
 
 	router.Handle(bus.GameEventStreamPrefix,

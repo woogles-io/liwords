@@ -64,6 +64,9 @@ const (
 	// AnalysisServiceGetAnalysisResultProcedure is the fully-qualified name of the AnalysisService's
 	// GetAnalysisResult RPC.
 	AnalysisServiceGetAnalysisResultProcedure = "/analysis_service.AnalysisService/GetAnalysisResult"
+	// AnalysisServiceGetGamesAnalysisStatusProcedure is the fully-qualified name of the
+	// AnalysisService's GetGamesAnalysisStatus RPC.
+	AnalysisServiceGetGamesAnalysisStatusProcedure = "/analysis_service.AnalysisService/GetGamesAnalysisStatus"
 )
 
 // AnalysisQueueServiceClient is a client for the analysis_service.AnalysisQueueService service.
@@ -332,6 +335,8 @@ type AnalysisServiceClient interface {
 	GetAnalysisStatus(context.Context, *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error)
 	// GetAnalysisResult gets the completed analysis result
 	GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error)
+	// GetGamesAnalysisStatus returns which of the given game IDs have completed analysis
+	GetGamesAnalysisStatus(context.Context, *connect.Request[analysis_service.GetGamesAnalysisStatusRequest]) (*connect.Response[analysis_service.GetGamesAnalysisStatusResponse], error)
 }
 
 // NewAnalysisServiceClient constructs a client for the analysis_service.AnalysisService service. By
@@ -363,14 +368,21 @@ func NewAnalysisServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisResult")),
 			connect.WithClientOptions(opts...),
 		),
+		getGamesAnalysisStatus: connect.NewClient[analysis_service.GetGamesAnalysisStatusRequest, analysis_service.GetGamesAnalysisStatusResponse](
+			httpClient,
+			baseURL+AnalysisServiceGetGamesAnalysisStatusProcedure,
+			connect.WithSchema(analysisServiceMethods.ByName("GetGamesAnalysisStatus")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // analysisServiceClient implements AnalysisServiceClient.
 type analysisServiceClient struct {
-	requestAnalysis   *connect.Client[analysis_service.RequestAnalysisRequest, analysis_service.RequestAnalysisResponse]
-	getAnalysisStatus *connect.Client[analysis_service.GetAnalysisStatusRequest, analysis_service.GetAnalysisStatusResponse]
-	getAnalysisResult *connect.Client[analysis_service.GetAnalysisResultRequest, analysis_service.GetAnalysisResultResponse]
+	requestAnalysis        *connect.Client[analysis_service.RequestAnalysisRequest, analysis_service.RequestAnalysisResponse]
+	getAnalysisStatus      *connect.Client[analysis_service.GetAnalysisStatusRequest, analysis_service.GetAnalysisStatusResponse]
+	getAnalysisResult      *connect.Client[analysis_service.GetAnalysisResultRequest, analysis_service.GetAnalysisResultResponse]
+	getGamesAnalysisStatus *connect.Client[analysis_service.GetGamesAnalysisStatusRequest, analysis_service.GetGamesAnalysisStatusResponse]
 }
 
 // RequestAnalysis calls analysis_service.AnalysisService.RequestAnalysis.
@@ -388,6 +400,11 @@ func (c *analysisServiceClient) GetAnalysisResult(ctx context.Context, req *conn
 	return c.getAnalysisResult.CallUnary(ctx, req)
 }
 
+// GetGamesAnalysisStatus calls analysis_service.AnalysisService.GetGamesAnalysisStatus.
+func (c *analysisServiceClient) GetGamesAnalysisStatus(ctx context.Context, req *connect.Request[analysis_service.GetGamesAnalysisStatusRequest]) (*connect.Response[analysis_service.GetGamesAnalysisStatusResponse], error) {
+	return c.getGamesAnalysisStatus.CallUnary(ctx, req)
+}
+
 // AnalysisServiceHandler is an implementation of the analysis_service.AnalysisService service.
 type AnalysisServiceHandler interface {
 	// RequestAnalysis requests analysis for a completed game
@@ -396,6 +413,8 @@ type AnalysisServiceHandler interface {
 	GetAnalysisStatus(context.Context, *connect.Request[analysis_service.GetAnalysisStatusRequest]) (*connect.Response[analysis_service.GetAnalysisStatusResponse], error)
 	// GetAnalysisResult gets the completed analysis result
 	GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error)
+	// GetGamesAnalysisStatus returns which of the given game IDs have completed analysis
+	GetGamesAnalysisStatus(context.Context, *connect.Request[analysis_service.GetGamesAnalysisStatusRequest]) (*connect.Response[analysis_service.GetGamesAnalysisStatusResponse], error)
 }
 
 // NewAnalysisServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -423,6 +442,12 @@ func NewAnalysisServiceHandler(svc AnalysisServiceHandler, opts ...connect.Handl
 		connect.WithSchema(analysisServiceMethods.ByName("GetAnalysisResult")),
 		connect.WithHandlerOptions(opts...),
 	)
+	analysisServiceGetGamesAnalysisStatusHandler := connect.NewUnaryHandler(
+		AnalysisServiceGetGamesAnalysisStatusProcedure,
+		svc.GetGamesAnalysisStatus,
+		connect.WithSchema(analysisServiceMethods.ByName("GetGamesAnalysisStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/analysis_service.AnalysisService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AnalysisServiceRequestAnalysisProcedure:
@@ -431,6 +456,8 @@ func NewAnalysisServiceHandler(svc AnalysisServiceHandler, opts ...connect.Handl
 			analysisServiceGetAnalysisStatusHandler.ServeHTTP(w, r)
 		case AnalysisServiceGetAnalysisResultProcedure:
 			analysisServiceGetAnalysisResultHandler.ServeHTTP(w, r)
+		case AnalysisServiceGetGamesAnalysisStatusProcedure:
+			analysisServiceGetGamesAnalysisStatusHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -450,4 +477,8 @@ func (UnimplementedAnalysisServiceHandler) GetAnalysisStatus(context.Context, *c
 
 func (UnimplementedAnalysisServiceHandler) GetAnalysisResult(context.Context, *connect.Request[analysis_service.GetAnalysisResultRequest]) (*connect.Response[analysis_service.GetAnalysisResultResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisService.GetAnalysisResult is not implemented"))
+}
+
+func (UnimplementedAnalysisServiceHandler) GetGamesAnalysisStatus(context.Context, *connect.Request[analysis_service.GetGamesAnalysisStatusRequest]) (*connect.Response[analysis_service.GetGamesAnalysisStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisService.GetGamesAnalysisStatus is not implemented"))
 }

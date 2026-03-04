@@ -482,6 +482,22 @@ export const AnalysisStats = () => {
           : "—",
     },
     {
+      title: "Claimed at",
+      dataIndex: "claimedAtMs",
+      key: "claimedAtMs",
+      width: 160,
+      render: (ms: bigint) =>
+        ms
+          ? new Date(Number(ms)).toLocaleString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "—",
+    },
+    {
       title: "Completed at",
       dataIndex: "completedAtMs",
       key: "completedAtMs",
