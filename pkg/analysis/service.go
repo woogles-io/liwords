@@ -168,13 +168,26 @@ func (s *AnalysisService) SubmitResult(
 
 	// Basic validation
 	if len(result.Turns) == 0 {
-		return connect.NewResponse(&pb.SubmitResultResponse{
-			Accepted: false,
-			Error:    "result has no turns",
-		}), nil
+		// Accept if the game itself has no turns (e.g. aborted before any move).
+		job, err := s.queries.GetAnalysisJobWithDetails(ctx, jobID)
+		if err != nil {
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    "result has no turns",
+			}), nil
+		}
+		game, err := s.gameStore.Get(ctx, job.GameID)
+		if err != nil || len(game.History().Events) != 0 {
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    "result has no turns",
+			}), nil
+		}
+		// Zero-turn game: fall through to CompleteJob with the empty result.
+		log.Info().Str("job_id", jobID.String()).Str("game_id", job.GameID).Msg("accepting empty analysis for zero-turn game")
 	}
 
-	if len(result.PlayerSummaries) != 2 {
+	if len(result.Turns) != 0 && len(result.PlayerSummaries) != 2 {
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
 			Error:    "result must have 2 player summaries",
