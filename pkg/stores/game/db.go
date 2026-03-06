@@ -149,6 +149,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		entGame.LeagueDivisionID = &divisionID
 	}
 
+	// Check if this is an annotated game first - they should not use this code path
+	// Annotated games are stored as GameDocuments and should be accessed via GetDocument
+	if entGame.Type == pb.GameType_ANNOTATED {
+		return nil, fmt.Errorf("annotated game %s should be accessed via GetDocument, not Get", id)
+	}
+
 	// Then unmarshal the history and start a game from it.
 	_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
 		trace.WithAttributes(
