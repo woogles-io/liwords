@@ -123,7 +123,16 @@ func TestRedisLocking(t *testing.T) {
 
 func TestRedisLockingWithTurnLogic(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+
+	err := commondb.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
+	is.NoErr(err)
+	defer dbPool.Close()
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 
