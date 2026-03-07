@@ -32,7 +32,16 @@ func newPool(addr string) *redis.Pool {
 
 func TestNewAndGet(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+
+	err := commondb.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
+	is.NoErr(err)
+	defer dbPool.Close()
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -47,12 +56,21 @@ func TestNewAndGet(t *testing.T) {
 
 	otherdoc, err := store.GetDocument(ctx, gdoc.Uid, false)
 	is.NoErr(err)
-	is.True(proto.Equal(gdoc, otherdoc))
+	is.True(proto.Equal(gdoc, otherdoc.GameDocument))
 }
 
 func TestRedisLocking(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+
+	err := commondb.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
+	is.NoErr(err)
+	defer dbPool.Close()
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -105,7 +123,16 @@ func TestRedisLocking(t *testing.T) {
 
 func TestRedisLockingWithTurnLogic(t *testing.T) {
 	is := is.New(t)
-	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), nil)
+
+	err := commondb.RecreateTestDB(pkg)
+	if err != nil {
+		panic(err)
+	}
+
+	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
+	is.NoErr(err)
+	defer dbPool.Close()
+	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
 
@@ -169,6 +196,7 @@ func TestDBGetAndSet(t *testing.T) {
 
 	dbPool, err := pgxpool.New(context.Background(), commondb.TestingPostgresConnUri(pkg))
 	is.NoErr(err)
+	defer dbPool.Close()
 	store, err := NewGameDocumentStore(DefaultConfig, newPool(RedisUrl), dbPool)
 	is.NoErr(err)
 	ctx := context.Background()
