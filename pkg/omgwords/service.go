@@ -412,12 +412,9 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Req
 	doc, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId, false)
 	if err != nil {
 		if err == stores.ErrDoesNotExist {
-			// Clean up the game if it is still in a store.
-			derr := gs.metadataStore.DeleteAnnotatedGame(ctx, req.Msg.GameId)
-			if derr != nil {
-				return nil, derr
-			}
-			return nil, apiserver.InvalidArg("game does not exist")
+			// Document not in cache - could be evicted, never created, or wrong game type
+			// GET operations should never delete data!
+			return nil, apiserver.InvalidArg("game document does not exist")
 		}
 		return nil, err
 	}

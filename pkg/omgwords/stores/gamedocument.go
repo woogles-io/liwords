@@ -171,8 +171,15 @@ func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (
 	return gdoc, nil
 }
 
-// SetDocument should be called to set the initial document in redis.
+// SetDocument should be called to set the initial document in redis and PostgreSQL.
 func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocument) error {
+	// Write to PostgreSQL first for durability
+	if err := gs.saveToDatabase(ctx, gdoc); err != nil {
+		log.Err(err).Str("gid", gdoc.Uid).Msg("failed-to-save-document-to-database")
+		return err
+	}
+
+	// Also write to Redis for hot cache
 	bts, err := proto.Marshal(gdoc)
 	if err != nil {
 		return err
@@ -191,11 +198,16 @@ func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocu
 	return nil
 }
 
-// UpdateDocument makes an atomic update to document in the Redis store.
-// If the game is done, though, it will write it to S3 and expire it from the Redis
-// store. This function unlocks the game after it's done.
+// UpdateDocument makes an atomic update to document in the Redis store and PostgreSQL.
+// This function unlocks the game after it's done.
 func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
-	saveToDatabase := doc.PlayState == ipc.PlayState_GAME_OVER
+	// Always save to PostgreSQL for durability (not just on GAME_OVER)
+	err := gs.saveToDatabase(ctx, doc.GameDocument)
+	if err != nil {
+		log.Err(err).Str("gid", doc.Uid).Msg("failed-to-save-document-to-database")
+		// Continue anyway to update Redis, but log the error
+	}
+
 	bts, err := proto.Marshal(doc.GameDocument)
 	if err != nil {
 		return err
@@ -227,25 +239,17 @@ func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLocke
 	}
 	unlockMutex()
 
-	if saveToDatabase {
-		err = gs.saveToDatabase(ctx, doc.GameDocument)
-		if err == nil {
-			// If we saved the game permanently, now we can expire the game from Redis
-			// relatively soon.
-			r, err := redis.Int(conn.Do("EXPIRE", RedisDocPrefix+gid, RedisExpirationSeconds))
-			if err != nil {
-				log.Err(err).Str("gid", doc.Uid).Msg("error expiring")
-			}
-			if r != 1 {
-				log.Err(errors.New("unexpected expire return")).Str("gid", doc.Uid).Msg("saving-doc")
-			}
-			return nil
-		} else {
-			// XXX Log to Discord or somewhere that this game failed to be permanently
-			// backed up!
+	// If game is over, expire Redis cache soon since we have it in PostgreSQL
+	if doc.PlayState == ipc.PlayState_GAME_OVER {
+		r, err := redis.Int(conn.Do("EXPIRE", RedisDocPrefix+gid, RedisExpirationSeconds))
+		if err != nil {
+			log.Err(err).Str("gid", doc.Uid).Msg("error expiring")
 		}
-		return err
+		if r != 1 {
+			log.Err(errors.New("unexpected expire return")).Str("gid", doc.Uid).Msg("expiring-doc")
+		}
 	}
+
 	return nil
 }
 
