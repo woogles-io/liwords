@@ -373,17 +373,19 @@ func (s *AnalysisService) RequestAnalysis(
 	gameHasEnded := false
 	if metadata.Type == ipc.GameType_ANNOTATED {
 		// Query just the endReason field from the JSON document column
-		var endReasonInt int32
+		// The JSON stores endReason as a string enum value like "STANDARD", "TIME", etc.
+		var endReasonStr string
 		err := s.dbPool.QueryRow(ctx,
-			`SELECT CAST(document->>'endReason' AS INTEGER) FROM game_documents WHERE game_id = $1`,
-			gameID).Scan(&endReasonInt)
+			`SELECT document->>'endReason' FROM game_documents WHERE game_id = $1`,
+			gameID).Scan(&endReasonStr)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return nil, apiserver.InvalidArg("annotated game document not found")
 			}
 			return nil, err
 		}
-		gameHasEnded = ipc.GameEndReason(endReasonInt) != ipc.GameEndReason_NONE
+		// Game has ended if endReason is not "NONE" (or empty/null)
+		gameHasEnded = endReasonStr != "" && endReasonStr != "NONE"
 	} else {
 		// For regular games, use metadata's GameEndReason
 		gameHasEnded = metadata.GameEndReason != ipc.GameEndReason_NONE

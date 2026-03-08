@@ -609,7 +609,6 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
   const gameID = gameContext.gameID;
-  const isAnnotated = gameContext.gameDocument?.type === GameType.ANNOTATED;
 
   const { data: analysisStatusData, refetch: refetchStatus } = useQuery(
     getAnalysisStatus,
@@ -691,10 +690,24 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       analysisStatus === GetAnalysisStatusResponse_JobStatus.NOT_FOUND ||
       analysisStatus === GetAnalysisStatusResponse_JobStatus.FAILED
     ) {
-      handleRequestAnalysis();
+      // Show confirmation dialog before requesting analysis
+      modal.confirm({
+        title: (
+          <p className="readable-text-color">Request Computer Analysis?</p>
+        ),
+        content: (
+          <p className="readable-text-color">
+            This will queue your game for analysis by BestBot. Analysis
+            typically takes a few minutes depending on queue length.
+          </p>
+        ),
+        okText: "Request Analysis",
+        cancelText: "Cancel",
+        onOk: handleRequestAnalysis,
+      });
     }
     // Pending/Processing: button is disabled, no action needed
-  }, [analysisStatus, handleRequestAnalysis]);
+  }, [analysisStatus, handleRequestAnalysis, modal]);
 
   const placeMove = usePlaceMoveCallback();
 
