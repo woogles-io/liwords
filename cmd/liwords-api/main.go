@@ -301,7 +301,7 @@ func main() {
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
-	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries)
+	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
 	analysisAdminService := analysis.NewAnalysisAdminService(stores.UserStore, stores.Queries)
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 

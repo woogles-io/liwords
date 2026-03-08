@@ -130,6 +130,7 @@ type Props = {
   exitableExaminer?: boolean;
   changeCurrentRack?: (rack: MachineWord, evtIdx: number) => void;
   gameMode?: number;
+  annotated?: boolean;
 };
 
 export const BoardPanel = React.memo((props: Props) => {
@@ -1272,7 +1273,9 @@ export const BoardPanel = React.memo((props: Props) => {
         gameEndControls={
           authedSolvingPuzzle
             ? props.puzzleSolved !== PuzzleStatus.UNANSWERED
-            : examinableGameEndMessage !== "" || props.gameDone
+            : props.annotated && !isExamining
+              ? true
+              : examinableGameEndMessage !== "" || props.gameDone
         }
         tournamentSlug={props.tournamentSlug}
         tournamentPairedMode={props.tournamentPairedMode}

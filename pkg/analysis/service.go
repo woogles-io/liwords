@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	nats "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -38,13 +39,15 @@ type AnalysisService struct {
 	gameStore GameStore
 	queries   *models.Queries
 	natsconn  *nats.Conn
+	dbPool    *pgxpool.Pool
 }
 
-func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries) *AnalysisService {
+func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries, dbPool *pgxpool.Pool) *AnalysisService {
 	return &AnalysisService{
 		userStore: userStore,
 		gameStore: gameStore,
 		queries:   queries,
+		dbPool:    dbPool,
 	}
 }
 
@@ -366,7 +369,27 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	// Check if game has ended
-	if metadata.GameEndReason == ipc.GameEndReason_NONE {
+	// For annotated games, query the JSON document's endReason field
+	gameHasEnded := false
+	if metadata.Type == ipc.GameType_ANNOTATED {
+		// Query just the endReason field from the JSON document column
+		var endReasonInt int32
+		err := s.dbPool.QueryRow(ctx,
+			`SELECT CAST(document->>'endReason' AS INTEGER) FROM game_documents WHERE game_id = $1`,
+			gameID).Scan(&endReasonInt)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return nil, apiserver.InvalidArg("annotated game document not found")
+			}
+			return nil, err
+		}
+		gameHasEnded = ipc.GameEndReason(endReasonInt) != ipc.GameEndReason_NONE
+	} else {
+		// For regular games, use metadata's GameEndReason
+		gameHasEnded = metadata.GameEndReason != ipc.GameEndReason_NONE
+	}
+
+	if !gameHasEnded {
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_GAME_NOT_ENDED,
 			Message: "Game must be completed before requesting analysis",
