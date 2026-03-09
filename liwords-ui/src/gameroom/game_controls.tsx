@@ -19,6 +19,7 @@ import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
+  useLoginStateStoreContext,
   useTentativeTileContext,
 } from "../store/store";
 import { EphemeralTile } from "../utils/cwgame/common";
@@ -286,6 +287,8 @@ export type Props = {
 
 const GameControls = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { userID } = loginState;
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const [board3DOpen, setBoard3DOpen] = useState(false);
   const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
@@ -523,6 +526,7 @@ const GameControls = React.memo((props: Props) => {
             gameContext,
             gameContext.alphabet,
             gameContext.gameDocument,
+            userID,
           ),
         );
         setBoard3DOpen(true);
@@ -693,6 +697,8 @@ const EndGameControls = (props: EGCProps) => {
   const [board3DOpen, setBoard3DOpen] = useState(false);
   const [board3DData, setBoard3DData] = useState<Board3DData | null>(null);
   const { gameContext } = useGameContextStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { userID } = loginState;
   const gameHasNotStarted = gameContext.players.length === 0; // :shrug:
   const gameDone = true; // it is endgame controls after all
 
@@ -746,6 +752,7 @@ const EndGameControls = (props: EGCProps) => {
                           gameContext,
                           gameContext.alphabet,
                           gameContext.gameDocument,
+                          userID,
                         ),
                       );
                       setBoard3DOpen(true);

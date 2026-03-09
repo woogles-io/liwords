@@ -22,6 +22,7 @@ export function convertGameStateTo3DData(
   gameContext: GameState,
   alphabet: Alphabet,
   gameDocument?: GameDocument,
+  userID?: string,
   tileColor = "orange",
   boardColor = "jade",
 ): Board3DData {
@@ -43,9 +44,16 @@ export function convertGameStateTo3DData(
     boardArray.push(rowArr);
   }
 
-  // Rack
-  const onturn = gameContext.onturn;
-  const currentRack = gameContext.players[onturn]?.currentRack ?? [];
+  // Rack: if userID is provided, show that user's rack (for active play).
+  // Otherwise, show the on-turn player's rack (for examining/analyzing).
+  let currentRack: number[];
+  if (userID) {
+    const userPlayer = gameContext.players.find((p) => p.userID === userID);
+    currentRack = userPlayer?.currentRack ?? [];
+  } else {
+    const onturn = gameContext.onturn;
+    currentRack = gameContext.players[onturn]?.currentRack ?? [];
+  }
   const rack: string[] = currentRack
     .filter((ml) => ml !== 0x80)
     .map((ml) => mlToDisplay(ml, alphabet));
