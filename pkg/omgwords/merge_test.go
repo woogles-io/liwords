@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/woogles-io/liwords/pkg/omgwords/stores"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
 )
@@ -18,7 +17,6 @@ func TestMergeDocs(t *testing.T) {
 		},
 		Description: "",
 	}
-	ld := &stores.MaybeLockedDocument{GameDocument: doc, LockValue: ""}
 
 	patchDoc := &ipc.GameDocument{
 		Players: []*ipc.GameDocument_MinimalPlayerInfo{
@@ -28,8 +26,8 @@ func TestMergeDocs(t *testing.T) {
 		Description: "Vegas Worlds round 42",
 	}
 
-	MergeGameDocuments(ld.GameDocument, patchDoc)
-	is.True(proto.Equal(ld.GameDocument, &ipc.GameDocument{
+	MergeGameDocuments(doc, patchDoc)
+	is.True(proto.Equal(doc, &ipc.GameDocument{
 		Players: []*ipc.GameDocument_MinimalPlayerInfo{
 			{Nickname: "cesar", RealName: "César Del Solar", UserId: "abc"},
 			{Nickname: "mina", RealName: "Mina Le", UserId: "mina"},

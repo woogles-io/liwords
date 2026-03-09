@@ -151,11 +151,11 @@ func (ms *MementoService) loadAndRender(name string) ([]byte, error) {
 	}
 	if hist.Version == 0 {
 		// A shortcut for a blank history. Look in the game document store.
-		gdoc, err := ms.gameDocumentStore.GetDocument(ctx, wf.GameId, false)
+		gdoc, err := ms.gameDocumentStore.GetDocument(ctx, wf.GameId)
 		if err != nil {
 			return nil, err
 		}
-		hist, err = utilities.ToGameHistory(gdoc.GameDocument, ms.cfg)
+		hist, err = utilities.ToGameHistory(gdoc, ms.cfg)
 		if err != nil {
 			return nil, err
 		}

@@ -77,7 +77,7 @@ func parseEmbedOptions(query url.Values) EmbedOptions {
 }
 
 func (es *EmbedService) getGameDocument(ctx context.Context, gameID string) (*ipc.GameDocument, error) {
-	doc, err := es.gameDocumentStore.GetDocument(ctx, gameID, false)
+	doc, err := es.gameDocumentStore.GetDocument(ctx, gameID)
 	if err != nil {
 		if err == stores.ErrDoesNotExist {
 			return nil, fmt.Errorf("game does not exist")
@@ -90,7 +90,7 @@ func (es *EmbedService) getGameDocument(ctx context.Context, gameID string) (*ip
 		return nil, fmt.Errorf("only annotated games are supported for embedding")
 	}
 
-	return doc.GameDocument, nil
+	return doc, nil
 }
 
 func (es *EmbedService) generateEmbedHTML(gameDoc *ipc.GameDocument, gameID string, options EmbedOptions) (string, error) {
