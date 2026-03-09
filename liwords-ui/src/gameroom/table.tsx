@@ -1256,6 +1256,7 @@ export const Table = React.memo((props: Props) => {
             leagueSlug={gameInfo.leagueSlug}
             vsBot={gameInfo.gameRequest?.playerVsBot ?? false}
             gameMode={gameInfo.gameRequest?.gameMode}
+            annotated={props.annotated}
             tournamentSlug={tournamentContext.metadata?.slug}
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.type,

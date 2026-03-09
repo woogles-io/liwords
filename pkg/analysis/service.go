@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	nats "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -30,6 +31,7 @@ var tracer = otel.Tracer("analysis")
 
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
+	GetMetadata(ctx context.Context, id string) (*ipc.GameInfoResponse, error)
 }
 
 type AnalysisService struct {
@@ -37,13 +39,15 @@ type AnalysisService struct {
 	gameStore GameStore
 	queries   *models.Queries
 	natsconn  *nats.Conn
+	dbPool    *pgxpool.Pool
 }
 
-func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries) *AnalysisService {
+func NewAnalysisService(userStore user.Store, gameStore GameStore, queries *models.Queries, dbPool *pgxpool.Pool) *AnalysisService {
 	return &AnalysisService{
 		userStore: userStore,
 		gameStore: gameStore,
 		queries:   queries,
+		dbPool:    dbPool,
 	}
 }
 
@@ -176,6 +180,17 @@ func (s *AnalysisService) SubmitResult(
 				Error:    "result has no turns",
 			}), nil
 		}
+
+		// Check if this is an annotated game - there are no zero-turn annotated games
+		metadata, err := s.gameStore.GetMetadata(ctx, job.GameID)
+		if err == nil && metadata.Type == ipc.GameType_ANNOTATED {
+			return connect.NewResponse(&pb.SubmitResultResponse{
+				Accepted: false,
+				Error:    "annotated games cannot have zero turns",
+			}), nil
+		}
+
+		// For regular games, verify it actually has no events
 		game, err := s.gameStore.Get(ctx, job.GameID)
 		if err != nil || len(game.History().Events) != 0 {
 			return connect.NewResponse(&pb.SubmitResultResponse{
@@ -347,14 +362,36 @@ func (s *AnalysisService) RequestAnalysis(
 		return nil, apiserver.InvalidArg("game_id is required")
 	}
 
-	// Fetch the game
-	g, err := s.gameStore.Get(ctx, gameID)
+	// Fetch game metadata first to check game type and basic info
+	metadata, err := s.gameStore.GetMetadata(ctx, gameID)
 	if err != nil {
 		return nil, apiserver.InvalidArg("game not found")
 	}
 
 	// Check if game has ended
-	if g.Playing() != macondo.PlayState_GAME_OVER {
+	// For annotated games, query the JSON document's endReason field
+	gameHasEnded := false
+	if metadata.Type == ipc.GameType_ANNOTATED {
+		// Query just the endReason field from the JSON document column
+		// The JSON stores endReason as a string enum value like "STANDARD", "TIME", etc.
+		var endReasonStr string
+		err := s.dbPool.QueryRow(ctx,
+			`SELECT document->>'endReason' FROM game_documents WHERE game_id = $1`,
+			gameID).Scan(&endReasonStr)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return nil, apiserver.InvalidArg("annotated game document not found")
+			}
+			return nil, err
+		}
+		// Game has ended if endReason is not "NONE" (or empty/null)
+		gameHasEnded = endReasonStr != "" && endReasonStr != "NONE"
+	} else {
+		// For regular games, use metadata's GameEndReason
+		gameHasEnded = metadata.GameEndReason != ipc.GameEndReason_NONE
+	}
+
+	if !gameHasEnded {
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_GAME_NOT_ENDED,
 			Message: "Game must be completed before requesting analysis",
@@ -366,7 +403,7 @@ func (s *AnalysisService) RequestAnalysis(
 	// - For annotated games: user must be the creator
 	isAuthorized := false
 
-	if g.Type == ipc.GameType_ANNOTATED {
+	if metadata.Type == ipc.GameType_ANNOTATED {
 		// For annotated games, only the creator can request analysis
 		// Creator is stored in annotated_game_metadata table
 		owner, err := s.queries.GetGameOwner(ctx, gameID)
@@ -375,8 +412,8 @@ func (s *AnalysisService) RequestAnalysis(
 		}
 	} else {
 		// For regular games, user must be a player
-		for _, playerID := range g.PlayerDBIDs {
-			if playerID == user.ID {
+		for _, player := range metadata.Players {
+			if player.UserId == user.UUID {
 				isAuthorized = true
 				break
 			}
@@ -391,7 +428,10 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	// Check if variant is supported (only classic for now)
-	variantName := g.GameReq.Rules.VariantName
+	variantName := ""
+	if metadata.GameRequest != nil && metadata.GameRequest.Rules != nil {
+		variantName = metadata.GameRequest.Rules.VariantName
+	}
 	if variantName != "classic" && variantName != "" {
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_INVALID_VARIANT,

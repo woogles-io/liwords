@@ -485,6 +485,7 @@ export const BoardEditor = () => {
             definitionPopover={definitionPopover}
             changeCurrentRack={changeCurrentRack}
             exitableExaminer={false}
+            annotated={true}
           />
         </div>
 
