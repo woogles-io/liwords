@@ -237,7 +237,7 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect
 	}
 
 	// Just willy-nilly update the thing. Kind of scary.
-	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: req.Msg.Document})
+	err = gs.gameStore.UpdateDocument(ctx, req.Msg.Document)
 	if err != nil {
 		return nil, err
 	}
@@ -274,19 +274,13 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *connect.R
 		return nil, errors.New("patch operation not supported at this time for these fields")
 	}
 
-	g, err := gs.gameStore.GetDocument(ctx, gid, true)
+	g, err := gs.gameStore.GetDocument(ctx, gid)
 	if err != nil {
 		return nil, err
 	}
 
-	err = MergeGameDocuments(g.GameDocument, req.Msg.Document)
+	err = MergeGameDocuments(g, req.Msg.Document)
 	if err != nil {
-		// Since we acquired a lock in the GetDocument call above,
-		// we must unlock explicitly in any error case.
-		uerr := gs.gameStore.UnlockDocument(ctx, g)
-		if uerr != nil {
-			log.Err(err).Msg("error-unlocking")
-		}
 		return nil, err
 	}
 
@@ -311,7 +305,7 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *connect.R
 	}
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
+		Doc: proto.Clone(g).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
@@ -409,7 +403,7 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connec
 
 func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Request[pb.GetGameDocumentRequest],
 ) (*connect.Response[ipc.GameDocument], error) {
-	doc, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId, false)
+	doc, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId)
 	if err != nil {
 		if err == stores.ErrDoesNotExist {
 			// Document not in cache - could be evicted, never created, or wrong game type
@@ -419,7 +413,7 @@ func (gs *OMGWordsService) GetGameDocument(ctx context.Context, req *connect.Req
 		return nil, err
 	}
 	if doc.Type == ipc.GameType_ANNOTATED {
-		return connect.NewResponse(doc.GameDocument), nil
+		return connect.NewResponse(doc), nil
 	}
 	// Otherwise, we need to "censor" the game document by deleting information
 	// this user should not have, if they're a player in this game.
@@ -444,20 +438,17 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		return nil, err
 	}
 
-	g, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId, true)
+	g, err := gs.gameStore.GetDocument(ctx, req.Msg.GameId)
 	if err != nil {
 		return nil, err
 	}
 	// if g.PlayState == ipc.PlayState_GAME_OVER {
-	// 	gs.gameStore.UnlockDocument(ctx, g)
 	// 	return nil, twirp.NewError(twirp.InvalidArgument, "game is over")
 	// }
 	if len(req.Msg.Racks) != len(g.Players) {
-		gs.gameStore.UnlockDocument(ctx, g)
 		return nil, apiserver.InvalidArg("number of racks must match number of players")
 	}
 	if req.Msg.Amendment && len(g.Events)-1 < int(req.Msg.EventNumber) {
-		gs.gameStore.UnlockDocument(ctx, g)
 		return nil, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
 
@@ -466,7 +457,6 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 	for i, rack := range req.Msg.Racks {
 		for _, tile := range rack {
 			if tile&0x80 != 0 {
-				gs.gameStore.UnlockDocument(ctx, g)
 				return nil, apiserver.InvalidArg(fmt.Sprintf("rack %d contains designated blank (tile %d). Racks should only contain undesignated blanks (tile 0)", i, tile))
 			}
 		}
@@ -491,7 +481,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		evt.Rack = newRack
 
 		// Clone the document to work on - we'll only update the real document if everything succeeds
-		gdocClone := proto.Clone(g.GameDocument).(*ipc.GameDocument)
+		gdocClone := proto.Clone(g).(*ipc.GameDocument)
 		cwgame.LogTileState(gdocClone, "setracks-after-clone")
 
 		// Restore the original rack in g (in case we need to rollback)
@@ -522,7 +512,6 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 			Msg("setracks-about-to-replay")
 		err := cwgame.ReplayEvents(ctx, gs.cfg.WGLConfig(), gdocClone, evts, false)
 		if err != nil {
-			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InvalidArg(err.Error())
 		}
 		log.Info().
@@ -583,7 +572,6 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 			racksToAssign[1-evt.PlayerIndex] = nil // Will be filled from bag
 			err = cwgame.AssignRacks(gs.cfg.WGLConfig(), gdocClone, racksToAssign, cwgame.AlwaysAssignEmpty)
 			if err != nil {
-				gs.gameStore.UnlockDocument(ctx, g)
 				return nil, apiserver.InvalidArg(err.Error())
 			}
 			cwgame.LogTileState(gdocClone, "setracks-after-replenish")
@@ -594,7 +582,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		}
 
 		// All operations succeeded - copy the clone back to the real document
-		g.GameDocument = gdocClone
+		g = gdocClone
 
 		log.Info().
 			Str("game_id", g.Uid).
@@ -602,9 +590,8 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 			Int("final_num_events", len(g.Events)).
 			Msg("setracks-amendment-complete")
 	} else {
-		err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g.GameDocument, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
+		err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g, req.Msg.Racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
-			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InvalidArg(err.Error())
 		}
 	}
@@ -614,12 +601,10 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 		g.EndReason == ipc.GameEndReason_CONSECUTIVE_ZEROES {
 		dist, err := tilemapping.GetDistribution(gs.cfg.WGLConfig(), g.LetterDistribution)
 		if err != nil {
-			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InternalErr(err)
 		}
-		err = cwgame.RecalculateConsecutiveZeroesPenalties(g.GameDocument, dist)
+		err = cwgame.RecalculateConsecutiveZeroesPenalties(g, dist)
 		if err != nil {
-			gs.gameStore.UnlockDocument(ctx, g)
 			return nil, apiserver.InternalErr(err)
 		}
 	}
@@ -631,7 +616,7 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 
 	// And send an event.
 	evt := &ipc.GameDocumentEvent{
-		Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
+		Doc: proto.Clone(g).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
@@ -643,12 +628,12 @@ func (gs *OMGWordsService) SetRacks(ctx context.Context, req *connect.Request[pb
 func (gs *OMGWordsService) GetCGP(ctx context.Context, req *connect.Request[pb.GetCGPRequest],
 ) (*connect.Response[pb.CGPResponse], error) {
 	gid := req.Msg.GameId
-	g, err := gs.gameStore.GetDocument(ctx, gid, false)
+	g, err := gs.gameStore.GetDocument(ctx, gid)
 	if err != nil {
 		return nil, err
 	}
 
-	cgp, err := cwgame.ToCGP(gs.cfg.WGLConfig(), g.GameDocument)
+	cgp, err := cwgame.ToCGP(gs.cfg.WGLConfig(), g)
 	if err != nil {
 		return nil, err
 	}
@@ -775,7 +760,7 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 		}
 	}
 
-	err = gs.gameStore.UpdateDocument(ctx, &stores.MaybeLockedDocument{GameDocument: gdoc})
+	err = gs.gameStore.UpdateDocument(ctx, gdoc)
 	if err != nil {
 		return nil, err
 	}

@@ -4,14 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-redsync/redsync/v4"
-	"github.com/go-redsync/redsync/v4/redis/redigo"
-	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores/common"
@@ -20,129 +15,32 @@ import (
 
 var ErrDoesNotExist = errors.New("does not exist")
 
-const MaxExpirationSeconds = 10 * 24 * 60 * 60 // 10 days
-const RedisExpirationSeconds = 15 * 60         // 15 minutes
-const RedisDocPrefix = "gdoc:"
-const RedisMutexPrefix = "gdocmutex:"
-
-// MaybeLockedDocument wraps a game document but also contains a value. If the
-// value is not blank then the document is locked.
-type MaybeLockedDocument struct {
-	*ipc.GameDocument
-	LockValue string
-}
-
 type GameDocumentStore struct {
-	redisPool *redis.Pool
-	dbPool    *pgxpool.Pool
-	redsync   *redsync.Redsync
-	cfg       *config.Config
+	dbPool *pgxpool.Pool
+	cfg    *config.Config
 }
 
-func NewGameDocumentStore(cfg *config.Config, r *redis.Pool, db *pgxpool.Pool) (*GameDocumentStore, error) {
-	pool := redigo.NewPool(r)
-	rs := redsync.New(pool)
-	return &GameDocumentStore{cfg: cfg, redisPool: r, dbPool: db, redsync: rs}, nil
+func NewGameDocumentStore(cfg *config.Config, db *pgxpool.Pool) (*GameDocumentStore, error) {
+	return &GameDocumentStore{cfg: cfg, dbPool: db}, nil
 }
 
-// GetDocument gets a game document from the store. It tries Redis first,
-// then S3 if not found in Redis.
-// The lock parameter is ignored if this item is not in Redis.
-// If it is in Redis, and lock is true, the document is locked. The SetDocument
-// function will try to unlock it.
-// If it locked, we return the lock value for future usage.
-func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string, lock bool) (*MaybeLockedDocument, error) {
-	var mutexName string
-	var mutex *redsync.Mutex
-
-	conn := gs.redisPool.Get()
-	defer conn.Close()
-
-	res, err := redis.Int(conn.Do("EXISTS", RedisDocPrefix+uuid))
-	if err != nil {
-		return nil, err
-	}
-	if res == 0 {
-		// Does not exist in Redis. Try database.
-		doc, err := gs.getFromDatabase(ctx, uuid)
-		if err != nil {
-			return nil, err
-		}
-		return &MaybeLockedDocument{GameDocument: doc}, nil
-	}
-
-	if lock {
-		mutexName = RedisMutexPrefix + uuid
-		mutex = gs.redsync.NewMutex(mutexName)
-		if err := mutex.Lock(); err != nil {
-			log.Err(err).Msg("lock failed")
-			return nil, err
-		}
-		log.Debug().Str("name", mutex.Name()).Str("val", mutex.Value()).Msg("locked mutex")
-	}
-	log.Debug().Msg("getting document")
-	bts, err := redis.Bytes(conn.Do("GET", RedisDocPrefix+uuid))
-	if err != nil {
-		if lock {
-			mutex.Unlock()
-		}
-		return nil, err
-	}
-	gdoc := &ipc.GameDocument{}
-	err = proto.Unmarshal(bts, gdoc)
-	if err != nil {
-		if lock {
-			mutex.Unlock()
-		}
-		return nil, err
-	}
-	log.Debug().Msg("returning document")
-	err = MigrateGameDocument(gs.cfg, gdoc)
-	if err != nil {
-		if lock {
-			mutex.Unlock()
-		}
-		return nil, err
-	}
-	// Don't unlock the mutex when we leave. We will unlock it after the
-	// SetDocument operation. (Or it will expire if there is no such operation)
-	var mv string
-	if lock {
-		mv = mutex.Value()
-	}
-	return &MaybeLockedDocument{GameDocument: gdoc, LockValue: mv}, nil
+// GetDocument gets a game document from PostgreSQL.
+//
+// CONCURRENCY WARNING: This does NOT prevent concurrent modifications!
+// If multi-user editing is needed, implement one of:
+//   1. Transaction-based locking: Wrap Get+Update in BEGIN...COMMIT with SELECT FOR UPDATE
+//   2. Optimistic locking: Add version column, retry on conflict
+//   3. Application-level locking: Serialize edits at a higher level
+//
+// Currently safe because annotated games are single-editor (only creator can edit).
+func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
+	return gs.getFromDatabase(ctx, uuid)
 }
 
-func (gs *GameDocumentStore) UnlockDocument(ctx context.Context, doc *MaybeLockedDocument) error {
-	if doc.LockValue == "" {
-		// wasn't locked
-		log.Debug().Str("gid", doc.Uid).Msg("not-locked")
-		return nil
-	}
-	conn := gs.redisPool.Get()
-	defer conn.Close()
-
-	mutex := gs.redsync.NewMutex(RedisMutexPrefix+doc.Uid,
-		redsync.WithValue(doc.LockValue))
-
-	if ok, err := mutex.Unlock(); !ok || err != nil {
-		// The unlock failed. Maybe it wasn't locked?
-		log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("redsync-unlock-failed")
-	}
-	return nil
-}
-
+// DeleteDocument deletes a game document from PostgreSQL.
 func (gs *GameDocumentStore) DeleteDocument(ctx context.Context, uuid string) error {
-	conn := gs.redisPool.Get()
-	defer conn.Close()
-	delkeys, err := redis.Int(conn.Do("DEL", RedisDocPrefix+uuid))
-	if err != nil {
-		return err
-	}
-	if delkeys != 1 {
-		return errors.New("wrong number of keys deleted")
-	}
-	return nil
+	_, err := gs.dbPool.Exec(ctx, `DELETE FROM game_documents WHERE game_id = $1`, uuid)
+	return err
 }
 
 func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
@@ -171,86 +69,14 @@ func (gs *GameDocumentStore) getFromDatabase(ctx context.Context, uuid string) (
 	return gdoc, nil
 }
 
-// SetDocument should be called to set the initial document in redis and PostgreSQL.
+// SetDocument writes the initial document to PostgreSQL.
 func (gs *GameDocumentStore) SetDocument(ctx context.Context, gdoc *ipc.GameDocument) error {
-	// Write to PostgreSQL first for durability
-	if err := gs.saveToDatabase(ctx, gdoc); err != nil {
-		log.Err(err).Str("gid", gdoc.Uid).Msg("failed-to-save-document-to-database")
-		return err
-	}
-
-	// Also write to Redis for hot cache
-	bts, err := proto.Marshal(gdoc)
-	if err != nil {
-		return err
-	}
-	gid := gdoc.Uid
-	conn := gs.redisPool.Get()
-	defer conn.Close()
-
-	r, err := redis.String(conn.Do("SET", RedisDocPrefix+gid, bts, "EX", MaxExpirationSeconds))
-	if err != nil {
-		return err
-	}
-	if r != "OK" {
-		return errors.New("wrong return for SET: " + r)
-	}
-	return nil
+	return gs.saveToDatabase(ctx, gdoc)
 }
 
-// UpdateDocument makes an atomic update to document in the Redis store and PostgreSQL.
-// This function unlocks the game after it's done.
-func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, doc *MaybeLockedDocument) error {
-	// Always save to PostgreSQL for durability (not just on GAME_OVER)
-	err := gs.saveToDatabase(ctx, doc.GameDocument)
-	if err != nil {
-		log.Err(err).Str("gid", doc.Uid).Msg("failed-to-save-document-to-database")
-		// Continue anyway to update Redis, but log the error
-	}
-
-	bts, err := proto.Marshal(doc.GameDocument)
-	if err != nil {
-		return err
-	}
-	gid := doc.Uid
-	conn := gs.redisPool.Get()
-	defer conn.Close()
-
-	unlockMutex := func() {
-		if doc.LockValue == "" {
-			return
-		}
-		mutex := gs.redsync.NewMutex(RedisMutexPrefix+gid,
-			redsync.WithValue(doc.LockValue))
-		if ok, err := mutex.Unlock(); !ok || err != nil {
-			// The unlock failed. Maybe it wasn't locked?
-			log.Err(err).Str("mutexname", mutex.Name()).Str("val", mutex.Value()).Msg("update-redsync-unlock-failed")
-		}
-	}
-
-	r, err := redis.String(conn.Do("SET", RedisDocPrefix+gid, bts, "EX", MaxExpirationSeconds))
-	if err != nil {
-		unlockMutex()
-		return err
-	}
-	if r != "OK" {
-		unlockMutex()
-		return errors.New("wrong return for SET: " + r)
-	}
-	unlockMutex()
-
-	// If game is over, expire Redis cache soon since we have it in PostgreSQL
-	if doc.PlayState == ipc.PlayState_GAME_OVER {
-		r, err := redis.Int(conn.Do("EXPIRE", RedisDocPrefix+gid, RedisExpirationSeconds))
-		if err != nil {
-			log.Err(err).Str("gid", doc.Uid).Msg("error expiring")
-		}
-		if r != 1 {
-			log.Err(errors.New("unexpected expire return")).Str("gid", doc.Uid).Msg("expiring-doc")
-		}
-	}
-
-	return nil
+// UpdateDocument updates a document in PostgreSQL.
+func (gs *GameDocumentStore) UpdateDocument(ctx context.Context, gdoc *ipc.GameDocument) error {
+	return gs.saveToDatabase(ctx, gdoc)
 }
 
 func (gs *GameDocumentStore) saveToDatabase(ctx context.Context, gdoc *ipc.GameDocument) error {

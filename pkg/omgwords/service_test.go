@@ -76,12 +76,11 @@ func metaStore() *stores.DBStore {
 }
 
 func gameStore() *stores.GameDocumentStore {
-	redisPool := newPool(RedisURL)
 	pool, err := common.OpenTestingDB(pkg)
 	if err != nil {
 		panic(err)
 	}
-	gds, err := stores.NewGameDocumentStore(DefaultConfig, redisPool, pool)
+	gds, err := stores.NewGameDocumentStore(DefaultConfig, pool)
 	if err != nil {
 		panic(err)
 	}

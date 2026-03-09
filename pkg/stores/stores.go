@@ -95,7 +95,7 @@ func NewInitializedStores(dbPool *pgxpool.Pool, redisPool *redigoredis.Pool, cfg
 	if err != nil {
 		return nil, err
 	}
-	stores.GameDocumentStore, err = owstores.NewGameDocumentStore(cfg, redisPool, dbPool)
+	stores.GameDocumentStore, err = owstores.NewGameDocumentStore(cfg, dbPool)
 	if err != nil {
 		return nil, err
 	}
