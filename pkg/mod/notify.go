@@ -37,10 +37,16 @@ func sendNotification(ctx context.Context, us user.Store, user *entity.User, act
 			log.Debug().Str("email", user.Email).Msg("generated mod action email content")
 			go func() {
 				log.Debug().Str("email", user.Email).Msg("going to send mod action email")
+				// BCC conduct@woogles.io for cheating emails
+				var bccAddress string
+				if action.EmailType == ms.EmailType_CHEATING {
+					bccAddress = AddressToContact
+				}
 				_, err := emailer.SendSimpleMessage(config.EmailDebugMode,
 					user.Email,
 					emailSubject,
-					emailContent)
+					emailContent,
+					bccAddress)
 				if err != nil {
 					// Errors should not be fatal, just log them
 					log.Err(err).Str("userID", user.UUID).Msg("mod-action-send-user-email")

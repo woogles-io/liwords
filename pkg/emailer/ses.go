@@ -20,9 +20,14 @@ const (
 
 // SendSimpleMessage sends an email via Amazon SES.
 // The debugMode parameter controls whether to actually send or just log.
-func SendSimpleMessage(debugMode bool, recipient, subject, body string) (string, error) {
+// The bccAddress parameter optionally adds a BCC recipient.
+func SendSimpleMessage(debugMode bool, recipient, subject, body string, bccAddress ...string) (string, error) {
 	if debugMode {
-		fmt.Printf("=== EMAIL DEBUG ===\nTo: %s\nSubject: %s\nBody:\n%s\n=== END EMAIL ===\n", recipient, subject, body)
+		bccInfo := ""
+		if len(bccAddress) > 0 {
+			bccInfo = fmt.Sprintf("\nBCC: %s", bccAddress[0])
+		}
+		fmt.Printf("=== EMAIL DEBUG ===\nTo: %s%s\nSubject: %s\nBody:\n%s\n=== END EMAIL ===\n", recipient, bccInfo, subject, body)
 		return "debug-mode", nil
 	}
 
@@ -36,11 +41,16 @@ func SendSimpleMessage(debugMode bool, recipient, subject, body string) (string,
 
 	client := sesv2.NewFromConfig(cfg)
 
+	destination := &types.Destination{
+		ToAddresses: []string{recipient},
+	}
+	if len(bccAddress) > 0 && bccAddress[0] != "" {
+		destination.BccAddresses = []string{bccAddress[0]}
+	}
+
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(senderAddress),
-		Destination: &types.Destination{
-			ToAddresses: []string{recipient},
-		},
+		Destination:      destination,
 		Content: &types.EmailContent{
 			Simple: &types.Message{
 				Subject: &types.Content{
