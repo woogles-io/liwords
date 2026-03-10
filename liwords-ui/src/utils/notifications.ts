@@ -64,6 +64,25 @@ export interface TurnNotificationOptions {
   gameId?: string;
 }
 
+export const updateAppBadge = async (count: number): Promise<void> => {
+  if (!("setAppBadge" in navigator)) return;
+  try {
+    if (count === 0) {
+      await (
+        navigator as Navigator & { clearAppBadge: () => Promise<void> }
+      ).clearAppBadge();
+    } else {
+      await (
+        navigator as Navigator & {
+          setAppBadge: (n: number) => Promise<void>;
+        }
+      ).setAppBadge(count);
+    }
+  } catch (error) {
+    console.error("Error updating app badge:", error);
+  }
+};
+
 export const showTurnNotification = (
   options: TurnNotificationOptions,
 ): Notification | null => {

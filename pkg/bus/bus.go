@@ -947,6 +947,15 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			if err != nil {
 				return err
 			}
+			if !userIsAnon(evt.UserId) {
+				correspondenceGames, err := b.correspondenceGamesForUser(ctx, evt.UserId)
+				if err != nil {
+					return err
+				}
+				if err = b.pubToConnectionID(connID, evt.UserId, correspondenceGames); err != nil {
+					return err
+				}
+			}
 		} else if strings.HasPrefix(realm, "tournament-") {
 			err := b.sendTournamentContext(ctx, realm, evt.UserId, connID)
 			if err != nil {
