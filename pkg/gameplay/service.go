@@ -253,6 +253,17 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+	if hist.Version == 0 {
+		// A shortcut for a blank history. Look in the game document store.
+		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.Msg.GameId, false)
+		if err != nil {
+			return nil, err
+		}
+		hist, err = entityutils.ToGameHistory(gdoc.GameDocument, gs.cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
 	hist = mod.CensorHistory(ctx, gs.userStore, hist)
 	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, apiserver.InvalidArg("please wait until the game is over to download GCG")
