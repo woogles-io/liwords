@@ -1,4 +1,5 @@
 // Notification utilities for PWA turn notifications
+import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 
 const NOTIFICATION_PERMISSION_KEY = "turnNotificationsEnabled";
 
@@ -82,6 +83,42 @@ export const updateAppBadge = async (count: number): Promise<void> => {
     console.error("Error updating app badge:", error);
   }
 };
+
+// Calculate badge count for correspondence games where it's user's turn
+// plus incoming correspondence match requests
+export function correspondenceBadgeCount(
+  correspondenceGames: ActiveGame[],
+  correspondenceSeeks: SoughtGame[],
+  userID: string,
+  username?: string,
+): number {
+  // Count games where it's user's turn
+  const yourTurnCount = correspondenceGames.filter(
+    (ag: ActiveGame) => {
+      if (ag.playerOnTurn === undefined) return false;
+      const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+      return playerIndex === ag.playerOnTurn;
+    },
+  ).length;
+
+  // Count incoming correspondence match requests (where user is the receiver)
+  const incomingMatchRequestCount = correspondenceSeeks.filter(
+    (sg: SoughtGame) => {
+      // Only count match requests (not open seeks)
+      if (!sg.receiverIsPermanent) return false;
+      if (username) {
+        // Only count where user is the receiver
+        return (
+          sg.receiver?.displayName === username ||
+          sg.receiver?.userId === userID
+        );
+      }
+      return true;
+    },
+  ).length;
+
+  return yourTurnCount + incomingMatchRequestCount;
+}
 
 export const showTurnNotification = (
   options: TurnNotificationOptions,

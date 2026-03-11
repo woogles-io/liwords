@@ -9,7 +9,10 @@ import React, {
 } from "react";
 
 import { LobbyState, LobbyReducer } from "./reducers/lobby_reducer";
-import { updateAppBadge } from "../utils/notifications";
+import {
+  updateAppBadge,
+  correspondenceBadgeCount,
+} from "../utils/notifications";
 import { Action } from "../actions/actions";
 import {
   GameState,
@@ -885,17 +888,13 @@ const RealStore = ({ children, ...props }: Props) => {
       updateAppBadge(0);
       return;
     }
-    const turnCount = lobbyContext.correspondenceGames.filter((ag) => {
-      if (ag.playerOnTurn === undefined) return false;
-      const playerIndex = ag.players.findIndex(
-        (p) => p.uuid === loginState.userID,
-      );
-      return playerIndex === ag.playerOnTurn;
-    }).length;
-    const requestCount = lobbyContext.correspondenceSeeks.filter(
-      (sg) => sg.receiverIsPermanent,
-    ).length;
-    updateAppBadge(turnCount + requestCount);
+    updateAppBadge(
+      correspondenceBadgeCount(
+        lobbyContext.correspondenceGames,
+        lobbyContext.correspondenceSeeks,
+        loginState.userID,
+      ),
+    );
   }, [
     lobbyContext.correspondenceGames,
     lobbyContext.correspondenceSeeks,
