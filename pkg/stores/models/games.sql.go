@@ -290,12 +290,12 @@ func (q *Queries) GetHistory(ctx context.Context, argUuid pgtype.Text) ([]byte, 
 	return history, err
 }
 
-const getRecentCorrespondenceGamesByUsername = `-- name: GetRecentCorrespondenceGamesByUsername :many
+const getRecentCorrespondenceGamesByUserId = `-- name: GetRecentCorrespondenceGamesByUserId :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at
   FROM game_players gp
   JOIN games g ON gp.game_uuid = g.uuid
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
+  WHERE gp.player_id = $1
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
     AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
   ORDER BY gp.updated_at DESC
@@ -312,12 +312,12 @@ LEFT JOIN leagues l ON g.league_id = l.uuid
 ORDER BY rgu.updated_at DESC
 `
 
-type GetRecentCorrespondenceGamesByUsernameParams struct {
-	Username string
+type GetRecentCorrespondenceGamesByUserIdParams struct {
+	UserID   int32
 	NumGames int32
 }
 
-type GetRecentCorrespondenceGamesByUsernameRow struct {
+type GetRecentCorrespondenceGamesByUserIdRow struct {
 	ID               int32
 	Uuid             pgtype.Text
 	Type             pgtype.Int4
@@ -339,15 +339,15 @@ type GetRecentCorrespondenceGamesByUsernameRow struct {
 	LeagueSlug       pgtype.Text
 }
 
-func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, arg GetRecentCorrespondenceGamesByUsernameParams) ([]GetRecentCorrespondenceGamesByUsernameRow, error) {
-	rows, err := q.db.Query(ctx, getRecentCorrespondenceGamesByUsername, arg.Username, arg.NumGames)
+func (q *Queries) GetRecentCorrespondenceGamesByUserId(ctx context.Context, arg GetRecentCorrespondenceGamesByUserIdParams) ([]GetRecentCorrespondenceGamesByUserIdRow, error) {
+	rows, err := q.db.Query(ctx, getRecentCorrespondenceGamesByUserId, arg.UserID, arg.NumGames)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetRecentCorrespondenceGamesByUsernameRow
+	var items []GetRecentCorrespondenceGamesByUserIdRow
 	for rows.Next() {
-		var i GetRecentCorrespondenceGamesByUsernameRow
+		var i GetRecentCorrespondenceGamesByUserIdRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
@@ -379,11 +379,11 @@ func (q *Queries) GetRecentCorrespondenceGamesByUsername(ctx context.Context, ar
 	return items, nil
 }
 
-const getRecentGamesByUsername = `-- name: GetRecentGamesByUsername :many
+const getRecentGamesByUserId = `-- name: GetRecentGamesByUserId :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at
   FROM game_players gp
-  WHERE gp.player_id = (SELECT id FROM users WHERE lower(username) = lower($1))
+  WHERE gp.player_id = $1
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
   ORDER BY gp.updated_at DESC
   LIMIT $3::integer
@@ -398,13 +398,13 @@ JOIN games g ON rgu.game_uuid = g.uuid
 ORDER BY rgu.updated_at DESC
 `
 
-type GetRecentGamesByUsernameParams struct {
-	Username    string
+type GetRecentGamesByUserIdParams struct {
+	UserID      int32
 	OffsetGames int32
 	NumGames    int32
 }
 
-type GetRecentGamesByUsernameRow struct {
+type GetRecentGamesByUserIdRow struct {
 	ID               int32
 	Uuid             pgtype.Text
 	Type             pgtype.Int4
@@ -425,15 +425,15 @@ type GetRecentGamesByUsernameRow struct {
 	LeagueDivisionID pgtype.UUID
 }
 
-func (q *Queries) GetRecentGamesByUsername(ctx context.Context, arg GetRecentGamesByUsernameParams) ([]GetRecentGamesByUsernameRow, error) {
-	rows, err := q.db.Query(ctx, getRecentGamesByUsername, arg.Username, arg.OffsetGames, arg.NumGames)
+func (q *Queries) GetRecentGamesByUserId(ctx context.Context, arg GetRecentGamesByUserIdParams) ([]GetRecentGamesByUserIdRow, error) {
+	rows, err := q.db.Query(ctx, getRecentGamesByUserId, arg.UserID, arg.OffsetGames, arg.NumGames)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetRecentGamesByUsernameRow
+	var items []GetRecentGamesByUserIdRow
 	for rows.Next() {
-		var i GetRecentGamesByUsernameRow
+		var i GetRecentGamesByUserIdRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
