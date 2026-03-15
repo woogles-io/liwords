@@ -45,6 +45,7 @@ export type Props = {
   tournamentID?: string;
   leagueID?: string;
   suppressDefault?: boolean;
+  playerInfoMap?: Map<string, string>;
 };
 
 // userid -> channel -> string
@@ -639,6 +640,11 @@ export const Chat = React.memo((props: Props) => {
               highlight={specialSender}
               highlightText={isReadOnly ? "Invigilator" : props.highlightText}
               sendMessage={sendNewMessage}
+              infoText={
+                ent.senderId
+                  ? props.playerInfoMap?.get(ent.senderId)
+                  : undefined
+              }
             />
           );
         }),
@@ -646,6 +652,7 @@ export const Chat = React.memo((props: Props) => {
       chatEntities,
       props.highlight,
       props.highlightText,
+      props.playerInfoMap,
       channel,
       sendNewMessage,
     ],

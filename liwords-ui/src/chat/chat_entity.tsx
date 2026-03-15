@@ -34,6 +34,7 @@ type EntityProps = {
   highlight: boolean;
   highlightText?: string;
   sendMessage?: (uuid: string, username: string) => void;
+  infoText?: string;
 };
 
 const deleteMessage = (
@@ -134,6 +135,7 @@ export const ChatEntity = (props: EntityProps) => {
                     includeFlag
                     omitSendMessage={!props.sendMessage}
                     sendMessage={props.sendMessage}
+                    infoText={props.infoText}
                     showDeleteMessage
                     showModTools
                     deleteMessage={() => {

@@ -341,6 +341,23 @@ export const LeaguePage = (props: Props) => {
     return ret;
   }, [registrants, standingsData]);
 
+  // Build a map of userId -> "Division X (rank Y)" for chat display.
+  const playerInfoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const registrant of registrants) {
+      const division = standingsData?.divisions?.[registrant.divisionIndex];
+      if (division) {
+        const standing = division.standings?.[registrant.standingIndex];
+        const label =
+          division.divisionName || `Division ${division.divisionNumber}`;
+        const text =
+          standing?.rank != null ? `${label} (rank ${standing.rank})` : label;
+        map.set(registrant.userId, text);
+      }
+    }
+    return map;
+  }, [registrants, standingsData]);
+
   // Sort on first use, pending approved UI.
   const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
 
@@ -544,6 +561,7 @@ export const LeaguePage = (props: Props) => {
                   defaultChannel={`chat.league.${league.uuid.replace(/-/g, "")}`}
                   defaultDescription={`League Chat: ${league.name}`}
                   leagueID={league.uuid}
+                  playerInfoMap={playerInfoMap}
                 />
               </div>
             )}
