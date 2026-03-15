@@ -133,8 +133,9 @@ type scratch struct {
 	inSet           []bool     // len n
 	candidates      []cand
 	belowCandidates []stayBelow
-	playerFlow      []int      // len n, reused in checkFeasibility
-	flow            *flowGraph // reusable flow graph
+	playerFlow      []int // len n, reused in checkFeasibility
+	candIdx         []int // len n, maps player index → candidate index (-1 if not)
+	flow            *flowGraph
 }
 
 func newScratch(n, totalGames int) *scratch {
@@ -147,6 +148,7 @@ func newScratch(n, totalGames int) *scratch {
 		effectivePts: make([]int, n),
 		inSet:        make([]bool, n),
 		playerFlow:   make([]int, n),
+		candIdx:      initSlice(n, -1),
 		flow:         newFlowGraph(maxNodes),
 	}
 }
@@ -275,7 +277,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow, sc.playerFlow)
+		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow, sc.playerFlow, sc.candIdx)
 		if feasible {
 			break
 		}
@@ -296,17 +298,22 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 // can simultaneously reach W points from non-P games.
 //
 // Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, playerFlow []int) (bool, int) {
+func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, playerFlow []int, candIdx []int) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
 	}
 
-	// Map candidate player indices → 0..k-1
-	candMap := make(map[int]int, k)
+	// Map candidate player indices → 0..k-1 via candIdx slice.
+	// Caller must clear candIdx to -1 for non-candidates.
 	for ci, c := range candidates {
-		candMap[c.idx] = ci
+		candIdx[c.idx] = ci
 	}
+	defer func() {
+		for _, c := range candidates {
+			candIdx[c.idx] = -1
+		}
+	}()
 
 	// Identify within-set games and external games for each candidate.
 	type withinGame struct {
@@ -316,8 +323,8 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 	externalCnt := make([]int, k) // external non-P games per candidate
 
 	for _, g := range nonPGames {
-		ciA, aIn := candMap[g.a]
-		ciB, bIn := candMap[g.b]
+		ciA, ciB := candIdx[g.a], candIdx[g.b]
+		aIn, bIn := ciA >= 0, ciB >= 0
 		if aIn && bIn {
 			withinGames = append(withinGames, withinGame{ciA, ciB})
 		} else if aIn {
@@ -525,7 +532,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 	}
 
 	for {
-		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, gi.nonPGames, sc.flow)
+		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, gi.nonPGames, sc.flow, sc.candIdx)
 		if feasible {
 			break
 		}
@@ -550,24 +557,27 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 // Uses max-flow: source → game nodes → player nodes → sink.
 // Each game produces 2 points. Each player can absorb at most their limit.
 // Feasible if max_flow = total within-set game points.
-func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flowGraph) (bool, int) {
+func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
 	}
 
-	candMap := make(map[int]int, k)
 	for ci, c := range candidates {
-		candMap[c.idx] = ci
+		candIdx[c.idx] = ci
 	}
+	defer func() {
+		for _, c := range candidates {
+			candIdx[c.idx] = -1
+		}
+	}()
 
 	// Find within-set games
 	type withinGame struct{ ci, cj int }
 	var withinGames []withinGame
 	for _, g := range nonPGames {
-		ciA, aIn := candMap[g.a]
-		ciB, bIn := candMap[g.b]
-		if aIn && bIn {
+		ciA, ciB := candIdx[g.a], candIdx[g.b]
+		if ciA >= 0 && ciB >= 0 {
 			withinGames = append(withinGames, withinGame{ciA, ciB})
 		}
 		// Games between set and non-set: set player can lose (get 0), so no constraint
@@ -728,6 +738,14 @@ func (g *flowGraph) maxflow(s, t int) int {
 		}
 	}
 	return total
+}
+
+func initSlice(n, val int) []int {
+	s := make([]int, n)
+	for i := range s {
+		s[i] = val
+	}
+	return s
 }
 
 func min(a, b int) int {
