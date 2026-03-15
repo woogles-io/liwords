@@ -513,13 +513,22 @@ func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flow
 		return true, -1
 	}
 
-	// Quick check: total absorb capacity
+	// Quick check: if total absorb capacity can't cover all game points,
+	// definitely infeasible — skip building the flow graph.
 	totalAbsorb := 0
 	for _, c := range candidates {
 		totalAbsorb += c.absorb
 	}
-	if totalAbsorb >= totalGamePoints {
-		// Might still fail due to graph structure; check via max-flow.
+	if totalAbsorb < totalGamePoints {
+		worst := -1
+		worstAbsorb := math.MaxInt
+		for ci := range candidates {
+			if candidates[ci].absorb < worstAbsorb {
+				worstAbsorb = candidates[ci].absorb
+				worst = ci
+			}
+		}
+		return false, worst
 	}
 
 	numGameNodes := len(withinGames)
