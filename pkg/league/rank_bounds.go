@@ -133,15 +133,19 @@ type scratch struct {
 	inSet           []bool     // len n
 	candidates      []cand
 	belowCandidates []stayBelow
+	flow            *flowGraph // reusable flow graph
 }
 
 func newScratch(n, totalGames int) *scratch {
+	// Max flow graph size: 2 (source/sink) + totalGames (game nodes) + n (player nodes)
+	maxNodes := 2 + totalGames + n
 	return &scratch{
 		gamesVsP:     make([]int, n),
 		nonPGamesCnt: make([]int, n),
 		nonPGames:    make([]gamePair, 0, totalGames),
 		effectivePts: make([]int, n),
 		inSet:        make([]bool, n),
+		flow:         newFlowGraph(maxNodes),
 	}
 }
 
@@ -269,7 +273,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W)
+		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow)
 		if feasible {
 			break
 		}
@@ -290,7 +294,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 // can simultaneously reach W points from non-P games.
 //
 // Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int) (bool, int) {
+func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
@@ -359,20 +363,20 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 	playerNode := func(ci int) int { return 2 + numGameNodes + ci }
 	gameNode := func(gi int) int { return 2 + gi }
 
-	g := newFlowGraph(numNodes)
+	fg.reset(numNodes)
 	for gi, wg := range withinGames {
 		gn := gameNode(gi)
-		g.addEdge(source, gn, 2)
-		g.addEdge(gn, playerNode(wg.ci), 2)
-		g.addEdge(gn, playerNode(wg.cj), 2)
+		fg.addEdge(source, gn, 2)
+		fg.addEdge(gn, playerNode(wg.ci), 2)
+		fg.addEdge(gn, playerNode(wg.cj), 2)
 	}
 	for ci := 0; ci < k; ci++ {
 		if adjustedDeficit[ci] > 0 {
-			g.addEdge(playerNode(ci), sink, adjustedDeficit[ci])
+			fg.addEdge(playerNode(ci), sink, adjustedDeficit[ci])
 		}
 	}
 
-	flow := g.maxflow(source, sink)
+	flow := fg.maxflow(source, sink)
 	if flow >= totalNeeded {
 		return true, -1
 	}
@@ -382,7 +386,7 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 	playerFlow := make([]int, k)
 	for ci := 0; ci < k; ci++ {
 		pn := playerNode(ci)
-		for _, e := range g.adj[pn] {
+		for _, e := range fg.adj[pn] {
 			if e.to == sink {
 				// Flow through this edge = original capacity - remaining capacity
 				playerFlow[ci] = adjustedDeficit[ci] - e.cap
@@ -515,7 +519,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 	}
 
 	for {
-		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, inSet, gi.nonPGames)
+		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, inSet, gi.nonPGames, sc.flow)
 		if feasible {
 			break
 		}
@@ -540,7 +544,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 // Uses max-flow: source → game nodes → player nodes → sink.
 // Each game produces 2 points. Each player can absorb at most their limit.
 // Feasible if max_flow = total within-set game points.
-func checkBestFeasibility(candidates []stayBelow, inSet map[int]bool, nonPGames []gamePair) (bool, int) {
+func checkBestFeasibility(candidates []stayBelow, inSet map[int]bool, nonPGames []gamePair, fg *flowGraph) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
@@ -583,18 +587,18 @@ func checkBestFeasibility(candidates []stayBelow, inSet map[int]bool, nonPGames 
 	playerNode := func(ci int) int { return 2 + numGameNodes + ci }
 	gameNode := func(gi int) int { return 2 + gi }
 
-	g := newFlowGraph(numNodes)
+	fg.reset(numNodes)
 	for gi, wg := range withinGames {
 		gn := gameNode(gi)
-		g.addEdge(source, gn, 2)
-		g.addEdge(gn, playerNode(wg.ci), 2)
-		g.addEdge(gn, playerNode(wg.cj), 2)
+		fg.addEdge(source, gn, 2)
+		fg.addEdge(gn, playerNode(wg.ci), 2)
+		fg.addEdge(gn, playerNode(wg.cj), 2)
 	}
 	for ci := 0; ci < k; ci++ {
-		g.addEdge(playerNode(ci), sink, candidates[ci].absorb)
+		fg.addEdge(playerNode(ci), sink, candidates[ci].absorb)
 	}
 
-	flow := g.maxflow(source, sink)
+	flow := fg.maxflow(source, sink)
 	if flow >= totalGamePoints {
 		return true, -1
 	}
@@ -624,10 +628,38 @@ type flowGraph struct {
 	adj   [][]flowEdge
 	level []int
 	iter  []int
+	queue []int
 }
 
 func newFlowGraph(n int) *flowGraph {
-	return &flowGraph{adj: make([][]flowEdge, n)}
+	return &flowGraph{
+		adj:   make([][]flowEdge, n),
+		level: make([]int, n),
+		iter:  make([]int, n),
+		queue: make([]int, 0, n),
+	}
+}
+
+// reset clears the graph for reuse with a potentially different size.
+func (g *flowGraph) reset(n int) {
+	if cap(g.adj) >= n {
+		g.adj = g.adj[:n]
+		for i := range g.adj {
+			g.adj[i] = g.adj[i][:0]
+		}
+	} else {
+		g.adj = make([][]flowEdge, n)
+	}
+	if cap(g.level) >= n {
+		g.level = g.level[:n]
+	} else {
+		g.level = make([]int, n)
+	}
+	if cap(g.iter) >= n {
+		g.iter = g.iter[:n]
+	} else {
+		g.iter = make([]int, n)
+	}
 }
 
 func (g *flowGraph) addEdge(from, to, cap int) {
@@ -637,20 +669,19 @@ func (g *flowGraph) addEdge(from, to, cap int) {
 
 // bfs builds the level graph from source s.
 func (g *flowGraph) bfs(s, t int) bool {
-	n := len(g.adj)
-	g.level = make([]int, n)
 	for i := range g.level {
 		g.level[i] = -1
 	}
 	g.level[s] = 0
-	queue := []int{s}
-	for len(queue) > 0 {
-		u := queue[0]
-		queue = queue[1:]
+	g.queue = g.queue[:0]
+	g.queue = append(g.queue, s)
+	for len(g.queue) > 0 {
+		u := g.queue[0]
+		g.queue = g.queue[1:]
 		for _, e := range g.adj[u] {
 			if g.level[e.to] < 0 && e.cap > 0 {
 				g.level[e.to] = g.level[u] + 1
-				queue = append(queue, e.to)
+				g.queue = append(g.queue, e.to)
 			}
 		}
 	}
@@ -679,7 +710,9 @@ func (g *flowGraph) dfs(u, t, pushed int) int {
 func (g *flowGraph) maxflow(s, t int) int {
 	total := 0
 	for g.bfs(s, t) {
-		g.iter = make([]int, len(g.adj))
+		for i := range g.iter {
+			g.iter[i] = 0
+		}
 		for {
 			f := g.dfs(s, t, math.MaxInt)
 			if f == 0 {
