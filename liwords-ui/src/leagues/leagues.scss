@@ -349,9 +349,11 @@
       color: #999;
     }
 
-    &:hover {
+    &:hover,
+    &:focus-visible {
       text-decoration: underline;
       color: #1890ff;
+      outline: none;
 
       @include colorModed {
         color: #40a9ff;
