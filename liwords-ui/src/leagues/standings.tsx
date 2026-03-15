@@ -216,6 +216,54 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     nextSeasonRegistrations?.registrations?.map((x) => x.userId),
   );
 
+  // Compute division-wide totals for header tooltips
+  const divTotals = division.standings.reduce(
+    (acc, s) => {
+      acc.gamesPlayed += s.gamesPlayed;
+      acc.totalScore += s.totalScore;
+      acc.totalOpponentScore += s.totalOpponentScore;
+      acc.totalBingos += s.totalBingos;
+      acc.totalOpponentBingos += s.totalOpponentBingos;
+      acc.totalTurns += s.totalTurns;
+      acc.totalTilesPlayed += s.totalTilesPlayed;
+      acc.totalOpponentTilesPlayed += s.totalOpponentTilesPlayed;
+      acc.blanksPlayed += s.blanksPlayed;
+      acc.wins += s.wins;
+      acc.draws += s.draws;
+      acc.timeouts += s.timeouts;
+      acc.totalMistakeIndex += s.avgMistakeIndex * s.gamesAnalyzed;
+      acc.gamesAnalyzed += s.gamesAnalyzed;
+      if (s.gamesPlayed > 0) {
+        acc.highGame = Math.max(acc.highGame, s.highGame);
+        acc.highTurn = Math.max(acc.highTurn, s.highTurn);
+      }
+      return acc;
+    },
+    {
+      gamesPlayed: 0,
+      totalScore: 0,
+      totalOpponentScore: 0,
+      totalBingos: 0,
+      totalOpponentBingos: 0,
+      totalTurns: 0,
+      totalTilesPlayed: 0,
+      totalOpponentTilesPlayed: 0,
+      blanksPlayed: 0,
+      wins: 0,
+      draws: 0,
+      timeouts: 0,
+      totalMistakeIndex: 0,
+      gamesAnalyzed: 0,
+      highGame: 0,
+      highTurn: 0,
+    },
+  );
+
+  const divAvg = (total: number, decimals = 1) =>
+    divTotals.gamesPlayed > 0
+      ? (total / divTotals.gamesPlayed).toFixed(decimals)
+      : "—";
+
   const dataSource = division.standings.map((standing) => ({
     key: standing.userId,
     userId: standing.userId,
@@ -400,7 +448,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         `${record.gamesPlayed}${record.gamesRemaining ? `/${record.gamesPlayed + record.gamesRemaining}` : ""}`,
     },
     {
-      title: <ColHeader title="ScAV" tooltip="Average score per game" />,
+      title: (
+        <ColHeader
+          title="ScAV"
+          tooltip={`Average score per game (div avg: ${divAvg(divTotals.totalScore)})`}
+        />
+      ),
       key: "avgScore",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -417,7 +470,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     },
     {
       title: (
-        <ColHeader title="OScAV" tooltip="Average opponent score per game" />
+        <ColHeader
+          title="OScAV"
+          tooltip={`Average opponent score per game (div avg: ${divAvg(divTotals.totalOpponentScore)})`}
+        />
       ),
       key: "avgOppScore",
       width: 55,
@@ -436,7 +492,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.totalOpponentScore, record.gamesPlayed),
     },
     {
-      title: <ColHeader title="BAV" tooltip="Average bingos per game" />,
+      title: (
+        <ColHeader
+          title="BAV"
+          tooltip={`Average bingos per game (div avg: ${divAvg(divTotals.totalBingos, 2)})`}
+        />
+      ),
       key: "avgBingos",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -453,7 +514,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     },
     {
       title: (
-        <ColHeader title="OBAV" tooltip="Average opponent bingos per game" />
+        <ColHeader
+          title="OBAV"
+          tooltip={`Average opponent bingos per game (div avg: ${divAvg(divTotals.totalOpponentBingos, 2)})`}
+        />
       ),
       key: "avgOppBingos",
       width: 50,
@@ -472,7 +536,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.totalOpponentBingos, record.gamesPlayed, 2),
     },
     {
-      title: <ColHeader title="TAV" tooltip="Turn average (points per turn)" />,
+      title: (
+        <ColHeader
+          title="TAV"
+          tooltip={`Turn average (points per turn) (div avg: ${divTotals.totalTurns > 0 ? (divTotals.totalScore / divTotals.totalTurns).toFixed(1) : "—"})`}
+        />
+      ),
       key: "turnAvg",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -491,7 +560,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           : "-",
     },
     {
-      title: <ColHeader title="HG" tooltip="High game score" />,
+      title: (
+        <ColHeader
+          title="HG"
+          tooltip={`High game score (div high: ${divTotals.highGame ?? "—"})`}
+        />
+      ),
       key: "highGame",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highGame - b.highGame,
@@ -503,7 +577,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => (record.gamesPlayed > 0 ? record.highGame : "-"),
     },
     {
-      title: <ColHeader title="HT" tooltip="High turn score" />,
+      title: (
+        <ColHeader
+          title="HT"
+          tooltip={`High turn score (div high: ${divTotals.highTurn ?? "—"})`}
+        />
+      ),
       key: "highTurn",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => a.highTurn - b.highTurn,
@@ -515,7 +594,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => (record.gamesPlayed > 0 ? record.highTurn : "-"),
     },
     {
-      title: <ColHeader title="TiAV" tooltip="Average tiles played per game" />,
+      title: (
+        <ColHeader
+          title="TiAV"
+          tooltip={`Average tiles played per game (div avg: ${divAvg(divTotals.totalTilesPlayed)})`}
+        />
+      ),
       key: "avgTiles",
       width: 45,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -534,7 +618,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="OTiAV"
-          tooltip="Average opponent tiles played per game"
+          tooltip={`Average opponent tiles played per game (div avg: ${divAvg(divTotals.totalOpponentTilesPlayed)})`}
         />
       ),
       key: "avgOppTiles",
@@ -555,7 +639,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     },
     {
       title: (
-        <ColHeader title="#TAV" tooltip="Average number of turns per game" />
+        <ColHeader
+          title="#TAV"
+          tooltip={`Average number of turns per game (div avg: ${divAvg(divTotals.totalTurns)})`}
+        />
       ),
       key: "avgTurns",
       width: 50,
@@ -572,7 +659,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.totalTurns, record.gamesPlayed),
     },
     {
-      title: <ColHeader title="?AV" tooltip="Average blanks played per game" />,
+      title: (
+        <ColHeader
+          title="?AV"
+          tooltip={`Average blanks played per game (div avg: ${divAvg(divTotals.blanksPlayed, 2)})`}
+        />
+      ),
       key: "avgBlanks",
       width: 40,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -588,7 +680,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
-      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
+      title: (
+        <ColHeader
+          title="PPG"
+          tooltip={`Points per completed game (div avg: ${divAvg(divTotals.wins * 2 + divTotals.draws, 2)})`}
+        />
+      ),
       key: "ppg",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -612,7 +709,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="MiAV"
-          tooltip="Average Mistake Index from BestBot analysis (lower is better; — if no analysis)"
+          tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
         />
       ),
       key: "avgMistakeIndex",
@@ -632,7 +729,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "—"),
     },
     {
-      title: <ColHeader title="#TO" tooltip="Number of timeouts" />,
+      title: (
+        <ColHeader
+          title="#TO"
+          tooltip={`Number of timeouts (div total: ${divTotals.timeouts})`}
+        />
+      ),
       dataIndex: "timeouts",
       key: "timeouts",
       width: 40,
