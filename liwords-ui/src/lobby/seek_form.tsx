@@ -46,6 +46,7 @@ import { create } from "@bufbuild/protobuf";
 import BotSelector from "./bot_selector";
 import { useQuery } from "@connectrpc/connect-query";
 import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import {
   getSelfRoles,
   getSubscriptionCriteria,
@@ -201,15 +202,8 @@ export const SeekForm = (props: Props) => {
     { enabled: !!props.vsBot },
   );
 
-  const enableAllLexicons = React.useMemo(
-    () => localStorage.getItem("enableAllLexicons") === "true",
-    [],
-  );
-
-  const enableCSW24X = React.useMemo(
-    () => localStorage.getItem("enableCSW24X") === "true",
-    [],
-  );
+  const [enableAllLexicons] = useLocalStorageBool("enableAllLexicons");
+  const [enableCSW24X] = useLocalStorageBool("enableCSW24X");
 
   let storageKey = "lastSeekForm";
   if (props.vsBot) {
