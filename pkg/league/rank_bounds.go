@@ -67,13 +67,16 @@ func CalculatePossibleRanks(
 		}
 	}
 
-	sc := newScratch(n, len(games))
+	// Reusable state: flow graph (adj slices grow and stabilize) and
+	// candIdx (avoids map allocation in inner loops).
+	fg := newFlowGraph(2 + len(games) + n)
+	candIdx := initSlice(n, -1)
+
 	results := make([]RankBounds, n)
 	for p := 0; p < n; p++ {
 		if standings[p].gamesRemaining > 0 {
 			bestPts := standings[p].points + standings[p].gamesRemaining*2
-			// Min ceiling excluding P
-			pCeil := standings[p].points + standings[p].gamesRemaining*2
+			pCeil := bestPts
 			minCeilExP := minCeil1
 			if pCeil == minCeil1 {
 				minCeilExP = minCeil2
@@ -83,7 +86,11 @@ func CalculatePossibleRanks(
 				continue
 			}
 		}
-		results[p] = rankBoundsForPlayer(p, standings, games, sc)
+		gi := decomposeGames(p, n, games)
+		results[p] = RankBounds{
+			BestRank:  bestRankForPlayer(p, standings, gi, fg, candIdx),
+			WorstRank: worstRankForPlayer(p, standings, gi, fg, candIdx),
+		}
 	}
 	return results
 }
@@ -117,92 +124,45 @@ func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
 }
 
 // playerGameInfo holds precomputed game decomposition for a specific player P.
-// Slices are reused across players via scratch to avoid repeated allocation.
 type playerGameInfo struct {
 	gamesVsP     []int     // how many remaining games each player has vs P
 	nonPGames    []gamePair // games not involving P
 	nonPGamesCnt []int     // remaining non-P games per player
 }
 
-// scratch holds pre-allocated buffers reused across per-player computations.
-type scratch struct {
-	gamesVsP        []int      // len n
-	nonPGamesCnt    []int      // len n
-	nonPGames       []gamePair // cap totalGames
-	effectivePts    []int      // len n
-	inSet           []bool     // len n
-	candidates      []cand
-	belowCandidates []stayBelow
-	playerFlow      []int // len n, reused in checkFeasibility
-	candIdx         []int // len n, maps player index → candidate index (-1 if not)
-	flow            *flowGraph
-}
-
-func newScratch(n, totalGames int) *scratch {
-	// Max flow graph size: 2 (source/sink) + totalGames (game nodes) + n (player nodes)
-	maxNodes := 2 + totalGames + n
-	return &scratch{
+func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
+	gi := playerGameInfo{
 		gamesVsP:     make([]int, n),
 		nonPGamesCnt: make([]int, n),
-		nonPGames:    make([]gamePair, 0, totalGames),
-		effectivePts: make([]int, n),
-		inSet:        make([]bool, n),
-		playerFlow:   make([]int, n),
-		candIdx:      initSlice(n, -1),
-		flow:         newFlowGraph(maxNodes),
 	}
-}
-
-func (s *scratch) decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
-	// Clear reused slices
-	for i := range s.gamesVsP {
-		s.gamesVsP[i] = 0
-		s.nonPGamesCnt[i] = 0
-	}
-	s.nonPGames = s.nonPGames[:0]
-
 	for _, g := range allGames {
 		if g.a == p {
-			s.gamesVsP[g.b]++
+			gi.gamesVsP[g.b]++
 		} else if g.b == p {
-			s.gamesVsP[g.a]++
+			gi.gamesVsP[g.a]++
 		} else {
-			s.nonPGames = append(s.nonPGames, g)
+			gi.nonPGames = append(gi.nonPGames, g)
 		}
 	}
-	for _, g := range s.nonPGames {
-		s.nonPGamesCnt[g.a]++
-		s.nonPGamesCnt[g.b]++
+	for _, g := range gi.nonPGames {
+		gi.nonPGamesCnt[g.a]++
+		gi.nonPGamesCnt[g.b]++
 	}
-	return playerGameInfo{
-		gamesVsP:     s.gamesVsP,
-		nonPGames:    s.nonPGames,
-		nonPGamesCnt: s.nonPGamesCnt,
-	}
-}
-
-// rankBoundsForPlayer computes both best and worst rank for player P,
-// sharing the game decomposition between the two computations.
-func rankBoundsForPlayer(p int, standings []standingInfo, allGames []gamePair, sc *scratch) RankBounds {
-	n := len(standings)
-	gi := sc.decomposeGames(p, n, allGames)
-	return RankBounds{
-		BestRank:  bestRankForPlayer(p, standings, gi, sc),
-		WorstRank: worstRankForPlayer(p, standings, gi, sc),
-	}
+	return gi
 }
 
 // ---------------------------------------------------------------------------
 // worst rank: maximize the number of players finishing above P
 // ---------------------------------------------------------------------------
 
-func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *scratch) int {
+func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
 	n := len(standings)
 	W := standings[p].points // P loses all remaining → keeps current points
 
 	// After P loses all, each opponent of P gets +2 per game vs P.
+	effectivePts := make([]int, n)
 	for i := range standings {
-		sc.effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
+		effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
 	}
 
 	// Build candidate list: players that can individually surpass P.
@@ -217,13 +177,13 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 	// spread improvement. The only case where Q is forced into a pure draw
 	// (no spread change) is deficit = 1 with exactly 1 remaining game.
 	pHasGames := standings[p].gamesRemaining > 0
-	sc.candidates = sc.candidates[:0]
+	var candidates []cand
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
 		}
 
-		tieDeficit := W - sc.effectivePts[i] // points needed to match P
+		tieDeficit := W - effectivePts[i] // points needed to match P
 		deficit := 0
 
 		if pHasGames {
@@ -255,57 +215,53 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 		}
 
 		if deficit <= gi.nonPGamesCnt[i]*2 {
-			sc.candidates = append(sc.candidates, cand{i, deficit})
+			candidates = append(candidates, cand{i, deficit})
 		}
 	}
 
-	if len(sc.candidates) <= 1 {
-		return 1 + len(sc.candidates) // 0 or 1 candidates: trivial
+	if len(candidates) <= 1 {
+		return 1 + len(candidates) // 0 or 1 candidates: trivial
 	}
 
 	// Sort candidates by deficit ascending (cheapest to satisfy first).
-	sort.Slice(sc.candidates, func(i, j int) bool {
-		return sc.candidates[i].deficit < sc.candidates[j].deficit
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].deficit < candidates[j].deficit
 	})
 
 	// Iteratively check feasibility via max-flow and remove infeasible candidates.
-	for i := range sc.inSet {
-		sc.inSet[i] = false
-	}
-	for _, c := range sc.candidates {
-		sc.inSet[c.idx] = true
+	inSet := make([]bool, n)
+	for _, c := range candidates {
+		inSet[c.idx] = true
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow, sc.playerFlow, sc.candIdx)
+		feasible, infeasibleIdx := checkFeasibility(candidates, inSet, effectivePts, gi.nonPGames, W, fg, candIdx)
 		if feasible {
 			break
 		}
-		// Remove the infeasible candidate with the highest deficit
 		if infeasibleIdx >= 0 {
-			sc.inSet[sc.candidates[infeasibleIdx].idx] = false
-			sc.candidates = append(sc.candidates[:infeasibleIdx], sc.candidates[infeasibleIdx+1:]...)
+			inSet[candidates[infeasibleIdx].idx] = false
+			candidates = append(candidates[:infeasibleIdx], candidates[infeasibleIdx+1:]...)
 		}
-		if len(sc.candidates) == 0 {
+		if len(candidates) == 0 {
 			break
 		}
 	}
 
-	return 1 + len(sc.candidates)
+	return 1 + len(candidates)
 }
 
 // checkFeasibility uses max-flow to determine whether all candidates in the set
 // can simultaneously reach W points from non-P games.
 //
 // Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, playerFlow []int, candIdx []int) (bool, int) {
+func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, candIdx []int) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
 	}
 
 	// Map candidate player indices → 0..k-1 via candIdx slice.
-	// Caller must clear candIdx to -1 for non-candidates.
 	for ci, c := range candidates {
 		candIdx[c.idx] = ci
 	}
@@ -320,7 +276,7 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 		ci, cj int // indices into candidates slice
 	}
 	var withinGames []withinGame
-	externalCnt := make([]int, k) // external non-P games per candidate
+	externalCnt := make([]int, k)
 
 	for _, g := range nonPGames {
 		ciA, ciB := candIdx[g.a], candIdx[g.b]
@@ -349,7 +305,6 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 
 	// Quick check: total points from within-set games
 	if len(withinGames)*2 < totalNeeded {
-		// Not enough points from within-set games, remove most expensive
 		worst := -1
 		worstDef := -1
 		for ci := range candidates {
@@ -391,15 +346,11 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 	}
 
 	// Not feasible. Find the candidate with the largest remaining deficit.
-	// Check how much flow each player actually received.
-	for ci := 0; ci < k; ci++ {
-		playerFlow[ci] = 0
-	}
+	playerFlow := make([]int, k)
 	for ci := 0; ci < k; ci++ {
 		pn := playerNode(ci)
 		for _, e := range fg.adj[pn] {
 			if e.to == sink {
-				// Flow through this edge = original capacity - remaining capacity
 				playerFlow[ci] = adjustedDeficit[ci] - e.cap
 				break
 			}
@@ -432,7 +383,7 @@ type stayBelow struct {
 // best rank: minimize the number of players forced above P
 // ---------------------------------------------------------------------------
 
-func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *scratch) int {
+func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
 	n := len(standings)
 	B := standings[p].points + standings[p].gamesRemaining*2 // P wins all remaining
 
@@ -443,12 +394,6 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 	pHasGames := standings[p].gamesRemaining > 0
 
 	// Count guaranteed above: Q's worst case (lose all remaining) still beats P.
-	// Q is guaranteed above if:
-	//   Q.worstPoints > B, OR
-	//   Q.worstPoints == B AND Q always beats P on spread at B points
-	// For the spread check: Q losing all remaining means Q's spread decreases,
-	// so we can only guarantee the spread tiebreak if Q has no remaining games
-	// (spread is fixed) and it's better than P's.
 	guaranteedAbove := 0
 	for i := 0; i < n; i++ {
 		if i == p {
@@ -471,7 +416,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 	// (absorb = B - Q.points - 1). This matters for draws: a draw gives each
 	// player 1 point with 0 spread change, so a player reaching B via a draw
 	// keeps their existing spread.
-	sc.belowCandidates = sc.belowCandidates[:0]
+	var belowCandidates []stayBelow
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
@@ -502,52 +447,39 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 
 		maxBelow := B - standings[i].points
 		if qBeatsOnSpreadAtB && maxBelow > 0 {
-			// Q at B would beat P on spread, so Q must stay at B-1 or below.
 			maxBelow--
 		}
 		if maxBelow < 0 {
-			continue // Q is at B and beats P on spread → guaranteed above (handled above)
+			continue // Q is at B and beats P on spread → guaranteed above
 		}
 
 		absorb := maxBelow
 		if absorb >= gi.nonPGamesCnt[i]*2 {
 			absorb = gi.nonPGamesCnt[i] * 2
 		}
-		sc.belowCandidates = append(sc.belowCandidates, stayBelow{i, absorb})
+		belowCandidates = append(belowCandidates, stayBelow{i, absorb})
 	}
 
-	// Sort by absorb capacity ascending (tightest constraint first — these are
-	// the ones most likely to be forced above B).
-	sort.Slice(sc.belowCandidates, func(i, j int) bool {
-		return sc.belowCandidates[i].absorb < sc.belowCandidates[j].absorb
+	// Sort by absorb capacity ascending (tightest constraint first).
+	sort.Slice(belowCandidates, func(i, j int) bool {
+		return belowCandidates[i].absorb < belowCandidates[j].absorb
 	})
 
-	// Iteratively check if all belowCandidates can stay at ≤ B via max-flow.
-	// If not, remove the one with the least absorb capacity (most constrained).
-	for i := range sc.inSet {
-		sc.inSet[i] = false
-	}
-	for _, c := range sc.belowCandidates {
-		sc.inSet[c.idx] = true
-	}
-
+	// Iteratively check if all belowCandidates can stay below P via max-flow.
 	for {
-		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, gi.nonPGames, sc.flow, sc.candIdx)
+		feasible, removeIdx := checkBestFeasibility(belowCandidates, gi.nonPGames, fg, candIdx)
 		if feasible {
 			break
 		}
 		if removeIdx >= 0 {
-			sc.inSet[sc.belowCandidates[removeIdx].idx] = false
-			sc.belowCandidates = append(sc.belowCandidates[:removeIdx], sc.belowCandidates[removeIdx+1:]...)
+			belowCandidates = append(belowCandidates[:removeIdx], belowCandidates[removeIdx+1:]...)
 		}
-		if len(sc.belowCandidates) == 0 {
+		if len(belowCandidates) == 0 {
 			break
 		}
 	}
 
-	// forced above = (n-1) - len(belowCandidates) who stayed, accounting for guaranteed above
-	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove) - len(sc.belowCandidates))
-
+	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove) - len(belowCandidates))
 	return max(1, 1+minForcedAbove)
 }
 
@@ -580,7 +512,6 @@ func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flow
 		if ciA >= 0 && ciB >= 0 {
 			withinGames = append(withinGames, withinGame{ciA, ciB})
 		}
-		// Games between set and non-set: set player can lose (get 0), so no constraint
 	}
 
 	totalGamePoints := len(withinGames) * 2
@@ -594,7 +525,7 @@ func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flow
 		totalAbsorb += c.absorb
 	}
 	if totalAbsorb >= totalGamePoints {
-		// Check via max-flow for graph structure constraints
+		// Might still fail due to graph structure; check via max-flow.
 	}
 
 	numGameNodes := len(withinGames)
@@ -619,8 +550,7 @@ func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flow
 		return true, -1
 	}
 
-	// Not feasible. Remove the player with the smallest absorb capacity
-	// (the biggest bottleneck).
+	// Not feasible. Remove the player with the smallest absorb capacity.
 	worst := -1
 	worstAbsorb := math.MaxInt
 	for ci := range candidates {
