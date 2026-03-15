@@ -117,31 +117,54 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 		nonPGamesCnt[g.b]++
 	}
 
-	// Build candidate list: players that can individually reach ≥ W points.
-	// Reaching W suffices because P has worst-case spread (−∞ if P has games
-	// remaining, or finite spread if not), so tying on points is enough to be
-	// above P when P has games remaining.
+	// Build candidate list: players that can individually surpass P.
+	//
+	// When Q ties P on points, spread decides. Whether Q can beat P on
+	// spread depends on how Q accumulates points:
+	//   - A win gives Q 2 points AND improves spread (potentially a lot).
+	//   - A draw gives Q 1 point with 0 spread change.
+	//
+	// If Q needs an odd number of points to reach W, at least one draw is
+	// required. A draw doesn't improve spread, so if Q.spread < P.spread,
+	// Q can't beat P on spread via the draw path. Q must exceed W on
+	// points instead (deficit = W + 1 - effectivePts, which is even, so
+	// achievable entirely via wins).
 	pHasGames := standings[p].gamesRemaining > 0
 	var candidates []cand
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
 		}
-		maxPts := effectivePts[i] + nonPGamesCnt[i]*2
-		if maxPts > W {
-			candidates = append(candidates, cand{i, max(0, W-effectivePts[i])})
-		} else if maxPts == W {
-			// Can only tie on points. Need better spread.
-			if pHasGames {
-				// P has −∞ spread → any Q at W points is above P
-				candidates = append(candidates, cand{i, max(0, W - effectivePts[i])})
-			} else if nonPGamesCnt[i] > 0 {
-				// Q has remaining games → unbounded best spread
-				candidates = append(candidates, cand{i, max(0, W - effectivePts[i])})
-			} else if effectivePts[i] == W && standings[i].spread > standings[p].spread {
-				// Both finished, same points, Q has better spread
-				candidates = append(candidates, cand{i, 0})
+
+		tieDeficit := W - effectivePts[i] // points needed to match P
+		deficit := 0
+
+		if pHasGames {
+			// P has −∞ worst spread → any Q at W points is above P
+			deficit = max(0, tieDeficit)
+		} else if nonPGamesCnt[i] == 0 {
+			// Q has no remaining games. Spread is fixed.
+			if standings[i].spread > standings[p].spread {
+				deficit = max(0, tieDeficit) // tie suffices
+			} else {
+				deficit = max(0, tieDeficit+1) // need strict points advantage
 			}
+		} else if standings[i].spread >= standings[p].spread {
+			// Q has remaining games and spread ≥ P's. Draws preserve it.
+			deficit = max(0, tieDeficit)
+		} else if tieDeficit > 0 && tieDeficit%2 == 0 {
+			// Q has remaining games, spread < P's, but even deficit means
+			// Q can reach W entirely via wins (which improve spread).
+			deficit = max(0, tieDeficit)
+		} else {
+			// Q has remaining games, spread < P's, odd deficit means at
+			// least one draw required (no spread improvement). Q must
+			// exceed W on points instead.
+			deficit = max(0, tieDeficit+1)
+		}
+
+		if deficit <= nonPGamesCnt[i]*2 {
+			candidates = append(candidates, cand{i, deficit})
 		}
 	}
 
@@ -338,26 +361,35 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 
 	pHasGames := standings[p].gamesRemaining > 0
 
-	// Count guaranteed above (worst case > B even when Q loses game to P)
+	// Count guaranteed above: Q's worst case (lose all remaining) still beats P.
+	// Q is guaranteed above if:
+	//   Q.worstPoints > B, OR
+	//   Q.worstPoints == B AND Q always beats P on spread at B points
+	// For the spread check: Q losing all remaining means Q's spread decreases,
+	// so we can only guarantee the spread tiebreak if Q has no remaining games
+	// (spread is fixed) and it's better than P's.
 	guaranteedAbove := 0
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
 		}
-		qWorst := standings[i].points // Q loses all (including vs P)
+		qWorst := standings[i].points
 		if qWorst > B {
 			guaranteedAbove++
-		} else if qWorst == B && !pHasGames {
-			qHasGames := nonPGamesCnt[i] > 0
-			if !qHasGames && standings[i].spread > standings[p].spread {
-				guaranteedAbove++
-			}
+		} else if qWorst == B && !pHasGames && nonPGamesCnt[i] == 0 &&
+			standings[i].spread > standings[p].spread {
+			guaranteedAbove++
 		}
 	}
 
-	// Build the "stay below B" set: all non-P players who CAN stay at ≤ B.
-	// Use max-flow to check if within-set game points can be absorbed without
-	// anyone exceeding B. Players who can't be kept below B are forced above.
+	// Build the "stay below P" set. A player Q is below P when:
+	//   Q.points < B, OR
+	//   Q.points == B AND Q has worse spread than P (or P has +∞ spread)
+	//
+	// If Q would beat P on spread at B points, Q must stay strictly below B
+	// (absorb = B - Q.points - 1). This matters for draws: a draw gives each
+	// player 1 point with 0 spread change, so a player reaching B via a draw
+	// keeps their existing spread.
 	var belowCandidates []stayBelow
 	for i := 0; i < n; i++ {
 		if i == p {
@@ -366,14 +398,39 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 		if standings[i].points > B {
 			continue // already guaranteed above
 		}
-		absorb := B - standings[i].points
-		if absorb >= nonPGamesCnt[i]*2 {
-			// Q can absorb all possible points and still be ≤ B. Always stays below.
-			// No constraint from this player.
-			belowCandidates = append(belowCandidates, stayBelow{i, nonPGamesCnt[i] * 2})
+
+		// Determine whether Q at exactly B points would be above P.
+		// If so, Q must stay strictly below B to be "below P".
+		qBeatsOnSpreadAtB := false
+		if pHasGames {
+			// P has +∞ best spread → Q can never beat P on spread at equal points.
+			qBeatsOnSpreadAtB = false
+		} else if nonPGamesCnt[i] > 0 {
+			// Q has remaining games → Q's spread is uncertain. In the best case
+			// for P, Q's spread could end up below P's. But in the worst case
+			// (for best rank computation), Q could also draw their way to B with
+			// unchanged spread. If Q's current spread already beats P, a draw
+			// preserves that. So Q COULD beat P on spread at B.
+			qBeatsOnSpreadAtB = standings[i].spread >= standings[p].spread
 		} else {
-			belowCandidates = append(belowCandidates, stayBelow{i, absorb})
+			// Both finished. Spread is fixed.
+			qBeatsOnSpreadAtB = standings[i].spread > standings[p].spread
 		}
+
+		maxBelow := B - standings[i].points
+		if qBeatsOnSpreadAtB && maxBelow > 0 {
+			// Q at B would beat P on spread, so Q must stay at B-1 or below.
+			maxBelow--
+		}
+		if maxBelow < 0 {
+			continue // Q is at B and beats P on spread → guaranteed above (handled above)
+		}
+
+		absorb := maxBelow
+		if absorb >= nonPGamesCnt[i]*2 {
+			absorb = nonPGamesCnt[i] * 2
+		}
+		belowCandidates = append(belowCandidates, stayBelow{i, absorb})
 	}
 
 	// Sort by absorb capacity ascending (tightest constraint first — these are

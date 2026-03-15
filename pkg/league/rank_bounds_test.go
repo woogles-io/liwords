@@ -151,3 +151,52 @@ func TestBestRankTightening(t *testing.T) {
 		t.Errorf("P best rank: got %d, want 4", bounds[0].BestRank)
 	}
 }
+
+func TestSpreadTiebreakInBestRank(t *testing.T) {
+	// P1: 15 pts, +80 spread, 0 games remaining
+	// P2: 14 pts, +200 spread, 1 game remaining (vs P3)
+	// P3: 14 pts, +100 spread, 1 game remaining (vs P2)
+	//
+	// If P2 wins: P2=16 > P1=15 > P3=14. P1 is 2nd.
+	// If P3 wins: P3=16 > P1=15 > P2=14. P1 is 2nd.
+	// If draw: P2=15/+200, P3=15/+100, P1=15/+80. P1 is 3rd.
+	//
+	// Best rank: 2. Worst rank: 3.
+	standings := []standingInfo{
+		si(1, 15, 80, 0),
+		si(2, 14, 200, 1),
+		si(3, 14, 100, 1),
+	}
+	games := []unfinishedGame{uf(2, 3)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 2 {
+		t.Errorf("P1 best rank: got %d, want 2", bounds[0].BestRank)
+	}
+	if bounds[0].WorstRank != 3 {
+		t.Errorf("P1 worst rank: got %d, want 3", bounds[0].WorstRank)
+	}
+}
+
+func TestSpreadTiebreakBelowP(t *testing.T) {
+	// Same setup but P1 has +300 spread (beats both on spread).
+	// Draw: P2=15/+200, P3=15/+100, P1=15/+300. P1 is 1st.
+	// P2 wins: P2=16, P1=15, P3=14. P1 is 2nd.
+	// P3 wins: P3=16, P1=15, P2=14. P1 is 2nd.
+	//
+	// Best rank: 1. Worst rank: 2.
+	standings := []standingInfo{
+		si(1, 15, 300, 0),
+		si(2, 14, 200, 1),
+		si(3, 14, 100, 1),
+	}
+	games := []unfinishedGame{uf(2, 3)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 1 {
+		t.Errorf("P1 best rank: got %d, want 1", bounds[0].BestRank)
+	}
+	if bounds[0].WorstRank != 2 {
+		t.Errorf("P1 worst rank: got %d, want 2", bounds[0].WorstRank)
+	}
+}
