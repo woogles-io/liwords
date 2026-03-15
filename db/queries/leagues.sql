@@ -232,6 +232,27 @@ WHERE lr.user_id = $1
   AND (@league_id::uuid IS NULL OR ls.league_id = @league_id)
 ORDER BY ls.season_number DESC;
 
+-- name: GetLeagueRoster :many
+-- Get all players across all seasons of a league with their division and standings.
+-- LEFT JOIN on divisions so players registered but not yet placed are included.
+SELECT
+    u.uuid as user_uuid,
+    u.username,
+    ls.season_number,
+    COALESCE(ld.division_number, 0) as division_number,
+    COALESCE(lst.wins, 0) as wins,
+    COALESCE(lst.losses, 0) as losses,
+    COALESCE(lst.draws, 0) as draws,
+    COALESCE(lst.spread, 0) as spread,
+    COALESCE(lst.result, 0) as result
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_seasons ls ON lr.season_id = ls.uuid
+LEFT JOIN league_divisions ld ON lr.division_id = ld.uuid
+LEFT JOIN league_standings lst ON lst.division_id = ld.uuid AND lst.user_id = lr.user_id
+WHERE ls.league_id = $1
+ORDER BY u.username, ls.season_number;
+
 -- Standings operations
 
 -- name: UpsertStanding :exec

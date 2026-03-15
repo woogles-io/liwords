@@ -118,6 +118,13 @@ export const getPlayerSeasonGames = LeagueService.method.getPlayerSeasonGames;
 export const inviteUserToLeagues = LeagueService.method.inviteUserToLeagues;
 
 /**
+ * Roster: all players across all seasons, with division and standings
+ *
+ * @generated from rpc league_service.LeagueService.GetLeagueRoster
+ */
+export const getLeagueRoster = LeagueService.method.getLeagueRoster;
+
+/**
  * Statistics (Phase 8)
  *
  * @generated from rpc league_service.LeagueService.GetLeagueStatistics

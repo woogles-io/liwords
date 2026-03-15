@@ -43,6 +43,9 @@ service LeagueService {
       returns (GetPlayerSeasonGamesResponse);
   rpc InviteUserToLeagues(InviteUserRequest) returns (InviteUserResponse);
 
+  // Roster: all players across all seasons, with division and standings
+  rpc GetLeagueRoster(LeagueRequest) returns (LeagueRosterResponse);
+
   // Statistics (Phase 8)
   rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
 
@@ -161,6 +164,31 @@ message SeasonSummary {
   string league_name = 3;
   int32 division_number = 4;
   ipc.LeaguePlayerStanding standing = 5;
+}
+
+message LeagueRosterResponse {
+  // All players who have ever played in this league.
+  repeated LeagueRosterPlayer players = 1;
+  // Season numbers present in the league, ascending.
+  repeated int32 season_numbers = 2;
+}
+
+message LeagueRosterPlayer {
+  string user_id = 1;
+  string username = 2;
+  // One entry per season the player participated in.
+  repeated LeagueRosterSeason seasons = 3;
+}
+
+message LeagueRosterSeason {
+  int32 season_number = 1;
+  int32 division_number = 2;
+  int32 rank = 3;      // Final rank in division (0 if season incomplete)
+  int32 wins = 4;
+  int32 losses = 5;
+  int32 draws = 6;
+  int32 spread = 7;
+  ipc.StandingResult result = 8; // Promoted, relegated, stayed, champion
 }
 
 message LeagueStatisticsResponse {
