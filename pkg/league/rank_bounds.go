@@ -222,8 +222,8 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int 
 		}
 	}
 
-	if len(candidates) == 0 {
-		return 1
+	if len(candidates) <= 1 {
+		return 1 + len(candidates) // 0 or 1 candidates: trivial
 	}
 
 	// Sort candidates by deficit ascending (cheapest to satisfy first).
