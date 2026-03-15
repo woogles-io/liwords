@@ -218,6 +218,9 @@ func (m *mockLeagueStore) CountDivisionGamesTotal(ctx context.Context, divisionI
 func (m *mockLeagueStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error) {
 	return nil, nil
 }
+func (m *mockLeagueStore) GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error) {
+	return nil, nil
+}
 func (m *mockLeagueStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
 	return nil
 }

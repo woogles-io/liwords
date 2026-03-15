@@ -1062,6 +1062,28 @@ func (ls *LeagueService) GetDivisionStandings(
 		}
 	}
 
+	// Compute possible rank bounds using actual remaining pairings
+	unfinished, err := ls.store.GetUnfinishedDivisionGames(ctx, divisionID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
+	}
+	standingInfos := make([]standingInfo, len(standings))
+	for i, s := range standings {
+		standingInfos[i] = StandingInfoFromRow(
+			s.UserID, s.Wins.Int32, s.Draws.Int32,
+			s.Spread.Int32, s.GamesRemaining.Int32,
+		)
+	}
+	ufGames := make([]unfinishedGame, len(unfinished))
+	for i, uf := range unfinished {
+		ufGames[i] = UnfinishedGameFromRow(uf.Player0ID, uf.Player1ID)
+	}
+	rankBounds := CalculatePossibleRanks(standingInfos, ufGames)
+	for i := range protoStandings {
+		protoStandings[i].BestRank = int32(rankBounds[i].BestRank)
+		protoStandings[i].WorstRank = int32(rankBounds[i].WorstRank)
+	}
+
 	// Build division proto
 	divisionName := ""
 	if division.DivisionName.Valid {
@@ -1220,6 +1242,28 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				AvgMistakeIndex:          avgMistakeIndex,
 				GamesAnalyzed:            standing.GamesAnalyzed.Int32,
 			}
+		}
+
+		// Compute possible rank bounds using actual remaining pairings
+		unfinished, err := ls.store.GetUnfinishedDivisionGames(ctx, divisionUUID)
+		if err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
+		}
+		standingInfos := make([]standingInfo, len(standings))
+		for j, s := range standings {
+			standingInfos[j] = StandingInfoFromRow(
+				s.UserID, s.Wins.Int32, s.Draws.Int32,
+				s.Spread.Int32, s.GamesRemaining.Int32,
+			)
+		}
+		ufGames := make([]unfinishedGame, len(unfinished))
+		for j, uf := range unfinished {
+			ufGames[j] = UnfinishedGameFromRow(uf.Player0ID, uf.Player1ID)
+		}
+		rankBounds := CalculatePossibleRanks(standingInfos, ufGames)
+		for j := range protoStandings {
+			protoStandings[j].BestRank = int32(rankBounds[j].BestRank)
+			protoStandings[j].WorstRank = int32(rankBounds[j].WorstRank)
 		}
 
 		divisionName := ""

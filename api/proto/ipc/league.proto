@@ -104,6 +104,8 @@ message LeaguePlayerStanding {
     PlacementStatus placement_status = 22;  // How player was placed in this division (NEW, PROMOTED, etc.)
     double avg_mistake_index = 23;          // Average mistake index from BestBot analysis (0 if no analysis)
     int32 games_analyzed = 24;              // Number of games with completed BestBot analysis
+    int32 best_rank = 25;                   // Best possible finishing rank (computed from remaining pairings)
+    int32 worst_rank = 26;                  // Worst possible finishing rank (computed from remaining pairings)
 }
 
 enum StandingResult {
