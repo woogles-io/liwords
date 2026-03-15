@@ -555,7 +555,7 @@ func checkBestFeasibility(candidates []stayBelow, inSet map[int]bool, nonPGames 
 }
 
 // ---------------------------------------------------------------------------
-// Edmonds-Karp max-flow
+// Dinic's max-flow (O(V²E), better than Edmonds-Karp's O(VE²) for dense graphs)
 // ---------------------------------------------------------------------------
 
 type flowEdge struct {
@@ -563,7 +563,9 @@ type flowEdge struct {
 }
 
 type flowGraph struct {
-	adj [][]flowEdge
+	adj   [][]flowEdge
+	level []int
+	iter  []int
 }
 
 func newFlowGraph(n int) *flowGraph {
@@ -575,47 +577,58 @@ func (g *flowGraph) addEdge(from, to, cap int) {
 	g.adj[to] = append(g.adj[to], flowEdge{from, len(g.adj[from]) - 1, 0})
 }
 
-func (g *flowGraph) maxflow(s, t int) int {
+// bfs builds the level graph from source s.
+func (g *flowGraph) bfs(s, t int) bool {
 	n := len(g.adj)
+	g.level = make([]int, n)
+	for i := range g.level {
+		g.level[i] = -1
+	}
+	g.level[s] = 0
+	queue := []int{s}
+	for len(queue) > 0 {
+		u := queue[0]
+		queue = queue[1:]
+		for _, e := range g.adj[u] {
+			if g.level[e.to] < 0 && e.cap > 0 {
+				g.level[e.to] = g.level[u] + 1
+				queue = append(queue, e.to)
+			}
+		}
+	}
+	return g.level[t] >= 0
+}
+
+// dfs sends flow along blocking paths in the level graph.
+func (g *flowGraph) dfs(u, t, pushed int) int {
+	if u == t {
+		return pushed
+	}
+	for ; g.iter[u] < len(g.adj[u]); g.iter[u]++ {
+		e := &g.adj[u][g.iter[u]]
+		if g.level[e.to] == g.level[u]+1 && e.cap > 0 {
+			d := g.dfs(e.to, t, min(pushed, e.cap))
+			if d > 0 {
+				e.cap -= d
+				g.adj[e.to][e.rev].cap += d
+				return d
+			}
+		}
+	}
+	return 0
+}
+
+func (g *flowGraph) maxflow(s, t int) int {
 	total := 0
-	parent := make([]int, n)
-	parentEdge := make([]int, n)
-	for {
-		// BFS to find augmenting path
-		for i := range parent {
-			parent[i] = -1
-		}
-		parent[s] = s
-		queue := []int{s}
-		for len(queue) > 0 && parent[t] == -1 {
-			u := queue[0]
-			queue = queue[1:]
-			for i, e := range g.adj[u] {
-				if parent[e.to] == -1 && e.cap > 0 {
-					parent[e.to] = u
-					parentEdge[e.to] = i
-					queue = append(queue, e.to)
-				}
+	for g.bfs(s, t) {
+		g.iter = make([]int, len(g.adj))
+		for {
+			f := g.dfs(s, t, math.MaxInt)
+			if f == 0 {
+				break
 			}
+			total += f
 		}
-		if parent[t] == -1 {
-			break
-		}
-		// Find bottleneck
-		pathFlow := math.MaxInt
-		for v := t; v != s; v = parent[v] {
-			c := g.adj[parent[v]][parentEdge[v]].cap
-			if c < pathFlow {
-				pathFlow = c
-			}
-		}
-		// Update residual graph
-		for v := t; v != s; v = parent[v] {
-			e := &g.adj[parent[v]][parentEdge[v]]
-			e.cap -= pathFlow
-			g.adj[v][e.rev].cap += pathFlow
-		}
-		total += pathFlow
 	}
 	return total
 }
