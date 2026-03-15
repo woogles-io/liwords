@@ -152,13 +152,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   // may need to useMemo all these O(n^2) computations.
   const possibleResults = division.standings.map((standing) => {
     const gr = standing.gamesRemaining;
+    const currentPoints = standing.wins * 2 + standing.draws;
     // worst case is to lose all remaining games by -Infinity.
-    const worstPoints = standing.wins * 2 + standing.draws;
+    const worstPoints = currentPoints;
     const worstSpread = gr > 0 ? -Infinity : standing.spread;
     // best case is to win all remaining games by Infinity.
-    const bestPoints = worstPoints + gr * 2;
+    const bestPoints = currentPoints + gr * 2;
     const bestSpread = gr > 0 ? Infinity : standing.spread;
-    return { bestPoints, bestSpread, worstPoints, worstSpread };
+    return { currentPoints, bestPoints, bestSpread, worstPoints, worstSpread };
   });
 
   // worse results < better results, i.e. reverse of rank.
@@ -170,10 +171,15 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return 0;
   };
 
-  const possibleRanks = division.standings.map((_, idx) => {
-    // best rank is 1 + number of others
-    // whose worst is strictly better than our best.
-    const bestRank =
+  // Total remaining games constrains how many players can simultaneously
+  // improve. Each game produces exactly one winner, so the total points
+  // from remaining games is fixed at totalRemGames * 2.
+  const totalRemGames =
+    division.standings.reduce((s, st) => s + st.gamesRemaining, 0) / 2;
+
+  const possibleRanks = division.standings.map((standing, idx) => {
+    // --- Independent best rank: 1 + others whose worst > our best ---
+    const independentBestRank =
       1 +
       division.standings.reduce(
         (acc, _, idxOppo) =>
@@ -188,9 +194,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             : acc,
         0,
       );
-    // worst rank is 1 + number of others
-    // whose best is better than or equal to our worst.
-    const worstRank =
+
+    // --- Independent worst rank: 1 + others whose best >= our worst ---
+    const independentWorstRank =
       1 +
       division.standings.reduce(
         (acc, _, idxOppo) =>
@@ -205,6 +211,83 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             : acc,
         0,
       );
+
+    // --- Tighten worst rank using total points budget ---
+    // If P loses all remaining, non-P players share totalRemGames * 2
+    // total points. Not all of them can simultaneously reach P's level.
+    const W = possibleResults[idx].worstPoints;
+    const surpassCosts: number[] = [];
+    for (let i = 0; i < division.standings.length; i++) {
+      if (i === idx) continue;
+      // Only consider players that can individually surpass P.
+      if (
+        cmpResults(
+          possibleResults[i].bestPoints,
+          possibleResults[i].bestSpread,
+          possibleResults[idx].worstPoints,
+          possibleResults[idx].worstSpread,
+        ) >= 0
+      ) {
+        // Minimum additional points Q needs to reach or surpass P.
+        // Tying on points suffices since Q can beat P on spread
+        // (P has -Infinity spread when P has remaining games, or Q
+        // may already have better spread when both are finished).
+        const cost = Math.max(0, W - possibleResults[i].currentPoints);
+        surpassCosts.push(cost);
+      }
+    }
+    surpassCosts.sort((a, b) => a - b);
+    let budgetLeft = totalRemGames * 2;
+    let budgetWorstCount = 0;
+    for (const cost of surpassCosts) {
+      if (budgetLeft >= cost) {
+        budgetLeft -= cost;
+        budgetWorstCount++;
+      } else {
+        break;
+      }
+    }
+    const worstRank = Math.min(independentWorstRank, 1 + budgetWorstCount);
+
+    // --- Tighten best rank using total points distribution ---
+    // If P wins all remaining, the points distributed among others is
+    // (totalRemGames - P.gamesRemaining) * 2. If this exceeds what
+    // others can absorb at or below P's best score, some are forced above.
+    const B = possibleResults[idx].bestPoints;
+    const pointsToOthers = (totalRemGames - standing.gamesRemaining) * 2;
+    let safeCapacity = 0;
+    const aboveCapacities: number[] = [];
+    let guaranteedAbove = 0;
+    for (let i = 0; i < division.standings.length; i++) {
+      if (i === idx) continue;
+      const cp = possibleResults[i].currentPoints;
+      const gr = division.standings[i].gamesRemaining;
+      if (cp > B) {
+        // Already above P even at worst - all their capacity is safe
+        guaranteedAbove++;
+        safeCapacity += gr * 2;
+      } else {
+        // Space this player can absorb at or below B
+        safeCapacity += Math.min(B - cp, gr * 2);
+        // If they CAN exceed B, track their above-B capacity
+        if (cp + gr * 2 > B) {
+          aboveCapacities.push(cp + gr * 2 - B);
+        }
+      }
+    }
+    let minForcedAbove = guaranteedAbove;
+    if (pointsToOthers > safeCapacity) {
+      let excess = pointsToOthers - safeCapacity;
+      // Push players with largest above-B capacity first to minimize count
+      aboveCapacities.sort((a, b) => b - a);
+      for (const cap of aboveCapacities) {
+        minForcedAbove++;
+        excess -= cap;
+        if (excess <= 0) break;
+      }
+    }
+    const bestRank = Math.max(independentBestRank, 1 + minForcedAbove);
+
     return { bestRank, worstRank };
   });
 
