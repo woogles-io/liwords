@@ -133,6 +133,7 @@ type scratch struct {
 	inSet           []bool     // len n
 	candidates      []cand
 	belowCandidates []stayBelow
+	playerFlow      []int      // len n, reused in checkFeasibility
 	flow            *flowGraph // reusable flow graph
 }
 
@@ -145,6 +146,7 @@ func newScratch(n, totalGames int) *scratch {
 		nonPGames:    make([]gamePair, 0, totalGames),
 		effectivePts: make([]int, n),
 		inSet:        make([]bool, n),
+		playerFlow:   make([]int, n),
 		flow:         newFlowGraph(maxNodes),
 	}
 }
@@ -273,7 +275,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow)
+		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W, sc.flow, sc.playerFlow)
 		if feasible {
 			break
 		}
@@ -294,7 +296,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *
 // can simultaneously reach W points from non-P games.
 //
 // Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph) (bool, int) {
+func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, playerFlow []int) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
@@ -383,7 +385,9 @@ func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPG
 
 	// Not feasible. Find the candidate with the largest remaining deficit.
 	// Check how much flow each player actually received.
-	playerFlow := make([]int, k)
+	for ci := 0; ci < k; ci++ {
+		playerFlow[ci] = 0
+	}
 	for ci := 0; ci < k; ci++ {
 		pn := playerNode(ci)
 		for _, e := range fg.adj[pn] {
