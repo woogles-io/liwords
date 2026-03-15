@@ -67,6 +67,7 @@ func CalculatePossibleRanks(
 		}
 	}
 
+	sc := newScratch(n, len(games))
 	results := make([]RankBounds, n)
 	for p := 0; p < n; p++ {
 		if standings[p].gamesRemaining > 0 {
@@ -82,7 +83,7 @@ func CalculatePossibleRanks(
 				continue
 			}
 		}
-		results[p] = rankBoundsForPlayer(p, standings, games)
+		results[p] = rankBoundsForPlayer(p, standings, games, sc)
 	}
 	return results
 }
@@ -116,41 +117,70 @@ func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
 }
 
 // playerGameInfo holds precomputed game decomposition for a specific player P.
+// Slices are reused across players via scratch to avoid repeated allocation.
 type playerGameInfo struct {
 	gamesVsP     []int     // how many remaining games each player has vs P
 	nonPGames    []gamePair // games not involving P
 	nonPGamesCnt []int     // remaining non-P games per player
 }
 
-func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
-	info := playerGameInfo{
+// scratch holds pre-allocated buffers reused across per-player computations.
+type scratch struct {
+	gamesVsP        []int      // len n
+	nonPGamesCnt    []int      // len n
+	nonPGames       []gamePair // cap totalGames
+	effectivePts    []int      // len n
+	inSet           []bool     // len n
+	candidates      []cand
+	belowCandidates []stayBelow
+}
+
+func newScratch(n, totalGames int) *scratch {
+	return &scratch{
 		gamesVsP:     make([]int, n),
 		nonPGamesCnt: make([]int, n),
+		nonPGames:    make([]gamePair, 0, totalGames),
+		effectivePts: make([]int, n),
+		inSet:        make([]bool, n),
 	}
+}
+
+func (s *scratch) decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
+	// Clear reused slices
+	for i := range s.gamesVsP {
+		s.gamesVsP[i] = 0
+		s.nonPGamesCnt[i] = 0
+	}
+	s.nonPGames = s.nonPGames[:0]
+
 	for _, g := range allGames {
 		if g.a == p {
-			info.gamesVsP[g.b]++
+			s.gamesVsP[g.b]++
 		} else if g.b == p {
-			info.gamesVsP[g.a]++
+			s.gamesVsP[g.a]++
 		} else {
-			info.nonPGames = append(info.nonPGames, g)
+			s.nonPGames = append(s.nonPGames, g)
 		}
 	}
-	for _, g := range info.nonPGames {
-		info.nonPGamesCnt[g.a]++
-		info.nonPGamesCnt[g.b]++
+	for _, g := range s.nonPGames {
+		s.nonPGamesCnt[g.a]++
+		s.nonPGamesCnt[g.b]++
 	}
-	return info
+	return playerGameInfo{
+		gamesVsP:     s.gamesVsP,
+		nonPGames:    s.nonPGames,
+		nonPGamesCnt: s.nonPGamesCnt,
+	}
 }
 
 // rankBoundsForPlayer computes both best and worst rank for player P,
 // sharing the game decomposition between the two computations.
-func rankBoundsForPlayer(p int, standings []standingInfo, allGames []gamePair) RankBounds {
+func rankBoundsForPlayer(p int, standings []standingInfo, allGames []gamePair, sc *scratch) RankBounds {
 	n := len(standings)
-	gi := decomposeGames(p, n, allGames)
+	gi := sc.decomposeGames(p, n, allGames)
 	return RankBounds{
-		BestRank:  bestRankForPlayer(p, standings, gi),
-		WorstRank: worstRankForPlayer(p, standings, gi),
+		BestRank:  bestRankForPlayer(p, standings, gi, sc),
+		WorstRank: worstRankForPlayer(p, standings, gi, sc),
 	}
 }
 
@@ -158,14 +188,13 @@ func rankBoundsForPlayer(p int, standings []standingInfo, allGames []gamePair) R
 // worst rank: maximize the number of players finishing above P
 // ---------------------------------------------------------------------------
 
-func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
+func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *scratch) int {
 	n := len(standings)
 	W := standings[p].points // P loses all remaining → keeps current points
 
 	// After P loses all, each opponent of P gets +2 per game vs P.
-	effectivePts := make([]int, n)
 	for i := range standings {
-		effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
+		sc.effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
 	}
 
 	// Build candidate list: players that can individually surpass P.
@@ -180,13 +209,13 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int 
 	// spread improvement. The only case where Q is forced into a pure draw
 	// (no spread change) is deficit = 1 with exactly 1 remaining game.
 	pHasGames := standings[p].gamesRemaining > 0
-	var candidates []cand
+	sc.candidates = sc.candidates[:0]
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
 		}
 
-		tieDeficit := W - effectivePts[i] // points needed to match P
+		tieDeficit := W - sc.effectivePts[i] // points needed to match P
 		deficit := 0
 
 		if pHasGames {
@@ -218,41 +247,43 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int 
 		}
 
 		if deficit <= gi.nonPGamesCnt[i]*2 {
-			candidates = append(candidates, cand{i, deficit})
+			sc.candidates = append(sc.candidates, cand{i, deficit})
 		}
 	}
 
-	if len(candidates) <= 1 {
-		return 1 + len(candidates) // 0 or 1 candidates: trivial
+	if len(sc.candidates) <= 1 {
+		return 1 + len(sc.candidates) // 0 or 1 candidates: trivial
 	}
 
 	// Sort candidates by deficit ascending (cheapest to satisfy first).
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].deficit < candidates[j].deficit
+	sort.Slice(sc.candidates, func(i, j int) bool {
+		return sc.candidates[i].deficit < sc.candidates[j].deficit
 	})
 
 	// Iteratively check feasibility via max-flow and remove infeasible candidates.
-	inSet := make([]bool, n)
-	for _, c := range candidates {
-		inSet[c.idx] = true
+	for i := range sc.inSet {
+		sc.inSet[i] = false
+	}
+	for _, c := range sc.candidates {
+		sc.inSet[c.idx] = true
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(candidates, inSet, effectivePts, gi.nonPGames, W)
+		feasible, infeasibleIdx := checkFeasibility(sc.candidates, sc.inSet, sc.effectivePts, gi.nonPGames, W)
 		if feasible {
 			break
 		}
 		// Remove the infeasible candidate with the highest deficit
 		if infeasibleIdx >= 0 {
-			inSet[candidates[infeasibleIdx].idx] = false
-			candidates = append(candidates[:infeasibleIdx], candidates[infeasibleIdx+1:]...)
+			sc.inSet[sc.candidates[infeasibleIdx].idx] = false
+			sc.candidates = append(sc.candidates[:infeasibleIdx], sc.candidates[infeasibleIdx+1:]...)
 		}
-		if len(candidates) == 0 {
+		if len(sc.candidates) == 0 {
 			break
 		}
 	}
 
-	return 1 + len(candidates)
+	return 1 + len(sc.candidates)
 }
 
 // checkFeasibility uses max-flow to determine whether all candidates in the set
@@ -386,7 +417,7 @@ type stayBelow struct {
 // best rank: minimize the number of players forced above P
 // ---------------------------------------------------------------------------
 
-func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
+func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *scratch) int {
 	n := len(standings)
 	B := standings[p].points + standings[p].gamesRemaining*2 // P wins all remaining
 
@@ -425,7 +456,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
 	// (absorb = B - Q.points - 1). This matters for draws: a draw gives each
 	// player 1 point with 0 spread change, so a player reaching B via a draw
 	// keeps their existing spread.
-	var belowCandidates []stayBelow
+	sc.belowCandidates = sc.belowCandidates[:0]
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
@@ -467,44 +498,38 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
 		if absorb >= gi.nonPGamesCnt[i]*2 {
 			absorb = gi.nonPGamesCnt[i] * 2
 		}
-		belowCandidates = append(belowCandidates, stayBelow{i, absorb})
+		sc.belowCandidates = append(sc.belowCandidates, stayBelow{i, absorb})
 	}
 
 	// Sort by absorb capacity ascending (tightest constraint first — these are
 	// the ones most likely to be forced above B).
-	sort.Slice(belowCandidates, func(i, j int) bool {
-		return belowCandidates[i].absorb < belowCandidates[j].absorb
+	sort.Slice(sc.belowCandidates, func(i, j int) bool {
+		return sc.belowCandidates[i].absorb < sc.belowCandidates[j].absorb
 	})
 
 	// Iteratively check if all belowCandidates can stay at ≤ B via max-flow.
 	// If not, remove the one with the least absorb capacity (most constrained).
-	inSet := make(map[int]bool, len(belowCandidates))
-	for _, c := range belowCandidates {
+	inSet := make(map[int]bool, len(sc.belowCandidates))
+	for _, c := range sc.belowCandidates {
 		inSet[c.idx] = true
 	}
 
 	for {
-		feasible, removeIdx := checkBestFeasibility(belowCandidates, inSet, gi.nonPGames)
+		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, inSet, gi.nonPGames)
 		if feasible {
 			break
 		}
 		if removeIdx >= 0 {
-			inSet[belowCandidates[removeIdx].idx] = false
-			belowCandidates = append(belowCandidates[:removeIdx], belowCandidates[removeIdx+1:]...)
+			inSet[sc.belowCandidates[removeIdx].idx] = false
+			sc.belowCandidates = append(sc.belowCandidates[:removeIdx], sc.belowCandidates[removeIdx+1:]...)
 		}
-		if len(belowCandidates) == 0 {
+		if len(sc.belowCandidates) == 0 {
 			break
 		}
 	}
 
-	forcedAbove := 0
-	for i := 0; i < n; i++ {
-		if i == p && !inSet[i] && i != p {
-			forcedAbove++
-		}
-	}
-	// Actually: forced above = (n-1) - len(belowCandidates) who stayed, accounting for guaranteed above
-	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove) - len(belowCandidates))
+	// forced above = (n-1) - len(belowCandidates) who stayed, accounting for guaranteed above
+	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove) - len(sc.belowCandidates))
 
 	return max(1, 1+minForcedAbove)
 }
