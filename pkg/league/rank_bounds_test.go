@@ -200,3 +200,49 @@ func TestSpreadTiebreakBelowP(t *testing.T) {
 		t.Errorf("P1 worst rank: got %d, want 2", bounds[0].WorstRank)
 	}
 }
+
+func TestEqualPointsAndSpread(t *testing.T) {
+	// Two players with identical points and spread, both finished.
+	// Username tiebreak is arbitrary, so both could be in either position.
+	// Each should show a range of 1-2, not a fixed rank.
+	standings := []standingInfo{
+		si(1, 10, 50, 0),
+		si(2, 10, 50, 0),
+	}
+	bounds := CalculatePossibleRanks(standings, nil)
+
+	// Player 0: could be 1st or 2nd
+	if bounds[0].BestRank != 1 {
+		t.Errorf("P0 best rank: got %d, want 1", bounds[0].BestRank)
+	}
+	if bounds[0].WorstRank != 2 {
+		t.Errorf("P0 worst rank: got %d, want 2", bounds[0].WorstRank)
+	}
+	// Player 1: same range
+	if bounds[1].BestRank != 1 {
+		t.Errorf("P1 best rank: got %d, want 1", bounds[1].BestRank)
+	}
+	if bounds[1].WorstRank != 2 {
+		t.Errorf("P1 worst rank: got %d, want 2", bounds[1].WorstRank)
+	}
+}
+
+func TestEqualPointsAndSpreadThreePlayers(t *testing.T) {
+	// Three players, all finished with same points and spread.
+	// Each should show range 1-3.
+	standings := []standingInfo{
+		si(1, 10, 50, 0),
+		si(2, 10, 50, 0),
+		si(3, 10, 50, 0),
+	}
+	bounds := CalculatePossibleRanks(standings, nil)
+
+	for i := 0; i < 3; i++ {
+		if bounds[i].BestRank != 1 {
+			t.Errorf("P%d best rank: got %d, want 1", i, bounds[i].BestRank)
+		}
+		if bounds[i].WorstRank != 3 {
+			t.Errorf("P%d worst rank: got %d, want 3", i, bounds[i].WorstRank)
+		}
+	}
+}

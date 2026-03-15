@@ -143,7 +143,9 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 			deficit = max(0, tieDeficit)
 		} else if nonPGamesCnt[i] == 0 {
 			// Q has no remaining games. Spread is fixed.
-			if standings[i].spread > standings[p].spread {
+			// Equal spread: Q could be ranked either side of P (username
+			// tiebreak is arbitrary), so Q is a valid candidate.
+			if standings[i].spread >= standings[p].spread {
 				deficit = max(0, tieDeficit) // tie suffices
 			} else {
 				deficit = max(0, tieDeficit+1) // need strict points advantage
@@ -414,8 +416,9 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 			// preserves that. So Q COULD beat P on spread at B.
 			qBeatsOnSpreadAtB = standings[i].spread >= standings[p].spread
 		} else {
-			// Both finished. Spread is fixed.
-			qBeatsOnSpreadAtB = standings[i].spread > standings[p].spread
+			// Both finished. Spread is fixed. Equal spread: Q could be
+			// ranked either side of P, so treat as potentially above.
+			qBeatsOnSpreadAtB = standings[i].spread >= standings[p].spread
 		}
 
 		maxBelow := B - standings[i].points
