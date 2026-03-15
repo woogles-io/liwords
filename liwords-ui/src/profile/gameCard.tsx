@@ -22,7 +22,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
   const { game, userID, hasAnalysis } = props;
   const special = ["Unwoogler", "AnotherUnwoogler", userID];
   const {
-    createdAt,
+    lastUpdate,
     gameId,
     players,
     winner,
@@ -31,7 +31,7 @@ export const GameCard = React.memo((props: GameCardProps) => {
     gameEndReason,
     timeControlName,
   } = game;
-  const whenMoment = moment(createdAt ? timestampDate(createdAt) : "");
+  const whenMoment = moment(lastUpdate ? timestampDate(lastUpdate) : "");
   const when = (
     <Tooltip title={whenMoment.format("LLL")}>{whenMoment.fromNow()}</Tooltip>
   );
