@@ -49,17 +49,6 @@ func CalculatePossibleRanks(
 		}
 	}
 
-	// Quick check: if all players' point ranges overlap and the total
-	// points budget can cover all deficits, every player can finish at
-	// any rank. Skip the expensive per-player max-flow computations.
-	if n > 1 && canAllReachAnyRank(standings, len(games)) {
-		results := make([]RankBounds, n)
-		for i := range results {
-			results[i] = RankBounds{1, n}
-		}
-		return results
-	}
-
 	// Precompute for per-player fast path: players with remaining games
 	// whose point range clearly spans [1, n] can skip max-flow.
 	maxFloor := 0 // highest current points (worst case for leader)
@@ -97,43 +86,6 @@ func CalculatePossibleRanks(
 		results[p].BestRank = bestRankForPlayer(p, standings, games)
 	}
 	return results
-}
-
-// canAllReachAnyRank returns true when we can guarantee every player's range
-// is [1, n] without running max-flow. Conditions:
-//  1. All point ranges [currentPoints, currentPoints+gamesRemaining*2] overlap
-//     (maxFloor ≤ minCeil), so no player is guaranteed above another by points.
-//  2. Every player has remaining games (spreads are uncertain).
-//  3. The total points budget from remaining games covers the total deficit
-//     (sum of points each player needs to reach the highest current score).
-//
-// Condition 3 is necessary but not strictly sufficient (the game graph could
-// theoretically prevent it), but in practice with multiple remaining games
-// per player the flow is always feasible when the budget is sufficient.
-func canAllReachAnyRank(standings []standingInfo, totalRemGames int) bool {
-	maxFloor := 0
-	minCeil := math.MaxInt
-	for _, s := range standings {
-		if s.points > maxFloor {
-			maxFloor = s.points
-		}
-		ceil := s.points + s.gamesRemaining*2
-		if ceil < minCeil {
-			minCeil = ceil
-		}
-		if s.gamesRemaining == 0 {
-			return false // finished player has fixed spread → can't skip
-		}
-	}
-	if maxFloor > minCeil {
-		return false // some player can't reach another's floor
-	}
-	// Check budget: can all players simultaneously reach maxFloor?
-	totalDeficit := 0
-	for _, s := range standings {
-		totalDeficit += maxFloor - s.points
-	}
-	return totalRemGames*2 >= totalDeficit
 }
 
 // standingInfo is the subset of standing data needed for rank calculation.
