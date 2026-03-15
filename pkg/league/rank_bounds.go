@@ -82,8 +82,7 @@ func CalculatePossibleRanks(
 				continue
 			}
 		}
-		results[p].WorstRank = worstRankForPlayer(p, standings, games)
-		results[p].BestRank = bestRankForPlayer(p, standings, games)
+		results[p] = rankBoundsForPlayer(p, standings, games)
 	}
 	return results
 }
@@ -116,36 +115,57 @@ func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
 	return unfinishedGame{player0ID: p0.Int32, player1ID: p1.Int32}
 }
 
+// playerGameInfo holds precomputed game decomposition for a specific player P.
+type playerGameInfo struct {
+	gamesVsP     []int     // how many remaining games each player has vs P
+	nonPGames    []gamePair // games not involving P
+	nonPGamesCnt []int     // remaining non-P games per player
+}
+
+func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
+	info := playerGameInfo{
+		gamesVsP:     make([]int, n),
+		nonPGamesCnt: make([]int, n),
+	}
+	for _, g := range allGames {
+		if g.a == p {
+			info.gamesVsP[g.b]++
+		} else if g.b == p {
+			info.gamesVsP[g.a]++
+		} else {
+			info.nonPGames = append(info.nonPGames, g)
+		}
+	}
+	for _, g := range info.nonPGames {
+		info.nonPGamesCnt[g.a]++
+		info.nonPGamesCnt[g.b]++
+	}
+	return info
+}
+
+// rankBoundsForPlayer computes both best and worst rank for player P,
+// sharing the game decomposition between the two computations.
+func rankBoundsForPlayer(p int, standings []standingInfo, allGames []gamePair) RankBounds {
+	n := len(standings)
+	gi := decomposeGames(p, n, allGames)
+	return RankBounds{
+		BestRank:  bestRankForPlayer(p, standings, gi),
+		WorstRank: worstRankForPlayer(p, standings, gi),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // worst rank: maximize the number of players finishing above P
 // ---------------------------------------------------------------------------
 
-func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int {
+func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
 	n := len(standings)
 	W := standings[p].points // P loses all remaining → keeps current points
 
-	// Separate games into P-games and non-P games.
-	gamesVsP := make([]int, n) // how many remaining games each player has vs P
-	var nonPGames []gamePair
-	for _, g := range allGames {
-		if g.a == p {
-			gamesVsP[g.b]++
-		} else if g.b == p {
-			gamesVsP[g.a]++
-		} else {
-			nonPGames = append(nonPGames, g)
-		}
-	}
-
 	// After P loses all, each opponent of P gets +2 per game vs P.
 	effectivePts := make([]int, n)
-	nonPGamesCnt := make([]int, n) // remaining non-P games per player
 	for i := range standings {
-		effectivePts[i] = standings[i].points + gamesVsP[i]*2
-	}
-	for _, g := range nonPGames {
-		nonPGamesCnt[g.a]++
-		nonPGamesCnt[g.b]++
+		effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
 	}
 
 	// Build candidate list: players that can individually surpass P.
@@ -172,7 +192,7 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 		if pHasGames {
 			// P has −∞ worst spread → any Q at W points is above P
 			deficit = max(0, tieDeficit)
-		} else if nonPGamesCnt[i] == 0 {
+		} else if gi.nonPGamesCnt[i] == 0 {
 			// Q has no remaining games. Spread is fixed.
 			// Equal spread: Q could be ranked either side of P (username
 			// tiebreak is arbitrary), so Q is a valid candidate.
@@ -185,7 +205,7 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 			// Q has remaining games and spread ≥ P's. Draws preserve it,
 			// wins improve it. Tie on points suffices.
 			deficit = max(0, tieDeficit)
-		} else if tieDeficit == 1 && nonPGamesCnt[i] == 1 {
+		} else if tieDeficit == 1 && gi.nonPGamesCnt[i] == 1 {
 			// Q has exactly 1 remaining game and needs 1 point → must draw.
 			// Draw doesn't change spread. Q.spread < P.spread → can't beat
 			// P on spread. Must exceed P on points.
@@ -197,7 +217,7 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 			deficit = max(0, tieDeficit)
 		}
 
-		if deficit <= nonPGamesCnt[i]*2 {
+		if deficit <= gi.nonPGamesCnt[i]*2 {
 			candidates = append(candidates, cand{i, deficit})
 		}
 	}
@@ -218,7 +238,7 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 	}
 
 	for {
-		feasible, infeasibleIdx := checkFeasibility(candidates, inSet, effectivePts, nonPGames, W)
+		feasible, infeasibleIdx := checkFeasibility(candidates, inSet, effectivePts, gi.nonPGames, W)
 		if feasible {
 			break
 		}
@@ -366,28 +386,9 @@ type stayBelow struct {
 // best rank: minimize the number of players forced above P
 // ---------------------------------------------------------------------------
 
-func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int {
+func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo) int {
 	n := len(standings)
 	B := standings[p].points + standings[p].gamesRemaining*2 // P wins all remaining
-
-	// Separate P's games from other games
-	gamesVsP := make([]int, n)
-	var nonPGames []gamePair
-	for _, g := range allGames {
-		if g.a == p {
-			gamesVsP[g.b]++
-		} else if g.b == p {
-			gamesVsP[g.a]++
-		} else {
-			nonPGames = append(nonPGames, g)
-		}
-	}
-
-	nonPGamesCnt := make([]int, n)
-	for _, g := range nonPGames {
-		nonPGamesCnt[g.a]++
-		nonPGamesCnt[g.b]++
-	}
 
 	// When P wins all, P's opponents each LOSE their game vs P (get 0 from it).
 	// Q's effective points = Q.currentPoints (unchanged; the loss to P adds 0).
@@ -410,7 +411,7 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 		qWorst := standings[i].points
 		if qWorst > B {
 			guaranteedAbove++
-		} else if qWorst == B && !pHasGames && nonPGamesCnt[i] == 0 &&
+		} else if qWorst == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
 			standings[i].spread > standings[p].spread {
 			guaranteedAbove++
 		}
@@ -440,7 +441,7 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 			// P has unbounded best spread (wins by huge margins) → Q can
 			// never beat P on spread at equal points.
 			qBeatsOnSpreadAtB = false
-		} else if nonPGamesCnt[i] > 0 {
+		} else if gi.nonPGamesCnt[i] > 0 {
 			// Q has remaining games. If forced to absorb points via wins,
 			// Q's spread could change arbitrarily (a single win can shift
 			// spread by hundreds). We can't guarantee Q stays below P on
@@ -463,8 +464,8 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 		}
 
 		absorb := maxBelow
-		if absorb >= nonPGamesCnt[i]*2 {
-			absorb = nonPGamesCnt[i] * 2
+		if absorb >= gi.nonPGamesCnt[i]*2 {
+			absorb = gi.nonPGamesCnt[i] * 2
 		}
 		belowCandidates = append(belowCandidates, stayBelow{i, absorb})
 	}
@@ -483,7 +484,7 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 	}
 
 	for {
-		feasible, removeIdx := checkBestFeasibility(belowCandidates, inSet, nonPGames)
+		feasible, removeIdx := checkBestFeasibility(belowCandidates, inSet, gi.nonPGames)
 		if feasible {
 			break
 		}
