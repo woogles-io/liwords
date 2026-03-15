@@ -16,7 +16,6 @@ import { useClient, flashError } from "../utils/hooks/connect";
 import {
   AnalysisAdminService,
   AnalyzedGameSummary,
-  GetAdminStatsResponseSchema,
   GetAdminStatsRequestSchema,
   ListAnalyzedGamesRequestSchema,
   RequeueAnalysisRequestSchema,

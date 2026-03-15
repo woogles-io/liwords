@@ -53,7 +53,7 @@ class Booper {
       this.audio.pause();
       this.audio.muted = false;
       this.unlocked = true;
-    } catch (_) {
+    } catch {
       // Audio not yet loaded or blocked — will retry on the next gesture.
     }
     return this.unlocked;
