@@ -15,6 +15,13 @@ import puzzlewrongSound from "../assets/puzzlewrong.mp3";
 
 const soundToggleCache: { all: boolean | undefined } = { all: undefined };
 
+// Invalidate cache when another tab changes the setting.
+window.addEventListener("storage", (e) => {
+  if (e.key === "enableSilentSite") {
+    soundToggleCache["all"] = undefined;
+  }
+});
+
 const soundIsEnabled = (soundName: string) => {
   void soundName;
   let cachedToggle = soundToggleCache["all"];

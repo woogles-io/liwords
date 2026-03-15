@@ -1,93 +1,22 @@
-import React, { useCallback, useState } from "react";
+import React from "react";
 import { Switch } from "antd";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 
 export const Secret = React.memo(() => {
-  const [telestrator, setTelestrator] = useState(
-    localStorage?.getItem("enableScreenDrawing") === "true",
+  const [telestrator, setTelestrator] = useLocalStorageBool(
+    "enableScreenDrawing",
   );
-  const toggleTelestrator = useCallback(() => {
-    const useTelestrator =
-      localStorage?.getItem("enableScreenDrawing") !== "true";
-    localStorage.setItem(
-      "enableScreenDrawing",
-      useTelestrator ? "true" : "false",
-    );
-    setTelestrator((x) => !x);
-  }, []);
-
-  const [enableAllLexicons, setEnableAllLexicons] = useState(
-    localStorage?.getItem("enableAllLexicons") === "true",
+  const [enableAllLexicons, setEnableAllLexicons] =
+    useLocalStorageBool("enableAllLexicons");
+  const [blindfold, setBlindfold] = useLocalStorageBool("enableBlindfoldMode");
+  const [showEquityLoss, setShowEquityLoss] = useLocalStorageBool(
+    "enableShowEquityLoss",
   );
-  const toggleEnableAllLexicons = useCallback(() => {
-    const wantEnableAllLexicons =
-      localStorage?.getItem("enableAllLexicons") !== "true";
-    localStorage.setItem(
-      "enableAllLexicons",
-      wantEnableAllLexicons ? "true" : "false",
-    );
-    setEnableAllLexicons((x) => !x);
-  }, []);
-
-  const [blindfold, setBlindfold] = useState(
-    localStorage?.getItem("enableBlindfoldMode") === "true",
-  );
-  const toggleBlindfold = useCallback(() => {
-    const useBlindfold =
-      localStorage?.getItem("enableBlindfoldMode") !== "true";
-    localStorage.setItem(
-      "enableBlindfoldMode",
-      useBlindfold ? "true" : "false",
-    );
-    setBlindfold((x) => !x);
-  }, []);
-
-  const [showEquityLoss, setShowEquityLoss] = useState(
-    localStorage?.getItem("enableShowEquityLoss") === "true",
-  );
-  const toggleShowEquityLoss = useCallback(() => {
-    const useShowEquityLoss =
-      localStorage?.getItem("enableShowEquityLoss") !== "true";
-    localStorage.setItem(
-      "enableShowEquityLoss",
-      useShowEquityLoss ? "true" : "false",
-    );
-    setShowEquityLoss((x) => !x);
-  }, []);
-
-  const [enableSilentSite, setEnableSilentSite] = useState(
-    localStorage?.getItem("enableSilentSite") === "true",
-  );
-  const toggleEnableSilentSite = useCallback(() => {
-    const wantEnableSilentSite =
-      localStorage?.getItem("enableSilentSite") !== "true";
-    localStorage.setItem(
-      "enableSilentSite",
-      wantEnableSilentSite ? "true" : "false",
-    );
-    setEnableSilentSite((x) => !x);
-  }, []);
-
-  const [hidePool, setHidePool] = useState(
-    localStorage?.getItem("hidePool") === "true",
-  );
-  const toggleHidePool = useCallback(() => {
-    const wantHidePool = localStorage?.getItem("hidePool") !== "true";
-    localStorage.setItem("hidePool", wantHidePool ? "true" : "false");
-    setHidePool((x) => !x);
-  }, []);
-
-  const [enableBicolorMode, setEnableBicolorMode] = useState(
-    localStorage?.getItem("enableBicolorMode") === "true",
-  );
-  const toggleEnableBicolorMode = useCallback(() => {
-    const wantEnableBicolorMode =
-      localStorage?.getItem("enableBicolorMode") !== "true";
-    localStorage.setItem(
-      "enableBicolorMode",
-      wantEnableBicolorMode ? "true" : "false",
-    );
-    setEnableBicolorMode((x) => !x);
-  }, []);
+  const [enableSilentSite, setEnableSilentSite] =
+    useLocalStorageBool("enableSilentSite");
+  const [hidePool, setHidePool] = useLocalStorageBool("hidePool");
+  const [enableBicolorMode, setEnableBicolorMode] =
+    useLocalStorageBool("enableBicolorMode");
 
   return (
     <div className="preferences secret">
@@ -109,10 +38,10 @@ export const Secret = React.memo(() => {
           <div className="toggle-section">
             <div className="title">Telestrator</div>
             <div>
-              <div>Draw on the board while you’re playing</div>
+              <div>Draw on the board while you're playing</div>
               <Switch
-                defaultChecked={telestrator}
-                onChange={toggleTelestrator}
+                checked={telestrator}
+                onChange={setTelestrator}
                 className="telestrator-toggle"
               />
             </div>
@@ -122,8 +51,8 @@ export const Secret = React.memo(() => {
             <div>
               <div>Enable text-to-speech keyboard commands</div>
               <Switch
-                defaultChecked={blindfold}
-                onChange={toggleBlindfold}
+                checked={blindfold}
+                onChange={setBlindfold}
                 className="blindfold-toggle"
               />
             </div>
@@ -133,8 +62,8 @@ export const Secret = React.memo(() => {
             <div>
               <div>Enable all lexicons</div>
               <Switch
-                defaultChecked={enableAllLexicons}
-                onChange={toggleEnableAllLexicons}
+                checked={enableAllLexicons}
+                onChange={setEnableAllLexicons}
                 className="dark-toggle"
               />
             </div>
@@ -144,8 +73,8 @@ export const Secret = React.memo(() => {
             <div>
               <div>Show equity loss in analyzer</div>
               <Switch
-                defaultChecked={showEquityLoss}
-                onChange={toggleShowEquityLoss}
+                checked={showEquityLoss}
+                onChange={setShowEquityLoss}
                 className="show-equity-loss-toggle"
               />
             </div>
@@ -155,8 +84,8 @@ export const Secret = React.memo(() => {
             <div>
               <div>Mute all sounds</div>
               <Switch
-                defaultChecked={enableSilentSite}
-                onChange={toggleEnableSilentSite}
+                checked={enableSilentSite}
+                onChange={setEnableSilentSite}
                 className="sounds-toggle"
               />
             </div>
@@ -169,8 +98,8 @@ export const Secret = React.memo(() => {
                 moves for you only
               </div>
               <Switch
-                defaultChecked={hidePool}
-                onChange={toggleHidePool}
+                checked={hidePool}
+                onChange={setHidePool}
                 className="pool-toggle"
               />
             </div>
@@ -183,8 +112,8 @@ export const Secret = React.memo(() => {
                 Refresher Orb.
               </div>
               <Switch
-                defaultChecked={enableBicolorMode}
-                onChange={toggleEnableBicolorMode}
+                checked={enableBicolorMode}
+                onChange={setEnableBicolorMode}
                 className="bicolor-toggle"
               />
             </div>

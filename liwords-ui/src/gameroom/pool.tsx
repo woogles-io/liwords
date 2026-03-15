@@ -77,19 +77,18 @@ type Props = {
 };
 
 const Pool = React.memo((props: Props) => {
-  const readHidePool = React.useCallback(
+  const [hidePool, setHidePool] = React.useState(
     () => localStorage.getItem("hidePool") === "true",
-    [],
   );
-  const [hidePool, setHidePool] = React.useState(readHidePool);
   React.useEffect(() => {
-    const interval = setInterval(() => {
-      setHidePool(readHidePool);
-    }, 1000); // how long should it be before it picks up changes from other tabs?
-    return () => {
-      clearInterval(interval);
+    const handler = (e: StorageEvent) => {
+      if (e.key === "hidePool") {
+        setHidePool(e.newValue === "true");
+      }
     };
-  }, [readHidePool]);
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   return (
     <React.Fragment>

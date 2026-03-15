@@ -12,8 +12,13 @@ import {
 import { Popover } from "antd";
 import { Alphabet, machineLetterToDisplayedTile } from "../constants/alphabets";
 
-// just refresh the page when changing the setting...
-const bicolorMode = localStorage.getItem("enableBicolorMode") === "true";
+let bicolorMode = localStorage.getItem("enableBicolorMode") === "true";
+
+window.addEventListener("storage", (e) => {
+  if (e.key === "enableBicolorMode") {
+    bicolorMode = e.newValue === "true";
+  }
+});
 
 type TileLetterProps = {
   letter: MachineLetter;

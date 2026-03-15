@@ -3,6 +3,12 @@ import React from "react";
 // TODO: Preferences need a better solution.
 const prefsCache: { hidePool: boolean | undefined } = { hidePool: undefined };
 
+window.addEventListener("storage", (e) => {
+  if (e.key === "hidePool") {
+    prefsCache["hidePool"] = undefined;
+  }
+});
+
 const prefsCheck = (key: "hidePool") => {
   let cachedToggle = prefsCache[key];
   if (cachedToggle === undefined) {
