@@ -94,8 +94,9 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 
 	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
 		// Server gameplay events
-		// When sent to AudUser, we need to sanitize them here. When sent to
-		// an AudGameTV, they are unsanitized, and handled elsewhere.
+		// When sent to AudUser, we sanitize opponent racks here.
+		// AudGameTV events are pre-censored at the source (gameplay/game.go)
+		// for league games and tournaments with private analysis.
 		subevt, ok := evt.Event.(*pb.ServerGameplayEvent)
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")
@@ -106,13 +107,9 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 		if subevt.UserId == userID {
 			return evt, nil
 		}
-		// Otherwise clone it.
+		// Otherwise clone and censor opponent's rack.
 		cloned := proto.Clone(subevt).(*pb.ServerGameplayEvent)
-		cloned.NewRack = ""
-		cloned.Event.Rack = ""
-		if cloned.Event.Type == macondopb.GameEvent_EXCHANGE {
-			cloned.Event.Exchanged = ""
-		}
+		entity.CensorRacks(cloned)
 		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT), nil
 
 	default:

@@ -537,13 +537,26 @@ func PlayMove(ctx context.Context,
 	// Send the server change event.
 	playing := entGame.Game.Playing()
 	players := players(entGame)
+	censorForTV := playing != macondopb.PlayState_GAME_OVER &&
+		shouldCensorRacksForViewers(ctx, entGame, stores)
 	for _, sge := range evts {
-		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
-		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		// Send full event to players (AudUser sanitize() strips opponent racks).
+		playerWrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		for _, p := range players {
-			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+			playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 		}
-		entGame.SendChange(wrapped)
+		entGame.SendChange(playerWrapped)
+
+		// Send to spectators, censored if needed.
+		var tvEvt proto.Message = sge
+		if censorForTV {
+			c := proto.Clone(sge).(*pb.ServerGameplayEvent)
+			entity.CensorRacks(c)
+			tvEvt = c
+		}
+		tvWrapped := entity.WrapEvent(tvEvt, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+		tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		entGame.SendChange(tvWrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		err = performEndgameDuties(ctx, entGame, stores)
@@ -767,6 +780,26 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
+// shouldCensorRacksForViewers returns true if spectators should not see
+// player racks. This applies to league games and tournament games with
+// private analysis enabled.
+func shouldCensorRacksForViewers(ctx context.Context, g *entity.Game, s *stores.Stores) bool {
+	if g.LeagueID != nil {
+		return true
+	}
+	if g.TournamentData != nil && g.TournamentData.Id != "" && s.TournamentStore != nil {
+		t, err := s.TournamentStore.Get(ctx, g.TournamentData.Id)
+		if err != nil {
+			// Can't verify tournament settings — censor to be safe.
+			return true
+		}
+		if t.ExtraMeta != nil && t.ExtraMeta.PrivateAnalysis {
+			return true
+		}
+	}
+	return false
+}
+
 func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
 	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {
