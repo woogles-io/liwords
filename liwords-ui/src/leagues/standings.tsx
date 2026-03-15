@@ -283,7 +283,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         a.username.localeCompare(b.username),
       sortDirections: ["ascend", "descend"] as SortOrder[],
       sortIcon: noSortIcon,
-      fixed: true,
+      fixed: "left" as const,
       render: (
         username: string,
         record: { userId: string; placementStatus: PlacementStatus },
