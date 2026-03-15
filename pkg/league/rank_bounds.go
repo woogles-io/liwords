@@ -229,18 +229,12 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *
 	})
 
 	// Iteratively check feasibility via max-flow and remove infeasible candidates.
-	inSet := make([]bool, n)
-	for _, c := range candidates {
-		inSet[c.idx] = true
-	}
-
 	for {
-		feasible, infeasibleIdx := checkFeasibility(candidates, inSet, effectivePts, gi.nonPGames, W, fg, candIdx)
+		feasible, infeasibleIdx := checkFeasibility(candidates, gi.nonPGames, fg, candIdx)
 		if feasible {
 			break
 		}
 		if infeasibleIdx >= 0 {
-			inSet[candidates[infeasibleIdx].idx] = false
 			candidates = append(candidates[:infeasibleIdx], candidates[infeasibleIdx+1:]...)
 		}
 		if len(candidates) == 0 {
@@ -255,7 +249,7 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *
 // can simultaneously reach W points from non-P games.
 //
 // Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, inSet []bool, effectivePts []int, nonPGames []gamePair, W int, fg *flowGraph, candIdx []int) (bool, int) {
+func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
