@@ -60,8 +60,39 @@ func CalculatePossibleRanks(
 		return results
 	}
 
+	// Precompute for per-player fast path: players with remaining games
+	// whose point range clearly spans [1, n] can skip max-flow.
+	maxFloor := 0 // highest current points (worst case for leader)
+	// Two smallest ceilings so we can get min-excluding-P in O(1).
+	minCeil1, minCeil2 := math.MaxInt, math.MaxInt
+	for _, s := range standings {
+		if s.points > maxFloor {
+			maxFloor = s.points
+		}
+		ceil := s.points + s.gamesRemaining*2
+		if ceil <= minCeil1 {
+			minCeil2 = minCeil1
+			minCeil1 = ceil
+		} else if ceil < minCeil2 {
+			minCeil2 = ceil
+		}
+	}
+
 	results := make([]RankBounds, n)
 	for p := 0; p < n; p++ {
+		if standings[p].gamesRemaining > 0 {
+			bestPts := standings[p].points + standings[p].gamesRemaining*2
+			// Min ceiling excluding P
+			pCeil := standings[p].points + standings[p].gamesRemaining*2
+			minCeilExP := minCeil1
+			if pCeil == minCeil1 {
+				minCeilExP = minCeil2
+			}
+			if bestPts >= maxFloor && minCeilExP >= standings[p].points {
+				results[p] = RankBounds{1, n}
+				continue
+			}
+		}
 		results[p].WorstRank = worstRankForPlayer(p, standings, games)
 		results[p].BestRank = bestRankForPlayer(p, standings, games)
 	}
