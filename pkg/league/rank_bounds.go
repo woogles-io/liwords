@@ -517,18 +517,20 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 
 	// Iteratively check if all belowCandidates can stay at ≤ B via max-flow.
 	// If not, remove the one with the least absorb capacity (most constrained).
-	inSet := make(map[int]bool, len(sc.belowCandidates))
+	for i := range sc.inSet {
+		sc.inSet[i] = false
+	}
 	for _, c := range sc.belowCandidates {
-		inSet[c.idx] = true
+		sc.inSet[c.idx] = true
 	}
 
 	for {
-		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, inSet, gi.nonPGames, sc.flow)
+		feasible, removeIdx := checkBestFeasibility(sc.belowCandidates, gi.nonPGames, sc.flow)
 		if feasible {
 			break
 		}
 		if removeIdx >= 0 {
-			inSet[sc.belowCandidates[removeIdx].idx] = false
+			sc.inSet[sc.belowCandidates[removeIdx].idx] = false
 			sc.belowCandidates = append(sc.belowCandidates[:removeIdx], sc.belowCandidates[removeIdx+1:]...)
 		}
 		if len(sc.belowCandidates) == 0 {
@@ -548,7 +550,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, sc *s
 // Uses max-flow: source → game nodes → player nodes → sink.
 // Each game produces 2 points. Each player can absorb at most their limit.
 // Feasible if max_flow = total within-set game points.
-func checkBestFeasibility(candidates []stayBelow, inSet map[int]bool, nonPGames []gamePair, fg *flowGraph) (bool, int) {
+func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flowGraph) (bool, int) {
 	k := len(candidates)
 	if k == 0 {
 		return true, -1
