@@ -124,11 +124,10 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 	//   - A win gives Q 2 points AND improves spread (potentially a lot).
 	//   - A draw gives Q 1 point with 0 spread change.
 	//
-	// If Q needs an odd number of points to reach W, at least one draw is
-	// required. A draw doesn't improve spread, so if Q.spread < P.spread,
-	// Q can't beat P on spread via the draw path. Q must exceed W on
-	// points instead (deficit = W + 1 - effectivePts, which is even, so
-	// achievable entirely via wins).
+	// An odd deficit requires at least one draw. But as long as the deficit
+	// is ≥ 3, Q can include wins alongside the draw(s), giving Q arbitrary
+	// spread improvement. The only case where Q is forced into a pure draw
+	// (no spread change) is deficit = 1 with exactly 1 remaining game.
 	pHasGames := standings[p].gamesRemaining > 0
 	var candidates []cand
 	for i := 0; i < n; i++ {
@@ -150,17 +149,19 @@ func worstRankForPlayer(p int, standings []standingInfo, allGames []gamePair) in
 				deficit = max(0, tieDeficit+1) // need strict points advantage
 			}
 		} else if standings[i].spread >= standings[p].spread {
-			// Q has remaining games and spread ≥ P's. Draws preserve it.
+			// Q has remaining games and spread ≥ P's. Draws preserve it,
+			// wins improve it. Tie on points suffices.
 			deficit = max(0, tieDeficit)
-		} else if tieDeficit > 0 && tieDeficit%2 == 0 {
-			// Q has remaining games, spread < P's, but even deficit means
-			// Q can reach W entirely via wins (which improve spread).
-			deficit = max(0, tieDeficit)
-		} else {
-			// Q has remaining games, spread < P's, odd deficit means at
-			// least one draw required (no spread improvement). Q must
-			// exceed W on points instead.
+		} else if tieDeficit == 1 && nonPGamesCnt[i] == 1 {
+			// Q has exactly 1 remaining game and needs 1 point → must draw.
+			// Draw doesn't change spread. Q.spread < P.spread → can't beat
+			// P on spread. Must exceed P on points.
 			deficit = max(0, tieDeficit+1)
+		} else {
+			// Q has remaining games and spread < P's, but with deficit ≥ 2
+			// or multiple games, Q can include wins that give arbitrary
+			// spread improvement. Tie on points suffices.
+			deficit = max(0, tieDeficit)
 		}
 
 		if deficit <= nonPGamesCnt[i]*2 {
