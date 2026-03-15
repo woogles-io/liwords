@@ -540,23 +540,28 @@ func PlayMove(ctx context.Context,
 	censorForTV := playing != macondopb.PlayState_GAME_OVER &&
 		shouldCensorRacksForViewers(ctx, entGame, stores)
 	for _, sge := range evts {
-		// Send full event to players (AudUser sanitize() strips opponent racks).
-		playerWrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
-		for _, p := range players {
-			playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
-		}
-		entGame.SendChange(playerWrapped)
-
-		// Send to spectators, censored if needed.
-		var tvEvt proto.Message = sge
 		if censorForTV {
+			// Split into two events: full for players, censored for spectators.
+			playerWrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			for _, p := range players {
+				playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+			}
+			entGame.SendChange(playerWrapped)
+
 			c := proto.Clone(sge).(*pb.ServerGameplayEvent)
 			entity.CensorRacks(c)
-			tvEvt = c
+			tvWrapped := entity.WrapEvent(c, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+			entGame.SendChange(tvWrapped)
+		} else {
+			// Public game: single event with both audiences.
+			wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+			for _, p := range players {
+				wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+			}
+			entGame.SendChange(wrapped)
 		}
-		tvWrapped := entity.WrapEvent(tvEvt, pb.MessageType_SERVER_GAMEPLAY_EVENT)
-		tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-		entGame.SendChange(tvWrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		err = performEndgameDuties(ctx, entGame, stores)
