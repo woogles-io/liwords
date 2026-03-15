@@ -150,11 +150,33 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   };
 
   // Rank bounds are computed server-side using actual remaining pairings
-  // and max-flow for simultaneous feasibility.
-  const possibleRanks = division.standings.map((standing) => ({
-    bestRank: standing.bestRank || standing.rank,
-    worstRank: standing.worstRank || standing.rank,
-  }));
+  // and max-flow for simultaneous feasibility. Fall back to a simple
+  // client-side estimate if the backend hasn't been deployed yet
+  // (bestRank/worstRank will be 0).
+  const hasServerRanks = division.standings.some(
+    (s) => s.bestRank > 0 || s.worstRank > 0,
+  );
+
+  const possibleRanks = hasServerRanks
+    ? division.standings.map((standing) => ({
+        bestRank: standing.bestRank,
+        worstRank: standing.worstRank,
+      }))
+    : division.standings.map((standing, idx) => {
+        // Simple independent bounds: no max-flow, just per-player checks.
+        const myBest = standing.wins * 2 + standing.draws + standing.gamesRemaining * 2;
+        const myWorst = standing.wins * 2 + standing.draws;
+        let bestRank = 1;
+        let worstRank = 1;
+        for (let i = 0; i < division.standings.length; i++) {
+          if (i === idx) continue;
+          const otherWorst = division.standings[i].wins * 2 + division.standings[i].draws;
+          const otherBest = otherWorst + division.standings[i].gamesRemaining * 2;
+          if (otherWorst > myBest) bestRank++;
+          if (otherBest >= myWorst) worstRank++;
+        }
+        return { bestRank, worstRank };
+      });
 
   const divisionCompleted = !division.standings.some(
     (standing) => standing.gamesRemaining,
