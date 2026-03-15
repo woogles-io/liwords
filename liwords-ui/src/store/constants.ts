@@ -261,6 +261,20 @@ export const setPreferredSortOrder = (value: string) => {
   }
 };
 
+// Sync module-level settings from other tabs.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    switch (e.key) {
+      case "enableAutoShuffle":
+        sharedEnableAutoShuffle = e.newValue === "true";
+        break;
+      case "tileOrder":
+        preferredSortOrder = e.newValue;
+        break;
+    }
+  });
+}
+
 export const sortTiles = (
   rack: MachineWord,
   alphabet: Alphabet,

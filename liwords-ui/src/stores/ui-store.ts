@@ -200,4 +200,21 @@ if (typeof window !== "undefined") {
   updateBodyClass(initialState.themeMode);
   updateBoardModeClass(initialState.boardMode);
   updateTileModeClass(initialState.tileMode);
+
+  // Sync localStorage changes from other tabs.
+  // The 'storage' event fires only for changes made in OTHER windows/tabs.
+  window.addEventListener("storage", (e) => {
+    const store = useUIStore.getState();
+    switch (e.key) {
+      case "darkMode":
+        store.setThemeMode(e.newValue === "true" ? "dark" : "light");
+        break;
+      case "userBoard":
+        store.setBoardMode(e.newValue || "");
+        break;
+      case "userTile":
+        store.setTileMode(e.newValue || "");
+        break;
+    }
+  });
 }
