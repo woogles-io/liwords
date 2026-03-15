@@ -1,32 +1,45 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+
+// Single set of subscribers notified on any localStorage change.
+// useSyncExternalStore's snapshot comparison ensures only components
+// whose key actually changed will re-render.
+const subscribers = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  subscribers.add(callback);
+  return () => {
+    subscribers.delete(callback);
+  };
+}
+
+function notifySubscribers() {
+  subscribers.forEach((cb) => cb());
+}
+
+// Single global listener for cross-tab changes.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", () => {
+    notifySubscribers();
+  });
+}
 
 /**
- * A hook that syncs a localStorage key across browser tabs.
- * When another tab changes the value, this hook updates the local
- * React state immediately via the 'storage' event.
+ * A hook that syncs a localStorage key across browser tabs using
+ * useSyncExternalStore. Changes from other tabs arrive via the
+ * 'storage' event; same-tab changes notify subscribers directly.
  */
 export function useLocalStorage(
   key: string,
   defaultValue: string,
 ): [string, (value: string) => void] {
-  const [value, setValue] = useState(
-    () => localStorage.getItem(key) ?? defaultValue,
-  );
+  const getSnapshot = () => localStorage.getItem(key) ?? defaultValue;
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === key) {
-        setValue(e.newValue ?? defaultValue);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [key, defaultValue]);
+  const value = useSyncExternalStore(subscribe, getSnapshot);
 
   const set = useCallback(
     (newValue: string) => {
       localStorage.setItem(key, newValue);
-      setValue(newValue);
+      notifySubscribers();
     },
     [key],
   );

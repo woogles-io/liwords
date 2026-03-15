@@ -5,6 +5,7 @@ import { PoolFormatType, PoolFormats } from "../constants/pool_formats";
 import { singularCount } from "../utils/plural";
 import { Alphabet, machineLetterToRune } from "../constants/alphabets";
 import { Blank, MachineLetter, MachineWord } from "../utils/cwgame/common";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 
 type poolType = { [ml: MachineLetter]: number };
 
@@ -77,18 +78,7 @@ type Props = {
 };
 
 const Pool = React.memo((props: Props) => {
-  const [hidePool, setHidePool] = React.useState(
-    () => localStorage.getItem("hidePool") === "true",
-  );
-  React.useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === "hidePool") {
-        setHidePool(e.newValue === "true");
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
+  const [hidePool] = useLocalStorageBool("hidePool");
 
   return (
     <React.Fragment>
