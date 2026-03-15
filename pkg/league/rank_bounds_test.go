@@ -179,12 +179,19 @@ func TestSpreadTiebreakInBestRank(t *testing.T) {
 }
 
 func TestSpreadTiebreakBelowP(t *testing.T) {
-	// Same setup but P1 has +300 spread (beats both on spread).
+	// P1 has +300 spread (beats both on spread), no remaining games.
+	// P2 and P3 have remaining games with lower spread.
+	//
 	// Draw: P2=15/+200, P3=15/+100, P1=15/+300. P1 is 1st.
 	// P2 wins: P2=16, P1=15, P3=14. P1 is 2nd.
 	// P3 wins: P3=16, P1=15, P2=14. P1 is 2nd.
 	//
-	// Best rank: 1. Worst rank: 2.
+	// True best rank: 1. But since P2/P3's wins could shift spread
+	// unpredictably, the guaranteed bound is 2 (we can't promise 1st
+	// because we can't rule out a scenario where both end at 15pts
+	// with spread > P1's via wins in other games).
+	//
+	// Best rank: 2 (guaranteed). Worst rank: 2.
 	standings := []standingInfo{
 		si(1, 15, 300, 0),
 		si(2, 14, 200, 1),
@@ -193,8 +200,8 @@ func TestSpreadTiebreakBelowP(t *testing.T) {
 	games := []unfinishedGame{uf(2, 3)}
 	bounds := CalculatePossibleRanks(standings, games)
 
-	if bounds[0].BestRank != 1 {
-		t.Errorf("P1 best rank: got %d, want 1", bounds[0].BestRank)
+	if bounds[0].BestRank != 2 {
+		t.Errorf("P1 best rank: got %d, want 2", bounds[0].BestRank)
 	}
 	if bounds[0].WorstRank != 2 {
 		t.Errorf("P1 worst rank: got %d, want 2", bounds[0].WorstRank)

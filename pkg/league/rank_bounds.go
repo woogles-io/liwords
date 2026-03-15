@@ -402,19 +402,20 @@ func bestRankForPlayer(p int, standings []standingInfo, allGames []gamePair) int
 			continue // already guaranteed above
 		}
 
-		// Determine whether Q at exactly B points would be above P.
-		// If so, Q must stay strictly below B to be "below P".
+		// Determine whether Q at exactly B points could be above P.
+		// If so, Q must stay strictly below B to guarantee being below P.
 		qBeatsOnSpreadAtB := false
 		if pHasGames {
-			// P has +∞ best spread → Q can never beat P on spread at equal points.
+			// P has unbounded best spread (wins by huge margins) → Q can
+			// never beat P on spread at equal points.
 			qBeatsOnSpreadAtB = false
 		} else if nonPGamesCnt[i] > 0 {
-			// Q has remaining games → Q's spread is uncertain. In the best case
-			// for P, Q's spread could end up below P's. But in the worst case
-			// (for best rank computation), Q could also draw their way to B with
-			// unchanged spread. If Q's current spread already beats P, a draw
-			// preserves that. So Q COULD beat P on spread at B.
-			qBeatsOnSpreadAtB = standings[i].spread >= standings[p].spread
+			// Q has remaining games. If forced to absorb points via wins,
+			// Q's spread could change arbitrarily (a single win can shift
+			// spread by hundreds). We can't guarantee Q stays below P on
+			// spread at B points. To ensure the bound is correct, Q must
+			// stay strictly below B.
+			qBeatsOnSpreadAtB = true
 		} else {
 			// Both finished. Spread is fixed. Equal spread: Q could be
 			// ranked either side of P, so treat as potentially above.
