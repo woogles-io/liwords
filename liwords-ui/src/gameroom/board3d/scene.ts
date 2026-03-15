@@ -1169,11 +1169,11 @@ export class Board3DScene {
     return this.spinEnabled;
   }
 
-  saveAsPNG() {
+  saveAsPNG(filename = "woogles-board.png") {
     this.renderer.render(this.scene, this.camera);
     const link = document.createElement("a");
     link.href = this.renderer.domElement.toDataURL("image/png");
-    link.download = "woogles-board.png";
+    link.download = filename;
     link.click();
   }
 
