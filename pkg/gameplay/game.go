@@ -253,12 +253,26 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 
 	evt := entGame.HistoryRefresherEvent()
 	evt.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, evt.History)).(*macondopb.GameHistory)
-	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
-	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-	for _, p := range players(entGame) {
-		wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+	if shouldCensorRacksForViewers(ctx, entGame, stores) {
+		playerWrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		for _, p := range players(entGame) {
+			playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+		}
+		entGame.SendChange(playerWrapped)
+
+		censoredEvt := proto.Clone(evt).(*pb.GameHistoryRefresher)
+		entity.CensorHistoryRacks(censoredEvt)
+		tvWrapped := entity.WrapEvent(censoredEvt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		entGame.SendChange(tvWrapped)
+	} else {
+		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		for _, p := range players(entGame) {
+			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+		}
+		entGame.SendChange(wrapped)
 	}
-	entGame.SendChange(wrapped)
 
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.

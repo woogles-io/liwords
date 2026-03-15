@@ -16,3 +16,20 @@ func CensorRacks(sge *pb.ServerGameplayEvent) {
 		}
 	}
 }
+
+// CensorHistoryRacks strips all rack information from a GameHistoryRefresher.
+func CensorHistoryRacks(ghr *pb.GameHistoryRefresher) {
+	if ghr.History == nil {
+		return
+	}
+	for _, evt := range ghr.History.Events {
+		evt.Rack = ""
+		if evt.Type == macondopb.GameEvent_EXCHANGE {
+			evt.Exchanged = ""
+		}
+	}
+	if len(ghr.History.LastKnownRacks) >= 2 {
+		ghr.History.LastKnownRacks[0] = ""
+		ghr.History.LastKnownRacks[1] = ""
+	}
+}

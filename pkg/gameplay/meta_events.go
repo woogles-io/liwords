@@ -10,6 +10,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -276,12 +277,25 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
 		eventChan <- wrapped
 
-		// Also send updated time info via GameHistoryRefresher
+		// Also send updated time info via GameHistoryRefresher.
+		// Censor racks for spectators in league/private-analysis games.
 		refresher := g.HistoryRefresherEvent()
-		refresherWrapped := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
-		refresherWrapped.AddAudience(entity.AudGame, evt.GameId)
-		refresherWrapped.AddAudience(entity.AudGameTV, evt.GameId)
-		eventChan <- refresherWrapped
+		if shouldCensorRacksForViewers(ctx, g, stores) {
+			playerRefresher := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
+			playerRefresher.AddAudience(entity.AudGame, evt.GameId)
+			eventChan <- playerRefresher
+
+			censoredRefresher := proto.Clone(refresher).(*pb.GameHistoryRefresher)
+			entity.CensorHistoryRacks(censoredRefresher)
+			tvRefresher := entity.WrapEvent(censoredRefresher, pb.MessageType_GAME_HISTORY_REFRESHER)
+			tvRefresher.AddAudience(entity.AudGameTV, evt.GameId)
+			eventChan <- tvRefresher
+		} else {
+			refresherWrapped := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
+			refresherWrapped.AddAudience(entity.AudGame, evt.GameId)
+			refresherWrapped.AddAudience(entity.AudGameTV, evt.GameId)
+			eventChan <- refresherWrapped
+		}
 
 	case pb.GameMetaEvent_TIMER_EXPIRED:
 		// This event gets sent by the front end of the requester after
