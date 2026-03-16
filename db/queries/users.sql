@@ -34,3 +34,9 @@ FROM users u
 JOIN profiles p on u.id = p.user_id
 WHERE lower(u.email) LIKE @lowercased_email_like
 LIMIT 100;
+
+-- name: GetUserId :one
+SELECT
+    u.id
+FROM users u
+WHERE lower(u.username) = lower(@username);

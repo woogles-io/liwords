@@ -393,8 +393,21 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		return nil, errors.New("too many games")
 	}
 
-	games, err := s.queries.GetRecentGamesByUsername(ctx, models.GetRecentGamesByUsernameParams{
-		Username:    username,
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	userID, err := qtx.GetUserId(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	games, err := qtx.GetRecentGamesByUserId(ctx, models.GetRecentGamesByUserIdParams{
+		UserID:      userID,
 		NumGames:    int32(numGames),
 		OffsetGames: int32(offset),
 	})
@@ -454,7 +467,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 			leagueUUID := uuid.UUID(g.LeagueID.Bytes)
 			info.LeagueId = leagueUUID.String()
 
-			league, err := s.queries.GetLeagueByUUID(ctx, leagueUUID)
+			league, err := qtx.GetLeagueByUUID(ctx, leagueUUID)
 			if err == nil {
 				info.LeagueSlug = league.Slug
 			}
@@ -537,8 +550,21 @@ func (s *DBStore) GetRecentCorrespondenceGames(ctx context.Context, username str
 		return nil, errors.New("too many games")
 	}
 
-	games, err := s.queries.GetRecentCorrespondenceGamesByUsername(ctx, models.GetRecentCorrespondenceGamesByUsernameParams{
-		Username: username,
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	userID, err := qtx.GetUserId(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	games, err := qtx.GetRecentCorrespondenceGamesByUserId(ctx, models.GetRecentCorrespondenceGamesByUserIdParams{
+		UserID:   userID,
 		NumGames: int32(numGames),
 	})
 	if err != nil {
