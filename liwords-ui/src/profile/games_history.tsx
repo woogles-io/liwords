@@ -113,7 +113,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         turnOrder = <CheckCircleTwoTone twoToneColor="#52c41a" />;
       }
       const whenMoment = moment(
-        item.createdAt ? timestampDate(item.createdAt) : "",
+        item.lastUpdate ? timestampDate(item.lastUpdate) : "",
       );
       const when = (
         <Tooltip title={whenMoment.format("LLL")}>
