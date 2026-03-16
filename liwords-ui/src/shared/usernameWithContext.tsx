@@ -202,7 +202,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       label: `Moderate`,
     });
   }
-  if (props.showDeleteMessage && canMod(perms) && props.userID !== userID) {
+  if (props.showDeleteMessage && canMod(perms)) {
     userMenuOptions.push({
       key: `delete-${props.userID}`,
       label: "Delete this message",
