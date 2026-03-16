@@ -1517,7 +1517,120 @@ func (ls *LeagueService) GetPlayerLeagueHistory(
 	ctx context.Context,
 	req *connect.Request[pb.PlayerHistoryRequest],
 ) (*connect.Response[pb.PlayerHistoryResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("GetPlayerLeagueHistory not yet implemented"))
+	// Resolve user UUID to internal ID
+	if req.Msg.UserId == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+	u, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid user_id")
+	}
+
+	// Parse optional league_id filter
+	leagueID := uuid.Nil
+	if req.Msg.LeagueId != "" {
+		leagueID, err = uuid.Parse(req.Msg.LeagueId)
+		if err != nil {
+			return nil, apiserver.InvalidArg("invalid league_id")
+		}
+	}
+
+	// Query season history
+	rows, err := ls.store.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
+		UserID:   int32(u.ID),
+		LeagueID: leagueID,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player season history: %w", err))
+	}
+
+	// Cache league names to avoid repeated lookups
+	leagueNames := make(map[uuid.UUID]string)
+
+	seasons := make([]*pb.SeasonSummary, 0, len(rows))
+	for _, row := range rows {
+		// Look up league name (cached)
+		leagueName, ok := leagueNames[row.LeagueID]
+		if !ok {
+			lg, err := ls.store.GetLeagueByUUID(ctx, row.LeagueID)
+			if err != nil {
+				log.Warn().Err(err).Str("leagueID", row.LeagueID.String()).Msg("failed to get league name")
+				leagueName = "Unknown"
+			} else {
+				leagueName = lg.Name
+			}
+			leagueNames[row.LeagueID] = leagueName
+		}
+
+		// Look up division number
+		divisionNumber := int32(0)
+		var divUUID uuid.UUID
+		if row.DivisionID.Valid {
+			divUUID, err = uuid.FromBytes(row.DivisionID.Bytes[:])
+			if err == nil {
+				div, err := ls.store.GetDivision(ctx, divUUID)
+				if err == nil {
+					divisionNumber = div.DivisionNumber
+				}
+			}
+		}
+
+		// Get standings for this division + user if division is assigned
+		var standing *ipc.LeaguePlayerStanding
+		if row.DivisionID.Valid && divUUID != uuid.Nil {
+			st, err := ls.store.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+				DivisionID: divUUID,
+				UserID:     int32(u.ID),
+			})
+			if err == nil {
+				resultValue := ipc.StandingResult_RESULT_NONE
+				if st.Result.Valid {
+					resultValue = ipc.StandingResult(st.Result.Int32)
+				}
+				avgMistakeIndex := float64(0)
+				if st.GamesAnalyzed.Valid && st.GamesAnalyzed.Int32 > 0 && st.TotalMistakeIndex.Valid {
+					avgMistakeIndex = st.TotalMistakeIndex.Float64 / float64(st.GamesAnalyzed.Int32)
+				}
+				standing = &ipc.LeaguePlayerStanding{
+					UserId:                   req.Msg.UserId,
+					Username:                 u.Username,
+					Rank:                     st.Rank.Int32,
+					Wins:                     st.Wins.Int32,
+					Losses:                   st.Losses.Int32,
+					Draws:                    st.Draws.Int32,
+					Spread:                   st.Spread.Int32,
+					GamesPlayed:              st.GamesPlayed.Int32,
+					GamesRemaining:           st.GamesRemaining.Int32,
+					Result:                   resultValue,
+					TotalScore:               st.TotalScore.Int32,
+					TotalOpponentScore:       st.TotalOpponentScore.Int32,
+					TotalBingos:              st.TotalBingos.Int32,
+					TotalOpponentBingos:      st.TotalOpponentBingos.Int32,
+					TotalTurns:               st.TotalTurns.Int32,
+					HighTurn:                 st.HighTurn.Int32,
+					HighGame:                 st.HighGame.Int32,
+					Timeouts:                 st.Timeouts.Int32,
+					BlanksPlayed:             st.BlanksPlayed.Int32,
+					TotalTilesPlayed:         st.TotalTilesPlayed.Int32,
+					TotalOpponentTilesPlayed: st.TotalOpponentTilesPlayed.Int32,
+					AvgMistakeIndex:          avgMistakeIndex,
+					GamesAnalyzed:            st.GamesAnalyzed.Int32,
+				}
+			}
+		}
+
+		seasons = append(seasons, &pb.SeasonSummary{
+			SeasonId:       row.SeasonID.String(),
+			SeasonNumber:   row.SeasonNumber,
+			LeagueName:     leagueName,
+			DivisionNumber: divisionNumber,
+			Standing:       standing,
+		})
+	}
+
+	return connect.NewResponse(&pb.PlayerHistoryResponse{
+		Seasons: seasons,
+	}), nil
 }
 
 func (ls *LeagueService) GetPlayerSeasonGames(
