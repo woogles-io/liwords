@@ -794,6 +794,8 @@ type LeaguePlayerStanding struct {
 	PlacementStatus          PlacementStatus `protobuf:"varint,22,opt,name=placement_status,json=placementStatus,proto3,enum=ipc.PlacementStatus" json:"placement_status,omitempty"`       // How player was placed in this division (NEW, PROMOTED, etc.)
 	AvgMistakeIndex          float64         `protobuf:"fixed64,23,opt,name=avg_mistake_index,json=avgMistakeIndex,proto3" json:"avg_mistake_index,omitempty"`                             // Average mistake index from BestBot analysis (0 if no analysis)
 	GamesAnalyzed            int32           `protobuf:"varint,24,opt,name=games_analyzed,json=gamesAnalyzed,proto3" json:"games_analyzed,omitempty"`                                      // Number of games with completed BestBot analysis
+	BestRank                 int32           `protobuf:"varint,25,opt,name=best_rank,json=bestRank,proto3" json:"best_rank,omitempty"`                                                     // Best possible finishing rank (computed from remaining pairings)
+	WorstRank                int32           `protobuf:"varint,26,opt,name=worst_rank,json=worstRank,proto3" json:"worst_rank,omitempty"`                                                  // Worst possible finishing rank (computed from remaining pairings)
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -992,6 +994,20 @@ func (x *LeaguePlayerStanding) GetAvgMistakeIndex() float64 {
 func (x *LeaguePlayerStanding) GetGamesAnalyzed() int32 {
 	if x != nil {
 		return x.GamesAnalyzed
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetBestRank() int32 {
+	if x != nil {
+		return x.BestRank
+	}
+	return 0
+}
+
+func (x *LeaguePlayerStanding) GetWorstRank() int32 {
+	if x != nil {
+		return x.WorstRank
 	}
 	return 0
 }
@@ -1203,7 +1219,7 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"divisionId\x12G\n" +
 	"\x11registration_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10registrationDate\x12!\n" +
 	"\ffirsts_count\x18\x05 \x01(\x05R\vfirstsCount\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\xf9\x06\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xb5\a\n" +
 	"\x14LeaguePlayerStanding\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -1231,7 +1247,10 @@ const file_proto_ipc_league_proto_rawDesc = "" +
 	"\x1btotal_opponent_tiles_played\x18\x15 \x01(\x05R\x18totalOpponentTilesPlayed\x12?\n" +
 	"\x10placement_status\x18\x16 \x01(\x0e2\x14.ipc.PlacementStatusR\x0fplacementStatus\x12*\n" +
 	"\x11avg_mistake_index\x18\x17 \x01(\x01R\x0favgMistakeIndex\x12%\n" +
-	"\x0egames_analyzed\x18\x18 \x01(\x05R\rgamesAnalyzed\"}\n" +
+	"\x0egames_analyzed\x18\x18 \x01(\x05R\rgamesAnalyzed\x12\x1b\n" +
+	"\tbest_rank\x18\x19 \x01(\x05R\bbestRank\x12\x1d\n" +
+	"\n" +
+	"worst_rank\x18\x1a \x01(\x05R\tworstRank\"}\n" +
 	"\x0fTimeBankWarning\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x125\n" +

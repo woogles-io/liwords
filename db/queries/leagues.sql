@@ -373,6 +373,15 @@ FROM games
 WHERE season_id = $1
   AND game_end_reason = 0;
 
+-- name: GetUnfinishedDivisionGames :many
+-- Get unfinished games for a specific division (lightweight: just player IDs)
+SELECT
+    player0_id,
+    player1_id
+FROM games
+WHERE league_division_id = $1
+  AND game_end_reason = 0;
+
 -- name: GetSeasonZeroMoveGames :many
 -- Get all in-progress games in a season that have zero moves
 -- Uses timers field: if lu (last update) == ts (time started), no moves have been made

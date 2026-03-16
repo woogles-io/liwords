@@ -1870,6 +1870,41 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Get
 	return items, nil
 }
 
+const getUnfinishedDivisionGames = `-- name: GetUnfinishedDivisionGames :many
+SELECT
+    player0_id,
+    player1_id
+FROM games
+WHERE league_division_id = $1
+  AND game_end_reason = 0
+`
+
+type GetUnfinishedDivisionGamesRow struct {
+	Player0ID pgtype.Int4
+	Player1ID pgtype.Int4
+}
+
+// Get unfinished games for a specific division (lightweight: just player IDs)
+func (q *Queries) GetUnfinishedDivisionGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetUnfinishedDivisionGamesRow, error) {
+	rows, err := q.db.Query(ctx, getUnfinishedDivisionGames, leagueDivisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnfinishedDivisionGamesRow
+	for rows.Next() {
+		var i GetUnfinishedDivisionGamesRow
+		if err := rows.Scan(&i.Player0ID, &i.Player1ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUnfinishedLeagueGames = `-- name: GetUnfinishedLeagueGames :many
 SELECT
     uuid as game_id,

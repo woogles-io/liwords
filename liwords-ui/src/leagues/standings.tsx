@@ -149,6 +149,14 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return (total / gamesPlayed).toFixed(decimals);
   };
 
+  // Rank bounds are computed server-side using actual remaining pairings
+  // and max-flow for simultaneous feasibility. Fall back to the original
+  // client-side estimate if the backend hasn't been deployed yet
+  // (bestRank/worstRank will be 0).
+  const hasServerRanks = division.standings.some(
+    (s) => s.bestRank > 0 || s.worstRank > 0,
+  );
+
   // may need to useMemo all these O(n^2) computations.
   const possibleResults = division.standings.map((standing) => {
     const gr = standing.gamesRemaining;
@@ -170,43 +178,48 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return 0;
   };
 
-  const possibleRanks = division.standings.map((_, idx) => {
-    // best rank is 1 + number of others
-    // whose worst is strictly better than our best.
-    const bestRank =
-      1 +
-      division.standings.reduce(
-        (acc, _, idxOppo) =>
-          idxOppo !== idx &&
-          cmpResults(
-            possibleResults[idxOppo].worstPoints,
-            possibleResults[idxOppo].worstSpread,
-            possibleResults[idx].bestPoints,
-            possibleResults[idx].bestSpread,
-          ) > 0
-            ? acc + 1
-            : acc,
-        0,
-      );
-    // worst rank is 1 + number of others
-    // whose best is better than or equal to our worst.
-    const worstRank =
-      1 +
-      division.standings.reduce(
-        (acc, _, idxOppo) =>
-          idxOppo !== idx &&
-          cmpResults(
-            possibleResults[idxOppo].bestPoints,
-            possibleResults[idxOppo].bestSpread,
-            possibleResults[idx].worstPoints,
-            possibleResults[idx].worstSpread,
-          ) >= 0
-            ? acc + 1
-            : acc,
-        0,
-      );
-    return { bestRank, worstRank };
-  });
+  const possibleRanks = hasServerRanks
+    ? division.standings.map((standing) => ({
+        bestRank: standing.bestRank,
+        worstRank: standing.worstRank,
+      }))
+    : division.standings.map((_, idx) => {
+        // best rank is 1 + number of others
+        // whose worst is strictly better than our best.
+        const bestRank =
+          1 +
+          division.standings.reduce(
+            (acc, _, idxOppo) =>
+              idxOppo !== idx &&
+              cmpResults(
+                possibleResults[idxOppo].worstPoints,
+                possibleResults[idxOppo].worstSpread,
+                possibleResults[idx].bestPoints,
+                possibleResults[idx].bestSpread,
+              ) > 0
+                ? acc + 1
+                : acc,
+            0,
+          );
+        // worst rank is 1 + number of others
+        // whose best is better than or equal to our worst.
+        const worstRank =
+          1 +
+          division.standings.reduce(
+            (acc, _, idxOppo) =>
+              idxOppo !== idx &&
+              cmpResults(
+                possibleResults[idxOppo].bestPoints,
+                possibleResults[idxOppo].bestSpread,
+                possibleResults[idx].worstPoints,
+                possibleResults[idx].worstSpread,
+              ) >= 0
+                ? acc + 1
+                : acc,
+            0,
+          );
+        return { bestRank, worstRank };
+      });
 
   const divisionCompleted = !division.standings.some(
     (standing) => standing.gamesRemaining,
