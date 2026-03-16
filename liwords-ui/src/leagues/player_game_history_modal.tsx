@@ -1,9 +1,31 @@
 import React from "react";
-import { Modal, Spin, Table, Tag, Tooltip } from "antd";
+import { Modal, Spin, Table, Tag, Tooltip, theme } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+
+const endReasonLabel = (reason: GameEndReason): string => {
+  switch (reason) {
+    case GameEndReason.TIME:
+      return "time";
+    case GameEndReason.CONSECUTIVE_ZEROES:
+      return "zeroes";
+    case GameEndReason.RESIGNED:
+      return "resigned";
+    case GameEndReason.TRIPLE_CHALLENGE:
+      return "triple";
+    case GameEndReason.FORCE_FORFEIT:
+      return "forfeit";
+    case GameEndReason.ADJUDICATED:
+      return "adjudicated";
+    case GameEndReason.ABORTED:
+      return "aborted";
+    default:
+      return "";
+  }
+};
 
 type PlayerGameHistoryModalProps = {
   visible: boolean;
@@ -27,30 +49,47 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     seasonId,
   });
 
+  const { token } = theme.useToken();
+
   const columns = [
     {
       title: "Opponent",
       dataIndex: "opponentUsername",
       key: "opponent",
+      fixed: "left" as const,
+      onCell: () => ({
+        style: { background: token.colorBgContainer },
+      }),
       render: (username: string) => <strong>{username}</strong>,
     },
     {
       title: "Result",
-      dataIndex: "result",
       key: "result",
-      render: (result: string) => {
-        if (result === "win") {
-          return <Tag color="green">Win</Tag>;
-        } else if (result === "loss") {
-          return <Tag color="red">Loss</Tag>;
-        } else if (result === "draw") {
-          return <Tag color="blue">Draw</Tag>;
-        } else if (result === "turn") {
+      render: (
+        _: unknown,
+        record: { result: string; gameEndReason: GameEndReason },
+      ) => {
+        const reason = endReasonLabel(record.gameEndReason);
+        let tag: React.ReactNode = null;
+        if (record.result === "win") {
+          tag = <Tag color="green">Win</Tag>;
+        } else if (record.result === "loss") {
+          tag = <Tag color="red">Loss</Tag>;
+        } else if (record.result === "draw") {
+          tag = <Tag color="blue">Draw</Tag>;
+        } else if (record.result === "turn") {
           return <Tag color="gold">On Turn</Tag>;
-        } else if (result === "in_progress") {
+        } else if (record.result === "in_progress") {
           return <Tag color="orange">In Progress</Tag>;
         }
-        return null;
+        if (!tag) return null;
+        return reason ? (
+          <span style={{ whiteSpace: "nowrap" }}>
+            {tag} ({reason})
+          </span>
+        ) : (
+          tag
+        );
       },
     },
     {
@@ -95,6 +134,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       playerScore: game.playerScore,
       opponentScore: game.opponentScore,
       gameDate: game.gameDate ? timestampDate(game.gameDate) : undefined,
+      gameEndReason: game.gameEndReason,
     })) || [];
 
   const handleRowClick = (record: { gameId: string }) => {
@@ -140,6 +180,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
               dataSource={dataSource}
               pagination={false}
               size="small"
+              scroll={{ x: "max-content" }}
               onRow={(record) => ({
                 onClick: () => handleRowClick(record),
                 style: { cursor: "pointer" },
