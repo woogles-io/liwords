@@ -43,7 +43,6 @@ import {
   GameEvent_Direction,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { GameState } from "../store/reducers/game_reducer";
-import { GameType } from "../gen/api/proto/ipc/omgwords_pb";
 import {
   Alphabet,
   machineLetterToRune,
