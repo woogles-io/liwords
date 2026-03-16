@@ -9,8 +9,9 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -60,12 +61,12 @@ func tuiCommand(ctx context.Context, args []string) error {
 	const debugLogPath = "/tmp/league-tester-debug.log"
 	debugLog, dlErr := os.OpenFile(debugLogPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if dlErr == nil {
-		origStderrFd, dupErr := syscall.Dup(2)
+		origStderrFd, dupErr := unix.Dup(2)
 		if dupErr == nil {
-			syscall.Dup2(int(debugLog.Fd()), 2) //nolint:errcheck
+			unix.Dup2(int(debugLog.Fd()), 2) //nolint:errcheck
 			defer func() {
-				syscall.Dup2(origStderrFd, 2) //nolint:errcheck
-				syscall.Close(origStderrFd)
+				unix.Dup2(origStderrFd, 2) //nolint:errcheck
+				unix.Close(origStderrFd)
 				debugLog.Close()
 			}()
 		}
