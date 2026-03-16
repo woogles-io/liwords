@@ -31,6 +31,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   data: Board3DData | null;
+  filename?: string;
 };
 
 export const Board3DModal = React.memo((props: Props) => {
@@ -84,8 +85,8 @@ export const Board3DModal = React.memo((props: Props) => {
   }, [tileColor, boardColor]);
 
   const handleSavePNG = useCallback(() => {
-    sceneRef.current?.saveAsPNG();
-  }, []);
+    sceneRef.current?.saveAsPNG(props.filename);
+  }, [props.filename]);
 
   const handleToggleSpin = useCallback(() => {
     const next = sceneRef.current?.toggleSpin();

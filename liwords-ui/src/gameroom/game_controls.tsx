@@ -224,6 +224,7 @@ const ExamineGameControls = React.memo(
               open={board3DOpen}
               onClose={() => setBoard3DOpen(false)}
               data={board3DData}
+              filename={`${gameContext.gameID}-3d${isAtLastTurn ? "" : `-${examinableGameContext.turns.length + 1}`}.png`}
             />
           </React.Suspense>
         )}
@@ -673,6 +674,7 @@ const GameControls = React.memo((props: Props) => {
             open={board3DOpen}
             onClose={() => setBoard3DOpen(false)}
             data={board3DData}
+            filename={`${gameContext.gameID}-3d-${gameContext.turns.length + 1}.png`}
           />
         </React.Suspense>
       )}
@@ -797,6 +799,7 @@ const EndGameControls = (props: EGCProps) => {
             open={board3DOpen}
             onClose={() => setBoard3DOpen(false)}
             data={board3DData}
+            filename={`${gameContext.gameID}-3d.png`}
           />
         </React.Suspense>
       )}
