@@ -19,7 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-
 type leagueTUI struct {
 	app      *tview.Application
 	ctx      context.Context
@@ -197,12 +196,12 @@ func (t *leagueTUI) buildActionList() *tview.List {
 	}
 
 	sec("── Time Control ─────────────────")
-	add("− 1 Week",        func() { t.shiftTime(-7 * 24 * time.Hour) })
-	add("− 1 Day",         func() { t.shiftTime(-24 * time.Hour) })
-	add("− 1 Hour",        func() { t.shiftTime(-time.Hour) })
-	add("+ 1 Hour",        func() { t.shiftTime(time.Hour) })
-	add("+ 1 Day",         func() { t.shiftTime(24 * time.Hour) })
-	add("+ 1 Week",        func() { t.shiftTime(7 * 24 * time.Hour) })
+	add("− 1 Week", func() { t.shiftTime(-7 * 24 * time.Hour) })
+	add("− 1 Day", func() { t.shiftTime(-24 * time.Hour) })
+	add("− 1 Hour", func() { t.shiftTime(-time.Hour) })
+	add("+ 1 Hour", func() { t.shiftTime(time.Hour) })
+	add("+ 1 Day", func() { t.shiftTime(24 * time.Hour) })
+	add("+ 1 Week", func() { t.shiftTime(7 * 24 * time.Hour) })
 	add("Jump to date...", func() { t.showDateModal() })
 
 	sec("── Setup ────────────────────────")
@@ -246,13 +245,13 @@ func (t *leagueTUI) buildActionList() *tview.List {
 	})
 
 	sec("── Simulate Games ───────────────")
-	add("Simulate 1 Game",    func() { t.simGames(false, 1) })
-	add("Simulate 5 Games",   func() { t.simGames(false, 5) })
-	add("Simulate 10 Games",  func() { t.simGames(false, 10) })
+	add("Simulate 1 Game", func() { t.simGames(false, 1) })
+	add("Simulate 5 Games", func() { t.simGames(false, 5) })
+	add("Simulate 10 Games", func() { t.simGames(false, 10) })
 	add("Simulate All Games", func() { t.simGames(true, 0) })
 
 	sec("── View ─────────────────────────")
-	add("Refresh State",        func() { go t.refreshState() })
+	add("Refresh State", func() { go t.refreshState() })
 	add("Full Inspect → Output", func() { t.runInspect() })
 
 	return list
