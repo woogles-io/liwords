@@ -125,9 +125,9 @@ func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
 
 // playerGameInfo holds precomputed game decomposition for a specific player P.
 type playerGameInfo struct {
-	gamesVsP     []int     // how many remaining games each player has vs P
+	gamesVsP     []int      // how many remaining games each player has vs P
 	nonPGames    []gamePair // games not involving P
-	nonPGamesCnt []int     // remaining non-P games per player
+	nonPGamesCnt []int      // remaining non-P games per player
 }
 
 func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
