@@ -253,12 +253,26 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 
 	evt := entGame.HistoryRefresherEvent()
 	evt.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, evt.History)).(*macondopb.GameHistory)
-	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
-	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-	for _, p := range players(entGame) {
-		wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+	if shouldCensorRacksForViewers(ctx, entGame, stores) {
+		playerWrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		for _, p := range players(entGame) {
+			playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+		}
+		entGame.SendChange(playerWrapped)
+
+		censoredEvt := proto.Clone(evt).(*pb.GameHistoryRefresher)
+		entity.CensorHistoryRacks(censoredEvt)
+		tvWrapped := entity.WrapEvent(censoredEvt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		entGame.SendChange(tvWrapped)
+	} else {
+		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
+		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		for _, p := range players(entGame) {
+			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+		}
+		entGame.SendChange(wrapped)
 	}
-	entGame.SendChange(wrapped)
 
 	// If the previous game was a rematch, notify
 	// the viewers that this game has started.
@@ -537,13 +551,31 @@ func PlayMove(ctx context.Context,
 	// Send the server change event.
 	playing := entGame.Game.Playing()
 	players := players(entGame)
+	censorForTV := playing != macondopb.PlayState_GAME_OVER &&
+		shouldCensorRacksForViewers(ctx, entGame, stores)
 	for _, sge := range evts {
-		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
-		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
-		for _, p := range players {
-			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+		if censorForTV {
+			// Split into two events: full for players, censored for spectators.
+			playerWrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			for _, p := range players {
+				playerWrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+			}
+			entGame.SendChange(playerWrapped)
+
+			c := proto.Clone(sge).(*pb.ServerGameplayEvent)
+			entity.CensorRacks(c)
+			tvWrapped := entity.WrapEvent(c, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			tvWrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+			entGame.SendChange(tvWrapped)
+		} else {
+			// Public game: single event with both audiences.
+			wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
+			wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+			for _, p := range players {
+				wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
+			}
+			entGame.SendChange(wrapped)
 		}
-		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		err = performEndgameDuties(ctx, entGame, stores)
@@ -767,6 +799,26 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 }
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
+// shouldCensorRacksForViewers returns true if spectators should not see
+// player racks. This applies to league games and tournament games with
+// private analysis enabled.
+func shouldCensorRacksForViewers(ctx context.Context, g *entity.Game, s *stores.Stores) bool {
+	if g.LeagueID != nil {
+		return true
+	}
+	if g.TournamentData != nil && g.TournamentData.Id != "" && s.TournamentStore != nil {
+		t, err := s.TournamentStore.Get(ctx, g.TournamentData.Id)
+		if err != nil {
+			// Can't verify tournament settings — censor to be safe.
+			return true
+		}
+		if t.ExtraMeta != nil && t.ExtraMeta.PrivateAnalysis {
+			return true
+		}
+	}
+	return false
+}
+
 func PotentiallySendBotMoveRequest(ctx context.Context, userStore user.Store, g *entity.Game) error {
 	userOnTurn, err := userStore.GetByUUID(ctx, g.PlayerIDOnTurn())
 	if err != nil {

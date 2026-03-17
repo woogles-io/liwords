@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -12,6 +11,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/mod"
+	"github.com/woogles-io/liwords/pkg/stores/tournament"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -19,7 +19,7 @@ import (
 // Events need to be sanitized so that we don't send user racks to people
 // who shouldn't get them. Note that sanitize only runs for events that are
 // sent DIRECTLY to a player (see AudUser), and not for AudGameTv for example.
-func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
+func sanitize(us user.Store, gs gameplay.GameStore, ts *tournament.Cache, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
 	// Depending on the event type and even the state of the game, we return a
 	// sanitized event (or not).
 	switch evt.Type {
@@ -41,20 +41,27 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 		}
 		myPlayerIndex := playerIndexFromUserID(userID, subevt.History.Players)
 		if myPlayerIndex == -1 {
-			// User not found in game - could be spectator OR auth issue
-			// For correspondence games: ALWAYS sanitize (prevent tile leak)
-			// For real-time games: Allow spectating (current behavior)
-
-			// Check if this is a correspondence game
+			// User not found in game — spectator or auth issue.
+			// Censor racks for league games and private-analysis tournaments.
 			game, err := gs.Get(context.Background(), subevt.History.Uid)
-			isCorrespondence := false
-			if err == nil && game != nil {
-				isCorrespondence = game.IsCorrespondence()
+			shouldCensor := false
+			if err != nil {
+				// Can't load game — censor to be safe.
+				shouldCensor = true
+			} else if game != nil {
+				if game.IsCorrespondence() || game.LeagueID != nil {
+					shouldCensor = true
+				} else if game.TournamentData != nil && game.TournamentData.Id != "" && ts != nil {
+					t, err := ts.Get(context.Background(), game.TournamentData.Id)
+					if err != nil {
+						shouldCensor = true // Can't verify — censor to be safe.
+					} else if t.ExtraMeta != nil && t.ExtraMeta.PrivateAnalysis {
+						shouldCensor = true
+					}
+				}
 			}
 
-			if isCorrespondence {
-				// CRITICAL: Sanitize ALL tiles for correspondence games
-				// This prevents the tile leak when auth fails
+			if shouldCensor {
 				for _, evt := range cloned.History.Events {
 					evt.Rack = ""
 					if evt.Type == macondopb.GameEvent_EXCHANGE {
@@ -63,15 +70,8 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 				}
 				cloned.History.LastKnownRacks[0] = ""
 				cloned.History.LastKnownRacks[1] = ""
-
-				log.Warn().
-					Str("userID", userID).
-					Str("gameID", subevt.History.Uid).
-					Interface("players", subevt.History.Players).
-					Msg("correspondence-game-user-not-player-sanitizing-all-tiles")
 			}
 
-			// Return sanitized (or unsanitized for real-time spectators)
 			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
 
@@ -94,8 +94,9 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 
 	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
 		// Server gameplay events
-		// When sent to AudUser, we need to sanitize them here. When sent to
-		// an AudGameTV, they are unsanitized, and handled elsewhere.
+		// When sent to AudUser, we sanitize opponent racks here.
+		// AudGameTV events are pre-censored at the source (gameplay/game.go)
+		// for league games and tournaments with private analysis.
 		subevt, ok := evt.Event.(*pb.ServerGameplayEvent)
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")
@@ -106,13 +107,9 @@ func sanitize(us user.Store, gs gameplay.GameStore, evt *entity.EventWrapper, us
 		if subevt.UserId == userID {
 			return evt, nil
 		}
-		// Otherwise clone it.
+		// Otherwise clone and censor opponent's rack.
 		cloned := proto.Clone(subevt).(*pb.ServerGameplayEvent)
-		cloned.NewRack = ""
-		cloned.Event.Rack = ""
-		if cloned.Event.Type == macondopb.GameEvent_EXCHANGE {
-			cloned.Event.Exchanged = ""
-		}
+		entity.CensorRacks(cloned)
 		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT), nil
 
 	default:
