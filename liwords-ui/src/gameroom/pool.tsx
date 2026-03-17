@@ -5,6 +5,7 @@ import { PoolFormatType, PoolFormats } from "../constants/pool_formats";
 import { singularCount } from "../utils/plural";
 import { Alphabet, machineLetterToRune } from "../constants/alphabets";
 import { Blank, MachineLetter, MachineWord } from "../utils/cwgame/common";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 
 type poolType = { [ml: MachineLetter]: number };
 
@@ -77,19 +78,7 @@ type Props = {
 };
 
 const Pool = React.memo((props: Props) => {
-  const readHidePool = React.useCallback(
-    () => localStorage.getItem("hidePool") === "true",
-    [],
-  );
-  const [hidePool, setHidePool] = React.useState(readHidePool);
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setHidePool(readHidePool);
-    }, 1000); // how long should it be before it picks up changes from other tabs?
-    return () => {
-      clearInterval(interval);
-    };
-  }, [readHidePool]);
+  const [hidePool] = useLocalStorageBool("hidePool");
 
   return (
     <React.Fragment>

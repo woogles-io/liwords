@@ -10,6 +10,7 @@ import { App, Button, Card, Switch, Tooltip } from "antd";
 import { BulbOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { flashError } from "../utils/hooks/connect";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import {
   GetAnalysisStatusResponse_JobStatus,
   RequestAnalysisResponse_Status,
@@ -905,10 +906,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     return cachedMoves;
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
-  const showEquityLoss = React.useMemo(
-    () => localStorage.getItem("enableShowEquityLoss") === "true",
-    [],
-  );
+  const [showEquityLoss] = useLocalStorageBool("enableShowEquityLoss");
   const equityBase = React.useMemo(
     () =>
       showEquityLoss ? (moves?.find((x) => x.valid ?? true)?.equity ?? 0) : 0,
