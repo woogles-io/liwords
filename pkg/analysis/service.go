@@ -398,34 +398,7 @@ func (s *AnalysisService) RequestAnalysis(
 		}), nil
 	}
 
-	// Check authorization:
-	// - For regular games: user must be a player
-	// - For annotated games: user must be the creator
-	isAuthorized := false
-
-	if metadata.Type == ipc.GameType_ANNOTATED {
-		// For annotated games, only the creator can request analysis
-		// Creator is stored in annotated_game_metadata table
-		owner, err := s.queries.GetGameOwner(ctx, gameID)
-		if err == nil && owner.CreatorUuid == user.UUID {
-			isAuthorized = true
-		}
-	} else {
-		// For regular games, user must be a player
-		for _, player := range metadata.Players {
-			if player.UserId == user.UUID {
-				isAuthorized = true
-				break
-			}
-		}
-	}
-
-	if !isAuthorized {
-		return connect.NewResponse(&pb.RequestAnalysisResponse{
-			Status:  pb.RequestAnalysisResponse_NOT_A_PLAYER,
-			Message: "You must be a player in this game (or creator for annotated games) to request analysis",
-		}), nil
-	}
+	// Authorization check removed - anyone can request analysis for any completed game
 
 	// Check if variant is supported (only classic for now)
 	variantName := ""
@@ -460,16 +433,34 @@ func (s *AnalysisService) RequestAnalysis(
 		}), nil
 	}
 
-	// Check rate limit (5 per day)
+	// Check rate limit
+	// Contributors (users who have completed analysis jobs) get 20 per day
+	// Regular users get 5 per day
 	requestCount, err := s.queries.GetUserRequestCountToday(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to check rate limit: %w", err))
 	}
 
-	if requestCount >= 5 {
+	// Check if user has contributed to analysis (completed any jobs)
+	jobCount, err := s.queries.GetUserJobCount(ctx, pgtype.Text{String: user.UUID, Valid: true})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to check contributor status: %w", err))
+	}
+
+	isContributor := jobCount > 0
+	dailyLimit := int64(5)
+	if isContributor {
+		dailyLimit = 20
+	}
+
+	if requestCount >= dailyLimit {
+		message := fmt.Sprintf("You have reached the daily limit of %d analysis requests. Please try again tomorrow.", dailyLimit)
+		if !isContributor {
+			message += " Contributors who run the analysis worker get 20 requests per day!"
+		}
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_RATE_LIMITED,
-			Message: "You have reached the daily limit of 5 analysis requests. Please try again tomorrow.",
+			Message: message,
 		}), nil
 	}
 
