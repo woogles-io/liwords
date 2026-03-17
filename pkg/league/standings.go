@@ -163,15 +163,17 @@ func (sm *StandingsManager) markDivisionOutcomes(
 		// Create initial standings with 0-0-0 records for all registered players
 		for _, reg := range registrations {
 			err := sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
-				DivisionID:     division.Uuid,
-				UserID:         reg.UserID,
-				Wins:           pgtype.Int4{Int32: 0, Valid: true},
-				Losses:         pgtype.Int4{Int32: 0, Valid: true},
-				Draws:          pgtype.Int4{Int32: 0, Valid: true},
-				Spread:         pgtype.Int4{Int32: 0, Valid: true},
-				GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
-				GamesRemaining: pgtype.Int4{Int32: 0, Valid: true},
-				Result:         pgtype.Int4{Valid: false},
+				DivisionID:        division.Uuid,
+				UserID:            reg.UserID,
+				Wins:              pgtype.Int4{Int32: 0, Valid: true},
+				Losses:            pgtype.Int4{Int32: 0, Valid: true},
+				Draws:             pgtype.Int4{Int32: 0, Valid: true},
+				Spread:            pgtype.Int4{Int32: 0, Valid: true},
+				GamesPlayed:       pgtype.Int4{Int32: 0, Valid: true},
+				GamesRemaining:    pgtype.Int4{Int32: 0, Valid: true},
+				Result:            pgtype.Int4{Valid: false},
+				TotalMistakeIndex: pgtype.Float8{Float64: 0, Valid: true},
+				GamesAnalyzed:     pgtype.Int4{Int32: 0, Valid: true},
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create initial standing: %w", err)
@@ -373,16 +375,32 @@ func (sm *StandingsManager) calculateDivisionStandings(
 			gamesRemaining = 0 // Safety check
 		}
 
-		err := sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
-			DivisionID:     division.Uuid,
-			UserID:         standing.UserID,
-			Wins:           pgtype.Int4{Int32: int32(standing.Wins), Valid: true},
-			Losses:         pgtype.Int4{Int32: int32(standing.Losses), Valid: true},
-			Draws:          pgtype.Int4{Int32: int32(standing.Draws), Valid: true},
-			Spread:         pgtype.Int4{Int32: int32(standing.Spread), Valid: true},
-			GamesPlayed:    pgtype.Int4{Int32: int32(standing.GamesPlayed), Valid: true},
-			GamesRemaining: pgtype.Int4{Int32: int32(gamesRemaining), Valid: true},
-			Result:         pgtype.Int4{Int32: int32(standing.Outcome), Valid: true},
+		// Get existing standing to preserve MI data if it exists
+		var totalMistakeIndex pgtype.Float8
+		var gamesAnalyzed pgtype.Int4
+		existingStanding, err := sm.store.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
+			DivisionID: division.Uuid,
+			UserID:     standing.UserID,
+		})
+		if err == nil {
+			// Preserve existing MI data
+			totalMistakeIndex = existingStanding.TotalMistakeIndex
+			gamesAnalyzed = existingStanding.GamesAnalyzed
+		}
+		// If error (no existing standing), use zero values from initialization
+
+		err = sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
+			DivisionID:        division.Uuid,
+			UserID:            standing.UserID,
+			Wins:              pgtype.Int4{Int32: int32(standing.Wins), Valid: true},
+			Losses:            pgtype.Int4{Int32: int32(standing.Losses), Valid: true},
+			Draws:             pgtype.Int4{Int32: int32(standing.Draws), Valid: true},
+			Spread:            pgtype.Int4{Int32: int32(standing.Spread), Valid: true},
+			GamesPlayed:       pgtype.Int4{Int32: int32(standing.GamesPlayed), Valid: true},
+			GamesRemaining:    pgtype.Int4{Int32: int32(gamesRemaining), Valid: true},
+			Result:            pgtype.Int4{Int32: int32(standing.Outcome), Valid: true},
+			TotalMistakeIndex: totalMistakeIndex,
+			GamesAnalyzed:     gamesAnalyzed,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to save standing: %w", err)
@@ -743,7 +761,7 @@ func (sm *StandingsManager) recalculateDivisionExtendedStats(
 
 	// Update each player's standings with the extended stats
 	for _, standing := range playerStats {
-		// Get the existing standing to preserve wins/losses/draws/spread/games_played
+		// Get the existing standing to preserve wins/losses/draws/spread/games_played and MI data
 		existingStanding, err := sm.store.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
 			DivisionID: divisionID,
 			UserID:     standing.UserID,
@@ -753,7 +771,7 @@ func (sm *StandingsManager) recalculateDivisionExtendedStats(
 			continue
 		}
 
-		// Update with full data including extended stats
+		// Update with full data including extended stats, preserving MI data
 		err = sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
 			DivisionID:               divisionID,
 			UserID:                   standing.UserID,
@@ -775,6 +793,8 @@ func (sm *StandingsManager) recalculateDivisionExtendedStats(
 			BlanksPlayed:             pgtype.Int4{Int32: int32(standing.BlanksPlayed), Valid: true},
 			TotalTilesPlayed:         pgtype.Int4{Int32: int32(standing.TotalTilesPlayed), Valid: true},
 			TotalOpponentTilesPlayed: pgtype.Int4{Int32: int32(standing.TotalOpponentTilesPlayed), Valid: true},
+			TotalMistakeIndex:        existingStanding.TotalMistakeIndex,
+			GamesAnalyzed:            existingStanding.GamesAnalyzed,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update standing for player %d: %w", standing.UserID, err)
