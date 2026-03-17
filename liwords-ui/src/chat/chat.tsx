@@ -46,6 +46,7 @@ export type Props = {
   leagueID?: string;
   suppressDefault?: boolean;
   playerInfoMap?: Map<string, string>;
+  onInfoTextClick?: (userId: string) => void;
 };
 
 // userid -> channel -> string
@@ -645,6 +646,7 @@ export const Chat = React.memo((props: Props) => {
                   ? props.playerInfoMap?.get(ent.senderId)
                   : undefined
               }
+              onInfoTextClick={props.onInfoTextClick}
             />
           );
         }),
@@ -653,6 +655,7 @@ export const Chat = React.memo((props: Props) => {
       props.highlight,
       props.highlightText,
       props.playerInfoMap,
+      props.onInfoTextClick,
       channel,
       sendNewMessage,
     ],

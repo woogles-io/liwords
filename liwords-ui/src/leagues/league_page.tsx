@@ -562,6 +562,12 @@ export const LeaguePage = (props: Props) => {
                   defaultDescription={`League Chat: ${league.name}`}
                   leagueID={league.uuid}
                   playerInfoMap={playerInfoMap}
+                  onInfoTextClick={(userId) => {
+                    const division = playerToDivisionMap.get(userId);
+                    if (division?.uuid) {
+                      setSelectedDivisionId(division.uuid);
+                    }
+                  }}
                 />
               </div>
             )}
