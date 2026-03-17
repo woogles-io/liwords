@@ -1263,7 +1263,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}
-        onExamine={handleExamineStart}
+        onExamine={() => handleExamineStart(props.gameDone)}
         onExportGCG={handleExportGCG}
         showNudge={authedSolvingPuzzle ? false : showNudge}
         showAbort={authedSolvingPuzzle ? false : showAbort}

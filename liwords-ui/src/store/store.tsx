@@ -196,7 +196,8 @@ type PoolFormatStoreData = {
 type ExamineStoreData = {
   isExamining: boolean;
   examinedTurn: number;
-  handleExamineStart: () => void;
+  freshExamineSignal: number; // increments on first-ever Analyze click on a finished game
+  handleExamineStart: (gameDone?: boolean) => void;
   handleExamineEnd: () => void;
   handleExamineFirst: () => void;
   handleExaminePrev: () => void;
@@ -371,6 +372,7 @@ const PoolFormatContext = createContext<PoolFormatStoreData>({
 const ExamineContext = createContext<ExamineStoreData>({
   isExamining: false,
   examinedTurn: Infinity,
+  freshExamineSignal: 0,
   handleExamineStart: defaultFunction,
   handleExamineEnd: defaultFunction,
   handleExamineFirst: defaultFunction,
@@ -438,6 +440,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { gameContext } = gameContextStore;
   const numberOfTurns = gameContext.turns.length;
   const [isExamining, setIsExamining] = useState(false);
+  const hasEverExaminedRef = useRef(false);
+  const [freshExamineSignal, setFreshExamineSignal] = useState(0);
   const doneButtonRef = useRef<HTMLButtonElement | null>(null);
   const [examinedTurn, setExaminedTurnRaw] = useState(Infinity);
   const setExaminedTurn = useCallback(
@@ -464,9 +468,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     },
     [shouldTrigger],
   );
-  const handleExamineStartUnconditionally = useCallback(() => {
-    setIsExamining(true);
-  }, []);
+  const handleExamineStartUnconditionally = useCallback(
+    (gameDone?: boolean) => {
+      if (gameDone && !hasEverExaminedRef.current) {
+        setExaminedTurn(0);
+        setFreshExamineSignal((n) => n + 1);
+      }
+      hasEverExaminedRef.current = true;
+      setIsExamining(true);
+    },
+    [setExaminedTurn],
+  );
   const handleExamineEnd = useCallback(() => {
     setIsExamining(false);
   }, []);
@@ -774,6 +786,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     () => ({
       isExamining,
       examinedTurn,
+      freshExamineSignal,
       handleExamineStart,
       handleExamineEnd,
       handleExamineFirst,
@@ -789,6 +802,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     [
       isExamining,
       examinedTurn,
+      freshExamineSignal,
       handleExamineStart,
       handleExamineEnd,
       handleExamineFirst,

@@ -386,6 +386,12 @@ export const AnalyzerContextProvider = (
   );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
+  const { freshExamineSignal } = useExamineStoreContext();
+  useEffect(() => {
+    if (freshExamineSignal > 0) {
+      setAutoMode(true);
+    }
+  }, [freshExamineSignal]);
   const [unrace, setUnrace] = useState(new Unrace());
 
   const { gameContext: examinableGameContext } =
