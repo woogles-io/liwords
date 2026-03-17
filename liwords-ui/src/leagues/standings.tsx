@@ -410,7 +410,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="T"
-          tooltip={`Number of tied games (div total: ${divTotals.draws / 2})`}
+          tooltip={
+            divTotals.draws
+              ? `Number of tied games (div total: ${divTotals.draws / 2})`
+              : "Number of tied games"
+          }
         />
       ),
       dataIndex: "draws",
@@ -718,7 +722,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="#TO"
-          tooltip={`Number of timeouts (div total: ${divTotals.timeouts})`}
+          tooltip={
+            divTotals.timeouts
+              ? `Number of timeouts (div total: ${divTotals.timeouts})`
+              : "Number of timeouts"
+          }
         />
       ),
       dataIndex: "timeouts",
