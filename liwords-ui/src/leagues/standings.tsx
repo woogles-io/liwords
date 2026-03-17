@@ -225,6 +225,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       acc.totalTurns += s.totalTurns;
       acc.totalTilesPlayed += s.totalTilesPlayed;
       acc.blanksPlayed += s.blanksPlayed;
+      acc.draws += s.draws;
       acc.timeouts += s.timeouts;
       acc.totalMistakeIndex += s.avgMistakeIndex * s.gamesAnalyzed;
       acc.gamesAnalyzed += s.gamesAnalyzed;
@@ -241,6 +242,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       totalTurns: 0,
       totalTilesPlayed: 0,
       blanksPlayed: 0,
+      draws: 0,
       timeouts: 0,
       totalMistakeIndex: 0,
       gamesAnalyzed: 0,
@@ -405,7 +407,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sortIcon: noSortIcon,
     },
     {
-      title: <ColHeader title="T" tooltip="Number of tied games" />,
+      title: (
+        <ColHeader
+          title="T"
+          tooltip={`Number of tied games (div total: ${divTotals.draws / 2})`}
+        />
+      ),
       dataIndex: "draws",
       key: "draws",
       width: 35,
