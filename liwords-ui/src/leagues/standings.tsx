@@ -228,8 +228,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       acc.totalTilesPlayed += s.totalTilesPlayed;
       acc.totalOpponentTilesPlayed += s.totalOpponentTilesPlayed;
       acc.blanksPlayed += s.blanksPlayed;
-      acc.wins += s.wins;
-      acc.draws += s.draws;
       acc.timeouts += s.timeouts;
       acc.totalMistakeIndex += s.avgMistakeIndex * s.gamesAnalyzed;
       acc.gamesAnalyzed += s.gamesAnalyzed;
@@ -249,8 +247,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       totalTilesPlayed: 0,
       totalOpponentTilesPlayed: 0,
       blanksPlayed: 0,
-      wins: 0,
-      draws: 0,
       timeouts: 0,
       totalMistakeIndex: 0,
       gamesAnalyzed: 0,
@@ -680,12 +676,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
-      title: (
-        <ColHeader
-          title="PPG"
-          tooltip={`Points per completed game (div avg: ${divAvg(divTotals.wins * 2 + divTotals.draws, 2)})`}
-        />
-      ),
+      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
       key: "ppg",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
