@@ -1,6 +1,25 @@
 @use "sass:color";
 @import "../base";
 
+// Ant's hover and ::before on sticky columns force transparent backgrounds,
+// causing scroll-through artifacts. Override both.
+.league-game-modal,
+.leagues-container {
+  .ant-table-cell-fix-left {
+    &.ant-table-cell-row-hover {
+      background: #ffffff !important;
+
+      @include colorModed {
+        background: m($card-background) !important;
+      }
+    }
+
+    &::before {
+      display: none !important;
+    }
+  }
+}
+
 .leagues-container {
   margin: 24px 48px;
   padding: 0;
