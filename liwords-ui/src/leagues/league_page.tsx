@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Col,
   Row,
@@ -13,7 +13,7 @@ import {
   Checkbox,
   Tooltip,
 } from "antd";
-import { LeftOutlined, TrophyOutlined } from "@ant-design/icons";
+import { LeftOutlined, TeamOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,6 +34,7 @@ import {
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { DivisionStandings } from "./standings";
+import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
 import { PromotionFormula } from "../gen/api/proto/ipc/league_pb";
 import { getDefaultDivisionId } from "./division_selector";
@@ -124,6 +125,8 @@ export const LeaguePage = (props: Props) => {
     useState<boolean>(false);
   const [showUnregisterConfirm, setShowUnregisterConfirm] =
     useState<boolean>(false);
+  const [showRoster, setShowRoster] = useState(false);
+  const pendingDivisionJump = useRef<number>(0);
 
   // Fetch league data
   const { data: leagueData, isPending: leaguePending } = useQuery(
@@ -180,6 +183,19 @@ export const LeaguePage = (props: Props) => {
   // Set default selected division when standings data changes
   useEffect(() => {
     if (standingsData?.divisions && standingsData.divisions.length > 0) {
+      if (pendingDivisionJump.current > 0) {
+        const targetDiv = standingsData.divisions.find(
+          (d) => d.divisionNumber === pendingDivisionJump.current,
+        );
+        if (targetDiv) {
+          setSelectedDivisionId(targetDiv.uuid);
+          pendingDivisionJump.current = 0;
+          return;
+        }
+        // Target not found yet — standings may still be loading for the
+        // new season. Keep the ref and wait for the next update.
+        return;
+      }
       const defaultDivId = getDefaultDivisionId(
         standingsData.divisions,
         userID,
@@ -574,6 +590,21 @@ export const LeaguePage = (props: Props) => {
               <LeftOutlined style={{ marginRight: 4 }} />
               All leagues / FAQ
             </Link>
+            <a
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowRoster((r) => !r)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowRoster((r) => !r);
+                }
+              }}
+              className="back-to-leagues-link"
+            >
+              <TeamOutlined style={{ marginRight: 4 }} />
+              {showRoster ? "Standings" : "All-time roster"}
+            </a>
 
             {/* League Header Row with Name and Selectors */}
             <div className="league-header-row">
@@ -629,11 +660,14 @@ export const LeaguePage = (props: Props) => {
                 {standingsData && standingsData.divisions.length > 0 && (
                   <Select
                     value={selectedDivisionId}
-                    onChange={setSelectedDivisionId}
+                    onChange={(val) => {
+                      setSelectedDivisionId(val);
+                      setShowRoster(false);
+                    }}
                     style={{ width: 200 }}
                     placeholder="Select Division"
                   >
-                    {standingsData.divisions.map((division, idx) => {
+                    {standingsData.divisions.map((division) => {
                       // Calculate game progress
                       let gamesPlayed = 0;
                       let gamesRemaining = 0;
@@ -737,7 +771,37 @@ export const LeaguePage = (props: Props) => {
                 />
               )}
 
-            {!standingsLoading &&
+            {showRoster && league && (
+              <LeagueRoster
+                leagueId={league.uuid}
+                onJumpToSeason={(seasonNum, divNum) => {
+                  const season = allSeasons.find(
+                    (s) => s.seasonNumber === seasonNum,
+                  );
+                  if (!season) return;
+                  const isSameSeason = season.uuid === displaySeasonId;
+                  setSelectedSeasonId(season.uuid);
+                  setShowRoster(false);
+                  if (isSameSeason && divNum > 0 && standingsData) {
+                    // Already on this season — select division directly.
+                    const targetDiv = standingsData.divisions.find(
+                      (d) => d.divisionNumber === divNum,
+                    );
+                    if (targetDiv) {
+                      setSelectedDivisionId(targetDiv.uuid);
+                      return;
+                    }
+                  }
+                  // Different season — defer until standings load.
+                  if (divNum > 0) {
+                    pendingDivisionJump.current = divNum;
+                  }
+                }}
+              />
+            )}
+
+            {!showRoster &&
+              !standingsLoading &&
               standingsData &&
               standingsData.divisions.length > 0 && (
                 <div className="standings-container" style={{ marginTop: 16 }}>

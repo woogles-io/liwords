@@ -977,6 +977,70 @@ func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGames
 	return items, nil
 }
 
+const getLeagueRoster = `-- name: GetLeagueRoster :many
+SELECT
+    u.uuid as user_uuid,
+    u.username,
+    ls.season_number,
+    COALESCE(ld.division_number, 0) as division_number,
+    COALESCE(lst.wins, 0) as wins,
+    COALESCE(lst.losses, 0) as losses,
+    COALESCE(lst.draws, 0) as draws,
+    COALESCE(lst.spread, 0) as spread,
+    COALESCE(lst.result, 0) as result
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_seasons ls ON lr.season_id = ls.uuid
+LEFT JOIN league_divisions ld ON lr.division_id = ld.uuid
+LEFT JOIN league_standings lst ON lst.division_id = ld.uuid AND lst.user_id = lr.user_id
+WHERE ls.league_id = $1
+ORDER BY u.username, ls.season_number
+`
+
+type GetLeagueRosterRow struct {
+	UserUuid       pgtype.Text
+	Username       pgtype.Text
+	SeasonNumber   int32
+	DivisionNumber int32
+	Wins           int32
+	Losses         int32
+	Draws          int32
+	Spread         int32
+	Result         int32
+}
+
+// Get all players across all seasons of a league with their division and standings.
+// LEFT JOIN on divisions so players registered but not yet placed are included.
+func (q *Queries) GetLeagueRoster(ctx context.Context, leagueID uuid.UUID) ([]GetLeagueRosterRow, error) {
+	rows, err := q.db.Query(ctx, getLeagueRoster, leagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLeagueRosterRow
+	for rows.Next() {
+		var i GetLeagueRosterRow
+		if err := rows.Scan(
+			&i.UserUuid,
+			&i.Username,
+			&i.SeasonNumber,
+			&i.DivisionNumber,
+			&i.Wins,
+			&i.Losses,
+			&i.Draws,
+			&i.Spread,
+			&i.Result,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPastSeasons = `-- name: GetPastSeasons :many
 SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1 AND status = 2  -- SeasonStatus.SEASON_COMPLETED

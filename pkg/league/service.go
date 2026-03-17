@@ -1806,6 +1806,112 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 	}), nil
 }
 
+func (ls *LeagueService) GetLeagueRoster(
+	ctx context.Context,
+	req *connect.Request[pb.LeagueRequest],
+) (*connect.Response[pb.LeagueRosterResponse], error) {
+	leagueUUID, err := uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		dbLeague, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
+		}
+		leagueUUID = dbLeague.Uuid
+	}
+
+	rows, err := ls.store.GetLeagueRoster(ctx, leagueUUID)
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get league roster: %w", err))
+	}
+
+	// Group rows by (season, division) to compute ranks, and by player.
+	seasonNumSet := make(map[int32]bool)
+	type divKey struct {
+		season, division int32
+	}
+	divGroups := make(map[divKey][]models.GetLeagueRosterRow)
+	type playerKey struct {
+		uuid, username string
+	}
+	playerOrder := []playerKey{}
+	playerSeasonMap := make(map[playerKey]map[int32]*models.GetLeagueRosterRow)
+	for i, row := range rows {
+		uid := row.UserUuid.String
+		uname := row.Username.String
+		pk := playerKey{uid, uname}
+		seasonNumSet[row.SeasonNumber] = true
+		if _, ok := playerSeasonMap[pk]; !ok {
+			playerOrder = append(playerOrder, pk)
+			playerSeasonMap[pk] = make(map[int32]*models.GetLeagueRosterRow)
+		}
+		playerSeasonMap[pk][row.SeasonNumber] = &rows[i]
+		if row.DivisionNumber > 0 {
+			dk := divKey{row.SeasonNumber, row.DivisionNumber}
+			divGroups[dk] = append(divGroups[dk], row)
+		}
+	}
+
+	// Compute rank within each (season, division) group using canonical sort.
+	type rankKey struct {
+		season   int32
+		userUUID string
+	}
+	ranks := make(map[rankKey]int32)
+	for dk, group := range divGroups {
+		sort.Slice(group, func(i, j int) bool {
+			pi := int(group[i].Wins)*2 + int(group[i].Draws)
+			pj := int(group[j].Wins)*2 + int(group[j].Draws)
+			if pi != pj {
+				return pi > pj
+			}
+			if group[i].Spread != group[j].Spread {
+				return group[i].Spread > group[j].Spread
+			}
+			return group[i].Username.String < group[j].Username.String
+		})
+		for i, row := range group {
+			ranks[rankKey{dk.season, row.UserUuid.String}] = int32(i + 1)
+		}
+	}
+
+	seasonNums := make([]int32, 0, len(seasonNumSet))
+	for sn := range seasonNumSet {
+		seasonNums = append(seasonNums, sn)
+	}
+	sort.Slice(seasonNums, func(i, j int) bool { return seasonNums[i] < seasonNums[j] })
+
+	players := make([]*pb.LeagueRosterPlayer, len(playerOrder))
+	for i, pk := range playerOrder {
+		seasons := make([]*pb.LeagueRosterSeason, 0, len(playerSeasonMap[pk]))
+		for _, sn := range seasonNums {
+			row, ok := playerSeasonMap[pk][sn]
+			if !ok {
+				continue
+			}
+			seasons = append(seasons, &pb.LeagueRosterSeason{
+				SeasonNumber:   row.SeasonNumber,
+				DivisionNumber: row.DivisionNumber,
+				Rank:           ranks[rankKey{sn, pk.uuid}],
+				Wins:           row.Wins,
+				Losses:         row.Losses,
+				Draws:          row.Draws,
+				Spread:         row.Spread,
+				Result:         ipc.StandingResult(row.Result),
+			})
+		}
+		players[i] = &pb.LeagueRosterPlayer{
+			UserId:   pk.uuid,
+			Username: pk.username,
+			Seasons:  seasons,
+		}
+	}
+
+	return connect.NewResponse(&pb.LeagueRosterResponse{
+		Players:       players,
+		SeasonNumbers: seasonNums,
+	}), nil
+}
+
 func (ls *LeagueService) GetLeagueStatistics(
 	ctx context.Context,
 	req *connect.Request[pb.LeagueRequest],
