@@ -800,10 +800,10 @@ func statsForUser(ctx context.Context, id string, stores *stores.Stores,
 
 // PotentiallySendBotMoveRequest sends a request to the internal Macondo bot to move if user on turn is a bot.
 // shouldCensorRacksForViewers returns true if spectators should not see
-// player racks. This applies to league games and tournament games with
-// private analysis enabled.
+// player racks. This applies to correspondence games, league games, and
+// tournament games with private analysis enabled.
 func shouldCensorRacksForViewers(ctx context.Context, g *entity.Game, s *stores.Stores) bool {
-	if g.LeagueID != nil {
+	if g.IsCorrespondence() || g.LeagueID != nil {
 		return true
 	}
 	if g.TournamentData != nil && g.TournamentData.Id != "" && s.TournamentStore != nil {
