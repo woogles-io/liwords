@@ -418,6 +418,10 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 		if standings[i].points > B {
 			continue // already guaranteed above
 		}
+		if standings[i].points == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
+			standings[i].spread > standings[p].spread {
+			continue // guaranteed above via spread tiebreak
+		}
 
 		// Determine whether Q at exactly B points could be above P.
 		// If so, Q must stay strictly below B to guarantee being below P.

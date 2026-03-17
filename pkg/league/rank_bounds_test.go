@@ -208,6 +208,27 @@ func TestSpreadTiebreakBelowP(t *testing.T) {
 	}
 }
 
+func TestAllGamesCompleteSamePointsDifferentSpread(t *testing.T) {
+	// All games finished. A and B have the same points but A has better spread.
+	// A is definitively 1st, B is definitively 2nd, C is definitively 3rd.
+	standings := []standingInfo{
+		si(1, 10, 100, 0),
+		si(2, 10, 50, 0),
+		si(3, 6, -50, 0),
+	}
+	bounds := CalculatePossibleRanks(standings, nil)
+
+	if bounds[0].BestRank != 1 || bounds[0].WorstRank != 1 {
+		t.Errorf("A: got %d-%d, want 1-1", bounds[0].BestRank, bounds[0].WorstRank)
+	}
+	if bounds[1].BestRank != 2 || bounds[1].WorstRank != 2 {
+		t.Errorf("B: got %d-%d, want 2-2", bounds[1].BestRank, bounds[1].WorstRank)
+	}
+	if bounds[2].BestRank != 3 || bounds[2].WorstRank != 3 {
+		t.Errorf("C: got %d-%d, want 3-3", bounds[2].BestRank, bounds[2].WorstRank)
+	}
+}
+
 func TestEqualPointsAndSpread(t *testing.T) {
 	// Two players with identical points and spread, both finished.
 	// Username tiebreak is arbitrary, so both could be in either position.
