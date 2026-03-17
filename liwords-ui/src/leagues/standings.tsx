@@ -423,6 +423,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) => a.draws - b.draws,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
+      render: (draws: number) => (draws > 0 ? draws : "-"),
     },
     {
       title: <ColHeader title="CUM" tooltip="Cumulative spread" />,
@@ -735,6 +736,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) => a.timeouts - b.timeouts,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
+      render: (timeouts: number) => (timeouts > 0 ? timeouts : "-"),
     },
     {
       title: <ColHeader title="Result" tooltip="Season result" />,
