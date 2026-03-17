@@ -179,19 +179,18 @@ func TestSpreadTiebreakInBestRank(t *testing.T) {
 }
 
 func TestSpreadTiebreakBelowP(t *testing.T) {
-	// P1 has +300 spread (beats both on spread), no remaining games.
-	// P2 and P3 have remaining games with lower spread.
+	// P1: 15 pts, +300 spread, 0 games left
+	// P2: 14 pts, +200 spread, 1 game left (vs P3)
+	// P3: 14 pts, +100 spread, 1 game left (vs P2)
 	//
-	// Draw: P2=15/+200, P3=15/+100, P1=15/+300. P1 is 1st.
-	// P2 wins: P2=16, P1=15, P3=14. P1 is 2nd.
-	// P3 wins: P3=16, P1=15, P2=14. P1 is 2nd.
+	// In reality P1 can finish 1st (if P2 and P3 draw, all reach 15 pts,
+	// and P1 has the best spread). But the algorithm can't model draws:
+	// a win shifts spread unpredictably, so any player reaching 15 pts
+	// with remaining games is treated as potentially above P1 on spread.
+	// Since the P2 vs P3 game must award points to at least one of them,
+	// at least one is forced to 15+ pts with uncertain spread.
 	//
-	// True best rank: 1. But since P2/P3's wins could shift spread
-	// unpredictably, the guaranteed bound is 2 (we can't promise 1st
-	// because we can't rule out a scenario where both end at 15pts
-	// with spread > P1's via wins in other games).
-	//
-	// Best rank: 2 (guaranteed). Worst rank: 2.
+	// Known limitation: algorithm reports bestRank=2 (conservative).
 	standings := []standingInfo{
 		si(1, 15, 300, 0),
 		si(2, 14, 200, 1),
