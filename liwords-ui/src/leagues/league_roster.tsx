@@ -180,7 +180,7 @@ export const LeagueRoster: React.FC<Props> = ({ leagueId, onJumpToSeason }) => {
         dataSource={filteredPlayers}
         rowKey="userId"
         loading={isLoading}
-        pagination={false}
+        pagination={{ pageSize: 50, showSizeChanger: false }}
         size="small"
         scroll={{ x: "max-content" }}
         showSorterTooltip={false}
