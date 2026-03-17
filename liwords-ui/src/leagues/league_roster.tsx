@@ -55,7 +55,7 @@ const resultIcon = (result: StandingResult) => {
 const formatSeason = (season: LeagueRosterSeason | undefined) => {
   if (!season) return <span className="roster-empty">—</span>;
   if (season.divisionNumber === 0) {
-    return <Tag color="default">Registered</Tag>;
+    return <Tag color="lime">Registered</Tag>;
   }
   const record = `${season.wins}-${season.losses}${season.draws ? `-${season.draws}` : ""}`;
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
@@ -68,7 +68,7 @@ const formatSeason = (season: LeagueRosterSeason | undefined) => {
               ? "gold"
               : season.divisionNumber === 2
                 ? "blue"
-                : undefined
+                : "green"
           }
         >
           D{season.divisionNumber}
