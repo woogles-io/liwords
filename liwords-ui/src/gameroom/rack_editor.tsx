@@ -48,13 +48,13 @@ export const RackEditor = (props: Props) => {
     let out = raw;
     out = out.toLocaleUpperCase();
 
-    // letters, interpunct, blank, and [] for multi-char Spanish tiles.
-    const onlyValidTileCharacters = out.match(/[\p{Letter}·\?\[\]]/gu);
+    // letters, interpunct, blank (? or .), and [] for multi-char Spanish tiles.
+    const onlyValidTileCharacters = out.match(/[\p{Letter}·\?\.\[\]]/gu);
+    // Convert . to ? for blanks
+    const normalized =
+      onlyValidTileCharacters?.map((c) => (c === "." ? "?" : c)).join("") ?? "";
     try {
-      let curRack = runesToMachineWord(
-        onlyValidTileCharacters?.join("") ?? "",
-        props.alphabet,
-      );
+      let curRack = runesToMachineWord(normalized, props.alphabet);
       if (curRack.length > MaxRackLength) {
         curRack = curRack.slice(0, MaxRackLength);
       }
@@ -62,8 +62,8 @@ export const RackEditor = (props: Props) => {
       setCurRackStr(machineWordToRunes(curRack, props.alphabet, false));
     } catch {
       // Do nothing for now. Maybe the user is not done typing their multi-char tile.
-      // Just echo back what they are typing.
-      setCurRackStr(onlyValidTileCharacters?.join("") ?? "");
+      // Just echo back what they are typing (with . converted to ?).
+      setCurRackStr(normalized);
     }
   };
 
@@ -72,7 +72,7 @@ export const RackEditor = (props: Props) => {
       <Input
         ref={inputRef}
         placeholder={
-          "Enter rack. Use ? for blank." +
+          "Enter rack. Use ? or . for blank." +
           (props.alphabet.name === "spanish" ? " Use [CH] for digraph CH." : "")
         }
         className="rack"
