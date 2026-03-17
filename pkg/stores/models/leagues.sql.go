@@ -2552,8 +2552,8 @@ const upsertStanding = `-- name: UpsertStanding :exec
 
 INSERT INTO league_standings (division_id, user_id, wins, losses, draws, spread, games_played, games_remaining, result,
     total_score, total_opponent_score, total_bingos, total_opponent_bingos, total_turns, high_turn, high_game, timeouts, blanks_played,
-    total_tiles_played, total_opponent_tiles_played, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
+    total_tiles_played, total_opponent_tiles_played, total_mistake_index, games_analyzed, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, NOW())
 ON CONFLICT (division_id, user_id)
 DO UPDATE SET
     wins = EXCLUDED.wins,
@@ -2574,6 +2574,8 @@ DO UPDATE SET
     blanks_played = EXCLUDED.blanks_played,
     total_tiles_played = EXCLUDED.total_tiles_played,
     total_opponent_tiles_played = EXCLUDED.total_opponent_tiles_played,
+    total_mistake_index = EXCLUDED.total_mistake_index,
+    games_analyzed = EXCLUDED.games_analyzed,
     updated_at = NOW()
 `
 
@@ -2598,6 +2600,8 @@ type UpsertStandingParams struct {
 	BlanksPlayed             pgtype.Int4
 	TotalTilesPlayed         pgtype.Int4
 	TotalOpponentTilesPlayed pgtype.Int4
+	TotalMistakeIndex        pgtype.Float8
+	GamesAnalyzed            pgtype.Int4
 }
 
 // Standings operations
@@ -2624,6 +2628,8 @@ func (q *Queries) UpsertStanding(ctx context.Context, arg UpsertStandingParams) 
 		arg.BlanksPlayed,
 		arg.TotalTilesPlayed,
 		arg.TotalOpponentTilesPlayed,
+		arg.TotalMistakeIndex,
+		arg.GamesAnalyzed,
 	)
 	return err
 }
