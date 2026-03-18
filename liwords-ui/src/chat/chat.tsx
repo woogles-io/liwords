@@ -947,7 +947,7 @@ export const Chat = React.memo((props: Props) => {
         onTabClick={handleTabClick}
         animated={false}
         items={tabItemsWithChildren}
-        destroyInactiveTabPane={false} // Keep all tab content rendered
+        destroyOnHidden={false} // Keep all tab content rendered
       />
     </Card>
   );

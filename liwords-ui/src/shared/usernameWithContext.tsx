@@ -213,7 +213,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   return (
     <Dropdown
       overlayClassName="user-menu"
-      destroyPopupOnHide
+      destroyOnHidden
       menu={{
         items: userMenuOptions,
         onClick: ({ key }) => {
