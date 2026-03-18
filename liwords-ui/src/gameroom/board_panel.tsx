@@ -576,17 +576,29 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   // Persist rack order to localStorage for correspondence games.
+  // Only save when the user has rearranged (order differs from server).
   useEffect(() => {
     if (!gameID || displayedRack.length === 0) return;
     if (examinableGameContext.playState === PlayState.GAME_OVER) {
       localStorage.removeItem(`rack_${gameID}`);
       return;
     }
+    // Don't save if rack is in server order (user hasn't rearranged).
+    if (
+      displayedRack.length === props.currentRack.length &&
+      displayedRack.every((v, i) => v === props.currentRack[i])
+    )
+      return;
     const timer = setTimeout(() => {
       localStorage.setItem(`rack_${gameID}`, JSON.stringify(displayedRack));
     }, 500);
     return () => clearTimeout(timer);
-  }, [gameID, displayedRack, examinableGameContext.playState]);
+  }, [
+    gameID,
+    displayedRack,
+    examinableGameContext.playState,
+    props.currentRack,
+  ]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
