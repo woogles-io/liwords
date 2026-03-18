@@ -66,7 +66,7 @@ const formatSeason = (season: LeagueRosterSeason | undefined) => {
           color={
             season.divisionNumber === 1
               ? "gold"
-              : season.divisionNumber === 2
+              : season.divisionNumber % 2 === 0
                 ? "blue"
                 : "green"
           }
