@@ -49,7 +49,10 @@ const NotepadContext = React.createContext({
   feRackInfo: true,
 });
 
-export const useNotepadContext = () => React.useContext(NotepadContext);
+const NotepadHasContentContext = React.createContext(false);
+
+export const useNotepadHasContent = () =>
+  React.useContext(NotepadHasContentContext);
 
 export const NotepadContextProvider = ({
   children,
@@ -95,7 +98,15 @@ export const NotepadContextProvider = ({
     [curNotepad, setCurNotepad, feRackInfo],
   );
 
-  return <NotepadContext.Provider value={contextValue} children={children} />;
+  const hasContent = curNotepad.length > 0;
+
+  return (
+    <NotepadContext.Provider value={contextValue}>
+      <NotepadHasContentContext.Provider value={hasContent}>
+        {children}
+      </NotepadHasContentContext.Provider>
+    </NotepadContext.Provider>
+  );
 };
 const defaultFunction = () => {};
 

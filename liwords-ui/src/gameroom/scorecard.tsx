@@ -23,7 +23,7 @@ import {
 } from "../utils/cwgame/game_event";
 import { Turn, gameEventsToTurns } from "../store/reducers/turns";
 import { PoolFormatType } from "../constants/pool_formats";
-import { Notepad, useNotepadContext } from "./notepad";
+import { Notepad, useNotepadHasContent } from "./notepad";
 import { sortTiles } from "../store/constants";
 import { getVW, isTablet } from "../utils/cwgame/common";
 import { Analyzer } from "./analyzer";
@@ -387,7 +387,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const [cardHeight, setCardHeight] = useState(0);
   const [flipHidden, setFlipHidden] = useState(true);
   const [flipEnabled, setEnableFlip] = useState(isTablet());
-  const { curNotepad } = useNotepadContext();
+  const notepadHasContent = useNotepadHasContent();
   // Autoscroll code removed - comments now use drawer
 
   const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
@@ -507,7 +507,7 @@ export const ScoreCard = React.memo((props: Props) => {
       title = !flipHidden ? "Notepad" : `Turn ${turns.length + 1}`;
       extra = !flipHidden
         ? "View Scorecard"
-        : `View Notepad${curNotepad ? " \u25cf" : ""}`;
+        : `View Notepad${notepadHasContent ? " \u25cf" : ""}`;
     }
   }
   let contents = null;
