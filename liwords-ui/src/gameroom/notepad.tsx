@@ -49,6 +49,8 @@ const NotepadContext = React.createContext({
   feRackInfo: true,
 });
 
+export const useNotepadContext = () => React.useContext(NotepadContext);
+
 export const NotepadContextProvider = ({
   children,
   feRackInfo,
