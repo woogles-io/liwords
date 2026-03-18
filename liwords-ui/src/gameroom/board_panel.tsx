@@ -583,12 +583,14 @@ export const BoardPanel = React.memo((props: Props) => {
       localStorage.removeItem(`rack_${gameID}`);
       return;
     }
-    // Don't save if rack is in server order (user hasn't rearranged).
+    // Remove stale entry if rack is in server order (user hasn't rearranged).
     if (
       displayedRack.length === props.currentRack.length &&
       displayedRack.every((v, i) => v === props.currentRack[i])
-    )
+    ) {
+      localStorage.removeItem(`rack_${gameID}`);
       return;
+    }
     const timer = setTimeout(() => {
       localStorage.setItem(`rack_${gameID}`, JSON.stringify(displayedRack));
     }, 500);
