@@ -742,7 +742,8 @@ export const LeaguePage = (props: Props) => {
               </div>
             )}
 
-            {!standingsLoading &&
+            {!showRoster &&
+              !standingsLoading &&
               standingsData &&
               standingsData.divisions.length === 0 && (
                 <Alert
