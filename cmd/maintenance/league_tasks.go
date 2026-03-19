@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/stores"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -271,6 +273,32 @@ func LeagueHourlyRunner() error {
 							Int32("seasonNumber", result.NextSeasonNumber).
 							Time("startDate", result.StartDate).
 							Msg("✓ Registration opened successfully")
+
+						// Send registration open notifications (email + Discord)
+						go func(seasonID uuid.UUID, seasonNumber int32) {
+							// Get current season registrants
+							currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+							if err != nil {
+								log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to get current registrants")
+								return
+							}
+
+							// Get previous season registrants (not in current)
+							previousRegistrants, err := allStores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
+								LeagueID:     dbLeague.Uuid,
+								SeasonNumber: seasonNumber - 1,
+							})
+							if err != nil {
+								log.Warn().Err(err).Msg("Failed to get previous season registrants (continuing anyway)")
+							}
+
+							// Send bulk email
+							league.SendRegistrationOpenEmail(ctx, cfg, allStores.UserStore, dbLeague.Name, dbLeague.Slug, int(seasonNumber), currentRegistrants, previousRegistrants)
+
+							// Send Discord notification
+							league.SendRegistrationOpenDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(seasonNumber))
+						}(result.NextSeasonID, result.NextSeasonNumber)
+
 						tasksRun++
 					}
 					// result == nil means next season already exists (idempotent)
@@ -373,6 +401,9 @@ func LeagueHourlyRunner() error {
 					if err != nil {
 						log.Error().Err(err).Str("seasonID", season.Uuid.String()).Msg("Failed to send season started notifications")
 					}
+
+					// Send Discord notification for season start
+					league.SendSeasonStartedDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(season.SeasonNumber))
 
 					tasksRun++
 				} else {

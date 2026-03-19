@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
+	"github.com/woogles-io/liwords/pkg/notify"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 )
@@ -37,6 +38,20 @@ const LeagueEmailTemplateName = "league_email"
 
 //go:embed league_email_templates
 var LeagueEmailTemplate string
+
+const RegistrationEmailTemplateName = "registration_email"
+
+//go:embed league_registration_email_templates
+var RegistrationEmailTemplate string
+
+type RegistrationEmailInfo struct {
+	Username                    string
+	LeagueName                  string
+	SeasonNumber                int
+	LeagueURL                   string
+	IsRegistrationOpen          bool
+	IsRegistrationConfirmation  bool
+}
 
 // formatTimeInTimezones converts a UTC time to multiple timezones and returns a formatted string
 func formatTimeInTimezones(utcTime time.Time) string {
@@ -231,6 +246,223 @@ func SendSeasonStartedEmail(ctx context.Context, cfg *config.Config, userStore u
 type PlayerSeasonInfo struct {
 	DivisionName  string
 	OpponentNames []string
+}
+
+// instantiateRegistrationEmail creates the registration email content from the template
+func instantiateRegistrationEmail(info *RegistrationEmailInfo) (string, string, error) {
+	emailTemplate, err := template.New(RegistrationEmailTemplateName).Parse(RegistrationEmailTemplate)
+	if err != nil {
+		return "", "", err
+	}
+
+	emailContentBuffer := &bytes.Buffer{}
+	err = emailTemplate.Execute(emailContentBuffer, info)
+	if err != nil {
+		return "", "", err
+	}
+
+	var emailSubject string
+	if info.IsRegistrationOpen {
+		emailSubject = fmt.Sprintf("%s Season %d Registration Now Open!", info.LeagueName, info.SeasonNumber)
+	} else if info.IsRegistrationConfirmation {
+		emailSubject = fmt.Sprintf("Registration Confirmed: %s Season %d", info.LeagueName, info.SeasonNumber)
+	} else {
+		emailSubject = fmt.Sprintf("Unregistered from %s Season %d", info.LeagueName, info.SeasonNumber)
+	}
+
+	return emailContentBuffer.String(), emailSubject, nil
+}
+
+// SendRegistrationOpenEmail sends bulk email to current + previous season registrants
+func SendRegistrationOpenEmail(ctx context.Context, cfg *config.Config, userStore user.Store, leagueName, leagueSlug string, seasonNumber int, currentRegistrants []models.GetSeasonRegistrationsRow, previousRegistrants []models.GetPreviousSeasonRegistrantsNotInCurrentRow) {
+	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
+
+	// Combine all recipients (current + previous) into a map to deduplicate
+	recipients := make(map[string]struct {
+		username string
+		email    string
+	})
+
+	// Add current registrants
+	for _, reg := range currentRegistrants {
+		if reg.UserUuid.Valid {
+			recipients[reg.UserUuid.String] = struct {
+				username string
+				email    string
+			}{username: reg.Username.String, email: ""} // Will fetch email from user store
+		}
+	}
+
+	// Add previous registrants (already filtered to not include current)
+	for _, prev := range previousRegistrants {
+		if prev.Uuid.Valid && prev.Email.Valid {
+			recipients[prev.Uuid.String] = struct {
+				username string
+				email    string
+			}{username: prev.Username.String, email: prev.Email.String}
+		}
+	}
+
+	log.Info().
+		Int("total_recipients", len(recipients)).
+		Str("league", leagueName).
+		Int("season", seasonNumber).
+		Msg("sending-registration-open-emails")
+
+	// Semaphore for concurrency control and WaitGroup to wait for completion
+	sem := make(chan struct{}, maxConcurrentEmails)
+	var wg sync.WaitGroup
+
+	for userID, recipient := range recipients {
+		// Fetch user details if email not already available
+		var email string
+		var username string
+		if recipient.email != "" {
+			email = recipient.email
+			username = recipient.username
+		} else {
+			user, err := userStore.GetByUUID(ctx, userID)
+			if err != nil {
+				log.Err(err).Str("userID", userID).Msg("failed-to-fetch-user-for-registration-email")
+				continue
+			}
+			email = user.Email
+			username = user.Username
+		}
+
+		if email == "" {
+			log.Debug().Str("username", username).Msg("user-has-no-email-skipping")
+			continue
+		}
+
+		emailInfo := &RegistrationEmailInfo{
+			Username:           username,
+			LeagueName:         leagueName,
+			SeasonNumber:       seasonNumber,
+			LeagueURL:          leagueURL,
+			IsRegistrationOpen: true,
+		}
+
+		emailContent, emailSubject, err := instantiateRegistrationEmail(emailInfo)
+		if err != nil {
+			log.Err(err).Str("username", username).Msg("failed-to-instantiate-registration-email")
+			continue
+		}
+
+		// Acquire semaphore slot
+		wg.Add(1)
+		sem <- struct{}{}
+
+		// Send email asynchronously with rate limiting
+		go func(email, subject, body, username string) {
+			defer wg.Done()
+			defer func() { <-sem }() // Release semaphore
+
+			_, err := emailer.SendSimpleMessage(
+				cfg.EmailDebugMode,
+				email,
+				subject,
+				body)
+			if err != nil {
+				log.Err(err).Str("username", username).Msg("failed-to-send-registration-open-email")
+			} else {
+				log.Info().Str("username", username).Str("league", leagueName).Msg("sent-registration-open-email")
+			}
+		}(email, emailSubject, emailContent, username)
+
+		// Rate limit: delay before launching next goroutine
+		time.Sleep(emailSendDelay)
+	}
+
+	// Wait for all emails to complete
+	wg.Wait()
+	log.Info().Int("count", len(recipients)).Str("league", leagueName).Msg("completed-sending-registration-open-emails")
+}
+
+// SendRegistrationConfirmationEmail sends individual email when user registers
+func SendRegistrationConfirmationEmail(ctx context.Context, cfg *config.Config, email, username, leagueName, leagueSlug string, seasonNumber int) {
+	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
+
+	emailInfo := &RegistrationEmailInfo{
+		Username:                   username,
+		LeagueName:                 leagueName,
+		SeasonNumber:               seasonNumber,
+		LeagueURL:                  leagueURL,
+		IsRegistrationConfirmation: true,
+	}
+
+	emailContent, emailSubject, err := instantiateRegistrationEmail(emailInfo)
+	if err != nil {
+		log.Err(err).Str("username", username).Msg("failed-to-instantiate-registration-confirmation-email")
+		return
+	}
+
+	go func() {
+		_, err := emailer.SendSimpleMessage(
+			cfg.EmailDebugMode,
+			email,
+			emailSubject,
+			emailContent)
+		if err != nil {
+			log.Err(err).Str("username", username).Msg("failed-to-send-registration-confirmation-email")
+		} else {
+			log.Info().Str("username", username).Str("league", leagueName).Msg("sent-registration-confirmation-email")
+		}
+	}()
+}
+
+// SendUnregistrationConfirmationEmail sends individual email when user unregisters
+func SendUnregistrationConfirmationEmail(ctx context.Context, cfg *config.Config, email, username, leagueName, leagueSlug string, seasonNumber int) {
+	leagueURL := fmt.Sprintf("https://woogles.io/leagues/%s", leagueSlug)
+
+	emailInfo := &RegistrationEmailInfo{
+		Username:                   username,
+		LeagueName:                 leagueName,
+		SeasonNumber:               seasonNumber,
+		LeagueURL:                  leagueURL,
+		IsRegistrationOpen:         false,
+		IsRegistrationConfirmation: false,
+	}
+
+	emailContent, emailSubject, err := instantiateRegistrationEmail(emailInfo)
+	if err != nil {
+		log.Err(err).Str("username", username).Msg("failed-to-instantiate-unregistration-email")
+		return
+	}
+
+	go func() {
+		_, err := emailer.SendSimpleMessage(
+			cfg.EmailDebugMode,
+			email,
+			emailSubject,
+			emailContent)
+		if err != nil {
+			log.Err(err).Str("username", username).Msg("failed-to-send-unregistration-email")
+		} else {
+			log.Info().Str("username", username).Str("league", leagueName).Msg("sent-unregistration-email")
+		}
+	}()
+}
+
+// PostLeagueDiscordNotification posts a message to the league Discord channel
+func PostLeagueDiscordNotification(message string, cfg *config.Config) {
+	if cfg.LeagueDiscordToken != "" {
+		notify.Post(message, cfg.LeagueDiscordToken)
+	}
+}
+
+// SendRegistrationOpenDiscord posts to #woogleague when registration opens
+func SendRegistrationOpenDiscord(cfg *config.Config, leagueName, leagueSlug string, seasonNumber int) {
+	message := fmt.Sprintf("🎮 Registration is now open for **%s Season %d**!\n\nRegister now at: https://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug)
+	PostLeagueDiscordNotification(message, cfg)
+	log.Info().Str("league", leagueName).Int("season", seasonNumber).Msg("posted-registration-open-discord")
+}
+
+// SendSeasonStartedDiscord posts to #woogleague when season starts
+func SendSeasonStartedDiscord(cfg *config.Config, leagueName, leagueSlug string, seasonNumber int) {
+	message := fmt.Sprintf("🏁 **%s Season %d** has officially started!\n\nGames have been created. Good luck to all players!\n\nhttps://woogles.io/leagues/%s", leagueName, seasonNumber, leagueSlug)
+	PostLeagueDiscordNotification(message, cfg)
+	log.Info().Str("league", leagueName).Int("season", seasonNumber).Msg("posted-season-started-discord")
 }
 
 // SendUnstartedGameReminderEmail sends reminders to players who haven't started their games

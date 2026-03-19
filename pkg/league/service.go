@@ -1385,6 +1385,15 @@ func (ls *LeagueService) RegisterForSeason(
 		Str("leagueID", season.LeagueID.String()).
 		Msg("player-registered-for-season")
 
+	// Send registration confirmation email
+	league, err := ls.store.GetLeagueByUUID(ctx, season.LeagueID)
+	if err == nil && user.Email != "" {
+		cfg, err := config.Ctx(ctx)
+		if err == nil {
+			SendRegistrationConfirmationEmail(ctx, cfg, user.Email, user.Username, league.Name, league.Slug, int(season.SeasonNumber))
+		}
+	}
+
 	return connect.NewResponse(&pb.RegisterResponse{
 		Success:  true,
 		SeasonId: season.Uuid.String(),
@@ -1449,6 +1458,19 @@ func (ls *LeagueService) UnregisterFromSeason(
 		Str("userID", userUUIDForLogging).
 		Str("seasonID", seasonID.String()).
 		Msg("player-unregistered-from-season")
+
+	// Send unregistration confirmation email
+	league, err := ls.store.GetLeagueByUUID(ctx, season.LeagueID)
+	if err == nil {
+		// Get user email (might be different from logged-in user if promoter unregistering someone)
+		targetUser, err := ls.userStore.GetByUUID(ctx, userUUIDForLogging)
+		if err == nil && targetUser.Email != "" {
+			cfg, err := config.Ctx(ctx)
+			if err == nil {
+				SendUnregistrationConfirmationEmail(ctx, cfg, targetUser.Email, targetUser.Username, league.Name, league.Slug, int(season.SeasonNumber))
+			}
+		}
+	}
 
 	return connect.NewResponse(&pb.UnregisterResponse{Success: true}), nil
 }

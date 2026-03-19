@@ -188,6 +188,23 @@ LEFT JOIN league_divisions ld ON lr.division_id = ld.uuid
 WHERE lr.season_id = $1
 ORDER BY lr.registration_date;
 
+-- name: GetPreviousSeasonRegistrantsNotInCurrent :many
+-- Get registrants from previous season who are NOT already registered in the new season
+-- Used for sending registration open emails to past players
+SELECT DISTINCT u.uuid, u.username, u.email
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_seasons prev_s ON lr.season_id = prev_s.uuid
+WHERE prev_s.league_id = $1
+  AND prev_s.season_number = $2
+  AND NOT EXISTS (
+    SELECT 1 FROM league_registrations lr2
+    JOIN league_seasons new_s ON lr2.season_id = new_s.uuid
+    WHERE lr2.user_id = lr.user_id
+      AND new_s.league_id = $1
+      AND new_s.season_number = $2 + 1
+  );
+
 -- name: GetDivisionRegistrations :many
 SELECT lr.*, u.uuid as user_uuid, u.username FROM league_registrations lr
 JOIN users u ON lr.user_id = u.id

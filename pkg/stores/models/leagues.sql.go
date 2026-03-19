@@ -1449,6 +1449,55 @@ func (q *Queries) GetPlayerUnfinishedSeasonGames(ctx context.Context, arg GetPla
 	return items, nil
 }
 
+const getPreviousSeasonRegistrantsNotInCurrent = `-- name: GetPreviousSeasonRegistrantsNotInCurrent :many
+SELECT DISTINCT u.uuid, u.username, u.email
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_seasons prev_s ON lr.season_id = prev_s.uuid
+WHERE prev_s.league_id = $1
+  AND prev_s.season_number = $2
+  AND NOT EXISTS (
+    SELECT 1 FROM league_registrations lr2
+    JOIN league_seasons new_s ON lr2.season_id = new_s.uuid
+    WHERE lr2.user_id = lr.user_id
+      AND new_s.league_id = $1
+      AND new_s.season_number = $2 + 1
+  )
+`
+
+type GetPreviousSeasonRegistrantsNotInCurrentParams struct {
+	LeagueID     uuid.UUID
+	SeasonNumber int32
+}
+
+type GetPreviousSeasonRegistrantsNotInCurrentRow struct {
+	Uuid     pgtype.Text
+	Username pgtype.Text
+	Email    pgtype.Text
+}
+
+// Get registrants from previous season who are NOT already registered in the new season
+// Used for sending registration open emails to past players
+func (q *Queries) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg GetPreviousSeasonRegistrantsNotInCurrentParams) ([]GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
+	rows, err := q.db.Query(ctx, getPreviousSeasonRegistrantsNotInCurrent, arg.LeagueID, arg.SeasonNumber)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPreviousSeasonRegistrantsNotInCurrentRow
+	for rows.Next() {
+		var i GetPreviousSeasonRegistrantsNotInCurrentRow
+		if err := rows.Scan(&i.Uuid, &i.Username, &i.Email); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecentSeasons = `-- name: GetRecentSeasons :many
 SELECT id, uuid, league_id, season_number, start_date, end_date, actual_end_date, status, created_at, updated_at, closed_at, divisions_prepared_at, started_at, registration_opened_at, starting_soon_notification_sent_at, promotion_formula FROM league_seasons
 WHERE league_id = $1

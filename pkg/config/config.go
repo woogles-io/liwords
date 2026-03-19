@@ -34,12 +34,13 @@ type Config struct {
 	DBConnUri        string
 	DBConnDSN        string
 
-	ListenAddr     string
-	SecretKey      string
-	NatsURL        string
-	EmailDebugMode bool
-	RedisURL       string
-	DiscordToken   string
+	ListenAddr          string
+	SecretKey           string
+	NatsURL             string
+	EmailDebugMode      bool
+	RedisURL            string
+	DiscordToken        string
+	LeagueDiscordToken  string
 	// Puzzles
 	PuzzleGenerationSecretKey      string
 	ECSClusterName                 string
@@ -99,6 +100,7 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.EmailDebugMode, "email-debug", false, "print emails to stdout instead of sending via SES")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
 	fs.StringVar(&c.DiscordToken, "discord-token", "", "the token used for moderator action discord notifications")
+	fs.StringVar(&c.LeagueDiscordToken, "league-discord-token", "", "the webhook URL for league notifications to #woogleague channel")
 	fs.StringVar(&c.DBMigrationsPath, "db-migrations-path", "", "the path where migrations are stored")
 	fs.StringVar(&c.PuzzleGenerationSecretKey, "puzzle-generation-secret-key", shortuuid.New(), "a secret key used for generating puzzles")
 	fs.StringVar(&c.ECSClusterName, "ecs-cluster-name", "", "the ECS cluster this runs on")
