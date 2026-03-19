@@ -527,7 +527,26 @@ export const BoardPanel = React.memo((props: Props) => {
         setArrowProperties(bak.arrowProperties);
       } else {
         let rack = props.currentRack;
-        if (sharedEnableAutoShuffle) {
+        // Restore saved rack order from localStorage if tiles match.
+        let restored = false;
+        if (gameID) {
+          try {
+            const savedRack = localStorage.getItem(`rack_${gameID}`);
+            if (savedRack) {
+              const parsed = JSON.parse(savedRack) as Array<number>;
+              if (
+                parsed.length === rack.length &&
+                [...parsed].sort().every((v, i) => v === [...rack].sort()[i])
+              ) {
+                rack = parsed;
+                restored = true;
+              }
+            }
+          } catch {
+            // ignore invalid data
+          }
+        }
+        if (!restored && sharedEnableAutoShuffle) {
           rack = shuffleLetters(rack);
         }
         setDisplayedRack(rack);
@@ -545,6 +564,7 @@ export const BoardPanel = React.memo((props: Props) => {
     lastRackRef.current = props.currentRack;
   }, [
     isExamining,
+    gameID,
     props.board.letters,
     props.boardEditingMode,
     props.currentRack,
@@ -553,6 +573,33 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack,
     setPlacedTiles,
     setPlacedTilesTempScore,
+  ]);
+
+  // Persist rack order to localStorage for correspondence games.
+  // Only save when the user has rearranged (order differs from server).
+  useEffect(() => {
+    if (!gameID || displayedRack.length === 0) return;
+    if (examinableGameContext.playState === PlayState.GAME_OVER) {
+      localStorage.removeItem(`rack_${gameID}`);
+      return;
+    }
+    // Remove stale entry if rack is in server order (user hasn't rearranged).
+    if (
+      displayedRack.length === props.currentRack.length &&
+      displayedRack.every((v, i) => v === props.currentRack[i])
+    ) {
+      localStorage.removeItem(`rack_${gameID}`);
+      return;
+    }
+    const timer = setTimeout(() => {
+      localStorage.setItem(`rack_${gameID}`, JSON.stringify(displayedRack));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    gameID,
+    displayedRack,
+    examinableGameContext.playState,
+    props.currentRack,
   ]);
 
   useEffect(() => {
