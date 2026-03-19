@@ -45,12 +45,12 @@ const RegistrationEmailTemplateName = "registration_email"
 var RegistrationEmailTemplate string
 
 type RegistrationEmailInfo struct {
-	Username                    string
-	LeagueName                  string
-	SeasonNumber                int
-	LeagueURL                   string
-	IsRegistrationOpen          bool
-	IsRegistrationConfirmation  bool
+	Username                   string
+	LeagueName                 string
+	SeasonNumber               int
+	LeagueURL                  string
+	IsRegistrationOpen         bool
+	IsRegistrationConfirmation bool
 }
 
 // formatTimeInTimezones converts a UTC time to multiple timezones and returns a formatted string

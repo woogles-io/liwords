@@ -27,14 +27,14 @@ func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
 
 // LifecycleRunnerResult contains information about tasks that were executed
 type LifecycleRunnerResult struct {
-	TasksRun                  int
-	RegistrationClosed        bool
-	DivisionsPrepared         bool
-	RegistrationOpened        bool
-	StartingSoonNotification  bool
-	SeasonStarted             bool
-	NextSeasonCreated         bool
-	GamesCreated              int
+	TasksRun                 int
+	RegistrationClosed       bool
+	DivisionsPrepared        bool
+	RegistrationOpened       bool
+	StartingSoonNotification bool
+	SeasonStarted            bool
+	NextSeasonCreated        bool
+	GamesCreated             int
 }
 
 // RunLeagueLifecycleTasks executes all automated league lifecycle tasks for a single league
@@ -94,11 +94,11 @@ func RunLeagueLifecycleTasks(
 				log.Info().
 					Str("seasonID", currentSeason.Uuid.String()).
 					Time("endTime", endTime).
-					Msg("Closing registration (end time reached)...")
+					Msg("Closing current season (end time reached)...")
 
 				closeResult, err := lifecycleMgr.CloseCurrentSeason(ctx, dbLeague.Uuid)
 				if err != nil {
-					log.Error().Err(err).Str("seasonID", currentSeason.Uuid.String()).Msg("Failed to close registration")
+					log.Error().Err(err).Str("seasonID", currentSeason.Uuid.String()).Msg("Failed to close season")
 				} else if closeResult != nil {
 					if markErr := allStores.LeagueStore.MarkSeasonClosed(ctx, closeResult.CurrentSeasonID); markErr != nil {
 						log.Warn().Err(markErr).Str("seasonID", closeResult.CurrentSeasonID.String()).Msg("Failed to mark season as closed")
@@ -106,15 +106,18 @@ func RunLeagueLifecycleTasks(
 
 					log.Info().
 						Str("seasonID", closeResult.CurrentSeasonID.String()).
-						Int("totalRegistrations", closeResult.ForceFinishedGames).
-						Msg("✓ Season closed successfully")
+						Int("forceFinished", closeResult.ForceFinishedGames).
+						Msg("✓ Successfully closed season")
 					result.TasksRun++
 					result.RegistrationClosed = true
+
+					// Refresh current season state since it may have changed
+					hasCurrentSeason = false
 				}
 			} else {
 				log.Info().
 					Str("seasonID", currentSeason.Uuid.String()).
-					Msg("Registration already closed (idempotency check)")
+					Msg("Season already closed (idempotency check)")
 			}
 		}
 	}
@@ -184,54 +187,58 @@ func RunLeagueLifecycleTasks(
 	}
 
 	// TASK 3: Open registration for next season (halfway through current season)
-	if hasCurrentSeason && currentSeason.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) {
-		// Calculate registration open time: halfway through the season
-		daysUntilOpen := (leagueSettings.SeasonLengthDays / 2) - 1
-		registrationOpenTime := currentSeason.StartDate.Time.Add(time.Duration(daysUntilOpen) * 24 * time.Hour)
+	if hasCurrentSeason {
+		// Re-fetch current season in case TASK 1 changed it
+		currentSeason, err = allStores.LeagueStore.GetCurrentSeason(ctx, dbLeague.Uuid)
+		if err == nil && currentSeason.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) {
+			// Calculate registration open time: halfway through the season
+			daysUntilOpen := (leagueSettings.SeasonLengthDays / 2) - 1
+			registrationOpenTime := currentSeason.StartDate.Time.Add(time.Duration(daysUntilOpen) * 24 * time.Hour)
 
-		if now.After(registrationOpenTime) {
-			openResult, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid)
-			if err != nil {
-				log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to open registration")
-			} else if openResult != nil {
-				if markErr := allStores.LeagueStore.MarkRegistrationOpened(ctx, openResult.NextSeasonID); markErr != nil {
-					log.Warn().Err(markErr).Str("seasonID", openResult.NextSeasonID.String()).Msg("Failed to mark registration opened timestamp")
+			if now.After(registrationOpenTime) {
+				openResult, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, dbLeague.Uuid)
+				if err != nil {
+					log.Error().Err(err).Str("leagueID", dbLeague.Uuid.String()).Msg("Failed to open registration")
+				} else if openResult != nil {
+					if markErr := allStores.LeagueStore.MarkRegistrationOpened(ctx, openResult.NextSeasonID); markErr != nil {
+						log.Warn().Err(markErr).Str("seasonID", openResult.NextSeasonID.String()).Msg("Failed to mark registration opened timestamp")
+					}
+
+					log.Info().
+						Str("nextSeasonID", openResult.NextSeasonID.String()).
+						Int32("seasonNumber", openResult.NextSeasonNumber).
+						Time("startDate", openResult.StartDate).
+						Msg("✓ Registration opened successfully")
+
+					// Send registration open notifications (email + Discord)
+					go func(seasonID uuid.UUID, seasonNumber int32) {
+						// Get current season registrants
+						currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
+						if err != nil {
+							log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to get current registrants")
+							return
+						}
+
+						// Get previous season registrants (not in current)
+						previousRegistrants, err := allStores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
+							LeagueID:     dbLeague.Uuid,
+							SeasonNumber: seasonNumber - 1,
+						})
+						if err != nil {
+							log.Warn().Err(err).Msg("Failed to get previous season registrants (continuing anyway)")
+						}
+
+						// Send bulk email
+						SendRegistrationOpenEmail(ctx, cfg, allStores.UserStore, dbLeague.Name, dbLeague.Slug, int(seasonNumber), currentRegistrants, previousRegistrants)
+
+						// Send Discord notification
+						SendRegistrationOpenDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(seasonNumber))
+					}(openResult.NextSeasonID, openResult.NextSeasonNumber)
+
+					result.TasksRun++
+					result.RegistrationOpened = true
+					result.NextSeasonCreated = true
 				}
-
-				log.Info().
-					Str("nextSeasonID", openResult.NextSeasonID.String()).
-					Int32("seasonNumber", openResult.NextSeasonNumber).
-					Time("startDate", openResult.StartDate).
-					Msg("✓ Registration opened successfully")
-
-				// Send registration open notifications (email + Discord)
-				go func(seasonID uuid.UUID, seasonNumber int32) {
-					// Get current season registrants
-					currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
-					if err != nil {
-						log.Error().Err(err).Str("seasonID", seasonID.String()).Msg("Failed to get current registrants")
-						return
-					}
-
-					// Get previous season registrants (not in current)
-					previousRegistrants, err := allStores.LeagueStore.GetPreviousSeasonRegistrantsNotInCurrent(ctx, models.GetPreviousSeasonRegistrantsNotInCurrentParams{
-						LeagueID:     dbLeague.Uuid,
-						SeasonNumber: seasonNumber - 1,
-					})
-					if err != nil {
-						log.Warn().Err(err).Msg("Failed to get previous season registrants (continuing anyway)")
-					}
-
-					// Send bulk email
-					SendRegistrationOpenEmail(ctx, cfg, allStores.UserStore, dbLeague.Name, dbLeague.Slug, int(seasonNumber), currentRegistrants, previousRegistrants)
-
-					// Send Discord notification
-					SendRegistrationOpenDiscord(cfg, dbLeague.Name, dbLeague.Slug, int(seasonNumber))
-				}(openResult.NextSeasonID, openResult.NextSeasonNumber)
-
-				result.TasksRun++
-				result.RegistrationOpened = true
-				result.NextSeasonCreated = true
 			}
 		}
 	}

@@ -54,6 +54,11 @@ func (m *mockLeagueStore) GetDivisionGamesWithStats(ctx context.Context, divisio
 	return m.gamesWithStats[divisionID], nil
 }
 
+func (m *mockLeagueStore) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
+	// Not used in standings tests - return empty
+	return []models.GetPreviousSeasonRegistrantsNotInCurrentRow{}, nil
+}
+
 func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertStandingParams) error {
 	// Find existing or create new
 	divStandings := m.standings[arg.DivisionID]

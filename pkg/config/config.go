@@ -34,13 +34,13 @@ type Config struct {
 	DBConnUri        string
 	DBConnDSN        string
 
-	ListenAddr          string
-	SecretKey           string
-	NatsURL             string
-	EmailDebugMode      bool
-	RedisURL            string
-	DiscordToken        string
-	LeagueDiscordToken  string
+	ListenAddr         string
+	SecretKey          string
+	NatsURL            string
+	EmailDebugMode     bool
+	RedisURL           string
+	DiscordToken       string
+	LeagueDiscordToken string
 	// Puzzles
 	PuzzleGenerationSecretKey      string
 	ECSClusterName                 string
