@@ -35,6 +35,7 @@ type EntityProps = {
   highlightText?: string;
   sendMessage?: (uuid: string, username: string) => void;
   infoText?: string;
+  onInfoTextClick?: (userId: string) => void;
 };
 
 const deleteMessage = (
@@ -136,6 +137,11 @@ export const ChatEntity = (props: EntityProps) => {
                     omitSendMessage={!props.sendMessage}
                     sendMessage={props.sendMessage}
                     infoText={props.infoText}
+                    handleInfoText={
+                      props.onInfoTextClick && props.senderId
+                        ? () => props.onInfoTextClick!(props.senderId!)
+                        : undefined
+                    }
                     showDeleteMessage
                     showModTools
                     deleteMessage={() => {
