@@ -125,9 +125,9 @@ func UnfinishedGameFromRow(p0, p1 pgtype.Int4) unfinishedGame {
 
 // playerGameInfo holds precomputed game decomposition for a specific player P.
 type playerGameInfo struct {
-	gamesVsP     []int     // how many remaining games each player has vs P
+	gamesVsP     []int      // how many remaining games each player has vs P
 	nonPGames    []gamePair // games not involving P
-	nonPGamesCnt []int     // remaining non-P games per player
+	nonPGamesCnt []int      // remaining non-P games per player
 }
 
 func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
@@ -417,6 +417,10 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 		}
 		if standings[i].points > B {
 			continue // already guaranteed above
+		}
+		if standings[i].points == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
+			standings[i].spread > standings[p].spread {
+			continue // guaranteed above via spread tiebreak
 		}
 
 		// Determine whether Q at exactly B points could be above P.
