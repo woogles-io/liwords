@@ -46,7 +46,7 @@ func createTestLeague(ctx context.Context, name, slug string, divisionSize int32
 
 	// Create league settings
 	settings := &ipc.LeagueSettings{
-		SeasonLengthDays: 30,
+		SeasonLengthDays: 14, // 2 weeks
 		TimeControl: &ipc.TimeControl{
 			IncrementSeconds: 28800, // 8 hours
 			TimeBankMinutes:  4320,  // 72 hours
@@ -83,10 +83,10 @@ func createTestLeague(ctx context.Context, name, slug string, divisionSize int32
 		Msg("created league")
 
 	// Bootstrap first season
-	// Set dates: start in 1 day, end in 31 days
+	// Set dates: start in 1 day, end in 15 days (14 day season length)
 	now := time.Now()
 	startDate := now.Add(24 * time.Hour)
-	endDate := startDate.Add(30 * 24 * time.Hour)
+	endDate := startDate.Add(14 * 24 * time.Hour)
 
 	seasonUUID := uuid.New()
 	season, err := queries.CreateSeason(ctx, models.CreateSeasonParams{

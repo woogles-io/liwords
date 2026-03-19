@@ -222,7 +222,14 @@ func (t *leagueTUI) buildActionList() *tview.List {
 		})
 	})
 
-	sec("── Season Lifecycle ─────────────")
+	sec("── Lifecycle Automation ─────────")
+	add("Run Hourly Tasks", func() {
+		t.runOp("Run Hourly Tasks", func() error {
+			return runHourlyTasks(t.ctx, t.slugInput.GetText())
+		})
+	})
+
+	sec("── Manual Lifecycle ─────────────")
 	add("Open Registration", func() {
 		t.runOp("Open Registration", func() error {
 			return openRegistration(t.ctx, t.slugInput.GetText(), t.getSeason())

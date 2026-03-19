@@ -32,6 +32,45 @@ func (a *GameplayAdapter) StartGame(ctx context.Context, game *entity.Game) erro
 	return gameplay.StartGame(ctx, a.stores, a.eventChan, game)
 }
 
+// openRegistrationForNextSeason creates the next season and opens registration
+func openRegistrationForNextSeason(ctx context.Context, leagueSlugOrUUID string) error {
+	log.Info().
+		Str("league", leagueSlugOrUUID).
+		Msg("creating next season and opening registration")
+
+	// Initialize stores
+	allStores, err := initStores(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Get league
+	leagueUUID, err := getLeagueUUID(ctx, allStores, leagueSlugOrUUID)
+	if err != nil {
+		return err
+	}
+
+	clock := league.NewClockFromEnv()
+	lifecycleMgr := league.NewSeasonLifecycleManager(allStores, clock)
+	result, err := lifecycleMgr.OpenRegistrationForNextSeason(ctx, leagueUUID)
+	if err != nil {
+		return fmt.Errorf("failed to open registration for next season: %w", err)
+	}
+
+	if result == nil {
+		log.Info().Msg("next season already exists and registration is open")
+		return nil
+	}
+
+	log.Info().
+		Str("nextSeasonID", result.NextSeasonID.String()).
+		Int32("seasonNumber", result.NextSeasonNumber).
+		Time("startDate", result.StartDate).
+		Msg("successfully created next season and opened registration")
+
+	return nil
+}
+
 // openRegistration opens registration for a specific season
 func openRegistration(ctx context.Context, leagueSlugOrUUID string, seasonNumber int32) error {
 	log.Info().
@@ -272,4 +311,63 @@ func parseLeagueSettings(settingsJSON []byte) (*pb.LeagueSettings, error) {
 		return nil, err
 	}
 	return &settings, nil
+}
+
+// runHourlyTasks runs the automated lifecycle tasks for a league (same logic as hourly cron job)
+func runHourlyTasks(ctx context.Context, leagueSlugOrUUID string) error {
+	log.Info().
+		Str("league", leagueSlugOrUUID).
+		Msg("running hourly lifecycle tasks")
+
+	// Initialize stores
+	allStores, err := initStores(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Load config
+	cfg := &config.Config{}
+	cfg.Load(nil)
+
+	// Get league
+	leagueUUID, err := getLeagueUUID(ctx, allStores, leagueSlugOrUUID)
+	if err != nil {
+		return err
+	}
+
+	// Create event channel for game events
+	eventChan := make(chan *entity.EventWrapper, 100)
+	defer close(eventChan)
+
+	// Drain events in background
+	go func() {
+		for range eventChan {
+			// Discard events in testing context
+		}
+	}()
+
+	// Create game creator adapter
+	gameCreator := &GameplayAdapter{
+		stores:    allStores,
+		cfg:       cfg,
+		eventChan: eventChan,
+	}
+
+	// Run the shared lifecycle tasks
+	clock := league.NewClockFromEnv()
+	result, err := league.RunLeagueLifecycleTasks(ctx, cfg, allStores, gameCreator, leagueUUID, clock)
+	if err != nil {
+		return fmt.Errorf("failed to run lifecycle tasks: %w", err)
+	}
+
+	log.Info().
+		Int("tasksRun", result.TasksRun).
+		Bool("registrationClosed", result.RegistrationClosed).
+		Bool("divisionsPrepared", result.DivisionsPrepared).
+		Bool("registrationOpened", result.RegistrationOpened).
+		Bool("seasonStarted", result.SeasonStarted).
+		Int("gamesCreated", result.GamesCreated).
+		Msg("✓ Hourly tasks completed")
+
+	return nil
 }
