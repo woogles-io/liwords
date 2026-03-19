@@ -84,8 +84,8 @@ func RunLeagueLifecycleTasks(
 
 	lifecycleMgr := NewSeasonLifecycleManager(allStores, clock)
 
-	// TASK 1: Close registration when end date is reached
-	if hasCurrentSeason && currentSeason.Status == int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) {
+	// TASK 1: Close current season (if end time has passed and not already closed)
+	if hasCurrentSeason && currentSeason.Status == int32(pb.SeasonStatus_SEASON_ACTIVE) {
 		endTime := currentSeason.EndDate.Time
 
 		if now.After(endTime) || now.Equal(endTime) {
@@ -107,7 +107,7 @@ func RunLeagueLifecycleTasks(
 					log.Info().
 						Str("seasonID", closeResult.CurrentSeasonID.String()).
 						Int("totalRegistrations", closeResult.ForceFinishedGames).
-						Msg("✓ Registration closed successfully")
+						Msg("✓ Season closed successfully")
 					result.TasksRun++
 					result.RegistrationClosed = true
 				}
