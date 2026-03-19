@@ -119,24 +119,21 @@ func RunLeagueLifecycleTasks(
 		}
 	}
 
-	// TASK 2: Prepare divisions for REGISTRATION_OPEN or SCHEDULED season
+	// TASK 2: Prepare divisions for REGISTRATION_OPEN season
 	for _, season := range allSeasons {
-		if season.Status != int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) &&
-			season.Status != int32(pb.SeasonStatus_SEASON_SCHEDULED) {
+		// Only prepare seasons that are still in REGISTRATION_OPEN status
+		// SCHEDULED seasons have already been prepared (idempotency check below will catch this anyway)
+		if season.Status != int32(pb.SeasonStatus_SEASON_REGISTRATION_OPEN) {
 			continue
 		}
 
 		startTime := season.StartDate.Time
 
-		// Don't prepare if season has already started
-		if now.After(startTime) || now.Equal(startTime) {
-			continue
-		}
-
 		// Determine if we should prepare based on season number
 		shouldPrepare := false
 		if season.SeasonNumber == 1 {
-			// Season 1: prepare 4 hours before start
+			// Season 1: prepare 4 hours before start (or anytime after that if we missed the window)
+			// This handles the case where the hourly job didn't run in the ideal window
 			prepareTime := startTime.Add(-4 * time.Hour)
 			shouldPrepare = now.After(prepareTime) || now.Equal(prepareTime)
 		} else {
