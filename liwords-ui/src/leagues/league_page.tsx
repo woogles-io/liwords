@@ -1174,6 +1174,37 @@ export const LeaguePage = (props: Props) => {
                 ? " registered"
                 : ""}
             </p>
+            {(() => {
+              const divTimeouts = standingsData?.divisions
+                ?.map((div) => ({
+                  div,
+                  players: div.standings.filter((s) => s.timeouts > 0),
+                }))
+                .filter((d) => d.players.length > 0);
+              if (!divTimeouts?.length) return null;
+              return (
+                <div style={{ marginBottom: 16, fontSize: 13 }}>
+                  <strong>Timeouts:</strong>
+                  {divTimeouts.map(({ div, players }) => (
+                    <div key={div.uuid} style={{ marginLeft: 8 }}>
+                      <a
+                        onClick={() => {
+                          setSelectedDivisionId(div.uuid);
+                          setShowPlayersModal(false);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {div.divisionName || `Division ${div.divisionNumber}`}
+                      </a>
+                      :{" "}
+                      {players
+                        .map((s) => `${s.username} (${s.timeouts})`)
+                        .join(", ")}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div
               style={{
                 display: "flex",
