@@ -420,11 +420,13 @@ export const DirectorDashboardModal = ({
       footer={null}
       width="90vw"
       style={{ top: 20 }}
-      bodyStyle={{
-        maxHeight: "calc(100vh - 200px)",
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
+      styles={{
+        body: {
+          maxHeight: "calc(100vh - 200px)",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+        },
       }}
       title={
         <Space>

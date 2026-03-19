@@ -41,7 +41,7 @@ export const Badge: React.FC<BadgeProps> = ({ name, width }) => {
     getImage(name).then(setImgSrc);
   }, [name]);
 
-  if (!imgSrc) return <p>Loading...</p>;
+  if (!imgSrc) return <span>Loading...</span>;
 
   return <img src={imgSrc} alt={name} width={width} />;
 };

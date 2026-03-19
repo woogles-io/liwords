@@ -229,7 +229,7 @@ export const MonitoringModal = ({ visible, onClose }: Props) => {
         </Button>,
       ]}
       style={{ top: 20 }}
-      bodyStyle={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
+      styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" } }}
       zIndex={1100}
     >
       <Alert
