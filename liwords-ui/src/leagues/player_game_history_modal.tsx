@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Spin, Table, Tag, Tooltip, theme } from "antd";
+import { Modal, Spin, Table, Tag, Tooltip } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -49,17 +49,12 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     seasonId,
   });
 
-  const { token } = theme.useToken();
-
   const columns = [
     {
       title: "Opponent",
       dataIndex: "opponentUsername",
       key: "opponent",
       fixed: "left" as const,
-      onCell: () => ({
-        style: { background: token.colorBgContainer },
-      }),
       render: (username: string) => <strong>{username}</strong>,
     },
     {
@@ -143,6 +138,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
 
   return (
     <Modal
+      className="league-game-modal"
       title={
         <React.Fragment>
           <UsernameWithContext username={username} userID={userId} />

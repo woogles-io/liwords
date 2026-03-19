@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Input, Table, Tag, Tooltip, theme } from "antd";
+import { Input, Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
   StarOutlined,
@@ -94,8 +94,6 @@ const seasonSortKey = (
 
 export const LeagueRoster: React.FC<Props> = ({ leagueId, onJumpToSeason }) => {
   const [search, setSearch] = useState("");
-  const { token } = theme.useToken();
-
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
@@ -120,9 +118,6 @@ export const LeagueRoster: React.FC<Props> = ({ leagueId, onJumpToSeason }) => {
       key: "username",
       fixed: "left" as const,
       width: 140,
-      onCell: () => ({
-        style: { background: token.colorBgContainer },
-      }),
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
         a.username.localeCompare(b.username),
       sortDirections: ["ascend", "descend"] as SortOrder[],
