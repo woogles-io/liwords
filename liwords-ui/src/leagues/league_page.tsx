@@ -691,6 +691,10 @@ export const LeaguePage = (props: Props) => {
                         >
                           {division.divisionName ||
                             `Division ${division.divisionNumber}`}
+                          {userSeasonInfo?.divisionNumber ===
+                          division.divisionNumber
+                            ? " \u2605"
+                            : ""}
                           {totalGamesRemaining
                             ? ` (${totalGamesPlayed}/${totalGamesPlayed + totalGamesRemaining})`
                             : ""}
