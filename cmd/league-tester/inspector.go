@@ -3,11 +3,38 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+// formatDuration formats a duration in a human-readable way
+func formatDuration(d time.Duration) string {
+	if d < 0 {
+		d = -d
+	}
+
+	days := int(d.Hours() / 24)
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+
+	if days > 0 {
+		if hours > 0 {
+			return fmt.Sprintf("%dd %dh", days, hours)
+		}
+		return fmt.Sprintf("%dd", days)
+	}
+	if hours > 0 {
+		if minutes > 0 {
+			return fmt.Sprintf("%dh %dm", hours, minutes)
+		}
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dm", minutes)
+}
 
 func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 	log.Info().Str("league", leagueSlugOrUUID).Msg("inspecting league")
@@ -35,9 +62,19 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 		return fmt.Errorf("failed to get league: %w", err)
 	}
 
+	// Get current virtual time from LEAGUE_NOW env var
+	nowStr := os.Getenv("LEAGUE_NOW")
+	var now time.Time
+	if nowStr != "" {
+		now, _ = time.Parse(time.RFC3339, nowStr)
+	} else {
+		now = time.Now()
+	}
+
 	fmt.Println("================================================================================")
 	fmt.Printf("LEAGUE: %s (%s)\n", league.Name, league.Slug)
 	fmt.Println("================================================================================")
+	fmt.Printf("Current Time (Virtual): %s\n", now.Format("2006-01-02 15:04:05 MST"))
 	fmt.Println()
 
 	// Get all seasons
@@ -49,8 +86,34 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 	for _, season := range seasons {
 		fmt.Printf("Season %d - %s\n", season.SeasonNumber, pb.SeasonStatus(season.Status).String())
 		fmt.Printf("  UUID: %s\n", season.Uuid.String())
-		fmt.Printf("  Start: %s\n", season.StartDate.Time.Format("2006-01-02"))
-		fmt.Printf("  End: %s\n", season.EndDate.Time.Format("2006-01-02"))
+
+		// Show timestamps with relative time indicators
+		startTime := season.StartDate.Time
+		endTime := season.EndDate.Time
+
+		fmt.Printf("  Start: %s", startTime.Format("2006-01-02 15:04:05 MST"))
+		if now.Before(startTime) {
+			duration := startTime.Sub(now)
+			fmt.Printf(" (in %s)", formatDuration(duration))
+		} else if now.After(startTime) {
+			duration := now.Sub(startTime)
+			fmt.Printf(" (%s ago)", formatDuration(duration))
+		} else {
+			fmt.Printf(" (NOW)")
+		}
+		fmt.Println()
+
+		fmt.Printf("  End:   %s", endTime.Format("2006-01-02 15:04:05 MST"))
+		if now.Before(endTime) {
+			duration := endTime.Sub(now)
+			fmt.Printf(" (in %s)", formatDuration(duration))
+		} else if now.After(endTime) {
+			duration := now.Sub(endTime)
+			fmt.Printf(" (%s ago)", formatDuration(duration))
+		} else {
+			fmt.Printf(" (NOW)")
+		}
+		fmt.Println()
 		fmt.Println()
 
 		// Get divisions for this season
