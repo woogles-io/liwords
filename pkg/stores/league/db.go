@@ -55,6 +55,7 @@ type Store interface {
 	UnregisterPlayer(ctx context.Context, arg models.UnregisterPlayerParams) error
 	GetPlayerRegistration(ctx context.Context, arg models.GetPlayerRegistrationParams) (models.LeagueRegistration, error)
 	GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonRegistrationsRow, error)
+	GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error)
 	GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionRegistrationsRow, error)
 	UpdatePlayerDivision(ctx context.Context, arg models.UpdatePlayerDivisionParams) error
 	UpdateRegistrationDivision(ctx context.Context, arg models.UpdateRegistrationDivisionParams) error
@@ -254,6 +255,10 @@ func (s *DBStore) GetPlayerRegistration(ctx context.Context, arg models.GetPlaye
 
 func (s *DBStore) GetSeasonRegistrations(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonRegistrationsRow, error) {
 	return s.queries.GetSeasonRegistrations(ctx, seasonID)
+}
+
+func (s *DBStore) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
+	return s.queries.GetPreviousSeasonRegistrantsNotInCurrent(ctx, arg)
 }
 
 func (s *DBStore) GetDivisionRegistrations(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionRegistrationsRow, error) {

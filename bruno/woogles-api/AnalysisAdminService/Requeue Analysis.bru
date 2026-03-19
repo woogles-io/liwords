@@ -1,0 +1,21 @@
+meta {
+  name: Requeue Analysis
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/analysis_service.AnalysisAdminService/RequeueAnalysis
+  body: json
+  auth: none
+}
+
+headers {
+  X-Api-Key: {{ADMIN_API_KEY}}
+}
+
+body:json {
+  {
+    "game_id": "5bqqua4t8V"
+  }
+}

@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/game"
-	"github.com/domino14/macondo/puzzles"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/puzzles"
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores/common"

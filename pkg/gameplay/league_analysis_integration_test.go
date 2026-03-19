@@ -84,7 +84,7 @@ func TestLeagueGameEnqueuedForAnalysis(t *testing.T) {
 		2, // player1_id (Mina)
 		true,
 		int(pb.GameEndReason_STANDARD), // Game ended normally
-		0, // type
+		0,                              // type
 		`{"lexicon": "CSW21", "rules": {"boardLayoutName": "CrosswordGame", "letterDistributionName": "english"}, "initialTimeSeconds": 1500, "maxOvertimeMinutes": 0}`,
 		histBytes,
 		`{}`,

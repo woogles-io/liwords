@@ -110,12 +110,24 @@ func (t *leagueTUI) build(slug string, season int) {
 	t.slugInput.SetLabel("Slug:   ")
 	t.slugInput.SetText(slug)
 	t.slugInput.SetFieldWidth(18)
+	t.slugInput.SetDoneFunc(func(key tcell.Key) {
+		// Auto-load league when user tabs away or presses Enter
+		if key == tcell.KeyTab || key == tcell.KeyEnter {
+			go t.refreshState()
+		}
+	})
 
 	t.seasonInput = tview.NewInputField()
 	t.seasonInput.SetLabel("Season: ")
 	t.seasonInput.SetText(strconv.Itoa(season))
 	t.seasonInput.SetFieldWidth(4)
 	t.seasonInput.SetAcceptanceFunc(tview.InputFieldInteger)
+	t.seasonInput.SetDoneFunc(func(key tcell.Key) {
+		// Auto-load league when user changes season and tabs away or presses Enter
+		if key == tcell.KeyTab || key == tcell.KeyEnter {
+			go t.refreshState()
+		}
+	})
 
 	configPanel := tview.NewFlex()
 	configPanel.SetDirection(tview.FlexRow)
@@ -213,7 +225,7 @@ func (t *leagueTUI) buildActionList() *tview.List {
 	add("Create League", func() {
 		slug := t.slugInput.GetText()
 		t.runOp("Create League", func() error {
-			return createTestLeague(t.ctx, slug, slug, 8, "/tmp/lt-league.json")
+			return createTestLeague(t.ctx, slug, slug, 15, "/tmp/lt-league.json")
 		})
 	})
 	add("Register Users", func() {
@@ -222,7 +234,14 @@ func (t *leagueTUI) buildActionList() *tview.List {
 		})
 	})
 
-	sec("── Season Lifecycle ─────────────")
+	sec("── Lifecycle Automation ─────────")
+	add("Run Hourly Tasks", func() {
+		t.runOp("Run Hourly Tasks", func() error {
+			return runHourlyTasks(t.ctx, t.slugInput.GetText())
+		})
+	})
+
+	sec("── Manual Lifecycle ─────────────")
 	add("Open Registration", func() {
 		t.runOp("Open Registration", func() error {
 			return openRegistration(t.ctx, t.slugInput.GetText(), t.getSeason())
