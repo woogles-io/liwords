@@ -847,6 +847,13 @@ export const LeaguePage = (props: Props) => {
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
                         nextSeasonRegistrations={nextSeasonRegistrations}
+                        onRegister={
+                          registrationOpenSeason &&
+                          !isUserRegisteredForRegistrationOpenSeason
+                            ? () =>
+                                setSelectedSeasonId(registrationOpenSeason.uuid)
+                            : undefined
+                        }
                       />
                     ))}
                   <div className="standings-legend">

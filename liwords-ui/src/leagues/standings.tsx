@@ -100,6 +100,7 @@ type DivisionStandingsProps = {
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
   nextSeasonRegistrations?: SeasonRegistrationsResponse;
+  onRegister?: () => void; // Callback to navigate to registration
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -111,6 +112,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
   nextSeasonRegistrations,
+  onRegister,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -383,6 +385,19 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
                 <span style={{ marginLeft: 4, opacity: 0.7 }}>
                   <ReloadOutlined style={{ fontSize: 10 }} />
                 </span>
+              </Tooltip>
+            )}
+            {isCurrentUser && onRegister && !registeredForNextSeason && (
+              <Tooltip title="Register for next season">
+                <a
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRegister();
+                  }}
+                  style={{ marginLeft: 4, fontSize: 11 }}
+                >
+                  Register
+                </a>
               </Tooltip>
             )}
           </span>
