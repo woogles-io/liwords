@@ -234,14 +234,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     (acc, s) => {
       acc.gamesPlayed += s.gamesPlayed;
       acc.totalScore += s.totalScore;
-      acc.totalOpponentScore += s.totalOpponentScore;
       acc.totalBingos += s.totalBingos;
-      acc.totalOpponentBingos += s.totalOpponentBingos;
       acc.totalTurns += s.totalTurns;
       acc.totalTilesPlayed += s.totalTilesPlayed;
-      acc.totalOpponentTilesPlayed += s.totalOpponentTilesPlayed;
       acc.blanksPlayed += s.blanksPlayed;
-      acc.wins += s.wins;
       acc.draws += s.draws;
       acc.timeouts += s.timeouts;
       acc.totalMistakeIndex += s.avgMistakeIndex * s.gamesAnalyzed;
@@ -255,14 +251,10 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       gamesPlayed: 0,
       totalScore: 0,
-      totalOpponentScore: 0,
       totalBingos: 0,
-      totalOpponentBingos: 0,
       totalTurns: 0,
       totalTilesPlayed: 0,
-      totalOpponentTilesPlayed: 0,
       blanksPlayed: 0,
-      wins: 0,
       draws: 0,
       timeouts: 0,
       totalMistakeIndex: 0,
@@ -428,13 +420,23 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sortIcon: noSortIcon,
     },
     {
-      title: <ColHeader title="T" tooltip="Number of tied games" />,
+      title: (
+        <ColHeader
+          title="T"
+          tooltip={
+            divTotals.draws
+              ? `Number of tied games (div total: ${divTotals.draws / 2})`
+              : "Number of tied games"
+          }
+        />
+      ),
       dataIndex: "draws",
       key: "draws",
       width: 35,
       sorter: (a: StandingRecord, b: StandingRecord) => a.draws - b.draws,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
+      render: (draws: number) => (draws > 0 ? draws : "-"),
     },
     {
       title: <ColHeader title="CUM" tooltip="Cumulative spread" />,
@@ -483,10 +485,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     },
     {
       title: (
-        <ColHeader
-          title="OScAV"
-          tooltip={`Average opponent score per game (div avg: ${divAvg(divTotals.totalOpponentScore)})`}
-        />
+        <ColHeader title="OScAV" tooltip="Average opponent score per game" />
       ),
       key: "avgOppScore",
       width: 55,
@@ -527,10 +526,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     },
     {
       title: (
-        <ColHeader
-          title="OBAV"
-          tooltip={`Average opponent bingos per game (div avg: ${divAvg(divTotals.totalOpponentBingos, 2)})`}
-        />
+        <ColHeader title="OBAV" tooltip="Average opponent bingos per game" />
       ),
       key: "avgOppBingos",
       width: 50,
@@ -631,7 +627,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="OTiAV"
-          tooltip={`Average opponent tiles played per game (div avg: ${divAvg(divTotals.totalOpponentTilesPlayed)})`}
+          tooltip="Average opponent tiles played per game"
         />
       ),
       key: "avgOppTiles",
@@ -693,12 +689,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
-      title: (
-        <ColHeader
-          title="PPG"
-          tooltip={`Points per completed game (div avg: ${divAvg(divTotals.wins * 2 + divTotals.draws, 2)})`}
-        />
-      ),
+      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
       key: "ppg",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
@@ -745,7 +736,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="#TO"
-          tooltip={`Number of timeouts (div total: ${divTotals.timeouts})`}
+          tooltip={
+            divTotals.timeouts
+              ? `Number of timeouts (div total: ${divTotals.timeouts})`
+              : "Number of timeouts"
+          }
         />
       ),
       dataIndex: "timeouts",
@@ -754,6 +749,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       sorter: (a: StandingRecord, b: StandingRecord) => a.timeouts - b.timeouts,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
+      render: (timeouts: number) => (timeouts > 0 ? timeouts : "-"),
     },
     {
       title: <ColHeader title="Result" tooltip="Season result" />,
