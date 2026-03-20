@@ -123,18 +123,20 @@ export const LeagueRoster: React.FC<Props> = ({
   onJumpToSeason,
 }) => {
   const [search, setSearch] = useState("");
+  const [h2hUserId, setH2hUserId] = useState(currentUserId || "");
+  const [h2hUsername, setH2hUsername] = useState("");
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
 
-  // Fetch h2h data for the logged-in user
+  // Fetch h2h data for the selected player (defaults to logged-in user)
   const { data: h2hData } = useQuery(
     getPlayerLeagueH2H,
     {
-      userId: currentUserId || "",
+      userId: h2hUserId,
       leagueId,
     },
-    { enabled: !!currentUserId },
+    { enabled: !!h2hUserId },
   );
 
   // Build a map of opponent UUID -> H2HRecord
@@ -178,22 +180,41 @@ export const LeagueRoster: React.FC<Props> = ({
           omitSendMessage
           omitFriend
           omitBlock
+          infoText="View H2H"
+          handleInfoText={() => {
+            setH2hUserId(record.userId);
+            setH2hUsername(record.username);
+          }}
         />
       ),
     },
-    // H2H column - only show when user is logged in and has h2h data
-    ...(currentUserId && h2hMap.size > 0
+    // H2H column - show when viewing any player's h2h
+    ...(h2hUserId && h2hMap.size > 0
       ? [
           {
             title: (
-              <Tooltip title="Your head-to-head record in league games">
-                H2H
+              <Tooltip
+                title={
+                  h2hUsername
+                    ? `Head-to-head record for ${h2hUsername}`
+                    : "Your head-to-head record in league games"
+                }
+              >
+                <span>
+                  H2H
+                  {h2hUsername && h2hUserId !== currentUserId && (
+                    <span style={{ fontSize: 10, opacity: 0.7 }}>
+                      {" "}
+                      ({h2hUsername})
+                    </span>
+                  )}
+                </span>
               </Tooltip>
             ),
             key: "h2h",
-            width: 70,
+            width: h2hUserId !== currentUserId ? 120 : 70,
             render: (_: unknown, record: LeagueRosterPlayer) => {
-              if (record.userId === currentUserId) return null;
+              if (record.userId === h2hUserId) return null;
               return formatH2H(h2hMap.get(record.userId));
             },
             sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) => {
