@@ -38,6 +38,7 @@ import { VerifyEmail } from "./lobby/verify_email";
 import { encodeToSocketFmt } from "./utils/protobuf";
 import { Clubs } from "./clubs";
 import { TournamentRoom } from "./tournament/room";
+import { TournamentWizard } from "./tournament/tournament_wizard";
 import { Admin } from "./admin/admin";
 import { LeaguesList } from "./leagues/leagues_list";
 import { LeaguePage } from "./leagues/league_page";
@@ -387,6 +388,7 @@ const App = React.memo(() => {
               }
             />
             <Route path="clubs" element={<Clubs />} />
+            <Route path="tournaments" element={<TournamentWizard />} />
             <Route path="leagues" element={<LeaguesList />} />
             <Route path="leagues/admin" element={<LeagueAdmin />} />
             <Route

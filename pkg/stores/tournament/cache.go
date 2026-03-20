@@ -155,6 +155,14 @@ func (c *Cache) GetPastTournaments(ctx context.Context, limit int32) ([]*entity.
 	return c.backing.GetPastTournaments(ctx, limit)
 }
 
+func (c *Cache) CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error) {
+	return c.backing.CountRecentTournamentsByUser(ctx, userID)
+}
+
+func (c *Cache) GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error) {
+	return c.backing.GetTournamentsByDirector(ctx, userID)
+}
+
 func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {
 	return c.backing.ListAllIDs(ctx)
 }

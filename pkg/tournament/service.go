@@ -158,6 +158,21 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		return nil, apiserver.PermissionDenied("not permitted to create tournaments")
 	}
 
+	// Rate limit: max 3 tournaments per week unless user can manage tournaments (unlimited)
+	unlimited, err := rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanManageTournaments)
+	if err != nil {
+		return nil, err
+	}
+	if !unlimited {
+		count, err := ts.tournamentStore.CountRecentTournamentsByUser(ctx, user.ID)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		if count >= 3 {
+			return nil, apiserver.PermissionDenied("you have reached the maximum of 3 tournament creations per week; please contact us if you need to create more")
+		}
+	}
+
 	if len(req.Msg.DirectorUsernames) < 1 {
 		return nil, apiserver.InvalidArg("need at least one director id")
 	}
@@ -599,6 +614,32 @@ func (ts *TournamentService) GetPastTournaments(ctx context.Context, req *connec
 		return nil, apiserver.InternalErr(err)
 	}
 	response := &pb.GetPastTournamentsResponse{
+		Tournaments: make([]*pb.TournamentMetadata, len(tournaments)),
+	}
+	for i, t := range tournaments {
+		if t == nil {
+			return nil, apiserver.InternalErr(errors.New("tournament is nil"))
+		}
+		tMeta, err := dbTournamentToTournamentMetadataResponse(ctx, t)
+		if err != nil {
+			return nil, apiserver.InternalErr(err)
+		}
+		response.Tournaments[i] = tMeta
+	}
+	return connect.NewResponse(response), nil
+}
+
+func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.Request[pb.GetMyTournamentsRequest]) (*connect.Response[pb.GetMyTournamentsResponse], error) {
+	user, err := apiserver.AuthUser(ctx, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, user.TournamentID())
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	response := &pb.GetMyTournamentsResponse{
 		Tournaments: make([]*pb.TournamentMetadata, len(tournaments)),
 	}
 	for i, t := range tournaments {
