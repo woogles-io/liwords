@@ -193,6 +193,29 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 	}
 	log.Info().Interface("t", t).Bool("merge", merge).Interface("meta", meta).Msg("tournament-before-set-meta")
 
+	// Validate IRL mode changes: prevent changing IRL mode if players already exist
+	changingIRLMode := meta.IrlMode != (t.ExtraMeta != nil && t.ExtraMeta.IRLMode)
+	if changingIRLMode {
+		// Check if any divisions have players
+		hasPlayers := false
+		for _, div := range t.Divisions {
+			if div.DivisionManager != nil {
+				players := div.DivisionManager.GetPlayers()
+				if players != nil && len(players.Persons) > 0 {
+					hasPlayers = true
+					break
+				}
+			}
+		}
+		if hasPlayers {
+			if meta.IrlMode {
+				return errors.New("cannot enable IRL mode after players have been added. Please remove all players first or create a new tournament.")
+			} else {
+				return errors.New("cannot disable IRL mode after players have been added. Please remove all players first or create a new tournament.")
+			}
+		}
+	}
+
 	// Not all fields need to be specified if we're merging.
 	t.Name = ternary(merge && name == "", t.Name, name)
 	t.Description = ternary(merge && meta.Description == "", t.Description, meta.Description)
@@ -2012,7 +2035,7 @@ func OpenRegistration(ctx context.Context, ts TournamentStore, tid string) error
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_OPENREGISTRATIONS_AFTER_START, t.Name)
 	}
 	if t.ExtraMeta.IRLMode {
-		return errors.New("cannot open registrations for IRL tournaments")
+		return errors.New("cannot open self-registration for IRL tournaments. Players must be added manually by the director.")
 	}
 	t.ExtraMeta.RegistrationOpen = true
 	err = ts.Set(ctx, t)
