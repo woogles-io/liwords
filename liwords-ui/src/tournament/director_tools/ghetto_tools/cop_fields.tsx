@@ -25,7 +25,7 @@ export type SingleRdCtrlFieldsProps = {
 export const getCOPDefaults = (totalRounds: number) => {
   return {
     gibsonSpreads: [250, 200],
-    hopefulnessThresholds: [0.1, 0.1],
+    hopefulnessThresholds: [0.1, 0.1, 0.05, 0.02, 0.01],
     placePrizes: 4,
     controlLossActivationRound: Math.max(totalRounds - 3, 1) - 1, // 0-indexed for backend (for 16-rd tournament: 16-3 = 13 (display), -1 = 12 (backend))
     divisionSims: 100000,
@@ -268,7 +268,7 @@ export const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
               handleFieldChange("hopefulnessThresholds", values);
             }
           }}
-          placeholder="0.1, 0.1"
+          placeholder="0.1, 0.1, 0.05, 0.02, 0.01"
         />
       </Form.Item>
 
