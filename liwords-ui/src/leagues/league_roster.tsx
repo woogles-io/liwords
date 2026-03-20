@@ -95,7 +95,8 @@ const formatH2H = (record: H2HRecord | undefined) => {
       <span
         style={{
           fontSize: "12px",
-          color: wins > losses ? "#52c41a" : wins < losses ? "#ff4d4f" : undefined,
+          color:
+            wins > losses ? "#52c41a" : wins < losses ? "#ff4d4f" : undefined,
         }}
       >
         {wld}
@@ -184,7 +185,11 @@ export const LeagueRoster: React.FC<Props> = ({
     ...(currentUserId && h2hMap.size > 0
       ? [
           {
-            title: <Tooltip title="Your head-to-head record in league games">H2H</Tooltip>,
+            title: (
+              <Tooltip title="Your head-to-head record in league games">
+                H2H
+              </Tooltip>
+            ),
             key: "h2h",
             width: 70,
             render: (_: unknown, record: LeagueRosterPlayer) => {

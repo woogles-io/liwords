@@ -147,9 +147,7 @@ export const LeagueCorrespondenceGames: React.FC<
           const opponentUuid = game.players[opponentIndex]?.uuid;
 
           // Get h2h record for this opponent
-          const h2hRecord = opponentUuid
-            ? h2hMap.get(opponentUuid)
-            : undefined;
+          const h2hRecord = opponentUuid ? h2hMap.get(opponentUuid) : undefined;
 
           // Get scores (user's score first)
           const userScore =
