@@ -125,6 +125,13 @@ export const inviteUserToLeagues = LeagueService.method.inviteUserToLeagues;
 export const getLeagueRoster = LeagueService.method.getLeagueRoster;
 
 /**
+ * Head-to-head records for a player across all league seasons
+ *
+ * @generated from rpc league_service.LeagueService.GetPlayerLeagueH2H
+ */
+export const getPlayerLeagueH2H = LeagueService.method.getPlayerLeagueH2H;
+
+/**
  * Statistics (Phase 8)
  *
  * @generated from rpc league_service.LeagueService.GetLeagueStatistics

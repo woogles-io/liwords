@@ -98,6 +98,9 @@ const (
 	// LeagueServiceGetLeagueRosterProcedure is the fully-qualified name of the LeagueService's
 	// GetLeagueRoster RPC.
 	LeagueServiceGetLeagueRosterProcedure = "/league_service.LeagueService/GetLeagueRoster"
+	// LeagueServiceGetPlayerLeagueH2HProcedure is the fully-qualified name of the LeagueService's
+	// GetPlayerLeagueH2H RPC.
+	LeagueServiceGetPlayerLeagueH2HProcedure = "/league_service.LeagueService/GetPlayerLeagueH2H"
 	// LeagueServiceGetLeagueStatisticsProcedure is the fully-qualified name of the LeagueService's
 	// GetLeagueStatistics RPC.
 	LeagueServiceGetLeagueStatisticsProcedure = "/league_service.LeagueService/GetLeagueStatistics"
@@ -156,6 +159,8 @@ type LeagueServiceClient interface {
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Roster: all players across all seasons, with division and standings
 	GetLeagueRoster(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueRosterResponse], error)
+	// Head-to-head records for a player across all league seasons
+	GetPlayerLeagueH2H(context.Context, *connect.Request[league_service.GetPlayerLeagueH2HRequest]) (*connect.Response[league_service.GetPlayerLeagueH2HResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
@@ -312,6 +317,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("GetLeagueRoster")),
 			connect.WithClientOptions(opts...),
 		),
+		getPlayerLeagueH2H: connect.NewClient[league_service.GetPlayerLeagueH2HRequest, league_service.GetPlayerLeagueH2HResponse](
+			httpClient,
+			baseURL+LeagueServiceGetPlayerLeagueH2HProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("GetPlayerLeagueH2H")),
+			connect.WithClientOptions(opts...),
+		),
 		getLeagueStatistics: connect.NewClient[league_service.LeagueRequest, league_service.LeagueStatisticsResponse](
 			httpClient,
 			baseURL+LeagueServiceGetLeagueStatisticsProcedure,
@@ -393,6 +404,7 @@ type leagueServiceClient struct {
 	getPlayerSeasonGames               *connect.Client[league_service.GetPlayerSeasonGamesRequest, league_service.GetPlayerSeasonGamesResponse]
 	inviteUserToLeagues                *connect.Client[league_service.InviteUserRequest, league_service.InviteUserResponse]
 	getLeagueRoster                    *connect.Client[league_service.LeagueRequest, league_service.LeagueRosterResponse]
+	getPlayerLeagueH2H                 *connect.Client[league_service.GetPlayerLeagueH2HRequest, league_service.GetPlayerLeagueH2HResponse]
 	getLeagueStatistics                *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
 	movePlayerToDivision               *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
 	getSeasonZeroMoveGames             *connect.Client[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse]
@@ -514,6 +526,11 @@ func (c *leagueServiceClient) GetLeagueRoster(ctx context.Context, req *connect.
 	return c.getLeagueRoster.CallUnary(ctx, req)
 }
 
+// GetPlayerLeagueH2H calls league_service.LeagueService.GetPlayerLeagueH2H.
+func (c *leagueServiceClient) GetPlayerLeagueH2H(ctx context.Context, req *connect.Request[league_service.GetPlayerLeagueH2HRequest]) (*connect.Response[league_service.GetPlayerLeagueH2HResponse], error) {
+	return c.getPlayerLeagueH2H.CallUnary(ctx, req)
+}
+
 // GetLeagueStatistics calls league_service.LeagueService.GetLeagueStatistics.
 func (c *leagueServiceClient) GetLeagueStatistics(ctx context.Context, req *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {
 	return c.getLeagueStatistics.CallUnary(ctx, req)
@@ -589,6 +606,8 @@ type LeagueServiceHandler interface {
 	InviteUserToLeagues(context.Context, *connect.Request[league_service.InviteUserRequest]) (*connect.Response[league_service.InviteUserResponse], error)
 	// Roster: all players across all seasons, with division and standings
 	GetLeagueRoster(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueRosterResponse], error)
+	// Head-to-head records for a player across all league seasons
+	GetPlayerLeagueH2H(context.Context, *connect.Request[league_service.GetPlayerLeagueH2HRequest]) (*connect.Response[league_service.GetPlayerLeagueH2HResponse], error)
 	// Statistics (Phase 8)
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
@@ -741,6 +760,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("GetLeagueRoster")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceGetPlayerLeagueH2HHandler := connect.NewUnaryHandler(
+		LeagueServiceGetPlayerLeagueH2HProcedure,
+		svc.GetPlayerLeagueH2H,
+		connect.WithSchema(leagueServiceMethods.ByName("GetPlayerLeagueH2H")),
+		connect.WithHandlerOptions(opts...),
+	)
 	leagueServiceGetLeagueStatisticsHandler := connect.NewUnaryHandler(
 		LeagueServiceGetLeagueStatisticsProcedure,
 		svc.GetLeagueStatistics,
@@ -841,6 +866,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceInviteUserToLeaguesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetLeagueRosterProcedure:
 			leagueServiceGetLeagueRosterHandler.ServeHTTP(w, r)
+		case LeagueServiceGetPlayerLeagueH2HProcedure:
+			leagueServiceGetPlayerLeagueH2HHandler.ServeHTTP(w, r)
 		case LeagueServiceGetLeagueStatisticsProcedure:
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
 		case LeagueServiceMovePlayerToDivisionProcedure:
@@ -954,6 +981,10 @@ func (UnimplementedLeagueServiceHandler) InviteUserToLeagues(context.Context, *c
 
 func (UnimplementedLeagueServiceHandler) GetLeagueRoster(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueRosterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetLeagueRoster is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) GetPlayerLeagueH2H(context.Context, *connect.Request[league_service.GetPlayerLeagueH2HRequest]) (*connect.Response[league_service.GetPlayerLeagueH2HResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.GetPlayerLeagueH2H is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error) {

@@ -46,6 +46,9 @@ service LeagueService {
   // Roster: all players across all seasons, with division and standings
   rpc GetLeagueRoster(LeagueRequest) returns (LeagueRosterResponse);
 
+  // Head-to-head records for a player across all league seasons
+  rpc GetPlayerLeagueH2H(GetPlayerLeagueH2HRequest) returns (GetPlayerLeagueH2HResponse);
+
   // Statistics (Phase 8)
   rpc GetLeagueStatistics(LeagueRequest) returns (LeagueStatisticsResponse);
 
@@ -318,4 +321,22 @@ message CancelPlayerResultsResponse {
   int32 games_forfeited = 2;  // Ongoing games that were force-forfeited
   int32 games_penalized = 3;  // Completed games with scores modified
   string message = 4;
+}
+
+message GetPlayerLeagueH2HRequest {
+  string user_id = 1;    // UUID of player
+  string league_id = 2;  // UUID or slug of league
+}
+
+message GetPlayerLeagueH2HResponse {
+  repeated H2HRecord records = 1;
+}
+
+message H2HRecord {
+  string opponent_user_id = 1;
+  string opponent_username = 2;
+  int32 wins = 3;
+  int32 losses = 4;
+  int32 draws = 5;
+  int32 spread = 6;
 }
