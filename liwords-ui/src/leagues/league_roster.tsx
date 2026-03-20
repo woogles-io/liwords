@@ -207,14 +207,14 @@ export const LeagueRoster: React.FC<Props> = ({
             title: (
               <Tooltip
                 title={
-                  h2hUsername
-                    ? `Head-to-head record for ${h2hUsername}`
-                    : "Your head-to-head record in league games"
+                  h2hUserId === currentUserId
+                    ? "Your head-to-head record in league games"
+                    : `Head-to-head record for ${h2hUsername}`
                 }
               >
                 <span>
                   H2H
-                  {h2hUsername && h2hUserId !== currentUserId && (
+                  {h2hUserId !== currentUserId && h2hUsername && (
                     <span style={{ fontSize: 10, opacity: 0.7 }}>
                       {" "}
                       ({h2hUsername})
