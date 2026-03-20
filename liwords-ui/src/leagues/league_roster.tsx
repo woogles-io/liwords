@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Input, Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
@@ -123,11 +123,23 @@ export const LeagueRoster: React.FC<Props> = ({
   onJumpToSeason,
 }) => {
   const [search, setSearch] = useState("");
-  const [h2hUserId, setH2hUserId] = useState(currentUserId || "");
+  const [h2hUserId, setH2hUserId] = useState("");
   const [h2hUsername, setH2hUsername] = useState("");
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
+
+  // Auto-show logged-in user's H2H if they're a participant
+  useEffect(() => {
+    if (currentUserId && data?.players && !h2hUserId) {
+      const isParticipant = data.players.some(
+        (p) => p.userId === currentUserId,
+      );
+      if (isParticipant) {
+        setH2hUserId(currentUserId);
+      }
+    }
+  }, [currentUserId, data?.players, h2hUserId]);
 
   // Fetch h2h data for the selected player (defaults to logged-in user)
   const { data: h2hData } = useQuery(
