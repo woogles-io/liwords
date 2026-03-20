@@ -2,11 +2,31 @@ import React, { useMemo } from "react";
 import { Card, Empty, Tooltip } from "antd";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router";
+import { useQuery } from "@connectrpc/connect-query";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
+import { getPlayerLeagueH2H } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import { H2HRecord } from "../gen/api/proto/league_service/league_service_pb";
 
 type LeagueCorrespondenceGamesProps = {
   leagueSlug: string;
+};
+
+const formatH2HCompact = (record: H2HRecord | undefined) => {
+  if (!record) return null;
+  const { wins, losses, draws, spread } = record;
+  const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
+  const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
+  return (
+    <span
+      style={{
+        fontSize: "11px",
+        opacity: 0.7,
+      }}
+    >
+      {wld} {spreadStr}
+    </span>
+  );
 };
 
 export const LeagueCorrespondenceGames: React.FC<
@@ -19,6 +39,27 @@ export const LeagueCorrespondenceGames: React.FC<
   const {
     lobbyContext: { correspondenceGames },
   } = useLobbyStoreContext();
+
+  // Fetch h2h data for the logged-in user
+  const { data: h2hData } = useQuery(
+    getPlayerLeagueH2H,
+    {
+      userId: userID || "",
+      leagueId: leagueSlug,
+    },
+    { enabled: !!userID },
+  );
+
+  // Build a map of opponent UUID -> H2HRecord
+  const h2hMap = useMemo(() => {
+    const map = new Map<string, H2HRecord>();
+    if (h2hData?.records) {
+      for (const record of h2hData.records) {
+        map.set(record.opponentUserId, record);
+      }
+    }
+    return map;
+  }, [h2hData?.records]);
 
   // Filter games for this league and sort by user's turn
   const leagueGames = useMemo(() => {
@@ -103,6 +144,12 @@ export const LeagueCorrespondenceGames: React.FC<
           );
           const opponentIndex = userPlayerIndex === 0 ? 1 : 0;
           const opponentName = game.players[opponentIndex]?.displayName || "?";
+          const opponentUuid = game.players[opponentIndex]?.uuid;
+
+          // Get h2h record for this opponent
+          const h2hRecord = opponentUuid
+            ? h2hMap.get(opponentUuid)
+            : undefined;
 
           // Get scores (user's score first)
           const userScore =
@@ -143,7 +190,19 @@ export const LeagueCorrespondenceGames: React.FC<
                     gap: "8px",
                   }}
                 >
-                  <span>vs {opponentName}</span>
+                  <span>
+                    vs {opponentName}
+                    {h2hRecord && (
+                      <>
+                        {" "}
+                        <Tooltip
+                          title={`Lifetime league record: ${h2hRecord.wins}W-${h2hRecord.losses}L${h2hRecord.draws ? `-${h2hRecord.draws}D` : ""} ${h2hRecord.spread > 0 ? "+" : ""}${h2hRecord.spread}`}
+                        >
+                          {formatH2HCompact(h2hRecord)}
+                        </Tooltip>
+                      </>
+                    )}
+                  </span>
                   {hasScores && (
                     <span
                       style={{

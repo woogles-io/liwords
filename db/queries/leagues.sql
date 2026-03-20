@@ -694,6 +694,24 @@ WHERE season_id = @season_id
   AND (player0_id = @player_id OR player1_id = @player_id)
   AND game_end_reason = 0;
 
+-- name: GetPlayerLeagueH2H :many
+-- Get head-to-head records for a player against all opponents across all seasons of a league.
+-- Uses idx_game_players_player_league_season partial index for efficient lookups.
+SELECT
+    u_opp.uuid as opponent_uuid,
+    u_opp.username as opponent_username,
+    SUM(CASE WHEN gp.won = true THEN 1 ELSE 0 END)::int as wins,
+    SUM(CASE WHEN gp.won = false THEN 1 ELSE 0 END)::int as losses,
+    SUM(CASE WHEN gp.won IS NULL THEN 1 ELSE 0 END)::int as draws,
+    SUM(gp.score - gp.opponent_score)::int as spread
+FROM game_players gp
+JOIN league_seasons ls ON gp.league_season_id = ls.uuid
+JOIN users u_opp ON gp.opponent_id = u_opp.id
+WHERE gp.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
+  AND ls.league_id = @league_id
+  AND gp.game_end_reason NOT IN (0, 5, 7)
+GROUP BY u_opp.uuid, u_opp.username;
+
 -- name: PenalizePlayerSeasonGames :execrows
 -- Penalize a cheater's games in a season:
 -- Lower the cheater's score to (opponent_score - 100), keeping the honest player's score.

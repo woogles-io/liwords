@@ -785,6 +785,7 @@ export const LeaguePage = (props: Props) => {
             {showRoster && league && (
               <LeagueRoster
                 leagueId={league.uuid}
+                currentUserId={userID}
                 onJumpToSeason={(seasonNum, divNum) => {
                   const season = allSeasons.find(
                     (s) => s.seasonNumber === seasonNum,

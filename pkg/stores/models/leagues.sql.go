@@ -1084,6 +1084,66 @@ func (q *Queries) GetPastSeasons(ctx context.Context, leagueID uuid.UUID) ([]Lea
 	return items, nil
 }
 
+const getPlayerLeagueH2H = `-- name: GetPlayerLeagueH2H :many
+SELECT
+    u_opp.uuid as opponent_uuid,
+    u_opp.username as opponent_username,
+    SUM(CASE WHEN gp.won = true THEN 1 ELSE 0 END)::int as wins,
+    SUM(CASE WHEN gp.won = false THEN 1 ELSE 0 END)::int as losses,
+    SUM(CASE WHEN gp.won IS NULL THEN 1 ELSE 0 END)::int as draws,
+    SUM(gp.score - gp.opponent_score)::int as spread
+FROM game_players gp
+JOIN league_seasons ls ON gp.league_season_id = ls.uuid
+JOIN users u_opp ON gp.opponent_id = u_opp.id
+WHERE gp.player_id = (SELECT id FROM users WHERE users.uuid = $1)
+  AND ls.league_id = $2
+  AND gp.game_end_reason NOT IN (0, 5, 7)
+GROUP BY u_opp.uuid, u_opp.username
+`
+
+type GetPlayerLeagueH2HParams struct {
+	UserUuid pgtype.Text
+	LeagueID uuid.UUID
+}
+
+type GetPlayerLeagueH2HRow struct {
+	OpponentUuid     pgtype.Text
+	OpponentUsername pgtype.Text
+	Wins             int32
+	Losses           int32
+	Draws            int32
+	Spread           int32
+}
+
+// Get head-to-head records for a player against all opponents across all seasons of a league.
+// Uses idx_game_players_player_league_season partial index for efficient lookups.
+func (q *Queries) GetPlayerLeagueH2H(ctx context.Context, arg GetPlayerLeagueH2HParams) ([]GetPlayerLeagueH2HRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerLeagueH2H, arg.UserUuid, arg.LeagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerLeagueH2HRow
+	for rows.Next() {
+		var i GetPlayerLeagueH2HRow
+		if err := rows.Scan(
+			&i.OpponentUuid,
+			&i.OpponentUsername,
+			&i.Wins,
+			&i.Losses,
+			&i.Draws,
+			&i.Spread,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerRegistration = `-- name: GetPlayerRegistration :one
 SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1 AND user_id = $2

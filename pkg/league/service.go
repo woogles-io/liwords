@@ -1934,6 +1934,50 @@ func (ls *LeagueService) GetLeagueRoster(
 	}), nil
 }
 
+func (ls *LeagueService) GetPlayerLeagueH2H(
+	ctx context.Context,
+	req *connect.Request[pb.GetPlayerLeagueH2HRequest],
+) (*connect.Response[pb.GetPlayerLeagueH2HResponse], error) {
+	userID := req.Msg.UserId
+	if userID == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+
+	// Resolve league UUID from slug or UUID
+	leagueUUID, err := uuid.Parse(req.Msg.LeagueId)
+	if err != nil {
+		dbLeague, err := ls.store.GetLeagueBySlug(ctx, req.Msg.LeagueId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(fmt.Sprintf("league not found: %s", req.Msg.LeagueId))
+		}
+		leagueUUID = dbLeague.Uuid
+	}
+
+	rows, err := ls.store.GetPlayerLeagueH2H(ctx, models.GetPlayerLeagueH2HParams{
+		UserUuid: pgtype.Text{String: userID, Valid: true},
+		LeagueID: leagueUUID,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get h2h records: %w", err))
+	}
+
+	records := make([]*pb.H2HRecord, len(rows))
+	for i, row := range rows {
+		records[i] = &pb.H2HRecord{
+			OpponentUserId:   row.OpponentUuid.String,
+			OpponentUsername: row.OpponentUsername.String,
+			Wins:             row.Wins,
+			Losses:           row.Losses,
+			Draws:            row.Draws,
+			Spread:           row.Spread,
+		}
+	}
+
+	return connect.NewResponse(&pb.GetPlayerLeagueH2HResponse{
+		Records: records,
+	}), nil
+}
+
 func (ls *LeagueService) GetLeagueStatistics(
 	ctx context.Context,
 	req *connect.Request[pb.LeagueRequest],

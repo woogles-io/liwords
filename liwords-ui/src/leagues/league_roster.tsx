@@ -8,16 +8,21 @@ import {
   MinusOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@connectrpc/connect-query";
-import { getLeagueRoster } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
+import {
+  getLeagueRoster,
+  getPlayerLeagueH2H,
+} from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import {
   LeagueRosterPlayer,
   LeagueRosterSeason,
+  H2HRecord,
 } from "../gen/api/proto/league_service/league_service_pb";
 import { StandingResult } from "../gen/api/proto/ipc/league_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
 type Props = {
   leagueId: string;
+  currentUserId?: string;
   onJumpToSeason: (seasonNumber: number, divisionNumber: number) => void;
 };
 
@@ -80,6 +85,25 @@ const formatSeason = (season: LeagueRosterSeason | undefined) => {
   );
 };
 
+const formatH2H = (record: H2HRecord | undefined) => {
+  if (!record) return <span className="roster-empty">—</span>;
+  const { wins, losses, draws, spread } = record;
+  const spreadStr = spread > 0 ? `+${spread}` : `${spread}`;
+  const wld = `${wins}-${losses}${draws ? `-${draws}` : ""}`;
+  return (
+    <Tooltip title={`${wld} (${spreadStr})`}>
+      <span
+        style={{
+          fontSize: "12px",
+          color: wins > losses ? "#52c41a" : wins < losses ? "#ff4d4f" : undefined,
+        }}
+      >
+        {wld}
+      </span>
+    </Tooltip>
+  );
+};
+
 // Sort key for a player in a given season: division ASC, rank ASC.
 // Players not in that season sort last.
 const seasonSortKey = (
@@ -92,11 +116,36 @@ const seasonSortKey = (
   return s.divisionNumber * 1000 + (s.rank || 999);
 };
 
-export const LeagueRoster: React.FC<Props> = ({ leagueId, onJumpToSeason }) => {
+export const LeagueRoster: React.FC<Props> = ({
+  leagueId,
+  currentUserId,
+  onJumpToSeason,
+}) => {
   const [search, setSearch] = useState("");
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
+
+  // Fetch h2h data for the logged-in user
+  const { data: h2hData } = useQuery(
+    getPlayerLeagueH2H,
+    {
+      userId: currentUserId || "",
+      leagueId,
+    },
+    { enabled: !!currentUserId },
+  );
+
+  // Build a map of opponent UUID -> H2HRecord
+  const h2hMap = useMemo(() => {
+    const map = new Map<string, H2HRecord>();
+    if (h2hData?.records) {
+      for (const record of h2hData.records) {
+        map.set(record.opponentUserId, record);
+      }
+    }
+    return map;
+  }, [h2hData?.records]);
 
   const filteredPlayers = useMemo(() => {
     if (!data?.players) return [];
@@ -131,6 +180,28 @@ export const LeagueRoster: React.FC<Props> = ({ leagueId, onJumpToSeason }) => {
         />
       ),
     },
+    // H2H column - only show when user is logged in and has h2h data
+    ...(currentUserId && h2hMap.size > 0
+      ? [
+          {
+            title: <Tooltip title="Your head-to-head record in league games">H2H</Tooltip>,
+            key: "h2h",
+            width: 70,
+            render: (_: unknown, record: LeagueRosterPlayer) => {
+              if (record.userId === currentUserId) return null;
+              return formatH2H(h2hMap.get(record.userId));
+            },
+            sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) => {
+              const aRec = h2hMap.get(a.userId);
+              const bRec = h2hMap.get(b.userId);
+              const aVal = aRec ? aRec.wins - aRec.losses : -9999;
+              const bVal = bRec ? bRec.wins - bRec.losses : -9999;
+              return aVal - bVal;
+            },
+            sortDirections: ["descend", "ascend"] as SortOrder[],
+          },
+        ]
+      : []),
     {
       title: <Tooltip title="Number of seasons played">#S</Tooltip>,
       key: "count",
