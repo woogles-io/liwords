@@ -189,7 +189,7 @@ export const LeagueRoster: React.FC<Props> = ({
       ),
     },
     // H2H column - show when viewing any player's h2h
-    ...(h2hUserId && h2hMap.size > 0
+    ...(h2hUserId
       ? [
           {
             title: (
