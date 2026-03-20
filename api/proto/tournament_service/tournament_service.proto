@@ -249,6 +249,12 @@ message GetPastTournamentsResponse {
   repeated TournamentMetadata tournaments = 1;
 }
 
+message GetMyTournamentsRequest {}
+
+message GetMyTournamentsResponse {
+  repeated TournamentMetadata tournaments = 1;
+}
+
 message RunCopRequest {
   string id = 1;
   string division = 2;
@@ -346,6 +352,11 @@ service TournamentService {
   }
   rpc GetPastTournaments(GetPastTournamentsRequest)
       returns (GetPastTournamentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetMyTournaments returns tournaments where the authenticated user is a director.
+  rpc GetMyTournaments(GetMyTournamentsRequest)
+      returns (GetMyTournamentsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RunCOP(RunCopRequest) returns (ipc.PairResponse);

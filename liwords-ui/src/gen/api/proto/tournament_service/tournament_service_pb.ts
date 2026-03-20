@@ -1062,6 +1062,36 @@ export const GetPastTournamentsResponseSchema: GenMessage<GetPastTournamentsResp
   messageDesc(file_proto_tournament_service_tournament_service, 36);
 
 /**
+ * @generated from message tournament_service.GetMyTournamentsRequest
+ */
+export type GetMyTournamentsRequest = Message<"tournament_service.GetMyTournamentsRequest"> & {
+};
+
+/**
+ * Describes the message tournament_service.GetMyTournamentsRequest.
+ * Use `create(GetMyTournamentsRequestSchema)` to create a new message.
+ */
+export const GetMyTournamentsRequestSchema: GenMessage<GetMyTournamentsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_tournament_service_tournament_service, 37);
+
+/**
+ * @generated from message tournament_service.GetMyTournamentsResponse
+ */
+export type GetMyTournamentsResponse = Message<"tournament_service.GetMyTournamentsResponse"> & {
+  /**
+   * @generated from field: repeated tournament_service.TournamentMetadata tournaments = 1;
+   */
+  tournaments: TournamentMetadata[];
+};
+
+/**
+ * Describes the message tournament_service.GetMyTournamentsResponse.
+ * Use `create(GetMyTournamentsResponseSchema)` to create a new message.
+ */
+export const GetMyTournamentsResponseSchema: GenMessage<GetMyTournamentsResponse> = /*@__PURE__*/
+  messageDesc(file_proto_tournament_service_tournament_service, 38);
+
+/**
  * @generated from message tournament_service.RunCopRequest
  */
 export type RunCopRequest = Message<"tournament_service.RunCopRequest"> & {
@@ -1738,6 +1768,16 @@ export const TournamentService: GenService<{
     methodKind: "unary";
     input: typeof GetPastTournamentsRequestSchema;
     output: typeof GetPastTournamentsResponseSchema;
+  },
+  /**
+   * GetMyTournaments returns tournaments where the authenticated user is a director.
+   *
+   * @generated from rpc tournament_service.TournamentService.GetMyTournaments
+   */
+  getMyTournaments: {
+    methodKind: "unary";
+    input: typeof GetMyTournamentsRequestSchema;
+    output: typeof GetMyTournamentsResponseSchema;
   },
   /**
    * @generated from rpc tournament_service.TournamentService.RunCOP
