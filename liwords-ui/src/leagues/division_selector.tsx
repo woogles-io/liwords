@@ -1,7 +1,7 @@
 import { Division } from "../gen/api/proto/ipc/league_pb";
 
 // Helper function to find the user's division
-export const findUserDivision = (
+const findUserDivision = (
   divisions: Division[],
   userId: string,
 ): Division | undefined => {
