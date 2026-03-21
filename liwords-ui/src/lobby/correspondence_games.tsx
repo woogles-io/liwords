@@ -293,14 +293,51 @@ export const CorrespondenceGames = (props: Props) => {
               resultText = `to ${opponentName} via forfeit`;
             }
             break;
-          default:
-            // Standard completion - show scores
+          case GameEndReason.ADJUDICATED:
+            if (userWon) {
+              resultText = `over ${opponentName} ${userScore}–${opponentScore} (adjudicated)`;
+            } else if (isTie) {
+              resultText = `with ${opponentName} ${userScore}–${opponentScore} (adjudicated)`;
+            } else {
+              resultText = `to ${opponentName} ${userScore}–${opponentScore} (adjudicated)`;
+            }
+            break;
+          case GameEndReason.CONSECUTIVE_ZEROES:
+            if (userWon) {
+              resultText = `over ${opponentName} ${userScore}–${opponentScore} (six-zero)`;
+            } else if (isTie) {
+              resultText = `with ${opponentName} ${userScore}–${opponentScore} (six-zero)`;
+            } else {
+              resultText = `to ${opponentName} ${userScore}–${opponentScore} (six-zero)`;
+            }
+            break;
+          case GameEndReason.TRIPLE_CHALLENGE:
+            if (userWon) {
+              resultText = `over ${opponentName} (triple challenge)`;
+            } else {
+              resultText = `to ${opponentName} (triple challenge)`;
+            }
+            break;
+          case GameEndReason.ABORTED:
+            resultText = `vs ${opponentName} (aborted)`;
+            break;
+          case GameEndReason.STANDARD:
             if (userWon) {
               resultText = `over ${opponentName} ${userScore}–${opponentScore}`;
             } else if (isTie) {
               resultText = `with ${opponentName} ${userScore}–${opponentScore}`;
             } else {
               resultText = `to ${opponentName} ${userScore}–${opponentScore}`;
+            }
+            break;
+          default:
+            // Covers NONE, CANCELLED, and any future end reasons
+            if (userWon) {
+              resultText = `over ${opponentName} ${userScore}–${opponentScore} (other)`;
+            } else if (isTie) {
+              resultText = `with ${opponentName} ${userScore}–${opponentScore} (other)`;
+            } else {
+              resultText = `to ${opponentName} ${userScore}–${opponentScore} (other)`;
             }
         }
 
