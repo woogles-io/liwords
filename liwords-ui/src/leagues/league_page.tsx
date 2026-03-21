@@ -397,6 +397,8 @@ export const LeaguePage = (props: Props) => {
           : null;
         const text = rankText ? `${label} (${rankText})` : label;
         map.set(registrant.userId, text);
+      } else {
+        map.set(registrant.userId, "Registered");
       }
     }
     return map;
@@ -1286,7 +1288,7 @@ export const LeaguePage = (props: Props) => {
                           })()
                         : !wantSortedRegistrants
                           ? "(Sort)"
-                          : undefined
+                          : "Registered"
                     }
                     handleInfoText={
                       division
