@@ -351,22 +351,56 @@ export const LeaguePage = (props: Props) => {
     return ret;
   }, [registrants, standingsData]);
 
+  // Compute competition ranks per division: userId -> { rank, tied }
+  const compRankMap = useMemo(() => {
+    const map = new Map<string, { rank: number; tied: boolean }>();
+    if (!standingsData?.divisions) return map;
+    for (const division of standingsData.divisions) {
+      const stats = division.standings.map((s) => ({
+        userId: s.userId,
+        points: s.wins * 2 + s.draws,
+        spread: s.spread,
+      }));
+      const ranks: Array<{ rank: number; tied: boolean }> = [];
+      let currentRank = 1;
+      for (let i = 0; i < stats.length; i++) {
+        if (
+          i > 0 &&
+          (stats[i].points !== stats[i - 1].points ||
+            stats[i].spread !== stats[i - 1].spread)
+        ) {
+          currentRank = i + 1;
+        }
+        ranks.push({ rank: currentRank, tied: currentRank <= i });
+      }
+      for (let i = 1; i < ranks.length; i++) {
+        if (ranks[i].tied) ranks[i - 1].tied = true;
+      }
+      for (let i = 0; i < stats.length; i++) {
+        map.set(stats[i].userId, ranks[i]);
+      }
+    }
+    return map;
+  }, [standingsData]);
+
   // Build a map of userId -> "Division X (rank Y)" for chat display.
   const playerInfoMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const registrant of registrants) {
       const division = standingsData?.divisions?.[registrant.divisionIndex];
       if (division) {
-        const standing = division.standings?.[registrant.standingIndex];
         const label =
           division.divisionName || `Division ${division.divisionNumber}`;
-        const text =
-          standing?.rank != null ? `${label} (rank ${standing.rank})` : label;
+        const cr = compRankMap.get(registrant.userId);
+        const rankText = cr
+          ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+          : null;
+        const text = rankText ? `${label} (${rankText})` : label;
         map.set(registrant.userId, text);
       }
     }
     return map;
-  }, [registrants, standingsData]);
+  }, [registrants, standingsData, compRankMap]);
 
   // Sort on first use, pending approved UI.
   const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
@@ -1219,9 +1253,6 @@ export const LeaguePage = (props: Props) => {
               {sortedRegistrants.map((registrant) => {
                 const division =
                   standingsData?.divisions?.[registrant.divisionIndex];
-                const standing =
-                  division?.standings?.[registrant.standingIndex];
-                const standingRank = standing?.rank;
                 return (
                   <UsernameWithContext
                     key={registrant.userId}
@@ -1229,10 +1260,16 @@ export const LeaguePage = (props: Props) => {
                     userID={registrant.userId}
                     infoText={
                       division
-                        ? `${
-                            division.divisionName ||
-                            `Division ${division.divisionNumber}`
-                          }${standingRank != null ? ` (rank ${standingRank})` : ""}`
+                        ? (() => {
+                            const label =
+                              division.divisionName ||
+                              `Division ${division.divisionNumber}`;
+                            const cr = compRankMap.get(registrant.userId);
+                            const rankText = cr
+                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              : null;
+                            return rankText ? `${label} (${rankText})` : label;
+                          })()
                         : !wantSortedRegistrants
                           ? "(Sort)"
                           : undefined
