@@ -666,8 +666,9 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		leagueDivisionID = pgtype.UUID{Bytes: *g.LeagueDivisionID, Valid: true}
 	}
 
+	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
 	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
-		UpdatedAt:        pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
+		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
 		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
 		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
 		Timers:           g.Timers,
@@ -1194,6 +1195,6 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		GameType:          int16(g.Type),
 		OriginalRequestID: originalRequestID,
 		LeagueSeasonID:    leagueSeasonID,
-		UpdatedAt:         pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
+		UpdatedAt:         pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
 	})
 }

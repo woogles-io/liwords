@@ -255,6 +255,7 @@ type Game struct {
 	TournamentData *TournamentData
 	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
+	LastUpdatedAt  time.Time // Set by DBStore.Set for reuse by InsertGamePlayers
 
 	// League-specific fields
 	LeagueID                 *uuid.UUID
