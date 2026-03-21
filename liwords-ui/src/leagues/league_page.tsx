@@ -36,11 +36,15 @@ import { getSelfRoles } from "../gen/api/proto/user_service/user_service-Authori
 import { DivisionStandings } from "./standings";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
-import { PromotionFormula } from "../gen/api/proto/ipc/league_pb";
+import {
+  PromotionFormula,
+  StandingResult,
+} from "../gen/api/proto/ipc/league_pb";
 import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
+import { formatCompetitionRank } from "../utils/ordinal";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
@@ -100,13 +104,6 @@ const formatLocalTime = (timestamp: Timestamp | undefined): string => {
   });
 
   return localTime;
-};
-
-const stndrdth = (n: number) => {
-  if (n < 0) n = -n;
-  if (Math.floor(n / 10) % 10 === 1) return "th";
-  n %= 10;
-  return n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
 };
 
 export const LeaguePage = (props: Props) => {
@@ -357,22 +354,58 @@ export const LeaguePage = (props: Props) => {
     return ret;
   }, [registrants, standingsData]);
 
+  // Compute competition ranks per division: userId -> { rank, tied }
+  const compRankMap = useMemo(() => {
+    const map = new Map<string, { rank: number; tied: boolean }>();
+    if (!standingsData?.divisions) return map;
+    for (const division of standingsData.divisions) {
+      // Skip divisions with no games played — rank is meaningless
+      if (division.standings.every((s) => s.gamesPlayed === 0)) continue;
+      const stats = division.standings.map((s) => ({
+        userId: s.userId,
+        points: s.wins * 2 + s.draws,
+        spread: s.spread,
+      }));
+      const ranks: Array<{ rank: number; tied: boolean }> = [];
+      let currentRank = 1;
+      for (let i = 0; i < stats.length; i++) {
+        if (
+          i > 0 &&
+          (stats[i].points !== stats[i - 1].points ||
+            stats[i].spread !== stats[i - 1].spread)
+        ) {
+          currentRank = i + 1;
+        }
+        ranks.push({ rank: currentRank, tied: currentRank <= i });
+      }
+      for (let i = 1; i < ranks.length; i++) {
+        if (ranks[i].tied) ranks[i - 1].tied = true;
+      }
+      for (let i = 0; i < stats.length; i++) {
+        map.set(stats[i].userId, ranks[i]);
+      }
+    }
+    return map;
+  }, [standingsData]);
+
   // Build a map of userId -> "Division X (rank Y)" for chat display.
   const playerInfoMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const registrant of registrants) {
       const division = standingsData?.divisions?.[registrant.divisionIndex];
       if (division) {
-        const standing = division.standings?.[registrant.standingIndex];
         const label =
           division.divisionName || `Division ${division.divisionNumber}`;
-        const text =
-          standing?.rank != null ? `${label} (rank ${standing.rank})` : label;
+        const cr = compRankMap.get(registrant.userId);
+        const rankText = cr ? formatCompetitionRank(cr) : null;
+        const text = rankText ? `${label} (${rankText})` : label;
         map.set(registrant.userId, text);
+      } else {
+        map.set(registrant.userId, "Registered");
       }
     }
     return map;
-  }, [registrants, standingsData]);
+  }, [registrants, standingsData, compRankMap]);
 
   // Sort on first use, pending approved UI.
   const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
@@ -825,14 +858,33 @@ export const LeaguePage = (props: Props) => {
                         <div className="champion-content">
                           <TrophyOutlined className="trophy-icon" />
                           <div className="champion-text">
-                            <h3>
-                              Season {displayedSeason.seasonNumber} Champion
-                            </h3>
-                            <p className="champion-name">
-                              Congratulations to{" "}
-                              {standingsData.divisions[0].standings[0].username}
-                              !
-                            </p>
+                            {(() => {
+                              const champs =
+                                standingsData.divisions[0].standings.filter(
+                                  (s) =>
+                                    s.result === StandingResult.RESULT_CHAMPION,
+                                );
+                              const names = champs.map((s) => s.username);
+                              return (
+                                <>
+                                  <h3>
+                                    Season {displayedSeason.seasonNumber}{" "}
+                                    {names.length > 1
+                                      ? "Joint Champions"
+                                      : "Champion"}
+                                  </h3>
+                                  <p className="champion-name">
+                                    Congratulations to{" "}
+                                    {names.length === 1
+                                      ? names[0]
+                                      : names.length === 2
+                                        ? `${names[0]} & ${names[1]}`
+                                        : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`}
+                                    !
+                                  </p>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -988,8 +1040,12 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Currently {userSeasonInfo.rank}
-                          {stndrdth(userSeasonInfo.rank)} in{" "}
+                          {(() => {
+                            const cr = compRankMap.get(userID || "");
+                            return cr
+                              ? `Currently ${formatCompetitionRank(cr)} in`
+                              : "In";
+                          })()}{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -1009,8 +1065,12 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Finished {userSeasonInfo.rank}
-                          {stndrdth(userSeasonInfo.rank)} in{" "}
+                          {(() => {
+                            const cr = compRankMap.get(userID || "");
+                            return cr
+                              ? `Finished ${formatCompetitionRank(cr)} in`
+                              : "In";
+                          })()}{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -1227,9 +1287,6 @@ export const LeaguePage = (props: Props) => {
               {sortedRegistrants.map((registrant) => {
                 const division =
                   standingsData?.divisions?.[registrant.divisionIndex];
-                const standing =
-                  division?.standings?.[registrant.standingIndex];
-                const standingRank = standing?.rank;
                 return (
                   <UsernameWithContext
                     key={registrant.userId}
@@ -1237,13 +1294,19 @@ export const LeaguePage = (props: Props) => {
                     userID={registrant.userId}
                     infoText={
                       division
-                        ? `${
-                            division.divisionName ||
-                            `Division ${division.divisionNumber}`
-                          }${standingRank != null ? ` (rank ${standingRank})` : ""}`
+                        ? (() => {
+                            const label =
+                              division.divisionName ||
+                              `Division ${division.divisionNumber}`;
+                            const cr = compRankMap.get(registrant.userId);
+                            const rankText = cr
+                              ? formatCompetitionRank(cr)
+                              : null;
+                            return rankText ? `${label} (${rankText})` : label;
+                          })()
                         : !wantSortedRegistrants
                           ? "(Sort)"
-                          : undefined
+                          : "Registered"
                     }
                     handleInfoText={
                       division
