@@ -302,6 +302,31 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   // Define the record type for sorter functions
   type StandingRecord = (typeof dataSource)[number];
 
+  // Compute competition ranks: tied players (same points + spread) share a rank.
+  // dataSource is in server order (sorted by points desc, spread desc, username).
+  const competitionRanks = (() => {
+    const stats = dataSource.map((d) => ({
+      points: d.wins * 2 + d.draws,
+      spread: d.spread,
+    }));
+    const ranks: Array<{ rank: number; tied: boolean }> = [];
+    let currentRank = 1;
+    for (let i = 0; i < stats.length; i++) {
+      if (
+        i > 0 &&
+        (stats[i].points !== stats[i - 1].points ||
+          stats[i].spread !== stats[i - 1].spread)
+      ) {
+        currentRank = i + 1;
+      }
+      ranks.push({ rank: currentRank, tied: currentRank <= i });
+    }
+    for (let i = 1; i < ranks.length; i++) {
+      if (ranks[i].tied) ranks[i - 1].tied = true;
+    }
+    return ranks;
+  })();
+
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
 
@@ -320,12 +345,19 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const idx = dataSource.findIndex((x) => x.rank === rank);
         const { bestRank, worstRank } = possibleRanks[idx];
         const rankIsKnown = worstRank === rank && bestRank === rank;
+        const cr = competitionRanks[idx];
+        const suffix = cr?.tied
+          ? "="
+          : rankIsKnown !== divisionCompleted
+            ? "."
+            : "";
         return (
           <Tooltip
             placement="left"
             title={rankIsKnown ? null : `${bestRank}-${worstRank}`}
           >
-            {rankIsKnown !== divisionCompleted ? `${rank}.` : rank}
+            {cr ? cr.rank : rank}
+            {suffix}
           </Tooltip>
         );
       },
