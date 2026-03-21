@@ -1194,5 +1194,6 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		GameType:          int16(g.Type),
 		OriginalRequestID: originalRequestID,
 		LeagueSeasonID:    leagueSeasonID,
+		UpdatedAt:         pgtype.Timestamptz{Time: time.UnixMilli(g.TimerModule().Now()), Valid: true},
 	})
 }
