@@ -36,7 +36,10 @@ import { getSelfRoles } from "../gen/api/proto/user_service/user_service-Authori
 import { DivisionStandings } from "./standings";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
-import { PromotionFormula } from "../gen/api/proto/ipc/league_pb";
+import {
+  PromotionFormula,
+  StandingResult,
+} from "../gen/api/proto/ipc/league_pb";
 import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
@@ -855,14 +858,33 @@ export const LeaguePage = (props: Props) => {
                         <div className="champion-content">
                           <TrophyOutlined className="trophy-icon" />
                           <div className="champion-text">
-                            <h3>
-                              Season {displayedSeason.seasonNumber} Champion
-                            </h3>
-                            <p className="champion-name">
-                              Congratulations to{" "}
-                              {standingsData.divisions[0].standings[0].username}
-                              !
-                            </p>
+                            {(() => {
+                              const champs =
+                                standingsData.divisions[0].standings.filter(
+                                  (s) =>
+                                    s.result === StandingResult.RESULT_CHAMPION,
+                                );
+                              const names = champs.map((s) => s.username);
+                              return (
+                                <>
+                                  <h3>
+                                    Season {displayedSeason.seasonNumber}{" "}
+                                    {names.length > 1
+                                      ? "Joint Champions"
+                                      : "Champion"}
+                                  </h3>
+                                  <p className="champion-name">
+                                    Congratulations to{" "}
+                                    {names.length === 1
+                                      ? names[0]
+                                      : names.length === 2
+                                        ? `${names[0]} & ${names[1]}`
+                                        : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`}
+                                    !
+                                  </p>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
