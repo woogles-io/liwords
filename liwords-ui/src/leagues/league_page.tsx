@@ -41,7 +41,7 @@ import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
-import { ordinal, formatCompetitionRank } from "../utils/ordinal";
+import { formatCompetitionRank } from "../utils/ordinal";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
@@ -356,6 +356,8 @@ export const LeaguePage = (props: Props) => {
     const map = new Map<string, { rank: number; tied: boolean }>();
     if (!standingsData?.divisions) return map;
     for (const division of standingsData.divisions) {
+      // Skip divisions with no games played — rank is meaningless
+      if (division.standings.every((s) => s.gamesPlayed === 0)) continue;
       const stats = division.standings.map((s) => ({
         userId: s.userId,
         points: s.wins * 2 + s.draws,
@@ -1016,14 +1018,12 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Currently{" "}
                           {(() => {
                             const cr = compRankMap.get(userID || "");
                             return cr
-                              ? formatCompetitionRank(cr)
-                              : ordinal(userSeasonInfo.rank);
+                              ? `Currently ${formatCompetitionRank(cr)} in`
+                              : "In";
                           })()}{" "}
-                          in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -1043,14 +1043,12 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Finished{" "}
                           {(() => {
                             const cr = compRankMap.get(userID || "");
                             return cr
-                              ? formatCompetitionRank(cr)
-                              : ordinal(userSeasonInfo.rank);
+                              ? `Finished ${formatCompetitionRank(cr)} in`
+                              : "In";
                           })()}{" "}
-                          in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>

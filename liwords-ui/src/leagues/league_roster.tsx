@@ -191,8 +191,10 @@ export const LeagueRoster: React.FC<Props> = ({
       }
     }
 
-    // Compute competition rank per group (sorted by server rank)
+    // Compute competition rank per group (sorted by server rank).
+    // Skip groups where no games have been played.
     for (const [groupKey, entries] of groups.entries()) {
+      if (entries.every((e) => e.points === 0 && e.spread === 0)) continue;
       const seasonNumber = groupKey.split(":")[0];
       entries.sort((a, b) => a.rank - b.rank);
       let currentRank = 1;

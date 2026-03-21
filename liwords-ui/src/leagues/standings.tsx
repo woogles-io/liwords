@@ -327,6 +327,8 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     return ranks;
   })();
 
+  const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
+
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
 
@@ -346,17 +348,18 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const { bestRank, worstRank } = possibleRanks[idx];
         const rankIsKnown = worstRank === rank && bestRank === rank;
         const cr = competitionRanks[idx];
-        const suffix = cr?.tied
-          ? "="
-          : rankIsKnown !== divisionCompleted
-            ? "."
-            : "";
+        const suffix =
+          cr?.tied && !noGamesPlayed
+            ? "="
+            : rankIsKnown !== divisionCompleted
+              ? "."
+              : "";
         return (
           <Tooltip
             placement="left"
             title={rankIsKnown ? null : `${bestRank}-${worstRank}`}
           >
-            {cr ? cr.rank : rank}
+            {cr && !noGamesPlayed ? cr.rank : rank}
             {suffix}
           </Tooltip>
         );
