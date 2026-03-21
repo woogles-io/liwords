@@ -2,12 +2,17 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
 import { LobbyState, LobbyReducer } from "./reducers/lobby_reducer";
+import {
+  updateAppBadge,
+  correspondenceBadgeCount,
+} from "../utils/notifications";
 import { Action } from "../actions/actions";
 import {
   GameState,
@@ -891,6 +896,24 @@ const RealStore = ({ children, ...props }: Props) => {
       setLoginState((state) => LoginStateReducer(state, action)),
     [],
   );
+
+  useEffect(() => {
+    if (!loginState.userID) {
+      updateAppBadge(0);
+      return;
+    }
+    updateAppBadge(
+      correspondenceBadgeCount(
+        lobbyContext.correspondenceGames,
+        lobbyContext.correspondenceSeeks,
+        loginState.userID,
+      ),
+    );
+  }, [
+    lobbyContext.correspondenceGames,
+    lobbyContext.correspondenceSeeks,
+    loginState.userID,
+  ]);
 
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState,
