@@ -1016,7 +1016,14 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Currently {ordinal(userSeasonInfo.rank)} in{" "}
+                          Currently{" "}
+                          {(() => {
+                            const cr = compRankMap.get(userID || "");
+                            return cr
+                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              : ordinal(userSeasonInfo.rank);
+                          })()}{" "}
+                          in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -1036,7 +1043,14 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Finished {ordinal(userSeasonInfo.rank)} in{" "}
+                          Finished{" "}
+                          {(() => {
+                            const cr = compRankMap.get(userID || "");
+                            return cr
+                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              : ordinal(userSeasonInfo.rank);
+                          })()}{" "}
+                          in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
