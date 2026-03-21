@@ -83,8 +83,14 @@ export const GameCard = React.memo((props: GameCardProps) => {
     case GameEndReason.TRIPLE_CHALLENGE:
       endReason = "Triple challenge";
       break;
+    case GameEndReason.ADJUDICATED:
+      endReason = "Adjudicated";
+      break;
     case GameEndReason.STANDARD:
       endReason = "Completed";
+      break;
+    default:
+      endReason = "Other";
   }
 
   const getDetails = (

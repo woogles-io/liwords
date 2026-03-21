@@ -22,8 +22,12 @@ const endReasonLabel = (reason: GameEndReason): string => {
       return "adjudicated";
     case GameEndReason.ABORTED:
       return "aborted";
-    default:
+    case GameEndReason.CANCELLED:
+      return "cancelled";
+    case GameEndReason.STANDARD:
       return "";
+    default:
+      return "other";
   }
 };
 

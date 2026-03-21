@@ -88,8 +88,17 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         case GameEndReason.TRIPLE_CHALLENGE:
           endReason = "Triple";
           break;
+        case GameEndReason.FORCE_FORFEIT:
+          endReason = "Forfeit";
+          break;
+        case GameEndReason.ADJUDICATED:
+          endReason = "Adjudicated";
+          break;
         case GameEndReason.STANDARD:
           endReason = "Complete";
+          break;
+        default:
+          endReason = "Other";
       }
 
       return {
