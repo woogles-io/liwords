@@ -6,3 +6,8 @@ const ordinalSuffix = (n: number) => {
 };
 
 export const ordinal = (n: number) => `${n}${ordinalSuffix(n)}`;
+
+export const formatCompetitionRank = (cr: {
+  rank: number;
+  tied: boolean;
+}): string => `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`;

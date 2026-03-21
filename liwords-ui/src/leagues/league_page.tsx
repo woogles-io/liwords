@@ -41,7 +41,7 @@ import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
-import { ordinal } from "../utils/ordinal";
+import { ordinal, formatCompetitionRank } from "../utils/ordinal";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
@@ -392,9 +392,7 @@ export const LeaguePage = (props: Props) => {
         const label =
           division.divisionName || `Division ${division.divisionNumber}`;
         const cr = compRankMap.get(registrant.userId);
-        const rankText = cr
-          ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
-          : null;
+        const rankText = cr ? formatCompetitionRank(cr) : null;
         const text = rankText ? `${label} (${rankText})` : label;
         map.set(registrant.userId, text);
       } else {
@@ -1022,7 +1020,7 @@ export const LeaguePage = (props: Props) => {
                           {(() => {
                             const cr = compRankMap.get(userID || "");
                             return cr
-                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              ? formatCompetitionRank(cr)
                               : ordinal(userSeasonInfo.rank);
                           })()}{" "}
                           in{" "}
@@ -1049,7 +1047,7 @@ export const LeaguePage = (props: Props) => {
                           {(() => {
                             const cr = compRankMap.get(userID || "");
                             return cr
-                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              ? formatCompetitionRank(cr)
                               : ordinal(userSeasonInfo.rank);
                           })()}{" "}
                           in{" "}
@@ -1282,7 +1280,7 @@ export const LeaguePage = (props: Props) => {
                               `Division ${division.divisionNumber}`;
                             const cr = compRankMap.get(registrant.userId);
                             const rankText = cr
-                              ? `${cr.tied ? "joint " : ""}${ordinal(cr.rank)}`
+                              ? formatCompetitionRank(cr)
                               : null;
                             return rankText ? `${label} (${rankText})` : label;
                           })()
