@@ -18,7 +18,7 @@ func TestMergeDocs(t *testing.T) {
 		},
 		Description: "",
 	}
-	ld := &stores.MaybeLockedDocument{doc, ""}
+	ld := &stores.MaybeLockedDocument{GameDocument: doc, LockValue: ""}
 
 	patchDoc := &ipc.GameDocument{
 		Players: []*ipc.GameDocument_MinimalPlayerInfo{
