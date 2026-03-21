@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { DndProvider } from "react-dnd";
 import { TouchBackend } from "react-dnd-touch-backend";
-import Board from "../gameroom/board";
 import { StaticPlayerCards } from "../puzzles/static_player_cards";
 import { Alphabet, alphabetFromName } from "../constants/alphabets";
 import {
@@ -9,7 +8,7 @@ import {
   SuperCrosswordGameGridLayout,
 } from "../constants/board_layout";
 import { Board as BoardClass } from "../utils/cwgame/board";
-import { MachineLetter, EphemeralTile } from "../utils/cwgame/common";
+import { MachineLetter } from "../utils/cwgame/common";
 import {
   GameDocument,
   GameEvent as OMGWordsGameEvent,
@@ -192,6 +191,7 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
       ? SuperCrosswordGameGridLayout
       : CrosswordGameGridLayout;
   const gridSize = gameDocument.boardLayout === "SuperCrosswordGame" ? 21 : 15;
+  void gridSize;
 
   // Initialize board and replay events up to current index
   const { boardState, lastPlayedTiles, playerOfTileAt, currentScores } =
@@ -263,6 +263,9 @@ export const StandaloneEmbed: React.FC<StandaloneEmbedProps> = ({
       alphabet,
       boardLayout,
     ]);
+  void boardState;
+  void lastPlayedTiles;
+  void playerOfTileAt;
 
   const handlePrevEvent = useCallback(() => {
     setCurrentEventIndex((prev) => Math.max(0, prev - 1));
