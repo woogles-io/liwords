@@ -1889,7 +1889,7 @@ func (ls *LeagueService) GetLeagueRoster(
 			if group[i].Spread != group[j].Spread {
 				return group[i].Spread > group[j].Spread
 			}
-			return group[i].Username.String < group[j].Username.String
+			return strings.ToLower(group[i].Username.String) < strings.ToLower(group[j].Username.String)
 		})
 		for i, row := range group {
 			ranks[rankKey{dk.season, row.UserUuid.String}] = int32(i + 1)
