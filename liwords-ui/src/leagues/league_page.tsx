@@ -41,6 +41,7 @@ import { getDefaultDivisionId } from "./division_selector";
 import { ZeroMoveGamesDashboard } from "./zero_move_games_dashboard";
 import { useLoginStateStoreContext } from "../store/store";
 import { flashError } from "../utils/hooks/connect";
+import { ordinal } from "../utils/ordinal";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import "./leagues.scss";
 
@@ -100,13 +101,6 @@ const formatLocalTime = (timestamp: Timestamp | undefined): string => {
   });
 
   return localTime;
-};
-
-const stndrdth = (n: number) => {
-  if (n < 0) n = -n;
-  if (Math.floor(n / 10) % 10 === 1) return "th";
-  n %= 10;
-  return n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
 };
 
 export const LeaguePage = (props: Props) => {
@@ -988,8 +982,7 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Currently {userSeasonInfo.rank}
-                          {stndrdth(userSeasonInfo.rank)} in{" "}
+                          Currently {ordinal(userSeasonInfo.rank)} in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
@@ -1009,8 +1002,7 @@ export const LeaguePage = (props: Props) => {
                           }}
                           className="league-color-666"
                         >
-                          Finished {userSeasonInfo.rank}
-                          {stndrdth(userSeasonInfo.rank)} in{" "}
+                          Finished {ordinal(userSeasonInfo.rank)} in{" "}
                           {userSeasonInfo.divisionName ||
                             `Division ${userSeasonInfo.divisionNumber}`}
                         </div>
