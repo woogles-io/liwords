@@ -225,11 +225,11 @@ func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRe
 	anno := false
 	if hist.Version == 0 {
 		// A shortcut for a blank history. Look in the game document store.
-		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.Msg.GameId, false)
+		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.Msg.GameId)
 		if err != nil {
 			return nil, err
 		}
-		hist, err = entityutils.ToGameHistory(gdoc.GameDocument, gs.cfg)
+		hist, err = entityutils.ToGameHistory(gdoc, gs.cfg)
 		if err != nil {
 			return nil, err
 		}

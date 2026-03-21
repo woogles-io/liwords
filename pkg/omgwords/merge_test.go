@@ -18,7 +18,6 @@ func TestMergeDocs(t *testing.T) {
 		},
 		Description: "",
 	}
-	ld := &stores.MaybeLockedDocument{doc, ""}
 
 	patchDoc := &ipc.GameDocument{
 		Players: []*ipc.GameDocument_MinimalPlayerInfo{
@@ -28,8 +27,8 @@ func TestMergeDocs(t *testing.T) {
 		Description: "Vegas Worlds round 42",
 	}
 
-	MergeGameDocuments(ld.GameDocument, patchDoc)
-	is.True(proto.Equal(ld.GameDocument, &ipc.GameDocument{
+	MergeGameDocuments(doc, patchDoc)
+	is.True(proto.Equal(doc, &ipc.GameDocument{
 		Players: []*ipc.GameDocument_MinimalPlayerInfo{
 			{Nickname: "cesar", RealName: "César Del Solar", UserId: "abc"},
 			{Nickname: "mina", RealName: "Mina Le", UserId: "mina"},
