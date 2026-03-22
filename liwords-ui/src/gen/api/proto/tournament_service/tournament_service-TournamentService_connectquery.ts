@@ -204,6 +204,13 @@ export const getRecentAndUpcomingTournaments = TournamentService.method.getRecen
 export const getPastTournaments = TournamentService.method.getPastTournaments;
 
 /**
+ * GetMyTournaments returns tournaments where the authenticated user is a director.
+ *
+ * @generated from rpc tournament_service.TournamentService.GetMyTournaments
+ */
+export const getMyTournaments = TournamentService.method.getMyTournaments;
+
+/**
  * @generated from rpc tournament_service.TournamentService.RunCOP
  */
 export const runCOP = TournamentService.method.runCOP;
