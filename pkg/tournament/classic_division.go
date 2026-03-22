@@ -977,21 +977,17 @@ func (t *ClassicDivision) pairRoundWithCOP(round int, preserveByes bool) (*pb.Di
 
 	// Build COPIntermediateConfig from the RoundControl
 	rc := t.RoundControls[round]
-	numRounds := len(rc.GibsonSpreads)
 
 	// Convert gibson_spreads and hopefulness_thresholds from repeated fields to slices
-	gibsonSpread := make([]int, numRounds)
+	gibsonSpread := make([]int, len(rc.GibsonSpreads))
 	for i, gs := range rc.GibsonSpreads {
 		gibsonSpread[i] = int(gs)
 	}
 
-	hopefulnessThreshold := make([]float64, numRounds)
-	copy(hopefulnessThreshold, rc.HopefulnessThresholds)
-
 	cfg := &COPIntermediateConfig{
 		GibsonSpread:               gibsonSpread,
 		ControlLossThreshold:       rc.ControlLossThreshold,
-		HopefulnessThreshold:       hopefulnessThreshold,
+		HopefulnessThreshold:       rc.HopefulnessThresholds,
 		DivisionSims:               int(rc.DivisionSims),
 		ControlLossSims:            int(rc.ControlLossSims),
 		ControlLossActivationRound: int(rc.ControlLossActivationRound),
