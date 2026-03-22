@@ -369,8 +369,9 @@ type cand struct {
 }
 
 type stayBelow struct {
-	idx    int
-	absorb int // max additional points Q can receive without exceeding B
+	idx        int
+	absorb     int // max additional points Q can receive without exceeding B
+	maxPerGame int // max points from a single game (1 = draws only, 2 = any outcome)
 }
 
 // ---------------------------------------------------------------------------
@@ -425,28 +426,39 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 
 		// Determine whether Q at exactly B points could be above P.
 		// If so, Q must stay strictly below B to guarantee being below P.
-		qBeatsOnSpreadAtB := false
+		maxBelow := B - standings[i].points
+		maxPerGame := 2
+
 		if pHasGames {
 			// P has unbounded best spread (wins by huge margins) → Q can
-			// never beat P on spread at equal points.
-			qBeatsOnSpreadAtB = false
-		} else if gi.nonPGamesCnt[i] > 0 {
-			// Q has remaining games. If forced to absorb points via wins,
-			// Q's spread could change arbitrarily (a single win can shift
-			// spread by hundreds). We can't guarantee Q stays below P on
-			// spread at B points. To ensure the bound is correct, Q must
-			// stay strictly below B.
-			qBeatsOnSpreadAtB = true
-		} else {
+			// never beat P on spread at equal points. No restriction needed.
+		} else if gi.nonPGamesCnt[i] == 0 {
 			// Both finished. Spread is fixed. Equal spread: Q could be
 			// ranked either side of P, so treat as potentially above.
-			qBeatsOnSpreadAtB = standings[i].spread >= standings[p].spread
+			if standings[i].spread >= standings[p].spread && maxBelow > 0 {
+				maxBelow--
+			}
+		} else if standings[i].spread < standings[p].spread &&
+			maxBelow <= gi.nonPGamesCnt[i] {
+			// Q has remaining games but worse spread than P. Q can reach B
+			// via draws only (each draw gives 1 point, preserves spread).
+			// Restrict per-game capacity to 1 so the flow only allows draws.
+			maxPerGame = 1
+		} else if standings[i].spread >= standings[p].spread {
+			// Q has remaining games and spread >= P's. At B points Q would
+			// beat P on spread. Q must stay strictly below B.
+			if maxBelow > 0 {
+				maxBelow--
+			}
+		} else {
+			// Q has remaining games, worse spread, but needs more points
+			// than available games (can't reach B via draws only). Must win
+			// some games → spread changes unpredictably. Stay strictly below.
+			if maxBelow > 0 {
+				maxBelow--
+			}
 		}
 
-		maxBelow := B - standings[i].points
-		if qBeatsOnSpreadAtB && maxBelow > 0 {
-			maxBelow--
-		}
 		if maxBelow < 0 {
 			continue // Q is at B and beats P on spread → guaranteed above
 		}
@@ -455,7 +467,7 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 		if absorb >= gi.nonPGamesCnt[i]*2 {
 			absorb = gi.nonPGamesCnt[i] * 2
 		}
-		belowCandidates = append(belowCandidates, stayBelow{i, absorb})
+		belowCandidates = append(belowCandidates, stayBelow{i, absorb, maxPerGame})
 	}
 
 	// Sort by absorb capacity ascending (tightest constraint first).
@@ -545,8 +557,8 @@ func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flow
 	for gi, wg := range withinGames {
 		gn := gameNode(gi)
 		fg.addEdge(source, gn, 2)
-		fg.addEdge(gn, playerNode(wg.ci), 2)
-		fg.addEdge(gn, playerNode(wg.cj), 2)
+		fg.addEdge(gn, playerNode(wg.ci), candidates[wg.ci].maxPerGame)
+		fg.addEdge(gn, playerNode(wg.cj), candidates[wg.cj].maxPerGame)
 	}
 	for ci := 0; ci < k; ci++ {
 		fg.addEdge(playerNode(ci), sink, candidates[ci].absorb)
