@@ -1306,7 +1306,10 @@ export const LeaguePage = (props: Props) => {
                       {
                         title: "Division" as const,
                         key: "division",
-                        sorter: (a, b) => {
+                        sorter: (
+                          a: { divisionNumber: number; rankNum: number },
+                          b: { divisionNumber: number; rankNum: number },
+                        ) => {
                           // Unplaced (divisionNumber=0) sort after placed
                           if (!a.divisionNumber && b.divisionNumber) return 1;
                           if (a.divisionNumber && !b.divisionNumber) return -1;
@@ -1316,7 +1319,14 @@ export const LeaguePage = (props: Props) => {
                             return a.rankNum < b.rankNum ? -1 : 1;
                           return 0;
                         },
-                        render: (_, record) =>
+                        render: (
+                          _: unknown,
+                          record: {
+                            divisionLabel: string;
+                            rankText: string | null;
+                            divisionUuid?: string;
+                          },
+                        ) =>
                           record.divisionLabel ? (
                             <a
                               onClick={() => {
