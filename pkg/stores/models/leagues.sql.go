@@ -314,7 +314,8 @@ SET game_end_reason = 8,  -- FORCE_FORFEIT
         WHEN gp.player_index = gu.winner_idx THEN true
         WHEN gp.player_index = gu.loser_idx THEN false
         ELSE NULL
-    END
+    END,
+    updated_at = NOW()
 FROM game_update gu
 WHERE gp.game_uuid = gu.uuid
 `
@@ -2299,7 +2300,8 @@ WITH games_to_penalize AS (
 cheater_update AS (
     UPDATE game_players gp
     SET score = gp.opponent_score - 100,
-        won = false
+        won = false,
+        updated_at = NOW()
     FROM games_to_penalize gtp
     WHERE gp.game_uuid = gtp.game_uuid
       AND gp.player_id = $1
@@ -2308,7 +2310,8 @@ cheater_update AS (
 opponent_update AS (
     UPDATE game_players gp
     SET opponent_score = gp.score - 100,
-        won = true
+        won = true,
+        updated_at = NOW()
     FROM games_to_penalize gtp
     WHERE gp.game_uuid = gtp.game_uuid
       AND gp.opponent_id = $1
