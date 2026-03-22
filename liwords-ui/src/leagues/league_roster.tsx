@@ -316,7 +316,8 @@ export const LeagueRoster: React.FC<Props> = ({
         );
       },
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
-        seasonSortKey(a, sn) - seasonSortKey(b, sn),
+        seasonSortKey(a, sn) - seasonSortKey(b, sn) ||
+        a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
       sortDirections: ["ascend", "descend"] as SortOrder[],
     })),
   ];
