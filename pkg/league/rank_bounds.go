@@ -444,16 +444,9 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 			// via draws only (each draw gives 1 point, preserves spread).
 			// Restrict per-game capacity to 1 so the flow only allows draws.
 			maxPerGame = 1
-		} else if standings[i].spread >= standings[p].spread {
-			// Q has remaining games and spread >= P's. At B points Q would
-			// beat P on spread. Q must stay strictly below B.
-			if maxBelow > 0 {
-				maxBelow--
-			}
 		} else {
-			// Q has remaining games, worse spread, but needs more points
-			// than available games (can't reach B via draws only). Must win
-			// some games → spread changes unpredictably. Stay strictly below.
+			// Q at B could beat P on spread (spread >= P's, or must win
+			// games making spread unpredictable). Stay strictly below B.
 			if maxBelow > 0 {
 				maxBelow--
 			}
