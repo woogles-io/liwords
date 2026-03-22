@@ -12,6 +12,7 @@ import {
   Modal,
   Checkbox,
   Tooltip,
+  Table,
 } from "antd";
 import { LeftOutlined, TeamOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router";
@@ -406,36 +407,6 @@ export const LeaguePage = (props: Props) => {
     }
     return map;
   }, [registrants, standingsData, compRankMap]);
-
-  // Sort on first use, pending approved UI.
-  const [wantSortedRegistrants, setWantSortedRegistrants] = useState(false);
-
-  useEffect(() => {
-    // Reset registration-order ordering on reload (for example on season change).
-    setWantSortedRegistrants(false);
-  }, [registrants]);
-
-  // Possibly sort the registrants.
-  const sortedRegistrants = useMemo(() => {
-    if (wantSortedRegistrants && registrants) {
-      return [...registrants].sort((a, b) => {
-        const aun = a.username;
-        const bun = b.username;
-        const aunl = aun.toLowerCase();
-        const bunl = bun.toLowerCase();
-        if (aunl < bunl) return -1;
-        if (aunl > bunl) return 1;
-        if (aun < bun) return -1;
-        if (aun > bun) return 1;
-        const aui = a.userId;
-        const bui = b.userId;
-        if (aui < bui) return -1;
-        if (aui > bui) return 1;
-        return 0;
-      });
-    }
-    return registrants;
-  }, [registrants, wantSortedRegistrants]);
 
   // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
@@ -1277,53 +1248,88 @@ export const LeaguePage = (props: Props) => {
                 </div>
               );
             })()}
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "8px 16px",
-              }}
-            >
-              {sortedRegistrants.map((registrant) => {
+            <Table
+              size="small"
+              pagination={false}
+              rowKey="userId"
+              dataSource={registrants.map((registrant, idx) => {
                 const division =
                   standingsData?.divisions?.[registrant.divisionIndex];
-                return (
-                  <UsernameWithContext
-                    key={registrant.userId}
-                    username={registrant.username}
-                    userID={registrant.userId}
-                    infoText={
-                      division
-                        ? (() => {
-                            const label =
-                              division.divisionName ||
-                              `Division ${division.divisionNumber}`;
-                            const cr = compRankMap.get(registrant.userId);
-                            const rankText = cr
-                              ? formatCompetitionRank(cr)
-                              : null;
-                            return rankText ? `${label} (${rankText})` : label;
-                          })()
-                        : !wantSortedRegistrants
-                          ? "(Sort)"
-                          : "Registered"
-                    }
-                    handleInfoText={
-                      division
-                        ? () => {
-                            setSelectedDivisionId(division.uuid);
-                            setWantSortedRegistrants(true);
-                          }
-                        : !wantSortedRegistrants
-                          ? () => {
-                              setWantSortedRegistrants(true);
-                            }
-                          : undefined
-                    }
-                  />
-                );
+                const cr = division
+                  ? compRankMap.get(registrant.userId)
+                  : undefined;
+                return {
+                  key: registrant.userId,
+                  userId: registrant.userId,
+                  username: registrant.username,
+                  seq: idx + 1,
+                  divisionNumber: division?.divisionNumber ?? 0,
+                  divisionLabel: division
+                    ? division.divisionName || `D${division.divisionNumber}`
+                    : "",
+                  rankNum:
+                    division?.standings?.[registrant.standingIndex]?.rank ??
+                    9999,
+                  rankText: cr ? formatCompetitionRank(cr) : null,
+                  divisionUuid: division?.uuid,
+                };
               })}
-            </div>
+              columns={[
+                {
+                  title: "#",
+                  dataIndex: "seq",
+                  key: "seq",
+                  width: 40,
+                  sorter: (a, b) => a.seq - b.seq,
+                },
+                {
+                  title: "Player",
+                  dataIndex: "username",
+                  key: "username",
+                  sorter: (a, b) =>
+                    a.username
+                      .toLowerCase()
+                      .localeCompare(b.username.toLowerCase()),
+                  render: (username, record) => (
+                    <UsernameWithContext
+                      username={username}
+                      userID={record.userId}
+                      omitSendMessage
+                      omitFriend
+                      omitBlock
+                    />
+                  ),
+                },
+                ...(standingsData && standingsData.divisions.length > 0
+                  ? [
+                      {
+                        title: "Division" as const,
+                        key: "division",
+                        sorter: (a, b) =>
+                          a.divisionNumber - b.divisionNumber ||
+                          a.rankNum - b.rankNum,
+                        render: (_, record) =>
+                          record.divisionLabel ? (
+                            <a
+                              onClick={() => {
+                                if (record.divisionUuid) {
+                                  setSelectedDivisionId(record.divisionUuid);
+                                  setShowPlayersModal(false);
+                                }
+                              }}
+                              style={{ cursor: "pointer" }}
+                            >
+                              {record.divisionLabel}
+                              {record.rankText ? ` (${record.rankText})` : ""}
+                            </a>
+                          ) : (
+                            "Registered"
+                          ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
         </Modal>
 
