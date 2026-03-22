@@ -206,6 +206,59 @@ func TestSpreadTiebreakBelowP(t *testing.T) {
 	}
 }
 
+func TestDrawsOnlyBestRank(t *testing.T) {
+	// P1: 20 pts, +300 spread, 0 games
+	// P2: 17 pts, +100 spread, 3 games (vs P3, P4, P5)
+	// P3: 17 pts, +50 spread, 3 games (vs P2, P4, P5)
+	// P4: 17 pts, +50 spread, 3 games (vs P2, P3, P5)
+	// P5: 17 pts, +50 spread, 3 games (vs P2, P3, P4)
+	//
+	// P2-P5 can all draw all games: each reaches 20 with preserved spread,
+	// all below P1's +300. P1 bestRank = 1.
+	// If any wins: winner reaches 21+ (above P1). P1 worstRank = 2+.
+	standings := []standingInfo{
+		si(1, 20, 300, 0),
+		si(2, 17, 100, 3),
+		si(3, 17, 50, 3),
+		si(4, 17, 50, 3),
+		si(5, 17, 50, 3),
+	}
+	games := []unfinishedGame{uf(2, 3), uf(2, 4), uf(2, 5), uf(3, 4), uf(3, 5), uf(4, 5)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 1 {
+		t.Errorf("P1 best rank: got %d, want 1", bounds[0].BestRank)
+	}
+}
+
+func TestDrawsOnlyBestRankInfeasible(t *testing.T) {
+	// P1: 20 pts, +300 spread, 0 games
+	// P2: 17 pts, +400 spread, 3 games (vs P3, P4, P5)
+	// P3: 17 pts, +50 spread, 3 games (vs P2, P4, P5)
+	// P4: 17 pts, +50 spread, 3 games (vs P2, P3, P5)
+	// P5: 17 pts, +50 spread, 3 games (vs P2, P3, P4)
+	//
+	// P2 has spread +400 > P1's +300. P2 at 20 beats P1 on spread.
+	// P2 must stay strictly below 20 (absorb ≤ 2 points from 3 games).
+	// P3-P5 can draw all games (maxPerGame=1, spread preserved).
+	// P2 needs maxBelow=2 (decremented from 3) with maxPerGame=2.
+	standings := []standingInfo{
+		si(1, 20, 300, 0),
+		si(2, 17, 400, 3),
+		si(3, 17, 50, 3),
+		si(4, 17, 50, 3),
+		si(5, 17, 50, 3),
+	}
+	games := []unfinishedGame{uf(2, 3), uf(2, 4), uf(2, 5), uf(3, 4), uf(3, 5), uf(4, 5)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	// Total absorb capacity (2+3+3+3=11) < total within-set game points
+	// (6 games × 2 = 12). Not all can stay below P1. bestRank = 2.
+	if bounds[0].BestRank != 2 {
+		t.Errorf("P1 best rank: got %d, want 2", bounds[0].BestRank)
+	}
+}
+
 func TestAllGamesCompleteSamePointsDifferentSpread(t *testing.T) {
 	// All games finished. A and B have the same points but A has better spread.
 	// A is definitively 1st, B is definitively 2nd, C is definitively 3rd.
