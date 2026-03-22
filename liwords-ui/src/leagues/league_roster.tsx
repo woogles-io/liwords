@@ -109,16 +109,27 @@ const formatH2H = (record: H2HRecord | undefined) => {
   );
 };
 
-// Sort key for a player in a given season: division ASC, rank ASC.
-// Players not in that season sort last.
-const seasonSortKey = (
-  player: LeagueRosterPlayer,
+// Compare two players by their status in a given season.
+// Order: placed (by division ASC, rank ASC) → registered → absent.
+const seasonCompare = (
+  a: LeagueRosterPlayer,
+  b: LeagueRosterPlayer,
   seasonNumber: number,
 ): number => {
-  const s = player.seasons.find((x) => x.seasonNumber === seasonNumber);
-  if (!s) return 999999;
-  if (s.divisionNumber === 0) return 999998; // registered but unplaced
-  return s.divisionNumber * 1000 + (s.rank || 999);
+  const sa = a.seasons.find((x) => x.seasonNumber === seasonNumber);
+  const sb = b.seasons.find((x) => x.seasonNumber === seasonNumber);
+  // Absent sorts last
+  if (!sa && !sb) return 0;
+  if (!sa) return 1;
+  if (!sb) return -1;
+  // Registered but unplaced sorts after placed
+  if (sa.divisionNumber === 0 && sb.divisionNumber !== 0) return 1;
+  if (sa.divisionNumber !== 0 && sb.divisionNumber === 0) return -1;
+  // Both placed: by division, then rank
+  if (sa.divisionNumber !== sb.divisionNumber)
+    return sa.divisionNumber < sb.divisionNumber ? -1 : 1;
+  if (sa.rank !== sb.rank) return sa.rank < sb.rank ? -1 : 1;
+  return 0;
 };
 
 export const LeagueRoster: React.FC<Props> = ({
@@ -316,7 +327,7 @@ export const LeagueRoster: React.FC<Props> = ({
         );
       },
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
-        seasonSortKey(a, sn) - seasonSortKey(b, sn) ||
+        seasonCompare(a, b, sn) ||
         a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
       sortDirections: ["ascend", "descend"] as SortOrder[],
     })),

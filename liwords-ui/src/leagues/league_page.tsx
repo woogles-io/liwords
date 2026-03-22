@@ -1270,8 +1270,7 @@ export const LeaguePage = (props: Props) => {
                     ? division.divisionName || `D${division.divisionNumber}`
                     : "",
                   rankNum:
-                    division?.standings?.[registrant.standingIndex]?.rank ??
-                    9999,
+                    division?.standings?.[registrant.standingIndex]?.rank ?? 0,
                   rankText: cr ? formatCompetitionRank(cr) : null,
                   divisionUuid: division?.uuid,
                 };
@@ -1307,9 +1306,16 @@ export const LeaguePage = (props: Props) => {
                       {
                         title: "Division" as const,
                         key: "division",
-                        sorter: (a, b) =>
-                          a.divisionNumber - b.divisionNumber ||
-                          a.rankNum - b.rankNum,
+                        sorter: (a, b) => {
+                          // Unplaced (divisionNumber=0) sort after placed
+                          if (!a.divisionNumber && b.divisionNumber) return 1;
+                          if (a.divisionNumber && !b.divisionNumber) return -1;
+                          if (a.divisionNumber !== b.divisionNumber)
+                            return a.divisionNumber < b.divisionNumber ? -1 : 1;
+                          if (a.rankNum !== b.rankNum)
+                            return a.rankNum < b.rankNum ? -1 : 1;
+                          return 0;
+                        },
                         render: (_, record) =>
                           record.divisionLabel ? (
                             <a
