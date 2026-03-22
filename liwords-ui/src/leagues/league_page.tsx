@@ -586,6 +586,7 @@ export const LeaguePage = (props: Props) => {
                     const division = playerToDivisionMap.get(userId);
                     if (division?.uuid) {
                       setSelectedDivisionId(division.uuid);
+                      setShowRoster(false);
                     }
                   }}
                 />
@@ -1234,6 +1235,7 @@ export const LeaguePage = (props: Props) => {
                         onClick={() => {
                           setSelectedDivisionId(div.uuid);
                           setShowPlayersModal(false);
+                          setShowRoster(false);
                         }}
                         style={{ cursor: "pointer" }}
                       >
@@ -1315,6 +1317,7 @@ export const LeaguePage = (props: Props) => {
                                 if (record.divisionUuid) {
                                   setSelectedDivisionId(record.divisionUuid);
                                   setShowPlayersModal(false);
+                                  setShowRoster(false);
                                 }
                               }}
                               style={{ cursor: "pointer" }}
