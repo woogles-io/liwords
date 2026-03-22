@@ -145,8 +145,8 @@ const (
 	// TournamentServiceGetPastTournamentsProcedure is the fully-qualified name of the
 	// TournamentService's GetPastTournaments RPC.
 	TournamentServiceGetPastTournamentsProcedure = "/tournament_service.TournamentService/GetPastTournaments"
-	// TournamentServiceGetMyTournamentsProcedure is the fully-qualified name of the
-	// TournamentService's GetMyTournaments RPC.
+	// TournamentServiceGetMyTournamentsProcedure is the fully-qualified name of the TournamentService's
+	// GetMyTournaments RPC.
 	TournamentServiceGetMyTournamentsProcedure = "/tournament_service.TournamentService/GetMyTournaments"
 	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
 	// RPC.
@@ -211,6 +211,7 @@ type TournamentServiceClient interface {
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
+	// GetMyTournaments returns tournaments where the authenticated user is a director.
 	GetMyTournaments(context.Context, *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
@@ -813,6 +814,7 @@ type TournamentServiceHandler interface {
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
+	// GetMyTournaments returns tournaments where the authenticated user is a director.
 	GetMyTournaments(context.Context, *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints

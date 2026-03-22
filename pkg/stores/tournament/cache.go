@@ -32,6 +32,8 @@ type backingStore interface {
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
+	CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error)
+	GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error)
 
 	// Monitoring streams methods - direct SQL, no tournament entity needed
 	InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error
