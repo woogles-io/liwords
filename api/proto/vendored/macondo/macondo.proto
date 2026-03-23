@@ -269,6 +269,9 @@ message TurnAnalysis {
   bool optimal_is_bingo = 19;
   bool played_is_bingo = 20;
   bool missed_bingo = 21;
+
+  // Known opponent rack (from challenged phony)
+  string known_opp_rack = 22;  // e.g., "JAM" - tiles revealed by challenged phony
 }
 
 enum GamePhase {
