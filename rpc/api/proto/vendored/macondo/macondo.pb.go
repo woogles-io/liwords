@@ -1612,8 +1612,10 @@ type TurnAnalysis struct {
 	OptimalIsBingo bool `protobuf:"varint,19,opt,name=optimal_is_bingo,json=optimalIsBingo,proto3" json:"optimal_is_bingo,omitempty"`
 	PlayedIsBingo  bool `protobuf:"varint,20,opt,name=played_is_bingo,json=playedIsBingo,proto3" json:"played_is_bingo,omitempty"`
 	MissedBingo    bool `protobuf:"varint,21,opt,name=missed_bingo,json=missedBingo,proto3" json:"missed_bingo,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Known opponent rack (from challenged phony)
+	KnownOppRack  string `protobuf:"bytes,22,opt,name=known_opp_rack,json=knownOppRack,proto3" json:"known_opp_rack,omitempty"` // e.g., "JAM" - tiles revealed by challenged phony
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TurnAnalysis) Reset() {
@@ -1791,6 +1793,13 @@ func (x *TurnAnalysis) GetMissedBingo() bool {
 		return x.MissedBingo
 	}
 	return false
+}
+
+func (x *TurnAnalysis) GetKnownOppRack() string {
+	if x != nil {
+		return x.KnownOppRack
+	}
+	return ""
 }
 
 // PlayerSummary contains aggregate statistics for one player
@@ -2068,7 +2077,7 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\abuckets\x18\x01 \x03(\v2\x15.macondo.PuzzleBucketR\abuckets\"\x84\x01\n" +
 	"\x12GameAnalysisResult\x12+\n" +
 	"\x05turns\x18\x01 \x03(\v2\x15.macondo.TurnAnalysisR\x05turns\x12A\n" +
-	"\x10player_summaries\x18\x02 \x03(\v2\x16.macondo.PlayerSummaryR\x0fplayerSummaries\"\x89\x06\n" +
+	"\x10player_summaries\x18\x02 \x03(\v2\x16.macondo.PlayerSummaryR\x0fplayerSummaries\"\xaf\x06\n" +
 	"\fTurnAnalysis\x12\x1f\n" +
 	"\vturn_number\x18\x01 \x01(\x05R\n" +
 	"turnNumber\x12!\n" +
@@ -2097,7 +2106,8 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\x10missed_challenge\x18\x12 \x01(\bR\x0fmissedChallenge\x12(\n" +
 	"\x10optimal_is_bingo\x18\x13 \x01(\bR\x0eoptimalIsBingo\x12&\n" +
 	"\x0fplayed_is_bingo\x18\x14 \x01(\bR\rplayedIsBingo\x12!\n" +
-	"\fmissed_bingo\x18\x15 \x01(\bR\vmissedBingo\"\xdc\x03\n" +
+	"\fmissed_bingo\x18\x15 \x01(\bR\vmissedBingo\x12$\n" +
+	"\x0eknown_opp_rack\x18\x16 \x01(\tR\fknownOppRack\"\xdc\x03\n" +
 	"\rPlayerSummary\x12\x1f\n" +
 	"\vplayer_name\x18\x01 \x01(\tR\n" +
 	"playerName\x12!\n" +
