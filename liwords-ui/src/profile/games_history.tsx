@@ -143,8 +143,14 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case GameEndReason.TRIPLE_CHALLENGE:
           endReason = "Triple challenge";
           break;
+        case GameEndReason.ADJUDICATED:
+          endReason = "Adjudicated";
+          break;
         case GameEndReason.STANDARD:
           endReason = "Completed";
+          break;
+        default:
+          endReason = "Other";
       }
       let time: string;
       if (item.gameRequest?.gameMode === 1) {
