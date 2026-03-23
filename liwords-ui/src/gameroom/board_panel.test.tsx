@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { BoardPanel } from "./board_panel";
 import { ChallengeRule } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { CrosswordGameGridLayout } from "../constants/board_layout";

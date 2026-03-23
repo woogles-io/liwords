@@ -112,6 +112,7 @@ function boardHeightAt(u: number, v: number): number {
 function woodHeightAt(u: number, v: number): number {
   const wx = fbm2(u * 2, v * 2, 3) * 1.2;
   const wy = fbm2(u * 2 + 4.1, v * 2 + 2.7, 3) * 1.2;
+  void wy;
   const rings = Math.sin((u * 3 + wx) * Math.PI * 5) * 0.5 + 0.5;
   const fiber = fbm2(u * 10, v * 4, 2) * 0.25;
   return rings * 0.5 + fiber;
