@@ -1166,8 +1166,8 @@ func (ls *LeagueService) GetAllDivisionStandings(
 				// Player has no standings yet (no finished games) - show zeros with expected games remaining
 				mergedStandings[j] = models.GetStandingsRow{
 					UserID:         reg.UserID,
-					UserUuid:       reg.UserUuid,                          // From JOIN
-					Username:       pgtype.Text{String: "", Valid: false}, // Will fetch later
+					UserUuid:       reg.UserUuid, // From JOIN
+					Username:       reg.Username, // From JOIN, needed for sort tiebreaker
 					Wins:           pgtype.Int4{Int32: 0, Valid: true},
 					Losses:         pgtype.Int4{Int32: 0, Valid: true},
 					Draws:          pgtype.Int4{Int32: 0, Valid: true},
@@ -1187,17 +1187,10 @@ func (ls *LeagueService) GetAllDivisionStandings(
 		// Convert standings to proto
 		protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 		for j, standing := range standings {
-			// Get user info (either from standings JOIN or lookup)
 			userUUID := standing.UserUuid.String
-			username := "Unknown"
-			if standing.Username.Valid && standing.Username.String != "" {
-				username = standing.Username.String
-			} else if userUUID != "" {
-				// Fallback: lookup by UUID
-				user, err := ls.userStore.GetByUUID(ctx, userUUID)
-				if err == nil {
-					username = user.Username
-				}
+			username := standing.Username.String
+			if username == "" {
+				username = "Unknown"
 			}
 
 			resultValue := ipc.StandingResult_RESULT_NONE
@@ -1889,7 +1882,7 @@ func (ls *LeagueService) GetLeagueRoster(
 			if group[i].Spread != group[j].Spread {
 				return group[i].Spread > group[j].Spread
 			}
-			return group[i].Username.String < group[j].Username.String
+			return strings.ToLower(group[i].Username.String) < strings.ToLower(group[j].Username.String)
 		})
 		for i, row := range group {
 			ranks[rankKey{dk.season, row.UserUuid.String}] = int32(i + 1)

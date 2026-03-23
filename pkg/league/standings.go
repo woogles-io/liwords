@@ -474,16 +474,26 @@ func (sm *StandingsManager) markOutcomes(
 	isHighestDivision := divisionNumber == 1
 	isLowestDivision := divisionNumber >= highestRegularDivision
 
+	// Compute competition rank for champion assignment.
+	// Only use competition rank when games have been played.
+	hasGames := len(standings) > 0 && (standings[0].Wins+standings[0].Losses+standings[0].Draws) > 0
+	compRank := 1
 	for i := range standings {
-		rank := i + 1
+		if i > 0 && hasGames {
+			prevPts := standings[i-1].Wins*2 + standings[i-1].Draws
+			curPts := standings[i].Wins*2 + standings[i].Draws
+			if curPts != prevPts || standings[i].Spread != standings[i-1].Spread {
+				compRank = i + 1
+			}
+		}
 
-		if rank == 1 && isHighestDivision {
-			// Rank 1 in Division 1 is the champion
+		if compRank == 1 && isHighestDivision && (hasGames || i == 0) {
+			// Competition rank 1 in Division 1 is the champion (handles ties)
 			standings[i].Outcome = pb.StandingResult_RESULT_CHAMPION
-		} else if rank <= promotionCount && !isHighestDivision {
+		} else if i+1 <= promotionCount && !isHighestDivision {
 			// Top performers get promoted (unless already in Division 1)
 			standings[i].Outcome = pb.StandingResult_RESULT_PROMOTED
-		} else if rank > divSize-relegationCount && !isLowestDivision {
+		} else if i+1 > divSize-relegationCount && !isLowestDivision {
 			// Bottom performers get relegated (unless in lowest division)
 			standings[i].Outcome = pb.StandingResult_RESULT_RELEGATED
 		} else {

@@ -57,13 +57,17 @@ const resultIcon = (result: StandingResult) => {
   }
 };
 
-const formatSeason = (season: LeagueRosterSeason | undefined) => {
+const formatSeason = (
+  season: LeagueRosterSeason | undefined,
+  compRank?: number,
+) => {
   if (!season) return <span className="roster-empty">—</span>;
   if (season.divisionNumber === 0) {
     return <Tag color="lime">Registered</Tag>;
   }
   const record = `${season.wins}-${season.losses}${season.draws ? `-${season.draws}` : ""}`;
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
+  const displayRank = compRank ?? season.rank;
   return (
     <Tooltip title={`${record} (${spread})`}>
       <span className="roster-season" style={{ cursor: "pointer" }}>
@@ -78,7 +82,7 @@ const formatSeason = (season: LeagueRosterSeason | undefined) => {
         >
           D{season.divisionNumber}
         </Tag>
-        {season.rank > 0 && <span className="roster-rank">#{season.rank}</span>}
+        {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
         {resultIcon(season.result)}
       </span>
     </Tooltip>
@@ -105,16 +109,27 @@ const formatH2H = (record: H2HRecord | undefined) => {
   );
 };
 
-// Sort key for a player in a given season: division ASC, rank ASC.
-// Players not in that season sort last.
-const seasonSortKey = (
-  player: LeagueRosterPlayer,
+// Compare two players by their status in a given season.
+// Order: placed (by division ASC, rank ASC) → registered → absent.
+const seasonCompare = (
+  a: LeagueRosterPlayer,
+  b: LeagueRosterPlayer,
   seasonNumber: number,
 ): number => {
-  const s = player.seasons.find((x) => x.seasonNumber === seasonNumber);
-  if (!s) return 999999;
-  if (s.divisionNumber === 0) return 999998; // registered but unplaced
-  return s.divisionNumber * 1000 + (s.rank || 999);
+  const sa = a.seasons.find((x) => x.seasonNumber === seasonNumber);
+  const sb = b.seasons.find((x) => x.seasonNumber === seasonNumber);
+  // Absent sorts last
+  if (!sa && !sb) return 0;
+  if (!sa) return 1;
+  if (!sb) return -1;
+  // Registered but unplaced sorts after placed
+  if (sa.divisionNumber === 0 && sb.divisionNumber !== 0) return 1;
+  if (sa.divisionNumber !== 0 && sb.divisionNumber === 0) return -1;
+  // Both placed: by division, then rank
+  if (sa.divisionNumber !== sb.divisionNumber)
+    return sa.divisionNumber < sb.divisionNumber ? -1 : 1;
+  if (sa.rank !== sb.rank) return sa.rank < sb.rank ? -1 : 1;
+  return 0;
 };
 
 export const LeagueRoster: React.FC<Props> = ({
@@ -161,6 +176,53 @@ export const LeagueRoster: React.FC<Props> = ({
     }
     return map;
   }, [h2hData?.records]);
+
+  // Precompute competition ranks per (season, division) group.
+  // Key: "seasonNumber:userId" → competition rank number.
+  const compRankMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!data?.players) return map;
+
+    // Group entries by (season, division)
+    const groups = new Map<
+      string,
+      Array<{ userId: string; points: number; spread: number; rank: number }>
+    >();
+    for (const player of data.players) {
+      for (const season of player.seasons) {
+        if (season.divisionNumber === 0) continue;
+        const key = `${season.seasonNumber}:${season.divisionNumber}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push({
+          userId: player.userId,
+          points: season.wins * 2 + season.draws,
+          spread: season.spread,
+          rank: season.rank,
+        });
+      }
+    }
+
+    // Compute competition rank per group (sorted by server rank).
+    // Skip groups where no games have been played.
+    for (const [groupKey, entries] of groups.entries()) {
+      if (entries.every((e) => e.points === 0 && e.spread === 0)) continue;
+      const seasonNumber = groupKey.split(":")[0];
+      entries.sort((a, b) => a.rank - b.rank);
+      let currentRank = 1;
+      for (let i = 0; i < entries.length; i++) {
+        if (
+          i > 0 &&
+          (entries[i].points !== entries[i - 1].points ||
+            entries[i].spread !== entries[i - 1].spread)
+        ) {
+          currentRank = i + 1;
+        }
+        map.set(`${seasonNumber}:${entries[i].userId}`, currentRank);
+      }
+    }
+
+    return map;
+  }, [data?.players]);
 
   const filteredPlayers = useMemo(() => {
     if (!data?.players) return [];
@@ -260,12 +322,13 @@ export const LeagueRoster: React.FC<Props> = ({
         if (!season) return <span className="roster-empty">—</span>;
         return (
           <span onClick={() => onJumpToSeason(sn, season.divisionNumber)}>
-            {formatSeason(season)}
+            {formatSeason(season, compRankMap.get(`${sn}:${record.userId}`))}
           </span>
         );
       },
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
-        seasonSortKey(a, sn) - seasonSortKey(b, sn),
+        seasonCompare(a, b, sn) ||
+        a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
       sortDirections: ["ascend", "descend"] as SortOrder[],
     })),
   ];
