@@ -164,9 +164,15 @@ func (s *AnalysisService) SubmitResult(
 	// Validate protobuf can be unmarshaled
 	var result macondo.GameAnalysisResult
 	if err := protojson.Unmarshal(resultProto, &result); err != nil {
+		log.Error().
+			Err(err).
+			Str("job_id", jobID.String()).
+			Str("user", user.Username).
+			Int("result_size", len(resultProto)).
+			Msg("failed to unmarshal analysis result protojson")
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
-			Error:    "invalid protojson",
+			Error:    fmt.Sprintf("invalid protojson: %v", err),
 		}), nil
 	}
 
@@ -415,22 +421,31 @@ func (s *AnalysisService) RequestAnalysis(
 	// Check for existing analysis job
 	existingJob, err := s.queries.GetJobByGameID(ctx, gameID)
 	if err == nil {
-		// Job exists
-		queuePos := int32(0)
-		if existingJob.Status == "pending" {
-			// Get queue position
-			pos, err := s.queries.GetQueuePosition(ctx, existingJob.ID)
-			if err == nil {
-				queuePos = int32(pos)
+		// Job exists - check if we should allow re-requesting
+		// Allow re-requesting only if the previous job failed
+		if existingJob.Status != "failed" {
+			// Job is pending, processing, or completed
+			queuePos := int32(0)
+			if existingJob.Status == "pending" {
+				// Get queue position
+				pos, err := s.queries.GetQueuePosition(ctx, existingJob.ID)
+				if err == nil {
+					queuePos = int32(pos)
+				}
 			}
-		}
 
-		return connect.NewResponse(&pb.RequestAnalysisResponse{
-			Status:        pb.RequestAnalysisResponse_ALREADY_REQUESTED,
-			Message:       "Analysis has already been requested for this game",
-			JobId:         existingJob.ID.String(),
-			QueuePosition: queuePos,
-		}), nil
+			return connect.NewResponse(&pb.RequestAnalysisResponse{
+				Status:        pb.RequestAnalysisResponse_ALREADY_REQUESTED,
+				Message:       "Analysis has already been requested for this game",
+				JobId:         existingJob.ID.String(),
+				QueuePosition: queuePos,
+			}), nil
+		}
+		// If status is "failed", fall through to create a new job
+		log.Info().
+			Str("game_id", gameID).
+			Str("previous_job_id", existingJob.ID.String()).
+			Msg("re-requesting analysis for previously failed job")
 	}
 
 	// Check rate limit
