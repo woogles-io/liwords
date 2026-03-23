@@ -448,8 +448,8 @@ const StepTournamentType = ({
         <div className="type-option-content">
           <strong>Online Tournament</strong>
           <p>
-            Players compete on the platform. Games are played digitally with
-            automatic scoring and result tracking. Best for remote competitions.
+            Players compete on the platform. Games are played digitally (online,
+            on Woogles.io) with automatic scoring and result tracking.
           </p>
         </div>
       </Radio.Button>
@@ -458,9 +458,9 @@ const StepTournamentType = ({
           <strong>In Real Life (IRL) Tournament</strong>
           <p>
             For over-the-board play with physical boards and tiles. The platform
-            handles pairings, standings, and score entry. Player usernames do not
-            need to be registered on the site. Once IRL mode is enabled, it
-            cannot be turned off.
+            handles pairings, standings, and score entry, but the games are
+            played OFFLINE. Player usernames do not need to be registered on the
+            site. Once IRL mode is enabled, it cannot be turned off.
           </p>
         </div>
       </Radio.Button>
@@ -641,7 +641,7 @@ const StepDivisions = ({
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() => removeDivision(idx)}
-                style={{ marginTop: 30 }}
+                style={{ alignSelf: 'flex-start' }}
               />
             )}
           </div>
@@ -705,9 +705,7 @@ const StepReview = ({ wizardData }: { wizardData: WizardData }) => (
     <Card size="small" title="Tournament Type" className="review-card">
       <p>
         <strong>Mode:</strong>{" "}
-        {wizardData.tournamentMode === "irl"
-          ? "In Real Life (IRL)"
-          : "Online"}
+        {wizardData.tournamentMode === "irl" ? "In Real Life (IRL)" : "Online"}
       </p>
       <p>
         <strong>Monitoring:</strong>{" "}
