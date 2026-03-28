@@ -330,6 +330,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   })();
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
+  // April 1 easter egg: March 31 12:00 UTC – April 2 12:00 UTC (covers all timezones)
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const isMiaow =
+    now >= new Date(Date.UTC(y, 2, 31, 12)) &&
+    now < new Date(Date.UTC(y, 3, 2, 12));
 
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
@@ -444,12 +450,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title={
+          title="Rec"
+          tooltip={
             divTotals.draws
-              ? `Record (${divTotals.draws / 2} ${divTotals.draws / 2 === 1 ? "draw" : "draws"})`
-              : "Record"
+              ? `Win-Loss-Draw record (div draws: ${divTotals.draws / 2})`
+              : "Win-Loss record"
           }
-          tooltip="Win-Loss-Draw record (sorted by placement points)"
         />
       ),
       key: "record",
@@ -470,18 +476,26 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const points = record.wins * 2 + record.draws;
         const recStr = `${record.wins}-${record.losses}${record.draws ? `-${record.draws}` : ""}`;
         return (
-          <Tooltip title={`${points} pts`}>
+          <Tooltip title={`${points} ${points === 1 ? "pt" : "pts"}`}>
             <span>{recStr}</span>
           </Tooltip>
         );
       },
     },
     {
-      title: <ColHeader title="CUM" tooltip="Cumulative spread" />,
+      title: <ColHeader title="Spr" tooltip="Cumulative spread" />,
       dataIndex: "spread",
       key: "spread",
       width: 55,
-      sorter: (a: StandingRecord, b: StandingRecord) => a.spread - b.spread,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        if (a.spread < b.spread) return -1;
+        if (a.spread > b.spread) return 1;
+        const aPoints = a.wins * 2 + a.draws;
+        const bPoints = b.wins * 2 + b.draws;
+        if (aPoints < bPoints) return -1;
+        if (aPoints > bPoints) return 1;
+        return b.username.toLowerCase().localeCompare(a.username.toLowerCase());
+      },
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (spread: number) => (spread > 0 ? `+${spread}` : spread),
@@ -503,7 +517,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title="MiAV"
+          title={isMiaow ? "Miaow" : "MiAV"}
           tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
         />
       ),
@@ -750,15 +764,19 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
-      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
-      key: "ppg",
+      title: (
+        <ColHeader title="W%" tooltip="Win percentage (draws count as half)" />
+      ),
+      key: "winPct",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
-        const ppgA =
-          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / a.gamesPlayed : 0;
-        const ppgB =
-          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
-        return ppgA - ppgB;
+        const pctA =
+          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / (a.gamesPlayed * 2) : 0;
+        const pctB =
+          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / (b.gamesPlayed * 2) : 0;
+        if (pctA < pctB) return -1;
+        if (pctA > pctB) return 1;
+        return 0;
       },
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
@@ -766,8 +784,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { wins: number; draws: number; gamesPlayed: number },
       ) => {
-        const points = record.wins * 2 + record.draws;
-        return formatAvg(points, record.gamesPlayed, 2);
+        if (record.gamesPlayed === 0) return "-";
+        const pct = (record.wins * 2 + record.draws) / (record.gamesPlayed * 2);
+        return `${(pct * 100).toFixed(0)}%`;
       },
     },
     {
