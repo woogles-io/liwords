@@ -476,7 +476,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         const points = record.wins * 2 + record.draws;
         const recStr = `${record.wins}-${record.losses}${record.draws ? `-${record.draws}` : ""}`;
         return (
-          <Tooltip title={`${points} pts`}>
+          <Tooltip title={`${points} ${points === 1 ? "pt" : "pts"}`}>
             <span>{recStr}</span>
           </Tooltip>
         );
