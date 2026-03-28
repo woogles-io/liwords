@@ -764,15 +764,19 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       ) => formatAvg(record.blanksPlayed, record.gamesPlayed, 2),
     },
     {
-      title: <ColHeader title="PPG" tooltip="Points per completed game" />,
-      key: "ppg",
+      title: (
+        <ColHeader title="W%" tooltip="Win percentage (draws count as half)" />
+      ),
+      key: "winPct",
       width: 50,
       sorter: (a: StandingRecord, b: StandingRecord) => {
-        const ppgA =
-          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / a.gamesPlayed : 0;
-        const ppgB =
-          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / b.gamesPlayed : 0;
-        return ppgA - ppgB;
+        const pctA =
+          a.gamesPlayed > 0 ? (a.wins * 2 + a.draws) / (a.gamesPlayed * 2) : 0;
+        const pctB =
+          b.gamesPlayed > 0 ? (b.wins * 2 + b.draws) / (b.gamesPlayed * 2) : 0;
+        if (pctA < pctB) return -1;
+        if (pctA > pctB) return 1;
+        return 0;
       },
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
@@ -780,8 +784,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { wins: number; draws: number; gamesPlayed: number },
       ) => {
-        const points = record.wins * 2 + record.draws;
-        return formatAvg(points, record.gamesPlayed, 2);
+        if (record.gamesPlayed === 0) return "-";
+        const pct = (record.wins * 2 + record.draws) / (record.gamesPlayed * 2);
+        return `${(pct * 100).toFixed(0)}%`;
       },
     },
     {
