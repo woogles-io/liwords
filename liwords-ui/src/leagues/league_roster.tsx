@@ -23,6 +23,7 @@ import { UsernameWithContext } from "../shared/usernameWithContext";
 type Props = {
   leagueId: string;
   currentUserId?: string;
+  activeSeasonNumber?: number;
   onJumpToSeason: (seasonNumber: number, divisionNumber: number) => void;
 };
 
@@ -60,6 +61,7 @@ const resultIcon = (result: StandingResult) => {
 const formatSeason = (
   season: LeagueRosterSeason | undefined,
   compRank?: number,
+  hideResult?: boolean,
 ) => {
   if (!season) return <span className="roster-empty">—</span>;
   if (season.divisionNumber === 0) {
@@ -83,7 +85,7 @@ const formatSeason = (
           D{season.divisionNumber}
         </Tag>
         {displayRank > 0 && <span className="roster-rank">#{displayRank}</span>}
-        {resultIcon(season.result)}
+        {!hideResult && resultIcon(season.result)}
       </span>
     </Tooltip>
   );
@@ -135,6 +137,7 @@ const seasonCompare = (
 export const LeagueRoster: React.FC<Props> = ({
   leagueId,
   currentUserId,
+  activeSeasonNumber,
   onJumpToSeason,
 }) => {
   const [search, setSearch] = useState("");
@@ -322,7 +325,11 @@ export const LeagueRoster: React.FC<Props> = ({
         if (!season) return <span className="roster-empty">—</span>;
         return (
           <span onClick={() => onJumpToSeason(sn, season.divisionNumber)}>
-            {formatSeason(season, compRankMap.get(`${sn}:${record.userId}`))}
+            {formatSeason(
+              season,
+              compRankMap.get(`${sn}:${record.userId}`),
+              sn === activeSeasonNumber,
+            )}
           </span>
         );
       },

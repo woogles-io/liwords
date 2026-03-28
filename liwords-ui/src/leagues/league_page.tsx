@@ -791,6 +791,7 @@ export const LeaguePage = (props: Props) => {
               <LeagueRoster
                 leagueId={league.uuid}
                 currentUserId={userID}
+                activeSeasonNumber={currentSeason?.seasonNumber}
                 onJumpToSeason={(seasonNum, divNum) => {
                   const season = allSeasons.find(
                     (s) => s.seasonNumber === seasonNum,
@@ -876,6 +877,7 @@ export const LeaguePage = (props: Props) => {
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
                         nextSeasonRegistrations={nextSeasonRegistrations}
+                        seasonActive={displayedSeason?.status === 1}
                         onRegister={
                           registrationOpenSeason &&
                           !isUserRegisteredForRegistrationOpenSeason

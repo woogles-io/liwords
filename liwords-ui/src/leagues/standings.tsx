@@ -100,6 +100,7 @@ type DivisionStandingsProps = {
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
   nextSeasonRegistrations?: SeasonRegistrationsResponse;
+  seasonActive?: boolean;
   onRegister?: () => void; // Callback to navigate to registration
 };
 
@@ -112,6 +113,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
   nextSeasonRegistrations,
+  seasonActive,
   onRegister,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
@@ -810,7 +812,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     <div className="division-standings">
       <div style={{ overflowX: "auto" }}>
         <Table
-          columns={columns}
+          columns={
+            seasonActive ? columns.filter((c) => c.key !== "result") : columns
+          }
           dataSource={dataSource}
           pagination={false}
           size="small"
