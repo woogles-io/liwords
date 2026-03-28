@@ -477,7 +477,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       },
     },
     {
-      title: <ColHeader title="CUM" tooltip="Cumulative spread" />,
+      title: <ColHeader title="Spr" tooltip="Cumulative spread" />,
       dataIndex: "spread",
       key: "spread",
       width: 55,
