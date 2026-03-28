@@ -255,7 +255,7 @@ func (sm *StandingsManager) RecalculateAndSaveStandings(
 
 	// Calculate standings for each division from game results
 	for _, division := range divisions {
-		err := sm.calculateDivisionStandings(ctx, division, highestRegularDivision, promotionFormula)
+		err := sm.calculateDivisionStandings(ctx, division, highestRegularDivision, promotionFormula, season.Status)
 		if err != nil {
 			return fmt.Errorf("failed to calculate standings for division %d: %w", division.DivisionNumber, err)
 		}
@@ -270,6 +270,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	division models.LeagueDivision,
 	highestRegularDivision int32,
 	promotionFormula pb.PromotionFormula,
+	seasonStatus int32,
 ) error {
 	// Get all registrations for this division
 	registrations, err := sm.store.GetDivisionRegistrations(ctx, division.Uuid)
@@ -362,8 +363,10 @@ func (sm *StandingsManager) calculateDivisionStandings(
 		standings[i].Rank = i + 1
 	}
 
-	// Mark outcomes based on rank
-	sm.markOutcomes(standings, division.DivisionNumber, highestRegularDivision, promotionFormula)
+	// Only mark promotion/relegation outcomes for completed seasons
+	if seasonStatus == int32(pb.SeasonStatus_SEASON_COMPLETED) {
+		sm.markOutcomes(standings, division.DivisionNumber, highestRegularDivision, promotionFormula)
+	}
 
 	// Calculate expected games per player based on division size
 	expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))

@@ -564,6 +564,45 @@ func TestRecalculateStandingsPreservesMI(t *testing.T) {
 	assert.Equal(t, int32(0), p2.GamesAnalyzed.Int32, "player 2 games_analyzed should be 0")
 }
 
+func TestRecalculateStandingsSkipsOutcomesForActiveSeason(t *testing.T) {
+	ctx := context.Background()
+	store := newMockLeagueStore()
+	sm := NewStandingsManager(store)
+
+	divID := uuid.New()
+	seasonID := uuid.New()
+
+	store.divisions[divID] = models.LeagueDivision{
+		Uuid:           divID,
+		DivisionNumber: 1,
+	}
+
+	store.registrations[divID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, Username: pgtype.Text{String: "alice", Valid: true}},
+		{UserID: 2, Username: pgtype.Text{String: "bob", Valid: true}},
+	}
+
+	store.gameResults[divID] = []models.GetDivisionGameResultsRow{
+		{
+			Player0ID:    pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:    pgtype.Int4{Int32: 2, Valid: true},
+			Player0Score: 400,
+			Player1Score: 350,
+			Player0Won:   pgtype.Bool{Bool: true, Valid: true},
+		},
+	}
+
+	err := sm.RecalculateAndSaveStandings(ctx, seasonID)
+	require.NoError(t, err)
+
+	// With an active season, no player should have an outcome set
+	standings := store.standings[divID]
+	for _, s := range standings {
+		assert.Equal(t, pgtype.Int4{Int32: 0, Valid: true}, s.Result,
+			"player %d should have RESULT_NONE during active season", s.UserID)
+	}
+}
+
 func TestStandingsCalculation_TimeoutLoss(t *testing.T) {
 	ctx := context.Background()
 	store := newMockLeagueStore()
