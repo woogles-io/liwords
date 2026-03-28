@@ -1959,6 +1959,30 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get h2h records: %w", err))
 	}
 
+	// Fetch per-season game details
+	perSeasonRows, err := ls.store.GetPlayerLeagueH2HPerSeason(ctx, models.GetPlayerLeagueH2HPerSeasonParams{
+		UserUuid: pgtype.Text{String: userID, Valid: true},
+		LeagueID: leagueUUID,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get per-season h2h: %w", err))
+	}
+
+	// Build map of opponent UUID -> []*H2HSeasonGame
+	seasonGamesMap := make(map[string][]*pb.H2HSeasonGame)
+	for _, row := range perSeasonRows {
+		oppUUID := row.OpponentUuid.String
+		game := &pb.H2HSeasonGame{
+			SeasonNumber:  row.SeasonNumber,
+			Won:           row.Won.Bool,
+			Draw:          !row.Won.Valid,
+			PlayerScore:   row.PlayerScore,
+			OpponentScore: row.OpponentScore,
+			GameEndReason: int32(row.GameEndReason),
+		}
+		seasonGamesMap[oppUUID] = append(seasonGamesMap[oppUUID], game)
+	}
+
 	records := make([]*pb.H2HRecord, len(rows))
 	for i, row := range rows {
 		records[i] = &pb.H2HRecord{
@@ -1968,6 +1992,7 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 			Losses:           row.Losses,
 			Draws:            row.Draws,
 			Spread:           row.Spread,
+			SeasonGames:      seasonGamesMap[row.OpponentUuid.String],
 		}
 	}
 
