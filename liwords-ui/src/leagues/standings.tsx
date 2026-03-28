@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Table, Tag, Tooltip } from "antd";
 import type { SortOrder } from "antd/es/table/interface";
 import {
@@ -336,6 +336,16 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   const isMiaow =
     now >= new Date(Date.UTC(y, 2, 31, 12)) &&
     now < new Date(Date.UTC(y, 3, 2, 12));
+  const miaowBackronym = useMemo(() => {
+    const options = [
+      "Mistake Index Average at Omg Words",
+      "Mistake Index: Am I Okay at Words?",
+      "Mistakes I Always Overlook in Woogles",
+      "My Inaccuracy Averaged Over Woogles",
+      "Mistakes I Actually Ought to Watch",
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+  }, []);
 
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
@@ -518,7 +528,11 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title={isMiaow ? "Miaow" : "MiAV"}
-          tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
+          tooltip={
+            isMiaow
+              ? `${miaowBackronym} (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`
+              : `Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`
+          }
         />
       ),
       key: "avgMistakeIndex",
