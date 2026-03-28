@@ -330,6 +330,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   })();
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
+  // April 1 easter egg: March 31 12:00 UTC – April 2 12:00 UTC (covers all timezones)
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const isMiaow =
+    now >= new Date(Date.UTC(y, 2, 31, 12)) &&
+    now < new Date(Date.UTC(y, 3, 2, 12));
 
   // Hide sort icons while keeping sort functionality
   const noSortIcon = () => null;
@@ -511,7 +517,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title="MiAV"
+          title={isMiaow ? "Miaow" : "MiAV"}
           tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
         />
       ),
