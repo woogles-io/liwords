@@ -481,7 +481,15 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       dataIndex: "spread",
       key: "spread",
       width: 55,
-      sorter: (a: StandingRecord, b: StandingRecord) => a.spread - b.spread,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        if (a.spread < b.spread) return -1;
+        if (a.spread > b.spread) return 1;
+        const aPoints = a.wins * 2 + a.draws;
+        const bPoints = b.wins * 2 + b.draws;
+        if (aPoints < bPoints) return -1;
+        if (aPoints > bPoints) return 1;
+        return b.username.toLowerCase().localeCompare(a.username.toLowerCase());
+      },
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
       render: (spread: number) => (spread > 0 ? `+${spread}` : spread),
