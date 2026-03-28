@@ -419,6 +419,59 @@ func (q *Queries) GetDivision(ctx context.Context, argUuid uuid.UUID) (LeagueDiv
 	return i, err
 }
 
+const getDivisionAnalyzedGames = `-- name: GetDivisionAnalyzedGames :many
+
+SELECT DISTINCT ON (aj.game_id)
+    aj.game_id,
+    g.player0_id,
+    g.player1_id,
+    (aj.result->'playerSummaries'->0->>'mistakeIndex')::DOUBLE PRECISION as player0_mistake_index,
+    (aj.result->'playerSummaries'->1->>'mistakeIndex')::DOUBLE PRECISION as player1_mistake_index
+FROM analysis_jobs aj
+JOIN games g ON g.uuid = aj.game_id
+WHERE g.league_division_id = $1
+  AND aj.status = 'completed'
+  AND aj.result IS NOT NULL
+ORDER BY aj.game_id, aj.completed_at DESC
+`
+
+type GetDivisionAnalyzedGamesRow struct {
+	GameID              string
+	Player0ID           pgtype.Int4
+	Player1ID           pgtype.Int4
+	Player0MistakeIndex float64
+	Player1MistakeIndex float64
+}
+
+// Exclude CANCELLED
+// Get the latest completed analysis for each game in a division.
+// Used to recalculate mistake index totals from source data.
+func (q *Queries) GetDivisionAnalyzedGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetDivisionAnalyzedGamesRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionAnalyzedGames, leagueDivisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionAnalyzedGamesRow
+	for rows.Next() {
+		var i GetDivisionAnalyzedGamesRow
+		if err := rows.Scan(
+			&i.GameID,
+			&i.Player0ID,
+			&i.Player1ID,
+			&i.Player0MistakeIndex,
+			&i.Player1MistakeIndex,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDivisionGameResults = `-- name: GetDivisionGameResults :many
 
 SELECT
@@ -758,7 +811,6 @@ func (q *Queries) GetForceFinishedGamesMissingPlayers(ctx context.Context, seaso
 }
 
 const getGameLeagueInfo = `-- name: GetGameLeagueInfo :one
-
 SELECT
     g.league_division_id,
     g.season_id,
@@ -789,7 +841,6 @@ type GetGameLeagueInfoRow struct {
 	GameEndReason    pgtype.Int2
 }
 
-// Exclude CANCELLED
 func (q *Queries) GetGameLeagueInfo(ctx context.Context, argUuid pgtype.Text) (GetGameLeagueInfoRow, error) {
 	row := q.db.QueryRow(ctx, getGameLeagueInfo, argUuid)
 	var i GetGameLeagueInfoRow

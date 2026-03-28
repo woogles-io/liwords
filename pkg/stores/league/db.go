@@ -81,6 +81,7 @@ type Store interface {
 	CountDivisionGamesTotal(ctx context.Context, divisionID uuid.UUID) (int64, error)
 	GetDivisionGameResults(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGameResultsRow, error)
 	GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error)
+	GetDivisionAnalyzedGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionAnalyzedGamesRow, error)
 	GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error)
 	GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error)
 	ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error
@@ -416,6 +417,10 @@ func (s *DBStore) GetDivisionGameResults(ctx context.Context, divisionID uuid.UU
 
 func (s *DBStore) GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error) {
 	return s.queries.GetDivisionGamesWithStats(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+}
+
+func (s *DBStore) GetDivisionAnalyzedGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionAnalyzedGamesRow, error) {
+	return s.queries.GetDivisionAnalyzedGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
 }
 
 func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetUnfinishedLeagueGamesRow, error) {

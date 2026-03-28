@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ type mockLeagueStore struct {
 	gameResults    map[uuid.UUID][]models.GetDivisionGameResultsRow
 	registrations  map[uuid.UUID][]models.GetDivisionRegistrationsRow
 	gamesWithStats map[uuid.UUID][]models.GetDivisionGamesWithStatsRow
+	analyzedGames  map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow
 }
 
 func newMockLeagueStore() *mockLeagueStore {
@@ -29,6 +31,7 @@ func newMockLeagueStore() *mockLeagueStore {
 		gameResults:    make(map[uuid.UUID][]models.GetDivisionGameResultsRow),
 		registrations:  make(map[uuid.UUID][]models.GetDivisionRegistrationsRow),
 		gamesWithStats: make(map[uuid.UUID][]models.GetDivisionGamesWithStatsRow),
+		analyzedGames:  make(map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow),
 	}
 }
 
@@ -54,6 +57,10 @@ func (m *mockLeagueStore) GetDivisionGamesWithStats(ctx context.Context, divisio
 	return m.gamesWithStats[divisionID], nil
 }
 
+func (m *mockLeagueStore) GetDivisionAnalyzedGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionAnalyzedGamesRow, error) {
+	return m.analyzedGames[divisionID], nil
+}
+
 func (m *mockLeagueStore) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
 	// Not used in standings tests - return empty
 	return []models.GetPreviousSeasonRegistrantsNotInCurrentRow{}, nil
@@ -71,6 +78,9 @@ func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertS
 			divStandings[i].Draws = arg.Draws
 			divStandings[i].Spread = arg.Spread
 			divStandings[i].GamesPlayed = arg.GamesPlayed
+			divStandings[i].Result = arg.Result
+			divStandings[i].TotalMistakeIndex = arg.TotalMistakeIndex
+			divStandings[i].GamesAnalyzed = arg.GamesAnalyzed
 			found = true
 			break
 		}
@@ -78,14 +88,16 @@ func (m *mockLeagueStore) UpsertStanding(ctx context.Context, arg models.UpsertS
 	if !found {
 		// Add new
 		divStandings = append(divStandings, models.GetStandingsRow{
-			DivisionID:  arg.DivisionID,
-			UserID:      arg.UserID,
-			Wins:        arg.Wins,
-			Losses:      arg.Losses,
-			Draws:       arg.Draws,
-			Spread:      arg.Spread,
-			GamesPlayed: arg.GamesPlayed,
-			Result:      arg.Result,
+			DivisionID:        arg.DivisionID,
+			UserID:            arg.UserID,
+			Wins:              arg.Wins,
+			Losses:            arg.Losses,
+			Draws:             arg.Draws,
+			Spread:            arg.Spread,
+			GamesPlayed:       arg.GamesPlayed,
+			Result:            arg.Result,
+			TotalMistakeIndex: arg.TotalMistakeIndex,
+			GamesAnalyzed:     arg.GamesAnalyzed,
 		})
 	}
 	m.standings[arg.DivisionID] = divStandings
@@ -122,8 +134,12 @@ func (m *mockLeagueStore) SetCurrentSeason(ctx context.Context, arg models.SetCu
 func (m *mockLeagueStore) CreateSeason(ctx context.Context, arg models.CreateSeasonParams) (models.LeagueSeason, error) {
 	return models.LeagueSeason{}, nil
 }
-func (m *mockLeagueStore) GetSeason(ctx context.Context, uuid uuid.UUID) (models.LeagueSeason, error) {
-	return models.LeagueSeason{}, nil
+func (m *mockLeagueStore) GetSeason(ctx context.Context, id uuid.UUID) (models.LeagueSeason, error) {
+	return models.LeagueSeason{
+		Uuid:             id,
+		Status:           1, // SEASON_ACTIVE
+		PromotionFormula: 0,
+	}, nil
 }
 func (m *mockLeagueStore) GetCurrentSeason(ctx context.Context, leagueUUID uuid.UUID) (models.LeagueSeason, error) {
 	return models.LeagueSeason{}, nil
@@ -209,7 +225,23 @@ func (m *mockLeagueStore) GetPlayerLeagueH2H(ctx context.Context, arg models.Get
 	return nil, nil
 }
 func (m *mockLeagueStore) GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error) {
-	return models.LeagueStanding{}, nil
+	divStandings := m.standings[arg.DivisionID]
+	for _, s := range divStandings {
+		if s.UserID == arg.UserID {
+			return models.LeagueStanding{
+				DivisionID:        s.DivisionID,
+				UserID:            s.UserID,
+				Wins:              s.Wins,
+				Losses:            s.Losses,
+				Draws:             s.Draws,
+				Spread:            s.Spread,
+				GamesPlayed:       s.GamesPlayed,
+				TotalMistakeIndex: s.TotalMistakeIndex,
+				GamesAnalyzed:     s.GamesAnalyzed,
+			}, nil
+		}
+	}
+	return models.LeagueStanding{}, fmt.Errorf("standing not found")
 }
 func (m *mockLeagueStore) DeleteDivisionStandings(ctx context.Context, divisionID uuid.UUID) error {
 	return nil
@@ -469,6 +501,190 @@ func TestStandingsCalculation_WithTies(t *testing.T) {
 	assert.Equal(t, int32(2), bob.Losses.Int32)
 	assert.Equal(t, int32(0), bob.Draws.Int32)
 	assert.Equal(t, int32(-80), bob.Spread.Int32) // (400-450) + (410-440)
+}
+
+func TestRecalculateStandingsPreservesMI(t *testing.T) {
+	ctx := context.Background()
+	store := newMockLeagueStore()
+	sm := NewStandingsManager(store)
+
+	divID := uuid.New()
+	seasonID := uuid.New()
+
+	store.divisions[divID] = models.LeagueDivision{
+		Uuid:           divID,
+		DivisionNumber: 1,
+	}
+
+	store.registrations[divID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, Username: pgtype.Text{String: "alice", Valid: true}},
+		{UserID: 2, Username: pgtype.Text{String: "bob", Valid: true}},
+	}
+
+	store.gameResults[divID] = []models.GetDivisionGameResultsRow{
+		{
+			Player0ID:    pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:    pgtype.Int4{Int32: 2, Valid: true},
+			Player0Score: 400,
+			Player1Score: 350,
+			Player0Won:   pgtype.Bool{Bool: true, Valid: true},
+		},
+	}
+
+	// Player 1 has existing standing with MI data
+	store.standings[divID] = []models.GetStandingsRow{
+		{
+			DivisionID:        divID,
+			UserID:            1,
+			Wins:              pgtype.Int4{Int32: 1, Valid: true},
+			Losses:            pgtype.Int4{Int32: 0, Valid: true},
+			TotalMistakeIndex: pgtype.Float8{Float64: 5.5, Valid: true},
+			GamesAnalyzed:     pgtype.Int4{Int32: 1, Valid: true},
+		},
+	}
+	// Player 2 has NO existing standing (penalty ran before they played)
+
+	err := sm.RecalculateAndSaveStandings(ctx, seasonID)
+	require.NoError(t, err)
+
+	standings := store.standings[divID]
+	var p1, p2 *models.GetStandingsRow
+	for i := range standings {
+		if standings[i].UserID == 1 {
+			p1 = &standings[i]
+		}
+		if standings[i].UserID == 2 {
+			p2 = &standings[i]
+		}
+	}
+	require.NotNil(t, p1)
+	require.NotNil(t, p2)
+
+	assert.True(t, p1.TotalMistakeIndex.Valid, "player 1 MI should be valid")
+	assert.Equal(t, 5.5, p1.TotalMistakeIndex.Float64, "player 1 MI should be preserved")
+
+	// Player 2's MI should be Valid with value 0, NOT {Valid: false} (NULL)
+	assert.True(t, p2.TotalMistakeIndex.Valid, "player 2 MI should be valid (not NULL)")
+	assert.Equal(t, float64(0), p2.TotalMistakeIndex.Float64, "player 2 MI should be 0")
+	assert.True(t, p2.GamesAnalyzed.Valid, "player 2 games_analyzed should be valid (not NULL)")
+	assert.Equal(t, int32(0), p2.GamesAnalyzed.Int32, "player 2 games_analyzed should be 0")
+}
+
+func TestRecalculateStandingsSkipsOutcomesForActiveSeason(t *testing.T) {
+	ctx := context.Background()
+	store := newMockLeagueStore()
+	sm := NewStandingsManager(store)
+
+	divID := uuid.New()
+	seasonID := uuid.New()
+
+	store.divisions[divID] = models.LeagueDivision{
+		Uuid:           divID,
+		DivisionNumber: 1,
+	}
+
+	store.registrations[divID] = []models.GetDivisionRegistrationsRow{
+		{UserID: 1, Username: pgtype.Text{String: "alice", Valid: true}},
+		{UserID: 2, Username: pgtype.Text{String: "bob", Valid: true}},
+	}
+
+	store.gameResults[divID] = []models.GetDivisionGameResultsRow{
+		{
+			Player0ID:    pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:    pgtype.Int4{Int32: 2, Valid: true},
+			Player0Score: 400,
+			Player1Score: 350,
+			Player0Won:   pgtype.Bool{Bool: true, Valid: true},
+		},
+	}
+
+	err := sm.RecalculateAndSaveStandings(ctx, seasonID)
+	require.NoError(t, err)
+
+	// With an active season, no player should have an outcome set
+	standings := store.standings[divID]
+	for _, s := range standings {
+		assert.Equal(t, pgtype.Int4{Int32: 0, Valid: true}, s.Result,
+			"player %d should have RESULT_NONE during active season", s.UserID)
+	}
+}
+
+func TestRecalculateSeasonMistakeIndex(t *testing.T) {
+	ctx := context.Background()
+	store := newMockLeagueStore()
+	sm := NewStandingsManager(store)
+
+	divID := uuid.New()
+	seasonID := uuid.New()
+
+	store.divisions[divID] = models.LeagueDivision{
+		Uuid:           divID,
+		DivisionNumber: 1,
+	}
+
+	// Two players with stale/NULL MI in standings
+	store.standings[divID] = []models.GetStandingsRow{
+		{
+			DivisionID:        divID,
+			UserID:            1,
+			Wins:              pgtype.Int4{Int32: 2, Valid: true},
+			Losses:            pgtype.Int4{Int32: 0, Valid: true},
+			TotalMistakeIndex: pgtype.Float8{Valid: false}, // NULL — the bug
+			GamesAnalyzed:     pgtype.Int4{Valid: false},   // NULL
+		},
+		{
+			DivisionID:        divID,
+			UserID:            2,
+			Wins:              pgtype.Int4{Int32: 0, Valid: true},
+			Losses:            pgtype.Int4{Int32: 2, Valid: true},
+			TotalMistakeIndex: pgtype.Float8{Float64: 99, Valid: true}, // stale
+			GamesAnalyzed:     pgtype.Int4{Int32: 99, Valid: true},     // stale
+		},
+	}
+
+	// Two analyzed games
+	store.analyzedGames[divID] = []models.GetDivisionAnalyzedGamesRow{
+		{
+			GameID:              "game1",
+			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
+			Player0MistakeIndex: 3.5,
+			Player1MistakeIndex: 7.2,
+		},
+		{
+			GameID:              "game2",
+			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
+			Player0MistakeIndex: 4.1,
+			Player1MistakeIndex: 6.3,
+		},
+	}
+
+	err := sm.RecalculateSeasonMistakeIndex(ctx, seasonID)
+	require.NoError(t, err)
+
+	standings := store.standings[divID]
+	var p1, p2 *models.GetStandingsRow
+	for i := range standings {
+		if standings[i].UserID == 1 {
+			p1 = &standings[i]
+		}
+		if standings[i].UserID == 2 {
+			p2 = &standings[i]
+		}
+	}
+	require.NotNil(t, p1)
+	require.NotNil(t, p2)
+
+	// Player 1: MI = 3.5 + 4.1 = 7.6, games analyzed = 2
+	assert.True(t, p1.TotalMistakeIndex.Valid)
+	assert.InDelta(t, 7.6, p1.TotalMistakeIndex.Float64, 0.001)
+	assert.Equal(t, int32(2), p1.GamesAnalyzed.Int32)
+
+	// Player 2: MI = 7.2 + 6.3 = 13.5, games analyzed = 2
+	assert.True(t, p2.TotalMistakeIndex.Valid)
+	assert.InDelta(t, 13.5, p2.TotalMistakeIndex.Float64, 0.001)
+	assert.Equal(t, int32(2), p2.GamesAnalyzed.Int32)
 }
 
 func TestStandingsCalculation_TimeoutLoss(t *testing.T) {
