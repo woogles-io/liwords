@@ -609,6 +609,84 @@ func TestRecalculateStandingsSkipsOutcomesForActiveSeason(t *testing.T) {
 	}
 }
 
+func TestRecalculateSeasonMistakeIndex(t *testing.T) {
+	ctx := context.Background()
+	store := newMockLeagueStore()
+	sm := NewStandingsManager(store)
+
+	divID := uuid.New()
+	seasonID := uuid.New()
+
+	store.divisions[divID] = models.LeagueDivision{
+		Uuid:           divID,
+		DivisionNumber: 1,
+	}
+
+	// Two players with stale/NULL MI in standings
+	store.standings[divID] = []models.GetStandingsRow{
+		{
+			DivisionID:        divID,
+			UserID:            1,
+			Wins:              pgtype.Int4{Int32: 2, Valid: true},
+			Losses:            pgtype.Int4{Int32: 0, Valid: true},
+			TotalMistakeIndex: pgtype.Float8{Valid: false}, // NULL — the bug
+			GamesAnalyzed:     pgtype.Int4{Valid: false},   // NULL
+		},
+		{
+			DivisionID:        divID,
+			UserID:            2,
+			Wins:              pgtype.Int4{Int32: 0, Valid: true},
+			Losses:            pgtype.Int4{Int32: 2, Valid: true},
+			TotalMistakeIndex: pgtype.Float8{Float64: 99, Valid: true}, // stale
+			GamesAnalyzed:     pgtype.Int4{Int32: 99, Valid: true},     // stale
+		},
+	}
+
+	// Two analyzed games
+	store.analyzedGames[divID] = []models.GetDivisionAnalyzedGamesRow{
+		{
+			GameID:              "game1",
+			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
+			Player0MistakeIndex: 3.5,
+			Player1MistakeIndex: 7.2,
+		},
+		{
+			GameID:              "game2",
+			Player0ID:           pgtype.Int4{Int32: 1, Valid: true},
+			Player1ID:           pgtype.Int4{Int32: 2, Valid: true},
+			Player0MistakeIndex: 4.1,
+			Player1MistakeIndex: 6.3,
+		},
+	}
+
+	err := sm.RecalculateSeasonMistakeIndex(ctx, seasonID)
+	require.NoError(t, err)
+
+	standings := store.standings[divID]
+	var p1, p2 *models.GetStandingsRow
+	for i := range standings {
+		if standings[i].UserID == 1 {
+			p1 = &standings[i]
+		}
+		if standings[i].UserID == 2 {
+			p2 = &standings[i]
+		}
+	}
+	require.NotNil(t, p1)
+	require.NotNil(t, p2)
+
+	// Player 1: MI = 3.5 + 4.1 = 7.6, games analyzed = 2
+	assert.True(t, p1.TotalMistakeIndex.Valid)
+	assert.InDelta(t, 7.6, p1.TotalMistakeIndex.Float64, 0.001)
+	assert.Equal(t, int32(2), p1.GamesAnalyzed.Int32)
+
+	// Player 2: MI = 7.2 + 6.3 = 13.5, games analyzed = 2
+	assert.True(t, p2.TotalMistakeIndex.Valid)
+	assert.InDelta(t, 13.5, p2.TotalMistakeIndex.Float64, 0.001)
+	assert.Equal(t, int32(2), p2.GamesAnalyzed.Int32)
+}
+
 func TestStandingsCalculation_TimeoutLoss(t *testing.T) {
 	ctx := context.Background()
 	store := newMockLeagueStore()

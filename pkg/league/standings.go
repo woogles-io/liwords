@@ -817,3 +817,108 @@ func (sm *StandingsManager) recalculateDivisionExtendedStats(
 
 	return nil
 }
+
+// RecalculateSeasonMistakeIndex recalculates mistake index totals for all
+// divisions in a season from the source analysis_jobs data. This repairs
+// standings where MI became NULL (e.g., penalty ran before player's first game).
+func (sm *StandingsManager) RecalculateSeasonMistakeIndex(
+	ctx context.Context,
+	seasonID uuid.UUID,
+) error {
+	divisions, err := sm.store.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("failed to get divisions: %w", err)
+	}
+
+	for _, division := range divisions {
+		if err := sm.recalculateDivisionMistakeIndex(ctx, division.Uuid); err != nil {
+			return fmt.Errorf("failed to recalculate MI for division %d: %w", division.DivisionNumber, err)
+		}
+	}
+
+	return nil
+}
+
+func (sm *StandingsManager) recalculateDivisionMistakeIndex(
+	ctx context.Context,
+	divisionID uuid.UUID,
+) error {
+	analyzedGames, err := sm.store.GetDivisionAnalyzedGames(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to get analyzed games: %w", err)
+	}
+
+	// Sum MI per player from the latest analysis of each game
+	type miAccum struct {
+		totalMI       float64
+		gamesAnalyzed int32
+	}
+	playerMI := make(map[int32]*miAccum)
+
+	for _, game := range analyzedGames {
+		if game.Player0ID.Valid {
+			acc, ok := playerMI[game.Player0ID.Int32]
+			if !ok {
+				acc = &miAccum{}
+				playerMI[game.Player0ID.Int32] = acc
+			}
+			acc.totalMI += game.Player0MistakeIndex
+			acc.gamesAnalyzed++
+		}
+		if game.Player1ID.Valid {
+			acc, ok := playerMI[game.Player1ID.Int32]
+			if !ok {
+				acc = &miAccum{}
+				playerMI[game.Player1ID.Int32] = acc
+			}
+			acc.totalMI += game.Player1MistakeIndex
+			acc.gamesAnalyzed++
+		}
+	}
+
+	// Update MI fields for all players, preserving other standing data
+	standings, err := sm.store.GetStandings(ctx, divisionID)
+	if err != nil {
+		return fmt.Errorf("failed to get standings: %w", err)
+	}
+
+	for _, standing := range standings {
+		acc := playerMI[standing.UserID]
+		totalMI := pgtype.Float8{Float64: 0, Valid: true}
+		gamesAnalyzed := pgtype.Int4{Int32: 0, Valid: true}
+		if acc != nil {
+			totalMI = pgtype.Float8{Float64: acc.totalMI, Valid: true}
+			gamesAnalyzed = pgtype.Int4{Int32: acc.gamesAnalyzed, Valid: true}
+		}
+
+		err = sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
+			DivisionID:               divisionID,
+			UserID:                   standing.UserID,
+			Wins:                     standing.Wins,
+			Losses:                   standing.Losses,
+			Draws:                    standing.Draws,
+			Spread:                   standing.Spread,
+			GamesPlayed:              standing.GamesPlayed,
+			GamesRemaining:           standing.GamesRemaining,
+			Result:                   standing.Result,
+			TotalScore:               standing.TotalScore,
+			TotalOpponentScore:       standing.TotalOpponentScore,
+			TotalBingos:              standing.TotalBingos,
+			TotalOpponentBingos:      standing.TotalOpponentBingos,
+			TotalTurns:               standing.TotalTurns,
+			HighTurn:                 standing.HighTurn,
+			HighGame:                 standing.HighGame,
+			Timeouts:                 standing.Timeouts,
+			BlanksPlayed:             standing.BlanksPlayed,
+			TotalTilesPlayed:         standing.TotalTilesPlayed,
+			TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed,
+			TotalMistakeIndex:        totalMI,
+			GamesAnalyzed:            gamesAnalyzed,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update MI for player %d: %w", standing.UserID, err)
+		}
+	}
+
+	return nil
+}
