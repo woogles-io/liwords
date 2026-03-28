@@ -100,6 +100,7 @@ type DivisionStandingsProps = {
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
   nextSeasonRegistrations?: SeasonRegistrationsResponse;
+  seasonActive?: boolean;
   onRegister?: () => void; // Callback to navigate to registration
 };
 
@@ -112,6 +113,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
   nextSeasonRegistrations,
+  seasonActive,
   onRegister,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
@@ -440,53 +442,39 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       },
     },
     {
-      title: <ColHeader title="PTS" tooltip="Points (2 per win, 1 per draw)" />,
-      key: "points",
-      className: "points-column",
-      width: 45,
-      sorter: (a: StandingRecord, b: StandingRecord) =>
-        a.wins * 2 + a.draws - (b.wins * 2 + b.draws),
-      sortDirections: ["descend", "ascend"] as SortOrder[],
-      sortIcon: noSortIcon,
-      render: (_: unknown, record: { wins: number; draws: number }) =>
-        record.wins * 2 + record.draws,
-    },
-    {
-      title: <ColHeader title="W" tooltip="Wins" />,
-      dataIndex: "wins",
-      key: "wins",
-      width: 35,
-      sorter: (a: StandingRecord, b: StandingRecord) => a.wins - b.wins,
-      sortDirections: ["descend", "ascend"] as SortOrder[],
-      sortIcon: noSortIcon,
-    },
-    {
-      title: <ColHeader title="L" tooltip="Losses" />,
-      dataIndex: "losses",
-      key: "losses",
-      width: 35,
-      sorter: (a: StandingRecord, b: StandingRecord) => a.losses - b.losses,
-      sortDirections: ["descend", "ascend"] as SortOrder[],
-      sortIcon: noSortIcon,
-    },
-    {
       title: (
         <ColHeader
-          title="T"
-          tooltip={
+          title={
             divTotals.draws
-              ? `Number of tied games (div total: ${divTotals.draws / 2})`
-              : "Number of tied games"
+              ? `Record (${divTotals.draws / 2} ${divTotals.draws / 2 === 1 ? "draw" : "draws"})`
+              : "Record"
           }
+          tooltip="Win-Loss-Draw record (sorted by placement points)"
         />
       ),
-      dataIndex: "draws",
-      key: "draws",
-      width: 35,
-      sorter: (a: StandingRecord, b: StandingRecord) => a.draws - b.draws,
+      key: "record",
+      width: 70,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        const aPoints = a.wins * 2 + a.draws;
+        const bPoints = b.wins * 2 + b.draws;
+        if (aPoints !== bPoints) return aPoints - bPoints;
+        if (a.spread !== b.spread) return a.spread - b.spread;
+        return b.username.toLowerCase().localeCompare(a.username.toLowerCase());
+      },
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortIcon: noSortIcon,
-      render: (draws: number) => (draws > 0 ? draws : "-"),
+      render: (
+        _: unknown,
+        record: { wins: number; losses: number; draws: number },
+      ) => {
+        const points = record.wins * 2 + record.draws;
+        const recStr = `${record.wins}-${record.losses}${record.draws ? `-${record.draws}` : ""}`;
+        return (
+          <Tooltip title={`${points} pts`}>
+            <span>{recStr}</span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: <ColHeader title="CUM" tooltip="Cumulative spread" />,
@@ -511,6 +499,29 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         record: { gamesPlayed: number; gamesRemaining: number },
       ) =>
         `${record.gamesPlayed}${record.gamesRemaining ? `/${record.gamesPlayed + record.gamesRemaining}` : ""}`,
+    },
+    {
+      title: (
+        <ColHeader
+          title="MiAV"
+          tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
+        />
+      ),
+      key: "avgMistakeIndex",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        // Players with no analysis sort to the bottom
+        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
+        if (a.gamesAnalyzed === 0) return 1;
+        if (b.gamesAnalyzed === 0) return -1;
+        return a.avgMistakeIndex - b.avgMistakeIndex;
+      },
+      sortDirections: ["ascend", "descend"] as SortOrder[],
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { avgMistakeIndex: number; gamesAnalyzed: number },
+      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "—"),
     },
     {
       title: (
@@ -762,29 +773,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title="MiAV"
-          tooltip={`Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`}
-        />
-      ),
-      key: "avgMistakeIndex",
-      width: 50,
-      sorter: (a: StandingRecord, b: StandingRecord) => {
-        // Players with no analysis sort to the bottom
-        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
-        if (a.gamesAnalyzed === 0) return 1;
-        if (b.gamesAnalyzed === 0) return -1;
-        return a.avgMistakeIndex - b.avgMistakeIndex;
-      },
-      sortDirections: ["ascend", "descend"] as SortOrder[],
-      sortIcon: noSortIcon,
-      render: (
-        _: unknown,
-        record: { avgMistakeIndex: number; gamesAnalyzed: number },
-      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "—"),
-    },
-    {
-      title: (
-        <ColHeader
           title="#TO"
           tooltip={
             divTotals.timeouts
@@ -824,7 +812,9 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     <div className="division-standings">
       <div style={{ overflowX: "auto" }}>
         <Table
-          columns={columns}
+          columns={
+            seasonActive ? columns.filter((c) => c.key !== "result") : columns
+          }
           dataSource={dataSource}
           pagination={false}
           size="small"

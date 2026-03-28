@@ -124,6 +124,8 @@ export const LeaguePage = (props: Props) => {
   const [showUnregisterConfirm, setShowUnregisterConfirm] =
     useState<boolean>(false);
   const [showRoster, setShowRoster] = useState(false);
+  const rosterMounted = useRef(false);
+  if (showRoster) rosterMounted.current = true;
   const pendingDivisionJump = useRef<number>(0);
 
   // Fetch league data
@@ -787,34 +789,37 @@ export const LeaguePage = (props: Props) => {
                 />
               )}
 
-            {showRoster && league && (
-              <LeagueRoster
-                leagueId={league.uuid}
-                currentUserId={userID}
-                onJumpToSeason={(seasonNum, divNum) => {
-                  const season = allSeasons.find(
-                    (s) => s.seasonNumber === seasonNum,
-                  );
-                  if (!season) return;
-                  const isSameSeason = season.uuid === displaySeasonId;
-                  setSelectedSeasonId(season.uuid);
-                  setShowRoster(false);
-                  if (isSameSeason && divNum > 0 && standingsData) {
-                    // Already on this season — select division directly.
-                    const targetDiv = standingsData.divisions.find(
-                      (d) => d.divisionNumber === divNum,
+            {rosterMounted.current && league && (
+              <div style={{ display: showRoster ? undefined : "none" }}>
+                <LeagueRoster
+                  leagueId={league.uuid}
+                  currentUserId={userID}
+                  activeSeasonNumber={currentSeason?.seasonNumber}
+                  onJumpToSeason={(seasonNum, divNum) => {
+                    const season = allSeasons.find(
+                      (s) => s.seasonNumber === seasonNum,
                     );
-                    if (targetDiv) {
-                      setSelectedDivisionId(targetDiv.uuid);
-                      return;
+                    if (!season) return;
+                    const isSameSeason = season.uuid === displaySeasonId;
+                    setSelectedSeasonId(season.uuid);
+                    setShowRoster(false);
+                    if (isSameSeason && divNum > 0 && standingsData) {
+                      // Already on this season — select division directly.
+                      const targetDiv = standingsData.divisions.find(
+                        (d) => d.divisionNumber === divNum,
+                      );
+                      if (targetDiv) {
+                        setSelectedDivisionId(targetDiv.uuid);
+                        return;
+                      }
                     }
-                  }
-                  // Different season — defer until standings load.
-                  if (divNum > 0) {
-                    pendingDivisionJump.current = divNum;
-                  }
-                }}
-              />
+                    // Different season — defer until standings load.
+                    if (divNum > 0) {
+                      pendingDivisionJump.current = divNum;
+                    }
+                  }}
+                />
+              </div>
             )}
 
             {!showRoster &&
@@ -876,6 +881,7 @@ export const LeaguePage = (props: Props) => {
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
                         nextSeasonRegistrations={nextSeasonRegistrations}
+                        seasonActive={displayedSeason?.status === 1}
                         onRegister={
                           registrationOpenSeason &&
                           !isUserRegisteredForRegistrationOpenSeason

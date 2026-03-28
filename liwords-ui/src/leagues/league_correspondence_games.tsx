@@ -24,7 +24,7 @@ const formatH2HCompact = (record: H2HRecord | undefined) => {
         opacity: 0.7,
       }}
     >
-      {wld} {spreadStr}
+      {wld} ({spreadStr})
     </span>
   );
 };
