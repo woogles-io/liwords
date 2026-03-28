@@ -107,8 +107,10 @@ const genContiguousTiles = (
       };
     } else if (u in contiguous) {
       // Otherwise, we saw an empty space. If there is an ephemeral tile
-      // on this space, set lastSeenTile to it so the loop continues.
-      lastSeenTile = contiguous[u].letter;
+      // on this space, keep scanning. We can't use the tile's letter
+      // directly because an undesignated blank has letter 0, which
+      // equals EmptyBoardSpaceMachineLetter and would stop the loop.
+      lastSeenTile = contiguous[u].letter || -1;
     }
   }
 

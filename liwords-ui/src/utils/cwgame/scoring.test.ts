@@ -1,5 +1,5 @@
 import { calculateTemporaryScore, borders, touchesBoardTile } from "./scoring";
-import { EphemeralTile } from "./common";
+import { BlankMachineLetter, EphemeralTile } from "./common";
 import { Board } from "./board";
 import {
   StandardEnglishAlphabet,
@@ -233,6 +233,45 @@ it("tests scores vertical", () => {
   expect(
     calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
   ).toEqual(5);
+});
+
+it("tests score with undesignated blank between fresh and board tiles", () => {
+  // Place H at (7,1) and an undesignated blank at (7,2).
+  // Board has WASTE at (7,3)-(7,7).
+  // Word is H + blank + WASTE = 4 + 0 + 4 + 1 + 1 + 1 + 1 = 12
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({
+    row: 7,
+    col: 1,
+    letter: englishLetterToML("H"),
+  });
+  placedTiles.add({
+    row: 7,
+    col: 2,
+    letter: BlankMachineLetter,
+  });
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
+  ).toEqual(12);
+
+  // Designating the blank should produce the same score
+  placedTiles.clear();
+  placedTiles.add({
+    row: 7,
+    col: 1,
+    letter: englishLetterToML("H"),
+  });
+  placedTiles.add({
+    row: 7,
+    col: 2,
+    letter: englishLetterToML("r"), // lowercase = designated blank
+  });
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet),
+  ).toEqual(12);
 });
 
 it("tests scores horizontal", () => {
