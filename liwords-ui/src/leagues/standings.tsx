@@ -444,12 +444,12 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title={
+          title="Rec"
+          tooltip={
             divTotals.draws
-              ? `Record (${divTotals.draws / 2} ${divTotals.draws / 2 === 1 ? "draw" : "draws"})`
-              : "Record"
+              ? `Win-Loss-Draw record (div draws: ${divTotals.draws / 2})`
+              : "Win-Loss record"
           }
-          tooltip="Win-Loss-Draw record (sorted by placement points)"
         />
       ),
       key: "record",
