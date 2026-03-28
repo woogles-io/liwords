@@ -159,6 +159,17 @@ export const LeagueRoster: React.FC<Props> = ({
     }
   }, [currentUserId, data?.players, h2hUserId]);
 
+  // Clear h2h selection if the target player is no longer in the data
+  useEffect(() => {
+    if (h2hUserId && data?.players) {
+      const stillExists = data.players.some((p) => p.userId === h2hUserId);
+      if (!stillExists) {
+        setH2hUserId("");
+        setH2hUsername("");
+      }
+    }
+  }, [data?.players, h2hUserId]);
+
   // Fetch h2h data for the selected player (defaults to logged-in user)
   const { data: h2hData } = useQuery(
     getPlayerLeagueH2H,
