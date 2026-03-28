@@ -551,6 +551,8 @@ JOIN games g ON g.uuid = aj.game_id
 WHERE g.league_division_id = $1
   AND aj.status = 'completed'
   AND aj.result IS NOT NULL
+  AND aj.result->'playerSummaries'->0->>'mistakeIndex' IS NOT NULL
+  AND aj.result->'playerSummaries'->1->>'mistakeIndex' IS NOT NULL
 ORDER BY aj.game_id, aj.completed_at DESC;
 
 -- name: GetGameLeagueInfo :one

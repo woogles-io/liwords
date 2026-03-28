@@ -30,7 +30,7 @@ export const getCOPDefaults = (totalRounds: number) => {
     controlLossActivationRound: Math.max(totalRounds - 3, 1) - 1, // 0-indexed for backend (for 16-rd tournament: 16-3 = 13 (display), -1 = 12 (backend))
     divisionSims: 100000,
     controlLossSims: 10000,
-    controlLossThreshold: 0.25,
+    controlLossThreshold: 0.3,
   };
 };
 
@@ -72,7 +72,7 @@ export const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
     : setting.controlLossSims || defaults?.controlLossSims || 10000;
   const displayControlLossThreshold = touchedFields.has("controlLossThreshold")
     ? setting.controlLossThreshold
-    : setting.controlLossThreshold || defaults?.controlLossThreshold || 0.25;
+    : setting.controlLossThreshold || defaults?.controlLossThreshold || 0.3;
 
   const displayGibsonSpreads =
     setting.gibsonSpreads && setting.gibsonSpreads.length > 0
@@ -276,7 +276,7 @@ export const COPRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
         label={
           <HelptipLabel
             labelText="Control Loss Threshold"
-            help="Probability threshold for control loss scenarios. Typical value: 0.25. Must be greater than 0."
+            help="Probability threshold for control loss scenarios. Typical value: 0.3. Must be greater than 0."
           />
         }
       >
