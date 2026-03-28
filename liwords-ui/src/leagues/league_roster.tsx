@@ -308,9 +308,19 @@ export const LeagueRoster: React.FC<Props> = ({
             sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) => {
               const aRec = h2hMap.get(a.userId);
               const bRec = h2hMap.get(b.userId);
-              const aVal = aRec ? aRec.wins - aRec.losses : -9999;
-              const bVal = bRec ? bRec.wins - bRec.losses : -9999;
-              return aVal - bVal;
+              if (!aRec && !bRec) return 0;
+              if (!aRec) return -1;
+              if (!bRec) return 1;
+              const aDiff = aRec.wins - aRec.losses;
+              const bDiff = bRec.wins - bRec.losses;
+              if (aDiff !== bDiff) return aDiff - bDiff;
+              if (aRec.spread !== bRec.spread) return aRec.spread - bRec.spread;
+              const aEnc = aRec.wins + aRec.losses + aRec.draws;
+              const bEnc = bRec.wins + bRec.losses + bRec.draws;
+              if (aEnc !== bEnc) return aEnc - bEnc;
+              return b.username
+                .toLowerCase()
+                .localeCompare(a.username.toLowerCase());
             },
             sortDirections: ["descend", "ascend"] as SortOrder[],
           },
