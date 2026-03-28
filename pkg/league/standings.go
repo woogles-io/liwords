@@ -376,8 +376,8 @@ func (sm *StandingsManager) calculateDivisionStandings(
 		}
 
 		// Get existing standing to preserve MI data if it exists
-		var totalMistakeIndex pgtype.Float8
-		var gamesAnalyzed pgtype.Int4
+		totalMistakeIndex := pgtype.Float8{Float64: 0, Valid: true}
+		gamesAnalyzed := pgtype.Int4{Int32: 0, Valid: true}
 		existingStanding, err := sm.store.GetPlayerStanding(ctx, models.GetPlayerStandingParams{
 			DivisionID: division.Uuid,
 			UserID:     standing.UserID,
@@ -387,7 +387,8 @@ func (sm *StandingsManager) calculateDivisionStandings(
 			totalMistakeIndex = existingStanding.TotalMistakeIndex
 			gamesAnalyzed = existingStanding.GamesAnalyzed
 		}
-		// If error (no existing standing), use zero values from initialization
+		// If no existing standing, MI defaults to 0 (not NULL) so future
+		// IncrementStandingMistakeIndex calls work (NULL + value = NULL).
 
 		err = sm.store.UpsertStanding(ctx, models.UpsertStandingParams{
 			DivisionID:        division.Uuid,
