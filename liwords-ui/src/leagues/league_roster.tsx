@@ -24,6 +24,7 @@ type Props = {
   leagueId: string;
   currentUserId?: string;
   activeSeasonNumber?: number;
+  defaultSortSeason?: number;
   onJumpToSeason: (seasonNumber: number, divisionNumber: number) => void;
 };
 
@@ -138,6 +139,7 @@ export const LeagueRoster: React.FC<Props> = ({
   leagueId,
   currentUserId,
   activeSeasonNumber,
+  defaultSortSeason,
   onJumpToSeason,
 }) => {
   const [search, setSearch] = useState("");
@@ -348,6 +350,8 @@ export const LeagueRoster: React.FC<Props> = ({
         seasonCompare(a, b, sn) ||
         a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
       sortDirections: ["ascend", "descend"] as SortOrder[],
+      defaultSortOrder:
+        sn === defaultSortSeason ? ("ascend" as SortOrder) : undefined,
     })),
   ];
 

@@ -795,6 +795,7 @@ export const LeaguePage = (props: Props) => {
                   leagueId={league.uuid}
                   currentUserId={userID}
                   activeSeasonNumber={currentSeason?.seasonNumber}
+                  defaultSortSeason={displayedSeason?.seasonNumber}
                   onJumpToSeason={(seasonNum, divNum) => {
                     const season = allSeasons.find(
                       (s) => s.seasonNumber === seasonNum,
