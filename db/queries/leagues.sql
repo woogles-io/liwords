@@ -537,6 +537,22 @@ WHERE g.league_division_id = $1
   AND gp0.game_end_reason != 5  -- Exclude ABORTED
   AND gp0.game_end_reason != 7; -- Exclude CANCELLED
 
+-- name: GetDivisionAnalyzedGames :many
+-- Get the latest completed analysis for each game in a division.
+-- Used to recalculate mistake index totals from source data.
+SELECT DISTINCT ON (aj.game_id)
+    aj.game_id,
+    g.player0_id,
+    g.player1_id,
+    (aj.result->'playerSummaries'->0->>'mistakeIndex')::DOUBLE PRECISION as player0_mistake_index,
+    (aj.result->'playerSummaries'->1->>'mistakeIndex')::DOUBLE PRECISION as player1_mistake_index
+FROM analysis_jobs aj
+JOIN games g ON g.uuid = aj.game_id
+WHERE g.league_division_id = $1
+  AND aj.status = 'completed'
+  AND aj.result IS NOT NULL
+ORDER BY aj.game_id, aj.completed_at DESC;
+
 -- name: GetGameLeagueInfo :one
 SELECT
     g.league_division_id,

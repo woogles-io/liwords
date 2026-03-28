@@ -21,6 +21,7 @@ type mockLeagueStore struct {
 	gameResults    map[uuid.UUID][]models.GetDivisionGameResultsRow
 	registrations  map[uuid.UUID][]models.GetDivisionRegistrationsRow
 	gamesWithStats map[uuid.UUID][]models.GetDivisionGamesWithStatsRow
+	analyzedGames  map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow
 }
 
 func newMockLeagueStore() *mockLeagueStore {
@@ -30,6 +31,7 @@ func newMockLeagueStore() *mockLeagueStore {
 		gameResults:    make(map[uuid.UUID][]models.GetDivisionGameResultsRow),
 		registrations:  make(map[uuid.UUID][]models.GetDivisionRegistrationsRow),
 		gamesWithStats: make(map[uuid.UUID][]models.GetDivisionGamesWithStatsRow),
+		analyzedGames:  make(map[uuid.UUID][]models.GetDivisionAnalyzedGamesRow),
 	}
 }
 
@@ -53,6 +55,10 @@ func (m *mockLeagueStore) GetDivisionGameResults(ctx context.Context, divisionID
 
 func (m *mockLeagueStore) GetDivisionGamesWithStats(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionGamesWithStatsRow, error) {
 	return m.gamesWithStats[divisionID], nil
+}
+
+func (m *mockLeagueStore) GetDivisionAnalyzedGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetDivisionAnalyzedGamesRow, error) {
+	return m.analyzedGames[divisionID], nil
 }
 
 func (m *mockLeagueStore) GetPreviousSeasonRegistrantsNotInCurrent(ctx context.Context, arg models.GetPreviousSeasonRegistrantsNotInCurrentParams) ([]models.GetPreviousSeasonRegistrantsNotInCurrentRow, error) {
