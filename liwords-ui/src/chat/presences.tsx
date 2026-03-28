@@ -7,6 +7,8 @@ type Props = {
   players: Array<PresenceEntity>;
   sendMessage?: (uuid: string, username: string) => void;
   channel: string;
+  playerInfoMap?: Map<string, string>;
+  onInfoTextClick?: (userId: string) => void;
 };
 
 export const Presences = React.memo((props: Props) => {
@@ -19,6 +21,12 @@ export const Presences = React.memo((props: Props) => {
       omitSendMessage={!props.sendMessage}
       showModTools
       moderate={moderateUser}
+      infoText={props.playerInfoMap?.get(player.uuid)}
+      handleInfoText={
+        props.onInfoTextClick
+          ? () => props.onInfoTextClick!(player.uuid)
+          : undefined
+      }
     />
   );
   const currentChannelPresences = props.players.filter(

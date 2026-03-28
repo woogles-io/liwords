@@ -882,6 +882,8 @@ export const Chat = React.memo((props: Props) => {
                           players={presences}
                           channel={channel}
                           sendMessage={sendNewMessage}
+                          playerInfoMap={props.playerInfoMap}
+                          onInfoTextClick={props.onInfoTextClick}
                         />
                       </p>
                     ) : null}
