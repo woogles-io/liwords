@@ -731,6 +731,24 @@ WHERE gp.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
   AND gp.game_end_reason NOT IN (0, 5, 7)
 GROUP BY u_opp.uuid, u_opp.username;
 
+-- name: GetPlayerLeagueH2HPerSeason :many
+-- Get per-season head-to-head game details for a player across all seasons of a league.
+-- Returns one row per game (not aggregated), with season number and game-level detail.
+SELECT
+    u_opp.uuid as opponent_uuid,
+    ls.season_number,
+    gp.won,
+    gp.score as player_score,
+    gp.opponent_score,
+    gp.game_end_reason
+FROM game_players gp
+JOIN league_seasons ls ON gp.league_season_id = ls.uuid
+JOIN users u_opp ON gp.opponent_id = u_opp.id
+WHERE gp.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
+  AND ls.league_id = @league_id
+  AND gp.game_end_reason NOT IN (0, 5, 7)
+ORDER BY ls.season_number, u_opp.uuid;
+
 -- name: PenalizePlayerSeasonGames :execrows
 -- Penalize a cheater's games in a season:
 -- Lower the cheater's score to (opponent_score - 100), keeping the honest player's score.

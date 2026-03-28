@@ -1198,6 +1198,66 @@ func (q *Queries) GetPlayerLeagueH2H(ctx context.Context, arg GetPlayerLeagueH2H
 	return items, nil
 }
 
+const getPlayerLeagueH2HPerSeason = `-- name: GetPlayerLeagueH2HPerSeason :many
+SELECT
+    u_opp.uuid as opponent_uuid,
+    ls.season_number,
+    gp.won,
+    gp.score as player_score,
+    gp.opponent_score,
+    gp.game_end_reason
+FROM game_players gp
+JOIN league_seasons ls ON gp.league_season_id = ls.uuid
+JOIN users u_opp ON gp.opponent_id = u_opp.id
+WHERE gp.player_id = (SELECT id FROM users WHERE users.uuid = $1)
+  AND ls.league_id = $2
+  AND gp.game_end_reason NOT IN (0, 5, 7)
+ORDER BY ls.season_number, u_opp.uuid
+`
+
+type GetPlayerLeagueH2HPerSeasonParams struct {
+	UserUuid pgtype.Text
+	LeagueID uuid.UUID
+}
+
+type GetPlayerLeagueH2HPerSeasonRow struct {
+	OpponentUuid  pgtype.Text
+	SeasonNumber  int32
+	Won           pgtype.Bool
+	PlayerScore   int32
+	OpponentScore int32
+	GameEndReason int16
+}
+
+// Get per-season head-to-head game details for a player across all seasons of a league.
+// Returns one row per game (not aggregated), with season number and game-level detail.
+func (q *Queries) GetPlayerLeagueH2HPerSeason(ctx context.Context, arg GetPlayerLeagueH2HPerSeasonParams) ([]GetPlayerLeagueH2HPerSeasonRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerLeagueH2HPerSeason, arg.UserUuid, arg.LeagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerLeagueH2HPerSeasonRow
+	for rows.Next() {
+		var i GetPlayerLeagueH2HPerSeasonRow
+		if err := rows.Scan(
+			&i.OpponentUuid,
+			&i.SeasonNumber,
+			&i.Won,
+			&i.PlayerScore,
+			&i.OpponentScore,
+			&i.GameEndReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerRegistration = `-- name: GetPlayerRegistration :one
 SELECT id, user_id, season_id, division_id, registration_date, firsts_count, status, placement_status, previous_division_rank, seasons_away, created_at, updated_at FROM league_registrations
 WHERE season_id = $1 AND user_id = $2
