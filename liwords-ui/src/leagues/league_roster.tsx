@@ -18,7 +18,9 @@ import {
   H2HRecord,
 } from "../gen/api/proto/league_service/league_service_pb";
 import { StandingResult } from "../gen/api/proto/ipc/league_pb";
+import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+import { endReasonLabel } from "./player_game_history_modal";
 
 type Props = {
   leagueId: string;
@@ -31,29 +33,28 @@ type Props = {
 const resultIcon = (result: StandingResult) => {
   switch (result) {
     case StandingResult.RESULT_CHAMPION:
-      return (
-        <Tooltip title="Champion">
-          <StarOutlined style={{ color: "#d4af37" }} />
-        </Tooltip>
-      );
+      return <StarOutlined style={{ color: "#d4af37" }} />;
     case StandingResult.RESULT_PROMOTED:
-      return (
-        <Tooltip title="Promoted">
-          <ArrowUpOutlined style={{ color: "#52c41a" }} />
-        </Tooltip>
-      );
+      return <ArrowUpOutlined style={{ color: "#52c41a" }} />;
     case StandingResult.RESULT_RELEGATED:
-      return (
-        <Tooltip title="Relegated">
-          <ArrowDownOutlined style={{ color: "#ff4d4f" }} />
-        </Tooltip>
-      );
+      return <ArrowDownOutlined style={{ color: "#ff4d4f" }} />;
     case StandingResult.RESULT_STAYED:
-      return (
-        <Tooltip title="Stayed">
-          <MinusOutlined style={{ color: "#8c8c8c" }} />
-        </Tooltip>
-      );
+      return <MinusOutlined style={{ color: "#8c8c8c" }} />;
+    default:
+      return null;
+  }
+};
+
+const resultLabel = (result: StandingResult): string | null => {
+  switch (result) {
+    case StandingResult.RESULT_CHAMPION:
+      return "Champion";
+    case StandingResult.RESULT_PROMOTED:
+      return "Promoted";
+    case StandingResult.RESULT_RELEGATED:
+      return "Relegated";
+    case StandingResult.RESULT_STAYED:
+      return "Stayed";
     default:
       return null;
   }
@@ -63,6 +64,7 @@ const formatSeason = (
   season: LeagueRosterSeason | undefined,
   compRank?: number,
   hideResult?: boolean,
+  h2hTooltip?: string,
 ) => {
   if (!season) return <span className="roster-empty">—</span>;
   if (season.divisionNumber === 0) {
@@ -71,8 +73,21 @@ const formatSeason = (
   const record = `${season.wins}-${season.losses}${season.draws ? `-${season.draws}` : ""}`;
   const spread = season.spread > 0 ? `+${season.spread}` : `${season.spread}`;
   const displayRank = compRank ?? season.rank;
+  const label = hideResult ? null : resultLabel(season.result);
+  const seasonLine = label
+    ? `${record} (${spread}) · ${label}`
+    : `${record} (${spread})`;
+  const tooltip = h2hTooltip ? (
+    <>
+      {seasonLine}
+      <br />
+      H2H: {h2hTooltip}
+    </>
+  ) : (
+    seasonLine
+  );
   return (
-    <Tooltip title={`${record} (${spread})`}>
+    <Tooltip title={tooltip}>
       <span className="roster-season" style={{ cursor: "pointer" }}>
         <Tag
           color={
@@ -188,6 +203,36 @@ export const LeagueRoster: React.FC<Props> = ({
     if (h2hData?.records) {
       for (const record of h2hData.records) {
         map.set(record.opponentUserId, record);
+      }
+    }
+    return map;
+  }, [h2hData?.records]);
+
+  // Build map: "opponentUserId:seasonNumber" -> game details[]
+  const h2hSeasonMap = useMemo(() => {
+    const map = new Map<
+      string,
+      Array<{
+        won: boolean;
+        draw: boolean;
+        playerScore: number;
+        opponentScore: number;
+        gameEndReason: number;
+      }>
+    >();
+    if (h2hData?.records) {
+      for (const record of h2hData.records) {
+        for (const game of record.seasonGames) {
+          const key = `${record.opponentUserId}:${game.seasonNumber}`;
+          if (!map.has(key)) map.set(key, []);
+          map.get(key)!.push({
+            won: game.won,
+            draw: game.draw,
+            playerScore: game.playerScore,
+            opponentScore: game.opponentScore,
+            gameEndReason: game.gameEndReason,
+          });
+        }
       }
     }
     return map;
@@ -310,9 +355,19 @@ export const LeagueRoster: React.FC<Props> = ({
             sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) => {
               const aRec = h2hMap.get(a.userId);
               const bRec = h2hMap.get(b.userId);
-              const aVal = aRec ? aRec.wins - aRec.losses : -9999;
-              const bVal = bRec ? bRec.wins - bRec.losses : -9999;
-              return aVal - bVal;
+              if (!aRec && !bRec) return 0;
+              if (!aRec) return -1;
+              if (!bRec) return 1;
+              const aDiff = aRec.wins - aRec.losses;
+              const bDiff = bRec.wins - bRec.losses;
+              if (aDiff !== bDiff) return aDiff - bDiff;
+              if (aRec.spread !== bRec.spread) return aRec.spread - bRec.spread;
+              const aEnc = aRec.wins + aRec.losses + aRec.draws;
+              const bEnc = bRec.wins + bRec.losses + bRec.draws;
+              if (aEnc !== bEnc) return aEnc - bEnc;
+              return b.username
+                .toLowerCase()
+                .localeCompare(a.username.toLowerCase());
             },
             sortDirections: ["descend", "ascend"] as SortOrder[],
           },
@@ -336,12 +391,41 @@ export const LeagueRoster: React.FC<Props> = ({
           (s: LeagueRosterSeason) => s.seasonNumber === sn,
         );
         if (!season) return <span className="roster-empty">—</span>;
+        const seasonGames =
+          h2hUserId && record.userId !== h2hUserId
+            ? h2hSeasonMap.get(`${record.userId}:${sn}`)
+            : undefined;
+        const h2hDot = h2hUserId ? (
+          <span
+            style={{
+              color: "#2d6a9e",
+              fontSize: 8,
+              marginRight: 2,
+              visibility: seasonGames ? "visible" : "hidden",
+            }}
+          >
+            ●
+          </span>
+        ) : null;
+        const gameTooltip = seasonGames
+          ? seasonGames
+              .map((g) => {
+                // From the H2H player's perspective (matches H2H column)
+                const result = g.draw ? "D" : g.won ? "W" : "L";
+                const reason = endReasonLabel(g.gameEndReason as GameEndReason);
+                const suffix = reason ? ` (${reason})` : "";
+                return `${result} ${g.playerScore}-${g.opponentScore}${suffix}`;
+              })
+              .join(", ")
+          : undefined;
         return (
           <span onClick={() => onJumpToSeason(sn, season.divisionNumber)}>
+            {h2hDot}
             {formatSeason(
               season,
               compRankMap.get(`${sn}:${record.userId}`),
               sn === activeSeasonNumber,
+              gameTooltip,
             )}
           </span>
         );

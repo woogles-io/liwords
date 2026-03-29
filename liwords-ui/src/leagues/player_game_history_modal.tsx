@@ -6,7 +6,7 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
-const endReasonLabel = (reason: GameEndReason): string => {
+export const endReasonLabel = (reason: GameEndReason): string => {
   switch (reason) {
     case GameEndReason.TIME:
       return "time";
@@ -26,6 +26,7 @@ const endReasonLabel = (reason: GameEndReason): string => {
       return "cancelled";
     case GameEndReason.STANDARD:
       return "";
+    case GameEndReason.NONE:
     default:
       return "other";
   }
