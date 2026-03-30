@@ -668,15 +668,27 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     onError: (e) => flashError(e),
   });
 
+  const isLegacyAnalysis =
+    analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED &&
+    (analysisStatusData?.analysisVersion ?? 0) < 2;
+
   const handleRequestAnalysis = useCallback(() => {
     requestAnalysisMutation.mutate({ gameId: gameID });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameID]); // requestAnalysisMutation.mutate is stable
+
+  const handleRequestReanalysis = useCallback(() => {
+    requestAnalysisMutation.mutate({ gameId: gameID, force: true });
+    setShowComputerAnalysis(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]); // requestAnalysisMutation.mutate is stable
 
   const analysisButtonLabel = () => {
     switch (analysisStatus) {
       case GetAnalysisStatusResponse_JobStatus.COMPLETED:
-        return "View Computer Analysis";
+        return isLegacyAnalysis
+          ? "View Analysis (Legacy)"
+          : "View Computer Analysis";
       case GetAnalysisStatusResponse_JobStatus.PENDING:
         return "Analysis Queued…";
       case GetAnalysisStatusResponse_JobStatus.PROCESSING:
@@ -979,9 +991,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       {gameDone && !variant?.includes("wordsmog") && (
         <Tooltip title={analysisButtonLabel()}>
           <Button
-            className="computer-analysis-btn"
+            className={`computer-analysis-btn${isLegacyAnalysis ? " legacy" : ""}`}
             shape="circle"
-            type="primary"
+            type={isLegacyAnalysis ? "default" : "primary"}
             icon={<RobotOutlined />}
             onClick={handleAnalysisButtonClick}
             disabled={
@@ -1000,6 +1012,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         gameID={gameID}
         currentTurn={examinableGameContext.turns.length}
         onBack={() => setShowComputerAnalysis(false)}
+        isLegacy={isLegacyAnalysis}
+        onRequestReanalysis={handleRequestReanalysis}
       />
     );
     if (props.includeCard) {

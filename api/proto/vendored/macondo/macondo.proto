@@ -229,10 +229,74 @@ message PuzzleGenerationRequest { repeated PuzzleBucket buckets = 1; }
 // GAME ANALYSIS
 // ============================================================================
 
+// SimmedPlayInfo holds per-play statistics from Monte Carlo simulation
+message SimmedPlayInfo {
+  string move_description = 1;
+  int32 score = 2;
+  string leave = 3;
+  bool is_bingo = 4;
+  double win_prob = 5;
+  double win_prob_stderr = 6;
+  double equity = 7;
+  double equity_stderr = 8;
+  repeated PlyStats ply_stats = 9;
+  bool is_played_move = 10;
+}
+
+// PlyStats holds per-ply score and bingo statistics for a simmed play
+message PlyStats {
+  int32 ply = 1;
+  double score_mean = 2;
+  double score_stdev = 3;
+  double bingo_pct = 4;
+}
+
+// PEGPlayInfo holds per-play statistics from the pre-endgame solver
+message PEGPlayInfo {
+  string move_description = 1;
+  int32 score = 2;
+  string leave = 3;
+  bool is_bingo = 4;
+  double win_prob = 5;
+  repeated PEGOutcomeInfo outcomes = 6;
+  bool has_spread = 7;
+  double avg_spread = 8;
+  bool is_played_move = 9;
+}
+
+// PEGOutcomeInfo holds the outcome for a specific tile draw in PEG analysis
+message PEGOutcomeInfo {
+  string tiles = 1;
+  PEGOutcomeType outcome = 2;
+  int32 count = 3;
+}
+
+enum PEGOutcomeType {
+  PEG_OUTCOME_UNKNOWN = 0;
+  PEG_OUTCOME_WIN = 1;
+  PEG_OUTCOME_DRAW = 2;
+  PEG_OUTCOME_LOSS = 3;
+}
+
+// EndgameVariation holds a move sequence from endgame analysis
+message EndgameVariation {
+  repeated EndgameMove moves = 1;
+  int32 final_spread = 2;
+}
+
+// EndgameMove is a single move within an endgame variation
+message EndgameMove {
+  string move_description = 1;
+  int32 score = 2;
+  int32 move_number = 3;
+}
+
 // GameAnalysisResult contains analysis results for a completed game
 message GameAnalysisResult {
   repeated TurnAnalysis turns = 1;
   repeated PlayerSummary player_summaries = 2;
+  int32 analysis_version = 3;
+  string analyzer_version = 4;
 }
 
 // TurnAnalysis contains analysis for a single turn
@@ -270,8 +334,15 @@ message TurnAnalysis {
   bool played_is_bingo = 20;
   bool missed_bingo = 21;
 
+  // Enriched data (v2+)
+  repeated SimmedPlayInfo top_sim_plays = 22;
+  repeated PEGPlayInfo top_peg_plays = 23;
+  EndgameVariation principal_variation = 24;
+  repeated EndgameVariation other_variations = 25;
+  int32 sim_iterations = 26;
+
   // Known opponent rack (from challenged phony)
-  string known_opp_rack = 22;  // e.g., "JAM" - tiles revealed by challenged phony
+  string known_opp_rack = 27;  // e.g., "JAM" - tiles revealed by challenged phony
 }
 
 enum GamePhase {

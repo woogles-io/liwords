@@ -249,6 +249,13 @@ p.streak-loss {
     margin-left: 12px;
   }
 
+  .computer-analysis-btn.legacy {
+    @include colorModed() {
+      color: m($gray-medium);
+      border-color: m($gray-subtle);
+    }
+  }
+
   .analyzer-container {
     .anticon.anticon-redo {
       font-size: 28px;
@@ -528,6 +535,132 @@ p.streak-loss {
 
     @include colorModed() {
       color: m($gray-medium);
+    }
+  }
+
+  .ca-legacy-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    font-size: 12px;
+
+    @include colorModed() {
+      background-color: rgba(180, 140, 0, 0.12);
+      color: m($gray-medium);
+    }
+  }
+
+  .ca-enriched-section {
+    margin-top: 6px;
+    font-size: 12px;
+
+    .ca-enriched-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+
+      th {
+        text-align: left;
+        font-weight: 600;
+        padding: 2px 5px;
+        font-size: 11px;
+
+        @include colorModed() {
+          color: m($gray-medium);
+          border-bottom: 1px solid m($gray-subtle);
+        }
+      }
+
+      td {
+        padding: 2px 5px;
+        white-space: nowrap;
+      }
+
+      tr.ca-sim-played {
+        @include colorModed() {
+          background-color: rgba(0, 102, 204, 0.08);
+        }
+      }
+    }
+  }
+
+  .ca-peg-outcomes {
+    padding: 4px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    .ca-peg-outcome-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+    }
+  }
+
+  .ca-endgame-seq {
+    ol.ca-endgame-moves {
+      margin: 4px 0 4px 18px;
+      padding: 0;
+
+      li {
+        margin-bottom: 2px;
+      }
+
+      .ca-endgame-score {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+    }
+
+    .ca-endgame-others {
+      margin-top: 4px;
+
+      .ca-endgame-toggle {
+        all: unset;
+        cursor: pointer;
+        font-size: 11px;
+
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      .ca-endgame-alt {
+        margin-top: 4px;
+        padding-left: 8px;
+
+        @include colorModed() {
+          border-left: 2px solid m($gray-subtle);
+        }
+
+        .ca-endgame-alt-spread {
+          font-size: 11px;
+
+          @include colorModed() {
+            color: m($gray-medium);
+          }
+        }
+      }
     }
   }
 }
