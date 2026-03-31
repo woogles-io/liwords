@@ -339,4 +339,15 @@ message H2HRecord {
   int32 losses = 4;
   int32 draws = 5;
   int32 spread = 6;
+  // Per-season game details (empty until backend is deployed with this field)
+  repeated H2HSeasonGame season_games = 7;
+}
+
+message H2HSeasonGame {
+  int32 season_number = 1;
+  bool won = 2;
+  bool draw = 3;
+  int32 player_score = 4;
+  int32 opponent_score = 5;
+  int32 game_end_reason = 6;
 }
