@@ -500,6 +500,14 @@ func (s *AnalysisService) RequestAnalysis(
 					JobId:   existingJob.ID.String(),
 				}), nil
 			}
+			// Subtract old result's mistake index contribution before resetting,
+			// to avoid double-counting in league standings when new analysis completes.
+			var oldResult macondo.GameAnalysisResult
+			if len(existingJob.Result) > 0 {
+				if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
+					applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true)
+				}
+			}
 			// Legacy result — reset the existing job back to pending (same as admin RequeueAnalysis)
 			if err := s.queries.ResetAnalysisJob(ctx, existingJob.ID); err != nil {
 				log.Error().Err(err).Str("job_id", existingJob.ID.String()).Msg("failed to reset legacy job for re-analysis")
