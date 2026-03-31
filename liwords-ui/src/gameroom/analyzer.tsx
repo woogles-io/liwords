@@ -133,7 +133,7 @@ const wolgesLetterToLiwordsLetter = (i: number) => {
   return i;
 };
 
-const liwordsLetterToWolgesLetter = (i: number) => {
+export const liwordsLetterToWolgesLetter = (i: number) => {
   if ((i & 0x80) > 0) {
     // This is a blank. Convert to a wolges blank.
     return -(i & 0x7f);
@@ -614,8 +614,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
     lexicon,
     variant,
-  showComputerAnalysis,
-  setShowComputerAnalysis,
+    showComputerAnalysis,
+    setShowComputerAnalysis,
   } = useContext(AnalyzerContext);
 
   const { gameContext: examinableGameContext } =

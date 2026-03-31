@@ -241,6 +241,8 @@ message SimmedPlayInfo {
   double equity_stderr = 8;
   repeated PlyStats ply_stats = 9;
   bool is_played_move = 10;
+  int32 iterations = 11;
+  bool is_ignored = 12;
 }
 
 // PlyStats holds per-ply score and bingo statistics for a simmed play
@@ -262,6 +264,7 @@ message PEGPlayInfo {
   bool has_spread = 7;
   double avg_spread = 8;
   bool is_played_move = 9;
+  bool is_ignored = 10;
 }
 
 // PEGOutcomeInfo holds the outcome for a specific tile draw in PEG analysis

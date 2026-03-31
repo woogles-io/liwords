@@ -1594,6 +1594,8 @@ type SimmedPlayInfo struct {
 	EquityStderr    float64                `protobuf:"fixed64,8,opt,name=equity_stderr,json=equityStderr,proto3" json:"equity_stderr,omitempty"`
 	PlyStats        []*PlyStats            `protobuf:"bytes,9,rep,name=ply_stats,json=plyStats,proto3" json:"ply_stats,omitempty"`
 	IsPlayedMove    bool                   `protobuf:"varint,10,opt,name=is_played_move,json=isPlayedMove,proto3" json:"is_played_move,omitempty"`
+	Iterations      int32                  `protobuf:"varint,11,opt,name=iterations,proto3" json:"iterations,omitempty"`
+	IsIgnored       bool                   `protobuf:"varint,12,opt,name=is_ignored,json=isIgnored,proto3" json:"is_ignored,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1698,6 +1700,20 @@ func (x *SimmedPlayInfo) GetIsPlayedMove() bool {
 	return false
 }
 
+func (x *SimmedPlayInfo) GetIterations() int32 {
+	if x != nil {
+		return x.Iterations
+	}
+	return 0
+}
+
+func (x *SimmedPlayInfo) GetIsIgnored() bool {
+	if x != nil {
+		return x.IsIgnored
+	}
+	return false
+}
+
 // PlyStats holds per-ply score and bingo statistics for a simmed play
 type PlyStats struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1779,6 +1795,7 @@ type PEGPlayInfo struct {
 	HasSpread       bool                   `protobuf:"varint,7,opt,name=has_spread,json=hasSpread,proto3" json:"has_spread,omitempty"`
 	AvgSpread       float64                `protobuf:"fixed64,8,opt,name=avg_spread,json=avgSpread,proto3" json:"avg_spread,omitempty"`
 	IsPlayedMove    bool                   `protobuf:"varint,9,opt,name=is_played_move,json=isPlayedMove,proto3" json:"is_played_move,omitempty"`
+	IsIgnored       bool                   `protobuf:"varint,10,opt,name=is_ignored,json=isIgnored,proto3" json:"is_ignored,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1872,6 +1889,13 @@ func (x *PEGPlayInfo) GetAvgSpread() float64 {
 func (x *PEGPlayInfo) GetIsPlayedMove() bool {
 	if x != nil {
 		return x.IsPlayedMove
+	}
+	return false
+}
+
+func (x *PEGPlayInfo) GetIsIgnored() bool {
+	if x != nil {
+		return x.IsIgnored
 	}
 	return false
 }
@@ -2653,7 +2677,7 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\bincludes\x18\x03 \x03(\x0e2\x12.macondo.PuzzleTagR\bincludes\x12.\n" +
 	"\bexcludes\x18\x04 \x03(\x0e2\x12.macondo.PuzzleTagR\bexcludes\"J\n" +
 	"\x17PuzzleGenerationRequest\x12/\n" +
-	"\abuckets\x18\x01 \x03(\v2\x15.macondo.PuzzleBucketR\abuckets\"\xd8\x02\n" +
+	"\abuckets\x18\x01 \x03(\v2\x15.macondo.PuzzleBucketR\abuckets\"\x97\x03\n" +
 	"\x0eSimmedPlayInfo\x12)\n" +
 	"\x10move_description\x18\x01 \x01(\tR\x0fmoveDescription\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x05R\x05score\x12\x14\n" +
@@ -2665,14 +2689,19 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\requity_stderr\x18\b \x01(\x01R\fequityStderr\x12.\n" +
 	"\tply_stats\x18\t \x03(\v2\x11.macondo.PlyStatsR\bplyStats\x12$\n" +
 	"\x0eis_played_move\x18\n" +
-	" \x01(\bR\fisPlayedMove\"y\n" +
+	" \x01(\bR\fisPlayedMove\x12\x1e\n" +
+	"\n" +
+	"iterations\x18\v \x01(\x05R\n" +
+	"iterations\x12\x1d\n" +
+	"\n" +
+	"is_ignored\x18\f \x01(\bR\tisIgnored\"y\n" +
 	"\bPlyStats\x12\x10\n" +
 	"\x03ply\x18\x01 \x01(\x05R\x03ply\x12\x1d\n" +
 	"\n" +
 	"score_mean\x18\x02 \x01(\x01R\tscoreMean\x12\x1f\n" +
 	"\vscore_stdev\x18\x03 \x01(\x01R\n" +
 	"scoreStdev\x12\x1b\n" +
-	"\tbingo_pct\x18\x04 \x01(\x01R\bbingoPct\"\xb3\x02\n" +
+	"\tbingo_pct\x18\x04 \x01(\x01R\bbingoPct\"\xd2\x02\n" +
 	"\vPEGPlayInfo\x12)\n" +
 	"\x10move_description\x18\x01 \x01(\tR\x0fmoveDescription\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x05R\x05score\x12\x14\n" +
@@ -2684,7 +2713,10 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"has_spread\x18\a \x01(\bR\thasSpread\x12\x1d\n" +
 	"\n" +
 	"avg_spread\x18\b \x01(\x01R\tavgSpread\x12$\n" +
-	"\x0eis_played_move\x18\t \x01(\bR\fisPlayedMove\"o\n" +
+	"\x0eis_played_move\x18\t \x01(\bR\fisPlayedMove\x12\x1d\n" +
+	"\n" +
+	"is_ignored\x18\n" +
+	" \x01(\bR\tisIgnored\"o\n" +
 	"\x0ePEGOutcomeInfo\x12\x14\n" +
 	"\x05tiles\x18\x01 \x01(\tR\x05tiles\x121\n" +
 	"\aoutcome\x18\x02 \x01(\x0e2\x17.macondo.PEGOutcomeTypeR\aoutcome\x12\x14\n" +

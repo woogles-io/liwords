@@ -488,7 +488,7 @@ func (s *AnalysisService) RequestAnalysis(
 		} else if req.Msg.Force && existingJob.Status == "completed" {
 			// Force re-analysis only allowed for legacy (v0) results
 			var partial struct {
-				AnalysisVersion int32 `json:"analysis_version"`
+				AnalysisVersion int32 `json:"analysisVersion"`
 			}
 			if len(existingJob.Result) > 0 {
 				_ = json.Unmarshal(existingJob.Result, &partial)
@@ -683,7 +683,7 @@ func (s *AnalysisService) GetAnalysisStatus(
 	var analysisVersion int32
 	if job.Status == "completed" && len(job.Result) > 0 {
 		var partial struct {
-			AnalysisVersion int32 `json:"analysis_version"`
+			AnalysisVersion int32 `json:"analysisVersion"`
 		}
 		if err := json.Unmarshal(job.Result, &partial); err == nil {
 			analysisVersion = partial.AnalysisVersion

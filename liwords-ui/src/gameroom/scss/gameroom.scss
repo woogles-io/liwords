@@ -597,6 +597,85 @@ p.streak-loss {
         }
       }
     }
+
+    table.ca-clickable-table {
+      font-family: $font-monospaced;
+
+      tbody tr {
+        cursor: pointer;
+
+        &:hover {
+          @include colorModed() {
+            background-color: m($off-background);
+          }
+        }
+      }
+
+      .ca-coord {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+
+      .ca-move-word {
+        font-weight: bold;
+      }
+
+      .ca-bold {
+        font-weight: bold;
+      }
+    }
+
+    .ca-move-clickable {
+      cursor: pointer;
+
+      &:hover {
+        @include colorModed() {
+          background-color: m($off-background);
+        }
+      }
+    }
+
+    .ca-expand-btn {
+      all: unset;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 2px;
+      line-height: 1;
+
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+
+      &:hover {
+        @include colorModed() {
+          color: m($gray-dark);
+        }
+      }
+    }
+
+    .ca-ply-details {
+      padding: 4px 8px;
+
+      .ca-ply-iters {
+        font-size: 12px;
+        margin-bottom: 3px;
+
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+
+      .ca-ply-table {
+        font-family: $font-monospaced;
+        font-size: 13px;
+        width: auto;
+
+        td {
+          padding: 1px 12px 1px 0;
+        }
+      }
+    }
   }
 
   .ca-peg-outcomes {
@@ -609,7 +688,7 @@ p.streak-loss {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      font-size: 11px;
+      font-size: 13px;
     }
   }
 
@@ -620,6 +699,17 @@ p.streak-loss {
 
       li {
         margin-bottom: 2px;
+      }
+
+      li.ca-endgame-move-clickable {
+        cursor: pointer;
+        border-radius: 2px;
+
+        &:hover {
+          @include colorModed() {
+            background-color: m($off-background);
+          }
+        }
       }
 
       .ca-endgame-score {
