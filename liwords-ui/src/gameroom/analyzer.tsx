@@ -357,6 +357,8 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => void;
   lexicon: string;
   variant?: string;
+  showComputerAnalysis: boolean;
+  setShowComputerAnalysis: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
   autoMode: false,
   cachedMoves: null,
@@ -367,7 +369,11 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: () => {},
   lexicon: "",
   variant: undefined,
+  showComputerAnalysis: false,
+  setShowComputerAnalysis: () => {},
 });
+
+export const useAnalyzerContext = () => useContext(AnalyzerContext);
 
 type AnalyzerContextProviderProps = {
   children: React.ReactNode;
@@ -386,6 +392,7 @@ export const AnalyzerContextProvider = (
   );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
+  const [showComputerAnalysis, setShowComputerAnalysis] = useState(false);
   const { freshExamineSignal } = useExamineStoreContext();
   useEffect(() => {
     if (freshExamineSignal > 0) {
@@ -507,6 +514,8 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      showComputerAnalysis,
+      setShowComputerAnalysis,
     }),
     [
       autoMode,
@@ -518,6 +527,8 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      showComputerAnalysis,
+      setShowComputerAnalysis,
     ],
   );
 
@@ -603,14 +614,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
     lexicon,
     variant,
+  showComputerAnalysis,
+  setShowComputerAnalysis,
   } = useContext(AnalyzerContext);
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
   const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-
-  const [showComputerAnalysis, setShowComputerAnalysis] = useState(false);
   const { modal } = App.useApp();
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Button, Modal, Tag, Typography } from "antd";
+import { Button, Modal, Table, Tag, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { fromJsonString } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
@@ -15,6 +15,15 @@ import {
   SimmedPlayInfo,
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { RedoOutlined } from "@ant-design/icons";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const { Text, Paragraph } = Typography;
 
@@ -62,70 +71,137 @@ const mistakeLabel = (size: MistakeSize): string => {
   }
 };
 
+// ELO data points matching macondo's estimateELO function
+const ELO_DATA_POINTS = [
+  { mi: 0.0, elo: 2300 },
+  { mi: 0.2, elo: 2250 },
+  { mi: 0.5, elo: 2200 },
+  { mi: 0.8, elo: 2150 },
+  { mi: 1.2, elo: 2100 },
+  { mi: 1.5, elo: 2050 },
+  { mi: 1.7, elo: 2000 },
+  { mi: 1.9, elo: 1950 },
+  { mi: 2.3, elo: 1900 },
+  { mi: 2.6, elo: 1850 },
+  { mi: 2.9, elo: 1800 },
+  { mi: 3.3, elo: 1750 },
+  { mi: 3.8, elo: 1700 },
+  { mi: 4.2, elo: 1650 },
+];
+
+function estimateELO(mi: number): number {
+  if (mi <= 0) return 2300;
+  if (mi > 4.2) return 1650 - 125 * (mi - 4.2);
+  for (let i = 1; i < ELO_DATA_POINTS.length; i++) {
+    if (mi <= ELO_DATA_POINTS[i].mi) {
+      const lower = ELO_DATA_POINTS[i - 1];
+      const upper = ELO_DATA_POINTS[i];
+      const t = (mi - lower.mi) / (upper.mi - lower.mi);
+      return lower.elo + t * (upper.elo - lower.elo);
+    }
+  }
+  return 1650;
+}
+
+// Generate graph data points at fine resolution (Mistake Score 0 to 10)
+const ELO_GRAPH_DATA = Array.from({ length: 141 }, (_, i) => {
+  const mi = (i / 140) * 10;
+  return { mi: parseFloat(mi.toFixed(2)), elo: Math.round(estimateELO(mi)) };
+});
+
+type ELOTooltipProps = {
+  active?: boolean;
+  payload?: { value: number; payload: { mi: number } }[];
+};
+
+const ELOTooltip: React.FC<ELOTooltipProps> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const dark = localStorage.getItem("darkMode") === "true";
+  const { mi } = payload[0].payload;
+  const elo = payload[0].value;
+  return (
+    <div
+      style={{
+        background: dark ? "#3a3a3a" : "#ffffff",
+        border: `1px solid ${dark ? "#515151" : "#bebebe"}`,
+        color: dark ? "#ffffff" : "#414141",
+        borderRadius: 6,
+        padding: "4px 8px",
+        fontSize: 11,
+      }}
+    >
+      <div style={{ color: dark ? "#cccccc" : "#999999" }}>
+        Score {mi.toFixed(2)}
+      </div>
+      <div>~{elo} ELO</div>
+    </div>
+  );
+};
+
+const MIELOGraph: React.FC = () => (
+  <ResponsiveContainer width="100%" height={240}>
+    <LineChart
+      data={ELO_GRAPH_DATA}
+      margin={{ top: 4, right: 12, bottom: 20, left: 8 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis
+        dataKey="mi"
+        type="number"
+        domain={[0, 10]}
+        ticks={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+        label={{ value: "Mistake Score", position: "insideBottom", offset: -12, fontSize: 11 }}
+        tick={{ fontSize: 10 }}
+      />
+      <YAxis
+        domain={[800, 2400]}
+        ticks={[800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]}
+        tick={{ fontSize: 10 }}
+        width={38}
+      />
+      <Tooltip content={<ELOTooltip />} wrapperStyle={{ outline: "none" }} />
+      <Line
+        type="monotone"
+        dataKey="elo"
+        stroke="#1677ff"
+        dot={false}
+        strokeWidth={2}
+      />
+    </LineChart>
+  </ResponsiveContainer>
+);
+
 const MistakeIndexHelp: React.FC = () => (
   <>
     <Paragraph>
-      The <strong>Mistake Index</strong> measures the total error in a game.
+      The <strong>Mistake Score</strong> measures the total error in a game.
       Each suboptimal move earns penalty points, which are summed across all
       turns. <strong>Lower is better.</strong> A perfect game scores 0.
     </Paragraph>
 
-    <Paragraph>
-      <strong>Penalty per mistake:</strong>
+    <Table
+      size="small"
+      pagination={false}
+      dataSource={[
+        { key: "small",  size: <Tag color="blue">Small</Tag>,   penalty: "0.2", winPct: "≤ 3%",      blowout: "≤ 15 pts",  endgame: "1–7 pts" },
+        { key: "medium", size: <Tag color="orange">Medium</Tag>, penalty: "0.5", winPct: "> 3%–7%",   blowout: "16–30 pts", endgame: "8–15 pts" },
+        { key: "large",  size: <Tag color="red">Large</Tag>,    penalty: "1.0", winPct: "> 7%",       blowout: "> 30 pts",  endgame: "16+ pts, or blown EG" },
+      ]}
+      columns={[
+        { title: "Size",                          dataIndex: "size",    key: "size" },
+        { title: "Penalty",                       dataIndex: "penalty", key: "penalty" },
+        { title: <>Early/Mid<br />win%</>,         dataIndex: "winPct",  key: "winPct" },
+        { title: <>Early/Mid<br />spread†</>,      dataIndex: "blowout", key: "blowout" },
+        { title: <>Endgame /<br />Pre-EG spread</>, dataIndex: "endgame", key: "endgame" },
+      ]}
+    />
+    <Paragraph style={{ marginTop: 8, marginBottom: 0, fontSize: 11 }}>
+      † Spread thresholds apply in early/mid game only when the position is
+      already decided (win% &lt; 0.5% or &gt; 99.5%).
     </Paragraph>
-    <ul>
-      <li>
-        <Tag color="blue">Small</Tag> = 0.2 pts
-      </li>
-      <li>
-        <Tag color="orange">Medium</Tag> = 0.5 pts
-      </li>
-      <li>
-        <Tag color="red">Large</Tag> = 1.0 pts
-      </li>
-    </ul>
 
     <Paragraph>
-      <strong>Mistake thresholds — early/mid game &amp; pre-endgame</strong>{" "}
-      (based on win% loss from simulation):
-    </Paragraph>
-    <ul>
-      <li>
-        <Tag color="blue">Small</Tag> ≤ 3% win probability loss
-      </li>
-      <li>
-        <Tag color="orange">Medium</Tag> 4–7% win probability loss
-      </li>
-      <li>
-        <Tag color="red">Large</Tag> &gt; 7% win probability loss
-      </li>
-    </ul>
-
-    <Paragraph>
-      <strong>
-        Mistake thresholds — endgame &amp; pre-endgame spread tiebreak
-      </strong>{" "}
-      (based on spread loss in points):
-    </Paragraph>
-    <ul>
-      <li>
-        <Tag color="blue">Small</Tag> 1–7 points
-      </li>
-      <li>
-        <Tag color="orange">Medium</Tag> 8–15 points
-      </li>
-      <li>
-        <Tag color="red">Large</Tag> 16+ points
-      </li>
-      <li>
-        <Tag color="red">Large</Tag> Blown endgame (win turned into loss/tie),
-        regardless of spread
-      </li>
-    </ul>
-
-    <Paragraph>
-      <strong>Estimated ELO mapping:</strong> (thanks to Joey Krafchick for his
-      methodology —{" "}
+      <strong>Estimated ELO:</strong> (thanks to Joey Krafchick —{" "}
       <a
         href="https://nbaniac.com/odds-overview"
         target="_blank"
@@ -133,40 +209,11 @@ const MistakeIndexHelp: React.FC = () => (
       >
         nbaniac.com/odds-overview
       </a>
-      )
+      ) Hover for values.
     </Paragraph>
-    <table className="ca-elo-table">
-      <thead>
-        <tr>
-          <th>Mistake Index</th>
-          <th>Est. ELO</th>
-        </tr>
-      </thead>
-      <tbody>
-        {[
-          ["0.0", "2300"],
-          ["0.2", "2250"],
-          ["0.5", "2200"],
-          ["0.8", "2150"],
-          ["1.2", "2100"],
-          ["1.5", "2050"],
-          ["1.7", "2000"],
-          ["1.9", "1950"],
-          ["2.3", "1900"],
-          ["2.6", "1850"],
-          ["2.9", "1800"],
-          ["3.3", "1750"],
-          ["3.8", "1700"],
-          ["4.2", "1650"],
-          ["4.2+", "< 1650"],
-        ].map(([mi, elo]) => (
-          <tr key={mi}>
-            <td>{mi}</td>
-            <td>{elo}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="ca-elo-graph">
+      <MIELOGraph />
+    </div>
   </>
 );
 
@@ -235,6 +282,10 @@ const SimPlaysTable: React.FC<{
         ))}
       </tbody>
     </table>
+    <div className="ca-sim-note">
+      5-ply simulation; stops early when the best play is identified with 99%
+      confidence.
+    </div>
   </div>
 );
 
@@ -432,7 +483,7 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
                 ({turn.optimalScore})
               </Text>
               <Text type="danger" className="ca-score">
-                {turn.phase === GamePhase.PHASE_ENDGAME
+                {turn.phase === GamePhase.PHASE_ENDGAME || turn.winProbLoss === 0
                   ? `−${turn.spreadLoss}pts`
                   : `−${(turn.winProbLoss * 100).toFixed(1)}%`}
               </Text>
@@ -477,7 +528,7 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
         <div key={ps.playerName} className="ca-summary-player">
           <span className="ca-summary-name">{ps.playerName}</span>
           <span className="ca-summary-mi">
-            MI <strong>{ps.mistakeIndex.toFixed(1)}</strong>
+            Mistakes <strong>{ps.mistakeIndex.toFixed(1)}</strong>
           </span>
           {ps.estimatedElo > 0 && (
             <span className="ca-summary-elo">
@@ -489,8 +540,8 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
       <button
         className="ca-help-btn"
         onClick={() => setHelpOpen(true)}
-        title="About Mistake Index"
-        aria-label="About Mistake Index"
+        title="About Mistake Score"
+        aria-label="About Mistake Score"
       >
         <QuestionCircleOutlined />
       </button>
@@ -500,11 +551,11 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
   return (
     <>
       <Modal
-        title="About Mistake Index"
+        title="About Mistake Score"
         open={helpOpen}
         onCancel={() => setHelpOpen(false)}
         footer={null}
-        width={480}
+        width={680}
       >
         <MistakeIndexHelp />
       </Modal>
