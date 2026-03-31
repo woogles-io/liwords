@@ -638,7 +638,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     if (!gameDone || !gameID) {
       setShowComputerAnalysis(false);
     }
-  }, [gameDone, gameID]);
+  }, [gameDone, gameID, setShowComputerAnalysis]);
 
   const requestAnalysisMutation = useMutation(requestBestBotAnalysis, {
     onSuccess: async (resp) => {
@@ -736,7 +736,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       });
     }
     // Pending/Processing: button is disabled, no action needed
-  }, [analysisStatus, handleRequestAnalysis, modal]);
+  }, [analysisStatus, handleRequestAnalysis, modal, setShowComputerAnalysis]);
 
   const placeMove = usePlaceMoveCallback();
 

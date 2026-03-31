@@ -44,7 +44,11 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { endGameMessageFromGameInfo } from "../store/end_of_game";
 import { Notepad, NotepadContextProvider } from "./notepad";
-import { Analyzer, AnalyzerContextProvider, useAnalyzerContext } from "./analyzer";
+import {
+  Analyzer,
+  AnalyzerContextProvider,
+  useAnalyzerContext,
+} from "./analyzer";
 import { isClubType, isPairedMode, sortTiles } from "../store/constants";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isMobile } from "../utils/cwgame/common";
