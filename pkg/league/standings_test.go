@@ -224,6 +224,9 @@ func (m *mockLeagueStore) GetLeagueRoster(ctx context.Context, leagueID uuid.UUI
 func (m *mockLeagueStore) GetPlayerLeagueH2H(ctx context.Context, arg models.GetPlayerLeagueH2HParams) ([]models.GetPlayerLeagueH2HRow, error) {
 	return nil, nil
 }
+func (m *mockLeagueStore) GetPlayerLeagueH2HPerSeason(ctx context.Context, arg models.GetPlayerLeagueH2HPerSeasonParams) ([]models.GetPlayerLeagueH2HPerSeasonRow, error) {
+	return nil, nil
+}
 func (m *mockLeagueStore) GetPlayerStanding(ctx context.Context, arg models.GetPlayerStandingParams) (models.LeagueStanding, error) {
 	divStandings := m.standings[arg.DivisionID]
 	for _, s := range divStandings {
