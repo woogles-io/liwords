@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/vendored/macondo/macondo.proto.
  */
 export const file_proto_vendored_macondo_macondo: GenFile = /*@__PURE__*/
-  fileDesc("CiRwcm90by92ZW5kb3JlZC9tYWNvbmRvL21hY29uZG8ucHJvdG8SB21hY29uZG8i4gMKC0dhbWVIaXN0b3J5EiIKBmV2ZW50cxgBIAMoCzISLm1hY29uZG8uR2FtZUV2ZW50EiQKB3BsYXllcnMYAiADKAsyEy5tYWNvbmRvLlBsYXllckluZm8SDwoHdmVyc2lvbhgDIAEoBRIUCgxvcmlnaW5hbF9nY2cYBCABKAkSDwoHbGV4aWNvbhgFIAEoCRIPCgdpZF9hdXRoGAYgASgJEgsKA3VpZBgHIAEoCRINCgV0aXRsZRgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIYChBsYXN0X2tub3duX3JhY2tzGAogAygJEh0KEXNlY29uZF93ZW50X2ZpcnN0GAsgASgIQgIYARIuCg5jaGFsbGVuZ2VfcnVsZRgMIAEoDjIWLm1hY29uZG8uQ2hhbGxlbmdlUnVsZRImCgpwbGF5X3N0YXRlGA0gASgOMhIubWFjb25kby5QbGF5U3RhdGUSFAoMZmluYWxfc2NvcmVzGA4gAygFEg8KB3ZhcmlhbnQYDyABKAkSDgoGd2lubmVyGBAgASgFEhQKDGJvYXJkX2xheW91dBgRIAEoCRIbChNsZXR0ZXJfZGlzdHJpYnV0aW9uGBIgASgJEhQKDHN0YXJ0aW5nX2NncBgTIAEoCSLEBQoJR2FtZUV2ZW50EhQKCG5pY2tuYW1lGAEgASgJQgIYARIMCgRub3RlGAIgASgJEgwKBHJhY2sYAyABKAkSJQoEdHlwZRgEIAEoDjIXLm1hY29uZG8uR2FtZUV2ZW50LlR5cGUSEgoKY3VtdWxhdGl2ZRgFIAEoBRILCgNyb3cYBiABKAUSDgoGY29sdW1uGAcgASgFEi8KCWRpcmVjdGlvbhgIIAEoDjIcLm1hY29uZG8uR2FtZUV2ZW50LkRpcmVjdGlvbhIQCghwb3NpdGlvbhgJIAEoCRIUCgxwbGF5ZWRfdGlsZXMYCiABKAkSEQoJZXhjaGFuZ2VkGAsgASgJEg0KBXNjb3JlGAwgASgFEg0KBWJvbnVzGA0gASgFEhcKD2VuZF9yYWNrX3BvaW50cxgOIAEoBRISCgpsb3N0X3Njb3JlGA8gASgFEhAKCGlzX2JpbmdvGBAgASgIEhQKDHdvcmRzX2Zvcm1lZBgRIAMoCRIYChBtaWxsaXNfcmVtYWluaW5nGBIgASgFEhQKDHBsYXllcl9pbmRleBgTIAEoDRIbChNudW1fdGlsZXNfZnJvbV9yYWNrGBQgASgNItUBCgRUeXBlEhcKE1RJTEVfUExBQ0VNRU5UX01PVkUQABIYChRQSE9OWV9USUxFU19SRVRVUk5FRBABEggKBFBBU1MQAhITCg9DSEFMTEVOR0VfQk9OVVMQAxIMCghFWENIQU5HRRAEEhAKDEVORF9SQUNLX1BUUxAFEhAKDFRJTUVfUEVOQUxUWRAGEhQKEEVORF9SQUNLX1BFTkFMVFkQBxIkCiBVTlNVQ0NFU1NGVUxfQ0hBTExFTkdFX1RVUk5fTE9TUxAIEg0KCUNIQUxMRU5HRRAJIikKCURpcmVjdGlvbhIOCgpIT1JJWk9OVEFMEAASDAoIVkVSVElDQUwQASJCCgpQbGF5ZXJJbmZvEhAKCG5pY2tuYW1lGAEgASgJEhEKCXJlYWxfbmFtZRgCIAEoCRIPCgd1c2VyX2lkGAMgASgJIokFCgpCb3RSZXF1ZXN0EioKDGdhbWVfaGlzdG9yeRgBIAEoCzIULm1hY29uZG8uR2FtZUhpc3RvcnkSNgoSZXZhbHVhdGlvbl9yZXF1ZXN0GAIgASgLMhoubWFjb25kby5FdmFsdWF0aW9uUmVxdWVzdBItCghib3RfdHlwZRgDIAEoDjIbLm1hY29uZG8uQm90UmVxdWVzdC5Cb3RDb2RlEhgKEG1pbGxpc19yZW1haW5pbmcYBCABKAUizQMKB0JvdENvZGUSDQoJSEFTVFlfQk9UEAASGgoWTEVWRUwxX0NPTU1PTl9XT1JEX0JPVBABEhoKFkxFVkVMMl9DT01NT05fV09SRF9CT1QQAhIaChZMRVZFTDNfQ09NTU9OX1dPUkRfQk9UEAMSGgoWTEVWRUw0X0NPTU1PTl9XT1JEX0JPVBAEEhgKFExFVkVMMV9QUk9CQUJJTElTVElDEAUSGAoUTEVWRUwyX1BST0JBQklMSVNUSUMQBhIYChRMRVZFTDNfUFJPQkFCSUxJU1RJQxAHEhgKFExFVkVMNF9QUk9CQUJJTElTVElDEAgSGAoUTEVWRUw1X1BST0JBQklMSVNUSUMQCRIQCgxOT19MRUFWRV9CT1QQChIPCgtTSU1NSU5HX0JPVBALEhoKFkhBU1RZX1BMVVNfRU5ER0FNRV9CT1QQDBIVChFTSU1NSU5HX0lORkVSX0JPVBANEg8KC0ZBU1RfTUxfQk9UEA4SHwobUkFORE9NX0JPVF9XSVRIX1RFTVBFUkFUVVJFEA8SHAoYU0lNTUlOR19XSVRIX01MX0VWQUxfQk9UEBASDgoKQ1VTVE9NX0JPVBAUEgsKB1VOS05PV04QZCIhChFFdmFsdWF0aW9uUmVxdWVzdBIMCgR1c2VyGAEgASgJIjoKCkV2YWx1YXRpb24SLAoJcGxheV9ldmFsGAEgAygLMhkubWFjb25kby5TaW5nbGVFdmFsdWF0aW9uIp8BChBTaW5nbGVFdmFsdWF0aW9uEhMKC2VxdWl0eV9sb3NzGAEgASgBEhQKDHdpbl9wY3RfbG9zcxgCIAEoARIUCgxtaXNzZWRfYmluZ28YAyABKAgSGgoScG9zc2libGVfc3Rhcl9wbGF5GAQgASgIEhgKEG1pc3NlZF9zdGFyX3BsYXkYBSABKAgSFAoMdG9wX2lzX2JpbmdvGAYgASgIIoIBCgtCb3RSZXNwb25zZRIiCgRtb3ZlGAEgASgLMhIubWFjb25kby5HYW1lRXZlbnRIABIPCgVlcnJvchgCIAEoCUgAEiEKBGV2YWwYAyABKAsyEy5tYWNvbmRvLkV2YWx1YXRpb24SDwoHZ2FtZV9pZBgEIAEoCUIKCghyZXNwb25zZSKaAQoWUHV6emxlQ3JlYXRpb25SZXNwb25zZRIPCgdnYW1lX2lkGAEgASgJEhMKC3R1cm5fbnVtYmVyGAIgASgFEiIKBmFuc3dlchgDIAEoCzISLm1hY29uZG8uR2FtZUV2ZW50EiAKBHRhZ3MYBCADKA4yEi5tYWNvbmRvLlB1enpsZVRhZxIUCgxidWNrZXRfaW5kZXgYBSABKAUidwoMUHV6emxlQnVja2V0Eg0KBWluZGV4GAEgASgFEgwKBHNpemUYAiABKAUSJAoIaW5jbHVkZXMYAyADKA4yEi5tYWNvbmRvLlB1enpsZVRhZxIkCghleGNsdWRlcxgEIAMoDjISLm1hY29uZG8uUHV6emxlVGFnIkEKF1B1enpsZUdlbmVyYXRpb25SZXF1ZXN0EiYKB2J1Y2tldHMYASADKAsyFS5tYWNvbmRvLlB1enpsZUJ1Y2tldCJsChJHYW1lQW5hbHlzaXNSZXN1bHQSJAoFdHVybnMYASADKAsyFS5tYWNvbmRvLlR1cm5BbmFseXNpcxIwChBwbGF5ZXJfc3VtbWFyaWVzGAIgAygLMhYubWFjb25kby5QbGF5ZXJTdW1tYXJ5IpgECgxUdXJuQW5hbHlzaXMSEwoLdHVybl9udW1iZXIYASABKAUSFAoMcGxheWVyX2luZGV4GAIgASgFEhMKC3BsYXllcl9uYW1lGAMgASgJEgwKBHJhY2sYBCABKAkSIQoFcGhhc2UYBSABKA4yEi5tYWNvbmRvLkdhbWVQaGFzZRIUCgx0aWxlc19pbl9iYWcYBiABKAUSEwoLcGxheWVkX21vdmUYByABKAkSFAoMcGxheWVkX3Njb3JlGAggASgFEhQKDG9wdGltYWxfbW92ZRgJIAEoCRIVCg1vcHRpbWFsX3Njb3JlGAogASgFEhUKDXdpbl9wcm9iX2xvc3MYCyABKAESEwoLc3ByZWFkX2xvc3MYDCABKAUSEwoLd2FzX29wdGltYWwYDSABKAgSKgoMbWlzdGFrZV9zaXplGA4gASgOMhQubWFjb25kby5NaXN0YWtlU2l6ZRIVCg1ibG93bl9lbmRnYW1lGA8gASgIEhAKCGlzX3Bob255GBAgASgIEhgKEHBob255X2NoYWxsZW5nZWQYESABKAgSGAoQbWlzc2VkX2NoYWxsZW5nZRgSIAEoCBIYChBvcHRpbWFsX2lzX2JpbmdvGBMgASgIEhcKD3BsYXllZF9pc19iaW5nbxgUIAEoCBIUCgxtaXNzZWRfYmluZ28YFSABKAgSFgoOa25vd25fb3BwX3JhY2sYFiABKAkirQIKDVBsYXllclN1bW1hcnkSEwoLcGxheWVyX25hbWUYASABKAkSFAoMdHVybnNfcGxheWVkGAIgASgFEhUKDW9wdGltYWxfbW92ZXMYAyABKAUSGQoRYXZnX3dpbl9wcm9iX2xvc3MYBCABKAESFwoPYXZnX3NwcmVhZF9sb3NzGAUgASgBEhYKDnNtYWxsX21pc3Rha2VzGAYgASgFEhcKD21lZGl1bV9taXN0YWtlcxgHIAEoBRIWCg5sYXJnZV9taXN0YWtlcxgIIAEoBRIVCg1taXN0YWtlX2luZGV4GAkgASgBEhUKDWVzdGltYXRlZF9lbG8YCiABKAESGAoQYXZhaWxhYmxlX2JpbmdvcxgLIAEoBRIVCg1taXNzZWRfYmluZ29zGAwgASgFKkMKCVBsYXlTdGF0ZRILCgdQTEFZSU5HEAASGgoWV0FJVElOR19GT1JfRklOQUxfUEFTUxABEg0KCUdBTUVfT1ZFUhACKlwKDUNoYWxsZW5nZVJ1bGUSCAoEVk9JRBAAEgoKBlNJTkdMRRABEgoKBkRPVUJMRRACEg4KCkZJVkVfUE9JTlQQAxINCglURU5fUE9JTlQQBBIKCgZUUklQTEUQBSqJAQoJUHV6emxlVGFnEgoKBkVRVUlUWRAAEgkKBUJJTkdPEAESDgoKT05MWV9CSU5HTxACEg8KC0JMQU5LX0JJTkdPEAMSDQoJTk9OX0JJTkdPEAQSDgoKUE9XRVJfVElMRRAFEhcKE0JJTkdPX05JTkVfT1JfQUJPVkUQBhIMCghDRUxfT05MWRAHKmUKCUdhbWVQaGFzZRITCg9QSEFTRV9FQVJMWV9NSUQQABIaChZQSEFTRV9FQVJMWV9QUkVFTkRHQU1FEAESFAoQUEhBU0VfUFJFRU5ER0FNRRACEhEKDVBIQVNFX0VOREdBTUUQAyo/CgtNaXN0YWtlU2l6ZRIOCgpOT19NSVNUQUtFEAASCQoFU01BTEwQARIKCgZNRURJVU0QAhIJCgVMQVJHRRADQjNaMWdpdGh1Yi5jb20vZG9taW5vMTQvbWFjb25kby9nZW4vYXBpL3Byb3RvL21hY29uZG9iBnByb3RvMw");
+  fileDesc("CiRwcm90by92ZW5kb3JlZC9tYWNvbmRvL21hY29uZG8ucHJvdG8SB21hY29uZG8i4gMKC0dhbWVIaXN0b3J5EiIKBmV2ZW50cxgBIAMoCzISLm1hY29uZG8uR2FtZUV2ZW50EiQKB3BsYXllcnMYAiADKAsyEy5tYWNvbmRvLlBsYXllckluZm8SDwoHdmVyc2lvbhgDIAEoBRIUCgxvcmlnaW5hbF9nY2cYBCABKAkSDwoHbGV4aWNvbhgFIAEoCRIPCgdpZF9hdXRoGAYgASgJEgsKA3VpZBgHIAEoCRINCgV0aXRsZRgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIYChBsYXN0X2tub3duX3JhY2tzGAogAygJEh0KEXNlY29uZF93ZW50X2ZpcnN0GAsgASgIQgIYARIuCg5jaGFsbGVuZ2VfcnVsZRgMIAEoDjIWLm1hY29uZG8uQ2hhbGxlbmdlUnVsZRImCgpwbGF5X3N0YXRlGA0gASgOMhIubWFjb25kby5QbGF5U3RhdGUSFAoMZmluYWxfc2NvcmVzGA4gAygFEg8KB3ZhcmlhbnQYDyABKAkSDgoGd2lubmVyGBAgASgFEhQKDGJvYXJkX2xheW91dBgRIAEoCRIbChNsZXR0ZXJfZGlzdHJpYnV0aW9uGBIgASgJEhQKDHN0YXJ0aW5nX2NncBgTIAEoCSLEBQoJR2FtZUV2ZW50EhQKCG5pY2tuYW1lGAEgASgJQgIYARIMCgRub3RlGAIgASgJEgwKBHJhY2sYAyABKAkSJQoEdHlwZRgEIAEoDjIXLm1hY29uZG8uR2FtZUV2ZW50LlR5cGUSEgoKY3VtdWxhdGl2ZRgFIAEoBRILCgNyb3cYBiABKAUSDgoGY29sdW1uGAcgASgFEi8KCWRpcmVjdGlvbhgIIAEoDjIcLm1hY29uZG8uR2FtZUV2ZW50LkRpcmVjdGlvbhIQCghwb3NpdGlvbhgJIAEoCRIUCgxwbGF5ZWRfdGlsZXMYCiABKAkSEQoJZXhjaGFuZ2VkGAsgASgJEg0KBXNjb3JlGAwgASgFEg0KBWJvbnVzGA0gASgFEhcKD2VuZF9yYWNrX3BvaW50cxgOIAEoBRISCgpsb3N0X3Njb3JlGA8gASgFEhAKCGlzX2JpbmdvGBAgASgIEhQKDHdvcmRzX2Zvcm1lZBgRIAMoCRIYChBtaWxsaXNfcmVtYWluaW5nGBIgASgFEhQKDHBsYXllcl9pbmRleBgTIAEoDRIbChNudW1fdGlsZXNfZnJvbV9yYWNrGBQgASgNItUBCgRUeXBlEhcKE1RJTEVfUExBQ0VNRU5UX01PVkUQABIYChRQSE9OWV9USUxFU19SRVRVUk5FRBABEggKBFBBU1MQAhITCg9DSEFMTEVOR0VfQk9OVVMQAxIMCghFWENIQU5HRRAEEhAKDEVORF9SQUNLX1BUUxAFEhAKDFRJTUVfUEVOQUxUWRAGEhQKEEVORF9SQUNLX1BFTkFMVFkQBxIkCiBVTlNVQ0NFU1NGVUxfQ0hBTExFTkdFX1RVUk5fTE9TUxAIEg0KCUNIQUxMRU5HRRAJIikKCURpcmVjdGlvbhIOCgpIT1JJWk9OVEFMEAASDAoIVkVSVElDQUwQASJCCgpQbGF5ZXJJbmZvEhAKCG5pY2tuYW1lGAEgASgJEhEKCXJlYWxfbmFtZRgCIAEoCRIPCgd1c2VyX2lkGAMgASgJIokFCgpCb3RSZXF1ZXN0EioKDGdhbWVfaGlzdG9yeRgBIAEoCzIULm1hY29uZG8uR2FtZUhpc3RvcnkSNgoSZXZhbHVhdGlvbl9yZXF1ZXN0GAIgASgLMhoubWFjb25kby5FdmFsdWF0aW9uUmVxdWVzdBItCghib3RfdHlwZRgDIAEoDjIbLm1hY29uZG8uQm90UmVxdWVzdC5Cb3RDb2RlEhgKEG1pbGxpc19yZW1haW5pbmcYBCABKAUizQMKB0JvdENvZGUSDQoJSEFTVFlfQk9UEAASGgoWTEVWRUwxX0NPTU1PTl9XT1JEX0JPVBABEhoKFkxFVkVMMl9DT01NT05fV09SRF9CT1QQAhIaChZMRVZFTDNfQ09NTU9OX1dPUkRfQk9UEAMSGgoWTEVWRUw0X0NPTU1PTl9XT1JEX0JPVBAEEhgKFExFVkVMMV9QUk9CQUJJTElTVElDEAUSGAoUTEVWRUwyX1BST0JBQklMSVNUSUMQBhIYChRMRVZFTDNfUFJPQkFCSUxJU1RJQxAHEhgKFExFVkVMNF9QUk9CQUJJTElTVElDEAgSGAoUTEVWRUw1X1BST0JBQklMSVNUSUMQCRIQCgxOT19MRUFWRV9CT1QQChIPCgtTSU1NSU5HX0JPVBALEhoKFkhBU1RZX1BMVVNfRU5ER0FNRV9CT1QQDBIVChFTSU1NSU5HX0lORkVSX0JPVBANEg8KC0ZBU1RfTUxfQk9UEA4SHwobUkFORE9NX0JPVF9XSVRIX1RFTVBFUkFUVVJFEA8SHAoYU0lNTUlOR19XSVRIX01MX0VWQUxfQk9UEBASDgoKQ1VTVE9NX0JPVBAUEgsKB1VOS05PV04QZCIhChFFdmFsdWF0aW9uUmVxdWVzdBIMCgR1c2VyGAEgASgJIjoKCkV2YWx1YXRpb24SLAoJcGxheV9ldmFsGAEgAygLMhkubWFjb25kby5TaW5nbGVFdmFsdWF0aW9uIp8BChBTaW5nbGVFdmFsdWF0aW9uEhMKC2VxdWl0eV9sb3NzGAEgASgBEhQKDHdpbl9wY3RfbG9zcxgCIAEoARIUCgxtaXNzZWRfYmluZ28YAyABKAgSGgoScG9zc2libGVfc3Rhcl9wbGF5GAQgASgIEhgKEG1pc3NlZF9zdGFyX3BsYXkYBSABKAgSFAoMdG9wX2lzX2JpbmdvGAYgASgIIoIBCgtCb3RSZXNwb25zZRIiCgRtb3ZlGAEgASgLMhIubWFjb25kby5HYW1lRXZlbnRIABIPCgVlcnJvchgCIAEoCUgAEiEKBGV2YWwYAyABKAsyEy5tYWNvbmRvLkV2YWx1YXRpb24SDwoHZ2FtZV9pZBgEIAEoCUIKCghyZXNwb25zZSKaAQoWUHV6emxlQ3JlYXRpb25SZXNwb25zZRIPCgdnYW1lX2lkGAEgASgJEhMKC3R1cm5fbnVtYmVyGAIgASgFEiIKBmFuc3dlchgDIAEoCzISLm1hY29uZG8uR2FtZUV2ZW50EiAKBHRhZ3MYBCADKA4yEi5tYWNvbmRvLlB1enpsZVRhZxIUCgxidWNrZXRfaW5kZXgYBSABKAUidwoMUHV6emxlQnVja2V0Eg0KBWluZGV4GAEgASgFEgwKBHNpemUYAiABKAUSJAoIaW5jbHVkZXMYAyADKA4yEi5tYWNvbmRvLlB1enpsZVRhZxIkCghleGNsdWRlcxgEIAMoDjISLm1hY29uZG8uUHV6emxlVGFnIkEKF1B1enpsZUdlbmVyYXRpb25SZXF1ZXN0EiYKB2J1Y2tldHMYASADKAsyFS5tYWNvbmRvLlB1enpsZUJ1Y2tldCKSAgoOU2ltbWVkUGxheUluZm8SGAoQbW92ZV9kZXNjcmlwdGlvbhgBIAEoCRINCgVzY29yZRgCIAEoBRINCgVsZWF2ZRgDIAEoCRIQCghpc19iaW5nbxgEIAEoCBIQCgh3aW5fcHJvYhgFIAEoARIXCg93aW5fcHJvYl9zdGRlcnIYBiABKAESDgoGZXF1aXR5GAcgASgBEhUKDWVxdWl0eV9zdGRlcnIYCCABKAESJAoJcGx5X3N0YXRzGAkgAygLMhEubWFjb25kby5QbHlTdGF0cxIWCg5pc19wbGF5ZWRfbW92ZRgKIAEoCBISCgppdGVyYXRpb25zGAsgASgFEhIKCmlzX2lnbm9yZWQYDCABKAgiUwoIUGx5U3RhdHMSCwoDcGx5GAEgASgFEhIKCnNjb3JlX21lYW4YAiABKAESEwoLc2NvcmVfc3RkZXYYAyABKAESEQoJYmluZ29fcGN0GAQgASgBIugBCgtQRUdQbGF5SW5mbxIYChBtb3ZlX2Rlc2NyaXB0aW9uGAEgASgJEg0KBXNjb3JlGAIgASgFEg0KBWxlYXZlGAMgASgJEhAKCGlzX2JpbmdvGAQgASgIEhAKCHdpbl9wcm9iGAUgASgBEikKCG91dGNvbWVzGAYgAygLMhcubWFjb25kby5QRUdPdXRjb21lSW5mbxISCgpoYXNfc3ByZWFkGAcgASgIEhIKCmF2Z19zcHJlYWQYCCABKAESFgoOaXNfcGxheWVkX21vdmUYCSABKAgSEgoKaXNfaWdub3JlZBgKIAEoCCJYCg5QRUdPdXRjb21lSW5mbxINCgV0aWxlcxgBIAEoCRIoCgdvdXRjb21lGAIgASgOMhcubWFjb25kby5QRUdPdXRjb21lVHlwZRINCgVjb3VudBgDIAEoBSJNChBFbmRnYW1lVmFyaWF0aW9uEiMKBW1vdmVzGAEgAygLMhQubWFjb25kby5FbmRnYW1lTW92ZRIUCgxmaW5hbF9zcHJlYWQYAiABKAUiSwoLRW5kZ2FtZU1vdmUSGAoQbW92ZV9kZXNjcmlwdGlvbhgBIAEoCRINCgVzY29yZRgCIAEoBRITCgttb3ZlX251bWJlchgDIAEoBSKgAQoSR2FtZUFuYWx5c2lzUmVzdWx0EiQKBXR1cm5zGAEgAygLMhUubWFjb25kby5UdXJuQW5hbHlzaXMSMAoQcGxheWVyX3N1bW1hcmllcxgCIAMoCzIWLm1hY29uZG8uUGxheWVyU3VtbWFyeRIYChBhbmFseXNpc192ZXJzaW9uGAMgASgFEhgKEGFuYWx5emVyX3ZlcnNpb24YBCABKAki+gUKDFR1cm5BbmFseXNpcxITCgt0dXJuX251bWJlchgBIAEoBRIUCgxwbGF5ZXJfaW5kZXgYAiABKAUSEwoLcGxheWVyX25hbWUYAyABKAkSDAoEcmFjaxgEIAEoCRIhCgVwaGFzZRgFIAEoDjISLm1hY29uZG8uR2FtZVBoYXNlEhQKDHRpbGVzX2luX2JhZxgGIAEoBRITCgtwbGF5ZWRfbW92ZRgHIAEoCRIUCgxwbGF5ZWRfc2NvcmUYCCABKAUSFAoMb3B0aW1hbF9tb3ZlGAkgASgJEhUKDW9wdGltYWxfc2NvcmUYCiABKAUSFQoNd2luX3Byb2JfbG9zcxgLIAEoARITCgtzcHJlYWRfbG9zcxgMIAEoBRITCgt3YXNfb3B0aW1hbBgNIAEoCBIqCgxtaXN0YWtlX3NpemUYDiABKA4yFC5tYWNvbmRvLk1pc3Rha2VTaXplEhUKDWJsb3duX2VuZGdhbWUYDyABKAgSEAoIaXNfcGhvbnkYECABKAgSGAoQcGhvbnlfY2hhbGxlbmdlZBgRIAEoCBIYChBtaXNzZWRfY2hhbGxlbmdlGBIgASgIEhgKEG9wdGltYWxfaXNfYmluZ28YEyABKAgSFwoPcGxheWVkX2lzX2JpbmdvGBQgASgIEhQKDG1pc3NlZF9iaW5nbxgVIAEoCBIuCg10b3Bfc2ltX3BsYXlzGBYgAygLMhcubWFjb25kby5TaW1tZWRQbGF5SW5mbxIrCg10b3BfcGVnX3BsYXlzGBcgAygLMhQubWFjb25kby5QRUdQbGF5SW5mbxI2ChNwcmluY2lwYWxfdmFyaWF0aW9uGBggASgLMhkubWFjb25kby5FbmRnYW1lVmFyaWF0aW9uEjMKEG90aGVyX3ZhcmlhdGlvbnMYGSADKAsyGS5tYWNvbmRvLkVuZGdhbWVWYXJpYXRpb24SFgoOc2ltX2l0ZXJhdGlvbnMYGiABKAUSFgoOa25vd25fb3BwX3JhY2sYGyABKAkirQIKDVBsYXllclN1bW1hcnkSEwoLcGxheWVyX25hbWUYASABKAkSFAoMdHVybnNfcGxheWVkGAIgASgFEhUKDW9wdGltYWxfbW92ZXMYAyABKAUSGQoRYXZnX3dpbl9wcm9iX2xvc3MYBCABKAESFwoPYXZnX3NwcmVhZF9sb3NzGAUgASgBEhYKDnNtYWxsX21pc3Rha2VzGAYgASgFEhcKD21lZGl1bV9taXN0YWtlcxgHIAEoBRIWCg5sYXJnZV9taXN0YWtlcxgIIAEoBRIVCg1taXN0YWtlX2luZGV4GAkgASgBEhUKDWVzdGltYXRlZF9lbG8YCiABKAESGAoQYXZhaWxhYmxlX2JpbmdvcxgLIAEoBRIVCg1taXNzZWRfYmluZ29zGAwgASgFKkMKCVBsYXlTdGF0ZRILCgdQTEFZSU5HEAASGgoWV0FJVElOR19GT1JfRklOQUxfUEFTUxABEg0KCUdBTUVfT1ZFUhACKlwKDUNoYWxsZW5nZVJ1bGUSCAoEVk9JRBAAEgoKBlNJTkdMRRABEgoKBkRPVUJMRRACEg4KCkZJVkVfUE9JTlQQAxINCglURU5fUE9JTlQQBBIKCgZUUklQTEUQBSqJAQoJUHV6emxlVGFnEgoKBkVRVUlUWRAAEgkKBUJJTkdPEAESDgoKT05MWV9CSU5HTxACEg8KC0JMQU5LX0JJTkdPEAMSDQoJTk9OX0JJTkdPEAQSDgoKUE9XRVJfVElMRRAFEhcKE0JJTkdPX05JTkVfT1JfQUJPVkUQBhIMCghDRUxfT05MWRAHKmoKDlBFR091dGNvbWVUeXBlEhcKE1BFR19PVVRDT01FX1VOS05PV04QABITCg9QRUdfT1VUQ09NRV9XSU4QARIUChBQRUdfT1VUQ09NRV9EUkFXEAISFAoQUEVHX09VVENPTUVfTE9TUxADKmUKCUdhbWVQaGFzZRITCg9QSEFTRV9FQVJMWV9NSUQQABIaChZQSEFTRV9FQVJMWV9QUkVFTkRHQU1FEAESFAoQUEhBU0VfUFJFRU5ER0FNRRACEhEKDVBIQVNFX0VOREdBTUUQAyo/CgtNaXN0YWtlU2l6ZRIOCgpOT19NSVNUQUtFEAASCQoFU01BTEwQARIKCgZNRURJVU0QAhIJCgVMQVJHRRADQjNaMWdpdGh1Yi5jb20vZG9taW5vMTQvbWFjb25kby9nZW4vYXBpL3Byb3RvL21hY29uZG9iBnByb3RvMw");
 
 /**
  * GameHistory encodes a whole history of a game, and it should also encode
@@ -752,6 +752,260 @@ export const PuzzleGenerationRequestSchema: GenMessage<PuzzleGenerationRequest> 
   messageDesc(file_proto_vendored_macondo_macondo, 10);
 
 /**
+ * SimmedPlayInfo holds per-play statistics from Monte Carlo simulation
+ *
+ * @generated from message macondo.SimmedPlayInfo
+ */
+export type SimmedPlayInfo = Message<"macondo.SimmedPlayInfo"> & {
+  /**
+   * @generated from field: string move_description = 1;
+   */
+  moveDescription: string;
+
+  /**
+   * @generated from field: int32 score = 2;
+   */
+  score: number;
+
+  /**
+   * @generated from field: string leave = 3;
+   */
+  leave: string;
+
+  /**
+   * @generated from field: bool is_bingo = 4;
+   */
+  isBingo: boolean;
+
+  /**
+   * @generated from field: double win_prob = 5;
+   */
+  winProb: number;
+
+  /**
+   * @generated from field: double win_prob_stderr = 6;
+   */
+  winProbStderr: number;
+
+  /**
+   * @generated from field: double equity = 7;
+   */
+  equity: number;
+
+  /**
+   * @generated from field: double equity_stderr = 8;
+   */
+  equityStderr: number;
+
+  /**
+   * @generated from field: repeated macondo.PlyStats ply_stats = 9;
+   */
+  plyStats: PlyStats[];
+
+  /**
+   * @generated from field: bool is_played_move = 10;
+   */
+  isPlayedMove: boolean;
+
+  /**
+   * @generated from field: int32 iterations = 11;
+   */
+  iterations: number;
+
+  /**
+   * @generated from field: bool is_ignored = 12;
+   */
+  isIgnored: boolean;
+};
+
+/**
+ * Describes the message macondo.SimmedPlayInfo.
+ * Use `create(SimmedPlayInfoSchema)` to create a new message.
+ */
+export const SimmedPlayInfoSchema: GenMessage<SimmedPlayInfo> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 11);
+
+/**
+ * PlyStats holds per-ply score and bingo statistics for a simmed play
+ *
+ * @generated from message macondo.PlyStats
+ */
+export type PlyStats = Message<"macondo.PlyStats"> & {
+  /**
+   * @generated from field: int32 ply = 1;
+   */
+  ply: number;
+
+  /**
+   * @generated from field: double score_mean = 2;
+   */
+  scoreMean: number;
+
+  /**
+   * @generated from field: double score_stdev = 3;
+   */
+  scoreStdev: number;
+
+  /**
+   * @generated from field: double bingo_pct = 4;
+   */
+  bingoPct: number;
+};
+
+/**
+ * Describes the message macondo.PlyStats.
+ * Use `create(PlyStatsSchema)` to create a new message.
+ */
+export const PlyStatsSchema: GenMessage<PlyStats> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 12);
+
+/**
+ * PEGPlayInfo holds per-play statistics from the pre-endgame solver
+ *
+ * @generated from message macondo.PEGPlayInfo
+ */
+export type PEGPlayInfo = Message<"macondo.PEGPlayInfo"> & {
+  /**
+   * @generated from field: string move_description = 1;
+   */
+  moveDescription: string;
+
+  /**
+   * @generated from field: int32 score = 2;
+   */
+  score: number;
+
+  /**
+   * @generated from field: string leave = 3;
+   */
+  leave: string;
+
+  /**
+   * @generated from field: bool is_bingo = 4;
+   */
+  isBingo: boolean;
+
+  /**
+   * @generated from field: double win_prob = 5;
+   */
+  winProb: number;
+
+  /**
+   * @generated from field: repeated macondo.PEGOutcomeInfo outcomes = 6;
+   */
+  outcomes: PEGOutcomeInfo[];
+
+  /**
+   * @generated from field: bool has_spread = 7;
+   */
+  hasSpread: boolean;
+
+  /**
+   * @generated from field: double avg_spread = 8;
+   */
+  avgSpread: number;
+
+  /**
+   * @generated from field: bool is_played_move = 9;
+   */
+  isPlayedMove: boolean;
+
+  /**
+   * @generated from field: bool is_ignored = 10;
+   */
+  isIgnored: boolean;
+};
+
+/**
+ * Describes the message macondo.PEGPlayInfo.
+ * Use `create(PEGPlayInfoSchema)` to create a new message.
+ */
+export const PEGPlayInfoSchema: GenMessage<PEGPlayInfo> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 13);
+
+/**
+ * PEGOutcomeInfo holds the outcome for a specific tile draw in PEG analysis
+ *
+ * @generated from message macondo.PEGOutcomeInfo
+ */
+export type PEGOutcomeInfo = Message<"macondo.PEGOutcomeInfo"> & {
+  /**
+   * @generated from field: string tiles = 1;
+   */
+  tiles: string;
+
+  /**
+   * @generated from field: macondo.PEGOutcomeType outcome = 2;
+   */
+  outcome: PEGOutcomeType;
+
+  /**
+   * @generated from field: int32 count = 3;
+   */
+  count: number;
+};
+
+/**
+ * Describes the message macondo.PEGOutcomeInfo.
+ * Use `create(PEGOutcomeInfoSchema)` to create a new message.
+ */
+export const PEGOutcomeInfoSchema: GenMessage<PEGOutcomeInfo> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 14);
+
+/**
+ * EndgameVariation holds a move sequence from endgame analysis
+ *
+ * @generated from message macondo.EndgameVariation
+ */
+export type EndgameVariation = Message<"macondo.EndgameVariation"> & {
+  /**
+   * @generated from field: repeated macondo.EndgameMove moves = 1;
+   */
+  moves: EndgameMove[];
+
+  /**
+   * @generated from field: int32 final_spread = 2;
+   */
+  finalSpread: number;
+};
+
+/**
+ * Describes the message macondo.EndgameVariation.
+ * Use `create(EndgameVariationSchema)` to create a new message.
+ */
+export const EndgameVariationSchema: GenMessage<EndgameVariation> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 15);
+
+/**
+ * EndgameMove is a single move within an endgame variation
+ *
+ * @generated from message macondo.EndgameMove
+ */
+export type EndgameMove = Message<"macondo.EndgameMove"> & {
+  /**
+   * @generated from field: string move_description = 1;
+   */
+  moveDescription: string;
+
+  /**
+   * @generated from field: int32 score = 2;
+   */
+  score: number;
+
+  /**
+   * @generated from field: int32 move_number = 3;
+   */
+  moveNumber: number;
+};
+
+/**
+ * Describes the message macondo.EndgameMove.
+ * Use `create(EndgameMoveSchema)` to create a new message.
+ */
+export const EndgameMoveSchema: GenMessage<EndgameMove> = /*@__PURE__*/
+  messageDesc(file_proto_vendored_macondo_macondo, 16);
+
+/**
  * GameAnalysisResult contains analysis results for a completed game
  *
  * @generated from message macondo.GameAnalysisResult
@@ -766,6 +1020,16 @@ export type GameAnalysisResult = Message<"macondo.GameAnalysisResult"> & {
    * @generated from field: repeated macondo.PlayerSummary player_summaries = 2;
    */
   playerSummaries: PlayerSummary[];
+
+  /**
+   * @generated from field: int32 analysis_version = 3;
+   */
+  analysisVersion: number;
+
+  /**
+   * @generated from field: string analyzer_version = 4;
+   */
+  analyzerVersion: string;
 };
 
 /**
@@ -773,7 +1037,7 @@ export type GameAnalysisResult = Message<"macondo.GameAnalysisResult"> & {
  * Use `create(GameAnalysisResultSchema)` to create a new message.
  */
 export const GameAnalysisResultSchema: GenMessage<GameAnalysisResult> = /*@__PURE__*/
-  messageDesc(file_proto_vendored_macondo_macondo, 11);
+  messageDesc(file_proto_vendored_macondo_macondo, 17);
 
 /**
  * TurnAnalysis contains analysis for a single turn
@@ -905,11 +1169,38 @@ export type TurnAnalysis = Message<"macondo.TurnAnalysis"> & {
   missedBingo: boolean;
 
   /**
+   * Enriched data (v2+)
+   *
+   * @generated from field: repeated macondo.SimmedPlayInfo top_sim_plays = 22;
+   */
+  topSimPlays: SimmedPlayInfo[];
+
+  /**
+   * @generated from field: repeated macondo.PEGPlayInfo top_peg_plays = 23;
+   */
+  topPegPlays: PEGPlayInfo[];
+
+  /**
+   * @generated from field: macondo.EndgameVariation principal_variation = 24;
+   */
+  principalVariation?: EndgameVariation;
+
+  /**
+   * @generated from field: repeated macondo.EndgameVariation other_variations = 25;
+   */
+  otherVariations: EndgameVariation[];
+
+  /**
+   * @generated from field: int32 sim_iterations = 26;
+   */
+  simIterations: number;
+
+  /**
    * Known opponent rack (from challenged phony)
    *
    * e.g., "JAM" - tiles revealed by challenged phony
    *
-   * @generated from field: string known_opp_rack = 22;
+   * @generated from field: string known_opp_rack = 27;
    */
   knownOppRack: string;
 };
@@ -919,7 +1210,7 @@ export type TurnAnalysis = Message<"macondo.TurnAnalysis"> & {
  * Use `create(TurnAnalysisSchema)` to create a new message.
  */
 export const TurnAnalysisSchema: GenMessage<TurnAnalysis> = /*@__PURE__*/
-  messageDesc(file_proto_vendored_macondo_macondo, 12);
+  messageDesc(file_proto_vendored_macondo_macondo, 18);
 
 /**
  * PlayerSummary contains aggregate statistics for one player
@@ -1001,7 +1292,7 @@ export type PlayerSummary = Message<"macondo.PlayerSummary"> & {
  * Use `create(PlayerSummarySchema)` to create a new message.
  */
 export const PlayerSummarySchema: GenMessage<PlayerSummary> = /*@__PURE__*/
-  messageDesc(file_proto_vendored_macondo_macondo, 13);
+  messageDesc(file_proto_vendored_macondo_macondo, 19);
 
 /**
  * @generated from enum macondo.PlayState
@@ -1122,6 +1413,37 @@ export const PuzzleTagSchema: GenEnum<PuzzleTag> = /*@__PURE__*/
   enumDesc(file_proto_vendored_macondo_macondo, 2);
 
 /**
+ * @generated from enum macondo.PEGOutcomeType
+ */
+export enum PEGOutcomeType {
+  /**
+   * @generated from enum value: PEG_OUTCOME_UNKNOWN = 0;
+   */
+  PEG_OUTCOME_UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: PEG_OUTCOME_WIN = 1;
+   */
+  PEG_OUTCOME_WIN = 1,
+
+  /**
+   * @generated from enum value: PEG_OUTCOME_DRAW = 2;
+   */
+  PEG_OUTCOME_DRAW = 2,
+
+  /**
+   * @generated from enum value: PEG_OUTCOME_LOSS = 3;
+   */
+  PEG_OUTCOME_LOSS = 3,
+}
+
+/**
+ * Describes the enum macondo.PEGOutcomeType.
+ */
+export const PEGOutcomeTypeSchema: GenEnum<PEGOutcomeType> = /*@__PURE__*/
+  enumDesc(file_proto_vendored_macondo_macondo, 3);
+
+/**
  * @generated from enum macondo.GamePhase
  */
 export enum GamePhase {
@@ -1150,7 +1472,7 @@ export enum GamePhase {
  * Describes the enum macondo.GamePhase.
  */
 export const GamePhaseSchema: GenEnum<GamePhase> = /*@__PURE__*/
-  enumDesc(file_proto_vendored_macondo_macondo, 3);
+  enumDesc(file_proto_vendored_macondo_macondo, 4);
 
 /**
  * @generated from enum macondo.MistakeSize
@@ -1181,5 +1503,5 @@ export enum MistakeSize {
  * Describes the enum macondo.MistakeSize.
  */
 export const MistakeSizeSchema: GenEnum<MistakeSize> = /*@__PURE__*/
-  enumDesc(file_proto_vendored_macondo_macondo, 4);
+  enumDesc(file_proto_vendored_macondo_macondo, 5);
 

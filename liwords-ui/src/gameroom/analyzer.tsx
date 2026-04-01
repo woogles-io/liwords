@@ -133,7 +133,7 @@ const wolgesLetterToLiwordsLetter = (i: number) => {
   return i;
 };
 
-const liwordsLetterToWolgesLetter = (i: number) => {
+export const liwordsLetterToWolgesLetter = (i: number) => {
   if ((i & 0x80) > 0) {
     // This is a blank. Convert to a wolges blank.
     return -(i & 0x7f);
@@ -357,6 +357,8 @@ const AnalyzerContext = React.createContext<{
   setShowMovesForTurn: (a: number) => void;
   lexicon: string;
   variant?: string;
+  showComputerAnalysis: boolean;
+  setShowComputerAnalysis: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
   autoMode: false,
   cachedMoves: null,
@@ -367,7 +369,11 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: () => {},
   lexicon: "",
   variant: undefined,
+  showComputerAnalysis: false,
+  setShowComputerAnalysis: () => {},
 });
+
+export const useAnalyzerContext = () => useContext(AnalyzerContext);
 
 type AnalyzerContextProviderProps = {
   children: React.ReactNode;
@@ -386,6 +392,7 @@ export const AnalyzerContextProvider = (
   );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
+  const [showComputerAnalysis, setShowComputerAnalysis] = useState(false);
   const { freshExamineSignal } = useExamineStoreContext();
   useEffect(() => {
     if (freshExamineSignal > 0) {
@@ -507,6 +514,8 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      showComputerAnalysis,
+      setShowComputerAnalysis,
     }),
     [
       autoMode,
@@ -518,6 +527,8 @@ export const AnalyzerContextProvider = (
       setShowMovesForTurn,
       lexicon,
       variant,
+      showComputerAnalysis,
+      setShowComputerAnalysis,
     ],
   );
 
@@ -603,14 +614,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
     lexicon,
     variant,
+    showComputerAnalysis,
+    setShowComputerAnalysis,
   } = useContext(AnalyzerContext);
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
   const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-
-  const [showComputerAnalysis, setShowComputerAnalysis] = useState(false);
   const { modal } = App.useApp();
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
@@ -627,7 +638,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     if (!gameDone || !gameID) {
       setShowComputerAnalysis(false);
     }
-  }, [gameDone, gameID]);
+  }, [gameDone, gameID, setShowComputerAnalysis]);
 
   const requestAnalysisMutation = useMutation(requestBestBotAnalysis, {
     onSuccess: async (resp) => {
@@ -668,15 +679,27 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     onError: (e) => flashError(e),
   });
 
+  const isLegacyAnalysis =
+    analysisStatus === GetAnalysisStatusResponse_JobStatus.COMPLETED &&
+    (analysisStatusData?.analysisVersion ?? 0) < 2;
+
   const handleRequestAnalysis = useCallback(() => {
     requestAnalysisMutation.mutate({ gameId: gameID });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameID]); // requestAnalysisMutation.mutate is stable
+
+  const handleRequestReanalysis = useCallback(() => {
+    requestAnalysisMutation.mutate({ gameId: gameID, force: true });
+    setShowComputerAnalysis(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]); // requestAnalysisMutation.mutate is stable
 
   const analysisButtonLabel = () => {
     switch (analysisStatus) {
       case GetAnalysisStatusResponse_JobStatus.COMPLETED:
-        return "View Computer Analysis";
+        return isLegacyAnalysis
+          ? "View Analysis (Legacy)"
+          : "View Computer Analysis";
       case GetAnalysisStatusResponse_JobStatus.PENDING:
         return "Analysis Queued…";
       case GetAnalysisStatusResponse_JobStatus.PROCESSING:
@@ -713,7 +736,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       });
     }
     // Pending/Processing: button is disabled, no action needed
-  }, [analysisStatus, handleRequestAnalysis, modal]);
+  }, [analysisStatus, handleRequestAnalysis, modal, setShowComputerAnalysis]);
 
   const placeMove = usePlaceMoveCallback();
 
@@ -979,9 +1002,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       {gameDone && !variant?.includes("wordsmog") && (
         <Tooltip title={analysisButtonLabel()}>
           <Button
-            className="computer-analysis-btn"
+            className={`computer-analysis-btn${isLegacyAnalysis ? " legacy" : ""}`}
             shape="circle"
-            type="primary"
+            type={isLegacyAnalysis ? "default" : "primary"}
             icon={<RobotOutlined />}
             onClick={handleAnalysisButtonClick}
             disabled={
@@ -1000,6 +1023,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         gameID={gameID}
         currentTurn={examinableGameContext.turns.length}
         onBack={() => setShowComputerAnalysis(false)}
+        isLegacy={isLegacyAnalysis}
+        onRequestReanalysis={handleRequestReanalysis}
       />
     );
     if (props.includeCard) {

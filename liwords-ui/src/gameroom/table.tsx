@@ -44,7 +44,11 @@ import {
 } from "../gen/api/proto/vendored/macondo/macondo_pb";
 import { endGameMessageFromGameInfo } from "../store/end_of_game";
 import { Notepad, NotepadContextProvider } from "./notepad";
-import { Analyzer, AnalyzerContextProvider } from "./analyzer";
+import {
+  Analyzer,
+  AnalyzerContextProvider,
+  useAnalyzerContext,
+} from "./analyzer";
 import { isClubType, isPairedMode, sortTiles } from "../store/constants";
 import { readyForTournamentGame } from "../tournament/ready";
 import { isMobile } from "../utils/cwgame/common";
@@ -262,6 +266,32 @@ const getChatTitle = (
     return playerNames.join(" versus ");
   }
   return playerNames.filter((n) => n !== username).shift() || "";
+};
+
+// These small components must be defined outside Table so they can consume
+// AnalyzerContext (which wraps Table's return value).
+
+const ChatAreaDiv: React.FC<{
+  baseClassName: string;
+  children: React.ReactNode;
+}> = ({ baseClassName, children }) => {
+  const { showComputerAnalysis } = useAnalyzerContext();
+  return (
+    <div
+      className={`${baseClassName}${showComputerAnalysis ? " ca-fullscreen" : ""}`}
+      id="left-sidebar"
+    >
+      {children}
+    </div>
+  );
+};
+
+const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { showComputerAnalysis } = useAnalyzerContext();
+  if (showComputerAnalysis) return null;
+  return <>{children}</>;
 };
 
 export const Table = React.memo((props: Props) => {
@@ -1169,32 +1199,33 @@ export const Table = React.memo((props: Props) => {
         corresGamesWaiting={corresGamesWaiting}
       />
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
-        <div
-          className={`chat-area ${
+        <ChatAreaDiv
+          baseClassName={`chat-area ${
             !isExamining && tournamentContext.metadata.disclaimer
               ? "has-disclaimer"
               : ""
           }`}
-          id="left-sidebar"
         >
           {/* Navigation card (Back/NEXT) - only in chat-area for desktop */}
           {!isInMobileView && navigationCard}
-          {playerNames.length > 1 ? (
-            <Chat
-              sendChat={props.sendChat}
-              highlight={tournamentContext.directors}
-              highlightText="Director"
-              defaultChannel={`chat.${
-                isObserver ? "gametv" : "game"
-              }${props.annotated ? ".anno" : ""}.${gameID}`}
-              defaultDescription={getChatTitle(
-                playerNames,
-                username,
-                isObserver,
-              )}
-              tournamentID={gameInfo.tournamentId}
-            />
-          ) : null}
+          <ChatIfVisible>
+            {playerNames.length > 1 ? (
+              <Chat
+                sendChat={props.sendChat}
+                highlight={tournamentContext.directors}
+                highlightText="Director"
+                defaultChannel={`chat.${
+                  isObserver ? "gametv" : "game"
+                }${props.annotated ? ".anno" : ""}.${gameID}`}
+                defaultDescription={getChatTitle(
+                  playerNames,
+                  username,
+                  isObserver,
+                )}
+                tournamentID={gameInfo.tournamentId}
+              />
+            ) : null}
+          </ChatIfVisible>
           {isExamining ? (
             <Analyzer includeCard />
           ) : (
@@ -1219,7 +1250,7 @@ export const Table = React.memo((props: Props) => {
               }
             />
           )}
-        </div>
+        </ChatAreaDiv>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">
           <PlayerCards

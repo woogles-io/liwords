@@ -6,6 +6,7 @@ import "proto/vendored/macondo/macondo.proto";
 // Request to claim next available job
 message ClaimJobRequest {
   // Worker authenticates via X-Api-Key header (existing middleware)
+  string macondo_version = 1; // Worker reports its version; rejected if too old
 }
 
 // Response with job details or no_jobs flag
@@ -49,13 +50,17 @@ message HeartbeatResponse {
 message SubmitResultRequest {
   string job_id = 1;
 
-  // Result as protojson
+  // Deprecated: raw protojson bytes; use result field instead
   bytes result_proto = 2;
+
+  string macondo_version = 3;
+  macondo.GameAnalysisResult result = 4; // Typed result (v2+)
 }
 
 message SubmitResultResponse {
   bool accepted = 1;
-  string error = 2; // Populated if accepted = false
+  string error = 2;          // Populated if accepted = false
+  string expected_version = 3; // Populated if rejected due to version mismatch
 }
 
 service AnalysisQueueService {
@@ -99,6 +104,7 @@ service AnalysisService {
 // Request analysis for a game
 message RequestAnalysisRequest {
   string game_id = 1;
+  bool force = 2; // Re-analyze even if completed (only allowed for legacy v0 results)
 }
 
 message RequestAnalysisResponse {
@@ -138,6 +144,7 @@ message GetAnalysisStatusResponse {
   string job_id = 2;
   int32 queue_position = 3;  // Position in queue (0 if not pending)
   string error_message = 4;  // If failed
+  int32 analysis_version = 5; // 0 = legacy (v1), 2 = enriched; only set when COMPLETED
 }
 
 // Get analysis result
@@ -147,7 +154,8 @@ message GetAnalysisResultRequest {
 
 message GetAnalysisResultResponse {
   bool found = 1;
-  bytes result_proto = 2; // JSONB from database (protojson format)
+  bytes result_proto = 2;                // Deprecated: raw bytes for backward compat
+  macondo.GameAnalysisResult result = 3; // Typed result
 }
 
 // Admin service messages

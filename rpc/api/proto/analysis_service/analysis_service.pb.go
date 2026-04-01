@@ -7,7 +7,7 @@
 package analysis_service
 
 import (
-	_ "github.com/domino14/macondo/gen/api/proto/macondo"
+	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -138,9 +138,11 @@ func (GetAnalysisStatusResponse_JobStatus) EnumDescriptor() ([]byte, []int) {
 
 // Request to claim next available job
 type ClaimJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Worker authenticates via X-Api-Key header (existing middleware)
+	MacondoVersion string `protobuf:"bytes,1,opt,name=macondo_version,json=macondoVersion,proto3" json:"macondo_version,omitempty"` // Worker reports its version; rejected if too old
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ClaimJobRequest) Reset() {
@@ -171,6 +173,13 @@ func (x *ClaimJobRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ClaimJobRequest.ProtoReflect.Descriptor instead.
 func (*ClaimJobRequest) Descriptor() ([]byte, []int) {
 	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ClaimJobRequest) GetMacondoVersion() string {
+	if x != nil {
+		return x.MacondoVersion
+	}
+	return ""
 }
 
 // Response with job details or no_jobs flag
@@ -454,10 +463,12 @@ func (x *HeartbeatResponse) GetContinue() bool {
 type SubmitResultRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	JobId string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	// Result as protojson
-	ResultProto   []byte `protobuf:"bytes,2,opt,name=result_proto,json=resultProto,proto3" json:"result_proto,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Deprecated: raw protojson bytes; use result field instead
+	ResultProto    []byte                      `protobuf:"bytes,2,opt,name=result_proto,json=resultProto,proto3" json:"result_proto,omitempty"`
+	MacondoVersion string                      `protobuf:"bytes,3,opt,name=macondo_version,json=macondoVersion,proto3" json:"macondo_version,omitempty"`
+	Result         *macondo.GameAnalysisResult `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"` // Typed result (v2+)
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SubmitResultRequest) Reset() {
@@ -504,12 +515,27 @@ func (x *SubmitResultRequest) GetResultProto() []byte {
 	return nil
 }
 
+func (x *SubmitResultRequest) GetMacondoVersion() string {
+	if x != nil {
+		return x.MacondoVersion
+	}
+	return ""
+}
+
+func (x *SubmitResultRequest) GetResult() *macondo.GameAnalysisResult {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
 type SubmitResultResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
-	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // Populated if accepted = false
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Accepted        bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Error           string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`                                            // Populated if accepted = false
+	ExpectedVersion string                 `protobuf:"bytes,3,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"` // Populated if rejected due to version mismatch
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SubmitResultResponse) Reset() {
@@ -556,10 +582,18 @@ func (x *SubmitResultResponse) GetError() string {
 	return ""
 }
 
+func (x *SubmitResultResponse) GetExpectedVersion() string {
+	if x != nil {
+		return x.ExpectedVersion
+	}
+	return ""
+}
+
 // Request analysis for a game
 type RequestAnalysisRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GameId        string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
+	Force         bool                   `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"` // Re-analyze even if completed (only allowed for legacy v0 results)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -599,6 +633,13 @@ func (x *RequestAnalysisRequest) GetGameId() string {
 		return x.GameId
 	}
 	return ""
+}
+
+func (x *RequestAnalysisRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
 }
 
 type RequestAnalysisResponse struct {
@@ -716,13 +757,14 @@ func (x *GetAnalysisStatusRequest) GetGameId() string {
 }
 
 type GetAnalysisStatusResponse struct {
-	state         protoimpl.MessageState              `protogen:"open.v1"`
-	Status        GetAnalysisStatusResponse_JobStatus `protobuf:"varint,1,opt,name=status,proto3,enum=analysis_service.GetAnalysisStatusResponse_JobStatus" json:"status,omitempty"`
-	JobId         string                              `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	QueuePosition int32                               `protobuf:"varint,3,opt,name=queue_position,json=queuePosition,proto3" json:"queue_position,omitempty"` // Position in queue (0 if not pending)
-	ErrorMessage  string                              `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`     // If failed
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState              `protogen:"open.v1"`
+	Status          GetAnalysisStatusResponse_JobStatus `protobuf:"varint,1,opt,name=status,proto3,enum=analysis_service.GetAnalysisStatusResponse_JobStatus" json:"status,omitempty"`
+	JobId           string                              `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	QueuePosition   int32                               `protobuf:"varint,3,opt,name=queue_position,json=queuePosition,proto3" json:"queue_position,omitempty"`       // Position in queue (0 if not pending)
+	ErrorMessage    string                              `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`           // If failed
+	AnalysisVersion int32                               `protobuf:"varint,5,opt,name=analysis_version,json=analysisVersion,proto3" json:"analysis_version,omitempty"` // 0 = legacy (v1), 2 = enriched; only set when COMPLETED
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetAnalysisStatusResponse) Reset() {
@@ -783,6 +825,13 @@ func (x *GetAnalysisStatusResponse) GetErrorMessage() string {
 	return ""
 }
 
+func (x *GetAnalysisStatusResponse) GetAnalysisVersion() int32 {
+	if x != nil {
+		return x.AnalysisVersion
+	}
+	return 0
+}
+
 // Get analysis result
 type GetAnalysisResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -829,9 +878,10 @@ func (x *GetAnalysisResultRequest) GetGameId() string {
 }
 
 type GetAnalysisResultResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Found         bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
-	ResultProto   []byte                 `protobuf:"bytes,2,opt,name=result_proto,json=resultProto,proto3" json:"result_proto,omitempty"` // JSONB from database (protojson format)
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Found         bool                        `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	ResultProto   []byte                      `protobuf:"bytes,2,opt,name=result_proto,json=resultProto,proto3" json:"result_proto,omitempty"` // Deprecated: raw bytes for backward compat
+	Result        *macondo.GameAnalysisResult `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`                              // Typed result
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -876,6 +926,13 @@ func (x *GetAnalysisResultResponse) GetFound() bool {
 func (x *GetAnalysisResultResponse) GetResultProto() []byte {
 	if x != nil {
 		return x.ResultProto
+	}
+	return nil
+}
+
+func (x *GetAnalysisResultResponse) GetResult() *macondo.GameAnalysisResult {
+	if x != nil {
+		return x.Result
 	}
 	return nil
 }
@@ -1428,8 +1485,9 @@ var File_proto_analysis_service_analysis_service_proto protoreflect.FileDescript
 
 const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\n" +
-	"-proto/analysis_service/analysis_service.proto\x12\x10analysis_service\x1a$proto/vendored/macondo/macondo.proto\"\x11\n" +
-	"\x0fClaimJobRequest\"\x95\x01\n" +
+	"-proto/analysis_service/analysis_service.proto\x12\x10analysis_service\x1a$proto/vendored/macondo/macondo.proto\":\n" +
+	"\x0fClaimJobRequest\x12'\n" +
+	"\x0fmacondo_version\x18\x01 \x01(\tR\x0emacondoVersion\"\x95\x01\n" +
 	"\x10ClaimJobResponse\x12\x17\n" +
 	"\ano_jobs\x18\x01 \x01(\bR\x06noJobs\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12\x17\n" +
@@ -1450,15 +1508,19 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\vtotal_turns\x18\x03 \x01(\x05R\n" +
 	"totalTurns\"/\n" +
 	"\x11HeartbeatResponse\x12\x1a\n" +
-	"\bcontinue\x18\x01 \x01(\bR\bcontinue\"O\n" +
+	"\bcontinue\x18\x01 \x01(\bR\bcontinue\"\xad\x01\n" +
 	"\x13SubmitResultRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12!\n" +
-	"\fresult_proto\x18\x02 \x01(\fR\vresultProto\"H\n" +
+	"\fresult_proto\x18\x02 \x01(\fR\vresultProto\x12'\n" +
+	"\x0fmacondo_version\x18\x03 \x01(\tR\x0emacondoVersion\x123\n" +
+	"\x06result\x18\x04 \x01(\v2\x1b.macondo.GameAnalysisResultR\x06result\"s\n" +
 	"\x14SubmitResultResponse\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error\"1\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12)\n" +
+	"\x10expected_version\x18\x03 \x01(\tR\x0fexpectedVersion\"G\n" +
 	"\x16RequestAnalysisRequest\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xb6\x02\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x14\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\"\xb6\x02\n" +
 	"\x17RequestAnalysisResponse\x12H\n" +
 	"\x06status\x18\x01 \x01(\x0e20.analysis_service.RequestAnalysisResponse.StatusR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x15\n" +
@@ -1472,12 +1534,13 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\fRATE_LIMITED\x10\x04\x12\x13\n" +
 	"\x0fINVALID_VARIANT\x10\x05\"3\n" +
 	"\x18GetAnalysisStatusRequest\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xa1\x02\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\xcc\x02\n" +
 	"\x19GetAnalysisStatusResponse\x12M\n" +
 	"\x06status\x18\x01 \x01(\x0e25.analysis_service.GetAnalysisStatusResponse.JobStatusR\x06status\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12%\n" +
 	"\x0equeue_position\x18\x03 \x01(\x05R\rqueuePosition\x12#\n" +
-	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\"R\n" +
+	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\x12)\n" +
+	"\x10analysis_version\x18\x05 \x01(\x05R\x0fanalysisVersion\"R\n" +
 	"\tJobStatus\x12\r\n" +
 	"\tNOT_FOUND\x10\x00\x12\v\n" +
 	"\aPENDING\x10\x01\x12\x0e\n" +
@@ -1487,10 +1550,11 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\n" +
 	"\x06FAILED\x10\x04\"3\n" +
 	"\x18GetAnalysisResultRequest\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"T\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\x89\x01\n" +
 	"\x19GetAnalysisResultResponse\x12\x14\n" +
 	"\x05found\x18\x01 \x01(\bR\x05found\x12!\n" +
-	"\fresult_proto\x18\x02 \x01(\fR\vresultProto\"\x16\n" +
+	"\fresult_proto\x18\x02 \x01(\fR\vresultProto\x123\n" +
+	"\x06result\x18\x03 \x01(\v2\x1b.macondo.GameAnalysisResultR\x06result\"\x16\n" +
 	"\x14GetAdminStatsRequest\"U\n" +
 	"\x10LeaderboardEntry\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12%\n" +
@@ -1579,39 +1643,42 @@ var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(*RequeueAnalysisResponse)(nil),          // 22: analysis_service.RequeueAnalysisResponse
 	(*GetGamesAnalysisStatusRequest)(nil),    // 23: analysis_service.GetGamesAnalysisStatusRequest
 	(*GetGamesAnalysisStatusResponse)(nil),   // 24: analysis_service.GetGamesAnalysisStatusResponse
+	(*macondo.GameAnalysisResult)(nil),       // 25: macondo.GameAnalysisResult
 }
 var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	4,  // 0: analysis_service.ClaimJobResponse.config:type_name -> analysis_service.AnalysisConfig
-	0,  // 1: analysis_service.RequestAnalysisResponse.status:type_name -> analysis_service.RequestAnalysisResponse.Status
-	1,  // 2: analysis_service.GetAnalysisStatusResponse.status:type_name -> analysis_service.GetAnalysisStatusResponse.JobStatus
-	16, // 3: analysis_service.GetAdminStatsResponse.leaderboard:type_name -> analysis_service.LeaderboardEntry
-	16, // 4: analysis_service.GetAdminStatsResponse.contributors:type_name -> analysis_service.LeaderboardEntry
-	19, // 5: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
-	2,  // 6: analysis_service.AnalysisQueueService.ClaimJob:input_type -> analysis_service.ClaimJobRequest
-	5,  // 7: analysis_service.AnalysisQueueService.Heartbeat:input_type -> analysis_service.HeartbeatRequest
-	7,  // 8: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
-	15, // 9: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
-	18, // 10: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
-	21, // 11: analysis_service.AnalysisAdminService.RequeueAnalysis:input_type -> analysis_service.RequeueAnalysisRequest
-	9,  // 12: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
-	11, // 13: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
-	13, // 14: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
-	23, // 15: analysis_service.AnalysisService.GetGamesAnalysisStatus:input_type -> analysis_service.GetGamesAnalysisStatusRequest
-	3,  // 16: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
-	6,  // 17: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
-	8,  // 18: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
-	17, // 19: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
-	20, // 20: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
-	22, // 21: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
-	10, // 22: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
-	12, // 23: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
-	14, // 24: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
-	24, // 25: analysis_service.AnalysisService.GetGamesAnalysisStatus:output_type -> analysis_service.GetGamesAnalysisStatusResponse
-	16, // [16:26] is the sub-list for method output_type
-	6,  // [6:16] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	25, // 1: analysis_service.SubmitResultRequest.result:type_name -> macondo.GameAnalysisResult
+	0,  // 2: analysis_service.RequestAnalysisResponse.status:type_name -> analysis_service.RequestAnalysisResponse.Status
+	1,  // 3: analysis_service.GetAnalysisStatusResponse.status:type_name -> analysis_service.GetAnalysisStatusResponse.JobStatus
+	25, // 4: analysis_service.GetAnalysisResultResponse.result:type_name -> macondo.GameAnalysisResult
+	16, // 5: analysis_service.GetAdminStatsResponse.leaderboard:type_name -> analysis_service.LeaderboardEntry
+	16, // 6: analysis_service.GetAdminStatsResponse.contributors:type_name -> analysis_service.LeaderboardEntry
+	19, // 7: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
+	2,  // 8: analysis_service.AnalysisQueueService.ClaimJob:input_type -> analysis_service.ClaimJobRequest
+	5,  // 9: analysis_service.AnalysisQueueService.Heartbeat:input_type -> analysis_service.HeartbeatRequest
+	7,  // 10: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
+	15, // 11: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
+	18, // 12: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
+	21, // 13: analysis_service.AnalysisAdminService.RequeueAnalysis:input_type -> analysis_service.RequeueAnalysisRequest
+	9,  // 14: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
+	11, // 15: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
+	13, // 16: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
+	23, // 17: analysis_service.AnalysisService.GetGamesAnalysisStatus:input_type -> analysis_service.GetGamesAnalysisStatusRequest
+	3,  // 18: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
+	6,  // 19: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
+	8,  // 20: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
+	17, // 21: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
+	20, // 22: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
+	22, // 23: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
+	10, // 24: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
+	12, // 25: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
+	14, // 26: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
+	24, // 27: analysis_service.AnalysisService.GetGamesAnalysisStatus:output_type -> analysis_service.GetGamesAnalysisStatusResponse
+	18, // [18:28] is the sub-list for method output_type
+	8,  // [8:18] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_proto_analysis_service_analysis_service_proto_init() }

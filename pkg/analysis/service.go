@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	goversion "github.com/hashicorp/go-version"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,6 +28,54 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/analysis_service"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+// MinMacondoVersion is the minimum macondo worker version accepted.
+// Workers older than this are rejected at ClaimJob.
+const MinMacondoVersion = "v0.12.3"
+
+// normalizeMacondoVersion strips the git-describe suffix (-N-gHASH) so that
+// "v0.12.3-3-gabcdef" (3 commits after v0.12.3) compares as >= "v0.12.3".
+// Dev builds that report "dev" or an empty string are allowed through.
+func normalizeMacondoVersion(v string) string {
+	if v == "" || v == "dev" {
+		return "" // treated as missing/invalid
+	}
+	// git describe produces "v0.12.3-N-gHASH" for commits after a tag.
+	// Strip the "-N-gHASH" tail so version comparison works correctly.
+	parts := strings.Split(v, "-")
+	if len(parts) >= 3 {
+		tail := parts[len(parts)-1]
+		commitCount := parts[len(parts)-2]
+		allDigits := len(commitCount) > 0
+		for _, c := range commitCount {
+			if c < '0' || c > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if allDigits && strings.HasPrefix(tail, "g") {
+			return strings.Join(parts[:len(parts)-2], "-")
+		}
+	}
+	return v
+}
+
+// checkMacondoVersion returns an error if the reported version is older than MinMacondoVersion.
+func checkMacondoVersion(reported string) error {
+	normalized := normalizeMacondoVersion(reported)
+	if normalized == "" {
+		return fmt.Errorf("macondo version not reported; build with 'make' to inject version")
+	}
+	v, err := goversion.NewVersion(normalized)
+	if err != nil {
+		return fmt.Errorf("unrecognized macondo version %q; build with 'make' to inject version", reported)
+	}
+	min, _ := goversion.NewVersion(MinMacondoVersion)
+	if v.LessThan(min) {
+		return fmt.Errorf("macondo version %s is older than minimum required %s", reported, MinMacondoVersion)
+	}
+	return nil
+}
 
 var tracer = otel.Tracer("analysis")
 
@@ -69,6 +119,12 @@ func (s *AnalysisService) ClaimJob(
 	user, err := s.userStore.GetByAPIKey(ctx, apiKey)
 	if err != nil {
 		return nil, apiserver.Unauthenticated("invalid API key")
+	}
+
+	// Reject workers that are too old.
+	if err := checkMacondoVersion(req.Msg.MacondoVersion); err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			fmt.Errorf("%w (minimum: %s)", err, MinMacondoVersion))
 	}
 
 	// Claim next job
@@ -159,20 +215,21 @@ func (s *AnalysisService) SubmitResult(
 		return nil, apiserver.InvalidArg("invalid job_id")
 	}
 
-	resultProto := req.Msg.ResultProto
-
-	// Validate protobuf can be unmarshaled
-	var result macondo.GameAnalysisResult
-	if err := protojson.Unmarshal(resultProto, &result); err != nil {
-		log.Error().
-			Err(err).
-			Str("job_id", jobID.String()).
-			Str("user", user.Username).
-			Int("result_size", len(resultProto)).
-			Msg("failed to unmarshal analysis result protojson")
+	// Require the typed result field (v2+); reject old workers sending only bytes.
+	result := req.Msg.Result
+	if result == nil {
 		return connect.NewResponse(&pb.SubmitResultResponse{
 			Accepted: false,
-			Error:    fmt.Sprintf("invalid protojson: %v", err),
+			Error:    "missing typed result; upgrade macondo worker to >= " + MinMacondoVersion,
+		}), nil
+	}
+
+	// Re-serialize to protojson for JSONB storage (DB schema unchanged).
+	resultProto, err := protojson.Marshal(result)
+	if err != nil {
+		return connect.NewResponse(&pb.SubmitResultResponse{
+			Accepted: false,
+			Error:    fmt.Sprintf("failed to re-serialize result: %v", err),
 		}), nil
 	}
 
@@ -240,7 +297,7 @@ func (s *AnalysisService) SubmitResult(
 	// Update league standings with mistake index if this is a league game.
 	// context.WithoutCancel preserves the otel trace context while detaching from
 	// the request cancellation (which fires as soon as we return a response).
-	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, &result)
+	go s.updateLeagueMistakeIndex(context.WithoutCancel(ctx), completedJob.GameID, result)
 
 	// Notify the requesting user via WebSocket if this was a user-requested analysis.
 	if s.natsconn != nil && completedJob.RequestedByUserUuid.Valid {
@@ -422,12 +479,58 @@ func (s *AnalysisService) RequestAnalysis(
 	existingJob, err := s.queries.GetJobByGameID(ctx, gameID)
 	if err == nil {
 		// Job exists - check if we should allow re-requesting
-		// Allow re-requesting only if the previous job failed
-		if existingJob.Status != "failed" {
-			// Job is pending, processing, or completed
+		if existingJob.Status == "failed" {
+			// Always allow re-requesting failed jobs
+			log.Info().
+				Str("game_id", gameID).
+				Str("previous_job_id", existingJob.ID.String()).
+				Msg("re-requesting analysis for previously failed job")
+		} else if req.Msg.Force && existingJob.Status == "completed" {
+			// Force re-analysis only allowed for legacy (v0) results
+			var partial struct {
+				AnalysisVersion int32 `json:"analysisVersion"`
+			}
+			if len(existingJob.Result) > 0 {
+				_ = json.Unmarshal(existingJob.Result, &partial)
+			}
+			if partial.AnalysisVersion >= 2 {
+				return connect.NewResponse(&pb.RequestAnalysisResponse{
+					Status:  pb.RequestAnalysisResponse_ALREADY_REQUESTED,
+					Message: "Analysis is already up to date",
+					JobId:   existingJob.ID.String(),
+				}), nil
+			}
+			// Subtract old result's mistake index contribution before resetting,
+			// to avoid double-counting in league standings when new analysis completes.
+			var oldResult macondo.GameAnalysisResult
+			if len(existingJob.Result) > 0 {
+				if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
+					applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true)
+				}
+			}
+			// Legacy result — reset the existing job back to pending (same as admin RequeueAnalysis)
+			if err := s.queries.ResetAnalysisJob(ctx, existingJob.ID); err != nil {
+				log.Error().Err(err).Str("job_id", existingJob.ID.String()).Msg("failed to reset legacy job for re-analysis")
+				return nil, apiserver.InternalErr(fmt.Errorf("failed to reset legacy job: %w", err))
+			}
+			log.Info().
+				Str("game_id", gameID).
+				Str("previous_job_id", existingJob.ID.String()).
+				Msg("reset legacy v0 analysis job for re-analysis")
+			queuePos, err := s.queries.GetQueuePosition(ctx, existingJob.ID)
+			if err != nil {
+				queuePos = 1
+			}
+			return connect.NewResponse(&pb.RequestAnalysisResponse{
+				Status:        pb.RequestAnalysisResponse_SUCCESS,
+				Message:       fmt.Sprintf("Re-analysis queued! You are #%d in the queue.", queuePos),
+				JobId:         existingJob.ID.String(),
+				QueuePosition: queuePos,
+			}), nil
+		} else {
+			// Job is pending, processing, or completed (not force)
 			queuePos := int32(0)
 			if existingJob.Status == "pending" {
-				// Get queue position
 				pos, err := s.queries.GetQueuePosition(ctx, existingJob.ID)
 				if err == nil {
 					queuePos = int32(pos)
@@ -441,11 +544,6 @@ func (s *AnalysisService) RequestAnalysis(
 				QueuePosition: queuePos,
 			}), nil
 		}
-		// If status is "failed", fall through to create a new job
-		log.Info().
-			Str("game_id", gameID).
-			Str("previous_job_id", existingJob.ID.String()).
-			Msg("re-requesting analysis for previously failed job")
 	}
 
 	// Check rate limit
@@ -588,11 +686,24 @@ func (s *AnalysisService) GetAnalysisStatus(
 		errorMsg = job.ErrorMessage.String
 	}
 
+	// Extract analysis_version from the stored result JSONB for completed jobs.
+	// We only need one field so parse minimally to avoid full unmarshal overhead.
+	var analysisVersion int32
+	if job.Status == "completed" && len(job.Result) > 0 {
+		var partial struct {
+			AnalysisVersion int32 `json:"analysisVersion"`
+		}
+		if err := json.Unmarshal(job.Result, &partial); err == nil {
+			analysisVersion = partial.AnalysisVersion
+		}
+	}
+
 	return connect.NewResponse(&pb.GetAnalysisStatusResponse{
-		Status:        status,
-		JobId:         job.ID.String(),
-		QueuePosition: queuePos,
-		ErrorMessage:  errorMsg,
+		Status:          status,
+		JobId:           job.ID.String(),
+		QueuePosition:   queuePos,
+		ErrorMessage:    errorMsg,
+		AnalysisVersion: analysisVersion,
 	}), nil
 }
 
@@ -620,9 +731,15 @@ func (s *AnalysisService) GetAnalysisResult(
 		}), nil
 	}
 
+	var result macondo.GameAnalysisResult
+	if err := protojson.Unmarshal(job.Result, &result); err != nil {
+		log.Error().Err(err).Str("game_id", gameID).Msg("failed to unmarshal stored analysis result")
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to deserialize analysis result: %w", err))
+	}
+
 	return connect.NewResponse(&pb.GetAnalysisResultResponse{
-		Found:       true,
-		ResultProto: job.Result,
+		Found:  true,
+		Result: &result,
 	}), nil
 }
 
