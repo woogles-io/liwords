@@ -342,7 +342,6 @@ message TurnAnalysis {
   repeated PEGPlayInfo top_peg_plays = 23;
   EndgameVariation principal_variation = 24;
   repeated EndgameVariation other_variations = 25;
-  int32 sim_iterations = 26;
 
   // Known opponent rack (from challenged phony)
   string known_opp_rack = 27;  // e.g., "JAM" - tiles revealed by challenged phony
@@ -370,7 +369,6 @@ message PlayerSummary {
 
   // Average losses
   double avg_win_prob_loss = 4;
-  double avg_spread_loss = 5;
 
   // Mistake breakdown
   int32 small_mistakes = 6;

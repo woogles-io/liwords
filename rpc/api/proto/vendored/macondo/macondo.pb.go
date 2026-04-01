@@ -2179,7 +2179,6 @@ type TurnAnalysis struct {
 	TopPegPlays        []*PEGPlayInfo      `protobuf:"bytes,23,rep,name=top_peg_plays,json=topPegPlays,proto3" json:"top_peg_plays,omitempty"`
 	PrincipalVariation *EndgameVariation   `protobuf:"bytes,24,opt,name=principal_variation,json=principalVariation,proto3" json:"principal_variation,omitempty"`
 	OtherVariations    []*EndgameVariation `protobuf:"bytes,25,rep,name=other_variations,json=otherVariations,proto3" json:"other_variations,omitempty"`
-	SimIterations      int32               `protobuf:"varint,26,opt,name=sim_iterations,json=simIterations,proto3" json:"sim_iterations,omitempty"`
 	// Known opponent rack (from challenged phony)
 	KnownOppRack  string `protobuf:"bytes,27,opt,name=known_opp_rack,json=knownOppRack,proto3" json:"known_opp_rack,omitempty"` // e.g., "JAM" - tiles revealed by challenged phony
 	unknownFields protoimpl.UnknownFields
@@ -2391,13 +2390,6 @@ func (x *TurnAnalysis) GetOtherVariations() []*EndgameVariation {
 	return nil
 }
 
-func (x *TurnAnalysis) GetSimIterations() int32 {
-	if x != nil {
-		return x.SimIterations
-	}
-	return 0
-}
-
 func (x *TurnAnalysis) GetKnownOppRack() string {
 	if x != nil {
 		return x.KnownOppRack
@@ -2413,7 +2405,6 @@ type PlayerSummary struct {
 	OptimalMoves int32                  `protobuf:"varint,3,opt,name=optimal_moves,json=optimalMoves,proto3" json:"optimal_moves,omitempty"`
 	// Average losses
 	AvgWinProbLoss float64 `protobuf:"fixed64,4,opt,name=avg_win_prob_loss,json=avgWinProbLoss,proto3" json:"avg_win_prob_loss,omitempty"`
-	AvgSpreadLoss  float64 `protobuf:"fixed64,5,opt,name=avg_spread_loss,json=avgSpreadLoss,proto3" json:"avg_spread_loss,omitempty"`
 	// Mistake breakdown
 	SmallMistakes  int32 `protobuf:"varint,6,opt,name=small_mistakes,json=smallMistakes,proto3" json:"small_mistakes,omitempty"`
 	MediumMistakes int32 `protobuf:"varint,7,opt,name=medium_mistakes,json=mediumMistakes,proto3" json:"medium_mistakes,omitempty"`
@@ -2482,13 +2473,6 @@ func (x *PlayerSummary) GetOptimalMoves() int32 {
 func (x *PlayerSummary) GetAvgWinProbLoss() float64 {
 	if x != nil {
 		return x.AvgWinProbLoss
-	}
-	return 0
-}
-
-func (x *PlayerSummary) GetAvgSpreadLoss() float64 {
-	if x != nil {
-		return x.AvgSpreadLoss
 	}
 	return 0
 }
@@ -2733,7 +2717,7 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\x05turns\x18\x01 \x03(\v2\x15.macondo.TurnAnalysisR\x05turns\x12A\n" +
 	"\x10player_summaries\x18\x02 \x03(\v2\x16.macondo.PlayerSummaryR\x0fplayerSummaries\x12)\n" +
 	"\x10analysis_version\x18\x03 \x01(\x05R\x0fanalysisVersion\x12)\n" +
-	"\x10analyzer_version\x18\x04 \x01(\tR\x0fanalyzerVersion\"\xdf\b\n" +
+	"\x10analyzer_version\x18\x04 \x01(\tR\x0fanalyzerVersion\"\xb8\b\n" +
 	"\fTurnAnalysis\x12\x1f\n" +
 	"\vturn_number\x18\x01 \x01(\x05R\n" +
 	"turnNumber\x12!\n" +
@@ -2766,16 +2750,14 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\rtop_sim_plays\x18\x16 \x03(\v2\x17.macondo.SimmedPlayInfoR\vtopSimPlays\x128\n" +
 	"\rtop_peg_plays\x18\x17 \x03(\v2\x14.macondo.PEGPlayInfoR\vtopPegPlays\x12J\n" +
 	"\x13principal_variation\x18\x18 \x01(\v2\x19.macondo.EndgameVariationR\x12principalVariation\x12D\n" +
-	"\x10other_variations\x18\x19 \x03(\v2\x19.macondo.EndgameVariationR\x0fotherVariations\x12%\n" +
-	"\x0esim_iterations\x18\x1a \x01(\x05R\rsimIterations\x12$\n" +
-	"\x0eknown_opp_rack\x18\x1b \x01(\tR\fknownOppRack\"\xdc\x03\n" +
+	"\x10other_variations\x18\x19 \x03(\v2\x19.macondo.EndgameVariationR\x0fotherVariations\x12$\n" +
+	"\x0eknown_opp_rack\x18\x1b \x01(\tR\fknownOppRack\"\xb4\x03\n" +
 	"\rPlayerSummary\x12\x1f\n" +
 	"\vplayer_name\x18\x01 \x01(\tR\n" +
 	"playerName\x12!\n" +
 	"\fturns_played\x18\x02 \x01(\x05R\vturnsPlayed\x12#\n" +
 	"\roptimal_moves\x18\x03 \x01(\x05R\foptimalMoves\x12)\n" +
-	"\x11avg_win_prob_loss\x18\x04 \x01(\x01R\x0eavgWinProbLoss\x12&\n" +
-	"\x0favg_spread_loss\x18\x05 \x01(\x01R\ravgSpreadLoss\x12%\n" +
+	"\x11avg_win_prob_loss\x18\x04 \x01(\x01R\x0eavgWinProbLoss\x12%\n" +
 	"\x0esmall_mistakes\x18\x06 \x01(\x05R\rsmallMistakes\x12'\n" +
 	"\x0fmedium_mistakes\x18\a \x01(\x05R\x0emediumMistakes\x12%\n" +
 	"\x0elarge_mistakes\x18\b \x01(\x05R\rlargeMistakes\x12#\n" +

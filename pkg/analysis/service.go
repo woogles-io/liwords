@@ -732,7 +732,10 @@ func (s *AnalysisService) GetAnalysisResult(
 	}
 
 	var result macondo.GameAnalysisResult
-	if err := protojson.Unmarshal(job.Result, &result); err != nil {
+	// Use DiscardUnknown to handle legacy analysis data that may contain fields
+	// removed in newer macondo versions (e.g., avgSpreadLoss in PlayerSummary)
+	unmarshalOpts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := unmarshalOpts.Unmarshal(job.Result, &result); err != nil {
 		log.Error().Err(err).Str("game_id", gameID).Msg("failed to unmarshal stored analysis result")
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to deserialize analysis result: %w", err))
 	}

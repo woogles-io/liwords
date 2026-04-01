@@ -512,10 +512,9 @@ const PlyDetailsRow: React.FC<{
 
 const SimPlaysTable: React.FC<{
   plays: SimmedPlayInfo[];
-  iterations: number;
   boardCtx: BoardContext;
   onClickPlay: (move: AnalyzerMove) => void;
-}> = ({ plays, iterations, boardCtx, onClickPlay }) => {
+}> = ({ plays, boardCtx, onClickPlay }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   // Sort client-side: win% desc, then equity desc as tiebreaker.
@@ -531,6 +530,12 @@ const SimPlaysTable: React.FC<{
       }),
     [plays],
   );
+
+  // Calculate total iterations from the played move's iteration count
+  const iterations = useMemo(() => {
+    const playedMove = plays.find((p) => p.isPlayedMove);
+    return playedMove?.iterations || 0;
+  }, [plays]);
 
   const parsedPlays = useMemo(
     () =>
@@ -999,7 +1004,6 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
           {isV2 && turn.topSimPlays.length > 0 && (
             <SimPlaysTable
               plays={turn.topSimPlays}
-              iterations={turn.simIterations}
               boardCtx={ctx}
               onClickPlay={placeMove}
             />
