@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,6 +53,9 @@ func RunLeagueLifecycleTasks(
 
 	result := &LifecycleRunnerResult{}
 	now := clock.Now()
+
+	// WaitGroup to ensure background notification tasks complete before returning
+	var wg sync.WaitGroup
 
 	// Get league
 	dbLeague, err := allStores.LeagueStore.GetLeagueByUUID(ctx, leagueUUID)
@@ -211,7 +215,9 @@ func RunLeagueLifecycleTasks(
 						Msg("✓ Registration opened successfully")
 
 					// Send registration open notifications (email + Discord)
+					wg.Add(1)
 					go func(seasonID uuid.UUID, seasonNumber int32) {
+						defer wg.Done()
 						// Get current season registrants
 						currentRegistrants, err := allStores.LeagueStore.GetSeasonRegistrations(ctx, seasonID)
 						if err != nil {
@@ -352,6 +358,9 @@ func RunLeagueLifecycleTasks(
 			}
 		}
 	}
+
+	// Wait for all background notification tasks to complete before returning
+	wg.Wait()
 
 	return result, nil
 }
