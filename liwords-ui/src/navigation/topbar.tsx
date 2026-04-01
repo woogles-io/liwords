@@ -104,7 +104,7 @@ const TopMenu = React.memo((props: Props) => {
   const aboutMenuItems = [
     {
       key: "team",
-      label: <Link to="/team">Meet the Woogles team</Link>,
+      label: <Link to="/team">Meet the KofiBingo team</Link>,
     },
     {
       key: "tos",
@@ -244,10 +244,10 @@ export const TopBar = React.memo((props: Props) => {
           }`}
         >
           <div className="site-icon-rect">
-            <div className="site-icon-w">W</div>
+            <div className="site-icon-w">K</div>
           </div>
 
-          <div className="site-name">Woogles.io</div>
+          <div className="site-name">KofiBingo.io</div>
           {props.tournamentID ? (
             <div className="tournament">
               Back to

@@ -22,9 +22,9 @@ const Footer = React.memo(() => {
         >
           <Link to="/" className="logo">
             <div className="site-icon-rect">
-              <div className="site-icon-w">W</div>
+              <div className="site-icon-w">K</div>
             </div>
-            <div className="site-name">Woogles.io</div>
+            <div className="site-name">KofiBingo.io</div>
           </Link>
         </Tooltip>
         <div className="links-social">
@@ -107,7 +107,7 @@ const Footer = React.memo(() => {
 
         <div className="links-about-resources link-group">
           <h4>About</h4>
-          <a href="/team">Meet the Woogles team</a>
+          <a href="/team">Meet the KofiBingo team</a>
           <a href="/terms">Terms of service</a>
           <h4>Community Resources</h4>
           <a
@@ -133,14 +133,14 @@ const Footer = React.memo(() => {
           </a>
         </div>
         <div className="links-settings link-group">
-          <h4>The Woogles Experience</h4>
+          <h4>The KofiBingo Experience</h4>
           <a href="/profile">Profile</a>
           <a href="/settings">Settings</a>
           <a href="/clubs">Clubs</a>
-          <a href="/donate">Support Woogles</a>
+          <a href="/donate">Support KofiBingo</a>
           <a href="/logout">Log out</a>
         </div>
-        <p className="copyright">{`©2020-${currentYear} by Woogles.io`}</p>
+        <p className="copyright">{`©2020-${currentYear} by KofiBingo.io`}</p>
       </div>
     </footer>
   );
