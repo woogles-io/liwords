@@ -30,7 +30,7 @@ export const TILE_TYPE = "TILE_TYPE";
 
 export const TileLetter = React.memo((props: TileLetterProps) => {
   const { letter, alphabet } = props;
-  let rune = machineLetterToDisplayedTile(letter, alphabet);
+  const rune = machineLetterToDisplayedTile(letter, alphabet);
   // For display purposes, an empty blank should just look empty and not like a `?`.
   if (rune === Blank) {
     return (
