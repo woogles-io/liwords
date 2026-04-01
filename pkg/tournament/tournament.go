@@ -393,6 +393,12 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
 	}
 
+	if !t.ExtraMeta.IRLMode {
+		if err := entity.ValidateGameRequest(ctx, controls.GameRequest); err != nil {
+			return err
+		}
+	}
+
 	newDivisionControls, standings, err := divisionObject.DivisionManager.SetDivisionControls(controls)
 	if err != nil {
 		return err
@@ -1202,7 +1208,7 @@ func startDivisionChecks(t *entity.Tournament, division string, round int) error
 
 	dm := divisionObject.DivisionManager
 
-	if dm.GetDivisionControls().GameRequest == nil {
+	if !t.ExtraMeta.IRLMode && dm.GetDivisionControls().GameRequest == nil {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, t.Name, division)
 	}
 

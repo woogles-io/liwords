@@ -25,6 +25,10 @@ const TopMenu = React.memo((props: Props) => {
       label: <Link to="/">OMGWords</Link>,
     },
     {
+      key: "tournaments",
+      label: <Link to="/tournaments">Tournaments</Link>,
+    },
+    {
       key: "leagues",
       label: <Link to="/leagues">Leagues</Link>,
     },

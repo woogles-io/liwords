@@ -104,8 +104,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const tClient = useClient(TournamentService);
 
+  const isIRL = tournamentContext.metadata?.irlMode;
+
   const submit = async () => {
-    if (!selectedGameRequest) {
+    if (!isIRL && !selectedGameRequest) {
       showError("No game request");
       return;
     }
@@ -338,25 +340,29 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         </Form.Item>
       </Form>
 
-      <div>{DisplayedGameSetting(selectedGameRequest)}</div>
+      {!isIRL && (
+        <>
+          <div>{DisplayedGameSetting(selectedGameRequest)}</div>
 
-      <Button
-        htmlType="button"
-        style={{
-          margin: "0 8px",
-        }}
-        onClick={() => setModalVisible(true)}
-      >
-        Edit game settings
-      </Button>
+          <Button
+            htmlType="button"
+            style={{
+              margin: "0 8px",
+            }}
+            onClick={() => setModalVisible(true)}
+          >
+            Edit game settings
+          </Button>
+
+          <SettingsModalForm
+            visible={modalVisible}
+            onCancel={() => setModalVisible(false)}
+          />
+        </>
+      )}
       <Button type="primary" onClick={submit}>
         Save tournament controls
       </Button>
-
-      <SettingsModalForm
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-      />
     </>
   );
 };

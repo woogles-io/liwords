@@ -1146,15 +1146,26 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		}
 	}
 
-	// Calculate total registrant count across all divisions
+	// Calculate total registrant count and build division summaries
 	var registrantCount int32
-	for _, division := range t.Divisions {
-		if division.DivisionManager != nil {
-			players := division.DivisionManager.GetPlayers()
-			if players != nil {
-				registrantCount += int32(len(players.Persons))
-			}
+	var divisionSummaries []*pb.TournamentDivisionSummary
+	for divName, division := range t.Divisions {
+		if division.DivisionManager == nil {
+			continue
 		}
+		players := division.DivisionManager.GetPlayers()
+		if players != nil {
+			registrantCount += int32(len(players.Persons))
+		}
+		controls := division.DivisionManager.GetDivisionControls()
+		summary := &pb.TournamentDivisionSummary{
+			Name: divName,
+		}
+		if controls != nil {
+			summary.GameRequest = controls.GameRequest
+			summary.RoundControls = division.DivisionManager.GetRoundControls()
+		}
+		divisionSummaries = append(divisionSummaries, summary)
 	}
 
 	metadata := &pb.TournamentMetadata{
@@ -1180,6 +1191,7 @@ func dbTournamentToTournamentMetadataResponse(ctx context.Context, t *entity.Tou
 		RegistrationOpen:          t.ExtraMeta.RegistrationOpen,
 		FirstDirector:             firstDirector,
 		RegistrantCount:           registrantCount,
+		Divisions:                 divisionSummaries,
 	}
 
 	return metadata, nil
