@@ -101,7 +101,7 @@ export const Donate = () => {
     if (!loginState.loggedIn) {
       return (
         <p>
-          Please log in to KofiBingo to connect your Patreon account after
+          Please log in to Woogles to connect your Patreon account after
           subscribing.
         </p>
       );
@@ -162,8 +162,8 @@ export const Donate = () => {
       </div>
       <p className="bolder">Subscribe monthly</p>
       <p>
-        When you join the KofiBingo Patreon, you can get access to BestBot, cool
-        badges, and even Kofi swag!
+        When you join the Woogles Patreon, you can get access to BestBot, cool
+        badges, and even Woogles swag!
       </p>
       {patreonButton()}
     </>

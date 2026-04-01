@@ -102,7 +102,7 @@ type Props = {
 
 const StreakFetchDelay = 2000;
 
-const DEFAULT_TITLE = "KofiBingo.io";
+const DEFAULT_TITLE = "Woogles.io";
 
 const ManageWindowTitleAndTurnSound = (props: {
   gameInfo: GameInfoResponse;

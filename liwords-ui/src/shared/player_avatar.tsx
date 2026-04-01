@@ -15,10 +15,6 @@ import variables from "../base.module.scss";
 const { colorPrimary } = variables;
 
 import petMacondog from "../assets/pet-macondog.gif";
-import sereneKofi from "../assets/sereneKofi.png";
-import kofiBingoHead from "../assets/kofiBingoHead.webp";
-
-const OTHER_BOT_NAMES = /^(hastybot|steebot|betterbot|basicbot|beginnerbot)$/i;
 
 const doNothing = () => {};
 export const PettableContext = createContext<{
@@ -71,15 +67,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     };
   }
 
-  if (username && /^bestbot$/i.test(username)) {
-    avatarStyle = {
-      backgroundImage: `url(${sereneKofi})`,
-    };
-  } else if (username && OTHER_BOT_NAMES.test(username)) {
-    avatarStyle = {
-      backgroundImage: `url(${kofiBingoHead})`,
-    };
-  } else if (avatarUrl) {
+  if (avatarUrl) {
     let avatarCurrentUrl = avatarUrl;
     if (
       avatarUrl === "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"

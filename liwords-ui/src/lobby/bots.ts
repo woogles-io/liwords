@@ -1,13 +1,11 @@
 import { BotRequest_BotCode } from "../gen/api/proto/vendored/macondo/macondo_pb";
 
-import sereneKofi from "../assets/sereneKofi.png";
-import kofiBingoHead from "../assets/kofiBingoHead.webp";
-const bestbot = sereneKofi;
-const hastybot = kofiBingoHead;
-const steebot = kofiBingoHead;
-const betterbot = kofiBingoHead;
-const basicbot = kofiBingoHead;
-const beginnerbot = kofiBingoHead;
+import bestbot from "../assets/bots/best.png";
+import hastybot from "../assets/bots/macondog.png";
+import steebot from "../assets/bots/stee.png";
+import betterbot from "../assets/bots/better.png";
+import basicbot from "../assets/bots/basic.png";
+import beginnerbot from "../assets/bots/beginner.png";
 
 export enum BotTypesEnum {
   MASTER,

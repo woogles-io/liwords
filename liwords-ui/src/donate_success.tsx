@@ -13,7 +13,7 @@ export const DonateSuccess = () => {
       <div className="donations donation-success">
         <h4>Thank you so much for your donation. &lt;3</h4>
         <p>
-          <a href="https://woogles.io">Return to KofiBingo</a>
+          <a href="https://woogles.io">Return to Woogles</a>
         </p>
       </div>
     </>
