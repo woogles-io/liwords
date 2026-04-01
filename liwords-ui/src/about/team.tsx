@@ -10,7 +10,7 @@ import jesse from "../assets/bio/bio_jesse.jpg";
 import josh from "../assets/bio/bio_josh.jpg";
 import lola from "../assets/bio/bio_lola.jpg";
 import macondo from "../assets/bio/bio_macondo.jpg";
-import woogles from "../assets/bio/bio_woogles.jpg";
+import kofiBingo from "../assets/kofiBingo.webp";
 import benjy from "../assets/bio/bio_benjy.jpg";
 
 export const Team = () => {
@@ -93,7 +93,7 @@ export const Team = () => {
                 <p>
                   Although César hovers around the top 20 in North America in
                   Scrabble®, he loves coding even more than playing, and thus
-                  hasn’t reached the heights he’s dreamed of because he spends
+                  hasn't reached the heights he's dreamed of because he spends
                   most of his free time thinking up and building new apps. He
                   built Aerolith, a word study app which is used by hundreds of
                   competitive word gamers, and has many years of experience as a
@@ -187,7 +187,7 @@ export const Team = () => {
                   works as a Principal Software Development Engineer creating
                   user interfaces used by over a million experts in their
                   fields. In 2016, she was a finalist for the Women’s Tech
-                  Council annual awards. Besides Scrabble®, she's also
+                  Council annual awards. Besides Scrabble®, she’s also
                   enthusiastically bad at standup comedy, playing the bass
                   guitar, singing, and painting. Ketchup is gross.
                 </p>
@@ -298,19 +298,20 @@ export const Team = () => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={woogles} alt="Woogles the Greek Dog of Word Games" />
+              <img src={kofiBingo} alt="Kofi Bingo the Eagle of Word Games" />
               <div className="team-info">
-                <h3>Woogles</h3>
+                <h3>Kofi Bingo</h3>
                 <p>
-                  What exactly IS Woogles? In Greek mythology, Woogles was the
-                  trusty hound of Hermes, the Greek God of word games and
-                  handbags (maybe not that last one, but Wikipedia has him down
-                  for "trade, wealth, luck, fertility, animal husbandry, sleep,
-                  language, thieves, and travel"). Legend has it that Woogles
-                  would bark in warning when a phony word was played, which is
-                  why word games aren't in the Olympics. He is committed to
-                  inclusivity, community, and expanding the game. He hates
-                  phonies.
+                  What exactly IS Kofi Bingo? In Greek mythology, Kofi was the
+                  majestic war eagle of Athena, Goddess of wisdom and strategy.
+                  While other eagles soared aimlessly, Kofi spent his days
+                  surveying Scrabble boards from great heights, calculating
+                  leave values and equity at a glance. Legend has it that when a
+                  phony word is played, Kofi unleashes a screech so piercing
+                  that the tiles rattle right off the board — which is why word
+                  games aren't in the Olympics. He is committed to inclusivity,
+                  community, and expanding the game. He DESPISES phonies and
+                  will screech them into oblivion.
                 </p>
               </div>
             </div>

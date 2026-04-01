@@ -1,5 +1,5 @@
 import React from "react";
-import woogles from "../assets/woogles.png";
+import kofiBingo from "../assets/kofiBingo.webp";
 import { Donate } from "../donate";
 
 type Props = {
@@ -9,9 +9,9 @@ type Props = {
 export const Support = React.memo((props: Props) => {
   return (
     <>
-      <h3>Help us keep Woogles.io going!</h3>
+      <h3>Help us keep KofiBingo.io going!</h3>
       <div className="support-woogles">
-        <img src={woogles} className="woogles" alt="Woogles" />
+        <img src={kofiBingo} className="woogles" alt="Kofi Bingo" />
         <div className="right-column">
           <Donate />
         </div>
