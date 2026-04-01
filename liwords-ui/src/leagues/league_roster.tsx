@@ -145,6 +145,12 @@ export const LeagueRoster: React.FC<Props> = ({
   const [search, setSearch] = useState("");
   const [h2hUserId, setH2hUserId] = useState("");
   const [h2hUsername, setH2hUsername] = useState("");
+  const [sortKey, setSortKey] = useState<string | null>(
+    defaultSortSeason ? `s${defaultSortSeason}` : null,
+  );
+  const [sortOrder, setSortOrder] = useState<SortOrder>(
+    defaultSortSeason ? "ascend" : null,
+  );
   const { data, isLoading } = useQuery(getLeagueRoster, {
     leagueId,
   });
@@ -263,6 +269,7 @@ export const LeagueRoster: React.FC<Props> = ({
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
         a.username.localeCompare(b.username),
       sortDirections: ["ascend", "descend"] as SortOrder[],
+      sortOrder: sortKey === "username" ? sortOrder : undefined,
       render: (_: unknown, record: LeagueRosterPlayer) => (
         <UsernameWithContext
           username={record.username}
@@ -315,6 +322,7 @@ export const LeagueRoster: React.FC<Props> = ({
               return aVal - bVal;
             },
             sortDirections: ["descend", "ascend"] as SortOrder[],
+            sortOrder: sortKey === "h2h" ? sortOrder : undefined,
           },
         ]
       : []),
@@ -326,6 +334,7 @@ export const LeagueRoster: React.FC<Props> = ({
       sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) =>
         a.seasons.length - b.seasons.length,
       sortDirections: ["descend", "ascend"] as SortOrder[],
+      sortOrder: sortKey === "count" ? sortOrder : undefined,
     },
     ...seasonNumbers.map((sn: number) => ({
       title: `S${sn}`,
@@ -350,8 +359,7 @@ export const LeagueRoster: React.FC<Props> = ({
         seasonCompare(a, b, sn) ||
         a.username.toLowerCase().localeCompare(b.username.toLowerCase()),
       sortDirections: ["ascend", "descend"] as SortOrder[],
-      defaultSortOrder:
-        sn === defaultSortSeason ? ("ascend" as SortOrder) : undefined,
+      sortOrder: sortKey === `s${sn}` ? sortOrder : undefined,
     })),
   ];
 
@@ -373,6 +381,12 @@ export const LeagueRoster: React.FC<Props> = ({
         size="small"
         scroll={{ x: "max-content" }}
         showSorterTooltip={false}
+        onChange={(_pagination, _filters, sorter) => {
+          if (!Array.isArray(sorter)) {
+            setSortKey((sorter.columnKey as string) ?? null);
+            setSortOrder(sorter.order ?? null);
+          }
+        }}
       />
     </div>
   );
