@@ -21,17 +21,15 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	amendment bool, evtIndex uint32, gs *stores.GameDocumentStore,
 	evtChan chan *entity.EventWrapper) (bool, error) {
 
-	g, err := gs.GetDocument(ctx, evt.GameId, true)
+	g, err := gs.GetDocument(ctx, evt.GameId)
 	if err != nil {
 		return false, err
 	}
-	// the game is locked now
 
 	// amendment is sent when we try to edit an already existing game event
 	// in the past. This can only be done for annotated games.
 	if amendment {
 		gameEnded, err := handleAmendment(ctx, cfg, userID, evt, evtIndex, g, gs, evtChan)
-		// handleAmendment unlocks the document, so we can return directly
 		return gameEnded, err
 	}
 
@@ -49,9 +47,8 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 	// Save the old values
 	oldNumEvents := len(g.Events)
 
-	err = cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, g.GameDocument)
+	err = cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, g)
 	if err != nil {
-		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg(err.Error())
 	}
 
@@ -108,15 +105,13 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 // handleAmendment handles editing a past event in a non-destructive way.
 // It preserves subsequent events and attempts to re-apply them.
 func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
-	evt *ipc.ClientGameplayEvent, evtIndex uint32, g *stores.MaybeLockedDocument,
+	evt *ipc.ClientGameplayEvent, evtIndex uint32, g *ipc.GameDocument,
 	gs *stores.GameDocumentStore, evtChan chan *entity.EventWrapper) (bool, error) {
 
 	if g.Type != ipc.GameType_ANNOTATED {
-		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg("you can only amend annotated games")
 	}
 	if len(g.Events)-1 < int(evtIndex) {
-		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg("tried to amend a rack for a non-existing event")
 	}
 
@@ -124,7 +119,7 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 	pidx := g.Events[evtIndex].PlayerIndex
 
 	// Clone the document to work on - we'll only update the real document if everything succeeds
-	gdocClone := proto.Clone(g.GameDocument).(*ipc.GameDocument)
+	gdocClone := proto.Clone(g).(*ipc.GameDocument)
 
 	// For CHALLENGE events, we use insert semantics (preserve the challenged play)
 	// For other events, we use replace semantics (replace the event at evtIndex)
@@ -141,7 +136,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		cwgame.LogTileState(gdocClone, "before-replay-challenge")
 		err := cwgame.ReplayEvents(ctx, cfg, gdocClone, evts, false)
 		if err != nil {
-			gs.UnlockDocument(ctx, g)
 			return false, apiserver.InvalidArg(err.Error())
 		}
 		cwgame.LogTileState(gdocClone, "after-replay-challenge")
@@ -163,7 +157,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		cwgame.LogTileState(gdocClone, "before-replay")
 		err := cwgame.ReplayEvents(ctx, cfg, gdocClone, evts, false)
 		if err != nil {
-			gs.UnlockDocument(ctx, g)
 			return false, apiserver.InvalidArg(err.Error())
 		}
 		cwgame.LogTileState(gdocClone, "after-replay")
@@ -173,7 +166,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 		racks[pidx] = rack
 		err = cwgame.AssignRacks(cfg, gdocClone, racks, cwgame.AssignEmptyIfUnambiguous)
 		if err != nil {
-			gs.UnlockDocument(ctx, g)
 			return false, apiserver.InvalidArg(err.Error())
 		}
 		cwgame.LogTileState(gdocClone, "after-assign-racks")
@@ -182,7 +174,6 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 	// Process the new/edited event
 	err := cwgame.ProcessGameplayEvent(ctx, cfg, evt, userID, gdocClone)
 	if err != nil {
-		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg(err.Error())
 	}
 	cwgame.LogTileState(gdocClone, "after-process-event")
@@ -227,17 +218,16 @@ func handleAmendment(ctx context.Context, cfg *wglconfig.Config, userID string,
 	// Ensure racks are replenished after truncation/replay
 	err = cwgame.AssignRacks(cfg, gdocClone, [][]byte{nil, nil}, cwgame.AlwaysAssignEmpty)
 	if err != nil {
-		gs.UnlockDocument(ctx, g)
 		return false, apiserver.InvalidArg(err.Error())
 	}
 	cwgame.LogTileState(gdocClone, "after-replenish-racks")
 
 	// All operations succeeded - copy the clone back to the real document
-	g.GameDocument = gdocClone
+	*g = *gdocClone
 
 	// Send entire document event for amendments
 	docEvt := &ipc.GameDocumentEvent{
-		Doc: proto.Clone(g.GameDocument).(*ipc.GameDocument),
+		Doc: proto.Clone(g).(*ipc.GameDocument),
 	}
 	wrapped := entity.WrapEvent(docEvt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(g.Uid))
