@@ -15,6 +15,7 @@ import {
   Switch,
   Typography,
 } from "antd";
+import type { RadioChangeEvent } from "antd";
 import { useNavigate } from "react-router";
 import {
   PlusOutlined,
@@ -36,6 +37,10 @@ import {
 } from "./director_tools/game_settings_form";
 import { Modal } from "../utils/focus_modal";
 import { GameRequest } from "../gen/api/proto/ipc/omgwords_pb";
+import {
+  TournamentGameResult,
+  RoundControl,
+} from "../gen/api/proto/ipc/tournament_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
   doesCurrentUserUse24HourTime,
@@ -49,6 +54,8 @@ const { Title, Paragraph, Text } = Typography;
 type DivisionConfig = {
   name: string;
   numRounds: number;
+  gameRequest?: GameRequest;
+  roundControls?: RoundControl[];
 };
 
 type WizardData = {
@@ -66,6 +73,7 @@ type WizardData = {
   gameRequest: GameRequest | undefined;
   // Copy source
   copyFromSlug?: string;
+  gameSettingsVaryPerDivision?: boolean;
 };
 
 const STEPS = [
@@ -148,20 +156,51 @@ export const TournamentWizard = () => {
           return;
         }
 
+        // Build divisions from the metadata division summaries
+        const divisions: DivisionConfig[] = metadata.divisions.map((d) => ({
+          name: d.name,
+          numRounds: d.roundControls.length || 1,
+          gameRequest: d.gameRequest,
+          roundControls: d.roundControls.length > 0 ? d.roundControls : undefined,
+        }));
+
+        // Determine shared game request: if all divisions have the same settings
+        // (or there's only one division), use it as the global game request.
+        // Otherwise leave it undefined and store per-division.
+        let sharedGameRequest: GameRequest | undefined;
+        let gameSettingsVary = false;
+        if (divisions.length > 0 && divisions[0].gameRequest) {
+          const firstJSON = JSON.stringify(divisions[0].gameRequest);
+          const allSame = divisions.every(
+            (d) => JSON.stringify(d.gameRequest) === firstJSON,
+          );
+          if (allSame) {
+            sharedGameRequest = divisions[0].gameRequest;
+            // Clear per-division game request since global covers it
+            divisions.forEach((d) => { d.gameRequest = undefined; });
+          } else {
+            gameSettingsVary = true;
+          }
+        }
+
         setWizardData((prev) => ({
           ...prev,
           tournamentMode: metadata.irlMode ? "irl" : "online",
           monitored: metadata.monitored,
           name: metadata.name + " (Copy)",
           description: metadata.description,
-          gameRequest: metadata.defaultClubSettings ?? undefined,
+          divisions: divisions.length > 0 ? divisions : prev.divisions,
+          gameRequest: sharedGameRequest,
+          gameSettingsVaryPerDivision: gameSettingsVary,
           copyFromSlug: slug,
         }));
 
         setShowCopyPicker(false);
         message.info({
-          content: "Tournament settings copied! Review and modify as needed.",
-          duration: 3,
+          content: gameSettingsVary
+            ? "Tournament copied! Note: game settings vary per division — configure them after creation in Director Tools."
+            : "Tournament settings copied! Review and modify as needed.",
+          duration: 5,
         });
       } catch (e) {
         flashError(e);
@@ -178,10 +217,19 @@ export const TournamentWizard = () => {
 
     setCreating(true);
     try {
+      const userSlug = wizardData.slug.trim();
+      const generatedSlug = userSlug
+        ? `/tournament/${userSlug}`
+        : `/tournament/${wizardData.name
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")}-${Math.random().toString(36).slice(2, 6)}`;
+
       const resp = await tournamentClient.newTournament({
         name: wizardData.name.trim(),
         description: wizardData.description,
-        slug: wizardData.slug.trim() || undefined,
+        slug: generatedSlug,
         type: TType.STANDARD,
         directorUsernames: [loginState.username],
         scheduledStartTime: wizardData.scheduledStartTime
@@ -224,20 +272,32 @@ export const TournamentWizard = () => {
         }
       }
 
-      // Set division controls (game request) for each division
-      if (wizardData.gameRequest) {
-        for (const div of wizardData.divisions) {
+      // Set division controls and round controls for each division
+      for (const div of wizardData.divisions) {
+        const effectiveGameRequest = div.gameRequest ?? wizardData.gameRequest;
+        if (effectiveGameRequest || wizardData.tournamentMode === "irl") {
           try {
             await tournamentClient.setDivisionControls({
               id: tournamentId,
               division: div.name,
-              gameRequest: wizardData.gameRequest,
-              suspendedResult: 2, // FORFEIT_LOSS
+              gameRequest: effectiveGameRequest,
+              suspendedResult: TournamentGameResult.FORFEIT_LOSS,
               suspendedSpread: -50,
               autoStart: false,
             });
           } catch (e) {
             console.error("Error setting division controls:", e);
+          }
+        }
+        if (div.roundControls && div.roundControls.length > 0) {
+          try {
+            await tournamentClient.setRoundControls({
+              id: tournamentId,
+              division: div.name,
+              roundControls: div.roundControls,
+            });
+          } catch (e) {
+            console.error("Error setting round controls:", e);
           }
         }
       }
@@ -346,6 +406,17 @@ export const TournamentWizard = () => {
               updateField={updateField}
               settingsModalVisible={settingsModalVisible}
               setSettingsModalVisible={setSettingsModalVisible}
+              onSetGameRequest={(gr) => {
+                setWizardData((prev) => ({
+                  ...prev,
+                  gameRequest: gr,
+                  gameSettingsVaryPerDivision: false,
+                  divisions: prev.divisions.map((d) => ({
+                    ...d,
+                    gameRequest: undefined,
+                  })),
+                }));
+              }}
             />
           )}
           {currentStep === 3 && <StepReview wizardData={wizardData} />}
@@ -435,13 +506,22 @@ const StepTournamentType = ({
     field: K,
     value: WizardData[K],
   ) => void;
-}) => (
+}) => {
+  const handleModeChange = (e: RadioChangeEvent) => {
+    const newMode = e.target.value as WizardData["tournamentMode"];
+    updateField("tournamentMode", newMode);
+    if (newMode === "irl") {
+      updateField("monitored", false);
+    }
+  };
+
+  return (
   <div className="step-content">
     <Title level={4}>What kind of tournament are you running?</Title>
 
     <Radio.Group
       value={wizardData.tournamentMode}
-      onChange={(e) => updateField("tournamentMode", e.target.value)}
+      onChange={handleModeChange}
       className="tournament-type-radio"
     >
       <Radio.Button value="online" className="type-option">
@@ -473,6 +553,7 @@ const StepTournamentType = ({
       <Switch
         checked={wizardData.monitored}
         onChange={(checked) => updateField("monitored", checked)}
+        disabled={wizardData.tournamentMode === "irl"}
       />
       <div className="monitoring-description">
         <Text strong>Enable monitoring</Text>
@@ -482,10 +563,16 @@ const StepTournamentType = ({
           where fair play verification is important. Uses vdo.ninja for stream
           management.
         </Paragraph>
+        {wizardData.tournamentMode === "irl" && (
+          <Paragraph type="warning">
+            Monitoring is not available for IRL tournaments.
+          </Paragraph>
+        )}
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // Step 1: Basic Info
 const StepBasicInfo = ({
@@ -518,7 +605,7 @@ const StepBasicInfo = ({
 
       <Form.Item
         label="URL Slug (optional)"
-        help='A custom URL for your tournament (e.g., "spring-championship-2026"). If left blank, one will be generated automatically.'
+        help='A custom URL for your tournament (e.g., "spring-championship-2026"). If left blank, one will be generated from the tournament name.'
       >
         <Input
           value={wizardData.slug}
@@ -582,6 +669,7 @@ const StepDivisions = ({
   updateField,
   settingsModalVisible,
   setSettingsModalVisible,
+  onSetGameRequest,
 }: {
   wizardData: WizardData;
   updateField: <K extends keyof WizardData>(
@@ -590,6 +678,7 @@ const StepDivisions = ({
   ) => void;
   settingsModalVisible: boolean;
   setSettingsModalVisible: (v: boolean) => void;
+  onSetGameRequest: (gr: GameRequest) => void;
 }) => {
   const addDivision = () => {
     const newDivisions = [
@@ -656,39 +745,55 @@ const StepDivisions = ({
         Add Division
       </Button>
 
-      <Divider />
+      {wizardData.tournamentMode !== "irl" && (
+        <>
+          <Divider />
 
-      <Title level={4}>Game Settings</Title>
-      <Paragraph type="secondary">
-        Configure the default game settings for all divisions. These include
-        lexicon, time controls, challenge rules, and whether games are rated.
-        You can customize per-division settings later from the director tools.
-      </Paragraph>
+          <Title level={4}>Game Settings</Title>
+          <Paragraph type="secondary">
+            Configure the default game settings for all divisions. These include
+            lexicon, time controls, challenge rules, and whether games are
+            rated. You can customize per-division settings later from the
+            director tools.
+          </Paragraph>
 
-      {DisplayedGameSetting(wizardData.gameRequest)}
+          {wizardData.gameSettingsVaryPerDivision ? (
+            <Alert
+              type="info"
+              message="Game settings vary per division — they have been copied and will be applied per division. You can update them after creation in Director Tools."
+              style={{ marginBottom: 12 }}
+              showIcon
+            />
+          ) : (
+            DisplayedGameSetting(wizardData.gameRequest)
+          )}
 
-      <Button onClick={() => setSettingsModalVisible(true)}>
-        {wizardData.gameRequest
-          ? "Change Game Settings"
-          : "Configure Game Settings"}
-      </Button>
+          {!wizardData.gameSettingsVaryPerDivision && (
+            <Button onClick={() => setSettingsModalVisible(true)}>
+              {wizardData.gameRequest
+                ? "Change Game Settings"
+                : "Configure Game Settings"}
+            </Button>
+          )}
 
-      <Modal
-        title="Game Settings"
-        open={settingsModalVisible}
-        onCancel={() => setSettingsModalVisible(false)}
-        className="seek-modal"
-        okButtonProps={{ style: { display: "none" } }}
-        destroyOnClose
-      >
-        <SettingsForm
-          setGameRequest={(gr) => {
-            updateField("gameRequest", gr);
-            setSettingsModalVisible(false);
-          }}
-          gameRequest={wizardData.gameRequest}
-        />
-      </Modal>
+          <Modal
+            title="Game Settings"
+            open={settingsModalVisible}
+            onCancel={() => setSettingsModalVisible(false)}
+            className="seek-modal"
+            okButtonProps={{ style: { display: "none" } }}
+            destroyOnClose
+          >
+            <SettingsForm
+              setGameRequest={(gr) => {
+                onSetGameRequest(gr);
+                setSettingsModalVisible(false);
+              }}
+              gameRequest={wizardData.gameRequest}
+            />
+          </Modal>
+        </>
+      )}
     </div>
   );
 };
@@ -717,9 +822,13 @@ const StepReview = ({ wizardData }: { wizardData: WizardData }) => (
       <p>
         <strong>Name:</strong> {wizardData.name || "(not set)"}
       </p>
-      {wizardData.slug && (
+      {wizardData.slug ? (
         <p>
           <strong>URL:</strong> /tournament/{wizardData.slug}
+        </p>
+      ) : (
+        <p>
+          <strong>URL:</strong> auto-generated from tournament name
         </p>
       )}
       {wizardData.scheduledStartTime && (
@@ -746,13 +855,22 @@ const StepReview = ({ wizardData }: { wizardData: WizardData }) => (
       {wizardData.divisions.map((div, idx) => (
         <p key={idx}>
           <strong>{div.name}</strong>
+          {div.roundControls && div.roundControls.length > 0 && (
+            <span style={{ fontWeight: "normal", marginLeft: 8, opacity: 0.7 }}>
+              ({div.roundControls.length} round{div.roundControls.length !== 1 ? "s" : ""})
+            </span>
+          )}
         </p>
       ))}
     </Card>
 
-    <Card size="small" title="Game Settings" className="review-card">
-      {DisplayedGameSetting(wizardData.gameRequest)}
-    </Card>
+    {wizardData.tournamentMode !== "irl" && (
+      <Card size="small" title="Game Settings" className="review-card">
+        {wizardData.gameSettingsVaryPerDivision
+          ? "Varies per division (copied from source tournament)"
+          : DisplayedGameSetting(wizardData.gameRequest)}
+      </Card>
+    )}
 
     <Alert
       type="info"

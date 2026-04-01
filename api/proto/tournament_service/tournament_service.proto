@@ -83,6 +83,14 @@ message TournamentMetadata {
   string first_director = 21;
   // registrant_count is the total number of registered players across all divisions
   int32 registrant_count = 22;
+  // divisions contains a summary of each division for copy/template purposes
+  repeated TournamentDivisionSummary divisions = 23;
+}
+
+message TournamentDivisionSummary {
+  string name = 1;
+  ipc.GameRequest game_request = 2;
+  repeated ipc.RoundControl round_controls = 3;
 }
 
 message SetTournamentMetadataRequest {

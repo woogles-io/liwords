@@ -62,14 +62,20 @@ func (t *ClassicDivision) GetDivisionControls() *pb.DivisionControls {
 	return t.DivisionControls
 }
 
+func (t *ClassicDivision) GetRoundControls() []*pb.RoundControl {
+	return t.RoundControls
+}
+
 func (t *ClassicDivision) ChangeName(newName string) {
 	t.DivisionName = newName
 }
 
 func (t *ClassicDivision) SetDivisionControls(divisionControls *pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error) {
-	err := entity.ValidateGameRequest(context.Background(), divisionControls.GameRequest)
-	if err != nil {
-		return nil, nil, err
+	if divisionControls.GameRequest != nil {
+		err := entity.ValidateGameRequest(context.Background(), divisionControls.GameRequest)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	log.Debug().Interface("game-req", divisionControls.GameRequest).
 		Str("tournament", t.TournamentName).
