@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import kofiBingoHead from "../assets/kofiBingoHead.webp";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import TentativeScore from "./tentative_score";
@@ -30,21 +29,10 @@ export const TILE_TYPE = "TILE_TYPE";
 
 export const TileLetter = React.memo((props: TileLetterProps) => {
   const { letter, alphabet } = props;
-  const rune = machineLetterToDisplayedTile(letter, alphabet);
+  let rune = machineLetterToDisplayedTile(letter, alphabet);
   // For display purposes, an empty blank should just look empty and not like a `?`.
   if (rune === Blank) {
-    return (
-      <p className="rune">
-        <span>
-          <img
-            src={kofiBingoHead}
-            alt="Kofi"
-            draggable={false}
-            style={{ width: "70%", height: "70%", objectFit: "contain" }}
-          />
-        </span>
-      </p>
-    );
+    rune = " ";
   }
   return (
     <p className="rune">
