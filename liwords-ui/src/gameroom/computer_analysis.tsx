@@ -517,13 +517,17 @@ const SimPlaysTable: React.FC<{
 }> = ({ plays, boardCtx, onClickPlay }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
-  // Sort client-side: win% desc, then equity desc as tiebreaker.
-  // This guarantees correct order regardless of server-side edge cases
-  // (e.g. ignored/pruned plays appended out of order by extractTopSimPlays).
+  // Sort client-side: unignored plays first (by win% desc, then equity desc),
+  // then ignored/pruned plays at the bottom (also by win%/equity).
+  // This ensures plays with very few iterations don't clutter the top results.
   const WIN_PCT_EPSILON = 1e-4;
   const sortedPlays = useMemo(
     () =>
       [...plays].sort((a, b) => {
+        // Move ignored plays to the bottom
+        if (a.isIgnored && !b.isIgnored) return 1;
+        if (!a.isIgnored && b.isIgnored) return -1;
+        // Within the same group (both ignored or both not), sort by metrics
         const wDiff = b.winProb - a.winProb;
         if (Math.abs(wDiff) > WIN_PCT_EPSILON) return wDiff > 0 ? 1 : -1;
         return b.equity - a.equity;
@@ -578,7 +582,7 @@ const SimPlaysTable: React.FC<{
             return (
               <React.Fragment key={i}>
                 <tr
-                  className={p.isPlayedMove ? "ca-sim-played" : ""}
+                  className={`${p.isPlayedMove ? "ca-sim-played" : ""} ${p.isIgnored ? "ca-sim-ignored" : ""}`}
                   onClick={() => onClickPlay(parsed)}
                 >
                   <td className="ca-coord">{parsed.coordinates}</td>
