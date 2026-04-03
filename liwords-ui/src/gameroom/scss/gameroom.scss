@@ -596,6 +596,13 @@ p.streak-loss {
           background-color: rgba(0, 102, 204, 0.08);
         }
       }
+
+      tr.ca-sim-ignored {
+        @include colorModed() {
+          opacity: 0.4;
+          font-style: italic;
+        }
+      }
     }
 
     table.ca-clickable-table {

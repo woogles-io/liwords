@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.60.2
 	github.com/aws/smithy-go v1.24.2
-	github.com/domino14/macondo v0.12.3
+	github.com/domino14/macondo v0.12.4
 	github.com/domino14/word-golib v0.2.19
 	github.com/exaring/otelpgx v0.10.0
 	github.com/gdamore/tcell/v2 v2.13.8

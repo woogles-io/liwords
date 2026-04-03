@@ -31,7 +31,7 @@ import (
 
 // MinMacondoVersion is the minimum macondo worker version accepted.
 // Workers older than this are rejected at ClaimJob.
-const MinMacondoVersion = "v0.12.3"
+const MinMacondoVersion = "v0.12.4"
 
 // normalizeMacondoVersion strips the git-describe suffix (-N-gHASH) so that
 // "v0.12.3-3-gabcdef" (3 commits after v0.12.3) compares as >= "v0.12.3".
