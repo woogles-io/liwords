@@ -211,6 +211,8 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 
 	moderator := string(rbac.Moderator)
 	admin := string(rbac.Admin)
+	tournamentCreator := string(rbac.TournamentCreator)
+	tournamentManager := string(rbac.TournamentManager)
 
 	for _, r := range roles {
 		if r == moderator {
@@ -218,6 +220,9 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 		}
 		if r == admin {
 			perms = append(perms, "adm")
+		}
+		if r == tournamentCreator || r == tournamentManager {
+			perms = append(perms, "toc")
 		}
 	}
 

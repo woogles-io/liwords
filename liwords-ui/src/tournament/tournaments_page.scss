@@ -1,0 +1,29 @@
+@use "../base.scss" as *;
+
+.tournaments-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+
+  .tournaments-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+    }
+  }
+
+  .tournaments-page-content {
+    @include colorModed {
+      background-color: m($card-background);
+      border: 1px solid m($off-background);
+    }
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}

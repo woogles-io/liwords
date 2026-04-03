@@ -145,6 +145,9 @@ const (
 	// TournamentServiceGetPastTournamentsProcedure is the fully-qualified name of the
 	// TournamentService's GetPastTournaments RPC.
 	TournamentServiceGetPastTournamentsProcedure = "/tournament_service.TournamentService/GetPastTournaments"
+	// TournamentServiceGetMyTournamentsProcedure is the fully-qualified name of the TournamentService's
+	// GetMyTournaments RPC.
+	TournamentServiceGetMyTournamentsProcedure = "/tournament_service.TournamentService/GetMyTournaments"
 	// TournamentServiceRunCOPProcedure is the fully-qualified name of the TournamentService's RunCOP
 	// RPC.
 	TournamentServiceRunCOPProcedure = "/tournament_service.TournamentService/RunCOP"
@@ -208,6 +211,8 @@ type TournamentServiceClient interface {
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
+	// GetMyTournaments returns tournaments where the authenticated user is a director.
+	GetMyTournaments(context.Context, *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -457,6 +462,13 @@ func NewTournamentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getMyTournaments: connect.NewClient[tournament_service.GetMyTournamentsRequest, tournament_service.GetMyTournamentsResponse](
+			httpClient,
+			baseURL+TournamentServiceGetMyTournamentsProcedure,
+			connect.WithSchema(tournamentServiceMethods.ByName("GetMyTournaments")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		runCOP: connect.NewClient[tournament_service.RunCopRequest, ipc.PairResponse](
 			httpClient,
 			baseURL+TournamentServiceRunCOPProcedure,
@@ -530,6 +542,7 @@ type tournamentServiceClient struct {
 	getTournamentScorecards         *connect.Client[tournament_service.TournamentScorecardRequest, tournament_service.TournamentScorecardResponse]
 	getRecentAndUpcomingTournaments *connect.Client[tournament_service.GetRecentAndUpcomingTournamentsRequest, tournament_service.GetRecentAndUpcomingTournamentsResponse]
 	getPastTournaments              *connect.Client[tournament_service.GetPastTournamentsRequest, tournament_service.GetPastTournamentsResponse]
+	getMyTournaments                *connect.Client[tournament_service.GetMyTournamentsRequest, tournament_service.GetMyTournamentsResponse]
 	runCOP                          *connect.Client[tournament_service.RunCopRequest, ipc.PairResponse]
 	initializeMonitoringKeys        *connect.Client[tournament_service.InitializeMonitoringKeysRequest, tournament_service.TournamentResponse]
 	requestMonitoringStream         *connect.Client[tournament_service.RequestMonitoringStreamRequest, tournament_service.TournamentResponse]
@@ -724,6 +737,11 @@ func (c *tournamentServiceClient) GetPastTournaments(ctx context.Context, req *c
 	return c.getPastTournaments.CallUnary(ctx, req)
 }
 
+// GetMyTournaments calls tournament_service.TournamentService.GetMyTournaments.
+func (c *tournamentServiceClient) GetMyTournaments(ctx context.Context, req *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error) {
+	return c.getMyTournaments.CallUnary(ctx, req)
+}
+
 // RunCOP calls tournament_service.TournamentService.RunCOP.
 func (c *tournamentServiceClient) RunCOP(ctx context.Context, req *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {
 	return c.runCOP.CallUnary(ctx, req)
@@ -796,6 +814,8 @@ type TournamentServiceHandler interface {
 	GetTournamentScorecards(context.Context, *connect.Request[tournament_service.TournamentScorecardRequest]) (*connect.Response[tournament_service.TournamentScorecardResponse], error)
 	GetRecentAndUpcomingTournaments(context.Context, *connect.Request[tournament_service.GetRecentAndUpcomingTournamentsRequest]) (*connect.Response[tournament_service.GetRecentAndUpcomingTournamentsResponse], error)
 	GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error)
+	// GetMyTournaments returns tournaments where the authenticated user is a director.
+	GetMyTournaments(context.Context, *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error)
 	RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error)
 	// Monitoring/invigilation endpoints
 	InitializeMonitoringKeys(context.Context, *connect.Request[tournament_service.InitializeMonitoringKeysRequest]) (*connect.Response[tournament_service.TournamentResponse], error)
@@ -1041,6 +1061,13 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	tournamentServiceGetMyTournamentsHandler := connect.NewUnaryHandler(
+		TournamentServiceGetMyTournamentsProcedure,
+		svc.GetMyTournaments,
+		connect.WithSchema(tournamentServiceMethods.ByName("GetMyTournaments")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	tournamentServiceRunCOPHandler := connect.NewUnaryHandler(
 		TournamentServiceRunCOPProcedure,
 		svc.RunCOP,
@@ -1148,6 +1175,8 @@ func NewTournamentServiceHandler(svc TournamentServiceHandler, opts ...connect.H
 			tournamentServiceGetRecentAndUpcomingTournamentsHandler.ServeHTTP(w, r)
 		case TournamentServiceGetPastTournamentsProcedure:
 			tournamentServiceGetPastTournamentsHandler.ServeHTTP(w, r)
+		case TournamentServiceGetMyTournamentsProcedure:
+			tournamentServiceGetMyTournamentsHandler.ServeHTTP(w, r)
 		case TournamentServiceRunCOPProcedure:
 			tournamentServiceRunCOPHandler.ServeHTTP(w, r)
 		case TournamentServiceInitializeMonitoringKeysProcedure:
@@ -1313,6 +1342,10 @@ func (UnimplementedTournamentServiceHandler) GetRecentAndUpcomingTournaments(con
 
 func (UnimplementedTournamentServiceHandler) GetPastTournaments(context.Context, *connect.Request[tournament_service.GetPastTournamentsRequest]) (*connect.Response[tournament_service.GetPastTournamentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetPastTournaments is not implemented"))
+}
+
+func (UnimplementedTournamentServiceHandler) GetMyTournaments(context.Context, *connect.Request[tournament_service.GetMyTournamentsRequest]) (*connect.Response[tournament_service.GetMyTournamentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tournament_service.TournamentService.GetMyTournaments is not implemented"))
 }
 
 func (UnimplementedTournamentServiceHandler) RunCOP(context.Context, *connect.Request[tournament_service.RunCopRequest]) (*connect.Response[ipc.PairResponse], error) {

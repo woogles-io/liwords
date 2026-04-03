@@ -274,7 +274,11 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
   );
 };
 
-const TournamentsAndLeaguesContent = () => {
+export const TournamentsAndLeaguesContent = ({
+  showLeagues = true,
+}: {
+  showLeagues?: boolean;
+} = {}) => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<
     Array<TournamentMetadata>
   >([]);
@@ -464,7 +468,7 @@ const TournamentsAndLeaguesContent = () => {
         </>
       )}
 
-      {activeLeagues.length > 0 && (
+      {showLeagues && activeLeagues.length > 0 && (
         <>
           <h4>Leagues</h4>
           <div className="leagues-list">
@@ -477,8 +481,8 @@ const TournamentsAndLeaguesContent = () => {
 
       {upcomingTournaments.length === 0 &&
         pastTournaments.length === 0 &&
-        activeLeagues.length === 0 && (
-          <div className="empty-state">No tournaments or leagues</div>
+        (!showLeagues || activeLeagues.length === 0) && (
+          <div className="empty-state">No tournaments</div>
         )}
 
       {pastTournaments.length > 0 && (

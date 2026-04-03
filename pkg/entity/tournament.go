@@ -21,6 +21,7 @@ type DivisionManager interface {
 	SetRoundControls([]*pb.RoundControl) (*pb.DivisionPairingsResponse, []*pb.RoundControl, error)
 	SetDivisionControls(*pb.DivisionControls) (*pb.DivisionControls, map[int32]*pb.RoundStandings, error)
 	GetDivisionControls() *pb.DivisionControls
+	GetRoundControls() []*pb.RoundControl
 	AddPlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	RemovePlayers(*pb.TournamentPersons) (*pb.DivisionPairingsResponse, error)
 	IsRoundReady(int) error
