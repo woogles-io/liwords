@@ -515,7 +515,9 @@ const SimPlaysTable: React.FC<{
   boardCtx: BoardContext;
   onClickPlay: (move: AnalyzerMove) => void;
 }> = ({ plays, boardCtx, onClickPlay }) => {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
+    new Set(),
+  );
 
   // Sort client-side: unignored plays first (by win% desc, then equity desc),
   // then ignored/pruned plays at the bottom (also by win%/equity).
@@ -577,7 +579,7 @@ const SimPlaysTable: React.FC<{
         <tbody>
           {sortedPlays.map((p, i) => {
             const parsed = parsedPlays[i];
-            const expanded = expandedIndex === i;
+            const expanded = expandedIndices.has(i);
             const hasPlies = p.plyStats.length > 0;
             return (
               <React.Fragment key={i}>
@@ -600,7 +602,15 @@ const SimPlaysTable: React.FC<{
                         className="ca-expand-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setExpandedIndex(expanded ? null : i);
+                          setExpandedIndices((prev) => {
+                            const next = new Set(prev);
+                            if (expanded) {
+                              next.delete(i);
+                            } else {
+                              next.add(i);
+                            }
+                            return next;
+                          });
                         }}
                         title={
                           expanded ? "Hide ply details" : "Show ply details"
@@ -636,7 +646,9 @@ const PEGPlaysTable: React.FC<{
   boardCtx: BoardContext;
   onClickPlay: (move: AnalyzerMove) => void;
 }> = ({ plays, boardCtx, onClickPlay }) => {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
+    new Set(),
+  );
 
   const parsedPlays = useMemo(
     () =>
@@ -667,7 +679,7 @@ const PEGPlaysTable: React.FC<{
         <tbody>
           {plays.map((p, i) => {
             const parsed = parsedPlays[i];
-            const expanded = expandedIndex === i;
+            const expanded = expandedIndices.has(i);
             return (
               <React.Fragment key={i}>
                 <tr
@@ -691,7 +703,15 @@ const PEGPlaysTable: React.FC<{
                         className="ca-expand-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setExpandedIndex(expanded ? null : i);
+                          setExpandedIndices((prev) => {
+                            const next = new Set(prev);
+                            if (expanded) {
+                              next.delete(i);
+                            } else {
+                              next.add(i);
+                            }
+                            return next;
+                          });
                         }}
                         title={expanded ? "Hide outcomes" : "Show outcomes"}
                       >
