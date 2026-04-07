@@ -1,0 +1,215 @@
+syntax = "proto3";
+package broadcast_service;
+
+import "google/protobuf/timestamp.proto";
+
+message Broadcast {
+  string uuid = 1;
+  string slug = 2;
+  string name = 3;
+  string description = 4;
+  string broadcast_url = 5;
+  string broadcast_url_format = 6;
+  int32 poll_interval_seconds = 7;
+  google.protobuf.Timestamp poll_start_time = 8;
+  google.protobuf.Timestamp poll_end_time = 9;
+  string lexicon = 10;
+  string board_layout = 11;
+  string letter_distribution = 12;
+  int32 challenge_rule = 13;
+  int32 current_round = 14;
+  bool active = 15;
+  string creator_username = 16;
+  google.protobuf.Timestamp created_at = 17;
+}
+
+// A game pairing within a round, derived from the feed data.
+message BroadcastRoundGame {
+  int32 round = 1;
+  int32 table_number = 2;
+  string player1_name = 3;
+  string player2_name = 4;
+  int32 player1_score = 5;
+  int32 player2_score = 6;
+  bool scores_finalized = 7; // true if game is complete in feed
+  // Set if this game has been claimed for annotation:
+  string game_uuid = 8;
+  string annotator_username = 9;
+  bool annotation_done = 10;
+  string division = 11;
+}
+
+// A player entry from the feed, for standings display.
+message BroadcastPlayer {
+  int32 player_id = 1;
+  string name = 2;
+  int32 rating = 3;
+  double wins = 4;
+  double losses = 5;
+  int32 spread = 6;
+  int32 games_played = 7;
+}
+
+message CreateBroadcastRequest {
+  string slug = 1;
+  string name = 2;
+  string description = 3;
+  string broadcast_url = 4;
+  string broadcast_url_format = 5;
+  int32 poll_interval_seconds = 6;
+  google.protobuf.Timestamp poll_start_time = 7;
+  google.protobuf.Timestamp poll_end_time = 8;
+  string lexicon = 9;
+  string board_layout = 10;
+  string letter_distribution = 11;
+  int32 challenge_rule = 12;
+}
+
+message CreateBroadcastResponse {
+  string uuid = 1;
+  string slug = 2;
+}
+
+message GetBroadcastRequest {
+  string slug = 1;
+  string division = 2; // empty = first available division
+}
+
+message GetBroadcastResponse {
+  Broadcast broadcast = 1;
+  repeated BroadcastPlayer players = 2; // standings for requested division
+  repeated string director_usernames = 3;
+  repeated string annotator_usernames = 4;
+  int32 total_rounds = 5;
+  repeated string divisions = 6; // all available divisions from the feed
+}
+
+message GetBroadcastGamesRequest {
+  string slug = 1;
+  int32 round = 2;
+  string division = 3; // empty = first available division
+}
+
+message GetBroadcastGamesResponse {
+  repeated BroadcastRoundGame games = 1;
+  int32 round = 2;
+  int32 total_rounds = 3;
+}
+
+message UpdateBroadcastRequest {
+  string slug = 1;
+  string name = 2;
+  string description = 3;
+  string broadcast_url = 4;
+  string broadcast_url_format = 5;
+  int32 poll_interval_seconds = 6;
+  google.protobuf.Timestamp poll_start_time = 7;
+  google.protobuf.Timestamp poll_end_time = 8;
+  string lexicon = 9;
+  string board_layout = 10;
+  string letter_distribution = 11;
+  int32 challenge_rule = 12;
+  bool active = 13;
+}
+
+message UpdateBroadcastResponse {}
+
+message ClaimGameRequest {
+  string slug = 1;
+  int32 round = 2;
+  int32 table_number = 3;
+  string division = 4;
+}
+
+message ClaimGameResponse {
+  string game_id = 1;
+}
+
+message UnclaimGameRequest {
+  string slug = 1;
+  int32 round = 2;
+  int32 table_number = 3;
+  string division = 4;
+}
+
+message UnclaimGameResponse {}
+
+message AddBroadcastDirectorsRequest {
+  string slug = 1;
+  repeated string usernames = 2;
+}
+
+message AddBroadcastDirectorsResponse {}
+
+message RemoveBroadcastDirectorsRequest {
+  string slug = 1;
+  repeated string usernames = 2;
+}
+
+message RemoveBroadcastDirectorsResponse {}
+
+message AddBroadcastAnnotatorsRequest {
+  string slug = 1;
+  repeated string usernames = 2;
+}
+
+message AddBroadcastAnnotatorsResponse {}
+
+message RemoveBroadcastAnnotatorsRequest {
+  string slug = 1;
+  repeated string usernames = 2;
+}
+
+message RemoveBroadcastAnnotatorsResponse {}
+
+message GetActiveBroadcastsRequest {}
+
+message GetActiveBroadcastsResponse {
+  repeated Broadcast broadcasts = 1;
+}
+
+message TriggerPollRequest {
+  string slug = 1;
+}
+
+message TriggerPollResponse {
+  bool data_changed = 1;
+}
+
+message GetMyClaimedGamesRequest {
+  string slug = 1;
+  int32 limit = 2;
+}
+
+message GetMyClaimedGamesResponse {
+  repeated BroadcastRoundGame games = 1;
+}
+
+message GetBroadcastGameContextRequest {
+  string game_uuid = 1;
+}
+
+message GetBroadcastGameContextResponse {
+  string broadcast_slug = 1;
+  string broadcast_name = 2;
+  int32 round = 3;
+  int32 table_number = 4;
+  string division = 5;
+}
+
+service BroadcastService {
+  rpc CreateBroadcast(CreateBroadcastRequest) returns (CreateBroadcastResponse);
+  rpc GetBroadcast(GetBroadcastRequest) returns (GetBroadcastResponse);
+  rpc GetBroadcastGames(GetBroadcastGamesRequest) returns (GetBroadcastGamesResponse);
+  rpc UpdateBroadcast(UpdateBroadcastRequest) returns (UpdateBroadcastResponse);
+  rpc ClaimGame(ClaimGameRequest) returns (ClaimGameResponse);
+  rpc UnclaimGame(UnclaimGameRequest) returns (UnclaimGameResponse);
+  rpc AddBroadcastDirectors(AddBroadcastDirectorsRequest) returns (AddBroadcastDirectorsResponse);
+  rpc RemoveBroadcastDirectors(RemoveBroadcastDirectorsRequest) returns (RemoveBroadcastDirectorsResponse);
+  rpc AddBroadcastAnnotators(AddBroadcastAnnotatorsRequest) returns (AddBroadcastAnnotatorsResponse);
+  rpc RemoveBroadcastAnnotators(RemoveBroadcastAnnotatorsRequest) returns (RemoveBroadcastAnnotatorsResponse);
+  rpc GetActiveBroadcasts(GetActiveBroadcastsRequest) returns (GetActiveBroadcastsResponse);
+  rpc TriggerPoll(TriggerPollRequest) returns (TriggerPollResponse);
+  rpc GetMyClaimedGames(GetMyClaimedGamesRequest) returns (GetMyClaimedGamesResponse);
+  rpc GetBroadcastGameContext(GetBroadcastGameContextRequest) returns (GetBroadcastGameContextResponse);
+}

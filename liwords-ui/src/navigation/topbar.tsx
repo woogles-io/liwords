@@ -101,6 +101,13 @@ const TopMenu = React.memo((props: Props) => {
     },
   ];
 
+  const watchMenuItems = [
+    {
+      key: "broadcasts",
+      label: <Link to="/broadcasts">Broadcasts</Link>,
+    },
+  ];
+
   const aboutMenuItems = [
     {
       key: "team",
@@ -129,6 +136,19 @@ const TopMenu = React.memo((props: Props) => {
       </div>
       <div>
         <a href="/donate">Donate</a>
+      </div>
+      <div>
+        <Dropdown
+          overlayClassName="user-menu"
+          menu={{ items: watchMenuItems }}
+          placement="bottom"
+          trigger={["click"]}
+          getPopupContainer={() =>
+            document.getElementById("root") as HTMLElement
+          }
+        >
+          <p>Watch</p>
+        </Dropdown>
       </div>
       <div>
         <Dropdown

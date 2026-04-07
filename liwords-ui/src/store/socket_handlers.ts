@@ -32,6 +32,8 @@ import { parseWooglesError } from "../utils/parse_woogles_error";
 import {
   AnalysisCompleteEvent,
   AnalysisCompleteEventSchema,
+  BroadcastUpdatedEvent,
+  BroadcastUpdatedEventSchema,
   LagMeasurement,
   LagMeasurementSchema,
   MessageType,
@@ -199,6 +201,7 @@ const MsgTypesMap = {
   [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
     MonitoringStreamStatusUpdateSchema,
   [MessageType.ANALYSIS_COMPLETE]: AnalysisCompleteEventSchema,
+  [MessageType.BROADCAST_UPDATED]: BroadcastUpdatedEventSchema,
 };
 
 export const parseMsgs = (
@@ -1076,6 +1079,25 @@ export const useOnSocketMsg = () => {
                 },
               });
             }
+            break;
+          }
+          case MessageType.BROADCAST_UPDATED: {
+            const ev = parsedMsg as BroadcastUpdatedEvent;
+            queryClient.invalidateQueries({
+              queryKey: [
+                "connect-query",
+                { methodName: "GetBroadcastGames" },
+              ],
+            });
+            queryClient.invalidateQueries({
+              queryKey: [
+                "connect-query",
+                { methodName: "GetBroadcast" },
+              ],
+            });
+            console.log(
+              `broadcast-updated slug=${ev.slug} round=${ev.currentRound}`,
+            );
             break;
           }
         }

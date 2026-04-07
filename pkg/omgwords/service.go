@@ -103,20 +103,62 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 		return nil, apiserver.InvalidArg("please finish or delete your unfinished games before starting a new one")
 	}
 
+	return createAnnotatedGameDoc(ctx, u.UUID, req.PlayersInfo, req.Lexicon,
+		req.Rules.BoardLayoutName, req.Rules.LetterDistributionName,
+		ipc.ChallengeRule(req.ChallengeRule), cwgame.Variant(req.Rules.VariantName),
+		gs.cfg, gs.gameStore, gs.metadataStore, gs.gameEventChan)
+}
+
+// CreateAnnotatedGameDocForBroadcast creates an annotated game document for a live
+// broadcast, bypassing the outstanding-games check. Used by the broadcasts service
+// so annotators can claim games freely.
+func CreateAnnotatedGameDocForBroadcast(
+	ctx context.Context,
+	creatorUUID string,
+	playersInfo []*ipc.PlayerInfo,
+	lexicon, boardLayoutName, letterDistributionName string,
+	challengeRule ipc.ChallengeRule,
+	cfg *config.Config,
+	gameStore *stores.GameDocumentStore,
+	metadataStore *stores.DBStore,
+	gameEventChan chan *entity.EventWrapper,
+) (string, error) {
+	g, err := createAnnotatedGameDoc(ctx, creatorUUID, playersInfo, lexicon,
+		boardLayoutName, letterDistributionName, challengeRule, "",
+		cfg, gameStore, metadataStore, gameEventChan)
+	if err != nil {
+		return "", err
+	}
+	return g.Uid, nil
+}
+
+// createAnnotatedGameDoc is the shared core logic for creating an annotated game document.
+func createAnnotatedGameDoc(
+	ctx context.Context,
+	creatorUUID string,
+	playersInfo []*ipc.PlayerInfo,
+	lexicon, boardLayoutName, letterDistributionName string,
+	challengeRule ipc.ChallengeRule,
+	variant cwgame.Variant,
+	cfg *config.Config,
+	gameStore *stores.GameDocumentStore,
+	metadataStore *stores.DBStore,
+	gameEventChan chan *entity.EventWrapper,
+) (*ipc.GameDocument, error) {
 	// We can just make the user ID the same as the nickname, as it
 	// doesn't matter in this case
 	mcplayers := []*ipc.GameDocument_MinimalPlayerInfo{
-		{Nickname: players[0].Nickname, RealName: players[0].FullName, UserId: "internal-" + players[0].Nickname},
-		{Nickname: players[1].Nickname, RealName: players[1].FullName, UserId: "internal-" + players[1].Nickname},
+		{Nickname: playersInfo[0].Nickname, RealName: playersInfo[0].FullName, UserId: "internal-" + playersInfo[0].Nickname},
+		{Nickname: playersInfo[1].Nickname, RealName: playersInfo[1].FullName, UserId: "internal-" + playersInfo[1].Nickname},
 	}
 
 	// Create an untimed game:
 	cwgameRules := cwgame.NewBasicGameRules(
-		req.Lexicon, req.Rules.BoardLayoutName, req.Rules.LetterDistributionName,
-		req.ChallengeRule, cwgame.Variant(req.Rules.VariantName), []int{0, 0}, 0, 0, true,
+		lexicon, boardLayoutName, letterDistributionName,
+		challengeRule, variant, []int{0, 0}, 0, 0, true,
 	)
 
-	g, err := cwgame.NewGame(gs.cfg.WGLConfig(), cwgameRules, mcplayers)
+	g, err := cwgame.NewGame(cfg.WGLConfig(), cwgameRules, mcplayers)
 	if err != nil {
 		return nil, err
 	}
@@ -124,23 +166,26 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 	g.Type = ipc.GameType_ANNOTATED
 
 	// Initialize racks for both players in annotated games
-	err = cwgame.AssignRacks(gs.cfg.WGLConfig(), g, [][]byte{nil, nil}, cwgame.AlwaysAssignEmpty)
+	err = cwgame.AssignRacks(cfg.WGLConfig(), g, [][]byte{nil, nil}, cwgame.AlwaysAssignEmpty)
 	if err != nil {
 		return nil, err
 	}
 
-	qd := &entity.Quickdata{PlayerInfo: req.PlayersInfo}
+	qd := &entity.Quickdata{PlayerInfo: playersInfo}
 	g.CreatedAt = timestamppb.Now()
 
 	// Create a legacy game request. Sadly, we need this for now in order to
 	// get the old game paths to work properly. In the future we should use
 	// the GameDocument as the single source of truth for as many things as possible.
 	greq := &ipc.GameRequest{
-		Lexicon:            req.Lexicon,
-		Rules:              req.Rules,
+		Lexicon: lexicon,
+		Rules: &ipc.GameRules{
+			BoardLayoutName:        boardLayoutName,
+			LetterDistributionName: letterDistributionName,
+		},
 		InitialTimeSeconds: 0,
 		IncrementSeconds:   0,
-		ChallengeRule:      macondo.ChallengeRule(req.ChallengeRule),
+		ChallengeRule:      macondo.ChallengeRule(challengeRule),
 		GameMode:           ipc.GameMode_REAL_TIME,
 		RatingMode:         ipc.RatingMode_CASUAL,
 		RequestId:          "dummy",
@@ -148,21 +193,21 @@ func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *
 		OriginalRequestId:  "dummy",
 	}
 
-	if err = gs.metadataStore.CreateAnnotatedGame(ctx, u.UUID, g.Uid, true, qd, greq); err != nil {
+	if err = metadataStore.CreateAnnotatedGame(ctx, creatorUUID, g.Uid, true, qd, greq); err != nil {
 		return nil, err
 	}
-	if err = gs.gameStore.SetDocument(ctx, g); err != nil {
+	if err = gameStore.SetDocument(ctx, g); err != nil {
 		// If we can't add the document to the game store, delete
-		// the annotated game we just created it. Not the best pattern, but
+		// the annotated game we just created. Not the best pattern, but
 		// we have different data stores.
-		if derr := gs.metadataStore.DeleteAnnotatedGame(ctx, g.Uid); derr != nil {
+		if derr := metadataStore.DeleteAnnotatedGame(ctx, g.Uid); derr != nil {
 			log.Err(derr).Msg("deleting-annotated-game")
 		}
 		return nil, err
 	}
 
 	// We should also send a new game event on the channel.
-	err = announceGameCreation(g, req.PlayersInfo, gs.gameEventChan)
+	err = announceGameCreation(g, playersInfo, gameEventChan)
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
 	}

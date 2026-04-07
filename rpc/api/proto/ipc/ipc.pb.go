@@ -87,6 +87,7 @@ const (
 	MessageType_MONITORING_STREAM_STATUS_UPDATE MessageType = 49
 	MessageType_OUR_LEAGUE_CORRESPONDENCE_GAMES MessageType = 50
 	MessageType_ANALYSIS_COMPLETE               MessageType = 51
+	MessageType_BROADCAST_UPDATED               MessageType = 52
 )
 
 // Enum value maps for MessageType.
@@ -142,6 +143,7 @@ var (
 		49: "MONITORING_STREAM_STATUS_UPDATE",
 		50: "OUR_LEAGUE_CORRESPONDENCE_GAMES",
 		51: "ANALYSIS_COMPLETE",
+		52: "BROADCAST_UPDATED",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                                 0,
@@ -194,6 +196,7 @@ var (
 		"MONITORING_STREAM_STATUS_UPDATE":              49,
 		"OUR_LEAGUE_CORRESPONDENCE_GAMES":              50,
 		"ANALYSIS_COMPLETE":                            51,
+		"BROADCAST_UPDATED":                            52,
 	}
 )
 
@@ -268,6 +271,60 @@ func (x *AnalysisCompleteEvent) GetGameId() string {
 	return ""
 }
 
+// Sent when a live broadcast's feed data has been updated (scores, new round, etc.)
+// Clients listening on channel-broadcast-{slug} re-fetch broadcast games on receipt.
+type BroadcastUpdatedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	CurrentRound  int32                  `protobuf:"varint,2,opt,name=current_round,json=currentRound,proto3" json:"current_round,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BroadcastUpdatedEvent) Reset() {
+	*x = BroadcastUpdatedEvent{}
+	mi := &file_proto_ipc_ipc_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BroadcastUpdatedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BroadcastUpdatedEvent) ProtoMessage() {}
+
+func (x *BroadcastUpdatedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ipc_ipc_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BroadcastUpdatedEvent.ProtoReflect.Descriptor instead.
+func (*BroadcastUpdatedEvent) Descriptor() ([]byte, []int) {
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *BroadcastUpdatedEvent) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *BroadcastUpdatedEvent) GetCurrentRound() int32 {
+	if x != nil {
+		return x.CurrentRound
+	}
+	return 0
+}
+
 type RegisterRealmRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
@@ -278,7 +335,7 @@ type RegisterRealmRequest struct {
 
 func (x *RegisterRealmRequest) Reset() {
 	*x = RegisterRealmRequest{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[1]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +347,7 @@ func (x *RegisterRealmRequest) String() string {
 func (*RegisterRealmRequest) ProtoMessage() {}
 
 func (x *RegisterRealmRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[1]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +360,7 @@ func (x *RegisterRealmRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRealmRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRealmRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{1}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RegisterRealmRequest) GetPath() string {
@@ -331,7 +388,7 @@ type RegisterRealmResponse struct {
 
 func (x *RegisterRealmResponse) Reset() {
 	*x = RegisterRealmResponse{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[2]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -343,7 +400,7 @@ func (x *RegisterRealmResponse) String() string {
 func (*RegisterRealmResponse) ProtoMessage() {}
 
 func (x *RegisterRealmResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[2]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +413,7 @@ func (x *RegisterRealmResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRealmResponse.ProtoReflect.Descriptor instead.
 func (*RegisterRealmResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{2}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RegisterRealmResponse) GetRealms() []string {
@@ -380,7 +437,7 @@ type InitRealmInfo struct {
 
 func (x *InitRealmInfo) Reset() {
 	*x = InitRealmInfo{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[3]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -392,7 +449,7 @@ func (x *InitRealmInfo) String() string {
 func (*InitRealmInfo) ProtoMessage() {}
 
 func (x *InitRealmInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[3]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +462,7 @@ func (x *InitRealmInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitRealmInfo.ProtoReflect.Descriptor instead.
 func (*InitRealmInfo) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{3}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *InitRealmInfo) GetUserId() string {
@@ -431,7 +488,7 @@ type LagMeasurement struct {
 
 func (x *LagMeasurement) Reset() {
 	*x = LagMeasurement{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[4]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +500,7 @@ func (x *LagMeasurement) String() string {
 func (*LagMeasurement) ProtoMessage() {}
 
 func (x *LagMeasurement) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[4]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +513,7 @@ func (x *LagMeasurement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LagMeasurement.ProtoReflect.Descriptor instead.
 func (*LagMeasurement) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{4}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *LagMeasurement) GetLagMs() int32 {
@@ -475,7 +532,7 @@ type Pong struct {
 
 func (x *Pong) Reset() {
 	*x = Pong{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[5]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -487,7 +544,7 @@ func (x *Pong) String() string {
 func (*Pong) ProtoMessage() {}
 
 func (x *Pong) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[5]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -500,7 +557,7 @@ func (x *Pong) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pong.ProtoReflect.Descriptor instead.
 func (*Pong) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{5}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Pong) GetIps() string {
@@ -519,7 +576,7 @@ type ServerMessage struct {
 
 func (x *ServerMessage) Reset() {
 	*x = ServerMessage{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -531,7 +588,7 @@ func (x *ServerMessage) String() string {
 func (*ServerMessage) ProtoMessage() {}
 
 func (x *ServerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[6]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -544,7 +601,7 @@ func (x *ServerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerMessage.ProtoReflect.Descriptor instead.
 func (*ServerMessage) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{6}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ServerMessage) GetMessage() string {
@@ -565,7 +622,7 @@ type JoinPath struct {
 
 func (x *JoinPath) Reset() {
 	*x = JoinPath{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +634,7 @@ func (x *JoinPath) String() string {
 func (*JoinPath) ProtoMessage() {}
 
 func (x *JoinPath) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[7]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +647,7 @@ func (x *JoinPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinPath.ProtoReflect.Descriptor instead.
 func (*JoinPath) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{7}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *JoinPath) GetPath() string {
@@ -608,7 +665,7 @@ type UnjoinRealm struct {
 
 func (x *UnjoinRealm) Reset() {
 	*x = UnjoinRealm{}
-	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +677,7 @@ func (x *UnjoinRealm) String() string {
 func (*UnjoinRealm) ProtoMessage() {}
 
 func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ipc_ipc_proto_msgTypes[8]
+	mi := &file_proto_ipc_ipc_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +690,7 @@ func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnjoinRealm.ProtoReflect.Descriptor instead.
 func (*UnjoinRealm) Descriptor() ([]byte, []int) {
-	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{8}
+	return file_proto_ipc_ipc_proto_rawDescGZIP(), []int{9}
 }
 
 var File_proto_ipc_ipc_proto protoreflect.FileDescriptor
@@ -642,7 +699,10 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\n" +
 	"\x13proto/ipc/ipc.proto\x12\x03ipc\"0\n" +
 	"\x15AnalysisCompleteEvent\x12\x17\n" +
-	"\agame_id\x18\x01 \x01(\tR\x06gameId\"C\n" +
+	"\agame_id\x18\x01 \x01(\tR\x06gameId\"P\n" +
+	"\x15BroadcastUpdatedEvent\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12#\n" +
+	"\rcurrent_round\x18\x02 \x01(\x05R\fcurrentRound\"C\n" +
 	"\x14RegisterRealmRequest\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"/\n" +
@@ -659,8 +719,7 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1e\n" +
 	"\bJoinPath\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\r\n" +
-	"\vUnjoinRealm*\xf1\n" +
-	"\n" +
+	"\vUnjoinRealm*\x88\v\n" +
 	"\vMessageType\x12\x10\n" +
 	"\fSEEK_REQUEST\x10\x00\x12\x11\n" +
 	"\rMATCH_REQUEST\x10\x01\x12\x1d\n" +
@@ -712,7 +771,8 @@ const file_proto_ipc_ipc_proto_rawDesc = "" +
 	"\x18OUR_CORRESPONDENCE_SEEKS\x100\x12#\n" +
 	"\x1fMONITORING_STREAM_STATUS_UPDATE\x101\x12#\n" +
 	"\x1fOUR_LEAGUE_CORRESPONDENCE_GAMES\x102\x12\x15\n" +
-	"\x11ANALYSIS_COMPLETE\x103Bp\n" +
+	"\x11ANALYSIS_COMPLETE\x103\x12\x15\n" +
+	"\x11BROADCAST_UPDATED\x104Bp\n" +
 	"\acom.ipcB\bIpcProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (
@@ -728,18 +788,19 @@ func file_proto_ipc_ipc_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_ipc_ipc_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_ipc_ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_proto_ipc_ipc_proto_goTypes = []any{
 	(MessageType)(0),              // 0: ipc.MessageType
 	(*AnalysisCompleteEvent)(nil), // 1: ipc.AnalysisCompleteEvent
-	(*RegisterRealmRequest)(nil),  // 2: ipc.RegisterRealmRequest
-	(*RegisterRealmResponse)(nil), // 3: ipc.RegisterRealmResponse
-	(*InitRealmInfo)(nil),         // 4: ipc.InitRealmInfo
-	(*LagMeasurement)(nil),        // 5: ipc.LagMeasurement
-	(*Pong)(nil),                  // 6: ipc.Pong
-	(*ServerMessage)(nil),         // 7: ipc.ServerMessage
-	(*JoinPath)(nil),              // 8: ipc.JoinPath
-	(*UnjoinRealm)(nil),           // 9: ipc.UnjoinRealm
+	(*BroadcastUpdatedEvent)(nil), // 2: ipc.BroadcastUpdatedEvent
+	(*RegisterRealmRequest)(nil),  // 3: ipc.RegisterRealmRequest
+	(*RegisterRealmResponse)(nil), // 4: ipc.RegisterRealmResponse
+	(*InitRealmInfo)(nil),         // 5: ipc.InitRealmInfo
+	(*LagMeasurement)(nil),        // 6: ipc.LagMeasurement
+	(*Pong)(nil),                  // 7: ipc.Pong
+	(*ServerMessage)(nil),         // 8: ipc.ServerMessage
+	(*JoinPath)(nil),              // 9: ipc.JoinPath
+	(*UnjoinRealm)(nil),           // 10: ipc.UnjoinRealm
 }
 var file_proto_ipc_ipc_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -760,7 +821,7 @@ func file_proto_ipc_ipc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ipc_ipc_proto_rawDesc), len(file_proto_ipc_ipc_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

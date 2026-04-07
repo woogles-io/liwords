@@ -48,6 +48,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth"
+	"github.com/woogles-io/liwords/pkg/broadcasts"
 	"github.com/woogles-io/liwords/pkg/bus"
 	"github.com/woogles-io/liwords/pkg/collections"
 	"github.com/woogles-io/liwords/pkg/comments"
@@ -72,6 +73,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/verification"
 	"github.com/woogles-io/liwords/pkg/words"
 	"github.com/woogles-io/liwords/rpc/api/proto/analysis_service/analysis_serviceconnect"
+	"github.com/woogles-io/liwords/rpc/api/proto/broadcast_service/broadcast_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/collections_service/collections_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/comments_service/comments_serviceconnect"
 	"github.com/woogles-io/liwords/rpc/api/proto/config_service/config_serviceconnect"
@@ -299,6 +301,7 @@ func main() {
 	omgwordsService := omgwords.NewOMGWordsService(stores.UserStore, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
+	broadcastService := broadcasts.NewBroadcastService(stores.UserStore, stores.Queries, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)
@@ -415,6 +418,9 @@ func main() {
 	connectapi.Handle(
 		analysis_serviceconnect.NewAnalysisAdminServiceHandler(analysisAdminService, options),
 	)
+	connectapi.Handle(
+		broadcast_serviceconnect.NewBroadcastServiceHandler(broadcastService, options),
+	)
 
 	connectapichain := middlewares.Then(connectapi)
 
@@ -469,6 +475,8 @@ func main() {
 	omgwordsService.SetEventChannel(pubsubBus.GameEventChannel())
 	analysisService.SetNatsConn(natsconn)
 	gameCreatorAdapter.eventChan = pubsubBus.GameEventChannel()
+	broadcastService.SetEventChannel(pubsubBus.GameEventChannel())
+	broadcastService.SetNatsConn(natsconn)
 
 	router.Handle(bus.GameEventStreamPrefix,
 		middlewares.Then(pubsubBus.EventAPIServerInstance()))
@@ -482,6 +490,7 @@ func main() {
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)
 	go analysisService.StartReclaimWorker(ctx)
+	broadcastService.StartPoller(ctx)
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

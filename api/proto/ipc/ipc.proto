@@ -68,10 +68,18 @@ enum MessageType {
   MONITORING_STREAM_STATUS_UPDATE = 49;
   OUR_LEAGUE_CORRESPONDENCE_GAMES = 50;
   ANALYSIS_COMPLETE = 51;
+  BROADCAST_UPDATED = 52;
 }
 
 message AnalysisCompleteEvent {
   string game_id = 1;
+}
+
+// Sent when a live broadcast's feed data has been updated (scores, new round, etc.)
+// Clients listening on channel-broadcast-{slug} re-fetch broadcast games on receipt.
+message BroadcastUpdatedEvent {
+  string slug = 1;
+  int32 current_round = 2;
 }
 
 message RegisterRealmRequest {
