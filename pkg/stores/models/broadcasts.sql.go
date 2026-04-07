@@ -586,7 +586,7 @@ func (q *Queries) GetBroadcastGamesForRound(ctx context.Context, arg GetBroadcas
 }
 
 const getBroadcastsForPolling = `-- name: GetBroadcastsForPolling :many
-SELECT id, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
+SELECT id, uuid, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
        poll_start_time, poll_end_time, last_polled_at
 FROM broadcasts
 WHERE active = true
@@ -594,6 +594,7 @@ WHERE active = true
 
 type GetBroadcastsForPollingRow struct {
 	ID                  int32
+	Uuid                uuid.UUID
 	Slug                string
 	BroadcastUrl        string
 	BroadcastUrlFormat  string
@@ -614,6 +615,7 @@ func (q *Queries) GetBroadcastsForPolling(ctx context.Context) ([]GetBroadcastsF
 		var i GetBroadcastsForPollingRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Uuid,
 			&i.Slug,
 			&i.BroadcastUrl,
 			&i.BroadcastUrlFormat,

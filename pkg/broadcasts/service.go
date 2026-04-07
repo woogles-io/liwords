@@ -429,7 +429,7 @@ func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[
 		log.Err(err).Str("gameID", gameID).Msg("record-broadcast-game-failed")
 	}
 
-	bs.notifyBroadcastGamesUpdated(broadcast.Slug)
+	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.ClaimGameResponse{GameId: gameID}), nil
 }
 
@@ -492,7 +492,7 @@ func (bs *BroadcastService) UnclaimGame(ctx context.Context, req *connect.Reques
 		}
 	}
 
-	bs.notifyBroadcastGamesUpdated(broadcast.Slug)
+	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.UnclaimGameResponse{}), nil
 }
 
@@ -732,7 +732,7 @@ func (bs *BroadcastService) TriggerPoll(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	if err := bs.pollBroadcast(ctx, broadcast.ID, broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat); err != nil {
+	if err := bs.pollBroadcast(ctx, broadcast.ID, broadcast.Uuid.String(), broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat); err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
 
@@ -757,7 +757,7 @@ func (bs *BroadcastService) playerNamesForTable(slug, division, broadcastURL, fo
 
 // notifyBroadcastGamesUpdated publishes a BROADCAST_GAMES_UPDATED NATS event
 // when annotation state changes (claim/unclaim), so viewers refetch game rows.
-func (bs *BroadcastService) notifyBroadcastGamesUpdated(slug string) {
+func (bs *BroadcastService) notifyBroadcastGamesUpdated(broadcastUUID, slug string) {
 	if bs.natsConn == nil {
 		return
 	}
@@ -769,7 +769,7 @@ func (bs *BroadcastService) notifyBroadcastGamesUpdated(slug string) {
 		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-serialize-failed")
 		return
 	}
-	if err := bs.natsConn.Publish(NatsBroadcastChannelPrefix+slug, bts); err != nil {
+	if err := bs.natsConn.Publish(NatsBroadcastSubjectPrefix+broadcastUUID, bts); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-publish-failed")
 	}
 }

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	NatsBroadcastChannelPrefix = "channel.broadcast-"
+	NatsBroadcastSubjectPrefix = "broadcasts."
 	pollerTickInterval         = 30 * time.Second
 )
 
@@ -57,7 +57,7 @@ func (bs *BroadcastService) runPollerCycle(ctx context.Context) {
 				continue
 			}
 		}
-		if err := bs.pollBroadcast(ctx, b.ID, b.Slug, b.BroadcastUrl, b.BroadcastUrlFormat); err != nil {
+		if err := bs.pollBroadcast(ctx, b.ID, b.Uuid.String(), b.Slug, b.BroadcastUrl, b.BroadcastUrlFormat); err != nil {
 			log.Err(err).Str("slug", b.Slug).Msg("broadcast-poll-failed")
 		}
 	}
@@ -65,7 +65,7 @@ func (bs *BroadcastService) runPollerCycle(ctx context.Context) {
 
 // pollBroadcast fetches the feed for one broadcast, updates the cache, persists
 // last_polled_at, and publishes a NATS update. Also used by TriggerPoll RPC.
-func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, slug, url, format string) error {
+func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadcastUUID, slug, url, format string) error {
 	divs, err := bs.fetchAndCacheAllDivisions(slug, url, format)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, slug, u
 	}
 
 	if bs.natsConn != nil {
-		publishBroadcastUpdate(bs.natsConn, slug, divs)
+		publishBroadcastUpdate(bs.natsConn, broadcastUUID, slug, divs)
 	}
 
 	log.Debug().Str("slug", slug).Int("numDivisions", len(divs)).Msg("broadcast-polled")
@@ -92,7 +92,7 @@ func fetchURL(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func publishBroadcastUpdate(nc *nats.Conn, slug string, divs map[string]*FeedData) {
+func publishBroadcastUpdate(nc *nats.Conn, broadcastUUID, slug string, divs map[string]*FeedData) {
 	// Use the first (alphabetically) division's current round for the event.
 	currentRound := int32(0)
 	firstName := ""
@@ -115,8 +115,7 @@ func publishBroadcastUpdate(nc *nats.Conn, slug string, divs map[string]*FeedDat
 		return
 	}
 
-	if err := nc.Publish(NatsBroadcastChannelPrefix+slug, bts); err != nil {
+	if err := nc.Publish(NatsBroadcastSubjectPrefix+broadcastUUID, bts); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-nats-publish-failed")
 	}
 }
-

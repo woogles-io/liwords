@@ -243,6 +243,7 @@ export const BroadcastRoom: React.FC = () => {
         </Space>
 
         <Table<BroadcastRoundGame>
+          style={{ marginTop: 16 }}
           rowKey={(r) => `${r.round}-${r.tableNumber}`}
           dataSource={gamesData?.games ?? []}
           columns={columns}

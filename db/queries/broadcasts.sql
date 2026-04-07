@@ -59,7 +59,7 @@ WHERE b.active = true
 ORDER BY b.created_at DESC;
 
 -- name: GetBroadcastsForPolling :many
-SELECT id, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
+SELECT id, uuid, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
        poll_start_time, poll_end_time, last_polled_at
 FROM broadcasts
 WHERE active = true;
