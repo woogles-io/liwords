@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	NatsBroadcastChannelPrefix = "channel-broadcast-"
+	NatsBroadcastChannelPrefix = "channel.broadcast-"
 	pollerTickInterval         = 30 * time.Second
 )
 

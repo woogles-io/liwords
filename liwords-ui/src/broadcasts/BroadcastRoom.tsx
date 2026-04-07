@@ -1,17 +1,12 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import {
-  Spin,
-  Button,
-  Tag,
-  Table,
-  Typography,
-  Space,
-  App,
-  Select,
-} from "antd";
+import { Spin, Button, Tag, Table, Typography, Space, App, Select } from "antd";
 import type { TableColumnsType } from "antd";
-import { LinkOutlined, PlayCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  LinkOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import { useParams, Link, useNavigate } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import {
@@ -42,7 +37,11 @@ export const BroadcastRoom: React.FC = () => {
     data: broadcastData,
     isLoading: broadcastLoading,
     error: broadcastError,
-  } = useQuery(getBroadcast, { slug: slug ?? "", division: selectedDivision }, { enabled: !!slug });
+  } = useQuery(
+    getBroadcast,
+    { slug: slug ?? "", division: selectedDivision },
+    { enabled: !!slug },
+  );
 
   // The effective division for display: use what the server resolved (from response),
   // falling back to what the user selected.
@@ -96,8 +95,12 @@ export const BroadcastRoom: React.FC = () => {
 
   const broadcast = broadcastData.broadcast;
   const totalRounds = broadcastData.totalRounds || 1;
-  const isAnnotator = broadcastData.annotatorUsernames.includes(loginState.username);
-  const isDirector = broadcastData.directorUsernames.includes(loginState.username);
+  const isAnnotator = broadcastData.annotatorUsernames.includes(
+    loginState.username,
+  );
+  const isDirector = broadcastData.directorUsernames.includes(
+    loginState.username,
+  );
   const isAdmin = loginState.perms.includes("adm");
 
   const roundOptions = Array.from({ length: totalRounds }, (_, i) => ({
@@ -197,7 +200,10 @@ export const BroadcastRoom: React.FC = () => {
             </Title>
             {!broadcast.active && <Tag color="default">Archived</Tag>}
             {(isAdmin || broadcast.creatorUsername === loginState.username) && (
-              <Button size="small" onClick={() => navigate(`/broadcasts/${slug}/edit`)}>
+              <Button
+                size="small"
+                onClick={() => navigate(`/broadcasts/${slug}/edit`)}
+              >
                 Edit
               </Button>
             )}

@@ -50,7 +50,10 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
     });
 
   const addAnnotatorMutation = useMutation(addBroadcastAnnotators, {
-    onSuccess: () => { setNewAnnotator(""); invalidate(); },
+    onSuccess: () => {
+      setNewAnnotator("");
+      invalidate();
+    },
     onError: (e) => flashError(e),
   });
 
@@ -60,7 +63,10 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
   });
 
   const addDirectorMutation = useMutation(addBroadcastDirectors, {
-    onSuccess: () => { setNewDirector(""); invalidate(); },
+    onSuccess: () => {
+      setNewDirector("");
+      invalidate();
+    },
     onError: (e) => flashError(e),
   });
 
@@ -123,7 +129,9 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
         </Space>
       }
     >
-      <Divider orientation="left" plain>Annotators</Divider>
+      <Divider orientation="left" plain>
+        Annotators
+      </Divider>
       <Space wrap style={{ marginBottom: 8 }}>
         {annotatorUsernames.map((u) => (
           <Tag
@@ -170,7 +178,9 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
         </Button>
       </Space.Compact>
 
-      <Divider orientation="left" plain>Directors</Divider>
+      <Divider orientation="left" plain>
+        Directors
+      </Divider>
       <Space wrap style={{ marginBottom: 8 }}>
         {directorUsernames.map((u) => (
           <Popconfirm
@@ -183,11 +193,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
               })
             }
           >
-            <Tag
-              key={u}
-              closable
-              onClose={(e) => e.preventDefault()}
-            >
+            <Tag key={u} closable onClose={(e) => e.preventDefault()}>
               {u}
             </Tag>
           </Popconfirm>

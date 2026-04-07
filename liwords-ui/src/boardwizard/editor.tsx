@@ -404,7 +404,6 @@ export const BoardEditor = () => {
     }
   };
 
-
   const macChallengeRule = useMemo(
     () => gameContext.gameDocument.challengeRule.valueOf(),
     [gameContext.gameDocument.challengeRule],
@@ -497,7 +496,11 @@ export const BoardEditor = () => {
             playerMeta={gameInfo.players}
             hideProfileLink
           />
-          <GameInfo meta={gameInfo} tournamentName={""} gameDocument={gameContext.gameDocument} />
+          <GameInfo
+            meta={gameInfo}
+            tournamentName={""}
+            gameDocument={gameContext.gameDocument}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}

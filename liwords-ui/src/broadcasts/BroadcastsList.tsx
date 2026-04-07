@@ -35,10 +35,15 @@ const BroadcastCard: React.FC<{ b: Broadcast }> = ({ b }) => {
         style={{ marginBottom: 16 }}
         styles={{ body: { padding: "16px 20px" } }}
       >
-        <Space style={{ width: "100%", justifyContent: "space-between" }} align="start">
+        <Space
+          style={{ width: "100%", justifyContent: "space-between" }}
+          align="start"
+        >
           <div>
             <Space align="center" style={{ marginBottom: 4 }}>
-              <Text strong style={{ fontSize: 16 }}>{b.name}</Text>
+              <Text strong style={{ fontSize: 16 }}>
+                {b.name}
+              </Text>
               {b.active && <Tag color="green">LIVE</Tag>}
               {!b.active && <Tag color="default">Archived</Tag>}
             </Space>
@@ -55,8 +60,8 @@ const BroadcastCard: React.FC<{ b: Broadcast }> = ({ b }) => {
                     {start && end
                       ? `${start} – ${end}`
                       : start
-                      ? `Starts ${start}`
-                      : `Ends ${end}`}
+                        ? `Starts ${start}`
+                        : `Ends ${end}`}
                   </Text>
                 </Space>
               </div>
@@ -80,9 +85,15 @@ export const BroadcastsList: React.FC = () => {
     <div>
       <TopBar />
       <div style={{ maxWidth: 720, margin: "32px auto", padding: "0 16px" }}>
-        <Row align="middle" justify="space-between" style={{ marginBottom: 20 }}>
+        <Row
+          align="middle"
+          justify="space-between"
+          style={{ marginBottom: 20 }}
+        >
           <Col>
-            <Title level={2} style={{ marginBottom: 0 }}>Live Broadcasts</Title>
+            <Title level={2} style={{ marginBottom: 0 }}>
+              Live Broadcasts
+            </Title>
           </Col>
           {canManage && (
             <Col>

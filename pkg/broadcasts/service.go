@@ -429,6 +429,7 @@ func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[
 		log.Err(err).Str("gameID", gameID).Msg("record-broadcast-game-failed")
 	}
 
+	bs.notifyBroadcastGamesUpdated(broadcast.Slug)
 	return connect.NewResponse(&pb.ClaimGameResponse{GameId: gameID}), nil
 }
 
@@ -491,6 +492,7 @@ func (bs *BroadcastService) UnclaimGame(ctx context.Context, req *connect.Reques
 		}
 	}
 
+	bs.notifyBroadcastGamesUpdated(broadcast.Slug)
 	return connect.NewResponse(&pb.UnclaimGameResponse{}), nil
 }
 
@@ -751,6 +753,25 @@ func (bs *BroadcastService) playerNamesForTable(slug, division, broadcastURL, fo
 		}
 	}
 	return "", "", fmt.Errorf("no pairing found for round %d table %d", round, tableNumber)
+}
+
+// notifyBroadcastGamesUpdated publishes a BROADCAST_GAMES_UPDATED NATS event
+// when annotation state changes (claim/unclaim), so viewers refetch game rows.
+func (bs *BroadcastService) notifyBroadcastGamesUpdated(slug string) {
+	if bs.natsConn == nil {
+		return
+	}
+	evt := entity.WrapEvent(&ipc.BroadcastGamesUpdatedEvent{
+		Slug: slug,
+	}, ipc.MessageType_BROADCAST_GAMES_UPDATED)
+	bts, err := evt.Serialize()
+	if err != nil {
+		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-serialize-failed")
+		return
+	}
+	if err := bs.natsConn.Publish(NatsBroadcastChannelPrefix+slug, bts); err != nil {
+		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-publish-failed")
+	}
 }
 
 // setCachedFeed stores all parsed divisions for a broadcast. Called by the
