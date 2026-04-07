@@ -80,11 +80,13 @@ type PatreonUserData struct {
 }
 
 type PatreonMemberAttributes struct {
-	Email            string `json:"email"`
-	FullName         string `json:"full_name"`
-	IsFollower       bool   `json:"is_follower"`
-	LastChargeDate   string `json:"last_charge_date"`
-	LastChargeStatus string `json:"last_charge_status"`
+	Email                   string `json:"email"`
+	FullName                string `json:"full_name"`
+	IsFollower              bool   `json:"is_follower"`
+	LastChargeDate          string `json:"last_charge_date"`
+	LastChargeStatus        string `json:"last_charge_status"`
+	PatronStatus            string `json:"patron_status"`
+	PledgeRelationshipStart string `json:"pledge_relationship_start"`
 }
 
 type PatreonRelationship struct {
@@ -132,9 +134,30 @@ type MultiplePatreonMemberData struct {
 }
 
 type PaidTierData struct {
-	LastChargeDate   time.Time
-	LastChargeStatus string
-	Tier             Tier
+	LastChargeDate     time.Time
+	LastChargeStatus   string
+	Tier               Tier
+	IsGiftSubscription bool
+}
+
+// computeCurrentPeriodStart returns the most recent monthly anniversary of
+// pledgeStart that is on or before now. This is used for gift subscriptions
+// where there is no last_charge_date — we derive a billing-period boundary
+// from the pledge start date instead.
+func computeCurrentPeriodStart(pledgeStart, now time.Time) time.Time {
+	// Walk forward from pledgeStart by whole months until we overshoot "now",
+	// then step back one month.
+	y, m, d := pledgeStart.Date()
+	loc := pledgeStart.Location()
+	h, min, sec := pledgeStart.Clock()
+
+	// How many months between pledgeStart and now?
+	months := (now.Year()-y)*12 + int(now.Month()) - int(m)
+	candidate := time.Date(y, m+time.Month(months), d, h, min, sec, 0, loc)
+	if candidate.After(now) {
+		candidate = time.Date(y, m+time.Month(months-1), d, h, min, sec, 0, loc)
+	}
+	return candidate
 }
 
 type PatreonTokenResponse struct {
@@ -335,7 +358,7 @@ func fetchPatreonMemberData(accessToken, memberID string) (*PatreonMemberData, e
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	query := req.URL.Query() // Get a copy of the query parameters
-	query.Set("fields[member]", "full_name,is_follower,last_charge_date,last_charge_status,email")
+	query.Set("fields[member]", "full_name,is_follower,last_charge_date,last_charge_status,email,patron_status,pledge_relationship_start")
 	query.Set("include", "currently_entitled_tiers")
 	query.Set("fields[tier]", "title,description")
 	req.URL.RawQuery = query.Encode()
@@ -511,16 +534,42 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 		PatreonAPICache.Add(userID, nil)
 		return nil, ErrNotPaidTier
 	}
-	lastChargeDate, err := time.Parse(time.RFC3339, memberData.Data.Attributes.LastChargeDate)
-	if err != nil {
-		return nil, err
-	}
 
+	attrs := memberData.Data.Attributes
 	tierData := &PaidTierData{
 		Tier:             tier,
-		LastChargeStatus: memberData.Data.Attributes.LastChargeStatus,
-		LastChargeDate:   lastChargeDate,
+		LastChargeStatus: attrs.LastChargeStatus,
 	}
+
+	if attrs.LastChargeDate != "" {
+		// Normal subscription — has a real charge date.
+		lastChargeDate, err := time.Parse(time.RFC3339, attrs.LastChargeDate)
+		if err != nil {
+			return nil, err
+		}
+		tierData.LastChargeDate = lastChargeDate
+	} else if attrs.PledgeRelationshipStart != "" {
+		// Gift subscription — no charge to the recipient, but we know
+		// when the pledge started. Derive a billing-period boundary.
+		pledgeStart, err := time.Parse(time.RFC3339, attrs.PledgeRelationshipStart)
+		if err != nil {
+			return nil, err
+		}
+		tierData.LastChargeDate = computeCurrentPeriodStart(pledgeStart, time.Now())
+		tierData.LastChargeStatus = ChargeStatusPaid
+		tierData.IsGiftSubscription = true
+		log.Info().Str("userID", userID).Time("pledgeStart", pledgeStart).
+			Time("periodStart", tierData.LastChargeDate).Msg("gift-subscription-detected")
+	} else {
+		// Entitled to a tier but no charge date and no pledge start.
+		// Treat as current-month subscription as a safe fallback.
+		now := time.Now()
+		tierData.LastChargeDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		tierData.LastChargeStatus = ChargeStatusPaid
+		tierData.IsGiftSubscription = true
+		log.Warn().Str("userID", userID).Msg("entitled-but-no-charge-or-pledge-date")
+	}
+
 	evicted := PatreonAPICache.Add(userID, tierData)
 	log.Debug().Bool("evicted", evicted).Str("userID", userID).Msg("added-to-cache")
 	return tierData, nil
