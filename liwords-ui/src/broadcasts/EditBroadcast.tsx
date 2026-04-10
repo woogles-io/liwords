@@ -7,6 +7,7 @@ import {
   Card,
   Space,
   Select,
+  Switch,
   App,
   Spin,
 } from "antd";
@@ -66,6 +67,7 @@ export const EditBroadcast: React.FC = () => {
         : null,
       lexicon: broadcast.lexicon,
       challengerule: broadcast.challengeRule,
+      active: broadcast.active,
     });
   }, [broadcast, form]);
 
@@ -125,7 +127,7 @@ export const EditBroadcast: React.FC = () => {
       boardLayout: broadcast.boardLayout || "CrosswordGame",
       letterDistribution: defaultLetterDistribution(lexicon),
       challengeRule: (vals.challengerule as number) ?? 0,
-      active: broadcast.active,
+      active: vals.active as boolean,
     });
   };
 
@@ -186,6 +188,9 @@ export const EditBroadcast: React.FC = () => {
             </Form.Item>
             <LexiconFormItem />
             <ChallengeRulesFormItem disabled={false} />
+            <Form.Item label="Active" name="active" valuePropName="checked">
+              <Switch />
+            </Form.Item>
             <Form.Item>
               <Space>
                 <Button

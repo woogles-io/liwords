@@ -105,7 +105,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
 
   // ----- Slot mutations -----
 
-  const { data: slotsData } = useQuery(listSlots, { slug: broadcast.slug });
+  const { data: slotsData } = useQuery(listSlots, { slug: broadcast.slug }, { refetchInterval: 10_000 });
 
   const createSlotMutation = useMutation(createSlot, {
     onSuccess: () => {

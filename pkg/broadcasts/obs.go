@@ -319,19 +319,29 @@ func machineWordToDisplay(mls []byte, friendlyMainWord string, dist *tilemapping
 	rm := dist.TileMapping()
 	friendly := []rune(friendlyMainWord)
 	var sb strings.Builder
+	openParen := false
 	for i, b := range mls {
 		ml := tilemapping.MachineLetter(b)
 		if ml == 0 {
-			if i < len(friendly) {
+			if !openParen {
 				sb.WriteByte('(')
+				openParen = true
+			}
+			if i < len(friendly) {
 				sb.WriteRune(friendly[i])
-				sb.WriteByte(')')
 			} else {
 				sb.WriteByte('.')
 			}
 		} else {
+			if openParen {
+				sb.WriteByte(')')
+				openParen = false
+			}
 			sb.WriteString(ml.UserVisible(rm, true))
 		}
+	}
+	if openParen {
+		sb.WriteByte(')')
 	}
 	return sb.String()
 }

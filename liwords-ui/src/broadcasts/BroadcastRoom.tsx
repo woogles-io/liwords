@@ -84,7 +84,7 @@ export const BroadcastRoom: React.FC = () => {
   const { data: slotsData } = useQuery(
     listSlots,
     { slug: slug ?? "" },
-    { enabled: !!slug },
+    { enabled: !!slug, refetchInterval: 10_000 },
   );
 
   const claimMutation = useMutation(claimGame, {
