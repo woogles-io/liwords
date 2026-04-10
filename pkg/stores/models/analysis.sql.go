@@ -432,6 +432,31 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 	return i, err
 }
 
+const getJobByID = `-- name: GetJobByID :one
+SELECT id, game_id, status, result
+FROM analysis_jobs
+WHERE id = $1
+`
+
+type GetJobByIDRow struct {
+	ID     uuid.UUID
+	GameID string
+	Status string
+	Result []byte
+}
+
+func (q *Queries) GetJobByID(ctx context.Context, id uuid.UUID) (GetJobByIDRow, error) {
+	row := q.db.QueryRow(ctx, getJobByID, id)
+	var i GetJobByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.GameID,
+		&i.Status,
+		&i.Result,
+	)
+	return i, err
+}
+
 const getQueuePosition = `-- name: GetQueuePosition :one
 SELECT COUNT(*) + 1 as position
 FROM analysis_jobs aj
@@ -566,10 +591,9 @@ func (q *Queries) RecordUserAnalysisRequest(ctx context.Context, arg RecordUserA
 	return err
 }
 
-const resetAnalysisJob = `-- name: ResetAnalysisJob :exec
+const resetAnalysisJobKeepResult = `-- name: ResetAnalysisJobKeepResult :exec
 UPDATE analysis_jobs
 SET status = 'pending',
-    result = NULL,
     error_message = NULL,
     claimed_by_user_uuid = NULL,
     claimed_at = NULL,
@@ -579,9 +603,33 @@ SET status = 'pending',
 WHERE id = $1
 `
 
-// Reset an analysis job back to pending so it can be re-processed
-func (q *Queries) ResetAnalysisJob(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, resetAnalysisJob, id)
+// Resets job to pending but keeps result for JIT MI subtraction
+func (q *Queries) ResetAnalysisJobKeepResult(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetAnalysisJobKeepResult, id)
+	return err
+}
+
+const resetAnalysisJobWithPriority = `-- name: ResetAnalysisJobWithPriority :exec
+UPDATE analysis_jobs
+SET status = 'pending',
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0,
+    priority = $2
+WHERE id = $1
+`
+
+type ResetAnalysisJobWithPriorityParams struct {
+	ID       uuid.UUID
+	Priority pgtype.Int4
+}
+
+// Resets job and sets custom priority (for batch requeue)
+func (q *Queries) ResetAnalysisJobWithPriority(ctx context.Context, arg ResetAnalysisJobWithPriorityParams) error {
+	_, err := q.db.Exec(ctx, resetAnalysisJobWithPriority, arg.ID, arg.Priority)
 	return err
 }
 

@@ -272,6 +272,16 @@ func (s *AnalysisService) SubmitResult(
 		}), nil
 	}
 
+	// JIT MI subtraction: if this job has an existing result (reanalysis),
+	// subtract the old MI before storing the new result.
+	existingJob, err := s.queries.GetJobByID(ctx, jobID)
+	if err == nil && len(existingJob.Result) > 0 {
+		var oldResult macondo.GameAnalysisResult
+		if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
+			applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true) // decrement
+		}
+	}
+
 	// Store result
 	userUUID := pgtype.Text{String: user.UUID, Valid: true}
 	completedJob, err := s.queries.CompleteJob(ctx, models.CompleteJobParams{
@@ -500,16 +510,9 @@ func (s *AnalysisService) RequestAnalysis(
 					JobId:   existingJob.ID.String(),
 				}), nil
 			}
-			// Subtract old result's mistake index contribution before resetting,
-			// to avoid double-counting in league standings when new analysis completes.
-			var oldResult macondo.GameAnalysisResult
-			if len(existingJob.Result) > 0 {
-				if err := protojson.Unmarshal(existingJob.Result, &oldResult); err == nil {
-					applyLeagueMistakeIndex(ctx, s.queries, existingJob.GameID, &oldResult, true)
-				}
-			}
 			// Legacy result — reset the existing job back to pending (same as admin RequeueAnalysis)
-			if err := s.queries.ResetAnalysisJob(ctx, existingJob.ID); err != nil {
+			// Don't subtract MI here - JIT subtraction happens in SubmitResult
+			if err := s.queries.ResetAnalysisJobKeepResult(ctx, existingJob.ID); err != nil {
 				log.Error().Err(err).Str("job_id", existingJob.ID.String()).Msg("failed to reset legacy job for re-analysis")
 				return nil, apiserver.InternalErr(fmt.Errorf("failed to reset legacy job: %w", err))
 			}

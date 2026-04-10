@@ -188,17 +188,34 @@ SELECT COUNT(*) as total
 FROM analysis_jobs
 WHERE status = 'completed';
 
--- name: ResetAnalysisJob :exec
--- Reset an analysis job back to pending so it can be re-processed
+-- name: GetJobByID :one
+SELECT id, game_id, status, result
+FROM analysis_jobs
+WHERE id = $1;
+
+-- name: ResetAnalysisJobKeepResult :exec
+-- Resets job to pending but keeps result for JIT MI subtraction
 UPDATE analysis_jobs
 SET status = 'pending',
-    result = NULL,
     error_message = NULL,
     claimed_by_user_uuid = NULL,
     claimed_at = NULL,
     heartbeat_at = NULL,
     completed_at = NULL,
     retry_count = 0
+WHERE id = $1;
+
+-- name: ResetAnalysisJobWithPriority :exec
+-- Resets job and sets custom priority (for batch requeue)
+UPDATE analysis_jobs
+SET status = 'pending',
+    error_message = NULL,
+    claimed_by_user_uuid = NULL,
+    claimed_at = NULL,
+    heartbeat_at = NULL,
+    completed_at = NULL,
+    retry_count = 0,
+    priority = $2
 WHERE id = $1;
 
 -- name: GetAnalyzedGameIds :many
