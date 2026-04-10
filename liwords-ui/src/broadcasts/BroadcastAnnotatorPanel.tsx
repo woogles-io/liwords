@@ -78,7 +78,8 @@ export const BroadcastAnnotatorPanel: React.FC<Props> = ({ slug }) => {
                     loading={
                       unclaimMutation.isPending &&
                       unclaimMutation.variables?.round === game.round &&
-                      unclaimMutation.variables?.tableNumber === game.tableNumber
+                      unclaimMutation.variables?.tableNumber ===
+                        game.tableNumber
                     }
                   >
                     Unclaim
@@ -89,7 +90,9 @@ export const BroadcastAnnotatorPanel: React.FC<Props> = ({ slug }) => {
               <Space>
                 <span>
                   {game.division && <strong>Div {game.division} / </strong>}
-                  <strong>R{game.round} / T{game.tableNumber}</strong>
+                  <strong>
+                    R{game.round} / T{game.tableNumber}
+                  </strong>
                   {" — "}
                   {game.player1Name} vs {game.player2Name}
                 </span>

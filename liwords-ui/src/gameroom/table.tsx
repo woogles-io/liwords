@@ -359,7 +359,7 @@ export const Table = React.memo((props: Props) => {
   // Mobile detection state
   const [isInMobileView, setIsInMobileView] = useState(isMobile());
 
-const closeMonitoringModal = useCallback(() => {
+  const closeMonitoringModal = useCallback(() => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("monitoring");
     setSearchParams(newParams);

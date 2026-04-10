@@ -12,10 +12,7 @@ import {
   Popover,
 } from "antd";
 import type { TableColumnsType } from "antd";
-import {
-  LinkOutlined,
-  PlayCircleOutlined,
-} from "@ant-design/icons";
+import { LinkOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useParams, Link, useNavigate } from "react-router";
 import {
   useQuery,
@@ -156,11 +153,10 @@ export const BroadcastRoom: React.FC = () => {
       });
 
     try {
-      const current = await callUnaryMethod(
-        transport,
-        getSlotCurrentGame,
-        { slug: slug ?? "", slotName: slot.slotName },
-      );
+      const current = await callUnaryMethod(transport, getSlotCurrentGame, {
+        slug: slug ?? "",
+        slotName: slot.slotName,
+      });
 
       if (current.gameUuid && !current.annotationDone) {
         const currentDesc =
@@ -237,7 +233,9 @@ export const BroadcastRoom: React.FC = () => {
                 ) : null;
               }
               // Director view: show current tags + popover to move other slots here.
-              const assignedSlotNames = new Set(rowSlots.map((s) => s.slotName));
+              const assignedSlotNames = new Set(
+                rowSlots.map((s) => s.slotName),
+              );
               const movableSlots = slots.filter(
                 (s) => !assignedSlotNames.has(s.slotName),
               );

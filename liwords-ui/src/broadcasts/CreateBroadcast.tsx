@@ -54,13 +54,22 @@ export const CreateBroadcast: React.FC = () => {
       name: vals.name as string,
       description: (vals.description as string) ?? "",
       broadcastUrl: vals.broadcastUrl as string,
-      broadcastUrlFormat: (vals.broadcastUrlFormat as string) ?? "tsh_newt_json",
+      broadcastUrlFormat:
+        (vals.broadcastUrlFormat as string) ?? "tsh_newt_json",
       pollIntervalSeconds: (vals.pollIntervalSeconds as number) ?? 300,
       pollStartTime: vals.pollStartTime
-        ? dayjsToProtobufTimestampIgnoringNanos(vals.pollStartTime as Parameters<typeof dayjsToProtobufTimestampIgnoringNanos>[0])
+        ? dayjsToProtobufTimestampIgnoringNanos(
+            vals.pollStartTime as Parameters<
+              typeof dayjsToProtobufTimestampIgnoringNanos
+            >[0],
+          )
         : undefined,
       pollEndTime: vals.pollEndTime
-        ? dayjsToProtobufTimestampIgnoringNanos(vals.pollEndTime as Parameters<typeof dayjsToProtobufTimestampIgnoringNanos>[0])
+        ? dayjsToProtobufTimestampIgnoringNanos(
+            vals.pollEndTime as Parameters<
+              typeof dayjsToProtobufTimestampIgnoringNanos
+            >[0],
+          )
         : undefined,
       lexicon,
       boardLayout: "CrosswordGame",
@@ -85,8 +94,12 @@ export const CreateBroadcast: React.FC = () => {
               challengerule: 0,
             }}
           >
-            <Form.Item label="Slug" name="slug" rules={[{ required: true }]}
-              extra="URL-friendly ID, e.g. thailand-2026">
+            <Form.Item
+              label="Slug"
+              name="slug"
+              rules={[{ required: true }]}
+              extra="URL-friendly ID, e.g. thailand-2026"
+            >
               <Input />
             </Form.Item>
             <Form.Item label="Name" name="name" rules={[{ required: true }]}>
@@ -95,16 +108,25 @@ export const CreateBroadcast: React.FC = () => {
             <Form.Item label="Description" name="description">
               <TextArea rows={2} />
             </Form.Item>
-            <Form.Item label="Feed URL" name="broadcastUrl" rules={[{ required: true }]}
-              extra="URL of the TSH tourney.js file">
+            <Form.Item
+              label="Feed URL"
+              name="broadcastUrl"
+              rules={[{ required: true }]}
+              extra="URL of the TSH tourney.js file"
+            >
               <Input />
             </Form.Item>
             <Form.Item label="Feed format" name="broadcastUrlFormat">
               <Select>
-                <Select.Option value="tsh_newt_json">tsh_newt_json</Select.Option>
+                <Select.Option value="tsh_newt_json">
+                  tsh_newt_json
+                </Select.Option>
               </Select>
             </Form.Item>
-            <Form.Item label="Poll interval (seconds)" name="pollIntervalSeconds">
+            <Form.Item
+              label="Poll interval (seconds)"
+              name="pollIntervalSeconds"
+            >
               <InputNumber min={30} max={3600} />
             </Form.Item>
             <Form.Item label="Poll start time" name="pollStartTime">

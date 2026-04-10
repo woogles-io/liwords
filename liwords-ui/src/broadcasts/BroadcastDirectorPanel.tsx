@@ -105,7 +105,11 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
 
   // ----- Slot mutations -----
 
-  const { data: slotsData } = useQuery(listSlots, { slug: broadcast.slug }, { refetchInterval: 10_000 });
+  const { data: slotsData } = useQuery(
+    listSlots,
+    { slug: broadcast.slug },
+    { refetchInterval: 10_000 },
+  );
 
   const createSlotMutation = useMutation(createSlot, {
     onSuccess: () => {
@@ -136,9 +140,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
   // Compute next free table for the current div/round as a convenience default.
   const nextTableForCurrentTarget = () => {
     const matching = slots
-      .filter(
-        (s) => s.division === newSlotDivision && s.round === newSlotRound,
-      )
+      .filter((s) => s.division === newSlotDivision && s.round === newSlotRound)
       .map((s) => s.tableNumber);
     return matching.length > 0 ? Math.max(...matching) + 1 : 1;
   };
@@ -223,7 +225,11 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
         {/* Add slot form */}
         <Space wrap size="small" align="end">
           <div>
-            <Typography.Text style={{ fontSize: 11, display: "block", marginBottom: 2 }}>Slot name</Typography.Text>
+            <Typography.Text
+              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
+            >
+              Slot name
+            </Typography.Text>
             <Input
               size="small"
               placeholder="e.g. main"
@@ -233,13 +239,20 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
             />
           </div>
           <div>
-            <Typography.Text style={{ fontSize: 11, display: "block", marginBottom: 2 }}>Division</Typography.Text>
+            <Typography.Text
+              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
+            >
+              Division
+            </Typography.Text>
             {divisions.length > 1 ? (
               <Select
                 size="small"
                 value={newSlotDivision}
                 onChange={setNewSlotDivision}
-                options={divisions.map((d) => ({ value: d, label: `Div ${d}` }))}
+                options={divisions.map((d) => ({
+                  value: d,
+                  label: `Div ${d}`,
+                }))}
                 style={{ minWidth: 90 }}
               />
             ) : (
@@ -253,7 +266,11 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
             )}
           </div>
           <div>
-            <Typography.Text style={{ fontSize: 11, display: "block", marginBottom: 2 }}>Round</Typography.Text>
+            <Typography.Text
+              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
+            >
+              Round
+            </Typography.Text>
             <InputNumber
               size="small"
               value={newSlotRound}
@@ -266,7 +283,11 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
             />
           </div>
           <div>
-            <Typography.Text style={{ fontSize: 11, display: "block", marginBottom: 2 }}>Table</Typography.Text>
+            <Typography.Text
+              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
+            >
+              Table
+            </Typography.Text>
             <InputNumber
               size="small"
               value={newSlotTable}

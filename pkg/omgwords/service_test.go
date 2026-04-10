@@ -5,10 +5,8 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
-	"github.com/gomodule/redigo/redis"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -25,18 +23,7 @@ import (
 )
 
 var DefaultConfig = config.DefaultConfig()
-var RedisURL = os.Getenv("REDIS_URL")
 var pkg = "omgwords"
-
-func newPool(addr string) *redis.Pool {
-	log.Info().Str("addr", addr).Msg("new-redis-pool")
-	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
-		// Dial or DialContext must be set. When both are set, DialContext takes precedence over Dial.
-		Dial: func() (redis.Conn, error) { return redis.DialURL(addr) },
-	}
-}
 
 /*
 	func TestEditMoveAfterMaking(t *testing.T) {
@@ -148,7 +135,7 @@ func TestEditMoveAfterMaking(t *testing.T) {
 		log.Info().Msg("leaving channel loop")
 	}()
 
-	r, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
+	r, err := svc.CreateAnnotatedGame(ctx, connect.NewRequest(&omgwords_service.CreateAnnotatedGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "cesar", FullName: "Cesar", First: true},
 			{Nickname: "someone", FullName: "Someone"},
@@ -248,7 +235,7 @@ func TestEditMoveAfterChallenge(t *testing.T) {
 		log.Info().Msg("leaving channel loop")
 	}()
 
-	r, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
+	r, err := svc.CreateAnnotatedGame(ctx, connect.NewRequest(&omgwords_service.CreateAnnotatedGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "cesar", FullName: "Cesar", First: true},
 			{Nickname: "someone", FullName: "Someone"},
@@ -512,7 +499,7 @@ func TestTileConsistencyDuringAmendments(t *testing.T) {
 	ctx := ctxForTests()
 	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
 
-	resp, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
+	resp, err := svc.CreateAnnotatedGame(ctx, connect.NewRequest(&omgwords_service.CreateAnnotatedGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "player1", FullName: "Player One", UserId: "player1", First: true},
 			{Nickname: "player2", FullName: "Player Two", UserId: "player2", First: false},
@@ -702,7 +689,7 @@ func TestTileCorruption5Z(t *testing.T) {
 	ctx := ctxForTests()
 	ctx = apiserver.StoreAPIKeyInContext(ctx, apikey)
 
-	resp, err := svc.CreateBroadcastGame(ctx, connect.NewRequest(&omgwords_service.CreateBroadcastGameRequest{
+	resp, err := svc.CreateAnnotatedGame(ctx, connect.NewRequest(&omgwords_service.CreateAnnotatedGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{Nickname: "amy", FullName: "Amy", UserId: "amy", First: true},
 			{Nickname: "mikey", FullName: "Mikey", UserId: "mikey", First: false},

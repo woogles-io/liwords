@@ -425,10 +425,7 @@ const App = React.memo(() => {
             <Route path="broadcasts" element={<BroadcastsList />} />
             <Route path="broadcasts/new" element={<CreateBroadcast />} />
             <Route path="broadcasts/:slug/edit" element={<EditBroadcast />} />
-            <Route
-              path="broadcasts/:slug"
-              element={<BroadcastRoom />}
-            />
+            <Route path="broadcasts/:slug" element={<BroadcastRoom />} />
             <Route path="collections/:uuid" element={<CollectionViewer />}>
               <Route
                 path="chapter/:chapterNumber"

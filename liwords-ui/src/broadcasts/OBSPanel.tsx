@@ -30,7 +30,8 @@ const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
   p2_score: "298",
   unseen_tiles: "AAEIOU BCDFG HKLMN PRSTT ?",
   unseen_count: "28 tiles\n10 vowels | 17 consonants",
-  last_play: "     LAST PLAY: Alice 8H GRAFTED 86 86 | to unite with a growing plant",
+  last_play:
+    "     LAST PLAY: Alice 8H GRAFTED 86 86 | to unite with a growing plant",
   blank1: "CoSTARS",
   blank2: "quiZzes",
 };
@@ -138,9 +139,8 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   const isBlankField = suffix === "blank1" || suffix === "blank2";
   const isWrappable = suffix === "unseen_tiles";
   const rawSampleText = OBS_SAMPLE_DATA[suffix];
-  const sampleText = isWrappable && wrap > 0
-    ? wrapAtWidth(rawSampleText, wrap)
-    : rawSampleText;
+  const sampleText =
+    isWrappable && wrap > 0 ? wrapAtWidth(rawSampleText, wrap) : rawSampleText;
 
   const handleSuffixChange = (val: OBSSuffix) => {
     setSuffix(val);
@@ -157,7 +157,8 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
     if (!bold) params.set("bold", "0");
     if (padding !== 8) params.set("padding", String(padding));
     if (isMarquee && speed !== 80) params.set("speed", String(speed));
-    if (isBlankField && blankColor !== "#d33300") params.set("blank", blankColor);
+    if (isBlankField && blankColor !== "#d33300")
+      params.set("blank", blankColor);
     if (isWrappable && wrap > 0) params.set("wrap", String(wrap));
     const qs = params.toString();
     return `${window.location.origin}${urlBase}/${suffix}${qs ? "?" + qs : ""}`;
@@ -166,7 +167,11 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   const copyURL = () => {
     const url = buildURL();
     navigator.clipboard.writeText(url).then(() => {
-      notification.success({ message: "URL copied!", description: url, duration: 3 });
+      notification.success({
+        message: "URL copied!",
+        description: url,
+        duration: 3,
+      });
     });
   };
 
@@ -218,7 +223,10 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   `;
 
   const openButton = (
-    <Button size={compact ? "small" : "middle"} onClick={() => setModalOpen(true)}>
+    <Button
+      size={compact ? "small" : "middle"}
+      onClick={() => setModalOpen(true)}
+    >
       OBS Builder
     </Button>
   );
@@ -229,11 +237,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
 
       <Modal
         open={modalOpen}
-        title={
-          useSlot
-            ? `OBS URL Builder — ${slotName}`
-            : "OBS URL Builder"
-        }
+        title={useSlot ? `OBS URL Builder — ${slotName}` : "OBS URL Builder"}
         width={720}
         zIndex={1100}
         onCancel={() => setModalOpen(false)}
@@ -265,7 +269,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
           {/* Customization form */}
           <Space wrap size="middle" align="start">
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Background
               </Typography.Text>
               <input
@@ -276,7 +282,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               />
             </div>
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Text color
               </Typography.Text>
               <input
@@ -287,7 +295,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               />
             </div>
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Size (px)
               </Typography.Text>
               <InputNumber
@@ -299,7 +309,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               />
             </div>
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Font
               </Typography.Text>
               <Select
@@ -310,13 +322,17 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               />
             </div>
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Bold
               </Typography.Text>
               <Switch checked={bold} onChange={setBold} />
             </div>
             <div>
-              <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
                 Padding (px)
               </Typography.Text>
               <InputNumber
@@ -329,7 +345,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
             </div>
             {isMarquee && (
               <div>
-                <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                <Typography.Text
+                  style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+                >
                   Scroll speed (px/s)
                 </Typography.Text>
                 <InputNumber
@@ -343,20 +361,29 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
             )}
             {isBlankField && (
               <div>
-                <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                <Typography.Text
+                  style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+                >
                   Blank letter color
                 </Typography.Text>
                 <input
                   type="color"
                   value={blankColor}
                   onChange={(e) => setBlankColor(e.target.value)}
-                  style={{ width: 60, height: 32, cursor: "pointer", padding: 2 }}
+                  style={{
+                    width: 60,
+                    height: 32,
+                    cursor: "pointer",
+                    padding: 2,
+                  }}
                 />
               </div>
             )}
             {isWrappable && (
               <div>
-                <Typography.Text style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                <Typography.Text
+                  style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+                >
                   Wrap at (chars)
                 </Typography.Text>
                 <InputNumber
@@ -374,7 +401,10 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
           {/* Live preview */}
           <div>
             <Typography.Text strong>Preview</Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+            <Typography.Text
+              type="secondary"
+              style={{ fontSize: 12, marginLeft: 8 }}
+            >
               (sample data, not live)
             </Typography.Text>
             <div style={previewContainerStyle}>
