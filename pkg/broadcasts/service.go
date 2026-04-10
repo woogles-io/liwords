@@ -446,6 +446,23 @@ func (bs *BroadcastService) UnclaimGame(ctx context.Context, req *connect.Reques
 		return nil, apiserver.NotFound("broadcast not found")
 	}
 
+	// Always fetch game info first — we need the UUID for the done-check and
+	// also for the annotator permission check below.
+	gameInfo, err := bs.queries.GetBroadcastGameAnnotatorInfo(ctx, models.GetBroadcastGameAnnotatorInfoParams{
+		BroadcastID: broadcast.ID,
+		Division:    req.Msg.Division,
+		Round:       req.Msg.Round,
+		TableNumber: req.Msg.TableNumber,
+	})
+	if err != nil {
+		return nil, apiserver.NotFound("game not found")
+	}
+
+	// Refuse to unclaim a game whose annotation is already finished.
+	if gameInfo.GameUuid != "" && bs.isAnnotatedGameDone(ctx, gameInfo.GameUuid) {
+		return nil, apiserver.InvalidArg("cannot unclaim a game that has already been fully annotated")
+	}
+
 	// Check permission: must be a director, OR the annotator of this specific game.
 	isDir, err := bs.queries.IsBroadcastDirector(ctx, models.IsBroadcastDirectorParams{
 		BroadcastID: broadcast.ID,
@@ -455,16 +472,7 @@ func (bs *BroadcastService) UnclaimGame(ctx context.Context, req *connect.Reques
 		return nil, apiserver.InternalErr(err)
 	}
 	if !isDir {
-		info, err := bs.queries.GetBroadcastGameAnnotatorInfo(ctx, models.GetBroadcastGameAnnotatorInfoParams{
-			BroadcastID: broadcast.ID,
-			Division:    req.Msg.Division,
-			Round:       req.Msg.Round,
-			TableNumber: req.Msg.TableNumber,
-		})
-		if err != nil {
-			return nil, apiserver.NotFound("game not found")
-		}
-		if !info.AnnotatorUserID.Valid || int32(u.ID) != info.AnnotatorUserID.Int32 {
+		if !gameInfo.AnnotatorUserID.Valid || int32(u.ID) != gameInfo.AnnotatorUserID.Int32 {
 			return nil, apiserver.PermissionDenied("not authorized to unclaim this game")
 		}
 	}
@@ -549,13 +557,165 @@ func (bs *BroadcastService) GetBroadcastGameContext(ctx context.Context, req *co
 		return nil, apiserver.NotFound("broadcast game not found")
 	}
 
+	// Find the first slot (if any) currently pointing at this game.
+	slotName := ""
+	slots, err := bs.queries.GetSlotsByGame(ctx, req.Msg.GameUuid)
+	if err == nil && len(slots) > 0 {
+		slotName = slots[0].SlotName
+	}
+
 	return connect.NewResponse(&pb.GetBroadcastGameContextResponse{
 		BroadcastSlug: row.BroadcastSlug,
 		BroadcastName: row.BroadcastName,
 		Round:         row.Round,
 		TableNumber:   row.TableNumber,
 		Division:      row.Division,
+		SlotName:      slotName,
 	}), nil
+}
+
+func (bs *BroadcastService) GetSlotCurrentGame(ctx context.Context, req *connect.Request[pb.GetSlotCurrentGameRequest]) (
+	*connect.Response[pb.GetSlotCurrentGameResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	if _, err := bs.requireDirector(ctx, broadcast.ID); err != nil {
+		return nil, err
+	}
+
+	row, err := bs.queries.GetSlotCurrentGame(ctx, models.GetSlotCurrentGameParams{
+		Slug:     req.Msg.Slug,
+		SlotName: req.Msg.SlotName,
+	})
+	if err != nil {
+		return nil, apiserver.NotFound("slot not found")
+	}
+
+	resp := &pb.GetSlotCurrentGameResponse{
+		GameUuid:    row.GameUuid,
+		Player1Name: row.Player1Name,
+		Player2Name: row.Player2Name,
+		Division:    row.Division,
+		Round:       row.Round,
+		TableNumber: row.TableNumber,
+	}
+	if row.GameUuid != "" {
+		resp.AnnotationDone = bs.isAnnotatedGameDone(ctx, row.GameUuid)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (bs *BroadcastService) ListSlots(ctx context.Context, req *connect.Request[pb.ListSlotsRequest]) (
+	*connect.Response[pb.ListSlotsResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+
+	rows, err := bs.queries.ListBroadcastSlots(ctx, int64(broadcast.ID))
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	slots := make([]*pb.BroadcastSlot, 0, len(rows))
+	for _, row := range rows {
+		slots = append(slots, &pb.BroadcastSlot{
+			SlotName:    row.SlotName,
+			Division:    row.Division,
+			Round:       row.Round,
+			TableNumber: row.TableNumber,
+		})
+	}
+	return connect.NewResponse(&pb.ListSlotsResponse{Slots: slots}), nil
+}
+
+func (bs *BroadcastService) CreateSlot(ctx context.Context, req *connect.Request[pb.CreateSlotRequest]) (
+	*connect.Response[pb.CreateSlotResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	if _, err := bs.requireDirector(ctx, broadcast.ID); err != nil {
+		return nil, err
+	}
+	if req.Msg.SlotName == "" {
+		return nil, apiserver.InvalidArg("slot_name is required")
+	}
+	if req.Msg.Division == "" {
+		return nil, apiserver.InvalidArg("division is required")
+	}
+	if req.Msg.Round <= 0 {
+		return nil, apiserver.InvalidArg("round must be positive")
+	}
+	if req.Msg.TableNumber <= 0 {
+		return nil, apiserver.InvalidArg("table_number must be positive")
+	}
+
+	if err := bs.queries.CreateBroadcastSlot(ctx, models.CreateBroadcastSlotParams{
+		BroadcastID: int64(broadcast.ID),
+		SlotName:    req.Msg.SlotName,
+		Division:    req.Msg.Division,
+		Round:       req.Msg.Round,
+		TableNumber: req.Msg.TableNumber,
+	}); err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	return connect.NewResponse(&pb.CreateSlotResponse{}), nil
+}
+
+func (bs *BroadcastService) AssignSlot(ctx context.Context, req *connect.Request[pb.AssignSlotRequest]) (
+	*connect.Response[pb.AssignSlotResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	if _, err := bs.requireDirector(ctx, broadcast.ID); err != nil {
+		return nil, err
+	}
+	if req.Msg.SlotName == "" {
+		return nil, apiserver.InvalidArg("slot_name is required")
+	}
+
+	if err := bs.queries.UpdateBroadcastSlotTarget(ctx, models.UpdateBroadcastSlotTargetParams{
+		BroadcastID: int64(broadcast.ID),
+		SlotName:    req.Msg.SlotName,
+		Division:    req.Msg.Division,
+		Round:       req.Msg.Round,
+		TableNumber: req.Msg.TableNumber,
+	}); err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
+	return connect.NewResponse(&pb.AssignSlotResponse{}), nil
+}
+
+func (bs *BroadcastService) DeleteSlot(ctx context.Context, req *connect.Request[pb.DeleteSlotRequest]) (
+	*connect.Response[pb.DeleteSlotResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+	if _, err := bs.requireDirector(ctx, broadcast.ID); err != nil {
+		return nil, err
+	}
+	if req.Msg.SlotName == "" {
+		return nil, apiserver.InvalidArg("slot_name is required")
+	}
+
+	if err := bs.queries.DeleteBroadcastSlot(ctx, models.DeleteBroadcastSlotParams{
+		BroadcastID: int64(broadcast.ID),
+		SlotName:    req.Msg.SlotName,
+	}); err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	return connect.NewResponse(&pb.DeleteSlotResponse{}), nil
 }
 
 func (bs *BroadcastService) UpdateBroadcast(ctx context.Context, req *connect.Request[pb.UpdateBroadcastRequest]) (
@@ -719,6 +879,35 @@ func (bs *BroadcastService) GetActiveBroadcasts(ctx context.Context, req *connec
 	}
 
 	return connect.NewResponse(&pb.GetActiveBroadcastsResponse{Broadcasts: broadcasts}), nil
+}
+
+func (bs *BroadcastService) GetAllBroadcasts(ctx context.Context, req *connect.Request[pb.GetAllBroadcastsRequest]) (
+	*connect.Response[pb.GetAllBroadcastsResponse], error) {
+
+	rows, err := bs.queries.GetAllBroadcasts(ctx)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	broadcasts := make([]*pb.Broadcast, 0, len(rows))
+	for _, row := range rows {
+		b := broadcastRowToProto(
+			row.ID, row.Uuid, row.Slug, row.Name,
+			row.Description, row.BroadcastUrl, row.BroadcastUrlFormat,
+			row.PollIntervalSeconds, row.PollStartTime, row.PollEndTime,
+			row.Lexicon, row.BoardLayout, row.LetterDistribution, row.ChallengeRule,
+			row.Active, row.CreatedAt, row.CreatorUsername,
+		)
+		if entry := bs.getCachedEntry(row.Slug, row.BroadcastUrl, row.BroadcastUrlFormat); entry != nil {
+			div := firstDivision(entry)
+			if fd := entry.divisions[div]; fd != nil {
+				b.CurrentRound = int32(fd.CurrentRound)
+			}
+		}
+		broadcasts = append(broadcasts, b)
+	}
+
+	return connect.NewResponse(&pb.GetAllBroadcastsResponse{Broadcasts: broadcasts}), nil
 }
 
 func (bs *BroadcastService) TriggerPoll(ctx context.Context, req *connect.Request[pb.TriggerPollRequest]) (
@@ -975,7 +1164,7 @@ func computePlayerStats(p FeedPlayer, allPlayers []FeedPlayer) playerStats {
 }
 
 func broadcastRowToProto(
-	id int32, uid uuid.UUID, slug, name string,
+	_ int32, uid uuid.UUID, slug, name string,
 	description pgtype.Text,
 	broadcastURL, broadcastURLFormat string,
 	pollInterval int32,
@@ -986,7 +1175,6 @@ func broadcastRowToProto(
 	createdAt pgtype.Timestamptz,
 	creatorUsername pgtype.Text,
 ) *pb.Broadcast {
-	_ = id // used only for DB lookups
 	b := &pb.Broadcast{
 		Uuid:                uid.String(),
 		Slug:                slug,

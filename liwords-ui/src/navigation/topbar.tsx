@@ -186,6 +186,7 @@ const TopMenu = React.memo((props: Props) => {
 type Props = {
   tournamentID?: string;
   leagueSlug?: string;
+  broadcastSlug?: string;
   nextCorresGameID?: string;
   corresGamesWaiting?: number;
 };
@@ -242,7 +243,9 @@ export const TopBar = React.memo((props: Props) => {
     ? tournamentContext.metadata?.slug
     : props.leagueSlug
       ? `/leagues/${props.leagueSlug}`
-      : "/";
+      : props.broadcastSlug
+        ? `/broadcasts/${props.broadcastSlug}`
+        : "/";
 
   const handleNextCorresGame = () => {
     if (props.nextCorresGameID) {
@@ -260,7 +263,9 @@ export const TopBar = React.memo((props: Props) => {
               ? " tournament-mode"
               : props.leagueSlug
                 ? " league-mode"
-                : ""
+                : props.broadcastSlug
+                  ? " league-mode"
+                  : ""
           }`}
         >
           <div className="site-icon-rect">
@@ -277,6 +282,8 @@ export const TopBar = React.memo((props: Props) => {
             </div>
           ) : props.leagueSlug ? (
             <div className="tournament">Back to League</div>
+          ) : props.broadcastSlug ? (
+            <div className="tournament">Back to Broadcast</div>
           ) : null}
         </Link>
         {props.nextCorresGameID && (

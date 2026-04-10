@@ -30,6 +30,7 @@ import {
   getBroadcastGameContext,
   unclaimGame,
 } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
+import { OBSPanel } from "../broadcasts/OBSPanel";
 
 type Props = {
   gameID?: string;
@@ -140,6 +141,11 @@ export const EditorControl = (props: Props) => {
           <Typography.Paragraph copyable className="readable-text-color">
             {gameURL}
           </Typography.Paragraph>
+          <OBSPanel
+            gameID={props.gameID}
+            broadcastSlug={broadcastCtx?.broadcastSlug}
+            slotName={broadcastCtx?.slotName}
+          />
           {gameCollections.length > 0 && (
             <Card
               size="small"

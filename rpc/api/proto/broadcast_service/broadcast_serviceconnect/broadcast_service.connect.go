@@ -66,6 +66,9 @@ const (
 	// BroadcastServiceGetActiveBroadcastsProcedure is the fully-qualified name of the
 	// BroadcastService's GetActiveBroadcasts RPC.
 	BroadcastServiceGetActiveBroadcastsProcedure = "/broadcast_service.BroadcastService/GetActiveBroadcasts"
+	// BroadcastServiceGetAllBroadcastsProcedure is the fully-qualified name of the BroadcastService's
+	// GetAllBroadcasts RPC.
+	BroadcastServiceGetAllBroadcastsProcedure = "/broadcast_service.BroadcastService/GetAllBroadcasts"
 	// BroadcastServiceTriggerPollProcedure is the fully-qualified name of the BroadcastService's
 	// TriggerPoll RPC.
 	BroadcastServiceTriggerPollProcedure = "/broadcast_service.BroadcastService/TriggerPoll"
@@ -75,6 +78,21 @@ const (
 	// BroadcastServiceGetBroadcastGameContextProcedure is the fully-qualified name of the
 	// BroadcastService's GetBroadcastGameContext RPC.
 	BroadcastServiceGetBroadcastGameContextProcedure = "/broadcast_service.BroadcastService/GetBroadcastGameContext"
+	// BroadcastServiceListSlotsProcedure is the fully-qualified name of the BroadcastService's
+	// ListSlots RPC.
+	BroadcastServiceListSlotsProcedure = "/broadcast_service.BroadcastService/ListSlots"
+	// BroadcastServiceGetSlotCurrentGameProcedure is the fully-qualified name of the BroadcastService's
+	// GetSlotCurrentGame RPC.
+	BroadcastServiceGetSlotCurrentGameProcedure = "/broadcast_service.BroadcastService/GetSlotCurrentGame"
+	// BroadcastServiceCreateSlotProcedure is the fully-qualified name of the BroadcastService's
+	// CreateSlot RPC.
+	BroadcastServiceCreateSlotProcedure = "/broadcast_service.BroadcastService/CreateSlot"
+	// BroadcastServiceAssignSlotProcedure is the fully-qualified name of the BroadcastService's
+	// AssignSlot RPC.
+	BroadcastServiceAssignSlotProcedure = "/broadcast_service.BroadcastService/AssignSlot"
+	// BroadcastServiceDeleteSlotProcedure is the fully-qualified name of the BroadcastService's
+	// DeleteSlot RPC.
+	BroadcastServiceDeleteSlotProcedure = "/broadcast_service.BroadcastService/DeleteSlot"
 )
 
 // BroadcastServiceClient is a client for the broadcast_service.BroadcastService service.
@@ -90,9 +108,15 @@ type BroadcastServiceClient interface {
 	AddBroadcastAnnotators(context.Context, *connect.Request[broadcast_service.AddBroadcastAnnotatorsRequest]) (*connect.Response[broadcast_service.AddBroadcastAnnotatorsResponse], error)
 	RemoveBroadcastAnnotators(context.Context, *connect.Request[broadcast_service.RemoveBroadcastAnnotatorsRequest]) (*connect.Response[broadcast_service.RemoveBroadcastAnnotatorsResponse], error)
 	GetActiveBroadcasts(context.Context, *connect.Request[broadcast_service.GetActiveBroadcastsRequest]) (*connect.Response[broadcast_service.GetActiveBroadcastsResponse], error)
+	GetAllBroadcasts(context.Context, *connect.Request[broadcast_service.GetAllBroadcastsRequest]) (*connect.Response[broadcast_service.GetAllBroadcastsResponse], error)
 	TriggerPoll(context.Context, *connect.Request[broadcast_service.TriggerPollRequest]) (*connect.Response[broadcast_service.TriggerPollResponse], error)
 	GetMyClaimedGames(context.Context, *connect.Request[broadcast_service.GetMyClaimedGamesRequest]) (*connect.Response[broadcast_service.GetMyClaimedGamesResponse], error)
 	GetBroadcastGameContext(context.Context, *connect.Request[broadcast_service.GetBroadcastGameContextRequest]) (*connect.Response[broadcast_service.GetBroadcastGameContextResponse], error)
+	ListSlots(context.Context, *connect.Request[broadcast_service.ListSlotsRequest]) (*connect.Response[broadcast_service.ListSlotsResponse], error)
+	GetSlotCurrentGame(context.Context, *connect.Request[broadcast_service.GetSlotCurrentGameRequest]) (*connect.Response[broadcast_service.GetSlotCurrentGameResponse], error)
+	CreateSlot(context.Context, *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error)
+	AssignSlot(context.Context, *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error)
+	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
 }
 
 // NewBroadcastServiceClient constructs a client for the broadcast_service.BroadcastService service.
@@ -172,6 +196,12 @@ func NewBroadcastServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(broadcastServiceMethods.ByName("GetActiveBroadcasts")),
 			connect.WithClientOptions(opts...),
 		),
+		getAllBroadcasts: connect.NewClient[broadcast_service.GetAllBroadcastsRequest, broadcast_service.GetAllBroadcastsResponse](
+			httpClient,
+			baseURL+BroadcastServiceGetAllBroadcastsProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("GetAllBroadcasts")),
+			connect.WithClientOptions(opts...),
+		),
 		triggerPoll: connect.NewClient[broadcast_service.TriggerPollRequest, broadcast_service.TriggerPollResponse](
 			httpClient,
 			baseURL+BroadcastServiceTriggerPollProcedure,
@@ -190,6 +220,36 @@ func NewBroadcastServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastGameContext")),
 			connect.WithClientOptions(opts...),
 		),
+		listSlots: connect.NewClient[broadcast_service.ListSlotsRequest, broadcast_service.ListSlotsResponse](
+			httpClient,
+			baseURL+BroadcastServiceListSlotsProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("ListSlots")),
+			connect.WithClientOptions(opts...),
+		),
+		getSlotCurrentGame: connect.NewClient[broadcast_service.GetSlotCurrentGameRequest, broadcast_service.GetSlotCurrentGameResponse](
+			httpClient,
+			baseURL+BroadcastServiceGetSlotCurrentGameProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("GetSlotCurrentGame")),
+			connect.WithClientOptions(opts...),
+		),
+		createSlot: connect.NewClient[broadcast_service.CreateSlotRequest, broadcast_service.CreateSlotResponse](
+			httpClient,
+			baseURL+BroadcastServiceCreateSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("CreateSlot")),
+			connect.WithClientOptions(opts...),
+		),
+		assignSlot: connect.NewClient[broadcast_service.AssignSlotRequest, broadcast_service.AssignSlotResponse](
+			httpClient,
+			baseURL+BroadcastServiceAssignSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("AssignSlot")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSlot: connect.NewClient[broadcast_service.DeleteSlotRequest, broadcast_service.DeleteSlotResponse](
+			httpClient,
+			baseURL+BroadcastServiceDeleteSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("DeleteSlot")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -206,9 +266,15 @@ type broadcastServiceClient struct {
 	addBroadcastAnnotators    *connect.Client[broadcast_service.AddBroadcastAnnotatorsRequest, broadcast_service.AddBroadcastAnnotatorsResponse]
 	removeBroadcastAnnotators *connect.Client[broadcast_service.RemoveBroadcastAnnotatorsRequest, broadcast_service.RemoveBroadcastAnnotatorsResponse]
 	getActiveBroadcasts       *connect.Client[broadcast_service.GetActiveBroadcastsRequest, broadcast_service.GetActiveBroadcastsResponse]
+	getAllBroadcasts          *connect.Client[broadcast_service.GetAllBroadcastsRequest, broadcast_service.GetAllBroadcastsResponse]
 	triggerPoll               *connect.Client[broadcast_service.TriggerPollRequest, broadcast_service.TriggerPollResponse]
 	getMyClaimedGames         *connect.Client[broadcast_service.GetMyClaimedGamesRequest, broadcast_service.GetMyClaimedGamesResponse]
 	getBroadcastGameContext   *connect.Client[broadcast_service.GetBroadcastGameContextRequest, broadcast_service.GetBroadcastGameContextResponse]
+	listSlots                 *connect.Client[broadcast_service.ListSlotsRequest, broadcast_service.ListSlotsResponse]
+	getSlotCurrentGame        *connect.Client[broadcast_service.GetSlotCurrentGameRequest, broadcast_service.GetSlotCurrentGameResponse]
+	createSlot                *connect.Client[broadcast_service.CreateSlotRequest, broadcast_service.CreateSlotResponse]
+	assignSlot                *connect.Client[broadcast_service.AssignSlotRequest, broadcast_service.AssignSlotResponse]
+	deleteSlot                *connect.Client[broadcast_service.DeleteSlotRequest, broadcast_service.DeleteSlotResponse]
 }
 
 // CreateBroadcast calls broadcast_service.BroadcastService.CreateBroadcast.
@@ -266,6 +332,11 @@ func (c *broadcastServiceClient) GetActiveBroadcasts(ctx context.Context, req *c
 	return c.getActiveBroadcasts.CallUnary(ctx, req)
 }
 
+// GetAllBroadcasts calls broadcast_service.BroadcastService.GetAllBroadcasts.
+func (c *broadcastServiceClient) GetAllBroadcasts(ctx context.Context, req *connect.Request[broadcast_service.GetAllBroadcastsRequest]) (*connect.Response[broadcast_service.GetAllBroadcastsResponse], error) {
+	return c.getAllBroadcasts.CallUnary(ctx, req)
+}
+
 // TriggerPoll calls broadcast_service.BroadcastService.TriggerPoll.
 func (c *broadcastServiceClient) TriggerPoll(ctx context.Context, req *connect.Request[broadcast_service.TriggerPollRequest]) (*connect.Response[broadcast_service.TriggerPollResponse], error) {
 	return c.triggerPoll.CallUnary(ctx, req)
@@ -281,6 +352,31 @@ func (c *broadcastServiceClient) GetBroadcastGameContext(ctx context.Context, re
 	return c.getBroadcastGameContext.CallUnary(ctx, req)
 }
 
+// ListSlots calls broadcast_service.BroadcastService.ListSlots.
+func (c *broadcastServiceClient) ListSlots(ctx context.Context, req *connect.Request[broadcast_service.ListSlotsRequest]) (*connect.Response[broadcast_service.ListSlotsResponse], error) {
+	return c.listSlots.CallUnary(ctx, req)
+}
+
+// GetSlotCurrentGame calls broadcast_service.BroadcastService.GetSlotCurrentGame.
+func (c *broadcastServiceClient) GetSlotCurrentGame(ctx context.Context, req *connect.Request[broadcast_service.GetSlotCurrentGameRequest]) (*connect.Response[broadcast_service.GetSlotCurrentGameResponse], error) {
+	return c.getSlotCurrentGame.CallUnary(ctx, req)
+}
+
+// CreateSlot calls broadcast_service.BroadcastService.CreateSlot.
+func (c *broadcastServiceClient) CreateSlot(ctx context.Context, req *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error) {
+	return c.createSlot.CallUnary(ctx, req)
+}
+
+// AssignSlot calls broadcast_service.BroadcastService.AssignSlot.
+func (c *broadcastServiceClient) AssignSlot(ctx context.Context, req *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error) {
+	return c.assignSlot.CallUnary(ctx, req)
+}
+
+// DeleteSlot calls broadcast_service.BroadcastService.DeleteSlot.
+func (c *broadcastServiceClient) DeleteSlot(ctx context.Context, req *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error) {
+	return c.deleteSlot.CallUnary(ctx, req)
+}
+
 // BroadcastServiceHandler is an implementation of the broadcast_service.BroadcastService service.
 type BroadcastServiceHandler interface {
 	CreateBroadcast(context.Context, *connect.Request[broadcast_service.CreateBroadcastRequest]) (*connect.Response[broadcast_service.CreateBroadcastResponse], error)
@@ -294,9 +390,15 @@ type BroadcastServiceHandler interface {
 	AddBroadcastAnnotators(context.Context, *connect.Request[broadcast_service.AddBroadcastAnnotatorsRequest]) (*connect.Response[broadcast_service.AddBroadcastAnnotatorsResponse], error)
 	RemoveBroadcastAnnotators(context.Context, *connect.Request[broadcast_service.RemoveBroadcastAnnotatorsRequest]) (*connect.Response[broadcast_service.RemoveBroadcastAnnotatorsResponse], error)
 	GetActiveBroadcasts(context.Context, *connect.Request[broadcast_service.GetActiveBroadcastsRequest]) (*connect.Response[broadcast_service.GetActiveBroadcastsResponse], error)
+	GetAllBroadcasts(context.Context, *connect.Request[broadcast_service.GetAllBroadcastsRequest]) (*connect.Response[broadcast_service.GetAllBroadcastsResponse], error)
 	TriggerPoll(context.Context, *connect.Request[broadcast_service.TriggerPollRequest]) (*connect.Response[broadcast_service.TriggerPollResponse], error)
 	GetMyClaimedGames(context.Context, *connect.Request[broadcast_service.GetMyClaimedGamesRequest]) (*connect.Response[broadcast_service.GetMyClaimedGamesResponse], error)
 	GetBroadcastGameContext(context.Context, *connect.Request[broadcast_service.GetBroadcastGameContextRequest]) (*connect.Response[broadcast_service.GetBroadcastGameContextResponse], error)
+	ListSlots(context.Context, *connect.Request[broadcast_service.ListSlotsRequest]) (*connect.Response[broadcast_service.ListSlotsResponse], error)
+	GetSlotCurrentGame(context.Context, *connect.Request[broadcast_service.GetSlotCurrentGameRequest]) (*connect.Response[broadcast_service.GetSlotCurrentGameResponse], error)
+	CreateSlot(context.Context, *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error)
+	AssignSlot(context.Context, *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error)
+	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
 }
 
 // NewBroadcastServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -372,6 +474,12 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 		connect.WithSchema(broadcastServiceMethods.ByName("GetActiveBroadcasts")),
 		connect.WithHandlerOptions(opts...),
 	)
+	broadcastServiceGetAllBroadcastsHandler := connect.NewUnaryHandler(
+		BroadcastServiceGetAllBroadcastsProcedure,
+		svc.GetAllBroadcasts,
+		connect.WithSchema(broadcastServiceMethods.ByName("GetAllBroadcasts")),
+		connect.WithHandlerOptions(opts...),
+	)
 	broadcastServiceTriggerPollHandler := connect.NewUnaryHandler(
 		BroadcastServiceTriggerPollProcedure,
 		svc.TriggerPoll,
@@ -388,6 +496,36 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 		BroadcastServiceGetBroadcastGameContextProcedure,
 		svc.GetBroadcastGameContext,
 		connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastGameContext")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceListSlotsHandler := connect.NewUnaryHandler(
+		BroadcastServiceListSlotsProcedure,
+		svc.ListSlots,
+		connect.WithSchema(broadcastServiceMethods.ByName("ListSlots")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceGetSlotCurrentGameHandler := connect.NewUnaryHandler(
+		BroadcastServiceGetSlotCurrentGameProcedure,
+		svc.GetSlotCurrentGame,
+		connect.WithSchema(broadcastServiceMethods.ByName("GetSlotCurrentGame")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceCreateSlotHandler := connect.NewUnaryHandler(
+		BroadcastServiceCreateSlotProcedure,
+		svc.CreateSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("CreateSlot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceAssignSlotHandler := connect.NewUnaryHandler(
+		BroadcastServiceAssignSlotProcedure,
+		svc.AssignSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("AssignSlot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceDeleteSlotHandler := connect.NewUnaryHandler(
+		BroadcastServiceDeleteSlotProcedure,
+		svc.DeleteSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("DeleteSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/broadcast_service.BroadcastService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -414,12 +552,24 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 			broadcastServiceRemoveBroadcastAnnotatorsHandler.ServeHTTP(w, r)
 		case BroadcastServiceGetActiveBroadcastsProcedure:
 			broadcastServiceGetActiveBroadcastsHandler.ServeHTTP(w, r)
+		case BroadcastServiceGetAllBroadcastsProcedure:
+			broadcastServiceGetAllBroadcastsHandler.ServeHTTP(w, r)
 		case BroadcastServiceTriggerPollProcedure:
 			broadcastServiceTriggerPollHandler.ServeHTTP(w, r)
 		case BroadcastServiceGetMyClaimedGamesProcedure:
 			broadcastServiceGetMyClaimedGamesHandler.ServeHTTP(w, r)
 		case BroadcastServiceGetBroadcastGameContextProcedure:
 			broadcastServiceGetBroadcastGameContextHandler.ServeHTTP(w, r)
+		case BroadcastServiceListSlotsProcedure:
+			broadcastServiceListSlotsHandler.ServeHTTP(w, r)
+		case BroadcastServiceGetSlotCurrentGameProcedure:
+			broadcastServiceGetSlotCurrentGameHandler.ServeHTTP(w, r)
+		case BroadcastServiceCreateSlotProcedure:
+			broadcastServiceCreateSlotHandler.ServeHTTP(w, r)
+		case BroadcastServiceAssignSlotProcedure:
+			broadcastServiceAssignSlotHandler.ServeHTTP(w, r)
+		case BroadcastServiceDeleteSlotProcedure:
+			broadcastServiceDeleteSlotHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -473,6 +623,10 @@ func (UnimplementedBroadcastServiceHandler) GetActiveBroadcasts(context.Context,
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetActiveBroadcasts is not implemented"))
 }
 
+func (UnimplementedBroadcastServiceHandler) GetAllBroadcasts(context.Context, *connect.Request[broadcast_service.GetAllBroadcastsRequest]) (*connect.Response[broadcast_service.GetAllBroadcastsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetAllBroadcasts is not implemented"))
+}
+
 func (UnimplementedBroadcastServiceHandler) TriggerPoll(context.Context, *connect.Request[broadcast_service.TriggerPollRequest]) (*connect.Response[broadcast_service.TriggerPollResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.TriggerPoll is not implemented"))
 }
@@ -483,4 +637,24 @@ func (UnimplementedBroadcastServiceHandler) GetMyClaimedGames(context.Context, *
 
 func (UnimplementedBroadcastServiceHandler) GetBroadcastGameContext(context.Context, *connect.Request[broadcast_service.GetBroadcastGameContextRequest]) (*connect.Response[broadcast_service.GetBroadcastGameContextResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetBroadcastGameContext is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) ListSlots(context.Context, *connect.Request[broadcast_service.ListSlotsRequest]) (*connect.Response[broadcast_service.ListSlotsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.ListSlots is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) GetSlotCurrentGame(context.Context, *connect.Request[broadcast_service.GetSlotCurrentGameRequest]) (*connect.Response[broadcast_service.GetSlotCurrentGameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetSlotCurrentGame is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) CreateSlot(context.Context, *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.CreateSlot is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) AssignSlot(context.Context, *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.AssignSlot is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.DeleteSlot is not implemented"))
 }

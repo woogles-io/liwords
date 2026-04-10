@@ -131,6 +131,46 @@ func (q *Queries) CreateBroadcastGame(ctx context.Context, arg CreateBroadcastGa
 	return id, err
 }
 
+const createBroadcastSlot = `-- name: CreateBroadcastSlot :exec
+INSERT INTO broadcast_slots (broadcast_id, slot_name, division, round, table_number)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT DO NOTHING
+`
+
+type CreateBroadcastSlotParams struct {
+	BroadcastID int64
+	SlotName    string
+	Division    string
+	Round       int32
+	TableNumber int32
+}
+
+func (q *Queries) CreateBroadcastSlot(ctx context.Context, arg CreateBroadcastSlotParams) error {
+	_, err := q.db.Exec(ctx, createBroadcastSlot,
+		arg.BroadcastID,
+		arg.SlotName,
+		arg.Division,
+		arg.Round,
+		arg.TableNumber,
+	)
+	return err
+}
+
+const deleteBroadcastSlot = `-- name: DeleteBroadcastSlot :exec
+DELETE FROM broadcast_slots
+WHERE broadcast_id = $1 AND slot_name = $2
+`
+
+type DeleteBroadcastSlotParams struct {
+	BroadcastID int64
+	SlotName    string
+}
+
+func (q *Queries) DeleteBroadcastSlot(ctx context.Context, arg DeleteBroadcastSlotParams) error {
+	_, err := q.db.Exec(ctx, deleteBroadcastSlot, arg.BroadcastID, arg.SlotName)
+	return err
+}
+
 const getActiveBroadcasts = `-- name: GetActiveBroadcasts :many
 SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast_url_format,
        b.poll_interval_seconds, b.poll_start_time, b.poll_end_time,
@@ -175,6 +215,81 @@ func (q *Queries) GetActiveBroadcasts(ctx context.Context) ([]GetActiveBroadcast
 	var items []GetActiveBroadcastsRow
 	for rows.Next() {
 		var i GetActiveBroadcastsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.Slug,
+			&i.Name,
+			&i.Description,
+			&i.BroadcastUrl,
+			&i.BroadcastUrlFormat,
+			&i.PollIntervalSeconds,
+			&i.PollStartTime,
+			&i.PollEndTime,
+			&i.Lexicon,
+			&i.BoardLayout,
+			&i.LetterDistribution,
+			&i.ChallengeRule,
+			&i.LastPolledAt,
+			&i.CreatorID,
+			&i.Active,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatorUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllBroadcasts = `-- name: GetAllBroadcasts :many
+SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast_url_format,
+       b.poll_interval_seconds, b.poll_start_time, b.poll_end_time,
+       b.lexicon, b.board_layout, b.letter_distribution, b.challenge_rule,
+       b.last_polled_at, b.creator_id, b.active, b.created_at, b.updated_at,
+       u.username as creator_username
+FROM broadcasts b
+JOIN users u ON b.creator_id = u.id
+ORDER BY b.active DESC, b.created_at DESC
+`
+
+type GetAllBroadcastsRow struct {
+	ID                  int32
+	Uuid                uuid.UUID
+	Slug                string
+	Name                string
+	Description         pgtype.Text
+	BroadcastUrl        string
+	BroadcastUrlFormat  string
+	PollIntervalSeconds int32
+	PollStartTime       pgtype.Timestamptz
+	PollEndTime         pgtype.Timestamptz
+	Lexicon             string
+	BoardLayout         string
+	LetterDistribution  string
+	ChallengeRule       int32
+	LastPolledAt        pgtype.Timestamptz
+	CreatorID           int32
+	Active              bool
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	CreatorUsername     pgtype.Text
+}
+
+func (q *Queries) GetAllBroadcasts(ctx context.Context) ([]GetAllBroadcastsRow, error) {
+	rows, err := q.db.Query(ctx, getAllBroadcasts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBroadcastsRow
+	for rows.Next() {
+		var i GetAllBroadcastsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Uuid,
@@ -585,6 +700,53 @@ func (q *Queries) GetBroadcastGamesForRound(ctx context.Context, arg GetBroadcas
 	return items, nil
 }
 
+const getBroadcastSlotGame = `-- name: GetBroadcastSlotGame :one
+SELECT
+    bs.division,
+    bs.round,
+    bs.table_number,
+    bg.game_uuid,
+    b.uuid  AS broadcast_uuid,
+    b.id    AS broadcast_id
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE b.slug = $1 AND bs.slot_name = $2
+`
+
+type GetBroadcastSlotGameParams struct {
+	Slug     string
+	SlotName string
+}
+
+type GetBroadcastSlotGameRow struct {
+	Division      string
+	Round         int32
+	TableNumber   int32
+	GameUuid      pgtype.Text
+	BroadcastUuid uuid.UUID
+	BroadcastID   int32
+}
+
+// Resolves (slug, slot_name) → current game at that (div, round, table), if any.
+func (q *Queries) GetBroadcastSlotGame(ctx context.Context, arg GetBroadcastSlotGameParams) (GetBroadcastSlotGameRow, error) {
+	row := q.db.QueryRow(ctx, getBroadcastSlotGame, arg.Slug, arg.SlotName)
+	var i GetBroadcastSlotGameRow
+	err := row.Scan(
+		&i.Division,
+		&i.Round,
+		&i.TableNumber,
+		&i.GameUuid,
+		&i.BroadcastUuid,
+		&i.BroadcastID,
+	)
+	return i, err
+}
+
 const getBroadcastsForPolling = `-- name: GetBroadcastsForPolling :many
 SELECT id, uuid, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
        poll_start_time, poll_end_time, last_polled_at
@@ -697,6 +859,92 @@ func (q *Queries) GetMyClaimedGames(ctx context.Context, arg GetMyClaimedGamesPa
 	return items, nil
 }
 
+const getSlotCurrentGame = `-- name: GetSlotCurrentGame :one
+SELECT
+    bs.division,
+    bs.round,
+    bs.table_number,
+    COALESCE(bg.game_uuid, '')      AS game_uuid,
+    COALESCE(bg.player1_name, '')   AS player1_name,
+    COALESCE(bg.player2_name, '')   AS player2_name
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE b.slug = $1 AND bs.slot_name = $2
+`
+
+type GetSlotCurrentGameParams struct {
+	Slug     string
+	SlotName string
+}
+
+type GetSlotCurrentGameRow struct {
+	Division    string
+	Round       int32
+	TableNumber int32
+	GameUuid    string
+	Player1Name string
+	Player2Name string
+}
+
+// Resolves (slug, slot_name) → current game with player names, for UI confirmation warnings.
+func (q *Queries) GetSlotCurrentGame(ctx context.Context, arg GetSlotCurrentGameParams) (GetSlotCurrentGameRow, error) {
+	row := q.db.QueryRow(ctx, getSlotCurrentGame, arg.Slug, arg.SlotName)
+	var i GetSlotCurrentGameRow
+	err := row.Scan(
+		&i.Division,
+		&i.Round,
+		&i.TableNumber,
+		&i.GameUuid,
+		&i.Player1Name,
+		&i.Player2Name,
+	)
+	return i, err
+}
+
+const getSlotsByGame = `-- name: GetSlotsByGame :many
+SELECT bs.slot_name, b.slug, b.uuid AS broadcast_uuid
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE bg.game_uuid = $1
+`
+
+type GetSlotsByGameRow struct {
+	SlotName      string
+	Slug          string
+	BroadcastUuid uuid.UUID
+}
+
+// Returns all slots currently pointing at a given game's (div, round, table).
+func (q *Queries) GetSlotsByGame(ctx context.Context, gameUuid string) ([]GetSlotsByGameRow, error) {
+	rows, err := q.db.Query(ctx, getSlotsByGame, gameUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSlotsByGameRow
+	for rows.Next() {
+		var i GetSlotsByGameRow
+		if err := rows.Scan(&i.SlotName, &i.Slug, &i.BroadcastUuid); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const isBroadcastAnnotator = `-- name: IsBroadcastAnnotator :one
 SELECT EXISTS(
     SELECT 1 FROM broadcast_annotators
@@ -733,6 +981,47 @@ func (q *Queries) IsBroadcastDirector(ctx context.Context, arg IsBroadcastDirect
 	var is_director bool
 	err := row.Scan(&is_director)
 	return is_director, err
+}
+
+const listBroadcastSlots = `-- name: ListBroadcastSlots :many
+SELECT slot_name, division, round, table_number, updated_at
+FROM broadcast_slots
+WHERE broadcast_id = $1
+ORDER BY slot_name
+`
+
+type ListBroadcastSlotsRow struct {
+	SlotName    string
+	Division    string
+	Round       int32
+	TableNumber int32
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) ListBroadcastSlots(ctx context.Context, broadcastID int64) ([]ListBroadcastSlotsRow, error) {
+	rows, err := q.db.Query(ctx, listBroadcastSlots, broadcastID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListBroadcastSlotsRow
+	for rows.Next() {
+		var i ListBroadcastSlotsRow
+		if err := rows.Scan(
+			&i.SlotName,
+			&i.Division,
+			&i.Round,
+			&i.TableNumber,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const removeBroadcastAnnotator = `-- name: RemoveBroadcastAnnotator :exec
@@ -851,5 +1140,30 @@ WHERE id = $1
 
 func (q *Queries) UpdateBroadcastLastPolled(ctx context.Context, id int32) error {
 	_, err := q.db.Exec(ctx, updateBroadcastLastPolled, id)
+	return err
+}
+
+const updateBroadcastSlotTarget = `-- name: UpdateBroadcastSlotTarget :exec
+UPDATE broadcast_slots
+SET division = $3, round = $4, table_number = $5, updated_at = NOW()
+WHERE broadcast_id = $1 AND slot_name = $2
+`
+
+type UpdateBroadcastSlotTargetParams struct {
+	BroadcastID int64
+	SlotName    string
+	Division    string
+	Round       int32
+	TableNumber int32
+}
+
+func (q *Queries) UpdateBroadcastSlotTarget(ctx context.Context, arg UpdateBroadcastSlotTargetParams) error {
+	_, err := q.db.Exec(ctx, updateBroadcastSlotTarget,
+		arg.BroadcastID,
+		arg.SlotName,
+		arg.Division,
+		arg.Round,
+		arg.TableNumber,
+	)
 	return err
 }

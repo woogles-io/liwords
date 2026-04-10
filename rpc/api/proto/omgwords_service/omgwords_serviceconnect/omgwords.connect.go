@@ -34,12 +34,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// GameEventServiceCreateBroadcastGameProcedure is the fully-qualified name of the
-	// GameEventService's CreateBroadcastGame RPC.
-	GameEventServiceCreateBroadcastGameProcedure = "/omgwords_service.GameEventService/CreateBroadcastGame"
-	// GameEventServiceDeleteBroadcastGameProcedure is the fully-qualified name of the
-	// GameEventService's DeleteBroadcastGame RPC.
-	GameEventServiceDeleteBroadcastGameProcedure = "/omgwords_service.GameEventService/DeleteBroadcastGame"
+	// GameEventServiceCreateAnnotatedGameProcedure is the fully-qualified name of the
+	// GameEventService's CreateAnnotatedGame RPC.
+	GameEventServiceCreateAnnotatedGameProcedure = "/omgwords_service.GameEventService/CreateAnnotatedGame"
+	// GameEventServiceDeleteAnnotatedGameProcedure is the fully-qualified name of the
+	// GameEventService's DeleteAnnotatedGame RPC.
+	GameEventServiceDeleteAnnotatedGameProcedure = "/omgwords_service.GameEventService/DeleteAnnotatedGame"
 	// GameEventServiceSendGameEventProcedure is the fully-qualified name of the GameEventService's
 	// SendGameEvent RPC.
 	GameEventServiceSendGameEventProcedure = "/omgwords_service.GameEventService/SendGameEvent"
@@ -52,9 +52,9 @@ const (
 	// GameEventServicePatchGameDocumentProcedure is the fully-qualified name of the GameEventService's
 	// PatchGameDocument RPC.
 	GameEventServicePatchGameDocumentProcedure = "/omgwords_service.GameEventService/PatchGameDocument"
-	// GameEventServiceSetBroadcastGamePrivacyProcedure is the fully-qualified name of the
-	// GameEventService's SetBroadcastGamePrivacy RPC.
-	GameEventServiceSetBroadcastGamePrivacyProcedure = "/omgwords_service.GameEventService/SetBroadcastGamePrivacy"
+	// GameEventServiceSetAnnotatedGamePrivacyProcedure is the fully-qualified name of the
+	// GameEventService's SetAnnotatedGamePrivacy RPC.
+	GameEventServiceSetAnnotatedGamePrivacyProcedure = "/omgwords_service.GameEventService/SetAnnotatedGamePrivacy"
 	// GameEventServiceGetGamesForEditorProcedure is the fully-qualified name of the GameEventService's
 	// GetGamesForEditor RPC.
 	GameEventServiceGetGamesForEditorProcedure = "/omgwords_service.GameEventService/GetGamesForEditor"
@@ -79,10 +79,10 @@ const (
 
 // GameEventServiceClient is a client for the omgwords_service.GameEventService service.
 type GameEventServiceClient interface {
-	// CreateBroadcastGame will create a game for Woogles broadcast
-	CreateBroadcastGame(context.Context, *connect.Request[omgwords_service.CreateBroadcastGameRequest]) (*connect.Response[omgwords_service.CreateBroadcastGameResponse], error)
-	// DeleteBroadcastGame deletes a Woogles annotated game.
-	DeleteBroadcastGame(context.Context, *connect.Request[omgwords_service.DeleteBroadcastGameRequest]) (*connect.Response[omgwords_service.DeleteBroadcastGameResponse], error)
+	// CreateAnnotatedGame creates a standalone annotated game in the editor.
+	CreateAnnotatedGame(context.Context, *connect.Request[omgwords_service.CreateAnnotatedGameRequest]) (*connect.Response[omgwords_service.CreateAnnotatedGameResponse], error)
+	// DeleteAnnotatedGame deletes a standalone annotated game (not part of a broadcast).
+	DeleteAnnotatedGame(context.Context, *connect.Request[omgwords_service.DeleteAnnotatedGameRequest]) (*connect.Response[omgwords_service.DeleteAnnotatedGameResponse], error)
 	// SendGameEvent is how one sends game events to the Woogles API.
 	SendGameEvent(context.Context, *connect.Request[omgwords_service.AnnotatedGameEvent]) (*connect.Response[omgwords_service.GameEventResponse], error)
 	// SetRacks sets the rack for the players of the game.
@@ -91,12 +91,12 @@ type GameEventServiceClient interface {
 	// PatchGameDocument merges in the passed-in GameDocument with what's on the
 	// server. The passed-in GameDocument should be a partial document
 	PatchGameDocument(context.Context, *connect.Request[omgwords_service.PatchDocumentRequest]) (*connect.Response[omgwords_service.GameEventResponse], error)
-	SetBroadcastGamePrivacy(context.Context, *connect.Request[omgwords_service.BroadcastGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error)
-	GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
-	GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
+	SetAnnotatedGamePrivacy(context.Context, *connect.Request[omgwords_service.AnnotatedGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error)
+	GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
+	GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
 	// GetGameDocument fetches the latest GameDocument for the passed-in ID.
 	GetGameDocument(context.Context, *connect.Request[omgwords_service.GetGameDocumentRequest]) (*connect.Response[ipc.GameDocument], error)
-	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
+	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
 	GetCGP(context.Context, *connect.Request[omgwords_service.GetCGPRequest]) (*connect.Response[omgwords_service.CGPResponse], error)
 	ImportGCG(context.Context, *connect.Request[omgwords_service.ImportGCGRequest]) (*connect.Response[omgwords_service.ImportGCGResponse], error)
 	// GetGameOwner returns the creator information for an annotated game
@@ -114,16 +114,16 @@ func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, op
 	baseURL = strings.TrimRight(baseURL, "/")
 	gameEventServiceMethods := omgwords_service.File_proto_omgwords_service_omgwords_proto.Services().ByName("GameEventService").Methods()
 	return &gameEventServiceClient{
-		createBroadcastGame: connect.NewClient[omgwords_service.CreateBroadcastGameRequest, omgwords_service.CreateBroadcastGameResponse](
+		createAnnotatedGame: connect.NewClient[omgwords_service.CreateAnnotatedGameRequest, omgwords_service.CreateAnnotatedGameResponse](
 			httpClient,
-			baseURL+GameEventServiceCreateBroadcastGameProcedure,
-			connect.WithSchema(gameEventServiceMethods.ByName("CreateBroadcastGame")),
+			baseURL+GameEventServiceCreateAnnotatedGameProcedure,
+			connect.WithSchema(gameEventServiceMethods.ByName("CreateAnnotatedGame")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteBroadcastGame: connect.NewClient[omgwords_service.DeleteBroadcastGameRequest, omgwords_service.DeleteBroadcastGameResponse](
+		deleteAnnotatedGame: connect.NewClient[omgwords_service.DeleteAnnotatedGameRequest, omgwords_service.DeleteAnnotatedGameResponse](
 			httpClient,
-			baseURL+GameEventServiceDeleteBroadcastGameProcedure,
-			connect.WithSchema(gameEventServiceMethods.ByName("DeleteBroadcastGame")),
+			baseURL+GameEventServiceDeleteAnnotatedGameProcedure,
+			connect.WithSchema(gameEventServiceMethods.ByName("DeleteAnnotatedGame")),
 			connect.WithClientOptions(opts...),
 		),
 		sendGameEvent: connect.NewClient[omgwords_service.AnnotatedGameEvent, omgwords_service.GameEventResponse](
@@ -150,19 +150,19 @@ func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(gameEventServiceMethods.ByName("PatchGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
-		setBroadcastGamePrivacy: connect.NewClient[omgwords_service.BroadcastGamePrivacy, omgwords_service.GameEventResponse](
+		setAnnotatedGamePrivacy: connect.NewClient[omgwords_service.AnnotatedGamePrivacy, omgwords_service.GameEventResponse](
 			httpClient,
-			baseURL+GameEventServiceSetBroadcastGamePrivacyProcedure,
-			connect.WithSchema(gameEventServiceMethods.ByName("SetBroadcastGamePrivacy")),
+			baseURL+GameEventServiceSetAnnotatedGamePrivacyProcedure,
+			connect.WithSchema(gameEventServiceMethods.ByName("SetAnnotatedGamePrivacy")),
 			connect.WithClientOptions(opts...),
 		),
-		getGamesForEditor: connect.NewClient[omgwords_service.GetGamesForEditorRequest, omgwords_service.BroadcastGamesResponse](
+		getGamesForEditor: connect.NewClient[omgwords_service.GetGamesForEditorRequest, omgwords_service.AnnotatedGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetGamesForEditorProcedure,
 			connect.WithSchema(gameEventServiceMethods.ByName("GetGamesForEditor")),
 			connect.WithClientOptions(opts...),
 		),
-		getMyUnfinishedGames: connect.NewClient[omgwords_service.GetMyUnfinishedGamesRequest, omgwords_service.BroadcastGamesResponse](
+		getMyUnfinishedGames: connect.NewClient[omgwords_service.GetMyUnfinishedGamesRequest, omgwords_service.AnnotatedGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetMyUnfinishedGamesProcedure,
 			connect.WithSchema(gameEventServiceMethods.ByName("GetMyUnfinishedGames")),
@@ -174,7 +174,7 @@ func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(gameEventServiceMethods.ByName("GetGameDocument")),
 			connect.WithClientOptions(opts...),
 		),
-		getRecentAnnotatedGames: connect.NewClient[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.BroadcastGamesResponse](
+		getRecentAnnotatedGames: connect.NewClient[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.AnnotatedGamesResponse](
 			httpClient,
 			baseURL+GameEventServiceGetRecentAnnotatedGamesProcedure,
 			connect.WithSchema(gameEventServiceMethods.ByName("GetRecentAnnotatedGames")),
@@ -203,30 +203,30 @@ func NewGameEventServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // gameEventServiceClient implements GameEventServiceClient.
 type gameEventServiceClient struct {
-	createBroadcastGame     *connect.Client[omgwords_service.CreateBroadcastGameRequest, omgwords_service.CreateBroadcastGameResponse]
-	deleteBroadcastGame     *connect.Client[omgwords_service.DeleteBroadcastGameRequest, omgwords_service.DeleteBroadcastGameResponse]
+	createAnnotatedGame     *connect.Client[omgwords_service.CreateAnnotatedGameRequest, omgwords_service.CreateAnnotatedGameResponse]
+	deleteAnnotatedGame     *connect.Client[omgwords_service.DeleteAnnotatedGameRequest, omgwords_service.DeleteAnnotatedGameResponse]
 	sendGameEvent           *connect.Client[omgwords_service.AnnotatedGameEvent, omgwords_service.GameEventResponse]
 	setRacks                *connect.Client[omgwords_service.SetRacksEvent, omgwords_service.GameEventResponse]
 	replaceGameDocument     *connect.Client[omgwords_service.ReplaceDocumentRequest, omgwords_service.GameEventResponse]
 	patchGameDocument       *connect.Client[omgwords_service.PatchDocumentRequest, omgwords_service.GameEventResponse]
-	setBroadcastGamePrivacy *connect.Client[omgwords_service.BroadcastGamePrivacy, omgwords_service.GameEventResponse]
-	getGamesForEditor       *connect.Client[omgwords_service.GetGamesForEditorRequest, omgwords_service.BroadcastGamesResponse]
-	getMyUnfinishedGames    *connect.Client[omgwords_service.GetMyUnfinishedGamesRequest, omgwords_service.BroadcastGamesResponse]
+	setAnnotatedGamePrivacy *connect.Client[omgwords_service.AnnotatedGamePrivacy, omgwords_service.GameEventResponse]
+	getGamesForEditor       *connect.Client[omgwords_service.GetGamesForEditorRequest, omgwords_service.AnnotatedGamesResponse]
+	getMyUnfinishedGames    *connect.Client[omgwords_service.GetMyUnfinishedGamesRequest, omgwords_service.AnnotatedGamesResponse]
 	getGameDocument         *connect.Client[omgwords_service.GetGameDocumentRequest, ipc.GameDocument]
-	getRecentAnnotatedGames *connect.Client[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.BroadcastGamesResponse]
+	getRecentAnnotatedGames *connect.Client[omgwords_service.GetRecentAnnotatedGamesRequest, omgwords_service.AnnotatedGamesResponse]
 	getCGP                  *connect.Client[omgwords_service.GetCGPRequest, omgwords_service.CGPResponse]
 	importGCG               *connect.Client[omgwords_service.ImportGCGRequest, omgwords_service.ImportGCGResponse]
 	getGameOwner            *connect.Client[omgwords_service.GetGameOwnerRequest, omgwords_service.GetGameOwnerResponse]
 }
 
-// CreateBroadcastGame calls omgwords_service.GameEventService.CreateBroadcastGame.
-func (c *gameEventServiceClient) CreateBroadcastGame(ctx context.Context, req *connect.Request[omgwords_service.CreateBroadcastGameRequest]) (*connect.Response[omgwords_service.CreateBroadcastGameResponse], error) {
-	return c.createBroadcastGame.CallUnary(ctx, req)
+// CreateAnnotatedGame calls omgwords_service.GameEventService.CreateAnnotatedGame.
+func (c *gameEventServiceClient) CreateAnnotatedGame(ctx context.Context, req *connect.Request[omgwords_service.CreateAnnotatedGameRequest]) (*connect.Response[omgwords_service.CreateAnnotatedGameResponse], error) {
+	return c.createAnnotatedGame.CallUnary(ctx, req)
 }
 
-// DeleteBroadcastGame calls omgwords_service.GameEventService.DeleteBroadcastGame.
-func (c *gameEventServiceClient) DeleteBroadcastGame(ctx context.Context, req *connect.Request[omgwords_service.DeleteBroadcastGameRequest]) (*connect.Response[omgwords_service.DeleteBroadcastGameResponse], error) {
-	return c.deleteBroadcastGame.CallUnary(ctx, req)
+// DeleteAnnotatedGame calls omgwords_service.GameEventService.DeleteAnnotatedGame.
+func (c *gameEventServiceClient) DeleteAnnotatedGame(ctx context.Context, req *connect.Request[omgwords_service.DeleteAnnotatedGameRequest]) (*connect.Response[omgwords_service.DeleteAnnotatedGameResponse], error) {
+	return c.deleteAnnotatedGame.CallUnary(ctx, req)
 }
 
 // SendGameEvent calls omgwords_service.GameEventService.SendGameEvent.
@@ -249,18 +249,18 @@ func (c *gameEventServiceClient) PatchGameDocument(ctx context.Context, req *con
 	return c.patchGameDocument.CallUnary(ctx, req)
 }
 
-// SetBroadcastGamePrivacy calls omgwords_service.GameEventService.SetBroadcastGamePrivacy.
-func (c *gameEventServiceClient) SetBroadcastGamePrivacy(ctx context.Context, req *connect.Request[omgwords_service.BroadcastGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error) {
-	return c.setBroadcastGamePrivacy.CallUnary(ctx, req)
+// SetAnnotatedGamePrivacy calls omgwords_service.GameEventService.SetAnnotatedGamePrivacy.
+func (c *gameEventServiceClient) SetAnnotatedGamePrivacy(ctx context.Context, req *connect.Request[omgwords_service.AnnotatedGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error) {
+	return c.setAnnotatedGamePrivacy.CallUnary(ctx, req)
 }
 
 // GetGamesForEditor calls omgwords_service.GameEventService.GetGamesForEditor.
-func (c *gameEventServiceClient) GetGamesForEditor(ctx context.Context, req *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (c *gameEventServiceClient) GetGamesForEditor(ctx context.Context, req *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return c.getGamesForEditor.CallUnary(ctx, req)
 }
 
 // GetMyUnfinishedGames calls omgwords_service.GameEventService.GetMyUnfinishedGames.
-func (c *gameEventServiceClient) GetMyUnfinishedGames(ctx context.Context, req *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (c *gameEventServiceClient) GetMyUnfinishedGames(ctx context.Context, req *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return c.getMyUnfinishedGames.CallUnary(ctx, req)
 }
 
@@ -270,7 +270,7 @@ func (c *gameEventServiceClient) GetGameDocument(ctx context.Context, req *conne
 }
 
 // GetRecentAnnotatedGames calls omgwords_service.GameEventService.GetRecentAnnotatedGames.
-func (c *gameEventServiceClient) GetRecentAnnotatedGames(ctx context.Context, req *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (c *gameEventServiceClient) GetRecentAnnotatedGames(ctx context.Context, req *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return c.getRecentAnnotatedGames.CallUnary(ctx, req)
 }
 
@@ -291,10 +291,10 @@ func (c *gameEventServiceClient) GetGameOwner(ctx context.Context, req *connect.
 
 // GameEventServiceHandler is an implementation of the omgwords_service.GameEventService service.
 type GameEventServiceHandler interface {
-	// CreateBroadcastGame will create a game for Woogles broadcast
-	CreateBroadcastGame(context.Context, *connect.Request[omgwords_service.CreateBroadcastGameRequest]) (*connect.Response[omgwords_service.CreateBroadcastGameResponse], error)
-	// DeleteBroadcastGame deletes a Woogles annotated game.
-	DeleteBroadcastGame(context.Context, *connect.Request[omgwords_service.DeleteBroadcastGameRequest]) (*connect.Response[omgwords_service.DeleteBroadcastGameResponse], error)
+	// CreateAnnotatedGame creates a standalone annotated game in the editor.
+	CreateAnnotatedGame(context.Context, *connect.Request[omgwords_service.CreateAnnotatedGameRequest]) (*connect.Response[omgwords_service.CreateAnnotatedGameResponse], error)
+	// DeleteAnnotatedGame deletes a standalone annotated game (not part of a broadcast).
+	DeleteAnnotatedGame(context.Context, *connect.Request[omgwords_service.DeleteAnnotatedGameRequest]) (*connect.Response[omgwords_service.DeleteAnnotatedGameResponse], error)
 	// SendGameEvent is how one sends game events to the Woogles API.
 	SendGameEvent(context.Context, *connect.Request[omgwords_service.AnnotatedGameEvent]) (*connect.Response[omgwords_service.GameEventResponse], error)
 	// SetRacks sets the rack for the players of the game.
@@ -303,12 +303,12 @@ type GameEventServiceHandler interface {
 	// PatchGameDocument merges in the passed-in GameDocument with what's on the
 	// server. The passed-in GameDocument should be a partial document
 	PatchGameDocument(context.Context, *connect.Request[omgwords_service.PatchDocumentRequest]) (*connect.Response[omgwords_service.GameEventResponse], error)
-	SetBroadcastGamePrivacy(context.Context, *connect.Request[omgwords_service.BroadcastGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error)
-	GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
-	GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
+	SetAnnotatedGamePrivacy(context.Context, *connect.Request[omgwords_service.AnnotatedGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error)
+	GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
+	GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
 	// GetGameDocument fetches the latest GameDocument for the passed-in ID.
 	GetGameDocument(context.Context, *connect.Request[omgwords_service.GetGameDocumentRequest]) (*connect.Response[ipc.GameDocument], error)
-	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error)
+	GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error)
 	GetCGP(context.Context, *connect.Request[omgwords_service.GetCGPRequest]) (*connect.Response[omgwords_service.CGPResponse], error)
 	ImportGCG(context.Context, *connect.Request[omgwords_service.ImportGCGRequest]) (*connect.Response[omgwords_service.ImportGCGResponse], error)
 	// GetGameOwner returns the creator information for an annotated game
@@ -322,16 +322,16 @@ type GameEventServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	gameEventServiceMethods := omgwords_service.File_proto_omgwords_service_omgwords_proto.Services().ByName("GameEventService").Methods()
-	gameEventServiceCreateBroadcastGameHandler := connect.NewUnaryHandler(
-		GameEventServiceCreateBroadcastGameProcedure,
-		svc.CreateBroadcastGame,
-		connect.WithSchema(gameEventServiceMethods.ByName("CreateBroadcastGame")),
+	gameEventServiceCreateAnnotatedGameHandler := connect.NewUnaryHandler(
+		GameEventServiceCreateAnnotatedGameProcedure,
+		svc.CreateAnnotatedGame,
+		connect.WithSchema(gameEventServiceMethods.ByName("CreateAnnotatedGame")),
 		connect.WithHandlerOptions(opts...),
 	)
-	gameEventServiceDeleteBroadcastGameHandler := connect.NewUnaryHandler(
-		GameEventServiceDeleteBroadcastGameProcedure,
-		svc.DeleteBroadcastGame,
-		connect.WithSchema(gameEventServiceMethods.ByName("DeleteBroadcastGame")),
+	gameEventServiceDeleteAnnotatedGameHandler := connect.NewUnaryHandler(
+		GameEventServiceDeleteAnnotatedGameProcedure,
+		svc.DeleteAnnotatedGame,
+		connect.WithSchema(gameEventServiceMethods.ByName("DeleteAnnotatedGame")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceSendGameEventHandler := connect.NewUnaryHandler(
@@ -358,10 +358,10 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 		connect.WithSchema(gameEventServiceMethods.ByName("PatchGameDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
-	gameEventServiceSetBroadcastGamePrivacyHandler := connect.NewUnaryHandler(
-		GameEventServiceSetBroadcastGamePrivacyProcedure,
-		svc.SetBroadcastGamePrivacy,
-		connect.WithSchema(gameEventServiceMethods.ByName("SetBroadcastGamePrivacy")),
+	gameEventServiceSetAnnotatedGamePrivacyHandler := connect.NewUnaryHandler(
+		GameEventServiceSetAnnotatedGamePrivacyProcedure,
+		svc.SetAnnotatedGamePrivacy,
+		connect.WithSchema(gameEventServiceMethods.ByName("SetAnnotatedGamePrivacy")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gameEventServiceGetGamesForEditorHandler := connect.NewUnaryHandler(
@@ -408,10 +408,10 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 	)
 	return "/omgwords_service.GameEventService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case GameEventServiceCreateBroadcastGameProcedure:
-			gameEventServiceCreateBroadcastGameHandler.ServeHTTP(w, r)
-		case GameEventServiceDeleteBroadcastGameProcedure:
-			gameEventServiceDeleteBroadcastGameHandler.ServeHTTP(w, r)
+		case GameEventServiceCreateAnnotatedGameProcedure:
+			gameEventServiceCreateAnnotatedGameHandler.ServeHTTP(w, r)
+		case GameEventServiceDeleteAnnotatedGameProcedure:
+			gameEventServiceDeleteAnnotatedGameHandler.ServeHTTP(w, r)
 		case GameEventServiceSendGameEventProcedure:
 			gameEventServiceSendGameEventHandler.ServeHTTP(w, r)
 		case GameEventServiceSetRacksProcedure:
@@ -420,8 +420,8 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 			gameEventServiceReplaceGameDocumentHandler.ServeHTTP(w, r)
 		case GameEventServicePatchGameDocumentProcedure:
 			gameEventServicePatchGameDocumentHandler.ServeHTTP(w, r)
-		case GameEventServiceSetBroadcastGamePrivacyProcedure:
-			gameEventServiceSetBroadcastGamePrivacyHandler.ServeHTTP(w, r)
+		case GameEventServiceSetAnnotatedGamePrivacyProcedure:
+			gameEventServiceSetAnnotatedGamePrivacyHandler.ServeHTTP(w, r)
 		case GameEventServiceGetGamesForEditorProcedure:
 			gameEventServiceGetGamesForEditorHandler.ServeHTTP(w, r)
 		case GameEventServiceGetMyUnfinishedGamesProcedure:
@@ -445,12 +445,12 @@ func NewGameEventServiceHandler(svc GameEventServiceHandler, opts ...connect.Han
 // UnimplementedGameEventServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedGameEventServiceHandler struct{}
 
-func (UnimplementedGameEventServiceHandler) CreateBroadcastGame(context.Context, *connect.Request[omgwords_service.CreateBroadcastGameRequest]) (*connect.Response[omgwords_service.CreateBroadcastGameResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.CreateBroadcastGame is not implemented"))
+func (UnimplementedGameEventServiceHandler) CreateAnnotatedGame(context.Context, *connect.Request[omgwords_service.CreateAnnotatedGameRequest]) (*connect.Response[omgwords_service.CreateAnnotatedGameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.CreateAnnotatedGame is not implemented"))
 }
 
-func (UnimplementedGameEventServiceHandler) DeleteBroadcastGame(context.Context, *connect.Request[omgwords_service.DeleteBroadcastGameRequest]) (*connect.Response[omgwords_service.DeleteBroadcastGameResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.DeleteBroadcastGame is not implemented"))
+func (UnimplementedGameEventServiceHandler) DeleteAnnotatedGame(context.Context, *connect.Request[omgwords_service.DeleteAnnotatedGameRequest]) (*connect.Response[omgwords_service.DeleteAnnotatedGameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.DeleteAnnotatedGame is not implemented"))
 }
 
 func (UnimplementedGameEventServiceHandler) SendGameEvent(context.Context, *connect.Request[omgwords_service.AnnotatedGameEvent]) (*connect.Response[omgwords_service.GameEventResponse], error) {
@@ -469,15 +469,15 @@ func (UnimplementedGameEventServiceHandler) PatchGameDocument(context.Context, *
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.PatchGameDocument is not implemented"))
 }
 
-func (UnimplementedGameEventServiceHandler) SetBroadcastGamePrivacy(context.Context, *connect.Request[omgwords_service.BroadcastGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.SetBroadcastGamePrivacy is not implemented"))
+func (UnimplementedGameEventServiceHandler) SetAnnotatedGamePrivacy(context.Context, *connect.Request[omgwords_service.AnnotatedGamePrivacy]) (*connect.Response[omgwords_service.GameEventResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.SetAnnotatedGamePrivacy is not implemented"))
 }
 
-func (UnimplementedGameEventServiceHandler) GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (UnimplementedGameEventServiceHandler) GetGamesForEditor(context.Context, *connect.Request[omgwords_service.GetGamesForEditorRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.GetGamesForEditor is not implemented"))
 }
 
-func (UnimplementedGameEventServiceHandler) GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (UnimplementedGameEventServiceHandler) GetMyUnfinishedGames(context.Context, *connect.Request[omgwords_service.GetMyUnfinishedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.GetMyUnfinishedGames is not implemented"))
 }
 
@@ -485,7 +485,7 @@ func (UnimplementedGameEventServiceHandler) GetGameDocument(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.GetGameDocument is not implemented"))
 }
 
-func (UnimplementedGameEventServiceHandler) GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.BroadcastGamesResponse], error) {
+func (UnimplementedGameEventServiceHandler) GetRecentAnnotatedGames(context.Context, *connect.Request[omgwords_service.GetRecentAnnotatedGamesRequest]) (*connect.Response[omgwords_service.AnnotatedGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("omgwords_service.GameEventService.GetRecentAnnotatedGames is not implemented"))
 }
 

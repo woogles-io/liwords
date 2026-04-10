@@ -99,6 +99,15 @@ type BroadcastGame struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
+type BroadcastSlot struct {
+	BroadcastID int64
+	SlotName    string
+	Division    string
+	Round       int32
+	TableNumber int32
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Collection struct {
 	ID          int32
 	Uuid        uuid.UUID

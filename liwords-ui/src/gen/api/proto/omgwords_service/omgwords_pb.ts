@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/omgwords_service/omgwords.proto.
  */
 export const file_proto_omgwords_service_omgwords: GenFile = /*@__PURE__*/
-  fileDesc("CiVwcm90by9vbWd3b3Jkc19zZXJ2aWNlL29tZ3dvcmRzLnByb3RvEhBvbWd3b3Jkc19zZXJ2aWNlIhMKEUdhbWVFdmVudFJlc3BvbnNlIicKEFRpbWVQZW5hbHR5RXZlbnQSEwoLcG9pbnRzX2xvc3QYASABKAUiMgoZQ2hhbGxlbmdlQm9udXNQb2ludHNFdmVudBIVCg1wb2ludHNfZ2FpbmVkGAEgASgFIq8BChpDcmVhdGVCcm9hZGNhc3RHYW1lUmVxdWVzdBIlCgxwbGF5ZXJzX2luZm8YASADKAsyDy5pcGMuUGxheWVySW5mbxIPCgdsZXhpY29uGAIgASgJEh0KBXJ1bGVzGAMgASgLMg4uaXBjLkdhbWVSdWxlcxIqCg5jaGFsbGVuZ2VfcnVsZRgEIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEg4KBnB1YmxpYxgFIAEoCCIuChtDcmVhdGVCcm9hZGNhc3RHYW1lUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCSJ7ChBJbXBvcnRHQ0dSZXF1ZXN0EgsKA2djZxgBIAEoCRIPCgdsZXhpY29uGAIgASgJEh0KBXJ1bGVzGAMgASgLMg4uaXBjLkdhbWVSdWxlcxIqCg5jaGFsbGVuZ2VfcnVsZRgEIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlIiQKEUltcG9ydEdDR1Jlc3BvbnNlEg8KB2dhbWVfaWQYASABKAkiJgoUQnJvYWRjYXN0R2FtZVByaXZhY3kSDgoGcHVibGljGAEgASgIIl4KGEdldEdhbWVzRm9yRWRpdG9yUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEg0KBWxpbWl0GAIgASgNEg4KBm9mZnNldBgDIAEoDRISCgp1bmZpbmlzaGVkGAQgASgIIlMKHkdldFJlY2VudEFubm90YXRlZEdhbWVzUmVxdWVzdBINCgVsaW1pdBgBIAEoDRIOCgZvZmZzZXQYAiABKA0SEgoKdW5maW5pc2hlZBgDIAEoCCIdChtHZXRNeVVuZmluaXNoZWRHYW1lc1JlcXVlc3QiuwIKFkJyb2FkY2FzdEdhbWVzUmVzcG9uc2USRQoFZ2FtZXMYASADKAsyNi5vbWd3b3Jkc19zZXJ2aWNlLkJyb2FkY2FzdEdhbWVzUmVzcG9uc2UuQnJvYWRjYXN0R2FtZRrZAQoNQnJvYWRjYXN0R2FtZRIPCgdnYW1lX2lkGAEgASgJEhIKCmNyZWF0b3JfaWQYAiABKAkSDwoHcHJpdmF0ZRgDIAEoCBIQCghmaW5pc2hlZBgEIAEoCBIlCgxwbGF5ZXJzX2luZm8YBSADKAsyDy5pcGMuUGxheWVySW5mbxIPCgdsZXhpY29uGAYgASgJEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhgKEGNyZWF0b3JfdXNlcm5hbWUYCCABKAkidwoSQW5ub3RhdGVkR2FtZUV2ZW50EicKBWV2ZW50GAEgASgLMhguaXBjLkNsaWVudEdhbWVwbGF5RXZlbnQSDwoHdXNlcl9pZBgCIAEoCRIUCgxldmVudF9udW1iZXIYAyABKA0SEQoJYW1lbmRtZW50GAQgASgIIikKFkdldEdhbWVEb2N1bWVudFJlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSItChpEZWxldGVCcm9hZGNhc3RHYW1lUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIh0KG0RlbGV0ZUJyb2FkY2FzdEdhbWVSZXNwb25zZSI9ChZSZXBsYWNlRG9jdW1lbnRSZXF1ZXN0EiMKCGRvY3VtZW50GAEgASgLMhEuaXBjLkdhbWVEb2N1bWVudCI7ChRQYXRjaERvY3VtZW50UmVxdWVzdBIjCghkb2N1bWVudBgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiIAoNR2V0Q0dQUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIhoKC0NHUFJlc3BvbnNlEgsKA2NncBgBIAEoCSImChNHZXRHYW1lT3duZXJSZXF1ZXN0Eg8KB2dhbWVfaWQYASABKAkiUwoUR2V0R2FtZU93bmVyUmVzcG9uc2USEgoKY3JlYXRvcl9pZBgBIAEoCRIYChBjcmVhdG9yX3VzZXJuYW1lGAIgASgJEg0KBWZvdW5kGAMgASgIIlgKDVNldFJhY2tzRXZlbnQSDwoHZ2FtZV9pZBgBIAEoCRINCgVyYWNrcxgCIAMoDBIUCgxldmVudF9udW1iZXIYAyABKA0SEQoJYW1lbmRtZW50GAQgASgIMvoKChBHYW1lRXZlbnRTZXJ2aWNlEnIKE0NyZWF0ZUJyb2FkY2FzdEdhbWUSLC5vbWd3b3Jkc19zZXJ2aWNlLkNyZWF0ZUJyb2FkY2FzdEdhbWVSZXF1ZXN0Gi0ub21nd29yZHNfc2VydmljZS5DcmVhdGVCcm9hZGNhc3RHYW1lUmVzcG9uc2UScgoTRGVsZXRlQnJvYWRjYXN0R2FtZRIsLm9tZ3dvcmRzX3NlcnZpY2UuRGVsZXRlQnJvYWRjYXN0R2FtZVJlcXVlc3QaLS5vbWd3b3Jkc19zZXJ2aWNlLkRlbGV0ZUJyb2FkY2FzdEdhbWVSZXNwb25zZRJaCg1TZW5kR2FtZUV2ZW50EiQub21nd29yZHNfc2VydmljZS5Bbm5vdGF0ZWRHYW1lRXZlbnQaIy5vbWd3b3Jkc19zZXJ2aWNlLkdhbWVFdmVudFJlc3BvbnNlElAKCFNldFJhY2tzEh8ub21nd29yZHNfc2VydmljZS5TZXRSYWNrc0V2ZW50GiMub21nd29yZHNfc2VydmljZS5HYW1lRXZlbnRSZXNwb25zZRJkChNSZXBsYWNlR2FtZURvY3VtZW50Eigub21nd29yZHNfc2VydmljZS5SZXBsYWNlRG9jdW1lbnRSZXF1ZXN0GiMub21nd29yZHNfc2VydmljZS5HYW1lRXZlbnRSZXNwb25zZRJgChFQYXRjaEdhbWVEb2N1bWVudBImLm9tZ3dvcmRzX3NlcnZpY2UuUGF0Y2hEb2N1bWVudFJlcXVlc3QaIy5vbWd3b3Jkc19zZXJ2aWNlLkdhbWVFdmVudFJlc3BvbnNlEmYKF1NldEJyb2FkY2FzdEdhbWVQcml2YWN5EiYub21nd29yZHNfc2VydmljZS5Ccm9hZGNhc3RHYW1lUHJpdmFjeRojLm9tZ3dvcmRzX3NlcnZpY2UuR2FtZUV2ZW50UmVzcG9uc2USaQoRR2V0R2FtZXNGb3JFZGl0b3ISKi5vbWd3b3Jkc19zZXJ2aWNlLkdldEdhbWVzRm9yRWRpdG9yUmVxdWVzdBooLm9tZ3dvcmRzX3NlcnZpY2UuQnJvYWRjYXN0R2FtZXNSZXNwb25zZRJvChRHZXRNeVVuZmluaXNoZWRHYW1lcxItLm9tZ3dvcmRzX3NlcnZpY2UuR2V0TXlVbmZpbmlzaGVkR2FtZXNSZXF1ZXN0Gigub21nd29yZHNfc2VydmljZS5Ccm9hZGNhc3RHYW1lc1Jlc3BvbnNlEk4KD0dldEdhbWVEb2N1bWVudBIoLm9tZ3dvcmRzX3NlcnZpY2UuR2V0R2FtZURvY3VtZW50UmVxdWVzdBoRLmlwYy5HYW1lRG9jdW1lbnQSdQoXR2V0UmVjZW50QW5ub3RhdGVkR2FtZXMSMC5vbWd3b3Jkc19zZXJ2aWNlLkdldFJlY2VudEFubm90YXRlZEdhbWVzUmVxdWVzdBooLm9tZ3dvcmRzX3NlcnZpY2UuQnJvYWRjYXN0R2FtZXNSZXNwb25zZRJICgZHZXRDR1ASHy5vbWd3b3Jkc19zZXJ2aWNlLkdldENHUFJlcXVlc3QaHS5vbWd3b3Jkc19zZXJ2aWNlLkNHUFJlc3BvbnNlElQKCUltcG9ydEdDRxIiLm9tZ3dvcmRzX3NlcnZpY2UuSW1wb3J0R0NHUmVxdWVzdBojLm9tZ3dvcmRzX3NlcnZpY2UuSW1wb3J0R0NHUmVzcG9uc2USXQoMR2V0R2FtZU93bmVyEiUub21nd29yZHNfc2VydmljZS5HZXRHYW1lT3duZXJSZXF1ZXN0GiYub21nd29yZHNfc2VydmljZS5HZXRHYW1lT3duZXJSZXNwb25zZUK/AQoUY29tLm9tZ3dvcmRzX3NlcnZpY2VCDU9tZ3dvcmRzUHJvdG9QAVo8Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9vbWd3b3Jkc19zZXJ2aWNlogIDT1hYqgIPT21nd29yZHNTZXJ2aWNlygIPT21nd29yZHNTZXJ2aWNl4gIbT21nd29yZHNTZXJ2aWNlXEdQQk1ldGFkYXRh6gIPT21nd29yZHNTZXJ2aWNlYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_ipc_omgwords]);
+  fileDesc("CiVwcm90by9vbWd3b3Jkc19zZXJ2aWNlL29tZ3dvcmRzLnByb3RvEhBvbWd3b3Jkc19zZXJ2aWNlIhMKEUdhbWVFdmVudFJlc3BvbnNlIicKEFRpbWVQZW5hbHR5RXZlbnQSEwoLcG9pbnRzX2xvc3QYASABKAUiMgoZQ2hhbGxlbmdlQm9udXNQb2ludHNFdmVudBIVCg1wb2ludHNfZ2FpbmVkGAEgASgFIq8BChpDcmVhdGVBbm5vdGF0ZWRHYW1lUmVxdWVzdBIlCgxwbGF5ZXJzX2luZm8YASADKAsyDy5pcGMuUGxheWVySW5mbxIPCgdsZXhpY29uGAIgASgJEh0KBXJ1bGVzGAMgASgLMg4uaXBjLkdhbWVSdWxlcxIqCg5jaGFsbGVuZ2VfcnVsZRgEIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlEg4KBnB1YmxpYxgFIAEoCCIuChtDcmVhdGVBbm5vdGF0ZWRHYW1lUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCSJ7ChBJbXBvcnRHQ0dSZXF1ZXN0EgsKA2djZxgBIAEoCRIPCgdsZXhpY29uGAIgASgJEh0KBXJ1bGVzGAMgASgLMg4uaXBjLkdhbWVSdWxlcxIqCg5jaGFsbGVuZ2VfcnVsZRgEIAEoDjISLmlwYy5DaGFsbGVuZ2VSdWxlIiQKEUltcG9ydEdDR1Jlc3BvbnNlEg8KB2dhbWVfaWQYASABKAkiJgoUQW5ub3RhdGVkR2FtZVByaXZhY3kSDgoGcHVibGljGAEgASgIIl4KGEdldEdhbWVzRm9yRWRpdG9yUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEg0KBWxpbWl0GAIgASgNEg4KBm9mZnNldBgDIAEoDRISCgp1bmZpbmlzaGVkGAQgASgIIlMKHkdldFJlY2VudEFubm90YXRlZEdhbWVzUmVxdWVzdBINCgVsaW1pdBgBIAEoDRIOCgZvZmZzZXQYAiABKA0SEgoKdW5maW5pc2hlZBgDIAEoCCIdChtHZXRNeVVuZmluaXNoZWRHYW1lc1JlcXVlc3QiuwIKFkFubm90YXRlZEdhbWVzUmVzcG9uc2USRQoFZ2FtZXMYASADKAsyNi5vbWd3b3Jkc19zZXJ2aWNlLkFubm90YXRlZEdhbWVzUmVzcG9uc2UuQW5ub3RhdGVkR2FtZRrZAQoNQW5ub3RhdGVkR2FtZRIPCgdnYW1lX2lkGAEgASgJEhIKCmNyZWF0b3JfaWQYAiABKAkSDwoHcHJpdmF0ZRgDIAEoCBIQCghmaW5pc2hlZBgEIAEoCBIlCgxwbGF5ZXJzX2luZm8YBSADKAsyDy5pcGMuUGxheWVySW5mbxIPCgdsZXhpY29uGAYgASgJEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhgKEGNyZWF0b3JfdXNlcm5hbWUYCCABKAkidwoSQW5ub3RhdGVkR2FtZUV2ZW50EicKBWV2ZW50GAEgASgLMhguaXBjLkNsaWVudEdhbWVwbGF5RXZlbnQSDwoHdXNlcl9pZBgCIAEoCRIUCgxldmVudF9udW1iZXIYAyABKA0SEQoJYW1lbmRtZW50GAQgASgIIikKFkdldEdhbWVEb2N1bWVudFJlcXVlc3QSDwoHZ2FtZV9pZBgBIAEoCSItChpEZWxldGVBbm5vdGF0ZWRHYW1lUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIh0KG0RlbGV0ZUFubm90YXRlZEdhbWVSZXNwb25zZSI9ChZSZXBsYWNlRG9jdW1lbnRSZXF1ZXN0EiMKCGRvY3VtZW50GAEgASgLMhEuaXBjLkdhbWVEb2N1bWVudCI7ChRQYXRjaERvY3VtZW50UmVxdWVzdBIjCghkb2N1bWVudBgBIAEoCzIRLmlwYy5HYW1lRG9jdW1lbnQiIAoNR2V0Q0dQUmVxdWVzdBIPCgdnYW1lX2lkGAEgASgJIhoKC0NHUFJlc3BvbnNlEgsKA2NncBgBIAEoCSImChNHZXRHYW1lT3duZXJSZXF1ZXN0Eg8KB2dhbWVfaWQYASABKAkiUwoUR2V0R2FtZU93bmVyUmVzcG9uc2USEgoKY3JlYXRvcl9pZBgBIAEoCRIYChBjcmVhdG9yX3VzZXJuYW1lGAIgASgJEg0KBWZvdW5kGAMgASgIIlgKDVNldFJhY2tzRXZlbnQSDwoHZ2FtZV9pZBgBIAEoCRINCgVyYWNrcxgCIAMoDBIUCgxldmVudF9udW1iZXIYAyABKA0SEQoJYW1lbmRtZW50GAQgASgIMvoKChBHYW1lRXZlbnRTZXJ2aWNlEnIKE0NyZWF0ZUFubm90YXRlZEdhbWUSLC5vbWd3b3Jkc19zZXJ2aWNlLkNyZWF0ZUFubm90YXRlZEdhbWVSZXF1ZXN0Gi0ub21nd29yZHNfc2VydmljZS5DcmVhdGVBbm5vdGF0ZWRHYW1lUmVzcG9uc2UScgoTRGVsZXRlQW5ub3RhdGVkR2FtZRIsLm9tZ3dvcmRzX3NlcnZpY2UuRGVsZXRlQW5ub3RhdGVkR2FtZVJlcXVlc3QaLS5vbWd3b3Jkc19zZXJ2aWNlLkRlbGV0ZUFubm90YXRlZEdhbWVSZXNwb25zZRJaCg1TZW5kR2FtZUV2ZW50EiQub21nd29yZHNfc2VydmljZS5Bbm5vdGF0ZWRHYW1lRXZlbnQaIy5vbWd3b3Jkc19zZXJ2aWNlLkdhbWVFdmVudFJlc3BvbnNlElAKCFNldFJhY2tzEh8ub21nd29yZHNfc2VydmljZS5TZXRSYWNrc0V2ZW50GiMub21nd29yZHNfc2VydmljZS5HYW1lRXZlbnRSZXNwb25zZRJkChNSZXBsYWNlR2FtZURvY3VtZW50Eigub21nd29yZHNfc2VydmljZS5SZXBsYWNlRG9jdW1lbnRSZXF1ZXN0GiMub21nd29yZHNfc2VydmljZS5HYW1lRXZlbnRSZXNwb25zZRJgChFQYXRjaEdhbWVEb2N1bWVudBImLm9tZ3dvcmRzX3NlcnZpY2UuUGF0Y2hEb2N1bWVudFJlcXVlc3QaIy5vbWd3b3Jkc19zZXJ2aWNlLkdhbWVFdmVudFJlc3BvbnNlEmYKF1NldEFubm90YXRlZEdhbWVQcml2YWN5EiYub21nd29yZHNfc2VydmljZS5Bbm5vdGF0ZWRHYW1lUHJpdmFjeRojLm9tZ3dvcmRzX3NlcnZpY2UuR2FtZUV2ZW50UmVzcG9uc2USaQoRR2V0R2FtZXNGb3JFZGl0b3ISKi5vbWd3b3Jkc19zZXJ2aWNlLkdldEdhbWVzRm9yRWRpdG9yUmVxdWVzdBooLm9tZ3dvcmRzX3NlcnZpY2UuQW5ub3RhdGVkR2FtZXNSZXNwb25zZRJvChRHZXRNeVVuZmluaXNoZWRHYW1lcxItLm9tZ3dvcmRzX3NlcnZpY2UuR2V0TXlVbmZpbmlzaGVkR2FtZXNSZXF1ZXN0Gigub21nd29yZHNfc2VydmljZS5Bbm5vdGF0ZWRHYW1lc1Jlc3BvbnNlEk4KD0dldEdhbWVEb2N1bWVudBIoLm9tZ3dvcmRzX3NlcnZpY2UuR2V0R2FtZURvY3VtZW50UmVxdWVzdBoRLmlwYy5HYW1lRG9jdW1lbnQSdQoXR2V0UmVjZW50QW5ub3RhdGVkR2FtZXMSMC5vbWd3b3Jkc19zZXJ2aWNlLkdldFJlY2VudEFubm90YXRlZEdhbWVzUmVxdWVzdBooLm9tZ3dvcmRzX3NlcnZpY2UuQW5ub3RhdGVkR2FtZXNSZXNwb25zZRJICgZHZXRDR1ASHy5vbWd3b3Jkc19zZXJ2aWNlLkdldENHUFJlcXVlc3QaHS5vbWd3b3Jkc19zZXJ2aWNlLkNHUFJlc3BvbnNlElQKCUltcG9ydEdDRxIiLm9tZ3dvcmRzX3NlcnZpY2UuSW1wb3J0R0NHUmVxdWVzdBojLm9tZ3dvcmRzX3NlcnZpY2UuSW1wb3J0R0NHUmVzcG9uc2USXQoMR2V0R2FtZU93bmVyEiUub21nd29yZHNfc2VydmljZS5HZXRHYW1lT3duZXJSZXF1ZXN0GiYub21nd29yZHNfc2VydmljZS5HZXRHYW1lT3duZXJSZXNwb25zZUK/AQoUY29tLm9tZ3dvcmRzX3NlcnZpY2VCDU9tZ3dvcmRzUHJvdG9QAVo8Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9vbWd3b3Jkc19zZXJ2aWNlogIDT1hYqgIPT21nd29yZHNTZXJ2aWNlygIPT21nd29yZHNTZXJ2aWNl4gIbT21nd29yZHNTZXJ2aWNlXEdQQk1ldGFkYXRh6gIPT21nd29yZHNTZXJ2aWNlYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_ipc_omgwords]);
 
 /**
  * GameEventResponse doesn't need to have any extra data. The GameEvent API
@@ -67,14 +67,13 @@ export const ChallengeBonusPointsEventSchema: GenMessage<ChallengeBonusPointsEve
   messageDesc(file_proto_omgwords_service_omgwords, 2);
 
 /**
- * @generated from message omgwords_service.CreateBroadcastGameRequest
+ * @generated from message omgwords_service.CreateAnnotatedGameRequest
  */
-export type CreateBroadcastGameRequest = Message<"omgwords_service.CreateBroadcastGameRequest"> & {
+export type CreateAnnotatedGameRequest = Message<"omgwords_service.CreateAnnotatedGameRequest"> & {
   /**
-   * PlayerInfo for broadcast games do not need to be tied to a Woogles
-   * UUID. These games are meant for sandbox/annotation/broadcast of
-   * a typically IRL game. The order that the players are sent in
-   * must be the order in which they play.
+   * PlayerInfo for annotated games do not need to be tied to a Woogles
+   * UUID. These games are meant for sandbox/annotation of a typically IRL game.
+   * The order that the players are sent in must be the order in which they play.
    *
    * @generated from field: repeated ipc.PlayerInfo players_info = 1;
    */
@@ -109,16 +108,16 @@ export type CreateBroadcastGameRequest = Message<"omgwords_service.CreateBroadca
 };
 
 /**
- * Describes the message omgwords_service.CreateBroadcastGameRequest.
- * Use `create(CreateBroadcastGameRequestSchema)` to create a new message.
+ * Describes the message omgwords_service.CreateAnnotatedGameRequest.
+ * Use `create(CreateAnnotatedGameRequestSchema)` to create a new message.
  */
-export const CreateBroadcastGameRequestSchema: GenMessage<CreateBroadcastGameRequest> = /*@__PURE__*/
+export const CreateAnnotatedGameRequestSchema: GenMessage<CreateAnnotatedGameRequest> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 3);
 
 /**
- * @generated from message omgwords_service.CreateBroadcastGameResponse
+ * @generated from message omgwords_service.CreateAnnotatedGameResponse
  */
-export type CreateBroadcastGameResponse = Message<"omgwords_service.CreateBroadcastGameResponse"> & {
+export type CreateAnnotatedGameResponse = Message<"omgwords_service.CreateAnnotatedGameResponse"> & {
   /**
    * @generated from field: string game_id = 1;
    */
@@ -126,10 +125,10 @@ export type CreateBroadcastGameResponse = Message<"omgwords_service.CreateBroadc
 };
 
 /**
- * Describes the message omgwords_service.CreateBroadcastGameResponse.
- * Use `create(CreateBroadcastGameResponseSchema)` to create a new message.
+ * Describes the message omgwords_service.CreateAnnotatedGameResponse.
+ * Use `create(CreateAnnotatedGameResponseSchema)` to create a new message.
  */
-export const CreateBroadcastGameResponseSchema: GenMessage<CreateBroadcastGameResponse> = /*@__PURE__*/
+export const CreateAnnotatedGameResponseSchema: GenMessage<CreateAnnotatedGameResponse> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 4);
 
 /**
@@ -182,9 +181,9 @@ export const ImportGCGResponseSchema: GenMessage<ImportGCGResponse> = /*@__PURE_
   messageDesc(file_proto_omgwords_service_omgwords, 6);
 
 /**
- * @generated from message omgwords_service.BroadcastGamePrivacy
+ * @generated from message omgwords_service.AnnotatedGamePrivacy
  */
-export type BroadcastGamePrivacy = Message<"omgwords_service.BroadcastGamePrivacy"> & {
+export type AnnotatedGamePrivacy = Message<"omgwords_service.AnnotatedGamePrivacy"> & {
   /**
    * @generated from field: bool public = 1;
    */
@@ -192,10 +191,10 @@ export type BroadcastGamePrivacy = Message<"omgwords_service.BroadcastGamePrivac
 };
 
 /**
- * Describes the message omgwords_service.BroadcastGamePrivacy.
- * Use `create(BroadcastGamePrivacySchema)` to create a new message.
+ * Describes the message omgwords_service.AnnotatedGamePrivacy.
+ * Use `create(AnnotatedGamePrivacySchema)` to create a new message.
  */
-export const BroadcastGamePrivacySchema: GenMessage<BroadcastGamePrivacy> = /*@__PURE__*/
+export const AnnotatedGamePrivacySchema: GenMessage<AnnotatedGamePrivacy> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 7);
 
 /**
@@ -275,26 +274,26 @@ export const GetMyUnfinishedGamesRequestSchema: GenMessage<GetMyUnfinishedGamesR
   messageDesc(file_proto_omgwords_service_omgwords, 10);
 
 /**
- * @generated from message omgwords_service.BroadcastGamesResponse
+ * @generated from message omgwords_service.AnnotatedGamesResponse
  */
-export type BroadcastGamesResponse = Message<"omgwords_service.BroadcastGamesResponse"> & {
+export type AnnotatedGamesResponse = Message<"omgwords_service.AnnotatedGamesResponse"> & {
   /**
-   * @generated from field: repeated omgwords_service.BroadcastGamesResponse.BroadcastGame games = 1;
+   * @generated from field: repeated omgwords_service.AnnotatedGamesResponse.AnnotatedGame games = 1;
    */
-  games: BroadcastGamesResponse_BroadcastGame[];
+  games: AnnotatedGamesResponse_AnnotatedGame[];
 };
 
 /**
- * Describes the message omgwords_service.BroadcastGamesResponse.
- * Use `create(BroadcastGamesResponseSchema)` to create a new message.
+ * Describes the message omgwords_service.AnnotatedGamesResponse.
+ * Use `create(AnnotatedGamesResponseSchema)` to create a new message.
  */
-export const BroadcastGamesResponseSchema: GenMessage<BroadcastGamesResponse> = /*@__PURE__*/
+export const AnnotatedGamesResponseSchema: GenMessage<AnnotatedGamesResponse> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 11);
 
 /**
- * @generated from message omgwords_service.BroadcastGamesResponse.BroadcastGame
+ * @generated from message omgwords_service.AnnotatedGamesResponse.AnnotatedGame
  */
-export type BroadcastGamesResponse_BroadcastGame = Message<"omgwords_service.BroadcastGamesResponse.BroadcastGame"> & {
+export type AnnotatedGamesResponse_AnnotatedGame = Message<"omgwords_service.AnnotatedGamesResponse.AnnotatedGame"> & {
   /**
    * @generated from field: string game_id = 1;
    */
@@ -337,10 +336,10 @@ export type BroadcastGamesResponse_BroadcastGame = Message<"omgwords_service.Bro
 };
 
 /**
- * Describes the message omgwords_service.BroadcastGamesResponse.BroadcastGame.
- * Use `create(BroadcastGamesResponse_BroadcastGameSchema)` to create a new message.
+ * Describes the message omgwords_service.AnnotatedGamesResponse.AnnotatedGame.
+ * Use `create(AnnotatedGamesResponse_AnnotatedGameSchema)` to create a new message.
  */
-export const BroadcastGamesResponse_BroadcastGameSchema: GenMessage<BroadcastGamesResponse_BroadcastGame> = /*@__PURE__*/
+export const AnnotatedGamesResponse_AnnotatedGameSchema: GenMessage<AnnotatedGamesResponse_AnnotatedGame> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 11, 0);
 
 /**
@@ -410,9 +409,9 @@ export const GetGameDocumentRequestSchema: GenMessage<GetGameDocumentRequest> = 
   messageDesc(file_proto_omgwords_service_omgwords, 13);
 
 /**
- * @generated from message omgwords_service.DeleteBroadcastGameRequest
+ * @generated from message omgwords_service.DeleteAnnotatedGameRequest
  */
-export type DeleteBroadcastGameRequest = Message<"omgwords_service.DeleteBroadcastGameRequest"> & {
+export type DeleteAnnotatedGameRequest = Message<"omgwords_service.DeleteAnnotatedGameRequest"> & {
   /**
    * @generated from field: string game_id = 1;
    */
@@ -420,23 +419,23 @@ export type DeleteBroadcastGameRequest = Message<"omgwords_service.DeleteBroadca
 };
 
 /**
- * Describes the message omgwords_service.DeleteBroadcastGameRequest.
- * Use `create(DeleteBroadcastGameRequestSchema)` to create a new message.
+ * Describes the message omgwords_service.DeleteAnnotatedGameRequest.
+ * Use `create(DeleteAnnotatedGameRequestSchema)` to create a new message.
  */
-export const DeleteBroadcastGameRequestSchema: GenMessage<DeleteBroadcastGameRequest> = /*@__PURE__*/
+export const DeleteAnnotatedGameRequestSchema: GenMessage<DeleteAnnotatedGameRequest> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 14);
 
 /**
- * @generated from message omgwords_service.DeleteBroadcastGameResponse
+ * @generated from message omgwords_service.DeleteAnnotatedGameResponse
  */
-export type DeleteBroadcastGameResponse = Message<"omgwords_service.DeleteBroadcastGameResponse"> & {
+export type DeleteAnnotatedGameResponse = Message<"omgwords_service.DeleteAnnotatedGameResponse"> & {
 };
 
 /**
- * Describes the message omgwords_service.DeleteBroadcastGameResponse.
- * Use `create(DeleteBroadcastGameResponseSchema)` to create a new message.
+ * Describes the message omgwords_service.DeleteAnnotatedGameResponse.
+ * Use `create(DeleteAnnotatedGameResponseSchema)` to create a new message.
  */
-export const DeleteBroadcastGameResponseSchema: GenMessage<DeleteBroadcastGameResponse> = /*@__PURE__*/
+export const DeleteAnnotatedGameResponseSchema: GenMessage<DeleteAnnotatedGameResponse> = /*@__PURE__*/
   messageDesc(file_proto_omgwords_service_omgwords, 15);
 
 /**
@@ -607,24 +606,24 @@ export const SetRacksEventSchema: GenMessage<SetRacksEvent> = /*@__PURE__*/
  */
 export const GameEventService: GenService<{
   /**
-   * CreateBroadcastGame will create a game for Woogles broadcast
+   * CreateAnnotatedGame creates a standalone annotated game in the editor.
    *
-   * @generated from rpc omgwords_service.GameEventService.CreateBroadcastGame
+   * @generated from rpc omgwords_service.GameEventService.CreateAnnotatedGame
    */
-  createBroadcastGame: {
+  createAnnotatedGame: {
     methodKind: "unary";
-    input: typeof CreateBroadcastGameRequestSchema;
-    output: typeof CreateBroadcastGameResponseSchema;
+    input: typeof CreateAnnotatedGameRequestSchema;
+    output: typeof CreateAnnotatedGameResponseSchema;
   },
   /**
-   * DeleteBroadcastGame deletes a Woogles annotated game.
+   * DeleteAnnotatedGame deletes a standalone annotated game (not part of a broadcast).
    *
-   * @generated from rpc omgwords_service.GameEventService.DeleteBroadcastGame
+   * @generated from rpc omgwords_service.GameEventService.DeleteAnnotatedGame
    */
-  deleteBroadcastGame: {
+  deleteAnnotatedGame: {
     methodKind: "unary";
-    input: typeof DeleteBroadcastGameRequestSchema;
-    output: typeof DeleteBroadcastGameResponseSchema;
+    input: typeof DeleteAnnotatedGameRequestSchema;
+    output: typeof DeleteAnnotatedGameResponseSchema;
   },
   /**
    * SendGameEvent is how one sends game events to the Woogles API.
@@ -666,11 +665,11 @@ export const GameEventService: GenService<{
     output: typeof GameEventResponseSchema;
   },
   /**
-   * @generated from rpc omgwords_service.GameEventService.SetBroadcastGamePrivacy
+   * @generated from rpc omgwords_service.GameEventService.SetAnnotatedGamePrivacy
    */
-  setBroadcastGamePrivacy: {
+  setAnnotatedGamePrivacy: {
     methodKind: "unary";
-    input: typeof BroadcastGamePrivacySchema;
+    input: typeof AnnotatedGamePrivacySchema;
     output: typeof GameEventResponseSchema;
   },
   /**
@@ -679,7 +678,7 @@ export const GameEventService: GenService<{
   getGamesForEditor: {
     methodKind: "unary";
     input: typeof GetGamesForEditorRequestSchema;
-    output: typeof BroadcastGamesResponseSchema;
+    output: typeof AnnotatedGamesResponseSchema;
   },
   /**
    * @generated from rpc omgwords_service.GameEventService.GetMyUnfinishedGames
@@ -687,7 +686,7 @@ export const GameEventService: GenService<{
   getMyUnfinishedGames: {
     methodKind: "unary";
     input: typeof GetMyUnfinishedGamesRequestSchema;
-    output: typeof BroadcastGamesResponseSchema;
+    output: typeof AnnotatedGamesResponseSchema;
   },
   /**
    * GetGameDocument fetches the latest GameDocument for the passed-in ID.
@@ -705,7 +704,7 @@ export const GameEventService: GenService<{
   getRecentAnnotatedGames: {
     methodKind: "unary";
     input: typeof GetRecentAnnotatedGamesRequestSchema;
-    output: typeof BroadcastGamesResponseSchema;
+    output: typeof AnnotatedGamesResponseSchema;
   },
   /**
    * @generated from rpc omgwords_service.GameEventService.GetCGP

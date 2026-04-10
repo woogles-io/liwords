@@ -52,7 +52,9 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 		return false, apiserver.InvalidArg(err.Error())
 	}
 
-	// Now check for changes and send events accordingly.
+	// Collect events to publish AFTER the store write so that any subscriber
+	// that re-reads the document (e.g. OBS handler) sees the latest state.
+	var pendingEvts []*entity.EventWrapper
 	if len(g.Events) != oldNumEvents {
 		// This will pretty much always happen if we didn't return an error.
 		newEvents := g.Events[oldNumEvents:]
@@ -82,14 +84,19 @@ func handleEvent(ctx context.Context, cfg *wglconfig.Config, userID string, evt 
 						fmt.Sprintf("%s.game.%s", p.UserId, g.Uid))
 				}
 			}
-			evtChan <- wrapped
+			pendingEvts = append(pendingEvts, wrapped)
 		}
 	}
-	// updateDocument unlocks the game
+	// updateDocument unlocks the game. Publish events only after the write so
+	// subscribers that re-read the document always see the updated state.
 	err = gs.UpdateDocument(ctx, g)
 	if err != nil {
 		return false, err
 	}
+	for _, wrapped := range pendingEvts {
+		evtChan <- wrapped
+	}
+
 	gameEnded := false
 	if g.PlayState == ipc.PlayState_GAME_OVER {
 		// rate the game and send such and such.

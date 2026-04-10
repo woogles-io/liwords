@@ -4,7 +4,7 @@ import { TopBar } from "../navigation/topbar";
 import { EditorControl } from "./editor_control";
 
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
-import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { AnnotatedGamesResponse_AnnotatedGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { useClient } from "../utils/hooks/connect";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { AnnotatedGamesHistoryCard } from "../profile/annotated_games_history";
@@ -43,7 +43,7 @@ const collectionsPageSize = 10;
 
 export const EditorLandingPage = (props: Props) => {
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
-    Array<BroadcastGamesResponse_BroadcastGame>
+    Array<AnnotatedGamesResponse_AnnotatedGame>
   >([]);
   const [hasMoreAnnotatedGames, setHasMoreAnnotatedGames] = useState(true);
   const [recentComments, setRecentComments] = useState<Array<GameComment>>([]);

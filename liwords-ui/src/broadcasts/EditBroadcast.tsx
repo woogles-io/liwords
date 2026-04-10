@@ -168,7 +168,20 @@ export const EditBroadcast: React.FC = () => {
             <Form.Item label="Poll start time" name="pollStartTime">
               <DatePicker showTime />
             </Form.Item>
-            <Form.Item label="Poll end time" name="pollEndTime">
+            <Form.Item
+              label="Poll end time"
+              name="pollEndTime"
+              rules={[
+                {
+                  validator: async (_, value) => {
+                    const start = form.getFieldValue("pollStartTime");
+                    if (start && value && !value.isAfter(start)) {
+                      throw new Error("End time must be after start time");
+                    }
+                  },
+                },
+              ]}
+            >
               <DatePicker showTime />
             </Form.Item>
             <LexiconFormItem />

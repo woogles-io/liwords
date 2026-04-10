@@ -82,6 +82,8 @@ import {
   StreakInfoResponseSchema,
 } from "../gen/api/proto/game_service/game_service_pb";
 import { flashError, useClient } from "../utils/hooks/connect";
+import { useQuery } from "@connectrpc/connect-query";
+import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
@@ -327,6 +329,13 @@ export const Table = React.memo((props: Props) => {
   >([]);
   const [isObserver, setIsObserver] = useState(false);
   const prevGameIDRef = useRef<string | undefined>(undefined);
+
+  // Broadcast context (only fetched for annotated games)
+  const { data: broadcastCtx } = useQuery(
+    getBroadcastGameContext,
+    { gameUuid: gameID ?? "" },
+    { enabled: !!(gameID && props.annotated) },
+  );
 
   // Comments functionality
   const commentsClient = useClient(GameCommentService);
@@ -1140,6 +1149,11 @@ const closeMonitoringModal = useCallback(() => {
                 ? " Club"
                 : " Tournament"}
             </Link>
+          ) : broadcastCtx?.broadcastSlug ? (
+            <Link to={`/broadcasts/${broadcastCtx.broadcastSlug}`}>
+              <HomeOutlined />
+              Back to Broadcast
+            </Link>
           ) : (
             <Link to="/">
               <HomeOutlined />
@@ -1172,6 +1186,7 @@ const closeMonitoringModal = useCallback(() => {
       gameInfo.leagueSlug,
       gameInfo.tournamentId,
       tournamentContext.metadata,
+      broadcastCtx,
       nextCorresGame,
       corresGamesWaiting,
       handleNextCorresGame,
@@ -1195,6 +1210,7 @@ const closeMonitoringModal = useCallback(() => {
       <TopBar
         tournamentID={gameInfo.tournamentId}
         leagueSlug={gameInfo.leagueSlug}
+        broadcastSlug={broadcastCtx?.broadcastSlug}
         nextCorresGameID={nextCorresGame?.gameID}
         corresGamesWaiting={corresGamesWaiting}
       />

@@ -58,6 +58,16 @@ JOIN users u ON b.creator_id = u.id
 WHERE b.active = true
 ORDER BY b.created_at DESC;
 
+-- name: GetAllBroadcasts :many
+SELECT b.id, b.uuid, b.slug, b.name, b.description, b.broadcast_url, b.broadcast_url_format,
+       b.poll_interval_seconds, b.poll_start_time, b.poll_end_time,
+       b.lexicon, b.board_layout, b.letter_distribution, b.challenge_rule,
+       b.last_polled_at, b.creator_id, b.active, b.created_at, b.updated_at,
+       u.username as creator_username
+FROM broadcasts b
+JOIN users u ON b.creator_id = u.id
+ORDER BY b.active DESC, b.created_at DESC;
+
 -- name: GetBroadcastsForPolling :many
 SELECT id, uuid, slug, broadcast_url, broadcast_url_format, poll_interval_seconds,
        poll_start_time, poll_end_time, last_polled_at
@@ -147,4 +157,72 @@ LIMIT $3;
 SELECT bg.*, b.slug as broadcast_slug, b.name as broadcast_name
 FROM broadcast_games bg
 JOIN broadcasts b ON bg.broadcast_id = b.id
+WHERE bg.game_uuid = $1;
+
+-- name: CreateBroadcastSlot :exec
+INSERT INTO broadcast_slots (broadcast_id, slot_name, division, round, table_number)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT DO NOTHING;
+
+-- name: ListBroadcastSlots :many
+SELECT slot_name, division, round, table_number, updated_at
+FROM broadcast_slots
+WHERE broadcast_id = $1
+ORDER BY slot_name;
+
+-- name: UpdateBroadcastSlotTarget :exec
+UPDATE broadcast_slots
+SET division = $3, round = $4, table_number = $5, updated_at = NOW()
+WHERE broadcast_id = $1 AND slot_name = $2;
+
+-- name: DeleteBroadcastSlot :exec
+DELETE FROM broadcast_slots
+WHERE broadcast_id = $1 AND slot_name = $2;
+
+-- name: GetSlotCurrentGame :one
+-- Resolves (slug, slot_name) → current game with player names, for UI confirmation warnings.
+SELECT
+    bs.division,
+    bs.round,
+    bs.table_number,
+    COALESCE(bg.game_uuid, '')      AS game_uuid,
+    COALESCE(bg.player1_name, '')   AS player1_name,
+    COALESCE(bg.player2_name, '')   AS player2_name
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE b.slug = $1 AND bs.slot_name = $2;
+
+-- name: GetBroadcastSlotGame :one
+-- Resolves (slug, slot_name) → current game at that (div, round, table), if any.
+SELECT
+    bs.division,
+    bs.round,
+    bs.table_number,
+    bg.game_uuid,
+    b.uuid  AS broadcast_uuid,
+    b.id    AS broadcast_id
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE b.slug = $1 AND bs.slot_name = $2;
+
+-- name: GetSlotsByGame :many
+-- Returns all slots currently pointing at a given game's (div, round, table).
+SELECT bs.slot_name, b.slug, b.uuid AS broadcast_uuid
+FROM broadcast_slots bs
+JOIN broadcasts b ON bs.broadcast_id = b.id
+JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
 WHERE bg.game_uuid = $1;

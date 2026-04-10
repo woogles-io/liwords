@@ -149,12 +149,11 @@ func (x *ChallengeBonusPointsEvent) GetPointsGained() int32 {
 	return 0
 }
 
-type CreateBroadcastGameRequest struct {
+type CreateAnnotatedGameRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// PlayerInfo for broadcast games do not need to be tied to a Woogles
-	// UUID. These games are meant for sandbox/annotation/broadcast of
-	// a typically IRL game. The order that the players are sent in
-	// must be the order in which they play.
+	// PlayerInfo for annotated games do not need to be tied to a Woogles
+	// UUID. These games are meant for sandbox/annotation of a typically IRL game.
+	// The order that the players are sent in must be the order in which they play.
 	PlayersInfo []*ipc.PlayerInfo `protobuf:"bytes,1,rep,name=players_info,json=playersInfo,proto3" json:"players_info,omitempty"`
 	// The lexicon is a string such as NWL20, CSW21. It must be supported by
 	// Woogles.
@@ -169,20 +168,20 @@ type CreateBroadcastGameRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CreateBroadcastGameRequest) Reset() {
-	*x = CreateBroadcastGameRequest{}
+func (x *CreateAnnotatedGameRequest) Reset() {
+	*x = CreateAnnotatedGameRequest{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateBroadcastGameRequest) String() string {
+func (x *CreateAnnotatedGameRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateBroadcastGameRequest) ProtoMessage() {}
+func (*CreateAnnotatedGameRequest) ProtoMessage() {}
 
-func (x *CreateBroadcastGameRequest) ProtoReflect() protoreflect.Message {
+func (x *CreateAnnotatedGameRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -194,67 +193,67 @@ func (x *CreateBroadcastGameRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateBroadcastGameRequest.ProtoReflect.Descriptor instead.
-func (*CreateBroadcastGameRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use CreateAnnotatedGameRequest.ProtoReflect.Descriptor instead.
+func (*CreateAnnotatedGameRequest) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *CreateBroadcastGameRequest) GetPlayersInfo() []*ipc.PlayerInfo {
+func (x *CreateAnnotatedGameRequest) GetPlayersInfo() []*ipc.PlayerInfo {
 	if x != nil {
 		return x.PlayersInfo
 	}
 	return nil
 }
 
-func (x *CreateBroadcastGameRequest) GetLexicon() string {
+func (x *CreateAnnotatedGameRequest) GetLexicon() string {
 	if x != nil {
 		return x.Lexicon
 	}
 	return ""
 }
 
-func (x *CreateBroadcastGameRequest) GetRules() *ipc.GameRules {
+func (x *CreateAnnotatedGameRequest) GetRules() *ipc.GameRules {
 	if x != nil {
 		return x.Rules
 	}
 	return nil
 }
 
-func (x *CreateBroadcastGameRequest) GetChallengeRule() ipc.ChallengeRule {
+func (x *CreateAnnotatedGameRequest) GetChallengeRule() ipc.ChallengeRule {
 	if x != nil {
 		return x.ChallengeRule
 	}
 	return ipc.ChallengeRule(0)
 }
 
-func (x *CreateBroadcastGameRequest) GetPublic() bool {
+func (x *CreateAnnotatedGameRequest) GetPublic() bool {
 	if x != nil {
 		return x.Public
 	}
 	return false
 }
 
-type CreateBroadcastGameResponse struct {
+type CreateAnnotatedGameResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GameId        string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CreateBroadcastGameResponse) Reset() {
-	*x = CreateBroadcastGameResponse{}
+func (x *CreateAnnotatedGameResponse) Reset() {
+	*x = CreateAnnotatedGameResponse{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateBroadcastGameResponse) String() string {
+func (x *CreateAnnotatedGameResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateBroadcastGameResponse) ProtoMessage() {}
+func (*CreateAnnotatedGameResponse) ProtoMessage() {}
 
-func (x *CreateBroadcastGameResponse) ProtoReflect() protoreflect.Message {
+func (x *CreateAnnotatedGameResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -266,12 +265,12 @@ func (x *CreateBroadcastGameResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateBroadcastGameResponse.ProtoReflect.Descriptor instead.
-func (*CreateBroadcastGameResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use CreateAnnotatedGameResponse.ProtoReflect.Descriptor instead.
+func (*CreateAnnotatedGameResponse) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *CreateBroadcastGameResponse) GetGameId() string {
+func (x *CreateAnnotatedGameResponse) GetGameId() string {
 	if x != nil {
 		return x.GameId
 	}
@@ -390,27 +389,27 @@ func (x *ImportGCGResponse) GetGameId() string {
 	return ""
 }
 
-type BroadcastGamePrivacy struct {
+type AnnotatedGamePrivacy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Public        bool                   `protobuf:"varint,1,opt,name=public,proto3" json:"public,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *BroadcastGamePrivacy) Reset() {
-	*x = BroadcastGamePrivacy{}
+func (x *AnnotatedGamePrivacy) Reset() {
+	*x = AnnotatedGamePrivacy{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BroadcastGamePrivacy) String() string {
+func (x *AnnotatedGamePrivacy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BroadcastGamePrivacy) ProtoMessage() {}
+func (*AnnotatedGamePrivacy) ProtoMessage() {}
 
-func (x *BroadcastGamePrivacy) ProtoReflect() protoreflect.Message {
+func (x *AnnotatedGamePrivacy) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -422,12 +421,12 @@ func (x *BroadcastGamePrivacy) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BroadcastGamePrivacy.ProtoReflect.Descriptor instead.
-func (*BroadcastGamePrivacy) Descriptor() ([]byte, []int) {
+// Deprecated: Use AnnotatedGamePrivacy.ProtoReflect.Descriptor instead.
+func (*AnnotatedGamePrivacy) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *BroadcastGamePrivacy) GetPublic() bool {
+func (x *AnnotatedGamePrivacy) GetPublic() bool {
 	if x != nil {
 		return x.Public
 	}
@@ -601,27 +600,27 @@ func (*GetMyUnfinishedGamesRequest) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{10}
 }
 
-type BroadcastGamesResponse struct {
+type AnnotatedGamesResponse struct {
 	state         protoimpl.MessageState                  `protogen:"open.v1"`
-	Games         []*BroadcastGamesResponse_BroadcastGame `protobuf:"bytes,1,rep,name=games,proto3" json:"games,omitempty"`
+	Games         []*AnnotatedGamesResponse_AnnotatedGame `protobuf:"bytes,1,rep,name=games,proto3" json:"games,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *BroadcastGamesResponse) Reset() {
-	*x = BroadcastGamesResponse{}
+func (x *AnnotatedGamesResponse) Reset() {
+	*x = AnnotatedGamesResponse{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BroadcastGamesResponse) String() string {
+func (x *AnnotatedGamesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BroadcastGamesResponse) ProtoMessage() {}
+func (*AnnotatedGamesResponse) ProtoMessage() {}
 
-func (x *BroadcastGamesResponse) ProtoReflect() protoreflect.Message {
+func (x *AnnotatedGamesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -633,12 +632,12 @@ func (x *BroadcastGamesResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BroadcastGamesResponse.ProtoReflect.Descriptor instead.
-func (*BroadcastGamesResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use AnnotatedGamesResponse.ProtoReflect.Descriptor instead.
+func (*AnnotatedGamesResponse) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *BroadcastGamesResponse) GetGames() []*BroadcastGamesResponse_BroadcastGame {
+func (x *AnnotatedGamesResponse) GetGames() []*AnnotatedGamesResponse_AnnotatedGame {
 	if x != nil {
 		return x.Games
 	}
@@ -770,27 +769,27 @@ func (x *GetGameDocumentRequest) GetGameId() string {
 	return ""
 }
 
-type DeleteBroadcastGameRequest struct {
+type DeleteAnnotatedGameRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GameId        string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteBroadcastGameRequest) Reset() {
-	*x = DeleteBroadcastGameRequest{}
+func (x *DeleteAnnotatedGameRequest) Reset() {
+	*x = DeleteAnnotatedGameRequest{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteBroadcastGameRequest) String() string {
+func (x *DeleteAnnotatedGameRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteBroadcastGameRequest) ProtoMessage() {}
+func (*DeleteAnnotatedGameRequest) ProtoMessage() {}
 
-func (x *DeleteBroadcastGameRequest) ProtoReflect() protoreflect.Message {
+func (x *DeleteAnnotatedGameRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -802,38 +801,38 @@ func (x *DeleteBroadcastGameRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteBroadcastGameRequest.ProtoReflect.Descriptor instead.
-func (*DeleteBroadcastGameRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteAnnotatedGameRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAnnotatedGameRequest) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *DeleteBroadcastGameRequest) GetGameId() string {
+func (x *DeleteAnnotatedGameRequest) GetGameId() string {
 	if x != nil {
 		return x.GameId
 	}
 	return ""
 }
 
-type DeleteBroadcastGameResponse struct {
+type DeleteAnnotatedGameResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteBroadcastGameResponse) Reset() {
-	*x = DeleteBroadcastGameResponse{}
+func (x *DeleteAnnotatedGameResponse) Reset() {
+	*x = DeleteAnnotatedGameResponse{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteBroadcastGameResponse) String() string {
+func (x *DeleteAnnotatedGameResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteBroadcastGameResponse) ProtoMessage() {}
+func (*DeleteAnnotatedGameResponse) ProtoMessage() {}
 
-func (x *DeleteBroadcastGameResponse) ProtoReflect() protoreflect.Message {
+func (x *DeleteAnnotatedGameResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -845,8 +844,8 @@ func (x *DeleteBroadcastGameResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteBroadcastGameResponse.ProtoReflect.Descriptor instead.
-func (*DeleteBroadcastGameResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteAnnotatedGameResponse.ProtoReflect.Descriptor instead.
+func (*DeleteAnnotatedGameResponse) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{15}
 }
 
@@ -1210,7 +1209,7 @@ func (x *SetRacksEvent) GetAmendment() bool {
 	return false
 }
 
-type BroadcastGamesResponse_BroadcastGame struct {
+type AnnotatedGamesResponse_AnnotatedGame struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	GameId          string                 `protobuf:"bytes,1,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
 	CreatorId       string                 `protobuf:"bytes,2,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
@@ -1224,20 +1223,20 @@ type BroadcastGamesResponse_BroadcastGame struct {
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) Reset() {
-	*x = BroadcastGamesResponse_BroadcastGame{}
+func (x *AnnotatedGamesResponse_AnnotatedGame) Reset() {
+	*x = AnnotatedGamesResponse_AnnotatedGame{}
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) String() string {
+func (x *AnnotatedGamesResponse_AnnotatedGame) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BroadcastGamesResponse_BroadcastGame) ProtoMessage() {}
+func (*AnnotatedGamesResponse_AnnotatedGame) ProtoMessage() {}
 
-func (x *BroadcastGamesResponse_BroadcastGame) ProtoReflect() protoreflect.Message {
+func (x *AnnotatedGamesResponse_AnnotatedGame) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_omgwords_service_omgwords_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1249,61 +1248,61 @@ func (x *BroadcastGamesResponse_BroadcastGame) ProtoReflect() protoreflect.Messa
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BroadcastGamesResponse_BroadcastGame.ProtoReflect.Descriptor instead.
-func (*BroadcastGamesResponse_BroadcastGame) Descriptor() ([]byte, []int) {
+// Deprecated: Use AnnotatedGamesResponse_AnnotatedGame.ProtoReflect.Descriptor instead.
+func (*AnnotatedGamesResponse_AnnotatedGame) Descriptor() ([]byte, []int) {
 	return file_proto_omgwords_service_omgwords_proto_rawDescGZIP(), []int{11, 0}
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetGameId() string {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetGameId() string {
 	if x != nil {
 		return x.GameId
 	}
 	return ""
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetCreatorId() string {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetCreatorId() string {
 	if x != nil {
 		return x.CreatorId
 	}
 	return ""
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetPrivate() bool {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetPrivate() bool {
 	if x != nil {
 		return x.Private
 	}
 	return false
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetFinished() bool {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetFinished() bool {
 	if x != nil {
 		return x.Finished
 	}
 	return false
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetPlayersInfo() []*ipc.PlayerInfo {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetPlayersInfo() []*ipc.PlayerInfo {
 	if x != nil {
 		return x.PlayersInfo
 	}
 	return nil
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetLexicon() string {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetLexicon() string {
 	if x != nil {
 		return x.Lexicon
 	}
 	return ""
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetCreatedAt() *timestamppb.Timestamp {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
 	}
 	return nil
 }
 
-func (x *BroadcastGamesResponse_BroadcastGame) GetCreatorUsername() string {
+func (x *AnnotatedGamesResponse_AnnotatedGame) GetCreatorUsername() string {
 	if x != nil {
 		return x.CreatorUsername
 	}
@@ -1321,13 +1320,13 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"pointsLost\"@\n" +
 	"\x19ChallengeBonusPointsEvent\x12#\n" +
 	"\rpoints_gained\x18\x01 \x01(\x05R\fpointsGained\"\xe3\x01\n" +
-	"\x1aCreateBroadcastGameRequest\x122\n" +
+	"\x1aCreateAnnotatedGameRequest\x122\n" +
 	"\fplayers_info\x18\x01 \x03(\v2\x0f.ipc.PlayerInfoR\vplayersInfo\x12\x18\n" +
 	"\alexicon\x18\x02 \x01(\tR\alexicon\x12$\n" +
 	"\x05rules\x18\x03 \x01(\v2\x0e.ipc.GameRulesR\x05rules\x129\n" +
 	"\x0echallenge_rule\x18\x04 \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\x12\x16\n" +
 	"\x06public\x18\x05 \x01(\bR\x06public\"6\n" +
-	"\x1bCreateBroadcastGameResponse\x12\x17\n" +
+	"\x1bCreateAnnotatedGameResponse\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\x9f\x01\n" +
 	"\x10ImportGCGRequest\x12\x10\n" +
 	"\x03gcg\x18\x01 \x01(\tR\x03gcg\x12\x18\n" +
@@ -1336,7 +1335,7 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"\x0echallenge_rule\x18\x04 \x01(\x0e2\x12.ipc.ChallengeRuleR\rchallengeRule\",\n" +
 	"\x11ImportGCGResponse\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\".\n" +
-	"\x14BroadcastGamePrivacy\x12\x16\n" +
+	"\x14AnnotatedGamePrivacy\x12\x16\n" +
 	"\x06public\x18\x01 \x01(\bR\x06public\"\x81\x01\n" +
 	"\x18GetGamesForEditorRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
@@ -1352,9 +1351,9 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"unfinished\x18\x03 \x01(\bR\n" +
 	"unfinished\"\x1d\n" +
 	"\x1bGetMyUnfinishedGamesRequest\"\x9a\x03\n" +
-	"\x16BroadcastGamesResponse\x12L\n" +
-	"\x05games\x18\x01 \x03(\v26.omgwords_service.BroadcastGamesResponse.BroadcastGameR\x05games\x1a\xb1\x02\n" +
-	"\rBroadcastGame\x12\x17\n" +
+	"\x16AnnotatedGamesResponse\x12L\n" +
+	"\x05games\x18\x01 \x03(\v26.omgwords_service.AnnotatedGamesResponse.AnnotatedGameR\x05games\x1a\xb1\x02\n" +
+	"\rAnnotatedGame\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x1d\n" +
 	"\n" +
 	"creator_id\x18\x02 \x01(\tR\tcreatorId\x12\x18\n" +
@@ -1372,9 +1371,9 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"\tamendment\x18\x04 \x01(\bR\tamendment\"1\n" +
 	"\x16GetGameDocumentRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"5\n" +
-	"\x1aDeleteBroadcastGameRequest\x12\x17\n" +
+	"\x1aDeleteAnnotatedGameRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\"\x1d\n" +
-	"\x1bDeleteBroadcastGameResponse\"G\n" +
+	"\x1bDeleteAnnotatedGameResponse\"G\n" +
 	"\x16ReplaceDocumentRequest\x12-\n" +
 	"\bdocument\x18\x01 \x01(\v2\x11.ipc.GameDocumentR\bdocument\"E\n" +
 	"\x14PatchDocumentRequest\x12-\n" +
@@ -1397,17 +1396,17 @@ const file_proto_omgwords_service_omgwords_proto_rawDesc = "" +
 	"\tamendment\x18\x04 \x01(\bR\tamendment2\xfa\n" +
 	"\n" +
 	"\x10GameEventService\x12r\n" +
-	"\x13CreateBroadcastGame\x12,.omgwords_service.CreateBroadcastGameRequest\x1a-.omgwords_service.CreateBroadcastGameResponse\x12r\n" +
-	"\x13DeleteBroadcastGame\x12,.omgwords_service.DeleteBroadcastGameRequest\x1a-.omgwords_service.DeleteBroadcastGameResponse\x12Z\n" +
+	"\x13CreateAnnotatedGame\x12,.omgwords_service.CreateAnnotatedGameRequest\x1a-.omgwords_service.CreateAnnotatedGameResponse\x12r\n" +
+	"\x13DeleteAnnotatedGame\x12,.omgwords_service.DeleteAnnotatedGameRequest\x1a-.omgwords_service.DeleteAnnotatedGameResponse\x12Z\n" +
 	"\rSendGameEvent\x12$.omgwords_service.AnnotatedGameEvent\x1a#.omgwords_service.GameEventResponse\x12P\n" +
 	"\bSetRacks\x12\x1f.omgwords_service.SetRacksEvent\x1a#.omgwords_service.GameEventResponse\x12d\n" +
 	"\x13ReplaceGameDocument\x12(.omgwords_service.ReplaceDocumentRequest\x1a#.omgwords_service.GameEventResponse\x12`\n" +
 	"\x11PatchGameDocument\x12&.omgwords_service.PatchDocumentRequest\x1a#.omgwords_service.GameEventResponse\x12f\n" +
-	"\x17SetBroadcastGamePrivacy\x12&.omgwords_service.BroadcastGamePrivacy\x1a#.omgwords_service.GameEventResponse\x12i\n" +
-	"\x11GetGamesForEditor\x12*.omgwords_service.GetGamesForEditorRequest\x1a(.omgwords_service.BroadcastGamesResponse\x12o\n" +
-	"\x14GetMyUnfinishedGames\x12-.omgwords_service.GetMyUnfinishedGamesRequest\x1a(.omgwords_service.BroadcastGamesResponse\x12N\n" +
+	"\x17SetAnnotatedGamePrivacy\x12&.omgwords_service.AnnotatedGamePrivacy\x1a#.omgwords_service.GameEventResponse\x12i\n" +
+	"\x11GetGamesForEditor\x12*.omgwords_service.GetGamesForEditorRequest\x1a(.omgwords_service.AnnotatedGamesResponse\x12o\n" +
+	"\x14GetMyUnfinishedGames\x12-.omgwords_service.GetMyUnfinishedGamesRequest\x1a(.omgwords_service.AnnotatedGamesResponse\x12N\n" +
 	"\x0fGetGameDocument\x12(.omgwords_service.GetGameDocumentRequest\x1a\x11.ipc.GameDocument\x12u\n" +
-	"\x17GetRecentAnnotatedGames\x120.omgwords_service.GetRecentAnnotatedGamesRequest\x1a(.omgwords_service.BroadcastGamesResponse\x12H\n" +
+	"\x17GetRecentAnnotatedGames\x120.omgwords_service.GetRecentAnnotatedGamesRequest\x1a(.omgwords_service.AnnotatedGamesResponse\x12H\n" +
 	"\x06GetCGP\x12\x1f.omgwords_service.GetCGPRequest\x1a\x1d.omgwords_service.CGPResponse\x12T\n" +
 	"\tImportGCG\x12\".omgwords_service.ImportGCGRequest\x1a#.omgwords_service.ImportGCGResponse\x12]\n" +
 	"\fGetGameOwner\x12%.omgwords_service.GetGameOwnerRequest\x1a&.omgwords_service.GetGameOwnerResponseB\xbf\x01\n" +
@@ -1430,19 +1429,19 @@ var file_proto_omgwords_service_omgwords_proto_goTypes = []any{
 	(*GameEventResponse)(nil),                    // 0: omgwords_service.GameEventResponse
 	(*TimePenaltyEvent)(nil),                     // 1: omgwords_service.TimePenaltyEvent
 	(*ChallengeBonusPointsEvent)(nil),            // 2: omgwords_service.ChallengeBonusPointsEvent
-	(*CreateBroadcastGameRequest)(nil),           // 3: omgwords_service.CreateBroadcastGameRequest
-	(*CreateBroadcastGameResponse)(nil),          // 4: omgwords_service.CreateBroadcastGameResponse
+	(*CreateAnnotatedGameRequest)(nil),           // 3: omgwords_service.CreateAnnotatedGameRequest
+	(*CreateAnnotatedGameResponse)(nil),          // 4: omgwords_service.CreateAnnotatedGameResponse
 	(*ImportGCGRequest)(nil),                     // 5: omgwords_service.ImportGCGRequest
 	(*ImportGCGResponse)(nil),                    // 6: omgwords_service.ImportGCGResponse
-	(*BroadcastGamePrivacy)(nil),                 // 7: omgwords_service.BroadcastGamePrivacy
+	(*AnnotatedGamePrivacy)(nil),                 // 7: omgwords_service.AnnotatedGamePrivacy
 	(*GetGamesForEditorRequest)(nil),             // 8: omgwords_service.GetGamesForEditorRequest
 	(*GetRecentAnnotatedGamesRequest)(nil),       // 9: omgwords_service.GetRecentAnnotatedGamesRequest
 	(*GetMyUnfinishedGamesRequest)(nil),          // 10: omgwords_service.GetMyUnfinishedGamesRequest
-	(*BroadcastGamesResponse)(nil),               // 11: omgwords_service.BroadcastGamesResponse
+	(*AnnotatedGamesResponse)(nil),               // 11: omgwords_service.AnnotatedGamesResponse
 	(*AnnotatedGameEvent)(nil),                   // 12: omgwords_service.AnnotatedGameEvent
 	(*GetGameDocumentRequest)(nil),               // 13: omgwords_service.GetGameDocumentRequest
-	(*DeleteBroadcastGameRequest)(nil),           // 14: omgwords_service.DeleteBroadcastGameRequest
-	(*DeleteBroadcastGameResponse)(nil),          // 15: omgwords_service.DeleteBroadcastGameResponse
+	(*DeleteAnnotatedGameRequest)(nil),           // 14: omgwords_service.DeleteAnnotatedGameRequest
+	(*DeleteAnnotatedGameResponse)(nil),          // 15: omgwords_service.DeleteAnnotatedGameResponse
 	(*ReplaceDocumentRequest)(nil),               // 16: omgwords_service.ReplaceDocumentRequest
 	(*PatchDocumentRequest)(nil),                 // 17: omgwords_service.PatchDocumentRequest
 	(*GetCGPRequest)(nil),                        // 18: omgwords_service.GetCGPRequest
@@ -1450,7 +1449,7 @@ var file_proto_omgwords_service_omgwords_proto_goTypes = []any{
 	(*GetGameOwnerRequest)(nil),                  // 20: omgwords_service.GetGameOwnerRequest
 	(*GetGameOwnerResponse)(nil),                 // 21: omgwords_service.GetGameOwnerResponse
 	(*SetRacksEvent)(nil),                        // 22: omgwords_service.SetRacksEvent
-	(*BroadcastGamesResponse_BroadcastGame)(nil), // 23: omgwords_service.BroadcastGamesResponse.BroadcastGame
+	(*AnnotatedGamesResponse_AnnotatedGame)(nil), // 23: omgwords_service.AnnotatedGamesResponse.AnnotatedGame
 	(*ipc.PlayerInfo)(nil),                       // 24: ipc.PlayerInfo
 	(*ipc.GameRules)(nil),                        // 25: ipc.GameRules
 	(ipc.ChallengeRule)(0),                       // 26: ipc.ChallengeRule
@@ -1459,24 +1458,24 @@ var file_proto_omgwords_service_omgwords_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),                // 29: google.protobuf.Timestamp
 }
 var file_proto_omgwords_service_omgwords_proto_depIdxs = []int32{
-	24, // 0: omgwords_service.CreateBroadcastGameRequest.players_info:type_name -> ipc.PlayerInfo
-	25, // 1: omgwords_service.CreateBroadcastGameRequest.rules:type_name -> ipc.GameRules
-	26, // 2: omgwords_service.CreateBroadcastGameRequest.challenge_rule:type_name -> ipc.ChallengeRule
+	24, // 0: omgwords_service.CreateAnnotatedGameRequest.players_info:type_name -> ipc.PlayerInfo
+	25, // 1: omgwords_service.CreateAnnotatedGameRequest.rules:type_name -> ipc.GameRules
+	26, // 2: omgwords_service.CreateAnnotatedGameRequest.challenge_rule:type_name -> ipc.ChallengeRule
 	25, // 3: omgwords_service.ImportGCGRequest.rules:type_name -> ipc.GameRules
 	26, // 4: omgwords_service.ImportGCGRequest.challenge_rule:type_name -> ipc.ChallengeRule
-	23, // 5: omgwords_service.BroadcastGamesResponse.games:type_name -> omgwords_service.BroadcastGamesResponse.BroadcastGame
+	23, // 5: omgwords_service.AnnotatedGamesResponse.games:type_name -> omgwords_service.AnnotatedGamesResponse.AnnotatedGame
 	27, // 6: omgwords_service.AnnotatedGameEvent.event:type_name -> ipc.ClientGameplayEvent
 	28, // 7: omgwords_service.ReplaceDocumentRequest.document:type_name -> ipc.GameDocument
 	28, // 8: omgwords_service.PatchDocumentRequest.document:type_name -> ipc.GameDocument
-	24, // 9: omgwords_service.BroadcastGamesResponse.BroadcastGame.players_info:type_name -> ipc.PlayerInfo
-	29, // 10: omgwords_service.BroadcastGamesResponse.BroadcastGame.created_at:type_name -> google.protobuf.Timestamp
-	3,  // 11: omgwords_service.GameEventService.CreateBroadcastGame:input_type -> omgwords_service.CreateBroadcastGameRequest
-	14, // 12: omgwords_service.GameEventService.DeleteBroadcastGame:input_type -> omgwords_service.DeleteBroadcastGameRequest
+	24, // 9: omgwords_service.AnnotatedGamesResponse.AnnotatedGame.players_info:type_name -> ipc.PlayerInfo
+	29, // 10: omgwords_service.AnnotatedGamesResponse.AnnotatedGame.created_at:type_name -> google.protobuf.Timestamp
+	3,  // 11: omgwords_service.GameEventService.CreateAnnotatedGame:input_type -> omgwords_service.CreateAnnotatedGameRequest
+	14, // 12: omgwords_service.GameEventService.DeleteAnnotatedGame:input_type -> omgwords_service.DeleteAnnotatedGameRequest
 	12, // 13: omgwords_service.GameEventService.SendGameEvent:input_type -> omgwords_service.AnnotatedGameEvent
 	22, // 14: omgwords_service.GameEventService.SetRacks:input_type -> omgwords_service.SetRacksEvent
 	16, // 15: omgwords_service.GameEventService.ReplaceGameDocument:input_type -> omgwords_service.ReplaceDocumentRequest
 	17, // 16: omgwords_service.GameEventService.PatchGameDocument:input_type -> omgwords_service.PatchDocumentRequest
-	7,  // 17: omgwords_service.GameEventService.SetBroadcastGamePrivacy:input_type -> omgwords_service.BroadcastGamePrivacy
+	7,  // 17: omgwords_service.GameEventService.SetAnnotatedGamePrivacy:input_type -> omgwords_service.AnnotatedGamePrivacy
 	8,  // 18: omgwords_service.GameEventService.GetGamesForEditor:input_type -> omgwords_service.GetGamesForEditorRequest
 	10, // 19: omgwords_service.GameEventService.GetMyUnfinishedGames:input_type -> omgwords_service.GetMyUnfinishedGamesRequest
 	13, // 20: omgwords_service.GameEventService.GetGameDocument:input_type -> omgwords_service.GetGameDocumentRequest
@@ -1484,17 +1483,17 @@ var file_proto_omgwords_service_omgwords_proto_depIdxs = []int32{
 	18, // 22: omgwords_service.GameEventService.GetCGP:input_type -> omgwords_service.GetCGPRequest
 	5,  // 23: omgwords_service.GameEventService.ImportGCG:input_type -> omgwords_service.ImportGCGRequest
 	20, // 24: omgwords_service.GameEventService.GetGameOwner:input_type -> omgwords_service.GetGameOwnerRequest
-	4,  // 25: omgwords_service.GameEventService.CreateBroadcastGame:output_type -> omgwords_service.CreateBroadcastGameResponse
-	15, // 26: omgwords_service.GameEventService.DeleteBroadcastGame:output_type -> omgwords_service.DeleteBroadcastGameResponse
+	4,  // 25: omgwords_service.GameEventService.CreateAnnotatedGame:output_type -> omgwords_service.CreateAnnotatedGameResponse
+	15, // 26: omgwords_service.GameEventService.DeleteAnnotatedGame:output_type -> omgwords_service.DeleteAnnotatedGameResponse
 	0,  // 27: omgwords_service.GameEventService.SendGameEvent:output_type -> omgwords_service.GameEventResponse
 	0,  // 28: omgwords_service.GameEventService.SetRacks:output_type -> omgwords_service.GameEventResponse
 	0,  // 29: omgwords_service.GameEventService.ReplaceGameDocument:output_type -> omgwords_service.GameEventResponse
 	0,  // 30: omgwords_service.GameEventService.PatchGameDocument:output_type -> omgwords_service.GameEventResponse
-	0,  // 31: omgwords_service.GameEventService.SetBroadcastGamePrivacy:output_type -> omgwords_service.GameEventResponse
-	11, // 32: omgwords_service.GameEventService.GetGamesForEditor:output_type -> omgwords_service.BroadcastGamesResponse
-	11, // 33: omgwords_service.GameEventService.GetMyUnfinishedGames:output_type -> omgwords_service.BroadcastGamesResponse
+	0,  // 31: omgwords_service.GameEventService.SetAnnotatedGamePrivacy:output_type -> omgwords_service.GameEventResponse
+	11, // 32: omgwords_service.GameEventService.GetGamesForEditor:output_type -> omgwords_service.AnnotatedGamesResponse
+	11, // 33: omgwords_service.GameEventService.GetMyUnfinishedGames:output_type -> omgwords_service.AnnotatedGamesResponse
 	28, // 34: omgwords_service.GameEventService.GetGameDocument:output_type -> ipc.GameDocument
-	11, // 35: omgwords_service.GameEventService.GetRecentAnnotatedGames:output_type -> omgwords_service.BroadcastGamesResponse
+	11, // 35: omgwords_service.GameEventService.GetRecentAnnotatedGames:output_type -> omgwords_service.AnnotatedGamesResponse
 	19, // 36: omgwords_service.GameEventService.GetCGP:output_type -> omgwords_service.CGPResponse
 	6,  // 37: omgwords_service.GameEventService.ImportGCG:output_type -> omgwords_service.ImportGCGResponse
 	21, // 38: omgwords_service.GameEventService.GetGameOwner:output_type -> omgwords_service.GetGameOwnerResponse

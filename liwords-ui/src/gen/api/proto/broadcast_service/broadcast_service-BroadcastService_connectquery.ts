@@ -60,6 +60,11 @@ export const removeBroadcastAnnotators = BroadcastService.method.removeBroadcast
 export const getActiveBroadcasts = BroadcastService.method.getActiveBroadcasts;
 
 /**
+ * @generated from rpc broadcast_service.BroadcastService.GetAllBroadcasts
+ */
+export const getAllBroadcasts = BroadcastService.method.getAllBroadcasts;
+
+/**
  * @generated from rpc broadcast_service.BroadcastService.TriggerPoll
  */
 export const triggerPoll = BroadcastService.method.triggerPoll;
@@ -73,3 +78,28 @@ export const getMyClaimedGames = BroadcastService.method.getMyClaimedGames;
  * @generated from rpc broadcast_service.BroadcastService.GetBroadcastGameContext
  */
 export const getBroadcastGameContext = BroadcastService.method.getBroadcastGameContext;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.ListSlots
+ */
+export const listSlots = BroadcastService.method.listSlots;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.GetSlotCurrentGame
+ */
+export const getSlotCurrentGame = BroadcastService.method.getSlotCurrentGame;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.CreateSlot
+ */
+export const createSlot = BroadcastService.method.createSlot;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.AssignSlot
+ */
+export const assignSlot = BroadcastService.method.assignSlot;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.DeleteSlot
+ */
+export const deleteSlot = BroadcastService.method.deleteSlot;

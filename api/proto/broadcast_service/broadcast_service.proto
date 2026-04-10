@@ -168,6 +168,12 @@ message GetActiveBroadcastsResponse {
   repeated Broadcast broadcasts = 1;
 }
 
+message GetAllBroadcastsRequest {}
+
+message GetAllBroadcastsResponse {
+  repeated Broadcast broadcasts = 1;
+}
+
 message TriggerPollRequest {
   string slug = 1;
 }
@@ -195,7 +201,65 @@ message GetBroadcastGameContextResponse {
   int32 round = 3;
   int32 table_number = 4;
   string division = 5;
+  string slot_name = 6; // empty if no slot is currently assigned to this game
 }
+
+message BroadcastSlot {
+  string slot_name = 1;
+  string division = 2;    // empty string = use first division from feed
+  int32 round = 3;
+  int32 table_number = 4;
+}
+
+message ListSlotsRequest {
+  string slug = 1;
+}
+
+message ListSlotsResponse {
+  repeated BroadcastSlot slots = 1;
+}
+
+message CreateSlotRequest {
+  string slug = 1;
+  string slot_name = 2;
+  string division = 3;   // required; must be non-empty
+  int32 round = 4;
+  int32 table_number = 5;
+}
+
+message CreateSlotResponse {}
+
+message AssignSlotRequest {
+  string slug = 1;
+  string slot_name = 2;
+  string division = 3;    // empty = use first division from feed
+  int32 round = 4;
+  int32 table_number = 5;
+}
+
+message AssignSlotResponse {}
+
+message GetSlotCurrentGameRequest {
+  string slug = 1;
+  string slot_name = 2;
+}
+
+message GetSlotCurrentGameResponse {
+  string game_uuid = 1;    // empty if no game claimed at this slot's target
+  string player1_name = 2;
+  string player2_name = 3;
+  string division = 4;
+  int32 round = 5;
+  int32 table_number = 6;
+  bool annotation_done = 7;
+}
+
+message DeleteSlotRequest {
+  string slug = 1;
+  string slot_name = 2;
+}
+
+message DeleteSlotResponse {}
 
 service BroadcastService {
   rpc CreateBroadcast(CreateBroadcastRequest) returns (CreateBroadcastResponse);
@@ -209,7 +273,13 @@ service BroadcastService {
   rpc AddBroadcastAnnotators(AddBroadcastAnnotatorsRequest) returns (AddBroadcastAnnotatorsResponse);
   rpc RemoveBroadcastAnnotators(RemoveBroadcastAnnotatorsRequest) returns (RemoveBroadcastAnnotatorsResponse);
   rpc GetActiveBroadcasts(GetActiveBroadcastsRequest) returns (GetActiveBroadcastsResponse);
+  rpc GetAllBroadcasts(GetAllBroadcastsRequest) returns (GetAllBroadcastsResponse);
   rpc TriggerPoll(TriggerPollRequest) returns (TriggerPollResponse);
   rpc GetMyClaimedGames(GetMyClaimedGamesRequest) returns (GetMyClaimedGamesResponse);
   rpc GetBroadcastGameContext(GetBroadcastGameContextRequest) returns (GetBroadcastGameContextResponse);
+  rpc ListSlots(ListSlotsRequest) returns (ListSlotsResponse);
+  rpc GetSlotCurrentGame(GetSlotCurrentGameRequest) returns (GetSlotCurrentGameResponse);
+  rpc CreateSlot(CreateSlotRequest) returns (CreateSlotResponse);
+  rpc AssignSlot(AssignSlotRequest) returns (AssignSlotResponse);
+  rpc DeleteSlot(DeleteSlotRequest) returns (DeleteSlotResponse);
 }

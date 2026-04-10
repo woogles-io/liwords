@@ -73,7 +73,7 @@ func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 	gs.gameEventChan = c
 }
 
-func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateBroadcastGameRequest) (*ipc.GameDocument, error) {
+func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateAnnotatedGameRequest) (*ipc.GameDocument, error) {
 	players := req.PlayersInfo
 	if len(players) != 2 {
 		return nil, apiserver.InvalidArg("need two players")
@@ -214,8 +214,8 @@ func createAnnotatedGameDoc(
 	return g, nil
 }
 
-func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *connect.Request[pb.CreateBroadcastGameRequest],
-) (*connect.Response[pb.CreateBroadcastGameResponse], error) {
+func (gs *OMGWordsService) CreateAnnotatedGame(ctx context.Context, req *connect.Request[pb.CreateAnnotatedGameRequest],
+) (*connect.Response[pb.CreateAnnotatedGameResponse], error) {
 
 	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
@@ -226,7 +226,7 @@ func (gs *OMGWordsService) CreateBroadcastGame(ctx context.Context, req *connect
 		return nil, err
 	}
 
-	return connect.NewResponse(&pb.CreateBroadcastGameResponse{
+	return connect.NewResponse(&pb.CreateAnnotatedGameResponse{
 		GameId: gdoc.Uid,
 	}), nil
 }
@@ -359,14 +359,14 @@ func (gs *OMGWordsService) PatchGameDocument(ctx context.Context, req *connect.R
 	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
-func (gs *OMGWordsService) SetBroadcastGamePrivacy(ctx context.Context, req *connect.Request[pb.BroadcastGamePrivacy]) (
+func (gs *OMGWordsService) SetAnnotatedGamePrivacy(ctx context.Context, req *connect.Request[pb.AnnotatedGamePrivacy]) (
 	*connect.Response[pb.GameEventResponse], error) {
 
 	return nil, nil
 }
 
 func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.Request[pb.GetGamesForEditorRequest]) (
-	*connect.Response[pb.BroadcastGamesResponse], error) {
+	*connect.Response[pb.AnnotatedGamesResponse], error) {
 
 	if req.Msg.Limit > GamesLimit {
 		return nil, apiserver.InvalidArg("too many games")
@@ -376,9 +376,9 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.R
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&pb.BroadcastGamesResponse{
-		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
-			return &pb.BroadcastGamesResponse_BroadcastGame{
+	return connect.NewResponse(&pb.AnnotatedGamesResponse{
+		Games: lo.Map(games, func(bg *stores.AnnotatedGame, i int) *pb.AnnotatedGamesResponse_AnnotatedGame {
+			return &pb.AnnotatedGamesResponse_AnnotatedGame{
 				GameId:      bg.GameUUID,
 				CreatorId:   bg.CreatorUUID,
 				Private:     bg.Private,
@@ -392,7 +392,7 @@ func (gs *OMGWordsService) GetGamesForEditor(ctx context.Context, req *connect.R
 }
 
 func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *connect.Request[pb.GetRecentAnnotatedGamesRequest]) (
-	*connect.Response[pb.BroadcastGamesResponse], error) {
+	*connect.Response[pb.AnnotatedGamesResponse], error) {
 
 	if req.Msg.Limit > GamesLimit {
 		return nil, apiserver.InvalidArg("too many games")
@@ -402,9 +402,9 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *con
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&pb.BroadcastGamesResponse{
-		Games: lo.Map(games, func(bg *stores.BroadcastGame, i int) *pb.BroadcastGamesResponse_BroadcastGame {
-			return &pb.BroadcastGamesResponse_BroadcastGame{
+	return connect.NewResponse(&pb.AnnotatedGamesResponse{
+		Games: lo.Map(games, func(bg *stores.AnnotatedGame, i int) *pb.AnnotatedGamesResponse_AnnotatedGame {
+			return &pb.AnnotatedGamesResponse_AnnotatedGame{
 				GameId:          bg.GameUUID,
 				CreatorId:       bg.CreatorUUID,
 				Private:         bg.Private,
@@ -419,7 +419,7 @@ func (gs *OMGWordsService) GetRecentAnnotatedGames(ctx context.Context, req *con
 }
 
 func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connect.Request[pb.GetMyUnfinishedGamesRequest]) (
-	*connect.Response[pb.BroadcastGamesResponse], error) {
+	*connect.Response[pb.AnnotatedGamesResponse], error) {
 
 	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
@@ -432,8 +432,8 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connec
 	}
 	log.Debug().Interface("unfinished", unfinished).Str("userID", u.UUID).Msg("unfinished-anno-games")
 
-	games := lo.Map(unfinished, func(item *stores.BroadcastGame, idx int) *pb.BroadcastGamesResponse_BroadcastGame {
-		return &pb.BroadcastGamesResponse_BroadcastGame{
+	games := lo.Map(unfinished, func(item *stores.AnnotatedGame, idx int) *pb.AnnotatedGamesResponse_AnnotatedGame {
+		return &pb.AnnotatedGamesResponse_AnnotatedGame{
 			GameId:    item.GameUUID,
 			CreatorId: item.CreatorUUID,
 			Private:   item.Private,
@@ -441,7 +441,7 @@ func (gs *OMGWordsService) GetMyUnfinishedGames(ctx context.Context, req *connec
 		}
 	})
 
-	return connect.NewResponse(&pb.BroadcastGamesResponse{
+	return connect.NewResponse(&pb.AnnotatedGamesResponse{
 		Games: games,
 	}), nil
 }
@@ -685,8 +685,8 @@ func (gs *OMGWordsService) GetCGP(ctx context.Context, req *connect.Request[pb.G
 	return connect.NewResponse(&pb.CGPResponse{Cgp: cgp}), nil
 }
 
-func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *connect.Request[pb.DeleteBroadcastGameRequest],
-) (*connect.Response[pb.DeleteBroadcastGameResponse], error) {
+func (gs *OMGWordsService) DeleteAnnotatedGame(ctx context.Context, req *connect.Request[pb.DeleteAnnotatedGameRequest],
+) (*connect.Response[pb.DeleteAnnotatedGameResponse], error) {
 	gid := req.Msg.GameId
 	err := gs.failIfSessionDoesntOwn(ctx, gid)
 	if err != nil {
@@ -714,7 +714,7 @@ func (gs *OMGWordsService) DeleteBroadcastGame(ctx context.Context, req *connect
 		return nil, err
 	}
 
-	return connect.NewResponse(&pb.DeleteBroadcastGameResponse{}), nil
+	return connect.NewResponse(&pb.DeleteAnnotatedGameResponse{}), nil
 }
 
 func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[pb.ImportGCGRequest],
@@ -746,7 +746,7 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 
-	cbr := &pb.CreateBroadcastGameRequest{
+	cbr := &pb.CreateAnnotatedGameRequest{
 		PlayersInfo: []*ipc.PlayerInfo{
 			{UserId: gh.Players[0].Nickname,
 				FullName: gh.Players[0].RealName,
