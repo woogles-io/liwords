@@ -19,7 +19,7 @@ type DBStore struct {
 	queries *models.Queries
 }
 
-type BroadcastGame struct {
+type AnnotatedGame struct {
 	GameUUID        string
 	CreatorUUID     string
 	CreatorUsername string
@@ -143,7 +143,7 @@ func (s *DBStore) MarkAnnotatedGameDone(ctx context.Context, uuid string) error 
 // OutstandingGames returns a list of game IDs for games that are not yet done being
 // annotated. The system will only allow a certain number of games to remain
 // undone for an annotator.
-func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*BroadcastGame, error) {
+func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*AnnotatedGame, error) {
 	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return nil, err
@@ -163,14 +163,14 @@ func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*
 	}
 	defer rows.Close()
 
-	games := []*BroadcastGame{}
+	games := []*AnnotatedGame{}
 	for rows.Next() {
 		var uuid string
 		var private bool
 		if err := rows.Scan(&uuid, &private); err != nil {
 			return nil, err
 		}
-		games = append(games, &BroadcastGame{
+		games = append(games, &AnnotatedGame{
 			GameUUID:    uuid,
 			CreatorUUID: creatorUUID,
 			Private:     private,
@@ -197,7 +197,7 @@ func (s *DBStore) GameOwnedBy(ctx context.Context, gid, uid string) (bool, error
 	return false, nil
 }
 
-func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinished bool, limit, offset int) ([]*BroadcastGame, error) {
+func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinished bool, limit, offset int) ([]*AnnotatedGame, error) {
 
 	var rows pgx.Rows
 	var err error
@@ -241,7 +241,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 
 	defer rows.Close()
 
-	games := []*BroadcastGame{}
+	games := []*AnnotatedGame{}
 	for rows.Next() {
 		var uuid string
 		var creatorUUID string
@@ -264,7 +264,7 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 			lexicon = gameRequest.GameRequest.Lexicon
 		}
 
-		games = append(games, &BroadcastGame{
+		games = append(games, &AnnotatedGame{
 			GameUUID:        uuid,
 			CreatorUUID:     creatorUUID,
 			CreatorUsername: creatorUsername,

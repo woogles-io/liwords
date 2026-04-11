@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/ipc/ipc.proto.
  */
 export const file_proto_ipc_ipc: GenFile = /*@__PURE__*/
-  fileDesc("ChNwcm90by9pcGMvaXBjLnByb3RvEgNpcGMiKAoVQW5hbHlzaXNDb21wbGV0ZUV2ZW50Eg8KB2dhbWVfaWQYASABKAkiNQoUUmVnaXN0ZXJSZWFsbVJlcXVlc3QSDAoEcGF0aBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIicKFVJlZ2lzdGVyUmVhbG1SZXNwb25zZRIOCgZyZWFsbXMYAiADKAkiMAoNSW5pdFJlYWxtSW5mbxIPCgd1c2VyX2lkGAIgASgJEg4KBnJlYWxtcxgDIAMoCSIgCg5MYWdNZWFzdXJlbWVudBIOCgZsYWdfbXMYASABKAUiEwoEUG9uZxILCgNpcHMYASABKAkiIAoNU2VydmVyTWVzc2FnZRIPCgdtZXNzYWdlGAEgASgJIhgKCEpvaW5QYXRoEgwKBHBhdGgYASABKAkiDQoLVW5qb2luUmVhbG0q8QoKC01lc3NhZ2VUeXBlEhAKDFNFRUtfUkVRVUVTVBAAEhEKDU1BVENIX1JFUVVFU1QQARIdChlTT1VHSFRfR0FNRV9QUk9DRVNTX0VWRU5UEAISGQoVQ0xJRU5UX0dBTUVQTEFZX0VWRU5UEAMSGQoVU0VSVkVSX0dBTUVQTEFZX0VWRU5UEAQSFAoQR0FNRV9FTkRFRF9FVkVOVBAFEhoKFkdBTUVfSElTVE9SWV9SRUZSRVNIRVIQBhIRCg1FUlJPUl9NRVNTQUdFEAcSEgoOTkVXX0dBTUVfRVZFTlQQCBIhCh1TRVJWRVJfQ0hBTExFTkdFX1JFU1VMVF9FVkVOVBAJEhEKDVNFRUtfUkVRVUVTVFMQChIWChJPTkdPSU5HX0dBTUVfRVZFTlQQDBINCglUSU1FRF9PVVQQDRIRCg1PTkdPSU5HX0dBTUVTEA4SHQoZUkVBRFlfRk9SX1RPVVJOQU1FTlRfR0FNRRAPEhwKGFRPVVJOQU1FTlRfUk9VTkRfU1RBUlRFRBAQEhEKDUdBTUVfREVMRVRJT04QERISCg5NQVRDSF9SRVFVRVNUUxASEhgKFERFQ0xJTkVfU0VFS19SRVFVRVNUEBMSEAoMQ0hBVF9NRVNTQUdFEBQSGAoUQ0hBVF9NRVNTQUdFX0RFTEVURUQQFRIRCg1VU0VSX1BSRVNFTkNFEBYSEgoOVVNFUl9QUkVTRU5DRVMQFxISCg5TRVJWRVJfTUVTU0FHRRAYEhIKDlJFQURZX0ZPUl9HQU1FEBkSEwoPTEFHX01FQVNVUkVNRU5UEBoSHwobVE9VUk5BTUVOVF9HQU1FX0VOREVEX0VWRU5UEBsSFgoSVE9VUk5BTUVOVF9NRVNTQUdFEBwSEwoPUkVNQVRDSF9TVEFSVEVEEB0SHwobVE9VUk5BTUVOVF9ESVZJU0lPTl9NRVNTQUdFEB4SJwojVE9VUk5BTUVOVF9ESVZJU0lPTl9ERUxFVEVEX01FU1NBR0UQHxIlCiFUT1VSTkFNRU5UX0ZVTExfRElWSVNJT05TX01FU1NBR0UQIBIuCipUT1VSTkFNRU5UX0RJVklTSU9OX1JPVU5EX0NPTlRST0xTX01FU1NBR0UQIhIoCiRUT1VSTkFNRU5UX0RJVklTSU9OX1BBSVJJTkdTX01FU1NBR0UQIxIoCiRUT1VSTkFNRU5UX0RJVklTSU9OX0NPTlRST0xTX01FU1NBR0UQJBItCilUT1VSTkFNRU5UX0RJVklTSU9OX1BMQVlFUl9DSEFOR0VfTUVTU0FHRRAlEh8KG1RPVVJOQU1FTlRfRklOSVNIRURfTUVTU0FHRRAmEjAKLFRPVVJOQU1FTlRfRElWSVNJT05fUEFJUklOR1NfREVMRVRFRF9NRVNTQUdFECcSEgoOUFJFU0VOQ0VfRU5UUlkQKBIVChFBQ1RJVkVfR0FNRV9FTlRSWRApEhMKD0dBTUVfTUVUQV9FVkVOVBAqEhgKFFBST0ZJTEVfVVBEQVRFX0VWRU5UECsSGwoXT01HV09SRFNfR0FNRVBMQVlfRVZFTlQQLBIZChVPTUdXT1JEU19HQU1FRE9DVU1FTlQQLRIdChlUT1VSTkFNRU5UX1BMQVlFUl9DSEVDS0lOEC4SHAoYT1VSX0NPUlJFU1BPTkRFTkNFX0dBTUVTEC8SHAoYT1VSX0NPUlJFU1BPTkRFTkNFX1NFRUtTEDASIwofTU9OSVRPUklOR19TVFJFQU1fU1RBVFVTX1VQREFURRAxEiMKH09VUl9MRUFHVUVfQ09SUkVTUE9OREVOQ0VfR0FNRVMQMhIVChFBTkFMWVNJU19DT01QTEVURRAzQnAKB2NvbS5pcGNCCElwY1Byb3RvUAFaL2dpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vaXBjogIDSVhYqgIDSXBjygIDSXBj4gIPSXBjXEdQQk1ldGFkYXRh6gIDSXBjYgZwcm90bzM");
+  fileDesc("ChNwcm90by9pcGMvaXBjLnByb3RvEgNpcGMiKAoVQW5hbHlzaXNDb21wbGV0ZUV2ZW50Eg8KB2dhbWVfaWQYASABKAkiPAoVQnJvYWRjYXN0VXBkYXRlZEV2ZW50EgwKBHNsdWcYASABKAkSFQoNY3VycmVudF9yb3VuZBgCIAEoBSIqChpCcm9hZGNhc3RHYW1lc1VwZGF0ZWRFdmVudBIMCgRzbHVnGAEgASgJIjUKFFJlZ2lzdGVyUmVhbG1SZXF1ZXN0EgwKBHBhdGgYASABKAkSDwoHdXNlcl9pZBgCIAEoCSInChVSZWdpc3RlclJlYWxtUmVzcG9uc2USDgoGcmVhbG1zGAIgAygJIjAKDUluaXRSZWFsbUluZm8SDwoHdXNlcl9pZBgCIAEoCRIOCgZyZWFsbXMYAyADKAkiIAoOTGFnTWVhc3VyZW1lbnQSDgoGbGFnX21zGAEgASgFIhMKBFBvbmcSCwoDaXBzGAEgASgJIiAKDVNlcnZlck1lc3NhZ2USDwoHbWVzc2FnZRgBIAEoCSIYCghKb2luUGF0aBIMCgRwYXRoGAEgASgJIg0KC1Vuam9pblJlYWxtKqULCgtNZXNzYWdlVHlwZRIQCgxTRUVLX1JFUVVFU1QQABIRCg1NQVRDSF9SRVFVRVNUEAESHQoZU09VR0hUX0dBTUVfUFJPQ0VTU19FVkVOVBACEhkKFUNMSUVOVF9HQU1FUExBWV9FVkVOVBADEhkKFVNFUlZFUl9HQU1FUExBWV9FVkVOVBAEEhQKEEdBTUVfRU5ERURfRVZFTlQQBRIaChZHQU1FX0hJU1RPUllfUkVGUkVTSEVSEAYSEQoNRVJST1JfTUVTU0FHRRAHEhIKDk5FV19HQU1FX0VWRU5UEAgSIQodU0VSVkVSX0NIQUxMRU5HRV9SRVNVTFRfRVZFTlQQCRIRCg1TRUVLX1JFUVVFU1RTEAoSFgoST05HT0lOR19HQU1FX0VWRU5UEAwSDQoJVElNRURfT1VUEA0SEQoNT05HT0lOR19HQU1FUxAOEh0KGVJFQURZX0ZPUl9UT1VSTkFNRU5UX0dBTUUQDxIcChhUT1VSTkFNRU5UX1JPVU5EX1NUQVJURUQQEBIRCg1HQU1FX0RFTEVUSU9OEBESEgoOTUFUQ0hfUkVRVUVTVFMQEhIYChRERUNMSU5FX1NFRUtfUkVRVUVTVBATEhAKDENIQVRfTUVTU0FHRRAUEhgKFENIQVRfTUVTU0FHRV9ERUxFVEVEEBUSEQoNVVNFUl9QUkVTRU5DRRAWEhIKDlVTRVJfUFJFU0VOQ0VTEBcSEgoOU0VSVkVSX01FU1NBR0UQGBISCg5SRUFEWV9GT1JfR0FNRRAZEhMKD0xBR19NRUFTVVJFTUVOVBAaEh8KG1RPVVJOQU1FTlRfR0FNRV9FTkRFRF9FVkVOVBAbEhYKElRPVVJOQU1FTlRfTUVTU0FHRRAcEhMKD1JFTUFUQ0hfU1RBUlRFRBAdEh8KG1RPVVJOQU1FTlRfRElWSVNJT05fTUVTU0FHRRAeEicKI1RPVVJOQU1FTlRfRElWSVNJT05fREVMRVRFRF9NRVNTQUdFEB8SJQohVE9VUk5BTUVOVF9GVUxMX0RJVklTSU9OU19NRVNTQUdFECASLgoqVE9VUk5BTUVOVF9ESVZJU0lPTl9ST1VORF9DT05UUk9MU19NRVNTQUdFECISKAokVE9VUk5BTUVOVF9ESVZJU0lPTl9QQUlSSU5HU19NRVNTQUdFECMSKAokVE9VUk5BTUVOVF9ESVZJU0lPTl9DT05UUk9MU19NRVNTQUdFECQSLQopVE9VUk5BTUVOVF9ESVZJU0lPTl9QTEFZRVJfQ0hBTkdFX01FU1NBR0UQJRIfChtUT1VSTkFNRU5UX0ZJTklTSEVEX01FU1NBR0UQJhIwCixUT1VSTkFNRU5UX0RJVklTSU9OX1BBSVJJTkdTX0RFTEVURURfTUVTU0FHRRAnEhIKDlBSRVNFTkNFX0VOVFJZECgSFQoRQUNUSVZFX0dBTUVfRU5UUlkQKRITCg9HQU1FX01FVEFfRVZFTlQQKhIYChRQUk9GSUxFX1VQREFURV9FVkVOVBArEhsKF09NR1dPUkRTX0dBTUVQTEFZX0VWRU5UECwSGQoVT01HV09SRFNfR0FNRURPQ1VNRU5UEC0SHQoZVE9VUk5BTUVOVF9QTEFZRVJfQ0hFQ0tJThAuEhwKGE9VUl9DT1JSRVNQT05ERU5DRV9HQU1FUxAvEhwKGE9VUl9DT1JSRVNQT05ERU5DRV9TRUVLUxAwEiMKH01PTklUT1JJTkdfU1RSRUFNX1NUQVRVU19VUERBVEUQMRIjCh9PVVJfTEVBR1VFX0NPUlJFU1BPTkRFTkNFX0dBTUVTEDISFQoRQU5BTFlTSVNfQ09NUExFVEUQMxIVChFCUk9BRENBU1RfVVBEQVRFRBA0EhsKF0JST0FEQ0FTVF9HQU1FU19VUERBVEVEEDVCcAoHY29tLmlwY0IISXBjUHJvdG9QAVovZ2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9pcGOiAgNJWFiqAgNJcGPKAgNJcGPiAg9JcGNcR1BCTWV0YWRhdGHqAgNJcGNiBnByb3RvMw");
 
 /**
  * @generated from message ipc.AnalysisCompleteEvent
@@ -33,6 +33,51 @@ export type AnalysisCompleteEvent = Message<"ipc.AnalysisCompleteEvent"> & {
  */
 export const AnalysisCompleteEventSchema: GenMessage<AnalysisCompleteEvent> = /*@__PURE__*/
   messageDesc(file_proto_ipc_ipc, 0);
+
+/**
+ * Sent when a live broadcast's feed data has been updated (scores, new round, etc.)
+ * Clients listening on channel-broadcast-{slug} re-fetch broadcast games on receipt.
+ *
+ * @generated from message ipc.BroadcastUpdatedEvent
+ */
+export type BroadcastUpdatedEvent = Message<"ipc.BroadcastUpdatedEvent"> & {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: int32 current_round = 2;
+   */
+  currentRound: number;
+};
+
+/**
+ * Describes the message ipc.BroadcastUpdatedEvent.
+ * Use `create(BroadcastUpdatedEventSchema)` to create a new message.
+ */
+export const BroadcastUpdatedEventSchema: GenMessage<BroadcastUpdatedEvent> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 1);
+
+/**
+ * Sent when the annotation state of games within a broadcast changes
+ * (e.g. a game is claimed or unclaimed). Clients invalidate GetBroadcastGames only.
+ *
+ * @generated from message ipc.BroadcastGamesUpdatedEvent
+ */
+export type BroadcastGamesUpdatedEvent = Message<"ipc.BroadcastGamesUpdatedEvent"> & {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message ipc.BroadcastGamesUpdatedEvent.
+ * Use `create(BroadcastGamesUpdatedEventSchema)` to create a new message.
+ */
+export const BroadcastGamesUpdatedEventSchema: GenMessage<BroadcastGamesUpdatedEvent> = /*@__PURE__*/
+  messageDesc(file_proto_ipc_ipc, 2);
 
 /**
  * @generated from message ipc.RegisterRealmRequest
@@ -54,7 +99,7 @@ export type RegisterRealmRequest = Message<"ipc.RegisterRealmRequest"> & {
  * Use `create(RegisterRealmRequestSchema)` to create a new message.
  */
 export const RegisterRealmRequestSchema: GenMessage<RegisterRealmRequest> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 1);
+  messageDesc(file_proto_ipc_ipc, 3);
 
 /**
  * @generated from message ipc.RegisterRealmResponse
@@ -74,7 +119,7 @@ export type RegisterRealmResponse = Message<"ipc.RegisterRealmResponse"> & {
  * Use `create(RegisterRealmResponseSchema)` to create a new message.
  */
 export const RegisterRealmResponseSchema: GenMessage<RegisterRealmResponse> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 2);
+  messageDesc(file_proto_ipc_ipc, 4);
 
 /**
  * InitRealmInfo is a request for the API server to send back information
@@ -101,7 +146,7 @@ export type InitRealmInfo = Message<"ipc.InitRealmInfo"> & {
  * Use `create(InitRealmInfoSchema)` to create a new message.
  */
 export const InitRealmInfoSchema: GenMessage<InitRealmInfo> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 3);
+  messageDesc(file_proto_ipc_ipc, 5);
 
 /**
  * @generated from message ipc.LagMeasurement
@@ -118,7 +163,7 @@ export type LagMeasurement = Message<"ipc.LagMeasurement"> & {
  * Use `create(LagMeasurementSchema)` to create a new message.
  */
 export const LagMeasurementSchema: GenMessage<LagMeasurement> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 4);
+  messageDesc(file_proto_ipc_ipc, 6);
 
 /**
  * @generated from message ipc.Pong
@@ -135,7 +180,7 @@ export type Pong = Message<"ipc.Pong"> & {
  * Use `create(PongSchema)` to create a new message.
  */
 export const PongSchema: GenMessage<Pong> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 5);
+  messageDesc(file_proto_ipc_ipc, 7);
 
 /**
  * @generated from message ipc.ServerMessage
@@ -152,7 +197,7 @@ export type ServerMessage = Message<"ipc.ServerMessage"> & {
  * Use `create(ServerMessageSchema)` to create a new message.
  */
 export const ServerMessageSchema: GenMessage<ServerMessage> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 6);
+  messageDesc(file_proto_ipc_ipc, 8);
 
 /**
  * When we go to a new path in our SPA, we send a JoinPath. When we leave the
@@ -172,7 +217,7 @@ export type JoinPath = Message<"ipc.JoinPath"> & {
  * Use `create(JoinPathSchema)` to create a new message.
  */
 export const JoinPathSchema: GenMessage<JoinPath> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 7);
+  messageDesc(file_proto_ipc_ipc, 9);
 
 /**
  * @generated from message ipc.UnjoinRealm
@@ -185,7 +230,7 @@ export type UnjoinRealm = Message<"ipc.UnjoinRealm"> & {
  * Use `create(UnjoinRealmSchema)` to create a new message.
  */
 export const UnjoinRealmSchema: GenMessage<UnjoinRealm> = /*@__PURE__*/
-  messageDesc(file_proto_ipc_ipc, 8);
+  messageDesc(file_proto_ipc_ipc, 10);
 
 /**
  * In order to make socket messages as small and simple as possible,
@@ -454,6 +499,16 @@ export enum MessageType {
    * @generated from enum value: ANALYSIS_COMPLETE = 51;
    */
   ANALYSIS_COMPLETE = 51,
+
+  /**
+   * @generated from enum value: BROADCAST_UPDATED = 52;
+   */
+  BROADCAST_UPDATED = 52,
+
+  /**
+   * @generated from enum value: BROADCAST_GAMES_UPDATED = 53;
+   */
+  BROADCAST_GAMES_UPDATED = 53,
 }
 
 /**

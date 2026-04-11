@@ -25,6 +25,7 @@ import { challengeRuleNames } from "../constants/challenge_rules";
 import { GameInfoResponse } from "../gen/api/proto/ipc/omgwords_pb";
 import { create } from "@bufbuild/protobuf";
 import { getGameOwner } from "../gen/api/proto/omgwords_service/omgwords-GameEventService_connectquery";
+import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 
 export const defaultGameInfo = create(GameInfoResponseSchema, {
   players: new Array<PlayerInfo>(),
@@ -62,15 +63,21 @@ type Props = {
 export const GameInfo = React.memo((props: Props) => {
   const navigate = useNavigate();
 
+  const isAnnotated = props.meta.type === GameType.ANNOTATED;
+
   // Get game owner information for annotated games
   const { data: gameOwner } = useQuery(
     getGameOwner,
     { gameId: props.gameDocument?.uid || "" },
     {
-      enabled: !!(
-        props.gameDocument?.uid && props.meta.type === GameType.ANNOTATED
-      ),
+      enabled: !!(props.gameDocument?.uid && isAnnotated),
     },
+  );
+
+  const { data: broadcastCtx } = useQuery(
+    getBroadcastGameContext,
+    { gameUuid: props.gameDocument?.uid || "" },
+    { enabled: !!(props.gameDocument?.uid && isAnnotated) },
   );
 
   const variant = (
@@ -119,6 +126,15 @@ export const GameInfo = React.memo((props: Props) => {
             <Link to={`/leagues/${props.meta.leagueSlug}`}>
               League Game: {props.meta.leagueSlug}
             </Link>
+          </p>
+        )}
+        {broadcastCtx && (
+          <p className="tournament-name">
+            <Link to={`/broadcasts/${broadcastCtx.broadcastSlug}`}>
+              {broadcastCtx.broadcastName}
+            </Link>
+            {broadcastCtx.division && ` · Div ${broadcastCtx.division}`}
+            {` · R${broadcastCtx.round} T${broadcastCtx.tableNumber}`}
           </p>
         )}
         <p className="variant">

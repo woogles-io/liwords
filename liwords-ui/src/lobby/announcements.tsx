@@ -7,6 +7,7 @@ import {
   DesktopOutlined,
   TeamOutlined,
   TrophyOutlined,
+  PlayCircleOutlined,
 } from "@ant-design/icons";
 import { Announcement } from "../gen/api/proto/config_service/config_service_pb";
 import { useClient } from "../utils/hooks/connect";
@@ -15,6 +16,9 @@ import { TournamentService } from "../gen/api/proto/tournament_service/tournamen
 import type { TournamentMetadata } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import { LeagueService } from "../gen/api/proto/league_service/league_service_pb";
 import type { League, Season } from "../gen/api/proto/ipc/league_pb";
+import { useQuery } from "@connectrpc/connect-query";
+import { getAllBroadcasts } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
+import type { Broadcast } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
 import "./upcoming_tournaments.scss";
 
 export type Announcements = {
@@ -66,6 +70,48 @@ const formatLocalTime = (date: Date): string => {
     minute: "2-digit",
     timeZoneName: "short",
   }).format(date);
+};
+
+const BroadcastCard = ({ broadcast }: { broadcast: Broadcast }) => {
+  const now = new Date();
+  const startDate =
+    broadcast.pollStartTime?.seconds != null
+      ? new Date(Number(broadcast.pollStartTime.seconds) * 1000)
+      : null;
+  const isUpcoming = startDate != null && startDate > now;
+
+  return (
+    <div className="tournament-card">
+      <div className="tournament-header">
+        <Link to={`/broadcasts/${broadcast.slug}`} className="tournament-name">
+          <PlayCircleOutlined className="tournament-icon" />
+          {broadcast.name}
+        </Link>
+      </div>
+      <div className="tournament-details">
+        <div className="tournament-meta">
+          {broadcast.active ? (
+            isUpcoming ? (
+              <span className="registration-badge open">Upcoming</span>
+            ) : (
+              <span className="registration-badge live">Live</span>
+            )
+          ) : (
+            <span className="registration-badge closed">Ended</span>
+          )}
+          {broadcast.lexicon && (
+            <span className="tournament-director">{broadcast.lexicon}</span>
+          )}
+        </div>
+        {isUpcoming && startDate && (
+          <div className="tournament-time">
+            <strong>Starts:</strong> {formatRelativeTime(startDate)} •{" "}
+            {formatLocalTime(startDate)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const TournamentCard = ({ tournament }: { tournament: TournamentMetadata }) => {
@@ -284,6 +330,7 @@ const TournamentsAndLeaguesContent = () => {
   const [leagueStatuses, setLeagueStatuses] = useState<LeagueWithSeason[]>([]);
   const tournamentClient = useClient(TournamentService);
   const leagueClient = useClient(LeagueService);
+  const { data: broadcastsData } = useQuery(getAllBroadcasts, {});
 
   useEffect(() => {
     (async () => {
@@ -451,8 +498,54 @@ const TournamentsAndLeaguesContent = () => {
     return false;
   });
 
+  const now = new Date();
+  const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const allBroadcasts = broadcastsData?.broadcasts ?? [];
+  const activeBroadcasts = allBroadcasts.filter((b) => b.active);
+  const pastBroadcasts = allBroadcasts.filter((b) => !b.active).slice(0, 3);
+  const liveBroadcasts = activeBroadcasts.filter((b) => {
+    const s = b.pollStartTime?.seconds;
+    return s == null || new Date(Number(s) * 1000) <= now;
+  });
+  // Only show upcoming broadcasts starting within the next 14 days.
+  const upcomingBroadcasts = activeBroadcasts.filter((b) => {
+    const s = b.pollStartTime?.seconds;
+    if (s == null) return false;
+    const start = new Date(Number(s) * 1000);
+    return start > now && start <= in14Days;
+  });
+
+  const isEmpty =
+    activeBroadcasts.length === 0 &&
+    pastBroadcasts.length === 0 &&
+    upcomingTournaments.length === 0 &&
+    pastTournaments.length === 0 &&
+    activeLeagues.length === 0;
+
   return (
     <div className="tournaments-leagues-content">
+      {liveBroadcasts.length > 0 && (
+        <>
+          <h4>Live Broadcasts</h4>
+          <div className="tournaments-list">
+            {liveBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {upcomingBroadcasts.length > 0 && (
+        <>
+          <h4>Upcoming Broadcasts</h4>
+          <div className="tournaments-list">
+            {upcomingBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
+            ))}
+          </div>
+        </>
+      )}
+
       {upcomingTournaments.length > 0 && (
         <>
           <h4>Upcoming Tournaments</h4>
@@ -475,11 +568,7 @@ const TournamentsAndLeaguesContent = () => {
         </>
       )}
 
-      {upcomingTournaments.length === 0 &&
-        pastTournaments.length === 0 &&
-        activeLeagues.length === 0 && (
-          <div className="empty-state">No tournaments or leagues</div>
-        )}
+      {isEmpty && <div className="empty-state">No tournaments or leagues</div>}
 
       {pastTournaments.length > 0 && (
         <>
@@ -487,6 +576,17 @@ const TournamentsAndLeaguesContent = () => {
           <div className="tournaments-list">
             {pastTournaments.map((t) => (
               <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {pastBroadcasts.length > 0 && (
+        <>
+          <h4>Past Broadcasts</h4>
+          <div className="tournaments-list">
+            {pastBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
             ))}
           </div>
         </>

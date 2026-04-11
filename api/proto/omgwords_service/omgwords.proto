@@ -10,11 +10,10 @@ message GameEventResponse {}
 
 message TimePenaltyEvent { int32 points_lost = 1; }
 message ChallengeBonusPointsEvent { int32 points_gained = 1; }
-message CreateBroadcastGameRequest {
-  // PlayerInfo for broadcast games do not need to be tied to a Woogles
-  // UUID. These games are meant for sandbox/annotation/broadcast of
-  // a typically IRL game. The order that the players are sent in
-  // must be the order in which they play.
+message CreateAnnotatedGameRequest {
+  // PlayerInfo for annotated games do not need to be tied to a Woogles
+  // UUID. These games are meant for sandbox/annotation of a typically IRL game.
+  // The order that the players are sent in must be the order in which they play.
   repeated ipc.PlayerInfo players_info = 1;
   // The lexicon is a string such as NWL20, CSW21. It must be supported by
   // Woogles.
@@ -27,7 +26,7 @@ message CreateBroadcastGameRequest {
   bool public = 5;
 }
 
-message CreateBroadcastGameResponse { string game_id = 1; }
+message CreateAnnotatedGameResponse { string game_id = 1; }
 
 message ImportGCGRequest {
   string gcg = 1;
@@ -38,7 +37,7 @@ message ImportGCGRequest {
 
 message ImportGCGResponse { string game_id = 1; }
 
-message BroadcastGamePrivacy { bool public = 1; }
+message AnnotatedGamePrivacy { bool public = 1; }
 
 message GetGamesForEditorRequest {
   string user_id = 1;
@@ -58,8 +57,8 @@ message GetRecentAnnotatedGamesRequest {
 // a time.
 message GetMyUnfinishedGamesRequest {}
 
-message BroadcastGamesResponse {
-  message BroadcastGame {
+message AnnotatedGamesResponse {
+  message AnnotatedGame {
     string game_id = 1;
     string creator_id = 2;
     bool private = 3;
@@ -69,7 +68,7 @@ message BroadcastGamesResponse {
     google.protobuf.Timestamp created_at = 7;
     string creator_username = 8;
   }
-  repeated BroadcastGame games = 1;
+  repeated AnnotatedGame games = 1;
 }
 
 message AnnotatedGameEvent {
@@ -94,9 +93,9 @@ message AnnotatedGameEvent {
 
 message GetGameDocumentRequest { string game_id = 1; }
 
-message DeleteBroadcastGameRequest { string game_id = 1; }
+message DeleteAnnotatedGameRequest { string game_id = 1; }
 
-message DeleteBroadcastGameResponse {}
+message DeleteAnnotatedGameResponse {}
 
 message ReplaceDocumentRequest { ipc.GameDocument document = 1; }
 
@@ -135,12 +134,12 @@ message SetRacksEvent {
 // GameEventService will handle our game event API. We can connect bots to
 // this API, or use it for sandbox mode, or for live annotations, etc.
 service GameEventService {
-  // CreateBroadcastGame will create a game for Woogles broadcast
-  rpc CreateBroadcastGame(CreateBroadcastGameRequest)
-      returns (CreateBroadcastGameResponse);
-  // DeleteBroadcastGame deletes a Woogles annotated game.
-  rpc DeleteBroadcastGame(DeleteBroadcastGameRequest)
-      returns (DeleteBroadcastGameResponse);
+  // CreateAnnotatedGame creates a standalone annotated game in the editor.
+  rpc CreateAnnotatedGame(CreateAnnotatedGameRequest)
+      returns (CreateAnnotatedGameResponse);
+  // DeleteAnnotatedGame deletes a standalone annotated game (not part of a broadcast).
+  rpc DeleteAnnotatedGame(DeleteAnnotatedGameRequest)
+      returns (DeleteAnnotatedGameResponse);
   // SendGameEvent is how one sends game events to the Woogles API.
   rpc SendGameEvent(AnnotatedGameEvent) returns (GameEventResponse);
   // SetRacks sets the rack for the players of the game.
@@ -149,18 +148,18 @@ service GameEventService {
   // PatchGameDocument merges in the passed-in GameDocument with what's on the
   // server. The passed-in GameDocument should be a partial document
   rpc PatchGameDocument(PatchDocumentRequest) returns (GameEventResponse);
-  rpc SetBroadcastGamePrivacy(BroadcastGamePrivacy) returns (GameEventResponse);
+  rpc SetAnnotatedGamePrivacy(AnnotatedGamePrivacy) returns (GameEventResponse);
 
   rpc GetGamesForEditor(GetGamesForEditorRequest)
-      returns (BroadcastGamesResponse);
+      returns (AnnotatedGamesResponse);
   rpc GetMyUnfinishedGames(GetMyUnfinishedGamesRequest)
-      returns (BroadcastGamesResponse);
+      returns (AnnotatedGamesResponse);
 
   // GetGameDocument fetches the latest GameDocument for the passed-in ID.
   rpc GetGameDocument(GetGameDocumentRequest) returns (ipc.GameDocument);
 
   rpc GetRecentAnnotatedGames(GetRecentAnnotatedGamesRequest)
-      returns (BroadcastGamesResponse);
+      returns (AnnotatedGamesResponse);
 
   rpc GetCGP(GetCGPRequest) returns (CGPResponse);
   rpc ImportGCG(ImportGCGRequest) returns (ImportGCGResponse);

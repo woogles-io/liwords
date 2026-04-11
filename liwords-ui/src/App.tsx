@@ -66,6 +66,10 @@ import {
 import { BoardEditor } from "./boardwizard/editor";
 import { CallbackHandler as ScrabblecamCallbackHandler } from "./boardwizard/callback_handler";
 import { CollectionViewer } from "./collections/CollectionViewer";
+import { BroadcastRoom } from "./broadcasts/BroadcastRoom";
+import { BroadcastsList } from "./broadcasts/BroadcastsList";
+import { CreateBroadcast } from "./broadcasts/CreateBroadcast";
+import { EditBroadcast } from "./broadcasts/EditBroadcast";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
 import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
@@ -418,6 +422,10 @@ const App = React.memo(() => {
             <Route path="editor" element={<BoardEditor />}>
               <Route path=":gameID" element={<BoardEditor />} />
             </Route>
+            <Route path="broadcasts" element={<BroadcastsList />} />
+            <Route path="broadcasts/new" element={<CreateBroadcast />} />
+            <Route path="broadcasts/:slug/edit" element={<EditBroadcast />} />
+            <Route path="broadcasts/:slug" element={<BroadcastRoom />} />
             <Route path="collections/:uuid" element={<CollectionViewer />}>
               <Route
                 path="chapter/:chapterNumber"

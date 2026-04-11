@@ -32,6 +32,10 @@ import { parseWooglesError } from "../utils/parse_woogles_error";
 import {
   AnalysisCompleteEvent,
   AnalysisCompleteEventSchema,
+  BroadcastUpdatedEvent,
+  BroadcastUpdatedEventSchema,
+  BroadcastGamesUpdatedEvent,
+  BroadcastGamesUpdatedEventSchema,
   LagMeasurement,
   LagMeasurementSchema,
   MessageType,
@@ -199,6 +203,8 @@ const MsgTypesMap = {
   [MessageType.MONITORING_STREAM_STATUS_UPDATE]:
     MonitoringStreamStatusUpdateSchema,
   [MessageType.ANALYSIS_COMPLETE]: AnalysisCompleteEventSchema,
+  [MessageType.BROADCAST_UPDATED]: BroadcastUpdatedEventSchema,
+  [MessageType.BROADCAST_GAMES_UPDATED]: BroadcastGamesUpdatedEventSchema,
 };
 
 export const parseMsgs = (
@@ -1076,6 +1082,27 @@ export const useOnSocketMsg = () => {
                 },
               });
             }
+            break;
+          }
+          case MessageType.BROADCAST_UPDATED: {
+            const ev = parsedMsg as BroadcastUpdatedEvent;
+            queryClient.invalidateQueries({
+              queryKey: ["connect-query", { methodName: "GetBroadcastGames" }],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["connect-query", { methodName: "GetBroadcast" }],
+            });
+            console.log(
+              `broadcast-updated slug=${ev.slug} round=${ev.currentRound}`,
+            );
+            break;
+          }
+          case MessageType.BROADCAST_GAMES_UPDATED: {
+            const ev = parsedMsg as BroadcastGamesUpdatedEvent;
+            queryClient.invalidateQueries({
+              queryKey: ["connect-query", { methodName: "GetBroadcastGames" }],
+            });
+            console.log(`broadcast-games-updated slug=${ev.slug}`);
             break;
           }
         }

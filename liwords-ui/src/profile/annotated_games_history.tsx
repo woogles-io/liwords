@@ -3,11 +3,11 @@ import moment from "moment";
 import React from "react";
 import { Link } from "react-router";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
-import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { AnnotatedGamesResponse_AnnotatedGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 type Props = {
-  games: Array<BroadcastGamesResponse_BroadcastGame>;
+  games: Array<AnnotatedGamesResponse_AnnotatedGame>;
   fetchPrev?: () => void;
   fetchNext?: () => void;
   loggedInUserID: string;

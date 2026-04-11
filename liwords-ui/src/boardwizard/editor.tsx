@@ -346,7 +346,7 @@ export const BoardEditor = () => {
     // the lexicon and letter distribution are tied together.
     const ld = defaultLetterDistribution(lex);
     try {
-      const resp = await eventClient.createBroadcastGame({
+      const resp = await eventClient.createAnnotatedGame({
         playersInfo: [p1name, p2name].map(omgPlayerInfo),
         lexicon: lex,
         rules: create(GameRulesSchema, {
@@ -394,7 +394,7 @@ export const BoardEditor = () => {
 
   const deleteGame = async (gid: string) => {
     try {
-      await eventClient.deleteBroadcastGame({ gameId: gid });
+      await eventClient.deleteAnnotatedGame({ gameId: gid });
       dispatchGameContext({
         actionType: ActionType.InitFromDocument,
         payload: blankGamePayload,
@@ -496,7 +496,11 @@ export const BoardEditor = () => {
             playerMeta={gameInfo.players}
             hideProfileLink
           />
-          <GameInfo meta={gameInfo} tournamentName={""} />
+          <GameInfo
+            meta={gameInfo}
+            tournamentName={""}
+            gameDocument={gameContext.gameDocument}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}

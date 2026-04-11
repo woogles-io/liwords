@@ -101,6 +101,13 @@ const TopMenu = React.memo((props: Props) => {
     },
   ];
 
+  const watchMenuItems = [
+    {
+      key: "broadcasts",
+      label: <Link to="/broadcasts">Broadcasts</Link>,
+    },
+  ];
+
   const aboutMenuItems = [
     {
       key: "team",
@@ -129,6 +136,19 @@ const TopMenu = React.memo((props: Props) => {
       </div>
       <div>
         <a href="/donate">Donate</a>
+      </div>
+      <div>
+        <Dropdown
+          overlayClassName="user-menu"
+          menu={{ items: watchMenuItems }}
+          placement="bottom"
+          trigger={["click"]}
+          getPopupContainer={() =>
+            document.getElementById("root") as HTMLElement
+          }
+        >
+          <p>Watch</p>
+        </Dropdown>
       </div>
       <div>
         <Dropdown
@@ -166,6 +186,7 @@ const TopMenu = React.memo((props: Props) => {
 type Props = {
   tournamentID?: string;
   leagueSlug?: string;
+  broadcastSlug?: string;
   nextCorresGameID?: string;
   corresGamesWaiting?: number;
 };
@@ -222,7 +243,9 @@ export const TopBar = React.memo((props: Props) => {
     ? tournamentContext.metadata?.slug
     : props.leagueSlug
       ? `/leagues/${props.leagueSlug}`
-      : "/";
+      : props.broadcastSlug
+        ? `/broadcasts/${props.broadcastSlug}`
+        : "/";
 
   const handleNextCorresGame = () => {
     if (props.nextCorresGameID) {
@@ -240,7 +263,9 @@ export const TopBar = React.memo((props: Props) => {
               ? " tournament-mode"
               : props.leagueSlug
                 ? " league-mode"
-                : ""
+                : props.broadcastSlug
+                  ? " league-mode"
+                  : ""
           }`}
         >
           <div className="site-icon-rect">
@@ -257,6 +282,8 @@ export const TopBar = React.memo((props: Props) => {
             </div>
           ) : props.leagueSlug ? (
             <div className="tournament">Back to League</div>
+          ) : props.broadcastSlug ? (
+            <div className="tournament">Back to Broadcast</div>
           ) : null}
         </Link>
         {props.nextCorresGameID && (

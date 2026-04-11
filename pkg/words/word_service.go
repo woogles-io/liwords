@@ -206,3 +206,33 @@ func (ws *WordService) DefineWords(ctx context.Context, req *connect.Request[pb.
 
 	return connect.NewResponse(&pb.DefineWordsResponse{Results: results}), nil
 }
+
+// Define looks up a single word in the given lexicon.
+// Returns (definition, valid). definition may be "" even when valid if the
+// lexicon has no definition source.
+func (ws *WordService) Define(lexicon, word string) (string, bool) {
+	defSource, hasLexicon := ws.definitionSources[lexicon]
+	if !hasLexicon {
+		return "", false
+	}
+	gd, err := kwg.GetKWG(ws.cfg.WGLConfig(), lexicon)
+	if err != nil {
+		return "", false
+	}
+	alph := gd.GetAlphabet()
+	mw, err := tilemapping.ToMachineWord(strings.ToUpper(word), alph)
+	if err != nil {
+		return "", false
+	}
+	if !kwg.FindMachineWord(gd, mw) {
+		return "", false
+	}
+	if defSource == nil {
+		return "", true
+	}
+	defs, err := defSource.bulkDefine([]string{strings.ToUpper(word)})
+	if err != nil {
+		return "", true // valid but definition unavailable
+	}
+	return defs[strings.ToUpper(word)], true
+}

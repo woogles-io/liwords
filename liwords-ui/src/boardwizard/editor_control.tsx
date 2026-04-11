@@ -18,13 +18,19 @@ import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { LexiconFormItem } from "../shared/lexicon_display";
 import { useGameContextStoreContext } from "../store/store";
-import { baseURL, useClient } from "../utils/hooks/connect";
+import { baseURL, useClient, flashError } from "../utils/hooks/connect";
 import { AddToCollectionModal } from "../collections/AddToCollectionModal";
 import {
   CollectionsService,
   Collection,
 } from "../gen/api/proto/collections_service/collections_service_pb";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useQuery, useMutation } from "@connectrpc/connect-query";
+import {
+  getBroadcastGameContext,
+  unclaimGame,
+} from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
+import { OBSPanel } from "../broadcasts/OBSPanel";
 
 type Props = {
   gameID?: string;
@@ -39,6 +45,7 @@ type Props = {
 };
 
 export const EditorControl = (props: Props) => {
+  const navigate = useNavigate();
   let form;
 
   if (!props.gameID) {
@@ -52,6 +59,21 @@ export const EditorControl = (props: Props) => {
   if (props.gameID) {
     gameURL = `${baseURL}/anno/${props.gameID}`;
   }
+
+  const { data: broadcastCtx } = useQuery(
+    getBroadcastGameContext,
+    { gameUuid: props.gameID ?? "" },
+    { enabled: !!props.gameID },
+  );
+
+  const unclaimMutation = useMutation(unclaimGame, {
+    onSuccess: () => {
+      if (broadcastCtx) {
+        navigate(`/broadcasts/${broadcastCtx.broadcastSlug}`);
+      }
+    },
+    onError: (e) => flashError(e),
+  });
 
   const [confirmDelVisible, setConfirmDelVisible] = useState(false);
   const [collectionModalVisible, setCollectionModalVisible] = useState(false);
@@ -119,6 +141,11 @@ export const EditorControl = (props: Props) => {
           <Typography.Paragraph copyable className="readable-text-color">
             {gameURL}
           </Typography.Paragraph>
+          <OBSPanel
+            gameID={props.gameID}
+            broadcastSlug={broadcastCtx?.broadcastSlug}
+            slotName={broadcastCtx?.slotName}
+          />
           {gameCollections.length > 0 && (
             <Card
               size="small"
@@ -205,25 +232,50 @@ export const EditorControl = (props: Props) => {
             </Button>
           </p>
           <p>
-            <Popconfirm
-              title="Are you sure you wish to delete this game? This action can not be undone!"
-              onConfirm={() => {
-                props.deleteGame(props.gameID!);
-                setConfirmDelVisible(false);
-              }}
-              onCancel={() => setConfirmDelVisible(false)}
-              okText="Yes"
-              cancelText="No"
-              open={confirmDelVisible}
-            >
-              <Button
-                onClick={() => setConfirmDelVisible(true)}
-                type="primary"
-                danger
+            {broadcastCtx ? (
+              <Popconfirm
+                title="Unclaim this game? The annotation will be deleted."
+                onConfirm={() =>
+                  unclaimMutation.mutate({
+                    slug: broadcastCtx.broadcastSlug,
+                    round: broadcastCtx.round,
+                    tableNumber: broadcastCtx.tableNumber,
+                    division: broadcastCtx.division,
+                  })
+                }
+                okText="Unclaim"
+                cancelText="Cancel"
+                okButtonProps={{ danger: true }}
               >
-                Delete this game
-              </Button>
-            </Popconfirm>
+                <Button
+                  type="primary"
+                  danger
+                  loading={unclaimMutation.isPending}
+                >
+                  Unclaim this game
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Popconfirm
+                title="Are you sure you wish to delete this game? This action can not be undone!"
+                onConfirm={() => {
+                  props.deleteGame(props.gameID!);
+                  setConfirmDelVisible(false);
+                }}
+                onCancel={() => setConfirmDelVisible(false)}
+                okText="Yes"
+                cancelText="No"
+                open={confirmDelVisible}
+              >
+                <Button
+                  onClick={() => setConfirmDelVisible(true)}
+                  type="primary"
+                  danger
+                >
+                  Delete this game
+                </Button>
+              </Popconfirm>
+            )}
           </p>
           <AddToCollectionModal
             visible={collectionModalVisible}

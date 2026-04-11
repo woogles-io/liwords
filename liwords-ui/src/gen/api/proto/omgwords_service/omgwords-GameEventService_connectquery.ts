@@ -5,18 +5,18 @@
 import { GameEventService } from "./omgwords_pb";
 
 /**
- * CreateBroadcastGame will create a game for Woogles broadcast
+ * CreateAnnotatedGame creates a standalone annotated game in the editor.
  *
- * @generated from rpc omgwords_service.GameEventService.CreateBroadcastGame
+ * @generated from rpc omgwords_service.GameEventService.CreateAnnotatedGame
  */
-export const createBroadcastGame = GameEventService.method.createBroadcastGame;
+export const createAnnotatedGame = GameEventService.method.createAnnotatedGame;
 
 /**
- * DeleteBroadcastGame deletes a Woogles annotated game.
+ * DeleteAnnotatedGame deletes a standalone annotated game (not part of a broadcast).
  *
- * @generated from rpc omgwords_service.GameEventService.DeleteBroadcastGame
+ * @generated from rpc omgwords_service.GameEventService.DeleteAnnotatedGame
  */
-export const deleteBroadcastGame = GameEventService.method.deleteBroadcastGame;
+export const deleteAnnotatedGame = GameEventService.method.deleteAnnotatedGame;
 
 /**
  * SendGameEvent is how one sends game events to the Woogles API.
@@ -46,9 +46,9 @@ export const replaceGameDocument = GameEventService.method.replaceGameDocument;
 export const patchGameDocument = GameEventService.method.patchGameDocument;
 
 /**
- * @generated from rpc omgwords_service.GameEventService.SetBroadcastGamePrivacy
+ * @generated from rpc omgwords_service.GameEventService.SetAnnotatedGamePrivacy
  */
-export const setBroadcastGamePrivacy = GameEventService.method.setBroadcastGamePrivacy;
+export const setAnnotatedGamePrivacy = GameEventService.method.setAnnotatedGamePrivacy;
 
 /**
  * @generated from rpc omgwords_service.GameEventService.GetGamesForEditor

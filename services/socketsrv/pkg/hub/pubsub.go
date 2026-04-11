@@ -47,6 +47,8 @@ func newPubSub(natsURL string, cfg *config.Config) (*PubSub, error) {
 		"chat.>",
 		// generic channels
 		"channel.>",
+		// live broadcast updates
+		"broadcasts.>",
 		// NEW: efficient presence change notifications
 		"presence.changed.>",
 		// Efficient seek notifications to followed users
@@ -196,6 +198,15 @@ func (h *Hub) PubsubProcess() {
 			}
 			channelID := subtopics[1]
 			h.sendToRealm(Realm("channel-"+channelID), msg.Data)
+
+		case msg := <-h.pubsub.subchans["broadcasts.>"]:
+			log.Debug().Str("topic", msg.Subject).Msg("broadcast-msg")
+			subtopics := strings.SplitN(msg.Subject, ".", 2)
+			if len(subtopics) < 2 {
+				log.Error().Msgf("broadcasts subtopics weird %v", msg.Subject)
+				continue
+			}
+			h.sendToRealm(Realm("broadcasts-"+subtopics[1]), msg.Data)
 
 		case msg := <-h.pubsub.subchans["presence.changed.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("presence-changed")

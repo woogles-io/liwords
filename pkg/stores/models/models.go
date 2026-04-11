@@ -53,6 +53,61 @@ type Blocking struct {
 	BlockerID pgtype.Int4
 }
 
+type Broadcast struct {
+	ID                  int32
+	Uuid                uuid.UUID
+	Slug                string
+	Name                string
+	Description         pgtype.Text
+	BroadcastUrl        string
+	BroadcastUrlFormat  string
+	PollIntervalSeconds int32
+	PollStartTime       pgtype.Timestamptz
+	PollEndTime         pgtype.Timestamptz
+	Lexicon             string
+	BoardLayout         string
+	LetterDistribution  string
+	ChallengeRule       int32
+	LastPolledAt        pgtype.Timestamptz
+	CreatorID           int32
+	Active              bool
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+}
+
+type BroadcastAnnotator struct {
+	BroadcastID int32
+	UserID      int32
+}
+
+type BroadcastDirector struct {
+	BroadcastID int32
+	UserID      int32
+}
+
+type BroadcastGame struct {
+	ID              int32
+	BroadcastID     int32
+	GameUuid        string
+	Division        string
+	Round           int32
+	TableNumber     int32
+	Player1Name     string
+	Player2Name     string
+	AnnotatorUserID pgtype.Int4
+	ClaimedAt       pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+}
+
+type BroadcastSlot struct {
+	BroadcastID int64
+	SlotName    string
+	Division    string
+	Round       int32
+	TableNumber int32
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Collection struct {
 	ID          int32
 	Uuid        uuid.UUID

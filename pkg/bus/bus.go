@@ -514,6 +514,14 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			gameID := strings.TrimPrefix(path, "/anno/")
 			realm := "channel-" + omgwords.AnnotatedChannelName(gameID)
 			resp.Realms = append(resp.Realms, realm, "chat-gametv-anno-"+gameID)
+		} else if strings.HasPrefix(path, "/broadcasts/") {
+			slug := strings.TrimPrefix(path, "/broadcasts/")
+			b, err := b.stores.Queries.GetBroadcastBySlug(ctx, slug)
+			if err != nil {
+				return err
+			}
+			realm := "broadcasts-" + b.Uuid.String()
+			resp.Realms = append(resp.Realms, realm)
 		} else {
 			log.Debug().Str("path", path).Msg("realm-req-not-handled")
 		}

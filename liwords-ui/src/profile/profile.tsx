@@ -27,7 +27,7 @@ import {
 import { flashError, useClient } from "../utils/hooks/connect";
 import { ProfileService } from "../gen/api/proto/user_service/user_service_pb";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
-import { BroadcastGamesResponse_BroadcastGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
+import { AnnotatedGamesResponse_AnnotatedGame } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { GameEventService } from "../gen/api/proto/omgwords_service/omgwords_pb";
 import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import { UserCollectionsCard } from "./user_collections";
@@ -238,7 +238,7 @@ export const PlayerProfile = React.memo(() => {
     array: Array<GameInfoResponse>;
   }>({ numGames: gamesPageSize, offset: 0, array: [] });
   const [recentAnnotatedGames, setRecentAnnotatedGames] = useState<
-    Array<BroadcastGamesResponse_BroadcastGame>
+    Array<AnnotatedGamesResponse_AnnotatedGame>
   >([]);
   const [hasMoreAnnotatedGames, setHasMoreAnnotatedGames] = useState(true);
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
