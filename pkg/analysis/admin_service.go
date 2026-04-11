@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/jackc/pgx/v5/pgtype"
 
-	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -92,16 +91,8 @@ func (s *AnalysisAdminService) RequeueAnalysis(
 		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no analysis job found for game %s", req.Msg.GameId))
 	}
 
-	// If there's an existing completed result, subtract its mistake index contribution
-	// from league standings before resetting so it doesn't get double-counted.
-	if job.Status == "completed" && len(job.Result) > 0 {
-		var oldResult macondo.GameAnalysisResult
-		if err := protojson.Unmarshal(job.Result, &oldResult); err == nil {
-			applyLeagueMistakeIndex(ctx, s.queries, job.GameID, &oldResult, true)
-		}
-	}
-
-	if err := s.queries.ResetAnalysisJob(ctx, job.ID); err != nil {
+	// Don't subtract MI here - JIT subtraction happens in SubmitResult
+	if err := s.queries.ResetAnalysisJobKeepResult(ctx, job.ID); err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to reset analysis job: %w", err))
 	}
 
@@ -178,4 +169,24 @@ func (s *AnalysisAdminService) ListAnalyzedGames(
 		Games: games,
 		Total: int32(total),
 	}), nil
+}
+
+// RequeueJobByGameID requeues an analysis job by game ID with a specified priority.
+// This is a helper function for batch requeuing operations (e.g., requeueing all v0.12.3 analyses).
+// It performs the same logic as RequeueAnalysis RPC but without authentication.
+// The priority parameter allows setting custom priorities (e.g., -1 for low-priority batch requeues).
+// MI subtraction is handled just-in-time in SubmitResult when the new analysis completes.
+func RequeueJobByGameID(ctx context.Context, queries *models.Queries, gameID string, priority int) error {
+	job, err := queries.GetJobByGameID(ctx, gameID)
+	if err != nil {
+		return fmt.Errorf("no analysis job found for game %s: %w", gameID, err)
+	}
+
+	// Don't subtract MI here - JIT subtraction happens in SubmitResult
+
+	priorityPG := pgtype.Int4{Int32: int32(priority), Valid: true}
+	return queries.ResetAnalysisJobWithPriority(ctx, models.ResetAnalysisJobWithPriorityParams{
+		ID:       job.ID,
+		Priority: priorityPG,
+	})
 }
