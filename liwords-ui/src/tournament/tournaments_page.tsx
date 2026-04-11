@@ -31,7 +31,7 @@ export const TournamentsPage = () => {
           )}
         </div>
         <div className="tournaments-page-content">
-          <TournamentsAndLeaguesContent showLeagues={false} />
+          <TournamentsAndLeaguesContent showLeagues={false} showBroadcasts={false} />
         </div>
       </div>
     </div>

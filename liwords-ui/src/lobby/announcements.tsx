@@ -322,8 +322,10 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
 
 export const TournamentsAndLeaguesContent = ({
   showLeagues = true,
+  showBroadcasts = true,
 }: {
   showLeagues?: boolean;
+  showBroadcasts?: boolean;
 } = {}) => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<
     Array<TournamentMetadata>
@@ -520,15 +522,15 @@ export const TournamentsAndLeaguesContent = ({
   });
 
   const isEmpty =
-    activeBroadcasts.length === 0 &&
-    pastBroadcasts.length === 0 &&
+    (!showBroadcasts ||
+      (activeBroadcasts.length === 0 && pastBroadcasts.length === 0)) &&
     upcomingTournaments.length === 0 &&
     pastTournaments.length === 0 &&
     (!showLeagues || activeLeagues.length === 0);
 
   return (
     <div className="tournaments-leagues-content">
-      {liveBroadcasts.length > 0 && (
+      {showBroadcasts && liveBroadcasts.length > 0 && (
         <>
           <h4>Live Broadcasts</h4>
           <div className="tournaments-list">
@@ -539,7 +541,7 @@ export const TournamentsAndLeaguesContent = ({
         </>
       )}
 
-      {upcomingBroadcasts.length > 0 && (
+      {showBroadcasts && upcomingBroadcasts.length > 0 && (
         <>
           <h4>Upcoming Broadcasts</h4>
           <div className="tournaments-list">
@@ -585,7 +587,7 @@ export const TournamentsAndLeaguesContent = ({
         </>
       )}
 
-      {pastBroadcasts.length > 0 && (
+      {showBroadcasts && pastBroadcasts.length > 0 && (
         <>
           <h4>Past Broadcasts</h4>
           <div className="tournaments-list">
