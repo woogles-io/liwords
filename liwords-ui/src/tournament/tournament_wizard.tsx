@@ -90,6 +90,7 @@ export const TournamentWizard = () => {
   const [myTournaments, setMyTournaments] = useState<TournamentMetadata[]>([]);
   const [showCopyPicker, setShowCopyPicker] = useState(false);
   const [loadingMyTournaments, setLoadingMyTournaments] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const { loginState } = useLoginStateStoreContext();
   const navigate = useNavigate();
@@ -117,6 +118,34 @@ export const TournamentWizard = () => {
     },
     [],
   );
+
+  const slugify = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9-\s]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+
+  const updateName = useCallback(
+    (name: string) => {
+      setWizardData((prev) => ({
+        ...prev,
+        name,
+        slug: slugManuallyEdited ? prev.slug : slugify(name),
+      }));
+    },
+    [slugManuallyEdited],
+  );
+
+  const updateSlug = useCallback((raw: string) => {
+    const sanitized = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-");
+    setSlugManuallyEdited(true);
+    setWizardData((prev) => ({ ...prev, slug: sanitized }));
+  }, []);
 
   const loadMyTournaments = useCallback(async () => {
     if (!canCreate) return;
@@ -161,7 +190,8 @@ export const TournamentWizard = () => {
           name: d.name,
           numRounds: d.roundControls.length || 1,
           gameRequest: d.gameRequest,
-          roundControls: d.roundControls.length > 0 ? d.roundControls : undefined,
+          roundControls:
+            d.roundControls.length > 0 ? d.roundControls : undefined,
         }));
 
         // Determine shared game request: if all divisions have the same settings
@@ -177,7 +207,9 @@ export const TournamentWizard = () => {
           if (allSame) {
             sharedGameRequest = divisions[0].gameRequest;
             // Clear per-division game request since global covers it
-            divisions.forEach((d) => { d.gameRequest = undefined; });
+            divisions.forEach((d) => {
+              d.gameRequest = undefined;
+            });
           } else {
             gameSettingsVary = true;
           }
@@ -319,8 +351,17 @@ export const TournamentWizard = () => {
     switch (currentStep) {
       case 0:
         return true;
-      case 1:
-        return wizardData.name.trim().length > 0;
+      case 1: {
+        if (wizardData.name.trim().length === 0) return false;
+        const { scheduledStartTime, scheduledEndTime } = wizardData;
+        if (
+          scheduledStartTime &&
+          scheduledEndTime &&
+          !scheduledEndTime.isAfter(scheduledStartTime)
+        )
+          return false;
+        return true;
+      }
       case 2:
         return (
           wizardData.divisions.length > 0 &&
@@ -397,6 +438,8 @@ export const TournamentWizard = () => {
             <StepBasicInfo
               wizardData={wizardData}
               updateField={updateField}
+              updateName={updateName}
+              updateSlug={updateSlug}
               timeFormat={timeFormat}
             />
           )}
@@ -516,61 +559,63 @@ const StepTournamentType = ({
   };
 
   return (
-  <div className="step-content">
-    <Title level={4}>What kind of tournament are you running?</Title>
+    <div className="step-content">
+      <Title level={4}>What kind of tournament are you running?</Title>
 
-    <Radio.Group
-      value={wizardData.tournamentMode}
-      onChange={handleModeChange}
-      className="tournament-type-radio"
-    >
-      <Radio.Button value="online" className="type-option">
-        <div className="type-option-content">
-          <strong>Online Tournament</strong>
-          <p>
-            Players compete on the platform. Games are played digitally (online,
-            on Woogles.io) with automatic scoring and result tracking.
-          </p>
-        </div>
-      </Radio.Button>
-      <Radio.Button value="irl" className="type-option">
-        <div className="type-option-content">
-          <strong>In Real Life (IRL) Tournament</strong>
-          <p>
-            For over-the-board play with physical boards and tiles. The platform
-            handles pairings, standings, and score entry, but the games are
-            played OFFLINE. Player usernames do not need to be registered on the
-            site. Once IRL mode is enabled, it cannot be turned off.
-          </p>
-        </div>
-      </Radio.Button>
-    </Radio.Group>
+      <Radio.Group
+        value={wizardData.tournamentMode}
+        onChange={handleModeChange}
+        className="tournament-type-radio"
+      >
+        <Radio.Button value="online" className="type-option">
+          <div className="type-option-content">
+            <strong>Online Tournament</strong>
+            <p>
+              Players compete on the platform. Games are played digitally
+              (online, on Woogles.io) with automatic scoring and result
+              tracking.
+            </p>
+          </div>
+        </Radio.Button>
+        <Radio.Button value="irl" className="type-option">
+          <div className="type-option-content">
+            <strong>In Real Life (IRL) Tournament</strong>
+            <p>
+              For over-the-board play with physical boards and tiles. The
+              platform handles pairings, standings, and score entry, but the
+              games are played OFFLINE. Player usernames do not need to be
+              registered on the site. Once IRL mode is enabled, it cannot be
+              turned off.
+            </p>
+          </div>
+        </Radio.Button>
+      </Radio.Group>
 
-    <Divider />
+      <Divider />
 
-    <Title level={4}>Monitoring / Invigilation</Title>
-    <div className="monitoring-option">
-      <Switch
-        checked={wizardData.monitored}
-        onChange={(checked) => updateField("monitored", checked)}
-        disabled={wizardData.tournamentMode === "irl"}
-      />
-      <div className="monitoring-description">
-        <Text strong>Enable monitoring</Text>
-        <Paragraph type="secondary">
-          Requires participants to share camera and screenshot streams for
-          tournament oversight. Recommended for competitive online tournaments
-          where fair play verification is important. Uses vdo.ninja for stream
-          management.
-        </Paragraph>
-        {wizardData.tournamentMode === "irl" && (
-          <Paragraph type="warning">
-            Monitoring is not available for IRL tournaments.
+      <Title level={4}>Monitoring / Invigilation</Title>
+      <div className="monitoring-option">
+        <Switch
+          checked={wizardData.monitored}
+          onChange={(checked) => updateField("monitored", checked)}
+          disabled={wizardData.tournamentMode === "irl"}
+        />
+        <div className="monitoring-description">
+          <Text strong>Enable monitoring</Text>
+          <Paragraph type="secondary">
+            Requires participants to share camera and screenshot streams for
+            tournament oversight. Recommended for competitive online tournaments
+            where fair play verification is important. Uses vdo.ninja for stream
+            management.
           </Paragraph>
-        )}
+          {wizardData.tournamentMode === "irl" && (
+            <Paragraph type="warning">
+              Monitoring is not available for IRL tournaments.
+            </Paragraph>
+          )}
+        </div>
       </div>
     </div>
-  </div>
   );
 };
 
@@ -578,6 +623,8 @@ const StepTournamentType = ({
 const StepBasicInfo = ({
   wizardData,
   updateField,
+  updateName,
+  updateSlug,
   timeFormat,
 }: {
   wizardData: WizardData;
@@ -585,83 +632,90 @@ const StepBasicInfo = ({
     field: K,
     value: WizardData[K],
   ) => void;
+  updateName: (name: string) => void;
+  updateSlug: (slug: string) => void;
   timeFormat: string;
-}) => (
-  <div className="step-content">
-    <Title level={4}>Tournament Details</Title>
-    <Form layout="vertical">
-      <Form.Item
-        label="Tournament Name"
-        required
-        help="The name that will appear in tournament listings."
-      >
-        <Input
-          value={wizardData.name}
-          onChange={(e) => updateField("name", e.target.value)}
-          placeholder="e.g., Spring Scrabble Championship 2026"
-          maxLength={100}
-        />
-      </Form.Item>
+}) => {
+  const endTimeError =
+    wizardData.scheduledStartTime &&
+    wizardData.scheduledEndTime &&
+    !wizardData.scheduledEndTime.isAfter(wizardData.scheduledStartTime)
+      ? "End time must be after start time."
+      : undefined;
 
-      <Form.Item
-        label="URL Slug (optional)"
-        help='A custom URL for your tournament (e.g., "spring-championship-2026"). If left blank, one will be generated from the tournament name.'
-      >
-        <Input
-          value={wizardData.slug}
-          onChange={(e) =>
-            updateField(
-              "slug",
-              e.target.value
-                .toLowerCase()
-                .replace(/[^a-z0-9-]/g, "-")
-                .replace(/-+/g, "-"),
-            )
-          }
-          placeholder="spring-championship-2026"
-          addonBefore="/tournament/"
-        />
-      </Form.Item>
+  return (
+    <div className="step-content">
+      <Title level={4}>Tournament Details</Title>
+      <Form layout="vertical">
+        <Form.Item
+          label="Tournament Name"
+          required
+          help="The name that will appear in tournament listings."
+        >
+          <Input
+            value={wizardData.name}
+            onChange={(e) => updateName(e.target.value)}
+            placeholder="e.g., Spring Scrabble Championship 2026"
+            maxLength={100}
+          />
+        </Form.Item>
 
-      <Form.Item
-        label="Scheduled Start Time"
-        help="Use your local time zone. The tournament will still only start when the director does so manually."
-      >
-        <DatePicker
-          showTime={{ format: timeFormat }}
-          format={`YYYY-MM-DD ${timeFormat}`}
-          value={wizardData.scheduledStartTime}
-          onChange={(val) => updateField("scheduledStartTime", val)}
-          showNow={false}
-          style={{ width: "100%" }}
-        />
-      </Form.Item>
+        <Form.Item
+          label="URL Slug (optional)"
+          help='A custom URL for your tournament (e.g., "spring-championship-2026"). If left blank, one will be generated from the tournament name.'
+        >
+          <Input
+            value={wizardData.slug}
+            onChange={(e) => updateSlug(e.target.value)}
+            placeholder="spring-championship-2026"
+            addonBefore="/tournament/"
+          />
+        </Form.Item>
 
-      <Form.Item label="Scheduled End Time">
-        <DatePicker
-          showTime={{ format: timeFormat }}
-          format={`YYYY-MM-DD ${timeFormat}`}
-          value={wizardData.scheduledEndTime}
-          onChange={(val) => updateField("scheduledEndTime", val)}
-          showNow={false}
-          style={{ width: "100%" }}
-        />
-      </Form.Item>
+        <Form.Item
+          label="Scheduled Start Time"
+          help="Use your local time zone. The tournament will still only start when the director does so manually."
+        >
+          <DatePicker
+            showTime={{ format: timeFormat }}
+            format={`YYYY-MM-DD ${timeFormat}`}
+            value={wizardData.scheduledStartTime}
+            onChange={(val) => updateField("scheduledStartTime", val)}
+            showNow={false}
+            style={{ width: "100%" }}
+          />
+        </Form.Item>
 
-      <Form.Item
-        label="Description (Markdown)"
-        help="Describe your tournament. Supports Markdown formatting. Include details like entry fees, prizes, rules, schedule, etc."
-      >
-        <Input.TextArea
-          rows={8}
-          value={wizardData.description}
-          onChange={(e) => updateField("description", e.target.value)}
-          placeholder={`## Welcome to the tournament!\n\n**Date:** ...\n**Entry Fee:** ...\n**Prizes:** ...\n\n### Rules\n- ...`}
-        />
-      </Form.Item>
-    </Form>
-  </div>
-);
+        <Form.Item
+          label="Scheduled End Time"
+          validateStatus={endTimeError ? "error" : undefined}
+          help={endTimeError}
+        >
+          <DatePicker
+            showTime={{ format: timeFormat }}
+            format={`YYYY-MM-DD ${timeFormat}`}
+            value={wizardData.scheduledEndTime}
+            onChange={(val) => updateField("scheduledEndTime", val)}
+            showNow={false}
+            style={{ width: "100%" }}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Description (Markdown)"
+          help="Describe your tournament. Supports Markdown formatting. Include details like entry fees, prizes, rules, schedule, etc."
+        >
+          <Input.TextArea
+            rows={8}
+            value={wizardData.description}
+            onChange={(e) => updateField("description", e.target.value)}
+            placeholder={`## Welcome to the tournament!\n\n**Date:** ...\n**Entry Fee:** ...\n**Prizes:** ...\n\n### Rules\n- ...`}
+          />
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
 
 // Step 2: Divisions & Game Settings
 const StepDivisions = ({
@@ -730,7 +784,7 @@ const StepDivisions = ({
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() => removeDivision(idx)}
-                style={{ alignSelf: 'flex-start' }}
+                style={{ alignSelf: "flex-start" }}
               />
             )}
           </div>
@@ -857,7 +911,8 @@ const StepReview = ({ wizardData }: { wizardData: WizardData }) => (
           <strong>{div.name}</strong>
           {div.roundControls && div.roundControls.length > 0 && (
             <span style={{ fontWeight: "normal", marginLeft: 8, opacity: 0.7 }}>
-              ({div.roundControls.length} round{div.roundControls.length !== 1 ? "s" : ""})
+              ({div.roundControls.length} round
+              {div.roundControls.length !== 1 ? "s" : ""})
             </span>
           )}
         </p>

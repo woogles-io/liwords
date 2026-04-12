@@ -1,6 +1,7 @@
-import { Layout, Menu } from "antd";
+import { Alert, Layout, Menu } from "antd";
 import { MenuInfo } from "rc-menu/lib/interface";
 import React, { useState } from "react";
+import { Link } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import { TourneyEditor } from "./tourney_editor";
 // import { UserEditor } from './user_editor';
@@ -66,6 +67,23 @@ export const Admin = () => {
             <Sider setVisibleTab={setVisibleTab} />
           </Layout.Sider>
           <Layout.Content style={{ marginLeft: 20 }}>
+            {(visibleTab === "edit-tournament" ||
+              visibleTab === "new-tournament") && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="This page is deprecated"
+                description={
+                  <>
+                    Tournament creators should use the new{" "}
+                    <Link to="/tournaments">Tournaments page</Link> instead. To
+                    apply for Tournament Creator access, email{" "}
+                    <a href="mailto:woogles@woogles.io">woogles@woogles.io</a>.
+                  </>
+                }
+              />
+            )}
             {visibleTab === "edit-tournament" && <TourneyEditor mode="edit" />}
             {visibleTab === "new-tournament" && <TourneyEditor mode="new" />}
             {visibleTab === "announcement-editor" && <AnnouncementEditor />}

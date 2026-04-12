@@ -11,8 +11,7 @@ export const TournamentsPage = () => {
   const { loginState } = useLoginStateStoreContext();
 
   const canCreateTournament = useMemo(
-    () =>
-      loginState.perms.includes("toc") || loginState.perms.includes("adm"),
+    () => loginState.perms.includes("toc") || loginState.perms.includes("adm"),
     [loginState.perms],
   );
 
@@ -31,7 +30,10 @@ export const TournamentsPage = () => {
           )}
         </div>
         <div className="tournaments-page-content">
-          <TournamentsAndLeaguesContent showLeagues={false} showBroadcasts={false} />
+          <TournamentsAndLeaguesContent
+            showLeagues={false}
+            showBroadcasts={false}
+          />
         </div>
       </div>
     </div>

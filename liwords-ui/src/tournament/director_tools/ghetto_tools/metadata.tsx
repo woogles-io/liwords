@@ -1,6 +1,14 @@
 // Tournament metadata/settings form
 
-import { Button, DatePicker, Form, Input, message, Switch, Typography } from "antd";
+import {
+  Button,
+  DatePicker,
+  Form,
+  Input,
+  message,
+  Switch,
+  Typography,
+} from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import React, { useEffect } from "react";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
