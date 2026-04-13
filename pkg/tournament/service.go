@@ -11,6 +11,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/lithammer/shortuuid/v4"
@@ -197,13 +199,14 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	directors := &ipc.TournamentPersons{
 		Persons: []*ipc.TournamentPerson{},
 	}
+	directorUserIDs := make([]uint, 0, len(req.Msg.DirectorUsernames))
 	for _, username := range req.Msg.DirectorUsernames {
 		u, err := ts.userStore.Get(ctx, username)
 		if err != nil {
 			return nil, err
 		}
-		// Rating field: -1=Read-only Director, otherwise Full Director (backward compatible)
 		directors.Persons = append(directors.Persons, &ipc.TournamentPerson{Id: u.TournamentID(), Rating: 0})
+		directorUserIDs = append(directorUserIDs, u.ID)
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -229,6 +232,21 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime, user.ID)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	tournNumID, err := ts.queries.GetTournamentNumericID(ctx, pgtype.Text{String: t.UUID, Valid: true})
+	if err != nil {
+		log.Err(err).Str("tournament", t.UUID).Msg("junction-sync-get-id-failed")
+	} else {
+		for _, uid := range directorUserIDs {
+			if err := ts.queries.AddTournamentDirector(ctx, models.AddTournamentDirectorParams{
+				TournamentID: int32(tournNumID),
+				UserID:       int32(uid),
+				Role:         models.TournamentDirectorRoleDirector,
+			}); err != nil {
+				log.Err(err).Uint("userID", uid).Msg("junction-sync-add-director-failed")
+			}
+		}
 	}
 
 	config, err := config.Ctx(ctx)
@@ -336,9 +354,42 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 
+	// Pre-resolve user IDs before AddDirectors mutates person.Id to uuid:username format.
+	type dirEntry struct {
+		id   uint
+		role models.TournamentDirectorRole
+	}
+	dirEntries := make([]dirEntry, 0, len(req.Msg.Persons))
+	for _, person := range req.Msg.Persons {
+		u, lookupErr := ts.userStore.Get(ctx, person.Id)
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+		role := models.TournamentDirectorRoleDirector
+		if person.Rating == -1 {
+			role = models.TournamentDirectorRoleReadonlyDirector
+		}
+		dirEntries = append(dirEntries, dirEntry{id: u.ID, role: role})
+	}
+
 	err = AddDirectors(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
+	}
+
+	tournNumID, err := ts.queries.GetTournamentNumericID(ctx, pgtype.Text{String: req.Msg.Id, Valid: true})
+	if err != nil {
+		log.Err(err).Str("tournament", req.Msg.Id).Msg("junction-sync-get-id-failed")
+	} else {
+		for _, de := range dirEntries {
+			if err := ts.queries.AddTournamentDirector(ctx, models.AddTournamentDirectorParams{
+				TournamentID: int32(tournNumID),
+				UserID:       int32(de.id),
+				Role:         de.role,
+			}); err != nil {
+				log.Err(err).Uint("userID", de.id).Msg("junction-sync-add-director-failed")
+			}
+		}
 	}
 
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
@@ -350,10 +401,35 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *connect.R
 		return nil, err
 	}
 
+	// Pre-resolve user IDs before RemoveDirectors mutates person.Id.
+	removeIDs := make([]uint, 0, len(req.Msg.Persons))
+	for _, person := range req.Msg.Persons {
+		u, lookupErr := ts.userStore.Get(ctx, person.Id)
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+		removeIDs = append(removeIDs, u.ID)
+	}
+
 	err = RemoveDirectors(ctx, ts.tournamentStore, ts.userStore, req.Msg.Id, req.Msg)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
+
+	tournNumID, err := ts.queries.GetTournamentNumericID(ctx, pgtype.Text{String: req.Msg.Id, Valid: true})
+	if err != nil {
+		log.Err(err).Str("tournament", req.Msg.Id).Msg("junction-sync-get-id-failed")
+	} else {
+		for _, uid := range removeIDs {
+			if err := ts.queries.RemoveTournamentDirector(ctx, models.RemoveTournamentDirectorParams{
+				TournamentID: int32(tournNumID),
+				UserID:       int32(uid),
+			}); err != nil {
+				log.Err(err).Uint("userID", uid).Msg("junction-sync-remove-director-failed")
+			}
+		}
+	}
+
 	return connect.NewResponse(&pb.TournamentResponse{}), nil
 }
 
@@ -635,7 +711,7 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 		return nil, err
 	}
 
-	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, user.TournamentID())
+	tournaments, err := ts.tournamentStore.GetTournamentsByDirector(ctx, user.ID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -655,9 +731,6 @@ func (ts *TournamentService) GetMyTournaments(ctx context.Context, req *connect.
 	return connect.NewResponse(response), nil
 }
 
-// HACK: The requireFullDirector parameter checks director permissions using the Rating field.
-// Rating field is temporarily repurposed: -1=Read-only Director, otherwise Full Director
-// TODO: Replace with proper permissions field when backend schema is updated
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, req proto.Message, requireFullDirector bool) error {
 	user, err := apiserver.AuthUser(ctx, ts.userStore)
 	if err != nil {
@@ -670,9 +743,8 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 		return err
 	}
 
-	fullID := user.TournamentID()
 	log.Info().
-		Str("requester", fullID).
+		Str("requester", user.TournamentID()).
 		Str("tournament-id", id).
 		Interface("req", req).
 		Str("req-name", string(req.ProtoReflect().Type().Descriptor().FullName())).
@@ -683,33 +755,44 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if allowed {
 		return nil
 	}
-	// Otherwise check if the director is one of the listed tournament directors.
 
-	t, err := ts.tournamentStore.Get(ctx, id)
-	if err != nil {
+	role, err := ts.queries.GetTournamentDirectorByUUID(ctx, models.GetTournamentDirectorByUUIDParams{
+		Uuid:   pgtype.Text{String: id, Valid: true},
+		UserID: int32(user.ID),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return apiserver.InternalErr(err)
 	}
 
-	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
-
-	authorized := false
-	isReadOnly := false
-	for _, director := range t.Directors.Persons {
-		if director.Id == fullID {
-			authorized = true
-			// HACK: Rating field repurposed: -1=Read-only Director, otherwise Full Director
-			if director.Rating == -1 {
-				isReadOnly = true
-			}
-			break
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Junction table row missing: fall back to JSON directors for the transition
+		// period between migration and full data sync. Remove once JSON column is dropped.
+		t, err := ts.tournamentStore.Get(ctx, id)
+		if err != nil {
+			return apiserver.InternalErr(err)
 		}
-	}
-	if !authorized {
-		return apiserver.Unauthenticated("this user is not an authorized director for this event")
+		fullID := user.TournamentID()
+		authorized := false
+		isReadOnly := false
+		for _, director := range t.Directors.Persons {
+			if director.Id == fullID {
+				authorized = true
+				if director.Rating == -1 {
+					isReadOnly = true
+				}
+				break
+			}
+		}
+		if !authorized {
+			return apiserver.Unauthenticated("this user is not an authorized director for this event")
+		}
+		if requireFullDirector && isReadOnly {
+			return apiserver.PermissionDenied("this operation requires full director permissions")
+		}
+		return nil
 	}
 
-	// Check if operation requires full director permissions
-	if requireFullDirector && isReadOnly {
+	if requireFullDirector && role == models.TournamentDirectorRoleReadonlyDirector {
 		return apiserver.PermissionDenied("this operation requires full director permissions")
 	}
 

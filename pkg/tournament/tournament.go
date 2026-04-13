@@ -55,7 +55,7 @@ type TournamentStore interface {
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
 	CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error)
-	GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error)
+	GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error

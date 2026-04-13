@@ -114,7 +114,11 @@ const BroadcastCard = ({ broadcast }: { broadcast: Broadcast }) => {
   );
 };
 
-const TournamentCard = ({ tournament }: { tournament: TournamentMetadata }) => {
+export const TournamentCard = ({
+  tournament,
+}: {
+  tournament: TournamentMetadata;
+}) => {
   const startDate = tournament.scheduledStartTime
     ? new Date(Number(tournament.scheduledStartTime.seconds) * 1000)
     : null;

@@ -401,13 +401,13 @@ func (s *DBStore) CountRecentTournamentsByUser(ctx context.Context, userID uint)
 	return count, result.Error
 }
 
-func (s *DBStore) GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error) {
+func (s *DBStore) GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error) {
 	var tournaments []*tournament
 	ctxDB := s.db.WithContext(ctx)
-	// Directors are stored as JSON; search for the user's tournament ID within it.
-	// The tournament ID format is "uuid:username".
-	result := ctxDB.Where("directors::text LIKE ?", "%"+userID+"%").
-		Order("created_at DESC").
+	result := ctxDB.
+		Joins("INNER JOIN tournament_directors td ON td.tournament_id = tournaments.id").
+		Where("td.user_id = ?", userID).
+		Order("tournaments.created_at DESC").
 		Limit(50).
 		Find(&tournaments)
 	if result.Error != nil {

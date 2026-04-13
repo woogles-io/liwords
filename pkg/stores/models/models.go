@@ -5,10 +5,55 @@
 package models
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/woogles-io/liwords/pkg/entity"
 )
+
+type TournamentDirectorRole string
+
+const (
+	TournamentDirectorRoleDirector         TournamentDirectorRole = "director"
+	TournamentDirectorRoleReadonlyDirector TournamentDirectorRole = "readonly_director"
+)
+
+func (e *TournamentDirectorRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TournamentDirectorRole(s)
+	case string:
+		*e = TournamentDirectorRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TournamentDirectorRole: %T", src)
+	}
+	return nil
+}
+
+type NullTournamentDirectorRole struct {
+	TournamentDirectorRole TournamentDirectorRole
+	Valid                  bool // Valid is true if TournamentDirectorRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTournamentDirectorRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.TournamentDirectorRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TournamentDirectorRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTournamentDirectorRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TournamentDirectorRole), nil
+}
 
 type ActiveGameEvent struct {
 	GameID   int32
@@ -458,6 +503,13 @@ type Tournament struct {
 	ScheduledStartTime pgtype.Timestamptz
 	ScheduledEndTime   pgtype.Timestamptz
 	CreatedBy          pgtype.Int4
+}
+
+type TournamentDirector struct {
+	TournamentID int32
+	UserID       int32
+	Role         TournamentDirectorRole
+	CreatedAt    pgtype.Timestamptz
 }
 
 type User struct {

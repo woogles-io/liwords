@@ -33,7 +33,7 @@ type backingStore interface {
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
 	CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error)
-	GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error)
+	GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error)
 
 	// Monitoring streams methods - direct SQL, no tournament entity needed
 	InsertMonitoringStream(ctx context.Context, tid, uid, username, streamType, streamKey string) error
@@ -161,7 +161,7 @@ func (c *Cache) CountRecentTournamentsByUser(ctx context.Context, userID uint) (
 	return c.backing.CountRecentTournamentsByUser(ctx, userID)
 }
 
-func (c *Cache) GetTournamentsByDirector(ctx context.Context, userID string) ([]*entity.Tournament, error) {
+func (c *Cache) GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error) {
 	return c.backing.GetTournamentsByDirector(ctx, userID)
 }
 
