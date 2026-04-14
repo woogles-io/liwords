@@ -1,0 +1,189 @@
+@use "../base.scss" as *;
+
+.tournaments-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+
+  .tournaments-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+    }
+  }
+
+  .my-tournaments-section {
+    margin-top: 24px;
+
+    @include colorModed {
+      background-color: m($card-background);
+      border: 1px solid m($off-background);
+    }
+    border-radius: 8px;
+    overflow: hidden;
+
+    h2 {
+      @include type-default;
+      @include colorModed {
+        color: themed("text");
+        background-color: m($off-background);
+      }
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px 12px;
+      margin: 0;
+    }
+
+    .tournaments-list {
+      padding: 12px 16px;
+    }
+
+    .my-tournaments-pagination {
+      padding: 8px 16px 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .tournament-card {
+      padding: 6px 0;
+      border-bottom: 1px solid;
+
+      @include colorModed {
+        border-bottom-color: m($off-background);
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .tournament-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .tournament-name {
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+
+      @include colorModed {
+        color: themed("text");
+
+        &:hover {
+          color: themed("primary");
+        }
+      }
+    }
+
+    .tournament-icon {
+      font-size: 12px;
+      opacity: 0.7;
+
+      @include colorModed {
+        color: themed("text-secondary");
+      }
+    }
+
+    .tournament-director {
+      font-size: 11px;
+      font-weight: 400;
+
+      @include colorModed {
+        color: themed("text-secondary");
+      }
+
+      &:before {
+        content: "• ";
+      }
+    }
+
+    .tournament-details {
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      @include colorModed {
+        color: themed("text-secondary");
+      }
+    }
+
+    .tournament-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tournament-registrants {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .registrants-icon {
+        font-size: 11px;
+      }
+    }
+
+    .registration-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      @include colorModed {
+        &.open {
+          background-color: m($profile-game-win);
+          color: m($gray-extreme);
+        }
+
+        &.closed {
+          background-color: m($gray-subtle);
+          color: m($gray-dark);
+        }
+
+        &.live {
+          background-color: m($timer-out-dark);
+          color: m($white);
+        }
+      }
+    }
+
+    .tournament-time {
+      font-size: 11px;
+
+      @include colorModed {
+        color: themed("text-secondary");
+      }
+
+      strong {
+        font-weight: 600;
+
+        @include colorModed {
+          color: themed("text");
+        }
+      }
+    }
+  }
+
+  .tournaments-page-content {
+    @include colorModed {
+      background-color: m($card-background);
+      border: 1px solid m($off-background);
+    }
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}

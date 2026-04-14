@@ -1,6 +1,14 @@
 // Tournament metadata/settings form
 
-import { Button, DatePicker, Form, Input, message, Switch } from "antd";
+import {
+  Button,
+  DatePicker,
+  Form,
+  Input,
+  message,
+  Switch,
+  Typography,
+} from "antd";
 import { Store } from "rc-field-form/lib/interface";
 import React, { useEffect } from "react";
 import { TournamentService } from "../../../gen/api/proto/tournament_service/tournament_service_pb";
@@ -72,6 +80,7 @@ export const EditDescription = (props: { tournamentID: string }) => {
     }
   };
 
+  const irlModeValue = Form.useWatch("irlMode", form);
   const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
 
   return (
@@ -127,6 +136,11 @@ export const EditDescription = (props: { tournamentID: string }) => {
                 tournamentContext.metadata.irlMode ||
                 isClubType(tournamentContext.metadata.type)
               }
+              onChange={(checked) => {
+                if (checked) {
+                  form.setFieldValue("monitored", false);
+                }
+              }}
             />
           </Form.Item>
         </Form.Item>
@@ -136,8 +150,13 @@ export const EditDescription = (props: { tournamentID: string }) => {
             camera and screen via vdo.ninja for tournament oversight.
           </div>
           <Form.Item name="monitored" label="Monitoring Enabled">
-            <Switch />
+            <Switch disabled={irlModeValue} />
           </Form.Item>
+          {irlModeValue && (
+            <Typography.Text type="warning" style={{ fontSize: "12px" }}>
+              Monitoring is not available for IRL tournaments.
+            </Typography.Text>
+          )}
         </Form.Item>
         <Form.Item style={{ paddingBottom: 20 }}>
           <Button type="primary" htmlType="submit">

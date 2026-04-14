@@ -391,6 +391,39 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	return ids, result.Error
 }
 
+func (s *DBStore) CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error) {
+	var count int64
+	ctxDB := s.db.WithContext(ctx)
+	oneWeekAgo := time.Now().AddDate(0, 0, -7)
+	result := ctxDB.Model(&tournament{}).
+		Where("created_by = ? AND created_at >= ?", userID, oneWeekAgo).
+		Count(&count)
+	return count, result.Error
+}
+
+func (s *DBStore) GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error) {
+	var tournaments []*tournament
+	ctxDB := s.db.WithContext(ctx)
+	result := ctxDB.
+		Joins("INNER JOIN tournament_directors td ON td.tournament_id = tournaments.id").
+		Where("td.user_id = ?", userID).
+		Order("tournaments.created_at DESC").
+		Limit(50).
+		Find(&tournaments)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	tourneyList := make([]*entity.Tournament, len(tournaments))
+	for i, t := range tournaments {
+		te, err := s.dbObjToEntity(t)
+		if err != nil {
+			return nil, err
+		}
+		tourneyList[i] = te
+	}
+	return tourneyList, nil
+}
+
 // FindTournamentByStreamKey uses UNIQUE index on stream_key for O(1) lookup
 // Returns tournament UUID and full user ID in "uuid:username" format
 // Returns empty strings if not found

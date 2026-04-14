@@ -54,6 +54,8 @@ type TournamentStore interface {
 	ListAllIDs(context.Context) ([]string, error)
 	GetRecentAndUpcomingTournaments(ctx context.Context) ([]*entity.Tournament, error)
 	GetPastTournaments(ctx context.Context, limit int32) ([]*entity.Tournament, error)
+	CountRecentTournamentsByUser(ctx context.Context, userID uint) (int64, error)
+	GetTournamentsByDirector(ctx context.Context, userID uint) ([]*entity.Tournament, error)
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	FindTournamentByStreamKey(ctx context.Context, streamKey string, streamType string) (tournamentID string, userID string, err error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
@@ -389,6 +391,12 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 
 	if !ok {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_NONEXISTENT_DIVISION, t.Name, division)
+	}
+
+	if !t.ExtraMeta.IRLMode {
+		if err := entity.ValidateGameRequest(ctx, controls.GameRequest); err != nil {
+			return err
+		}
 	}
 
 	newDivisionControls, standings, err := divisionObject.DivisionManager.SetDivisionControls(controls)
@@ -1200,7 +1208,7 @@ func startDivisionChecks(t *entity.Tournament, division string, round int) error
 
 	dm := divisionObject.DivisionManager
 
-	if dm.GetDivisionControls().GameRequest == nil {
+	if !t.ExtraMeta.IRLMode && dm.GetDivisionControls().GameRequest == nil {
 		return entity.NewWooglesError(ipc.WooglesError_TOURNAMENT_GAME_CONTROLS_NOT_SET, t.Name, division)
 	}
 
