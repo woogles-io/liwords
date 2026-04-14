@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/domino14/word-golib/tilemapping"
+	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -317,33 +318,56 @@ func playerName(doc *ipc.GameDocument, playerIdx uint32) string {
 // Blank-designated letters are shown lowercase.
 func machineWordToDisplay(mls []byte, friendlyMainWord string, dist *tilemapping.LetterDistribution) string {
 	rm := dist.TileMapping()
-	friendly := []rune(friendlyMainWord)
+
+	// Convert friendlyMainWord to machine letters so we can iterate in sync.
+	// This handles digraphs correctly since each digraph is one machine letter.
+	var friendlyMachineWord tilemapping.MachineWord
+	if friendlyMainWord != "" {
+		var err error
+		friendlyMachineWord, err = tilemapping.ToMachineWord(friendlyMainWord, rm)
+		if err != nil {
+			log.Err(err).Str("friendlyMainWord", friendlyMainWord).Msg("obs-tomachineword-error")
+			// If conversion fails, friendlyMachineWord will be nil and we'll fall back to "." for through tiles
+		}
+	}
+
 	var sb strings.Builder
 	openParen := false
-	for i, b := range mls {
+	friendlyIdx := 0
+
+	for _, b := range mls {
 		ml := tilemapping.MachineLetter(b)
 		if ml == 0 {
+			// Through tile - use the corresponding letter from friendlyMachineWord
 			if !openParen {
 				sb.WriteByte('(')
 				openParen = true
 			}
-			if i < len(friendly) {
-				sb.WriteRune(friendly[i])
+			if friendlyIdx < len(friendlyMachineWord) {
+				sb.WriteString(friendlyMachineWord[friendlyIdx].UserVisible(rm, true))
+				friendlyIdx++
 			} else {
 				sb.WriteByte('.')
 			}
 		} else {
+			// Played tile
 			if openParen {
 				sb.WriteByte(')')
 				openParen = false
 			}
 			sb.WriteString(ml.UserVisible(rm, true))
+			friendlyIdx++
 		}
 	}
 	if openParen {
 		sb.WriteByte(')')
 	}
-	return sb.String()
+
+	// Strip brackets from digraphs (e.g., "[RR]" becomes "RR")
+	result := sb.String()
+	result = strings.ReplaceAll(result, "[", "")
+	result = strings.ReplaceAll(result, "]", "")
+	return result
 }
 
 // exchangedTilesToDisplay converts exchanged tile bytes to uppercase letters / "?" for blanks.
