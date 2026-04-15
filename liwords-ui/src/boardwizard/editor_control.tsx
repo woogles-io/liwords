@@ -149,9 +149,7 @@ export const EditorControl = (props: Props) => {
             gameID={props.gameID}
             broadcastSlug={broadcastCtx?.broadcastSlug}
             slotName={broadcastCtx?.slotName}
-            username={
-              loginState.loggedIn ? loginState.username : undefined
-            }
+            username={loginState.loggedIn ? loginState.username : undefined}
             defaultMode={
               broadcastCtx?.broadcastSlug && broadcastCtx?.slotName
                 ? "slot"
