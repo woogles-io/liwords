@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./broadcasts.scss";
 import {
   Card,
   Button,
@@ -149,6 +150,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
     <Card
       title="Director Panel"
       size="small"
+      className="director-panel"
       style={{ marginTop: 24 }}
       styles={{ header: { paddingBlock: 10 } }}
       extra={
@@ -296,15 +298,28 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
               style={{ width: 80 }}
             />
           </div>
-          <Button
-            size="small"
-            icon={<PlusOutlined />}
-            loading={createSlotMutation.isPending}
-            onClick={doCreateSlot}
-            disabled={!newSlotName.trim() || !newSlotDivision}
-          >
-            Add slot
-          </Button>
+          <div>
+            <Typography.Text
+              style={{
+                fontSize: 11,
+                display: "block",
+                marginBottom: 2,
+                visibility: "hidden",
+              }}
+            >
+              &nbsp;
+            </Typography.Text>
+            <Button
+              size="small"
+              icon={<PlusOutlined />}
+              loading={createSlotMutation.isPending}
+              onClick={doCreateSlot}
+              disabled={!newSlotName.trim() || !newSlotDivision}
+              style={{ height: 24 }}
+            >
+              Add slot
+            </Button>
+          </div>
         </Space>
       </Space>
 

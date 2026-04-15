@@ -102,11 +102,17 @@ function BlankPreview({
   return <>{parts}</>;
 }
 
+type OBSMode = "game" | "slot" | "user";
+
 type OBSPanelProps = {
-  /** Game UUID for direct per-game URLs. Unused when broadcastSlug+slotName are set. */
+  /** Game UUID for direct per-game URLs. */
   gameID?: string;
   broadcastSlug?: string;
   slotName?: string;
+  /** Username for user-alias URLs (follows the user's latest annotated game). */
+  username?: string;
+  /** Which mode to default to. Inferred from props when not specified. */
+  defaultMode?: OBSMode;
   /** When true renders only a button; when false (default) renders a Card wrapper. */
   compact?: boolean;
 };
@@ -115,6 +121,8 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   gameID,
   broadcastSlug,
   slotName,
+  username,
+  defaultMode,
   compact = false,
 }) => {
   const { notification } = App.useApp();
@@ -130,10 +138,35 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   const [blankColor, setBlankColor] = useState("#d33300");
   const [wrap, setWrap] = useState(0);
 
-  const useSlot = !!(broadcastSlug && slotName);
-  const urlBase = useSlot
-    ? `/api/broadcasts/obs/${broadcastSlug}/${slotName}`
-    : `/api/annotations/obs/game/${gameID}`;
+  // Determine which modes are available based on props.
+  const hasSlot = !!(broadcastSlug && slotName);
+  const hasUser = !!username;
+  const hasGame = !!gameID;
+
+  // Resolve the default mode: explicit prop > broadcast slot > game > user alias.
+  const resolvedDefault: OBSMode =
+    defaultMode ??
+    (hasSlot ? "slot" : hasGame ? "game" : hasUser ? "user" : "game");
+
+  const [mode, setMode] = useState<OBSMode>(resolvedDefault);
+
+  // Build the available mode options for the dropdown.
+  const modeOptions: { value: OBSMode; label: string }[] = [];
+  if (hasGame) modeOptions.push({ value: "game", label: "This game" });
+  if (hasSlot)
+    modeOptions.push({
+      value: "slot",
+      label: `Broadcast slot (${slotName})`,
+    });
+  if (hasUser)
+    modeOptions.push({ value: "user", label: `My alias (${username})` });
+
+  const urlBase =
+    mode === "slot"
+      ? `/api/broadcasts/obs/${broadcastSlug}/${slotName}`
+      : mode === "user"
+        ? `/api/annotations/obs/user/${username}`
+        : `/api/annotations/obs/game/${gameID}`;
 
   const isMarquee = suffix === "last_play";
   const isBlankField = suffix === "blank1" || suffix === "blank2";
@@ -237,7 +270,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
 
       <Modal
         open={modalOpen}
-        title={useSlot ? `OBS URL Builder — ${slotName}` : "OBS URL Builder"}
+        title="OBS URL Builder"
         width={720}
         zIndex={1100}
         onCancel={() => setModalOpen(false)}
@@ -251,6 +284,19 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
         }
       >
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          {/* Context / mode selector — only shown when multiple sources are available */}
+          {modeOptions.length > 1 && (
+            <div>
+              <Typography.Text strong>Source</Typography.Text>
+              <br />
+              <Select<OBSMode>
+                value={mode}
+                onChange={setMode}
+                style={{ width: "100%", marginTop: 4 }}
+                options={modeOptions}
+              />
+            </div>
+          )}
           {/* Field selector */}
           <div>
             <Typography.Text strong>Field</Typography.Text>
