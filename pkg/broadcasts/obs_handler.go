@@ -31,7 +31,7 @@ const OBSUserHandlerPrefix = "/api/annotations/obs/user/"
 
 // natsUserAnnoSubjectPrefix mirrors omgwords.NatsUserAnnoSubjectPrefix to avoid
 // a circular package import. Must stay in sync with pkg/omgwords/service.go.
-const natsUserAnnoSubjectPrefix = "user.anno."
+const natsUserAnnoSubjectPrefix = "anno.user."
 
 // validSuffixes lists the accepted display suffixes.
 var validSuffixes = map[string]bool{
@@ -696,7 +696,7 @@ func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, stream
 
 // ensureUserNATSSubs subscribes once to:
 //  1. channel.anno<gameUUID>   — per-turn events for the current game
-//  2. user.anno.<userUUID>     — activity signal; fires when the user's latest game may change
+//  2. anno.user.<userUUID>     — activity signal; fires when the user's latest game may change
 func (h *OBSHandler) ensureUserNATSSubs(stream *obsStream, key, userUUID, gameUUID, username string) {
 	stream.mu.Lock()
 	if stream.initialized {
