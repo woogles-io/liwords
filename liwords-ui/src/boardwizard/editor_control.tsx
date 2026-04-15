@@ -153,10 +153,7 @@ export const EditorControl = (props: Props) => {
       children: (
         <Space direction="vertical" style={{ width: "100%" }}>
           <div>
-            <Typography.Text
-              type="secondary"
-              style={{ fontSize: 12 }}
-            >
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               Link to game
             </Typography.Text>
             <Typography.Paragraph

@@ -300,7 +300,12 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
           </div>
           <div>
             <Typography.Text
-              style={{ fontSize: 11, display: "block", marginBottom: 2, visibility: "hidden" }}
+              style={{
+                fontSize: 11,
+                display: "block",
+                marginBottom: 2,
+                visibility: "hidden",
+              }}
             >
               &nbsp;
             </Typography.Text>
