@@ -1,0 +1,65 @@
+@use "../base.scss" as *;
+
+.director-panel {
+  .ant-input,
+  .ant-input-affix-wrapper,
+  input {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+
+  .ant-input-number {
+    @include colorModed() {
+      background: m($background);
+    }
+    .ant-input-number-input {
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
+    }
+    .ant-input-number-handler-wrap {
+      @include colorModed() {
+        background: m($off-background);
+        border-color: m($gray-subtle);
+      }
+      .ant-input-number-handler {
+        @include colorModed() {
+          border-color: m($gray-subtle);
+          color: m($gray-medium);
+        }
+      }
+    }
+  }
+
+  .ant-select-selector,
+  .ant-select-item,
+  .ant-select-dropdown {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+
+  .ant-select:not(.ant-select-disabled) .ant-select-selector {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+      border-color: m($gray-subtle);
+    }
+  }
+
+  .ant-input-affix-wrapper {
+    @include colorModed() {
+      border-color: m($gray-subtle);
+    }
+    input {
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
+    }
+  }
+}
