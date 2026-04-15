@@ -17,7 +17,10 @@ import { Store } from "antd/lib/form/interface";
 import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { LexiconFormItem } from "../shared/lexicon_display";
-import { useGameContextStoreContext } from "../store/store";
+import {
+  useGameContextStoreContext,
+  useLoginStateStoreContext,
+} from "../store/store";
 import { baseURL, useClient, flashError } from "../utils/hooks/connect";
 import { AddToCollectionModal } from "../collections/AddToCollectionModal";
 import {
@@ -46,6 +49,7 @@ type Props = {
 
 export const EditorControl = (props: Props) => {
   const navigate = useNavigate();
+  const { loginState } = useLoginStateStoreContext();
   let form;
 
   if (!props.gameID) {
@@ -145,6 +149,14 @@ export const EditorControl = (props: Props) => {
             gameID={props.gameID}
             broadcastSlug={broadcastCtx?.broadcastSlug}
             slotName={broadcastCtx?.slotName}
+            username={
+              loginState.loggedIn ? loginState.username : undefined
+            }
+            defaultMode={
+              broadcastCtx?.broadcastSlug && broadcastCtx?.slotName
+                ? "slot"
+                : "game"
+            }
           />
           {gameCollections.length > 0 && (
             <Card

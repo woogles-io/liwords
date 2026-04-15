@@ -25,6 +25,14 @@ const OBSHandlerPrefix = "/api/broadcasts/obs/"
 // OBSGameHandlerPrefix is the URL prefix for direct per-game OBS endpoints.
 const OBSGameHandlerPrefix = "/api/annotations/obs/game/"
 
+// OBSUserHandlerPrefix is the URL prefix for user-alias OBS endpoints.
+// The URL resolves dynamically to the user's most-recently-edited annotated game.
+const OBSUserHandlerPrefix = "/api/annotations/obs/user/"
+
+// natsUserAnnoSubjectPrefix mirrors omgwords.NatsUserAnnoSubjectPrefix to avoid
+// a circular package import. Must stay in sync with pkg/omgwords/service.go.
+const natsUserAnnoSubjectPrefix = "user.anno."
+
 // validSuffixes lists the accepted display suffixes.
 var validSuffixes = map[string]bool{
 	"score":        true,
@@ -578,6 +586,177 @@ func (h *OBSHandler) rebindAnnoSub(stream *obsStream, key, newGameUUID string) {
 		return
 	}
 	stream.annoSub = newSub
+	stream.mu.Unlock()
+	h.mu.Unlock()
+}
+
+// ---------------------------------------------------------------------------
+// User-alias handler
+// ---------------------------------------------------------------------------
+
+// ServeUserHTTP dispatches user-alias requests:
+//
+//	/api/annotations/obs/user/<username>/<suffix>[.txt]
+//
+// The username is resolved to the user's most-recently-edited annotated game.
+// If no annotated game exists yet the placeholder text is returned, but the
+// SSE stream is still connectable — it will push data once a game appears.
+func (h *OBSHandler) ServeUserHTTP(w http.ResponseWriter, r *http.Request) {
+	tail := strings.TrimPrefix(r.URL.Path, OBSUserHandlerPrefix)
+	parts := strings.SplitN(tail, "/", 2)
+	if len(parts) != 2 {
+		http.Error(w, "usage: /api/annotations/obs/user/<username>/<suffix>", http.StatusBadRequest)
+		return
+	}
+	username, rawSuffix := parts[0], parts[1]
+	if username == "" {
+		http.Error(w, "username is required", http.StatusBadRequest)
+		return
+	}
+
+	rawText := strings.HasSuffix(rawSuffix, ".txt")
+	suffix := strings.TrimSuffix(rawSuffix, ".txt")
+	if !validSuffixes[suffix] {
+		http.Error(w, fmt.Sprintf("unknown suffix %q", suffix), http.StatusBadRequest)
+		return
+	}
+
+	streamKey := "user/" + strings.ToLower(username)
+
+	if suffix == "events" {
+		h.serveUserSSE(w, r, streamKey, username)
+		return
+	}
+
+	ctx := r.Context()
+	gameUUID := h.resolveUserGame(ctx, username)
+
+	var value string
+	if gameUUID == "" {
+		value = obsPlaceholder
+	} else {
+		value = h.computeField(ctx, gameUUID, suffix)
+	}
+
+	eventsURL := OBSUserHandlerPrefix + username + "/events"
+	h.serveResponse(w, suffix, value, eventsURL, rawText)
+}
+
+// resolveUserGame returns the game UUID of the user's most-recently-edited
+// annotated game, or "" if none exists.
+func (h *OBSHandler) resolveUserGame(ctx context.Context, username string) string {
+	row, err := h.queries.GetLatestAnnotatedGameForUsername(ctx, username)
+	if err != nil {
+		return ""
+	}
+	return row.GameUuid
+}
+
+// serveUserSSE opens a Server-Sent Events stream for the user-alias endpoint.
+func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, streamKey, username string) {
+	ctx := r.Context()
+
+	// Resolve username → userUUID once at connect time (needed for NATS subject).
+	userUUID, err := h.queries.GetUserUUIDByUsername(ctx, username)
+	if err != nil || !userUUID.Valid || userUUID.String == "" {
+		// Unknown username — still serve an open SSE so the browser source doesn't
+		// error out. It will just receive heartbeats until data appears.
+		flusher, ok := sseSetup(w)
+		if !ok {
+			return
+		}
+		heartbeat := time.NewTicker(20 * time.Second)
+		defer heartbeat.Stop()
+		for {
+			select {
+			case <-heartbeat.C:
+				fmt.Fprintf(w, ": heartbeat\n\n")
+				flusher.Flush()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	gameUUID := h.resolveUserGame(ctx, username)
+
+	flusher, ok := sseSetup(w)
+	if !ok {
+		return
+	}
+
+	ch := make(chan OBSData, 8)
+	stream := h.addSubscriber(streamKey, ch)
+	defer h.removeSubscriber(streamKey, ch)
+
+	h.ensureUserNATSSubs(stream, streamKey, userUUID.String, gameUUID, username)
+
+	h.serveSSELoop(w, ctx, ch, flusher, gameUUID)
+}
+
+// ensureUserNATSSubs subscribes once to:
+//  1. channel.anno<gameUUID>   — per-turn events for the current game
+//  2. user.anno.<userUUID>     — activity signal; fires when the user's latest game may change
+func (h *OBSHandler) ensureUserNATSSubs(stream *obsStream, key, userUUID, gameUUID, username string) {
+	stream.mu.Lock()
+	if stream.initialized {
+		stream.mu.Unlock()
+		return
+	}
+	stream.initialized = true
+	stream.currentGameID = gameUUID
+	stream.mu.Unlock()
+
+	// Per-turn subscription for the currently-resolved game.
+	var annoSub *nats.Subscription
+	if gameUUID != "" {
+		var err error
+		annoSub, err = h.natsConn.Subscribe("channel.anno"+gameUUID, func(_ *nats.Msg) {
+			h.reloadAndFanout(key, gameUUID)
+		})
+		if err != nil {
+			log.Err(err).Str("gameUUID", gameUUID).Msg("obs-user-anno-sub-error")
+			annoSub = nil
+		}
+	}
+
+	// User-level activity subscription — re-queries and rebinds if the latest game changed.
+	userSub, err := h.natsConn.Subscribe(natsUserAnnoSubjectPrefix+userUUID, func(_ *nats.Msg) {
+		ctx := context.Background()
+		newGameUUID := h.resolveUserGame(ctx, username)
+
+		stream.mu.Lock()
+		currentGameID := stream.currentGameID
+		stream.mu.Unlock()
+
+		if newGameUUID != currentGameID {
+			h.rebindAnnoSub(stream, key, newGameUUID)
+		}
+		if newGameUUID != "" {
+			h.reloadAndFanout(key, newGameUUID)
+		}
+	})
+	if err != nil {
+		log.Err(err).Str("userUUID", userUUID).Msg("obs-user-sub-error")
+		if annoSub != nil {
+			annoSub.Unsubscribe()
+		}
+		return
+	}
+
+	// Atomically assign both subs only if the stream is still live.
+	h.mu.Lock()
+	if h.streams[key] != stream {
+		h.mu.Unlock()
+		if annoSub != nil {
+			annoSub.Unsubscribe()
+		}
+		userSub.Unsubscribe()
+		return
+	}
+	stream.mu.Lock()
+	stream.annoSub = annoSub
+	stream.broadcastSub = userSub // reuse broadcastSub slot for the user-level sub
 	stream.mu.Unlock()
 	h.mu.Unlock()
 }

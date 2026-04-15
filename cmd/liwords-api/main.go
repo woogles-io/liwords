@@ -473,6 +473,7 @@ func main() {
 	}
 	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 	omgwordsService.SetEventChannel(pubsubBus.GameEventChannel())
+	omgwordsService.SetNatsConn(natsconn)
 	analysisService.SetNatsConn(natsconn)
 	gameCreatorAdapter.eventChan = pubsubBus.GameEventChannel()
 	broadcastService.SetEventChannel(pubsubBus.GameEventChannel())
@@ -487,6 +488,11 @@ func main() {
 	router.Handle(broadcasts.OBSGameHandlerPrefix, otelhttp.NewHandler(
 		http.HandlerFunc(obsHandler.ServeGameHTTP),
 		"obs-game-api",
+		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
+	))
+	router.Handle(broadcasts.OBSUserHandlerPrefix, otelhttp.NewHandler(
+		http.HandlerFunc(obsHandler.ServeUserHTTP),
+		"obs-user-api",
 		otelhttp.WithSpanNameFormatter(customHTTPSpanNameFormatter),
 	))
 

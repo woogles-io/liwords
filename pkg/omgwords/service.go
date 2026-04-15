@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
@@ -28,12 +29,19 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/omgwords_service"
 )
 
+// NatsUserAnnoSubjectPrefix is the NATS subject prefix published whenever a
+// user's annotated-game activity changes (new game, events sent, game marked
+// done). The OBS user-alias stream subscribes to this subject to know when to
+// rebind to a different game.
+const NatsUserAnnoSubjectPrefix = "user.anno."
+
 type OMGWordsService struct {
 	userStore     user.Store
 	cfg           *config.Config
 	gameStore     *stores.GameDocumentStore
 	metadataStore *stores.DBStore
 	gameEventChan chan *entity.EventWrapper
+	natsConn      *nats.Conn
 }
 
 func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumentStore,
@@ -71,6 +79,29 @@ func (gs *OMGWordsService) failIfSessionDoesntOwn(ctx context.Context, gameID st
 
 func (gs *OMGWordsService) SetEventChannel(c chan *entity.EventWrapper) {
 	gs.gameEventChan = c
+}
+
+func (gs *OMGWordsService) SetNatsConn(nc *nats.Conn) {
+	gs.natsConn = nc
+}
+
+// UserAnnoChannelName returns the NATS subject for user-level annotated-game
+// activity notifications.
+func UserAnnoChannelName(userUUID string) string {
+	return NatsUserAnnoSubjectPrefix + userUUID
+}
+
+// publishUserAnnoActivity fires a zero-byte NATS message on the user-level
+// annotated-game activity subject. OBS user-alias streams subscribe to this
+// to know when to rebind to a new game. Errors are logged and ignored — this
+// is best-effort.
+func (gs *OMGWordsService) publishUserAnnoActivity(creatorUUID string) {
+	if gs.natsConn == nil {
+		return
+	}
+	if err := gs.natsConn.Publish(UserAnnoChannelName(creatorUUID), nil); err != nil {
+		log.Err(err).Str("creatorUUID", creatorUUID).Msg("user-anno-publish-error")
+	}
 }
 
 func (gs *OMGWordsService) createGDoc(ctx context.Context, u *entity.User, req *pb.CreateAnnotatedGameRequest) (*ipc.GameDocument, error) {
@@ -225,7 +256,7 @@ func (gs *OMGWordsService) CreateAnnotatedGame(ctx context.Context, req *connect
 	if err != nil {
 		return nil, err
 	}
-
+	gs.publishUserAnnoActivity(u.UUID)
 	return connect.NewResponse(&pb.CreateAnnotatedGameResponse{
 		GameId: gdoc.Uid,
 	}), nil
@@ -261,7 +292,7 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 			return nil, err
 		}
 	}
-
+	gs.publishUserAnnoActivity(req.Msg.UserId)
 	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 
@@ -276,8 +307,11 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect
 	}
 	gid := req.Msg.Document.Uid
 
-	err := gs.failIfSessionDoesntOwn(ctx, gid)
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
 	if err != nil {
+		return nil, err
+	}
+	if err = gs.failIfSessionDoesntOwn(ctx, gid); err != nil {
 		return nil, err
 	}
 
@@ -293,7 +327,7 @@ func (gs *OMGWordsService) ReplaceGameDocument(ctx context.Context, req *connect
 	wrapped := entity.WrapEvent(evt, ipc.MessageType_OMGWORDS_GAMEDOCUMENT)
 	wrapped.AddAudience(entity.AudChannel, AnnotatedChannelName(gid))
 	gs.gameEventChan <- wrapped
-
+	gs.publishUserAnnoActivity(u.UUID)
 	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 

@@ -290,6 +290,27 @@ func (q *Queries) GetHistory(ctx context.Context, argUuid pgtype.Text) ([]byte, 
 	return history, err
 }
 
+const getLatestAnnotatedGameForUsername = `-- name: GetLatestAnnotatedGameForUsername :one
+SELECT agm.game_uuid, agm.creator_uuid
+FROM annotated_game_metadata agm
+JOIN games g ON g.uuid = agm.game_uuid
+WHERE agm.creator_uuid = (SELECT uuid FROM users WHERE lower(username) = lower($1))
+ORDER BY g.updated_at DESC
+LIMIT 1
+`
+
+type GetLatestAnnotatedGameForUsernameRow struct {
+	GameUuid    string
+	CreatorUuid string
+}
+
+func (q *Queries) GetLatestAnnotatedGameForUsername(ctx context.Context, username string) (GetLatestAnnotatedGameForUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getLatestAnnotatedGameForUsername, username)
+	var i GetLatestAnnotatedGameForUsernameRow
+	err := row.Scan(&i.GameUuid, &i.CreatorUuid)
+	return i, err
+}
+
 const getRecentCorrespondenceGamesByUserId = `-- name: GetRecentCorrespondenceGamesByUserId :many
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at
@@ -580,6 +601,17 @@ func (q *Queries) GetRematchStreak(ctx context.Context, originalRequestID string
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUserUUIDByUsername = `-- name: GetUserUUIDByUsername :one
+SELECT uuid FROM users WHERE lower(username) = lower($1)
+`
+
+func (q *Queries) GetUserUUIDByUsername(ctx context.Context, username string) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getUserUUIDByUsername, username)
+	var uuid pgtype.Text
+	err := row.Scan(&uuid)
+	return uuid, err
 }
 
 const insertGamePlayers = `-- name: InsertGamePlayers :exec

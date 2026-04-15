@@ -16,6 +16,17 @@ FROM annotated_game_metadata agm
 JOIN users u ON agm.creator_uuid = u.uuid
 WHERE agm.game_uuid = @game_uuid;
 
+-- name: GetUserUUIDByUsername :one
+SELECT uuid FROM users WHERE lower(username) = lower(@username);
+
+-- name: GetLatestAnnotatedGameForUsername :one
+SELECT agm.game_uuid, agm.creator_uuid
+FROM annotated_game_metadata agm
+JOIN games g ON g.uuid = agm.game_uuid
+WHERE agm.creator_uuid = (SELECT uuid FROM users WHERE lower(username) = lower(@username))
+ORDER BY g.updated_at DESC
+LIMIT 1;
+
 -- name: GetGameMetadata :one
 SELECT
     id, uuid, type, player0_id, player1_id,
