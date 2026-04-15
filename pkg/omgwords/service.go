@@ -33,7 +33,7 @@ import (
 // user's annotated-game activity changes (new game, events sent, game marked
 // done). The OBS user-alias stream subscribes to this subject to know when to
 // rebind to a different game.
-const NatsUserAnnoSubjectPrefix = "user.anno."
+const NatsUserAnnoSubjectPrefix = "anno.user."
 
 type OMGWordsService struct {
 	userStore     user.Store
