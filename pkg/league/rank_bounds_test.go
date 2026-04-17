@@ -306,6 +306,41 @@ func TestEqualPointsAndSpread(t *testing.T) {
 	}
 }
 
+func TestBestRankIgnoresGuaranteedBelow(t *testing.T) {
+	// Reproduces the liwords Collins S11 Div1 bug: a finished player with
+	// absorb capacity 0 and no remaining games was being removed during
+	// feasibility iteration and counted as "forced above P", inflating P's
+	// bestRank.
+	//
+	// P (player 0): 4 pts, 0 spread, 0 games remaining.
+	// Q1 (1): 2 pts, +10 spread, 2 games remaining (vs Q2, vs Q3).
+	// Q2 (2): 2 pts, +10 spread, 1 game remaining (vs Q1).
+	// Q3 (3): 2 pts, +10 spread, 1 game remaining (vs Q1).
+	// Fin (4): 0 pts, 0 spread, 0 games remaining — guaranteed below P.
+	//
+	// B = P.points = 4. Q1/Q2/Q3 each have spread > P's, so maxBelow=1 after
+	// decrement, absorb capped at 1. Sum absorb = 3. Within-set games = 2
+	// (Q1-Q2, Q1-Q3) × 2 = 4. 4 > 3 → infeasible by 1 pt, so exactly 1 of
+	// Q1/Q2/Q3 must exceed cap. Truth: bestRank = 2.
+	//
+	// Before fix: Fin entered belowCandidates with absorb=0, got removed as
+	// smallest-absorb without improving feasibility, then a Q was removed.
+	// Final len=2, both Fin and one Q counted as forced above → bestRank=3.
+	standings := []standingInfo{
+		si(0, 4, 0, 0),
+		si(1, 2, 10, 2),
+		si(2, 2, 10, 1),
+		si(3, 2, 10, 1),
+		si(4, 0, 0, 0),
+	}
+	games := []unfinishedGame{uf(1, 2), uf(1, 3)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 2 {
+		t.Errorf("P best rank: got %d, want 2", bounds[0].BestRank)
+	}
+}
+
 func TestEqualPointsAndSpreadThreePlayers(t *testing.T) {
 	// Three players, all finished with same points and spread.
 	// Each should show range 1-3.
