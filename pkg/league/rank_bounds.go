@@ -866,8 +866,13 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 		worst[i] = 0
 	}
 
+	// Per-outcome scratch: points and per-player win/loss bitmasks over games.
+	// Non-draw game gi contributes bit (1<<gi) to exactly one of the two
+	// participants' winMask and the other's loseMask. Draws contribute to
+	// neither. bruteForceThreshold ≤ 63 keeps us in uint64 range.
 	points := make([]int, n)
-	outcome := make([]int, g) // 0 = draw, 1 = g.a wins, 2 = g.b wins
+	winMask := make([]uint64, n)
+	loseMask := make([]uint64, n)
 
 	total := 1
 	for i := 0; i < g; i++ {
@@ -875,32 +880,36 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 	}
 
 	for k := 0; k < total; k++ {
-		x := k
-		for i := 0; i < g; i++ {
-			outcome[i] = x % 3
-			x /= 3
-		}
-
 		for i := 0; i < n; i++ {
 			points[i] = standings[i].points
+			winMask[i] = 0
+			loseMask[i] = 0
 		}
+		x := k
 		for gi := 0; gi < g; gi++ {
 			a, b := games[gi].a, games[gi].b
-			switch outcome[gi] {
-			case 0:
+			bit := uint64(1) << gi
+			switch x % 3 {
+			case 0: // draw
 				points[a]++
 				points[b]++
-			case 1:
+			case 1: // a wins
 				points[a] += 2
-			case 2:
+				winMask[a] |= bit
+				loseMask[b] |= bit
+			case 2: // b wins
 				points[b] += 2
+				winMask[b] |= bit
+				loseMask[a] |= bit
 			}
+			x /= 3
 		}
 
 		for p := 0; p < n; p++ {
 			strictAbove := 0
 			forcedAboveTied := 0
 			possiblyAboveTied := 0
+			pSpread := standings[p].spread
 			for q := 0; q < n; q++ {
 				if q == p {
 					continue
@@ -912,7 +921,10 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 				if points[q] < points[p] {
 					continue
 				}
-				forced, possible := spreadOrdering(q, p, games, outcome, standings)
+				forced, possible := spreadOrdering(
+					winMask[p], loseMask[p], winMask[q], loseMask[q],
+					pSpread, standings[q].spread,
+				)
 				if forced {
 					forcedAboveTied++
 				}
@@ -939,76 +951,42 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 }
 
 // spreadOrdering decides, for a fixed outcome, two things about a pair (q, p)
-// tied on final points:
+// tied on final points, using precomputed win/loss bitmasks:
 //   - forced: Q.spread > P.spread in every margin assignment.
 //   - possible: Q.spread >= P.spread in at least one margin assignment
 //     (equal spread counts as possibly-above via username tiebreak).
 //
-// It analyzes Σ Δ_g · m_g where Δ_g = sign_Q(g) - sign_P(g) and m_g ranges
-// over admissible margins (0 for draws, ≥ 1 otherwise). See bruteForceRanks
-// for the full reasoning.
-func spreadOrdering(q, p int, games []gamePair, outcome []int, standings []standingInfo) (forced, possible bool) {
-	minSumFinite := 0
-	maxSumFinite := 0
-	minUnbounded := false
-	maxUnbounded := false
+// Derivation (see bruteForceRanks header for the Δ_g definition):
+//
+// For a non-draw game g, Δ_g = sign_Q(g) - sign_P(g) ∈ {±1, ±2} and is
+//   - > 0 iff q wins g OR p loses g (the only cases with sign_Q > sign_P)
+//   - < 0 iff q loses g OR p wins g (mirror)
+//
+// max Σ Δ_g · m_g is +∞ iff any Δ_g > 0 (push m_g → ∞):
+//
+//	maxUnbounded = (winMask[q] | loseMask[p]) != 0
+//
+// Similarly minUnbounded = (winMask[p] | loseMask[q]) != 0.
+//
+// When neither is unbounded, no non-draw game has p or q in it, so every
+// Δ_g = 0; the finite sums are 0 and the spread comparison falls to the
+// initial diff.
+func spreadOrdering(pWins, pLosses, qWins, qLosses uint64, pSpread, qSpread int) (forced, possible bool) {
+	maxUnbounded := (qWins | pLosses) != 0
+	minUnbounded := (pWins | qLosses) != 0
 
-	for gi, gm := range games {
-		out := outcome[gi]
-		if out == 0 {
-			continue
-		}
-		signP := 0
-		switch {
-		case gm.a == p:
-			if out == 1 {
-				signP = 1
-			} else {
-				signP = -1
-			}
-		case gm.b == p:
-			if out == 2 {
-				signP = 1
-			} else {
-				signP = -1
-			}
-		}
-		signQ := 0
-		switch {
-		case gm.a == q:
-			if out == 1 {
-				signQ = 1
-			} else {
-				signQ = -1
-			}
-		case gm.b == q:
-			if out == 2 {
-				signQ = 1
-			} else {
-				signQ = -1
-			}
-		}
-		delta := signQ - signP
-		if delta > 0 {
-			maxUnbounded = true
-			minSumFinite += delta
-		} else if delta < 0 {
-			minUnbounded = true
-			maxSumFinite += delta
-		}
-	}
-
-	diff := standings[p].spread - standings[q].spread
-
+	// Q.final > P.final (strict):  forced   = min Σ > P.init - Q.init
+	// Q.final >= P.final (allow =): possible = max Σ >= P.init - Q.init
+	// When the relevant direction is bounded, Σ == 0.
 	if maxUnbounded {
 		possible = true
 	} else {
-		possible = maxSumFinite >= diff
+		possible = qSpread >= pSpread
 	}
 	if minUnbounded {
 		forced = false
 	} else {
-		forced = minSumFinite > diff
+		forced = qSpread > pSpread
 	}
 	return forced, possible
 }
