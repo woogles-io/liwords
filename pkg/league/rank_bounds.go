@@ -384,11 +384,19 @@ type stayBelow struct {
 // ---------------------------------------------------------------------------
 // best rank: minimize the number of players forced above P
 //
+// Only reached when len(games) > bruteForceThreshold. For smaller divisions
+// CalculatePossibleRanks dispatches to bruteForceRanks, which enumerates
+// outcomes and returns tight bounds covering every spread interaction.
+//
 // Algorithm:
 //   1. Compute B = P's maximum possible score (P wins all remaining games).
-//   2. Count players guaranteed above P (their floor > B).
-//   3. Build "stay below" candidates: players that COULD finish below P.
-//   4. Use max-flow to check if all candidates can simultaneously absorb
+//   2. Classify each non-P player as guaranteedAbove, guaranteedBelow, or
+//      an open candidate.
+//   3. Precompute externalCnt[i] = open candidate Q's non-P games vs a
+//      guaranteedBelow opponent.
+//   4. Build belowCandidates with per-player absorb caps and per-game caps,
+//      tightened for spread (see below).
+//   5. Use max-flow to check if all belowCandidates can simultaneously absorb
 //      their within-set game points without exceeding B.
 //
 // Flow network:
@@ -400,36 +408,37 @@ type stayBelow struct {
 //   - Player-to-sink edge capacity = absorb limit.
 //   - Feasible iff max_flow == total within-set game points.
 //
-// Draws-only optimization (maxPerGame=1):
-//   When Q has worse spread than P and can reach B with ≤ gamesRemaining
-//   points, Q can get there entirely through draws (1 point each, 0 spread
-//   change). Setting per-game capacity to 1 restricts the flow to draw
-//   outcomes, correctly proving Q stays below P at B with preserved spread.
+// Spread treatment when Q can reach B:
 //
-// Guarantees (best and worst rank combined):
-//   - bestRank is achievable (the flow maps to real game outcomes).
-//   - bestRank-1 is impossible (flow infeasibility = real infeasibility).
+//   Q.spread < P.spread, draws-only path (maxPerGame=1):
+//     Q reaches B via draws (1 pt each, 0 spread change), preserving
+//     Q.spread < P.spread so Q sits below P on tiebreak.
+//
+//   Q.spread >= P.spread, externalCnt[Q] >= 1:
+//     Q plays at least one guaranteedBelow opponent. Routing that game as
+//     Q's loss (opponent takes both pts, still capped below B) lets Q
+//     concede an arbitrary margin, dropping Q.finalSpread below P.spread
+//     even when Q hits B via wins elsewhere. Full absorb=maxBelow.
+//
+//   Q.spread >= P.spread, no external:
+//     Q at B ties P on points and beats P on spread (wins raise it, draws
+//     preserve it). Decrement maxBelow so Q stays strictly below B on points.
+//     This can still be pessimistic when Q's within-set opponents have
+//     maxPerGame=2 (Q could realize 1W+1L with a huge loss margin, reaching
+//     B at a dropped spread). For division sizes where this matters the
+//     brute-force path handles the case; the heuristic leaves it loose.
+//
+// Guarantees:
+//   - bestRank is achievable (flow outcomes map to real game outcomes, with
+//     realizable margins for the external-loss case).
+//   - bestRank-1 can be wrongly reported as impossible in the pessimistic
+//     case above (Q.spread >= P's, no external, opponents maxPerGame=2).
+//     Brute force covers small divisions; large divisions where this triggers
+//     are very rare in practice.
 //   - worstRank+1 is always impossible (sound upper bound).
-//
-// Known limitation (worstRank):
-//   worstRank can be pessimistic because it doesn't model that spread is
-//   zero-sum between opponents. If Q beats R, Q's spread improves but R's
-//   worsens by the same amount. With N candidates all needing spread
-//   improvement in a round-robin, the sum of net spread changes is 0, so
-//   at most N-1 can simultaneously improve. The algorithm may count all N.
-//
-//   In practice this is rarely significant because candidates with
-//   spread already above P's need no improvement, and candidates with
-//   external games (against non-candidates) can gain unlimited spread
-//   from those. The error only applies to candidates whose games are
-//   entirely within the candidate set AND who need spread improvement.
-//
-//   Fixing this would require adding spread feasibility as a linear
-//   programming constraint alongside the max-flow point check:
-//     for each game(i,j): spread_delta_i = -spread_delta_j
-//     for each candidate i: initial_spread_i + sum(deltas) > P.spread
-//   This is a system of linear inequalities, solvable in polynomial time
-//   but significantly more complex than the current max-flow approach.
+//   - worstRank can be pessimistic when the candidate set is a closed
+//     round-robin whose initial spread sum is too small for every member to
+//     strictly beat P on tiebreak. Brute force covers small divisions.
 // ---------------------------------------------------------------------------
 
 func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
