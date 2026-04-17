@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -1127,160 +1128,170 @@ func (ls *LeagueService) GetAllDivisionStandings(
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get divisions: %w", err))
 	}
 
-	// Get standings for each division
+	// Get standings for each division. Divisions are independent, so run the
+	// per-division work concurrently; the CPU-bound CalculatePossibleRanks
+	// call dominates on large divisions near mid-season and bounds wall-clock
+	// at max-per-division instead of sum.
 	protoDivisions := make([]*ipc.Division, len(divisions))
+	eg, egCtx := errgroup.WithContext(ctx)
 	for i, division := range divisions {
-		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to parse division UUID: %w", err))
-		}
+		eg.Go(func() error {
+			divisionUUID, err := uuid.FromBytes(division.Uuid[:])
+			if err != nil {
+				return apiserver.InternalErr(fmt.Errorf("failed to parse division UUID: %w", err))
+			}
 
-		standings, err := ls.store.GetStandings(ctx, divisionUUID)
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
-		}
+			standings, err := ls.store.GetStandings(egCtx, divisionUUID)
+			if err != nil {
+				return apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
+			}
 
-		// Get registrations for the division to ensure all players are shown
-		registrations, err := ls.store.GetDivisionRegistrations(ctx, divisionUUID)
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
-		}
+			// Get registrations for the division to ensure all players are shown
+			registrations, err := ls.store.GetDivisionRegistrations(egCtx, divisionUUID)
+			if err != nil {
+				return apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
+			}
 
-		// Build a map of existing standings by user ID
-		standingsMap := make(map[int32]models.GetStandingsRow)
-		for _, standing := range standings {
-			standingsMap[standing.UserID] = standing
-		}
+			// Build a map of existing standings by user ID
+			standingsMap := make(map[int32]models.GetStandingsRow)
+			for _, standing := range standings {
+				standingsMap[standing.UserID] = standing
+			}
 
-		// Build a map of registrations by user ID to get placement status
-		registrationMap := make(map[int32]models.GetDivisionRegistrationsRow)
-		for _, reg := range registrations {
-			registrationMap[reg.UserID] = reg
-		}
+			// Build a map of registrations by user ID to get placement status
+			registrationMap := make(map[int32]models.GetDivisionRegistrationsRow)
+			for _, reg := range registrations {
+				registrationMap[reg.UserID] = reg
+			}
 
-		// Calculate expected games per player based on division size
-		expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
+			// Calculate expected games per player based on division size
+			expectedGames := CalculateExpectedGamesPerPlayer(len(registrations))
 
-		// Merge standings with registrations - show all registered players
-		// Use actual standings where available, zeros for others
-		mergedStandings := make([]models.GetStandingsRow, len(registrations))
-		for j, reg := range registrations {
-			if existing, ok := standingsMap[reg.UserID]; ok {
-				mergedStandings[j] = existing
-			} else {
-				// Player has no standings yet (no finished games) - show zeros with expected games remaining
-				mergedStandings[j] = models.GetStandingsRow{
-					UserID:         reg.UserID,
-					UserUuid:       reg.UserUuid, // From JOIN
-					Username:       reg.Username, // From JOIN, needed for sort tiebreaker
-					Wins:           pgtype.Int4{Int32: 0, Valid: true},
-					Losses:         pgtype.Int4{Int32: 0, Valid: true},
-					Draws:          pgtype.Int4{Int32: 0, Valid: true},
-					Spread:         pgtype.Int4{Int32: 0, Valid: true},
-					GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
-					GamesRemaining: pgtype.Int4{Int32: int32(expectedGames), Valid: true},
-					Result:         pgtype.Int4{Valid: false},
+			// Merge standings with registrations - show all registered players
+			// Use actual standings where available, zeros for others
+			mergedStandings := make([]models.GetStandingsRow, len(registrations))
+			for j, reg := range registrations {
+				if existing, ok := standingsMap[reg.UserID]; ok {
+					mergedStandings[j] = existing
+				} else {
+					// Player has no standings yet (no finished games) - show zeros with expected games remaining
+					mergedStandings[j] = models.GetStandingsRow{
+						UserID:         reg.UserID,
+						UserUuid:       reg.UserUuid, // From JOIN
+						Username:       reg.Username, // From JOIN, needed for sort tiebreaker
+						Wins:           pgtype.Int4{Int32: 0, Valid: true},
+						Losses:         pgtype.Int4{Int32: 0, Valid: true},
+						Draws:          pgtype.Int4{Int32: 0, Valid: true},
+						Spread:         pgtype.Int4{Int32: 0, Valid: true},
+						GamesPlayed:    pgtype.Int4{Int32: 0, Valid: true},
+						GamesRemaining: pgtype.Int4{Int32: int32(expectedGames), Valid: true},
+						Result:         pgtype.Int4{Valid: false},
+					}
 				}
 			}
-		}
 
-		standings = mergedStandings
+			standings = mergedStandings
 
-		// Sort standings by points, spread, username
-		SortStandingsByRank(standings)
+			// Sort standings by points, spread, username
+			SortStandingsByRank(standings)
 
-		// Convert standings to proto
-		protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
-		for j, standing := range standings {
-			userUUID := standing.UserUuid.String
-			username := standing.Username.String
-			if username == "" {
-				username = "Unknown"
+			// Convert standings to proto
+			protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
+			for j, standing := range standings {
+				userUUID := standing.UserUuid.String
+				username := standing.Username.String
+				if username == "" {
+					username = "Unknown"
+				}
+
+				resultValue := ipc.StandingResult_RESULT_NONE
+				if standing.Result.Valid {
+					resultValue = ipc.StandingResult(standing.Result.Int32)
+				}
+
+				// Get placement status from registration
+				placementStatus := ipc.PlacementStatus_PLACEMENT_NONE
+				if reg, ok := registrationMap[standing.UserID]; ok && reg.PlacementStatus.Valid {
+					placementStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
+				}
+
+				var avgMistakeIndex float64
+				if standing.GamesAnalyzed.Valid && standing.GamesAnalyzed.Int32 > 0 && standing.TotalMistakeIndex.Valid {
+					avgMistakeIndex = standing.TotalMistakeIndex.Float64 / float64(standing.GamesAnalyzed.Int32)
+				}
+
+				protoStandings[j] = &ipc.LeaguePlayerStanding{
+					UserId:                   userUUID,
+					Username:                 username,
+					Rank:                     int32(j + 1), // Rank is position in sorted array
+					Wins:                     standing.Wins.Int32,
+					Losses:                   standing.Losses.Int32,
+					Draws:                    standing.Draws.Int32,
+					Spread:                   standing.Spread.Int32,
+					GamesPlayed:              standing.GamesPlayed.Int32,
+					GamesRemaining:           standing.GamesRemaining.Int32,
+					Result:                   resultValue,
+					TotalScore:               standing.TotalScore.Int32,
+					TotalOpponentScore:       standing.TotalOpponentScore.Int32,
+					TotalBingos:              standing.TotalBingos.Int32,
+					TotalOpponentBingos:      standing.TotalOpponentBingos.Int32,
+					TotalTurns:               standing.TotalTurns.Int32,
+					HighTurn:                 standing.HighTurn.Int32,
+					HighGame:                 standing.HighGame.Int32,
+					Timeouts:                 standing.Timeouts.Int32,
+					BlanksPlayed:             standing.BlanksPlayed.Int32,
+					TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
+					TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
+					PlacementStatus:          placementStatus,
+					AvgMistakeIndex:          avgMistakeIndex,
+					GamesAnalyzed:            standing.GamesAnalyzed.Int32,
+				}
 			}
 
-			resultValue := ipc.StandingResult_RESULT_NONE
-			if standing.Result.Valid {
-				resultValue = ipc.StandingResult(standing.Result.Int32)
+			// Compute possible rank bounds using actual remaining pairings
+			unfinished, err := ls.store.GetUnfinishedDivisionGames(egCtx, divisionUUID)
+			if err != nil {
+				return apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
+			}
+			standingInfos := make([]standingInfo, len(standings))
+			for j, s := range standings {
+				standingInfos[j] = StandingInfoFromRow(
+					s.UserID, s.Wins.Int32, s.Draws.Int32,
+					s.Spread.Int32, s.GamesRemaining.Int32,
+				)
+			}
+			ufGames := make([]unfinishedGame, len(unfinished))
+			for j, uf := range unfinished {
+				ufGames[j] = UnfinishedGameFromRow(uf.Player0ID, uf.Player1ID)
+			}
+			rankBounds := CalculatePossibleRanks(standingInfos, ufGames)
+			for j := range protoStandings {
+				protoStandings[j].BestRank = int32(rankBounds[j].BestRank)
+				protoStandings[j].WorstRank = int32(rankBounds[j].WorstRank)
 			}
 
-			// Get placement status from registration
-			placementStatus := ipc.PlacementStatus_PLACEMENT_NONE
-			if reg, ok := registrationMap[standing.UserID]; ok && reg.PlacementStatus.Valid {
-				placementStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
+			divisionName := ""
+			if division.DivisionName.Valid {
+				divisionName = division.DivisionName.String
+			}
+			isComplete := false
+			if division.IsComplete.Valid {
+				isComplete = division.IsComplete.Bool
 			}
 
-			var avgMistakeIndex float64
-			if standing.GamesAnalyzed.Valid && standing.GamesAnalyzed.Int32 > 0 && standing.TotalMistakeIndex.Valid {
-				avgMistakeIndex = standing.TotalMistakeIndex.Float64 / float64(standing.GamesAnalyzed.Int32)
+			protoDivisions[i] = &ipc.Division{
+				Uuid:           divisionUUID.String(),
+				SeasonId:       division.SeasonID.String(),
+				DivisionNumber: division.DivisionNumber,
+				DivisionName:   divisionName,
+				Standings:      protoStandings,
+				IsComplete:     isComplete,
 			}
-
-			protoStandings[j] = &ipc.LeaguePlayerStanding{
-				UserId:                   userUUID,
-				Username:                 username,
-				Rank:                     int32(j + 1), // Rank is position in sorted array
-				Wins:                     standing.Wins.Int32,
-				Losses:                   standing.Losses.Int32,
-				Draws:                    standing.Draws.Int32,
-				Spread:                   standing.Spread.Int32,
-				GamesPlayed:              standing.GamesPlayed.Int32,
-				GamesRemaining:           standing.GamesRemaining.Int32,
-				Result:                   resultValue,
-				TotalScore:               standing.TotalScore.Int32,
-				TotalOpponentScore:       standing.TotalOpponentScore.Int32,
-				TotalBingos:              standing.TotalBingos.Int32,
-				TotalOpponentBingos:      standing.TotalOpponentBingos.Int32,
-				TotalTurns:               standing.TotalTurns.Int32,
-				HighTurn:                 standing.HighTurn.Int32,
-				HighGame:                 standing.HighGame.Int32,
-				Timeouts:                 standing.Timeouts.Int32,
-				BlanksPlayed:             standing.BlanksPlayed.Int32,
-				TotalTilesPlayed:         standing.TotalTilesPlayed.Int32,
-				TotalOpponentTilesPlayed: standing.TotalOpponentTilesPlayed.Int32,
-				PlacementStatus:          placementStatus,
-				AvgMistakeIndex:          avgMistakeIndex,
-				GamesAnalyzed:            standing.GamesAnalyzed.Int32,
-			}
-		}
-
-		// Compute possible rank bounds using actual remaining pairings
-		unfinished, err := ls.store.GetUnfinishedDivisionGames(ctx, divisionUUID)
-		if err != nil {
-			return nil, apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
-		}
-		standingInfos := make([]standingInfo, len(standings))
-		for j, s := range standings {
-			standingInfos[j] = StandingInfoFromRow(
-				s.UserID, s.Wins.Int32, s.Draws.Int32,
-				s.Spread.Int32, s.GamesRemaining.Int32,
-			)
-		}
-		ufGames := make([]unfinishedGame, len(unfinished))
-		for j, uf := range unfinished {
-			ufGames[j] = UnfinishedGameFromRow(uf.Player0ID, uf.Player1ID)
-		}
-		rankBounds := CalculatePossibleRanks(standingInfos, ufGames)
-		for j := range protoStandings {
-			protoStandings[j].BestRank = int32(rankBounds[j].BestRank)
-			protoStandings[j].WorstRank = int32(rankBounds[j].WorstRank)
-		}
-
-		divisionName := ""
-		if division.DivisionName.Valid {
-			divisionName = division.DivisionName.String
-		}
-		isComplete := false
-		if division.IsComplete.Valid {
-			isComplete = division.IsComplete.Bool
-		}
-
-		protoDivisions[i] = &ipc.Division{
-			Uuid:           divisionUUID.String(),
-			SeasonId:       division.SeasonID.String(),
-			DivisionNumber: division.DivisionNumber,
-			DivisionName:   divisionName,
-			Standings:      protoStandings,
-			IsComplete:     isComplete,
-		}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&pb.AllDivisionStandingsResponse{Divisions: protoDivisions}), nil
