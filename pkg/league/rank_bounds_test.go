@@ -341,6 +341,55 @@ func TestBestRankIgnoresGuaranteedBelow(t *testing.T) {
 	}
 }
 
+func TestBestRankWithExternalLoss(t *testing.T) {
+	// Reproduces Collins S11 Div1 jellomochas scenario.
+	// P (player 0, "jello"): 16 pts, +1 spread, 0 games remaining.
+	// 5 players locked above P: Blibble/kfraley 20 pts, merlion/Xadreco 18 pts,
+	// ahmad 16 pts +168 (beats jello on spread tiebreak).
+	// 4 potential threats at 14 pts with spread > P's: VVB +221 (2 games),
+	// bnjy +168 (1 game), yong +113 (2 games), ather -15 (2 games).
+	// AnitaCH 4 pts (1 game) is guaranteedBelow (max 10 < 16).
+	//
+	// Games: VVB-AnitaCH, VVB-yong, bnjy-ather, yong-ather.
+	//
+	// Key insight: VVB has a game vs AnitaCH (guaranteedBelow). We can route
+	// that game as an AnitaCH win with huge margin, dropping VVB's spread
+	// below +1 even when VVB reaches 16 pts from other games. So VVB can
+	// finish at 16 below jello on spread, keeping all 4 threats below P.
+	//
+	// Before fix: VVB (spread 221 > 1, no distinction for external) got
+	// maxBelow-- → absorb=1, forcing VVB below on points. Flow infeasibility
+	// then removed a candidate, giving bestRank=7 instead of 6.
+	standings := []standingInfo{
+		si(1, 16, 1, 0),    // jello (P)
+		si(2, 20, 799, 0),  // Blibble
+		si(3, 20, 567, 0),  // kfraley
+		si(4, 18, 247, 0),  // merlion
+		si(5, 18, 236, 0),  // Xadreco
+		si(6, 16, 168, 0),  // ahmad
+		si(7, 14, 221, 2),  // VVB
+		si(8, 14, 168, 1),  // bnjy
+		si(9, 14, 113, 2),  // yong
+		si(10, 14, -15, 2), // ather
+		si(11, 4, -188, 1), // AnitaCH (guaranteedBelow)
+		si(12, 12, -41, 0), // Kh1108
+	}
+	games := []unfinishedGame{
+		uf(7, 11), // VVB-AnitaCH
+		uf(7, 9),  // VVB-yong
+		uf(8, 10), // bnjy-ather
+		uf(9, 10), // yong-ather
+	}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 6 {
+		t.Errorf("jello best rank: got %d, want 6", bounds[0].BestRank)
+	}
+	if bounds[0].WorstRank != 10 {
+		t.Errorf("jello worst rank: got %d, want 10", bounds[0].WorstRank)
+	}
+}
+
 func TestEqualPointsAndSpreadThreePlayers(t *testing.T) {
 	// Three players, all finished with same points and spread.
 	// Each should show range 1-3.

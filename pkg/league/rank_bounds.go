@@ -435,34 +435,78 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 
 	pHasGames := standings[p].gamesRemaining > 0
 
-	// Count guaranteed above: Q's worst case (lose all remaining) still beats P.
+	// First pass: classify each non-P player as guaranteedAbove, guaranteedBelow,
+	// or an open candidate. Stored as bool slices so externalCnt can reference them.
+	isGuaranteedAbove := make([]bool, n)
+	isGuaranteedBelow := make([]bool, n)
 	guaranteedAbove := 0
+	guaranteedBelow := 0
 	for i := 0; i < n; i++ {
 		if i == p {
 			continue
 		}
 		qWorst := standings[i].points
 		if qWorst > B {
+			isGuaranteedAbove[i] = true
 			guaranteedAbove++
-		} else if qWorst == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
+			continue
+		}
+		if qWorst == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
 			standings[i].spread > standings[p].spread {
+			isGuaranteedAbove[i] = true
 			guaranteedAbove++
+			continue
+		}
+
+		// Q's ceiling when P wins all: games vs P yield 0, non-P games up to 2.
+		maxPts := standings[i].points + gi.nonPGamesCnt[i]*2
+		if maxPts < B {
+			isGuaranteedBelow[i] = true
+			guaranteedBelow++
+			continue // Q cannot reach B on points
+		}
+		if maxPts == B {
+			if pHasGames {
+				// P's best spread is unbounded (wins by huge margins).
+				// Q at B loses the spread tiebreak to P.
+				isGuaranteedBelow[i] = true
+				guaranteedBelow++
+				continue
+			}
+			if gi.nonPGamesCnt[i] == 0 && standings[i].spread < standings[p].spread {
+				// Q finished at B with worse spread. Loses tiebreak to P.
+				isGuaranteedBelow[i] = true
+				guaranteedBelow++
+				continue
+			}
 		}
 	}
 
-	// Count guaranteed below: Q cannot finish above P no matter what happens.
-	// Q's maximum points (with P winning all) = Q.points + nonPGamesCnt*2,
-	// since games vs P yield 0 to Q. These players don't compete for flow
-	// capacity and must not be removed during feasibility iteration.
-	guaranteedBelow := 0
+	// externalCnt[i] = non-P games Q plays against a guaranteedBelow opponent.
+	// These opponents cannot reach B, so we route all 2 game pts to them
+	// (Q loses the game → +0 pts, arbitrary loss margin). A Q with spread
+	// >= P's can still end at B below P on spread by taking this external
+	// loss with a huge margin.
+	externalCnt := make([]int, n)
+	for _, g := range gi.nonPGames {
+		if isGuaranteedBelow[g.a] && !isGuaranteedBelow[g.b] {
+			externalCnt[g.b]++
+		} else if isGuaranteedBelow[g.b] && !isGuaranteedBelow[g.a] {
+			externalCnt[g.a]++
+		}
+	}
 
 	// Build the "stay below P" set with per-player constraints:
 	//
 	//   Q.spread < P.spread, can reach B via draws (maxBelow ≤ games):
 	//     maxPerGame=1 (draws preserve spread → Q below P at B)
 	//
-	//   Q.spread >= P.spread, or can't reach B via draws only:
-	//     maxBelow-- (Q must stay strictly below B)
+	//   Q.spread >= P.spread, externalCnt[i] >= 1:
+	//     full maxBelow (external loss drops spread arbitrarily → Q at B below P)
+	//
+	//   Q.spread >= P.spread, no external:
+	//     maxBelow-- (Q must stay strictly below B; a win lifts spread and
+	//     draws-only preserves it above P)
 	//
 	//   P has games (unbounded best spread):
 	//     no restriction (P always beats Q on spread at equal points)
@@ -471,35 +515,8 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 	//     fixed spread comparison, maxBelow-- if Q.spread >= P.spread
 	var belowCandidates []stayBelow
 	for i := 0; i < n; i++ {
-		if i == p {
+		if i == p || isGuaranteedAbove[i] || isGuaranteedBelow[i] {
 			continue
-		}
-		if standings[i].points > B {
-			continue // already guaranteed above
-		}
-		if standings[i].points == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
-			standings[i].spread > standings[p].spread {
-			continue // guaranteed above via spread tiebreak
-		}
-
-		// Q's ceiling when P wins all: games vs P yield 0, non-P games up to 2.
-		maxPts := standings[i].points + gi.nonPGamesCnt[i]*2
-		if maxPts < B {
-			guaranteedBelow++
-			continue // Q cannot reach B on points
-		}
-		if maxPts == B {
-			if pHasGames {
-				// P's best spread is unbounded (wins by huge margins).
-				// Q at B loses the spread tiebreak to P.
-				guaranteedBelow++
-				continue
-			}
-			if gi.nonPGamesCnt[i] == 0 && standings[i].spread < standings[p].spread {
-				// Q finished at B with worse spread. Loses tiebreak to P.
-				guaranteedBelow++
-				continue
-			}
 		}
 
 		// Determine whether Q at exactly B points could be above P.
@@ -523,9 +540,15 @@ func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *f
 			// via draws only (each draw gives 1 point, preserves spread).
 			// Restrict per-game capacity to 1 so the flow only allows draws.
 			maxPerGame = 1
+		} else if externalCnt[i] >= 1 {
+			// Q has at least one game vs a guaranteedBelow opponent. We route
+			// that game as a Q-loss (opponent takes both pts, still capped
+			// below B). A sufficiently large loss margin drops Q's spread
+			// below P's even when Q reaches B via wins on other games. No
+			// decrement needed; Q can stay at B below P.
 		} else {
-			// Q at B could beat P on spread (spread >= P's, or must win
-			// games making spread unpredictable). Stay strictly below B.
+			// Q at B could beat P on spread (spread >= P's, no external loss
+			// to absorb margin). Stay strictly below B.
 			if maxBelow > 0 {
 				maxBelow--
 			}
