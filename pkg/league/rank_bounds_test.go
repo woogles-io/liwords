@@ -238,10 +238,15 @@ func TestDrawsOnlyBestRankInfeasible(t *testing.T) {
 	// P4: 17 pts, +50 spread, 3 games (vs P2, P3, P5)
 	// P5: 17 pts, +50 spread, 3 games (vs P2, P3, P4)
 	//
-	// P2 has spread +400 > P1's +300. P2 at 20 beats P1 on spread.
-	// P2 must stay strictly below 20 (absorb ≤ 2 points from 3 games).
-	// P3-P5 can draw all games (maxPerGame=1, spread preserved).
-	// P2 needs maxBelow=2 (decremented from 3) with maxPerGame=2.
+	// The max-flow heuristic tightens to bestRank=2 under the assumption that
+	// P2 (spread +400) must stay strictly below 20 pts on points. But P2 CAN
+	// reach 20 pts via 1W+1D+1L with a small win margin and a huge loss
+	// margin, landing P2.spread below +300. In that realization all of
+	// P2-P5 finish at or below P1 on the tiebreak, so bestRank=1.
+	//
+	// The brute-force path (g=6 ≤ bruteForceThreshold) enumerates 3^6=729
+	// outcomes and checks margin feasibility per tied pair, so it returns
+	// the tight answer.
 	standings := []standingInfo{
 		si(1, 20, 300, 0),
 		si(2, 17, 400, 3),
@@ -252,10 +257,8 @@ func TestDrawsOnlyBestRankInfeasible(t *testing.T) {
 	games := []unfinishedGame{uf(2, 3), uf(2, 4), uf(2, 5), uf(3, 4), uf(3, 5), uf(4, 5)}
 	bounds := CalculatePossibleRanks(standings, games)
 
-	// Total absorb capacity (2+3+3+3=11) < total within-set game points
-	// (6 games × 2 = 12). Not all can stay below P1. bestRank = 2.
-	if bounds[0].BestRank != 2 {
-		t.Errorf("P1 best rank: got %d, want 2", bounds[0].BestRank)
+	if bounds[0].BestRank != 1 {
+		t.Errorf("P1 best rank: got %d, want 1", bounds[0].BestRank)
 	}
 }
 

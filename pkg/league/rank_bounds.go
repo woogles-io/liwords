@@ -49,6 +49,13 @@ func CalculatePossibleRanks(
 		}
 	}
 
+	// Fast path: few enough unfinished games → brute-force every outcome.
+	// Gives tight bounds including spread tiebreaks, whereas the heuristic
+	// below has residual looseness in asymmetric within-set spread drops.
+	if len(games) <= bruteForceThreshold {
+		return bruteForceRanks(standings, games)
+	}
+
 	// Precompute for per-player fast path: players with remaining games
 	// whose point range clearly spans [1, n] can skip max-flow.
 	maxFloor := 0 // highest current points (worst case for leader)
@@ -804,4 +811,195 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// bruteForceThreshold caps when we enumerate every game outcome rather than
+// use the max-flow heuristic. 3^g grows fast; at g=10 we have ~59k outcomes
+// × O(n^2 * g) margin checks, which is still sub-second for realistic n.
+// Above that, fall back to the heuristic (which has residual looseness
+// noted in its docstring).
+const bruteForceThreshold = 10
+
+// bruteForceRanks enumerates every win/draw/loss assignment across all
+// unfinished games and computes tight rank bounds for each player.
+//
+// For each outcome:
+//
+//   - points per player are determined exactly.
+//
+//   - for each tied pair (P, Q) two margin-feasibility checks decide whether
+//     Q can (forced-above) or might (possibly-above) finish above P on
+//     spread. The coefficient of each game's margin m_g in (Q.spread -
+//     P.spread) is Δ_g = sign_Q(g) - sign_P(g) where sign is +1 if that
+//     player wins g, -1 if they lose, 0 if draw or not in the game.
+//     Margins are 0 for draws and ≥ 1 otherwise.
+//
+//     max Σ Δ_g*m_g is +∞ if any non-draw game has Δ_g > 0 (push m_g → ∞),
+//     else Σ_{non-draw, Δ_g < 0} Δ_g (m_g = 1 minimizes the negative).
+//     Q.spread >= P.spread iff Σ Δ m >= P.initial - Q.initial (possibly).
+//     Q.spread >  P.spread iff Σ Δ m >  P.initial - Q.initial (strict).
+//
+// Per-outcome best rank for P = 1 + strictAbove + forcedAboveTied.
+// Per-outcome worst rank for P = 1 + strictAbove + possiblyAboveTied.
+// Final bounds are min/max over all outcomes.
+//
+// Tight: handles asymmetric within-set spread drops (e.g. small win + huge
+// loss), zero-sum spread interactions between candidates, and every other
+// residual corner because it enumerates actual realizations.
+func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
+	n := len(standings)
+	g := len(games)
+
+	best := make([]int, n)
+	worst := make([]int, n)
+	for i := range best {
+		best[i] = n + 1
+		worst[i] = 0
+	}
+
+	points := make([]int, n)
+	outcome := make([]int, g) // 0 = draw, 1 = g.a wins, 2 = g.b wins
+
+	total := 1
+	for i := 0; i < g; i++ {
+		total *= 3
+	}
+
+	for k := 0; k < total; k++ {
+		x := k
+		for i := 0; i < g; i++ {
+			outcome[i] = x % 3
+			x /= 3
+		}
+
+		for i := 0; i < n; i++ {
+			points[i] = standings[i].points
+		}
+		for gi := 0; gi < g; gi++ {
+			a, b := games[gi].a, games[gi].b
+			switch outcome[gi] {
+			case 0:
+				points[a]++
+				points[b]++
+			case 1:
+				points[a] += 2
+			case 2:
+				points[b] += 2
+			}
+		}
+
+		for p := 0; p < n; p++ {
+			strictAbove := 0
+			forcedAboveTied := 0
+			possiblyAboveTied := 0
+			for q := 0; q < n; q++ {
+				if q == p {
+					continue
+				}
+				if points[q] > points[p] {
+					strictAbove++
+					continue
+				}
+				if points[q] < points[p] {
+					continue
+				}
+				forced, possible := spreadOrdering(q, p, games, outcome, standings)
+				if forced {
+					forcedAboveTied++
+				}
+				if possible {
+					possiblyAboveTied++
+				}
+			}
+			bestRank := 1 + strictAbove + forcedAboveTied
+			worstRank := 1 + strictAbove + possiblyAboveTied
+			if bestRank < best[p] {
+				best[p] = bestRank
+			}
+			if worstRank > worst[p] {
+				worst[p] = worstRank
+			}
+		}
+	}
+
+	result := make([]RankBounds, n)
+	for i := 0; i < n; i++ {
+		result[i] = RankBounds{BestRank: best[i], WorstRank: worst[i]}
+	}
+	return result
+}
+
+// spreadOrdering decides, for a fixed outcome, two things about a pair (q, p)
+// tied on final points:
+//   - forced: Q.spread > P.spread in every margin assignment.
+//   - possible: Q.spread >= P.spread in at least one margin assignment
+//     (equal spread counts as possibly-above via username tiebreak).
+//
+// It analyzes Σ Δ_g · m_g where Δ_g = sign_Q(g) - sign_P(g) and m_g ranges
+// over admissible margins (0 for draws, ≥ 1 otherwise). See bruteForceRanks
+// for the full reasoning.
+func spreadOrdering(q, p int, games []gamePair, outcome []int, standings []standingInfo) (forced, possible bool) {
+	minSumFinite := 0
+	maxSumFinite := 0
+	minUnbounded := false
+	maxUnbounded := false
+
+	for gi, gm := range games {
+		out := outcome[gi]
+		if out == 0 {
+			continue
+		}
+		signP := 0
+		switch {
+		case gm.a == p:
+			if out == 1 {
+				signP = 1
+			} else {
+				signP = -1
+			}
+		case gm.b == p:
+			if out == 2 {
+				signP = 1
+			} else {
+				signP = -1
+			}
+		}
+		signQ := 0
+		switch {
+		case gm.a == q:
+			if out == 1 {
+				signQ = 1
+			} else {
+				signQ = -1
+			}
+		case gm.b == q:
+			if out == 2 {
+				signQ = 1
+			} else {
+				signQ = -1
+			}
+		}
+		delta := signQ - signP
+		if delta > 0 {
+			maxUnbounded = true
+			minSumFinite += delta
+		} else if delta < 0 {
+			minUnbounded = true
+			maxSumFinite += delta
+		}
+	}
+
+	diff := standings[p].spread - standings[q].spread
+
+	if maxUnbounded {
+		possible = true
+	} else {
+		possible = maxSumFinite >= diff
+	}
+	if minUnbounded {
+		forced = false
+	} else {
+		forced = minSumFinite > diff
+	}
+	return forced, possible
 }
