@@ -49,11 +49,15 @@ func CalculatePossibleRanks(
 		}
 	}
 
-	// Fast path: few enough unfinished games → brute-force every outcome.
-	// Gives tight bounds including spread tiebreaks, whereas the heuristic
-	// below has residual looseness in asymmetric within-set spread drops.
-	if len(games) <= bruteForceThreshold {
-		return bruteForceRanks(standings, games)
+	// Fast path: partition players into rank-disjoint clusters; if every
+	// cluster's unfinished-game count is below the brute-force threshold,
+	// enumerate each cluster in parallel for tight bounds. This covers both
+	// the simple "total games ≤ threshold" case and the harder "many games
+	// but spread across multiple disjoint clusters" case (e.g. a top clique
+	// and a separate bottom pair whose pts ranges don't overlap).
+	clusters := buildBruteForceClusters(standings, games)
+	if maxClusterGames(clusters) <= bruteForceThreshold {
+		return bruteForceRanksFromClusters(clusters, standings, games)
 	}
 
 	// Precompute for per-player fast path: players with remaining games
@@ -829,12 +833,15 @@ func max(a, b int) int {
 // noted in its docstring).
 const bruteForceThreshold = 10
 
-// bruteForceRanks enumerates every win/draw/loss assignment across all
-// unfinished games and computes tight rank bounds for each player.
+// Brute-force rank bounds
 //
-// For each outcome:
+// Tight rank bounds for each player via explicit enumeration of every
+// win/draw/loss assignment, partitioned into rank-disjoint clusters so the
+// cost scales with max(g_c), not total g.
 //
-//   - points per player are determined exactly.
+// Per outcome within a cluster:
+//
+//   - points per cluster member are determined exactly.
 //
 //   - for each tied pair (P, Q) two margin-feasibility checks decide whether
 //     Q can (forced-above) or might (possibly-above) finish above P on
@@ -848,31 +855,211 @@ const bruteForceThreshold = 10
 //     Q.spread >= P.spread iff Σ Δ m >= P.initial - Q.initial (possibly).
 //     Q.spread >  P.spread iff Σ Δ m >  P.initial - Q.initial (strict).
 //
-// Per-outcome best rank for P = 1 + strictAbove + forcedAboveTied.
-// Per-outcome worst rank for P = 1 + strictAbove + possiblyAboveTied.
-// Final bounds are min/max over all outcomes.
+// Per-outcome best rank for P = 1 + fixedAbove + strictAbove + forcedAboveTied.
+// Per-outcome worst rank for P = 1 + fixedAbove + strictAbove + possiblyAboveTied.
+// fixedAbove counts players in strictly-higher clusters (constant per cluster).
+// Final bounds are min/max over all outcomes within P's cluster.
 //
-// Tight: handles asymmetric within-set spread drops (e.g. small win + huge
-// loss), zero-sum spread interactions between candidates, and every other
-// residual corner because it enumerates actual realizations.
-func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
-	n := len(standings)
-	g := len(games)
+// Tight: handles asymmetric within-set spread drops, spread interactions
+// between candidates, zero-sum situations, etc., because it enumerates
+// realizations directly.
 
-	best := make([]int, n)
-	worst := make([]int, n)
-	for i := range best {
-		best[i] = n + 1
+// maxClusterGames returns the largest cluster's game count, used by the
+// dispatcher to decide if brute force is tractable.
+func maxClusterGames(clusters []bfCluster) int {
+	m := 0
+	for _, c := range clusters {
+		if len(c.games) > m {
+			m = len(c.games)
+		}
+	}
+	return m
+}
+
+// bruteForceRanksFromClusters enumerates outcomes per cluster and combines
+// within-cluster ranks with fixed cross-cluster contributions.
+func bruteForceRanksFromClusters(clusters []bfCluster, standings []standingInfo, games []gamePair) []RankBounds {
+	n := len(standings)
+
+	// Cross-cluster fixed above/below counts per cluster.
+	crossAbove := make([]int, len(clusters))
+	crossBelow := make([]int, len(clusters))
+	for i := range clusters {
+		for j := range clusters {
+			if i == j {
+				continue
+			}
+			if clusters[j].minPts > clusters[i].maxPts {
+				crossAbove[i] += len(clusters[j].members)
+			} else if clusters[j].maxPts < clusters[i].minPts {
+				crossBelow[i] += len(clusters[j].members)
+			}
+		}
+	}
+
+	result := make([]RankBounds, n)
+	for i := range clusters {
+		enumerateBruteForceCluster(&clusters[i], standings, games, result, crossAbove[i])
+	}
+	return result
+}
+
+// bfCluster is a rank-disjoint group of players for brute-force enumeration.
+// members includes unfinished players connected by games AND finished players
+// whose fixed pts fall inside the cluster's pts range. games indexes into the
+// caller's []gamePair.
+type bfCluster struct {
+	members []int // player indices (global)
+	games   []int // game indices (global, into the outer games slice)
+	minPts  int
+	maxPts  int
+}
+
+// buildBruteForceClusters partitions players into rank-disjoint groups.
+//  1. Connected components over the unfinished-player graph.
+//  2. Compute each component's pts range [minPts, maxPts] across its members.
+//  3. Interval-merge components whose ranges overlap.
+//  4. Absorb finished players whose pts fall inside a merged range.
+//  5. Any remaining finished player (pts outside every merged range) becomes
+//     its own singleton cluster — its rank is fully fixed.
+func buildBruteForceClusters(standings []standingInfo, games []gamePair) []bfCluster {
+	n := len(standings)
+
+	// Union-find over player indices, linked by games.
+	parent := make([]int, n)
+	for i := range parent {
+		parent[i] = i
+	}
+	var find func(int) int
+	find = func(x int) int {
+		if parent[x] != x {
+			parent[x] = find(parent[x])
+		}
+		return parent[x]
+	}
+	union := func(a, b int) {
+		ra, rb := find(a), find(b)
+		if ra != rb {
+			parent[ra] = rb
+		}
+	}
+
+	inGame := make([]bool, n)
+	gamesPerPlayer := make([]int, n)
+	for _, g := range games {
+		inGame[g.a] = true
+		inGame[g.b] = true
+		gamesPerPlayer[g.a]++
+		gamesPerPlayer[g.b]++
+		union(g.a, g.b)
+	}
+
+	// Build one cluster per component of unfinished players.
+	rootToIdx := make(map[int]int)
+	var clusters []bfCluster
+	for i := 0; i < n; i++ {
+		if !inGame[i] {
+			continue
+		}
+		r := find(i)
+		idx, ok := rootToIdx[r]
+		if !ok {
+			idx = len(clusters)
+			rootToIdx[r] = idx
+			clusters = append(clusters, bfCluster{minPts: math.MaxInt, maxPts: math.MinInt})
+		}
+		c := &clusters[idx]
+		c.members = append(c.members, i)
+		pmin := standings[i].points
+		pmax := standings[i].points + 2*gamesPerPlayer[i]
+		if pmin < c.minPts {
+			c.minPts = pmin
+		}
+		if pmax > c.maxPts {
+			c.maxPts = pmax
+		}
+	}
+	for gi, g := range games {
+		idx := rootToIdx[find(g.a)]
+		clusters[idx].games = append(clusters[idx].games, gi)
+	}
+
+	// Interval-merge clusters with overlapping pts ranges.
+	if len(clusters) > 1 {
+		sort.Slice(clusters, func(i, j int) bool {
+			return clusters[i].minPts < clusters[j].minPts
+		})
+		merged := clusters[:0]
+		for _, c := range clusters {
+			if len(merged) > 0 && merged[len(merged)-1].maxPts >= c.minPts {
+				last := &merged[len(merged)-1]
+				last.members = append(last.members, c.members...)
+				last.games = append(last.games, c.games...)
+				if c.maxPts > last.maxPts {
+					last.maxPts = c.maxPts
+				}
+			} else {
+				merged = append(merged, c)
+			}
+		}
+		clusters = merged
+	}
+
+	// Absorb finished players into clusters whose range contains their pts.
+	// Leftover finished players become singleton clusters (fixed rank).
+	for i := 0; i < n; i++ {
+		if inGame[i] {
+			continue
+		}
+		p := standings[i].points
+		absorbed := false
+		for j := range clusters {
+			if p >= clusters[j].minPts && p <= clusters[j].maxPts {
+				clusters[j].members = append(clusters[j].members, i)
+				absorbed = true
+				break
+			}
+		}
+		if !absorbed {
+			clusters = append(clusters, bfCluster{
+				members: []int{i},
+				minPts:  p,
+				maxPts:  p,
+			})
+		}
+	}
+
+	return clusters
+}
+
+// enumerateBruteForceCluster runs 3^len(cluster.games) enumeration over the
+// cluster's games, computing rank bounds for each cluster member. fixedAbove
+// is the count of players in strictly-higher clusters (contributes a constant
+// to every member's rank).
+func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames []gamePair, result []RankBounds, fixedAbove int) {
+	m := len(c.members)
+	g := len(c.games)
+
+	// Initialize local best/worst for cluster members. Indexed by cluster
+	// member index (0..m-1); we map back to global at the end.
+	best := make([]int, m)
+	worst := make([]int, m)
+	for i := 0; i < m; i++ {
+		best[i] = len(standings) + 1
 		worst[i] = 0
 	}
 
-	// Per-outcome scratch: points and per-player win/loss bitmasks over games.
-	// Non-draw game gi contributes bit (1<<gi) to exactly one of the two
-	// participants' winMask and the other's loseMask. Draws contribute to
-	// neither. bruteForceThreshold ≤ 63 keeps us in uint64 range.
-	points := make([]int, n)
-	winMask := make([]uint64, n)
-	loseMask := make([]uint64, n)
+	// Precompute per-cluster-member the global game indices they participate
+	// in. Not strictly needed for correctness, but lets us keep winMask/
+	// loseMask sized to m rather than n.
+	memberIdx := make(map[int]int, m)
+	for mi, gi := range c.members {
+		memberIdx[gi] = mi
+	}
+
+	points := make([]int, m)
+	winMask := make([]uint64, m)
+	loseMask := make([]uint64, m)
 
 	total := 1
 	for i := 0; i < g; i++ {
@@ -880,24 +1067,28 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 	}
 
 	for k := 0; k < total; k++ {
-		for i := 0; i < n; i++ {
-			points[i] = standings[i].points
+		for i := 0; i < m; i++ {
+			points[i] = standings[c.members[i]].points
 			winMask[i] = 0
 			loseMask[i] = 0
 		}
 		x := k
-		for gi := 0; gi < g; gi++ {
-			a, b := games[gi].a, games[gi].b
-			bit := uint64(1) << gi
+		for localGi := 0; localGi < g; localGi++ {
+			gm := allGames[c.games[localGi]]
+			// Both endpoints are guaranteed cluster members because games are
+			// assigned to clusters by the union-find root.
+			a := memberIdx[gm.a]
+			b := memberIdx[gm.b]
+			bit := uint64(1) << localGi
 			switch x % 3 {
-			case 0: // draw
+			case 0:
 				points[a]++
 				points[b]++
-			case 1: // a wins
+			case 1:
 				points[a] += 2
 				winMask[a] |= bit
 				loseMask[b] |= bit
-			case 2: // b wins
+			case 2:
 				points[b] += 2
 				winMask[b] |= bit
 				loseMask[a] |= bit
@@ -905,12 +1096,12 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 			x /= 3
 		}
 
-		for p := 0; p < n; p++ {
+		for p := 0; p < m; p++ {
 			strictAbove := 0
 			forcedAboveTied := 0
 			possiblyAboveTied := 0
-			pSpread := standings[p].spread
-			for q := 0; q < n; q++ {
+			pSpread := standings[c.members[p]].spread
+			for q := 0; q < m; q++ {
 				if q == p {
 					continue
 				}
@@ -923,7 +1114,7 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 				}
 				forced, possible := spreadOrdering(
 					winMask[p], loseMask[p], winMask[q], loseMask[q],
-					pSpread, standings[q].spread,
+					pSpread, standings[c.members[q]].spread,
 				)
 				if forced {
 					forcedAboveTied++
@@ -932,8 +1123,8 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 					possiblyAboveTied++
 				}
 			}
-			bestRank := 1 + strictAbove + forcedAboveTied
-			worstRank := 1 + strictAbove + possiblyAboveTied
+			bestRank := 1 + fixedAbove + strictAbove + forcedAboveTied
+			worstRank := 1 + fixedAbove + strictAbove + possiblyAboveTied
 			if bestRank < best[p] {
 				best[p] = bestRank
 			}
@@ -943,11 +1134,9 @@ func bruteForceRanks(standings []standingInfo, games []gamePair) []RankBounds {
 		}
 	}
 
-	result := make([]RankBounds, n)
-	for i := 0; i < n; i++ {
-		result[i] = RankBounds{BestRank: best[i], WorstRank: worst[i]}
+	for i := 0; i < m; i++ {
+		result[c.members[i]] = RankBounds{BestRank: best[i], WorstRank: worst[i]}
 	}
-	return result
 }
 
 // spreadOrdering decides, for a fixed outcome, two things about a pair (q, p)

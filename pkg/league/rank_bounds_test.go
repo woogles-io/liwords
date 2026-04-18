@@ -344,6 +344,61 @@ func TestBestRankIgnoresGuaranteedBelow(t *testing.T) {
 	}
 }
 
+func TestBruteForceDisjointClusters(t *testing.T) {
+	// Two rank-disjoint clusters, brute-forced independently.
+	// Top: 2 players at 16 pts, 1 game. Range [16, 18].
+	// Bottom: 2 players at 4 pts, 1 game. Range [4, 6].
+	// No overlap, so top always above bottom regardless of outcomes.
+	standings := []standingInfo{
+		si(1, 16, 0, 1), // top1
+		si(2, 16, 0, 1), // top2
+		si(3, 4, 0, 1),  // bot1
+		si(4, 4, 0, 1),  // bot2
+	}
+	games := []unfinishedGame{uf(1, 2), uf(3, 4)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	// Each top player: wins → rank 1, loses → rank 2, draws → tied-ambiguous (1 or 2).
+	// best=1, worst=2.
+	for _, i := range []int{0, 1} {
+		if bounds[i].BestRank != 1 || bounds[i].WorstRank != 2 {
+			t.Errorf("top[%d]: got %d-%d, want 1-2", i, bounds[i].BestRank, bounds[i].WorstRank)
+		}
+	}
+	// Each bottom player: rank 3 or 4, never higher since both top always
+	// have more points.
+	for _, i := range []int{2, 3} {
+		if bounds[i].BestRank != 3 || bounds[i].WorstRank != 4 {
+			t.Errorf("bot[%d]: got %d-%d, want 3-4", i, bounds[i].BestRank, bounds[i].WorstRank)
+		}
+	}
+}
+
+func TestBruteForceFinishedPlayerAbsorbedIntoCluster(t *testing.T) {
+	// Finished player with pts inside cluster range gets absorbed.
+	// P1 finished at 17 pts +100 spread.
+	// Q1, Q2 at 14 pts, 2 games vs each other + draw option. Range [14, 18].
+	// 17 ∈ [14, 18] → P1 absorbed.
+	// In outcomes where Q1 wins both games against Q2 (impossible with 2 games
+	// vs same opponent — let's just use 1 game):
+	standings := []standingInfo{
+		si(1, 17, 100, 0), // P1 finished
+		si(2, 14, 200, 1), // Q1
+		si(3, 14, 50, 1),  // Q2
+	}
+	games := []unfinishedGame{uf(2, 3)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	// P1 at 17:
+	//   Q1 wins: Q1=16, Q2=14. P1 > Q1 > Q2. P1 rank 1.
+	//   Q2 wins: Q2=16, Q1=14. P1 rank 1.
+	//   Draw: Q1=Q2=15. P1 rank 1.
+	// P1 always rank 1.
+	if bounds[0].BestRank != 1 || bounds[0].WorstRank != 1 {
+		t.Errorf("P1: got %d-%d, want 1-1", bounds[0].BestRank, bounds[0].WorstRank)
+	}
+}
+
 func TestBestRankWithExternalLoss(t *testing.T) {
 	// Reproduces Collins S11 Div1 jellomochas scenario.
 	// P (player 0, "jello"): 16 pts, +1 spread, 0 games remaining.
