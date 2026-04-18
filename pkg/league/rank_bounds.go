@@ -3,6 +3,7 @@ package league
 import (
 	"math"
 	"sort"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -876,8 +877,8 @@ func maxClusterGames(clusters []bfCluster) int {
 	return m
 }
 
-// bruteForceRanksFromClusters enumerates outcomes per cluster and combines
-// within-cluster ranks with fixed cross-cluster contributions.
+// bruteForceRanksFromClusters enumerates outcomes per cluster in parallel and
+// combines within-cluster ranks with fixed cross-cluster contributions.
 func bruteForceRanksFromClusters(clusters []bfCluster, standings []standingInfo, games []gamePair) []RankBounds {
 	n := len(standings)
 
@@ -898,9 +899,15 @@ func bruteForceRanksFromClusters(clusters []bfCluster, standings []standingInfo,
 	}
 
 	result := make([]RankBounds, n)
+	var wg sync.WaitGroup
 	for i := range clusters {
-		enumerateBruteForceCluster(&clusters[i], standings, games, result, crossAbove[i])
+		wg.Add(1)
+		go func(ci int) {
+			defer wg.Done()
+			enumerateBruteForceCluster(&clusters[ci], standings, games, result, crossAbove[ci])
+		}(i)
 	}
+	wg.Wait()
 	return result
 }
 
