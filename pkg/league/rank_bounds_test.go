@@ -238,10 +238,15 @@ func TestDrawsOnlyBestRankInfeasible(t *testing.T) {
 	// P4: 17 pts, +50 spread, 3 games (vs P2, P3, P5)
 	// P5: 17 pts, +50 spread, 3 games (vs P2, P3, P4)
 	//
-	// P2 has spread +400 > P1's +300. P2 at 20 beats P1 on spread.
-	// P2 must stay strictly below 20 (absorb ≤ 2 points from 3 games).
-	// P3-P5 can draw all games (maxPerGame=1, spread preserved).
-	// P2 needs maxBelow=2 (decremented from 3) with maxPerGame=2.
+	// The max-flow heuristic tightens to bestRank=2 under the assumption that
+	// P2 (spread +400) must stay strictly below 20 pts on points. But P2 CAN
+	// reach 20 pts via 1W+1D+1L with a small win margin and a huge loss
+	// margin, landing P2.spread below +300. In that realization all of
+	// P2-P5 finish at or below P1 on the tiebreak, so bestRank=1.
+	//
+	// The brute-force path (g=6 ≤ bruteForceThreshold) enumerates 3^6=729
+	// outcomes and checks margin feasibility per tied pair, so it returns
+	// the tight answer.
 	standings := []standingInfo{
 		si(1, 20, 300, 0),
 		si(2, 17, 400, 3),
@@ -252,10 +257,8 @@ func TestDrawsOnlyBestRankInfeasible(t *testing.T) {
 	games := []unfinishedGame{uf(2, 3), uf(2, 4), uf(2, 5), uf(3, 4), uf(3, 5), uf(4, 5)}
 	bounds := CalculatePossibleRanks(standings, games)
 
-	// Total absorb capacity (2+3+3+3=11) < total within-set game points
-	// (6 games × 2 = 12). Not all can stay below P1. bestRank = 2.
-	if bounds[0].BestRank != 2 {
-		t.Errorf("P1 best rank: got %d, want 2", bounds[0].BestRank)
+	if bounds[0].BestRank != 1 {
+		t.Errorf("P1 best rank: got %d, want 1", bounds[0].BestRank)
 	}
 }
 
@@ -338,6 +341,110 @@ func TestBestRankIgnoresGuaranteedBelow(t *testing.T) {
 
 	if bounds[0].BestRank != 2 {
 		t.Errorf("P best rank: got %d, want 2", bounds[0].BestRank)
+	}
+}
+
+func TestBruteForceDisjointClusters(t *testing.T) {
+	// Two rank-disjoint clusters, brute-forced independently.
+	// Top: 2 players at 16 pts, 1 game. Range [16, 18].
+	// Bottom: 2 players at 4 pts, 1 game. Range [4, 6].
+	// No overlap, so top always above bottom regardless of outcomes.
+	standings := []standingInfo{
+		si(1, 16, 0, 1), // top1
+		si(2, 16, 0, 1), // top2
+		si(3, 4, 0, 1),  // bot1
+		si(4, 4, 0, 1),  // bot2
+	}
+	games := []unfinishedGame{uf(1, 2), uf(3, 4)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	// Each top player: wins → rank 1, loses → rank 2, draws → tied-ambiguous (1 or 2).
+	// best=1, worst=2.
+	for _, i := range []int{0, 1} {
+		if bounds[i].BestRank != 1 || bounds[i].WorstRank != 2 {
+			t.Errorf("top[%d]: got %d-%d, want 1-2", i, bounds[i].BestRank, bounds[i].WorstRank)
+		}
+	}
+	// Each bottom player: rank 3 or 4, never higher since both top always
+	// have more points.
+	for _, i := range []int{2, 3} {
+		if bounds[i].BestRank != 3 || bounds[i].WorstRank != 4 {
+			t.Errorf("bot[%d]: got %d-%d, want 3-4", i, bounds[i].BestRank, bounds[i].WorstRank)
+		}
+	}
+}
+
+func TestBruteForceFinishedPlayerAbsorbedIntoCluster(t *testing.T) {
+	// Finished player with pts inside cluster range gets absorbed.
+	// P1 finished at 17 pts +100 spread.
+	// Q1, Q2 at 14 pts, 2 games vs each other + draw option. Range [14, 18].
+	// 17 ∈ [14, 18] → P1 absorbed.
+	// In outcomes where Q1 wins both games against Q2 (impossible with 2 games
+	// vs same opponent — let's just use 1 game):
+	standings := []standingInfo{
+		si(1, 17, 100, 0), // P1 finished
+		si(2, 14, 200, 1), // Q1
+		si(3, 14, 50, 1),  // Q2
+	}
+	games := []unfinishedGame{uf(2, 3)}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	// P1 at 17:
+	//   Q1 wins: Q1=16, Q2=14. P1 > Q1 > Q2. P1 rank 1.
+	//   Q2 wins: Q2=16, Q1=14. P1 rank 1.
+	//   Draw: Q1=Q2=15. P1 rank 1.
+	// P1 always rank 1.
+	if bounds[0].BestRank != 1 || bounds[0].WorstRank != 1 {
+		t.Errorf("P1: got %d-%d, want 1-1", bounds[0].BestRank, bounds[0].WorstRank)
+	}
+}
+
+func TestBestRankWithExternalLoss(t *testing.T) {
+	// Reproduces Collins S11 Div1 jellomochas scenario.
+	// P (player 0, "jello"): 16 pts, +1 spread, 0 games remaining.
+	// 5 players locked above P: Blibble/kfraley 20 pts, merlion/Xadreco 18 pts,
+	// ahmad 16 pts +168 (beats jello on spread tiebreak).
+	// 4 potential threats at 14 pts with spread > P's: VVB +221 (2 games),
+	// bnjy +168 (1 game), yong +113 (2 games), ather -15 (2 games).
+	// AnitaCH 4 pts (1 game) is guaranteedBelow (max 10 < 16).
+	//
+	// Games: VVB-AnitaCH, VVB-yong, bnjy-ather, yong-ather.
+	//
+	// Key insight: VVB has a game vs AnitaCH (guaranteedBelow). We can route
+	// that game as an AnitaCH win with huge margin, dropping VVB's spread
+	// below +1 even when VVB reaches 16 pts from other games. So VVB can
+	// finish at 16 below jello on spread, keeping all 4 threats below P.
+	//
+	// Before fix: VVB (spread 221 > 1, no distinction for external) got
+	// maxBelow-- → absorb=1, forcing VVB below on points. Flow infeasibility
+	// then removed a candidate, giving bestRank=7 instead of 6.
+	standings := []standingInfo{
+		si(1, 16, 1, 0),    // jello (P)
+		si(2, 20, 799, 0),  // Blibble
+		si(3, 20, 567, 0),  // kfraley
+		si(4, 18, 247, 0),  // merlion
+		si(5, 18, 236, 0),  // Xadreco
+		si(6, 16, 168, 0),  // ahmad
+		si(7, 14, 221, 2),  // VVB
+		si(8, 14, 168, 1),  // bnjy
+		si(9, 14, 113, 2),  // yong
+		si(10, 14, -15, 2), // ather
+		si(11, 4, -188, 1), // AnitaCH (guaranteedBelow)
+		si(12, 12, -41, 0), // Kh1108
+	}
+	games := []unfinishedGame{
+		uf(7, 11), // VVB-AnitaCH
+		uf(7, 9),  // VVB-yong
+		uf(8, 10), // bnjy-ather
+		uf(9, 10), // yong-ather
+	}
+	bounds := CalculatePossibleRanks(standings, games)
+
+	if bounds[0].BestRank != 6 {
+		t.Errorf("jello best rank: got %d, want 6", bounds[0].BestRank)
+	}
+	if bounds[0].WorstRank != 10 {
+		t.Errorf("jello worst rank: got %d, want 10", bounds[0].WorstRank)
 	}
 }
 
