@@ -14,7 +14,7 @@ This is the entry point for a five-document audit (this index plus four content 
 Audit of three linked concerns in the liwords backend:
 
 1. **Deploy safety** — why rolling deploys with multiple concurrent instances cause races today, and how to fix.
-2. **Games table storage** — backup window hours → minutes, opaque protobuf `history` → queryable `game_moves`, hot/cold partitioning, PG 14.6 → 18.3 upgrade.
+2. **Games table storage** — operational prerequisites around the authoritative `docs/mikado/game_storage_v2.md` plan (PG 14.6 → 18.3 upgrade, physical backups, pgBouncer cutover, TOAST + autovacuum tuning). v2 owns the schema shape; this audit does not compete.
 3. **Stack + stores cleanup** — Postgres / Redis / NATS role boundaries, chat move to Postgres, unit-of-work transaction pattern, AGPL `.proto` dual-licensing for external clients (e.g. omgbot).
 
 All five documents live in `docs/infra-audit-2026-04-19/`.
@@ -26,9 +26,9 @@ All five documents live in `docs/infra-audit-2026-04-19/`.
 | Doc | Role | Sized |
 |-----|------|-------|
 | `deploy-safety.md` | Actionable: 8 fixes (P1-P8) for rolling deploys | sprint |
-| `games-storage-redesign.md` | Actionable: backup + schema + partitioning + PG 18.3 upgrade | months |
+| `games-storage-redesign.md` | Actionable: operational wrapper around `docs/mikado/game_storage_v2.md` (PG 18.3 upgrade, physical backups, pgBouncer cutover, TOAST + autovacuum tuning) + "Alternatives considered" preserving rejected earlier designs | weeks for ops prereqs; v2 itself is months |
 | `stack-and-stores-cleanup.md` | Actionable: store roles, chat move, transaction pattern, AGPL | quarter |
-| `deep-dive.md` | Reference: 26-section Q&A behind the other three | read-only background |
+| `deep-dive.md` | Reference: 27-section Q&A; §27 documents relationship to v2 | read-only background |
 
 The three actionable specs each have a "Priority" or "Phase" list with sizing. The deep-dive is optional reading for "why" behind any specific decision.
 
@@ -76,18 +76,18 @@ Start with **this file** (you're already here). Read the "Topic" and "The four d
 
 ## Headline recommendations
 
-Summarized for someone who will read only this index:
+Summarized for someone who will read only this index. The games-storage schema redesign is owned by `docs/mikado/game_storage_v2.md` (primary maintainer, in-flight on `origin/feat/game-turns-dual-write`). This audit contributes the operational wrapper around it, deploy-safety fixes, and stack-cleanup items that v2 doesn't address.
 
-1. **Target PG 18.3+**, skip PG 17 intermediate. Virtual generated columns collapse most column-promotion work to a one-line DDL. PG 18.3 released 2026-02-26 with CVE fixes, past the early-release gate.
-2. **Cluster cutover via pgBouncer upstream swap**, not DNS flip. DNS TTL lag is unacceptable given the "zero downtime" constraint.
-3. **Drop all bytea from the DB.** Protobuf stays as the wire format; `protojson.Marshal` produces JSONB. `games.history` moves to a new `game_moves` append-only table with promoted columns for words, racks, scores.
-4. **Two-table pattern:** active-only unpartitioned `games` + completed-only monthly-partitioned `past_games` (plus existing `game_players`, plus new `game_moves`). Active and completed have different columns and different operational profiles; keep them in separate tables rather than one LIST-partitioned table. All partition boundaries in **explicit UTC** to avoid DST shifts.
-5. **Split a dedicated `liwords-worker` service** (desiredCount=1) to own all tickers (adjudicator, pollers, reclaim worker). Keeps liwords-api stateless and scalable.
-6. **AGPL `.proto` dual-license** under Apache-2.0 is urgent if any external non-AGPL consumer (e.g. omgbot) exists. Current state is a live license conflict.
-7. **Chat storage moves from Redis to Postgres.** Redis shrinks to presence-only role. NATS stays for pub/sub fan-out.
-8. **Migration via scripted backfill + app-level dual-write** (same as PR 1503 / mikado plan). Game-end is a clean app transaction boundary; no DB triggers needed. Read-path rollout gated by feature flag.
-9. **Store words and racks as machine-letter arrays** (`smallint[]`), not strings. Liwords supports lexicons where one tile is not one character (Spanish CH/LL/RR, German Ä/Ö/Ü, Welsh digraphs, Catalan L·L). Pair with `lexicon_id` column so the ML mapping is unambiguous. Decode to display strings in the app layer.
-10. **No current column is authoritative for `ended_at`**. `game_players.created_at` copies `games.created_at` (game start, not end). `games.updated_at` drifts on moderator/post-end edits (cheating adjudication, force-forfeit, league force-finish, rating adjustments) and is also doubled as UI sort key. `game_players.updated_at` has become null for some rows from past backfill drift. For backfill (Phase C), use the later of `games.updated_at` and the last-event timestamp in `games.history` protobuf, and mark legacy `ended_at` as approximate. **For new games going forward, write `ended_at = now()` explicitly in the game-end INSERT transaction.** Audit every call site of `InsertGamePlayers` (`pkg/gameplay/end.go:257`, `pkg/gameplay/end.go:439`, `pkg/league/force_finish_games.go:169`) to route through one end-game function that writes `ended_at` consistently.
+1. **Defer games-storage schema work to `docs/mikado/game_storage_v2.md`.** v2 keeps a single `games` table (row kept forever, uuid never reused) + ephemeral `game_turns` (deleted after S3 upload) + gzipped-protojson S3 archive + native Go runtime in new `pkg/game/`. Earlier drafts of this audit proposed competing schemas; those are preserved in the "Alternatives considered" section of `games-storage-redesign.md` and in git log (commits 0399dce2c through cefa04749).
+2. **Target PG 18.3+**, skip PG 17 intermediate. PG 18.3 released 2026-02-26 with CVE fixes. VACUUM memory 2-3x reduction + async I/O + incremental basebackup materially help v2's backfill + per-move hot path on the 2-core prod box.
+3. **Cluster cutover via pgBouncer upstream swap**, not DNS flip. DNS TTL lag is unacceptable given the "zero downtime" constraint. pgBouncer also multiplexes connections, reducing PG backend count on 2-core prod.
+4. **Physical backups** (pgBackRest, WAL-G, or `pg_basebackup --incremental`) replace `pg_dump` as primary. 2-hour backup window → minutes regardless of table size. Prerequisite for v2's backfill phase (don't want backfill held hostage to backup).
+5. **TOAST lz4 + per-hot-table autovacuum tuning.** Metadata-only changes, zero downtime, materially cheaper reads and faster vacuum.
+6. **Deploy-safety P1-P7** (see `deploy-safety.md`): schema version guard, worker service split, advisory locks (matches v2), cross-instance cache invalidation, WebSocket drain, ALB/graceful alignment, verify `gameEventChan` publish path. Enables rolling deploys with N>1 instances.
+7. **AGPL `.proto` dual-license** under Apache-2.0 is urgent if any external non-AGPL consumer (e.g. omgbot) exists. Current state is a live license conflict. See `stack-and-stores-cleanup.md` Q5.
+8. **Chat storage moves from Redis to Postgres.** Redis shrinks to presence-only role. NATS stays for pub/sub fan-out. See `stack-and-stores-cleanup.md` chat migration section.
+9. **Machine-letter storage for word search**: Spanish CH/LL/RR, German Ä/Ö/Ü, Welsh digraphs, Catalan L·L don't fit string storage. When the word-search ClickHouse migration lands (out of scope for v2), use `smallint[]` arrays + `lexicon_id`, not strings. Preserved in `deep-dive.md` §11, §21.
+10. **`ended_at` handling**: v2 writes `ended_at = now()` explicitly at game-end transaction time. For backfill of legacy rows, use the later of `games.updated_at` and the last-event timestamp in `games.history`, and accept approximate values. No current timestamp is fully authoritative (`games.updated_at` drifts on moderator edits; `game_players.created_at` is game start, not end; `game_players.updated_at` became null for some rows). See `deep-dive.md` and v2.
 
 ---
 
@@ -102,26 +102,33 @@ Summarized for someone who will read only this index:
 
 ## Prior art in the repo
 
-- **`docs/mikado/game_table_redo_plan.md`** — earlier plan for `past_games` + `game_players` + dual-write + quickdata drop + S3 archival. Partially implemented: `game_players` is built and populated (~20M rows). This audit adopts the same two-table shape and migration mechanics (scripted backfill + app-level dual-write), and extends with per-move `game_moves`, PG 18 features, and all-JSONB encoding.
-- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference]`) — substantial implementation attempt by César Del Solar. Author comment explicitly invokes the Mikado method: too big to merge as one, being split into smaller deployable units. Contains monthly-RANGE-on-`past_games` migrations, `PHASE2_S3_ARCHIVAL.md` (539-line S3 archive design with Parquet + Athena), `scripts/migrations/historical_games/` backfill tool (442 lines), `pkg/stores/game/migration.go` scaffolding, `pkg/stores/game/README.md` evolution narrative, and `game_metadata` table. This audit adopts PR 1503's two-table shape, monthly partition cadence, `game_metadata` table, scripted backfill, and app-level dual-write with feature-flag cutover. Deviations from PR 1503: per-move `game_moves` table (new), all-JSONB encoding (drop all bytea), machine-letter arrays for word/rack (supports non-English lexicons), PG 18.3+ target (virtual generated columns simplify column promotions). `PHASE2_S3_ARCHIVAL.md` adopted for Phase H rather than re-authored.
-- **PR #1634** (`origin/maintenance-overlay`, OPEN) — workaround that pauses real-time games during deploy via user-facing overlay. Blocked on CloudFront `/ping` exposure. Deploy-safety spec P1-P7 is the proper alternative; this branch can be abandoned once P1-P7 lands, or merged as interim measure if time pressure demands.
-- **`active_game_events` table** (`db/migrations/202502280432_game_table_changes.up.sql:15`) — unused artifact of a prior per-move refactor. No Go references. Cleanup candidate.
-- **`history_in_s3` column** — added 2025-03-17, dropped 2025-11-11. Git log shows it was never wired up (sat unused for 8 months). Phase H S3 archival in games-storage-redesign adopts PR 1503's `PHASE2_S3_ARCHIVAL.md` design, not a clean slate.
+- **`docs/mikado/game_storage_v2.md`** (on `origin/feat/game-turns-dual-write`, commit `59e41770`, 2026-04-19) — **authoritative** mikado plan for games-storage by primary maintainer. Single `games` table kept forever + ephemeral `game_turns` (deleted after S3 upload) + gzipped-protojson S3 archive + native Go runtime in new `pkg/game/`. Supersedes earlier `docs/mikado/game_table_redo_plan.md`. This audit defers all schema-shape decisions to v2 and contributes only operational work around it (see `games-storage-redesign.md`).
+- **`docs/mikado/game_table_redo_plan.md`** — earlier plan, superseded by v2. Historical reference only.
+- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference]`) — earlier large-scope implementation by César Del Solar, marked obsolete per Mikado method (too big to review as one PR, being split into smaller deployable units). Contains monthly-RANGE-on-`past_games` migrations, `PHASE2_S3_ARCHIVAL.md` (539-line Parquet+Athena S3 design), `scripts/migrations/historical_games/` backfill tool, `game_metadata` table. v2 supersedes the table-shape decisions in PR #1503; the backfill scaffolding and `PHASE2_S3_ARCHIVAL.md` S3 design may still inform implementation of v2's archival step (though v2 picks gzipped protojson over Parquet).
+- **PR #1634** (`origin/maintenance-overlay`, OPEN) — workaround that pauses real-time games during deploy via user-facing overlay. Blocked on CloudFront `/ping` exposure. This audit's `deploy-safety.md` P1-P7 is the proper alternative; PR #1634 can be abandoned once P1-P7 lands, or merged as an interim measure if time pressure demands.
+- **`active_game_events` table** (`db/migrations/202502280432_game_table_changes.up.sql:15`) — unused artifact of a prior per-move refactor. No Go references. Dropped in v2's migration `20260417000001_game_turns.up.sql`.
+- **`history_in_s3` column** — added 2025-03-17, dropped 2025-11-11. Git log shows it was never wired up. v2 uses a new `history_s3_key` column instead (different field, different semantics).
 
 ---
 
 ## Evolution notes
 
-The four documents were written during a long conversation. Some early sections in the deep-dive were revised by later sections. Signposts inside each document point to the authoritative text when that happens; read the signpost box at the top of any section before acting on it.
+The five documents were written over an iterative conversation. Drafts evolved through several table-shape proposals (LIST-on-`ended`, two-table, `active_games` split, `game_metadata` separate) before discovery of `docs/mikado/game_storage_v2.md` collapsed all of that into "defer to v2". Git log preserves the evolution:
 
-Key signpost categories:
+| Commit subject | What it captures |
+|----------------|------------------|
+| `docs: initial infrastructure audit drafts` | LIST-on-`ended` proposal, docs/superpowers/specs/ path |
+| `docs: rename to docs/infra-audit-2026-04-19/, drop date prefix` | Path + naming cleanup |
+| `docs: cross-ref PR #1503/#1634, game_players; flip to two-table` | Discovery of prior art + pivot from LIST-on-`ended` to two-table |
+| `docs: adopt game_metadata, explicit UTC, app-level dual-write` | PR #1503 `game_metadata` adopted; UTC DST protection; conceded trigger-based and quarterly to simpler choices |
+| `docs: per-phase downtime, ML word arrays, monthly partitions` | Zero-downtime table; machine-letter storage for non-English lexicons; monthly cadence |
+| `docs: refine ended_at backfill; split UI sort-order paths` | Corrected `game_players.created_at` (game start, not end); noted `active_games` split as deferred optimization |
+| `docs: defer schema redesign to game_storage_v2.md` (this commit) | v2 discovery collapsed all prior shape proposals; spec narrowed to operational wrapper |
 
-- **"Final decision"** — do not revise from earlier sections (e.g. two-table pattern §19, encoding decision §21, PG upgrade §26, cutover mechanism §25).
-- **"Refines §N"** — this section corrects or sharpens an earlier section (e.g. §10 refines §5).
-- **"Superseded by PG 18"** — pattern was necessary on 14.6 but simplifies on the upgrade target (e.g. §13 column promotion).
+Signposts inside the deep-dive point to authoritative sections when earlier sections were revised. Read the signpost box at the top of any deep-dive section before acting on it. The `games-storage-redesign.md` "Alternatives considered" section summarizes every rejected shape with its rejection reason.
 
 ---
 
-## Status (2026-04-19)
+## Status (2026-04-20)
 
-Audit complete. No fixes started. Ready to move to planning and PR-sized work breakdown.
+Audit complete. Scope narrowed to operational prerequisites around v2 + deploy safety + stack cleanup. No fixes started. Ready for PR-sized work breakdown.

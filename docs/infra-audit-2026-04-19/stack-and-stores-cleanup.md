@@ -10,8 +10,8 @@
 
 **Related specs:**
 - `deploy-safety.md` — operational safety; cache retirement and advisory locks introduced here feed that work
-- `games-storage-redesign.md` — schema redesign; this spec covers how the application layer should talk to the new schema
-- `deep-dive.md` — detailed Q&A reasoning, chat-move rationale, PG version matrix
+- `games-storage-redesign.md` — operational wrapper around `docs/mikado/game_storage_v2.md`; unit-of-work (Q3) aligns with v2's short focused write APIs
+- `deep-dive.md` — detailed Q&A reasoning; §27 documents relationship to v2
 
 ---
 

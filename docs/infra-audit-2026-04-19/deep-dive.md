@@ -1103,3 +1103,56 @@ For liwords with "even short downtime is unacceptable": logical replication + pg
 | Redis presence | `pkg/stores/redis/redis_presence.go` |
 | Redis chat | `pkg/stores/redis/redis_chat.go`, `pkg/stores/redis/add_chat.lua` |
 | Migration task infra | `aws/cfn/db-migration-task.yaml` |
+
+---
+
+## 27. Relationship to `game_storage_v2.md` mikado plan
+
+> **Signpost:** This section is the **final scope resolution** for the games-storage workstream. The sibling `games-storage-redesign.md` document has been narrowed to an operational addendum around `docs/mikado/game_storage_v2.md`. Sections 5, 7, 11, 14, 19, 21, 22 of this deep-dive still hold for their specific questions, but the schema-shape recommendations in those sections are superseded by v2 where they conflict. Specifically:
+> - §19's two-table (`games` + `past_games`) recommendation is superseded by v2's single-`games` + ephemeral-`game_turns` shape.
+> - §21's "permanent `game_moves` with ML arrays" is superseded by v2's ephemeral `game_turns` + S3 archive.
+> - §14's `game_metadata` adoption is superseded by v2 keeping metadata on the forever `games` row.
+> - §11's word-search via `game_moves` moves to a separate ClickHouse migration per v2's out-of-scope list.
+
+### What `game_storage_v2.md` says (source of truth)
+
+On `origin/feat/game-turns-dual-write` branch, commit `59e41770` dated 2026-04-19. Authored by César Del Solar. In-progress implementation already touches `pkg/stores/game/db.go`, `pkg/gameplay/game.go`, adds `game_turns` migration, new sqlc queries, `DUAL_WRITE_TURNS` and `SHADOW_TURNS` feature flags.
+
+Key design choices:
+
+| Question | v2 answer |
+|----------|-----------|
+| Runtime game state | Native Go structs in `pkg/game/`, not proto |
+| Per-move persistence | `game_turns` — one proto-marshaled `ipc.GameEvent` per row |
+| `game_turns` lifetime | Ephemeral; DELETEd after GameHistory assembled and S3 upload confirmed |
+| Live-state serialization | None during play; replay events on node wake-up |
+| Coordination | `pg_advisory_xact_lock(hashtext(game_uuid))` (matches deploy-safety P3) |
+| Schema shape | One `games` table (forever) + ephemeral `game_turns` + S3 archive |
+| S3 archive format | Gzipped protojson (`.json.gz`) |
+| `games` heavy columns | `history`, `stats`, `quickdata`, `meta_events` cleared after backfill; `history_s3_key` added |
+| Write API | `AppendTurn`, `UpdateTimers`, `AppendMetaEvent`, `SetReady`, `EndGame` — short focused txs |
+| `pkg/cwgame/*` | Retired after annotator migration |
+| macondo runtime dep | Dropped (only used for lexicon data) |
+| Partitioning | None; `games` stays small, `game_turns` stays small and ephemeral |
+
+Priority in v2: multi-node + cache removal first, S3 archival second, GameDocument deprecation third, macondo-dep removal fourth.
+
+Explicitly out of scope in v2 (separate mikado branches): puzzles macondo removal, memento proto-rename, **ClickHouse stats migration**, tournament-store GORM removal.
+
+### What this audit still contributes after v2
+
+This audit's remaining, non-overlapping contributions:
+
+- **Deploy safety P1-P7 in `deploy-safety.md`** — v2 references advisory locks and multi-node but does not enumerate the full fix list. WebSocket drain (P5), ALB deregistration alignment (P6), JetStream event replay (P8), worker service split (P2), schema version guard (P1) are audit-specific additions.
+- **Stack + stores cleanup in `stack-and-stores-cleanup.md`** — chat Redis→PG, `RedisConfigStore` retire, AGPL `.proto` dual-license, unit-of-work pattern. None overlap v2.
+- **Operational infrastructure in `games-storage-redesign.md`** — PG 14.6→18.3 upgrade, pgBackRest / WAL-G / `pg_basebackup --incremental`, pgBouncer cutover, TOAST lz4 tuning, autovacuum per-hot-table tuning. v2 doesn't detail these, though v2's context implicitly motivates them.
+- **Machine-letter storage insight (§11, §21)** — preserved for whenever the word-search ClickHouse migration is planned (out of scope for v2).
+
+### Reading order if landing both
+
+1. This audit's `deploy-safety.md` (P1-P7) — can land independently.
+2. This audit's operational work in `games-storage-redesign.md` (PG upgrade, physical backups, pgBouncer).
+3. v2 plan execution per `docs/mikado/game_storage_v2.md`.
+4. Stack-cleanup items (`stack-and-stores-cleanup.md`) as capacity allows.
+
+Items 1 and 2 are prerequisites that make v2's execution smoother (backup window shrinks so v2's backfill isn't held hostage to a 2h backup; pgBouncer lets PG upgrade land without downtime; advisory locks are already specified).
