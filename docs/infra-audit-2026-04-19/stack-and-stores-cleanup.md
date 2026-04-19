@@ -311,6 +311,27 @@ Implementation:
 - **Past contributors have default AGPL copyright on their additions.** Relicensing `.proto` files to Apache-2.0 requires either explicit relicense consent from each contributor or rewriting the affected files with fresh attribution. Run `git log --follow --pretty=format:'%an %ae' rpc/api/proto/` for the contributor list; it is likely short.
 - Until dual-licensing lands, any external non-AGPL consumer of these schemas is in a grey zone. Treat as blocking for any external client project that expects a permissive license.
 
+### Adjacent concern: macondo `.proto` is GPL (not AGPL)
+
+Liwords' AGPL dual-license is necessary but **not sufficient** for omgbot-style external consumers. Two license axes stack:
+
+- liwords `.proto` under AGPL (addressed by the dual-license above)
+- macondo `.proto` under **GPL** (separate project, owned by a different maintainer)
+
+liwords embeds macondo types in its wire surface today (`macondopb.GameHistory` in `games.history` bytea and in select RPC responses). External clients that parse `GameHistory` currently carry both AGPL and GPL exposure.
+
+The authoritative games-storage plan (`docs/mikado/game_storage_v2.md`) solves this as a side effect:
+
+> Where does `GameHistory` proto live? — `liwords/api/proto/ipc/`. Macondo becomes a pure library with plain Go structs; liwords owns the wire types.
+
+Post-v2, `GameHistory` lives under `rpc/api/proto/` and is covered by the Apache-2.0 dual-license proposed in this Q5. Macondo retreats to library-only (plain Go structs), and external consumers don't touch its `.proto` at all.
+
+Interim options (until v2 lands):
+- Ask macondo maintainer to add SPDX permissive headers to `macondo/gen/api/proto/macondo/*.proto` — same pattern as liwords fix.
+- Or accept GPL exposure for any omgbot code path that touches macondopb.
+
+Full fix for omgbot = (liwords AGPL dual-license) + (v2 wire-type ownership transfer). Neither alone is enough. Deep-dive §24 covers this in more detail.
+
 ---
 
 ## Priority
