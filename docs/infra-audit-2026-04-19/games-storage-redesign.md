@@ -28,7 +28,7 @@ This spec extends PR 1503 with:
 - (a) per-move granularity via `game_moves` (new; PR 1503 had per-game `past_games` only)
 - (b) PG 18.3 upgrade with virtual generated columns for column promotions
 - (c) all-JSONB encoding (drop all bytea)
-- (d) Partition cadence: **follow PR 1503's monthly cadence** unless prod growth metrics argue for quarterly. Quarterly appeared in earlier drafts of this spec but without supporting data; monthly is the safer default given PR 1503's implementer likely chose based on actual sizing. Revisit during Phase B based on current growth rate.
+- (d) Partition cadence: **monthly**, matching PR 1503. Quarterly appeared in earlier drafts without supporting data; conceded. Weekly is overkill; quarterly is too coarse; daily creates too many partitions for retention-year horizons. Month-length variance (28-31 days) is irrelevant — partition capacity is row-count-driven, not date-aligned. Standard ops cadence, calendar-aligned for archival.
 - (e) pgBouncer cutover and pgBackRest / WAL-G physical backups
 - (f) **explicit UTC partition boundaries** (`TIMESTAMPTZ 'YYYY-MM-DD 00:00:00+00'`) to avoid DST-induced partition boundary shifts when session timezone is non-UTC
 
@@ -135,8 +135,8 @@ Role in this redesign: `game_players` is **the per-player denormalized index for
 
 `game_players` also needs a partitioning plan (same 20M+ growth trajectory as `games`). Plan:
 - `game_players` is append-only at game completion; `updated_at` writes are rare. Fillfactor 100 packs dense.
-- Partition by `created_at` quarterly, using the same cadence as `past_games`.
-- Archive parallel to `past_games_YYYY_qN`.
+- Partition by `created_at` monthly, using the same cadence as `past_games`.
+- Archive parallel to `past_games_YYYY_MM`.
 
 ### Move write path
 
@@ -264,7 +264,7 @@ CREATE TABLE past_games (
     PRIMARY KEY (uuid, ended_at)
 ) PARTITION BY RANGE (ended_at);
 
-CREATE TABLE past_games_2026_q2 PARTITION OF past_games
+CREATE TABLE past_games_2026_04 PARTITION OF past_games
     FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
               TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00')
     WITH (fillfactor = 100);                -- packed, never updated
@@ -277,7 +277,7 @@ Append-only at game end. No updates ever. Old partitions immutable → backup on
 
 Note: no `history bytea`, no `player_on_turn`, no `time_remaining_*`. Active-only columns deliberately absent.
 
-#### `game_players` (completed-only, already exists; add quarterly partitioning)
+#### `game_players` (completed-only, already exists; add monthly partitioning)
 
 Table already populated (~20M rows, PK `(game_uuid, player_id)`, written at game end only). Migration adds partitioning by `created_at` UTC to match `past_games` cadence.
 
@@ -287,7 +287,7 @@ past_game_players (
     -- same columns as current game_players
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE past_game_players_2026_q2 PARTITION OF past_game_players
+CREATE TABLE past_game_players_2026_04 PARTITION OF past_game_players
     FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
               TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00')
     WITH (fillfactor = 100);
@@ -295,7 +295,16 @@ CREATE TABLE past_game_players_2026_q2 PARTITION OF past_game_players
 
 Rename consideration: `game_players` → `past_game_players` to match `past_games` naming and signal completed-only semantics. Optional; pure naming change, can defer.
 
-#### `game_moves` (append during play, partitioned quarterly by `created_at` UTC)
+#### `game_moves` (append during play, partitioned monthly by `created_at` UTC)
+
+**Important: store words and racks as machine-letter arrays, not strings.** Liwords supports multiple lexicons including languages where one tile is not one character:
+
+- Spanish: `CH`, `LL`, `RR` are single tiles. "CARRO" is 5 chars but 4 tiles.
+- German: `Ä`, `Ö`, `Ü` are single tiles (multi-byte UTF-8).
+- Welsh: `CH`, `DD`, `FF`, `LL`, `NG`, `PH`, `RH`, `TH` are single tiles.
+- Catalan: `L·L` is one tile with an interior middle-dot.
+
+String storage leaks lexicon semantics into the DB: `length('CARRO') = 5` disagrees with the 4-tile count, and `WHERE word = 'RR'` is ambiguous without lexicon context. Use machine-letter (ML) integer arrays throughout.
 
 ```sql
 CREATE TABLE game_moves (
@@ -304,9 +313,12 @@ CREATE TABLE game_moves (
 
     move_type text NOT NULL,                -- TILE_PLACEMENT, EXCHANGE, PASS, CHALLENGE, TIMED_OUT, ...
     player_idx smallint NOT NULL,
-    word text,                              -- main word played; null for non-placements
-    rack text,
-    position text,                          -- e.g. "8H", "K4"
+
+    word_ml smallint[],                     -- tile sequence, e.g. [20,5,19,20] for English "TEST"
+    rack_ml smallint[],
+    lexicon_id smallint NOT NULL,           -- resolves ML → letter mapping
+
+    position text,                          -- e.g. "8H", "K4" (board coords, not language-dependent)
     score int,                              -- move score
     cumulative_score int,
     time_remaining_ms int,                  -- player's clock after the move
@@ -318,14 +330,40 @@ CREATE TABLE game_moves (
     PRIMARY KEY (game_uuid, move_idx, created_at)  -- created_at in PK because of partition key
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE game_moves_2026_q2 PARTITION OF game_moves
+CREATE TABLE game_moves_2026_04 PARTITION OF game_moves
     FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
-              TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00');
+              TO   (TIMESTAMPTZ '2026-05-01 00:00:00+00');
 
-CREATE INDEX ON game_moves_2026_q2 (word) WHERE word IS NOT NULL;
-CREATE INDEX ON game_moves_2026_q2 (rack) WHERE rack IS NOT NULL;
-CREATE INDEX ON game_moves_2026_q2 (game_uuid, move_idx);
+-- GIN index on tile arrays — supports @> containment queries
+CREATE INDEX ON game_moves_2026_04 USING gin (word_ml);
+CREATE INDEX ON game_moves_2026_04 USING gin (rack_ml);
+
+-- B-tree for exact tile-sequence lookup scoped to lexicon
+CREATE INDEX ON game_moves_2026_04 (lexicon_id, word_ml) WHERE word_ml IS NOT NULL;
+
+-- B-tree for per-game lookup (read-as-replay path)
+CREATE INDEX ON game_moves_2026_04 (game_uuid, move_idx);
+
+-- By move length (tile count) for analytics — cardinality(array)
+CREATE INDEX ON game_moves_2026_04 (lexicon_id, cardinality(word_ml)) WHERE word_ml IS NOT NULL;
 ```
+
+Display strings are decoded in the application layer via the lexicon's ML→letter map. PG 18+ virtual generated column could compute a display string automatically with a plpython3/plperl user-defined function, but simpler to decode in Go at read time.
+
+**Word search query pattern:**
+```sql
+-- English: user types "QUIXOTIC" → app encodes to ML → executes
+SELECT game_uuid FROM game_moves
+WHERE lexicon_id = <english_id>
+  AND word_ml = ARRAY[17, 21, 9, 24, 15, 20, 9, 3]::smallint[];
+
+-- Containment: "games that played any tile sequence containing [rr, o]" in Spanish
+SELECT game_uuid FROM game_moves
+WHERE lexicon_id = <spanish_id>
+  AND word_ml @> ARRAY[<rr_ml>, <o_ml>]::smallint[];
+```
+
+Cross-lexicon word comparison is deliberately hard: different lexicons have different ML mappings. That's correct — cross-lexicon "same word" is not a meaningful operation.
 
 Unlike `past_games` and `game_players`, rows are inserted **during active play**, one per move. Active-game lookup `WHERE game_uuid = $1 ORDER BY move_idx` may span multiple partitions for correspondence games that stretch across a quarter boundary; partition pruning doesn't help here (per-game query, not per-time), but the `(game_uuid, move_idx)` index on each partition is still fast. For time-range queries ("moves this month"), pruning works normally.
 
@@ -417,10 +455,10 @@ Abandons `pg_dump` as primary backup. Keep it as a weekly logical snapshot for c
 - Completed partitions are truly append-only when `past_games` is a separate table. LIST-on-`ended` would have partition-key UPDATEs (row moves) hitting the completed partition = no longer pure append-only semantics, extra WAL at game end.
 - On game end, the two-table path is an INSERT + DELETE (small amount of extra WAL) in exchange for permanent schema cleanliness.
 
-**Why RANGE quarterly by `ended_at` / `created_at` (UTC):**
+**Why RANGE monthly by `ended_at` / `created_at` (UTC):**
 
 - Completed games never change. Each quarter's partition becomes immutable → backup once, skip forever.
-- Retention / archival: `ALTER TABLE past_games DETACH PARTITION past_games_YYYY_qN` and move to cold storage.
+- Retention / archival: `ALTER TABLE past_games DETACH PARTITION past_games_YYYY_MM` and move to cold storage.
 - Explicit UTC in partition boundaries (`TIMESTAMPTZ '2026-04-01 00:00:00+00'`). `timestamptz` literals without offset get parsed in session TIMEZONE; on non-UTC sessions, DST shifts can move partition boundaries by an hour. Always specify UTC explicitly.
 
 **Why `games` summary never archives:**
@@ -515,14 +553,22 @@ Phases B and C can start in parallel with Phase A.
 
 ### Phase C: backfill moves and completed-game summaries
 
-Trigger-based dual-write isn't needed here because completed games don't change. Scripted backfill:
+Completed games don't change, so no dual-write trigger is needed. Scripted backfill only.
 
-1. Walk completed games in partition-friendly batches (by `updated_at`). For each:
-   - INSERT summary row into appropriate `past_games_YYYY_qN` partition (derive `ended_at` from `updated_at` or `quickdata`).
-   - Parse `history bytea` with Go tool, INSERT one row per move into appropriate `game_moves_YYYY_qN` partition.
-   - Two rows already exist in `game_players` from prior migration; no action needed.
-2. Verify row counts and checksums match per partition.
-3. Reuse PR 1503's `scripts/migrations/historical_games/main.go` as scaffolding; adapt the INSERT targets to new schema.
+**Authoritative `ended_at` source: `game_players.created_at`, not `games.updated_at`.**
+
+`games.updated_at` drifts if any post-end edit happens (stats recomputation, moderation flag, rating adjustment). Recent commits around `game_players.updated_at` consistency (`27c01345b`, `fba8733c7`, `389325273`, `dee6b2d9e`, `e0b449bc0`) confirm the timestamp story is actively evolving and not safe as a proxy for game completion time. `game_players.created_at` is set on INSERT at game end and never re-set by later edits; both player rows share the same timestamp per commit `27c01345b`.
+
+Steps:
+
+1. Walk completed games in partition-friendly batches. Partition key per game = `game_players.created_at` (both rows, verify they agree; if they diverge, flag and skip until investigated).
+2. For each game:
+   - INSERT summary row into `past_games_YYYY_MM` partition using `game_players.created_at` as `ended_at`.
+   - INSERT `game_metadata` row (uuid, `created_at` = original game creation time, `game_request`, `tournament_data`).
+   - Parse `history bytea` with Go tool, convert tile sequences to machine-letter arrays via lexicon lookup, INSERT one row per move into `game_moves_YYYY_MM` partition.
+   - `game_players` already has completed-game rows from prior migrations; only partition-key rebalancing needed (Phase B).
+3. Verify row counts and checksums per partition.
+4. Reuse PR 1503's `scripts/migrations/historical_games/main.go` as scaffolding; adapt the INSERT targets to new schema, add ML encoding for `word`/`rack` fields.
 
 Backfill runs over days or weeks depending on history size. Rate-limited. Does not block prod writes.
 
@@ -558,7 +604,7 @@ Backfill runs over days or weeks depending on history size. Rate-limited. Does n
 
 Adopt PR 1503's `pkg/stores/game/PHASE2_S3_ARCHIVAL.md` design (539 lines, Parquet + Athena). Not re-authored here. Summary:
 
-1. For `past_games_YYYY_qN`, `past_game_players_YYYY_qN`, `game_moves_YYYY_qN` partitions older than retention (e.g. 2 years):
+1. For `past_games_YYYY_MM`, `past_game_players_YYYY_MM`, `game_moves_YYYY_MM` partitions older than retention (e.g. 2 years):
    - DETACH PARTITION
    - Dump to Parquet, upload to S3 (see PHASE2_S3_ARCHIVAL.md for layout and metadata format)
    - Drop detached table
@@ -665,6 +711,23 @@ Rollback at any phase: disable dual-write, drop new tables, revert app. Old `gam
 
 ---
 
+## Per-phase downtime
+
+Every phase below is zero-downtime or near-zero (seconds). No maintenance window required.
+
+| Phase | Downtime | Mechanism | Notes |
+|-------|----------|-----------|-------|
+| A. backups + autovacuum + lz4 + repack | zero | pgBackRest is ops-only; `ALTER TABLE` tuning takes `ShareUpdateExclusiveLock` (reads/writes proceed); `SET COMPRESSION lz4` is metadata-only; `pg_repack` is online | — |
+| B. create `past_games`, `game_moves`, `game_metadata` (empty) | zero | `CREATE TABLE` on new names; doesn't touch `games` | `game_players` repartitioning (via `pg_partman partition_data_proc`) is online; an alternative rename-and-reattach dance takes seconds of AccessExclusiveLock |
+| C. backfill completed games | zero | Scripted INSERT into new tables, rate-limited | Runs in background for weeks |
+| D. app-level dual-write on game-end | zero | Rolling deploy (prerequisite: deploy-safety P1-P7 landed) | Adds ~1ms to game-end latency |
+| E. read-path cutover behind feature flag | zero | App deploy + gradual flag rollout | Rollback trivial (flip flag back) |
+| F. stop writing old heavy columns | zero | App deploy only | Old data still in `games` for rollback window |
+| G. DROP old columns + drop `active_game_events` | near-zero | `DROP COLUMN` is metadata-only (seconds of AccessExclusiveLock); `DROP INDEX CONCURRENTLY` takes no lock; `DROP TABLE active_game_events` is immediate | The DROP COLUMN lock is sub-second on a small skinny table |
+| H. cold archival via Parquet + S3 | zero | `DETACH PARTITION` takes sub-second AccessExclusiveLock; Parquet dump runs offline from detached copy | Per PR 1503's `PHASE2_S3_ARCHIVAL.md` |
+
+The only steps with any lock at all are (1) optional `game_players` rename in Phase B (choose online variant to avoid), (2) `DROP COLUMN` in Phase G (sub-second, on a skinny table), (3) `DETACH PARTITION` in Phase H (sub-second). None blocks traffic meaningfully.
+
 ## Priority relative to deploy-safety spec
 
 Orthogonal workstreams. Backup pain (Phase A) is the most urgent because any DB incident (upgrade, DR drill) blocks on backup completion. Phases B-G run for 1-3 months. Phase H indefinite.
@@ -702,4 +765,4 @@ Phase order:
 - Cold-archive format in S3: PR 1503's `PHASE2_S3_ARCHIVAL.md` specifies Parquet + Athena. Adopt as-is?
 - Retention for completed-games partitions before detach? 2 years? 5? Product call.
 - Do we add ClickHouse or Postgres-native analytics for move-level queries? `game_moves` + partition pruning + GIN indexes in PG is probably enough for years. Defer.
-- Partition cadence: PR 1503 used monthly. Earlier drafts of this spec proposed quarterly without supporting data. Revisit during Phase B based on actual growth rate; default to monthly to match PR 1503.
+- Monthly partition cadence is the default, matching PR 1503. Revisit only if prod growth rate makes per-month partitions too large (>50M rows) or too small (<50K rows) for efficient pruning.

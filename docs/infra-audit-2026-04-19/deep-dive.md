@@ -16,7 +16,7 @@ This document preserves the question-and-answer form of the investigation for fu
 > - §5 (Protobuf vs JSONB) → refined by §10 (UPDATE-rewrites-column is not JSONB-specific) and §21 (drop all bytea).
 > - §13 (Promote JSONB to columns with dual-write) → **superseded for most cases** by PG 18 virtual generated columns; see §26.
 > - §15 (Partitioning after the fact) mentions "logical replication to new cluster" → cutover mechanics are in §25 (pgBouncer, not DNS).
-> - §19 explicitly recommends a **two-table** pattern (active `games` + completed `past_games` partitioned quarterly on `ended_at` UTC), not a single LIST-partitioned `games`. Aligns with PR #1503 and existing `game_players` precedent. Do not default to monthly time-range partitioning on a single table.
+> - §19 explicitly recommends a **two-table** pattern (active `games` + completed `past_games` partitioned monthly on `ended_at` UTC), not a single LIST-partitioned `games`. Aligns with PR #1503 and existing `game_players` precedent. Do not default to monthly time-range partitioning on a single table.
 > - §26 (PG version upgrade path) is the definitive recommendation: **target PG 18.3+ directly, skip 17**. Earlier tables / sections citing "target 17" should be read as superseded.
 > - §22 (LRU cache) recommends measure-first, retire-later. Not "delete immediately."
 
@@ -296,7 +296,7 @@ Protobuf wins on wire size and type safety. JSONB wins on ops inspection, SQL qu
 
 **F1. Physical incremental backups.** Replace `pg_dump` with pgBackRest or WAL-G (or `pg_basebackup --incremental` on PG 17+). Full basebackup once, WAL archive continuous. Backup window drops from hours to minutes. No CPU-bound per-table serial compression. No schema changes needed.
 
-**F2. Two-table pattern: keep active `games` unpartitioned; put completed games in `past_games` partitioned quarterly on `ended_at` UTC.** Old partitions immutable → back up once, skip forever. Detach and archive past retention. See section 19.
+**F2. Two-table pattern: keep active `games` unpartitioned; put completed games in `past_games` partitioned monthly on `ended_at` UTC.** Old partitions immutable → back up once, skip forever. Detach and archive past retention. See section 19.
 
 **F3. Repack existing bloat.** `pg_repack` online reclaims dead space without locks. Run after any migration touching many rows.
 
@@ -542,9 +542,9 @@ No storage rewrite, no backfill, no dual-write. Seconds of work. Verify against 
 Archive the heavy blobs, never the summary. Target shape has four tables (see §19):
 
 - **`games`** (active-only, unpartitioned): `uuid, player0_id, player1_id, tournament_id, league_id, started, created_at`, ephemeral clock fields. Small, indexed, never archived.
-- **`past_games`** (completed-only, quarterly partitioned, **new**): `uuid, player0_id, player1_id, tournament_id, league_id, game_type, winner_idx, loser_idx, game_end_reason, created_at, ended_at, stats, quickdata, tournament_data`. Summary row kept forever; heavy JSONB fields archive-eligible.
-- **`past_game_players`** (completed-only, quarterly partitioned, **already exists as `game_players`**, ~20M rows): `(game_uuid, player_id)` PK, plus score, won, opponent_id, game_type, created_at, league_season_id. Right table for player-scoped queries.
-- **`game_moves`** (append-only, quarterly partitioned, **new**): one row per move, `event jsonb` + flat columns (word, rack, score, etc.).
+- **`past_games`** (completed-only, monthly partitioned, **new**): `uuid, player0_id, player1_id, tournament_id, league_id, game_type, winner_idx, loser_idx, game_end_reason, created_at, ended_at, stats, quickdata, tournament_data`. Summary row kept forever; heavy JSONB fields archive-eligible.
+- **`past_game_players`** (completed-only, monthly partitioned, **already exists as `game_players`**, ~20M rows): `(game_uuid, player_id)` PK, plus score, won, opponent_id, game_type, created_at, league_season_id. Right table for player-scoped queries.
+- **`game_moves`** (append-only, monthly partitioned, **new**): one row per move, `event jsonb` + flat columns (word, rack, score, etc.).
 
 Queries that touch only summary / per-player tables never require rehydrating blob storage. For "find user X's earliest game", use `past_game_players`:
 
@@ -601,7 +601,7 @@ DNS TTL lag can stretch from 30s to hours depending on resolver behavior. See se
 
 ### Partition key design for liwords
 
-See section 19. Short answer: **two tables** — active `games` (unpartitioned, small, caching target) + completed `past_games` (partitioned by `ended_at` quarterly in UTC). Not RANGE on `created_at` in a single table, because games can span months and active/completed have different columns.
+See section 19. Short answer: **two tables** — active `games` (unpartitioned, small, caching target) + completed `past_games` (partitioned by `ended_at` monthly in UTC). Not RANGE on `created_at` in a single table, because games can span months and active/completed have different columns.
 
 ---
 
@@ -673,7 +673,7 @@ Why the proposed skinny `games` (active-only) row would fire HOT:
 
 ## 19. Active vs completed games: two-table pattern
 
-> **Signpost:** This section is the **final table-shape decision** for liwords. If any earlier text (including earlier drafts of this section) recommended "LIST partition on `ended`, sub-partitioned by `ended_at`" as a single-table scheme, treat that as superseded. The final shape is **two tables**: `games` (active-only, unpartitioned) + `past_games` (completed-only, partitioned by `ended_at` quarterly in UTC). This aligns with PR #1503 and with the existing `game_players` precedent.
+> **Signpost:** This section is the **final table-shape decision** for liwords. If any earlier text (including earlier drafts of this section) recommended "LIST partition on `ended`, sub-partitioned by `ended_at`" as a single-table scheme, treat that as superseded. The final shape is **two tables**: `games` (active-only, unpartitioned) + `past_games` (completed-only, partitioned by `ended_at` monthly in UTC). This aligns with PR #1503 and with the existing `game_players` precedent.
 
 ### Why RANGE on `created_at` is wrong
 
@@ -725,7 +725,7 @@ CREATE TABLE past_games (
     PRIMARY KEY (uuid, ended_at)
 ) PARTITION BY RANGE (ended_at);
 
-CREATE TABLE past_games_2026_q2 PARTITION OF past_games
+CREATE TABLE past_games_2026_04 PARTITION OF past_games
     FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
               TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00')
     WITH (fillfactor = 100);
@@ -749,7 +749,7 @@ COMMIT;
 ### Properties
 
 - `games`: always small (hundreds to low thousands of rows), hot writes, HOT fires, low bloat.
-- `past_games_YYYY_qN`: append-only (game-end INSERT is the only write), never updated, fillfactor 100 packs maximum density, backup-friendly because immutable.
+- `past_games_YYYY_MM`: append-only (game-end INSERT is the only write), never updated, fillfactor 100 packs maximum density, backup-friendly because immutable.
 - Game spanning weeks lives in `games` the whole time. One INSERT+DELETE at end moves summary to `past_games`.
 - `game_moves` rows insert during active play and stay in their `created_at` partition forever. Long correspondence games span partitions but per-game lookup (PK `(game_uuid, move_idx, created_at)`) is still fast.
 
@@ -762,7 +762,7 @@ COMMIT;
 ### Caveats
 
 - Foreign keys: `game_players` (already exists), `game_moves` (new) reference `game_uuid` as `char(24)`. No hard FKs — partitioned cross-table FKs are awkward. App + trigger consistency.
-- Retention: `ALTER TABLE past_games DETACH PARTITION past_games_2024_q1` plus archive job. Simple.
+- Retention: `ALTER TABLE past_games DETACH PARTITION past_games_2024_01` plus archive job. Simple.
 
 ---
 
