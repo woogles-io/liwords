@@ -3,12 +3,12 @@
 **Date:** 2026-04-19
 **Base commit:** `f3ab03aafd860aa93d934bc60687581f7784bf06` (master)
 **Postgres version on prod:** 14.6 on 2-core EC2
-**Start here:** `2026-04-19-index.md` — index, topic, reading order. Read that first if you are new to this audit.
+**Start here:** `index.md` — index, topic, reading order. Read that first if you are new to this audit.
 
 **Scope:** Reference document capturing the detailed reasoning behind the three actionable specs:
-- `2026-04-19-multi-instance-deploy-safety.md`
-- `2026-04-19-games-storage-redesign.md`
-- `2026-04-19-stack-and-stores-cleanup.md`
+- `deploy-safety.md`
+- `games-storage-redesign.md`
+- `stack-and-stores-cleanup.md`
 
 This document preserves the question-and-answer form of the investigation for future readers who need the "why" behind the decisions. The three spec documents are the actionable outputs; this document is the supporting analysis.
 
@@ -123,7 +123,7 @@ Caches do not cause restart data loss because of the write-through pattern. The 
 
 ## 3. What is needed for 100% safe multi-instance and rolling deploys
 
-The deploy-safety spec (`2026-04-19-multi-instance-deploy-safety.md`) enumerates eight issues and eight prioritized fixes. Summary here; full detail in that spec.
+The deploy-safety spec (`deploy-safety.md`) enumerates eight issues and eight prioritized fixes. Summary here; full detail in that spec.
 
 ### Issues
 
@@ -671,6 +671,8 @@ Why the proposed skinny `games_active` row would fire HOT:
 ## 19. Partitioning active vs completed games (games can span months)
 
 > **Signpost:** This section is the **final partitioning decision** for liwords. If any earlier mental model defaulted to "monthly time-range partitioning on `created_at`", replace it with "LIST on `ended`, sub-partitioned by `ended_at`" from this section.
+>
+> **Prior art note:** PR #1503 (`origin/partitioned-games`, marked obsolete but kept as reference) chose **monthly RANGE partitioning on a separate `past_games` table** rather than LIST-on-`ended`. The two approaches are compared in `games-storage-redesign.md`. Short version: monthly RANGE on `past_games` was reasonable on PG 11, but PG 18.3+ native partition-key UPDATE + partition pruning makes single-table LIST-on-`ended` cleaner, with less application-layer complexity (no dual-table read routing, no NULL-column bookkeeping).
 
 ### Why RANGE on `created_at` is wrong for this workload
 
@@ -1026,9 +1028,9 @@ For liwords with "even short downtime is unacceptable": logical replication + pg
 
 | Topic | Spec |
 |-------|------|
-| Deploy safety (P1-P8) | `2026-04-19-multi-instance-deploy-safety.md` |
-| Games table redesign, backups, partitioning, migration | `2026-04-19-games-storage-redesign.md` |
-| Stack simplification, chat move, `.proto` licensing, unit-of-work | `2026-04-19-stack-and-stores-cleanup.md` |
+| Deploy safety (P1-P8) | `deploy-safety.md` |
+| Games table redesign, backups, partitioning, migration | `games-storage-redesign.md` |
+| Stack simplification, chat move, `.proto` licensing, unit-of-work | `stack-and-stores-cleanup.md` |
 | PG version upgrade | section 26 above; also referenced from storage-redesign Phase A |
 
 ## Code references

@@ -6,18 +6,57 @@
 **Scope:** Backup time, write amplification, queryability of game content, cold storage
 **Goal:** Reduce backup window from hours to minutes. Make move-level queries ("find games where word X was played") native SQL. Cap live-table growth. Zero downtime throughout.
 
-**Start here:** `2026-04-19-index.md` — index, topic, reading order.
+**Start here:** `index.md` — index, topic, reading order.
 
 **Related specs:**
-- `2026-04-19-multi-instance-deploy-safety.md` — some deploy fixes (advisory locks, cache retirement) depend on schema changes here
-- `2026-04-19-stack-and-stores-cleanup.md` — unit-of-work and caching pattern that tie into this redesign
-- `2026-04-19-infrastructure-deep-dive.md` — detailed Q&A reasoning and PG version feature matrix
+- `deploy-safety.md` — some deploy fixes (advisory locks, cache retirement) depend on schema changes here
+- `stack-and-stores-cleanup.md` — unit-of-work and caching pattern that tie into this redesign
+- `deep-dive.md` — detailed Q&A reasoning and PG version feature matrix
 
-**Prior art in this repo:** `docs/mikado/game_table_redo_plan.md` already sketches a 5-phase plan: `past_games` partitioned table, `game_players` (done), dual-write with feature flag, quickdata drop, S3 archival. This spec extends that plan with (a) per-move granularity via `game_moves`, (b) PG 18.3 upgrade with virtual generated columns for column promotions, (c) all-JSONB encoding (drop all bytea), (d) LIST-on-`ended` partitioning key specifically, (e) trigger-based DB-level dual-write instead of app-level + feature-flag, and (f) pgBouncer cutover and pgBackRest / WAL-G physical backups. Where the mikado plan is ahead: `game_players` is already built and populated.
+**Prior art in this repo:**
+- `docs/mikado/game_table_redo_plan.md` sketches a 5-phase plan: `past_games` partitioned table, `game_players` (done), dual-write with feature flag, quickdata drop, S3 archival.
+- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference] progress on rewriting game store`) — substantial implementation attempt by César Del Solar. Author comment explicitly cites the Mikado method: "this PR became too big... split into small, independent, working deployable units of work". Not abandoned on merit; just too large to review as one. Contains:
+  - Monthly RANGE partitioning migrations (`202508250421_partitioned_games`, `202508291311_create_past_games_partitions`, `202508291508_optimize_rematch_streaks`)
+  - `pkg/stores/game/README.md` — evolution plan narrative (references "8M games, 40G table" circa May 2025)
+  - `pkg/stores/game/PHASE2_S3_ARCHIVAL.md` (539 lines) — full S3 archive design using Parquet + gzip + Athena, `migration_status` enum (0=not migrated, 1=migrated, 2=cleaned, 3=archived), partition metadata schema
+  - `pkg/stores/game/migration.go` (156 lines) — backfill scaffolding
+  - `scripts/migrations/historical_games/main.go` (442 lines) + `run_historical_migration.sh` — historical migration tool
+  - `game_metadata` table concept (`20250906140000_create_game_metadata_table`)
+- **PR #1634** (`origin/maintenance-overlay`, OPEN) — maintenance overlay that pauses real-time games during deploys. Blocked on CloudFront `/ping` exposure ("Need to expose `/ping` in Cloudfront to the front end prior to deploying this!"). Covered in more detail by `deploy-safety.md`.
+
+This spec extends the existing plan with:
+- (a) per-move granularity via `game_moves` (new; PR 1503 had per-game `past_games` only)
+- (b) PG 18.3 upgrade with virtual generated columns for column promotions
+- (c) all-JSONB encoding (drop all bytea)
+- (d) **LIST-on-`ended` partitioning** instead of monthly RANGE on a separate `past_games` (rationale below)
+- (e) trigger-based DB-level dual-write instead of app-level + feature-flag
+- (f) pgBouncer cutover and pgBackRest / WAL-G physical backups
+
+### LIST-on-`ended` vs monthly RANGE on `past_games`
+
+| Aspect | PR 1503: monthly RANGE on `past_games` | This spec: LIST-on-`ended` in `games` |
+|--------|-----------------------------------------|----------------------------------------|
+| Table count | 2 (`games` active + `past_games` archive) | 1 partitioned (`games` with partitions `games_active`, `games_completed_*`) |
+| Active-game storage | Unpartitioned `games` | `games_active` partition |
+| Game-end operation | INSERT row into `past_games`, UPDATE `games` to NULL heavy columns | Single UPDATE sets `ended=true`, partition key change moves row automatically (PG 11+) |
+| Long correspondence game | Stays in `games` until end | Stays in `games_active` until end, not mis-partitioned by `created_at` |
+| Query routing | App must check both tables (with fallback order) | Partition pruning handles it transparently |
+| Complexity | Dual-table read logic in app + migration_status bookkeeping | Transparent to app |
+| Write amplification | INSERT + UPDATE at game end | Single partition-move UPDATE |
+
+LIST-on-`ended` is simpler and avoids dual-table read logic. PR 1503's monthly RANGE made sense given PG 11 constraints at the time; with the features now targeted (PG 18.3+), native partition-key UPDATE + partition pruning make the single-table approach cleaner and remove the NULL-columns step.
+
+### Where PR 1503 is reusable
+
+- **`pkg/stores/game/PHASE2_S3_ARCHIVAL.md` (539 lines)** — Phase H of this spec should adopt and extend this design rather than re-author. Parquet + Athena approach, migration_status scheme, S3 layout, partition metadata format — all already designed.
+- **`scripts/migrations/historical_games/`** — Phase C backfill should reference this as scaffolding, adapted to new schema (per-move events instead of per-game copy).
+- **`pkg/stores/game/migration.go`** — backfill infrastructure patterns.
+- **`pkg/stores/game/README.md`** — evolution narrative gives context on past sizing (8M games / 40G) and rationale.
 
 **Prior schema artifacts investigated:**
-- `history_in_s3` column was added 2025-03-17 in `023194411 start moving game store to use sqlc` and dropped 2025-11-11 in `79da08778 remove unused history_in_s3 field`. Git history shows the column was **never wired up** — sat unused for 8 months before removal. Not a failed S3 migration; a planned feature that never got built. Phase H S3 archival is effectively a clean slate.
+- `history_in_s3` column was added 2025-03-17 in `023194411 start moving game store to use sqlc` and dropped 2025-11-11 in `79da08778 remove unused history_in_s3 field`. Git history shows the column was **never wired up** — sat unused for 8 months before removal. Not a failed S3 migration; a planned feature that never got built. Phase H S3 archival adopts PR 1503's `PHASE2_S3_ARCHIVAL.md` design (see above), not a clean slate.
 - `active_game_events` table (`db/migrations/202502280432_game_table_changes.up.sql:15`) is an unused artifact of a prior per-move refactor attempt; it has no Go references and can be dropped as cleanup.
+- `game_metadata` table (PR 1503) is proposed but not merged. Its role overlaps with the skinny `games` summary in this spec's target schema; resolve by either adopting its columns into `games` or treating it as an independent summary table fed by trigger. Defer the decision until PR 1503's migrations are reconciled.
 
 ---
 

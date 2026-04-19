@@ -25,10 +25,10 @@ All four documents live in `docs/superpowers/specs/` dated `2026-04-19`.
 
 | Doc | Role | Sized |
 |-----|------|-------|
-| `2026-04-19-multi-instance-deploy-safety.md` | Actionable: 8 fixes (P1-P8) for rolling deploys | sprint |
-| `2026-04-19-games-storage-redesign.md` | Actionable: backup + schema + partitioning + PG 18.3 upgrade | months |
-| `2026-04-19-stack-and-stores-cleanup.md` | Actionable: store roles, chat move, transaction pattern, AGPL | quarter |
-| `2026-04-19-infrastructure-deep-dive.md` | Reference: 26-section Q&A behind the other three | read-only background |
+| `deploy-safety.md` | Actionable: 8 fixes (P1-P8) for rolling deploys | sprint |
+| `games-storage-redesign.md` | Actionable: backup + schema + partitioning + PG 18.3 upgrade | months |
+| `stack-and-stores-cleanup.md` | Actionable: store roles, chat move, transaction pattern, AGPL | quarter |
+| `deep-dive.md` | Reference: 26-section Q&A behind the other three | read-only background |
 
 The three actionable specs each have a "Priority" or "Phase" list with sizing. The deep-dive is optional reading for "why" behind any specific decision.
 
@@ -42,15 +42,15 @@ Start with **this file** (you're already here). Read the "Topic" and "The four d
 
 ### Ops / infra / SRE
 
-1. `2026-04-19-multi-instance-deploy-safety.md` — full spec. 8 fixes for rolling-deploy correctness.
-2. `2026-04-19-games-storage-redesign.md` Phase A alone. Physical backups, autovacuum tuning, lz4 TOAST, pg_repack — highest-ROI ops work without any app change.
+1. `deploy-safety.md` — full spec. 8 fixes for rolling-deploy correctness.
+2. `games-storage-redesign.md` Phase A alone. Physical backups, autovacuum tuning, lz4 TOAST, pg_repack — highest-ROI ops work without any app change.
 3. Deep-dive §16 (TOAST + AWS RDS), §17 (autovacuum), §25 (pgBouncer cutover), §26 (PG upgrade path).
 
 ### Backend engineer implementing fixes
 
-1. `2026-04-19-multi-instance-deploy-safety.md` for P1-P8 implementation targets.
-2. `2026-04-19-stack-and-stores-cleanup.md` for unit-of-work transaction pattern, cache retirement, chat move, config store retire.
-3. `2026-04-19-games-storage-redesign.md` once deploy-safety P2 (worker split) and P3 (advisory locks) are landing.
+1. `deploy-safety.md` for P1-P8 implementation targets.
+2. `stack-and-stores-cleanup.md` for unit-of-work transaction pattern, cache retirement, chat move, config store retire.
+3. `games-storage-redesign.md` once deploy-safety P2 (worker split) and P3 (advisory locks) are landing.
 4. Deep-dive §4 (tx scope), §7 (UPDATE vs INSERT-per-move), §13 (column promotion), §19 (partitioning strategy) as reference for specific mechanics.
 
 ### Architect / tech lead setting priorities
@@ -100,10 +100,11 @@ Summarized for someone who will read only this index:
 
 ## Prior art in the repo
 
-- **`docs/mikado/game_table_redo_plan.md`** — earlier plan for `past_games` + `game_players` + dual-write + quickdata drop + S3 archival. Partially implemented: `game_players` is built and populated (~20M rows). This audit extends that plan with per-move granularity, PG 18 features, and trigger-based migration. Not a replacement.
-- **`origin/maintenance-overlay` branch** (single commit `fffd47d7e`, 2025-12-09, not merged) — workaround that pauses real-time games during deploy via a user-facing overlay. Recognizes the rolling-deploy pain but does not fix it. Deploy-safety spec P1-P7 is the proper alternative; this branch can be abandoned once the spec is implemented, or merged as an interim measure if time pressure demands.
+- **`docs/mikado/game_table_redo_plan.md`** — earlier plan for `past_games` + `game_players` + dual-write + quickdata drop + S3 archival. Partially implemented: `game_players` is built and populated (~20M rows). This audit extends that plan with per-move granularity, PG 18 features, and LIST-on-`ended` partitioning.
+- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference]`) — substantial implementation attempt by César Del Solar. Author comment explicitly invokes the Mikado method: too big to merge as one, being split into smaller deployable units. Contains monthly-RANGE-on-`past_games` migrations, `PHASE2_S3_ARCHIVAL.md` (539-line S3 archive design with Parquet + Athena), `scripts/migrations/historical_games/` backfill tool (442 lines), `pkg/stores/game/migration.go` scaffolding, `pkg/stores/game/README.md` evolution narrative, and a proposed `game_metadata` table. This audit uses PR 1503 as reference material; `PHASE2_S3_ARCHIVAL.md` should be adopted for Phase H S3 archival rather than re-authored. Partitioning strategy differs (LIST-on-`ended` vs monthly RANGE) — see `games-storage-redesign.md` for rationale.
+- **PR #1634** (`origin/maintenance-overlay`, OPEN) — workaround that pauses real-time games during deploy via user-facing overlay. Blocked on CloudFront `/ping` exposure. Deploy-safety spec P1-P7 is the proper alternative; this branch can be abandoned once P1-P7 lands, or merged as interim measure if time pressure demands.
 - **`active_game_events` table** (`db/migrations/202502280432_game_table_changes.up.sql:15`) — unused artifact of a prior per-move refactor. No Go references. Cleanup candidate.
-- **`history_in_s3` column** — added 2025-03-17, dropped 2025-11-11. Git log shows it was never wired up (sat unused for 8 months). Phase H S3 archival in games-storage-redesign is a clean slate, not a retry.
+- **`history_in_s3` column** — added 2025-03-17, dropped 2025-11-11. Git log shows it was never wired up (sat unused for 8 months). Phase H S3 archival in games-storage-redesign adopts PR 1503's `PHASE2_S3_ARCHIVAL.md` design, not a clean slate.
 
 ---
 

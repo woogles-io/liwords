@@ -6,12 +6,12 @@
 **Scope:** Data-store roles (Postgres / Redis / NATS), transaction pattern, cache layer, JSONB vs protobuf, licensing
 **Goal:** Reduce the number of places that could surprise a new developer. Consolidate where possible without sacrificing capability.
 
-**Start here:** `2026-04-19-index.md` — index, topic, reading order.
+**Start here:** `index.md` — index, topic, reading order.
 
 **Related specs:**
-- `2026-04-19-multi-instance-deploy-safety.md` — operational safety; cache retirement and advisory locks introduced here feed that work
-- `2026-04-19-games-storage-redesign.md` — schema redesign; this spec covers how the application layer should talk to the new schema
-- `2026-04-19-infrastructure-deep-dive.md` — detailed Q&A reasoning, chat-move rationale, PG version matrix
+- `deploy-safety.md` — operational safety; cache retirement and advisory locks introduced here feed that work
+- `games-storage-redesign.md` — schema redesign; this spec covers how the application layer should talk to the new schema
+- `deep-dive.md` — detailed Q&A reasoning, chat-move rationale, PG version matrix
 
 ---
 

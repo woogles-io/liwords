@@ -5,12 +5,12 @@
 **Postgres version on prod:** 14.6 (all fixes confirmed compatible).
 **Scope:** `liwords-api`, `socketsrv`, NATS/Redis/Postgres integration
 **Goal:** Zero-downtime rolling deploys with multiple concurrent instances of each service. No data races, no dropped events, no mid-flight corruption.
-**Start here:** `2026-04-19-index.md` — index, topic, reading order.
+**Start here:** `index.md` — index, topic, reading order.
 
 **Related specs:**
-- `2026-04-19-games-storage-redesign.md` — backup + schema + partitioning (prerequisite for some deploy fixes to stay effective at scale)
-- `2026-04-19-stack-and-stores-cleanup.md` — PG+Redis+NATS roles, unit-of-work pattern, cache retirement
-- `2026-04-19-infrastructure-deep-dive.md` — detailed Q&A reasoning behind all three specs, including PG version upgrade path
+- `games-storage-redesign.md` — backup + schema + partitioning (prerequisite for some deploy fixes to stay effective at scale)
+- `stack-and-stores-cleanup.md` — PG+Redis+NATS roles, unit-of-work pattern, cache retirement
+- `deep-dive.md` — detailed Q&A reasoning behind all three specs, including PG version upgrade path
 
 ---
 
@@ -35,8 +35,9 @@ Estimated lift to reach 100% safe: **medium**. No architectural rewrites; most i
 
 ## Prior art in the repo
 
-- `origin/maintenance-overlay` branch (commit `fffd47d7e` by César Del Solar, 2025-12-09, single commit, not merged): "add a maintenance overlay and pause real-time games when deploying". Contains a backend pause-games-during-deploy path plus frontend overlay modal. This is a **workaround** — during a deploy, all real-time games are paused so users do not notice disconnects. It works but is a band-aid: it still requires user-visible pause, and correspondence games, tournament flows, and background jobs are still at risk.
-- The P1-P7 fixes in this spec are the proper alternative: instead of pausing user activity during deploy, make the deploy itself safe. If P1-P7 land, the maintenance-overlay branch can be abandoned. If time pressure forces a partial fix, consider merging `maintenance-overlay` as an interim measure while the full spec work proceeds.
+- **PR #1634** (`origin/maintenance-overlay` branch, commit `fffd47d7e` by César Del Solar, 2025-12-09, OPEN, not merged): "add a maintenance overlay and pause real-time games when deploying". Contains a backend pause-games-during-deploy path plus frontend overlay modal. PR body notes: "Need to expose `/ping` in Cloudfront to the front end prior to deploying this!" — blocked on CloudFront config, not code. This is a **workaround** — during a deploy, all real-time games are paused so users do not notice disconnects. It works but is a band-aid: it still requires user-visible pause, and correspondence games, tournament flows, and background jobs are still at risk.
+- **PR #1503** (`origin/partitioned-games` branch, marked `[obsolete, but using as a reference]`): game-table-refactor work split into smaller PRs per Mikado method. Not directly about deploy safety, but notable because its `scripts/migrations/historical_games/` backfill tool and `pkg/stores/game/migration.go` scaffolding are relevant reference for the storage-redesign work that dovetails with deploy-safety P3 (advisory locks).
+- The P1-P7 fixes in this spec are the proper alternative to PR 1634's workaround: instead of pausing user activity during deploy, make the deploy itself safe. If P1-P7 land, PR 1634 can be abandoned. If time pressure forces a partial fix, consider merging PR 1634 as an interim measure (after resolving CloudFront `/ping` exposure) while the full spec work proceeds.
 
 ---
 
