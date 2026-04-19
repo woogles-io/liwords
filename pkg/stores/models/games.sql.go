@@ -1177,3 +1177,113 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 	)
 	return err
 }
+
+const updateGameAfterMove = `-- name: UpdateGameAfterMove :exec
+UPDATE games SET
+    history = $1,
+    timers = $2,
+    player_on_turn = $3,
+    updated_at = now()
+WHERE uuid = $4
+`
+
+type UpdateGameAfterMoveParams struct {
+	History      []byte
+	Timers       entity.Timers
+	PlayerOnTurn pgtype.Int4
+	Uuid         pgtype.Text
+}
+
+func (q *Queries) UpdateGameAfterMove(ctx context.Context, arg UpdateGameAfterMoveParams) error {
+	_, err := q.db.Exec(ctx, updateGameAfterMove,
+		arg.History,
+		arg.Timers,
+		arg.PlayerOnTurn,
+		arg.Uuid,
+	)
+	return err
+}
+
+const updateGameEnd = `-- name: UpdateGameEnd :exec
+UPDATE games SET
+    game_end_reason = $1,
+    winner_idx = $2,
+    loser_idx = $3,
+    history = $4,
+    stats = $5,
+    quickdata = $6,
+    timers = $7,
+    updated_at = now()
+WHERE uuid = $8
+`
+
+type UpdateGameEndParams struct {
+	GameEndReason pgtype.Int4
+	WinnerIdx     pgtype.Int4
+	LoserIdx      pgtype.Int4
+	History       []byte
+	Stats         entity.Stats
+	Quickdata     entity.Quickdata
+	Timers        entity.Timers
+	Uuid          pgtype.Text
+}
+
+func (q *Queries) UpdateGameEnd(ctx context.Context, arg UpdateGameEndParams) error {
+	_, err := q.db.Exec(ctx, updateGameEnd,
+		arg.GameEndReason,
+		arg.WinnerIdx,
+		arg.LoserIdx,
+		arg.History,
+		arg.Stats,
+		arg.Quickdata,
+		arg.Timers,
+		arg.Uuid,
+	)
+	return err
+}
+
+const updateGameMetaEvents = `-- name: UpdateGameMetaEvents :exec
+UPDATE games SET meta_events = $1, updated_at = now()
+WHERE uuid = $2
+`
+
+type UpdateGameMetaEventsParams struct {
+	MetaEvents entity.MetaEventData
+	Uuid       pgtype.Text
+}
+
+func (q *Queries) UpdateGameMetaEvents(ctx context.Context, arg UpdateGameMetaEventsParams) error {
+	_, err := q.db.Exec(ctx, updateGameMetaEvents, arg.MetaEvents, arg.Uuid)
+	return err
+}
+
+const updateGameStarted = `-- name: UpdateGameStarted :exec
+UPDATE games SET started = $1, timers = $2, updated_at = now()
+WHERE uuid = $3
+`
+
+type UpdateGameStartedParams struct {
+	Started pgtype.Bool
+	Timers  entity.Timers
+	Uuid    pgtype.Text
+}
+
+func (q *Queries) UpdateGameStarted(ctx context.Context, arg UpdateGameStartedParams) error {
+	_, err := q.db.Exec(ctx, updateGameStarted, arg.Started, arg.Timers, arg.Uuid)
+	return err
+}
+
+const updateGameTimers = `-- name: UpdateGameTimers :exec
+UPDATE games SET timers = $1, updated_at = now()
+WHERE uuid = $2
+`
+
+type UpdateGameTimersParams struct {
+	Timers entity.Timers
+	Uuid   pgtype.Text
+}
+
+func (q *Queries) UpdateGameTimers(ctx context.Context, arg UpdateGameTimersParams) error {
+	_, err := q.db.Exec(ctx, updateGameTimers, arg.Timers, arg.Uuid)
+	return err
+}

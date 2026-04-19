@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+var errNoID = errors.New("game ID was not defined")
 
 // same as the GameStore in gameplay package, but this gives us a bit more flexibility
 // in defining the backing store (i.e. it may not necessarily be a SQL db store)
@@ -42,6 +45,7 @@ type backingStore interface {
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
+	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
 }
 
 // TimerModuleCreator is a function that creates a new timer module for a game.
@@ -323,6 +327,10 @@ func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 
 func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
 	c.backing.SetTimerModuleCreator(creator)
+}
+
+func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
 }
 
 // LockGame acquires a lock for the given game ID.

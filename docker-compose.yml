@@ -44,6 +44,8 @@ services:
       TWITCH_REDIRECT_URI: http://localhost/integrations/twitch/callback
       SKIP_EMAIL_VERIFICATION: 1
       RUN_MIGRATIONS: 1
+      DUAL_WRITE_TURNS: 1
+      SHADOW_TURNS: 1
 
     volumes:
       - .:/opt/program:rw

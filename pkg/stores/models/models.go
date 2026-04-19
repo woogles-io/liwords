@@ -55,12 +55,6 @@ func (ns NullTournamentDirectorRole) Value() (driver.Value, error) {
 	return string(ns.TournamentDirectorRole), nil
 }
 
-type ActiveGameEvent struct {
-	GameID   int32
-	EventIdx int32
-	Event    []byte
-}
-
 type AnalysisJob struct {
 	ID                  uuid.UUID
 	GameID              string
@@ -242,6 +236,13 @@ type GamePlayer struct {
 	OriginalRequestID pgtype.Text
 	LeagueSeasonID    pgtype.UUID
 	UpdatedAt         pgtype.Timestamptz
+}
+
+type GameTurn struct {
+	GameUuid  string
+	TurnIdx   int32
+	Event     []byte
+	CreatedAt pgtype.Timestamptz
 }
 
 type Integration struct {
