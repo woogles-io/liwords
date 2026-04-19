@@ -28,23 +28,12 @@ This spec extends the existing plan with:
 - (a) per-move granularity via `game_moves` (new; PR 1503 had per-game `past_games` only)
 - (b) PG 18.3 upgrade with virtual generated columns for column promotions
 - (c) all-JSONB encoding (drop all bytea)
-- (d) **LIST-on-`ended` partitioning** instead of monthly RANGE on a separate `past_games` (rationale below)
+- (d) **quarterly RANGE** on `past_games` / `past_game_players` / `game_moves` (PR 1503 used monthly; quarterly is coarser, fewer partitions, still archive-friendly; tune per prod growth rate)
 - (e) trigger-based DB-level dual-write instead of app-level + feature-flag
 - (f) pgBouncer cutover and pgBackRest / WAL-G physical backups
+- (g) **explicit UTC partition boundaries** (`TIMESTAMPTZ 'YYYY-MM-DD 00:00:00+00'`) to avoid DST-induced partition boundary shifts when session timezone is non-UTC
 
-### LIST-on-`ended` vs monthly RANGE on `past_games`
-
-| Aspect | PR 1503: monthly RANGE on `past_games` | This spec: LIST-on-`ended` in `games` |
-|--------|-----------------------------------------|----------------------------------------|
-| Table count | 2 (`games` active + `past_games` archive) | 1 partitioned (`games` with partitions `games_active`, `games_completed_*`) |
-| Active-game storage | Unpartitioned `games` | `games_active` partition |
-| Game-end operation | INSERT row into `past_games`, UPDATE `games` to NULL heavy columns | Single UPDATE sets `ended=true`, partition key change moves row automatically (PG 11+) |
-| Long correspondence game | Stays in `games` until end | Stays in `games_active` until end, not mis-partitioned by `created_at` |
-| Query routing | App must check both tables (with fallback order) | Partition pruning handles it transparently |
-| Complexity | Dual-table read logic in app + migration_status bookkeeping | Transparent to app |
-| Write amplification | INSERT + UPDATE at game end | Single partition-move UPDATE |
-
-LIST-on-`ended` is simpler and avoids dual-table read logic. PR 1503's monthly RANGE made sense given PG 11 constraints at the time; with the features now targeted (PG 18.3+), native partition-key UPDATE + partition pruning make the single-table approach cleaner and remove the NULL-columns step.
+The table shape (two-table: active `games` + completed `past_games`) matches PR 1503 and follows the `game_players` precedent (completed-only population, NOT NULL outcome columns). This audit aligns with PR 1503's table structure; the differences are in encoding, per-move granularity, migration mechanics, and PG version target.
 
 ### Where PR 1503 is reusable
 
@@ -166,9 +155,13 @@ Role in this redesign: `game_players` is **the per-player denormalized index for
 
 ## Target design
 
-### Table split
+### Four tables (two-table pattern, extending PR 1503 and `game_players`)
 
-**`games`** (skinny, hot): summary row, always in DB.
+Rationale: active and completed games have different operational profiles (different columns, different write patterns, different storage policies, different cache fit). Follow the precedent already set by `game_players` (completed-only, populated at game end).
+
+All partition boundaries use **explicit UTC** (`TIMESTAMPTZ 'YYYY-MM-DD 00:00:00+00'`). `timestamptz` literals parsed in session TIMEZONE will shift on DST if session is non-UTC.
+
+#### `games` (active-only after migration, unpartitioned, caching target)
 
 ```sql
 games (
@@ -176,8 +169,6 @@ games (
     uuid char(24) UNIQUE NOT NULL,
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
-    ended boolean NOT NULL DEFAULT false,
-    ended_at timestamptz,
 
     player0_id int NOT NULL,
     player1_id int NOT NULL,
@@ -186,51 +177,111 @@ games (
     game_type int NOT NULL,
 
     started boolean NOT NULL DEFAULT false,
-    winner_idx smallint,
-    loser_idx smallint,
-    game_end_reason int,
     player_on_turn smallint,
 
-    -- timers promoted out of JSONB
+    -- timers as proper columns (hot, small fixed shape)
     time_remaining_p0 int,
     time_remaining_p1 int,
     time_of_last_update bigint,
     time_started bigint,
     max_overtime int,
 
-    -- request and game_request: promoted fields needed for queries
+    -- promoted from request/game_request for filtering
     lexicon text,
     variant text,
     rating_mode smallint,
     challenge_rule smallint,
     bot_level smallint,
 
-    -- remaining open-ended
-    quickdata jsonb,               -- residuals only; hot fields promoted
-    meta_events jsonb,             -- rare events, small
-    stats jsonb,                   -- end-of-game aggregate; written once at end
+    -- open-ended
+    quickdata jsonb,
+    meta_events jsonb,
 
     ready_flag bigint,
     deleted_at timestamptz
-) PARTITION BY LIST (ended);
-
-CREATE TABLE games_active PARTITION OF games FOR VALUES IN (false)
-    WITH (fillfactor = 70);                 -- HOT-friendly
-
-CREATE TABLE games_completed PARTITION OF games FOR VALUES IN (true)
-    PARTITION BY RANGE (ended_at);
-
-CREATE TABLE games_completed_2026_q2 PARTITION OF games_completed
-    FOR VALUES FROM ('2026-04-01') TO ('2026-07-01')
-    WITH (fillfactor = 100);                -- packed
--- additional partitions created by pg_partman or manual rollover
+) WITH (fillfactor = 70);                   -- HOT-friendly
 ```
 
-**`game_moves`** (append-only, partitioned): one row per move.
+No partitioning. Small (hundreds to low thousands of rows). On game end: app DELETEs this row after INSERTing into `past_games` and `game_players`. Fillfactor 70 leaves in-page slack for HOT updates on every move.
+
+Ephemeral columns (`player_on_turn`, `time_remaining_*`, `time_of_last_update`) live here. After move:
+
+```sql
+UPDATE games SET player_on_turn = ..., time_remaining_p0 = ..., time_remaining_p1 = ...,
+                 time_of_last_update = ..., updated_at = now()
+WHERE uuid = $1;
+-- plus INSERT INTO game_moves (...)
+```
+
+Row is small and often fits in one page → HOT fires → no index writes → minimal WAL.
+
+#### `past_games` (completed-only, partitioned quarterly by `ended_at` UTC)
+
+```sql
+CREATE TABLE past_games (
+    uuid char(24) NOT NULL,
+    created_at timestamptz NOT NULL,
+    ended_at timestamptz NOT NULL,
+
+    player0_id int NOT NULL,
+    player1_id int NOT NULL,
+    tournament_id uuid,
+    league_id uuid, season_id uuid, league_division_id uuid,
+    game_type int NOT NULL,
+
+    winner_idx smallint,
+    loser_idx smallint,
+    game_end_reason int NOT NULL,
+
+    -- promoted hot fields for filtering
+    lexicon text,
+    variant text,
+    rating_mode smallint,
+
+    -- open-ended aggregates, written once at game end
+    stats jsonb,
+    quickdata jsonb,
+    tournament_data jsonb,
+
+    PRIMARY KEY (uuid, ended_at)
+) PARTITION BY RANGE (ended_at);
+
+CREATE TABLE past_games_2026_q2 PARTITION OF past_games
+    FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
+              TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00')
+    WITH (fillfactor = 100);                -- packed, never updated
+
+CREATE INDEX ON past_games (tournament_id) WHERE tournament_id IS NOT NULL;
+CREATE INDEX ON past_games (league_id, season_id) WHERE league_id IS NOT NULL;
+```
+
+Append-only at game end. No updates ever. Old partitions immutable → backup once, skip forever. Detach for S3 archive per retention.
+
+Note: no `history bytea`, no `player_on_turn`, no `time_remaining_*`. Active-only columns deliberately absent.
+
+#### `game_players` (completed-only, already exists; add quarterly partitioning)
+
+Table already populated (~20M rows, PK `(game_uuid, player_id)`, written at game end only). Migration adds partitioning by `created_at` UTC to match `past_games` cadence.
+
+```sql
+-- after partitioning migration:
+past_game_players (
+    -- same columns as current game_players
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE past_game_players_2026_q2 PARTITION OF past_game_players
+    FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
+              TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00')
+    WITH (fillfactor = 100);
+```
+
+Rename consideration: `game_players` → `past_game_players` to match `past_games` naming and signal completed-only semantics. Optional; pure naming change, can defer.
+
+#### `game_moves` (append during play, partitioned quarterly by `created_at` UTC)
 
 ```sql
 CREATE TABLE game_moves (
-    game_id bigint NOT NULL,
+    game_uuid char(24) NOT NULL,
     move_idx int NOT NULL,
 
     move_type text NOT NULL,                -- TILE_PLACEMENT, EXCHANGE, PASS, CHALLENGE, TIMED_OUT, ...
@@ -246,18 +297,71 @@ CREATE TABLE game_moves (
 
     created_at timestamptz NOT NULL DEFAULT now(),
 
-    PRIMARY KEY (game_id, move_idx)
+    PRIMARY KEY (game_uuid, move_idx, created_at)  -- created_at in PK because of partition key
 ) PARTITION BY RANGE (created_at);
 
 CREATE TABLE game_moves_2026_q2 PARTITION OF game_moves
-    FOR VALUES FROM ('2026-04-01') TO ('2026-07-01');
+    FOR VALUES FROM (TIMESTAMPTZ '2026-04-01 00:00:00+00')
+              TO   (TIMESTAMPTZ '2026-07-01 00:00:00+00');
 
 CREATE INDEX ON game_moves_2026_q2 (word) WHERE word IS NOT NULL;
 CREATE INDEX ON game_moves_2026_q2 (rack) WHERE rack IS NOT NULL;
-CREATE INDEX ON game_moves_2026_q2 (game_id, move_idx);
+CREATE INDEX ON game_moves_2026_q2 (game_uuid, move_idx);
 ```
 
-**`game_finals`** (optional, immutable snapshot): if we still want a single-row-per-game archive for fast full-game loads in analysis paths. Can be skipped; `game_moves` scan is O(moves) and acceptable for < 2k moves per game.
+Unlike `past_games` and `game_players`, rows are inserted **during active play**, one per move. Active-game lookup `WHERE game_uuid = $1 ORDER BY move_idx` may span multiple partitions for correspondence games that stretch across a quarter boundary; partition pruning doesn't help here (per-game query, not per-time), but the `(game_uuid, move_idx)` index on each partition is still fast. For time-range queries ("moves this month"), pruning works normally.
+
+`game_uuid` is `char(24)` — same format as `games.uuid` and `game_players.game_uuid`. No FK (partitioned tables with FKs into other partitioned tables are awkward); rely on app + trigger consistency.
+
+### Write paths
+
+**Per move (game still active):**
+```sql
+BEGIN;
+  SELECT pg_advisory_xact_lock(hashtextextended(game_uuid, 0));
+  UPDATE games SET player_on_turn = ..., time_remaining_* = ..., updated_at = now() WHERE uuid = $1;
+  INSERT INTO game_moves (game_uuid, move_idx, move_type, word, rack, ..., event, created_at) VALUES (...);
+COMMIT;
+```
+
+**At game end:**
+```sql
+BEGIN;
+  SELECT pg_advisory_xact_lock(hashtextextended(game_uuid, 0));
+  INSERT INTO past_games (uuid, created_at, ended_at, ..., stats, quickdata, tournament_data) VALUES (...);
+  INSERT INTO past_game_players (...) VALUES (...), (...);   -- two rows
+  DELETE FROM games WHERE uuid = $1;
+  -- final `game_moves` row already INSERTed by the last gameplay event
+COMMIT;
+```
+
+Keeps active `games` genuinely active-only. Archive tables are pure append. Advisory lock serializes per game across instances (deploy-safety spec P3).
+
+### Read paths
+
+**Active game state:** `SELECT ... FROM games WHERE uuid = $1`. If not found → it's completed. Fall through to:
+
+**Completed game summary:** `SELECT ... FROM past_games WHERE uuid = $1 AND ended_at >= $2 AND ended_at < $3`. Caller either knows approximate `ended_at` (stored in e.g. `game_players.created_at` or in an index on `uuid`) or scans all partitions (not ideal; see below).
+
+**Per-uuid lookup across all completed partitions:** Postgres does not prune well on just `uuid` when the partition key is `ended_at`. Options:
+- **Global btree index on `past_games(uuid)`** via extension like `pg_partman` or manual index per partition + a UNION view — expensive to maintain.
+- **Reference lookup table** `game_uuid_to_ended_at(uuid, ended_at)` — small, always-hot, used to route queries.
+- **Rely on caller context**: most API paths that load a completed game came from `game_players` or `past_games` partition scan, both of which know `ended_at`.
+
+Option 2 (lookup table) or option 3 (caller context) are both acceptable. PR 1503's approach is to route via `game_players` which has `(player_id, created_at DESC)` as a primary index.
+
+**Move list for one game:** `SELECT event FROM game_moves WHERE game_uuid = $1 ORDER BY move_idx` — scans all partitions touched by the game. For <2k moves in <=2 partitions, this is fast.
+
+**Word search:** `SELECT game_uuid FROM game_moves WHERE word = 'QUIXOTIC' AND created_at >= '2026-01-01'` — partition-pruned, index-scan each.
+
+### Encoding decisions
+
+(unchanged from previous draft)
+
+- **All protobuf blobs replaced by JSONB.** `history` no longer stored in `games` or `past_games`. `request` / `game_request` promoted to columns where queryable; residuals as JSONB. `event` in `game_moves` is JSONB produced by `protojson.Marshal`.
+- **bytea: zero in final schema.**
+- **Protobuf `.proto` remains the source of truth** for Go/client structs and for NATS wire payloads.
+- **Size cost accepted.** lz4 TOAST narrows the gap.
 
 ### Encoding decisions
 
@@ -289,21 +393,23 @@ Abandons `pg_dump` as primary backup. Keep it as a weekly logical snapshot for c
 
 ### Partitioning strategy rationale
 
-**Why LIST on `ended` as outer partition instead of RANGE on `created_at`:**
+**Why two tables (`games` + `past_games`) and not a single LIST-partitioned table on `ended`:**
 
-- Games can span weeks or months (correspondence). A game created in March might end in May. RANGE on `created_at` would leave an active game in an older partition, defeating hot/cold separation.
-- LIST on `ended` guarantees: active games live in one small partition; completed games in append-only archive partitions. Row moves between partitions exactly once (at game end).
-- PG11+ supports partition-key UPDATE; the move happens atomically as part of the normal "game ends" transaction.
+- Active and completed games have genuinely different column needs. `player_on_turn`, `time_remaining_*`, `time_of_last_update` are meaningful only while a game is active. A single partitioned table forces completed partitions to carry those columns forever (wasteful on millions of archived rows) or NULL them (ugly bookkeeping).
+- Active is a natural caching candidate — flat unpartitioned table is trivially cache-friendly. A LIST-partitioned parent complicates caching.
+- `game_players` already follows the completed-only pattern (populated only at game end, NOT NULL outcome columns). `past_games` extends the same shape for full summaries. Consistency with an existing convention beats a novel single-table scheme.
+- Completed partitions are truly append-only when `past_games` is a separate table. LIST-on-`ended` would have partition-key UPDATEs (row moves) hitting the completed partition = no longer pure append-only semantics, extra WAL at game end.
+- On game end, the two-table path is an INSERT + DELETE (small amount of extra WAL) in exchange for permanent schema cleanliness.
 
-**Why RANGE sub-partitioning of completed by `ended_at`:**
+**Why RANGE quarterly by `ended_at` / `created_at` (UTC):**
 
 - Completed games never change. Each quarter's partition becomes immutable → backup once, skip forever.
-- Retention / archival: `ALTER TABLE games_completed DETACH PARTITION games_completed_YYYY_qN` and move to cold storage.
+- Retention / archival: `ALTER TABLE past_games DETACH PARTITION past_games_YYYY_qN` and move to cold storage.
+- Explicit UTC in partition boundaries (`TIMESTAMPTZ '2026-04-01 00:00:00+00'`). `timestamptz` literals without offset get parsed in session TIMEZONE; on non-UTC sessions, DST shifts can move partition boundaries by an hour. Always specify UTC explicitly.
 
-**Why keep `games` skinny row even when cold:**
+**Why `games` summary never archives:**
 
-- Summary fields needed for cross-time queries ("user X's earliest game") must stay in DB. Only large blob columns are candidates for S3 archival.
-- `game_finals` (if used) is the archive target. `games` summary never archived.
+- Current-state row only exists while game is active. Once ended, row moves to `past_games`. Active set is always small by construction.
 
 ---
 
@@ -382,57 +488,67 @@ Side benefit: pgBouncer multiplexes many app-side connections into fewer PG back
 
 Phases B and C can start in parallel with Phase A.
 
-### Phase B: new schema + dual-write
+### Phase B: create archive tables (empty)
 
-> **Signpost:** Phases B-F below describe the full trigger-based dual-write migration. This pattern is required for the **table split** (`games` → `games_new` + `game_moves`), which is a structural change. For **column-only promotions** (JSONB field → scalar column), PG 18.3+ **virtual generated columns** replace this pattern with a single DDL; see the upgrade section above. The two kinds of change can be planned independently: do column promotions first via virtual columns to retire the hot-field JSONB access path, then do the table split.
+> **Signpost:** Phases B-G describe the full migration. PG 18.3+ virtual generated columns simplify column-only promotions to a single DDL; that work is independent and can run in parallel with the table-split work described here. `game_players` partitioning (rename to `past_game_players`) is a separate mini-migration that can also run in parallel.
 
-1. Create `games_new` as partitioned table with the target schema. Same primary key generator.
-2. Create `game_moves` partitioned table. Pre-create partitions for current + next two quarters.
-3. Create trigger on `games` (old) that mirrors every INSERT/UPDATE/DELETE to `games_new`. Derives skinny columns by parsing JSONB fields and stripping `history`. Does not populate `game_moves` yet — `history` is still written whole to old table.
-4. Verify trigger correctness with a set of canary games.
+1. Create `past_games` partitioned table with target schema. Pre-create partitions for current + next two quarters (explicit UTC boundaries).
+2. Create `game_moves` partitioned table. Pre-create same partition range.
+3. (Optional, can run later) Partition the existing `game_players` table via `pg_partman`'s `partition_data_proc` or via rename-and-reattach dance; keep current indexes intact through the process.
+4. No trigger yet. Archive tables sit empty.
 
-### Phase C: backfill
+### Phase C: backfill moves and completed-game summaries
 
-1. Chunked backfill: for each batch of 10k rows in old `games`, INSERT corresponding row into `games_new` if missing. Runs in background, rate-limited to stay within autovacuum budget.
-2. For each completed old game, parse `history` protobuf in a Go backfill tool and INSERT one row per move into `game_moves`. Slow (billions of moves worst-case); run over days or weeks, partition by partition.
-3. Verify row counts and checksums match.
+Trigger-based dual-write isn't needed here because completed games don't change. Scripted backfill:
 
-### Phase D: dual-write moves
+1. Walk completed games in partition-friendly batches (by `updated_at`). For each:
+   - INSERT summary row into appropriate `past_games_YYYY_qN` partition (derive `ended_at` from `updated_at` or `quickdata`).
+   - Parse `history bytea` with Go tool, INSERT one row per move into appropriate `game_moves_YYYY_qN` partition.
+   - Two rows already exist in `game_players` from prior migration; no action needed.
+2. Verify row counts and checksums match per partition.
+3. Reuse PR 1503's `scripts/migrations/historical_games/main.go` as scaffolding; adapt the INSERT targets to new schema.
 
-1. App change: on every `UpdateGame` call, also INSERT a row into `game_moves` with the new move event. Old `history bytea` still written.
-2. Deploy. Dual-write live. New moves land in both places.
+Backfill runs over days or weeks depending on history size. Rate-limited. Does not block prod writes.
+
+### Phase D: dual-write for new completed games
+
+1. App change: when a game ends, **in one transaction**:
+   - INSERT into `past_games` (new)
+   - INSERT into `past_game_players` × 2 (already happening, might need partition-aware routing)
+   - UPDATE `games` to NULL the heavy columns (`history`, `stats`, `quickdata`, etc.) — **temporary until Phase G** so that old read paths still work
+   - Move events already in `game_moves` from Phase B dual-write path (see next step)
+2. App change: on every `UpdateGame` call **during active play**, also INSERT the new move into `game_moves`. Old `history bytea` still appended in `games` too.
+3. Deploy. Dual-write live. New games land in both places.
 
 ### Phase E: cutover reads
 
-1. App change: read game state from `game_moves` (fold events) instead of parsing `games.history`. Keep fallback to old path behind feature flag.
-2. Deploy. Monitor. Flip flag to new path.
+1. App change: read game state from `past_games` + `game_moves` for completed games, from `games` for active. Feature flag gate.
+2. Deploy. Monitor cache-miss rates, query latency. Flip flag progressively.
 
-### Phase F: atomic swap
+### Phase F: stop writing to old columns
 
-1. Verify all rows in `games` have corresponding row in `games_new` and all moves in `game_moves`.
-2. During low-traffic window:
-   ```sql
-   BEGIN;
-   ALTER TABLE games RENAME TO games_old;
-   ALTER TABLE games_new RENAME TO games;
-   DROP TRIGGER dual_write_games ON games_old;
-   COMMIT;
-   ```
-   Holds AccessExclusiveLock for seconds.
-3. App now writes directly to new `games` (partitioned).
+1. App change: when a game ends, DELETE the row from `games` instead of UPDATEing to NULL. Completed games live only in `past_games` + `past_game_players` + `game_moves` from here forward.
+2. App change: stop writing `history bytea`, `stats jsonb`, `quickdata jsonb` (archive-only fields) to `games` during active play. These belong only in `past_games` at end-of-game.
+3. Deploy.
 
 ### Phase G: cleanup
 
-1. Remove dual-write code.
-2. Drop `games_old` after retention window (e.g. 30 days).
-3. Remove `history bytea` column from `games` (DROP COLUMN = metadata-only since column no longer written).
-4. Drop old indexes no longer needed.
+1. Remove dual-write code for completed games (app now writes only to `past_games` + `past_game_players` + `game_moves`; `games` holds only active).
+2. Drop archive-only columns from `games` (`history bytea`, etc.). Metadata-only since column no longer written.
+3. Drop `rematch_req_idx` and other indexes whose queries are now served by `past_game_players.original_request_id` (mikado plan already flagged these).
+4. Drop obsolete `active_game_events` table (unused dead schema).
 
 ### Phase H: cold archival (optional, separate timeline)
 
-1. For `games_completed_YYYY_qN` partitions older than retention (e.g. 2 years), detach and archive.
-2. If `game_finals` is used: move blob column to S3 with `s3_key` reference in DB.
-3. Summary row stays in DB forever (small, queryable).
+Adopt PR 1503's `pkg/stores/game/PHASE2_S3_ARCHIVAL.md` design (539 lines, Parquet + Athena). Not re-authored here. Summary:
+
+1. For `past_games_YYYY_qN`, `past_game_players_YYYY_qN`, `game_moves_YYYY_qN` partitions older than retention (e.g. 2 years):
+   - DETACH PARTITION
+   - Dump to Parquet, upload to S3 (see PHASE2_S3_ARCHIVAL.md for layout and metadata format)
+   - Drop detached table
+   - Record in `game_uuid_to_ended_at` lookup that uuid now points to S3 (if using the lookup-table routing)
+2. On read: app detects "in S3" via absence from live partitions + lookup table, fetches from S3 or runs Athena query for analytics.
+3. Summary data in `past_games` remains queryable forever; only heavy columns (stats, quickdata) archive.
 
 ---
 
@@ -444,35 +560,44 @@ Phases B and C can start in parallel with Phase A.
 - Continuous WAL archive: seconds of RPO.
 - Logical `pg_dump` retired from critical path.
 
-### Write path (per move)
+### Write path (per move, active game)
 
-- Old: UPDATE games SET history=<all moves so far>, timers=..., stats=..., meta_events=..., quickdata=..., tournament_data=... WHERE uuid = $1
-- New: two statements in one transaction:
-  1. INSERT INTO game_moves (game_id, move_idx, move_type, word, ..., event) VALUES (...)
-  2. UPDATE games SET player_on_turn=..., time_remaining_p0=..., time_remaining_p1=..., time_of_last_update=..., updated_at=now() WHERE id = $1
+- Old: `UPDATE games SET history=<all moves so far>, timers=..., stats=..., meta_events=..., quickdata=..., tournament_data=... WHERE uuid = $1`
+- New (in one transaction with advisory lock):
+  1. `INSERT INTO game_moves (game_uuid, move_idx, move_type, word, ..., event) VALUES (...)`
+  2. `UPDATE games SET player_on_turn=..., time_remaining_p0=..., time_remaining_p1=..., time_of_last_update=..., updated_at=now() WHERE uuid = $1`
 
 Comparison:
-- Main-heap tuple on old: wide, changes many columns, usually misses HOT → full index update. TOAST churn on history.
+- Main-heap tuple on old: wide, changes many columns, usually misses HOT → full index update. TOAST churn on `history`.
 - Main-heap tuple on new `games`: narrow, only scalar columns change, fits in page with fillfactor=70 → HOT fires. No TOAST churn.
 - `game_moves` INSERT: append-only, no dead tuples, no HOT concern.
-- WAL: minutes of move data shrink from O(history_size × moves) to O(event_size × moves). 10-100x reduction.
+- WAL: shrinks from O(history_size × moves) to O(event_size × moves). 10-100x reduction.
+
+### Write path (at game end)
+
+In one transaction:
+- `INSERT INTO past_games ...`
+- `INSERT INTO past_game_players ...` × 2
+- `DELETE FROM games WHERE uuid = $1`
+
+One-time cost per game. `DELETE` leaves a dead tuple in `games_active`, but autovacuum on a small hot table runs frequently and cheaply. Final `game_moves` row was already appended by the last gameplay event.
 
 ### Queryability
 
 Previously impossible:
 ```sql
--- "Find games where the word QUIXOTIC was played"
-SELECT game_id FROM game_moves WHERE word = 'QUIXOTIC';
+-- Find games where the word QUIXOTIC was played
+SELECT game_uuid FROM game_moves WHERE word = 'QUIXOTIC';
 
--- "Find games where player X played a bingo from rack AEINRST"
-SELECT game_id FROM game_moves
+-- Find games where player X played a bingo from rack AEINRST
+SELECT game_uuid FROM game_moves
 WHERE rack = 'AEINRST' AND score >= 50 AND player_idx = 0;
 
--- "User X's earliest game"
-SELECT uuid, created_at FROM games
-WHERE player0_id = $1 OR player1_id = $1
+-- User X's earliest completed game (use game_players, already exists)
+SELECT game_uuid, created_at FROM game_players
+WHERE player_id = $1
 ORDER BY created_at LIMIT 1;
--- partition pruning on active/completed; index on (player0_id), (player1_id)
+-- hits idx_game_players_player_created directly; no OR-filter on games
 ```
 
 ### Backup window
@@ -490,19 +615,19 @@ Total storage: roughly neutral. Possibly +30% short-term during dual-write, -20%
 
 ### HOT updates
 
-Skinny `games_active` row, fillfactor 70, no indexed column changes on per-move UPDATE → HOT fires. Index bloat on active table near zero.
+Skinny `games` row (active-only), fillfactor 70, no indexed column changes on per-move UPDATE → HOT fires. Index bloat on active table near zero.
 
 ### Cache
 
 LRU cache layer (`pkg/stores/game/cache.go`) becomes less necessary:
-- Skinny games row loads sub-ms from DB.
+- Skinny `games` row loads sub-ms from DB.
 - Move fold is O(moves) regardless.
 - Can retire cache entirely (aligns with `stores.go:27` comment "we need to get rid of this cache").
 - Alternative: keep cache but drop capacity; it protects against N+1 patterns in hot loops more than it does per-request.
 
-### Row migration cost (partition-key UPDATE at game end)
+### No partition-key UPDATE
 
-When `UPDATE games SET ended = true, ended_at = now() WHERE uuid = $1` runs, PG detects partition key change and internally does DELETE from `games_active` + INSERT into `games_completed_YYYY_qN`. One extra I/O per game ended. Cheap, once per game lifetime.
+Unlike a LIST-partitioned `games` with `ended` as partition key, the two-table design has no cross-partition row migration. Game end is INSERT + DELETE on separate tables. Cleaner WAL story, no partition-aware UPDATE handling needed in Postgres.
 
 ---
 
@@ -515,10 +640,12 @@ When `UPDATE games SET ended = true, ended_at = now() WHERE uuid = $1` runs, PG 
 | `game_moves` partition misconfigured | Pre-create 2+ quarters of partitions; monitor for "no partition found" errors |
 | App read path regression when cutting over | Feature flag per-handler; gradual rollout |
 | pgBackRest S3 misconfigured | Test restore to staging before cutting over; keep pg_dump in parallel for a month |
-| `games_completed` grows faster than expected | Per-quarter partitioning; DETACH + archive policy |
-| Trigger fires on UPDATE cascades from maintenance tasks, corrupts new table | Trigger scoped to `AFTER INSERT OR UPDATE OR DELETE` with row-level predicate; audit of all maintenance SQL before deploy |
+| `past_games` grows faster than expected | Per-quarter partitioning; DETACH + archive policy |
+| Partition boundary shifts on DST | Explicit UTC literals in all `FOR VALUES FROM` clauses |
+| Long correspondence game spans `game_moves` partitions | Accepted; per-`game_uuid` query scans multiple partitions but each is indexed; typically <=2 |
+| Completed-game lookup by uuid alone without partition key | Route via `game_players` (which has `(player_id, created_at DESC)` index) or a small `game_uuid_to_ended_at` lookup table |
 
-Rollback at any phase: drop trigger, drop new tables, revert app. Old `games` table untouched until Phase F swap.
+Rollback at any phase: drop trigger, drop new tables, revert app. Old `games` table untouched until Phase F.
 
 ---
 
@@ -552,7 +679,9 @@ Phase order:
 
 ## Open questions for review
 
-- Do we want `game_finals` as a denormalized full-game snapshot, or rely purely on `game_moves` fold for all reads? Default: skip `game_finals`, add later only if analysis queries demand it.
-- Cold-archive format in S3: raw JSONB dump per partition, or parquet for analytics? Parquet enables cross-partition scans without rehydration. Defer until Phase H.
-- What's the retention for completed-games partitions before detach? 2 years? 5? Product call.
+- Rename `game_players` to `past_game_players` when partitioning? Matches `past_games` naming, signals completed-only. Pure cosmetic change, can defer.
+- Completed-game lookup by uuid without partition key: routing via `game_players` (existing `(player_id, created_at DESC)` index) works when caller knows the player, but "look up uuid X, no other context" needs either a `game_uuid_to_ended_at` lookup table or partition-aware app code. PR 1503 did not have this concern because `past_games` PK included `gid` alone (before partitioning enforcement). Decide: lookup table, partition-global index, or caller-provides-ended_at convention.
+- Cold-archive format in S3: PR 1503's `PHASE2_S3_ARCHIVAL.md` specifies Parquet + Athena. Adopt as-is?
+- Retention for completed-games partitions before detach? 2 years? 5? Product call.
 - Do we add ClickHouse or Postgres-native analytics for move-level queries? `game_moves` + partition pruning + GIN indexes in PG is probably enough for years. Defer.
+- Partition cadence: quarterly proposed. PR 1503 used monthly. Depends on growth rate; revisit if partitions become too large or too numerous.

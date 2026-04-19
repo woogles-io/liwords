@@ -81,7 +81,7 @@ Summarized for someone who will read only this index:
 1. **Target PG 18.3+**, skip PG 17 intermediate. Virtual generated columns collapse most column-promotion work to a one-line DDL. PG 18.3 released 2026-02-26 with CVE fixes, past the early-release gate.
 2. **Cluster cutover via pgBouncer upstream swap**, not DNS flip. DNS TTL lag is unacceptable given the "zero downtime" constraint.
 3. **Drop all bytea from the DB.** Protobuf stays as the wire format; `protojson.Marshal` produces JSONB. `games.history` moves to a new `game_moves` append-only table with promoted columns for words, racks, scores.
-4. **Partition `games` by LIST on `ended`**, not by RANGE on `created_at`. Games span months; time-range partitioning would leave active games in cold partitions.
+4. **Two-table pattern:** active-only unpartitioned `games` + completed-only quarterly-partitioned `past_games` (plus existing `game_players`, plus new `game_moves`). Active and completed have different columns and different operational profiles; keep them in separate tables rather than one LIST-partitioned table. All partition boundaries in **explicit UTC** to avoid DST shifts.
 5. **Split a dedicated `liwords-worker` service** (desiredCount=1) to own all tickers (adjudicator, pollers, reclaim worker). Keeps liwords-api stateless and scalable.
 6. **AGPL `.proto` dual-license** under Apache-2.0 is urgent if any external non-AGPL consumer (e.g. omgbot) exists. Current state is a live license conflict.
 7. **Chat storage moves from Redis to Postgres.** Redis shrinks to presence-only role. NATS stays for pub/sub fan-out.
