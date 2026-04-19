@@ -1156,3 +1156,54 @@ This audit's remaining, non-overlapping contributions:
 4. Stack-cleanup items (`stack-and-stores-cleanup.md`) as capacity allows.
 
 Items 1 and 2 are prerequisites that make v2's execution smoother (backup window shrinks so v2's backfill isn't held hostage to a 2h backup; pgBouncer lets PG upgrade land without downtime; advisory locks are already specified).
+
+---
+
+## 28. Username rename pain (adjacent topic, not in audit scope)
+
+> **Signpost:** Surfaced during audit conversation as a separate data-modeling pain. Not addressed by this audit or by v2. Captured here so the reasoning survives.
+
+### Current state
+
+`users.username` is used both as:
+- Login handle / internal identifier (immutable by intent)
+- Embedded display-name snapshot in game blobs (`games.history` proto `players[].nickname`, `games.quickdata` JSONB, `ipc.GameDocument` in annotated games)
+
+Code scan (`db/queries/`, `rpc/api/proto/`) confirms:
+
+- No DB tables use `username` as FK — all use `users.id` or `users.uuid`. `game_players` uses `player_id` FK. Clean.
+- Blob columns (`games.history`, `games.quickdata`, `game_documents`) carry stored copies of nicknames at time of play. These are the pain.
+- URL routes like `/profile/<username>` (if they exist) would break on rename.
+
+### Three cures
+
+**1. Snapshot semantics — do nothing, accept staleness.**
+
+Embedded nickname in a game's history is "what opponents saw during play" — newspaper-archive semantics. UI resolves current display via JOIN to `users` on read; falls back to stored nickname if user is deleted. Zero rewrite cost. Requires UI convention per surface.
+
+**2. Split `username` (immutable) from `display_name` (mutable).** *Recommended.*
+
+Add `profiles.display_name TEXT` (mutable). Show `display_name` in UI. `users.username` stays immutable — used for login, URL, and embedded copies. Renaming preferred name is one UPDATE. Blob-embedded `username` copies stay correct because `username` doesn't change. Same approach GitHub uses (relatively stable username + profile name that changes freely).
+
+**3. Live rewrite of blob copies on rename.** *Don't recommend.*
+
+On username change, parse every game's `history bytea` and `quickdata jsonb`, update embedded nicknames, re-marshal, write back. Thousands of games per active user. Compounds post-v2 when histories are in S3 (re-download, rewrite, re-upload each blob). Heavy WAL and S3 egress.
+
+### URL permanence (orthogonal to choice above)
+
+If routes use `username`, add `user_aliases(old_username TEXT PRIMARY KEY, user_id INT)`:
+```sql
+BEGIN;
+  INSERT INTO user_aliases (old_username, user_id) VALUES ($1_current, $2_user_id);
+  UPDATE users SET username = $3_new WHERE id = $2_user_id;
+COMMIT;
+```
+URL handler: first try `users WHERE lower(username) = $1`; on miss, try `user_aliases`, 302 redirect to canonical URL.
+
+### Recommendation
+
+Split `display_name` from `username` (cure 2). Keeps blob copies correct, allows free renaming of preferred name, avoids rewriting game histories. Layer snapshot semantics (cure 1) on top if embedded nicknames themselves should "follow" username changes — realistically they shouldn't, since they're historical records of what happened during that specific game.
+
+### Scope
+
+Separate workstream. Small schema change + moderate UI migration. Not included in this audit's PRs.

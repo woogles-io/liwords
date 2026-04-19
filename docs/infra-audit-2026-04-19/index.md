@@ -99,6 +99,7 @@ Summarized for someone who will read only this index. The games-storage schema r
 - Kubernetes migration (out of scope; infrastructure today is ECS).
 - Mobile app work.
 - Tables outside the hot `games` / `game_players` / `game_moves` axis: `game_documents`, `annotated_game_metadata`, `game_comments`, `notoriousgames`, `collection_games`, broadcast tables, puzzle tables, `league_standings`, analysis job queues. Noted during audit but not in scope.
+- **Username rename pain** (username embedded in `games.history` proto `players[].nickname`, `games.quickdata`, `ipc.GameDocument`). Adjacent data-modeling concern surfaced during audit; see `deep-dive.md` §28 for a short-form cure list (split `username` immutable from `display_name` mutable; snapshot semantics for historical nicknames; `user_aliases` for URL permanence). Separate workstream.
 
 ## Prior art in the repo
 
