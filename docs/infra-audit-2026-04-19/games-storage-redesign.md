@@ -553,22 +553,35 @@ Phases B and C can start in parallel with Phase A.
 
 ### Phase C: backfill moves and completed-game summaries
 
-Completed games don't change, so no dual-write trigger is needed. Scripted backfill only.
+Completed games don't change significantly, so no dual-write trigger is needed. Scripted backfill only.
 
-**Authoritative `ended_at` source: `game_players.created_at`, not `games.updated_at`.**
+**There is no fully-authoritative `ended_at` source in the current schema.** Corrected from an earlier draft of this spec which incorrectly identified `game_players.created_at` as authoritative:
 
-`games.updated_at` drifts if any post-end edit happens (stats recomputation, moderation flag, rating adjustment). Recent commits around `game_players.updated_at` consistency (`27c01345b`, `fba8733c7`, `389325273`, `dee6b2d9e`, `e0b449bc0`) confirm the timestamp story is actively evolving and not safe as a proxy for game completion time. `game_players.created_at` is set on INSERT at game end and never re-set by later edits; both player rows share the same timestamp per commit `27c01345b`.
+- `game_players.created_at` is set in `pkg/stores/game/db.go:1194` to `g.CreatedAt` — the **game start** time. It is a copy of `games.created_at`, not a game-end timestamp.
+- `game_players.updated_at` is set to `g.LastUpdatedAt` — mirrors `games.updated_at`. Has become null for some rows due to past backfill drift.
+- `games.updated_at` is the closest available proxy but drifts on several post-end write paths: cheating-penalty adjudication, force-forfeit, league force-finish-slow-games, stats recomputation, moderator actions. The recent commit cluster (`27c01345b` use same timestamp for games and game_players updated_at, `fba8733c7` pass updated_at explicitly, `389325273`/`dee6b2d9e`/`e0b449bc0` churn on populate game_players updated_at) patched specific drift bugs and also made `updated_at` the canonical sort key for "recent activity" lists (correspondence games spanning multiple days would otherwise fall many pages behind). Sort-order function and end-time proxy function are entangled on the same column.
+- `games.history` protobuf contains per-event timestamps. The last event's timestamp is the authoritative "last gameplay action" time, which is effectively when a game-end by play (time-out, resignation, last pass/challenge) occurred. Moderator-driven end states may not have a corresponding history event.
 
-Steps:
+Backfill strategy for legacy games (accept approximate `ended_at`):
 
-1. Walk completed games in partition-friendly batches. Partition key per game = `game_players.created_at` (both rows, verify they agree; if they diverge, flag and skip until investigated).
-2. For each game:
-   - INSERT summary row into `past_games_YYYY_MM` partition using `game_players.created_at` as `ended_at`.
-   - INSERT `game_metadata` row (uuid, `created_at` = original game creation time, `game_request`, `tournament_data`).
-   - Parse `history bytea` with Go tool, convert tile sequences to machine-letter arrays via lexicon lookup, INSERT one row per move into `game_moves_YYYY_MM` partition.
-   - `game_players` already has completed-game rows from prior migrations; only partition-key rebalancing needed (Phase B).
-3. Verify row counts and checksums per partition.
-4. Reuse PR 1503's `scripts/migrations/historical_games/main.go` as scaffolding; adapt the INSERT targets to new schema, add ML encoding for `word`/`rack` fields.
+1. Walk completed games in partition-friendly batches ordered by `games.updated_at`.
+2. For each game, compute `ended_at` as the later of:
+   - `games.updated_at`
+   - Last event timestamp parsed out of `games.history` (if present and well-formed)
+3. Document `ended_at` as approximate for games backfilled in this phase. Do not block on perfect accuracy for pre-migration games.
+4. INSERT rows:
+   - `past_games` partition chosen by computed `ended_at`
+   - `game_metadata` with uuid, original `created_at`, `game_request`, `tournament_data`
+   - `game_moves` partition per move, chosen by per-move `created_at` from history (falls back to evenly-spaced between game-start and computed game-end if history lacks per-move timestamps). ML encode word/rack via lexicon lookup.
+   - `game_players` already holds completed-game rows from prior migrations; only partition-key rebalancing needed (Phase B).
+5. Verify row counts and checksums per partition.
+6. Reuse PR 1503's `scripts/migrations/historical_games/main.go` as scaffolding; adapt INSERT targets to new schema, add ML encoding for `word`/`rack` fields, add history-timestamp parsing.
+
+**For new games post-cutover (Phase D onward): write `ended_at = now()` explicitly in the game-end INSERT transaction. Do not derive from `updated_at` or any mirrored timestamp.** Every code path that triggers a game end (normal completion, time-out, resignation, force-forfeit, cheating adjudication, league force-finish) must route through the same "end game" function that performs the `past_games` INSERT with `ended_at = now()`. Audit all call sites of `InsertGamePlayers` during the migration — currently invoked from `pkg/gameplay/end.go:257`, `pkg/gameplay/end.go:439`, and `pkg/league/force_finish_games.go:169`. Each must be updated to also INSERT into `past_games` / `game_metadata` with consistent `ended_at`.
+
+**UI sort-order migration:** The "recent games" list currently sorts by `games.updated_at DESC` so that freshly-ended correspondence games surface at the top. After migration, this split into:
+- Active games list: sort by `games.updated_at DESC` (per-move bump; same as today).
+- Completed games list: sort by `past_games.ended_at DESC`. Later edits (moderator, rating adjustment) update a separate `past_games.updated_at` but do not move the game in a "recent games" list. Decide per product requirements whether moderator re-opens should bubble a game back to the top.
 
 Backfill runs over days or weeks depending on history size. Rate-limited. Does not block prod writes.
 
