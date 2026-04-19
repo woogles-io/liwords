@@ -5,7 +5,7 @@
 **Postgres version on prod:** 14.6 on 2-core EC2 (plan targets 18.3+)
 **Target:** zero-downtime multi-instance production with fast backups, SQL-queryable game data, and clean license story for external clients.
 
-This is the entry point for a four-document audit. Read this file first, then follow the role-specific reading order below.
+This is the entry point for a five-document audit (this index plus four content docs). Read this file first, then follow the role-specific reading order below.
 
 ---
 
@@ -17,7 +17,7 @@ Audit of three linked concerns in the liwords backend:
 2. **Games table storage** — backup window hours → minutes, opaque protobuf `history` → queryable `game_moves`, hot/cold partitioning, PG 14.6 → 18.3 upgrade.
 3. **Stack + stores cleanup** — Postgres / Redis / NATS role boundaries, chat move to Postgres, unit-of-work transaction pattern, AGPL `.proto` dual-licensing for external clients (e.g. omgbot).
 
-All four documents live in `docs/superpowers/specs/` dated `2026-04-19`.
+All five documents live in `docs/infra-audit-2026-04-19/`.
 
 ---
 
@@ -85,7 +85,7 @@ Summarized for someone who will read only this index:
 5. **Split a dedicated `liwords-worker` service** (desiredCount=1) to own all tickers (adjudicator, pollers, reclaim worker). Keeps liwords-api stateless and scalable.
 6. **AGPL `.proto` dual-license** under Apache-2.0 is urgent if any external non-AGPL consumer (e.g. omgbot) exists. Current state is a live license conflict.
 7. **Chat storage moves from Redis to Postgres.** Redis shrinks to presence-only role. NATS stays for pub/sub fan-out.
-8. **Trigger-based dual-write** (not app-level) for the table split migration. Closes race windows without requiring app transaction awareness.
+8. **Migration via scripted backfill + app-level dual-write** (same as PR 1503 / mikado plan). Game-end is a clean app transaction boundary; no DB triggers needed. Read-path rollout gated by feature flag.
 
 ---
 
@@ -100,8 +100,8 @@ Summarized for someone who will read only this index:
 
 ## Prior art in the repo
 
-- **`docs/mikado/game_table_redo_plan.md`** — earlier plan for `past_games` + `game_players` + dual-write + quickdata drop + S3 archival. Partially implemented: `game_players` is built and populated (~20M rows). This audit extends that plan with per-move granularity, PG 18 features, and LIST-on-`ended` partitioning.
-- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference]`) — substantial implementation attempt by César Del Solar. Author comment explicitly invokes the Mikado method: too big to merge as one, being split into smaller deployable units. Contains monthly-RANGE-on-`past_games` migrations, `PHASE2_S3_ARCHIVAL.md` (539-line S3 archive design with Parquet + Athena), `scripts/migrations/historical_games/` backfill tool (442 lines), `pkg/stores/game/migration.go` scaffolding, `pkg/stores/game/README.md` evolution narrative, and a proposed `game_metadata` table. This audit uses PR 1503 as reference material; `PHASE2_S3_ARCHIVAL.md` should be adopted for Phase H S3 archival rather than re-authored. Partitioning strategy differs (LIST-on-`ended` vs monthly RANGE) — see `games-storage-redesign.md` for rationale.
+- **`docs/mikado/game_table_redo_plan.md`** — earlier plan for `past_games` + `game_players` + dual-write + quickdata drop + S3 archival. Partially implemented: `game_players` is built and populated (~20M rows). This audit adopts the same two-table shape and migration mechanics (scripted backfill + app-level dual-write), and extends with per-move `game_moves`, PG 18 features, and all-JSONB encoding.
+- **PR #1503** (`origin/partitioned-games`, OPEN, title `[obsolete, but using as a reference]`) — substantial implementation attempt by César Del Solar. Author comment explicitly invokes the Mikado method: too big to merge as one, being split into smaller deployable units. Contains monthly-RANGE-on-`past_games` migrations, `PHASE2_S3_ARCHIVAL.md` (539-line S3 archive design with Parquet + Athena), `scripts/migrations/historical_games/` backfill tool (442 lines), `pkg/stores/game/migration.go` scaffolding, `pkg/stores/game/README.md` evolution narrative, and a proposed `game_metadata` table. This audit adopts the same two-table shape (`games` active + `past_games` completed-partitioned) and uses PR 1503 as reference material. Deviations from PR 1503: quarterly instead of monthly partition cadence, per-move `game_moves` table added, all-JSONB encoding, PG 18.3+ target, trigger-based dual-write instead of app-level + feature flag. `PHASE2_S3_ARCHIVAL.md` adopted for Phase H rather than re-authored.
 - **PR #1634** (`origin/maintenance-overlay`, OPEN) — workaround that pauses real-time games during deploy via user-facing overlay. Blocked on CloudFront `/ping` exposure. Deploy-safety spec P1-P7 is the proper alternative; this branch can be abandoned once P1-P7 lands, or merged as interim measure if time pressure demands.
 - **`active_game_events` table** (`db/migrations/202502280432_game_table_changes.up.sql:15`) — unused artifact of a prior per-move refactor. No Go references. Cleanup candidate.
 - **`history_in_s3` column** — added 2025-03-17, dropped 2025-11-11. Git log shows it was never wired up (sat unused for 8 months). Phase H S3 archival in games-storage-redesign adopts PR 1503's `PHASE2_S3_ARCHIVAL.md` design, not a clean slate.
@@ -114,7 +114,7 @@ The four documents were written during a long conversation. Some early sections 
 
 Key signpost categories:
 
-- **"Final decision"** — do not revise from earlier sections (e.g. partitioning strategy §19, encoding decision §21, PG upgrade §26, cutover mechanism §25).
+- **"Final decision"** — do not revise from earlier sections (e.g. two-table pattern §19, encoding decision §21, PG upgrade §26, cutover mechanism §25).
 - **"Refines §N"** — this section corrects or sharpens an earlier section (e.g. §10 refines §5).
 - **"Superseded by PG 18"** — pattern was necessary on 14.6 but simplifies on the upgrade target (e.g. §13 column promotion).
 

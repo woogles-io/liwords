@@ -16,7 +16,7 @@ This document preserves the question-and-answer form of the investigation for fu
 > - §5 (Protobuf vs JSONB) → refined by §10 (UPDATE-rewrites-column is not JSONB-specific) and §21 (drop all bytea).
 > - §13 (Promote JSONB to columns with dual-write) → **superseded for most cases** by PG 18 virtual generated columns; see §26.
 > - §15 (Partitioning after the fact) mentions "logical replication to new cluster" → cutover mechanics are in §25 (pgBouncer, not DNS).
-> - §19 explicitly replaces the default "RANGE on created_at" instinct with "LIST on `ended`". Do not use monthly time-range partitioning for this schema.
+> - §19 explicitly recommends a **two-table** pattern (active `games` + completed `past_games` partitioned quarterly on `ended_at` UTC), not a single LIST-partitioned `games`. Aligns with PR #1503 and existing `game_players` precedent. Do not default to monthly time-range partitioning on a single table.
 > - §26 (PG version upgrade path) is the definitive recommendation: **target PG 18.3+ directly, skip 17**. Earlier tables / sections citing "target 17" should be read as superseded.
 > - §22 (LRU cache) recommends measure-first, retire-later. Not "delete immediately."
 
@@ -296,7 +296,7 @@ Protobuf wins on wire size and type safety. JSONB wins on ops inspection, SQL qu
 
 **F1. Physical incremental backups.** Replace `pg_dump` with pgBackRest or WAL-G (or `pg_basebackup --incremental` on PG 17+). Full basebackup once, WAL archive continuous. Backup window drops from hours to minutes. No CPU-bound per-table serial compression. No schema changes needed.
 
-**F2. Partition `games` by game status (LIST on `ended`), sub-partitioned by `ended_at` quarterly.** Old partitions immutable → back up once, skip forever. Detach and archive past retention. See section 19.
+**F2. Two-table pattern: keep active `games` unpartitioned; put completed games in `past_games` partitioned quarterly on `ended_at` UTC.** Old partitions immutable → back up once, skip forever. Detach and archive past retention. See section 19.
 
 **F3. Repack existing bloat.** `pg_repack` online reclaims dead space without locks. Run after any migration touching many rows.
 
@@ -601,7 +601,7 @@ DNS TTL lag can stretch from 30s to hours depending on resolver behavior. See se
 
 ### Partition key design for liwords
 
-See section 19. Short answer: LIST partition on `ended` (active vs completed), with completed sub-partitioned by `ended_at` quarterly. Not RANGE on `created_at`, because games can span months.
+See section 19. Short answer: **two tables** — active `games` (unpartitioned, small, caching target) + completed `past_games` (partitioned by `ended_at` quarterly in UTC). Not RANGE on `created_at` in a single table, because games can span months and active/completed have different columns.
 
 ---
 
@@ -664,7 +664,7 @@ Why the current `games` table breaks HOT:
 - `history` bytea grows every move → row no longer fits in the same page → new page → HOT fails.
 - Indexed `tournament_id`, `player_on_turn` change → HOT fails.
 
-Why the proposed skinny `games_active` row would fire HOT:
+Why the proposed skinny `games` (active-only) row would fire HOT:
 - Small row (no bytea, no large JSONB) fits in page with fillfactor=70.
 - Only scalar columns change on per-move UPDATE.
 - Result: in-page chain, no index writes, autovacuum barely needs to work.
