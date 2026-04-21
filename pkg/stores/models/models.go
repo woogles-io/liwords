@@ -512,6 +512,13 @@ type TournamentDirector struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type TournamentStat struct {
+	TournamentID int64
+	DivisionName string
+	PlayerID     string
+	Stats        []byte
+}
+
 type User struct {
 	ID                    int32
 	CreatedAt             pgtype.Timestamptz
