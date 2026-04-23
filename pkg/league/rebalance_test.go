@@ -362,6 +362,36 @@ func TestHiatusWeight_HalvesEveryTenSeasons(t *testing.T) {
 		"Weight after 20 seasons should be ~0.25, got %.4f", weight20)
 }
 
+func TestCeilingForStatus(t *testing.T) {
+	tests := []struct {
+		name          string
+		status        ipc.PlacementStatus
+		prevDiv       int32
+		wantCeiling   int32
+		wantGuarantee bool
+	}{
+		{"promoted from div 3", ipc.PlacementStatus_PLACEMENT_PROMOTED, 3, 2, true},
+		{"promoted from div 2", ipc.PlacementStatus_PLACEMENT_PROMOTED, 2, 1, true},
+		{"promoted from div 1 (should not occur)", ipc.PlacementStatus_PLACEMENT_PROMOTED, 1, 1, false},
+		{"stayed in div 1", ipc.PlacementStatus_PLACEMENT_STAYED, 1, 1, true},
+		{"stayed in div 4", ipc.PlacementStatus_PLACEMENT_STAYED, 4, 4, true},
+		{"relegated from div 2 (no ceiling)", ipc.PlacementStatus_PLACEMENT_RELEGATED, 2, 0, false},
+		{"new player (no ceiling)", ipc.PlacementStatus_PLACEMENT_NEW, 0, 0, false},
+		{"short hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, 3, 0, false},
+		{"long hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING, 3, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ceiling, hasGuarantee := ceilingForStatus(tt.status, tt.prevDiv)
+			assert.Equal(t, tt.wantGuarantee, hasGuarantee)
+			if tt.wantGuarantee {
+				assert.Equal(t, tt.wantCeiling, ceiling)
+			}
+		})
+	}
+}
+
 func TestNewRookieSplitting(t *testing.T) {
 	// Test the logic for splitting <10 new rookies between bottom 2 divisions
 	tests := []struct {

@@ -254,7 +254,7 @@ func TestMovePlayer_Success(t *testing.T) {
 	is.NoErr(err)
 
 	// Move player from Division 1 to Division 2
-	result, err := mdm.MovePlayer(ctx, playerUUID, seasonID, div1ID, div2ID)
+	result, err := mdm.MovePlayer(ctx, playerUUID, league, seasonID, div1ID, div2ID)
 	is.NoErr(err)
 	is.Equal(result.Success, true)
 	is.Equal(result.UserID, playerUUID)
@@ -327,7 +327,7 @@ func TestMovePlayer_InvalidDivision(t *testing.T) {
 
 	// Try to move player from wrong division - should fail
 	wrongDivID := uuid.New()
-	_, err = mdm.MovePlayer(ctx, playerUUID, seasonID, wrongDivID, div1ID)
+	_, err = mdm.MovePlayer(ctx, playerUUID, league, seasonID, wrongDivID, div1ID)
 	is.True(err != nil) // Should return error
 }
 
@@ -464,4 +464,151 @@ func TestCreateDivision_InsertMiddle(t *testing.T) {
 	oldDiv2, err := store.GetDivision(ctx, divIDs[1])
 	is.NoErr(err)
 	is.Equal(oldDiv2.DivisionNumber, int32(3)) // Was 2, now 3
+}
+
+// TestMovePlayer_StatusRecomputed_StayedToPromoted verifies that moving a STAYED
+// player up one division recalculates placement_status to PROMOTED.
+func TestMovePlayer_StatusRecomputed_StayedToPromoted(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	allStores, store, cleanup := setupTest(t)
+	defer cleanup()
+
+	mdm := NewManualDivisionManager(allStores)
+
+	league := uuid.New()
+	_, err := store.CreateLeague(ctx, models.CreateLeagueParams{
+		Uuid: league, Name: "Test", Slug: "test-stp",
+		Settings: []byte(`{}`), IsActive: pgtype.Bool{Bool: true, Valid: true},
+		CreatedBy: pgtype.Int8{Int64: 1, Valid: true},
+	})
+	is.NoErr(err)
+
+	// Season 1: player was in div 2.
+	s1ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: s1ID, LeagueID: league, SeasonNumber: 1,
+		StartDate: pgtype.Timestamptz{Time: time.Now().AddDate(0, -2, 0), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, -1, 0), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_COMPLETED),
+	})
+	is.NoErr(err)
+	s1Div1 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: s1Div1, SeasonID: s1ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+	s1Div2 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: s1Div2, SeasonID: s1ID, DivisionNumber: 2,
+		DivisionName: pgtype.Text{String: "Division 2", Valid: true},
+	})
+	is.NoErr(err)
+	_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+		UserID: 1, SeasonID: s1ID, DivisionID: pgtype.UUID{Bytes: s1Div2, Valid: true},
+		Status: pgtype.Text{String: "REGISTERED", Valid: true},
+	})
+	is.NoErr(err)
+
+	// Season 2: player initially placed in div 2 with STAYED status.
+	s2ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: s2ID, LeagueID: league, SeasonNumber: 2,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+	s2Div1 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: s2Div1, SeasonID: s2ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+	s2Div2 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: s2Div2, SeasonID: s2ID, DivisionNumber: 2,
+		DivisionName: pgtype.Text{String: "Division 2", Valid: true},
+	})
+	is.NoErr(err)
+	_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+		UserID: 1, SeasonID: s2ID, DivisionID: pgtype.UUID{Bytes: s2Div2, Valid: true},
+		Status:          pgtype.Text{String: "REGISTERED", Valid: true},
+		PlacementStatus: pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_STAYED), Valid: true},
+	})
+	is.NoErr(err)
+
+	// Admin moves the player from div2 up to div1.
+	result, err := mdm.MovePlayer(ctx, "test-uuid-1", league, s2ID, s2Div2, s2Div1)
+	is.NoErr(err)
+	is.True(result.Success)
+
+	// placement_status should now be PROMOTED (final div 1 < prev div 2).
+	reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+		SeasonID: s2ID, UserID: 1,
+	})
+	is.NoErr(err)
+	is.True(reg.PlacementStatus.Valid)
+	is.Equal(ipc.PlacementStatus(reg.PlacementStatus.Int32), ipc.PlacementStatus_PLACEMENT_PROMOTED)
+}
+
+// TestMovePlayer_StatusPreserved_NewPlayer verifies that moving a PLACEMENT_NEW
+// player leaves their status unchanged.
+func TestMovePlayer_StatusPreserved_NewPlayer(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	allStores, store, cleanup := setupTest(t)
+	defer cleanup()
+
+	mdm := NewManualDivisionManager(allStores)
+
+	league := uuid.New()
+	_, err := store.CreateLeague(ctx, models.CreateLeagueParams{
+		Uuid: league, Name: "Test", Slug: "test-spnp",
+		Settings: []byte(`{}`), IsActive: pgtype.Bool{Bool: true, Valid: true},
+		CreatedBy: pgtype.Int8{Int64: 1, Valid: true},
+	})
+	is.NoErr(err)
+
+	// No season 1 — player is brand new to the league.
+	s1ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: s1ID, LeagueID: league, SeasonNumber: 1,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 1, 0), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+	div1 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div1, SeasonID: s1ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+	div2 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div2, SeasonID: s1ID, DivisionNumber: 2,
+		DivisionName: pgtype.Text{String: "Division 2", Valid: true},
+	})
+	is.NoErr(err)
+	_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+		UserID: 1, SeasonID: s1ID, DivisionID: pgtype.UUID{Bytes: div2, Valid: true},
+		Status:          pgtype.Text{String: "REGISTERED", Valid: true},
+		PlacementStatus: pgtype.Int4{Int32: int32(ipc.PlacementStatus_PLACEMENT_NEW), Valid: true},
+	})
+	is.NoErr(err)
+
+	// Move the new player from div2 to div1.
+	result, err := mdm.MovePlayer(ctx, "test-uuid-1", league, s1ID, div2, div1)
+	is.NoErr(err)
+	is.True(result.Success)
+
+	// PLACEMENT_NEW must be preserved regardless of which division the admin moves them to.
+	reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+		SeasonID: s1ID, UserID: 1,
+	})
+	is.NoErr(err)
+	is.True(reg.PlacementStatus.Valid)
+	is.Equal(ipc.PlacementStatus(reg.PlacementStatus.Int32), ipc.PlacementStatus_PLACEMENT_NEW)
 }

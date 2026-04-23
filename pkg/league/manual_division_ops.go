@@ -7,9 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/stores"
 	"github.com/woogles-io/liwords/pkg/stores/models"
+	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 // ManualDivisionManager provides tools for manual division management
@@ -140,9 +142,11 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 
 // MovePlayer moves a single player from one division to another.
 // This is useful for manual corrections and balancing.
+// After moving, placement_status is recomputed based on actual movement vs previous season.
 func (mdm *ManualDivisionManager) MovePlayer(
 	ctx context.Context,
 	userID string, // UUID string
+	leagueID uuid.UUID,
 	seasonID uuid.UUID,
 	fromDivID uuid.UUID,
 	toDivID uuid.UUID,
@@ -192,12 +196,92 @@ func (mdm *ManualDivisionManager) MovePlayer(
 		return nil, fmt.Errorf("failed to move player: %w", err)
 	}
 
+	// Recompute placement_status based on actual movement vs previous season.
+	mdm.recomputePlacementStatus(ctx, userID, userDBID, leagueID, seasonID, reg, toDiv.DivisionNumber)
+
 	return &MoveResult{
 		Success:            true,
 		UserID:             userID,
 		PreviousDivisionID: fromDivID,
 		NewDivisionID:      toDivID,
 	}, nil
+}
+
+// recomputePlacementStatus recalculates and persists the placement_status after a
+// manual move.  NEW / HIATUS statuses are preserved (they describe entry, not movement).
+// Errors are logged and swallowed so a status-update hiccup does not fail the move.
+func (mdm *ManualDivisionManager) recomputePlacementStatus(
+	ctx context.Context,
+	username string,
+	userDBID int32,
+	leagueID uuid.UUID,
+	seasonID uuid.UUID,
+	reg models.LeagueRegistration,
+	newDivNumber int32,
+) {
+	oldStatus := ipc.PlacementStatus_PLACEMENT_NONE
+	if reg.PlacementStatus.Valid {
+		oldStatus = ipc.PlacementStatus(reg.PlacementStatus.Int32)
+	}
+
+	// Find the player's division number from their previous season.
+	history, err := mdm.stores.LeagueStore.GetPlayerSeasonHistory(ctx, models.GetPlayerSeasonHistoryParams{
+		UserID:   userDBID,
+		LeagueID: leagueID,
+	})
+	if err != nil {
+		log.Warn().Err(err).Str("userID", username).
+			Msg("recomputePlacementStatus: failed to get season history, skipping")
+		return
+	}
+
+	prevDivNumber := int32(0)
+	for _, h := range history {
+		if h.SeasonID == seasonID {
+			continue // Skip the current season.
+		}
+		if !h.DivisionID.Valid {
+			continue
+		}
+		div, err := mdm.stores.LeagueStore.GetDivision(ctx, h.DivisionID.Bytes)
+		if err != nil {
+			continue
+		}
+		prevDivNumber = div.DivisionNumber
+		break
+	}
+
+	if prevDivNumber == 0 {
+		// No previous season found — player is new; status stays as-is.
+		return
+	}
+
+	newStatus := CorrectPlacementStatus(oldStatus, prevDivNumber, newDivNumber)
+	if newStatus == oldStatus {
+		return
+	}
+
+	err = mdm.stores.LeagueStore.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{
+		UserID:               userDBID,
+		PlacementStatus:      pgtype.Int4{Int32: int32(newStatus), Valid: true},
+		PreviousDivisionRank: reg.PreviousDivisionRank,
+		SeasonID:             seasonID,
+	})
+	if err != nil {
+		log.Warn().Err(err).Str("userID", username).
+			Str("old_status", oldStatus.String()).
+			Str("new_status", newStatus.String()).
+			Msg("recomputePlacementStatus: failed to update placement status")
+		return
+	}
+
+	log.Info().
+		Str("username", username).
+		Str("old_status", oldStatus.String()).
+		Str("new_status", newStatus.String()).
+		Int32("previous_div", prevDivNumber).
+		Int32("new_div", newDivNumber).
+		Msg("recomputed placement status after manual move")
 }
 
 // CreateDivision creates a new division at the specified number.
