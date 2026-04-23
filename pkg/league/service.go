@@ -2070,7 +2070,7 @@ func (ls *LeagueService) MovePlayerToDivision(
 
 	// Use the ManualDivisionManager to move the player
 	mdm := NewManualDivisionManager(ls.stores)
-	result, err := mdm.MovePlayer(ctx, req.Msg.UserId, seasonID, fromDivID, toDivID)
+	result, err := mdm.MovePlayer(ctx, req.Msg.UserId, season.LeagueID, seasonID, fromDivID, toDivID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to move player: %w", err))
 	}

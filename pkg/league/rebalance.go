@@ -145,6 +145,15 @@ func (rm *RebalanceManager) RebalanceDivisions(
 		result.DivisionsCreated--
 	}
 
+	// Step 6b: Enforce promotion/stay guarantees.
+	// Runs after the merge so it operates on the final division layout.
+	// Merge only ever moves players upward (lower-numbered divisions), so it
+	// cannot introduce guarantee violations; enforcement then fixes any that
+	// remain from the initial bucketing.
+	if err := rm.enforceGuarantees(ctx, newSeasonID, playersWithPriority); err != nil {
+		return nil, fmt.Errorf("failed to enforce placement guarantees: %w", err)
+	}
+
 	// Get final division assignments for result and correct placement statuses
 	for _, p := range playersWithPriority {
 		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
@@ -160,7 +169,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 				// Step 7: Correct placement status if actual movement differs from expected
 				// PreviousDivisionNumber is where they started
 				// FinalDivision is where they actually ended up
-				correctedStatus := rm.correctPlacementStatus(p.PlacementStatus, p.PreviousDivisionNumber, div.DivisionNumber)
+				correctedStatus := CorrectPlacementStatus(p.PlacementStatus, p.PreviousDivisionNumber, div.DivisionNumber)
 				if correctedStatus != p.PlacementStatus {
 					err := rm.stores.LeagueStore.UpdatePlacementStatus(ctx, models.UpdatePlacementStatusParams{
 						UserID:               p.UserDBID,
@@ -192,15 +201,130 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	return result, nil
 }
 
-// correctPlacementStatus adjusts placement status based on actual division movement
+// ceilingForStatus returns the maximum division number (highest-numbered = lowest tier)
+// that a player may land in given their status and previous division.
+// Returns (0, false) when the status carries no placement guarantee.
+func ceilingForStatus(status ipc.PlacementStatus, prevDiv int32) (int32, bool) {
+	switch status {
+	case ipc.PlacementStatus_PLACEMENT_PROMOTED:
+		if prevDiv <= 1 {
+			// Already in the top division; no room to move up.  This shouldn't
+			// occur in practice (champions are stored as STAYED), but handle
+			// defensively.
+			return 1, false
+		}
+		return prevDiv - 1, true
+	case ipc.PlacementStatus_PLACEMENT_STAYED:
+		return prevDiv, true
+	default:
+		return 0, false
+	}
+}
+
+// enforceGuarantees moves any PROMOTED or STAYED player whose final division
+// violates their earned outcome into their ceiling division.  This is called
+// after MergeUndersizedFinalDivision so that it operates on the final layout;
+// merge only ever moves players upward (into lower-numbered divisions) so it
+// cannot introduce guarantee violations.
+//
+// Division sizing may drift slightly as a result; that is intentional and left
+// to be addressed separately.
+func (rm *RebalanceManager) enforceGuarantees(
+	ctx context.Context,
+	seasonID uuid.UUID,
+	playersWithPriority []PlayerWithPriority,
+) error {
+	// Build a map from division number to UUID once, to avoid per-player DB hits.
+	allDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return fmt.Errorf("enforceGuarantees: failed to get divisions: %w", err)
+	}
+	divByNumber := make(map[int32]uuid.UUID, len(allDivisions))
+	for _, d := range allDivisions {
+		divByNumber[d.DivisionNumber] = d.Uuid
+	}
+
+	for _, p := range playersWithPriority {
+		ceiling, hasGuarantee := ceilingForStatus(p.PlacementStatus, p.PreviousDivisionNumber)
+		if !hasGuarantee {
+			continue
+		}
+
+		// Special-case: PROMOTED from div 1 — nowhere to go, just warn.
+		if p.PlacementStatus == ipc.PlacementStatus_PLACEMENT_PROMOTED && p.PreviousDivisionNumber <= 1 {
+			log.Warn().
+				Str("username", p.Username).
+				Int32("previous_div", p.PreviousDivisionNumber).
+				Msg("PROMOTED player from top division — cannot enforce guarantee (should not occur)")
+			continue
+		}
+
+		reg, err := rm.stores.LeagueStore.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+			SeasonID: seasonID,
+			UserID:   p.UserDBID,
+		})
+		if err != nil || !reg.DivisionID.Valid {
+			continue
+		}
+
+		div, err := rm.stores.LeagueStore.GetDivision(ctx, reg.DivisionID.Bytes)
+		if err != nil {
+			continue
+		}
+
+		if div.DivisionNumber <= ceiling {
+			continue // Already satisfies the guarantee.
+		}
+
+		// Find the ceiling division UUID.
+		targetUUID, ok := divByNumber[ceiling]
+		if !ok {
+			log.Warn().
+				Str("username", p.Username).
+				Str("status", p.PlacementStatus.String()).
+				Int32("previous_div", p.PreviousDivisionNumber).
+				Int32("ceiling", ceiling).
+				Int32("actual_div", div.DivisionNumber).
+				Msg("enforceGuarantees: ceiling division does not exist, cannot enforce")
+			continue
+		}
+
+		err = rm.stores.LeagueStore.UpdateRegistrationDivision(ctx, models.UpdateRegistrationDivisionParams{
+			UserID:      p.UserDBID,
+			SeasonID:    seasonID,
+			DivisionID:  pgtype.UUID{Bytes: targetUUID, Valid: true},
+			FirstsCount: reg.FirstsCount,
+		})
+		if err != nil {
+			log.Warn().Err(err).
+				Str("username", p.Username).
+				Msg("enforceGuarantees: failed to move player")
+			continue
+		}
+
+		log.Info().
+			Str("username", p.Username).
+			Str("status", p.PlacementStatus.String()).
+			Int32("previous_div", p.PreviousDivisionNumber).
+			Int32("old_final_div", div.DivisionNumber).
+			Int32("new_final_div", ceiling).
+			Msg("enforced guarantee")
+	}
+
+	return nil
+}
+
+// CorrectPlacementStatus adjusts placement status based on actual division movement.
 // Compares where the player started (previousDivision) to where they ended up (finalDivision)
 // and sets the status to reflect the actual movement, not the expected movement.
+//
+// Preserves NEW / HIATUS statuses — they describe how a player entered, not movement.
 //
 // Examples:
 // - Player promoted from Div 10 but ended up in Div 10 due to crowding -> STAYED
 // - Player stayed in Div 5 but ended up in Div 4 due to openings -> PROMOTED
 // - Player stayed in Div 5 but ended up in Div 6 due to league growth -> RELEGATED
-func (rm *RebalanceManager) correctPlacementStatus(
+func CorrectPlacementStatus(
 	originalStatus ipc.PlacementStatus,
 	previousDivision int32,
 	finalDivision int32,

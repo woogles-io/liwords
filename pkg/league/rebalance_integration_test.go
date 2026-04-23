@@ -423,3 +423,286 @@ func TestRebalanceDivisions_8NewRookies(t *testing.T) {
 	is.Equal(len(divs), 1)
 	// All divisions are now regular divisions
 }
+
+// TestEnforceGuarantees_PromotedPlayerGuaranteed verifies that a player who earned
+// promotion is always placed in a better division, even when high-scoring STAYED
+// players would otherwise crowd them out via the priority-bucket algorithm.
+//
+// Scenario: 30 players across 2 divisions of 15.
+//   - All 15 div-1 players: RESULT_STAYED   (placement STAYED, virtual div 1, score ~240k)
+//   - Players 16-18 in div2: RESULT_PROMOTED (placement PROMOTED, virtual div 1, score ~230k)
+//   - Players 19-30 in div2: RESULT_STAYED   (virtual div 2, score ~140k)
+//
+// Without enforcement the 15 STAYED-div1 players (240k) beat the 3 PROMOTED-div2
+// players (230k), pushing the promoted players into div 2 — a guarantee violation.
+// With enforcement they must end up in div 1.
+func TestEnforceGuarantees_PromotedPlayerGuaranteed(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	allStores, cleanup := setupIntegrationTest(t)
+	defer cleanup()
+
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
+
+	// Season 1: two divisions, 15 players each.
+	div1S1 := uuid.New()
+	_, err := store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div1S1, SeasonID: season1ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+
+	div2S1 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div2S1, SeasonID: season1ID, DivisionNumber: 2,
+		DivisionName: pgtype.Text{String: "Division 2", Valid: true},
+	})
+	is.NoErr(err)
+
+	// Register and create standings for 30 players.
+	for i := 1; i <= 30; i++ {
+		divID := div1S1
+		if i > 15 {
+			divID = div2S1
+		}
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season1ID,
+			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
+			DivisionID: pgtype.UUID{Bytes: divID, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
+			UserID: int32(i), DivisionID: divID,
+			Wins: pgtype.Int4{Int32: 5, Valid: true}, Losses: pgtype.Int4{Int32: 5, Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	// Set outcomes: players 1-15 STAYED in div1; players 16-18 PROMOTED in div2.
+	for i := 1; i <= 15; i++ {
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div1S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_STAYED), Valid: true},
+		})
+		is.NoErr(err)
+	}
+	for i := 16; i <= 18; i++ {
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div2S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_PROMOTED), Valid: true},
+		})
+		is.NoErr(err)
+	}
+	for i := 19; i <= 30; i++ {
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div2S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_STAYED), Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	// Season 2: register all 30 players.
+	season2ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: season2ID, LeagueID: leagueID, SeasonNumber: 2,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+
+	for i := 1; i <= 30; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season2ID,
+			Status: pgtype.Text{String: "REGISTERED", Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 30)
+
+	categorized := make([]CategorizedPlayer, 30)
+	for i, r := range regs {
+		categorized[i] = CategorizedPlayer{Registration: r, Category: PlayerCategoryReturning}
+	}
+
+	rm := NewRebalanceManager(allStores)
+	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
+	is.NoErr(err)
+	is.Equal(result.DivisionsCreated, 2)
+
+	// Find the season-2 division with number 1.
+	s2Divs, err := store.GetDivisionsBySeason(ctx, season2ID)
+	is.NoErr(err)
+	div1S2 := uuid.UUID{}
+	for _, d := range s2Divs {
+		if d.DivisionNumber == 1 {
+			div1S2 = d.Uuid
+		}
+	}
+	is.True(div1S2 != uuid.UUID{})
+
+	// Players 16-18 (PROMOTED from div2) must all be in div1.
+	for i := 16; i <= 18; i++ {
+		reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+			SeasonID: season2ID, UserID: int32(i),
+		})
+		is.NoErr(err)
+		is.True(reg.DivisionID.Valid)
+		is.Equal(uuid.UUID(reg.DivisionID.Bytes), div1S2) // must be div 1
+
+		is.True(reg.PlacementStatus.Valid)
+		is.Equal(ipc.PlacementStatus(reg.PlacementStatus.Int32), ipc.PlacementStatus_PLACEMENT_PROMOTED)
+	}
+}
+
+// TestEnforceGuarantees_StayedPlayerNotRelegated verifies that a STAYED player
+// is never placed in a worse division than their previous one, even when
+// relegated players crowd them out.
+//
+// Scenario: 30 players across 2 divisions of 15.
+//   - Div-1: 2 relegated (virtual div 2, score ~150k) + 13 stayed (virtual div 1, ~240k).
+//   - Div-2: 3 relegated (virtual div 3 — beyond last div, overflow to div 2)
+//             + 12 stayed (virtual div 2, ~140k).
+//
+// The 2 relegated from div1 and 3 relegated from div2 both have high relegated bonus (50k).
+// We construct a case where some STAYED-from-div1 players (ceiling=div1) are crowded out.
+//
+// Specifically: make div1 have 14 stayed + 1 relegated.  In virtual div2 there are the
+// relegated player (from div1, virtual div2, ~150k) plus 3 relegated from div2 (virtual
+// div3 = overflow to last → div2 in a 2-division league, ~150k), pushing all 4 relegated
+// into the bucket that was supposed to be div2 for the 12-stayed-from-div2 players.
+//
+// A simpler direct scenario: 16 players target div1 but only 15 bucket slots exist.
+// The 16th is a STAYED player whose ceiling is div1 — enforcement must move them up.
+func TestEnforceGuarantees_StayedPlayerNotRelegated(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	allStores, cleanup := setupIntegrationTest(t)
+	defer cleanup()
+
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
+
+	// Season 1: one division with 16 players, all STAYED.
+	div1S1 := uuid.New()
+	_, err := store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div1S1, SeasonID: season1ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+
+	// Extra div to satisfy the "has previous season div" constraint for the 16th player.
+	div2S1 := uuid.New()
+	_, err = store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div2S1, SeasonID: season1ID, DivisionNumber: 2,
+		DivisionName: pgtype.Text{String: "Division 2", Valid: true},
+	})
+	is.NoErr(err)
+
+	// Players 1-15 stayed in div1; player 16 also stayed in div1.
+	// Season 2 idealDivisionSize=15 → bucket size 15. All 16 targeting virtual div1.
+	// Without enforcement: player 16 (lowest rank → lowest score) slips into div2.
+	// With enforcement: must be moved back to div1.
+	for i := 1; i <= 16; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season1ID,
+			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
+			DivisionID: pgtype.UUID{Bytes: div1S1, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
+			UserID: int32(i), DivisionID: div1S1,
+			Wins: pgtype.Int4{Int32: int32(16 - i), Valid: true}, // Different wins to get distinct ranks.
+		})
+		is.NoErr(err)
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div1S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_STAYED), Valid: true},
+		})
+		is.NoErr(err)
+	}
+	// Also register player 17 in div2 (STAYED) so season 2 has enough players for 2 divs.
+	for i := 17; i <= 29; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season1ID,
+			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
+			DivisionID: pgtype.UUID{Bytes: div2S1, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
+			UserID: int32(i), DivisionID: div2S1,
+			Wins: pgtype.Int4{Int32: 5, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div2S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_STAYED), Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	// Season 2: register all 29 players.
+	season2ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: season2ID, LeagueID: leagueID, SeasonNumber: 2,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+
+	for i := 1; i <= 29; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season2ID,
+			Status: pgtype.Text{String: "REGISTERED", Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 29)
+
+	categorized := make([]CategorizedPlayer, 29)
+	for i, r := range regs {
+		categorized[i] = CategorizedPlayer{Registration: r, Category: PlayerCategoryReturning}
+	}
+
+	rm := NewRebalanceManager(allStores)
+	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
+	is.NoErr(err)
+	is.Equal(result.PlayersAssigned, 29)
+
+	// Find div1 in season 2.
+	s2Divs, err := store.GetDivisionsBySeason(ctx, season2ID)
+	is.NoErr(err)
+	var div1S2UUID uuid.UUID
+	for _, d := range s2Divs {
+		if d.DivisionNumber == 1 {
+			div1S2UUID = d.Uuid
+		}
+	}
+	is.True(div1S2UUID != uuid.UUID{})
+
+	// All 16 STAYED-from-div1 players must be in div1.
+	for i := 1; i <= 16; i++ {
+		reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+			SeasonID: season2ID, UserID: int32(i),
+		})
+		is.NoErr(err)
+		is.True(reg.DivisionID.Valid)
+		is.Equal(uuid.UUID(reg.DivisionID.Bytes), div1S2UUID)
+
+		is.True(reg.PlacementStatus.Valid)
+		// Player 16 had the lowest score (rank 16 in a 16-player div, rank component = 16-16 = 0).
+		// After enforcement they are placed in div1 — CorrectPlacementStatus labels them STAYED.
+		status := ipc.PlacementStatus(reg.PlacementStatus.Int32)
+		is.True(status == ipc.PlacementStatus_PLACEMENT_STAYED || status == ipc.PlacementStatus_PLACEMENT_PROMOTED)
+	}
+}
