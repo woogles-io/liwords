@@ -113,7 +113,11 @@ const TopMenu = React.memo((props: Props) => {
     {
       key: "blog",
       label: (
-        <a href="https://blog.woogles.io" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://blog.woogles.io"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Blog
         </a>
       ),
