@@ -139,7 +139,7 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: playMenuItems }}
           placement="bottom"
-          trigger={["hover"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
@@ -152,7 +152,7 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: studyMenuItems }}
           placement="bottom"
-          trigger={["hover"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
@@ -168,7 +168,7 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: moreMenuItems }}
           placement="bottom"
-          trigger={["hover"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
