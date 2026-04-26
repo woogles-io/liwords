@@ -16,7 +16,7 @@ import { BookOutlined, CloseOutlined } from "@ant-design/icons";
 import { Store } from "antd/lib/form/interface";
 import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
-import { LexiconFormItem } from "../shared/lexicon_display";
+import { LexiconFormItem, historicalLexica } from "../shared/lexicon_display";
 import {
   useGameContextStoreContext,
   useLoginStateStoreContext,
@@ -349,15 +349,7 @@ const CreationForm = (props: CreationFormProps) => {
       {/* exclude ECWL since that lexicon can't be played without VOID for now */}
       <LexiconFormItem
         excludedLexica={new Set(["ECWL"])}
-        additionalLexica={[
-          "NWL20",
-          "NWL18",
-          "CSW19",
-          "CSW21",
-          "OSPS49",
-          "OSPS50",
-          "RD28",
-        ]}
+        additionalLexica={historicalLexica}
       />
       <Form.Item
         label="Challenge rule"

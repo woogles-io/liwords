@@ -51,6 +51,16 @@ export const lexiconOrder = [
 
 export const puzzleLexica = ["CSW24", "NWL23", "RD29", "FRA24"];
 
+export const historicalLexica = [
+  "NWL20",
+  "NWL18",
+  "CSW19",
+  "CSW21",
+  "OSPS49",
+  "OSPS50",
+  "RD28",
+];
+
 export const LexiconFormItem = React.memo((props: Props) => {
   const options = lexiconOrder
     .filter((k) => !props.excludedLexica?.has(k))
