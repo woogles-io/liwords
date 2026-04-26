@@ -8,7 +8,7 @@ import React, { useCallback, useState } from "react";
 import { ActionType } from "../actions/actions";
 import { GameRulesSchema } from "../gen/api/proto/ipc/omgwords_pb";
 import { defaultLetterDistribution } from "../lobby/sought_game_interactions";
-import { LexiconFormItem } from "../shared/lexicon_display";
+import { LexiconFormItem, historicalLexica } from "../shared/lexicon_display";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
 import { UploadOutlined } from "@ant-design/icons";
 import { create } from "@bufbuild/protobuf";
@@ -119,7 +119,7 @@ export const GCGProcessForm = (props: Props) => {
 
       <LexiconFormItem
         excludedLexica={new Set(["ECWL"])}
-        additionalLexica={["NWL20", "NWL18", "CSW19", "RD28"]}
+        additionalLexica={historicalLexica}
       />
 
       <Form.Item
