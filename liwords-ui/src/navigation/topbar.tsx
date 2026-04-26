@@ -105,14 +105,23 @@ const TopMenu = React.memo((props: Props) => {
     },
   ];
 
-  const watchMenuItems = [
+  const moreMenuItems = [
     {
       key: "broadcasts",
       label: <Link to="/broadcasts">Broadcasts</Link>,
     },
-  ];
-
-  const aboutMenuItems = [
+    {
+      key: "blog",
+      label: (
+        <a
+          href="https://blog.woogles.io"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Blog
+        </a>
+      ),
+    },
     {
       key: "team",
       label: <Link to="/team">Meet the Woogles team</Link>,
@@ -130,7 +139,7 @@ const TopMenu = React.memo((props: Props) => {
           overlayClassName="user-menu"
           menu={{ items: playMenuItems }}
           placement="bottom"
-          trigger={["click"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
@@ -139,27 +148,11 @@ const TopMenu = React.memo((props: Props) => {
         </Dropdown>
       </div>
       <div>
-        <a href="/donate">Donate</a>
-      </div>
-      <div>
-        <Dropdown
-          overlayClassName="user-menu"
-          menu={{ items: watchMenuItems }}
-          placement="bottom"
-          trigger={["click"]}
-          getPopupContainer={() =>
-            document.getElementById("root") as HTMLElement
-          }
-        >
-          <p>Watch</p>
-        </Dropdown>
-      </div>
-      <div>
         <Dropdown
           overlayClassName="user-menu"
           menu={{ items: studyMenuItems }}
           placement="bottom"
-          trigger={["click"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
@@ -168,19 +161,19 @@ const TopMenu = React.memo((props: Props) => {
         </Dropdown>
       </div>
       <div>
-        <a href="https://blog.woogles.io">Blog</a>
+        <a href="/donate">Donate</a>
       </div>
       <div className="top-header-left-frame-special-land">
         <Dropdown
           overlayClassName="user-menu"
-          menu={{ items: aboutMenuItems }}
+          menu={{ items: moreMenuItems }}
           placement="bottom"
-          trigger={["click"]}
+          trigger={["hover", "click"]}
           getPopupContainer={() =>
             document.getElementById("root") as HTMLElement
           }
         >
-          <p>About</p>
+          <p>More</p>
         </Dropdown>
       </div>
     </div>
