@@ -24,3 +24,10 @@ export const heartbeat = AnalysisQueueService.method.heartbeat;
  * @generated from rpc analysis_service.AnalysisQueueService.SubmitResult
  */
 export const submitResult = AnalysisQueueService.method.submitResult;
+
+/**
+ * FailJob reports a job as permanently failed due to unrecoverable data corruption
+ *
+ * @generated from rpc analysis_service.AnalysisQueueService.FailJob
+ */
+export const failJob = AnalysisQueueService.method.failJob;

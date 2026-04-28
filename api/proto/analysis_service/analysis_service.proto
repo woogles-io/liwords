@@ -63,6 +63,17 @@ message SubmitResultResponse {
   string expected_version = 3; // Populated if rejected due to version mismatch
 }
 
+// Request to report a job as permanently failed (e.g. corrupted game data)
+message FailJobRequest {
+  string job_id = 1;
+  string error_message = 2;
+  string macondo_version = 3;
+}
+
+message FailJobResponse {
+  bool accepted = 1;
+}
+
 service AnalysisQueueService {
   // ClaimJob atomically claims next available job
   rpc ClaimJob(ClaimJobRequest) returns (ClaimJobResponse);
@@ -72,6 +83,9 @@ service AnalysisQueueService {
 
   // SubmitResult submits completed analysis
   rpc SubmitResult(SubmitResultRequest) returns (SubmitResultResponse);
+
+  // FailJob reports a job as permanently failed due to unrecoverable data corruption
+  rpc FailJob(FailJobRequest) returns (FailJobResponse);
 }
 
 // Admin-only analysis service

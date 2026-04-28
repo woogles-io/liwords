@@ -401,6 +401,50 @@ func applyLeagueMistakeIndex(ctx context.Context, queries *models.Queries, gameI
 		Msg(action + " league standings mistake index")
 }
 
+const maxFailJobErrorLen = 1024
+
+// FailJob marks a job as permanently failed. Workers call this when they
+// recover from a panic on a deterministically corrupt game, so the job
+// doesn't waste its remaining retry budget on other volunteers.
+func (s *AnalysisService) FailJob(
+	ctx context.Context,
+	req *connect.Request[pb.FailJobRequest],
+) (*connect.Response[pb.FailJobResponse], error) {
+
+	apiKey, err := apiserver.GetAPIKey(ctx)
+	if err != nil {
+		return nil, apiserver.Unauthenticated("API key required")
+	}
+
+	user, err := s.userStore.GetByAPIKey(ctx, apiKey)
+	if err != nil {
+		return nil, apiserver.Unauthenticated("invalid API key")
+	}
+
+	jobID, err := uuid.Parse(req.Msg.JobId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid job_id")
+	}
+
+	errMsg := req.Msg.ErrorMessage
+	if len(errMsg) > maxFailJobErrorLen {
+		errMsg = errMsg[:maxFailJobErrorLen]
+	}
+
+	userUUID := pgtype.Text{String: user.UUID, Valid: true}
+	if err := s.queries.FailJob(ctx, models.FailJobParams{
+		ErrorMessage:      pgtype.Text{String: errMsg, Valid: true},
+		ID:                jobID,
+		ClaimedByUserUuid: userUUID,
+	}); err != nil {
+		log.Warn().Err(err).Str("job_id", req.Msg.JobId).Str("user", user.Username).Msg("FailJob: job not found or not owned by worker")
+		return connect.NewResponse(&pb.FailJobResponse{Accepted: false}), nil
+	}
+
+	log.Info().Str("job_id", req.Msg.JobId).Str("user", user.Username).Str("error", errMsg).Msg("job marked as failed by worker")
+	return connect.NewResponse(&pb.FailJobResponse{Accepted: true}), nil
+}
+
 // StartReclaimWorker reclaims stale jobs in background
 func (s *AnalysisService) StartReclaimWorker(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)

@@ -46,6 +46,9 @@ const (
 	// AnalysisQueueServiceSubmitResultProcedure is the fully-qualified name of the
 	// AnalysisQueueService's SubmitResult RPC.
 	AnalysisQueueServiceSubmitResultProcedure = "/analysis_service.AnalysisQueueService/SubmitResult"
+	// AnalysisQueueServiceFailJobProcedure is the fully-qualified name of the AnalysisQueueService's
+	// FailJob RPC.
+	AnalysisQueueServiceFailJobProcedure = "/analysis_service.AnalysisQueueService/FailJob"
 	// AnalysisAdminServiceGetAdminStatsProcedure is the fully-qualified name of the
 	// AnalysisAdminService's GetAdminStats RPC.
 	AnalysisAdminServiceGetAdminStatsProcedure = "/analysis_service.AnalysisAdminService/GetAdminStats"
@@ -77,6 +80,8 @@ type AnalysisQueueServiceClient interface {
 	Heartbeat(context.Context, *connect.Request[analysis_service.HeartbeatRequest]) (*connect.Response[analysis_service.HeartbeatResponse], error)
 	// SubmitResult submits completed analysis
 	SubmitResult(context.Context, *connect.Request[analysis_service.SubmitResultRequest]) (*connect.Response[analysis_service.SubmitResultResponse], error)
+	// FailJob reports a job as permanently failed due to unrecoverable data corruption
+	FailJob(context.Context, *connect.Request[analysis_service.FailJobRequest]) (*connect.Response[analysis_service.FailJobResponse], error)
 }
 
 // NewAnalysisQueueServiceClient constructs a client for the analysis_service.AnalysisQueueService
@@ -108,6 +113,12 @@ func NewAnalysisQueueServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(analysisQueueServiceMethods.ByName("SubmitResult")),
 			connect.WithClientOptions(opts...),
 		),
+		failJob: connect.NewClient[analysis_service.FailJobRequest, analysis_service.FailJobResponse](
+			httpClient,
+			baseURL+AnalysisQueueServiceFailJobProcedure,
+			connect.WithSchema(analysisQueueServiceMethods.ByName("FailJob")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -116,6 +127,7 @@ type analysisQueueServiceClient struct {
 	claimJob     *connect.Client[analysis_service.ClaimJobRequest, analysis_service.ClaimJobResponse]
 	heartbeat    *connect.Client[analysis_service.HeartbeatRequest, analysis_service.HeartbeatResponse]
 	submitResult *connect.Client[analysis_service.SubmitResultRequest, analysis_service.SubmitResultResponse]
+	failJob      *connect.Client[analysis_service.FailJobRequest, analysis_service.FailJobResponse]
 }
 
 // ClaimJob calls analysis_service.AnalysisQueueService.ClaimJob.
@@ -133,6 +145,11 @@ func (c *analysisQueueServiceClient) SubmitResult(ctx context.Context, req *conn
 	return c.submitResult.CallUnary(ctx, req)
 }
 
+// FailJob calls analysis_service.AnalysisQueueService.FailJob.
+func (c *analysisQueueServiceClient) FailJob(ctx context.Context, req *connect.Request[analysis_service.FailJobRequest]) (*connect.Response[analysis_service.FailJobResponse], error) {
+	return c.failJob.CallUnary(ctx, req)
+}
+
 // AnalysisQueueServiceHandler is an implementation of the analysis_service.AnalysisQueueService
 // service.
 type AnalysisQueueServiceHandler interface {
@@ -142,6 +159,8 @@ type AnalysisQueueServiceHandler interface {
 	Heartbeat(context.Context, *connect.Request[analysis_service.HeartbeatRequest]) (*connect.Response[analysis_service.HeartbeatResponse], error)
 	// SubmitResult submits completed analysis
 	SubmitResult(context.Context, *connect.Request[analysis_service.SubmitResultRequest]) (*connect.Response[analysis_service.SubmitResultResponse], error)
+	// FailJob reports a job as permanently failed due to unrecoverable data corruption
+	FailJob(context.Context, *connect.Request[analysis_service.FailJobRequest]) (*connect.Response[analysis_service.FailJobResponse], error)
 }
 
 // NewAnalysisQueueServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -169,6 +188,12 @@ func NewAnalysisQueueServiceHandler(svc AnalysisQueueServiceHandler, opts ...con
 		connect.WithSchema(analysisQueueServiceMethods.ByName("SubmitResult")),
 		connect.WithHandlerOptions(opts...),
 	)
+	analysisQueueServiceFailJobHandler := connect.NewUnaryHandler(
+		AnalysisQueueServiceFailJobProcedure,
+		svc.FailJob,
+		connect.WithSchema(analysisQueueServiceMethods.ByName("FailJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/analysis_service.AnalysisQueueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AnalysisQueueServiceClaimJobProcedure:
@@ -177,6 +202,8 @@ func NewAnalysisQueueServiceHandler(svc AnalysisQueueServiceHandler, opts ...con
 			analysisQueueServiceHeartbeatHandler.ServeHTTP(w, r)
 		case AnalysisQueueServiceSubmitResultProcedure:
 			analysisQueueServiceSubmitResultHandler.ServeHTTP(w, r)
+		case AnalysisQueueServiceFailJobProcedure:
+			analysisQueueServiceFailJobHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -196,6 +223,10 @@ func (UnimplementedAnalysisQueueServiceHandler) Heartbeat(context.Context, *conn
 
 func (UnimplementedAnalysisQueueServiceHandler) SubmitResult(context.Context, *connect.Request[analysis_service.SubmitResultRequest]) (*connect.Response[analysis_service.SubmitResultResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisQueueService.SubmitResult is not implemented"))
+}
+
+func (UnimplementedAnalysisQueueServiceHandler) FailJob(context.Context, *connect.Request[analysis_service.FailJobRequest]) (*connect.Response[analysis_service.FailJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("analysis_service.AnalysisQueueService.FailJob is not implemented"))
 }
 
 // AnalysisAdminServiceClient is a client for the analysis_service.AnalysisAdminService service.
