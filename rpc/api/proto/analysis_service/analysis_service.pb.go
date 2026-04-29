@@ -78,7 +78,7 @@ func (x RequestAnalysisResponse_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RequestAnalysisResponse_Status.Descriptor instead.
 func (RequestAnalysisResponse_Status) EnumDescriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{8, 0}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{10, 0}
 }
 
 type GetAnalysisStatusResponse_JobStatus int32
@@ -133,7 +133,7 @@ func (x GetAnalysisStatusResponse_JobStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GetAnalysisStatusResponse_JobStatus.Descriptor instead.
 func (GetAnalysisStatusResponse_JobStatus) EnumDescriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{10, 0}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{12, 0}
 }
 
 // Request to claim next available job
@@ -589,6 +589,111 @@ func (x *SubmitResultResponse) GetExpectedVersion() string {
 	return ""
 }
 
+// Request to report a job as permanently failed (e.g. corrupted game data)
+type FailJobRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	JobId          string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	ErrorMessage   string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	MacondoVersion string                 `protobuf:"bytes,3,opt,name=macondo_version,json=macondoVersion,proto3" json:"macondo_version,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FailJobRequest) Reset() {
+	*x = FailJobRequest{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailJobRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailJobRequest) ProtoMessage() {}
+
+func (x *FailJobRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailJobRequest.ProtoReflect.Descriptor instead.
+func (*FailJobRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *FailJobRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *FailJobRequest) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *FailJobRequest) GetMacondoVersion() string {
+	if x != nil {
+		return x.MacondoVersion
+	}
+	return ""
+}
+
+type FailJobResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FailJobResponse) Reset() {
+	*x = FailJobResponse{}
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailJobResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailJobResponse) ProtoMessage() {}
+
+func (x *FailJobResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailJobResponse.ProtoReflect.Descriptor instead.
+func (*FailJobResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *FailJobResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
 // Request analysis for a game
 type RequestAnalysisRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -600,7 +705,7 @@ type RequestAnalysisRequest struct {
 
 func (x *RequestAnalysisRequest) Reset() {
 	*x = RequestAnalysisRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[7]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -612,7 +717,7 @@ func (x *RequestAnalysisRequest) String() string {
 func (*RequestAnalysisRequest) ProtoMessage() {}
 
 func (x *RequestAnalysisRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[7]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -625,7 +730,7 @@ func (x *RequestAnalysisRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestAnalysisRequest.ProtoReflect.Descriptor instead.
 func (*RequestAnalysisRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{7}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RequestAnalysisRequest) GetGameId() string {
@@ -655,7 +760,7 @@ type RequestAnalysisResponse struct {
 
 func (x *RequestAnalysisResponse) Reset() {
 	*x = RequestAnalysisResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[8]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -667,7 +772,7 @@ func (x *RequestAnalysisResponse) String() string {
 func (*RequestAnalysisResponse) ProtoMessage() {}
 
 func (x *RequestAnalysisResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[8]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -680,7 +785,7 @@ func (x *RequestAnalysisResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestAnalysisResponse.ProtoReflect.Descriptor instead.
 func (*RequestAnalysisResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{8}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RequestAnalysisResponse) GetStatus() RequestAnalysisResponse_Status {
@@ -721,7 +826,7 @@ type GetAnalysisStatusRequest struct {
 
 func (x *GetAnalysisStatusRequest) Reset() {
 	*x = GetAnalysisStatusRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[9]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +838,7 @@ func (x *GetAnalysisStatusRequest) String() string {
 func (*GetAnalysisStatusRequest) ProtoMessage() {}
 
 func (x *GetAnalysisStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[9]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +851,7 @@ func (x *GetAnalysisStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAnalysisStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetAnalysisStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{9}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetAnalysisStatusRequest) GetGameId() string {
@@ -769,7 +874,7 @@ type GetAnalysisStatusResponse struct {
 
 func (x *GetAnalysisStatusResponse) Reset() {
 	*x = GetAnalysisStatusResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[10]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +886,7 @@ func (x *GetAnalysisStatusResponse) String() string {
 func (*GetAnalysisStatusResponse) ProtoMessage() {}
 
 func (x *GetAnalysisStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[10]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +899,7 @@ func (x *GetAnalysisStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAnalysisStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetAnalysisStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{10}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetAnalysisStatusResponse) GetStatus() GetAnalysisStatusResponse_JobStatus {
@@ -842,7 +947,7 @@ type GetAnalysisResultRequest struct {
 
 func (x *GetAnalysisResultRequest) Reset() {
 	*x = GetAnalysisResultRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[11]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +959,7 @@ func (x *GetAnalysisResultRequest) String() string {
 func (*GetAnalysisResultRequest) ProtoMessage() {}
 
 func (x *GetAnalysisResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[11]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +972,7 @@ func (x *GetAnalysisResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAnalysisResultRequest.ProtoReflect.Descriptor instead.
 func (*GetAnalysisResultRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{11}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetAnalysisResultRequest) GetGameId() string {
@@ -888,7 +993,7 @@ type GetAnalysisResultResponse struct {
 
 func (x *GetAnalysisResultResponse) Reset() {
 	*x = GetAnalysisResultResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[12]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -900,7 +1005,7 @@ func (x *GetAnalysisResultResponse) String() string {
 func (*GetAnalysisResultResponse) ProtoMessage() {}
 
 func (x *GetAnalysisResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[12]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -913,7 +1018,7 @@ func (x *GetAnalysisResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAnalysisResultResponse.ProtoReflect.Descriptor instead.
 func (*GetAnalysisResultResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{12}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetAnalysisResultResponse) GetFound() bool {
@@ -945,7 +1050,7 @@ type GetAdminStatsRequest struct {
 
 func (x *GetAdminStatsRequest) Reset() {
 	*x = GetAdminStatsRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[13]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -957,7 +1062,7 @@ func (x *GetAdminStatsRequest) String() string {
 func (*GetAdminStatsRequest) ProtoMessage() {}
 
 func (x *GetAdminStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[13]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +1075,7 @@ func (x *GetAdminStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminStatsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{13}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{15}
 }
 
 type LeaderboardEntry struct {
@@ -983,7 +1088,7 @@ type LeaderboardEntry struct {
 
 func (x *LeaderboardEntry) Reset() {
 	*x = LeaderboardEntry{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[14]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -995,7 +1100,7 @@ func (x *LeaderboardEntry) String() string {
 func (*LeaderboardEntry) ProtoMessage() {}
 
 func (x *LeaderboardEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[14]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1008,7 +1113,7 @@ func (x *LeaderboardEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderboardEntry.ProtoReflect.Descriptor instead.
 func (*LeaderboardEntry) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{14}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *LeaderboardEntry) GetUsername() string {
@@ -1038,7 +1143,7 @@ type GetAdminStatsResponse struct {
 
 func (x *GetAdminStatsResponse) Reset() {
 	*x = GetAdminStatsResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[15]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1050,7 +1155,7 @@ func (x *GetAdminStatsResponse) String() string {
 func (*GetAdminStatsResponse) ProtoMessage() {}
 
 func (x *GetAdminStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[15]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1063,7 +1168,7 @@ func (x *GetAdminStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetAdminStatsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{15}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetAdminStatsResponse) GetTotalCompleted() int32 {
@@ -1111,7 +1216,7 @@ type ListAnalyzedGamesRequest struct {
 
 func (x *ListAnalyzedGamesRequest) Reset() {
 	*x = ListAnalyzedGamesRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[16]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1123,7 +1228,7 @@ func (x *ListAnalyzedGamesRequest) String() string {
 func (*ListAnalyzedGamesRequest) ProtoMessage() {}
 
 func (x *ListAnalyzedGamesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[16]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1136,7 +1241,7 @@ func (x *ListAnalyzedGamesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnalyzedGamesRequest.ProtoReflect.Descriptor instead.
 func (*ListAnalyzedGamesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{16}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListAnalyzedGamesRequest) GetPage() int32 {
@@ -1168,7 +1273,7 @@ type AnalyzedGameSummary struct {
 
 func (x *AnalyzedGameSummary) Reset() {
 	*x = AnalyzedGameSummary{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[17]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1285,7 @@ func (x *AnalyzedGameSummary) String() string {
 func (*AnalyzedGameSummary) ProtoMessage() {}
 
 func (x *AnalyzedGameSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[17]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1298,7 @@ func (x *AnalyzedGameSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzedGameSummary.ProtoReflect.Descriptor instead.
 func (*AnalyzedGameSummary) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{17}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AnalyzedGameSummary) GetJobId() string {
@@ -1255,7 +1360,7 @@ type ListAnalyzedGamesResponse struct {
 
 func (x *ListAnalyzedGamesResponse) Reset() {
 	*x = ListAnalyzedGamesResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[18]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1267,7 +1372,7 @@ func (x *ListAnalyzedGamesResponse) String() string {
 func (*ListAnalyzedGamesResponse) ProtoMessage() {}
 
 func (x *ListAnalyzedGamesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[18]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +1385,7 @@ func (x *ListAnalyzedGamesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnalyzedGamesResponse.ProtoReflect.Descriptor instead.
 func (*ListAnalyzedGamesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{18}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListAnalyzedGamesResponse) GetGames() []*AnalyzedGameSummary {
@@ -1306,7 +1411,7 @@ type RequeueAnalysisRequest struct {
 
 func (x *RequeueAnalysisRequest) Reset() {
 	*x = RequeueAnalysisRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1318,7 +1423,7 @@ func (x *RequeueAnalysisRequest) String() string {
 func (*RequeueAnalysisRequest) ProtoMessage() {}
 
 func (x *RequeueAnalysisRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[19]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1331,7 +1436,7 @@ func (x *RequeueAnalysisRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueAnalysisRequest.ProtoReflect.Descriptor instead.
 func (*RequeueAnalysisRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{19}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RequeueAnalysisRequest) GetGameId() string {
@@ -1351,7 +1456,7 @@ type RequeueAnalysisResponse struct {
 
 func (x *RequeueAnalysisResponse) Reset() {
 	*x = RequeueAnalysisResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1363,7 +1468,7 @@ func (x *RequeueAnalysisResponse) String() string {
 func (*RequeueAnalysisResponse) ProtoMessage() {}
 
 func (x *RequeueAnalysisResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[20]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1376,7 +1481,7 @@ func (x *RequeueAnalysisResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueAnalysisResponse.ProtoReflect.Descriptor instead.
 func (*RequeueAnalysisResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{20}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RequeueAnalysisResponse) GetJobId() string {
@@ -1402,7 +1507,7 @@ type GetGamesAnalysisStatusRequest struct {
 
 func (x *GetGamesAnalysisStatusRequest) Reset() {
 	*x = GetGamesAnalysisStatusRequest{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1414,7 +1519,7 @@ func (x *GetGamesAnalysisStatusRequest) String() string {
 func (*GetGamesAnalysisStatusRequest) ProtoMessage() {}
 
 func (x *GetGamesAnalysisStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[21]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1427,7 +1532,7 @@ func (x *GetGamesAnalysisStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGamesAnalysisStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetGamesAnalysisStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{21}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetGamesAnalysisStatusRequest) GetGameIds() []string {
@@ -1446,7 +1551,7 @@ type GetGamesAnalysisStatusResponse struct {
 
 func (x *GetGamesAnalysisStatusResponse) Reset() {
 	*x = GetGamesAnalysisStatusResponse{}
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1458,7 +1563,7 @@ func (x *GetGamesAnalysisStatusResponse) String() string {
 func (*GetGamesAnalysisStatusResponse) ProtoMessage() {}
 
 func (x *GetGamesAnalysisStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[22]
+	mi := &file_proto_analysis_service_analysis_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1576,7 @@ func (x *GetGamesAnalysisStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGamesAnalysisStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetGamesAnalysisStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{22}
+	return file_proto_analysis_service_analysis_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetGamesAnalysisStatusResponse) GetAnalyzedGameIds() []string {
@@ -1517,7 +1622,13 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\x14SubmitResultResponse\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\x12)\n" +
-	"\x10expected_version\x18\x03 \x01(\tR\x0fexpectedVersion\"G\n" +
+	"\x10expected_version\x18\x03 \x01(\tR\x0fexpectedVersion\"u\n" +
+	"\x0eFailJobRequest\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12'\n" +
+	"\x0fmacondo_version\x18\x03 \x01(\tR\x0emacondoVersion\"-\n" +
+	"\x0fFailJobResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\"G\n" +
 	"\x16RequestAnalysisRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x14\n" +
 	"\x05force\x18\x02 \x01(\bR\x05force\"\xb6\x02\n" +
@@ -1587,11 +1698,12 @@ const file_proto_analysis_service_analysis_service_proto_rawDesc = "" +
 	"\x1dGetGamesAnalysisStatusRequest\x12\x19\n" +
 	"\bgame_ids\x18\x01 \x03(\tR\agameIds\"L\n" +
 	"\x1eGetGamesAnalysisStatusResponse\x12*\n" +
-	"\x11analyzed_game_ids\x18\x01 \x03(\tR\x0fanalyzedGameIds2\x9e\x02\n" +
+	"\x11analyzed_game_ids\x18\x01 \x03(\tR\x0fanalyzedGameIds2\xee\x02\n" +
 	"\x14AnalysisQueueService\x12Q\n" +
 	"\bClaimJob\x12!.analysis_service.ClaimJobRequest\x1a\".analysis_service.ClaimJobResponse\x12T\n" +
 	"\tHeartbeat\x12\".analysis_service.HeartbeatRequest\x1a#.analysis_service.HeartbeatResponse\x12]\n" +
-	"\fSubmitResult\x12%.analysis_service.SubmitResultRequest\x1a&.analysis_service.SubmitResultResponse2\xce\x02\n" +
+	"\fSubmitResult\x12%.analysis_service.SubmitResultRequest\x1a&.analysis_service.SubmitResultResponse\x12N\n" +
+	"\aFailJob\x12 .analysis_service.FailJobRequest\x1a!.analysis_service.FailJobResponse2\xce\x02\n" +
 	"\x14AnalysisAdminService\x12`\n" +
 	"\rGetAdminStats\x12&.analysis_service.GetAdminStatsRequest\x1a'.analysis_service.GetAdminStatsResponse\x12l\n" +
 	"\x11ListAnalyzedGames\x12*.analysis_service.ListAnalyzedGamesRequest\x1a+.analysis_service.ListAnalyzedGamesResponse\x12f\n" +
@@ -1616,7 +1728,7 @@ func file_proto_analysis_service_analysis_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_analysis_service_analysis_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_proto_analysis_service_analysis_service_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(RequestAnalysisResponse_Status)(0),      // 0: analysis_service.RequestAnalysisResponse.Status
 	(GetAnalysisStatusResponse_JobStatus)(0), // 1: analysis_service.GetAnalysisStatusResponse.JobStatus
@@ -1627,55 +1739,59 @@ var file_proto_analysis_service_analysis_service_proto_goTypes = []any{
 	(*HeartbeatResponse)(nil),                // 6: analysis_service.HeartbeatResponse
 	(*SubmitResultRequest)(nil),              // 7: analysis_service.SubmitResultRequest
 	(*SubmitResultResponse)(nil),             // 8: analysis_service.SubmitResultResponse
-	(*RequestAnalysisRequest)(nil),           // 9: analysis_service.RequestAnalysisRequest
-	(*RequestAnalysisResponse)(nil),          // 10: analysis_service.RequestAnalysisResponse
-	(*GetAnalysisStatusRequest)(nil),         // 11: analysis_service.GetAnalysisStatusRequest
-	(*GetAnalysisStatusResponse)(nil),        // 12: analysis_service.GetAnalysisStatusResponse
-	(*GetAnalysisResultRequest)(nil),         // 13: analysis_service.GetAnalysisResultRequest
-	(*GetAnalysisResultResponse)(nil),        // 14: analysis_service.GetAnalysisResultResponse
-	(*GetAdminStatsRequest)(nil),             // 15: analysis_service.GetAdminStatsRequest
-	(*LeaderboardEntry)(nil),                 // 16: analysis_service.LeaderboardEntry
-	(*GetAdminStatsResponse)(nil),            // 17: analysis_service.GetAdminStatsResponse
-	(*ListAnalyzedGamesRequest)(nil),         // 18: analysis_service.ListAnalyzedGamesRequest
-	(*AnalyzedGameSummary)(nil),              // 19: analysis_service.AnalyzedGameSummary
-	(*ListAnalyzedGamesResponse)(nil),        // 20: analysis_service.ListAnalyzedGamesResponse
-	(*RequeueAnalysisRequest)(nil),           // 21: analysis_service.RequeueAnalysisRequest
-	(*RequeueAnalysisResponse)(nil),          // 22: analysis_service.RequeueAnalysisResponse
-	(*GetGamesAnalysisStatusRequest)(nil),    // 23: analysis_service.GetGamesAnalysisStatusRequest
-	(*GetGamesAnalysisStatusResponse)(nil),   // 24: analysis_service.GetGamesAnalysisStatusResponse
-	(*macondo.GameAnalysisResult)(nil),       // 25: macondo.GameAnalysisResult
+	(*FailJobRequest)(nil),                   // 9: analysis_service.FailJobRequest
+	(*FailJobResponse)(nil),                  // 10: analysis_service.FailJobResponse
+	(*RequestAnalysisRequest)(nil),           // 11: analysis_service.RequestAnalysisRequest
+	(*RequestAnalysisResponse)(nil),          // 12: analysis_service.RequestAnalysisResponse
+	(*GetAnalysisStatusRequest)(nil),         // 13: analysis_service.GetAnalysisStatusRequest
+	(*GetAnalysisStatusResponse)(nil),        // 14: analysis_service.GetAnalysisStatusResponse
+	(*GetAnalysisResultRequest)(nil),         // 15: analysis_service.GetAnalysisResultRequest
+	(*GetAnalysisResultResponse)(nil),        // 16: analysis_service.GetAnalysisResultResponse
+	(*GetAdminStatsRequest)(nil),             // 17: analysis_service.GetAdminStatsRequest
+	(*LeaderboardEntry)(nil),                 // 18: analysis_service.LeaderboardEntry
+	(*GetAdminStatsResponse)(nil),            // 19: analysis_service.GetAdminStatsResponse
+	(*ListAnalyzedGamesRequest)(nil),         // 20: analysis_service.ListAnalyzedGamesRequest
+	(*AnalyzedGameSummary)(nil),              // 21: analysis_service.AnalyzedGameSummary
+	(*ListAnalyzedGamesResponse)(nil),        // 22: analysis_service.ListAnalyzedGamesResponse
+	(*RequeueAnalysisRequest)(nil),           // 23: analysis_service.RequeueAnalysisRequest
+	(*RequeueAnalysisResponse)(nil),          // 24: analysis_service.RequeueAnalysisResponse
+	(*GetGamesAnalysisStatusRequest)(nil),    // 25: analysis_service.GetGamesAnalysisStatusRequest
+	(*GetGamesAnalysisStatusResponse)(nil),   // 26: analysis_service.GetGamesAnalysisStatusResponse
+	(*macondo.GameAnalysisResult)(nil),       // 27: macondo.GameAnalysisResult
 }
 var file_proto_analysis_service_analysis_service_proto_depIdxs = []int32{
 	4,  // 0: analysis_service.ClaimJobResponse.config:type_name -> analysis_service.AnalysisConfig
-	25, // 1: analysis_service.SubmitResultRequest.result:type_name -> macondo.GameAnalysisResult
+	27, // 1: analysis_service.SubmitResultRequest.result:type_name -> macondo.GameAnalysisResult
 	0,  // 2: analysis_service.RequestAnalysisResponse.status:type_name -> analysis_service.RequestAnalysisResponse.Status
 	1,  // 3: analysis_service.GetAnalysisStatusResponse.status:type_name -> analysis_service.GetAnalysisStatusResponse.JobStatus
-	25, // 4: analysis_service.GetAnalysisResultResponse.result:type_name -> macondo.GameAnalysisResult
-	16, // 5: analysis_service.GetAdminStatsResponse.leaderboard:type_name -> analysis_service.LeaderboardEntry
-	16, // 6: analysis_service.GetAdminStatsResponse.contributors:type_name -> analysis_service.LeaderboardEntry
-	19, // 7: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
+	27, // 4: analysis_service.GetAnalysisResultResponse.result:type_name -> macondo.GameAnalysisResult
+	18, // 5: analysis_service.GetAdminStatsResponse.leaderboard:type_name -> analysis_service.LeaderboardEntry
+	18, // 6: analysis_service.GetAdminStatsResponse.contributors:type_name -> analysis_service.LeaderboardEntry
+	21, // 7: analysis_service.ListAnalyzedGamesResponse.games:type_name -> analysis_service.AnalyzedGameSummary
 	2,  // 8: analysis_service.AnalysisQueueService.ClaimJob:input_type -> analysis_service.ClaimJobRequest
 	5,  // 9: analysis_service.AnalysisQueueService.Heartbeat:input_type -> analysis_service.HeartbeatRequest
 	7,  // 10: analysis_service.AnalysisQueueService.SubmitResult:input_type -> analysis_service.SubmitResultRequest
-	15, // 11: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
-	18, // 12: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
-	21, // 13: analysis_service.AnalysisAdminService.RequeueAnalysis:input_type -> analysis_service.RequeueAnalysisRequest
-	9,  // 14: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
-	11, // 15: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
-	13, // 16: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
-	23, // 17: analysis_service.AnalysisService.GetGamesAnalysisStatus:input_type -> analysis_service.GetGamesAnalysisStatusRequest
-	3,  // 18: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
-	6,  // 19: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
-	8,  // 20: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
-	17, // 21: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
-	20, // 22: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
-	22, // 23: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
-	10, // 24: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
-	12, // 25: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
-	14, // 26: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
-	24, // 27: analysis_service.AnalysisService.GetGamesAnalysisStatus:output_type -> analysis_service.GetGamesAnalysisStatusResponse
-	18, // [18:28] is the sub-list for method output_type
-	8,  // [8:18] is the sub-list for method input_type
+	9,  // 11: analysis_service.AnalysisQueueService.FailJob:input_type -> analysis_service.FailJobRequest
+	17, // 12: analysis_service.AnalysisAdminService.GetAdminStats:input_type -> analysis_service.GetAdminStatsRequest
+	20, // 13: analysis_service.AnalysisAdminService.ListAnalyzedGames:input_type -> analysis_service.ListAnalyzedGamesRequest
+	23, // 14: analysis_service.AnalysisAdminService.RequeueAnalysis:input_type -> analysis_service.RequeueAnalysisRequest
+	11, // 15: analysis_service.AnalysisService.RequestAnalysis:input_type -> analysis_service.RequestAnalysisRequest
+	13, // 16: analysis_service.AnalysisService.GetAnalysisStatus:input_type -> analysis_service.GetAnalysisStatusRequest
+	15, // 17: analysis_service.AnalysisService.GetAnalysisResult:input_type -> analysis_service.GetAnalysisResultRequest
+	25, // 18: analysis_service.AnalysisService.GetGamesAnalysisStatus:input_type -> analysis_service.GetGamesAnalysisStatusRequest
+	3,  // 19: analysis_service.AnalysisQueueService.ClaimJob:output_type -> analysis_service.ClaimJobResponse
+	6,  // 20: analysis_service.AnalysisQueueService.Heartbeat:output_type -> analysis_service.HeartbeatResponse
+	8,  // 21: analysis_service.AnalysisQueueService.SubmitResult:output_type -> analysis_service.SubmitResultResponse
+	10, // 22: analysis_service.AnalysisQueueService.FailJob:output_type -> analysis_service.FailJobResponse
+	19, // 23: analysis_service.AnalysisAdminService.GetAdminStats:output_type -> analysis_service.GetAdminStatsResponse
+	22, // 24: analysis_service.AnalysisAdminService.ListAnalyzedGames:output_type -> analysis_service.ListAnalyzedGamesResponse
+	24, // 25: analysis_service.AnalysisAdminService.RequeueAnalysis:output_type -> analysis_service.RequeueAnalysisResponse
+	12, // 26: analysis_service.AnalysisService.RequestAnalysis:output_type -> analysis_service.RequestAnalysisResponse
+	14, // 27: analysis_service.AnalysisService.GetAnalysisStatus:output_type -> analysis_service.GetAnalysisStatusResponse
+	16, // 28: analysis_service.AnalysisService.GetAnalysisResult:output_type -> analysis_service.GetAnalysisResultResponse
+	26, // 29: analysis_service.AnalysisService.GetGamesAnalysisStatus:output_type -> analysis_service.GetGamesAnalysisStatusResponse
+	19, // [19:30] is the sub-list for method output_type
+	8,  // [8:19] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
@@ -1692,7 +1808,7 @@ func file_proto_analysis_service_analysis_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_analysis_service_analysis_service_proto_rawDesc), len(file_proto_analysis_service_analysis_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   3,
 		},
