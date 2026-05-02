@@ -113,6 +113,38 @@ INSERT INTO games (
     @league_id, @season_id, @league_division_id
 );
 
+-- name: UpdateGameTimers :exec
+UPDATE games SET timers = @timers, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameMetaEvents :exec
+UPDATE games SET meta_events = @meta_events, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameStarted :exec
+UPDATE games SET started = @started, timers = @timers, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameAfterMove :exec
+UPDATE games SET
+    history = @history,
+    timers = @timers,
+    player_on_turn = @player_on_turn,
+    updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameEnd :exec
+UPDATE games SET
+    game_end_reason = @game_end_reason,
+    winner_idx = @winner_idx,
+    loser_idx = @loser_idx,
+    history = @history,
+    stats = @stats,
+    quickdata = @quickdata,
+    timers = @timers,
+    updated_at = now()
+WHERE uuid = @uuid;
+
 -- name: UpdateGame :exec
 UPDATE games SET
     updated_at = @updated_at,

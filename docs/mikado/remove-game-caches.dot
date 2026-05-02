@@ -1,7 +1,7 @@
 digraph RedoGameModel {
     Goal [label = "Redo game model to support\n1) more simultaneous games\n2) less downtime between deploys\n3) make DB faster to back up and query";shape = oval;peripheries = 2;style = bold;];
 
-    // Define a reusable style for "checked nodes"  ✅
+    // ── Completed nodes ✅ ────────────────────────────────────────────────
     node [shape = box; color = gray; fontcolor = gray; style = dashed;];
     DBGet [label = "Rewrite DB Get to use sqlc ✅";];
     AddOtherTables [label = "Add many2many and turns tables ✅";];
@@ -9,61 +9,117 @@ digraph RedoGameModel {
     SQLCOtherFuncs [label = "Rewrite all others to use sqlc ✅";];
     ConsolidateRequestColumns [label = "Consolidate request columns ✅";];
     ImproveMany2ManyTable [label = "Improve many2many table ✅";];
-    UseMany2ManyTable [label = "Transparently use many2many table ✅" ;];
+    UseMany2ManyTable [label = "Transparently use many2many table ✅";];
     MigrateToMany2ManyTable [label = "Migrate to many2many table ✅";];
+    ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event bytea)";];
+    DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: dual-write-turns)";];
+    SplitDBWriters [label = "Split DB writers ✅\n(AppendTurn, UpdateTimers,\nAppendMetaEvent, SetReady, EndGame)";];
+    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare on Get;\nflag: shadow-turns)";];
 
-    // Reset to default for other uncompleted nodes
-    node [shape = box; color = black; fontcolor = black; style = solid;];
+    // ── Dropped nodes ❌ ──────────────────────────────────────────────────
+    node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
+    FixGameDocumentBugs [label = "Fix and test GameDocument bugs ❌\n(GameDocument being retired)";];
+    AddPastGamesTable [label = "Add PastGames table ❌\n(superseded by S3 + game_turns)";];
+    UsePastGamesTable [label = "Transparently use PastGames table ❌";];
+    MigrateToPastGamesTable [label = "Migrate to PastGames table ❌";];
+
+    // ── Open nodes ────────────────────────────────────────────────────────
+    node [shape = box; color = black; fontcolor = black; style = solid; fillcolor = white;];
 
     MoreSimultaneousGames [label = "Allow for more simultaneous games than cache limit";];
     LessDowntimeBetweenDeploys [label = "Allow for less downtime between deploys";];
-    MakeDBFaster [label = "Make DB faster to query";];
+    MakeDBFaster [label = "Make DB faster to back up and query";];
 
-    AddPastGamesTable [label = "Add PastGames table";];
-    OnlyUseNewTables [label = "Only use new tables";];
-    MigrateToNewTables [label = "Migrate to new tables";];
-    UsePastGamesTable [label = "Transparently use PastGames table";];
     RemoveGameCache [label = "Remove game cache";];
     EfficientTable [label = "Make game DB model more efficient";];
 
-    FixGameDocumentBugs [label = "Fix and test GameDocument bugs";];
+    // ── RemoveGameCache prerequisites ─────────────────────────────────────
+    AdvisoryLockWriters [label = "Replace in-process locks with\npg_advisory_xact_lock per write tx";];
 
-    DBSetSplit [label = "Split DB Set into separate functions\nthat set specific attributes of game";];
+    CheapGameLoad [label = "Cheap per-move game load\n(no full-history replay per node)";];
+    ReadPathFromTurns [label = "Switch read path to game_turns\n(history bytea no longer read)";];
 
-    ReplaceQuickData [label = "Replace QuickData with JOINs";];
+    GracefulCacheDrain [label = "Graceful cache drain on SIGTERM\n(refuse new moves; let txs drain)";];
 
-    ClearLargeFields [label = "Clear large fields in games table";];
-    ImplementS3Archival [label = "Implement S3 archival of old partitions";];
-    // Arrows
+    // ── MakeDBFaster prerequisites ────────────────────────────────────────
+    ClearLargeFields [label = "Clear large fields in games table\n(history, stats, quickdata)";];
+    OnlyUseNewStorage [label = "Only use new storage\n(game_turns + S3 + game_players)";];
+    ReplaceQuickData [label = "Replace QuickData with JOINs\n(game_players + users)";];
+
+    S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end\n(assemble from turns, upload, delete turns)";];
+    AssembleHistoryFromTurns [label = "Assemble GameHistory proto from game_turns";];
+    S3UploadPath [label = "S3 upload path\n(client wrapper, bucket layout\ngames/<yyyy>/<mm>/<uuid>.pb)";];
+    S3UrlColumnOnGames [label = "Add history_s3_key column to games";];
+    S3LoadPath [label = "Load GameHistory from S3\n(fallback to legacy history bytea)";];
+
+    // ── DeprecateGameDocument branch ──────────────────────────────────────
+    DeprecateGameDocument [label = "Deprecate GameDocument entirely\n(storage + runtime type)";shape = oval;];
+
+    MoveGameHistoryProto [label = "Move GameHistory proto into liwords\n(api/proto/ipc/game_history.proto)";];
+    UpdateGoImports [label = "Update all Go imports to\nuse liwords GameHistory";];
+
+    PortMacondoReferee [label = "Port macondo referee into liwords\n(pkg/game/: validation, scoring,\nchallenge, end-game — NOT AI)";];
+    AuditRefereeGap [label = "Audit referee gap:\nlist macondo/game methods needed\n(timebox this)";];
+
+    MigrateNativeGamesToPkgGame [label = "Migrate native game path to pkg/game\n(entity.Game stops embedding macondogame.Game)";];
+    MigrateAnnotatorToPkgGame [label = "Migrate annotator to pkg/game + game_turns\n(pkg/omgwords/* rewritten)";];
+    DropGameDocumentsTable [label = "Drop game_documents table";];
+    RetireCwgame [label = "Retire pkg/cwgame/*\n(move GCG/CGP to pkg/game/formats/)";];
+    RemoveMacondoRuntimeDep [label = "Remove macondo from go.mod\n(puzzles/memento deferred)";];
+
+    // ── Edges: Goal ───────────────────────────────────────────────────────
     Goal -> MoreSimultaneousGames;
     Goal -> LessDowntimeBetweenDeploys;
     Goal -> MakeDBFaster;
-    Goal -> ImplementS3Archival;
+    Goal -> DeprecateGameDocument;
 
+    // ── Edges: RemoveGameCache ────────────────────────────────────────────
     MoreSimultaneousGames -> RemoveGameCache;
     LessDowntimeBetweenDeploys -> RemoveGameCache;
+
+    RemoveGameCache -> AdvisoryLockWriters;
+    RemoveGameCache -> CheapGameLoad;
+    RemoveGameCache -> GracefulCacheDrain;
+
+    CheapGameLoad -> ReadPathFromTurns;
+    ReadPathFromTurns -> BuildLiveStateFromTurns;
+
+    // ── Edges: MakeDBFaster ───────────────────────────────────────────────
     MakeDBFaster -> EfficientTable;
+    MakeDBFaster -> ClearLargeFields;
 
-    RemoveGameCache -> EfficientTable;
-    OnlyUseNewTables -> ReplaceQuickData;
-    OnlyUseNewTables -> MigrateToMany2ManyTable;
-    ReplaceQuickData -> MigrateToPastGamesTable;
-
-    MigrateToMany2ManyTable -> UseMany2ManyTable;
-    ImproveMany2ManyTable -> AddOtherTables;
-    MigrateToPastGamesTable -> UsePastGamesTable;
-    AddPastGamesTable -> AddOtherTables;
+    EfficientTable -> ConsolidateRequestColumns;
     EfficientTable -> SQLCDBStore;
-    EfficientTable -> DBSetSplit;
-    DBSetSplit -> SQLCOtherFuncs;
-    UseMany2ManyTable -> ImproveMany2ManyTable;
-    UsePastGamesTable -> AddPastGamesTable;
-    AddPastGamesTable -> FixGameDocumentBugs;
     SQLCDBStore -> DBGet;
     SQLCDBStore -> SQLCOtherFuncs;
-    ConsolidateRequestColumns -> SQLCOtherFuncs;
-    EfficientTable -> ConsolidateRequestColumns;
-    MakeDBFaster -> ClearLargeFields;
-    ClearLargeFields -> OnlyUseNewTables;
-    ImplementS3Archival -> ClearLargeFields;
+
+    ClearLargeFields -> OnlyUseNewStorage;
+    OnlyUseNewStorage -> ReplaceQuickData;
+    OnlyUseNewStorage -> S3ArchiveOnGameEnd;
+    OnlyUseNewStorage -> S3LoadPath;
+
+    ReplaceQuickData -> MigrateToMany2ManyTable;
+
+    S3ArchiveOnGameEnd -> AssembleHistoryFromTurns;
+    S3ArchiveOnGameEnd -> S3UploadPath;
+    S3ArchiveOnGameEnd -> S3UrlColumnOnGames;
+    AssembleHistoryFromTurns -> ReadPathFromTurns;
+    S3LoadPath -> S3ArchiveOnGameEnd;
+
+    // ── Edges: DeprecateGameDocument ──────────────────────────────────────
+    DeprecateGameDocument -> MoveGameHistoryProto;
+    DeprecateGameDocument -> PortMacondoReferee;
+    DeprecateGameDocument -> MigrateNativeGamesToPkgGame;
+    DeprecateGameDocument -> MigrateAnnotatorToPkgGame;
+    DeprecateGameDocument -> RemoveMacondoRuntimeDep;
+
+    MoveGameHistoryProto -> UpdateGoImports;
+    PortMacondoReferee -> AuditRefereeGap;
+    MigrateNativeGamesToPkgGame -> PortMacondoReferee;
+    MigrateAnnotatorToPkgGame -> PortMacondoReferee;
+    MigrateAnnotatorToPkgGame -> ActivateGameTurnsTable;
+    DropGameDocumentsTable -> MigrateAnnotatorToPkgGame;
+    RetireCwgame -> MigrateAnnotatorToPkgGame;
+    RemoveMacondoRuntimeDep -> MigrateNativeGamesToPkgGame;
+    RemoveMacondoRuntimeDep -> MigrateAnnotatorToPkgGame;
 }

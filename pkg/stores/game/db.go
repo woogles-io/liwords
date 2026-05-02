@@ -11,11 +11,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -250,6 +252,19 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	entGame.Game = *mcg
 	log.Debug().Interface("history", entGame.History()).Msg("from-state")
+
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.ShadowTurns {
+		// Capture by value before SetPlaying restores histPlayState and before
+		// hist.ChallengeRule is restored below. The goroutine must not touch
+		// entGame or hist after this point.
+		go s.shadowCompareTurns(
+			zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)),
+			id, rules,
+			mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1), mcg.Playing(),
+			len(hist.Events), hist.Players, hist.Lexicon, hist.ChallengeRule,
+		)
+	}
+
 	// Finally, restore the play state from the passed-in history. This
 	// might immediately end the game (for example, the game could have timed
 	// out, but the NewFromHistory function doesn't actually handle that).
@@ -262,6 +277,84 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	span.SetAttributes(attribute.Bool("game.started", entGame.Started))
 
 	return entGame, nil
+}
+
+// shadowCompareTurns rebuilds a game from game_turns rows and compares the
+// resulting state against the history-based reconstruction. Discrepancies are
+// logged at ERROR level. Runs in a goroutine; never modifies entGame.
+func (s *DBStore) shadowCompareTurns(
+	ctx context.Context,
+	gameID string,
+	rules *macondogame.GameRules,
+	wantTurn, wantP0, wantP1 int,
+	wantPlaying macondopb.PlayState,
+	wantEventCount int,
+	players []*macondopb.PlayerInfo,
+	lexicon string,
+	challengeRule macondopb.ChallengeRule,
+) {
+	log := zerolog.Ctx(ctx)
+
+	turns, err := s.queries.GetGameTurns(ctx, gameID)
+	if err != nil {
+		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-load-error")
+		return
+	}
+	if len(turns) == 0 {
+		return // game predates dual-write or has no moves yet
+	}
+
+	if len(turns) != wantEventCount {
+		log.Error().Str("gameID", gameID).
+			Int("want", wantEventCount).Int("got", len(turns)).
+			Msg("shadow-turns-mismatch: event count")
+		return
+	}
+
+	events := make([]*macondopb.GameEvent, len(turns))
+	for i, t := range turns {
+		evt := &macondopb.GameEvent{}
+		if err := protojson.Unmarshal(t.Event, evt); err != nil {
+			log.Err(err).Str("gameID", gameID).Msg("shadow-turns-unmarshal-error")
+			return
+		}
+		events[i] = evt
+	}
+
+	shadowHist := &macondopb.GameHistory{
+		Players:       players,
+		Events:        events,
+		Lexicon:       lexicon,
+		ChallengeRule: challengeRule,
+	}
+	shadowMcg, err := macondogame.NewFromHistory(shadowHist, rules, len(events))
+	if err != nil {
+		log.Err(err).Str("gameID", gameID).Msg("shadow-turns-rebuild-error")
+		return
+	}
+
+	ev := log.Error().Str("gameID", gameID)
+	mismatch := false
+
+	if shadowMcg.Turn() != wantTurn {
+		ev = ev.Int("want_turn", wantTurn).Int("got_turn", shadowMcg.Turn())
+		mismatch = true
+	}
+	if shadowMcg.PointsFor(0) != wantP0 || shadowMcg.PointsFor(1) != wantP1 {
+		ev = ev.Int("want_p0", wantP0).Int("got_p0", shadowMcg.PointsFor(0)).
+			Int("want_p1", wantP1).Int("got_p1", shadowMcg.PointsFor(1))
+		mismatch = true
+	}
+	if shadowMcg.Playing() != wantPlaying {
+		ev = ev.Str("want_playing", wantPlaying.String()).Str("got_playing", shadowMcg.Playing().String())
+		mismatch = true
+	}
+
+	if mismatch {
+		ev.Msg("shadow-turns-mismatch")
+	} else {
+		log.Debug().Str("gameID", gameID).Int("turns", len(events)).Msg("shadow-turns-ok")
+	}
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
@@ -690,6 +783,94 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
 	})
+}
+
+// UpdateTimers writes only the timers column for a game (e.g. after add-time).
+func (s *DBStore) UpdateTimers(ctx context.Context, gameID string, timers entity.Timers) error {
+	return s.queries.UpdateGameTimers(ctx, models.UpdateGameTimersParams{
+		Uuid:   common.ToPGTypeText(gameID),
+		Timers: timers,
+	})
+}
+
+// UpdateMetaEvents writes only the meta_events column (e.g. after appending a nudge/abort).
+func (s *DBStore) UpdateMetaEvents(ctx context.Context, gameID string, events entity.MetaEventData) error {
+	return s.queries.UpdateGameMetaEvents(ctx, models.UpdateGameMetaEventsParams{
+		Uuid:       common.ToPGTypeText(gameID),
+		MetaEvents: events,
+	})
+}
+
+// UpdateStarted marks a game as started and persists its initial timer state.
+func (s *DBStore) UpdateStarted(ctx context.Context, gameID string, started bool, timers entity.Timers) error {
+	return s.queries.UpdateGameStarted(ctx, models.UpdateGameStartedParams{
+		Uuid:    common.ToPGTypeText(gameID),
+		Started: pgtype.Bool{Bool: started, Valid: true},
+		Timers:  timers,
+	})
+}
+
+// UpdateAfterMove writes history, timers, and player_on_turn after a gameplay event.
+func (s *DBStore) UpdateAfterMove(ctx context.Context, gameID string, hist []byte, timers entity.Timers, playerOnTurn int32) error {
+	return s.queries.UpdateGameAfterMove(ctx, models.UpdateGameAfterMoveParams{
+		Uuid:         common.ToPGTypeText(gameID),
+		History:      hist,
+		Timers:       timers,
+		PlayerOnTurn: pgtype.Int4{Int32: playerOnTurn, Valid: true},
+	})
+}
+
+// UpdateEnd writes all end-of-game columns atomically.
+func (s *DBStore) UpdateEnd(ctx context.Context, gameID string, endReason, winnerIdx, loserIdx int32, hist []byte, stats entity.Stats, qd entity.Quickdata, timers entity.Timers) error {
+	return s.queries.UpdateGameEnd(ctx, models.UpdateGameEndParams{
+		Uuid:          common.ToPGTypeText(gameID),
+		GameEndReason: pgtype.Int4{Int32: endReason, Valid: true},
+		WinnerIdx:     pgtype.Int4{Int32: winnerIdx, Valid: true},
+		LoserIdx:      pgtype.Int4{Int32: loserIdx, Valid: true},
+		History:       hist,
+		Stats:         stats,
+		Quickdata:     qd,
+		Timers:        timers,
+	})
+}
+
+// AppendTurns marshals each GameEvent and appends them to game_turns starting at startIdx.
+// Errors are best-effort logged by callers; this does not roll back the game save.
+func (s *DBStore) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
+	for i, evt := range events {
+		b, err := protojson.Marshal(evt)
+		if err != nil {
+			return err
+		}
+		if err := s.AppendTurn(ctx, gameUUID, int32(startIdx+i), b); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AppendTurn appends one proto-marshaled event to game_turns.
+func (s *DBStore) AppendTurn(ctx context.Context, gameUUID string, turnIdx int32, event []byte) error {
+	return s.queries.AppendGameTurn(ctx, models.AppendGameTurnParams{
+		GameUuid: gameUUID,
+		TurnIdx:  turnIdx,
+		Event:    event,
+	})
+}
+
+// GetTurns returns all turns for a game in order.
+func (s *DBStore) GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error) {
+	return s.queries.GetGameTurns(ctx, gameUUID)
+}
+
+// GetLastTurn returns the most recent turn for a game.
+func (s *DBStore) GetLastTurn(ctx context.Context, gameUUID string) (models.GetLastGameTurnRow, error) {
+	return s.queries.GetLastGameTurn(ctx, gameUUID)
+}
+
+// DeleteTurns removes all game_turns rows for a game (called after S3 archival).
+func (s *DBStore) DeleteTurns(ctx context.Context, gameUUID string) error {
+	return s.queries.DeleteGameTurns(ctx, gameUUID)
 }
 
 func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
