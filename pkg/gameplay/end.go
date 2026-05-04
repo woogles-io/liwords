@@ -253,6 +253,15 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		return err
 	}
 
+	if stores.GameHistoryArchiver != nil {
+		go func() {
+			archCtx := zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx))
+			if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(archCtx, g); archErr != nil {
+				zerolog.Ctx(archCtx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
+			}
+		}()
+	}
+
 	// Insert entries into game_players table for query optimization
 	err = stores.GameStore.InsertGamePlayers(ctx, g)
 	if err != nil {
@@ -432,6 +441,15 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	err := stores.GameStore.Set(ctx, g)
 	if err != nil {
 		return err
+	}
+
+	if stores.GameHistoryArchiver != nil {
+		go func() {
+			archCtx := zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx))
+			if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(archCtx, g); archErr != nil {
+				zerolog.Ctx(archCtx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
+			}
+		}()
 	}
 
 	// Insert game_players entries for ABORTED games (but not CANCELLED)

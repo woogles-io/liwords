@@ -11,10 +11,14 @@ digraph RedoGameModel {
     ImproveMany2ManyTable [label = "Improve many2many table ✅";];
     UseMany2ManyTable [label = "Transparently use many2many table ✅";];
     MigrateToMany2ManyTable [label = "Migrate to many2many table ✅";];
-    ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event bytea)";];
-    DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: dual-write-turns)";];
+    ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event jsonb)";];
+    DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: DUAL_WRITE_TURNS)";];
     SplitDBWriters [label = "Split DB writers ✅\n(AppendTurn, UpdateTimers,\nAppendMetaEvent, SetReady, EndGame)";];
-    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare on Get;\nflag: shadow-turns)";];
+    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare on Get;\nflag: SHADOW_TURNS)";];
+    AssembleHistoryFromTurns [label = "Assemble GameHistory from game_turns ✅\n(assembleHistory() in pkg/stores/game/s3.go;\nverify via proto.Equal against history bytea)";];
+    S3UploadPath [label = "S3 upload path ✅\n(gzipped protojson, games/<yyyy>/<mm>/<uuid>.json.gz;\ncreation-date partitioning; MinIO in dev)";];
+    S3UrlColumnOnGames [label = "Add history_s3_key column to games ✅\n(partial index on NULL for pending-archival scan)";];
+    S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end ✅\n(assemble → verify → upload → CommitArchival tx;\ncmd/upload-game-archive/ backfill script)";];
 
     // ── Dropped nodes ❌ ──────────────────────────────────────────────────
     node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
@@ -43,13 +47,10 @@ digraph RedoGameModel {
 
     // ── MakeDBFaster prerequisites ────────────────────────────────────────
     ClearLargeFields [label = "Clear large fields in games table\n(history, stats, quickdata)";];
+    MigrateStatsToClickhouse [label = "Migrate game stats to ClickHouse\n(replaces liststats + games.stats;\nreads assembled GameHistory at end-of-game)";];
     OnlyUseNewStorage [label = "Only use new storage\n(game_turns + S3 + game_players)";];
     ReplaceQuickData [label = "Replace QuickData with JOINs\n(game_players + users)";];
 
-    S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end\n(assemble from turns, upload, delete turns)";];
-    AssembleHistoryFromTurns [label = "Assemble GameHistory proto from game_turns";];
-    S3UploadPath [label = "S3 upload path\n(client wrapper, bucket layout\ngames/<yyyy>/<mm>/<uuid>.pb)";];
-    S3UrlColumnOnGames [label = "Add history_s3_key column to games";];
     S3LoadPath [label = "Load GameHistory from S3\n(fallback to legacy history bytea)";];
 
     // ── DeprecateGameDocument branch ──────────────────────────────────────
@@ -78,10 +79,14 @@ digraph RedoGameModel {
     LessDowntimeBetweenDeploys -> RemoveGameCache;
 
     RemoveGameCache -> AdvisoryLockWriters;
+    RemoveGameCache -> SplitDBWriters;
     RemoveGameCache -> CheapGameLoad;
     RemoveGameCache -> GracefulCacheDrain;
+    SplitDBWriters -> SQLCOtherFuncs;
 
     CheapGameLoad -> ReadPathFromTurns;
+    ReadPathFromTurns -> DualWriteTurns;
+    DualWriteTurns -> ActivateGameTurnsTable;
     ReadPathFromTurns -> BuildLiveStateFromTurns;
 
     // ── Edges: MakeDBFaster ───────────────────────────────────────────────
@@ -94,16 +99,19 @@ digraph RedoGameModel {
     SQLCDBStore -> SQLCOtherFuncs;
 
     ClearLargeFields -> OnlyUseNewStorage;
+    ClearLargeFields -> MigrateStatsToClickhouse;
     OnlyUseNewStorage -> ReplaceQuickData;
     OnlyUseNewStorage -> S3ArchiveOnGameEnd;
     OnlyUseNewStorage -> S3LoadPath;
 
     ReplaceQuickData -> MigrateToMany2ManyTable;
+    MigrateToMany2ManyTable -> UseMany2ManyTable;
+    UseMany2ManyTable -> ImproveMany2ManyTable;
+    ImproveMany2ManyTable -> AddOtherTables;
 
     S3ArchiveOnGameEnd -> AssembleHistoryFromTurns;
     S3ArchiveOnGameEnd -> S3UploadPath;
     S3ArchiveOnGameEnd -> S3UrlColumnOnGames;
-    AssembleHistoryFromTurns -> ReadPathFromTurns;
     S3LoadPath -> S3ArchiveOnGameEnd;
 
     // ── Edges: DeprecateGameDocument ──────────────────────────────────────
@@ -113,7 +121,7 @@ digraph RedoGameModel {
     DeprecateGameDocument -> MigrateAnnotatorToPkgGame;
     DeprecateGameDocument -> RemoveMacondoRuntimeDep;
 
-    MoveGameHistoryProto -> UpdateGoImports;
+    UpdateGoImports -> MoveGameHistoryProto;
     PortMacondoReferee -> AuditRefereeGap;
     MigrateNativeGamesToPkgGame -> PortMacondoReferee;
     MigrateAnnotatorToPkgGame -> PortMacondoReferee;

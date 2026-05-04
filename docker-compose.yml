@@ -28,6 +28,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-liwords-pass}
       AVATAR_UPLOAD_BUCKET: woogles-uploads
       IDENTITY_VERIFICATION_UPLOAD_BUCKET: woogles-verifications
+      GAMEHISTORY_UPLOAD_BUCKET: woogles-gamehistories
       USE_MINIO_S3: 1
       MINIO_S3_ENDPOINT: http://minio:9000
       DB_MIGRATIONS_PATH: file:///opt/program/db/migrations
@@ -53,7 +54,7 @@ services:
       - ../macondo/data/strategy:/opt/program/data/strategy
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
-    depends_on: [ "db", "proxy", "nats", "socket", "redis", "minio" ]
+    depends_on: ["db", "proxy", "nats", "socket", "redis", "minio"]
     networks:
       - aeronet
     ports:
@@ -80,7 +81,7 @@ services:
       - ./data/lexica/gaddag:/opt/program/data/lexica/gaddag
       - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/bot/*.go"
-    depends_on: [ "nats" ]
+    depends_on: ["nats"]
     networks:
       - aeronet
 
@@ -110,8 +111,8 @@ services:
       FOLLOWERS_CACHE_TTL: 1m
     volumes:
       - .:/opt/program:rw
-    command: [ "go", "run", "-race", "cmd/socketsrv/main.go" ]
-    depends_on: [ "nats" ]
+    command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
+    depends_on: ["nats"]
     networks:
       - aeronet
     labels:
@@ -128,10 +129,10 @@ services:
     image: cr.jaegertracing.io/jaegertracing/jaeger:2.12.0
     command: ["--config", "/etc/jaeger/config.yaml"]
     ports:
-      - "4317:4317"    # OTLP gRPC
-      - "4318:4318"    # OTLP HTTP
-      - "14250:14250"  # Jaeger gRPC
-      - "14268:14268"  # Jaeger HTTP Thrift
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "14250:14250" # Jaeger gRPC
+      - "14268:14268" # Jaeger HTTP Thrift
     volumes:
       - ./jaeger-config.yaml:/etc/jaeger/config.yaml:ro
       - ./jaeger-ui-config.json:/etc/jaeger/ui-config.json:ro
@@ -230,13 +231,13 @@ services:
       /usr/bin/mc mb myminio/woogles-uploads --ignore-existing;
       /usr/bin/mc anonymous set public myminio/woogles-uploads;
       /usr/bin/mc mb myminio/woogles-verifications --ignore-existing;
+      /usr/bin/mc mb myminio/woogles-gamehistories --ignore-existing;
       exit 0;
       "
     networks:
       - aeronet
 
   frontend:
-
     build:
       context: .
       dockerfile: Dockerfile-fe

@@ -334,3 +334,14 @@ INSERT INTO game_players (
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING;
 
+-- name: SetGameHistoryS3Key :exec
+UPDATE games SET history_s3_key = @history_s3_key WHERE uuid = @uuid;
+
+-- name: ListPendingArchival :many
+-- Returns finished games that have game_turns rows but no S3 archive yet.
+SELECT DISTINCT g.uuid FROM games g
+JOIN game_turns gt ON gt.game_uuid = g.uuid
+WHERE g.history_s3_key IS NULL
+  AND g.game_end_reason != 0
+ORDER BY g.uuid;
+

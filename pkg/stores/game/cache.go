@@ -46,6 +46,9 @@ type backingStore interface {
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
+	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
+	DeleteTurns(ctx context.Context, gameUUID string) error
+	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
 }
 
 // TimerModuleCreator is a function that creates a new timer module for a game.
@@ -331,6 +334,18 @@ func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
 
 func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {
 	return c.backing.AppendTurns(ctx, gameUUID, startIdx, events)
+}
+
+func (c *Cache) GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error) {
+	return c.backing.GetTurns(ctx, gameUUID)
+}
+
+func (c *Cache) DeleteTurns(ctx context.Context, gameUUID string) error {
+	return c.backing.DeleteTurns(ctx, gameUUID)
+}
+
+func (c *Cache) CommitArchival(ctx context.Context, gameUUID string, s3Key string) error {
+	return c.backing.CommitArchival(ctx, gameUUID, s3Key)
 }
 
 // LockGame acquires a lock for the given game ID.

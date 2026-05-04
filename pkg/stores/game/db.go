@@ -873,6 +873,27 @@ func (s *DBStore) DeleteTurns(ctx context.Context, gameUUID string) error {
 	return s.queries.DeleteGameTurns(ctx, gameUUID)
 }
 
+// CommitArchival atomically sets history_s3_key on the games row and deletes
+// all game_turns rows for the game. Must only be called after a confirmed S3 upload.
+func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key string) error {
+	tx, err := s.dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+	if err := qtx.SetGameHistoryS3Key(ctx, models.SetGameHistoryS3KeyParams{
+		Uuid:         common.ToPGTypeText(gameUUID),
+		HistoryS3Key: common.ToPGTypeText(s3Key),
+	}); err != nil {
+		return err
+	}
+	if err := qtx.DeleteGameTurns(ctx, gameUUID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
 	exists, err := s.queries.GameExists(ctx, common.ToPGTypeText(id))
 	if err != nil {

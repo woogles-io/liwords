@@ -112,9 +112,9 @@ Goal: Redo game model
  ├─ LessDowntimeOnDeploys ─┴─ RemoveGameCache
  │                              ├─ AdvisoryLockWriters (NEW)
  │                              ├─ CheapGameLoad (NEW)
- │                              │    ├─ ActivateGameTurnsTable (NEW, leaf)
- │                              │    ├─ DualWriteTurns (NEW)
- │                              │    ├─ BuildLiveStateFromTurns (NEW)
+ │                              │    ├─ ActivateGameTurnsTable ✅
+ │                              │    ├─ DualWriteTurns ✅  (DUAL_WRITE_TURNS flag)
+ │                              │    ├─ BuildLiveStateFromTurns ⚙️  (shadow mode; SHADOW_TURNS flag)
  │                              │    └─ ReadPathFromTurns (NEW)
  │                              ├─ SplitDBWriters (NEW, leaf*)  ← SQLCOtherFuncs ✅
  │                              └─ GracefulCacheDrain (NEW, leaf)
@@ -126,10 +126,10 @@ Goal: Redo game model
  │    └─ ClearLargeFields
  │         └─ OnlyUseNewStorage
  │              ├─ ReplaceQuickData ← MigrateToMany2ManyTable ✅
- │              ├─ S3ArchiveOnGameEnd (NEW)
- │              │    ├─ AssembleHistoryFromTurns (NEW)
- │              │    ├─ S3UploadPath (NEW, leaf)
- │              │    └─ S3UrlColumnOnGames (NEW, leaf)
+ │              ├─ S3ArchiveOnGameEnd ✅
+ │              │    ├─ AssembleHistoryFromTurns ✅
+ │              │    ├─ S3UploadPath ✅
+ │              │    └─ S3UrlColumnOnGames ✅
  │              └─ S3LoadPath (NEW)
  │
  └─ DeprecateGameDocument (NEW branch)
@@ -147,16 +147,15 @@ Goal: Redo game model
 * SplitDBWriters: only prereq (SQLCOtherFuncs) is already done — actionable now.
 ```
 
-Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRequestColumns, ImproveMany2ManyTable, UseMany2ManyTable, MigrateToMany2ManyTable.
+Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRequestColumns, ImproveMany2ManyTable, UseMany2ManyTable, MigrateToMany2ManyTable, ActivateGameTurnsTable, DualWriteTurns, AssembleHistoryFromTurns, S3UploadPath, S3UrlColumnOnGames.
+
+Shadow/partial ⚙️: BuildLiveStateFromTurns (shadow comparison running; full read path deferred to Phase 3).
 
 **Actionable leaves right now:**
 1. **SplitDBWriters** — replace `DBStore.Set`/`UpdateGame` with purpose-built writers.
-2. **ActivateGameTurnsTable** — rebuild `active_game_events` as `game_turns`.
-3. **AuditRefereeGap** — enumerate exactly which macondo/game methods are needed for the referee (validation, scoring, challenge, end-game). Output: list of functions to port.
-4. **MoveGameHistoryProto** — copy `GameHistory`/`GameEvent`/`PlayerInfo`/enums into `api/proto/ipc/game_history.proto`.
-5. **S3UploadPath** — S3 client wrapper, bucket layout `games/<yyyy>/<mm>/<uuid>.json.gz`. Format: protojson marshaled then gzip compressed. Content-Type `application/json`, Content-Encoding `gzip`.
-6. **S3UrlColumnOnGames** — `ALTER TABLE games ADD COLUMN history_s3_key text`.
-7. **GracefulCacheDrain** — SIGTERM handler refuses new moves, lets in-flight txs drain.
+2. **AuditRefereeGap** — enumerate exactly which macondo/game methods are needed for the referee (validation, scoring, challenge, end-game). Output: list of functions to port.
+3. **MoveGameHistoryProto** — copy `GameHistory`/`GameEvent`/`PlayerInfo`/enums into `api/proto/ipc/game_history.proto`.
+4. **GracefulCacheDrain** — SIGTERM handler refuses new moves, lets in-flight txs drain.
 
 ## Critical Files
 
@@ -200,8 +199,8 @@ Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRe
 ### Phase 2: Port referee + dual-write
 4. **AuditRefereeGap** → enumerate macondo/game methods needed (output: list). Timebox this.
 5. **PortMacondoReferee** → `pkg/game/` with Go structs, `Rebuild`, `ApplyClientEvent`, scoring, challenge, end-game. Parity test: run same scenarios through macondo and new engine, diff results.
-6. **DualWriteTurns** → INSERT into `game_turns` on every move + keep overwriting `history` bytea. Flag: `DUAL_WRITE_TURNS=true`.
-7. **BuildLiveStateFromTurns** → `game.Rebuild(req, turns)` runs in shadow mode alongside existing path; diff-log discrepancies.
+6. **DualWriteTurns** ✅ → INSERT into `game_turns` on every move + keep overwriting `history` bytea. Flag: `DUAL_WRITE_TURNS=1`. Also brought forward from Phase 4: `history_s3_key` column added, S3 archival fires at game end (`AssembleHistoryFromTurns` + `S3UploadPath`), backfill script at `cmd/upload-game-archive/`.
+7. **BuildLiveStateFromTurns** ⚙️ → shadow comparison running (`SHADOW_TURNS=1`): rebuilds game from `game_turns` on every `Get`, diffs against history bytea, logs mismatches. Full read path (`ReadPathFromTurns`) deferred to Phase 3.
 8. **ReadPathFromTurns** → flag `READ_TURNS=true`: `DBStore.Get` routes to new path. History bytea still written, now unused on reads.
 
 ### Phase 3: Multi-node + remove cache
@@ -210,7 +209,7 @@ Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRe
 11. **RemoveGameCache** → delete 400-slot LRU. Verify on staging with two API nodes (uncomment `socket2` in docker-compose, add second `api`).
 
 ### Phase 4: S3 archival + shrink games table
-12. **S3UrlColumnOnGames + S3UploadPath** → at game end, assemble `GameHistory` from turns, serialize as gzipped protojson (`.json.gz`), upload to S3 at `games/<yyyy>/<mm>/<uuid>.json.gz`, set `history_s3_key`, delete `game_turns` rows.
+12. **S3UrlColumnOnGames + S3UploadPath** ✅ → brought forward to Phase 2 PR. `history_s3_key` column exists; archival fires at game end for all dual-written games; `cmd/upload-game-archive` handles backfill/retry. The `games.history` bytea remains authoritative for reads (transitional verification reference in `verifyHistory`).
 13. **S3LoadPath** → `GetHistory` checks `history_s3_key` first; falls back to legacy `history` bytea for old games.
 14. **ClearLargeFields + ReplaceQuickData** → backfill S3 for old finished games in batches. Replace `quickdata` reads with JOINs to `game_players` + `users`. Drop: `games.history`, `games.stats`, `games.quickdata`.
 
@@ -222,7 +221,6 @@ Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRe
 19. **RemoveMacondoRuntimeDep** → remove `github.com/domino14/macondo` from `go.mod` (modulo puzzles/memento — tracked separately).
 
 ### Separate Mikado branches (out of scope here)
-- **ClickHouse stats migration** — own graph. Replaces `liststats` + `games.stats`. Reads assembled `GameHistory` at end-of-game.
 - **Puzzles macondo removal** — large; requires relocating `cross_set`, `automatic`, puzzle-gen AI.
 - **Memento proto rename** — trivial once MoveGameHistoryProto lands.
 - **Tournament store GORM → sqlc** — unrelated.

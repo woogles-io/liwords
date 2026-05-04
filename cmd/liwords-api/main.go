@@ -66,6 +66,7 @@ import (
 	"github.com/woogles-io/liwords/pkg/puzzles"
 	"github.com/woogles-io/liwords/pkg/registration"
 	"github.com/woogles-io/liwords/pkg/stores"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
 	"github.com/woogles-io/liwords/pkg/tournament"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
 	"github.com/woogles-io/liwords/pkg/utilities"
@@ -267,6 +268,10 @@ func main() {
 	otelaws.AppendMiddlewares(&awscfg.APIOptions)
 	s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
 	lambdaClient := lambda.NewFromConfig(awscfg)
+
+	if bucket := os.Getenv("GAMEHISTORY_UPLOAD_BUCKET"); bucket != "" {
+		stores.GameHistoryArchiver = gamestore.NewHistoryArchiver(bucket, s3Client, stores.GameStore)
+	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,
 		stores.GameDocumentStore, cfg)
