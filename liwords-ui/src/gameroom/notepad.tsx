@@ -196,6 +196,17 @@ export const Notepad = React.memo((props: NotepadProps) => {
     }
     numWolgesWas.current = numWolges;
   }, [numWolges]);
+  const numKofiWas = useRef(0);
+  const numKofi = useMemo(
+    () => curNotepad.match(/kofi/gi)?.length || 0,
+    [curNotepad],
+  );
+  useEffect(() => {
+    if (numKofi > numKofiWas.current) {
+      BoopSounds.playSound("eagleScreechSound");
+    }
+    numKofiWas.current = numKofi;
+  }, [numKofi]);
   const notepadIsNotEmpty = curNotepad.length > 0;
   const controls = useCallback(
     () => (

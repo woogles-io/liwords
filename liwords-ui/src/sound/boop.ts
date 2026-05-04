@@ -4,6 +4,7 @@ import matchreqSound from "../assets/matchreq.mp3";
 import startgameSound from "../assets/startgame.mp3";
 import endgameSound from "../assets/endgame.mp3";
 import woofSound from "../assets/woof.wav";
+import eagleScreechSound from "../assets/eagle-screech.mp3";
 import meowSound from "../assets/meow.mp3";
 import receivechatSound from "../assets/receivechat.mp3";
 import newtourneyroundSound from "../assets/newtourneyround.mp3";
@@ -88,6 +89,7 @@ if (!window.location.pathname.startsWith("/embed/")) {
     new Booper("startgameSound", startgameSound),
     new Booper("endgameSound", endgameSound),
     new Booper("woofSound", woofSound),
+    new Booper("eagleScreechSound", eagleScreechSound),
     new Booper("meowSound", meowSound),
     new Booper("receiveMsgSound", receivechatSound),
     new Booper("startTourneyRoundSound", newtourneyroundSound),
