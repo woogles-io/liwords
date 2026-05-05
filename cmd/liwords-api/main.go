@@ -503,7 +503,8 @@ func main() {
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
 		WriteTimeout: 120 * time.Second,
-		ReadTimeout:  10 * time.Second}
+		ReadTimeout:  10 * time.Second,
+		IdleTimeout:  90 * time.Second}
 
 	go pubsubBus.ProcessMessages(ctx)
 	go vdoWebhookService.Start(ctx)

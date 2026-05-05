@@ -73,7 +73,8 @@ func main() {
 		Addr:         cfg.WebsocketAddress,
 		Handler:      router,
 		WriteTimeout: 10 * time.Second,
-		ReadTimeout:  10 * time.Second}
+		ReadTimeout:  10 * time.Second,
+		IdleTimeout:  90 * time.Second}
 
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
