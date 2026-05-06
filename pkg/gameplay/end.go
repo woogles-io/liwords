@@ -440,6 +440,9 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	if gameEndReason == pb.GameEndReason_ABORTED {
 		g.SetWinnerIdx(-1)
 		g.SetLoserIdx(-1)
+		// Keep History in sync: performEndgameDuties syncs this at line 175 but
+		// AbortGame bypasses it, so we must set it here.
+		g.History().Winner = int32(g.WinnerIdx)
 	}
 
 	// save the game back into the store
@@ -448,7 +451,9 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 		return err
 	}
 
-	if stores.GameHistoryArchiver != nil {
+	// CANCELLED games never started (no events), so there is nothing to archive.
+	// The maintenance task deletes them from the DB after 2 days.
+	if stores.GameHistoryArchiver != nil && gameEndReason == pb.GameEndReason_ABORTED {
 		go func() {
 			archCtx := zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx))
 			if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(archCtx, g); archErr != nil {

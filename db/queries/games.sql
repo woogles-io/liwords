@@ -339,9 +339,25 @@ UPDATE games SET history_s3_key = @history_s3_key WHERE uuid = @uuid;
 
 -- name: ListPendingArchival :many
 -- Returns finished games that have game_turns rows but no S3 archive yet.
+-- Excludes CANCELLED (7) — those are deleted by the maintenance task after 2 days.
+-- ABORTED (5) is included: those games had real play and should be archived for audit.
 SELECT DISTINCT g.uuid FROM games g
 JOIN game_turns gt ON gt.game_uuid = g.uuid
 WHERE g.history_s3_key IS NULL
-  AND g.game_end_reason != 0
+  AND g.game_end_reason NOT IN (0, 7)
 ORDER BY g.uuid;
+
+-- name: ListByteaBackfillBatch :many
+-- Finished games needing direct bytea→S3 archival (no game_turns assembly).
+-- Includes ABORTED (5) for audit; excludes CANCELLED (7) which the maintenance
+-- task deletes after 2 days. Keyset-paginated by uuid via
+-- idx_games_history_s3_key_pending.
+SELECT uuid, history, created_at FROM games
+WHERE history_s3_key IS NULL
+  AND game_end_reason NOT IN (0, 7)
+  AND history IS NOT NULL
+  AND created_at IS NOT NULL
+  AND uuid > @after_uuid
+ORDER BY uuid
+LIMIT @lim;
 
