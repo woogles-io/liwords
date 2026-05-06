@@ -920,16 +920,44 @@ WHERE league_division_id = $1
 ORDER BY created_at
 `
 
+type GetLeagueGamesRow struct {
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+}
+
 // Game queries for league games
-func (q *Queries) GetLeagueGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]Game, error) {
+func (q *Queries) GetLeagueGames(ctx context.Context, leagueDivisionID pgtype.UUID) ([]GetLeagueGamesRow, error) {
 	rows, err := q.db.Query(ctx, getLeagueGames, leagueDivisionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Game
+	var items []GetLeagueGamesRow
 	for rows.Next() {
-		var i Game
+		var i GetLeagueGamesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -985,15 +1013,43 @@ type GetLeagueGamesByStatusParams struct {
 	IncludeFinished  bool
 }
 
-func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGamesByStatusParams) ([]Game, error) {
+type GetLeagueGamesByStatusRow struct {
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+}
+
+func (q *Queries) GetLeagueGamesByStatus(ctx context.Context, arg GetLeagueGamesByStatusParams) ([]GetLeagueGamesByStatusRow, error) {
 	rows, err := q.db.Query(ctx, getLeagueGamesByStatus, arg.LeagueDivisionID, arg.IncludeFinished)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Game
+	var items []GetLeagueGamesByStatusRow
 	for rows.Next() {
-		var i Game
+		var i GetLeagueGamesByStatusRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,

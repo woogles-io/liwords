@@ -1,0 +1,3 @@
+BEGIN;
+DROP TABLE IF EXISTS game_turns;
+COMMIT;

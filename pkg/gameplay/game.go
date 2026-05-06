@@ -454,6 +454,11 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		}
 		entGame.SendChange(evt)
 	}
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
+		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), numEvts, newEvts[numEvts:]); dwtErr != nil {
+			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error-challenge")
+		}
+	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		if entGame.ChallengeRule() == macondopb.ChallengeRule_TRIPLE {
@@ -525,6 +530,11 @@ func PlayMove(ctx context.Context,
 	if len(turns) > 1 {
 		// This happens with six zeroes for example.
 		log.Debug().Msg("more than one turn appended")
+	}
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
+		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), oldTurnLength, turns); dwtErr != nil {
+			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error")
+		}
 	}
 	// Create a set of ServerGameplayEvents to send back.
 	log.Debug().Interface("turns", turns).Msg("sending turns back")

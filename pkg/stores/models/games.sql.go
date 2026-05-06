@@ -162,9 +162,37 @@ FROM games
 WHERE uuid = $1
 `
 
-func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error) {
+type GetGameRow struct {
+	ID               int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Uuid             pgtype.Text
+	Player0ID        pgtype.Int4
+	Player1ID        pgtype.Int4
+	Timers           entity.Timers
+	Started          pgtype.Bool
+	GameEndReason    pgtype.Int4
+	WinnerIdx        pgtype.Int4
+	LoserIdx         pgtype.Int4
+	History          []byte
+	Stats            entity.Stats
+	Quickdata        entity.Quickdata
+	TournamentData   entity.TournamentData
+	TournamentID     pgtype.Text
+	ReadyFlag        pgtype.Int8
+	MetaEvents       entity.MetaEventData
+	Type             pgtype.Int4
+	GameRequest      entity.GameRequest
+	PlayerOnTurn     pgtype.Int4
+	LeagueID         pgtype.UUID
+	SeasonID         pgtype.UUID
+	LeagueDivisionID pgtype.UUID
+}
+
+func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (GetGameRow, error) {
 	row := q.db.QueryRow(ctx, getGame, argUuid)
-	var i Game
+	var i GetGameRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -1082,6 +1110,49 @@ func (q *Queries) ListAllIDs(ctx context.Context) ([]pgtype.Text, error) {
 	return items, nil
 }
 
+const listPendingArchival = `-- name: ListPendingArchival :many
+SELECT DISTINCT g.uuid FROM games g
+JOIN game_turns gt ON gt.game_uuid = g.uuid
+WHERE g.history_s3_key IS NULL
+  AND g.game_end_reason != 0
+ORDER BY g.uuid
+`
+
+// Returns finished games that have game_turns rows but no S3 archive yet.
+func (q *Queries) ListPendingArchival(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listPendingArchival)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var uuid pgtype.Text
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setGameHistoryS3Key = `-- name: SetGameHistoryS3Key :exec
+UPDATE games SET history_s3_key = $1 WHERE uuid = $2
+`
+
+type SetGameHistoryS3KeyParams struct {
+	HistoryS3Key pgtype.Text
+	Uuid         pgtype.Text
+}
+
+func (q *Queries) SetGameHistoryS3Key(ctx context.Context, arg SetGameHistoryS3KeyParams) error {
+	_, err := q.db.Exec(ctx, setGameHistoryS3Key, arg.HistoryS3Key, arg.Uuid)
+	return err
+}
+
 const setReady = `-- name: SetReady :one
 UPDATE games
 SET ready_flag = ready_flag | (1 << $1::integer)
@@ -1175,5 +1246,115 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 		arg.LeagueDivisionID,
 		arg.Uuid,
 	)
+	return err
+}
+
+const updateGameAfterMove = `-- name: UpdateGameAfterMove :exec
+UPDATE games SET
+    history = $1,
+    timers = $2,
+    player_on_turn = $3,
+    updated_at = now()
+WHERE uuid = $4
+`
+
+type UpdateGameAfterMoveParams struct {
+	History      []byte
+	Timers       entity.Timers
+	PlayerOnTurn pgtype.Int4
+	Uuid         pgtype.Text
+}
+
+func (q *Queries) UpdateGameAfterMove(ctx context.Context, arg UpdateGameAfterMoveParams) error {
+	_, err := q.db.Exec(ctx, updateGameAfterMove,
+		arg.History,
+		arg.Timers,
+		arg.PlayerOnTurn,
+		arg.Uuid,
+	)
+	return err
+}
+
+const updateGameEnd = `-- name: UpdateGameEnd :exec
+UPDATE games SET
+    game_end_reason = $1,
+    winner_idx = $2,
+    loser_idx = $3,
+    history = $4,
+    stats = $5,
+    quickdata = $6,
+    timers = $7,
+    updated_at = now()
+WHERE uuid = $8
+`
+
+type UpdateGameEndParams struct {
+	GameEndReason pgtype.Int4
+	WinnerIdx     pgtype.Int4
+	LoserIdx      pgtype.Int4
+	History       []byte
+	Stats         entity.Stats
+	Quickdata     entity.Quickdata
+	Timers        entity.Timers
+	Uuid          pgtype.Text
+}
+
+func (q *Queries) UpdateGameEnd(ctx context.Context, arg UpdateGameEndParams) error {
+	_, err := q.db.Exec(ctx, updateGameEnd,
+		arg.GameEndReason,
+		arg.WinnerIdx,
+		arg.LoserIdx,
+		arg.History,
+		arg.Stats,
+		arg.Quickdata,
+		arg.Timers,
+		arg.Uuid,
+	)
+	return err
+}
+
+const updateGameMetaEvents = `-- name: UpdateGameMetaEvents :exec
+UPDATE games SET meta_events = $1, updated_at = now()
+WHERE uuid = $2
+`
+
+type UpdateGameMetaEventsParams struct {
+	MetaEvents entity.MetaEventData
+	Uuid       pgtype.Text
+}
+
+func (q *Queries) UpdateGameMetaEvents(ctx context.Context, arg UpdateGameMetaEventsParams) error {
+	_, err := q.db.Exec(ctx, updateGameMetaEvents, arg.MetaEvents, arg.Uuid)
+	return err
+}
+
+const updateGameStarted = `-- name: UpdateGameStarted :exec
+UPDATE games SET started = $1, timers = $2, updated_at = now()
+WHERE uuid = $3
+`
+
+type UpdateGameStartedParams struct {
+	Started pgtype.Bool
+	Timers  entity.Timers
+	Uuid    pgtype.Text
+}
+
+func (q *Queries) UpdateGameStarted(ctx context.Context, arg UpdateGameStartedParams) error {
+	_, err := q.db.Exec(ctx, updateGameStarted, arg.Started, arg.Timers, arg.Uuid)
+	return err
+}
+
+const updateGameTimers = `-- name: UpdateGameTimers :exec
+UPDATE games SET timers = $1, updated_at = now()
+WHERE uuid = $2
+`
+
+type UpdateGameTimersParams struct {
+	Timers entity.Timers
+	Uuid   pgtype.Text
+}
+
+func (q *Queries) UpdateGameTimers(ctx context.Context, arg UpdateGameTimersParams) error {
+	_, err := q.db.Exec(ctx, updateGameTimers, arg.Timers, arg.Uuid)
 	return err
 }

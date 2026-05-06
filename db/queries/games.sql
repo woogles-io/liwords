@@ -113,6 +113,38 @@ INSERT INTO games (
     @league_id, @season_id, @league_division_id
 );
 
+-- name: UpdateGameTimers :exec
+UPDATE games SET timers = @timers, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameMetaEvents :exec
+UPDATE games SET meta_events = @meta_events, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameStarted :exec
+UPDATE games SET started = @started, timers = @timers, updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameAfterMove :exec
+UPDATE games SET
+    history = @history,
+    timers = @timers,
+    player_on_turn = @player_on_turn,
+    updated_at = now()
+WHERE uuid = @uuid;
+
+-- name: UpdateGameEnd :exec
+UPDATE games SET
+    game_end_reason = @game_end_reason,
+    winner_idx = @winner_idx,
+    loser_idx = @loser_idx,
+    history = @history,
+    stats = @stats,
+    quickdata = @quickdata,
+    timers = @timers,
+    updated_at = now()
+WHERE uuid = @uuid;
+
 -- name: UpdateGame :exec
 UPDATE games SET
     updated_at = @updated_at,
@@ -301,4 +333,15 @@ INSERT INTO game_players (
         @updated_at
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING;
+
+-- name: SetGameHistoryS3Key :exec
+UPDATE games SET history_s3_key = @history_s3_key WHERE uuid = @uuid;
+
+-- name: ListPendingArchival :many
+-- Returns finished games that have game_turns rows but no S3 archive yet.
+SELECT DISTINCT g.uuid FROM games g
+JOIN game_turns gt ON gt.game_uuid = g.uuid
+WHERE g.history_s3_key IS NULL
+  AND g.game_end_reason != 0
+ORDER BY g.uuid;
 

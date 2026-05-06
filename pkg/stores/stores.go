@@ -44,6 +44,10 @@ type Stores struct {
 	// like this:
 	Queries *models.Queries
 
+	// GameHistoryArchiver is injected from main (needs the S3 client).
+	// Nil when running without S3 (e.g. tests that don't configure a bucket).
+	GameHistoryArchiver *game.HistoryArchiver
+
 	// LeagueStandingsUpdater is injected to avoid circular dependencies between
 	// pkg/gameplay and pkg/league. It's set during initialization.
 	LeagueStandingsUpdater LeagueStandingsUpdater

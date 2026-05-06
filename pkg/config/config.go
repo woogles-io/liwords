@@ -66,6 +66,10 @@ type Config struct {
 	SkipEmailVerification bool
 	RunMigrations         bool
 	QuitAfterMigration    bool
+
+	// Phase 2 migration flags
+	DualWriteTurns bool // write events to game_turns alongside history bytea
+	ShadowTurns    bool // shadow-compare turns-based reconstruction against history bytea on every Get
 }
 
 type ctxKey string
@@ -87,6 +91,8 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.SkipEmailVerification, "skip-email-verification", false, "skip email verification for new user registrations (for dev/testing)")
 	fs.BoolVar(&c.RunMigrations, "run-migrations", false, "run database migrations on startup")
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
+	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
+	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")
