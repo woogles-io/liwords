@@ -305,9 +305,16 @@ func (s *DBStore) shadowCompareTurns(
 	}
 
 	if len(turns) != wantEventCount {
+		if len(turns) < wantEventCount {
+			// In-flight at dual-write cutover — partial rows, tolerated temporarily.
+			log.Warn().Str("gameID", gameID).
+				Int("want", wantEventCount).Int("got", len(turns)).
+				Msg("shadow-turns-skip: in-flight at dual-write cutover")
+			return
+		}
 		log.Error().Str("gameID", gameID).
 			Int("want", wantEventCount).Int("got", len(turns)).
-			Msg("shadow-turns-mismatch: event count")
+			Msg("shadow-turns-mismatch: more rows than events")
 		return
 	}
 

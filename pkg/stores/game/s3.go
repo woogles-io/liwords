@@ -32,6 +32,7 @@ const (
 type archiveStore interface {
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
+	DeleteTurns(ctx context.Context, gameUUID string) error
 }
 
 // HistoryArchiver assembles a GameHistory from game_turns rows, uploads it to S3
@@ -61,6 +62,25 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 	if len(turns) == 0 {
 		l.Warn().Str("gameID", g.GameID()).Msg("archive-no-turns: predates dual-write, skipping")
 		return nil
+	}
+
+	expected := len(g.History().Events)
+	if len(turns) < expected {
+		// The game was in flight when dual-write was enabled: turns only cover
+		// the post-cutover events. Drop the partial rows so they don't accumulate;
+		// the game remains authoritative in the bytea history (like predates-dual-write
+		// games) and can be archived later by a bytea-fed backfill.
+		l.Warn().Str("gameID", g.GameID()).
+			Int("got", len(turns)).Int("want", expected).
+			Msg("archive-partial-turns: in-flight at dual-write cutover, discarding rows")
+		if err := h.store.DeleteTurns(ctx, g.GameID()); err != nil {
+			return fmt.Errorf("archive-discard-partial: %w", err)
+		}
+		return nil
+	}
+	if len(turns) > expected {
+		return fmt.Errorf("archive-extra-turns: have %d rows but history has %d events for %s",
+			len(turns), expected, g.GameID())
 	}
 
 	assembled, err := assembleHistory(g, turns)
