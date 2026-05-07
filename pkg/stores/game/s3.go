@@ -33,6 +33,7 @@ type archiveStore interface {
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	CommitArchival(ctx context.Context, gameUUID string, s3Key string) error
 	DeleteTurns(ctx context.Context, gameUUID string) error
+	SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error
 }
 
 // HistoryArchiver assembles a GameHistory from game_turns rows, uploads it to S3
@@ -95,7 +96,7 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 		return err
 	}
 
-	key, err := h.upload(ctx, g, assembled)
+	key, err := h.upload(ctx, g.GameID(), g.CreatedAt, assembled)
 	if err != nil {
 		return fmt.Errorf("archive-upload: %w", err)
 	}
@@ -199,7 +200,7 @@ func verifyHistory(assembled, expected *macondopb.GameHistory, gameID string) er
 // The object key is partitioned by the game's creation date, not the archive
 // date, so games stay in the bucket corresponding to when they were played.
 // Returns the object key on success.
-func (h *HistoryArchiver) upload(ctx context.Context, g *entity.Game, hist *macondopb.GameHistory) (string, error) {
+func (h *HistoryArchiver) upload(ctx context.Context, gameUUID string, createdAt time.Time, hist *macondopb.GameHistory) (string, error) {
 	raw, err := protojson.Marshal(hist)
 	if err != nil {
 		return "", err
@@ -214,13 +215,13 @@ func (h *HistoryArchiver) upload(ctx context.Context, g *entity.Game, hist *maco
 		return "", err
 	}
 
-	t := g.CreatedAt.UTC()
+	t := createdAt.UTC()
 	if t.IsZero() {
 		// Annotated/imported games may have a NULL created_at; fall back to now.
-		log.Ctx(ctx).Warn().Str("gameID", g.GameID()).Msg("archive-no-created-at, falling back to now")
+		log.Ctx(ctx).Warn().Str("gameID", gameUUID).Msg("archive-no-created-at, falling back to now")
 		t = time.Now().UTC()
 	}
-	key := fmt.Sprintf("games/%d/%02d/%s.json.gz", t.Year(), t.Month(), g.GameID())
+	key := fmt.Sprintf("games/%d/%02d/%s.json.gz", t.Year(), t.Month(), gameUUID)
 
 	uploader := manager.NewUploader(h.s3Client)
 	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
@@ -232,6 +233,26 @@ func (h *HistoryArchiver) upload(ctx context.Context, g *entity.Game, hist *maco
 	})
 	if err != nil {
 		return "", err
+	}
+	return key, nil
+}
+
+// ArchiveBytea archives a game whose history is stored as a proto binary bytea
+// (i.e. games that predate the game_turns dual-write). It decodes the bytea,
+// re-encodes as protojson, gzips, uploads to S3, then sets history_s3_key.
+// The output format is identical to ArchiveAndCleanup so S3 objects are
+// indistinguishable regardless of which code path produced them.
+func (h *HistoryArchiver) ArchiveBytea(ctx context.Context, gameUUID string, createdAt time.Time, historyBytes []byte) (string, error) {
+	hist := &macondopb.GameHistory{}
+	if err := proto.Unmarshal(historyBytes, hist); err != nil {
+		return "", fmt.Errorf("backfill-unmarshal: %w", err)
+	}
+	key, err := h.upload(ctx, gameUUID, createdAt, hist)
+	if err != nil {
+		return "", err
+	}
+	if err := h.store.SetHistoryS3Key(ctx, gameUUID, key); err != nil {
+		return key, fmt.Errorf("backfill-set-key: %w", err)
 	}
 	return key, nil
 }

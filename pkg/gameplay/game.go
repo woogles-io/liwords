@@ -534,6 +534,8 @@ func PlayMove(ctx context.Context,
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), oldTurnLength, turns); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error")
+		} else {
+			stores.GameStore.SpawnShadowCompare(ctx, entGame)
 		}
 	}
 	// Create a set of ServerGameplayEvents to send back.

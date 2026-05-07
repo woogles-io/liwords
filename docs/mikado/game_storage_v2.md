@@ -114,7 +114,7 @@ Goal: Redo game model
  │                              ├─ CheapGameLoad (NEW)
  │                              │    ├─ ActivateGameTurnsTable ✅
  │                              │    ├─ DualWriteTurns ✅  (DUAL_WRITE_TURNS flag)
- │                              │    ├─ BuildLiveStateFromTurns ⚙️  (shadow mode; SHADOW_TURNS flag)
+ │                              │    ├─ BuildLiveStateFromTurns ⚙️  (shadow mode; SHADOW_TURNS flag; race-free since shadow fires after AppendTurns)
  │                              │    └─ ReadPathFromTurns (NEW)
  │                              ├─ SplitDBWriters (NEW, leaf*)  ← SQLCOtherFuncs ✅
  │                              └─ GracefulCacheDrain (NEW, leaf)
@@ -129,7 +129,8 @@ Goal: Redo game model
  │              ├─ S3ArchiveOnGameEnd ✅
  │              │    ├─ AssembleHistoryFromTurns ✅
  │              │    ├─ S3UploadPath ✅
- │              │    └─ S3UrlColumnOnGames ✅
+ │              │    ├─ S3UrlColumnOnGames ✅
+ │              │    └─ ByteaBackfill ✅  (cmd/bytea-backfill; 11.3M historical games)
  │              └─ S3LoadPath (NEW)
  │
  └─ DeprecateGameDocument (NEW branch)
@@ -147,15 +148,16 @@ Goal: Redo game model
 * SplitDBWriters: only prereq (SQLCOtherFuncs) is already done — actionable now.
 ```
 
-Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRequestColumns, ImproveMany2ManyTable, UseMany2ManyTable, MigrateToMany2ManyTable, ActivateGameTurnsTable, DualWriteTurns, AssembleHistoryFromTurns, S3UploadPath, S3UrlColumnOnGames.
+Completed ✅: DBGet, AddOtherTables, SQLCDBStore, SQLCOtherFuncs, ConsolidateRequestColumns, ImproveMany2ManyTable, UseMany2ManyTable, MigrateToMany2ManyTable, ActivateGameTurnsTable, DualWriteTurns, AssembleHistoryFromTurns, S3UploadPath, S3UrlColumnOnGames, ByteaBackfill.
 
-Shadow/partial ⚙️: BuildLiveStateFromTurns (shadow comparison running; full read path deferred to Phase 3).
+Shadow/partial ⚙️: BuildLiveStateFromTurns — shadow comparison running and race-free (goroutine now fires after a successful `AppendTurns` in `PlayMove`, not on every `Get`). Full read path (`ReadPathFromTurns`) deferred to Phase 3.
 
 **Actionable leaves right now:**
 1. **SplitDBWriters** — replace `DBStore.Set`/`UpdateGame` with purpose-built writers.
-2. **AuditRefereeGap** — enumerate exactly which macondo/game methods are needed for the referee (validation, scoring, challenge, end-game). Output: list of functions to port.
-3. **MoveGameHistoryProto** — copy `GameHistory`/`GameEvent`/`PlayerInfo`/enums into `api/proto/ipc/game_history.proto`.
-4. **GracefulCacheDrain** — SIGTERM handler refuses new moves, lets in-flight txs drain.
+2. **S3LoadPath** — `GetHistory` checks `history_s3_key` first; falls back to legacy `history` bytea. Now unblocked: all finished games are either archived live (new games) or via `cmd/bytea-backfill` (historical).
+3. **AuditRefereeGap** — enumerate exactly which macondo/game methods are needed for the referee (validation, scoring, challenge, end-game). Output: list of functions to port.
+4. **MoveGameHistoryProto** — copy `GameHistory`/`GameEvent`/`PlayerInfo`/enums into `api/proto/ipc/game_history.proto`.
+5. **GracefulCacheDrain** — SIGTERM handler refuses new moves, lets in-flight txs drain.
 
 ## Critical Files
 
@@ -210,8 +212,8 @@ Shadow/partial ⚙️: BuildLiveStateFromTurns (shadow comparison running; full 
 
 ### Phase 4: S3 archival + shrink games table
 12. **S3UrlColumnOnGames + S3UploadPath** ✅ → brought forward to Phase 2 PR. `history_s3_key` column exists; archival fires at game end for all dual-written games; `cmd/upload-game-archive` handles backfill/retry. The `games.history` bytea remains authoritative for reads (transitional verification reference in `verifyHistory`).
-13. **S3LoadPath** → `GetHistory` checks `history_s3_key` first; falls back to legacy `history` bytea for old games.
-14. **ClearLargeFields + ReplaceQuickData** → backfill S3 for old finished games in batches. Replace `quickdata` reads with JOINs to `game_players` + `users`. Drop: `games.history`, `games.stats`, `games.quickdata`.
+13. **S3LoadPath** → `GetHistory` checks `history_s3_key` first; falls back to legacy `history` bytea for old games. Now unblocked — all finished games are in S3 after the bytea backfill runs.
+14. **ClearLargeFields + ReplaceQuickData** → ~~backfill S3 for old finished games in batches~~ (`cmd/bytea-backfill` ✅ handles the 11.3M historical games). Replace `quickdata` reads with JOINs to `game_players` + `users`. Drop: `games.history`, `games.stats`, `games.quickdata`.
 
 ### Phase 5: Deprecate GameDocument + retire cwgame
 15. **MigrateNativeGamesToPkgGame** → `entity.Game` stops embedding `macondogame.Game`; full native game path runs through `pkg/game/`.

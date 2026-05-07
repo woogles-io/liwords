@@ -253,18 +253,6 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	entGame.Game = *mcg
 	log.Debug().Interface("history", entGame.History()).Msg("from-state")
 
-	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.ShadowTurns {
-		// Capture by value before SetPlaying restores histPlayState and before
-		// hist.ChallengeRule is restored below. The goroutine must not touch
-		// entGame or hist after this point.
-		go s.shadowCompareTurns(
-			zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)),
-			id, rules,
-			mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1), mcg.Playing(),
-			len(hist.Events), hist.Players, hist.Lexicon, hist.ChallengeRule,
-		)
-	}
-
 	// Finally, restore the play state from the passed-in history. This
 	// might immediately end the game (for example, the game could have timed
 	// out, but the NewFromHistory function doesn't actually handle that).
@@ -277,6 +265,53 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	span.SetAttributes(attribute.Bool("game.started", entGame.Started))
 
 	return entGame, nil
+}
+
+// SpawnShadowCompare launches a shadow-compare goroutine using the post-move
+// state of g. Call this after a successful AppendTurns; at that point
+// game_turns and g.History().Events are both at the same count, so the
+// comparison is race-free regardless of game type.
+func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
+	cfg, cfgErr := config.Ctx(ctx)
+	if cfgErr != nil || !cfg.ShadowTurns {
+		return
+	}
+
+	hist := g.History()
+	gamereq := g.GameReq
+
+	lexicon := hist.Lexicon
+	if lexicon == "" && gamereq != nil {
+		lexicon = gamereq.Lexicon
+	}
+
+	var boardLayoutName, letterDistributionName, variantName string
+	if gamereq != nil && gamereq.Rules != nil {
+		boardLayoutName = gamereq.Rules.BoardLayoutName
+		letterDistributionName = gamereq.Rules.LetterDistributionName
+		variantName = gamereq.Rules.VariantName
+	} else {
+		boardLayoutName = board.CrosswordGameLayout
+		letterDistributionName = "english"
+		variantName = "classic"
+	}
+
+	rules, err := macondogame.NewBasicGameRules(
+		s.cfg.MacondoConfig(), lexicon, boardLayoutName,
+		letterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(variantName))
+	if err != nil {
+		log.Err(err).Str("gameID", g.GameID()).Msg("shadow-spawn-rules-error")
+		return
+	}
+
+	mcg := &g.Game
+	go s.shadowCompareTurns(
+		zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)),
+		g.GameID(), rules,
+		mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1), mcg.Playing(),
+		len(hist.Events), hist.Players, hist.Lexicon, hist.ChallengeRule,
+	)
 }
 
 // shadowCompareTurns rebuilds a game from game_turns rows and compares the
@@ -899,6 +934,15 @@ func (s *DBStore) CommitArchival(ctx context.Context, gameUUID string, s3Key str
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// SetHistoryS3Key sets history_s3_key on the games row without touching
+// game_turns. Used by the bytea backfill path where there are no turn rows.
+func (s *DBStore) SetHistoryS3Key(ctx context.Context, gameUUID string, s3Key string) error {
+	return s.queries.SetGameHistoryS3Key(ctx, models.SetGameHistoryS3KeyParams{
+		Uuid:         common.ToPGTypeText(gameUUID),
+		HistoryS3Key: common.ToPGTypeText(s3Key),
+	})
 }
 
 func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {

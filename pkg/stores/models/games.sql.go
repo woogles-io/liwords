@@ -1110,15 +1110,63 @@ func (q *Queries) ListAllIDs(ctx context.Context) ([]pgtype.Text, error) {
 	return items, nil
 }
 
+const listByteaBackfillBatch = `-- name: ListByteaBackfillBatch :many
+SELECT uuid, history, created_at FROM games
+WHERE history_s3_key IS NULL
+  AND game_end_reason NOT IN (0, 7)
+  AND history IS NOT NULL
+  AND created_at IS NOT NULL
+  AND uuid > $1
+ORDER BY uuid
+LIMIT $2
+`
+
+type ListByteaBackfillBatchParams struct {
+	AfterUuid pgtype.Text
+	Lim       int32
+}
+
+type ListByteaBackfillBatchRow struct {
+	Uuid      pgtype.Text
+	History   []byte
+	CreatedAt pgtype.Timestamptz
+}
+
+// Finished games needing direct bytea→S3 archival (no game_turns assembly).
+// Includes ABORTED (5) for audit; excludes CANCELLED (7) which the maintenance
+// task deletes after 2 days. Keyset-paginated by uuid via
+// idx_games_history_s3_key_pending.
+func (q *Queries) ListByteaBackfillBatch(ctx context.Context, arg ListByteaBackfillBatchParams) ([]ListByteaBackfillBatchRow, error) {
+	rows, err := q.db.Query(ctx, listByteaBackfillBatch, arg.AfterUuid, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListByteaBackfillBatchRow
+	for rows.Next() {
+		var i ListByteaBackfillBatchRow
+		if err := rows.Scan(&i.Uuid, &i.History, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingArchival = `-- name: ListPendingArchival :many
 SELECT DISTINCT g.uuid FROM games g
 JOIN game_turns gt ON gt.game_uuid = g.uuid
 WHERE g.history_s3_key IS NULL
-  AND g.game_end_reason != 0
+  AND g.game_end_reason NOT IN (0, 7)
 ORDER BY g.uuid
 `
 
 // Returns finished games that have game_turns rows but no S3 archive yet.
+// Excludes CANCELLED (7) — those are deleted by the maintenance task after 2 days.
+// ABORTED (5) is included: those games had real play and should be archived for audit.
 func (q *Queries) ListPendingArchival(ctx context.Context) ([]pgtype.Text, error) {
 	rows, err := q.db.Query(ctx, listPendingArchival)
 	if err != nil {
