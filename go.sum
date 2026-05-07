@@ -144,10 +144,10 @@ github.com/docker/go-connections v0.5.0 h1:USnMq7hx7gwdVZq1L49hLXaFtUdTADjXGp+uj
 github.com/docker/go-connections v0.5.0/go.mod h1:ov60Kzw0kKElRwhNs9UlUHAE/F9Fe6GLaXnqyDdmEXc=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/domino14/macondo v0.12.5-0.20260409040057-bb6d639bf395 h1:jLluT0qBvT2k6Zk0FUI30zCbnLg5mVH5wnq9jgmLQ+Y=
-github.com/domino14/macondo v0.12.5-0.20260409040057-bb6d639bf395/go.mod h1:NyHtQuwB3LBZudvWAdG38R0s+zc9WhRfOd0zHhZk3L0=
-github.com/domino14/word-golib v0.2.20 h1:KrufAyhSx7Jlq5L7u2siqeS3auhWCMB8dhSsHNeKiKo=
-github.com/domino14/word-golib v0.2.20/go.mod h1:JA2pCy6BuNzlc1Ix2pCwAxDE1k6xybfwDqq+yfKRl/Y=
+github.com/domino14/macondo v0.13.2-0.20260506041604-aa456c5564c0 h1:9ycJwY7rjFxjmFeAj8oUrKEpaLMISKPfTBYn6K5m9u8=
+github.com/domino14/macondo v0.13.2-0.20260506041604-aa456c5564c0/go.mod h1:XOSpXAiZQQHi4MMn5SsZVPoaqrLzAWdJQMtDmO7G6Mk=
+github.com/domino14/word-golib v0.2.22 h1:la67AdO8DMrpSemXVGU+XvlY5B0qlrSft7YeCgi8pMc=
+github.com/domino14/word-golib v0.2.22/go.mod h1:8WokuYNHtOeh2hJKxG6SwbiJQR74L2ViHMiuc7JUCMk=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
