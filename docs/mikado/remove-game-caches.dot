@@ -14,11 +14,12 @@ digraph RedoGameModel {
     ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event jsonb)";];
     DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: DUAL_WRITE_TURNS)";];
     SplitDBWriters [label = "Split DB writers ✅\n(AppendTurn, UpdateTimers,\nAppendMetaEvent, SetReady, EndGame)";];
-    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare on Get;\nflag: SHADOW_TURNS)";];
+    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare after AppendTurns;\nrace-free; flag: SHADOW_TURNS)";];
     AssembleHistoryFromTurns [label = "Assemble GameHistory from game_turns ✅\n(assembleHistory() in pkg/stores/game/s3.go;\nverify via proto.Equal against history bytea)";];
     S3UploadPath [label = "S3 upload path ✅\n(gzipped protojson, games/<yyyy>/<mm>/<uuid>.json.gz;\ncreation-date partitioning; MinIO in dev)";];
     S3UrlColumnOnGames [label = "Add history_s3_key column to games ✅\n(partial index on NULL for pending-archival scan)";];
-    S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end ✅\n(assemble → verify → upload → CommitArchival tx;\ncmd/upload-game-archive/ backfill script)";];
+    S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end ✅\n(assemble → verify → upload → CommitArchival tx;\ncmd/upload-game-archive/ retry script)";];
+    ByteaBackfill [label = "Bytea-fed S3 backfill ✅\n(cmd/bytea-backfill/; 11.3M historical games;\nparallel workers, keyset pagination, resumable)";];
 
     // ── Dropped nodes ❌ ──────────────────────────────────────────────────
     node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
@@ -112,7 +113,9 @@ digraph RedoGameModel {
     S3ArchiveOnGameEnd -> AssembleHistoryFromTurns;
     S3ArchiveOnGameEnd -> S3UploadPath;
     S3ArchiveOnGameEnd -> S3UrlColumnOnGames;
+    S3ArchiveOnGameEnd -> ByteaBackfill;
     S3LoadPath -> S3ArchiveOnGameEnd;
+    S3LoadPath -> ByteaBackfill;
 
     // ── Edges: DeprecateGameDocument ──────────────────────────────────────
     DeprecateGameDocument -> MoveGameHistoryProto;
