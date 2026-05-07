@@ -309,7 +309,7 @@ func (s *DBStore) SpawnShadowCompare(ctx context.Context, g *entity.Game) {
 	go s.shadowCompareTurns(
 		zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx)),
 		g.GameID(), rules,
-		mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1), mcg.Playing(),
+		mcg.Turn(), mcg.PointsFor(0), mcg.PointsFor(1),
 		len(hist.Events), hist.Players, hist.Lexicon, hist.ChallengeRule,
 	)
 }
@@ -322,7 +322,6 @@ func (s *DBStore) shadowCompareTurns(
 	gameID string,
 	rules *macondogame.GameRules,
 	wantTurn, wantP0, wantP1 int,
-	wantPlaying macondopb.PlayState,
 	wantEventCount int,
 	players []*macondopb.PlayerInfo,
 	lexicon string,
@@ -387,10 +386,11 @@ func (s *DBStore) shadowCompareTurns(
 			Int("want_p1", wantP1).Int("got_p1", shadowMcg.PointsFor(1))
 		mismatch = true
 	}
-	if shadowMcg.Playing() != wantPlaying {
-		ev = ev.Str("want_playing", wantPlaying.String()).Str("got_playing", shadowMcg.Playing().String())
-		mismatch = true
-	}
+	// Note: Playing() is intentionally not compared here. NewFromHistory does
+	// not reliably reconstruct mid-game play states (e.g. it can return
+	// WAITING_FOR_FINAL_PASS when the first move is a PASS); the real game
+	// load works around this with an explicit SetPlaying override. The turn
+	// number and scores are sufficient to verify game_turns correctness.
 
 	if mismatch {
 		ev.Msg("shadow-turns-mismatch")
