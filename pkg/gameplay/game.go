@@ -534,7 +534,10 @@ func PlayMove(ctx context.Context,
 	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
 		if dwtErr := stores.GameStore.AppendTurns(ctx, entGame.GameID(), oldTurnLength, turns); dwtErr != nil {
 			log.Err(dwtErr).Str("gameID", entGame.GameID()).Msg("dual-write-turns-error")
-		} else {
+		} else if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER {
+			// Skip shadow compare on game-over: END_RACK_POINTS events are written
+			// to game_turns by performEndgameDuties below, so game_turns is
+			// incomplete here. ArchiveAndCleanup does a full proto.Equal check instead.
 			stores.GameStore.SpawnShadowCompare(ctx, entGame)
 		}
 	}
