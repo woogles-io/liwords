@@ -68,15 +68,23 @@ func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game)
 	expected := len(g.History().Events)
 	if len(turns) < expected {
 		// The game was in flight when dual-write was enabled: turns only cover
-		// the post-cutover events. Drop the partial rows so they don't accumulate;
-		// the game remains authoritative in the bytea history (like predates-dual-write
-		// games) and can be archived later by a bytea-fed backfill.
+		// the post-cutover events. Drop the partial rows and fall back to
+		// uploading from the in-memory history so the game is archived immediately
+		// rather than waiting for a manual backfill run.
 		l.Warn().Str("gameID", g.GameID()).
 			Int("got", len(turns)).Int("want", expected).
-			Msg("archive-partial-turns: in-flight at dual-write cutover, discarding rows")
+			Msg("archive-partial-turns: in-flight at dual-write cutover, falling back to bytea upload")
 		if err := h.store.DeleteTurns(ctx, g.GameID()); err != nil {
 			return fmt.Errorf("archive-discard-partial: %w", err)
 		}
+		key, err := h.upload(ctx, g.GameID(), g.CreatedAt, g.History())
+		if err != nil {
+			return fmt.Errorf("archive-upload-fallback: %w", err)
+		}
+		if err := h.store.SetHistoryS3Key(ctx, g.GameID(), key); err != nil {
+			return fmt.Errorf("archive-commit-fallback: %w", err)
+		}
+		l.Info().Str("gameID", g.GameID()).Str("key", key).Msg("game-archived-fallback")
 		return nil
 	}
 	if len(turns) > expected {
