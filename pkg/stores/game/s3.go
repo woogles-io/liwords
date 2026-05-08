@@ -50,19 +50,14 @@ func NewHistoryArchiver(bucket string, s3Client *s3.Client, store archiveStore) 
 }
 
 // ArchiveAndCleanup is the single entry point for end-of-game archival.
-// It does nothing (log WARN and return nil) if turns is empty — this covers
-// games that predate dual-write. On any error before a successful upload it
-// returns without touching game_turns or history_s3_key.
+// On any error before a successful upload it returns without touching
+// game_turns or history_s3_key.
 func (h *HistoryArchiver) ArchiveAndCleanup(ctx context.Context, g *entity.Game) error {
 	l := log.Ctx(ctx)
 
 	turns, err := h.store.GetTurns(ctx, g.GameID())
 	if err != nil {
 		return fmt.Errorf("archive-load-turns: %w", err)
-	}
-	if len(turns) == 0 {
-		l.Warn().Str("gameID", g.GameID()).Msg("archive-no-turns: predates dual-write, skipping")
-		return nil
 	}
 
 	expected := len(g.History().Events)
