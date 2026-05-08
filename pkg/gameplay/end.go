@@ -163,8 +163,16 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// One more thing -- if the Macondo game doesn't know the game is over, which
 	// can happen if the game didn't end normally (for example, a timeout or a resign)
 	// Then we need to set the final scores here.
+	evtIdxBeforeFinalScores := len(g.History().Events)
 	if len(g.History().FinalScores) == 0 || len(g.History().Events) > evtIdxBeforePenalties {
 		g.AddFinalScoresToHistory()
+	}
+	if cfg, cfgErr := config.Ctx(ctx); cfgErr == nil && cfg.DualWriteTurns {
+		if finalScoreEvts := g.History().Events[evtIdxBeforeFinalScores:]; len(finalScoreEvts) > 0 {
+			if dwtErr := stores.GameStore.AppendTurns(ctx, g.GameID(), evtIdxBeforeFinalScores, finalScoreEvts); dwtErr != nil {
+				log.Err(dwtErr).Str("gameID", g.GameID()).Msg("dual-write-turns-error-final-scores")
+			}
+		}
 	}
 
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
