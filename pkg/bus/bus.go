@@ -264,7 +264,7 @@ outerfor:
 			resp := &macondo.BotResponse{}
 			err := proto.Unmarshal(msg.Data, resp)
 			if err != nil {
-				log.Err(err).Msg("unmarshal-bot-response-error")
+				log.Err(err).Str("gid", gid).Msg("unmarshal-bot-response-error")
 				break
 			}
 			b.goHandleBotMove(ctx, resp, gid, msg.Reply)
@@ -453,6 +453,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.stores.GameStore.Get(ctx, gameID)
 			if err != nil {
+				log.Err(err).Str("gid", gameID).Msg("register-realm-get-game-failed")
 				return err
 			}
 			var foundPlayer bool

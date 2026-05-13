@@ -728,6 +728,66 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 	return err
 }
 
+const listActiveCorrespondenceForArchivalAudit = `-- name: ListActiveCorrespondenceForArchivalAudit :many
+SELECT g.uuid, g.created_at, g.updated_at, g.history,
+       COALESCE(gt.cnt, 0)::int AS turns_count
+FROM games g
+LEFT JOIN (
+    SELECT game_uuid, COUNT(*)::int AS cnt
+    FROM game_turns
+    GROUP BY game_uuid
+) gt ON gt.game_uuid = g.uuid
+WHERE g.game_end_reason = 0
+  AND (g.game_request->>'game_mode')::int = 1
+  AND g.started = true
+  AND g.uuid > $1
+ORDER BY g.uuid
+LIMIT $2
+`
+
+type ListActiveCorrespondenceForArchivalAuditParams struct {
+	AfterUuid pgtype.Text
+	Lim       int32
+}
+
+type ListActiveCorrespondenceForArchivalAuditRow struct {
+	Uuid       pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	History    []byte
+	TurnsCount int32
+}
+
+// Active started correspondence games with their game_turns count, keyset-paginated.
+// Used by cmd/find-pre-archival-games to identify games where game_turns rows are
+// fewer than the bytea history's event count (they predate or crossed the dual-write
+// cutover and will hit the bytea-fallback path in ArchiveAndCleanup when they end).
+func (q *Queries) ListActiveCorrespondenceForArchivalAudit(ctx context.Context, arg ListActiveCorrespondenceForArchivalAuditParams) ([]ListActiveCorrespondenceForArchivalAuditRow, error) {
+	rows, err := q.db.Query(ctx, listActiveCorrespondenceForArchivalAudit, arg.AfterUuid, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveCorrespondenceForArchivalAuditRow
+	for rows.Next() {
+		var i ListActiveCorrespondenceForArchivalAuditRow
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.History,
+			&i.TurnsCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveCorrespondenceGames = `-- name: ListActiveCorrespondenceGames :many
 SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, type, updated_at, league_id, season_id, league_division_id
 FROM games

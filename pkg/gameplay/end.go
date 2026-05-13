@@ -223,12 +223,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// Compute stats for the player and for the game.
 	variantKey, err := g.RatingKey()
 	if err != nil {
-		log.Err(err).Msg("getting variant key")
+		log.Err(err).Str("gid", g.GameID()).Msg("getting variant key")
 	} else {
 		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq.GameRequest, variantKey,
 			evt, stores)
 		if err != nil {
-			log.Err(err).Msg("computing stats")
+			log.Err(err).Str("gid", g.GameID()).Msg("computing stats")
 		} else {
 			g.Stats = gameStats
 		}
@@ -248,14 +248,14 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		err := tournament.HandleTournamentGameEnded(ctx, stores.TournamentStore, stores.UserStore, g, stores.Queries)
 		if err != nil {
-			log.Err(err).Msg("error-tourney-game-ended")
+			log.Err(err).Str("gid", g.GameID()).Msg("error-tourney-game-ended")
 		}
 	} else if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		// Applies penalties to players who have misbehaved during the game
 		// Does not apply for tournament games
 		err = mod.Automod(ctx, stores.UserStore, stores.NotorietyStore, users[0], users[1], g)
 		if err != nil {
-			log.Err(err).Msg("automod-error")
+			log.Err(err).Str("gid", g.GameID()).Msg("automod-error")
 		}
 	}
 
@@ -286,7 +286,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		err = stores.LeagueStandingsUpdater.UpdateGameStandings(ctx, g)
 		if err != nil {
 			// Log error but don't fail - standings can be recalculated later
-			log.Err(err).Msg("failed-to-update-league-standings")
+			log.Err(err).Str("gid", g.GameID()).Msg("failed-to-update-league-standings")
 		}
 	}
 
@@ -296,7 +296,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		err = analysis.EnqueueGameForAnalysis(ctx, stores.Queries, g.GameID(), priority)
 		if err != nil {
 			// Log error but don't fail - analysis can be retried later
-			log.Err(err).Msg("failed-to-enqueue-game-for-analysis")
+			log.Err(err).Str("gid", g.GameID()).Msg("failed-to-enqueue-game-for-analysis")
 		}
 	}
 
@@ -474,7 +474,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	if gameEndReason == pb.GameEndReason_ABORTED {
 		err = stores.GameStore.InsertGamePlayers(ctx, g)
 		if err != nil {
-			log.Err(err).Msg("failed to insert game_players entries for aborted game")
+			log.Err(err).Str("gid", g.GameID()).Msg("failed to insert game_players entries for aborted game")
 			// Don't fail the abort if game_players insert fails
 		}
 	}
@@ -514,7 +514,7 @@ func AbortGame(ctx context.Context, stores *stores.Stores,
 	// mode, we must allow the players to try to play again.
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		err = redoCancelledGamePairings(ctx, stores.TournamentStore, g)
-		log.Err(err).Msg("redo-cancelled-game-pairings")
+		log.Err(err).Str("gid", g.GameID()).Msg("redo-cancelled-game-pairings")
 	}
 
 	return nil
@@ -549,7 +549,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	if g.GameReq.RatingMode == pb.RatingMode_RATED {
 		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
 		if err != nil {
-			log.Err(err).Msg("rating-error")
+			log.Err(err).Str("gid", g.GameID()).Msg("rating-error")
 		}
 	}
 	for u, rat := range ratings {

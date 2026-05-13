@@ -361,3 +361,23 @@ WHERE history_s3_key IS NULL
 ORDER BY uuid
 LIMIT @lim;
 
+-- name: ListActiveCorrespondenceForArchivalAudit :many
+-- Active started correspondence games with their game_turns count, keyset-paginated.
+-- Used by cmd/find-pre-archival-games to identify games where game_turns rows are
+-- fewer than the bytea history's event count (they predate or crossed the dual-write
+-- cutover and will hit the bytea-fallback path in ArchiveAndCleanup when they end).
+SELECT g.uuid, g.created_at, g.updated_at, g.history,
+       COALESCE(gt.cnt, 0)::int AS turns_count
+FROM games g
+LEFT JOIN (
+    SELECT game_uuid, COUNT(*)::int AS cnt
+    FROM game_turns
+    GROUP BY game_uuid
+) gt ON gt.game_uuid = g.uuid
+WHERE g.game_end_reason = 0
+  AND (g.game_request->>'game_mode')::int = 1
+  AND g.started = true
+  AND g.uuid > @after_uuid
+ORDER BY g.uuid
+LIMIT @lim;
+
