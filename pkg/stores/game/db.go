@@ -105,7 +105,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	g, err := s.queries.GetGame(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		span.RecordError(err)
-		log.Err(err).Msg("error-get-game")
+		log.Err(err).Str("gid", id).Msg("error-get-game")
 		return nil, err
 	}
 
@@ -243,6 +243,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	historySpan.End()
 	if err != nil {
 		span.RecordError(err)
+		log.Err(err).Str("gid", id).Msg("new-from-history-failed")
 		return nil, err
 	}
 	// XXX: We should probably move this to `NewFromHistory`:

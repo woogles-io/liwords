@@ -125,7 +125,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 
 	err = b.broadcastGameCreation(g, accUser, reqUser)
 	if err != nil {
-		log.Err(err).Msg("broadcasting-game-creation")
+		log.Err(err).Str("gid", g.GameID()).Msg("broadcasting-game-creation")
 	}
 
 	// Auto-start correspondence games immediately (skip ready flag)
@@ -202,23 +202,23 @@ func (b *Bus) goHandleBotMove(ctx context.Context, resp *macondo.BotResponse,
 
 			m, err := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
 			if err != nil {
-				log.Err(err).Msg("move-from-event-error")
+				log.Err(err).Str("gid", gid).Msg("move-from-event-error")
 				return
 			}
 			err = gameplay.PlayMove(ctx, g, b.stores, userID, onTurn, timeRemaining, m)
 			if err != nil {
-				log.Err(err).Msg("bot-cant-move-play-error")
+				log.Err(err).Str("gid", gid).Msg("bot-cant-move-play-error")
 				return
 			}
 		case *macondopb.BotResponse_Error:
-			log.Error().Str("error", r.Error).Msg("bot-error")
+			log.Error().Str("gid", gid).Str("error", r.Error).Msg("bot-error")
 			return
 		}
 		// And save the game after playing the move. Note that PlayMove doesn't do
 		// this.
 		err = b.stores.GameStore.Set(ctx, g)
 		if err != nil {
-			log.Err(err).Msg("setting-game-after-bot-move")
+			log.Err(err).Str("gid", gid).Msg("setting-game-after-bot-move")
 		}
 	}()
 }
@@ -230,6 +230,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 
 	g, err := b.stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
+		log.Err(err).Str("gid", evt.GameId).Msg("ready-for-game-get-failed")
 		return err
 	}
 	g.Lock()
@@ -448,7 +449,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 
 	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
 	if err != nil {
-		log.Err(err).Msg("broadcasting-game-creation")
+		log.Err(err).Str("gid", g.GameID()).Msg("broadcasting-game-creation")
 	}
 
 	// redirect users to the right game
@@ -485,6 +486,7 @@ func (b *Bus) sendGameRefresher(ctx context.Context, gameID, connID, userID stri
 	// Get a game refresher event.
 	entGame, err := b.stores.GameStore.Get(ctx, string(gameID))
 	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("send-game-refresher-get-failed")
 		return err
 	}
 	entGame.RLock()
@@ -543,6 +545,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 		// These will likely be in the cache.
 		entGame, err := b.stores.GameStore.Get(ctx, g.GameId)
 		if err != nil {
+			log.Err(err).Str("gid", g.GameId).Msg("adjudicate-get-game-failed")
 			return err
 		}
 		entGame.RLock()
@@ -554,7 +557,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.stores, entGame.Game.PlayerIDOnTurn(), g.GameId)
-			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+			log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && !entGame.IsCorrespondence() {
 			// Only real-time games can be "not started" - correspondence games
 			// are auto-started immediately when accepted, so they never enter this state.
@@ -575,7 +578,7 @@ func (b *Bus) adjudicateGames(ctx context.Context, correspondenceOnly bool) erro
 				b.stores.GameStore.LockGame(g.GameId)
 				entGame.Lock()
 				err = gameplay.AbortGame(ctx, b.stores, entGame, pb.GameEndReason_CANCELLED)
-				log.Err(err).Msg("adjudicating-after-abort-game")
+				log.Err(err).Str("gid", g.GameId).Msg("adjudicating-after-abort-game")
 				entGame.Unlock()
 				b.stores.GameStore.UnlockGame(g.GameId)
 				log.Debug().Str("gid", g.GameId).Msg("unlocking")
@@ -663,7 +666,7 @@ func (b *Bus) adjudicateCorrespondenceGames(ctx context.Context) error {
 		playerID := g.Quickdata.PlayerInfo[playerOnTurn].UserId
 
 		err = gameplay.TimedOut(ctx, b.stores, playerID, gameID)
-		log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+		log.Err(err).Str("gid", gameID).Msg("adjudicating-after-gameplay-timed-out")
 	}
 
 	log.Debug().Msg("exiting-correspondence-adjudication")

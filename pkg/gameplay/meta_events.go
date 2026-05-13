@@ -131,6 +131,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 
 	g, err := stores.GameStore.Get(ctx, evt.GameId)
 	if err != nil {
+		log.Err(err).Str("gid", evt.GameId).Msg("meta-event-get-game-failed")
 		return err
 	}
 

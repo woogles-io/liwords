@@ -242,7 +242,7 @@ func StartGame(ctx context.Context, stores *stores.Stores, eventChan chan<- *ent
 	log.Debug().Msg("going-to-save")
 	// Save the game back to the store always.
 	if err := stores.GameStore.Set(ctx, entGame); err != nil {
-		log.Err(err).Msg("error-saving")
+		log.Err(err).Str("gid", entGame.GameID()).Msg("error-saving")
 		return err
 	}
 	log.Debug().Msg("saved-game-to-store")
@@ -480,7 +480,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, stores *stores.S
 		// HandleEvent will skip the save for correspondence games to avoid double-saving.
 		if entGame.IsCorrespondence() {
 			if err := stores.GameStore.Set(ctx, entGame); err != nil {
-				log.Err(err).Msg("error-saving-before-bot-request")
+				log.Err(err).Str("gid", entGame.GameID()).Msg("error-saving-before-bot-request")
 				return err
 			}
 		}
@@ -603,7 +603,7 @@ func PlayMove(ctx context.Context,
 		// HandleEvent will skip the save for correspondence games to avoid double-saving.
 		if entGame.IsCorrespondence() {
 			if err := stores.GameStore.Set(ctx, entGame); err != nil {
-				log.Err(err).Msg("error-saving-before-bot-request")
+				log.Err(err).Str("gid", entGame.GameID()).Msg("error-saving-before-bot-request")
 				return err
 			}
 		}
@@ -624,6 +624,7 @@ func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge 
 
 	entGame, err := stores.GameStore.Get(ctx, cge.GameId)
 	if err != nil {
+		log.Err(err).Str("gid", cge.GameId).Msg("handle-event-get-game-failed")
 		return nil, err
 	}
 	entGame.Lock()
@@ -761,6 +762,7 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 
 	entGame, err := stores.GameStore.Get(ctx, gameID)
 	if err != nil {
+		log.Err(err).Str("gid", gameID).Msg("timed-out-get-game-failed")
 		return err
 	}
 	entGame.Lock()
@@ -776,7 +778,7 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 		return errNotOnTurn
 	}
 	if !entGame.TimeRanOut(onTurn) {
-		log.Error().Int("TimeRemaining", entGame.TimeRemaining(onTurn)).
+		log.Error().Str("gid", gameID).Int("TimeRemaining", entGame.TimeRemaining(onTurn)).
 			Int("onturn", onTurn).Msg("time-didnt-run-out")
 		return errTimeDidntRunOut
 	}

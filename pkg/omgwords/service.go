@@ -232,7 +232,7 @@ func createAnnotatedGameDoc(
 		// the annotated game we just created. Not the best pattern, but
 		// we have different data stores.
 		if derr := metadataStore.DeleteAnnotatedGame(ctx, g.Uid); derr != nil {
-			log.Err(derr).Msg("deleting-annotated-game")
+			log.Err(derr).Str("gid", g.Uid).Msg("deleting-annotated-game")
 		}
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func createAnnotatedGameDoc(
 	// We should also send a new game event on the channel.
 	err = announceGameCreation(g, playersInfo, gameEventChan)
 	if err != nil {
-		log.Err(err).Msg("broadcasting-game-creation")
+		log.Err(err).Str("gid", g.Uid).Msg("broadcasting-game-creation")
 	}
 	return g, nil
 }
