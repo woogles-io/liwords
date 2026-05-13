@@ -799,17 +799,17 @@ export const Integrations = () => {
                         <span>
                           Visit{" "}
                           <a
-                            href="https://legacy.wespa.org/ratings.shtml"
+                            href="https://wespa.xerafin.net"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: "#1890ff" }}
                           >
-                            legacy.wespa.org/ratings.shtml
+                            wespa.xerafin.net
                           </a>
-                          , scroll down to "Find a player", enter your name, and
-                          click Submit. Your player ID is the number in the URL
-                          (e.g., <strong>2145</strong> from
-                          legacy.wespa.org/aardvark/html/players/2145.html).
+                          , type your name in the search box, and click through
+                          to your profile. Your WESPA ID is the number at the
+                          end of the URL (e.g., <strong>215</strong> from
+                          wespa.xerafin.net/player.html?id=215).
                         </span>
                       }
                       overlayStyle={{ maxWidth: 400 }}

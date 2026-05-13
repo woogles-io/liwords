@@ -2,10 +2,10 @@ package organizations
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -25,9 +25,9 @@ type wespaCache struct {
 	cacheTTL  time.Duration
 }
 
-// WESPAIntegration handles WESPA (manual verification, scrapes HTML for name)
+// WESPAIntegration handles WESPA ratings and player lookup via the xerafin API
 type WESPAIntegration struct {
-	BaseURL    string
+	RatingsURL string
 	HTTPClient *http.Client
 	cache      *wespaCache
 }
@@ -35,7 +35,7 @@ type WESPAIntegration struct {
 // NewWESPAIntegration creates a new WESPA integration instance
 func NewWESPAIntegration() *WESPAIntegration {
 	return &WESPAIntegration{
-		BaseURL: "https://legacy.wespa.org",
+		RatingsURL: "https://wespa.xerafin.net/latest.txt",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -73,52 +73,42 @@ func (w *WESPAIntegration) GetOrganizationCode() OrganizationCode {
 	return OrgWESPA
 }
 
-// GetRealName fetches the user's real name from WESPA by scraping their player page
-// Returns the name extracted from the <title> tag of the player page
+// GetRealName fetches the user's real name from the WESPA API.
 func (w *WESPAIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
-	// Fetch the player page HTML
-	playerURL := fmt.Sprintf("%s/aardvark/html/players/%s.html", w.BaseURL, memberID)
+	apiURL := fmt.Sprintf("https://wespa.xerafin.net/api/v2/player/%s", memberID)
 
-	resp, err := w.HTTPClient.Get(playerURL)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch WESPA player page: %w", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "woogles.io")
+
+	resp, err := w.HTTPClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch WESPA player: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("WESPA player page returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("WESPA API returned status %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read player page: %w", err)
+		return "", fmt.Errorf("failed to read WESPA API response: %w", err)
 	}
 
-	// Extract name from <title> tag
-	name, err := w.extractNameFromHTML(string(body))
-	if err != nil {
-		return "", fmt.Errorf("failed to extract name from page: %w", err)
+	var payload struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", fmt.Errorf("failed to parse WESPA API response: %w", err)
+	}
+	if payload.Name == "" {
+		return "", fmt.Errorf("WESPA API returned empty name for player %s", memberID)
 	}
 
-	return name, nil
-}
-
-// extractNameFromHTML extracts the player name from the <title> tag
-func (w *WESPAIntegration) extractNameFromHTML(html string) (string, error) {
-	// Match <title>Player Name</title>
-	re := regexp.MustCompile(`<title>\s*([^<]+?)\s*</title>`)
-	matches := re.FindStringSubmatch(html)
-
-	if len(matches) < 2 {
-		return "", fmt.Errorf("could not find title tag in HTML")
-	}
-
-	name := strings.TrimSpace(matches[1])
-	if name == "" {
-		return "", fmt.Errorf("title tag is empty")
-	}
-
-	return name, nil
+	return payload.Name, nil
 }
 
 // ensureCacheValid checks if cache needs refresh and updates if necessary
@@ -138,7 +128,7 @@ func (w *WESPAIntegration) ensureCacheValid() error {
 // refreshCache downloads and parses the WESPA database
 func (w *WESPAIntegration) refreshCache() error {
 	// Download the database file
-	resp, err := w.HTTPClient.Get(w.BaseURL + "/latest.txt")
+	resp, err := w.HTTPClient.Get(w.RatingsURL)
 	if err != nil {
 		return fmt.Errorf("failed to download WESPA database: %w", err)
 	}
