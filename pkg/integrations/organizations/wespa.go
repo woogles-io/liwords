@@ -127,8 +127,13 @@ func (w *WESPAIntegration) ensureCacheValid() error {
 
 // refreshCache downloads and parses the WESPA database
 func (w *WESPAIntegration) refreshCache() error {
-	// Download the database file
-	resp, err := w.HTTPClient.Get(w.RatingsURL)
+	req, err := http.NewRequest("GET", w.RatingsURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "woogles.io")
+
+	resp, err := w.HTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download WESPA database: %w", err)
 	}
