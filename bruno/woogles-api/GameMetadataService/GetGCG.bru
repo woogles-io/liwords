@@ -1,0 +1,21 @@
+meta {
+  name: GetGCG
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/game_service.GameMetadataService/GetGCG
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "game_id": "S8ii2SMWaLeBJZrWhrGCxY"
+  }
+}
+
+docs {
+  Only used for non-annotated games.
+}
