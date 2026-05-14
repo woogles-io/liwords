@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math"
+	"slices"
 
 	"golang.org/x/exp/rand"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -11,7 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/matching"
+	"github.com/woogles-io/liwords/pkg/pair"
 	copdatapkg "github.com/woogles-io/liwords/pkg/pair/copdata"
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	"github.com/woogles-io/liwords/pkg/pair/verifyreq"
@@ -26,6 +29,16 @@ const (
 	byePlayerName                        = "BYE"
 	controlLossLowestContenderOnlyRounds = 4
 )
+
+var pairingMethodMap = map[pb.PairMethod]pb.PairingMethod{
+	pb.PairMethod_PAIR_RANDOM:                  pb.PairingMethod_RANDOM,
+	pb.PairMethod_PAIR_ROUND_ROBIN:             pb.PairingMethod_ROUND_ROBIN,
+	pb.PairMethod_PAIR_KING_OF_THE_HILL:        pb.PairingMethod_KING_OF_THE_HILL,
+	pb.PairMethod_PAIR_FACTOR:                  pb.PairingMethod_FACTOR,
+	pb.PairMethod_PAIR_INITIAL_FONTES:          pb.PairingMethod_INITIAL_FONTES,
+	pb.PairMethod_PAIR_TEAM_ROUND_ROBIN:        pb.PairingMethod_TEAM_ROUND_ROBIN,
+	pb.PairMethod_PAIR_INTERLEAVED_ROUND_ROBIN: pb.PairingMethod_INTERLEAVED_ROUND_ROBIN,
+}
 
 type policyArgs struct {
 	req                      *pb.PairRequest
@@ -487,6 +500,19 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 		return resp
 	}
 
+	switch req.PairMethod {
+	case pb.PairMethod_PAIR_SWISS:
+		return swissPair(req, logsb)
+	case pb.PairMethod_COP:
+		return copMethodPair(req, logsb)
+	case pb.PairMethod_PAIR_AUTO:
+		return autoPair(req, logsb)
+	default:
+		return simplePair(req, logsb)
+	}
+}
+
+func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	copdata, pairErr := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
 
 	if pairErr != pb.PairError_SUCCESS {
@@ -507,6 +533,462 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 		Pairings:          pairings,
 		GibsonizedPlayers: copdata.GibsonizedPlayers,
 	}
+}
+
+// extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
+// (where oppIdx == playerIdx means bye), the count of forced byes, and the prepaired round index.
+// Players not in this map are unpaired and should be assigned by the pairing method.
+func extractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
+	prepairedPlayerIndexes := map[int]int{}
+	numForcedByes := 0
+	prepairedRoundIdx := -1
+	numDivPairings := len(req.DivisionPairings)
+	removedPlayersSet := map[int]bool{}
+	for _, idx := range req.RemovedPlayers {
+		removedPlayersSet[int(idx)] = true
+	}
+	if numDivPairings > 0 {
+		if slices.Contains(req.DivisionPairings[numDivPairings-1].Pairings, -1) {
+			prepairedRoundIdx = numDivPairings - 1
+		}
+		if prepairedRoundIdx >= 0 {
+			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
+				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] {
+					continue
+				}
+				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
+				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
+				if playerIdx == int(oppIdx) {
+					numForcedByes++
+				}
+			}
+		}
+	}
+	return prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx
+}
+
+// computePairingCounts returns a map from pairing key to number of times that pair has played,
+// counting only complete rounds (excluding any partially-prepaired last round).
+func computePairingCounts(req *pb.PairRequest) map[string]int {
+	counts := map[string]int{}
+	numDivPairings := len(req.DivisionPairings)
+	numComplete := numDivPairings
+	if numComplete > 0 && slices.Contains(req.DivisionPairings[numComplete-1].Pairings, -1) {
+		numComplete--
+	}
+	for roundIdx := range numComplete {
+		for playerIdx, oppIdx := range req.DivisionPairings[roundIdx].Pairings {
+			if int(oppIdx) > playerIdx {
+				continue
+			}
+			key := copdatapkg.GetPairingKey(playerIdx, int(oppIdx))
+			counts[key]++
+		}
+	}
+	return counts
+}
+
+// simplePairOnce runs a single round of a non-COP pairing method and returns
+// the full allPlayers-length pairings slice (bye represented as self-pairing).
+func simplePairOnce(req *pb.PairRequest, pairingMethod pb.PairingMethod, poolMembers []*entity.PoolMember, playerOrder []int, roundIdx int32, seed uint64) ([]int32, error) {
+	roundControls := &pb.RoundControl{
+		PairingMethod:               pairingMethod,
+		Round:                       roundIdx,
+		Factor:                      req.Factor,
+		InitialFontes:               req.InitialNonperfRounds,
+		GamesPerRound:               1,
+		MaxRepeats:                  1,
+		AllowOverMaxRepeats:         true,
+		RepeatRelativeWeight:        1,
+		WinDifferenceRelativeWeight: 1,
+	}
+	m := &entity.UnpairedPoolMembers{
+		PoolMembers:   poolMembers,
+		RoundControls: roundControls,
+		Repeats:       map[string]int{},
+		Seed:          seed,
+	}
+	poolPairings, err := pair.Pair(m)
+	if err != nil {
+		return nil, err
+	}
+	roundPairings := make([]int32, req.AllPlayers)
+	for i := range roundPairings {
+		roundPairings[i] = -1
+	}
+	for poolIdx, poolOppIdx := range poolPairings {
+		pi := playerOrder[poolIdx]
+		if poolOppIdx == -1 {
+			roundPairings[pi] = int32(pi)
+		} else {
+			roundPairings[pi] = int32(playerOrder[poolOppIdx])
+		}
+	}
+	return roundPairings, nil
+}
+
+// simplePair handles pairing methods that delegate entirely to pkg/pair/pair.go:
+// Random, Round Robin, King of the Hill, Factor, Initial Fontes, Team Round Robin,
+// Interleaved Round Robin.
+func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+	removedPlayersSet := map[int]bool{}
+	for _, idx := range req.RemovedPlayers {
+		removedPlayersSet[int(idx)] = true
+	}
+
+	// For rank-dependent methods we need standings to get the correct player order.
+	needsRankOrder := req.PairMethod == pb.PairMethod_PAIR_KING_OF_THE_HILL ||
+		req.PairMethod == pb.PairMethod_PAIR_FACTOR
+
+	// Build the ordered list of valid players.
+	playerOrder := []int{}
+	if needsRankOrder {
+		standings := pkgstnd.CreateInitialStandings(req)
+		standings.Sort()
+		numPlayers := standings.GetNumPlayers()
+		for rankIdx := range numPlayers {
+			pi := standings.GetPlayerIndex(rankIdx)
+			if !removedPlayersSet[pi] {
+				playerOrder = append(playerOrder, pi)
+			}
+		}
+	} else {
+		for pi := 0; pi < int(req.AllPlayers); pi++ {
+			if !removedPlayersSet[pi] {
+				playerOrder = append(playerOrder, pi)
+			}
+		}
+	}
+
+	pairingMethod, ok := pairingMethodMap[req.PairMethod]
+	if !ok {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_UNSUPPORTED_PAIR_METHOD,
+			ErrorMessage: fmt.Sprintf("unsupported pair method: %v", req.PairMethod),
+		}
+	}
+
+	poolMembers := make([]*entity.PoolMember, len(playerOrder))
+	for i, pi := range playerOrder {
+		poolMembers[i] = &entity.PoolMember{
+			Id: req.PlayerNames[pi],
+		}
+	}
+
+	allPlayerPairings, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, req.Round, uint64(req.Seed))
+	if err != nil {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_SIMPLE_PAIRING_FAILED,
+			ErrorMessage: err.Error(),
+		}
+	}
+
+	logsb.WriteString(fmt.Sprintf("Method: %s\n", req.PairMethod))
+	logsb.WriteString(fmt.Sprintf("Seed: %d\n", req.Seed))
+	logsb.WriteString(fmt.Sprintf("Round control: PairingMethod=%s Round=%d Factor=%d InitialNonperf=%d\n",
+		pairingMethod,
+		req.Round,
+		req.Factor,
+		req.InitialNonperfRounds,
+	))
+	logsb.WriteString(fmt.Sprintf("Pool members (%d):\n", len(poolMembers)))
+	for i, pm := range poolMembers {
+		logsb.WriteString(fmt.Sprintf("  [%d] %s\n", i, pm.Id))
+	}
+
+	// Compute multiround pairings.
+	// If the tournament has existing pairings, multiround is just the current round's pairings.
+	// If no pairings exist yet and this is a non-rank-order method, generate N rounds ahead.
+	var multiroundPairings []int32
+	if len(req.DivisionPairings) > 0 {
+		multiroundPairings = append(multiroundPairings, allPlayerPairings...)
+	} else if !needsRankOrder {
+		N := max(int(req.InitialNonperfRounds), 1)
+		multiroundPairings = append(multiroundPairings, allPlayerPairings...)
+		for roundIdx := 1; roundIdx < N; roundIdx++ {
+			rp, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, int32(roundIdx), uint64(req.Seed)+uint64(roundIdx))
+			if err != nil {
+				return &pb.PairResponse{
+					ErrorCode:    pb.PairError_SIMPLE_PAIRING_FAILED,
+					ErrorMessage: err.Error(),
+				}
+			}
+			multiroundPairings = append(multiroundPairings, rp...)
+		}
+	}
+
+	return &pb.PairResponse{
+		ErrorCode:          pb.PairError_SUCCESS,
+		Pairings:           allPlayerPairings,
+		MultiroundPairings: multiroundPairings,
+	}
+}
+
+// swissPair implements a minimum weight matching Swiss pairing where:
+//   - prepaired player requests are fulfilled
+//   - repeats and bye repeats get a major penalty
+//   - win differences of WD get a penalty of WD * minor penalty
+//   - spread diff is a bonus when both players have the same wins, otherwise a penalty
+func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+	prepairedPlayerIndexes, _, _ := extractPrepairedPlayers(req)
+	pairingCounts := computePairingCounts(req)
+
+	removedPlayersSet := map[int]bool{}
+	for _, idx := range req.RemovedPlayers {
+		removedPlayersSet[int(idx)] = true
+	}
+
+	standings := pkgstnd.CreateInitialStandings(req)
+	standings.Sort()
+	numStandingsPlayers := standings.GetNumPlayers()
+
+	// Build a player-index-to-standings-rank lookup for O(1) access.
+	playerToRankIdx := make(map[int]int, numStandingsPlayers)
+	for rankIdx := range numStandingsPlayers {
+		playerToRankIdx[standings.GetPlayerIndex(rankIdx)] = rankIdx
+	}
+
+	// Build rank-ordered list of unpaired valid players.
+	playerOrder := []int{}
+	for rankIdx := range numStandingsPlayers {
+		pi := standings.GetPlayerIndex(rankIdx)
+		if !removedPlayersSet[pi] {
+			if _, isPrepaired := prepairedPlayerIndexes[pi]; !isPrepaired {
+				playerOrder = append(playerOrder, pi)
+			}
+		}
+	}
+
+	poolSize := len(playerOrder)
+	addBye := poolSize%2 == 1
+
+	type playerRecord struct {
+		wins   int // wins*2 + ties, so wins count 2 and ties count 1
+		spread int
+	}
+	records := make([]playerRecord, poolSize)
+	poolPlayerData := make([][]string, poolSize)
+	for poolIdx, pi := range playerOrder {
+		rankIdx := playerToRankIdx[pi]
+		poolPlayerData[poolIdx] = standings.StringDataForPlayer(req, rankIdx)
+		records[poolIdx] = playerRecord{
+			wins:   standings.GetPlayerWinsIntTimesTwo(rankIdx),
+			spread: standings.GetPlayerSpread(rankIdx),
+		}
+	}
+
+	// The bye is appended as an extra node at index byeIdx when addBye is true.
+	byeIdx := poolSize
+	numPoolNodes := poolSize
+	if addBye {
+		numPoolNodes++
+	}
+
+	swissWeightHeader := []string{"Player", "W", "S", "Player", "W", "S", "*", "PTP", "Total", "RP", "WD", "SD", "BR"}
+	pairingDetails := [][]string{}
+	edgeToDetailIdx := map[string]int{}
+
+	edges := []*matching.Edge{}
+	for poolIdxI := 0; poolIdxI < numPoolNodes; poolIdxI++ {
+		for poolIdxJ := poolIdxI + 1; poolIdxJ < numPoolNodes; poolIdxJ++ {
+			var repeatPenalty, winDiffPenalty, spreadComp, byeRepeatPenalty int64
+
+			iIsBye := addBye && poolIdxI == byeIdx
+			jIsBye := addBye && poolIdxJ == byeIdx
+
+			var iData, jData []string
+			if iIsBye {
+				iData = []string{byePlayerName, "", ""}
+			} else {
+				iData = getPlayerRecordStrArray(poolPlayerData[poolIdxI])
+			}
+			if jIsBye {
+				jData = []string{byePlayerName, "", ""}
+			} else {
+				jData = getPlayerRecordStrArray(poolPlayerData[poolIdxJ])
+			}
+
+			var timesPlayed int
+			if !iIsBye && !jIsBye {
+				pi := playerOrder[poolIdxI]
+				pj := playerOrder[poolIdxJ]
+
+				key := copdatapkg.GetPairingKey(pi, pj)
+				timesPlayed = pairingCounts[key]
+				if timesPlayed > 0 {
+					repeatPenalty = majorPenalty
+				}
+
+				winDiff := records[poolIdxI].wins - records[poolIdxJ].wins
+				if winDiff < 0 {
+					winDiff = -winDiff
+				}
+				winDiffPenalty = int64(winDiff) * int64(minorPenalty) / 2
+
+				spreadDiff := records[poolIdxI].spread - records[poolIdxJ].spread
+				if spreadDiff < 0 {
+					spreadDiff = -spreadDiff
+				}
+				// Spread diff is a bonus (reduces weight) when wins are equal,
+				// encouraging wide spread gaps, and a penalty otherwise.
+				if records[poolIdxI].wins == records[poolIdxJ].wins {
+					spreadComp = -int64(spreadDiff)
+				} else {
+					spreadComp = int64(spreadDiff)
+				}
+			} else {
+				var pi int
+				if iIsBye {
+					pi = playerOrder[poolIdxJ]
+				} else {
+					pi = playerOrder[poolIdxI]
+				}
+				byeKey := copdatapkg.GetPairingKey(pi, pi)
+				timesPlayed = pairingCounts[byeKey]
+				if timesPlayed > 0 {
+					byeRepeatPenalty = majorPenalty * int64(timesPlayed)
+				}
+			}
+
+			totalWeight := repeatPenalty + winDiffPenalty + spreadComp + byeRepeatPenalty
+
+			row := make([]string, 0, len(swissWeightHeader))
+			row = append(row, iData...)
+			row = append(row, jData...)
+			row = append(row, "")                                  // * placeholder
+			row = append(row, fmt.Sprintf("%d", timesPlayed))      // PTP
+			row = append(row, fmt.Sprintf("%d", totalWeight))      // Total
+			row = append(row, fmt.Sprintf("%d", repeatPenalty))    // RP
+			row = append(row, fmt.Sprintf("%d", winDiffPenalty))   // WD
+			row = append(row, fmt.Sprintf("%d", spreadComp))       // SD
+			row = append(row, fmt.Sprintf("%d", byeRepeatPenalty)) // BR
+
+			edgeKey := getRankPairingKey(poolIdxI, poolIdxJ)
+			edgeToDetailIdx[edgeKey] = len(pairingDetails)
+			pairingDetails = append(pairingDetails, row)
+
+			edges = append(edges, matching.NewEdge(poolIdxI, poolIdxJ, totalWeight))
+		}
+		if poolIdxI < numPoolNodes-2 {
+			pairingDetails = append(pairingDetails, make([]string, len(swissWeightHeader)))
+		}
+	}
+
+	poolPairings, _, err := matching.MinWeightMatching(edges, true)
+	if err != nil {
+		return &pb.PairResponse{
+			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
+			ErrorMessage: fmt.Sprintf("swiss min weight matching error: %s", err.Error()),
+		}
+	}
+
+	if addBye {
+		poolPairings = poolPairings[:len(poolPairings)-1]
+	}
+
+	// Mark selected pairings in the weight table.
+	for poolIdx, poolOppIdx := range poolPairings {
+		if poolOppIdx < poolIdx {
+			continue
+		}
+		edgeKey := getRankPairingKey(poolIdx, poolOppIdx)
+		if detailIdx, ok := edgeToDetailIdx[edgeKey]; ok {
+			pairingDetails[detailIdx][6] = "*"
+		}
+	}
+
+	copdatapkg.WriteStringDataToLog("Swiss Pairing Weights", swissWeightHeader, pairingDetails, logsb)
+
+	allPlayerPairings := make([]int32, req.AllPlayers)
+	for idx := range allPlayerPairings {
+		allPlayerPairings[idx] = -1
+	}
+
+	for poolIdx, poolOppIdx := range poolPairings {
+		if poolIdx >= len(playerOrder) {
+			break
+		}
+		pi := playerOrder[poolIdx]
+		if poolOppIdx < 0 || (addBye && poolOppIdx == byeIdx) {
+			allPlayerPairings[pi] = int32(pi) // bye
+		} else if poolOppIdx < len(playerOrder) {
+			pj := playerOrder[poolOppIdx]
+			allPlayerPairings[pi] = int32(pj)
+		}
+	}
+
+	// Fill in prepaired players.
+	for pi, oppIdx := range prepairedPlayerIndexes {
+		allPlayerPairings[pi] = int32(oppIdx)
+	}
+
+	logsb.WriteString("Method: SWISS\n")
+	return &pb.PairResponse{
+		ErrorCode: pb.PairError_SUCCESS,
+		Pairings:  allPlayerPairings,
+	}
+}
+
+// autoPair selects the most appropriate pairing method based on the tournament state.
+//
+// If there are at least numValidPlayers-1 total rounds (enough for a full RR cycle):
+//   - Use Round Robin for all rounds, cycling every (numValidPlayers-1) rounds.
+//
+// Otherwise:
+//   - Rounds 0–2: Initial Fontes
+//   - Rounds 3 to numRounds/2-1: Swiss
+//   - Round numRounds/2 onward: COP
+func autoPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+	origMethod := req.PairMethod
+	origRound := req.Round
+	origInitialNonperfRounds := req.InitialNonperfRounds
+	resp := autoPairInner(req, logsb)
+	restoreAutoPairReqFields(req, origMethod, origRound, origInitialNonperfRounds)
+	return resp
+}
+
+func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
+	numValidPlayers := int(req.ValidPlayers)
+	numRounds := int(req.Rounds)
+	currentRound := len(req.DivisionPairings)
+	rrCycleLen := max(numValidPlayers-1, 1)
+
+	if numRounds >= numValidPlayers-1 {
+		req.PairMethod = pb.PairMethod_PAIR_ROUND_ROBIN
+		req.Round = int32(currentRound % rrCycleLen)
+		if currentRound == 0 {
+			req.InitialNonperfRounds = int32(numRounds)
+		}
+		fmt.Fprintf(logsb, "Auto: R(%d) >= P(%d)-1, using Round Robin (cycle round %d)\n", numRounds, numValidPlayers, req.Round)
+		return simplePair(req, logsb)
+	}
+
+	if currentRound < 3 {
+		req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+		req.Round = int32(currentRound)
+		if currentRound == 0 {
+			req.InitialNonperfRounds = int32(min(3, numRounds))
+		}
+		fmt.Fprintf(logsb, "Auto: round %d < 3, using Initial Fontes\n", currentRound)
+		return simplePair(req, logsb)
+	}
+
+	halfway := numRounds / 2
+	if currentRound < halfway {
+		req.PairMethod = pb.PairMethod_PAIR_SWISS
+		fmt.Fprintf(logsb, "Auto: round %d < halfway (%d), using Swiss\n", currentRound, halfway)
+		return swissPair(req, logsb)
+	}
+
+	req.PairMethod = pb.PairMethod_COP
+	fmt.Fprintf(logsb, "Auto: round %d >= halfway (%d), using COP\n", currentRound, halfway)
+	return copMethodPair(req, logsb)
+}
+
+func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, origRound int32, origInitialNonperfRounds int32) {
+	req.PairMethod = origMethod
+	req.Round = origRound
+	req.InitialNonperfRounds = origInitialNonperfRounds
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
