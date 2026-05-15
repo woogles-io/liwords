@@ -275,6 +275,7 @@ func main() {
 
 	if bucket := os.Getenv("GAMEHISTORY_UPLOAD_BUCKET"); bucket != "" {
 		stores.GameHistoryArchiver = gamestore.NewHistoryArchiver(bucket, s3Client, stores.GameStore)
+		stores.GameStore.SetHistoryFetcher(stores.GameHistoryArchiver)
 	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,

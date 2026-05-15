@@ -38,6 +38,12 @@ const (
 	MaxRecentGames = 1000
 )
 
+// HistoryFetcher reads a game history from an external store (e.g. S3).
+// Satisfied by *HistoryArchiver; nil-safe callers check before use.
+type HistoryFetcher interface {
+	Fetch(ctx context.Context, s3Key string) (*macondopb.GameHistory, error)
+}
+
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
 	cfg     *config.Config
@@ -53,6 +59,17 @@ type DBStore struct {
 
 	// timerModuleCreator creates timer modules for games loaded from the database
 	timerModuleCreator TimerModuleCreator
+
+	// historyFetcher reads archived game histories from S3.
+	// Set via SetHistoryFetcher after construction (needs the S3 client from main).
+	// Nil when running without S3 (tests, local dev without a bucket).
+	historyFetcher HistoryFetcher
+}
+
+// SetHistoryFetcher wires the S3-backed history reader into the store.
+// Call once after NewDBStore, before any requests are served.
+func (s *DBStore) SetHistoryFetcher(f HistoryFetcher) {
+	s.historyFetcher = f
 }
 
 // NewDBStore creates a new DB store for games.
@@ -157,15 +174,36 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, fmt.Errorf("annotated game %s should be accessed via GetDocument, not Get", id)
 	}
 
-	// Then unmarshal the history and start a game from it.
-	_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
-		trace.WithAttributes(
-			attribute.Int("history.size_bytes", len(g.History)),
-		),
-	)
-	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(g.History, hist)
-	unmarshalSpan.End()
+	// Load history: prefer S3 (cheaper, avoids bytea wire transfer) when available.
+	var hist *macondopb.GameHistory
+	s3Key := g.HistoryS3Key.String
+	if s3Key != "" && s3Key != "0" && g.HistoryS3Key.Valid && s.historyFetcher != nil {
+		span.SetAttributes(attribute.String("game.load.source", "s3"))
+		hist, err = s.historyFetcher.Fetch(ctx, s3Key)
+		if err != nil {
+			// Fall back to bytea — S3 may be temporarily unavailable.
+			log.Warn().Err(err).Str("gid", id).Str("s3key", s3Key).
+				Msg("s3-fetch-failed, falling back to bytea")
+			hist = nil
+		} else {
+			log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("game-loaded-from-s3")
+		}
+	} else {
+		log.Debug().Str("gid", id).Bool("s3keyValid", g.HistoryS3Key.Valid).Bool("fetcherSet", s.historyFetcher != nil).Str("s3key", s3Key).Msg("game-load-s3-skipped")
+	}
+
+	if hist == nil {
+		span.SetAttributes(attribute.String("game.load.source", "bytea"))
+		_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
+			trace.WithAttributes(
+				attribute.Int("history.size_bytes", len(g.History)),
+			),
+		)
+		hist = &macondopb.GameHistory{}
+		err = proto.Unmarshal(g.History, hist)
+		unmarshalSpan.End()
+	}
+
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
@@ -1335,16 +1373,31 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	)
 	defer span.End()
 
-	bts, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
+	row, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
 	if err != nil {
 		span.RecordError(err)
 		log.Err(err).Msg("error-get-history")
 		return nil, err
 	}
 
+	// Prefer S3 when available — same routing as Get().
+	s3Key := row.HistoryS3Key.String
+	if s3Key != "" && row.HistoryS3Key.Valid && s.historyFetcher != nil {
+		span.SetAttributes(attribute.String("game.load.source", "s3"))
+		hist, fetchErr := s.historyFetcher.Fetch(ctx, s3Key)
+		if fetchErr != nil {
+			log.Warn().Err(fetchErr).Str("gid", id).Str("s3key", s3Key).
+				Msg("s3-fetch-failed, falling back to bytea")
+		} else {
+			span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
+			log.Debug().Interface("hist", hist).Msg("got-history-s3")
+			return hist, nil
+		}
+	}
+
+	span.SetAttributes(attribute.String("game.load.source", "bytea"))
 	hist := &macondopb.GameHistory{}
-	err = proto.Unmarshal(bts, hist)
-	if err != nil {
+	if err = proto.Unmarshal(row.History, hist); err != nil {
 		span.RecordError(err)
 		return nil, err
 	}
