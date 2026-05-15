@@ -640,11 +640,12 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	needsRankOrder := req.PairMethod == pb.PairMethod_PAIR_KING_OF_THE_HILL ||
 		req.PairMethod == pb.PairMethod_PAIR_FACTOR
 
+	standings := pkgstnd.CreateInitialStandings(req)
+	standings.Sort()
+
 	// Build the ordered list of valid players.
 	playerOrder := []int{}
 	if needsRankOrder {
-		standings := pkgstnd.CreateInitialStandings(req)
-		standings.Sort()
 		numPlayers := standings.GetNumPlayers()
 		for rankIdx := range numPlayers {
 			pi := standings.GetPlayerIndex(rankIdx)
@@ -683,6 +684,9 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 		}
 	}
 
+	standingsHeader := []string{"Rank", "Num", "Name", "Wins", "Spr"}
+	copdatapkg.WriteStringDataToLog("Initial Standings", standingsHeader, standings.StringData(req), logsb)
+
 	logsb.WriteString(fmt.Sprintf("Method: %s\n", req.PairMethod))
 	logsb.WriteString(fmt.Sprintf("Seed: %d\n", req.Seed))
 	logsb.WriteString(fmt.Sprintf("Round control: PairingMethod=%s Round=%d Factor=%d InitialNonperf=%d\n",
@@ -695,6 +699,41 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	for i, pm := range poolMembers {
 		logsb.WriteString(fmt.Sprintf("  [%d] %s\n", i, pm.Id))
 	}
+
+	// Log the pairings array (player i plays allPlayerPairings[i]).
+	logsb.WriteString("Pairings: [")
+	for i, opp := range allPlayerPairings {
+		if i > 0 {
+			logsb.WriteString(" ")
+		}
+		logsb.WriteString(fmt.Sprintf("%d", opp))
+	}
+	logsb.WriteString("]\n")
+
+	// Log pairings by standings rank with player records.
+	numStandingsPlayers := standings.GetNumPlayers()
+	playerIndexToRankIdx := make(map[int]int, numStandingsPlayers)
+	divisionPlayerData := make([][]string, numStandingsPlayers)
+	for rankIdx := range numStandingsPlayers {
+		pi := standings.GetPlayerIndex(rankIdx)
+		playerIndexToRankIdx[pi] = rankIdx
+		divisionPlayerData[rankIdx] = standings.StringDataForPlayer(req, rankIdx)
+	}
+	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
+	pairingsLogMx := [][]string{}
+	for rankIdx := range numStandingsPlayers {
+		pi := standings.GetPlayerIndex(rankIdx)
+		opp := int(allPlayerPairings[pi])
+		if opp < 0 {
+			continue
+		}
+		oppRankIdx, oppInStandings := playerIndexToRankIdx[opp]
+		if !oppInStandings || oppRankIdx < rankIdx {
+			continue
+		}
+		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(divisionPlayerData, rankIdx, oppRankIdx))
+	}
+	copdatapkg.WriteStringDataToLog("Final Pairings", matchupHeader, pairingsLogMx, logsb)
 
 	// Compute multiround pairings.
 	// If the tournament has existing pairings, multiround is just the current round's pairings.
@@ -816,14 +855,14 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 				key := copdatapkg.GetPairingKey(pi, pj)
 				timesPlayed = pairingCounts[key]
 				if timesPlayed > 0 {
-					repeatPenalty = majorPenalty
+					repeatPenalty = majorPenalty * int64(timesPlayed)
 				}
 
 				winDiff := records[poolIdxI].wins - records[poolIdxJ].wins
 				if winDiff < 0 {
 					winDiff = -winDiff
 				}
-				winDiffPenalty = int64(winDiff) * int64(minorPenalty) / 2
+				winDiffPenalty = int64(winDiff) * int64(winDiff) * int64(minorPenalty) / 2
 
 				spreadDiff := records[poolIdxI].spread - records[poolIdxJ].spread
 				if spreadDiff < 0 {
@@ -921,6 +960,36 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	for pi, oppIdx := range prepairedPlayerIndexes {
 		allPlayerPairings[pi] = int32(oppIdx)
 	}
+
+	// Log the pairings array (player i plays allPlayerPairings[i]).
+	logsb.WriteString("Pairings: [")
+	for i, opp := range allPlayerPairings {
+		if i > 0 {
+			logsb.WriteString(" ")
+		}
+		logsb.WriteString(fmt.Sprintf("%d", opp))
+	}
+	logsb.WriteString("]\n")
+
+	// Log pairings by standings rank with player records.
+	playerIndexToPoolIdx := make(map[int]int, len(playerOrder))
+	for poolIdx, pi := range playerOrder {
+		playerIndexToPoolIdx[pi] = poolIdx
+	}
+	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
+	pairingsLogMx := [][]string{}
+	for poolIdx, pi := range playerOrder {
+		opp := int(allPlayerPairings[pi])
+		if opp < 0 {
+			continue
+		}
+		oppPoolIdx, oppInPool := playerIndexToPoolIdx[opp]
+		if !oppInPool || oppPoolIdx < poolIdx {
+			continue
+		}
+		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(poolPlayerData, poolIdx, oppPoolIdx))
+	}
+	copdatapkg.WriteStringDataToLog("Final Swiss Pairings", matchupHeader, pairingsLogMx, logsb)
 
 	logsb.WriteString("Method: SWISS\n")
 	return &pb.PairResponse{

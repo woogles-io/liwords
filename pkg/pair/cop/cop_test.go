@@ -1177,6 +1177,7 @@ func TestSwiss(t *testing.T) {
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 4 450 0 350 5 300 1 300 3 450")
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 500 2 500 1 300 4 500 3 200 0 200")
 	resp = cop.COPPair(req)
+	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 	// M1 selected: P0 plays P3, P1 plays P5, P2 plays P4.
