@@ -18,6 +18,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -615,6 +619,16 @@ func PlayMove(ctx context.Context,
 
 // HandleEvent handles a gameplay event from the socket
 func HandleEvent(ctx context.Context, stores *stores.Stores, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
+	tracer := otel.Tracer("gameplay")
+	ctx, span := tracer.Start(ctx, "gameplay.HandleEvent",
+		trace.WithAttributes(
+			attribute.String("game.id", cge.GameId),
+			attribute.String("user.id", userID),
+			attribute.String("event.type", cge.Type.String()),
+		),
+	)
+	defer span.End()
+
 	// Lock at the cache level first. This is especially important for correspondence
 	// games which bypass the in-memory cache - each Get() returns a new object, so
 	// the game's internal Lock() would lock different mutexes. The cache-level lock
@@ -754,6 +768,15 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
+	tracer := otel.Tracer("gameplay")
+	ctx, span := tracer.Start(ctx, "gameplay.TimedOut",
+		trace.WithAttributes(
+			attribute.String("game.id", gameID),
+			attribute.String("user.id", timedout),
+		),
+	)
+	defer span.End()
+
 	log.Debug().Str("timedout", timedout).Msg("got-timed-out")
 
 	// Lock at the cache level first for correspondence game safety

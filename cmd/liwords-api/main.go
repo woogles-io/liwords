@@ -200,6 +200,10 @@ func main() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
 
+	// Register runtime memory/GC observable gauges so we can see heap and GC
+	// pressure in CloudWatch Logs Insights (metrics go to stdout via stdoutmetric).
+	registerRuntimeMetrics()
+
 	redisPool := newPool(cfg.RedisURL)
 	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
 	if err != nil {

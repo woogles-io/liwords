@@ -1329,8 +1329,15 @@ func (s *DBStore) CachedCount(ctx context.Context) int {
 }
 
 func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+	tracer := otel.Tracer("game-store")
+	ctx, span := tracer.Start(ctx, "game.GetHistory",
+		trace.WithAttributes(attribute.String("game.id", id)),
+	)
+	defer span.End()
+
 	bts, err := s.queries.GetHistory(ctx, common.ToPGTypeText(id))
 	if err != nil {
+		span.RecordError(err)
 		log.Err(err).Msg("error-get-history")
 		return nil, err
 	}
@@ -1338,8 +1345,10 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 	hist := &macondopb.GameHistory{}
 	err = proto.Unmarshal(bts, hist)
 	if err != nil {
+		span.RecordError(err)
 		return nil, err
 	}
+	span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
 	log.Debug().Interface("hist", hist).Msg("got-history")
 	return hist, nil
 }
