@@ -2034,7 +2034,7 @@ p.rune {
   .ant-card-body {
     padding: 0;
 
-    & > div {
+    & > div:not(.two-col-header) {
       min-height: 300px;
       max-height: 300px;
       padding: 8px 0px 16px;
@@ -2367,7 +2367,7 @@ p.rune {
       }
     }
 
-    &.no-comments:not(.inline-comment-bubble) {
+    &.no-comments:not(.inline-comment-bubble):not(.two-col-bubble) {
       @include colorModed() {
         color: m($gray-medium);
         background-color: transparent;
@@ -2387,38 +2387,209 @@ p.rune {
     }
 
     &.has-comments {
-      // Use proper color variables - different ones for light vs dark mode
-      .mode--default & {
-        background-color: map.get(
-          map.get($modes, default),
-          color-primary-dark
-        ); // #11659e in light mode
-        color: white;
-      }
-
-      .mode--dark & {
-        background-color: map.get(
-          map.get($modes, dark),
-          color-primary-middle
-        ); // #2786cb in dark mode
-        color: white;
-      }
-
-      &:hover {
-        @include colorModed() {
-          background-color: m($primary-dark);
-        }
+      @include colorModed() {
+        color: m($primary-dark);
+        background: transparent;
+        border: none;
       }
 
       .comment-icon {
         font-size: 11px;
       }
+    }
+  }
 
-      .comment-count {
-        font-weight: 600;
-        min-width: 12px;
-        text-align: center;
-        font-size: 10px;
+  &.two-col-active {
+    .ant-card-body > div:not(.two-col-header) {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+
+  .score-card-extra {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  // Two-column scorecard view
+  .two-col-scorecard {
+    @include type-monospace;
+    font-size: 13px;
+    position: relative;
+
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+
+    &:not(.two-col-scorecard-empty)::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      @include colorModed() {
+        background-color: m($gray-subtle);
+      }
+    }
+
+    .two-col-opening-state {
+      padding: 16px 16px;
+      font-weight: 400;
+    }
+  }
+
+  .two-col-header {
+    display: flex;
+    padding: 8px 0;
+
+    @include colorModed() {
+      border-bottom: 1px solid m($gray-subtle);
+      color: m($gray-extreme);
+    }
+
+    .two-col-player-name {
+      flex: 1;
+      min-width: 0;
+      padding-left: 16px;
+      @include type-default;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: normal;
+      letter-spacing: 0;
+      text-transform: none;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .two-col-row {
+    display: flex;
+
+    @include colorModed() {
+      border-bottom: 1px solid m($gray-subtle);
+    }
+
+    &:last-of-type {
+      border-bottom: none;
+    }
+  }
+
+  .two-col-col {
+    flex: 1;
+    min-width: 0;
+
+    &:first-child {
+      border-right: none;
+    }
+  }
+
+  .two-col-turn {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "coord word scores"
+      "comment rack scores";
+    padding: 8px 16px;
+    column-gap: 4px;
+    min-height: 38px;
+
+    &.two-col-turn-empty {
+      min-height: 38px;
+    }
+
+    &.two-col-turn-selected {
+      @include colorModed() {
+        background: m($primary-light);
+      }
+    }
+
+    .two-col-coord {
+      grid-area: coord;
+      font-weight: 800;
+      line-height: 1.2em;
+    }
+
+    .two-col-word {
+      grid-area: word;
+      font-weight: 800;
+      line-height: 1.2em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+
+      &.two-col-word-seekable {
+        cursor: pointer;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+
+      .challenge.successful {
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+
+      .challenge.unsuccessful {
+        @include colorModed() {
+          color: m($timer-dark);
+        }
+      }
+
+      .pass,
+      .exchanged,
+      .time-penalty {
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+    }
+
+    .two-col-comment-spot {
+      grid-area: comment;
+      display: flex;
+      align-items: center;
+    }
+
+    .two-col-rack {
+      grid-area: rack;
+      line-height: 1.2em;
+      min-width: 0;
+    }
+
+    .two-col-scores {
+      grid-area: scores;
+      text-align: right;
+      min-width: 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      .two-col-score {
+        line-height: 1.2em;
+      }
+
+      .two-col-cumulative {
+        font-weight: 800;
+        line-height: 1.2em;
+      }
+    }
+
+    .two-col-bubble {
+      padding: 0;
+      border-radius: 0;
+
+      &.no-comments {
+        @include colorModed() {
+          color: m($primary-dark);
+          background: transparent;
+          border: none;
+        }
       }
     }
   }
@@ -2928,7 +3099,7 @@ p.rune {
 
   .score-card {
     .ant-card-body {
-      & > div {
+      & > div:not(.two-col-header) {
         max-height: 140px;
         min-height: 140px;
       }
@@ -3205,7 +3376,7 @@ p.rune {
     .ant-card-body {
       padding: 0;
 
-      & > div {
+      & > div:not(.two-col-header) {
         min-height: 110px;
         max-height: 110px;
       }
@@ -3286,7 +3457,7 @@ p.rune {
     }
 
     .ant-card-body {
-      & > div {
+      & > div:not(.two-col-header) {
         max-height: 152px;
         min-height: 152px;
       }
@@ -3305,7 +3476,7 @@ p.rune {
 
   .score-card {
     .ant-card-body {
-      & > div {
+      & > div:not(.two-col-header) {
         max-height: 241px;
         min-height: 241px;
       }

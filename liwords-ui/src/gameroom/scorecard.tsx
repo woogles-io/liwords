@@ -6,7 +6,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Card, Tooltip } from "antd";
+import { Card, Dropdown, Tooltip } from "antd";
+import { Link } from "react-router";
 import {
   GameEvent,
   GameEvent_Type,
@@ -30,7 +31,10 @@ import { Analyzer } from "./analyzer";
 import { HeartFilled, HourglassOutlined } from "@ant-design/icons";
 import { PlayerInfo } from "../gen/api/proto/ipc/omgwords_pb";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
-import { useGameContextStoreContext } from "../store/store";
+import {
+  useExamineStoreContext,
+  useGameContextStoreContext,
+} from "../store/store";
 import { TurnCommentPreview } from "./TurnCommentPreview";
 import {
   Alphabet,
@@ -44,6 +48,8 @@ const { screenSizeDesktop, screenSizeLaptop, screenSizeTablet } = variables;
 type Props = {
   isExamining?: boolean;
   events: Array<GameEvent>;
+  allEvents?: Array<GameEvent>; // full game events, used for two-col view in examination mode
+  allBoard?: Board; // full final board, used for two-col view in examination mode
   board: Board;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerInfo>;
@@ -382,15 +388,109 @@ const ScorecardTurn = (props: turnProps) => {
   );
 };
 
+type ScorecardViewType = "single" | "two-col";
+const SCORECARD_VIEW_KEY = "scorecardView";
+
+type TwoColTurnProps = {
+  turn: Turn;
+  board: Board;
+  alphabet: Alphabet;
+  onSeek?: () => void;
+  isSelected?: boolean;
+  showComments?: boolean;
+  comments?: Array<GameComment>;
+  onOpenCommentsDrawer?: (turnIndex: number) => void;
+  turnIndex?: number;
+};
+
+const TwoColTurn = React.memo((props: TwoColTurnProps) => {
+  const { turn, board, alphabet, onSeek, isSelected } = props;
+  const evt = turn.events[0];
+
+  let coords = evt.position || "";
+  let play: React.ReactNode = displaySummary(evt, board, alphabet);
+  let score = `${evt.score}`;
+  let cumulative = evt.cumulative;
+
+  // Handle multi-event turns (challenges, etc.)
+  if (turn.events.length > 1) {
+    const evt1 = turn.events[1];
+    if (evt1.type === GameEvent_Type.PHONY_TILES_RETURNED) {
+      score = "0";
+      cumulative = evt1.cumulative;
+      play = <span className="challenge successful">Challenge!</span>;
+    } else {
+      for (let i = 1; i < turn.events.length; i++) {
+        switch (turn.events[i].type) {
+          case GameEvent_Type.CHALLENGE_BONUS:
+            score = `${score}+${turn.events[i].bonus}`;
+            break;
+          case GameEvent_Type.END_RACK_PTS:
+            score = `${score}+${turn.events[i].endRackPoints}`;
+            break;
+        }
+        cumulative = turn.events[i].cumulative;
+      }
+    }
+  }
+
+  const rack = sortStringRack(
+    turn.events.length > 1 &&
+      turn.events[1].type === GameEvent_Type.PHONY_TILES_RETURNED
+      ? ""
+      : evt.rack,
+    alphabet,
+  );
+
+  return (
+    <div
+      className={`two-col-turn${isSelected ? " two-col-turn-selected" : ""}`}
+    >
+      <div className="two-col-coord">{coords}</div>
+      <div
+        className={`two-col-word${onSeek ? " two-col-word-seekable" : ""}`}
+        onClick={onSeek}
+      >
+        {play}
+      </div>
+      <div className="two-col-scores">
+        <div className="two-col-score">{score}</div>
+        <div className="two-col-cumulative">{cumulative}</div>
+      </div>
+      <div className="two-col-comment-spot">
+        {props.showComments && (
+          <TurnCommentPreview
+            comments={props.comments ?? []}
+            onExpandComments={() =>
+              props.onOpenCommentsDrawer?.(props.turnIndex ?? 0)
+            }
+            className="two-col-bubble"
+          />
+        )}
+      </div>
+      <div className="two-col-rack">{rack}</div>
+    </div>
+  );
+});
+
 export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
   const [flipHidden, setFlipHidden] = useState(true);
   const [flipEnabled, setEnableFlip] = useState(isTablet());
+  const [scorecardView, setScorecardView] = useState<ScorecardViewType>(
+    () =>
+      (localStorage?.getItem(SCORECARD_VIEW_KEY) as ScorecardViewType) ||
+      "single",
+  );
   const notepadHasContent = useNotepadHasContent();
   // Autoscroll code removed - comments now use drawer
 
   const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
+  const allTurns = useMemo(
+    () => (props.allEvents ? gameEventsToTurns(props.allEvents) : turns),
+    [props.allEvents, turns],
+  );
 
   // Calculate time bank history for all events
   const timeBankHistory = useMemo(() => {
@@ -407,13 +507,13 @@ export const ScoreCard = React.memo((props: Props) => {
   // Scroll to bottom when turns change (after DOM updates)
   useEffect(() => {
     const currentEl = el.current;
-    if (currentEl && flipHidden) {
+    if (currentEl && flipHidden && scorecardView !== "two-col") {
       // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
         currentEl.scrollTop = currentEl.scrollHeight;
       });
     }
-  }, [turns, flipHidden]);
+  }, [turns, flipHidden, scorecardView]);
 
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
@@ -427,7 +527,9 @@ export const ScoreCard = React.memo((props: Props) => {
       setFlipHidden(true);
     }
     if (currentEl) {
-      currentEl.scrollTop = currentEl.scrollHeight || 0;
+      if (scorecardView !== "two-col") {
+        currentEl.scrollTop = currentEl.scrollHeight || 0;
+      }
       const boardHeight =
         document.getElementById("board-container")?.clientHeight;
       const poolTop = document.getElementById("pool")?.clientHeight || 0;
@@ -456,7 +558,7 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  }, [props.hideExtraInteractions]);
+  }, [props.hideExtraInteractions, scorecardView]);
   useEffect(() => {
     resizeListener();
   }, [props.events, props.poolFormat, resizeListener]);
@@ -512,65 +614,215 @@ export const ScoreCard = React.memo((props: Props) => {
   }
   let contents = null;
   const { gameContext } = useGameContextStoreContext();
+  const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
+
+  const viewMenuItems = [
+    { label: "One column", key: "single" },
+    { label: "Two columns", key: "two-col" },
+  ];
+
+  const viewDropdown = (
+    <Dropdown
+      menu={{
+        items: viewMenuItems,
+        onClick: ({ key }) => {
+          localStorage?.setItem(SCORECARD_VIEW_KEY, key);
+          setScorecardView(key as ScorecardViewType);
+        },
+      }}
+      trigger={["click"]}
+      placement="bottomRight"
+      overlayClassName="format-dropdown"
+    >
+      <Link to="/" onClick={(e) => e.preventDefault()}>
+        Rearrange
+      </Link>
+    </Dropdown>
+  );
+
+  // Two-col player header (rendered outside the scroll container)
+  let twoColHeader: React.ReactNode = null;
+  if (flipHidden && scorecardView === "two-col") {
+    const firstPlayerIdx =
+      allTurns.length > 0 ? allTurns[0].events[0].playerIndex : 0;
+    const leftPlayer = props.playerMeta[firstPlayerIdx];
+    const rightPlayer = props.playerMeta[1 - firstPlayerIdx];
+    twoColHeader = (
+      <div className="two-col-header">
+        <div className="two-col-player-name">{leftPlayer?.nickname || ""}</div>
+        <div className="two-col-player-name">{rightPlayer?.nickname || ""}</div>
+      </div>
+    );
+  }
 
   if (flipHidden) {
-    const turnDisplay = (t: Turn, idx: number) => {
-      if (t.events.length === 0) {
-        return null;
+    if (scorecardView === "two-col") {
+      // Determine which player went first (left column)
+      const firstPlayerIdx =
+        allTurns.length > 0 ? allTurns[0].events[0].playerIndex : 0;
+
+      // Group turns into pairs: [leftTurn, rightTurn]
+      // turns alternate players, starting with firstPlayerIdx
+      const pairs: Array<
+        [{ turn: Turn; idx: number } | null, { turn: Turn; idx: number } | null]
+      > = [];
+      let i = 0;
+      while (i < allTurns.length) {
+        const t = allTurns[i];
+        const tPlayerIdx = t.events[0].playerIndex;
+        if (tPlayerIdx === firstPlayerIdx) {
+          const hasNext =
+            i + 1 < allTurns.length &&
+            allTurns[i + 1].events[0].playerIndex !== firstPlayerIdx;
+          pairs.push([
+            { turn: t, idx: i },
+            hasNext ? { turn: allTurns[i + 1], idx: i + 1 } : null,
+          ]);
+          i += hasNext ? 2 : 1;
+        } else {
+          pairs.push([null, { turn: t, idx: i }]);
+          i += 1;
+        }
       }
-      // for each turn, show only the relevant comments - comments for
-      // event indexes encompassed by those turns.
 
-      // Get time bank state for this turn's first event
-      const eventIdx = t.firstEvtIdx;
-      const timeBankState = timeBankHistory?.get(eventIdx);
-
-      return (
-        <ScorecardTurn
-          turn={t}
-          board={props.board}
-          key={`t_${idx + 0}`}
-          playerMeta={props.playerMeta}
-          showComments={props.showComments ?? false}
-          comments={
-            props.comments
-              ? props.comments.filter(
-                  (c) =>
-                    c.eventNumber >= t.firstEvtIdx &&
-                    c.eventNumber < t.firstEvtIdx + t.events.length,
-                )
-              : []
-          }
-          alphabet={gameContext.alphabet}
-          turnIndex={idx}
-          onOpenCommentsDrawer={props.onOpenCommentsDrawer}
-          isCorrespondence={props.isCorrespondence}
-          timeBankP0={timeBankState?.p0TimeBank}
-          timeBankP1={timeBankState?.p1TimeBank}
-          eventIndex={eventIdx}
-        />
+      const firstPlayerForOpening = props.playerMeta[firstPlayerIdx];
+      contents = (
+        <>
+          <div
+            className={`two-col-scorecard${allTurns.length === 0 ? " two-col-scorecard-empty" : ""}`}
+          >
+            {allTurns.length === 0 && (
+              <div className="two-col-opening-state">
+                {firstPlayerForOpening?.nickname || "Player 1"} is first
+              </div>
+            )}
+            {pairs.map(([left, right], pairIdx) => (
+              <div className="two-col-row" key={pairIdx}>
+                <div className="two-col-col">
+                  {left ? (
+                    <TwoColTurn
+                      turn={left.turn}
+                      board={props.allBoard ?? props.board}
+                      alphabet={gameContext.alphabet}
+                      onSeek={
+                        props.isExamining
+                          ? () => handleExamineGoTo(left.idx + 1)
+                          : undefined
+                      }
+                      isSelected={
+                        props.isExamining && examinedTurn === left.idx + 1
+                      }
+                      showComments={props.showComments}
+                      comments={
+                        props.comments?.filter(
+                          (c) =>
+                            c.eventNumber >= left.turn.firstEvtIdx &&
+                            c.eventNumber <
+                              left.turn.firstEvtIdx + left.turn.events.length,
+                        ) ?? []
+                      }
+                      onOpenCommentsDrawer={props.onOpenCommentsDrawer}
+                      turnIndex={left.idx}
+                    />
+                  ) : (
+                    <div className="two-col-turn two-col-turn-empty" />
+                  )}
+                </div>
+                <div className="two-col-col">
+                  {right ? (
+                    <TwoColTurn
+                      turn={right.turn}
+                      board={props.allBoard ?? props.board}
+                      alphabet={gameContext.alphabet}
+                      onSeek={
+                        props.isExamining
+                          ? () => handleExamineGoTo(right.idx + 1)
+                          : undefined
+                      }
+                      isSelected={
+                        props.isExamining && examinedTurn === right.idx + 1
+                      }
+                      showComments={props.showComments}
+                      comments={
+                        props.comments?.filter(
+                          (c) =>
+                            c.eventNumber >= right.turn.firstEvtIdx &&
+                            c.eventNumber <
+                              right.turn.firstEvtIdx + right.turn.events.length,
+                        ) ?? []
+                      }
+                      onOpenCommentsDrawer={props.onOpenCommentsDrawer}
+                      turnIndex={right.idx}
+                    />
+                  ) : (
+                    <div className="two-col-turn two-col-turn-empty" />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {props.gameEpilog}
+        </>
       );
-    };
-    contents = (
-      <>
-        {turns.map(turnDisplay)}
-        {props.gameEpilog}
-      </>
-    );
+    } else {
+      const turnDisplay = (t: Turn, idx: number) => {
+        if (t.events.length === 0) {
+          return null;
+        }
+        const eventIdx = t.firstEvtIdx;
+        const timeBankState = timeBankHistory?.get(eventIdx);
+
+        return (
+          <ScorecardTurn
+            turn={t}
+            board={props.board}
+            key={`t_${idx + 0}`}
+            playerMeta={props.playerMeta}
+            showComments={props.showComments ?? false}
+            comments={
+              props.comments
+                ? props.comments.filter(
+                    (c) =>
+                      c.eventNumber >= t.firstEvtIdx &&
+                      c.eventNumber < t.firstEvtIdx + t.events.length,
+                  )
+                : []
+            }
+            alphabet={gameContext.alphabet}
+            turnIndex={idx}
+            onOpenCommentsDrawer={props.onOpenCommentsDrawer}
+            isCorrespondence={props.isCorrespondence}
+            timeBankP0={timeBankState?.p0TimeBank}
+            timeBankP1={timeBankState?.p1TimeBank}
+            eventIndex={eventIdx}
+          />
+        );
+      };
+      contents = (
+        <>
+          {turns.map(turnDisplay)}
+          {props.gameEpilog}
+        </>
+      );
+    }
   }
 
   return (
     <Card
-      className={`score-card${flipHidden ? "" : " flipped"}`}
+      className={`score-card${flipHidden ? "" : " flipped"}${scorecardView === "two-col" ? " two-col-active" : ""}`}
       title={title}
       extra={
-        isTablet() ? (
-          <button className="link" onClick={toggleFlipVisibility}>
-            {extra}
-          </button>
-        ) : null
+        <div className="score-card-extra">
+          {viewDropdown}
+          {isTablet() && extra ? (
+            <button className="link" onClick={toggleFlipVisibility}>
+              {extra}
+            </button>
+          ) : null}
+        </div>
       }
     >
+      {twoColHeader}
       <div ref={el} style={cardStyle}>
         {props.isExamining ? (
           <Analyzer style={analyzerStyle} />

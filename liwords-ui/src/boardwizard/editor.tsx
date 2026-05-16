@@ -511,7 +511,9 @@ export const BoardEditor = () => {
           <ScoreCard
             isExamining={true}
             events={examinableGameContext.turns}
+            allEvents={gameContext.turns}
             board={examinableGameContext.board}
+            allBoard={gameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
             showComments={true}
