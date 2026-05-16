@@ -962,14 +962,13 @@ func TestRoundRobin(t *testing.T) {
 
 	// Round 0 produces valid pairings.
 	req := makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, 8, 10)
-	req.Round = 0
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 	round0P0 := resp.Pairings[0]
 
 	// Round 1 rotates the schedule so player 0's opponent differs.
-	req.Round = 1
+	pairtestutils.AddNDummyRounds(req, 1)
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
@@ -977,7 +976,6 @@ func TestRoundRobin(t *testing.T) {
 
 	// Odd player count: exactly one bye per round.
 	req = makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, 7, 10)
-	req.Round = 0
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
@@ -987,10 +985,10 @@ func TestRoundRobin(t *testing.T) {
 	// have every pair {i,j} appear exactly once.
 	numPlayers := 8
 	cycle := numPlayers - 1
-	req = makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, numPlayers, 20)
 	firstCycle := make([][]int32, cycle)
 	for r := 0; r < cycle; r++ {
-		req.Round = int32(r)
+		req = makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, numPlayers, 20)
+		pairtestutils.AddNDummyRounds(req, r)
 		resp = cop.COPPair(req)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 		checkSymmetric(t, resp.Pairings)
@@ -1011,9 +1009,9 @@ func TestRoundRobin(t *testing.T) {
 	is.Equal(len(pairSeen), numPlayers*(numPlayers-1)/2)
 
 	// Second cycle (rounds 7–13) must repeat the identical schedule.
-	req2 := makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, numPlayers, 20)
 	for r := 0; r < cycle; r++ {
-		req2.Round = int32(cycle + r)
+		req2 := makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, numPlayers, 20)
+		pairtestutils.AddNDummyRounds(req2, cycle+r)
 		resp = cop.COPPair(req2)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 		is.Equal(resp.Pairings, firstCycle[r])
@@ -1073,13 +1071,12 @@ func TestInitialFontes(t *testing.T) {
 	// 8 players, 3 initial-fontes rounds → 4 groups of 2, each doing round robin.
 	req := makeSimpleReq(pb.PairMethod_PAIR_INITIAL_FONTES, 8, 10)
 	req.InitialNonperfRounds = 3
-	req.Round = 0
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 
 	// Round 1 also valid (group members play their return match).
-	req.Round = 1
+	pairtestutils.AddNDummyRounds(req, 1)
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
@@ -1177,7 +1174,6 @@ func TestSwiss(t *testing.T) {
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 4 450 0 350 5 300 1 300 3 450")
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 500 2 500 1 300 4 500 3 200 0 200")
 	resp = cop.COPPair(req)
-	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 	// M1 selected: P0 plays P3, P1 plays P5, P2 plays P4.
@@ -1193,14 +1189,13 @@ func TestTeamRoundRobin(t *testing.T) {
 	is := is.New(t)
 
 	req := makeSimpleReq(pb.PairMethod_PAIR_TEAM_ROUND_ROBIN, 8, 10)
-	req.Round = 0
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 	round0P0 := resp.Pairings[0]
 
 	// After one matchup rotation player 0's opponent changes.
-	req.Round = 1
+	pairtestutils.AddNDummyRounds(req, 1)
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
@@ -1211,12 +1206,11 @@ func TestInterleavedRoundRobin(t *testing.T) {
 	is := is.New(t)
 
 	req := makeSimpleReq(pb.PairMethod_PAIR_INTERLEAVED_ROUND_ROBIN, 8, 10)
-	req.Round = 0
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 
-	req.Round = 1
+	pairtestutils.AddNDummyRounds(req, 1)
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
@@ -1229,7 +1223,6 @@ func TestMultiroundPairings(t *testing.T) {
 	// With no existing pairings and N=3, multiround_pairings should contain 3 rounds worth of data.
 	req := makeSimpleReq(pb.PairMethod_PAIR_ROUND_ROBIN, numPlayers, 10)
 	req.InitialNonperfRounds = 3
-	req.Round = 0
 	resp := cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(len(resp.MultiroundPairings), 3*numPlayers)

@@ -44,7 +44,8 @@ message PairRequest {
   repeated int32 removed_players = 18;
   int64 seed = 19;
   bool top_down_byes = 20;
-  int32 round = 21;
+  reserved 21;
+  reserved "round";
   int32 factor = 22;
   int32 initial_nonperf_rounds = 23;
 }

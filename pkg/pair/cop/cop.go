@@ -553,7 +553,7 @@ func extractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
 		}
 		if prepairedRoundIdx >= 0 {
 			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
-				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] {
+				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] || removedPlayersSet[int(oppIdx)] {
 					continue
 				}
 				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
@@ -565,6 +565,17 @@ func extractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
 		}
 	}
 	return prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx
+}
+
+// currentRoundIndex returns the index of the round being paired.
+// If the last round in DivisionPairings is incomplete (has a -1 entry), that round is being
+// completed, so its index is returned. Otherwise the next new round index is returned.
+func currentRoundIndex(req *pb.PairRequest) int32 {
+	n := len(req.DivisionPairings)
+	if n > 0 && slices.Contains(req.DivisionPairings[n-1].Pairings, -1) {
+		return int32(n - 1)
+	}
+	return int32(n)
 }
 
 // computePairingCounts returns a map from pairing key to number of times that pair has played,
@@ -676,7 +687,8 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 		}
 	}
 
-	allPlayerPairings, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, req.Round, uint64(req.Seed))
+	currentRound := currentRoundIndex(req)
+	allPlayerPairings, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, currentRound, uint64(req.Seed))
 	if err != nil {
 		return &pb.PairResponse{
 			ErrorCode:    pb.PairError_SIMPLE_PAIRING_FAILED,
@@ -691,7 +703,7 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	logsb.WriteString(fmt.Sprintf("Seed: %d\n", req.Seed))
 	logsb.WriteString(fmt.Sprintf("Round control: PairingMethod=%s Round=%d Factor=%d InitialNonperf=%d\n",
 		pairingMethod,
-		req.Round,
+		currentRound,
 		req.Factor,
 		req.InitialNonperfRounds,
 	))
@@ -745,7 +757,7 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 		N := max(int(req.InitialNonperfRounds), 1)
 		multiroundPairings = append(multiroundPairings, allPlayerPairings...)
 		for roundIdx := 1; roundIdx < N; roundIdx++ {
-			rp, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, int32(roundIdx), uint64(req.Seed)+uint64(roundIdx))
+			rp, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, currentRound+int32(roundIdx), uint64(req.Seed)+uint64(roundIdx))
 			if err != nil {
 				return &pb.PairResponse{
 					ErrorCode:    pb.PairError_SIMPLE_PAIRING_FAILED,
@@ -1009,32 +1021,27 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 //   - Round numRounds/2 onward: COP
 func autoPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	origMethod := req.PairMethod
-	origRound := req.Round
 	origInitialNonperfRounds := req.InitialNonperfRounds
 	resp := autoPairInner(req, logsb)
-	restoreAutoPairReqFields(req, origMethod, origRound, origInitialNonperfRounds)
+	restoreAutoPairReqFields(req, origMethod, origInitialNonperfRounds)
 	return resp
 }
 
 func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	numValidPlayers := int(req.ValidPlayers)
 	numRounds := int(req.Rounds)
-	currentRound := len(req.DivisionPairings)
-	rrCycleLen := max(numValidPlayers-1, 1)
-
+	currentRound := int(currentRoundIndex(req))
 	if numRounds >= numValidPlayers-1 {
 		req.PairMethod = pb.PairMethod_PAIR_ROUND_ROBIN
-		req.Round = int32(currentRound % rrCycleLen)
 		if currentRound == 0 {
 			req.InitialNonperfRounds = int32(numRounds)
 		}
-		fmt.Fprintf(logsb, "Auto: R(%d) >= P(%d)-1, using Round Robin (cycle round %d)\n", numRounds, numValidPlayers, req.Round)
+		fmt.Fprintf(logsb, "Auto: R(%d) >= P(%d)-1, using Round Robin\n", numRounds, numValidPlayers)
 		return simplePair(req, logsb)
 	}
 
 	if currentRound < 3 {
 		req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
-		req.Round = int32(currentRound)
 		if currentRound == 0 {
 			req.InitialNonperfRounds = int32(min(3, numRounds))
 		}
@@ -1054,45 +1061,25 @@ func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 	return copMethodPair(req, logsb)
 }
 
-func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, origRound int32, origInitialNonperfRounds int32) {
+func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, origInitialNonperfRounds int32) {
 	req.PairMethod = origMethod
-	req.Round = origRound
 	req.InitialNonperfRounds = origInitialNonperfRounds
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
-	prepairedRoundIdx := -1
-	numDivPairings := len(req.DivisionPairings)
-	prepairedPlayerIndexes := map[int]int{}
-	numForcedByes := 0
-	removedPlayersSet := map[int]bool{}
-	for _, removedPlayerIdx := range req.RemovedPlayers {
-		removedPlayersSet[int(removedPlayerIdx)] = true
-	}
-	if numDivPairings > 0 {
-		for _, oppIdx := range req.DivisionPairings[numDivPairings-1].Pairings {
-			if oppIdx == -1 {
-				prepairedRoundIdx = numDivPairings - 1
-				break
-			}
+	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := extractPrepairedPlayers(req)
+
+	for playerIdx, oppIdx := range prepairedPlayerIndexes {
+		if oppIdx < playerIdx {
+			continue
 		}
-		if prepairedRoundIdx >= 0 {
-			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
-				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] {
-					continue
-				}
-				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
-				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
-				prepairedPlayersStr := fmt.Sprintf("Forcing (#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx])
-				if playerIdx == (int(oppIdx)) {
-					numForcedByes++
-					prepairedPlayersStr += "BYE\n"
-				} else {
-					prepairedPlayersStr += fmt.Sprintf("(#%d) %s\n", int(oppIdx)+1, req.PlayerNames[int(oppIdx)])
-				}
-				logsb.WriteString(prepairedPlayersStr)
-			}
+		prepairedPlayersStr := fmt.Sprintf("Forcing (#%d) %s vs ", playerIdx+1, req.PlayerNames[playerIdx])
+		if playerIdx == oppIdx {
+			prepairedPlayersStr += "BYE\n"
+		} else {
+			prepairedPlayersStr += fmt.Sprintf("(#%d) %s\n", oppIdx+1, req.PlayerNames[oppIdx])
 		}
+		logsb.WriteString(prepairedPlayersStr)
 	}
 
 	logsb.WriteString(fmt.Sprintf("\nForcing %d bye(s)\n\n", numForcedByes))
@@ -1149,7 +1136,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
-	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", numDivPairings))
+	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", len(req.DivisionPairings)))
 	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
