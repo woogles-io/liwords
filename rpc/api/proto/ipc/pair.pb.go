@@ -345,8 +345,8 @@ type PairRequest struct {
 	RemovedPlayers             []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
 	Seed                       int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
 	TopDownByes                bool                   `protobuf:"varint,20,opt,name=top_down_byes,json=topDownByes,proto3" json:"top_down_byes,omitempty"`
-	Factor                     int32                  `protobuf:"varint,22,opt,name=factor,proto3" json:"factor,omitempty"`
-	InitialNonperfRounds       int32                  `protobuf:"varint,23,opt,name=initial_nonperf_rounds,json=initialNonperfRounds,proto3" json:"initial_nonperf_rounds,omitempty"`
+	Factor                     int32                  `protobuf:"varint,21,opt,name=factor,proto3" json:"factor,omitempty"`
+	InitialNonperfRounds       int32                  `protobuf:"varint,22,opt,name=initial_nonperf_rounds,json=initialNonperfRounds,proto3" json:"initial_nonperf_rounds,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -627,7 +627,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\rRoundPairings\x12\x1a\n" +
 	"\bpairings\x18\x01 \x03(\x05R\bpairings\"(\n" +
 	"\fRoundResults\x12\x18\n" +
-	"\aresults\x18\x01 \x03(\x05R\aresults\"\xb8\a\n" +
+	"\aresults\x18\x01 \x03(\x05R\aresults\"\xab\a\n" +
 	"\vPairRequest\x120\n" +
 	"\vpair_method\x18\x01 \x01(\x0e2\x0f.ipc.PairMethodR\n" +
 	"pairMethod\x12!\n" +
@@ -652,8 +652,8 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x0fremoved_players\x18\x12 \x03(\x05R\x0eremovedPlayers\x12\x12\n" +
 	"\x04seed\x18\x13 \x01(\x03R\x04seed\x12\"\n" +
 	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\x12\x16\n" +
-	"\x06factor\x18\x16 \x01(\x05R\x06factor\x124\n" +
-	"\x16initial_nonperf_rounds\x18\x17 \x01(\x05R\x14initialNonperfRoundsJ\x04\b\x15\x10\x16R\x05round\"\xf0\x01\n" +
+	"\x06factor\x18\x15 \x01(\x05R\x06factor\x124\n" +
+	"\x16initial_nonperf_rounds\x18\x16 \x01(\x05R\x14initialNonperfRounds\"\xf0\x01\n" +
 	"\fPairResponse\x12-\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x0e2\x0e.ipc.PairErrorR\terrorCode\x12#\n" +
