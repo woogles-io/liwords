@@ -407,7 +407,7 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   const { turn, board, alphabet, onSeek, isSelected } = props;
   const evt = turn.events[0];
 
-  let coords = evt.position || "";
+  const coords = evt.position || "";
   let play: React.ReactNode = displaySummary(evt, board, alphabet);
   let score = `${evt.score}`;
   let cumulative = evt.cumulative;
