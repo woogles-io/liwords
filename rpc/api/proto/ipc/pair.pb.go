@@ -26,16 +26,43 @@ const (
 type PairMethod int32
 
 const (
-	PairMethod_COP PairMethod = 0
+	PairMethod_COP                          PairMethod = 0
+	PairMethod_PAIR_RANDOM                  PairMethod = 1
+	PairMethod_PAIR_ROUND_ROBIN             PairMethod = 2
+	PairMethod_PAIR_KING_OF_THE_HILL        PairMethod = 3
+	PairMethod_PAIR_FACTOR                  PairMethod = 4
+	PairMethod_PAIR_INITIAL_FONTES          PairMethod = 5
+	PairMethod_PAIR_SWISS                   PairMethod = 6
+	PairMethod_PAIR_TEAM_ROUND_ROBIN        PairMethod = 7
+	PairMethod_PAIR_INTERLEAVED_ROUND_ROBIN PairMethod = 8
+	PairMethod_PAIR_AUTO                    PairMethod = 9
 )
 
 // Enum value maps for PairMethod.
 var (
 	PairMethod_name = map[int32]string{
 		0: "COP",
+		1: "PAIR_RANDOM",
+		2: "PAIR_ROUND_ROBIN",
+		3: "PAIR_KING_OF_THE_HILL",
+		4: "PAIR_FACTOR",
+		5: "PAIR_INITIAL_FONTES",
+		6: "PAIR_SWISS",
+		7: "PAIR_TEAM_ROUND_ROBIN",
+		8: "PAIR_INTERLEAVED_ROUND_ROBIN",
+		9: "PAIR_AUTO",
 	}
 	PairMethod_value = map[string]int32{
-		"COP": 0,
+		"COP":                          0,
+		"PAIR_RANDOM":                  1,
+		"PAIR_ROUND_ROBIN":             2,
+		"PAIR_KING_OF_THE_HILL":        3,
+		"PAIR_FACTOR":                  4,
+		"PAIR_INITIAL_FONTES":          5,
+		"PAIR_SWISS":                   6,
+		"PAIR_TEAM_ROUND_ROBIN":        7,
+		"PAIR_INTERLEAVED_ROUND_ROBIN": 8,
+		"PAIR_AUTO":                    9,
 	}
 )
 
@@ -101,6 +128,8 @@ const (
 	PairError_OVERCONSTRAINED                       PairError = 29
 	PairError_REQUEST_TO_JSON_FAILED                PairError = 30
 	PairError_TIMEOUT                               PairError = 31
+	PairError_UNSUPPORTED_PAIR_METHOD               PairError = 32
+	PairError_SIMPLE_PAIRING_FAILED                 PairError = 33
 )
 
 // Enum value maps for PairError.
@@ -138,6 +167,8 @@ var (
 		29: "OVERCONSTRAINED",
 		30: "REQUEST_TO_JSON_FAILED",
 		31: "TIMEOUT",
+		32: "UNSUPPORTED_PAIR_METHOD",
+		33: "SIMPLE_PAIRING_FAILED",
 	}
 	PairError_value = map[string]int32{
 		"SUCCESS":                               0,
@@ -172,6 +203,8 @@ var (
 		"OVERCONSTRAINED":                       29,
 		"REQUEST_TO_JSON_FAILED":                30,
 		"TIMEOUT":                               31,
+		"UNSUPPORTED_PAIR_METHOD":               32,
+		"SIMPLE_PAIRING_FAILED":                 33,
 	}
 )
 
@@ -312,6 +345,8 @@ type PairRequest struct {
 	RemovedPlayers             []int32                `protobuf:"varint,18,rep,packed,name=removed_players,json=removedPlayers,proto3" json:"removed_players,omitempty"`
 	Seed                       int64                  `protobuf:"varint,19,opt,name=seed,proto3" json:"seed,omitempty"`
 	TopDownByes                bool                   `protobuf:"varint,20,opt,name=top_down_byes,json=topDownByes,proto3" json:"top_down_byes,omitempty"`
+	Factor                     int32                  `protobuf:"varint,21,opt,name=factor,proto3" json:"factor,omitempty"`
+	InitialNonperfRounds       int32                  `protobuf:"varint,22,opt,name=initial_nonperf_rounds,json=initialNonperfRounds,proto3" json:"initial_nonperf_rounds,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -486,15 +521,30 @@ func (x *PairRequest) GetTopDownByes() bool {
 	return false
 }
 
+func (x *PairRequest) GetFactor() int32 {
+	if x != nil {
+		return x.Factor
+	}
+	return 0
+}
+
+func (x *PairRequest) GetInitialNonperfRounds() int32 {
+	if x != nil {
+		return x.InitialNonperfRounds
+	}
+	return 0
+}
+
 type PairResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	ErrorCode         PairError              `protobuf:"varint,1,opt,name=error_code,json=errorCode,proto3,enum=ipc.PairError" json:"error_code,omitempty"`
-	ErrorMessage      string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	Log               string                 `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Pairings          []int32                `protobuf:"varint,4,rep,packed,name=pairings,proto3" json:"pairings,omitempty"`
-	GibsonizedPlayers []bool                 `protobuf:"varint,5,rep,packed,name=gibsonized_players,json=gibsonizedPlayers,proto3" json:"gibsonized_players,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ErrorCode          PairError              `protobuf:"varint,1,opt,name=error_code,json=errorCode,proto3,enum=ipc.PairError" json:"error_code,omitempty"`
+	ErrorMessage       string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Log                string                 `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Pairings           []int32                `protobuf:"varint,4,rep,packed,name=pairings,proto3" json:"pairings,omitempty"`
+	GibsonizedPlayers  []bool                 `protobuf:"varint,5,rep,packed,name=gibsonized_players,json=gibsonizedPlayers,proto3" json:"gibsonized_players,omitempty"`
+	MultiroundPairings []int32                `protobuf:"varint,6,rep,packed,name=multiround_pairings,json=multiroundPairings,proto3" json:"multiround_pairings,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *PairResponse) Reset() {
@@ -562,6 +612,13 @@ func (x *PairResponse) GetGibsonizedPlayers() []bool {
 	return nil
 }
 
+func (x *PairResponse) GetMultiroundPairings() []int32 {
+	if x != nil {
+		return x.MultiroundPairings
+	}
+	return nil
+}
+
 var File_proto_ipc_pair_proto protoreflect.FileDescriptor
 
 const file_proto_ipc_pair_proto_rawDesc = "" +
@@ -570,7 +627,7 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\rRoundPairings\x12\x1a\n" +
 	"\bpairings\x18\x01 \x03(\x05R\bpairings\"(\n" +
 	"\fRoundResults\x12\x18\n" +
-	"\aresults\x18\x01 \x03(\x05R\aresults\"\xdd\x06\n" +
+	"\aresults\x18\x01 \x03(\x05R\aresults\"\xab\a\n" +
 	"\vPairRequest\x120\n" +
 	"\vpair_method\x18\x01 \x01(\x0e2\x0f.ipc.PairMethodR\n" +
 	"pairMethod\x12!\n" +
@@ -594,17 +651,30 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x11allow_repeat_byes\x18\x11 \x01(\bR\x0fallowRepeatByes\x12'\n" +
 	"\x0fremoved_players\x18\x12 \x03(\x05R\x0eremovedPlayers\x12\x12\n" +
 	"\x04seed\x18\x13 \x01(\x03R\x04seed\x12\"\n" +
-	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\"\xbf\x01\n" +
+	"\rtop_down_byes\x18\x14 \x01(\bR\vtopDownByes\x12\x16\n" +
+	"\x06factor\x18\x15 \x01(\x05R\x06factor\x124\n" +
+	"\x16initial_nonperf_rounds\x18\x16 \x01(\x05R\x14initialNonperfRounds\"\xf0\x01\n" +
 	"\fPairResponse\x12-\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x0e2\x0e.ipc.PairErrorR\terrorCode\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x10\n" +
 	"\x03log\x18\x03 \x01(\tR\x03log\x12\x1a\n" +
 	"\bpairings\x18\x04 \x03(\x05R\bpairings\x12-\n" +
-	"\x12gibsonized_players\x18\x05 \x03(\bR\x11gibsonizedPlayers*\x15\n" +
+	"\x12gibsonized_players\x18\x05 \x03(\bR\x11gibsonizedPlayers\x12/\n" +
+	"\x13multiround_pairings\x18\x06 \x03(\x05R\x12multiroundPairings*\xdd\x01\n" +
 	"\n" +
 	"PairMethod\x12\a\n" +
-	"\x03COP\x10\x00*\x91\a\n" +
+	"\x03COP\x10\x00\x12\x0f\n" +
+	"\vPAIR_RANDOM\x10\x01\x12\x14\n" +
+	"\x10PAIR_ROUND_ROBIN\x10\x02\x12\x19\n" +
+	"\x15PAIR_KING_OF_THE_HILL\x10\x03\x12\x0f\n" +
+	"\vPAIR_FACTOR\x10\x04\x12\x17\n" +
+	"\x13PAIR_INITIAL_FONTES\x10\x05\x12\x0e\n" +
+	"\n" +
+	"PAIR_SWISS\x10\x06\x12\x19\n" +
+	"\x15PAIR_TEAM_ROUND_ROBIN\x10\a\x12 \n" +
+	"\x1cPAIR_INTERLEAVED_ROUND_ROBIN\x10\b\x12\r\n" +
+	"\tPAIR_AUTO\x10\t*\xc9\a\n" +
 	"\tPairError\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\x1d\n" +
 	"\x19PLAYER_COUNT_INSUFFICIENT\x10\x01\x12\x1c\n" +
@@ -638,7 +708,9 @@ const file_proto_ipc_pair_proto_rawDesc = "" +
 	"\x17INVALID_PAIRINGS_LENGTH\x10\x1c\x12\x13\n" +
 	"\x0fOVERCONSTRAINED\x10\x1d\x12\x1a\n" +
 	"\x16REQUEST_TO_JSON_FAILED\x10\x1e\x12\v\n" +
-	"\aTIMEOUT\x10\x1fBq\n" +
+	"\aTIMEOUT\x10\x1f\x12\x1b\n" +
+	"\x17UNSUPPORTED_PAIR_METHOD\x10 \x12\x19\n" +
+	"\x15SIMPLE_PAIRING_FAILED\x10!Bq\n" +
 	"\acom.ipcB\tPairProtoP\x01Z/github.com/woogles-io/liwords/rpc/api/proto/ipc\xa2\x02\x03IXX\xaa\x02\x03Ipc\xca\x02\x03Ipc\xe2\x02\x0fIpc\\GPBMetadata\xea\x02\x03Ipcb\x06proto3"
 
 var (

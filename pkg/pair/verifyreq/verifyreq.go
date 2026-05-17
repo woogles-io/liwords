@@ -177,58 +177,60 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 
-	if req.ControlLossActivationRound < 0 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND,
-			ErrorMessage: fmt.Sprintf("invalid control loss activation round %d (must be nonnegative)", req.ControlLossActivationRound),
+	if req.PairMethod == pb.PairMethod_COP || req.PairMethod == pb.PairMethod_PAIR_AUTO {
+		if req.ControlLossActivationRound < 0 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND,
+				ErrorMessage: fmt.Sprintf("invalid control loss activation round %d (must be nonnegative)", req.ControlLossActivationRound),
+			}
 		}
-	}
 
-	// Verify gibsons
-	if req.GibsonSpread < 0 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_GIBSON_SPREAD,
-			ErrorMessage: fmt.Sprintf("invalid gibson spread %d", req.GibsonSpread),
+		// Verify gibsons
+		if req.GibsonSpread < 0 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_GIBSON_SPREAD,
+				ErrorMessage: fmt.Sprintf("invalid gibson spread %d", req.GibsonSpread),
+			}
 		}
-	}
 
-	// Verify control loss threshold
-	if req.ControlLossThreshold < 0 || req.ControlLossThreshold > 1 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_THRESHOLD,
-			ErrorMessage: fmt.Sprintf("invalid control loss threshold %f", req.ControlLossThreshold),
+		// Verify control loss threshold
+		if req.ControlLossThreshold < 0 || req.ControlLossThreshold > 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_THRESHOLD,
+				ErrorMessage: fmt.Sprintf("invalid control loss threshold %f", req.ControlLossThreshold),
+			}
 		}
-	}
 
-	// Verify hopefulness threshold
-	if req.HopefulnessThreshold <= 0 || req.HopefulnessThreshold > 1 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_HOPEFULNESS_THRESHOLD,
-			ErrorMessage: fmt.Sprintf("invalid hopefulness threshold %f", req.HopefulnessThreshold),
+		// Verify hopefulness threshold
+		if req.HopefulnessThreshold <= 0 || req.HopefulnessThreshold > 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_HOPEFULNESS_THRESHOLD,
+				ErrorMessage: fmt.Sprintf("invalid hopefulness threshold %f", req.HopefulnessThreshold),
+			}
 		}
-	}
 
-	// Verify division sims
-	if req.DivisionSims < 1 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_DIVISION_SIMS,
-			ErrorMessage: fmt.Sprintf("invalid division sims %d", req.DivisionSims),
+		// Verify division sims
+		if req.DivisionSims < 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_DIVISION_SIMS,
+				ErrorMessage: fmt.Sprintf("invalid division sims %d", req.DivisionSims),
+			}
 		}
-	}
 
-	// Verify control loss sims
-	if req.ControlLossSims < 1 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_SIMS,
-			ErrorMessage: fmt.Sprintf("invalid control loss sims %d", req.ControlLossSims),
+		// Verify control loss sims
+		if req.ControlLossSims < 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_CONTROL_LOSS_SIMS,
+				ErrorMessage: fmt.Sprintf("invalid control loss sims %d", req.ControlLossSims),
+			}
 		}
-	}
 
-	// Verify place prizes
-	if req.PlacePrizes > req.ValidPlayers || req.PlacePrizes < 1 {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_PLACE_PRIZES,
-			ErrorMessage: fmt.Sprintf("invalid place prizes %d", req.PlacePrizes),
+		// Verify place prizes
+		if req.PlacePrizes > req.ValidPlayers || req.PlacePrizes < 1 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_PLACE_PRIZES,
+				ErrorMessage: fmt.Sprintf("invalid place prizes %d", req.PlacePrizes),
+			}
 		}
 	}
 
