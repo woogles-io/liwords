@@ -1259,15 +1259,51 @@ func TestMultiroundPairings(t *testing.T) {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
 
-	// AUTO with R > P (CreateDefaultPairRequest: R=10, P=8) uses round robin for all R rounds.
+	// AUTO with R=10, P=8: floor(10/7)*7=7 RR rounds, then COP for the remaining 3.
 	autoReq := pairtestutils.CreateDefaultPairRequest()
 	autoReq.PairMethod = pb.PairMethod_PAIR_AUTO
+	rrRounds := int(autoReq.ValidPlayers) - 1 // 7
+	rrRoundsTotal := (int(autoReq.Rounds) / rrRounds) * rrRounds // 7
 	resp = cop.COPPair(autoReq)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(len(resp.MultiroundPairings), int(autoReq.Rounds)*numPlayers)
-	for i := 0; i < int(autoReq.Rounds); i++ {
+	is.Equal(len(resp.MultiroundPairings), rrRoundsTotal*numPlayers)
+	for i := 0; i < rrRoundsTotal; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+
+	// After the RR rounds are complete, auto should use COP for the remaining rounds.
+	pairtestutils.AddNDummyRounds(autoReq, rrRoundsTotal)
+	resp = cop.COPPair(autoReq)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(len(resp.Pairings), numPlayers)
+
+	// AUTO with R=14, P=8: floor(14/7)*7=14 RR rounds, no COP remainder.
+	autoReq = pairtestutils.CreateDefaultPairRequest()
+	autoReq.PairMethod = pb.PairMethod_PAIR_AUTO
+	autoReq.Rounds = 14
+	rrRoundsTotal = (int(autoReq.Rounds) / rrRounds) * rrRounds // 14
+	resp = cop.COPPair(autoReq)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(len(resp.MultiroundPairings), rrRoundsTotal*numPlayers)
+	for i := 0; i < rrRoundsTotal; i++ {
+		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
+	}
+
+	// AUTO with R=17, P=8: floor(17/7)*7=14 RR rounds, then COP for rounds 14-16.
+	autoReq = pairtestutils.CreateDefaultPairRequest()
+	autoReq.PairMethod = pb.PairMethod_PAIR_AUTO
+	autoReq.Rounds = 17
+	rrRoundsTotal = (int(autoReq.Rounds) / rrRounds) * rrRounds // 14
+	resp = cop.COPPair(autoReq)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(len(resp.MultiroundPairings), rrRoundsTotal*numPlayers)
+	for i := 0; i < rrRoundsTotal; i++ {
+		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
+	}
+	pairtestutils.AddNDummyRounds(autoReq, rrRoundsTotal)
+	resp = cop.COPPair(autoReq)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(len(resp.Pairings), numPlayers)
 
 	// AUTO with R < P-1 should produce 3 initial-fontes rounds.
 	autoReq = pairtestutils.CreateDefaultPairRequest()

@@ -1012,10 +1012,13 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 
 // autoPair selects the most appropriate pairing method based on the tournament state.
 //
-// If there are at least numValidPlayers-1 total rounds (enough for a full RR cycle):
-//   - Use Round Robin for all rounds, cycling every (numValidPlayers-1) rounds.
+// Compute rrRoundsTotal = floor(numRounds / (numValidPlayers-1)) * (numValidPlayers-1),
+// the largest number of rounds that fits one or more complete RR cycles.
+// If rrRoundsTotal > 0:
+//   - Use Round Robin for rounds 0 through rrRoundsTotal-1.
+//   - Use COP for any remaining rounds.
 //
-// Otherwise:
+// Otherwise (numRounds < numValidPlayers-1):
 //   - Rounds 0–2: Initial Fontes
 //   - Rounds 3 to numRounds/2-1: Swiss
 //   - Round numRounds/2 onward: COP
@@ -1031,13 +1034,20 @@ func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 	numValidPlayers := int(req.ValidPlayers)
 	numRounds := int(req.Rounds)
 	currentRound := int(currentRoundIndex(req))
-	if numRounds >= numValidPlayers-1 {
-		req.PairMethod = pb.PairMethod_PAIR_ROUND_ROBIN
-		if currentRound == 0 {
-			req.InitialNonperfRounds = int32(numRounds)
+	rrRounds := numValidPlayers - 1
+	rrRoundsTotal := (numRounds / rrRounds) * rrRounds
+	if rrRoundsTotal > 0 {
+		if currentRound < rrRoundsTotal {
+			req.PairMethod = pb.PairMethod_PAIR_ROUND_ROBIN
+			if currentRound == 0 {
+				req.InitialNonperfRounds = int32(rrRoundsTotal)
+			}
+			fmt.Fprintf(logsb, "Auto: fitting %d complete RR cycle(s) (%d rounds), using Round Robin for round %d\n", rrRoundsTotal/rrRounds, rrRoundsTotal, currentRound)
+			return simplePair(req, logsb)
 		}
-		fmt.Fprintf(logsb, "Auto: R(%d) >= P(%d)-1, using Round Robin\n", numRounds, numValidPlayers)
-		return simplePair(req, logsb)
+		req.PairMethod = pb.PairMethod_COP
+		fmt.Fprintf(logsb, "Auto: round %d past RR rounds (%d), using COP\n", currentRound, rrRoundsTotal)
+		return copMethodPair(req, logsb)
 	}
 
 	if currentRound < 3 {
