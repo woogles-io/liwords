@@ -83,6 +83,8 @@ type turnProps = {
   timeBankP0?: number;
   timeBankP1?: number;
   eventIndex: number; // Index in the full events array (not turn index)
+  onSeek?: () => void;
+  isSelected?: boolean;
 };
 
 type MoveEntityObj = {
@@ -315,15 +317,17 @@ const ScorecardTurn = (props: turnProps) => {
     scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.score}`;
   }
 
-  const divProps: {
-    className: string;
-  } = {
-    className: `turn${memoizedTurn.isBingo ? " bingo" : ""}`,
-  };
+  const divClassName = [
+    "turn",
+    memoizedTurn.isBingo ? "bingo" : "",
+    props.isSelected ? "turn-selected" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <>
-      <div {...divProps}>
+      <div className={divClassName}>
         <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div
           className={`coords-time${props.isCorrespondence ? " correspondence" : ""}`}
@@ -341,7 +345,10 @@ const ScorecardTurn = (props: turnProps) => {
           </p>
         </div>
         <div className="play">
-          <p className="main-word">
+          <p
+            className={`main-word${props.onSeek ? " main-word-seekable" : ""}`}
+            onClick={props.onSeek}
+          >
             {memoizedTurn.play}
             {memoizedTurn.isBingo && <HeartFilled />}
           </p>
@@ -507,13 +514,18 @@ export const ScoreCard = React.memo((props: Props) => {
   // Scroll to bottom when turns change (after DOM updates)
   useEffect(() => {
     const currentEl = el.current;
-    if (currentEl && flipHidden && scorecardView !== "two-col") {
+    if (
+      currentEl &&
+      flipHidden &&
+      scorecardView !== "two-col" &&
+      !props.isExamining
+    ) {
       // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
         currentEl.scrollTop = currentEl.scrollHeight;
       });
     }
-  }, [turns, flipHidden, scorecardView]);
+  }, [allTurns, flipHidden, scorecardView, props.isExamining]);
 
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
@@ -527,7 +539,7 @@ export const ScoreCard = React.memo((props: Props) => {
       setFlipHidden(true);
     }
     if (currentEl) {
-      if (scorecardView !== "two-col") {
+      if (scorecardView !== "two-col" && !props.isExamining) {
         currentEl.scrollTop = currentEl.scrollHeight || 0;
       }
       const boardHeight =
@@ -558,7 +570,7 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  }, [props.hideExtraInteractions, scorecardView]);
+  }, [props.hideExtraInteractions, scorecardView, props.isExamining]);
   useEffect(() => {
     resizeListener();
   }, [props.events, props.poolFormat, resizeListener]);
@@ -706,11 +718,12 @@ export const ScoreCard = React.memo((props: Props) => {
                       alphabet={gameContext.alphabet}
                       onSeek={
                         props.isExamining
-                          ? () => handleExamineGoTo(left.idx + 1)
+                          ? () => handleExamineGoTo(left.turn.firstEvtIdx)
                           : undefined
                       }
                       isSelected={
-                        props.isExamining && examinedTurn === left.idx + 1
+                        props.isExamining &&
+                        examinedTurn === left.turn.firstEvtIdx
                       }
                       showComments={props.showComments}
                       comments={
@@ -736,11 +749,12 @@ export const ScoreCard = React.memo((props: Props) => {
                       alphabet={gameContext.alphabet}
                       onSeek={
                         props.isExamining
-                          ? () => handleExamineGoTo(right.idx + 1)
+                          ? () => handleExamineGoTo(right.turn.firstEvtIdx)
                           : undefined
                       }
                       isSelected={
-                        props.isExamining && examinedTurn === right.idx + 1
+                        props.isExamining &&
+                        examinedTurn === right.turn.firstEvtIdx
                       }
                       showComments={props.showComments}
                       comments={
@@ -775,7 +789,7 @@ export const ScoreCard = React.memo((props: Props) => {
         return (
           <ScorecardTurn
             turn={t}
-            board={props.board}
+            board={props.allBoard ?? props.board}
             key={`t_${idx + 0}`}
             playerMeta={props.playerMeta}
             showComments={props.showComments ?? false}
@@ -795,12 +809,18 @@ export const ScoreCard = React.memo((props: Props) => {
             timeBankP0={timeBankState?.p0TimeBank}
             timeBankP1={timeBankState?.p1TimeBank}
             eventIndex={eventIdx}
+            onSeek={
+              props.isExamining
+                ? () => handleExamineGoTo(t.firstEvtIdx)
+                : undefined
+            }
+            isSelected={props.isExamining && examinedTurn === t.firstEvtIdx}
           />
         );
       };
       contents = (
         <>
-          {turns.map(turnDisplay)}
+          {allTurns.map(turnDisplay)}
           {props.gameEpilog}
         </>
       );

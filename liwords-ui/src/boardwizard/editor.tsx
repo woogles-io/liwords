@@ -113,10 +113,11 @@ export const BoardEditor = () => {
     gameContext.gameID,
   ]);
 
-  // Convert GameEvents to Turn objects
+  // Convert GameEvents to Turn objects — use full game context, not examinable
+  // (examinableGameContext.turns is truncated during examination, which breaks comment indexing)
   const turns = useMemo(
-    () => gameEventsToTurns(examinableGameContext.turns),
-    [examinableGameContext.turns],
+    () => gameEventsToTurns(gameContext.turns),
+    [gameContext.turns],
   );
 
   // Comments drawer handlers

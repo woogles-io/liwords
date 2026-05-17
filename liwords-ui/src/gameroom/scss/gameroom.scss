@@ -2066,7 +2066,7 @@ p.rune {
       color: m($gray-extreme);
     }
 
-    &:hover {
+    &.turn-selected {
       @include colorModed() {
         background: m($primary-light);
       }
@@ -2080,12 +2080,6 @@ p.rune {
         @include colorModed() {
           color: m($timer-out-dark);
         }
-      }
-    }
-
-    &:hover {
-      @include colorModed() {
-        background: m($primary-light);
       }
     }
 
@@ -2106,6 +2100,13 @@ p.rune {
 
       @include colorModed() {
         color: m($gray-extreme);
+      }
+
+      &.main-word-seekable {
+        cursor: pointer;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
       }
     }
 
@@ -2354,7 +2355,7 @@ p.rune {
 
       &.no-comments {
         @include colorModed() {
-          color: m($gray-medium);
+          color: m($primary-dark);
           background-color: transparent;
           border: none; // Remove outline
         }
