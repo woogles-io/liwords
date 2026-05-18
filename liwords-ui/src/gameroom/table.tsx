@@ -392,8 +392,8 @@ export const Table = React.memo((props: Props) => {
 
   // Convert GameEvents to Turn objects
   const turns = useMemo(
-    () => gameEventsToTurns(examinableGameContext.turns),
-    [examinableGameContext.turns],
+    () => gameEventsToTurns(gameContext.turns),
+    [gameContext.turns],
   );
 
   // Wrapper for scorecard to convert turnIndex to eventNumber

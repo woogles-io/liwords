@@ -628,6 +628,16 @@ export const ScoreCard = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
 
+  // Scroll selected turn into view when examinedTurn changes (arrow navigation)
+  useEffect(() => {
+    if (!props.isExamining || !flipHidden) return;
+    requestAnimationFrame(() => {
+      el.current
+        ?.querySelector(".turn-selected, .two-col-turn-selected")
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }, [examinedTurn, props.isExamining, flipHidden]);
+
   const viewMenuItems = [
     { label: "One column", key: "single" },
     { label: "Two columns", key: "two-col" },
