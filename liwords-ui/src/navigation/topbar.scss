@@ -35,6 +35,9 @@ body {
   }
   .user-info {
     white-space: nowrap;
+    min-width: 200px;
+    display: flex;
+    justify-content: flex-end;
 
     button.link {
       font-weight: 900;
@@ -47,7 +50,7 @@ body {
 }
 
 .top-header-menu {
-  width: 100%;
+  flex: 1;
   display: flex;
   margin: 0 auto;
   padding-bottom: 0;
@@ -99,6 +102,7 @@ body {
   display: flex;
   /* Inside Auto Layout */
   flex: none;
+  min-width: 200px;
   align-self: center;
   margin: 0;
   .site-icon-rect {

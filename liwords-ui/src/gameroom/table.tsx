@@ -1387,6 +1387,8 @@ export const Table = React.memo((props: Props) => {
           <ScoreCard
             isExamining={isExamining}
             events={examinableGameContext.turns}
+            allEvents={gameContext.turns}
+            allBoard={gameContext.board}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
