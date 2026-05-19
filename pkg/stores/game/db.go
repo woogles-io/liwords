@@ -174,26 +174,41 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, fmt.Errorf("annotated game %s should be accessed via GetDocument, not Get", id)
 	}
 
-	// Load history: S3 for finished games → turns for active games (Phase 3b, once
-	// last_known_racks column is verified populated) → bytea fallback.
+	// Load history: S3 for finished games → turns for active games → bytea fallback.
 	var hist *macondopb.GameHistory
+	loadSource := "bytea"
 	s3Key := g.HistoryS3Key.String
 	if s3Key != "" && s3Key != "0" && g.HistoryS3Key.Valid && s.historyFetcher != nil {
-		// Finished game archived to S3.
-		span.SetAttributes(attribute.String("game.load.source", "s3"))
 		hist, err = s.historyFetcher.Fetch(ctx, s3Key)
 		if err != nil {
-			// Fall back to bytea — S3 may be temporarily unavailable.
 			log.Warn().Err(err).Str("gid", id).Str("s3key", s3Key).
 				Msg("s3-fetch-failed, falling back to bytea")
 			hist = nil
 		} else {
+			loadSource = "s3"
 			log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("game-loaded-from-s3")
 		}
 	}
 
+	if hist == nil &&
+		pb.GameEndReason(g.GameEndReason.Int32) == pb.GameEndReason_NONE &&
+		len(g.LastKnownRacks) == 2 &&
+		(g.LastKnownRacks[0] != "" || g.LastKnownRacks[1] != "") {
+		turns, terr := s.queries.GetGameTurns(ctx, id)
+		if terr == nil && len(turns) > 0 {
+			hist, err = s.buildHistoryFromTurns(ctx, g, turns)
+			if err == nil {
+				loadSource = "turns"
+				log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("game-loaded-from-turns")
+			} else {
+				log.Warn().Err(err).Str("gid", id).Msg("turns-build-failed, falling back to bytea")
+				hist = nil
+				err = nil
+			}
+		}
+	}
+
 	if hist == nil {
-		span.SetAttributes(attribute.String("game.load.source", "bytea"))
 		_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
 			trace.WithAttributes(
 				attribute.Int("history.size_bytes", len(g.History)),
@@ -203,6 +218,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		err = proto.Unmarshal(g.History, hist)
 		unmarshalSpan.End()
 	}
+	span.SetAttributes(attribute.String("game.load.source", loadSource))
 
 	if err != nil {
 		span.RecordError(err)
@@ -304,6 +320,72 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	span.SetAttributes(attribute.Bool("game.started", entGame.Started))
 
 	return entGame, nil
+}
+
+// buildHistoryFromTurns assembles a macondopb.GameHistory from game_turns rows
+// and the game row fields. LastKnownRacks from the games.last_known_racks column
+// lets macondo's PlayToTurn restore exact player racks without random draw.
+// PlayState is left at zero (PLAYING); PlayToTurn overwrites it from the post-
+// replay rack-tile-count check, which is authoritative for GameEndReason==NONE.
+func (s *DBStore) buildHistoryFromTurns(
+	ctx context.Context,
+	g models.Game,
+	turns []models.GetGameTurnsRow,
+) (*macondopb.GameHistory, error) {
+	tracer := otel.Tracer("game-store")
+	_, span := tracer.Start(ctx, "game.build_from_turns",
+		trace.WithAttributes(attribute.Int("turns.count", len(turns))),
+	)
+	defer span.End()
+
+	events := make([]*macondopb.GameEvent, len(turns))
+	for i, t := range turns {
+		evt := &macondopb.GameEvent{}
+		if err := protojson.Unmarshal(t.Event, evt); err != nil {
+			span.RecordError(err)
+			return nil, fmt.Errorf("buildHistoryFromTurns: unmarshal turn %d: %w", i, err)
+		}
+		events[i] = evt
+	}
+
+	players := make([]*macondopb.PlayerInfo, len(g.Quickdata.PlayerInfo))
+	for i, pi := range g.Quickdata.PlayerInfo {
+		players[i] = &macondopb.PlayerInfo{
+			Nickname: pi.Nickname,
+			UserId:   pi.UserId,
+		}
+	}
+
+	gamereq := g.GameRequest.GameRequest
+	var boardLayoutName, letterDistributionName, variantName string
+	if gamereq != nil && gamereq.Rules != nil {
+		boardLayoutName = gamereq.Rules.BoardLayoutName
+		letterDistributionName = gamereq.Rules.LetterDistributionName
+		variantName = gamereq.Rules.VariantName
+	} else {
+		boardLayoutName = board.CrosswordGameLayout
+		letterDistributionName = "english"
+		variantName = "classic"
+	}
+	lexicon := ""
+	var challengeRule macondopb.ChallengeRule
+	if gamereq != nil {
+		lexicon = gamereq.Lexicon
+		challengeRule = gamereq.ChallengeRule
+	}
+
+	hist := &macondopb.GameHistory{
+		Events:             events,
+		Players:            players,
+		Lexicon:            lexicon,
+		ChallengeRule:      challengeRule,
+		Variant:            variantName,
+		BoardLayout:        boardLayoutName,
+		LetterDistribution: letterDistributionName,
+		LastKnownRacks:     g.LastKnownRacks,
+		Uid:                g.Uuid.String,
+	}
+	return hist, nil
 }
 
 // SpawnShadowCompare launches a shadow-compare goroutine using the post-move
