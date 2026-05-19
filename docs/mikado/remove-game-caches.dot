@@ -14,12 +14,16 @@ digraph RedoGameModel {
     ActivateGameTurnsTable [label = "Activate game_turns table ✅\n(schema: game_uuid, turn_idx, event jsonb)";];
     DualWriteTurns [label = "Dual-write turns ✅\n(INSERT game_turns + keep history bytea;\nflag: DUAL_WRITE_TURNS)";];
     SplitDBWriters [label = "Split DB writers ✅\n(AppendTurn, UpdateTimers,\nAppendMetaEvent, SetReady, EndGame)";];
-    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare after AppendTurns;\nrace-free; flag: SHADOW_TURNS)";];
+    BuildLiveStateFromTurns [label = "Build live game state from turns ✅\n(shadow-compare after AppendTurns;\nread path now uses turns for active games)";];
     AssembleHistoryFromTurns [label = "Assemble GameHistory from game_turns ✅\n(assembleHistory() in pkg/stores/game/s3.go;\nverify via proto.Equal against history bytea)";];
     S3UploadPath [label = "S3 upload path ✅\n(gzipped protojson, games/<yyyy>/<mm>/<uuid>.json.gz;\ncreation-date partitioning; MinIO in dev)";];
     S3UrlColumnOnGames [label = "Add history_s3_key column to games ✅\n(partial index on NULL for pending-archival scan)";];
     S3ArchiveOnGameEnd [label = "Archive GameHistory to S3 on game end ✅\n(assemble → verify → upload → CommitArchival tx;\ncmd/upload-game-archive/ retry script)";];
     ByteaBackfill [label = "Bytea-fed S3 backfill ✅\n(cmd/bytea-backfill/; 11.3M historical games;\nparallel workers, keyset pagination, resumable)";];
+    OTelObservability [label = "OTel observability ✅\n(MeterProvider enabled; cache hit/miss counter;\ngame.load.duration_ms histogram; gameplay spans;\nruntime memstats gauge)";];
+    LastKnownRacksColumn [label = "last_known_racks column on games ✅\n(text[]; written by Set/Create from macondo\nHistory().LastKnownRacks; prereq for turns read path)";];
+    S3LoadPath [label = "Load GameHistory from S3 ✅\n(Get + GetHistory route finished games to S3;\nbytea fallback for transition; game.load.source span attr)";];
+    ReadPathFromTurns [label = "Switch read path to game_turns ✅\n(buildHistoryFromTurns in Get + GetHistory;\nactive games: turns; finished games: S3;\nbytea fallback during transition)";];
 
     // ── Dropped nodes ❌ ──────────────────────────────────────────────────
     node [shape = box; color = lightgray; fontcolor = lightgray; style = "dashed,filled"; fillcolor = "#f0f0f0";];
@@ -42,7 +46,6 @@ digraph RedoGameModel {
     AdvisoryLockWriters [label = "Replace in-process locks with\npg_advisory_xact_lock per write tx";];
 
     CheapGameLoad [label = "Cheap per-move game load\n(no full-history replay per node)";];
-    ReadPathFromTurns [label = "Switch read path to game_turns\n(history bytea no longer read)";];
 
     GracefulCacheDrain [label = "Graceful cache drain on SIGTERM\n(refuse new moves; let txs drain)";];
 
@@ -51,8 +54,6 @@ digraph RedoGameModel {
     MigrateStatsToClickhouse [label = "Migrate game stats to ClickHouse\n(replaces liststats + games.stats;\nreads assembled GameHistory at end-of-game)";];
     OnlyUseNewStorage [label = "Only use new storage\n(game_turns + S3 + game_players)";];
     ReplaceQuickData [label = "Replace QuickData with JOINs\n(game_players + users)";];
-
-    S3LoadPath [label = "Load GameHistory from S3\n(fallback to legacy history bytea)";];
 
     // ── DeprecateGameDocument branch ──────────────────────────────────────
     DeprecateGameDocument [label = "Deprecate GameDocument entirely\n(storage + runtime type)";shape = oval;];
@@ -83,12 +84,18 @@ digraph RedoGameModel {
     RemoveGameCache -> SplitDBWriters;
     RemoveGameCache -> CheapGameLoad;
     RemoveGameCache -> GracefulCacheDrain;
+    RemoveGameCache -> OTelObservability;
     SplitDBWriters -> SQLCOtherFuncs;
 
     CheapGameLoad -> ReadPathFromTurns;
+    ReadPathFromTurns -> LastKnownRacksColumn;
     ReadPathFromTurns -> DualWriteTurns;
-    DualWriteTurns -> ActivateGameTurnsTable;
     ReadPathFromTurns -> BuildLiveStateFromTurns;
+    ReadPathFromTurns -> S3LoadPath;
+    S3LoadPath -> S3ArchiveOnGameEnd;
+    S3LoadPath -> ByteaBackfill;
+    LastKnownRacksColumn -> ActivateGameTurnsTable;
+    LastKnownRacksColumn -> DualWriteTurns;
 
     // ── Edges: MakeDBFaster ───────────────────────────────────────────────
     MakeDBFaster -> EfficientTable;
@@ -114,8 +121,6 @@ digraph RedoGameModel {
     S3ArchiveOnGameEnd -> S3UploadPath;
     S3ArchiveOnGameEnd -> S3UrlColumnOnGames;
     S3ArchiveOnGameEnd -> ByteaBackfill;
-    S3LoadPath -> S3ArchiveOnGameEnd;
-    S3LoadPath -> ByteaBackfill;
 
     // ── Edges: DeprecateGameDocument ──────────────────────────────────────
     DeprecateGameDocument -> MoveGameHistoryProto;
