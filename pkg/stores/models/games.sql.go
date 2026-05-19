@@ -32,12 +32,12 @@ INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn,
-    league_id, season_id, league_division_id
+    league_id, season_id, league_division_id, last_known_racks
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, $11, $12,
     $13, $14, $15, $16, $17, $18, $19, $20,
-    $21, $22, $23
+    $21, $22, $23, $24
 )
 `
 
@@ -65,6 +65,7 @@ type CreateGameParams struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	LastKnownRacks   []string
 }
 
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
@@ -92,6 +93,7 @@ func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) error {
 		arg.LeagueID,
 		arg.SeasonID,
 		arg.LeagueDivisionID,
+		arg.LastKnownRacks,
 	)
 	return err
 }
@@ -158,7 +160,7 @@ SELECT
     winner_idx, loser_idx, history, stats, quickdata,
     tournament_data, tournament_id, ready_flag, meta_events, type,
     game_request, player_on_turn, league_id, season_id, league_division_id,
-    history_s3_key
+    history_s3_key, last_known_racks
 FROM games
 WHERE uuid = $1
 `
@@ -193,6 +195,7 @@ func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error
 		&i.SeasonID,
 		&i.LeagueDivisionID,
 		&i.HistoryS3Key,
+		&i.LastKnownRacks,
 	)
 	return i, err
 }
@@ -1281,8 +1284,9 @@ UPDATE games SET
     player_on_turn = $17,
     league_id = $18,
     season_id = $19,
-    league_division_id = $20
-WHERE uuid = $21
+    league_division_id = $20,
+    last_known_racks = $21
+WHERE uuid = $22
 `
 
 type UpdateGameParams struct {
@@ -1306,6 +1310,7 @@ type UpdateGameParams struct {
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
+	LastKnownRacks   []string
 	Uuid             pgtype.Text
 }
 
@@ -1331,6 +1336,7 @@ func (q *Queries) UpdateGame(ctx context.Context, arg UpdateGameParams) error {
 		arg.LeagueID,
 		arg.SeasonID,
 		arg.LeagueDivisionID,
+		arg.LastKnownRacks,
 		arg.Uuid,
 	)
 	return err

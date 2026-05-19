@@ -174,10 +174,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, fmt.Errorf("annotated game %s should be accessed via GetDocument, not Get", id)
 	}
 
-	// Load history: prefer S3 (cheaper, avoids bytea wire transfer) when available.
+	// Load history: S3 for finished games → turns for active games (Phase 3b, once
+	// last_known_racks column is verified populated) → bytea fallback.
 	var hist *macondopb.GameHistory
 	s3Key := g.HistoryS3Key.String
 	if s3Key != "" && s3Key != "0" && g.HistoryS3Key.Valid && s.historyFetcher != nil {
+		// Finished game archived to S3.
 		span.SetAttributes(attribute.String("game.load.source", "s3"))
 		hist, err = s.historyFetcher.Fetch(ctx, s3Key)
 		if err != nil {
@@ -188,8 +190,6 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		} else {
 			log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("game-loaded-from-s3")
 		}
-	} else {
-		log.Debug().Str("gid", id).Bool("s3keyValid", g.HistoryS3Key.Valid).Bool("fetcherSet", s.historyFetcher != nil).Str("s3key", s3Key).Msg("game-load-s3-skipped")
 	}
 
 	if hist == nil {
@@ -863,6 +863,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		LeagueID:         leagueID,
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
+		LastKnownRacks:   g.History().LastKnownRacks,
 	})
 }
 
@@ -1044,6 +1045,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 		LeagueID:         leagueID,
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
+		LastKnownRacks:   g.History().LastKnownRacks,
 	})
 }
 
