@@ -450,8 +450,7 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
             score = (
               <>
                 {score}
-                <br />
-                +{turn.events[i].bonus}
+                <br />+{turn.events[i].bonus}
               </>
             );
             break;
@@ -596,7 +595,7 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  }, [props.hideExtraInteractions, scorecardView, props.isExamining]);
+  }, [props.hideExtraInteractions, props.isExamining]);
   useEffect(() => {
     resizeListener();
   }, [props.events, props.poolFormat, resizeListener]);
