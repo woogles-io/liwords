@@ -284,19 +284,34 @@ func (q *Queries) GetGameOwner(ctx context.Context, gameUuid string) (GetGameOwn
 }
 
 const getHistory = `-- name: GetHistory :one
-SELECT history, history_s3_key FROM games
+SELECT history, history_s3_key, game_end_reason, last_known_racks,
+       quickdata, game_request, uuid
+FROM games
 WHERE uuid = $1
 `
 
 type GetHistoryRow struct {
-	History      []byte
-	HistoryS3Key pgtype.Text
+	History        []byte
+	HistoryS3Key   pgtype.Text
+	GameEndReason  pgtype.Int4
+	LastKnownRacks []string
+	Quickdata      entity.Quickdata
+	GameRequest    entity.GameRequest
+	Uuid           pgtype.Text
 }
 
 func (q *Queries) GetHistory(ctx context.Context, argUuid pgtype.Text) (GetHistoryRow, error) {
 	row := q.db.QueryRow(ctx, getHistory, argUuid)
 	var i GetHistoryRow
-	err := row.Scan(&i.History, &i.HistoryS3Key)
+	err := row.Scan(
+		&i.History,
+		&i.HistoryS3Key,
+		&i.GameEndReason,
+		&i.LastKnownRacks,
+		&i.Quickdata,
+		&i.GameRequest,
+		&i.Uuid,
+	)
 	return i, err
 }
 

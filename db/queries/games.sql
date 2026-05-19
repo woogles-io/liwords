@@ -275,7 +275,9 @@ SELECT uuid FROM games
 ORDER BY created_at ASC;
 
 -- name: GetHistory :one
-SELECT history, history_s3_key FROM games
+SELECT history, history_s3_key, game_end_reason, last_known_racks,
+       quickdata, game_request, uuid
+FROM games
 WHERE uuid = @uuid;
 
 -- name: GameExists :one

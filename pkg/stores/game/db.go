@@ -1464,29 +1464,61 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 		return nil, err
 	}
 
-	// Prefer S3 when available — same routing as Get().
-	s3Key := row.HistoryS3Key.String
-	if s3Key != "" && row.HistoryS3Key.Valid && s.historyFetcher != nil {
-		span.SetAttributes(attribute.String("game.load.source", "s3"))
-		hist, fetchErr := s.historyFetcher.Fetch(ctx, s3Key)
-		if fetchErr != nil {
-			log.Warn().Err(fetchErr).Str("gid", id).Str("s3key", s3Key).
-				Msg("s3-fetch-failed, falling back to bytea")
-		} else {
-			span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
-			log.Debug().Interface("hist", hist).Msg("got-history-s3")
-			return hist, nil
+	// Active games → turns; finished games → S3; bytea is the transition fallback.
+	loadSource := "bytea"
+	var hist *macondopb.GameHistory
+
+	if pb.GameEndReason(row.GameEndReason.Int32) == pb.GameEndReason_NONE {
+		// Active game: reconstruct from game_turns.
+		if len(row.LastKnownRacks) == 2 && (row.LastKnownRacks[0] != "" || row.LastKnownRacks[1] != "") {
+			turns, terr := s.queries.GetGameTurns(ctx, id)
+			if terr == nil && len(turns) > 0 {
+				g := models.Game{
+					GameEndReason:  row.GameEndReason,
+					LastKnownRacks: row.LastKnownRacks,
+					Quickdata:      row.Quickdata,
+					GameRequest:    row.GameRequest,
+					Uuid:           row.Uuid,
+				}
+				hist, err = s.buildHistoryFromTurns(ctx, g, turns)
+				if err == nil {
+					loadSource = "turns"
+					log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("get-history-from-turns")
+				} else {
+					log.Warn().Err(err).Str("gid", id).Msg("get-history-turns-failed, falling back to bytea")
+					hist = nil
+					err = nil
+				}
+			}
+		}
+	} else {
+		// Finished game: read from S3.
+		s3Key := row.HistoryS3Key.String
+		if s3Key != "" && row.HistoryS3Key.Valid && s.historyFetcher != nil {
+			hist, err = s.historyFetcher.Fetch(ctx, s3Key)
+			if err == nil {
+				loadSource = "s3"
+				log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("get-history-from-s3")
+			} else {
+				log.Warn().Err(err).Str("gid", id).Str("s3key", s3Key).Msg("s3-fetch-failed, falling back to bytea")
+				hist = nil
+				err = nil
+			}
 		}
 	}
 
-	span.SetAttributes(attribute.String("game.load.source", "bytea"))
-	hist := &macondopb.GameHistory{}
-	if err = proto.Unmarshal(row.History, hist); err != nil {
-		span.RecordError(err)
-		return nil, err
+	if hist == nil {
+		hist = &macondopb.GameHistory{}
+		if err = proto.Unmarshal(row.History, hist); err != nil {
+			span.RecordError(err)
+			return nil, err
+		}
 	}
-	span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
-	log.Debug().Interface("hist", hist).Msg("got-history")
+
+	span.SetAttributes(
+		attribute.String("game.load.source", loadSource),
+		attribute.Int("history.events_count", len(hist.Events)),
+	)
 	return hist, nil
 }
 
