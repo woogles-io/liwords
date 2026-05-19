@@ -1853,7 +1853,8 @@ p.rune {
 
   .tiles-remaining {
     @include type-monospace;
-    font-size: 15px;
+    font-size: 13px;
+    font-weight: 800;
     padding: 6px 24px 12px;
     line-height: 1.3em;
     letter-spacing: 0.26em;
@@ -1927,18 +1928,44 @@ p.rune {
   }
 }
 
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.4;
+  border-radius: 4px;
+
+  @include colorModed() {
+    color: m($primary-dark);
+  }
+
+  &:hover {
+    @include colorModed() {
+      background: m($primary-light);
+    }
+  }
+
+  .view-mode-caret {
+    font-size: 10px;
+    line-height: 1;
+  }
+}
+
 .format-dropdown {
   .ant-dropdown-menu {
-    top: -28px;
-
     li.ant-dropdown-menu-item {
       @include type-default;
       & {
         font-weight: bold;
         font-size: 12px;
         height: 24px;
-        // padding: 0px 12px;
-        width: 100px;
+        min-width: 110px;
         line-height: 2.3em;
       }
 
@@ -2111,7 +2138,6 @@ p.rune {
     }
 
     .pass,
-    .exchanged,
     .time-penalty,
     .tiles-left,
     .challenge {
@@ -2126,6 +2152,12 @@ p.rune {
     }
 
     .challenge.unsuccessful {
+      @include colorModed() {
+        color: m($timer-dark);
+      }
+    }
+
+    .end-rack-pts {
       @include colorModed() {
         color: m($timer-dark);
       }
@@ -2154,6 +2186,20 @@ p.rune {
 
     .play {
       flex: 3;
+
+      .challenge.successful {
+        font-weight: 800;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+
+      .challenge.unsuccessful {
+        font-weight: 800;
+        @include colorModed() {
+          color: m($timer-dark);
+        }
+      }
     }
 
     .scores {
@@ -2543,7 +2589,6 @@ p.rune {
       }
 
       .pass,
-      .exchanged,
       .time-penalty {
         @include colorModed() {
           color: m($timer-out-dark);
@@ -2561,6 +2606,20 @@ p.rune {
       grid-area: rack;
       line-height: 1.2em;
       min-width: 0;
+
+      .challenge.successful {
+        font-weight: 800;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
+      }
+
+      .challenge.unsuccessful {
+        font-weight: 800;
+        @include colorModed() {
+          color: m($timer-dark);
+        }
+      }
     }
 
     .two-col-scores {

@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router";
 import { Card, Dropdown } from "antd";
 import { PoolFormatType, PoolFormats } from "../constants/pool_formats";
 import { singularCount } from "../utils/plural";
@@ -100,6 +99,10 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
     key: pf.poolFormatType.toString(),
   }));
 
+  const currentFormatLabel =
+    PoolFormats.find((f) => f.poolFormatType === props.poolFormat)
+      ?.displayName ?? "Alphabetical";
+
   const dropDown = !props.hidePool && (
     <Dropdown
       menu={{
@@ -116,9 +119,9 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
       placement="bottomRight"
       overlayClassName="format-dropdown"
     >
-      <Link to="/" onClick={(e) => e.preventDefault()}>
-        Rearrange
-      </Link>
+      <button className="view-mode-btn">
+        {currentFormatLabel} <span className="view-mode-caret">▾</span>
+      </button>
     </Dropdown>
   );
 

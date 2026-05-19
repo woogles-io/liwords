@@ -7,7 +7,6 @@ import React, {
   useState,
 } from "react";
 import { Card, Dropdown, Tooltip } from "antd";
-import { Link } from "react-router";
 import {
   GameEvent,
   GameEvent_Type,
@@ -92,7 +91,7 @@ type MoveEntityObj = {
   coords: string;
   timeRemaining: ReactNode;
   moveType: string | ReactNode;
-  rack: string;
+  rack: string | ReactNode;
   play: string | ReactNode;
   score: string;
   oldScore: number;
@@ -140,6 +139,12 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
       return <span className="challenge unsuccessful">Challenged</span>;
     case GameEvent_Type.END_RACK_PENALTY:
       return <span className="final-rack">Tiles on rack</span>;
+    case GameEvent_Type.END_RACK_PTS:
+      return (
+        <span className="end-rack-pts">
+          +{sortStringRack(evt.rack, alphabet)}
+        </span>
+      );
     case GameEvent_Type.TIME_PENALTY:
       return <span className="time-penalty">Time penalty</span>;
   }
@@ -237,7 +242,7 @@ const ScorecardTurn = (props: turnProps) => {
       },
       coords: evts[0].position,
       timeRemaining: timeRemaining,
-      rack: evts[0].rack,
+      rack: evts[0].rack as ReactNode,
       play: displaySummary(evts[0], props.board, props.alphabet),
       score: `${evts[0].score}`,
       lostScore: evts[0].lostScore,
@@ -250,7 +255,10 @@ const ScorecardTurn = (props: turnProps) => {
       isUsingTimeBank: isUsingTimeBank,
     };
     if (evts.length === 1) {
-      turn.rack = sortStringRack(turn.rack, props.alphabet);
+      if (evts[0].type !== GameEvent_Type.END_RACK_PTS) {
+        turn.rack = sortStringRack(turn.rack as string, props.alphabet);
+      }
+      // For END_RACK_PTS, rack is the opponent's tiles shown in the play line — don't repeat it
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -265,7 +273,9 @@ const ScorecardTurn = (props: turnProps) => {
           </span>
         </>
       );
-      turn.rack = "Play is invalid";
+      turn.rack = (
+        <span className="challenge successful">Challenge! Invalid</span>
+      );
     } else {
       if (evts[1].type === GameEvent_Type.CHALLENGE_BONUS) {
         turn.cumulative = evts[1].cumulative;
@@ -277,13 +287,12 @@ const ScorecardTurn = (props: turnProps) => {
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortStringRack(
-          evts[0].rack,
-          props.alphabet,
-        )}`;
+        turn.rack = (
+          <span className="challenge unsuccessful">Challenge! Valid</span>
+        );
       } else {
         // Void challenge combines the end rack points.
-        turn.rack = sortStringRack(turn.rack, props.alphabet);
+        turn.rack = sortStringRack(turn.rack as string, props.alphabet);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
@@ -416,7 +425,12 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
 
   const coords = evt.position || "";
   let play: React.ReactNode = displaySummary(evt, board, alphabet);
-  let score = `${evt.score}`;
+  let score: React.ReactNode =
+    evt.type === GameEvent_Type.END_RACK_PTS
+      ? `+${evt.endRackPoints}`
+      : evt.lostScore > 0
+        ? `-${evt.lostScore}`
+        : `+${evt.score}`;
   let cumulative = evt.cumulative;
 
   // Handle multi-event turns (challenges, etc.)
@@ -425,12 +439,21 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
     if (evt1.type === GameEvent_Type.PHONY_TILES_RETURNED) {
       score = "0";
       cumulative = evt1.cumulative;
-      play = <span className="challenge successful">Challenge!</span>;
+      play = displaySummary(evt, board, alphabet);
     } else {
+      if (evt1.type === GameEvent_Type.CHALLENGE_BONUS) {
+        play = displaySummary(evt, board, alphabet);
+      }
       for (let i = 1; i < turn.events.length; i++) {
         switch (turn.events[i].type) {
           case GameEvent_Type.CHALLENGE_BONUS:
-            score = `${score}+${turn.events[i].bonus}`;
+            score = (
+              <>
+                {score}
+                <br />
+                +{turn.events[i].bonus}
+              </>
+            );
             break;
           case GameEvent_Type.END_RACK_PTS:
             score = `${score}+${turn.events[i].endRackPoints}`;
@@ -441,12 +464,20 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
     }
   }
 
-  const rack = sortStringRack(
+  const isPhony =
     turn.events.length > 1 &&
-      turn.events[1].type === GameEvent_Type.PHONY_TILES_RETURNED
-      ? ""
-      : evt.rack,
-    alphabet,
+    turn.events[1].type === GameEvent_Type.PHONY_TILES_RETURNED;
+  const isValidChallenge =
+    turn.events.length > 1 &&
+    turn.events[1].type === GameEvent_Type.CHALLENGE_BONUS;
+  const rack: React.ReactNode = isPhony ? (
+    <span className="challenge successful">Challenge! Invalid</span>
+  ) : isValidChallenge ? (
+    <span className="challenge unsuccessful">Challenge! Valid</span>
+  ) : evt.type === GameEvent_Type.END_RACK_PTS ? (
+    ""
+  ) : (
+    sortStringRack(evt.rack, alphabet)
   );
 
   return (
@@ -514,18 +545,13 @@ export const ScoreCard = React.memo((props: Props) => {
   // Scroll to bottom when turns change (after DOM updates)
   useEffect(() => {
     const currentEl = el.current;
-    if (
-      currentEl &&
-      flipHidden &&
-      scorecardView !== "two-col" &&
-      !props.isExamining
-    ) {
+    if (currentEl && flipHidden && !props.isExamining) {
       // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
         currentEl.scrollTop = currentEl.scrollHeight;
       });
     }
-  }, [allTurns, flipHidden, scorecardView, props.isExamining]);
+  }, [allTurns, flipHidden, props.isExamining, cardHeight]);
 
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
@@ -539,7 +565,7 @@ export const ScoreCard = React.memo((props: Props) => {
       setFlipHidden(true);
     }
     if (currentEl) {
-      if (scorecardView !== "two-col" && !props.isExamining) {
+      if (!props.isExamining) {
         currentEl.scrollTop = currentEl.scrollHeight || 0;
       }
       const boardHeight =
@@ -639,9 +665,12 @@ export const ScoreCard = React.memo((props: Props) => {
   }, [examinedTurn, props.isExamining, flipHidden]);
 
   const viewMenuItems = [
-    { label: "One column", key: "single" },
-    { label: "Two columns", key: "two-col" },
+    { label: "1 column", key: "single" },
+    { label: "2 columns", key: "two-col" },
   ];
+
+  const currentViewLabel =
+    scorecardView === "two-col" ? "2 columns" : "1 column";
 
   const viewDropdown = (
     <Dropdown
@@ -656,9 +685,9 @@ export const ScoreCard = React.memo((props: Props) => {
       placement="bottomRight"
       overlayClassName="format-dropdown"
     >
-      <Link to="/" onClick={(e) => e.preventDefault()}>
-        Rearrange
-      </Link>
+      <button className="view-mode-btn">
+        {currentViewLabel} <span className="view-mode-caret">▾</span>
+      </button>
     </Dropdown>
   );
 
