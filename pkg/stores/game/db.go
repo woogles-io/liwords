@@ -190,23 +190,30 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		}
 	}
 
-	if hist == nil &&
-		pb.GameEndReason(g.GameEndReason.Int32) == pb.GameEndReason_NONE &&
-		len(g.LastKnownRacks) == 2 &&
-		(g.LastKnownRacks[0] != "" || g.LastKnownRacks[1] != "") {
-		turns, terr := s.queries.GetGameTurns(ctx, id)
-		if terr == nil && len(turns) > 0 {
-			hist, err = s.buildHistoryFromTurns(ctx, g, turns)
-			if err == nil {
-				loadSource = "turns"
-				log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("game-loaded-from-turns")
-			} else {
-				log.Warn().Err(err).Str("gid", id).Msg("turns-build-failed, falling back to bytea")
-				hist = nil
-				err = nil
-			}
-		}
-	}
+	// TODO(cache-removal phase 4): re-enable after pg_advisory_xact_lock wraps
+	// AppendTurns+Set in a single transaction. The turns-read path races with the
+	// end-of-game write sequence: AppendTurns commits terminal events to game_turns
+	// before Set commits game_end_reason to the games row, so a load between those
+	// two commits sees GameEndReason==NONE + a terminal event in turns → broken
+	// PLAYING state. See docs/mikado/remove-game-caches.dot for context.
+	//
+	// if hist == nil &&
+	// 	pb.GameEndReason(g.GameEndReason.Int32) == pb.GameEndReason_NONE &&
+	// 	len(g.LastKnownRacks) == 2 &&
+	// 	(g.LastKnownRacks[0] != "" || g.LastKnownRacks[1] != "") {
+	// 	turns, terr := s.queries.GetGameTurns(ctx, id)
+	// 	if terr == nil && len(turns) > 0 {
+	// 		hist, err = s.buildHistoryFromTurns(ctx, g, turns)
+	// 		if err == nil {
+	// 			loadSource = "turns"
+	// 			log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("game-loaded-from-turns")
+	// 		} else {
+	// 			log.Warn().Err(err).Str("gid", id).Msg("turns-build-failed, falling back to bytea")
+	// 			hist = nil
+	// 			err = nil
+	// 		}
+	// 	}
+	// }
 
 	if hist == nil {
 		_, unmarshalSpan := tracer.Start(ctx, "game.unmarshal_history",
@@ -322,78 +329,77 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	return entGame, nil
 }
 
-// buildHistoryFromTurns assembles a macondopb.GameHistory from game_turns rows
-// and the game row fields. LastKnownRacks from the games.last_known_racks column
-// lets macondo's PlayToTurn restore exact player racks without random draw.
-// PlayState is left at zero (PLAYING); PlayToTurn overwrites it from the post-
-// replay rack-tile-count check, which is authoritative for GameEndReason==NONE.
-func (s *DBStore) buildHistoryFromTurns(
-	ctx context.Context,
-	g models.Game,
-	turns []models.GetGameTurnsRow,
-) (*macondopb.GameHistory, error) {
-	tracer := otel.Tracer("game-store")
-	_, span := tracer.Start(ctx, "game.build_from_turns",
-		trace.WithAttributes(attribute.Int("turns.count", len(turns))),
-	)
-	defer span.End()
-
-	events := make([]*macondopb.GameEvent, len(turns))
-	for i, t := range turns {
-		evt := &macondopb.GameEvent{}
-		if err := protojson.Unmarshal(t.Event, evt); err != nil {
-			span.RecordError(err)
-			return nil, fmt.Errorf("buildHistoryFromTurns: unmarshal turn %d: %w", i, err)
-		}
-		events[i] = evt
-	}
-
-	players := make([]*macondopb.PlayerInfo, len(g.Quickdata.PlayerInfo))
-	for i, pi := range g.Quickdata.PlayerInfo {
-		players[i] = &macondopb.PlayerInfo{
-			Nickname: pi.Nickname,
-			UserId:   pi.UserId,
-		}
-	}
-
-	gamereq := g.GameRequest.GameRequest
-	var boardLayoutName, letterDistributionName, variantName string
-	if gamereq != nil && gamereq.Rules != nil {
-		boardLayoutName = gamereq.Rules.BoardLayoutName
-		letterDistributionName = gamereq.Rules.LetterDistributionName
-		variantName = gamereq.Rules.VariantName
-	} else {
-		boardLayoutName = board.CrosswordGameLayout
-		letterDistributionName = "english"
-		variantName = "classic"
-	}
-	lexicon := ""
-	var challengeRule macondopb.ChallengeRule
-	if gamereq != nil {
-		lexicon = gamereq.Lexicon
-		challengeRule = gamereq.ChallengeRule
-	}
-
-	hist := &macondopb.GameHistory{
-		Events:             events,
-		Players:            players,
-		Lexicon:            lexicon,
-		ChallengeRule:      challengeRule,
-		Variant:            variantName,
-		BoardLayout:        boardLayoutName,
-		LetterDistribution: letterDistributionName,
-		LastKnownRacks:     g.LastKnownRacks,
-		Uid:                g.Uuid.String,
-		// These match what macondo's newHistory() and assembleHistory() set.
-		// NewFromHistory only defaults IdAuth when Uid=="", so we must set them
-		// explicitly — otherwise games loaded via the turns path end up with
-		// IdAuth="" and Version=0, which causes archive-verify-mismatch on game end.
-		IdAuth:      archivedIdAuth,
-		Version:     archivedVersion,
-		Description: archivedDesc,
-	}
-	return hist, nil
-}
+// TODO(cache-removal phase 4): uncomment buildHistoryFromTurns after
+// pg_advisory_xact_lock wraps AppendTurns+Set in a single transaction.
+// See the commented-out call sites in Get() and GetHistory() above.
+//
+// func (s *DBStore) buildHistoryFromTurns(
+// 	ctx context.Context,
+// 	g models.Game,
+// 	turns []models.GetGameTurnsRow,
+// ) (*macondopb.GameHistory, error) {
+// 	tracer := otel.Tracer("game-store")
+// 	_, span := tracer.Start(ctx, "game.build_from_turns",
+// 		trace.WithAttributes(attribute.Int("turns.count", len(turns))),
+// 	)
+// 	defer span.End()
+//
+// 	events := make([]*macondopb.GameEvent, len(turns))
+// 	for i, t := range turns {
+// 		evt := &macondopb.GameEvent{}
+// 		if err := protojson.Unmarshal(t.Event, evt); err != nil {
+// 			span.RecordError(err)
+// 			return nil, fmt.Errorf("buildHistoryFromTurns: unmarshal turn %d: %w", i, err)
+// 		}
+// 		events[i] = evt
+// 	}
+//
+// 	players := make([]*macondopb.PlayerInfo, len(g.Quickdata.PlayerInfo))
+// 	for i, pi := range g.Quickdata.PlayerInfo {
+// 		players[i] = &macondopb.PlayerInfo{
+// 			Nickname: pi.Nickname,
+// 			UserId:   pi.UserId,
+// 		}
+// 	}
+//
+// 	gamereq := g.GameRequest.GameRequest
+// 	var boardLayoutName, letterDistributionName, variantName string
+// 	if gamereq != nil && gamereq.Rules != nil {
+// 		boardLayoutName = gamereq.Rules.BoardLayoutName
+// 		letterDistributionName = gamereq.Rules.LetterDistributionName
+// 		variantName = gamereq.Rules.VariantName
+// 	} else {
+// 		boardLayoutName = board.CrosswordGameLayout
+// 		letterDistributionName = "english"
+// 		variantName = "classic"
+// 	}
+// 	lexicon := ""
+// 	var challengeRule macondopb.ChallengeRule
+// 	if gamereq != nil {
+// 		lexicon = gamereq.Lexicon
+// 		challengeRule = gamereq.ChallengeRule
+// 	}
+//
+// 	hist := &macondopb.GameHistory{
+// 		Events:             events,
+// 		Players:            players,
+// 		Lexicon:            lexicon,
+// 		ChallengeRule:      challengeRule,
+// 		Variant:            variantName,
+// 		BoardLayout:        boardLayoutName,
+// 		LetterDistribution: letterDistributionName,
+// 		LastKnownRacks:     g.LastKnownRacks,
+// 		Uid:                g.Uuid.String,
+// 		// These match what macondo's newHistory() and assembleHistory() set.
+// 		// NewFromHistory only defaults IdAuth when Uid=="", so we must set them
+// 		// explicitly — otherwise games loaded via the turns path end up with
+// 		// IdAuth="" and Version=0, which causes archive-verify-mismatch on game end.
+// 		IdAuth:      archivedIdAuth,
+// 		Version:     archivedVersion,
+// 		Description: archivedDesc,
+// 	}
+// 	return hist, nil
+// }
 
 // SpawnShadowCompare launches a shadow-compare goroutine using the post-move
 // state of g. Call this after a successful AppendTurns; at that point
@@ -1471,46 +1477,49 @@ func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHis
 		return nil, err
 	}
 
-	// Active games → turns; finished games → S3; bytea is the transition fallback.
+	// Finished games → S3; bytea is the transition fallback.
+	// TODO(cache-removal phase 4): re-enable the turns path for active games after
+	// pg_advisory_xact_lock wraps AppendTurns+Set. See Get() above for the race
+	// explanation. The commented-out branch below is the implementation to restore.
+	//
+	// if pb.GameEndReason(row.GameEndReason.Int32) == pb.GameEndReason_NONE {
+	// 	// Active game: reconstruct from game_turns.
+	// 	if len(row.LastKnownRacks) == 2 && (row.LastKnownRacks[0] != "" || row.LastKnownRacks[1] != "") {
+	// 		turns, terr := s.queries.GetGameTurns(ctx, id)
+	// 		if terr == nil && len(turns) > 0 {
+	// 			g := models.Game{
+	// 				GameEndReason:  row.GameEndReason,
+	// 				LastKnownRacks: row.LastKnownRacks,
+	// 				Quickdata:      row.Quickdata,
+	// 				GameRequest:    row.GameRequest,
+	// 				Uuid:           row.Uuid,
+	// 			}
+	// 			hist, err = s.buildHistoryFromTurns(ctx, g, turns)
+	// 			if err == nil {
+	// 				loadSource = "turns"
+	// 				log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("get-history-from-turns")
+	// 			} else {
+	// 				log.Warn().Err(err).Str("gid", id).Msg("get-history-turns-failed, falling back to bytea")
+	// 				hist = nil
+	// 				err = nil
+	// 			}
+	// 		}
+	// 	}
+	// } else { ... }
+
 	loadSource := "bytea"
 	var hist *macondopb.GameHistory
 
-	if pb.GameEndReason(row.GameEndReason.Int32) == pb.GameEndReason_NONE {
-		// Active game: reconstruct from game_turns.
-		if len(row.LastKnownRacks) == 2 && (row.LastKnownRacks[0] != "" || row.LastKnownRacks[1] != "") {
-			turns, terr := s.queries.GetGameTurns(ctx, id)
-			if terr == nil && len(turns) > 0 {
-				g := models.Game{
-					GameEndReason:  row.GameEndReason,
-					LastKnownRacks: row.LastKnownRacks,
-					Quickdata:      row.Quickdata,
-					GameRequest:    row.GameRequest,
-					Uuid:           row.Uuid,
-				}
-				hist, err = s.buildHistoryFromTurns(ctx, g, turns)
-				if err == nil {
-					loadSource = "turns"
-					log.Debug().Str("gid", id).Int("turns", len(turns)).Msg("get-history-from-turns")
-				} else {
-					log.Warn().Err(err).Str("gid", id).Msg("get-history-turns-failed, falling back to bytea")
-					hist = nil
-					err = nil
-				}
-			}
-		}
-	} else {
-		// Finished game: read from S3.
-		s3Key := row.HistoryS3Key.String
-		if s3Key != "" && row.HistoryS3Key.Valid && s.historyFetcher != nil {
-			hist, err = s.historyFetcher.Fetch(ctx, s3Key)
-			if err == nil {
-				loadSource = "s3"
-				log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("get-history-from-s3")
-			} else {
-				log.Warn().Err(err).Str("gid", id).Str("s3key", s3Key).Msg("s3-fetch-failed, falling back to bytea")
-				hist = nil
-				err = nil
-			}
+	s3Key := row.HistoryS3Key.String
+	if s3Key != "" && row.HistoryS3Key.Valid && s.historyFetcher != nil {
+		hist, err = s.historyFetcher.Fetch(ctx, s3Key)
+		if err == nil {
+			loadSource = "s3"
+			log.Debug().Str("gid", id).Str("s3key", s3Key).Msg("get-history-from-s3")
+		} else {
+			log.Warn().Err(err).Str("gid", id).Str("s3key", s3Key).Msg("s3-fetch-failed, falling back to bytea")
+			hist = nil
+			err = nil
 		}
 	}
 
