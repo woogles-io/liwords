@@ -20,6 +20,13 @@ import (
 
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
+//
+// NOTE: metric pipeline is currently disabled. The stdoutmetric exporter with
+// cumulative temporality retains one record per unique attribute combination in
+// memory forever. The db.statement view filter was a no-op (otelpgx registers a
+// tracer, not metrics). Root cause of the OOM has not been heap-profiled, but
+// disabling metrics is the conservative kill-switch.
+// TODO(metrics-leak): re-enable after heap-profiling identifies the offender.
 func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
@@ -53,15 +60,14 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
-	// Set up meter provider. Metrics are exported as JSON to stdout, which
-	// lands in CloudWatch Logs and is queryable via Logs Insights.
-	meterProvider, err := newMeterProvider()
-	if err != nil {
-		handleErr(err)
-		return
-	}
-	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	otel.SetMeterProvider(meterProvider)
+	// TODO(metrics-leak): meter provider disabled — see comment on setupOTelSDK.
+	// meterProvider, err := newMeterProvider()
+	// if err != nil {
+	// 	handleErr(err)
+	// 	return
+	// }
+	// shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
+	// otel.SetMeterProvider(meterProvider)
 
 	return
 }
