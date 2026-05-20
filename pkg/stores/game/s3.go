@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,6 +14,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -238,6 +241,48 @@ func (h *HistoryArchiver) upload(ctx context.Context, gameUUID string, createdAt
 		return "", err
 	}
 	return key, nil
+}
+
+// Fetch downloads the game history at s3Key, decompresses, and unmarshals it.
+// It is the symmetric read side of upload. Used by DBStore.Get and GetHistory
+// when history_s3_key is set.
+func (h *HistoryArchiver) Fetch(ctx context.Context, s3Key string) (*macondopb.GameHistory, error) {
+	tracer := otel.Tracer("game-store")
+	ctx, span := tracer.Start(ctx, "game.FetchFromS3")
+	defer span.End()
+	span.SetAttributes(attribute.String("s3.key", s3Key))
+
+	downloader := manager.NewDownloader(h.s3Client)
+	buf := manager.NewWriteAtBuffer(nil)
+	_, err := downloader.Download(ctx, buf, &s3.GetObjectInput{
+		Bucket: aws.String(h.bucket),
+		Key:    aws.String(s3Key),
+	})
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("s3-fetch %s: %w", s3Key, err)
+	}
+
+	gr, err := gzip.NewReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("s3-fetch-gzip %s: %w", s3Key, err)
+	}
+	defer gr.Close()
+
+	raw, err := io.ReadAll(gr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("s3-fetch-read %s: %w", s3Key, err)
+	}
+
+	hist := &macondopb.GameHistory{}
+	if err := protojson.Unmarshal(raw, hist); err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("s3-fetch-unmarshal %s: %w", s3Key, err)
+	}
+	span.SetAttributes(attribute.Int("history.events_count", len(hist.Events)))
+	return hist, nil
 }
 
 // ArchiveBytea archives a game whose history is stored as a proto binary bytea

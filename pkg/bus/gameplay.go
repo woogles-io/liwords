@@ -70,12 +70,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	if sg.SeekRequest.ReceiverIsPermanent {
 		if sg.SeekRequest.RematchFor != "" {
 			// Assign firsts to be the other player.
+			// GetMetadata reads Players from the Quickdata blob (not player0_id/player1_id
+			// columns), which is populated by InstantiateNewGame in order of who goes first.
 			gameID := sg.SeekRequest.RematchFor
-			gh, err := b.stores.GameStore.GetHistory(ctx, gameID)
+			meta, err := b.stores.GameStore.GetMetadata(ctx, gameID)
 			if err != nil {
 				return err
 			}
-			players := gh.Players
+			players := meta.Players
 			log.Debug().Str("went-first", players[0].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame

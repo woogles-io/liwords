@@ -200,6 +200,10 @@ func main() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
 
+	// Register runtime memory/GC observable gauges so we can see heap and GC
+	// pressure in CloudWatch Logs Insights (metrics go to stdout via stdoutmetric).
+	registerRuntimeMetrics()
+
 	redisPool := newPool(cfg.RedisURL)
 	dbCfg, err := pgxpool.ParseConfig(cfg.DBConnUri)
 	if err != nil {
@@ -271,6 +275,7 @@ func main() {
 
 	if bucket := os.Getenv("GAMEHISTORY_UPLOAD_BUCKET"); bucket != "" {
 		stores.GameHistoryArchiver = gamestore.NewHistoryArchiver(bucket, s3Client, stores.GameStore)
+		stores.GameStore.SetHistoryFetcher(stores.GameHistoryArchiver)
 	}
 
 	mementoService := memento.NewMementoService(stores.UserStore, stores.GameStore,

@@ -451,16 +451,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		currentTournamentID := ""
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
-			game, err := b.stores.GameStore.Get(ctx, gameID)
+			meta, err := b.stores.GameStore.GetMetadata(ctx, gameID)
 			if err != nil {
 				log.Err(err).Str("gid", gameID).Msg("register-realm-get-game-failed")
 				return err
 			}
 			var foundPlayer bool
-			log.Debug().Str("gameID", gameID).Interface("gameHistory", game.History()).Str("userID", userID).
-				Msg("register-game-path")
+			log.Debug().Str("gameID", gameID).Str("userID", userID).Msg("register-game-path")
 			for i := 0; i < 2; i++ {
-				if game.History().Players[i].UserId == userID {
+				if meta.Players[i].UserId == userID {
 					foundPlayer = true
 				}
 			}
@@ -473,8 +472,8 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			log.Debug().Str("computed-realm", realm)
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
-			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				currentTournamentID = game.TournamentData.Id
+			if meta.TournamentId != "" {
+				currentTournamentID = meta.TournamentId
 				tournamentRealm := "tournament-" + currentTournamentID
 				resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 			}

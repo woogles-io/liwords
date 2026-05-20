@@ -206,6 +206,7 @@ type Game struct {
 	SeasonID         pgtype.UUID
 	LeagueDivisionID pgtype.UUID
 	HistoryS3Key     pgtype.Text
+	LastKnownRacks   []string
 }
 
 type GameComment struct {

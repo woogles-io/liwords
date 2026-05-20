@@ -11,11 +11,33 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	gs "github.com/woogles-io/liwords/rpc/api/proto/game_service"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+var (
+	cacheLookups     metric.Int64Counter
+	cacheLoadDurMs   metric.Float64Histogram
+	cacheMetricsOnce sync.Once
+)
+
+func initCacheMetrics() {
+	meter := otel.Meter("game-cache")
+	cacheLookups, _ = meter.Int64Counter(
+		"game.cache.lookups",
+		metric.WithDescription("Number of game cache lookups"),
+	)
+	cacheLoadDurMs, _ = meter.Float64Histogram(
+		"game.load.duration_ms",
+		metric.WithDescription("End-to-end game load latency (hit or miss) in milliseconds"),
+		metric.WithUnit("ms"),
+	)
+}
 
 var errNoID = errors.New("game ID was not defined")
 
@@ -45,6 +67,7 @@ type backingStore interface {
 	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 	InsertGamePlayers(ctx context.Context, g *entity.Game) error
 	SetTimerModuleCreator(creator TimerModuleCreator)
+	SetHistoryFetcher(f HistoryFetcher)
 	AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error
 	GetTurns(ctx context.Context, gameUUID string) ([]models.GetGameTurnsRow, error)
 	DeleteTurns(ctx context.Context, gameUUID string) error
@@ -163,9 +186,26 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 // Get gets a game from the cache.. it loads it into the cache if it's not there.
 // Correspondence games bypass the cache and always go to the DB.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
+	cacheMetricsOnce.Do(initCacheMetrics)
+	start := time.Now()
+
+	tracer := otel.Tracer("game-cache")
+	ctx, span := tracer.Start(ctx, "cache.Get")
+	defer span.End()
+
 	// Check if we already have it in cache (correspondence games won't be cached)
 	g, ok := c.cache.Get(id)
 	if ok && g != nil {
+		span.SetAttributes(
+			attribute.Bool("cache.hit", true),
+			attribute.Bool("game.correspondence", false),
+		)
+		cacheLookups.Add(ctx, 1, metric.WithAttributes(
+			attribute.Bool("hit", true),
+			attribute.Bool("correspondence", false),
+		))
+		cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
+			metric.WithAttributes(attribute.Bool("hit", true)))
 		return g.(*entity.Game), nil
 	}
 
@@ -174,16 +214,36 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	defer c.Unlock()
 	g, ok = c.cache.Get(id)
 	if ok && g != nil {
+		span.SetAttributes(
+			attribute.Bool("cache.hit", true),
+			attribute.Bool("game.correspondence", false),
+		)
+		cacheLookups.Add(ctx, 1, metric.WithAttributes(
+			attribute.Bool("hit", true),
+			attribute.Bool("correspondence", false),
+		))
+		cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
+			metric.WithAttributes(attribute.Bool("hit", true)))
 		return g.(*entity.Game), nil
 	}
 	log.Debug().Str("gameid", id).Msg("not-in-cache")
 	uncachedGame, err := c.backing.Get(ctx, id)
-	if err == nil && !uncachedGame.IsCorrespondence() {
+	isCorrespondence := err == nil && uncachedGame.IsCorrespondence()
+	if err == nil && !isCorrespondence {
 		// Only add to cache if it's not a correspondence game
 		c.cache.Add(id, uncachedGame)
 	}
+	span.SetAttributes(
+		attribute.Bool("cache.hit", false),
+		attribute.Bool("game.correspondence", isCorrespondence),
+	)
+	cacheLookups.Add(ctx, 1, metric.WithAttributes(
+		attribute.Bool("hit", false),
+		attribute.Bool("correspondence", isCorrespondence),
+	))
+	cacheLoadDurMs.Record(ctx, float64(time.Since(start).Milliseconds()),
+		metric.WithAttributes(attribute.Bool("hit", false)))
 	return uncachedGame, err
-
 }
 
 // Just call the DB implementation for now
@@ -332,6 +392,11 @@ func (c *Cache) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 
 func (c *Cache) SetTimerModuleCreator(creator TimerModuleCreator) {
 	c.backing.SetTimerModuleCreator(creator)
+}
+
+// SetHistoryFetcher wires the S3 history reader into the backing DB store.
+func (c *Cache) SetHistoryFetcher(f HistoryFetcher) {
+	c.backing.SetHistoryFetcher(f)
 }
 
 func (c *Cache) AppendTurns(ctx context.Context, gameUUID string, startIdx int, events []*macondopb.GameEvent) error {

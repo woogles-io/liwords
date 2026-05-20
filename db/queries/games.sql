@@ -4,7 +4,8 @@ SELECT
     player0_id, player1_id, timers, started, game_end_reason,
     winner_idx, loser_idx, history, stats, quickdata,
     tournament_data, tournament_id, ready_flag, meta_events, type,
-    game_request, player_on_turn, league_id, season_id, league_division_id
+    game_request, player_on_turn, league_id, season_id, league_division_id,
+    history_s3_key, last_known_racks
 FROM games
 WHERE uuid = @uuid; -- this is not even a uuid, sigh.
 
@@ -105,12 +106,12 @@ INSERT INTO games (
     created_at, updated_at, uuid, type, player0_id, player1_id,
     ready_flag, timers, started, game_end_reason, winner_idx, loser_idx,
     quickdata, history, meta_events, stats, tournament_id, tournament_data, game_request, player_on_turn,
-    league_id, season_id, league_division_id
+    league_id, season_id, league_division_id, last_known_racks
 ) VALUES (
     @created_at, @updated_at, @uuid, @type, @player0_id, @player1_id,
     @ready_flag, @timers, @started, @game_end_reason, @winner_idx, @loser_idx,
     @quickdata, @history, @meta_events, @stats, @tournament_id, @tournament_data, @game_request, @player_on_turn,
-    @league_id, @season_id, @league_division_id
+    @league_id, @season_id, @league_division_id, @last_known_racks
 );
 
 -- name: UpdateGameTimers :exec
@@ -166,7 +167,8 @@ UPDATE games SET
     player_on_turn = @player_on_turn,
     league_id = @league_id,
     season_id = @season_id,
-    league_division_id = @league_division_id
+    league_division_id = @league_division_id,
+    last_known_racks = @last_known_racks
 WHERE uuid = @uuid;
 
 -- name: CreateRawGame :exec
@@ -273,7 +275,9 @@ SELECT uuid FROM games
 ORDER BY created_at ASC;
 
 -- name: GetHistory :one
-SELECT history FROM games
+SELECT history, history_s3_key, game_end_reason, last_known_racks,
+       quickdata, game_request, uuid
+FROM games
 WHERE uuid = @uuid;
 
 -- name: GameExists :one
