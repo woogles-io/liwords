@@ -384,6 +384,13 @@ func (s *DBStore) buildHistoryFromTurns(
 		LetterDistribution: letterDistributionName,
 		LastKnownRacks:     g.LastKnownRacks,
 		Uid:                g.Uuid.String,
+		// These match what macondo's newHistory() and assembleHistory() set.
+		// NewFromHistory only defaults IdAuth when Uid=="", so we must set them
+		// explicitly — otherwise games loaded via the turns path end up with
+		// IdAuth="" and Version=0, which causes archive-verify-mismatch on game end.
+		IdAuth:      archivedIdAuth,
+		Version:     archivedVersion,
+		Description: archivedDesc,
 	}
 	return hist, nil
 }

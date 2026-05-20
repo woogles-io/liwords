@@ -190,11 +190,22 @@ func assembleHistory(g *entity.Game, turns []models.GetGameTurnsRow) (*macondopb
 // verifyHistory performs a full deep-equality check between the assembled-from-
 // turns history and the in-memory history decoded from games.history. Any
 // mismatch means either the turn rows are corrupt or the assembly has a bug.
+//
+// We normalize Version, IdAuth, and Description on both sides before comparing:
+// older bytea histories were written without these metadata fields set, but the
+// assembled history always sets them to our standard values. A difference here
+// is not a semantic mismatch and should not block archival.
 func verifyHistory(assembled, expected *macondopb.GameHistory, gameID string) error {
-	if proto.Equal(assembled, expected) {
+	// Clone to avoid mutating the caller's proto.
+	norm := proto.Clone(expected).(*macondopb.GameHistory)
+	norm.Version = assembled.Version
+	norm.IdAuth = assembled.IdAuth
+	norm.Description = assembled.Description
+
+	if proto.Equal(assembled, norm) {
 		return nil
 	}
-	diff := cmp.Diff(expected, assembled,
+	diff := cmp.Diff(norm, assembled,
 		protocmp.Transform(),
 		cmpopts.EquateEmpty(),
 	)
