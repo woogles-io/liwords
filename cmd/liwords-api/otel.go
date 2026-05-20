@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -102,8 +103,24 @@ func newMeterProvider() (*metric.MeterProvider, error) {
 		return nil, err
 	}
 
+	// Drop db.statement from histogram cardinality: query parameter values
+	// are included in trace spans (where cardinality is fine) but embedding
+	// them in metric attributes would create an unbounded number of time series
+	// (one per unique game UUID / event JSON combination) and OOM the process.
+	// Traces keep full parameter visibility; histograms are grouped only by
+	// query template (db.operation.name, db.collection.name, etc.).
+	noDB := metric.NewView(
+		metric.Instrument{Name: "db.client.operation.duration"},
+		metric.Stream{
+			AttributeFilter: func(kv attribute.KeyValue) bool {
+				return kv.Key != "db.statement"
+			},
+		},
+	)
+
 	meterProvider := metric.NewMeterProvider(
 		metric.WithReader(metric.NewPeriodicReader(metricExporter)),
+		metric.WithView(noDB),
 	)
 	return meterProvider, nil
 }
