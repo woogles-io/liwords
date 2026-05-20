@@ -39,6 +39,22 @@ func AddRoundResultsStr(request *pb.PairRequest, resultsStr string) {
 	request.DivisionResults = append(request.DivisionResults, roundResults)
 }
 
+func AddNDummyRounds(request *pb.PairRequest, n int) {
+	numPlayers := len(request.PlayerNames)
+	pairings := make([]int32, numPlayers)
+	for i := 0; i < numPlayers-1; i += 2 {
+		pairings[i] = int32(i + 1)
+		pairings[i+1] = int32(i)
+	}
+	if numPlayers%2 == 1 {
+		last := numPlayers - 1
+		pairings[last] = int32(last)
+	}
+	for range n {
+		AddRoundPairings(request, pairings)
+	}
+}
+
 func AddRoundResultsAndPairingsStr(request *pb.PairRequest, combinedStr string) {
 	fields := strings.Fields(combinedStr)
 

@@ -162,7 +162,13 @@ func (standings *Standings) GetPlayerIndex(rankIdx int) int {
 }
 
 func (standings *Standings) GetPlayerWins(rankIdx int) float64 {
-	return float64(getWinsValue(standings.records[rankIdx])-initialWinsValue+standings.roundsPlayed) / 2
+	return float64(standings.GetPlayerWinsIntTimesTwo(rankIdx)) / 2
+}
+
+// GetPlayerWinsIntTimesTwo returns wins*2 + ties as an integer, avoiding
+// a float64 round-trip when callers need an integer win comparison.
+func (standings *Standings) GetPlayerWinsIntTimesTwo(rankIdx int) int {
+	return int(getWinsValue(standings.records[rankIdx])-initialWinsValue+standings.roundsPlayed)
 }
 
 func (standings *Standings) GetPlayerSpread(rankIdx int) int {

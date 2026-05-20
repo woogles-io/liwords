@@ -4,6 +4,15 @@ package ipc;
 
 enum PairMethod {
   COP = 0;
+  PAIR_RANDOM = 1;
+  PAIR_ROUND_ROBIN = 2;
+  PAIR_KING_OF_THE_HILL = 3;
+  PAIR_FACTOR = 4;
+  PAIR_INITIAL_FONTES = 5;
+  PAIR_SWISS = 6;
+  PAIR_TEAM_ROUND_ROBIN = 7;
+  PAIR_INTERLEAVED_ROUND_ROBIN = 8;
+  PAIR_AUTO = 9;
 }
 
 message RoundPairings {
@@ -35,6 +44,8 @@ message PairRequest {
   repeated int32 removed_players = 18;
   int64 seed = 19;
   bool top_down_byes = 20;
+  int32 factor = 21;
+  int32 initial_nonperf_rounds = 22;
 }
 
 enum PairError {
@@ -70,6 +81,8 @@ enum PairError {
   OVERCONSTRAINED = 29;
   REQUEST_TO_JSON_FAILED = 30;
   TIMEOUT = 31;
+  UNSUPPORTED_PAIR_METHOD = 32;
+  SIMPLE_PAIRING_FAILED = 33;
 }
 
 message PairResponse {
@@ -78,4 +91,5 @@ message PairResponse {
   string log = 3;
   repeated int32 pairings = 4;
   repeated bool gibsonized_players = 5;
+  repeated int32 multiround_pairings = 6;
 }
