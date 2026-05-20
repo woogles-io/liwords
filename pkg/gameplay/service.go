@@ -223,8 +223,9 @@ func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRe
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 	anno := false
-	if hist.Version == 0 {
-		// A shortcut for a blank history. Look in the game document store.
+	if len(hist.Players) == 0 {
+		// No players: annotated game stored in game_documents (empty bytea).
+		// See GetGameHistory for why Version==0 is not a reliable discriminator.
 		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.Msg.GameId)
 		if err != nil {
 			return nil, err
@@ -253,8 +254,12 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
-	if hist.Version == 0 {
-		// A shortcut for a blank history. Look in the game document store.
+	if len(hist.Players) == 0 {
+		// No players means a blank/empty bytea — this is an annotated game
+		// stored in game_documents, not a live game.
+		// (Live games always have players in the bytea; Version is NOT a
+		// reliable discriminator because macondo never writes Version to the
+		// history it serializes — only the S3 archival path sets Version=2.)
 		gdoc, err := gs.gameDocumentStore.GetDocument(ctx, req.Msg.GameId)
 		if err != nil {
 			return nil, err
