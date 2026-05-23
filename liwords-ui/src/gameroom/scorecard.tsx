@@ -262,31 +262,24 @@ const ScorecardTurn = (props: turnProps) => {
       return turn;
     }
     // Otherwise, we have to make some modifications.
-    if (evts[1].type === GameEvent_Type.PHONY_TILES_RETURNED) {
+    // Search all events (not just index 1) — single challenge inserts a CHALLENGE event before PHONY/BONUS.
+    const phonyEvt = evts.find(
+      (e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED,
+    );
+    const bonusEvt = evts.find(
+      (e) => e.type === GameEvent_Type.CHALLENGE_BONUS,
+    );
+    if (phonyEvt) {
       turn.score = "0";
-      turn.cumulative = evts[1].cumulative;
-      turn.play = (
-        <>
-          <span className="challenge successful">Challenge!</span>
-          <span className="main-word">
-            {displaySummary(evts[0], props.board, props.alphabet)}
-          </span>
-        </>
-      );
+      turn.cumulative = phonyEvt.cumulative;
+      turn.play = displaySummary(evts[0], props.board, props.alphabet);
       turn.rack = (
         <span className="challenge successful">Challenge! Invalid</span>
       );
     } else {
-      if (evts[1].type === GameEvent_Type.CHALLENGE_BONUS) {
-        turn.cumulative = evts[1].cumulative;
-        turn.play = (
-          <>
-            <span className="challenge unsuccessful">Challenge!</span>
-            <span className="main-word">
-              {displaySummary(evts[0], props.board, props.alphabet)}
-            </span>
-          </>
-        );
+      if (bonusEvt) {
+        turn.cumulative = bonusEvt.cumulative;
+        turn.play = displaySummary(evts[0], props.board, props.alphabet);
         turn.rack = (
           <span className="challenge unsuccessful">Challenge! Valid</span>
         );
@@ -424,7 +417,7 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   const evt = turn.events[0];
 
   const coords = evt.position || "";
-  let play: React.ReactNode = displaySummary(evt, board, alphabet);
+  const play: React.ReactNode = displaySummary(evt, board, alphabet);
   let score: React.ReactNode =
     evt.type === GameEvent_Type.END_RACK_PTS
       ? `+${evt.endRackPoints}`
@@ -434,16 +427,18 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   let cumulative = evt.cumulative;
 
   // Handle multi-event turns (challenges, etc.)
+  // Use find() rather than checking index 1 — single challenge inserts a CHALLENGE event before PHONY/BONUS.
+  const phonyEvt = turn.events.find(
+    (e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED,
+  );
+  const bonusEvt = turn.events.find(
+    (e) => e.type === GameEvent_Type.CHALLENGE_BONUS,
+  );
   if (turn.events.length > 1) {
-    const evt1 = turn.events[1];
-    if (evt1.type === GameEvent_Type.PHONY_TILES_RETURNED) {
-      score = "0";
-      cumulative = evt1.cumulative;
-      play = displaySummary(evt, board, alphabet);
+    if (phonyEvt) {
+      score = "";
+      cumulative = phonyEvt.cumulative;
     } else {
-      if (evt1.type === GameEvent_Type.CHALLENGE_BONUS) {
-        play = displaySummary(evt, board, alphabet);
-      }
       for (let i = 1; i < turn.events.length; i++) {
         switch (turn.events[i].type) {
           case GameEvent_Type.CHALLENGE_BONUS:
@@ -463,12 +458,8 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
     }
   }
 
-  const isPhony =
-    turn.events.length > 1 &&
-    turn.events[1].type === GameEvent_Type.PHONY_TILES_RETURNED;
-  const isValidChallenge =
-    turn.events.length > 1 &&
-    turn.events[1].type === GameEvent_Type.CHALLENGE_BONUS;
+  const isPhony = !!phonyEvt;
+  const isValidChallenge = !!bonusEvt;
   const rack: React.ReactNode = isPhony ? (
     <span className="challenge successful">Challenge! Invalid</span>
   ) : isValidChallenge ? (

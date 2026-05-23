@@ -1279,6 +1279,14 @@ export const BoardPanel = React.memo((props: Props) => {
   const tileColorId =
     (props.gameDone ? null : myId) ?? examinableGameContext.onturn;
 
+  // Challenge is only valid when it's my turn AND the last event was a tile placement by the opponent.
+  const lastEvent =
+    examinableGameContext.turns[examinableGameContext.turns.length - 1];
+  const challengeAllowed =
+    isMyTurn &&
+    !!lastEvent &&
+    lastEvent.type === GameEvent_Type.TILE_PLACEMENT_MOVE;
+
   const showControlsForGame = !anonymousTourneyViewer && !props.puzzleMode;
   const authedSolvingPuzzle = props.puzzleMode && !props.anonymousViewer;
 
@@ -1307,6 +1315,9 @@ export const BoardPanel = React.memo((props: Props) => {
         onResign={handleResign}
         onRequestAbort={handleRequestAbort}
         onNudge={handleNudge}
+        challengeAllowed={
+          authedSolvingPuzzle || boardEditingMode ? true : challengeAllowed
+        }
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}
