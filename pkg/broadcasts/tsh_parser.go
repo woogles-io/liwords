@@ -280,13 +280,13 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		})
 	}
 
-	// totalRounds: prefer maxr from the division header if set.
+	// totalRounds: start from maxr but always expand it to cover the actual
+	// pairings data. TSH sets maxr before the final round is appended, so it
+	// can lag behind by one round for completed tournaments.
 	totalRounds := div.MaxR
-	if totalRounds == 0 {
-		for _, p := range players {
-			if len(p.Pairings) > totalRounds {
-				totalRounds = len(p.Pairings)
-			}
+	for _, p := range players {
+		if len(p.Pairings) > totalRounds {
+			totalRounds = len(p.Pairings)
 		}
 	}
 
