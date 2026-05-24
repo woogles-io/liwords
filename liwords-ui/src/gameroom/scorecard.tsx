@@ -752,7 +752,9 @@ export const ScoreCard = React.memo((props: Props) => {
                       }
                       isSelected={
                         props.isExamining &&
-                        examinedTurn === left.turn.firstEvtIdx
+                        examinedTurn >= left.turn.firstEvtIdx &&
+                        examinedTurn <
+                          left.turn.firstEvtIdx + left.turn.events.length
                       }
                       showComments={props.showComments}
                       comments={
@@ -783,7 +785,9 @@ export const ScoreCard = React.memo((props: Props) => {
                       }
                       isSelected={
                         props.isExamining &&
-                        examinedTurn === right.turn.firstEvtIdx
+                        examinedTurn >= right.turn.firstEvtIdx &&
+                        examinedTurn <
+                          right.turn.firstEvtIdx + right.turn.events.length
                       }
                       showComments={props.showComments}
                       comments={
@@ -843,7 +847,11 @@ export const ScoreCard = React.memo((props: Props) => {
                 ? () => handleExamineGoTo(t.firstEvtIdx)
                 : undefined
             }
-            isSelected={props.isExamining && examinedTurn === t.firstEvtIdx}
+            isSelected={
+              props.isExamining &&
+              examinedTurn >= t.firstEvtIdx &&
+              examinedTurn < t.firstEvtIdx + t.events.length
+            }
           />
         );
       };
