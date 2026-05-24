@@ -267,6 +267,9 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 			round = 1
 		}
 	}
+	if fd != nil && fd.TotalRounds > 0 && round > int32(fd.TotalRounds) {
+		round = int32(fd.TotalRounds)
+	}
 
 	// Get claimed games for this round from DB.
 	dbGames, err := bs.queries.GetBroadcastGamesForRound(ctx, models.GetBroadcastGamesForRoundParams{

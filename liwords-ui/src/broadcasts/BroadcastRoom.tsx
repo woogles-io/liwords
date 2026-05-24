@@ -66,11 +66,12 @@ export const BroadcastRoom: React.FC = () => {
       ? broadcastData.divisions[0]
       : selectedDivision;
 
-  const activeRound =
+  const totalRounds = broadcastData?.totalRounds || 1;
+  const rawRound =
     selectedRound ||
     broadcastData?.broadcast?.currentRound ||
-    broadcastData?.totalRounds ||
-    1;
+    totalRounds;
+  const activeRound = Math.min(Math.max(rawRound, 1), totalRounds);
 
   const { data: gamesData, isLoading: gamesLoading } = useQuery(
     getBroadcastGames,
@@ -125,7 +126,10 @@ export const BroadcastRoom: React.FC = () => {
   }
 
   const broadcast = broadcastData.broadcast;
-  const totalRounds = broadcastData.totalRounds || 1;
+  const currentRound = Math.min(
+    broadcast.currentRound || totalRounds,
+    totalRounds,
+  );
   const isAnnotator = broadcastData.annotatorUsernames.includes(
     loginState.username,
   );
@@ -410,6 +414,14 @@ export const BroadcastRoom: React.FC = () => {
             options={roundOptions}
             style={{ minWidth: 130 }}
           />
+          {activeRound !== currentRound && (
+            <Button
+              size="small"
+              onClick={() => setSelectedRound(currentRound)}
+            >
+              Jump to current (round {currentRound})
+            </Button>
+          )}
         </Space>
 
         <Table<BroadcastRoundGame>

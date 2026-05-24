@@ -21,6 +21,9 @@ export const OBS_SUFFIX_LABELS: Record<OBSSuffix, string> = {
   last_play: "Last Play (marquee)",
   blank1: "Blank Word 1",
   blank2: "Blank Word 2",
+  p1_name: "Player 1 Name",
+  p2_name: "Player 2 Name",
+  combined_names: "Both Names (P1 - P2)",
 };
 
 // Sample data shown in the preview (no real SSE needed)
@@ -34,6 +37,9 @@ const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
     "     LAST PLAY: Alice 8H GRAFTED 86 86 | to unite with a growing plant",
   blank1: "CoSTARS",
   blank2: "quiZzes",
+  p1_name: "Alice Smith",
+  p2_name: "Bob Jones",
+  combined_names: "Alice Smith - Bob Jones",
 };
 
 const FONT_OPTIONS = [
@@ -57,6 +63,12 @@ export function defaultSizeForSuffix(suffix: OBSSuffix): number {
     return 48;
   if (suffix === "blank1" || suffix === "blank2") return 36;
   if (suffix === "last_play") return 24;
+  if (
+    suffix === "p1_name" ||
+    suffix === "p2_name" ||
+    suffix === "combined_names"
+  )
+    return 32;
   return 20;
 }
 
@@ -129,6 +141,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [suffix, setSuffix] = useState<OBSSuffix>("score");
   const [bg, setBg] = useState("#ffffff");
+  const [transparentBg, setTransparentBg] = useState(false);
   const [textColor, setTextColor] = useState("#000000");
   const [size, setSize] = useState(defaultSizeForSuffix("score"));
   const [font, setFont] = useState("mono");
@@ -182,7 +195,8 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
 
   const buildURL = () => {
     const params = new URLSearchParams();
-    if (bg !== "#ffffff") params.set("bg", bg);
+    if (transparentBg) params.set("bg", "transparent");
+    else if (bg !== "#ffffff") params.set("bg", bg);
     if (textColor !== "#000000") params.set("color", textColor);
     const defSize = defaultSizeForSuffix(suffix);
     if (size !== defSize) params.set("size", String(size));
@@ -209,7 +223,9 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   };
 
   const previewContainerStyle: React.CSSProperties = {
-    background: bg,
+    background: transparentBg
+      ? "repeating-conic-gradient(#e0e0e0 0% 25%, #ffffff 0% 50%) 0 0 / 16px 16px"
+      : bg,
     padding: `${padding}px`,
     overflow: "hidden",
     width: "100%",
@@ -320,12 +336,29 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               >
                 Background
               </Typography.Text>
-              <input
-                type="color"
-                value={bg}
-                onChange={(e) => setBg(e.target.value)}
-                style={{ width: 60, height: 32, cursor: "pointer", padding: 2 }}
-              />
+              <Space>
+                <input
+                  type="color"
+                  value={bg}
+                  disabled={transparentBg}
+                  onChange={(e) => setBg(e.target.value)}
+                  style={{
+                    width: 60,
+                    height: 32,
+                    cursor: transparentBg ? "not-allowed" : "pointer",
+                    padding: 2,
+                    opacity: transparentBg ? 0.4 : 1,
+                  }}
+                />
+                <Switch
+                  size="small"
+                  checked={transparentBg}
+                  onChange={setTransparentBg}
+                />
+                <Typography.Text style={{ fontSize: 12 }}>
+                  Transparent
+                </Typography.Text>
+              </Space>
             </div>
             <div>
               <Typography.Text

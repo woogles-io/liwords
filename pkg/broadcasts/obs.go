@@ -26,29 +26,37 @@ const obsNWLLexicon = "NWL23"
 // OBSData holds all display strings for a single game state, matching
 // the output files produced by WatchGCG (https://github.com/jvc56/WatchGCG).
 type OBSData struct {
-	Score       string `json:"score"`        // "NNN - NNN"
-	P1Score     string `json:"p1_score"`     // right-justified 3 chars
-	P2Score     string `json:"p2_score"`     // right-justified 3 chars
-	UnseenTiles string `json:"unseen_tiles"` // "AA BB C ?"
-	UnseenCount string `json:"unseen_count"` // 3-line breakdown
-	LastPlay    string `json:"last_play"`    // "     LAST PLAY: ..."
-	Blank1      string `json:"blank1"`       // first word played with a blank, blank letter lowercase e.g. "CoSTARS"
-	Blank2      string `json:"blank2"`       // second word played with a blank
+	Score         string `json:"score"`          // "NNN - NNN"
+	P1Score       string `json:"p1_score"`       // right-justified 3 chars
+	P2Score       string `json:"p2_score"`       // right-justified 3 chars
+	UnseenTiles   string `json:"unseen_tiles"`   // "AA BB C ?"
+	UnseenCount   string `json:"unseen_count"`   // 3-line breakdown
+	LastPlay      string `json:"last_play"`      // "     LAST PLAY: ..."
+	Blank1        string `json:"blank1"`         // first word played with a blank, blank letter lowercase e.g. "CoSTARS"
+	Blank2        string `json:"blank2"`         // second word played with a blank
+	P1Name        string `json:"p1_name"`        // player 1 display name
+	P2Name        string `json:"p2_name"`        // player 2 display name
+	CombinedNames string `json:"combined_names"` // "P1 - P2"
 }
 
 // ComputeOBSData renders all display strings from a live GameDocument.
 // definer may be nil, in which case definitions and symbols are omitted.
 func ComputeOBSData(doc *ipc.GameDocument, dist *tilemapping.LetterDistribution, definer Definer) OBSData {
 	blank1, blank2 := formatBlankPlays(doc, dist)
+	p1 := playerName(doc, 0)
+	p2 := playerName(doc, 1)
 	return OBSData{
-		Score:       formatScore(doc),
-		P1Score:     formatPlayerScore(doc, 0),
-		P2Score:     formatPlayerScore(doc, 1),
-		UnseenTiles: formatUnseenTiles(doc, dist),
-		UnseenCount: formatUnseenCount(doc, dist),
-		LastPlay:    formatLastPlay(doc, dist, definer),
-		Blank1:      blank1,
-		Blank2:      blank2,
+		Score:         formatScore(doc),
+		P1Score:       formatPlayerScore(doc, 0),
+		P2Score:       formatPlayerScore(doc, 1),
+		UnseenTiles:   formatUnseenTiles(doc, dist),
+		UnseenCount:   formatUnseenCount(doc, dist),
+		LastPlay:      formatLastPlay(doc, dist, definer),
+		Blank1:        blank1,
+		Blank2:        blank2,
+		P1Name:        p1,
+		P2Name:        p2,
+		CombinedNames: fmt.Sprintf("%s - %s", p1, p2),
 	}
 }
 
