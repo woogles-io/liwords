@@ -35,14 +35,14 @@ type FeedPlayer struct {
 
 // RoundPairing describes a single game in a round, derived from feed data.
 type RoundPairing struct {
-	Round         int
-	TableNumber   int
-	Player1Name   string
-	Player2Name   string
-	Player1Score  int
-	Player2Score  int
+	Round            int
+	TableNumber      int
+	Player1Name      string
+	Player2Name      string
+	Player1Score     int
+	Player2Score     int
 	Player1GoesFirst bool
-	Finalized     bool // true if scores are entered
+	Finalized        bool // true if scores are entered
 }
 
 // NewFeedParser returns the appropriate parser for the given format string.
@@ -176,7 +176,7 @@ type tshNewt struct {
 
 type tshDivision struct {
 	Name string `json:"name"`
-	MaxR int    `json:"maxr"`
+	MaxR int    `json:"maxr"` // 0-indexed
 	// Players is 1-indexed; index 0 is always null.
 	Players []json.RawMessage `json:"players"`
 }
@@ -281,9 +281,8 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 	}
 
 	// totalRounds: start from maxr but always expand it to cover the actual
-	// pairings data. TSH sets maxr before the final round is appended, so it
-	// can lag behind by one round for completed tournaments.
-	totalRounds := div.MaxR
+	// pairings data.
+	totalRounds := div.MaxR + 1
 	for _, p := range players {
 		if len(p.Pairings) > totalRounds {
 			totalRounds = len(p.Pairings)
