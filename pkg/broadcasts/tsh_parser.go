@@ -141,24 +141,47 @@ func sortRoundPairingsByTable(pairings []RoundPairing) {
 }
 
 // detectCurrentRound returns the 1-indexed current round.
-// It finds the latest round that has at least one score entered.
-// Returns 0 if no games have been played yet.
+// It finds the latest scored round, then advances by one if that round
+// is fully scored AND the next round already has pairings posted.
+// This correctly handles directors who pair rounds in advance.
+// Returns 0 if no games have been played and no pairings exist yet.
 func detectCurrentRound(players []FeedPlayer) int {
-	maxRound := 0
+	lastScored := 0
 	for _, p := range players {
 		for r := len(p.Scores) - 1; r >= 0; r-- {
 			if r >= len(p.Pairings) {
 				continue
 			}
 			if p.Pairings[r] != 0 && p.Scores[r] != 0 {
-				if r+1 > maxRound {
-					maxRound = r + 1
+				if r+1 > lastScored {
+					lastScored = r + 1
 				}
 				break
 			}
 		}
 	}
-	return maxRound
+	if lastScored == 0 {
+		return 0
+	}
+	// Check if the last scored round is fully scored (every paired player
+	// has a non-zero score). If it is, and the next round has pairings,
+	// advance to the next round.
+	lastIdx := lastScored - 1 // 0-indexed
+	for _, p := range players {
+		if lastIdx >= len(p.Pairings) || p.Pairings[lastIdx] == 0 {
+			continue
+		}
+		if lastIdx >= len(p.Scores) || p.Scores[lastIdx] == 0 {
+			return lastScored // round still in progress
+		}
+	}
+	nextIdx := lastScored // 0-indexed index of the round after lastScored
+	for _, p := range players {
+		if nextIdx < len(p.Pairings) && p.Pairings[nextIdx] != 0 {
+			return lastScored + 1
+		}
+	}
+	return lastScored
 }
 
 // ---- TSH newt={...}; parser ----
