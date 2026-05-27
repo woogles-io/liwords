@@ -154,10 +154,28 @@ ORDER BY bg.claimed_at DESC
 LIMIT $3;
 
 -- name: GetBroadcastGameByUUID :one
-SELECT bg.*, b.slug as broadcast_slug, b.name as broadcast_name
+SELECT bg.*, b.uuid as broadcast_uuid, b.slug as broadcast_slug, b.name as broadcast_name,
+       b.broadcast_url, b.broadcast_url_format
 FROM broadcast_games bg
 JOIN broadcasts b ON bg.broadcast_id = b.id
 WHERE bg.game_uuid = $1;
+
+-- name: GetBroadcastGameStatsBySlug :many
+-- Returns all broadcast_games for a slug, ordered by completed_at desc (NULLs last = in-progress first).
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at
+FROM broadcast_games bg
+JOIN broadcasts b ON bg.broadcast_id = b.id
+WHERE b.slug = $1
+ORDER BY bg.completed_at DESC NULLS LAST;
+
+-- name: UpdateBroadcastGameStats :exec
+UPDATE broadcast_games
+SET stats             = $2,
+    stats_computed_at = NOW(),
+    completed_at      = $3
+WHERE game_uuid = $1;
 
 -- name: CreateBroadcastSlot :exec
 INSERT INTO broadcast_slots (broadcast_id, slot_name, division, round, table_number)

@@ -136,6 +136,9 @@ type BroadcastGame struct {
 	AnnotatorUserID pgtype.Int4
 	ClaimedAt       pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
+	Stats           []byte
+	StatsComputedAt pgtype.Timestamptz
+	CompletedAt     pgtype.Timestamptz
 }
 
 type BroadcastSlot struct {

@@ -311,6 +311,7 @@ func main() {
 	commentService := comments.NewCommentsService(stores.UserStore, stores.GameStore, stores.CommentsStore, stores.Queries)
 	collectionsService := collections.NewCollectionsService(stores.UserStore, stores.Queries, dbPool)
 	broadcastService := broadcasts.NewBroadcastService(stores.UserStore, stores.Queries, cfg, stores.GameDocumentStore, stores.AnnotatedGameStore)
+	omgwordsService.SetAnnotatedGameDoneHook(broadcastService.HandleAnnotatedGameDone)
 	pairService := pair.NewPairService(cfg, lambdaClient)
 	vdoWebhookService := vdowebhook.NewVDOWebhookService(stores.TournamentStore, cfg.VDOPollingIntervalSeconds)
 	analysisService := analysis.NewAnalysisService(stores.UserStore, stores.GameStore, stores.Queries, dbPool)

@@ -103,3 +103,13 @@ export const assignSlot = BroadcastService.method.assignSlot;
  * @generated from rpc broadcast_service.BroadcastService.DeleteSlot
  */
 export const deleteSlot = BroadcastService.method.deleteSlot;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.GetBroadcastGameStats
+ */
+export const getBroadcastGameStats = BroadcastService.method.getBroadcastGameStats;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.GetBroadcastAllGames
+ */
+export const getBroadcastAllGames = BroadcastService.method.getBroadcastAllGames;

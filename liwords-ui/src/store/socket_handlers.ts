@@ -1102,6 +1102,18 @@ export const useOnSocketMsg = () => {
             queryClient.invalidateQueries({
               queryKey: ["connect-query", { methodName: "GetBroadcastGames" }],
             });
+            queryClient.invalidateQueries({
+              queryKey: [
+                "connect-query",
+                { methodName: "GetBroadcastGameStats" },
+              ],
+            });
+            queryClient.invalidateQueries({
+              queryKey: [
+                "connect-query",
+                { methodName: "GetBroadcastAllGames" },
+              ],
+            });
             console.log(`broadcast-games-updated slug=${ev.slug}`);
             break;
           }

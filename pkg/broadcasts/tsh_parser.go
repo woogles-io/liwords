@@ -123,6 +123,84 @@ func GetRoundPairings(fd *FeedData, round int) []RoundPairing {
 	return pairings
 }
 
+// GetAllRoundPairings is like GetRoundPairings but does not skip games where the
+// board/table number is absent (table == 0). Deduplication falls back to a
+// player-ID pair key when no table number is set. Use this for archive/stats
+// views where all games must be enumerated regardless of board assignment.
+func GetAllRoundPairings(fd *FeedData, round int) []RoundPairing {
+	if round < 1 || round > fd.TotalRounds {
+		return nil
+	}
+	r := round - 1
+
+	type pairKey struct{ lo, hi int }
+	seenPair := make(map[pairKey]bool)
+	seenTable := make(map[int]bool)
+	var pairings []RoundPairing
+
+	for _, p := range fd.Players {
+		if r >= len(p.Pairings) {
+			continue
+		}
+		oppID := p.Pairings[r]
+		if oppID == 0 {
+			continue
+		}
+
+		var table int
+		if r < len(p.Boards) {
+			table = p.Boards[r]
+		}
+
+		if table != 0 {
+			if seenTable[table] {
+				continue
+			}
+			seenTable[table] = true
+		} else {
+			lo, hi := p.ID, oppID
+			if lo > hi {
+				lo, hi = hi, lo
+			}
+			key := pairKey{lo, hi}
+			if seenPair[key] {
+				continue
+			}
+			seenPair[key] = true
+		}
+
+		opp := findPlayer(fd.Players, oppID)
+		if opp == nil {
+			continue
+		}
+
+		var p1Score, p2Score int
+		if r < len(p.Scores) {
+			p1Score = p.Scores[r]
+		}
+		if r < len(opp.Scores) {
+			p2Score = opp.Scores[r]
+		}
+		var goesFirst bool
+		if r < len(p.P12) {
+			goesFirst = p.P12[r] == 1
+		}
+		pairings = append(pairings, RoundPairing{
+			Round:            round,
+			TableNumber:      table,
+			Player1Name:      p.Name,
+			Player2Name:      opp.Name,
+			Player1Score:     p1Score,
+			Player2Score:     p2Score,
+			Player1GoesFirst: goesFirst,
+			Finalized:        p1Score != 0 || p2Score != 0,
+		})
+	}
+
+	sortRoundPairingsByTable(pairings)
+	return pairings
+}
+
 func findPlayer(players []FeedPlayer, id int) *FeedPlayer {
 	for i := range players {
 		if players[i].ID == id {

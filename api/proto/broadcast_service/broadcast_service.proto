@@ -261,6 +261,50 @@ message DeleteSlotRequest {
 
 message DeleteSlotResponse {}
 
+// BroadcastGameStat is the pre-computed stats for a single annotated game.
+// Populated when the annotation is marked done; nil for in-progress games.
+message BroadcastGameStat {
+  string game_uuid = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 table_number = 4;
+  string player1_name = 5;
+  string player2_name = 6;
+  int32 player1_rating = 7;
+  int32 player2_rating = 8;
+  int32 player1_score = 9;
+  int32 player2_score = 10;
+  int32 winner = 11;          // 0 = player1, 1 = player2, -1 = tie
+  int32 player1_bingos = 12;
+  int32 player2_bingos = 13;
+  int32 max_play_score = 14;  // highest single-turn score in the game
+  string max_play_word = 15;  // the word played on that turn (friendly)
+  int32 move_count = 16;      // total tile-placement + exchange moves
+  bool walk_off_bingo = 17;   // last move was a bingo ending the game
+  google.protobuf.Timestamp completed_at = 18; // null for in-progress games
+  // Current scores (only set for in-progress games, i.e. completed_at is null)
+  int32 current_score1 = 19;
+  int32 current_score2 = 20;
+  // true if player1 went first; false if player2 went first; false if unknown
+  bool player1_goes_first = 21;
+}
+
+message GetBroadcastGameStatsRequest {
+  string slug = 1;
+}
+
+message GetBroadcastGameStatsResponse {
+  repeated BroadcastGameStat stats = 1;
+}
+
+message GetBroadcastAllGamesRequest {
+  string slug = 1;
+}
+
+message GetBroadcastAllGamesResponse {
+  repeated BroadcastGameStat stats = 1;
+}
+
 service BroadcastService {
   rpc CreateBroadcast(CreateBroadcastRequest) returns (CreateBroadcastResponse);
   rpc GetBroadcast(GetBroadcastRequest) returns (GetBroadcastResponse);
@@ -282,4 +326,6 @@ service BroadcastService {
   rpc CreateSlot(CreateSlotRequest) returns (CreateSlotResponse);
   rpc AssignSlot(AssignSlotRequest) returns (AssignSlotResponse);
   rpc DeleteSlot(DeleteSlotRequest) returns (DeleteSlotResponse);
+  rpc GetBroadcastGameStats(GetBroadcastGameStatsRequest) returns (GetBroadcastGameStatsResponse);
+  rpc GetBroadcastAllGames(GetBroadcastAllGamesRequest) returns (GetBroadcastAllGamesResponse);
 }

@@ -93,6 +93,12 @@ const (
 	// BroadcastServiceDeleteSlotProcedure is the fully-qualified name of the BroadcastService's
 	// DeleteSlot RPC.
 	BroadcastServiceDeleteSlotProcedure = "/broadcast_service.BroadcastService/DeleteSlot"
+	// BroadcastServiceGetBroadcastGameStatsProcedure is the fully-qualified name of the
+	// BroadcastService's GetBroadcastGameStats RPC.
+	BroadcastServiceGetBroadcastGameStatsProcedure = "/broadcast_service.BroadcastService/GetBroadcastGameStats"
+	// BroadcastServiceGetBroadcastAllGamesProcedure is the fully-qualified name of the
+	// BroadcastService's GetBroadcastAllGames RPC.
+	BroadcastServiceGetBroadcastAllGamesProcedure = "/broadcast_service.BroadcastService/GetBroadcastAllGames"
 )
 
 // BroadcastServiceClient is a client for the broadcast_service.BroadcastService service.
@@ -117,6 +123,8 @@ type BroadcastServiceClient interface {
 	CreateSlot(context.Context, *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error)
 	AssignSlot(context.Context, *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error)
 	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
+	GetBroadcastGameStats(context.Context, *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error)
+	GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error)
 }
 
 // NewBroadcastServiceClient constructs a client for the broadcast_service.BroadcastService service.
@@ -250,6 +258,18 @@ func NewBroadcastServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(broadcastServiceMethods.ByName("DeleteSlot")),
 			connect.WithClientOptions(opts...),
 		),
+		getBroadcastGameStats: connect.NewClient[broadcast_service.GetBroadcastGameStatsRequest, broadcast_service.GetBroadcastGameStatsResponse](
+			httpClient,
+			baseURL+BroadcastServiceGetBroadcastGameStatsProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastGameStats")),
+			connect.WithClientOptions(opts...),
+		),
+		getBroadcastAllGames: connect.NewClient[broadcast_service.GetBroadcastAllGamesRequest, broadcast_service.GetBroadcastAllGamesResponse](
+			httpClient,
+			baseURL+BroadcastServiceGetBroadcastAllGamesProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastAllGames")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -275,6 +295,8 @@ type broadcastServiceClient struct {
 	createSlot                *connect.Client[broadcast_service.CreateSlotRequest, broadcast_service.CreateSlotResponse]
 	assignSlot                *connect.Client[broadcast_service.AssignSlotRequest, broadcast_service.AssignSlotResponse]
 	deleteSlot                *connect.Client[broadcast_service.DeleteSlotRequest, broadcast_service.DeleteSlotResponse]
+	getBroadcastGameStats     *connect.Client[broadcast_service.GetBroadcastGameStatsRequest, broadcast_service.GetBroadcastGameStatsResponse]
+	getBroadcastAllGames      *connect.Client[broadcast_service.GetBroadcastAllGamesRequest, broadcast_service.GetBroadcastAllGamesResponse]
 }
 
 // CreateBroadcast calls broadcast_service.BroadcastService.CreateBroadcast.
@@ -377,6 +399,16 @@ func (c *broadcastServiceClient) DeleteSlot(ctx context.Context, req *connect.Re
 	return c.deleteSlot.CallUnary(ctx, req)
 }
 
+// GetBroadcastGameStats calls broadcast_service.BroadcastService.GetBroadcastGameStats.
+func (c *broadcastServiceClient) GetBroadcastGameStats(ctx context.Context, req *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error) {
+	return c.getBroadcastGameStats.CallUnary(ctx, req)
+}
+
+// GetBroadcastAllGames calls broadcast_service.BroadcastService.GetBroadcastAllGames.
+func (c *broadcastServiceClient) GetBroadcastAllGames(ctx context.Context, req *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error) {
+	return c.getBroadcastAllGames.CallUnary(ctx, req)
+}
+
 // BroadcastServiceHandler is an implementation of the broadcast_service.BroadcastService service.
 type BroadcastServiceHandler interface {
 	CreateBroadcast(context.Context, *connect.Request[broadcast_service.CreateBroadcastRequest]) (*connect.Response[broadcast_service.CreateBroadcastResponse], error)
@@ -399,6 +431,8 @@ type BroadcastServiceHandler interface {
 	CreateSlot(context.Context, *connect.Request[broadcast_service.CreateSlotRequest]) (*connect.Response[broadcast_service.CreateSlotResponse], error)
 	AssignSlot(context.Context, *connect.Request[broadcast_service.AssignSlotRequest]) (*connect.Response[broadcast_service.AssignSlotResponse], error)
 	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
+	GetBroadcastGameStats(context.Context, *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error)
+	GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error)
 }
 
 // NewBroadcastServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -528,6 +562,18 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 		connect.WithSchema(broadcastServiceMethods.ByName("DeleteSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	broadcastServiceGetBroadcastGameStatsHandler := connect.NewUnaryHandler(
+		BroadcastServiceGetBroadcastGameStatsProcedure,
+		svc.GetBroadcastGameStats,
+		connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastGameStats")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceGetBroadcastAllGamesHandler := connect.NewUnaryHandler(
+		BroadcastServiceGetBroadcastAllGamesProcedure,
+		svc.GetBroadcastAllGames,
+		connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastAllGames")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/broadcast_service.BroadcastService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BroadcastServiceCreateBroadcastProcedure:
@@ -570,6 +616,10 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 			broadcastServiceAssignSlotHandler.ServeHTTP(w, r)
 		case BroadcastServiceDeleteSlotProcedure:
 			broadcastServiceDeleteSlotHandler.ServeHTTP(w, r)
+		case BroadcastServiceGetBroadcastGameStatsProcedure:
+			broadcastServiceGetBroadcastGameStatsHandler.ServeHTTP(w, r)
+		case BroadcastServiceGetBroadcastAllGamesProcedure:
+			broadcastServiceGetBroadcastAllGamesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -657,4 +707,12 @@ func (UnimplementedBroadcastServiceHandler) AssignSlot(context.Context, *connect
 
 func (UnimplementedBroadcastServiceHandler) DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.DeleteSlot is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) GetBroadcastGameStats(context.Context, *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetBroadcastGameStats is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetBroadcastAllGames is not implemented"))
 }
