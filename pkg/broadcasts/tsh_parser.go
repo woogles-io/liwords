@@ -381,8 +381,8 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		})
 	}
 
-	// totalRounds: start from maxr but always expand it to cover the actual
-	// pairings data.
+	// totalRounds: maxr is 0-indexed (the highest round number), so add 1.
+	// Expand if any player's pairings slice is longer (handles maxr=0 fixtures).
 	totalRounds := div.MaxR + 1
 	for _, p := range players {
 		if len(p.Pairings) > totalRounds {

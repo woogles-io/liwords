@@ -71,9 +71,9 @@ func TestTSHNewtParser_Parse(t *testing.T) {
 	if fd.TotalRounds != 3 {
 		t.Errorf("expected TotalRounds=3, got %d", fd.TotalRounds)
 	}
-	// Rounds 1 and 2 have scores, round 3 is unplayed → current round = 2
-	if fd.CurrentRound != 2 {
-		t.Errorf("expected CurrentRound=2, got %d", fd.CurrentRound)
+	// Rounds 1 and 2 have scores; round 3 is paired but unplayed → current round = 3
+	if fd.CurrentRound != 3 {
+		t.Errorf("expected CurrentRound=3, got %d", fd.CurrentRound)
 	}
 
 	alice := findPlayer(fd.Players, 1)
@@ -233,9 +233,9 @@ func TestSampleTourney_DivA_Structure(t *testing.T) {
 	if len(fd.Players) != 18 {
 		t.Errorf("Players = %d, want 18", len(fd.Players))
 	}
-	// 11-round tournament
-	if fd.TotalRounds != 11 {
-		t.Errorf("TotalRounds = %d, want 11", fd.TotalRounds)
+	// maxr=11 (0-indexed) → 12 rounds
+	if fd.TotalRounds != 12 {
+		t.Errorf("TotalRounds = %d, want 12", fd.TotalRounds)
 	}
 }
 
@@ -343,8 +343,9 @@ func TestTest22_Structure(t *testing.T) {
 	if len(fd.Players) != 12 {
 		t.Errorf("Players = %d, want 12", len(fd.Players))
 	}
-	if fd.TotalRounds != 21 {
-		t.Errorf("TotalRounds = %d, want 21", fd.TotalRounds)
+	// maxr=21 (0-indexed) → 22 rounds
+	if fd.TotalRounds != 22 {
+		t.Errorf("TotalRounds = %d, want 22", fd.TotalRounds)
 	}
 }
 
