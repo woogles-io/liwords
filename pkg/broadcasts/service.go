@@ -306,6 +306,7 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 	key := slugRoundDivKey{slug: req.Msg.Slug, division: division, round: round}
 	resp, err := cachedFetch(ctx, bs.gamesCache, &bs.cacheSF, key,
 		fmt.Sprintf("games:%s|%s|%d", req.Msg.Slug, division, round),
+		"games",
 		func(ctx context.Context) (*pb.GetBroadcastGamesResponse, error) {
 			return bs.computeGetBroadcastGames(ctx, row, fd, division, round)
 		})
@@ -396,6 +397,7 @@ func (bs *BroadcastService) GetBroadcastGameStats(ctx context.Context, req *conn
 
 	slug := req.Msg.Slug
 	resp, err := cachedFetch(ctx, bs.statsCache, &bs.cacheSF, slug, "stats:"+slug,
+		"stats",
 		func(ctx context.Context) (*pb.GetBroadcastGameStatsResponse, error) {
 			return bs.computeGetBroadcastGameStats(ctx, slug)
 		})
@@ -430,6 +432,7 @@ func (bs *BroadcastService) GetBroadcastAllGames(ctx context.Context, req *conne
 
 	slug := req.Msg.Slug
 	resp, err := cachedFetch(ctx, bs.allGamesCache, &bs.cacheSF, slug, "allgames:"+slug,
+		"allgames",
 		func(ctx context.Context) (*pb.GetBroadcastAllGamesResponse, error) {
 			return bs.computeGetBroadcastAllGames(ctx, slug)
 		})
@@ -849,12 +852,13 @@ func (bs *BroadcastService) GetBroadcastGameContext(ctx context.Context, req *co
 	}
 
 	return connect.NewResponse(&pb.GetBroadcastGameContextResponse{
-		BroadcastSlug: row.BroadcastSlug,
-		BroadcastName: row.BroadcastName,
-		Round:         row.Round,
-		TableNumber:   row.TableNumber,
-		Division:      row.Division,
-		SlotName:      slotName,
+		BroadcastSlug:  row.BroadcastSlug,
+		BroadcastName:  row.BroadcastName,
+		Round:          row.Round,
+		TableNumber:    row.TableNumber,
+		Division:       row.Division,
+		SlotName:       slotName,
+		AnnotationDone: bs.isAnnotatedGameDone(ctx, row.GameUuid),
 	}), nil
 }
 
@@ -896,6 +900,7 @@ func (bs *BroadcastService) ListSlots(ctx context.Context, req *connect.Request[
 
 	slug := req.Msg.Slug
 	resp, err := cachedFetch(ctx, bs.slotsCache, &bs.cacheSF, slug, "slots:"+slug,
+		"slots",
 		func(ctx context.Context) (*pb.ListSlotsResponse, error) {
 			return bs.computeListSlots(ctx, slug)
 		})

@@ -1986,15 +1986,16 @@ func (x *GetBroadcastGameContextRequest) GetGameUuid() string {
 }
 
 type GetBroadcastGameContextResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BroadcastSlug string                 `protobuf:"bytes,1,opt,name=broadcast_slug,json=broadcastSlug,proto3" json:"broadcast_slug,omitempty"`
-	BroadcastName string                 `protobuf:"bytes,2,opt,name=broadcast_name,json=broadcastName,proto3" json:"broadcast_name,omitempty"`
-	Round         int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
-	TableNumber   int32                  `protobuf:"varint,4,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
-	Division      string                 `protobuf:"bytes,5,opt,name=division,proto3" json:"division,omitempty"`
-	SlotName      string                 `protobuf:"bytes,6,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"` // empty if no slot is currently assigned to this game
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BroadcastSlug  string                 `protobuf:"bytes,1,opt,name=broadcast_slug,json=broadcastSlug,proto3" json:"broadcast_slug,omitempty"`
+	BroadcastName  string                 `protobuf:"bytes,2,opt,name=broadcast_name,json=broadcastName,proto3" json:"broadcast_name,omitempty"`
+	Round          int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
+	TableNumber    int32                  `protobuf:"varint,4,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
+	Division       string                 `protobuf:"bytes,5,opt,name=division,proto3" json:"division,omitempty"`
+	SlotName       string                 `protobuf:"bytes,6,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"` // empty if no slot is currently assigned to this game
+	AnnotationDone bool                   `protobuf:"varint,7,opt,name=annotation_done,json=annotationDone,proto3" json:"annotation_done,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetBroadcastGameContextResponse) Reset() {
@@ -2067,6 +2068,13 @@ func (x *GetBroadcastGameContextResponse) GetSlotName() string {
 		return x.SlotName
 	}
 	return ""
+}
+
+func (x *GetBroadcastGameContextResponse) GetAnnotationDone() bool {
+	if x != nil {
+		return x.AnnotationDone
+	}
+	return false
 }
 
 type BroadcastSlot struct {
@@ -3211,14 +3219,15 @@ const file_proto_broadcast_service_broadcast_service_proto_rawDesc = "" +
 	"\x19GetMyClaimedGamesResponse\x12;\n" +
 	"\x05games\x18\x01 \x03(\v2%.broadcast_service.BroadcastRoundGameR\x05games\"=\n" +
 	"\x1eGetBroadcastGameContextRequest\x12\x1b\n" +
-	"\tgame_uuid\x18\x01 \x01(\tR\bgameUuid\"\xe1\x01\n" +
+	"\tgame_uuid\x18\x01 \x01(\tR\bgameUuid\"\x8a\x02\n" +
 	"\x1fGetBroadcastGameContextResponse\x12%\n" +
 	"\x0ebroadcast_slug\x18\x01 \x01(\tR\rbroadcastSlug\x12%\n" +
 	"\x0ebroadcast_name\x18\x02 \x01(\tR\rbroadcastName\x12\x14\n" +
 	"\x05round\x18\x03 \x01(\x05R\x05round\x12!\n" +
 	"\ftable_number\x18\x04 \x01(\x05R\vtableNumber\x12\x1a\n" +
 	"\bdivision\x18\x05 \x01(\tR\bdivision\x12\x1b\n" +
-	"\tslot_name\x18\x06 \x01(\tR\bslotName\"\x81\x01\n" +
+	"\tslot_name\x18\x06 \x01(\tR\bslotName\x12'\n" +
+	"\x0fannotation_done\x18\a \x01(\bR\x0eannotationDone\"\x81\x01\n" +
 	"\rBroadcastSlot\x12\x1b\n" +
 	"\tslot_name\x18\x01 \x01(\tR\bslotName\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +

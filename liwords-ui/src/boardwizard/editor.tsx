@@ -3,6 +3,8 @@
 import { HomeOutlined } from "@ant-design/icons";
 import { App, Card } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { getBroadcastGameContext } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionType } from "../actions/actions";
 import { alphabetFromName } from "../constants/alphabets";
@@ -62,6 +64,12 @@ const blankGamePayload = create(GameDocumentSchema, {
 export const BoardEditor = () => {
   const { gameID } = useParams();
   const navigate = useNavigate();
+
+  const { data: broadcastCtx } = useQuery(
+    getBroadcastGameContext,
+    { gameUuid: gameID ?? "" },
+    { enabled: !!gameID },
+  );
 
   const { gameContext: examinableGameContext } =
     useExaminableGameContextStoreContext();
@@ -424,10 +432,17 @@ export const BoardEditor = () => {
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <Link to="/">
-              <HomeOutlined />
-              Back to lobby
-            </Link>
+            {broadcastCtx?.broadcastSlug ? (
+              <Link to={`/broadcasts/${broadcastCtx.broadcastSlug}`}>
+                <HomeOutlined />
+                Back to broadcast
+              </Link>
+            ) : (
+              <Link to="/">
+                <HomeOutlined />
+                Back to lobby
+              </Link>
+            )}
           </Card>
           {/* <Chat
             sendChat={props.sendChat}
