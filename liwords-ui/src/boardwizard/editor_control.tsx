@@ -246,7 +246,7 @@ export const EditorControl = (props: Props) => {
         items={collapseItems}
       />
       <div style={{ textAlign: "right", marginTop: 12 }}>
-        {broadcastCtx ? (
+        {broadcastCtx && !broadcastCtx.annotationDone ? (
           <Popconfirm
             title="Unclaim this game? The annotation will be deleted."
             onConfirm={() =>
@@ -265,7 +265,7 @@ export const EditorControl = (props: Props) => {
               Unclaim this game
             </Button>
           </Popconfirm>
-        ) : (
+        ) : !broadcastCtx ? (
           <Popconfirm
             title="Are you sure you wish to delete this game? This action can not be undone!"
             onConfirm={() => {
@@ -285,7 +285,7 @@ export const EditorControl = (props: Props) => {
               Delete this game
             </Button>
           </Popconfirm>
-        )}
+        ) : null}
       </div>
       <AddToCollectionModal
         visible={collectionModalVisible}

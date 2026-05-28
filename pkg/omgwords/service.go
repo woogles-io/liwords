@@ -273,11 +273,19 @@ func (gs *OMGWordsService) CreateAnnotatedGame(ctx context.Context, req *connect
 
 func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Request[pb.AnnotatedGameEvent]) (
 	*connect.Response[pb.GameEventResponse], error) {
-	if err := gs.failIfSessionDoesntOwn(ctx, req.Msg.Event.GameId); err != nil {
+	u, err := apiserver.AuthUser(ctx, gs.userStore)
+	if err != nil {
 		return nil, err
 	}
 	if req.Msg.Event == nil {
 		return nil, apiserver.InvalidArg("event is required")
+	}
+	owns, err := gs.metadataStore.GameOwnedBy(ctx, req.Msg.Event.GameId, u.UUID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	if !owns {
+		return nil, apiserver.InvalidArg("user does not own this game")
 	}
 
 	// Log editor API request for debugging and replay
@@ -304,7 +312,7 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 			gs.onGameDone(ctx, req.Msg.Event.GameId)
 		}
 	}
-	gs.publishUserAnnoActivity(req.Msg.UserId)
+	gs.publishUserAnnoActivity(u.UUID)
 	return connect.NewResponse(&pb.GameEventResponse{}), nil
 }
 

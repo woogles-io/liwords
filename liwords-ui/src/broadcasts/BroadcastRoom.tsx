@@ -81,7 +81,7 @@ export const BroadcastRoom: React.FC = () => {
 
   const totalRounds = broadcastData?.totalRounds || 1;
   const rawRound =
-    selectedRound || broadcastData?.broadcast?.currentRound || totalRounds;
+    selectedRound || (broadcastData?.broadcast?.currentRound ?? 1);
   const activeRound = Math.min(Math.max(rawRound, 1), totalRounds);
 
   const { data: gamesData, isLoading: gamesLoading } = useQuery(
@@ -150,7 +150,7 @@ export const BroadcastRoom: React.FC = () => {
 
   const broadcast = broadcastData.broadcast;
   const currentRound = Math.min(
-    broadcast.currentRound || totalRounds,
+    Math.max(broadcast.currentRound ?? 1, 1),
     totalRounds,
   );
   const isAnnotator = broadcastData.annotatorUsernames.includes(
