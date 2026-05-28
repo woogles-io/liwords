@@ -71,6 +71,9 @@ func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadca
 		return err
 	}
 
+	// Bust RPC response caches so the next viewer request picks up new feed scores.
+	bs.invalidateSlugCaches(slug)
+
 	if err := bs.queries.UpdateBroadcastLastPolled(ctx, id); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-update-last-polled-failed")
 	}
