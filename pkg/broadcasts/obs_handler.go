@@ -830,6 +830,7 @@ body {
   font-weight: bold;
   white-space: pre;
   line-height: 1.2;
+  text-align: center;
 }
 /* marquee */
 .mq-wrap {

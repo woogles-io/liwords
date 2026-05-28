@@ -473,7 +473,12 @@ export const BroadcastRoom: React.FC = () => {
     {
       key: "archive",
       label: "Archive",
-      children: <ArchiveTab stats={allGamesData?.stats ?? []} totalRounds={totalRounds} />,
+      children: (
+        <ArchiveTab
+          stats={allGamesData?.stats ?? []}
+          totalRounds={totalRounds}
+        />
+      ),
     },
     {
       key: "highlights",
