@@ -60,31 +60,33 @@ export const BroadcastAnnotatorPanel: React.FC<Props> = ({ slug }) => {
                     Edit
                   </Button>
                 </Link>,
-                <Popconfirm
-                  key="unclaim"
-                  title="Unclaim this game? The annotation will be deleted."
-                  onConfirm={() =>
-                    unclaimMutation.mutate({
-                      slug,
-                      round: game.round,
-                      tableNumber: game.tableNumber,
-                      division: game.division,
-                    })
-                  }
-                >
-                  <Button
-                    size="small"
-                    danger
-                    loading={
-                      unclaimMutation.isPending &&
-                      unclaimMutation.variables?.round === game.round &&
-                      unclaimMutation.variables?.tableNumber ===
-                        game.tableNumber
+                !game.annotationDone && (
+                  <Popconfirm
+                    key="unclaim"
+                    title="Unclaim this game? The annotation will be deleted."
+                    onConfirm={() =>
+                      unclaimMutation.mutate({
+                        slug,
+                        round: game.round,
+                        tableNumber: game.tableNumber,
+                        division: game.division,
+                      })
                     }
                   >
-                    Unclaim
-                  </Button>
-                </Popconfirm>,
+                    <Button
+                      size="small"
+                      danger
+                      loading={
+                        unclaimMutation.isPending &&
+                        unclaimMutation.variables?.round === game.round &&
+                        unclaimMutation.variables?.tableNumber ===
+                          game.tableNumber
+                      }
+                    >
+                      Unclaim
+                    </Button>
+                  </Popconfirm>
+                ),
               ]}
             >
               <Space>

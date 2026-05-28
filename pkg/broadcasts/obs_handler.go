@@ -35,15 +35,18 @@ const natsUserAnnoSubjectPrefix = "anno.user."
 
 // validSuffixes lists the accepted display suffixes.
 var validSuffixes = map[string]bool{
-	"score":        true,
-	"p1_score":     true,
-	"p2_score":     true,
-	"unseen_tiles": true,
-	"unseen_count": true,
-	"last_play":    true,
-	"blank1":       true,
-	"blank2":       true,
-	"events":       true,
+	"score":          true,
+	"p1_score":       true,
+	"p2_score":       true,
+	"unseen_tiles":   true,
+	"unseen_count":   true,
+	"last_play":      true,
+	"blank1":         true,
+	"blank2":         true,
+	"p1_name":        true,
+	"p2_name":        true,
+	"combined_names": true,
+	"events":         true,
 }
 
 // obsPlaceholder is the value shown when no game is assigned to a slot.
@@ -231,6 +234,12 @@ func obsFieldValue(d OBSData, suffix string) string {
 		return d.Blank1
 	case "blank2":
 		return d.Blank2
+	case "p1_name":
+		return d.P1Name
+	case "p2_name":
+		return d.P2Name
+	case "combined_names":
+		return d.CombinedNames
 	}
 	return ""
 }
@@ -774,6 +783,8 @@ func obsDefaultSize(suffix string) int {
 		return 36
 	case "last_play":
 		return 24
+	case "p1_name", "p2_name", "combined_names":
+		return 32
 	default: // unseen_tiles, unseen_count
 		return 20
 	}
@@ -819,6 +830,7 @@ body {
   font-weight: bold;
   white-space: pre;
   line-height: 1.2;
+  text-align: center;
 }
 /* marquee */
 .mq-wrap {

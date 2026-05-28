@@ -3,14 +3,18 @@ import ReactMarkdown from "react-markdown";
 import {
   Spin,
   Button,
+  Grid,
   Tag,
   Table,
+  Tabs,
   Typography,
   Space,
   App,
   Select,
   Popover,
 } from "antd";
+
+const { useBreakpoint } = Grid;
 import type { TableColumnsType } from "antd";
 import { LinkOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useParams, Link, useNavigate } from "react-router";
@@ -23,6 +27,8 @@ import {
 import {
   getBroadcast,
   getBroadcastGames,
+  getBroadcastGameStats,
+  getBroadcastAllGames,
   claimGame,
   listSlots,
   assignSlot,
@@ -38,6 +44,11 @@ import { BroadcastDirectorPanel } from "./BroadcastDirectorPanel";
 import { BroadcastAnnotatorPanel } from "./BroadcastAnnotatorPanel";
 import { flashError } from "../utils/hooks/connect";
 import { useQueryClient } from "@tanstack/react-query";
+import { StandingsTab } from "./tabs/StandingsTab";
+import { LiveNowTab } from "./tabs/LiveNowTab";
+import { RecentlyCompletedTab } from "./tabs/RecentlyCompletedTab";
+import { ArchiveTab } from "./tabs/ArchiveTab";
+import { HighlightsTab } from "./tabs/HighlightsTab";
 
 const { Title, Text } = Typography;
 
@@ -50,6 +61,8 @@ export const BroadcastRoom: React.FC = () => {
   const transport = useTransport();
   const [selectedRound, setSelectedRound] = useState<number>(0);
   const [selectedDivision, setSelectedDivision] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("pairings");
+  const screens = useBreakpoint();
 
   const {
     data: broadcastData,
@@ -66,16 +79,27 @@ export const BroadcastRoom: React.FC = () => {
       ? broadcastData.divisions[0]
       : selectedDivision;
 
-  const activeRound =
-    selectedRound ||
-    broadcastData?.broadcast?.currentRound ||
-    broadcastData?.totalRounds ||
-    1;
+  const totalRounds = broadcastData?.totalRounds || 1;
+  const rawRound =
+    selectedRound || broadcastData?.broadcast?.currentRound || totalRounds;
+  const activeRound = Math.min(Math.max(rawRound, 1), totalRounds);
 
   const { data: gamesData, isLoading: gamesLoading } = useQuery(
     getBroadcastGames,
     { slug: slug ?? "", round: activeRound, division: activeDivision },
     { enabled: !!slug && activeRound > 0, refetchInterval: 30_000 },
+  );
+
+  const { data: statsData, isLoading: statsLoading } = useQuery(
+    getBroadcastGameStats,
+    { slug: slug ?? "" },
+    { enabled: !!slug, refetchInterval: 30_000 },
+  );
+
+  const { data: allGamesData } = useQuery(
+    getBroadcastAllGames,
+    { slug: slug ?? "" },
+    { enabled: !!slug && activeTab === "archive", refetchInterval: 30_000 },
   );
 
   const { data: slotsData } = useQuery(
@@ -125,7 +149,10 @@ export const BroadcastRoom: React.FC = () => {
   }
 
   const broadcast = broadcastData.broadcast;
-  const totalRounds = broadcastData.totalRounds || 1;
+  const currentRound = Math.min(
+    broadcast.currentRound || totalRounds,
+    totalRounds,
+  );
   const isAnnotator = broadcastData.annotatorUsernames.includes(
     loginState.username,
   );
@@ -136,7 +163,6 @@ export const BroadcastRoom: React.FC = () => {
 
   const slots: BroadcastSlot[] = slotsData?.slots ?? [];
 
-  // Assign a slot, checking for an in-progress game at the slot's current target first.
   const doAssign = async (
     slot: BroadcastSlot,
     newDivision: string,
@@ -188,7 +214,6 @@ export const BroadcastRoom: React.FC = () => {
     mutate();
   };
 
-  // Build a map from tableNumber → slots that currently point to (activeDivision, activeRound, tableNumber).
   const slotsByTable = new Map<number, BroadcastSlot[]>();
   for (const slot of slots) {
     if (slot.round !== activeRound) continue;
@@ -205,7 +230,7 @@ export const BroadcastRoom: React.FC = () => {
     label: `Round ${i + 1}`,
   }));
 
-  const columns: TableColumnsType<BroadcastRoundGame> = [
+  const pairingsColumns: TableColumnsType<BroadcastRoundGame> = [
     {
       title: "Table",
       dataIndex: "tableNumber",
@@ -232,7 +257,6 @@ export const BroadcastRoom: React.FC = () => {
                   </Space>
                 ) : null;
               }
-              // Director view: show current tags + popover to move other slots here.
               const assignedSlotNames = new Set(
                 rowSlots.map((s) => s.slotName),
               );
@@ -359,10 +383,114 @@ export const BroadcastRoom: React.FC = () => {
     },
   ];
 
+  const allStats = statsData?.stats ?? [];
+
+  const tabItems = [
+    {
+      key: "pairings",
+      label: "Pairings",
+      children: (
+        <>
+          <Space style={{ marginTop: 16 }} wrap>
+            {(broadcastData.divisions?.length ?? 0) >= 1 && (
+              <>
+                <Text strong>Division:</Text>
+                <Select
+                  value={activeDivision}
+                  onChange={(val) => {
+                    setSelectedDivision(val);
+                    setSelectedRound(0);
+                  }}
+                  options={broadcastData.divisions.map((d) => ({
+                    value: d,
+                    label: `Division ${d}`,
+                  }))}
+                  style={{ minWidth: 140 }}
+                />
+              </>
+            )}
+            <Text strong>Round:</Text>
+            <Select
+              value={activeRound}
+              onChange={(val) => setSelectedRound(val)}
+              options={roundOptions}
+              style={{ minWidth: 130 }}
+            />
+            {activeRound !== currentRound && (
+              <Button
+                size="small"
+                onClick={() => setSelectedRound(currentRound)}
+              >
+                Jump to current (round {currentRound})
+              </Button>
+            )}
+          </Space>
+          <Table<BroadcastRoundGame>
+            style={{ marginTop: 16 }}
+            rowKey={(r) => `${r.round}-${r.tableNumber}`}
+            dataSource={gamesData?.games ?? []}
+            columns={pairingsColumns}
+            loading={gamesLoading}
+            pagination={false}
+            size="small"
+          />
+        </>
+      ),
+    },
+    {
+      key: "standings",
+      label: "Standings",
+      children: (
+        <>
+          {(broadcastData.divisions?.length ?? 0) >= 1 && (
+            <Space style={{ marginTop: 16 }}>
+              <Text strong>Division:</Text>
+              <Select
+                value={activeDivision}
+                onChange={(val) => setSelectedDivision(val)}
+                options={broadcastData.divisions.map((d) => ({
+                  value: d,
+                  label: `Division ${d}`,
+                }))}
+                style={{ minWidth: 140 }}
+              />
+            </Space>
+          )}
+          <StandingsTab players={broadcastData.players ?? []} />
+        </>
+      ),
+    },
+    {
+      key: "live",
+      label: "Live Now",
+      children: <LiveNowTab stats={allStats} />,
+    },
+    {
+      key: "recent",
+      label: "Recently Completed",
+      children: <RecentlyCompletedTab stats={allStats} />,
+    },
+    {
+      key: "archive",
+      label: "Archive",
+      children: (
+        <ArchiveTab
+          stats={allGamesData?.stats ?? []}
+          totalRounds={totalRounds}
+        />
+      ),
+    },
+    {
+      key: "highlights",
+      label: "Highlights",
+      children: <HighlightsTab stats={allStats} />,
+    },
+  ];
+
   return (
     <div className="broadcast-room">
       <TopBar />
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
         <Space direction="vertical" size="small" style={{ width: "100%" }}>
           <Space align="center">
             <Title level={2} style={{ marginBottom: 0 }}>
@@ -385,42 +513,27 @@ export const BroadcastRoom: React.FC = () => {
           )}
         </Space>
 
-        <Space style={{ marginTop: 16 }} wrap>
-          {(broadcastData.divisions?.length ?? 0) >= 1 && (
-            <>
-              <Text strong>Division:</Text>
-              <Select
-                value={activeDivision}
-                onChange={(val) => {
-                  setSelectedDivision(val);
-                  setSelectedRound(0);
-                }}
-                options={broadcastData.divisions.map((d) => ({
-                  value: d,
-                  label: `Division ${d}`,
-                }))}
-                style={{ minWidth: 140 }}
-              />
-            </>
-          )}
-          <Text strong>Round:</Text>
-          <Select
-            value={activeRound}
-            onChange={(val) => setSelectedRound(val)}
-            options={roundOptions}
-            style={{ minWidth: 130 }}
+        {screens.sm ? (
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            style={{ marginTop: 16 }}
+            items={tabItems}
           />
-        </Space>
-
-        <Table<BroadcastRoundGame>
-          style={{ marginTop: 16 }}
-          rowKey={(r) => `${r.round}-${r.tableNumber}`}
-          dataSource={gamesData?.games ?? []}
-          columns={columns}
-          loading={gamesLoading}
-          pagination={false}
-          size="small"
-        />
+        ) : (
+          <div style={{ marginTop: 16 }}>
+            <Select
+              value={activeTab}
+              onChange={setActiveTab}
+              style={{ width: "100%", marginBottom: 16 }}
+              options={tabItems.map((t) => ({
+                value: t.key,
+                label: t.label,
+              }))}
+            />
+            {tabItems.find((t) => t.key === activeTab)?.children}
+          </div>
+        )}
 
         {(isAnnotator || isDirector || isAdmin) && (
           <BroadcastAnnotatorPanel slug={slug ?? ""} />

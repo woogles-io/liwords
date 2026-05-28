@@ -35,6 +35,10 @@ import (
 // rebind to a different game.
 const NatsUserAnnoSubjectPrefix = "anno.user."
 
+// AnnotatedGameDoneHook is called after an annotated game's annotation is marked done.
+// Implementations should be non-blocking or handle their own goroutine.
+type AnnotatedGameDoneHook func(ctx context.Context, gameUUID string)
+
 type OMGWordsService struct {
 	userStore     user.Store
 	cfg           *config.Config
@@ -42,6 +46,7 @@ type OMGWordsService struct {
 	metadataStore *stores.DBStore
 	gameEventChan chan *entity.EventWrapper
 	natsConn      *nats.Conn
+	onGameDone    AnnotatedGameDoneHook
 }
 
 func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumentStore,
@@ -51,6 +56,10 @@ func NewOMGWordsService(u user.Store, cfg *config.Config, gs *stores.GameDocumen
 		cfg:           cfg,
 		gameStore:     gs,
 		metadataStore: ms}
+}
+
+func (gs *OMGWordsService) SetAnnotatedGameDoneHook(h AnnotatedGameDoneHook) {
+	gs.onGameDone = h
 }
 
 func AnnotatedChannelName(gameID string) string {
@@ -290,6 +299,9 @@ func (gs *OMGWordsService) SendGameEvent(ctx context.Context, req *connect.Reque
 	if justEnded {
 		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, req.Msg.Event.GameId); err != nil {
 			return nil, err
+		}
+		if gs.onGameDone != nil {
+			gs.onGameDone(ctx, req.Msg.Event.GameId)
 		}
 	}
 	gs.publishUserAnnoActivity(req.Msg.UserId)
@@ -836,6 +848,9 @@ func (gs *OMGWordsService) ImportGCG(ctx context.Context, req *connect.Request[p
 	if gdoc.PlayState == ipc.PlayState_GAME_OVER {
 		if err = gs.metadataStore.MarkAnnotatedGameDone(ctx, gdoc.Uid); err != nil {
 			return nil, err
+		}
+		if gs.onGameDone != nil {
+			gs.onGameDone(ctx, gdoc.Uid)
 		}
 	}
 

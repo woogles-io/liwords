@@ -35,14 +35,14 @@ type FeedPlayer struct {
 
 // RoundPairing describes a single game in a round, derived from feed data.
 type RoundPairing struct {
-	Round         int
-	TableNumber   int
-	Player1Name   string
-	Player2Name   string
-	Player1Score  int
-	Player2Score  int
+	Round            int
+	TableNumber      int
+	Player1Name      string
+	Player2Name      string
+	Player1Score     int
+	Player2Score     int
 	Player1GoesFirst bool
-	Finalized     bool // true if scores are entered
+	Finalized        bool // true if scores are entered
 }
 
 // NewFeedParser returns the appropriate parser for the given format string.
@@ -123,6 +123,84 @@ func GetRoundPairings(fd *FeedData, round int) []RoundPairing {
 	return pairings
 }
 
+// GetAllRoundPairings is like GetRoundPairings but does not skip games where the
+// board/table number is absent (table == 0). Deduplication falls back to a
+// player-ID pair key when no table number is set. Use this for archive/stats
+// views where all games must be enumerated regardless of board assignment.
+func GetAllRoundPairings(fd *FeedData, round int) []RoundPairing {
+	if round < 1 || round > fd.TotalRounds {
+		return nil
+	}
+	r := round - 1
+
+	type pairKey struct{ lo, hi int }
+	seenPair := make(map[pairKey]bool)
+	seenTable := make(map[int]bool)
+	var pairings []RoundPairing
+
+	for _, p := range fd.Players {
+		if r >= len(p.Pairings) {
+			continue
+		}
+		oppID := p.Pairings[r]
+		if oppID == 0 {
+			continue
+		}
+
+		var table int
+		if r < len(p.Boards) {
+			table = p.Boards[r]
+		}
+
+		if table != 0 {
+			if seenTable[table] {
+				continue
+			}
+			seenTable[table] = true
+		} else {
+			lo, hi := p.ID, oppID
+			if lo > hi {
+				lo, hi = hi, lo
+			}
+			key := pairKey{lo, hi}
+			if seenPair[key] {
+				continue
+			}
+			seenPair[key] = true
+		}
+
+		opp := findPlayer(fd.Players, oppID)
+		if opp == nil {
+			continue
+		}
+
+		var p1Score, p2Score int
+		if r < len(p.Scores) {
+			p1Score = p.Scores[r]
+		}
+		if r < len(opp.Scores) {
+			p2Score = opp.Scores[r]
+		}
+		var goesFirst bool
+		if r < len(p.P12) {
+			goesFirst = p.P12[r] == 1
+		}
+		pairings = append(pairings, RoundPairing{
+			Round:            round,
+			TableNumber:      table,
+			Player1Name:      p.Name,
+			Player2Name:      opp.Name,
+			Player1Score:     p1Score,
+			Player2Score:     p2Score,
+			Player1GoesFirst: goesFirst,
+			Finalized:        p1Score != 0 || p2Score != 0,
+		})
+	}
+
+	sortRoundPairingsByTable(pairings)
+	return pairings
+}
+
 func findPlayer(players []FeedPlayer, id int) *FeedPlayer {
 	for i := range players {
 		if players[i].ID == id {
@@ -141,24 +219,47 @@ func sortRoundPairingsByTable(pairings []RoundPairing) {
 }
 
 // detectCurrentRound returns the 1-indexed current round.
-// It finds the latest round that has at least one score entered.
-// Returns 0 if no games have been played yet.
+// It finds the latest scored round, then advances by one if that round
+// is fully scored AND the next round already has pairings posted.
+// This correctly handles directors who pair rounds in advance.
+// Returns 0 if no games have been played and no pairings exist yet.
 func detectCurrentRound(players []FeedPlayer) int {
-	maxRound := 0
+	lastScored := 0
 	for _, p := range players {
 		for r := len(p.Scores) - 1; r >= 0; r-- {
 			if r >= len(p.Pairings) {
 				continue
 			}
 			if p.Pairings[r] != 0 && p.Scores[r] != 0 {
-				if r+1 > maxRound {
-					maxRound = r + 1
+				if r+1 > lastScored {
+					lastScored = r + 1
 				}
 				break
 			}
 		}
 	}
-	return maxRound
+	if lastScored == 0 {
+		return 0
+	}
+	// Check if the last scored round is fully scored (every paired player
+	// has a non-zero score). If it is, and the next round has pairings,
+	// advance to the next round.
+	lastIdx := lastScored - 1 // 0-indexed
+	for _, p := range players {
+		if lastIdx >= len(p.Pairings) || p.Pairings[lastIdx] == 0 {
+			continue
+		}
+		if lastIdx >= len(p.Scores) || p.Scores[lastIdx] == 0 {
+			return lastScored // round still in progress
+		}
+	}
+	nextIdx := lastScored // 0-indexed index of the round after lastScored
+	for _, p := range players {
+		if nextIdx < len(p.Pairings) && p.Pairings[nextIdx] != 0 {
+			return lastScored + 1
+		}
+	}
+	return lastScored
 }
 
 // ---- TSH newt={...}; parser ----
@@ -176,7 +277,7 @@ type tshNewt struct {
 
 type tshDivision struct {
 	Name string `json:"name"`
-	MaxR int    `json:"maxr"`
+	MaxR int    `json:"maxr"` // 0-indexed
 	// Players is 1-indexed; index 0 is always null.
 	Players []json.RawMessage `json:"players"`
 }
@@ -280,13 +381,12 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		})
 	}
 
-	// totalRounds: prefer maxr from the division header if set.
-	totalRounds := div.MaxR
-	if totalRounds == 0 {
-		for _, p := range players {
-			if len(p.Pairings) > totalRounds {
-				totalRounds = len(p.Pairings)
-			}
+	// totalRounds: maxr is 0-indexed (the highest round number), so add 1.
+	// Expand if any player's pairings slice is longer (handles maxr=0 fixtures).
+	totalRounds := div.MaxR + 1
+	for _, p := range players {
+		if len(p.Pairings) > totalRounds {
+			totalRounds = len(p.Pairings)
 		}
 	}
 

@@ -541,7 +541,7 @@ func (q *Queries) GetBroadcastGameAnnotatorInfo(ctx context.Context, arg GetBroa
 }
 
 const getBroadcastGameByTableRound = `-- name: GetBroadcastGameByTableRound :one
-SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, bg.stats, bg.stats_computed_at, bg.completed_at, u.username as annotator_username
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
 WHERE bg.broadcast_id = $1 AND bg.division = $2 AND bg.round = $3 AND bg.table_number = $4
@@ -566,6 +566,9 @@ type GetBroadcastGameByTableRoundRow struct {
 	AnnotatorUserID   pgtype.Int4
 	ClaimedAt         pgtype.Timestamptz
 	CreatedAt         pgtype.Timestamptz
+	Stats             []byte
+	StatsComputedAt   pgtype.Timestamptz
+	CompletedAt       pgtype.Timestamptz
 	AnnotatorUsername pgtype.Text
 }
 
@@ -589,32 +592,42 @@ func (q *Queries) GetBroadcastGameByTableRound(ctx context.Context, arg GetBroad
 		&i.AnnotatorUserID,
 		&i.ClaimedAt,
 		&i.CreatedAt,
+		&i.Stats,
+		&i.StatsComputedAt,
+		&i.CompletedAt,
 		&i.AnnotatorUsername,
 	)
 	return i, err
 }
 
 const getBroadcastGameByUUID = `-- name: GetBroadcastGameByUUID :one
-SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, b.slug as broadcast_slug, b.name as broadcast_name
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, bg.stats, bg.stats_computed_at, bg.completed_at, b.uuid as broadcast_uuid, b.slug as broadcast_slug, b.name as broadcast_name,
+       b.broadcast_url, b.broadcast_url_format
 FROM broadcast_games bg
 JOIN broadcasts b ON bg.broadcast_id = b.id
 WHERE bg.game_uuid = $1
 `
 
 type GetBroadcastGameByUUIDRow struct {
-	ID              int32
-	BroadcastID     int32
-	GameUuid        string
-	Division        string
-	Round           int32
-	TableNumber     int32
-	Player1Name     string
-	Player2Name     string
-	AnnotatorUserID pgtype.Int4
-	ClaimedAt       pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	BroadcastSlug   string
-	BroadcastName   string
+	ID                 int32
+	BroadcastID        int32
+	GameUuid           string
+	Division           string
+	Round              int32
+	TableNumber        int32
+	Player1Name        string
+	Player2Name        string
+	AnnotatorUserID    pgtype.Int4
+	ClaimedAt          pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	Stats              []byte
+	StatsComputedAt    pgtype.Timestamptz
+	CompletedAt        pgtype.Timestamptz
+	BroadcastUuid      uuid.UUID
+	BroadcastSlug      string
+	BroadcastName      string
+	BroadcastUrl       string
+	BroadcastUrlFormat string
 }
 
 func (q *Queries) GetBroadcastGameByUUID(ctx context.Context, gameUuid string) (GetBroadcastGameByUUIDRow, error) {
@@ -632,14 +645,66 @@ func (q *Queries) GetBroadcastGameByUUID(ctx context.Context, gameUuid string) (
 		&i.AnnotatorUserID,
 		&i.ClaimedAt,
 		&i.CreatedAt,
+		&i.Stats,
+		&i.StatsComputedAt,
+		&i.CompletedAt,
+		&i.BroadcastUuid,
 		&i.BroadcastSlug,
 		&i.BroadcastName,
+		&i.BroadcastUrl,
+		&i.BroadcastUrlFormat,
 	)
 	return i, err
 }
 
+const getBroadcastGameStatsBySlug = `-- name: GetBroadcastGameStatsBySlug :many
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at
+FROM broadcast_games bg
+JOIN broadcasts b ON bg.broadcast_id = b.id
+WHERE b.slug = $1
+ORDER BY bg.completed_at DESC NULLS LAST
+`
+
+// Returns all broadcast_games for a slug, ordered by completed_at desc (NULLs last = in-progress first).
+func (q *Queries) GetBroadcastGameStatsBySlug(ctx context.Context, slug string) ([]BroadcastGame, error) {
+	rows, err := q.db.Query(ctx, getBroadcastGameStatsBySlug, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BroadcastGame
+	for rows.Next() {
+		var i BroadcastGame
+		if err := rows.Scan(
+			&i.ID,
+			&i.BroadcastID,
+			&i.GameUuid,
+			&i.Division,
+			&i.Round,
+			&i.TableNumber,
+			&i.Player1Name,
+			&i.Player2Name,
+			&i.AnnotatorUserID,
+			&i.ClaimedAt,
+			&i.CreatedAt,
+			&i.Stats,
+			&i.StatsComputedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getBroadcastGamesForRound = `-- name: GetBroadcastGamesForRound :many
-SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, bg.stats, bg.stats_computed_at, bg.completed_at, u.username as annotator_username
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
 WHERE bg.broadcast_id = $1 AND bg.division = $2 AND bg.round = $3
@@ -664,6 +729,9 @@ type GetBroadcastGamesForRoundRow struct {
 	AnnotatorUserID   pgtype.Int4
 	ClaimedAt         pgtype.Timestamptz
 	CreatedAt         pgtype.Timestamptz
+	Stats             []byte
+	StatsComputedAt   pgtype.Timestamptz
+	CompletedAt       pgtype.Timestamptz
 	AnnotatorUsername pgtype.Text
 }
 
@@ -688,6 +756,9 @@ func (q *Queries) GetBroadcastGamesForRound(ctx context.Context, arg GetBroadcas
 			&i.AnnotatorUserID,
 			&i.ClaimedAt,
 			&i.CreatedAt,
+			&i.Stats,
+			&i.StatsComputedAt,
+			&i.CompletedAt,
 			&i.AnnotatorUsername,
 		); err != nil {
 			return nil, err
@@ -797,7 +868,7 @@ func (q *Queries) GetBroadcastsForPolling(ctx context.Context) ([]GetBroadcastsF
 }
 
 const getMyClaimedGames = `-- name: GetMyClaimedGames :many
-SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number, bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at, bg.stats, bg.stats_computed_at, bg.completed_at, u.username as annotator_username
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
 WHERE bg.broadcast_id = $1 AND bg.annotator_user_id = $2
@@ -823,6 +894,9 @@ type GetMyClaimedGamesRow struct {
 	AnnotatorUserID   pgtype.Int4
 	ClaimedAt         pgtype.Timestamptz
 	CreatedAt         pgtype.Timestamptz
+	Stats             []byte
+	StatsComputedAt   pgtype.Timestamptz
+	CompletedAt       pgtype.Timestamptz
 	AnnotatorUsername pgtype.Text
 }
 
@@ -847,6 +921,9 @@ func (q *Queries) GetMyClaimedGames(ctx context.Context, arg GetMyClaimedGamesPa
 			&i.AnnotatorUserID,
 			&i.ClaimedAt,
 			&i.CreatedAt,
+			&i.Stats,
+			&i.StatsComputedAt,
+			&i.CompletedAt,
 			&i.AnnotatorUsername,
 		); err != nil {
 			return nil, err
@@ -1129,6 +1206,25 @@ func (q *Queries) UpdateBroadcast(ctx context.Context, arg UpdateBroadcastParams
 		arg.ChallengeRule,
 		arg.Active,
 	)
+	return err
+}
+
+const updateBroadcastGameStats = `-- name: UpdateBroadcastGameStats :exec
+UPDATE broadcast_games
+SET stats             = $2,
+    stats_computed_at = NOW(),
+    completed_at      = $3
+WHERE game_uuid = $1
+`
+
+type UpdateBroadcastGameStatsParams struct {
+	GameUuid    string
+	Stats       []byte
+	CompletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateBroadcastGameStats(ctx context.Context, arg UpdateBroadcastGameStatsParams) error {
+	_, err := q.db.Exec(ctx, updateBroadcastGameStats, arg.GameUuid, arg.Stats, arg.CompletedAt)
 	return err
 }
 

@@ -267,6 +267,9 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 			round = 1
 		}
 	}
+	if fd != nil && fd.TotalRounds > 0 && round > int32(fd.TotalRounds) {
+		round = int32(fd.TotalRounds)
+	}
 
 	// Get claimed games for this round from DB.
 	dbGames, err := bs.queries.GetBroadcastGamesForRound(ctx, models.GetBroadcastGamesForRoundParams{
@@ -334,6 +337,218 @@ func (bs *BroadcastService) GetBroadcastGames(ctx context.Context, req *connect.
 		Round:       round,
 		TotalRounds: totalRounds,
 	}), nil
+}
+
+// GetBroadcastGameStats returns per-game data for annotated games only.
+// Used by Live Now, Recently Completed, and Highlights tabs.
+// For a full list of every feed pairing (annotated + feed-only) use GetBroadcastAllGames.
+func (bs *BroadcastService) GetBroadcastGameStats(ctx context.Context, req *connect.Request[pb.GetBroadcastGameStatsRequest]) (
+	*connect.Response[pb.GetBroadcastGameStatsResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+
+	rows, err := bs.queries.GetBroadcastGameStatsBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	liveScores := bs.hydrateLiveScores(ctx, broadcast, rows)
+
+	stats := make([]*pb.BroadcastGameStat, 0, len(rows))
+	for _, row := range rows {
+		stats = append(stats, buildAnnotatedStat(row, liveScores))
+	}
+
+	return connect.NewResponse(&pb.GetBroadcastGameStatsResponse{Stats: stats}), nil
+}
+
+// GetBroadcastAllGames returns every game for a broadcast — both annotated games
+// (with full stats) and feed-only games (scores from the TSH feed only).
+// Only called when the Archive tab is open; results are not polled on other tabs.
+func (bs *BroadcastService) GetBroadcastAllGames(ctx context.Context, req *connect.Request[pb.GetBroadcastAllGamesRequest]) (
+	*connect.Response[pb.GetBroadcastAllGamesResponse], error) {
+
+	broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.NotFound("broadcast not found")
+	}
+
+	rows, err := bs.queries.GetBroadcastGameStatsBySlug(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+
+	liveScores := bs.hydrateLiveScores(ctx, broadcast, rows)
+
+	// Index broadcast_games rows by (division|round|table) for merge with feed.
+	claimedRows := make(map[string]models.BroadcastGame, len(rows))
+	for _, row := range rows {
+		claimedRows[feedKey(row.Division, int(row.Round), int(row.TableNumber))] = row
+	}
+
+	matchedKeys := make(map[string]bool)
+	var stats []*pb.BroadcastGameStat
+
+	// Primary source: TSH feed — walk every division × every round.
+	entry := bs.getCachedEntry(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat)
+	if entry != nil {
+		for divName, fd := range entry.divisions {
+			for round := 1; round <= fd.TotalRounds; round++ {
+				for _, p := range GetAllRoundPairings(fd, round) {
+					if !p.Finalized {
+						// Pairings without scores are future rounds — skip for archive.
+						continue
+					}
+					tableKey := feedKey(divName, round, p.TableNumber)
+					matchedKeys[tableKey] = true
+					var s *pb.BroadcastGameStat
+					if claimed, ok := claimedRows[tableKey]; ok {
+						s = buildAnnotatedStat(claimed, liveScores)
+					} else {
+						s = &pb.BroadcastGameStat{
+							Division:    divName,
+							Round:       int32(round),
+							TableNumber: int32(p.TableNumber),
+							Player1Name: p.Player1Name,
+							Player2Name: p.Player2Name,
+						}
+						s.Player1Score = int32(p.Player1Score)
+						s.Player2Score = int32(p.Player2Score)
+						s.Player1Rating = int32(playerRatingFromFeed(fd, p.Player1Name))
+						s.Player2Rating = int32(playerRatingFromFeed(fd, p.Player2Name))
+						switch {
+						case p.Player1Score > p.Player2Score:
+							s.Winner = 0
+						case p.Player2Score > p.Player1Score:
+							s.Winner = 1
+						default:
+							s.Winner = -1
+						}
+					}
+					s.Player1GoesFirst = p.Player1GoesFirst
+					stats = append(stats, s)
+				}
+			}
+		}
+	}
+
+	// Append any broadcast_games rows not matched by the feed: covers both the
+	// feed-unavailable fallback and the edge case where TSH removed a pairing
+	// that was already annotated.
+	for _, row := range rows {
+		key := feedKey(row.Division, int(row.Round), int(row.TableNumber))
+		if !matchedKeys[key] {
+			stats = append(stats, buildAnnotatedStat(row, liveScores))
+		}
+	}
+
+	return connect.NewResponse(&pb.GetBroadcastAllGamesResponse{Stats: stats}), nil
+}
+
+// hydrateLiveScores fetches current scores for in-progress annotated games and
+// lazy-fills the materialized stats column for any game that finished without
+// triggering the normal write hook.
+func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast models.GetBroadcastBySlugRow, rows []models.BroadcastGame) map[string][2]int32 {
+	liveScores := make(map[string][2]int32)
+	for _, row := range rows {
+		if row.Stats != nil || row.GameUuid == "" {
+			continue
+		}
+		doc, err := bs.gameStore.GetDocument(ctx, row.GameUuid)
+		if err != nil {
+			continue
+		}
+		if doc.PlayState == ipc.PlayState_GAME_OVER {
+			p1Rating, p2Rating := bs.playerRatings(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat, row.Player1Name, row.Player2Name)
+			stat := ComputeGameStat(doc, p1Rating, p2Rating)
+			statBytes, _ := MarshalGameStat(stat)
+			if statBytes != nil {
+				now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
+				_ = bs.queries.UpdateBroadcastGameStats(ctx, models.UpdateBroadcastGameStatsParams{
+					GameUuid:    row.GameUuid,
+					Stats:       statBytes,
+					CompletedAt: now,
+				})
+			}
+		} else if len(doc.CurrentScores) >= 2 {
+			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[0], doc.CurrentScores[1]}
+		}
+	}
+	return liveScores
+}
+
+// feedKey produces a dedup key for a (division, round, table) tuple.
+func feedKey(division string, round, table int) string {
+	return fmt.Sprintf("%s|%d|%d", division, round, table)
+}
+
+
+// buildAnnotatedStat converts a broadcast_games row to a BroadcastGameStat proto.
+func buildAnnotatedStat(row models.BroadcastGame, liveScores map[string][2]int32) *pb.BroadcastGameStat {
+	s := &pb.BroadcastGameStat{
+		GameUuid:    row.GameUuid,
+		Division:    row.Division,
+		Round:       row.Round,
+		TableNumber: row.TableNumber,
+		Player1Name: row.Player1Name,
+		Player2Name: row.Player2Name,
+	}
+	if row.Stats != nil {
+		gs, err := UnmarshalGameStat(row.Stats)
+		if err == nil {
+			s.Player1Score = int32(gs.Player1Score)
+			s.Player2Score = int32(gs.Player2Score)
+			s.Winner = int32(gs.Winner)
+			s.Player1Bingos = int32(gs.Player1Bingos)
+			s.Player2Bingos = int32(gs.Player2Bingos)
+			s.MaxPlayScore = int32(gs.MaxPlayScore)
+			s.MaxPlayWord = gs.MaxPlayWord
+			s.MoveCount = int32(gs.MoveCount)
+			s.WalkOffBingo = gs.WalkOffBingo
+			s.Player1Rating = int32(gs.Player1Rating)
+			s.Player2Rating = int32(gs.Player2Rating)
+		}
+		if row.CompletedAt.Valid {
+			s.CompletedAt = timestamppb.New(row.CompletedAt.Time)
+		}
+	} else if live, ok := liveScores[row.GameUuid]; ok {
+		s.CurrentScore1 = live[0]
+		s.CurrentScore2 = live[1]
+	}
+	return s
+}
+
+// playerRatingFromFeed looks up a player's rating by name in a FeedData.
+func playerRatingFromFeed(fd *FeedData, name string) int {
+	for _, p := range fd.Players {
+		if p.Name == name {
+			return p.Rating
+		}
+	}
+	return 0
+}
+
+// playerRatings looks up two players' ratings from the feed cache by name.
+func (bs *BroadcastService) playerRatings(slug, broadcastURL, format, p1Name, p2Name string) (int, int) {
+	entry := bs.getCachedEntry(slug, broadcastURL, format)
+	if entry == nil {
+		return 0, 0
+	}
+	var r1, r2 int
+	for _, fd := range entry.divisions {
+		for _, p := range fd.Players {
+			if p.Name == p1Name {
+				r1 = p.Rating
+			}
+			if p.Name == p2Name {
+				r2 = p.Rating
+			}
+		}
+	}
+	return r1, r2
 }
 
 func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[pb.ClaimGameRequest]) (
@@ -961,6 +1176,45 @@ func (bs *BroadcastService) notifyBroadcastGamesUpdated(broadcastUUID, slug stri
 	if err := bs.natsConn.Publish(NatsBroadcastSubjectPrefix+broadcastUUID, bts); err != nil {
 		log.Err(err).Str("slug", slug).Msg("broadcast-games-updated-publish-failed")
 	}
+}
+
+// HandleAnnotatedGameDone is the AnnotatedGameDoneHook wired from OMGWordsService.
+// It computes per-game stats, persists them to broadcast_games.stats, and
+// emits BROADCAST_GAMES_UPDATED so viewers re-fetch.
+func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUID string) {
+	row, err := bs.queries.GetBroadcastGameByUUID(ctx, gameUUID)
+	if err != nil {
+		// Game is not part of any broadcast — normal case, ignore.
+		return
+	}
+
+	doc, err := bs.gameStore.GetDocument(ctx, gameUUID)
+	if err != nil {
+		log.Err(err).Str("game_uuid", gameUUID).Msg("broadcast-stats: failed to load game document")
+		return
+	}
+
+	p1Rating, p2Rating := bs.playerRatings(row.BroadcastSlug, row.BroadcastUrl, row.BroadcastUrlFormat,
+		row.Player1Name, row.Player2Name)
+
+	stat := ComputeGameStat(doc, p1Rating, p2Rating)
+	statBytes, err := MarshalGameStat(stat)
+	if err != nil {
+		log.Err(err).Str("game_uuid", gameUUID).Msg("broadcast-stats: marshal failed")
+		return
+	}
+
+	now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
+	if err := bs.queries.UpdateBroadcastGameStats(ctx, models.UpdateBroadcastGameStatsParams{
+		GameUuid:    gameUUID,
+		Stats:       statBytes,
+		CompletedAt: now,
+	}); err != nil {
+		log.Err(err).Str("game_uuid", gameUUID).Msg("broadcast-stats: db write failed")
+		return
+	}
+
+	bs.notifyBroadcastGamesUpdated(row.BroadcastUuid.String(), row.BroadcastSlug)
 }
 
 // setCachedFeed stores all parsed divisions for a broadcast. Called by the

@@ -7,6 +7,9 @@ export const OBS_SUFFIXES = [
   "last_play",
   "blank1",
   "blank2",
+  "p1_name",
+  "p2_name",
+  "combined_names",
 ] as const;
 
 export type OBSSuffix = (typeof OBS_SUFFIXES)[number];
