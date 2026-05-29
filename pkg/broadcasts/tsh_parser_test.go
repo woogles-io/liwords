@@ -445,6 +445,16 @@ func TestDetectCurrentRound(t *testing.T) {
 			},
 			want: 2,
 		},
+		{
+			name: "round 1 complete with forfeit loss (score=0)",
+			players: []FeedPlayer{
+				{ID: 1, Scores: []int{400, 0}, Pairings: []int{2, 3}},
+				{ID: 2, Scores: []int{380, 0}, Pairings: []int{1, 3}},
+				{ID: 3, Scores: []int{100, 0}, Pairings: []int{4, 1}}, // forfeit win
+				{ID: 4, Scores: []int{0, 0}, Pairings: []int{3, 2}},   // forfeit loss, score=0
+			},
+			want: 2,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

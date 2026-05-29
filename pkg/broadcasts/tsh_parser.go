@@ -244,14 +244,28 @@ func detectCurrentRound(players []FeedPlayer) int {
 	// Check if the last scored round is fully scored (every paired player
 	// has a non-zero score). If it is, and the next round has pairings,
 	// advance to the next round.
+	// A score of 0 is treated as scored when the opponent has a non-zero
+	// score — TSH records forfeit losses as 0, same as an unplayed game.
 	lastIdx := lastScored - 1 // 0-indexed
+	idToIdx := make(map[int]int, len(players))
+	for i, p := range players {
+		idToIdx[p.ID] = i
+	}
 	for _, p := range players {
 		if lastIdx >= len(p.Pairings) || p.Pairings[lastIdx] == 0 {
 			continue
 		}
-		if lastIdx >= len(p.Scores) || p.Scores[lastIdx] == 0 {
-			return lastScored // round still in progress
+		if lastIdx < len(p.Scores) && p.Scores[lastIdx] != 0 {
+			continue
 		}
+		// Score is 0; check if opponent scored (forfeit loss).
+		if oppIdx, ok := idToIdx[p.Pairings[lastIdx]]; ok {
+			opp := players[oppIdx]
+			if lastIdx < len(opp.Scores) && opp.Scores[lastIdx] != 0 {
+				continue
+			}
+		}
+		return lastScored // genuinely unscored game
 	}
 	nextIdx := lastScored // 0-indexed index of the round after lastScored
 	for _, p := range players {
