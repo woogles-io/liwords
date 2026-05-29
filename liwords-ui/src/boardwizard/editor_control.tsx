@@ -409,8 +409,7 @@ const EditForm = (props: EditFormProps) => {
     const p2 = props.isBroadcastGame
       ? doc.players[1].realName
       : formref.getFieldValue("p2name");
-    const desc =
-      formref.getFieldValue("description") ?? doc.description;
+    const desc = formref.getFieldValue("description") ?? doc.description;
     props.editGame(p2, p1, desc);
   };
 
