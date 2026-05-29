@@ -136,7 +136,10 @@ WHERE bg.broadcast_id = $1 AND bg.division = $2 AND bg.round = $3
 ORDER BY bg.table_number;
 
 -- name: GetBroadcastGameByTableRound :one
-SELECT bg.*, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at,
+       u.username as annotator_username
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
 WHERE bg.broadcast_id = $1 AND bg.division = $2 AND bg.round = $3 AND bg.table_number = $4;
@@ -166,7 +169,10 @@ ORDER BY bg.claimed_at DESC
 LIMIT $3;
 
 -- name: GetBroadcastGameByUUID :one
-SELECT bg.*, b.uuid as broadcast_uuid, b.slug as broadcast_slug, b.name as broadcast_name,
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at,
+       b.uuid as broadcast_uuid, b.slug as broadcast_slug, b.name as broadcast_name,
        b.broadcast_url, b.broadcast_url_format
 FROM broadcast_games bg
 JOIN broadcasts b ON bg.broadcast_id = b.id
