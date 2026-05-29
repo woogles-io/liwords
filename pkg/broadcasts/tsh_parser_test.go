@@ -382,16 +382,17 @@ func TestTest22_Round11Pairings(t *testing.T) {
 		}
 	}
 
-	// Spot-check table 1: Thobani vs Abbasi, Abbasi wins 417-339.
+	// Spot-check table 1: Abbasi goes first (P12=1) and wins 417-339.
+	// Player1 is always the first-to-play, so Abbasi is Player1.
 	g := pairings[0]
-	if g.Player1Name != "Thobani, Shafique" {
-		t.Errorf("table 1 player1 = %q, want %q", g.Player1Name, "Thobani, Shafique")
+	if g.Player1Name != "Abbasi, Shan" {
+		t.Errorf("table 1 player1 = %q, want %q", g.Player1Name, "Abbasi, Shan")
 	}
-	if g.Player2Name != "Abbasi, Shan" {
-		t.Errorf("table 1 player2 = %q, want %q", g.Player2Name, "Abbasi, Shan")
+	if g.Player2Name != "Thobani, Shafique" {
+		t.Errorf("table 1 player2 = %q, want %q", g.Player2Name, "Thobani, Shafique")
 	}
-	if g.Player1Score != 339 || g.Player2Score != 417 {
-		t.Errorf("table 1 score = %d-%d, want 339-417", g.Player1Score, g.Player2Score)
+	if g.Player1Score != 417 || g.Player2Score != 339 {
+		t.Errorf("table 1 score = %d-%d, want 417-339", g.Player1Score, g.Player2Score)
 	}
 	// Spot-check table 2: Adeyeri goes first, wins 484-392.
 	g2 := pairings[1]
@@ -442,6 +443,16 @@ func TestDetectCurrentRound(t *testing.T) {
 				{ID: 1, Scores: []int{400, 350}, Pairings: []int{2, 3}},
 				{ID: 2, Scores: []int{380, 420}, Pairings: []int{1, 3}},
 				{ID: 3, Scores: []int{410, 360}, Pairings: []int{2, 1}},
+			},
+			want: 2,
+		},
+		{
+			name: "round 1 complete with forfeit loss (score=0)",
+			players: []FeedPlayer{
+				{ID: 1, Scores: []int{400, 0}, Pairings: []int{2, 3}},
+				{ID: 2, Scores: []int{380, 0}, Pairings: []int{1, 3}},
+				{ID: 3, Scores: []int{100, 0}, Pairings: []int{4, 1}}, // forfeit win
+				{ID: 4, Scores: []int{0, 0}, Pairings: []int{3, 2}},   // forfeit loss, score=0
 			},
 			want: 2,
 		},

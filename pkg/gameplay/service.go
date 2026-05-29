@@ -2,6 +2,7 @@ package gameplay
 
 import (
 	"context"
+	"regexp"
 
 	"connectrpc.com/connect"
 	"github.com/rs/zerolog/log"
@@ -241,6 +242,7 @@ func (gs *GameService) GetGCG(ctx context.Context, req *connect.Request[pb.GCGRe
 	if hist.PlayState != macondopb.PlayState_GAME_OVER && !anno {
 		return nil, apiserver.InvalidArg("please wait until the game is over to download GCG")
 	}
+	sanitizeGCGNicknames(hist)
 	gcg, err := gcgio.GameHistoryToGCG(hist, true)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
@@ -292,6 +294,18 @@ func (gs *GameService) GetGameDocument(ctx context.Context, req *connect.Request
 		return nil, apiserver.InternalErr(err)
 	}
 	return connect.NewResponse(&pb.GameDocumentResponse{Document: gdoc}), nil
+}
+
+var nonAlphanumRe = regexp.MustCompile(`[^a-zA-Z0-9]`)
+
+// sanitizeGCGNicknames rewrites player nicknames in-place to contain only
+// alphanumeric characters. GCG move-line regexes use \S+ for the nick, so any
+// whitespace in a TSH name like "Richards, Nigel" causes a parse failure.
+// e.g. "Richards, Nigel" → "RichardsNigel"
+func sanitizeGCGNicknames(hist *macondopb.GameHistory) {
+	for _, p := range hist.Players {
+		p.Nickname = nonAlphanumRe.ReplaceAllString(p.Nickname, "")
+	}
 }
 
 func censorPlayer(gir *ipc.GameInfoResponse, playerIndex int, censoredUsername string) {
