@@ -37,18 +37,10 @@ func UnmarshalGameStat(data []byte) (*GameStatJSON, error) {
 }
 
 // ComputeGameStat derives per-game summary statistics from a completed GameDocument.
-// p1Name/p2Name are the canonical player names from the broadcast_games DB row.
 // p1Rating and p2Rating are from the feed cache; pass 0 if unknown.
-// The doc player order may differ from the DB row order (e.g. when the annotator
-// entered the game with the first-mover at index 0, but the DB has a different
-// player as player1). Name matching corrects for this.
-func ComputeGameStat(doc *ipc.GameDocument, p1Name, p2Name string, p1Rating, p2Rating int) *GameStatJSON {
-	// Find which doc player index corresponds to the DB's player1.
-	// Default to 0/1; flip to 1/0 when doc.Players[1] matches p1Name.
+// doc.Players[0] is always the first-mover (player 1) and doc.Players[1] is player 2.
+func ComputeGameStat(doc *ipc.GameDocument, p1Rating, p2Rating int) *GameStatJSON {
 	p1Idx, p2Idx := 0, 1
-	if len(doc.Players) >= 2 && (doc.Players[1].Nickname == p1Name || doc.Players[1].RealName == p1Name) {
-		p1Idx, p2Idx = 1, 0
-	}
 
 	s := &GameStatJSON{
 		Player1Rating: p1Rating,

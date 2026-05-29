@@ -118,14 +118,20 @@ SELECT EXISTS(
 
 -- name: CreateBroadcastGame :one
 INSERT INTO broadcast_games (broadcast_id, game_uuid, division, round, table_number,
-    player1_name, player2_name, annotator_user_id, claimed_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    annotator_user_id, claimed_at)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
 RETURNING id;
 
 -- name: GetBroadcastGamesForRound :many
-SELECT bg.*, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at,
+       u.username AS annotator_username,
+       COALESCE(gd.document->'players'->0->>'realName', '') AS player1_name,
+       COALESCE(gd.document->'players'->1->>'realName', '') AS player2_name
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 WHERE bg.broadcast_id = $1 AND bg.division = $2 AND bg.round = $3
 ORDER BY bg.table_number;
 
@@ -146,9 +152,15 @@ FROM broadcast_games
 WHERE broadcast_id = $1 AND division = $2 AND round = $3 AND table_number = $4;
 
 -- name: GetMyClaimedGames :many
-SELECT bg.*, u.username as annotator_username
+SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
+       bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at,
+       u.username AS annotator_username,
+       COALESCE(gd.document->'players'->0->>'realName', '') AS player1_name,
+       COALESCE(gd.document->'players'->1->>'realName', '') AS player2_name
 FROM broadcast_games bg
 LEFT JOIN users u ON bg.annotator_user_id = u.id
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 WHERE bg.broadcast_id = $1 AND bg.annotator_user_id = $2
 ORDER BY bg.claimed_at DESC
 LIMIT $3;
@@ -162,10 +174,14 @@ WHERE bg.game_uuid = $1;
 
 -- name: GetBroadcastGameStatsBySlug :many
 -- Returns all broadcast_games for a slug, ordered by completed_at desc (NULLs last = in-progress first).
+-- Player names are read from the game_document JSON (source of truth).
 SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
-       bg.player1_name, bg.player2_name, bg.annotator_user_id, bg.claimed_at, bg.created_at,
-       bg.stats, bg.stats_computed_at, bg.completed_at
+       bg.annotator_user_id, bg.claimed_at, bg.created_at,
+       bg.stats, bg.stats_computed_at, bg.completed_at,
+       COALESCE(gd.document->'players'->0->>'realName', '') AS player1_name,
+       COALESCE(gd.document->'players'->1->>'realName', '') AS player2_name
 FROM broadcast_games bg
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 JOIN broadcasts b ON bg.broadcast_id = b.id
 WHERE b.slug = $1
 ORDER BY bg.completed_at DESC NULLS LAST;
@@ -199,13 +215,14 @@ WHERE broadcast_id = $1 AND slot_name = $2;
 
 -- name: GetSlotCurrentGame :one
 -- Resolves (slug, slot_name) → current game with player names, for UI confirmation warnings.
+-- Player names are read from the game_document JSON (source of truth); empty string when unclaimed.
 SELECT
     bs.division,
     bs.round,
     bs.table_number,
-    COALESCE(bg.game_uuid, '')      AS game_uuid,
-    COALESCE(bg.player1_name, '')   AS player1_name,
-    COALESCE(bg.player2_name, '')   AS player2_name
+    COALESCE(bg.game_uuid, '')                              AS game_uuid,
+    COALESCE(gd.document->'players'->0->>'realName', '')   AS player1_name,
+    COALESCE(gd.document->'players'->1->>'realName', '')   AS player2_name
 FROM broadcast_slots bs
 JOIN broadcasts b ON bs.broadcast_id = b.id
 LEFT JOIN broadcast_games bg
@@ -213,6 +230,7 @@ LEFT JOIN broadcast_games bg
     AND bg.division      = bs.division
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
 WHERE b.slug = $1 AND bs.slot_name = $2;
 
 -- name: GetBroadcastSlotGame :one
