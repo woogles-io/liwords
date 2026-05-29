@@ -12,7 +12,7 @@ import {
   Space,
   message,
 } from "antd";
-import { BookOutlined, CloseOutlined } from "@ant-design/icons";
+import { BookOutlined, CloseOutlined, SwapOutlined } from "@ant-design/icons";
 import { Store } from "antd/lib/form/interface";
 import { useEffect, useState, useCallback } from "react";
 import { ChallengeRule } from "../gen/api/proto/ipc/omgwords_pb";
@@ -145,7 +145,9 @@ export const EditorControl = (props: Props) => {
     {
       key: "details",
       label: "Game details",
-      children: <EditForm editGame={props.editGame} />,
+      children: (
+        <EditForm editGame={props.editGame} isBroadcastGame={!!broadcastCtx} />
+      ),
     },
     {
       key: "share",
@@ -388,6 +390,7 @@ const CreationForm = (props: CreationFormProps) => {
 
 type EditFormProps = {
   editGame: (p1name: string, p2name: string, description: string) => void;
+  isBroadcastGame: boolean;
 };
 
 const EditForm = (props: EditFormProps) => {
@@ -398,6 +401,19 @@ const EditForm = (props: EditFormProps) => {
     formref.resetFields();
   }, [gameContext.gameDocument, formref]);
 
+  const flipPlayers = () => {
+    const doc = gameContext.gameDocument;
+    const p1 = props.isBroadcastGame
+      ? doc.players[0].realName
+      : formref.getFieldValue("p1name");
+    const p2 = props.isBroadcastGame
+      ? doc.players[1].realName
+      : formref.getFieldValue("p2name");
+    const desc =
+      formref.getFieldValue("description") ?? doc.description;
+    props.editGame(p2, p1, desc);
+  };
+
   return (
     <Form
       layout="vertical"
@@ -407,23 +423,51 @@ const EditForm = (props: EditFormProps) => {
         p2name: gameContext.gameDocument.players[1].realName,
         description: gameContext.gameDocument.description,
       }}
-      onFinish={(vals: Store) =>
-        props.editGame(vals.p1name, vals.p2name, vals.description)
-      }
+      onFinish={(vals: Store) => {
+        if (props.isBroadcastGame) {
+          const p1 = gameContext.gameDocument.players[0].realName;
+          const p2 = gameContext.gameDocument.players[1].realName;
+          props.editGame(p1, p2, vals.description);
+        } else {
+          props.editGame(vals.p1name, vals.p2name, vals.description);
+        }
+      }}
     >
-      <Form.Item label="Player 1 name" name="p1name">
-        <Input maxLength={50} required />
-      </Form.Item>
-      <Form.Item label="Player 2 name" name="p2name">
-        <Input maxLength={50} required />
-      </Form.Item>
+      {props.isBroadcastGame ? (
+        <>
+          <Form.Item label="Player 1 name">
+            <Typography.Text>
+              {gameContext.gameDocument.players[0].realName}
+            </Typography.Text>
+          </Form.Item>
+          <Form.Item label="Player 2 name">
+            <Typography.Text>
+              {gameContext.gameDocument.players[1].realName}
+            </Typography.Text>
+          </Form.Item>
+        </>
+      ) : (
+        <>
+          <Form.Item label="Player 1 name" name="p1name">
+            <Input maxLength={50} required />
+          </Form.Item>
+          <Form.Item label="Player 2 name" name="p2name">
+            <Input maxLength={50} required />
+          </Form.Item>
+        </>
+      )}
       <Form.Item label="Game description" name="description">
         <Input.TextArea maxLength={140} rows={2} />
       </Form.Item>
       <Form.Item>
-        <Button type="primary" htmlType="submit">
-          Save settings
-        </Button>
+        <Space>
+          <Button icon={<SwapOutlined />} onClick={flipPlayers}>
+            Flip players
+          </Button>
+          <Button type="primary" htmlType="submit">
+            {props.isBroadcastGame ? "Save description" : "Save settings"}
+          </Button>
+        </Space>
       </Form.Item>
     </Form>
   );

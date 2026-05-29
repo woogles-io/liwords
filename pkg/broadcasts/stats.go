@@ -46,7 +46,7 @@ func ComputeGameStat(doc *ipc.GameDocument, p1Name, p2Name string, p1Rating, p2R
 	// Find which doc player index corresponds to the DB's player1.
 	// Default to 0/1; flip to 1/0 when doc.Players[1] matches p1Name.
 	p1Idx, p2Idx := 0, 1
-	if len(doc.Players) >= 2 && doc.Players[1].Nickname == p1Name {
+	if len(doc.Players) >= 2 && (doc.Players[1].Nickname == p1Name || doc.Players[1].RealName == p1Name) {
 		p1Idx, p2Idx = 1, 0
 	}
 

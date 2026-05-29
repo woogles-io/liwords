@@ -545,7 +545,7 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 			}
 		} else if len(doc.CurrentScores) >= 2 {
 			p1Idx := 0
-			if len(doc.Players) >= 2 && doc.Players[1].Nickname == row.Player1Name {
+			if len(doc.Players) >= 2 && (doc.Players[1].Nickname == row.Player1Name || doc.Players[1].RealName == row.Player1Name) {
 				p1Idx = 1
 			}
 			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[p1Idx], doc.CurrentScores[1-p1Idx]}
