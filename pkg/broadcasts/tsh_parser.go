@@ -101,19 +101,23 @@ func GetRoundPairings(fd *FeedData, round int) []RoundPairing {
 		// Scores are finalized if both are non-zero (or one was a forfeit)
 		finalized = p1Score != 0 || p2Score != 0
 
-		var goesFirst bool
-		if r < len(p.P12) {
-			goesFirst = p.P12[r] == 1
+		// If P12 data is available and this player goes second, swap so that
+		// Player1 is always the player who goes first.
+		p1Name, p2Name := p.Name, opp.Name
+		s1, s2 := p1Score, p2Score
+		if r < len(p.P12) && p.P12[r] == 2 {
+			p1Name, p2Name = opp.Name, p.Name
+			s1, s2 = p2Score, p1Score
 		}
 
 		pairings = append(pairings, RoundPairing{
 			Round:            round,
 			TableNumber:      table,
-			Player1Name:      p.Name,
-			Player2Name:      opp.Name,
-			Player1Score:     p1Score,
-			Player2Score:     p2Score,
-			Player1GoesFirst: goesFirst,
+			Player1Name:      p1Name,
+			Player2Name:      p2Name,
+			Player1Score:     s1,
+			Player2Score:     s2,
+			Player1GoesFirst: true,
 			Finalized:        finalized,
 		})
 	}
@@ -181,18 +185,20 @@ func GetAllRoundPairings(fd *FeedData, round int) []RoundPairing {
 		if r < len(opp.Scores) {
 			p2Score = opp.Scores[r]
 		}
-		var goesFirst bool
-		if r < len(p.P12) {
-			goesFirst = p.P12[r] == 1
+		p1Name, p2Name := p.Name, opp.Name
+		s1, s2 := p1Score, p2Score
+		if r < len(p.P12) && p.P12[r] == 2 {
+			p1Name, p2Name = opp.Name, p.Name
+			s1, s2 = p2Score, p1Score
 		}
 		pairings = append(pairings, RoundPairing{
 			Round:            round,
 			TableNumber:      table,
-			Player1Name:      p.Name,
-			Player2Name:      opp.Name,
-			Player1Score:     p1Score,
-			Player2Score:     p2Score,
-			Player1GoesFirst: goesFirst,
+			Player1Name:      p1Name,
+			Player2Name:      p2Name,
+			Player1Score:     s1,
+			Player2Score:     s2,
+			Player1GoesFirst: true,
 			Finalized:        p1Score != 0 || p2Score != 0,
 		})
 	}
