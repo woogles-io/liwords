@@ -37,17 +37,37 @@ func UnmarshalGameStat(data []byte) (*GameStatJSON, error) {
 }
 
 // ComputeGameStat derives per-game summary statistics from a completed GameDocument.
+// p1Name/p2Name are the canonical player names from the broadcast_games DB row.
 // p1Rating and p2Rating are from the feed cache; pass 0 if unknown.
-func ComputeGameStat(doc *ipc.GameDocument, p1Rating, p2Rating int) *GameStatJSON {
+// The doc player order may differ from the DB row order (e.g. when the annotator
+// entered the game with the first-mover at index 0, but the DB has a different
+// player as player1). Name matching corrects for this.
+func ComputeGameStat(doc *ipc.GameDocument, p1Name, p2Name string, p1Rating, p2Rating int) *GameStatJSON {
+	// Find which doc player index corresponds to the DB's player1.
+	// Default to 0/1; flip to 1/0 when doc.Players[1] matches p1Name.
+	p1Idx, p2Idx := 0, 1
+	if len(doc.Players) >= 2 && doc.Players[1].Nickname == p1Name {
+		p1Idx, p2Idx = 1, 0
+	}
+
 	s := &GameStatJSON{
 		Player1Rating: p1Rating,
 		Player2Rating: p2Rating,
-		Winner:        int(doc.GetWinner()),
 	}
 
 	if len(doc.CurrentScores) >= 2 {
-		s.Player1Score = int(doc.CurrentScores[0])
-		s.Player2Score = int(doc.CurrentScores[1])
+		s.Player1Score = int(doc.CurrentScores[p1Idx])
+		s.Player2Score = int(doc.CurrentScores[p2Idx])
+	}
+
+	// Map the doc winner index to 0=player1, 1=player2, -1=tie.
+	switch int(doc.GetWinner()) {
+	case p1Idx:
+		s.Winner = 0
+	case p2Idx:
+		s.Winner = 1
+	default:
+		s.Winner = -1
 	}
 
 	lastTileMoveIdx := -1
@@ -58,7 +78,7 @@ func ComputeGameStat(doc *ipc.GameDocument, p1Rating, p2Rating int) *GameStatJSO
 		case ipc.GameEvent_TILE_PLACEMENT_MOVE:
 			s.MoveCount++
 			pi := int(evt.GetPlayerIndex())
-			if pi == 0 {
+			if pi == p1Idx {
 				if evt.IsBingo {
 					s.Player1Bingos++
 				}

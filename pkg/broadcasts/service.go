@@ -533,7 +533,7 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 		}
 		if doc.PlayState == ipc.PlayState_GAME_OVER {
 			p1Rating, p2Rating := bs.playerRatings(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat, row.Player1Name, row.Player2Name)
-			stat := ComputeGameStat(doc, p1Rating, p2Rating)
+			stat := ComputeGameStat(doc, row.Player1Name, row.Player2Name, p1Rating, p2Rating)
 			statBytes, _ := MarshalGameStat(stat)
 			if statBytes != nil {
 				now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
@@ -544,7 +544,11 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 				})
 			}
 		} else if len(doc.CurrentScores) >= 2 {
-			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[0], doc.CurrentScores[1]}
+			p1Idx := 0
+			if len(doc.Players) >= 2 && doc.Players[1].Nickname == row.Player1Name {
+				p1Idx = 1
+			}
+			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[p1Idx], doc.CurrentScores[1-p1Idx]}
 		}
 	}
 	return liveScores
@@ -1284,7 +1288,7 @@ func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUI
 	p1Rating, p2Rating := bs.playerRatings(row.BroadcastSlug, row.BroadcastUrl, row.BroadcastUrlFormat,
 		row.Player1Name, row.Player2Name)
 
-	stat := ComputeGameStat(doc, p1Rating, p2Rating)
+	stat := ComputeGameStat(doc, row.Player1Name, row.Player2Name, p1Rating, p2Rating)
 	statBytes, err := MarshalGameStat(stat)
 	if err != nil {
 		log.Err(err).Str("game_uuid", gameUUID).Msg("broadcast-stats: marshal failed")

@@ -19,7 +19,7 @@ func TestComputeGameStat_Basic(t *testing.T) {
 		},
 	}
 
-	s := ComputeGameStat(doc, 1820, 1875)
+	s := ComputeGameStat(doc, "player1", "player2", 1820, 1875)
 
 	if s.Player1Score != 387 {
 		t.Errorf("Player1Score: got %d, want 387", s.Player1Score)
@@ -64,7 +64,7 @@ func TestComputeGameStat_WalkOffBingo(t *testing.T) {
 		},
 	}
 
-	s := ComputeGameStat(doc, 0, 0)
+	s := ComputeGameStat(doc, "player1", "player2", 0, 0)
 	if !s.WalkOffBingo {
 		t.Error("WalkOffBingo should be true (last tile move was a bingo followed by END_RACK_PTS)")
 	}
@@ -83,9 +83,48 @@ func TestComputeGameStat_Exchange(t *testing.T) {
 		},
 	}
 
-	s := ComputeGameStat(doc, 0, 0)
+	s := ComputeGameStat(doc, "player1", "player2", 0, 0)
 	if s.MoveCount != 3 {
 		t.Errorf("MoveCount: got %d, want 3 (exchanges count)", s.MoveCount)
+	}
+}
+
+// TestComputeGameStat_SwappedPlayers simulates the case where the game document
+// has players in the opposite order to the DB row (e.g. the annotator entered
+// the game with the first-mover at index 0, but the DB has the other player as
+// player1). The stat must reflect the DB ordering, not the doc ordering.
+func TestComputeGameStat_SwappedPlayers(t *testing.T) {
+	doc := &ipc.GameDocument{
+		// Doc has Nithyanand at index 0, Eldar at index 1.
+		Players: []*ipc.GameDocument_MinimalPlayerInfo{
+			{Nickname: "Nithyanand, Siddharth"},
+			{Nickname: "Eldar, David"},
+		},
+		CurrentScores: []int32{434, 475}, // Nithyanand 434, Eldar 475
+		Winner:        1,                 // Eldar (index 1) won
+		Events: []*ipc.GameEvent{
+			{Type: ipc.GameEvent_TILE_PLACEMENT_MOVE, Score: 22, PlayerIndex: 0, IsBingo: false},
+			{Type: ipc.GameEvent_TILE_PLACEMENT_MOVE, Score: 45, PlayerIndex: 1, IsBingo: true, WordsFormedFriendly: []string{"LARGEST"}},
+		},
+	}
+
+	// DB row has Eldar as player1, Nithyanand as player2.
+	s := ComputeGameStat(doc, "Eldar, David", "Nithyanand, Siddharth", 2162, 1891)
+
+	if s.Player1Score != 475 {
+		t.Errorf("Player1Score: got %d, want 475 (Eldar's score)", s.Player1Score)
+	}
+	if s.Player2Score != 434 {
+		t.Errorf("Player2Score: got %d, want 434 (Nithyanand's score)", s.Player2Score)
+	}
+	if s.Winner != 0 {
+		t.Errorf("Winner: got %d, want 0 (Eldar = player1 won)", s.Winner)
+	}
+	if s.Player1Bingos != 1 {
+		t.Errorf("Player1Bingos: got %d, want 1 (Eldar's bingo at doc index 1)", s.Player1Bingos)
+	}
+	if s.Player2Bingos != 0 {
+		t.Errorf("Player2Bingos: got %d, want 0", s.Player2Bingos)
 	}
 }
 
