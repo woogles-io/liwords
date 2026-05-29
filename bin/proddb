@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# proddb — open a psql session against the woogles production DB.
+# Sets up an SSH tunnel on localhost:15432 if one isn't already running,
+# then launches psql. Credentials are read from .env.production.
+
+set -euo pipefail
+
+ENV_FILE="$(cd "$(dirname "$0")/.." && pwd)/.env.production"
+SOCK="/tmp/woogles-db.sock"
+LOCAL_PORT=15437
+SSH_HOST="woogles-db"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "error: env file not found: $ENV_FILE" >&2
+  exit 1
+fi
+
+_env_val() {
+  grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2-
+}
+
+DB_USER=$(_env_val PSQL_USERNAME)
+DB_PASS=$(_env_val PSQL_PASSWORD)
+DB_NAME=$(_env_val PSQL_DB)
+
+_tunnel_alive() {
+  ssh -S "$SOCK" -O check "$SSH_HOST" &>/dev/null
+}
+
+_port_in_use() {
+  ss -tlnp 2>/dev/null | grep -q ":${LOCAL_PORT} " || \
+    lsof -i "TCP:${LOCAL_PORT}" -sTCP:LISTEN &>/dev/null
+}
+
+if _tunnel_alive && _port_in_use; then
+  : # tunnel is up and port is bound, reuse it
+elif _port_in_use; then
+  # Leftover process bound to the port but control socket is gone — kill and reopen.
+  echo "Port $LOCAL_PORT in use without a live control socket — cleaning up ..." >&2
+  fuser -k "${LOCAL_PORT}/tcp" &>/dev/null || true
+  rm -f "$SOCK"
+  sleep 0.3
+  echo "Opening SSH tunnel to $SSH_HOST:5432 → localhost:$LOCAL_PORT ..." >&2
+  ssh -fNM -S "$SOCK" -L "${LOCAL_PORT}:localhost:5432" "$SSH_HOST"
+  sleep 0.5
+else
+  echo "Opening SSH tunnel to $SSH_HOST:5432 → localhost:$LOCAL_PORT ..." >&2
+  ssh -fNM -S "$SOCK" -L "${LOCAL_PORT}:localhost:5432" "$SSH_HOST"
+  sleep 0.5
+fi
+
+PGPASSWORD="$DB_PASS" exec psql -h localhost -p "$LOCAL_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"

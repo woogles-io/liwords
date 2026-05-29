@@ -370,8 +370,8 @@ func (bs *BroadcastService) computeGetBroadcastGames(
 			game := &pb.BroadcastRoundGame{
 				Round:       round,
 				TableNumber: g.TableNumber,
-				Player1Name: g.Player1Name,
-				Player2Name: g.Player2Name,
+				Player1Name: asStr(g.Player1Name),
+				Player2Name: asStr(g.Player2Name),
 				GameUuid:    g.GameUuid,
 				Division:    g.Division,
 			}
@@ -454,7 +454,7 @@ func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slu
 	liveScores := bs.hydrateLiveScores(ctx, broadcast, rows)
 
 	// Index broadcast_games rows by (division|round|table) for merge with feed.
-	claimedRows := make(map[string]models.BroadcastGame, len(rows))
+	claimedRows := make(map[string]models.GetBroadcastGameStatsBySlugRow, len(rows))
 	for _, row := range rows {
 		claimedRows[feedKey(row.Division, int(row.Round), int(row.TableNumber))] = row
 	}
@@ -521,7 +521,7 @@ func (bs *BroadcastService) computeGetBroadcastAllGames(ctx context.Context, slu
 // hydrateLiveScores fetches current scores for in-progress annotated games and
 // lazy-fills the materialized stats column for any game that finished without
 // triggering the normal write hook.
-func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast models.GetBroadcastBySlugRow, rows []models.BroadcastGame) map[string][2]int32 {
+func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast models.GetBroadcastBySlugRow, rows []models.GetBroadcastGameStatsBySlugRow) map[string][2]int32 {
 	liveScores := make(map[string][2]int32)
 	for _, row := range rows {
 		if row.Stats != nil || row.GameUuid == "" {
@@ -532,8 +532,9 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 			continue
 		}
 		if doc.PlayState == ipc.PlayState_GAME_OVER {
-			p1Rating, p2Rating := bs.playerRatings(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat, row.Player1Name, row.Player2Name)
-			stat := ComputeGameStat(doc, row.Player1Name, row.Player2Name, p1Rating, p2Rating)
+			p1Name, p2Name := docPlayerNames(doc)
+			p1Rating, p2Rating := bs.playerRatings(broadcast.Slug, broadcast.BroadcastUrl, broadcast.BroadcastUrlFormat, p1Name, p2Name)
+			stat := ComputeGameStat(doc, p1Rating, p2Rating)
 			statBytes, _ := MarshalGameStat(stat)
 			if statBytes != nil {
 				now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
@@ -544,11 +545,7 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 				})
 			}
 		} else if len(doc.CurrentScores) >= 2 {
-			p1Idx := 0
-			if len(doc.Players) >= 2 && doc.Players[1].Nickname == row.Player1Name {
-				p1Idx = 1
-			}
-			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[p1Idx], doc.CurrentScores[1-p1Idx]}
+			liveScores[row.GameUuid] = [2]int32{doc.CurrentScores[0], doc.CurrentScores[1]}
 		}
 	}
 	return liveScores
@@ -559,16 +556,39 @@ func feedKey(division string, round, table int) string {
 	return fmt.Sprintf("%s|%d|%d", division, round, table)
 }
 
+// asStr safely converts a JSONB-extracted interface{} to string (COALESCE ensures
+// it is never nil, but the type assertion is still required because pgx scans
+// JSONB path expressions as interface{}).
+func asStr(v interface{}) string {
+	s, _ := v.(string)
+	return s
+}
+
+// docPlayerNames returns the display names for players 0 and 1 from a GameDocument.
+// doc.Players[0] is always the first-mover (the canonical "player 1").
+func docPlayerNames(doc *ipc.GameDocument) (p1, p2 string) {
+	name := func(i int) string {
+		if i < len(doc.Players) {
+			if n := doc.Players[i].RealName; n != "" {
+				return n
+			}
+			return doc.Players[i].Nickname
+		}
+		return ""
+	}
+	return name(0), name(1)
+}
+
 
 // buildAnnotatedStat converts a broadcast_games row to a BroadcastGameStat proto.
-func buildAnnotatedStat(row models.BroadcastGame, liveScores map[string][2]int32) *pb.BroadcastGameStat {
+func buildAnnotatedStat(row models.GetBroadcastGameStatsBySlugRow, liveScores map[string][2]int32) *pb.BroadcastGameStat {
 	s := &pb.BroadcastGameStat{
 		GameUuid:    row.GameUuid,
 		Division:    row.Division,
 		Round:       row.Round,
 		TableNumber: row.TableNumber,
-		Player1Name: row.Player1Name,
-		Player2Name: row.Player2Name,
+		Player1Name: asStr(row.Player1Name),
+		Player2Name: asStr(row.Player2Name),
 	}
 	if row.Stats != nil {
 		gs, err := UnmarshalGameStat(row.Stats)
@@ -710,8 +730,6 @@ func (bs *BroadcastService) ClaimGame(ctx context.Context, req *connect.Request[
 		Division:        req.Msg.Division,
 		Round:           req.Msg.Round,
 		TableNumber:     req.Msg.TableNumber,
-		Player1Name:     player1Name,
-		Player2Name:     player2Name,
 		AnnotatorUserID: pgtype.Int4{Int32: int32(u.ID), Valid: true},
 	}); err != nil {
 		// Best effort: game was created, log the error but still return the game ID.
@@ -828,8 +846,8 @@ func (bs *BroadcastService) GetMyClaimedGames(ctx context.Context, req *connect.
 		games = append(games, &pb.BroadcastRoundGame{
 			Round:             row.Round,
 			TableNumber:       row.TableNumber,
-			Player1Name:       row.Player1Name,
-			Player2Name:       row.Player2Name,
+			Player1Name:       asStr(row.Player1Name),
+			Player2Name:       asStr(row.Player2Name),
 			GameUuid:          row.GameUuid,
 			Division:          row.Division,
 			AnnotatorUsername: u.Username,
@@ -887,8 +905,8 @@ func (bs *BroadcastService) GetSlotCurrentGame(ctx context.Context, req *connect
 
 	resp := &pb.GetSlotCurrentGameResponse{
 		GameUuid:    row.GameUuid,
-		Player1Name: row.Player1Name,
-		Player2Name: row.Player2Name,
+		Player1Name: asStr(row.Player1Name),
+		Player2Name: asStr(row.Player2Name),
 		Division:    row.Division,
 		Round:       row.Round,
 		TableNumber: row.TableNumber,
@@ -1285,10 +1303,11 @@ func (bs *BroadcastService) HandleAnnotatedGameDone(ctx context.Context, gameUUI
 		return
 	}
 
+	p1Name, p2Name := docPlayerNames(doc)
 	p1Rating, p2Rating := bs.playerRatings(row.BroadcastSlug, row.BroadcastUrl, row.BroadcastUrlFormat,
-		row.Player1Name, row.Player2Name)
+		p1Name, p2Name)
 
-	stat := ComputeGameStat(doc, row.Player1Name, row.Player2Name, p1Rating, p2Rating)
+	stat := ComputeGameStat(doc, p1Rating, p2Rating)
 	statBytes, err := MarshalGameStat(stat)
 	if err != nil {
 		log.Err(err).Str("game_uuid", gameUUID).Msg("broadcast-stats: marshal failed")
