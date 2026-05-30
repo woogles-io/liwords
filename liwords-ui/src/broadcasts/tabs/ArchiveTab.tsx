@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Input, Select, Space, Table, Typography } from "antd";
 import type { BroadcastGameStat } from "../../gen/api/proto/broadcast_service/broadcast_service_pb";
 import { GameLink } from "./GameLink";
@@ -13,6 +13,11 @@ type Props = {
 export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
   const [roundFilter, setRoundFilter] = useState<number>(0);
   const [playerFilter, setPlayerFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [playerFilter, roundFilter]);
 
   const filtered = useMemo(() => {
     let rows = stats;
@@ -60,6 +65,8 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
         dataSource={filtered}
         pagination={{
           pageSize: 50,
+          current: currentPage,
+          onChange: setCurrentPage,
           showSizeChanger: false,
           hideOnSinglePage: true,
         }}
