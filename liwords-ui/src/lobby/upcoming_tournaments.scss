@@ -55,7 +55,7 @@
 
   .tournament-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -134,7 +134,7 @@
 
       &.closed {
         background-color: m($gray-subtle);
-        color: m($gray-dark);
+        color: m($gray-medium);
       }
 
       &.live {
@@ -220,7 +220,7 @@
 
   .tournament-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -299,7 +299,7 @@
 
       &.closed {
         background-color: m($gray-subtle);
-        color: m($gray-dark);
+        color: m($gray-medium);
       }
 
       &.live {
@@ -352,7 +352,7 @@
 
   .league-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -409,7 +409,7 @@
 
       &.completed {
         background-color: m($gray-subtle);
-        color: m($gray-dark);
+        color: m($gray-medium);
       }
     }
   }

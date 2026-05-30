@@ -867,13 +867,13 @@ export const Chat = React.memo((props: Props) => {
                     <p className="presence-count">
                       <span>{peopleOnlineCounter}</span>
                       {presenceVisible ? (
-                        <span className="list-trigger" onClick={handleHideList}>
+                        <button className="view-mode-btn" onClick={handleHideList}>
                           Hide list
-                        </span>
+                        </button>
                       ) : (
-                        <span className="list-trigger" onClick={handleShowList}>
+                        <button className="view-mode-btn" onClick={handleShowList}>
                           Show list
-                        </span>
+                        </button>
                       )}
                     </p>
                     {presenceVisible ? (

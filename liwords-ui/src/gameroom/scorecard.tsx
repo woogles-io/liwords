@@ -67,6 +67,7 @@ type Props = {
   isCorrespondence?: boolean;
   timeBankP0?: number; // Time bank in milliseconds for player 0
   timeBankP1?: number; // Time bank in milliseconds for player 1
+  isInMobileView?: boolean;
 };
 
 type turnProps = {
@@ -146,7 +147,7 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
         </span>
       );
     case GameEvent_Type.TIME_PENALTY:
-      return <span className="time-penalty">Time penalty</span>;
+      return <span className="time-penalty">Overtime</span>;
   }
   return "";
 };
@@ -644,15 +645,17 @@ export const ScoreCard = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
 
-  // Scroll selected turn into view when examinedTurn changes (arrow navigation)
+  // Scroll selected turn into view when examinedTurn changes (arrow navigation).
+  // Skip on mobile: the scorecard is below the board in a single-column stack,
+  // so scrollIntoView would yank the page away from the board on every nav.
   useEffect(() => {
-    if (!props.isExamining || !flipHidden) return;
+    if (!props.isExamining || !flipHidden || props.isInMobileView) return;
     requestAnimationFrame(() => {
       el.current
         ?.querySelector(".turn-selected, .two-col-turn-selected")
         ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
-  }, [examinedTurn, props.isExamining, flipHidden]);
+  }, [examinedTurn, props.isExamining, flipHidden, props.isInMobileView]);
 
   const viewMenuItems = [
     { label: "1 column", key: "single" },
@@ -676,7 +679,7 @@ export const ScoreCard = React.memo((props: Props) => {
       overlayClassName="format-dropdown"
     >
       <button className="view-mode-btn">
-        {currentViewLabel} <span className="view-mode-caret">▾</span>
+        <span className="view-mode-caret">▾</span> {currentViewLabel}
       </button>
     </Dropdown>
   );

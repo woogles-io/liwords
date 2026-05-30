@@ -102,7 +102,7 @@ p.streak-loss {
       .ant-card-head-title,
       .ant-card-extra {
         padding: 6px 3px;
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1em;
       }
 
@@ -111,7 +111,7 @@ p.streak-loss {
         & {
           font-weight: bold;
           line-height: 2em;
-          font-size: 13px;
+          font-size: 14px;
         }
       }
     }
@@ -213,6 +213,15 @@ p.streak-loss {
     }
   }
 
+  @media (min-width: $screen-laptop-min) {
+    .notepad-card,
+    .analyzer-card {
+      .ant-card-body {
+        height: auto;
+      }
+    }
+  }
+
   .analyzer-card {
     .ant-card-body {
       padding: 0;
@@ -270,7 +279,7 @@ p.streak-loss {
     }
 
     .suggestions {
-      font-family: $font-monospaced;
+      @include type-monospace;
       width: 100%;
       text-align: center;
       align-items: center;
@@ -287,14 +296,14 @@ p.streak-loss {
 
         &:hover {
           @include colorModed() {
-            background-color: m($off-background);
+            background-color: m($primary-light);
           }
         }
       }
 
       tr.move-chosen:not(:hover) {
         @include colorModed() {
-          background-color: m($gray-subtle);
+          background-color: m($primary-middle);
         }
       }
 
@@ -450,7 +459,7 @@ p.streak-loss {
 
   .ca-player-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .ca-sep {
@@ -474,7 +483,7 @@ p.streak-loss {
 
   .ca-move-row {
     font-family: $font-monospaced;
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -655,7 +664,7 @@ p.streak-loss {
 
       &:hover {
         @include colorModed() {
-          color: m($gray-dark);
+          color: m($gray-medium);
         }
       }
     }
@@ -674,7 +683,7 @@ p.streak-loss {
 
       .ca-ply-table {
         font-family: $font-monospaced;
-        font-size: 13px;
+        font-size: 14px;
         width: auto;
 
         td {
@@ -694,7 +703,7 @@ p.streak-loss {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      font-size: 13px;
+      font-size: 14px;
     }
   }
 
@@ -1853,7 +1862,6 @@ p.rune {
 
   .tiles-remaining {
     @include type-monospace;
-    font-size: 13px;
     font-weight: 800;
     padding: 6px 24px 12px;
     line-height: 1.3em;
@@ -1936,8 +1944,9 @@ p.rune {
   background: transparent;
   border: none;
   cursor: pointer;
+  font-family: $font-default;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   border-radius: 4px;
 
@@ -1963,10 +1972,10 @@ p.rune {
       @include type-default;
       & {
         font-weight: bold;
-        font-size: 12px;
-        height: 24px;
+        font-size: 14px;
+        height: 28px;
         min-width: 110px;
-        line-height: 2.3em;
+        line-height: 2em;
       }
 
       @include colorModed() {
@@ -1991,14 +2000,14 @@ p.rune {
     }
 
     & {
-      font-size: 13px;
+      font-size: 14px;
       letter-spacing: 1.2px;
       text-transform: uppercase;
     }
   }
 
   .league-name {
-    font-size: 13px;
+    font-size: 14px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
 
@@ -2084,7 +2093,6 @@ p.rune {
 
   .turn {
     @include type-monospace;
-    font-size: 14px;
     display: flex;
     padding: 6px 16px;
     justify-content: space-between;
@@ -2093,9 +2101,15 @@ p.rune {
       color: m($gray-extreme);
     }
 
-    &.turn-selected {
+    &:hover {
       @include colorModed() {
         background: m($primary-light);
+      }
+    }
+
+    &.turn-selected {
+      @include colorModed() {
+        background: m($primary-middle);
       }
     }
 
@@ -2248,7 +2262,7 @@ p.rune {
 
         .ant-card-head-title {
           padding: 3px 0px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 600;
 
           @include colorModed() {
@@ -2326,7 +2340,7 @@ p.rune {
       margin-top: 6px;
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 13px;
+      font-size: 14px;
 
       @include colorModed() {
         color: m($button);
@@ -2462,7 +2476,6 @@ p.rune {
   // Two-column scorecard view
   .two-col-scorecard {
     @include type-monospace;
-    font-size: 13px;
     position: relative;
 
     @include colorModed() {
@@ -2548,9 +2561,15 @@ p.rune {
       min-height: 38px;
     }
 
-    &.two-col-turn-selected {
+    &:hover {
       @include colorModed() {
         background: m($primary-light);
+      }
+    }
+
+    &.two-col-turn-selected {
+      @include colorModed() {
+        background: m($primary-middle);
       }
     }
 
@@ -2760,7 +2779,7 @@ p.rune {
 
             .ant-card-head-title {
               padding: 3px 0px;
-              font-size: 13px;
+              font-size: 14px;
               font-weight: 600;
 
               @include colorModed() {
@@ -2838,7 +2857,7 @@ p.rune {
           display: inline-block; // Ensure proper spacing
           padding: 4px 8px;
           border-radius: 4px;
-          font-size: 13px;
+          font-size: 14px;
 
           @include colorModed() {
             color: m($button);
@@ -2892,7 +2911,7 @@ p.rune {
       margin-bottom: 12px;
 
       .turn-indicator {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
 
         @include colorModed() {
@@ -3330,7 +3349,7 @@ p.rune {
 
         .analyzer-container {
           .suggestions {
-            font-size: 13px;
+            font-size: 14px;
             max-height: 182px;
             overflow-y: auto;
           }

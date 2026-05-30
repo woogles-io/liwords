@@ -131,7 +131,7 @@ export const CommentsDrawer: React.FC<Props> = ({
         play = "End rack points";
         break;
       case GameEvent_Type.TIME_PENALTY:
-        play = "Time penalty";
+        play = "Overtime";
         break;
       case GameEvent_Type.END_RACK_PENALTY:
         play = "End rack penalty";
