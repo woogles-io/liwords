@@ -537,11 +537,14 @@ func (bs *BroadcastService) hydrateLiveScores(ctx context.Context, broadcast mod
 			stat := ComputeGameStat(doc, p1Rating, p2Rating)
 			statBytes, _ := MarshalGameStat(stat)
 			if statBytes != nil {
-				now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
+				completedAt := row.CompletedAt
+				if !completedAt.Valid {
+					completedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
+				}
 				_ = bs.queries.UpdateBroadcastGameStats(ctx, models.UpdateBroadcastGameStatsParams{
 					GameUuid:    row.GameUuid,
 					Stats:       statBytes,
-					CompletedAt: now,
+					CompletedAt: completedAt,
 				})
 			}
 		} else if len(doc.CurrentScores) >= 2 {

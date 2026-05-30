@@ -61,7 +61,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
         <Text type="secondary">{filtered.length} games</Text>
       </Space>
       <Table
-        rowKey="gameUuid"
+        rowKey={(r) => `${r.division}-${r.round}-${r.tableNumber}`}
         dataSource={filtered}
         pagination={{
           pageSize: 50,
@@ -81,7 +81,7 @@ export const ArchiveTab: React.FC<Props> = ({ stats, totalRounds }) => {
               a.round !== b.round
                 ? a.round - b.round
                 : a.tableNumber - b.tableNumber,
-            defaultSortOrder: "ascend",
+            defaultSortOrder: "descend",
           },
           {
             title: "Tbl",

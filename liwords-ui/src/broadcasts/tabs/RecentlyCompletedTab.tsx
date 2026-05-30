@@ -17,9 +17,13 @@ type Props = {
 export const RecentlyCompletedTab: React.FC<Props> = ({ stats }) => {
   const completed = stats
     .filter((s) => s.completedAt)
-    .sort(
-      (a, b) => Number(b.completedAt!.seconds) - Number(a.completedAt!.seconds),
-    )
+    .sort((a, b) => {
+      const diff =
+        Number(b.completedAt!.seconds) - Number(a.completedAt!.seconds);
+      if (diff !== 0) return diff;
+      if (b.round !== a.round) return b.round - a.round;
+      return b.tableNumber - a.tableNumber;
+    })
     .slice(0, 20);
 
   if (completed.length === 0) {
