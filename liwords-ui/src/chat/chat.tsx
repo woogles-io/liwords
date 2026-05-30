@@ -867,11 +867,17 @@ export const Chat = React.memo((props: Props) => {
                     <p className="presence-count">
                       <span>{peopleOnlineCounter}</span>
                       {presenceVisible ? (
-                        <button className="view-mode-btn" onClick={handleHideList}>
+                        <button
+                          className="view-mode-btn"
+                          onClick={handleHideList}
+                        >
                           Hide list
                         </button>
                       ) : (
-                        <button className="view-mode-btn" onClick={handleShowList}>
+                        <button
+                          className="view-mode-btn"
+                          onClick={handleShowList}
+                        >
                           Show list
                         </button>
                       )}
