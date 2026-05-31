@@ -239,6 +239,7 @@ type GamePlayer struct {
 	OriginalRequestID pgtype.Text
 	LeagueSeasonID    pgtype.UUID
 	UpdatedAt         pgtype.Timestamptz
+	GameMode          int16
 }
 
 type GameTurn struct {
