@@ -340,10 +340,9 @@ const getRecentCorrespondenceGamesByUserId = `-- name: GetRecentCorrespondenceGa
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at
   FROM game_players gp
-  JOIN games g ON gp.game_uuid = g.uuid
   WHERE gp.player_id = $1
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+    AND gp.game_mode = 1  -- CORRESPONDENCE only; uses idx_game_players_player_correspondence
   ORDER BY gp.updated_at DESC
   LIMIT $2::integer
 )
@@ -653,7 +652,8 @@ INSERT INTO game_players (
     opponent_score,
     original_request_id,
     league_season_id,
-    updated_at
+    updated_at,
+    game_mode
 ) VALUES
     -- Player 0
     (
@@ -669,7 +669,8 @@ INSERT INTO game_players (
         $9,
         $10,
         $11,
-        $12
+        $12,
+        $13
     ),
     -- Player 1
     (
@@ -677,7 +678,7 @@ INSERT INTO game_players (
         $8,
         1,
         $9,
-        $13,
+        $14,
         $5,
         $6,
         $7,
@@ -685,7 +686,8 @@ INSERT INTO game_players (
         $3,
         $10,
         $11,
-        $12
+        $12,
+        $13
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING
 `
@@ -703,6 +705,7 @@ type InsertGamePlayersParams struct {
 	OriginalRequestID pgtype.Text
 	LeagueSeasonID    pgtype.UUID
 	UpdatedAt         pgtype.Timestamptz
+	GameMode          int16
 	Player1Won        pgtype.Bool
 }
 
@@ -720,6 +723,7 @@ func (q *Queries) InsertGamePlayers(ctx context.Context, arg InsertGamePlayersPa
 		arg.OriginalRequestID,
 		arg.LeagueSeasonID,
 		arg.UpdatedAt,
+		arg.GameMode,
 		arg.Player1Won,
 	)
 	return err

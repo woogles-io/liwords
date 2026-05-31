@@ -71,10 +71,9 @@ ORDER BY rgu.updated_at DESC;
 WITH recent_game_uuids AS (
   SELECT gp.game_uuid, gp.updated_at
   FROM game_players gp
-  JOIN games g ON gp.game_uuid = g.uuid
   WHERE gp.player_id = @user_id
     AND gp.game_end_reason NOT IN (0, 5, 7)  -- NONE, ABORTED, CANCELLED
-    AND (g.game_request->>'game_mode')::int = 1  -- CORRESPONDENCE only
+    AND gp.game_mode = 1  -- CORRESPONDENCE only; uses idx_game_players_player_correspondence
   ORDER BY gp.updated_at DESC
   LIMIT @num_games::integer
 )
@@ -302,7 +301,8 @@ INSERT INTO game_players (
     opponent_score,
     original_request_id,
     league_season_id,
-    updated_at
+    updated_at,
+    game_mode
 ) VALUES
     -- Player 0
     (
@@ -318,7 +318,8 @@ INSERT INTO game_players (
         @player1_score,
         @original_request_id,
         @league_season_id,
-        @updated_at
+        @updated_at,
+        @game_mode
     ),
     -- Player 1
     (
@@ -334,7 +335,8 @@ INSERT INTO game_players (
         @player0_score,
         @original_request_id,
         @league_season_id,
-        @updated_at
+        @updated_at,
+        @game_mode
     )
 ON CONFLICT (game_uuid, player_id) DO NOTHING;
 

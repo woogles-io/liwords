@@ -208,6 +208,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	dbCfg.MaxConns = 25
 	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithIncludeQueryParameters())
 	dbPool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 

@@ -26,8 +26,10 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
-// A little bit of grace period in case we have to redeploy the socket or something.
-const TokenExpiration = 60 * time.Second
+// WebSocketTokenExpiration gives reconnecting tabs enough slack to survive brief
+// background pauses without hitting "token is expired" on the socket server.
+const WebSocketTokenExpiration = 5 * time.Minute
+const SignedCookieExpiration = 60 * time.Second
 const PasswordResetExpiration = 24 * time.Hour
 
 const ResetPasswordTemplate = `
@@ -227,7 +229,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"exp":   time.Now().Add(WebSocketTokenExpiration).Unix(),
 		"uid":   uuid,
 		"unn":   unn,
 		"a":     authed,
@@ -260,7 +262,7 @@ func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash strin
 	cid := shortuuid.New()
 	uid := "anon-" + cid
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"exp":   time.Now().Add(WebSocketTokenExpiration).Unix(),
 		"uid":   uid,
 		"unn":   uid,
 		"a":     false, // not authed
@@ -287,7 +289,7 @@ func (as *AuthenticationService) GetSignedCookie(ctx context.Context, r *connect
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":       time.Now().Add(TokenExpiration).Unix(),
+		"exp":       time.Now().Add(SignedCookieExpiration).Unix(),
 		"sessionID": sess.ID,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))

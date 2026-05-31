@@ -1630,6 +1630,11 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		leagueSeasonID = pgtype.UUID{Bytes: *g.SeasonID, Valid: true}
 	}
 
+	var gameMode int16
+	if g.GameReq != nil {
+		gameMode = int16(g.GameReq.GameMode)
+	}
+
 	return s.queries.InsertGamePlayers(ctx, models.InsertGamePlayersParams{
 		GameUuid:          g.GameID(),
 		Player0ID:         int32(g.PlayerDBIDs[0]),
@@ -1644,5 +1649,6 @@ func (s *DBStore) InsertGamePlayers(ctx context.Context, g *entity.Game) error {
 		OriginalRequestID: originalRequestID,
 		LeagueSeasonID:    leagueSeasonID,
 		UpdatedAt:         pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
+		GameMode:          gameMode,
 	})
 }
