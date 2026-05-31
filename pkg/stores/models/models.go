@@ -131,8 +131,6 @@ type BroadcastGame struct {
 	Division        string
 	Round           int32
 	TableNumber     int32
-	Player1Name     string
-	Player2Name     string
 	AnnotatorUserID pgtype.Int4
 	ClaimedAt       pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
