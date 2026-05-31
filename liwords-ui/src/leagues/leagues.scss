@@ -321,7 +321,7 @@
     }
 
     p {
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.4;
       margin: 0 0 12px 0;
       color: #666;
@@ -360,7 +360,7 @@
     cursor: pointer;
     text-decoration: none;
     color: #666;
-    font-size: 13px;
+    font-size: 14px;
     margin-bottom: 12px;
     padding-left: 16px;
 
@@ -958,7 +958,7 @@
 
       .opponent-name-compact {
         font-weight: 500;
-        font-size: 13px;
+        font-size: 14px;
       }
 
       .turn-indicator-compact {
@@ -1017,6 +1017,6 @@
   color: #999;
 
   @include colorModed {
-    color: m($gray-dark);
+    color: m($gray-medium);
   }
 }

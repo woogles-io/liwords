@@ -91,7 +91,7 @@
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
-      border: 1px solid m($gray-dark);
+      border: 1px solid m($gray-medium);
     }
     .ant-select-arrow {
       @include colorModed() {

@@ -114,6 +114,16 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   }
 }
 
+@mixin type-overline {
+  font-family: $font-default;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 1.76px;
+  text-transform: uppercase;
+}
+
 @mixin type-monospace {
   font-family: $font-monospaced;
   font-style: normal;

@@ -5,12 +5,11 @@ p {
 }
 
 .breadcrumb {
+  @include type-overline;
   padding: 6px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
-  letter-spacing: 1.3px;
   @include colorModed() {
     color: m($gray-medium);
   }
@@ -19,15 +18,8 @@ p {
       color: m($gray-medium);
     }
   }
-  //   .link.plain {
-  //     text-transform: none;
-  //     font-size: 14px;
-  //     @include colorModed() {
-  //       color: m($primary-dark);
-  //     }
-  //   }
   .anticon {
-    font-size: 18px;
+    font-size: 24px;
     margin-right: 12px;
   }
 }
@@ -109,17 +101,6 @@ p {
       z-index: 1;
       padding: 12px 24px 0;
     }
-    .list-trigger {
-      letter-spacing: 0;
-      cursor: pointer;
-      @include colorModed() {
-        color: m($primary-dark);
-      }
-      & {
-        font-weight: bold;
-        text-transform: none;
-      }
-    }
     .ant-select {
       width: 100%;
       max-width: 500px;
@@ -146,13 +127,12 @@ p {
     }
 
     .presence-count {
+      @include type-overline;
       position: relative;
       display: flex;
       width: 100%;
       justify-content: space-between;
-      text-transform: uppercase;
-      font-size: 12px;
-      letter-spacing: 0.16em;
+      align-items: center;
       margin: 6px 0;
       @include colorModed() {
         color: m($gray-medium);
@@ -273,10 +253,8 @@ p {
     }
   }
   .channel-list .breadcrumb {
-    text-transform: uppercase;
     padding-bottom: 12px;
     margin-top: 12px;
-    font-size: 12px;
     @include colorModed() {
       color: m($gray-medium);
     }
@@ -442,7 +420,7 @@ p {
         height: 100px;
         line-height: 1.3em;
         margin-top: 12px;
-        font-size: 13px;
+        font-size: 14px;
         .ant-card-body {
           padding: 6px 12px;
           display: flex;
@@ -459,6 +437,56 @@ p {
   }
 }
 
+@media (min-width: $screen-laptop-min) {
+  .game-table {
+    .chat-area {
+      display: flex;
+      flex-direction: column;
+      // header (60px) + game-table padding-top (12px) + game-container padding-bottom (24px)
+      height: calc(100vh - #{$header-height-desktop + 12px + 24px});
+
+      // Fixed-height cards don't participate in flex fill
+      .ant-card.left-menu,
+      .ant-card.disclaimer {
+        flex-shrink: 0;
+      }
+
+      // Chat and notepad/analyzer split the remaining space equally
+      .ant-card.chat,
+      .ant-card.notepad-card,
+      .ant-card.analyzer-card {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        margin-bottom: 12px;
+
+        .ant-card-body {
+          flex: 1;
+          min-height: 0;
+          height: auto;
+        }
+      }
+
+      // Analyzer: align content to top and let suggestions fill + scroll
+      .ant-card.analyzer-card {
+        .ant-card-body {
+          .analyzer-container {
+            align-items: flex-start;
+            justify-content: flex-start;
+
+            .suggestions {
+              max-height: 100%;
+              overflow-y: auto;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 .chat input[name="chat-input"] {
   position: absolute;
   bottom: 0;
@@ -469,130 +497,19 @@ p {
     background: m($card-background);
     color: m($gray-extreme);
   }
+  &::placeholder {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
 }
 
 @media (min-width: $screen-laptop-min) {
-  .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 355px;
-        margin-bottom: 12px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 328px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
-  }
-  .competitor .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 290px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 290px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
-  }
   .chat-area {
     order: initial;
-    display: block;
     flex: 1;
     width: 25%;
     min-width: 25%;
     margin: 0;
-  }
-}
-
-@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
-  .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 495px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 420px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
-  }
-  .competitor .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 430px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 430px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
-  }
-}
-
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
-  .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 564px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 564px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
-  }
-  .competitor .game-table {
-    .chat-area {
-      .ant-card.chat {
-        height: 499px;
-      }
-      &.has-disclaimer {
-        .ant-card.chat {
-          height: 499px;
-        }
-        .ant-card.notepad-card,
-        .ant-card.analyzer-card {
-          .ant-card-body {
-            height: 90px;
-          }
-        }
-      }
-    }
   }
 }

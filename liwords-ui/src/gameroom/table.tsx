@@ -1386,6 +1386,7 @@ export const Table = React.memo((props: Props) => {
           />
           <ScoreCard
             isExamining={isExamining}
+            isInMobileView={isInMobileView}
             events={examinableGameContext.turns}
             allEvents={gameContext.turns}
             allBoard={gameContext.board}

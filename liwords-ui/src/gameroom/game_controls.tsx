@@ -247,6 +247,7 @@ export type Props = {
   onNudge: () => void;
   onRecall: () => void;
   onChallenge: () => void;
+  challengeAllowed?: boolean;
   onCommit: () => void;
   onExamine: () => void;
   onExportGCG: () => void;
@@ -301,7 +302,8 @@ const GameControls = React.memo((props: Props) => {
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === "CHALLENGE" &&
-      (!props.myTurn || props.challengeRule === ChallengeRule.VOID)) ||
+      (!props.challengeAllowed ||
+        props.challengeRule === ChallengeRule.VOID)) ||
     (actualCurrentPopUp === "PASS" && !props.myTurn)
       ? "NONE"
       : actualCurrentPopUp;
@@ -600,7 +602,7 @@ const GameControls = React.memo((props: Props) => {
               <Button
                 ref={challengeButton}
                 onClick={props.onChallenge}
-                disabled={!props.myTurn}
+                disabled={!props.challengeAllowed}
               >
                 Challenge
                 <span className="key-command">3</span>
@@ -630,7 +632,7 @@ const GameControls = React.memo((props: Props) => {
                       setCurrentPopUp("NONE");
                     }
                   }}
-                  disabled={!props.myTurn}
+                  disabled={!props.challengeAllowed}
                   hidden={props.challengeRule === ChallengeRule.VOID}
                 >
                   Challenge

@@ -67,6 +67,7 @@ type Props = {
   isCorrespondence?: boolean;
   timeBankP0?: number; // Time bank in milliseconds for player 0
   timeBankP1?: number; // Time bank in milliseconds for player 1
+  isInMobileView?: boolean;
 };
 
 type turnProps = {
@@ -146,7 +147,7 @@ const displaySummary = (evt: GameEvent, board: Board, alphabet: Alphabet) => {
         </span>
       );
     case GameEvent_Type.TIME_PENALTY:
-      return <span className="time-penalty">Time penalty</span>;
+      return <span className="time-penalty">Overtime</span>;
   }
   return "";
 };
@@ -262,31 +263,24 @@ const ScorecardTurn = (props: turnProps) => {
       return turn;
     }
     // Otherwise, we have to make some modifications.
-    if (evts[1].type === GameEvent_Type.PHONY_TILES_RETURNED) {
+    // Search all events (not just index 1) — single challenge inserts a CHALLENGE event before PHONY/BONUS.
+    const phonyEvt = evts.find(
+      (e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED,
+    );
+    const bonusEvt = evts.find(
+      (e) => e.type === GameEvent_Type.CHALLENGE_BONUS,
+    );
+    if (phonyEvt) {
       turn.score = "0";
-      turn.cumulative = evts[1].cumulative;
-      turn.play = (
-        <>
-          <span className="challenge successful">Challenge!</span>
-          <span className="main-word">
-            {displaySummary(evts[0], props.board, props.alphabet)}
-          </span>
-        </>
-      );
+      turn.cumulative = phonyEvt.cumulative;
+      turn.play = displaySummary(evts[0], props.board, props.alphabet);
       turn.rack = (
         <span className="challenge successful">Challenge! Invalid</span>
       );
     } else {
-      if (evts[1].type === GameEvent_Type.CHALLENGE_BONUS) {
-        turn.cumulative = evts[1].cumulative;
-        turn.play = (
-          <>
-            <span className="challenge unsuccessful">Challenge!</span>
-            <span className="main-word">
-              {displaySummary(evts[0], props.board, props.alphabet)}
-            </span>
-          </>
-        );
+      if (bonusEvt) {
+        turn.cumulative = bonusEvt.cumulative;
+        turn.play = displaySummary(evts[0], props.board, props.alphabet);
         turn.rack = (
           <span className="challenge unsuccessful">Challenge! Valid</span>
         );
@@ -424,7 +418,7 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   const evt = turn.events[0];
 
   const coords = evt.position || "";
-  let play: React.ReactNode = displaySummary(evt, board, alphabet);
+  const play: React.ReactNode = displaySummary(evt, board, alphabet);
   let score: React.ReactNode =
     evt.type === GameEvent_Type.END_RACK_PTS
       ? `+${evt.endRackPoints}`
@@ -434,16 +428,18 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   let cumulative = evt.cumulative;
 
   // Handle multi-event turns (challenges, etc.)
+  // Use find() rather than checking index 1 — single challenge inserts a CHALLENGE event before PHONY/BONUS.
+  const phonyEvt = turn.events.find(
+    (e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED,
+  );
+  const bonusEvt = turn.events.find(
+    (e) => e.type === GameEvent_Type.CHALLENGE_BONUS,
+  );
   if (turn.events.length > 1) {
-    const evt1 = turn.events[1];
-    if (evt1.type === GameEvent_Type.PHONY_TILES_RETURNED) {
-      score = "0";
-      cumulative = evt1.cumulative;
-      play = displaySummary(evt, board, alphabet);
+    if (phonyEvt) {
+      score = "";
+      cumulative = phonyEvt.cumulative;
     } else {
-      if (evt1.type === GameEvent_Type.CHALLENGE_BONUS) {
-        play = displaySummary(evt, board, alphabet);
-      }
       for (let i = 1; i < turn.events.length; i++) {
         switch (turn.events[i].type) {
           case GameEvent_Type.CHALLENGE_BONUS:
@@ -463,12 +459,8 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
     }
   }
 
-  const isPhony =
-    turn.events.length > 1 &&
-    turn.events[1].type === GameEvent_Type.PHONY_TILES_RETURNED;
-  const isValidChallenge =
-    turn.events.length > 1 &&
-    turn.events[1].type === GameEvent_Type.CHALLENGE_BONUS;
+  const isPhony = !!phonyEvt;
+  const isValidChallenge = !!bonusEvt;
   const rack: React.ReactNode = isPhony ? (
     <span className="challenge successful">Challenge! Invalid</span>
   ) : isValidChallenge ? (
@@ -653,15 +645,17 @@ export const ScoreCard = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { handleExamineGoTo, examinedTurn } = useExamineStoreContext();
 
-  // Scroll selected turn into view when examinedTurn changes (arrow navigation)
+  // Scroll selected turn into view when examinedTurn changes (arrow navigation).
+  // Skip on mobile: the scorecard is below the board in a single-column stack,
+  // so scrollIntoView would yank the page away from the board on every nav.
   useEffect(() => {
-    if (!props.isExamining || !flipHidden) return;
+    if (!props.isExamining || !flipHidden || props.isInMobileView) return;
     requestAnimationFrame(() => {
       el.current
         ?.querySelector(".turn-selected, .two-col-turn-selected")
         ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
-  }, [examinedTurn, props.isExamining, flipHidden]);
+  }, [examinedTurn, props.isExamining, flipHidden, props.isInMobileView]);
 
   const viewMenuItems = [
     { label: "1 column", key: "single" },
@@ -685,7 +679,7 @@ export const ScoreCard = React.memo((props: Props) => {
       overlayClassName="format-dropdown"
     >
       <button className="view-mode-btn">
-        {currentViewLabel} <span className="view-mode-caret">▾</span>
+        <span className="view-mode-caret">▾</span> {currentViewLabel}
       </button>
     </Dropdown>
   );
@@ -761,7 +755,9 @@ export const ScoreCard = React.memo((props: Props) => {
                       }
                       isSelected={
                         props.isExamining &&
-                        examinedTurn === left.turn.firstEvtIdx
+                        examinedTurn >= left.turn.firstEvtIdx &&
+                        examinedTurn <
+                          left.turn.firstEvtIdx + left.turn.events.length
                       }
                       showComments={props.showComments}
                       comments={
@@ -792,7 +788,9 @@ export const ScoreCard = React.memo((props: Props) => {
                       }
                       isSelected={
                         props.isExamining &&
-                        examinedTurn === right.turn.firstEvtIdx
+                        examinedTurn >= right.turn.firstEvtIdx &&
+                        examinedTurn <
+                          right.turn.firstEvtIdx + right.turn.events.length
                       }
                       showComments={props.showComments}
                       comments={
@@ -852,7 +850,11 @@ export const ScoreCard = React.memo((props: Props) => {
                 ? () => handleExamineGoTo(t.firstEvtIdx)
                 : undefined
             }
-            isSelected={props.isExamining && examinedTurn === t.firstEvtIdx}
+            isSelected={
+              props.isExamining &&
+              examinedTurn >= t.firstEvtIdx &&
+              examinedTurn < t.firstEvtIdx + t.events.length
+            }
           />
         );
       };

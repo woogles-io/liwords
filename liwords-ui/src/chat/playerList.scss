@@ -5,7 +5,7 @@
   .breadcrumb {
     margin: 6px 0;
     @include colorModed() {
-      color: m($gray-dark);
+      color: m($gray-medium);
     }
   }
 }

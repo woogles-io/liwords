@@ -120,7 +120,7 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
       overlayClassName="format-dropdown"
     >
       <button className="view-mode-btn">
-        {currentFormatLabel} <span className="view-mode-caret">▾</span>
+        <span className="view-mode-caret">▾</span> {currentFormatLabel}
       </button>
     </Dropdown>
   );
