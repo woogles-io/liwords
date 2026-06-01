@@ -79,6 +79,7 @@ type AnnotatedGameMetadatum struct {
 	CreatorUuid      string
 	PrivateBroadcast bool
 	Done             bool
+	CreatedAt        pgtype.Timestamptz
 }
 
 type Badge struct {

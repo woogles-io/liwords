@@ -47,8 +47,8 @@ func EntitledToBestBot(ctx context.Context, queries *models.Queries, tierData *i
 	// (at least, according to Patreon's currently_entitled_tiers)
 
 	bbGamesPlayedThisPeriod, err := queries.GetNumberOfBotGames(ctx, models.GetNumberOfBotGamesParams{
-		BotID:       pgtype.Int4{Int32: int32(BestBotUserID), Valid: true},
-		UserID:      pgtype.Int4{Int32: int32(userID), Valid: true},
+		BotID:       int32(BestBotUserID),
+		UserID:      int32(userID),
 		CreatedDate: pgtype.Timestamptz{Valid: true, Time: tierData.LastChargeDate},
 	})
 	if err != nil {
