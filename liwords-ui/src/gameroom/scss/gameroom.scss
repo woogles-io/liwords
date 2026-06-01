@@ -213,14 +213,6 @@ p.streak-loss {
     }
   }
 
-  @media (min-width: $screen-laptop-min) {
-    .notepad-card,
-    .analyzer-card {
-      .ant-card-body {
-        height: auto;
-      }
-    }
-  }
 
   .analyzer-card {
     .ant-card-body {
