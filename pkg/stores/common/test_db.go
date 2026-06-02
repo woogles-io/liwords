@@ -2,9 +2,9 @@ package common
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -91,23 +91,30 @@ func TestingPostgresConnDSN(pkg string) string {
 	return PostgresConnDSN(TestDBHost, TestDBPort, TestDBName(pkg), TestDBUser, TestDBPassword, TestDBSSLMode)
 }
 
-func UpdateWithPool(ctx context.Context, pool *pgxpool.Pool, columns []string, args []interface{}, cfg *CommonDBConfig) error {
+// UpdateTableByUUID updates columns in a table row identified by its uuid column.
+func UpdateTableByUUID(ctx context.Context, pool *pgxpool.Pool, table, uuid string, columns []string, args []interface{}) error {
 	tx, err := pool.BeginTx(ctx, DefaultTxOptions)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	err = Update(ctx, tx, columns, args, cfg)
-	if err != nil {
+	var setClauses strings.Builder
+	allArgs := make([]interface{}, len(args)+1)
+	for i, col := range columns {
+		if i > 0 {
+			setClauses.WriteString(", ")
+		}
+		fmt.Fprintf(&setClauses, "%s = $%d", col, i+1)
+		allArgs[i] = args[i]
+	}
+	allArgs[len(args)] = uuid
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE uuid = $%d", table, setClauses.String(), len(args)+1)
+
+	if _, err = tx.Exec(ctx, query, allArgs...); err != nil {
 		return err
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 func GetUserRatingWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
@@ -148,29 +155,14 @@ func GetUserStatsWithPool(ctx context.Context, pool *pgxpool.Pool, userId int64,
 	return stats, nil
 }
 
-func GetDBIDFromUUID(ctx context.Context, pool *pgxpool.Pool, cfg *CommonDBConfig) (int64, error) {
-	tx, err := pool.BeginTx(ctx, DefaultTxOptions)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
+func GetUserDBIDByUUID(ctx context.Context, pool *pgxpool.Pool, uuid string) (int64, error) {
+	var id int32
+	err := pool.QueryRow(ctx, `SELECT id FROM users WHERE uuid = $1`, uuid).Scan(&id)
+	return int64(id), err
+}
 
+func GetPuzzleDBIDByUUID(ctx context.Context, pool *pgxpool.Pool, uuid string) (int64, error) {
 	var id int64
-	if cfg.TableType == UsersTable {
-		id, err = GetUserDBIDFromUUID(ctx, tx, cfg.Value.(string))
-	} else if cfg.TableType == GamesTable {
-		id, err = GetGameDBIDFromUUID(ctx, tx, cfg.Value.(string))
-	} else if cfg.TableType == PuzzlesTable {
-		id, err = GetPuzzleDBIDFromUUID(ctx, tx, cfg.Value.(string))
-	} else {
-		return 0, errors.New("unknown table")
-	}
-	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-	return id, nil
+	err := pool.QueryRow(ctx, `SELECT id FROM puzzles WHERE uuid = $1`, uuid).Scan(&id)
+	return id, err
 }

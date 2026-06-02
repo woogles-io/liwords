@@ -20,8 +20,8 @@ WHERE integration_name = $1
 `
 
 type GetAllUsersWithOrganizationRow struct {
-	UserUuid        pgtype.Text
-	Username        pgtype.Text
+	UserUuid        string
+	Username        string
 	IntegrationName string
 	Data            []byte
 }
@@ -65,7 +65,7 @@ type GetOrganizationIntegrationsRow struct {
 	LastUpdated     pgtype.Timestamptz
 }
 
-func (q *Queries) GetOrganizationIntegrations(ctx context.Context, userUuid pgtype.Text) ([]GetOrganizationIntegrationsRow, error) {
+func (q *Queries) GetOrganizationIntegrations(ctx context.Context, userUuid string) ([]GetOrganizationIntegrationsRow, error) {
 	rows, err := q.db.Query(ctx, getOrganizationIntegrations, userUuid)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ SELECT title FROM profiles
 WHERE user_id = (SELECT id FROM users WHERE uuid = $1)
 `
 
-func (q *Queries) GetUserProfileTitle(ctx context.Context, userUuid pgtype.Text) (pgtype.Text, error) {
+func (q *Queries) GetUserProfileTitle(ctx context.Context, userUuid string) (pgtype.Text, error) {
 	row := q.db.QueryRow(ctx, getUserProfileTitle, userUuid)
 	var title pgtype.Text
 	err := row.Scan(&title)
@@ -111,8 +111,8 @@ AND (integrations.data->>'last_fetched')::timestamptz < CURRENT_TIMESTAMP - INTE
 `
 
 type GetUsersWithExpiredTitlesRow struct {
-	UserUuid        pgtype.Text
-	Username        pgtype.Text
+	UserUuid        string
+	Username        string
 	IntegrationName string
 	Data            []byte
 }
@@ -152,7 +152,7 @@ WHERE user_id = (SELECT id FROM users WHERE uuid = $3)
 type UpdateProfileTitleParams struct {
 	Title             pgtype.Text
 	TitleOrganization pgtype.Text
-	UserUuid          pgtype.Text
+	UserUuid          string
 }
 
 func (q *Queries) UpdateProfileTitle(ctx context.Context, arg UpdateProfileTitleParams) error {

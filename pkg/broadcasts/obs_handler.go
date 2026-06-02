@@ -667,7 +667,7 @@ func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, stream
 
 	// Resolve username → userUUID once at connect time (needed for NATS subject).
 	userUUID, err := h.queries.GetUserUUIDByUsername(ctx, username)
-	if err != nil || !userUUID.Valid || userUUID.String == "" {
+	if err != nil || userUUID == "" {
 		// Unknown username — still serve an open SSE so the browser source doesn't
 		// error out. It will just receive heartbeats until data appears.
 		flusher, ok := sseSetup(w)
@@ -698,7 +698,7 @@ func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, stream
 	stream := h.addSubscriber(streamKey, ch)
 	defer h.removeSubscriber(streamKey, ch)
 
-	h.ensureUserNATSSubs(stream, streamKey, userUUID.String, gameUUID, username)
+	h.ensureUserNATSSubs(stream, streamKey, userUUID, gameUUID, username)
 
 	h.serveSSELoop(w, ctx, ch, flusher, gameUUID)
 }

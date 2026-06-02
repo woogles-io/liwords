@@ -200,6 +200,17 @@ func (q *Queries) GetGame(ctx context.Context, argUuid pgtype.Text) (Game, error
 	return i, err
 }
 
+const getGameDBIDFromUUID = `-- name: GetGameDBIDFromUUID :one
+SELECT id FROM games WHERE uuid = $1
+`
+
+func (q *Queries) GetGameDBIDFromUUID(ctx context.Context, argUuid pgtype.Text) (int32, error) {
+	row := q.db.QueryRow(ctx, getGameDBIDFromUUID, argUuid)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getGameMetadata = `-- name: GetGameMetadata :one
 SELECT
     id, uuid, type, player0_id, player1_id,
@@ -272,7 +283,7 @@ WHERE agm.game_uuid = $1
 
 type GetGameOwnerRow struct {
 	CreatorUuid string
-	Username    pgtype.Text
+	Username    string
 }
 
 // this is not even a uuid, sigh.
@@ -631,9 +642,9 @@ const getUserUUIDByUsername = `-- name: GetUserUUIDByUsername :one
 SELECT uuid FROM users WHERE lower(username) = lower($1)
 `
 
-func (q *Queries) GetUserUUIDByUsername(ctx context.Context, username string) (pgtype.Text, error) {
+func (q *Queries) GetUserUUIDByUsername(ctx context.Context, username string) (string, error) {
 	row := q.db.QueryRow(ctx, getUserUUIDByUsername, username)
-	var uuid pgtype.Text
+	var uuid string
 	err := row.Scan(&uuid)
 	return uuid, err
 }

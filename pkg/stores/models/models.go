@@ -390,14 +390,14 @@ type Profile struct {
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
 	DeletedAt         pgtype.Timestamptz
-	UserID            pgtype.Int4
+	UserID            int32
 	FirstName         pgtype.Text
 	LastName          pgtype.Text
 	CountryCode       pgtype.Text
 	Title             pgtype.Text
 	About             pgtype.Text
-	Ratings           []byte
-	Stats             []byte
+	Ratings           entity.Ratings
+	Stats             entity.ProfileStats
 	AvatarUrl         pgtype.Text
 	BirthDate         pgtype.Text
 	TitleOrganization pgtype.Text
@@ -523,14 +523,14 @@ type User struct {
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
 	DeletedAt             pgtype.Timestamptz
-	Uuid                  pgtype.Text
-	Username              pgtype.Text
-	Email                 pgtype.Text
-	Password              pgtype.Text
-	InternalBot           pgtype.Bool
+	Uuid                  string
+	Username              string
+	Email                 string
+	Password              string
+	InternalBot           bool
 	ApiKey                pgtype.Text
 	Actions               []byte
-	Notoriety             pgtype.Int4
+	Notoriety             int32
 	Verified              bool
 	VerificationToken     pgtype.Text
 	VerificationExpiresAt pgtype.Timestamptz

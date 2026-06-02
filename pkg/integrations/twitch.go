@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/stores/models"
@@ -99,7 +98,7 @@ func (s *OAuthIntegrationService) twitchCallback(w http.ResponseWriter, r *http.
 	}
 
 	id, err := s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
-		UserUuid:        pgtype.Text{String: sess.UserUUID, Valid: true},
+		UserUuid:        sess.UserUUID,
 		IntegrationName: TwitchIntegrationName,
 		Data:            td,
 	})

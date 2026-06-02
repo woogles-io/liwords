@@ -34,3 +34,11 @@ sql:
         go_type:
           import: "github.com/woogles-io/liwords/pkg/entity"
           type: "GameRequest"
+      - column: "profiles.ratings"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "Ratings"
+      - column: "profiles.stats"
+        go_type:
+          import: "github.com/woogles-io/liwords/pkg/entity"
+          type: "ProfileStats"

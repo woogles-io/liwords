@@ -387,3 +387,6 @@ WHERE g.game_end_reason = 0
 ORDER BY g.uuid
 LIMIT @lim;
 
+
+-- name: GetGameDBIDFromUUID :one
+SELECT id FROM games WHERE uuid = @uuid;

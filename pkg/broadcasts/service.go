@@ -248,14 +248,14 @@ func (bs *BroadcastService) GetBroadcast(ctx context.Context, req *connect.Reque
 
 	dirUsernames := make([]string, 0, len(directors))
 	for _, d := range directors {
-		if d.Username.Valid {
-			dirUsernames = append(dirUsernames, d.Username.String)
+		if d.Username != "" {
+			dirUsernames = append(dirUsernames, d.Username)
 		}
 	}
 	annUsernames := make([]string, 0, len(annotators))
 	for _, a := range annotators {
-		if a.Username.Valid {
-			annUsernames = append(annUsernames, a.Username.String)
+		if a.Username != "" {
+			annUsernames = append(annUsernames, a.Username)
 		}
 	}
 
@@ -1541,7 +1541,7 @@ func broadcastRowToProto(
 	challengeRule int32,
 	active bool,
 	createdAt pgtype.Timestamptz,
-	creatorUsername pgtype.Text,
+	creatorUsername string,
 ) *pb.Broadcast {
 	b := &pb.Broadcast{
 		Uuid:                uid.String(),
@@ -1559,8 +1559,8 @@ func broadcastRowToProto(
 	if description.Valid {
 		b.Description = description.String
 	}
-	if creatorUsername.Valid {
-		b.CreatorUsername = creatorUsername.String
+	if creatorUsername != "" {
+		b.CreatorUsername = creatorUsername
 	}
 	if pollStart.Valid {
 		b.PollStartTime = timestamppb.New(pollStart.Time)

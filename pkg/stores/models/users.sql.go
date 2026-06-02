@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/woogles-io/liwords/pkg/entity"
 )
 
 const getBriefProfiles = `-- name: GetBriefProfiles :many
@@ -36,9 +37,9 @@ WHERE u.uuid = ANY($1::text[])
 `
 
 type GetBriefProfilesRow struct {
-	Uuid              pgtype.Text
-	Username          pgtype.Text
-	InternalBot       pgtype.Bool
+	Uuid              string
+	Username          string
+	InternalBot       bool
 	CountryCode       pgtype.Text
 	AvatarUrl         pgtype.Text
 	FirstName         pgtype.Text
@@ -90,14 +91,14 @@ LIMIT 100
 `
 
 type GetMatchingEmailsRow struct {
-	Uuid      pgtype.Text
-	Email     pgtype.Text
+	Uuid      string
+	Email     string
 	CreatedAt pgtype.Timestamptz
-	Username  pgtype.Text
+	Username  string
 	BirthDate pgtype.Text
 }
 
-func (q *Queries) GetMatchingEmails(ctx context.Context, lowercasedEmailLike pgtype.Text) ([]GetMatchingEmailsRow, error) {
+func (q *Queries) GetMatchingEmails(ctx context.Context, lowercasedEmailLike string) ([]GetMatchingEmailsRow, error) {
 	rows, err := q.db.Query(ctx, getMatchingEmails, lowercasedEmailLike)
 	if err != nil {
 		return nil, err
@@ -123,6 +124,91 @@ func (q *Queries) GetMatchingEmails(ctx context.Context, lowercasedEmailLike pgt
 	return items, nil
 }
 
+const getUserByAPIKey = `-- name: GetUserByAPIKey :one
+SELECT id, username, uuid, email, password, internal_bot, notoriety,
+       verified, verification_token, verification_expires_at
+FROM users WHERE api_key = $1
+`
+
+type GetUserByAPIKeyRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserByAPIKey(ctx context.Context, apiKey pgtype.Text) (GetUserByAPIKeyRow, error) {
+	row := q.db.QueryRow(ctx, getUserByAPIKey, apiKey)
+	var i GetUserByAPIKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, username, uuid, email, password, internal_bot, notoriety,
+       verified, verification_token, verification_expires_at
+FROM users WHERE lower(email) = lower($1)
+`
+
+type GetUserByEmailRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i GetUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+	)
+	return i, err
+}
+
+const getUserDBIDFromUUID = `-- name: GetUserDBIDFromUUID :one
+SELECT id FROM users WHERE uuid = $1
+`
+
+func (q *Queries) GetUserDBIDFromUUID(ctx context.Context, uuid string) (int32, error) {
+	row := q.db.QueryRow(ctx, getUserDBIDFromUUID, uuid)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserDetails = `-- name: GetUserDetails :one
 SELECT
     u.uuid, u.email, u.created_at, u.username, p.birth_date
@@ -132,14 +218,14 @@ WHERE lower(u.username) = $1
 `
 
 type GetUserDetailsRow struct {
-	Uuid      pgtype.Text
-	Email     pgtype.Text
+	Uuid      string
+	Email     string
 	CreatedAt pgtype.Timestamptz
-	Username  pgtype.Text
+	Username  string
 	BirthDate pgtype.Text
 }
 
-func (q *Queries) GetUserDetails(ctx context.Context, lowercasedUsername pgtype.Text) (GetUserDetailsRow, error) {
+func (q *Queries) GetUserDetails(ctx context.Context, lowercasedUsername string) (GetUserDetailsRow, error) {
 	row := q.db.QueryRow(ctx, getUserDetails, lowercasedUsername)
 	var i GetUserDetailsRow
 	err := row.Scan(
@@ -164,4 +250,278 @@ func (q *Queries) GetUserId(ctx context.Context, username string) (int32, error)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getUserUUIDFromDBID = `-- name: GetUserUUIDFromDBID :one
+SELECT uuid FROM users WHERE id = $1::integer
+`
+
+func (q *Queries) GetUserUUIDFromDBID(ctx context.Context, id int32) (string, error) {
+	row := q.db.QueryRow(ctx, getUserUUIDFromDBID, id)
+	var uuid string
+	err := row.Scan(&uuid)
+	return uuid, err
+}
+
+const getUserWithProfileByUUID = `-- name: GetUserWithProfileByUUID :one
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings, p.stats
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE u.uuid = $1
+`
+
+type GetUserWithProfileByUUIDRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	FirstName             pgtype.Text
+	LastName              pgtype.Text
+	BirthDate             pgtype.Text
+	CountryCode           pgtype.Text
+	Title                 pgtype.Text
+	About                 pgtype.Text
+	AvatarUrl             pgtype.Text
+	Ratings               entity.Ratings
+	Stats                 entity.ProfileStats
+}
+
+func (q *Queries) GetUserWithProfileByUUID(ctx context.Context, uuid string) (GetUserWithProfileByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithProfileByUUID, uuid)
+	var i GetUserWithProfileByUUIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.BirthDate,
+		&i.CountryCode,
+		&i.Title,
+		&i.About,
+		&i.AvatarUrl,
+		&i.Ratings,
+		&i.Stats,
+	)
+	return i, err
+}
+
+const getUserWithProfileByUsername = `-- name: GetUserWithProfileByUsername :one
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings, p.stats
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE lower(u.username) = lower($1)
+`
+
+type GetUserWithProfileByUsernameRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	FirstName             pgtype.Text
+	LastName              pgtype.Text
+	BirthDate             pgtype.Text
+	CountryCode           pgtype.Text
+	Title                 pgtype.Text
+	About                 pgtype.Text
+	AvatarUrl             pgtype.Text
+	Ratings               entity.Ratings
+	Stats                 entity.ProfileStats
+}
+
+func (q *Queries) GetUserWithProfileByUsername(ctx context.Context, username string) (GetUserWithProfileByUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithProfileByUsername, username)
+	var i GetUserWithProfileByUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.BirthDate,
+		&i.CountryCode,
+		&i.Title,
+		&i.About,
+		&i.AvatarUrl,
+		&i.Ratings,
+		&i.Stats,
+	)
+	return i, err
+}
+
+const getUserWithProfileByVerificationToken = `-- name: GetUserWithProfileByVerificationToken :one
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings, p.stats
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE u.verification_token = $1
+`
+
+type GetUserWithProfileByVerificationTokenRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	FirstName             pgtype.Text
+	LastName              pgtype.Text
+	BirthDate             pgtype.Text
+	CountryCode           pgtype.Text
+	Title                 pgtype.Text
+	About                 pgtype.Text
+	AvatarUrl             pgtype.Text
+	Ratings               entity.Ratings
+	Stats                 entity.ProfileStats
+}
+
+func (q *Queries) GetUserWithProfileByVerificationToken(ctx context.Context, verificationToken pgtype.Text) (GetUserWithProfileByVerificationTokenRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithProfileByVerificationToken, verificationToken)
+	var i GetUserWithProfileByVerificationTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Uuid,
+		&i.Email,
+		&i.Password,
+		&i.InternalBot,
+		&i.Notoriety,
+		&i.Verified,
+		&i.VerificationToken,
+		&i.VerificationExpiresAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.BirthDate,
+		&i.CountryCode,
+		&i.Title,
+		&i.About,
+		&i.AvatarUrl,
+		&i.Ratings,
+		&i.Stats,
+	)
+	return i, err
+}
+
+const getUsernameFromUUID = `-- name: GetUsernameFromUUID :one
+SELECT username FROM users WHERE uuid = $1
+`
+
+func (q *Queries) GetUsernameFromUUID(ctx context.Context, uuid string) (string, error) {
+	row := q.db.QueryRow(ctx, getUsernameFromUUID, uuid)
+	var username string
+	err := row.Scan(&username)
+	return username, err
+}
+
+const setUserEmail = `-- name: SetUserEmail :exec
+UPDATE users SET email = $1, updated_at = NOW() WHERE uuid = $2
+`
+
+type SetUserEmailParams struct {
+	Email string
+	Uuid  string
+}
+
+func (q *Queries) SetUserEmail(ctx context.Context, arg SetUserEmailParams) error {
+	_, err := q.db.Exec(ctx, setUserEmail, arg.Email, arg.Uuid)
+	return err
+}
+
+const setUserNotoriety = `-- name: SetUserNotoriety :exec
+UPDATE users SET notoriety = $1, updated_at = NOW() WHERE uuid = $2
+`
+
+type SetUserNotorietyParams struct {
+	Notoriety int32
+	Uuid      string
+}
+
+func (q *Queries) SetUserNotoriety(ctx context.Context, arg SetUserNotorietyParams) error {
+	_, err := q.db.Exec(ctx, setUserNotoriety, arg.Notoriety, arg.Uuid)
+	return err
+}
+
+const setUserPassword = `-- name: SetUserPassword :exec
+UPDATE users SET password = $1, updated_at = NOW() WHERE uuid = $2
+`
+
+type SetUserPasswordParams struct {
+	Password string
+	Uuid     string
+}
+
+func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, setUserPassword, arg.Password, arg.Uuid)
+	return err
+}
+
+const setUserVerificationToken = `-- name: SetUserVerificationToken :exec
+UPDATE users
+   SET verification_token = $1,
+       verification_expires_at = $2,
+       updated_at = NOW()
+ WHERE uuid = $3
+`
+
+type SetUserVerificationTokenParams struct {
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	Uuid                  string
+}
+
+func (q *Queries) SetUserVerificationToken(ctx context.Context, arg SetUserVerificationTokenParams) error {
+	_, err := q.db.Exec(ctx, setUserVerificationToken, arg.VerificationToken, arg.VerificationExpiresAt, arg.Uuid)
+	return err
+}
+
+const setUserVerified = `-- name: SetUserVerified :exec
+UPDATE users SET verified = $1, updated_at = NOW() WHERE uuid = $2
+`
+
+type SetUserVerifiedParams struct {
+	Verified bool
+	Uuid     string
+}
+
+func (q *Queries) SetUserVerified(ctx context.Context, arg SetUserVerifiedParams) error {
+	_, err := q.db.Exec(ctx, setUserVerified, arg.Verified, arg.Uuid)
+	return err
 }

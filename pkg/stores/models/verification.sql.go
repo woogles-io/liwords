@@ -22,7 +22,7 @@ WHERE verification_requests.id = $3
 `
 
 type ApproveVerificationRequestParams struct {
-	ReviewerUuid pgtype.Text
+	ReviewerUuid string
 	Notes        pgtype.Text
 	ID           int64
 }
@@ -53,7 +53,7 @@ INSERT INTO verification_requests (
 `
 
 type CreateVerificationRequestParams struct {
-	UserUuid        pgtype.Text
+	UserUuid        string
 	IntegrationName string
 	MemberID        string
 	FullName        string
@@ -119,8 +119,8 @@ type GetPendingVerificationsRow struct {
 	ReviewedBy      pgtype.Int8
 	ReviewedAt      pgtype.Timestamptz
 	Notes           pgtype.Text
-	Username        pgtype.Text
-	UserUuid        pgtype.Text
+	Username        string
+	UserUuid        string
 }
 
 func (q *Queries) GetPendingVerifications(ctx context.Context) ([]GetPendingVerificationsRow, error) {
@@ -165,7 +165,7 @@ WHERE vr.user_id = (SELECT id FROM users WHERE uuid = $1)
 ORDER BY vr.submitted_at DESC
 `
 
-func (q *Queries) GetUserVerificationRequests(ctx context.Context, userUuid pgtype.Text) ([]VerificationRequest, error) {
+func (q *Queries) GetUserVerificationRequests(ctx context.Context, userUuid string) ([]VerificationRequest, error) {
 	rows, err := q.db.Query(ctx, getUserVerificationRequests, userUuid)
 	if err != nil {
 		return nil, err
@@ -218,8 +218,8 @@ type GetVerificationRequestRow struct {
 	ReviewedBy      pgtype.Int8
 	ReviewedAt      pgtype.Timestamptz
 	Notes           pgtype.Text
-	Username        pgtype.Text
-	UserUuid        pgtype.Text
+	Username        string
+	UserUuid        string
 }
 
 func (q *Queries) GetVerificationRequest(ctx context.Context, id int64) (GetVerificationRequestRow, error) {
@@ -254,7 +254,7 @@ SELECT EXISTS(
 `
 
 type HasPendingVerificationParams struct {
-	UserUuid        pgtype.Text
+	UserUuid        string
 	IntegrationName string
 }
 
@@ -276,7 +276,7 @@ WHERE verification_requests.id = $3
 `
 
 type RejectVerificationRequestParams struct {
-	ReviewerUuid pgtype.Text
+	ReviewerUuid string
 	Notes        pgtype.Text
 	ID           int64
 }

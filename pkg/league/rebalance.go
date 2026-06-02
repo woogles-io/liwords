@@ -535,9 +535,9 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 		}
 
 		player := PlayerWithVirtualDiv{
-			UserID:               catPlayer.Registration.UserUuid.String, // UUID string from JOIN
-			UserDBID:             catPlayer.Registration.UserID,          // Database ID
-			Username:             catPlayer.Registration.Username.String, // Username from JOIN
+			UserID:               catPlayer.Registration.UserUuid, // UUID string from JOIN
+			UserDBID:             catPlayer.Registration.UserID, // Database ID
+			Username:             catPlayer.Registration.Username, // Username from JOIN
 			PlacementStatus:      status,
 			PreviousRank:         0,
 			HiatusSeasons:        0,

@@ -163,8 +163,8 @@ func (rm *RegistrationManager) CategorizeRegistrations(
 
 		// Calculate average rating for this player
 		avgRating := int32(0)
-		if reg.UserUuid.Valid {
-			avgRating, err = rm.calculateAverageRating(ctx, reg.UserUuid.String)
+		if reg.UserUuid != "" {
+			avgRating, err = rm.calculateAverageRating(ctx, reg.UserUuid)
 			if err != nil {
 				// If we can't get the rating, default to 0
 				avgRating = 0

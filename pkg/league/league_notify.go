@@ -285,21 +285,21 @@ func SendRegistrationOpenEmail(ctx context.Context, cfg *config.Config, userStor
 
 	// Add current registrants
 	for _, reg := range currentRegistrants {
-		if reg.UserUuid.Valid {
-			recipients[reg.UserUuid.String] = struct {
+		if reg.UserUuid != "" {
+			recipients[reg.UserUuid] = struct {
 				username string
 				email    string
-			}{username: reg.Username.String, email: ""} // Will fetch email from user store
+			}{username: reg.Username, email: ""} // Will fetch email from user store
 		}
 	}
 
 	// Add previous registrants (already filtered to not include current)
 	for _, prev := range previousRegistrants {
-		if prev.Uuid.Valid && prev.Email.Valid {
-			recipients[prev.Uuid.String] = struct {
+		if prev.Uuid != "" && prev.Email != "" {
+			recipients[prev.Uuid] = struct {
 				username string
 				email    string
-			}{username: prev.Username.String, email: prev.Email.String}
+			}{username: prev.Username, email: prev.Email}
 		}
 	}
 
@@ -493,9 +493,9 @@ func SendUnstartedGameReminderEmail(
 
 	for _, player := range playersWithUnstartedGames {
 		// Fetch user details
-		u, err := userStore.GetByUUID(ctx, player.UserUuid.String)
+		u, err := userStore.GetByUUID(ctx, player.UserUuid)
 		if err != nil {
-			log.Err(err).Str("userUUID", player.UserUuid.String).Msg("failed-to-fetch-user-for-unstarted-game-reminder")
+			log.Err(err).Str("userUUID", player.UserUuid).Msg("failed-to-fetch-user-for-unstarted-game-reminder")
 			continue
 		}
 

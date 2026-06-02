@@ -42,10 +42,10 @@ func (as *AuthorizationService) GetModList(ctx context.Context, r *connect.Reque
 	resp := &pb.GetModListResponse{}
 	for _, u := range users {
 		if u.RoleName == string(rbac.Admin) {
-			resp.AdminUserIds = append(resp.AdminUserIds, u.Uuid.String)
+			resp.AdminUserIds = append(resp.AdminUserIds, u.Uuid)
 		}
 		if u.RoleName == string(rbac.Moderator) {
-			resp.ModUserIds = append(resp.ModUserIds, u.Uuid.String)
+			resp.ModUserIds = append(resp.ModUserIds, u.Uuid)
 		}
 	}
 	return connect.NewResponse(resp), nil
@@ -271,7 +271,7 @@ func (as *AuthorizationService) GetUsersWithRoles(ctx context.Context, r *connec
 	resp := make([]*pb.UserAndRole, len(urs))
 	for idx := range urs {
 		resp[idx] = &pb.UserAndRole{
-			Username: urs[idx].Username.String,
+			Username: urs[idx].Username,
 			RoleName: urs[idx].RoleName,
 		}
 	}

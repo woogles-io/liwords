@@ -3,27 +3,40 @@ package soughtgame
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	return &DBStore{dbPool: p, queries: models.New(p)}, nil
 }
 
 func (s *DBStore) Disconnect() {
 	s.dbPool.Close()
+}
+
+func soughtGameFromBytes(data []byte) (*entity.SoughtGame, error) {
+	req := &pb.SeekRequest{}
+	if len(data) > 0 {
+		if err := protojson.Unmarshal(data, req); err != nil {
+			return nil, err
+		}
+	}
+	return &entity.SoughtGame{SeekRequest: req}, nil
 }
 
 func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
@@ -64,80 +77,36 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 
 // Get gets the sought game with the given ID.
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByUUID, Value: id})
+	data, err := s.queries.GetSoughtGameByUUID(ctx, pgtype.Text{String: id, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, entity.NewWooglesError(pb.WooglesError_GAME_NO_LONGER_AVAILABLE)
 		}
 		return nil, err
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return sg, nil
+	return soughtGameFromBytes(data)
 }
 
 // GetBySeekerConnID gets the sought game with the given socket connection ID for the seeker.
 func (s *DBStore) GetBySeekerConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	data, err := s.queries.GetSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerConnID, Value: connID})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return sg, nil
+	return soughtGameFromBytes(data)
 }
 
 // GetByReceiverConnID gets the sought game with the given socket connection ID for the receiver.
 func (s *DBStore) GetByReceiverConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	data, err := s.queries.GetSoughtGameByReceiverConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverConnID, Value: connID})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return sg, nil
+	return soughtGameFromBytes(data)
 }
 
 func (s *DBStore) Delete(ctx context.Context, id string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectByUUID, RowsAffectedType: common.AnyRowsAffected, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.DeleteSoughtGameByUUID(ctx, pgtype.Text{String: id, Valid: true})
 }
 
 // ExpireOld expires old seek requests. Usually this shouldn't be necessary
@@ -183,11 +152,16 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 	}
 	defer tx.Rollback(ctx)
 
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerID, Value: userID})
+	qtx := s.queries.WithTx(tx)
+	data, err := qtx.GetSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	sg, err := soughtGameFromBytes(data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -200,8 +174,7 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 		return nil, nil
 	}
 
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerID, RowsAffectedType: common.AnyRowsAffected, Value: userID})
-	if err != nil {
+	if err := qtx.DeleteSoughtGameBySeekerID(ctx, pgtype.Text{String: userID, Valid: true}); err != nil {
 		return nil, err
 	}
 
@@ -219,11 +192,15 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 	}
 	defer tx.Rollback(ctx)
 
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverID, Value: receiverID})
+	data, err := s.queries.WithTx(tx).GetSoughtGameByReceiverID(ctx, pgtype.Text{String: receiverID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	sg, err := soughtGameFromBytes(data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -252,11 +229,16 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 	}
 	defer tx.Rollback(ctx)
 
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectBySeekerConnID, Value: connID})
+	qtx := s.queries.WithTx(tx)
+	data, err := qtx.GetSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	sg, err := soughtGameFromBytes(data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -269,8 +251,7 @@ func (s *DBStore) DeleteForSeekerConnID(ctx context.Context, connID string) (*en
 		return nil, nil
 	}
 
-	err = common.Delete(ctx, tx, &common.CommonDBConfig{TableType: common.SoughtGamesTable, SelectByType: common.SelectBySeekerConnID, RowsAffectedType: common.AnyRowsAffected, Value: connID})
-	if err != nil {
+	if err := qtx.DeleteSoughtGameBySeekerConnID(ctx, pgtype.Text{String: connID, Valid: true}); err != nil {
 		return nil, err
 	}
 
@@ -287,11 +268,15 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 	}
 	defer tx.Rollback(ctx)
 
-	sg, err := getSoughtGameBy(ctx, tx, &common.CommonDBConfig{SelectByType: common.SelectByReceiverConnID, Value: connID})
+	data, err := s.queries.WithTx(tx).GetSoughtGameByReceiverConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	sg, err := soughtGameFromBytes(data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -485,20 +470,4 @@ func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bo
 	}
 
 	return exists, nil
-}
-
-func getSoughtGameBy(ctx context.Context, tx pgx.Tx, cfg *common.CommonDBConfig) (*entity.SoughtGame, error) {
-	req := pb.SeekRequest{}
-	err := tx.QueryRow(ctx, fmt.Sprintf("SELECT request FROM soughtgames WHERE %s = $1", common.SelectByTypeToString[cfg.SelectByType]), cfg.Value).Scan(&req)
-	if err != nil {
-		if strings.Contains(err.Error(), "cannot scan NULL") {
-			// Do nothing, can just return a blank request.
-			// XXX: This is ugly and we should not be scanning/saving the pb
-			// requests directly; why not using the entity.SoughtGame wrapper +
-			// its custom Scan function?
-		} else {
-			return nil, err
-		}
-	}
-	return &entity.SoughtGame{SeekRequest: &req}, nil
 }

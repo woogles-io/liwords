@@ -291,10 +291,7 @@ func (sm *StandingsManager) calculateDivisionStandings(
 	// Create a map to track player stats
 	playerStats := make(map[int32]*PlayerStanding)
 	for _, reg := range registrations {
-		username := ""
-		if reg.Username.Valid {
-			username = reg.Username.String
-		}
+		username := reg.Username
 		playerStats[reg.UserID] = &PlayerStanding{
 			UserID:      reg.UserID,
 			DivisionID:  division.Uuid,
@@ -431,11 +428,11 @@ func SortStandingsByRank(standings []models.GetStandingsRow) {
 		// Finally by username (ascending) for deterministic tiebreaker
 		usernameI := ""
 		usernameJ := ""
-		if standings[i].Username.Valid {
-			usernameI = strings.ToLower(standings[i].Username.String)
+		if standings[i].Username != "" {
+			usernameI = strings.ToLower(standings[i].Username)
 		}
-		if standings[j].Username.Valid {
-			usernameJ = strings.ToLower(standings[j].Username.String)
+		if standings[j].Username != "" {
+			usernameJ = strings.ToLower(standings[j].Username)
 		}
 		return usernameI < usernameJ
 	})

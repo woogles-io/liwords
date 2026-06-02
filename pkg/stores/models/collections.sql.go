@@ -167,8 +167,8 @@ type GetCollectionWithGamesRow struct {
 	Public          pgtype.Bool
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
-	CreatorUuid     pgtype.Text
-	CreatorUsername pgtype.Text
+	CreatorUuid     string
+	CreatorUsername string
 }
 
 func (q *Queries) GetCollectionWithGames(ctx context.Context, argUuid uuid.UUID) (GetCollectionWithGamesRow, error) {
@@ -206,8 +206,8 @@ type GetCollectionsForGameRow struct {
 	Description     pgtype.Text
 	CreatorID       int32
 	Public          pgtype.Bool
-	CreatorUuid     pgtype.Text
-	CreatorUsername pgtype.Text
+	CreatorUuid     string
+	CreatorUsername string
 	ChapterNumber   int32
 	ChapterTitle    pgtype.Text
 }
@@ -284,8 +284,8 @@ type GetPublicCollectionsRow struct {
 	Public          pgtype.Bool
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
-	CreatorUuid     pgtype.Text
-	CreatorUsername pgtype.Text
+	CreatorUuid     string
+	CreatorUsername string
 	GameCount       int64
 }
 
@@ -350,8 +350,8 @@ type GetRecentlyUpdatedCollectionsRow struct {
 	Public          pgtype.Bool
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
-	CreatorUuid     pgtype.Text
-	CreatorUsername pgtype.Text
+	CreatorUuid     string
+	CreatorUsername string
 	GameCount       interface{}
 }
 
@@ -402,7 +402,7 @@ LIMIT $2 OFFSET $3
 `
 
 type GetUserCollectionsParams struct {
-	Uuid   pgtype.Text
+	Uuid   string
 	Limit  int32
 	Offset int32
 }
@@ -416,8 +416,8 @@ type GetUserCollectionsRow struct {
 	Public          pgtype.Bool
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
-	CreatorUuid     pgtype.Text
-	CreatorUsername pgtype.Text
+	CreatorUuid     string
+	CreatorUsername string
 	GameCount       interface{}
 }
 

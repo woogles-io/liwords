@@ -46,3 +46,5 @@ WHERE puzzles.id IS NULL
 
     ORDER BY games.id DESC
     LIMIT $4 OFFSET $5;
+-- name: GetPuzzleDBIDFromUUID :one
+SELECT id FROM puzzles WHERE uuid = @uuid;

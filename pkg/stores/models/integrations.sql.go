@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addOrUpdateGlobalIntegration = `-- name: AddOrUpdateGlobalIntegration :exec
@@ -44,7 +43,7 @@ RETURNING integrations.uuid
 type AddOrUpdateIntegrationParams struct {
 	IntegrationName string
 	Data            []byte
-	UserUuid        pgtype.Text
+	UserUuid        string
 }
 
 func (q *Queries) AddOrUpdateIntegration(ctx context.Context, arg AddOrUpdateIntegrationParams) (uuid.UUID, error) {
@@ -61,7 +60,7 @@ WHERE integrations.uuid = $1 and user_id = (SELECT id FROM users WHERE users.uui
 
 type DeleteIntegrationParams struct {
 	IntegrationUuid uuid.UUID
-	UserUuid        pgtype.Text
+	UserUuid        string
 }
 
 func (q *Queries) DeleteIntegration(ctx context.Context, arg DeleteIntegrationParams) error {
@@ -135,7 +134,7 @@ AND integration_name = $1
 
 type GetIntegrationDataParams struct {
 	IntegrationName string
-	UserUuid        pgtype.Text
+	UserUuid        string
 }
 
 type GetIntegrationDataRow struct {
@@ -161,7 +160,7 @@ type GetIntegrationsRow struct {
 	Data            []byte
 }
 
-func (q *Queries) GetIntegrations(ctx context.Context, userUuid pgtype.Text) ([]GetIntegrationsRow, error) {
+func (q *Queries) GetIntegrations(ctx context.Context, userUuid string) ([]GetIntegrationsRow, error) {
 	rows, err := q.db.Query(ctx, getIntegrations, userUuid)
 	if err != nil {
 		return nil, err
@@ -193,8 +192,8 @@ type GetPatreonIntegrationsRow struct {
 	IntegUuid       uuid.UUID
 	IntegrationName string
 	Data            []byte
-	UserUuid        pgtype.Text
-	Username        pgtype.Text
+	UserUuid        string
+	Username        string
 }
 
 func (q *Queries) GetPatreonIntegrations(ctx context.Context) ([]GetPatreonIntegrationsRow, error) {

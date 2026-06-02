@@ -46,7 +46,7 @@ func (s *VerificationService) SubmitVerificationRequest(
 ) (*models.VerificationRequest, error) {
 	// Check if user already has a pending verification for this organization
 	hasPending, err := s.queries.HasPendingVerification(ctx, models.HasPendingVerificationParams{
-		UserUuid:        pgtype.Text{String: userUUID, Valid: true},
+		UserUuid:        userUUID,
 		IntegrationName: integrationName,
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func (s *VerificationService) SubmitVerificationRequest(
 
 	// Create the verification request with the fetched name and title
 	req, err := s.queries.CreateVerificationRequest(ctx, models.CreateVerificationRequestParams{
-		UserUuid:        pgtype.Text{String: userUUID, Valid: true},
+		UserUuid:        userUUID,
 		IntegrationName: integrationName,
 		MemberID:        memberID,
 		FullName:        fullName, // Name fetched from organization, not user input
@@ -136,7 +136,7 @@ func (s *VerificationService) ApproveVerificationRequest(
 	// Approve the request
 	err = s.queries.ApproveVerificationRequest(ctx, models.ApproveVerificationRequestParams{
 		ID:           requestID,
-		ReviewerUuid: pgtype.Text{String: reviewerUUID, Valid: true},
+		ReviewerUuid: reviewerUUID,
 		Notes:        pgtype.Text{String: notes, Valid: true},
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func (s *VerificationService) ApproveVerificationRequest(
 	log.Info().
 		Int64("request_id", requestID).
 		Str("reviewer", reviewerUUID).
-		Str("user_uuid", req.UserUuid.String).
+		Str("user_uuid", req.UserUuid).
 		Str("integration", req.IntegrationName).
 		Msg("verification request approved")
 
@@ -178,7 +178,7 @@ func (s *VerificationService) RejectVerificationRequest(
 	// Reject the request
 	err = s.queries.RejectVerificationRequest(ctx, models.RejectVerificationRequestParams{
 		ID:           requestID,
-		ReviewerUuid: pgtype.Text{String: reviewerUUID, Valid: true},
+		ReviewerUuid: reviewerUUID,
 		Notes:        pgtype.Text{String: notes, Valid: true},
 	})
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *VerificationService) RejectVerificationRequest(
 	log.Info().
 		Int64("request_id", requestID).
 		Str("reviewer", reviewerUUID).
-		Str("user_uuid", req.UserUuid.String).
+		Str("user_uuid", req.UserUuid).
 		Str("integration", req.IntegrationName).
 		Msg("verification request rejected")
 
@@ -207,7 +207,7 @@ func (s *VerificationService) GetPendingVerifications(ctx context.Context) ([]mo
 
 // GetUserVerificationRequests retrieves all verification requests for a user
 func (s *VerificationService) GetUserVerificationRequests(ctx context.Context, userUUID string) ([]models.VerificationRequest, error) {
-	return s.queries.GetUserVerificationRequests(ctx, pgtype.Text{String: userUUID, Valid: true})
+	return s.queries.GetUserVerificationRequests(ctx, userUUID)
 }
 
 // GetVerificationRequest retrieves a single verification request by ID

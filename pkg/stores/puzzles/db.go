@@ -160,14 +160,14 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	}
 	defer tx.Rollback(ctx)
 
-	gameID, err := common.GetGameDBIDFromUUID(ctx, tx, gameUUID)
+	gameID, err := models.New(tx).GetGameDBIDFromUUID(ctx, pgtype.Text{String: gameUUID, Valid: true})
 	if err != nil {
 		return err
 	}
 
 	authorId := pgtype.Int8{Valid: false}
 	if authorUUID != "" {
-		aid, err := common.GetUserDBIDFromUUID(ctx, tx, authorUUID)
+		aid, err := models.New(tx).GetUserDBIDFromUUID(ctx, authorUUID)
 		if err != nil {
 			return err
 		}
@@ -216,7 +216,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 			return "", pqr, err
 		}
 	} else {
-		uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+		uid, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 		if err != nil {
 			log.Err(err).Msg("get-user-dbid")
 			return "", pqr, err
@@ -362,7 +362,7 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 	// Create the puzzle attempt if it does not exist
 	// attemptExists will also be true if the user is not logged in
 	if userLoggedIn {
-		pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
+		pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleUUID)
 		if err != nil {
 			return nil, "", -1, nil, time.Time{}, time.Time{}, nil, nil, err
 		}
@@ -409,12 +409,12 @@ func (s *DBStore) GetPreviousPuzzleId(ctx context.Context, userUUID string, puzz
 	}
 	defer tx.Rollback(ctx)
 
-	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
+	pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleUUID)
 	if err != nil {
 		return "", err
 	}
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	uid, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return "", err
 	}
@@ -489,15 +489,16 @@ func (s *DBStore) SubmitAnswer(ctx context.Context, userUUID string, ratingKey e
 	}
 	defer tx.Rollback(ctx)
 
-	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
+	pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleUUID)
 	if err != nil {
 		return err
 	}
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	uid32, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return err
 	}
+	uid := int64(uid32)
 
 	newCorrectOption := &pgtype.Bool{}
 	// Consider the puzzle completed if the user
@@ -615,12 +616,12 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 	}
 	defer tx.Rollback(ctx)
 
-	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleID)
+	pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleID)
 	if err != nil {
 		return err
 	}
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
+	uid, err := models.New(tx).GetUserDBIDFromUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -769,12 +770,12 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 }
 
 func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userID)
+	uid32, err := models.New(tx).GetUserDBIDFromUUID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	sr, err := common.GetUserRating(ctx, tx, uid, ratingKey)
+	sr, err := common.GetUserRating(ctx, tx, int64(uid32), ratingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -782,15 +783,16 @@ func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey enti
 }
 
 func getAttempts(ctx context.Context, tx pgx.Tx, userUUID string, puzzleUUID string) (bool, bool, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, int64, error) {
-	pid, err := common.GetPuzzleDBIDFromUUID(ctx, tx, puzzleUUID)
+	pid, err := models.New(tx).GetPuzzleDBIDFromUUID(ctx, puzzleUUID)
 	if err != nil {
 		return false, false, -1, nil, time.Time{}, time.Time{}, nil, nil, -1, err
 	}
 
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	uid32, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return false, false, -1, nil, time.Time{}, time.Time{}, nil, nil, -1, err
 	}
+	uid := int64(uid32)
 
 	var attempts int32
 	correct := &pgtype.Bool{}
@@ -853,10 +855,11 @@ func getNextClosestRatingPuzzleId(ctx context.Context, tx pgx.Tx, userId string,
 		if err != nil {
 			return "", pqr, err
 		}
-		userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userId)
+		userDBID32, err := models.New(tx).GetUserDBIDFromUUID(ctx, userId)
 		if err != nil {
 			return "", pqr, err
 		}
+		userDBID := int64(userDBID32)
 
 		queryTemplate := `SELECT uuid
 		FROM  ((SELECT uuid,
@@ -918,7 +921,7 @@ func getNextClosestRatingPuzzleId(ctx context.Context, tx pgx.Tx, userId string,
 
 func getNextPuzzleId(ctx context.Context, tx pgx.Tx, userUUID string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
 	var pqr puzzle_service.PuzzleQueryResult
-	uid, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	uid, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return "", pqr, err
 	}

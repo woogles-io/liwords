@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/integrations/organizations"
@@ -261,7 +260,7 @@ func getPlayerDisplayName(ctx context.Context, userUUID, username string, us use
 		for _, orgCode := range []string{"wespa", "naspa"} {
 			integData, err := opts.Queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
 				IntegrationName: orgCode,
-				UserUuid:        pgtype.Text{String: userUUID, Valid: true},
+				UserUuid:        userUUID,
 			})
 			if err == nil && len(integData.Data) > 0 {
 				var orgData organizations.OrganizationIntegrationData

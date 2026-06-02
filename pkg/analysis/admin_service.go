@@ -54,7 +54,7 @@ func (s *AnalysisAdminService) GetAdminStats(
 	leaderboard := make([]*pb.LeaderboardEntry, 0, len(leaderboardRows))
 	for _, row := range leaderboardRows {
 		leaderboard = append(leaderboard, &pb.LeaderboardEntry{
-			Username:      row.Username.String,
+			Username:      row.Username,
 			AnalysisCount: int32(row.AnalysisCount),
 		})
 	}
@@ -62,7 +62,7 @@ func (s *AnalysisAdminService) GetAdminStats(
 	contributors := make([]*pb.LeaderboardEntry, 0, len(contributorRows))
 	for _, row := range contributorRows {
 		contributors = append(contributors, &pb.LeaderboardEntry{
-			Username:      row.Username.String,
+			Username:      row.Username,
 			AnalysisCount: int32(row.AnalysisCount),
 		})
 	}

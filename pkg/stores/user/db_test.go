@@ -128,7 +128,7 @@ func TestGet(t *testing.T) {
 	is.Equal(cesarByUsername.UUID, cesarByEmail.UUID)
 
 	apiKey := "somekey"
-	err = common.UpdateWithPool(ctx, pool, []string{"api_key"}, []interface{}{apiKey}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	err = common.UpdateTableByUUID(ctx, pool, "users", cesarByUsername.UUID, []string{"api_key"}, []interface{}{apiKey})
 	is.NoErr(err)
 
 	cesarByAPIKey, err := ustore.GetByAPIKey(ctx, apiKey)
@@ -191,7 +191,7 @@ func TestGetNullValues(t *testing.T) {
 	is.Equal(cesarByUsername.UUID, cesarByUUID.UUID)
 
 	cesarEmail := "cesar@woogles.io"
-	err = common.UpdateWithPool(ctx, pool, []string{"email"}, []interface{}{cesarEmail}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	err = common.UpdateTableByUUID(ctx, pool, "users", cesarByUsername.UUID, []string{"email"}, []interface{}{cesarEmail})
 	is.NoErr(err)
 
 	cesarByEmail, err := ustore.GetByEmail(ctx, cesarEmail)
@@ -199,7 +199,7 @@ func TestGetNullValues(t *testing.T) {
 	is.Equal(cesarByUsername.UUID, cesarByEmail.UUID)
 
 	apiKey := "somekey"
-	err = common.UpdateWithPool(ctx, pool, []string{"api_key"}, []interface{}{apiKey}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: cesarByUsername.UUID})
+	err = common.UpdateTableByUUID(ctx, pool, "users", cesarByUsername.UUID, []string{"api_key"}, []interface{}{apiKey})
 	is.NoErr(err)
 
 	cesarByAPIKey, err := ustore.GetByAPIKey(ctx, apiKey)
@@ -287,15 +287,9 @@ func TestSet(t *testing.T) {
 	mina, err = ustore.Get(ctx, "mina")
 	is.NoErr(err)
 
-	cesarDBID, err := common.GetDBIDFromUUID(ctx, pool, &common.CommonDBConfig{
-		TableType: common.UsersTable,
-		Value:     cesar.UUID,
-	})
+	cesarDBID, err := common.GetUserDBIDByUUID(ctx, pool, cesar.UUID)
 	is.NoErr(err)
-	minaDBID, err := common.GetDBIDFromUUID(ctx, pool, &common.CommonDBConfig{
-		TableType: common.UsersTable,
-		Value:     mina.UUID,
-	})
+	minaDBID, err := common.GetUserDBIDByUUID(ctx, pool, mina.UUID)
 	is.NoErr(err)
 	actualCesarRating, err := common.GetUserRatingWithPool(ctx, pool, cesarDBID, entity.VariantKey(variantKey))
 	is.NoErr(err)
@@ -701,8 +695,8 @@ func setNullValues(ctx context.Context, pool *pgxpool.Pool, uuid string) {
 		panic(err)
 	}
 
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
+	var id int32
+	if err = tx.QueryRow(ctx, `SELECT id FROM users WHERE uuid = $1`, uuid).Scan(&id); err != nil {
 		panic(err)
 	}
 

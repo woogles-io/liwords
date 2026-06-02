@@ -10,7 +10,6 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
-	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/config_service"
@@ -192,7 +191,7 @@ func (cs *ConfigService) GetUsersForBadge(ctx context.Context, req *connect.Requ
 	}
 	usernames := &pb.Usernames{Usernames: make([]string, len(users))}
 	for i := range users {
-		usernames.Usernames[i] = users[i].String
+		usernames.Usernames[i] = users[i]
 	}
 
 	return connect.NewResponse(usernames), nil
@@ -208,17 +207,17 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *connect.Reques
 	if len(req.Msg.Username) == 0 {
 		return nil, apiserver.InvalidArg("need to specify a username")
 	}
-	deetz, err := cs.q.GetUserDetails(ctx, common.ToPGTypeText(strings.ToLower(req.Msg.Username)))
+	deetz, err := cs.q.GetUserDetails(ctx, strings.ToLower(req.Msg.Username))
 	if err != nil {
 		return nil, err
 	}
 
 	return connect.NewResponse(&pb.UserDetailsResponse{
-		Uuid:      deetz.Uuid.String,
-		Email:     deetz.Email.String,
+		Uuid:      deetz.Uuid,
+		Email:     deetz.Email,
 		Created:   timestamppb.New(deetz.CreatedAt.Time),
 		BirthDate: deetz.BirthDate.String,
-		Username:  deetz.Username.String,
+		Username:  deetz.Username,
 	}), nil
 }
 
@@ -234,7 +233,7 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 	}
 	emailStr := fmt.Sprintf("%%%s%%", strings.ToLower(req.Msg.PartialEmail))
 
-	matches, err := cs.q.GetMatchingEmails(ctx, common.ToPGTypeText(emailStr))
+	matches, err := cs.q.GetMatchingEmails(ctx, emailStr)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +241,11 @@ func (cs *ConfigService) SearchEmail(ctx context.Context, req *connect.Request[p
 
 	for i := range matches {
 		matchesPb[i] = &pb.UserDetailsResponse{
-			Uuid:      matches[i].Uuid.String,
-			Email:     matches[i].Email.String,
+			Uuid:      matches[i].Uuid,
+			Email:     matches[i].Email,
 			Created:   timestamppb.New(matches[i].CreatedAt.Time),
 			BirthDate: matches[i].BirthDate.String,
-			Username:  matches[i].Username.String,
+			Username:  matches[i].Username,
 		}
 	}
 
