@@ -690,7 +690,7 @@ func setNullValues(ctx context.Context, pool *pgxpool.Pool, uuid string) {
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx, `UPDATE users SET password = NULL, internal_bot = NULL, api_key = NULL, actions = NULL, notoriety = NULL WHERE uuid = $1`, uuid)
+	_, err = tx.Exec(ctx, `UPDATE users SET api_key = NULL, actions = NULL WHERE uuid = $1`, uuid)
 	if err != nil {
 		panic(err)
 	}
