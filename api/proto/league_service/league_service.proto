@@ -42,6 +42,7 @@ service LeagueService {
   rpc GetPlayerSeasonGames(GetPlayerSeasonGamesRequest)
       returns (GetPlayerSeasonGamesResponse);
   rpc InviteUserToLeagues(InviteUserRequest) returns (InviteUserResponse);
+  rpc RevokeUserFromLeagues(InviteUserRequest) returns (InviteUserResponse);
 
   // Roster: all players across all seasons, with division and standings
   rpc GetLeagueRoster(LeagueRequest) returns (LeagueRosterResponse);

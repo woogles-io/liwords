@@ -1588,6 +1588,53 @@ func (ls *LeagueService) InviteUserToLeagues(
 	}), nil
 }
 
+func (ls *LeagueService) RevokeUserFromLeagues(
+	ctx context.Context,
+	req *connect.Request[pb.InviteUserRequest],
+) (*connect.Response[pb.InviteUserResponse], error) {
+	revoker, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanRevokeFromLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.UserId == "" {
+		return nil, apiserver.InvalidArg("user_id is required")
+	}
+
+	targetUser, err := ls.userStore.GetByUUID(ctx, req.Msg.UserId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("user not found: %s", req.Msg.UserId))
+	}
+
+	rows, err := ls.queries.UnassignRole(ctx, models.UnassignRoleParams{
+		Username: targetUser.Username,
+		RoleName: string(rbac.LeaguePlayer),
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to revoke league player role: %w", err))
+	}
+
+	log.Info().
+		Str("revokerID", revoker.UUID).
+		Str("revokerUsername", revoker.Username).
+		Str("revokedUserID", targetUser.UUID).
+		Str("revokedUsername", targetUser.Username).
+		Int64("rowsAffected", rows).
+		Msg("user-revoked-from-leagues")
+
+	if rows == 0 {
+		return connect.NewResponse(&pb.InviteUserResponse{
+			Success: true,
+			Message: fmt.Sprintf("%s did not have league access", targetUser.Username),
+		}), nil
+	}
+
+	return connect.NewResponse(&pb.InviteUserResponse{
+		Success: true,
+		Message: fmt.Sprintf("%s's league access has been revoked", targetUser.Username),
+	}), nil
+}
+
 func (ls *LeagueService) GetPlayerLeagueHistory(
 	ctx context.Context,
 	req *connect.Request[pb.PlayerHistoryRequest],
