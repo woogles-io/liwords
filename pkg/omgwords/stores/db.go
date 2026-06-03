@@ -205,10 +205,10 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	if editorID == "" {
 		query = `
 		WITH recent_meta AS MATERIALIZED (
-			SELECT game_uuid, creator_uuid, private_broadcast, created_at
-			FROM annotated_game_metadata
-			WHERE done = $1
-			ORDER BY created_at DESC
+			SELECT agm.game_uuid, agm.creator_uuid, agm.private_broadcast, agm.created_at
+			FROM annotated_game_metadata agm
+			WHERE agm.done = $1
+			ORDER BY agm.created_at DESC
 			LIMIT $2 OFFSET $3
 		)
 		SELECT rm.game_uuid, rm.creator_uuid, u.username,
@@ -228,10 +228,10 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	} else {
 		query = `
 		WITH recent_meta AS MATERIALIZED (
-			SELECT game_uuid, creator_uuid, private_broadcast, created_at
-			FROM annotated_game_metadata
-			WHERE creator_uuid = $1 AND done = $2
-			ORDER BY created_at DESC
+			SELECT agm.game_uuid, agm.creator_uuid, agm.private_broadcast, agm.created_at
+			FROM annotated_game_metadata agm
+			WHERE agm.creator_uuid = $1 AND agm.done = $2
+			ORDER BY agm.created_at DESC
 			LIMIT $3 OFFSET $4
 		)
 		SELECT rm.game_uuid, rm.creator_uuid, 'dummyusername',
