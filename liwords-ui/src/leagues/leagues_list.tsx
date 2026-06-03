@@ -137,8 +137,15 @@ export const LeaguesList = () => {
           </p>
         </div>
 
-        {/* Invite user widget - visible to league promoters and admins */}
-        {loggedIn && canInviteToLeagues && <InviteUserToLeaguesWidget />}
+        {/* Invite/revoke widget and admin link - visible to league promoters and admins */}
+        {loggedIn && canInviteToLeagues && (
+          <>
+            <InviteUserToLeaguesWidget />
+            <p style={{ marginBottom: 32 }}>
+              <Link to="/leagues/admin">League Administration</Link>
+            </p>
+          </>
+        )}
 
         <div className="leagues-faq" id="faq">
           <h2>Frequently Asked Questions</h2>
