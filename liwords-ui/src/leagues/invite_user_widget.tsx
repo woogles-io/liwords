@@ -30,8 +30,10 @@ export const InviteUserToLeaguesWidget = () => {
   const acClient = useClient(AutocompleteService);
   const { notification } = App.useApp();
 
-  const [inviteSearch, setInviteSearch] = useState<UserSearchState>(emptySearch);
-  const [revokeSearch, setRevokeSearch] = useState<UserSearchState>(emptySearch);
+  const [inviteSearch, setInviteSearch] =
+    useState<UserSearchState>(emptySearch);
+  const [revokeSearch, setRevokeSearch] =
+    useState<UserSearchState>(emptySearch);
 
   const inviteUserMutation = useMutation(inviteUserToLeagues, {
     onSuccess: () => {
@@ -78,7 +80,9 @@ export const InviteUserToLeaguesWidget = () => {
           return;
         }
         try {
-          const response = await acClient.getCompletion({ prefix: searchQuery });
+          const response = await acClient.getCompletion({
+            prefix: searchQuery,
+          });
           const users: UserSearchResult[] = (response.users || [])
             .map((user) => ({ uuid: user.uuid, username: user.username }))
             .sort((a, b) =>
@@ -139,7 +143,9 @@ export const InviteUserToLeaguesWidget = () => {
       placeholder="Search username..."
       onSearch={onSearch}
       onSelect={handleSelect(setter)}
-      onChange={(value) => setter((s) => ({ ...s, inputValue: value, selected: "" }))}
+      onChange={(value) =>
+        setter((s) => ({ ...s, inputValue: value, selected: "" }))
+      }
       className="invite-autocomplete"
     >
       {state.options.map((user) => (
@@ -168,7 +174,11 @@ export const InviteUserToLeaguesWidget = () => {
         Search for a user and grant them access to participate in leagues.
       </p>
       <div className="invite-controls">
-        {renderAutocomplete(inviteSearch, setInviteSearch, inviteSearchDebounced)}
+        {renderAutocomplete(
+          inviteSearch,
+          setInviteSearch,
+          inviteSearchDebounced,
+        )}
         <Button
           type="primary"
           onClick={() =>
@@ -188,7 +198,11 @@ export const InviteUserToLeaguesWidget = () => {
         Search for a user and remove their ability to participate in leagues.
       </p>
       <div className="invite-controls">
-        {renderAutocomplete(revokeSearch, setRevokeSearch, revokeSearchDebounced)}
+        {renderAutocomplete(
+          revokeSearch,
+          setRevokeSearch,
+          revokeSearchDebounced,
+        )}
         <Button
           danger
           onClick={() =>
