@@ -7,8 +7,6 @@ package models
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addBadge = `-- name: AddBadge :exec
@@ -73,7 +71,7 @@ JOIN badges on badges.id = user_badges.badge_id
 WHERE user_badges.user_id = (SELECT id from users where uuid = $1)
 `
 
-func (q *Queries) GetBadgesForUser(ctx context.Context, uuid pgtype.Text) ([]string, error) {
+func (q *Queries) GetBadgesForUser(ctx context.Context, uuid string) ([]string, error) {
 	rows, err := q.db.Query(ctx, getBadgesForUser, uuid)
 	if err != nil {
 		return nil, err
@@ -129,15 +127,15 @@ WHERE user_badges.badge_id = (SELECT id from badges where code = $1)
 ORDER BY users.username
 `
 
-func (q *Queries) GetUsersForBadge(ctx context.Context, code string) ([]pgtype.Text, error) {
+func (q *Queries) GetUsersForBadge(ctx context.Context, code string) ([]string, error) {
 	rows, err := q.db.Query(ctx, getUsersForBadge, code)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []pgtype.Text
+	var items []string
 	for rows.Next() {
-		var username pgtype.Text
+		var username string
 		if err := rows.Scan(&username); err != nil {
 			return nil, err
 		}

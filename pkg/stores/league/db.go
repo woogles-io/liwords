@@ -455,7 +455,7 @@ func (s *DBStore) GetSeasonPlayersWithUnstartedGames(ctx context.Context, season
 func (s *DBStore) GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error) {
 	return s.queries.GetPlayerSeasonOpponents(ctx, models.GetPlayerSeasonOpponentsParams{
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
-		UserUuid: pgtype.Text{String: userUUID, Valid: true},
+		UserUuid: userUUID,
 	})
 }
 

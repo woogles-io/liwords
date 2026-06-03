@@ -12,23 +12,22 @@ import (
 )
 
 const getNumberOfBotGames = `-- name: GetNumberOfBotGames :one
-select count(id) from games where
-(
-    (player0_id = $1 and player1_id = $2) or
-    (player1_id = $1 and player0_id = $2)
-) and created_at >= $3
-and game_end_reason not in (5, 7)
+SELECT COUNT(*)::bigint FROM game_players
+WHERE player_id = $1
+  AND opponent_id = $2
+  AND created_at >= $3
+  AND game_end_reason NOT IN (0, 5, 7)
 `
 
 type GetNumberOfBotGamesParams struct {
-	BotID       pgtype.Int4
-	UserID      pgtype.Int4
+	BotID       int32
+	UserID      int32
 	CreatedDate pgtype.Timestamptz
 }
 
 func (q *Queries) GetNumberOfBotGames(ctx context.Context, arg GetNumberOfBotGamesParams) (int64, error) {
 	row := q.db.QueryRow(ctx, getNumberOfBotGames, arg.BotID, arg.UserID, arg.CreatedDate)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }

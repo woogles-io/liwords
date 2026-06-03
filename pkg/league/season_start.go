@@ -182,12 +182,12 @@ func (ssm *SeasonStartManager) createGamesForDivision(
 		player2Reg := registrations[pairing.Player2Index]
 
 		// Look up user entities using the UUIDs from the JOIN
-		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid.String)
+		user1, err := ssm.stores.UserStore.GetByUUID(ctx, player1Reg.UserUuid)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player1Reg.UserID, err)
 		}
 
-		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserUuid.String)
+		user2, err := ssm.stores.UserStore.GetByUUID(ctx, player2Reg.UserUuid)
 		if err != nil {
 			return gamesCreated, fmt.Errorf("failed to get user %d: %w", player2Reg.UserID, err)
 		}

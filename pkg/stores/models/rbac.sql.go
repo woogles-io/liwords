@@ -7,8 +7,6 @@ package models
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addPermission = `-- name: AddPermission :exec
@@ -134,8 +132,8 @@ ORDER BY u.username, r.name
 `
 
 type GetUsersWithRolesRow struct {
-	Uuid     pgtype.Text
-	Username pgtype.Text
+	Uuid     string
+	Username string
 	RoleName string
 }
 

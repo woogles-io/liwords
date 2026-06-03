@@ -621,8 +621,8 @@ type GetDivisionRegistrationsRow struct {
 	SeasonsAway          pgtype.Int4
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
-	UserUuid             pgtype.Text
-	Username             pgtype.Text
+	UserUuid             string
+	Username             string
 }
 
 func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtype.UUID) ([]GetDivisionRegistrationsRow, error) {
@@ -695,8 +695,8 @@ type GetDivisionTimeBankStatusParams struct {
 
 type GetDivisionTimeBankStatusRow struct {
 	UserID               int32
-	UserUuid             pgtype.Text
-	Username             pgtype.Text
+	UserUuid             string
+	Username             string
 	LowTimebankGameCount int64
 }
 
@@ -1108,8 +1108,8 @@ ORDER BY u.username, ls.season_number
 `
 
 type GetLeagueRosterRow struct {
-	UserUuid       pgtype.Text
-	Username       pgtype.Text
+	UserUuid       string
+	Username       string
 	SeasonNumber   int32
 	DivisionNumber int32
 	Wins           int32
@@ -1212,13 +1212,13 @@ GROUP BY u_opp.uuid, u_opp.username
 `
 
 type GetPlayerLeagueH2HParams struct {
-	UserUuid pgtype.Text
+	UserUuid string
 	LeagueID uuid.UUID
 }
 
 type GetPlayerLeagueH2HRow struct {
-	OpponentUuid     pgtype.Text
-	OpponentUsername pgtype.Text
+	OpponentUuid     string
+	OpponentUsername string
 	Wins             int32
 	Losses           int32
 	Draws            int32
@@ -1272,12 +1272,12 @@ ORDER BY ls.season_number, u_opp.uuid
 `
 
 type GetPlayerLeagueH2HPerSeasonParams struct {
-	UserUuid pgtype.Text
+	UserUuid string
 	LeagueID uuid.UUID
 }
 
 type GetPlayerLeagueH2HPerSeasonRow struct {
-	OpponentUuid  pgtype.Text
+	OpponentUuid  string
 	SeasonNumber  int32
 	Won           pgtype.Bool
 	PlayerScore   int32
@@ -1365,7 +1365,7 @@ ORDER BY gp_player.created_at DESC
 `
 
 type GetPlayerSeasonGamesParams struct {
-	UserUuid pgtype.Text
+	UserUuid string
 	SeasonID pgtype.UUID
 }
 
@@ -1378,8 +1378,8 @@ type GetPlayerSeasonGamesRow struct {
 	OpponentScore    int32
 	Won              pgtype.Bool
 	GameEndReason    int16
-	OpponentUuid     pgtype.Text
-	OpponentUsername pgtype.Text
+	OpponentUuid     string
+	OpponentUsername string
 }
 
 // Get finished games for a specific player in a season with scores from game_players table
@@ -1505,7 +1505,7 @@ ORDER BY g.created_at DESC
 
 type GetPlayerSeasonInProgressGamesParams struct {
 	SeasonID pgtype.UUID
-	UserUuid pgtype.Text
+	UserUuid string
 }
 
 type GetPlayerSeasonInProgressGamesRow struct {
@@ -1514,10 +1514,10 @@ type GetPlayerSeasonInProgressGamesRow struct {
 	UpdatedAt       pgtype.Timestamptz
 	Player0ID       pgtype.Int4
 	Player1ID       pgtype.Int4
-	Player0Uuid     pgtype.Text
-	Player0Username pgtype.Text
-	Player1Uuid     pgtype.Text
-	Player1Username pgtype.Text
+	Player0Uuid     string
+	Player0Username string
+	Player1Uuid     string
+	Player1Username string
 	PlayerOnTurn    pgtype.Int4
 	History         []byte
 }
@@ -1570,7 +1570,7 @@ ORDER BY opponent_username
 `
 
 type GetPlayerSeasonOpponentsParams struct {
-	UserUuid pgtype.Text
+	UserUuid string
 	SeasonID pgtype.UUID
 }
 
@@ -1701,9 +1701,9 @@ type GetPreviousSeasonRegistrantsNotInCurrentParams struct {
 }
 
 type GetPreviousSeasonRegistrantsNotInCurrentRow struct {
-	Uuid     pgtype.Text
-	Username pgtype.Text
-	Email    pgtype.Text
+	Uuid     string
+	Username string
+	Email    string
 }
 
 // Get registrants from previous season who are NOT already registered in the new season
@@ -1891,8 +1891,8 @@ WHERE ld.season_id = $1
 `
 
 type GetSeasonChampionRow struct {
-	UserUuid pgtype.Text
-	Username pgtype.Text
+	UserUuid string
+	Username string
 }
 
 // Get the champion (result = RESULT_CHAMPION in division 1) for a completed season
@@ -1921,8 +1921,8 @@ ORDER BY unstarted_game_count DESC, u.username
 `
 
 type GetSeasonPlayersWithUnstartedGamesRow struct {
-	UserUuid           pgtype.Text
-	Username           pgtype.Text
+	UserUuid           string
+	Username           string
 	UnstartedGameCount int64
 }
 
@@ -1974,8 +1974,8 @@ type GetSeasonRegistrationsRow struct {
 	SeasonsAway          pgtype.Int4
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
-	UserUuid             pgtype.Text
-	Username             pgtype.Text
+	UserUuid             string
+	Username             string
 	DivisionNumber       pgtype.Int4
 }
 
@@ -2040,10 +2040,10 @@ type GetSeasonZeroMoveGamesRow struct {
 	CreatedAt       pgtype.Timestamptz
 	Player0ID       pgtype.Int4
 	Player1ID       pgtype.Int4
-	Player0Uuid     pgtype.Text
-	Player0Username pgtype.Text
-	Player1Uuid     pgtype.Text
-	Player1Username pgtype.Text
+	Player0Uuid     string
+	Player0Username string
+	Player1Uuid     string
+	Player1Username string
 	DivisionID      pgtype.UUID
 }
 
@@ -2161,8 +2161,8 @@ type GetStandingsRow struct {
 	TotalOpponentTilesPlayed pgtype.Int4
 	TotalMistakeIndex        pgtype.Float8
 	GamesAnalyzed            pgtype.Int4
-	UserUuid                 pgtype.Text
-	Username                 pgtype.Text
+	UserUuid                 string
+	Username                 string
 }
 
 // Note: rank column is deprecated and not queried. Sorting is done in Go code.

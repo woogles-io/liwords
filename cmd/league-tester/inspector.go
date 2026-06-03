@@ -168,9 +168,9 @@ func inspectLeague(ctx context.Context, leagueSlugOrUUID string) error {
 
 				for i, standing := range standings {
 					// Get username from the JOIN (no need for separate lookup)
-					username := "Unknown"
-					if standing.Username.Valid {
-						username = standing.Username.String
+					username := standing.Username
+					if username == "" {
+						username = "Unknown"
 					}
 
 					// Calculate rank from position (standings are already ordered)

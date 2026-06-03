@@ -889,7 +889,7 @@ func (gs *OMGWordsService) GetGameOwner(ctx context.Context, req *connect.Reques
 
 	return connect.NewResponse(&pb.GetGameOwnerResponse{
 		CreatorId:       owner.CreatorUuid,
-		CreatorUsername: owner.Username.String,
+		CreatorUsername: owner.Username,
 		Found:           true,
 	}), nil
 }

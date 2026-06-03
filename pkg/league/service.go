@@ -936,8 +936,8 @@ func (ls *LeagueService) GetRecentSeasons(
 						DivisionNumber: 1,
 						Standings: []*ipc.LeaguePlayerStanding{
 							{
-								UserId:   champion.UserUuid.String,
-								Username: champion.Username.String,
+								UserId:   champion.UserUuid,
+								Username: champion.Username,
 								Result:   ipc.StandingResult_RESULT_CHAMPION,
 							},
 						},
@@ -1032,8 +1032,8 @@ func (ls *LeagueService) GetDivisionStandings(
 	protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 	for i, standing := range standings {
 		// Use user info from the JOIN (no need to query separately)
-		userUUID := standing.UserUuid.String
-		username := standing.Username.String
+		userUUID := standing.UserUuid
+		username := standing.Username
 		if username == "" {
 			username = "Unknown"
 		}
@@ -1198,8 +1198,8 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			// Convert standings to proto
 			protoStandings := make([]*ipc.LeaguePlayerStanding, len(standings))
 			for j, standing := range standings {
-				userUUID := standing.UserUuid.String
-				username := standing.Username.String
+				userUUID := standing.UserUuid
+				username := standing.Username
 				if username == "" {
 					username = "Unknown"
 				}
@@ -1331,8 +1331,8 @@ func (ls *LeagueService) GetDivisionTimeBankWarnings(
 	warnings := make([]*ipc.TimeBankWarning, 0, len(rows))
 	for _, row := range rows {
 		warnings = append(warnings, &ipc.TimeBankWarning{
-			UserId:               row.UserUuid.String,
-			Username:             row.Username.String,
+			UserId:               row.UserUuid,
+			Username:             row.Username,
 			LowTimebankGameCount: int32(row.LowTimebankGameCount),
 		})
 	}
@@ -1506,8 +1506,8 @@ func (ls *LeagueService) GetSeasonRegistrations(
 	for i, reg := range registrations {
 		// Get user info from query result (already joined)
 		username := "Unknown"
-		if reg.Username.Valid {
-			username = reg.Username.String
+		if reg.Username != "" {
+			username = reg.Username
 		}
 
 		divisionID := ""
@@ -1524,7 +1524,7 @@ func (ls *LeagueService) GetSeasonRegistrations(
 		}
 
 		protoRegistrations[i] = &pb.SeasonRegistration{
-			UserId:         reg.UserUuid.String,
+			UserId:         reg.UserUuid,
 			Username:       username,
 			SeasonId:       reg.SeasonID.String(),
 			DivisionId:     divisionID,
@@ -1727,7 +1727,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 	// Query finished games from game_players table (fast)
 	finishedGameRows, err := ls.queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
-		UserUuid: pgtype.Text{String: userID, Valid: true},
+		UserUuid: userID,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player season games: %w", err))
@@ -1736,7 +1736,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 	// Query in-progress games from games table (fast, indexed)
 	inProgressGameRows, err := ls.queries.GetPlayerSeasonInProgressGames(ctx, models.GetPlayerSeasonInProgressGamesParams{
 		SeasonID: pgtype.UUID{Bytes: seasonID, Valid: true},
-		UserUuid: pgtype.Text{String: userID, Valid: true},
+		UserUuid: userID,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to get player in-progress games: %w", err))
@@ -1767,8 +1767,8 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 
 		allGames = append(allGames, &pb.PlayerSeasonGame{
 			GameId:           row.GameUuid,
-			OpponentUserId:   row.OpponentUuid.String,
-			OpponentUsername: row.OpponentUsername.String,
+			OpponentUserId:   row.OpponentUuid,
+			OpponentUsername: row.OpponentUsername,
 			PlayerScore:      playerScore,
 			OpponentScore:    opponentScore,
 			Result:           result,
@@ -1781,12 +1781,12 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 	// Convert in-progress games to proto
 	for _, row := range inProgressGameRows {
 		// Determine opponent and player index based on which player the user is
-		opponentUuid := row.Player1Uuid.String
-		opponentUsername := row.Player1Username.String
+		opponentUuid := row.Player1Uuid
+		opponentUsername := row.Player1Username
 		userIsPlayer0 := true
-		if row.Player1Uuid.String == userID {
-			opponentUuid = row.Player0Uuid.String
-			opponentUsername = row.Player0Username.String
+		if row.Player1Uuid == userID {
+			opponentUuid = row.Player0Uuid
+			opponentUsername = row.Player0Username
 			userIsPlayer0 = false
 		}
 
@@ -1867,8 +1867,8 @@ func (ls *LeagueService) GetLeagueRoster(
 	playerOrder := []playerKey{}
 	playerSeasonMap := make(map[playerKey]map[int32]*models.GetLeagueRosterRow)
 	for i, row := range rows {
-		uid := row.UserUuid.String
-		uname := row.Username.String
+		uid := row.UserUuid
+		uname := row.Username
 		pk := playerKey{uid, uname}
 		seasonNumSet[row.SeasonNumber] = true
 		if _, ok := playerSeasonMap[pk]; !ok {
@@ -1898,10 +1898,10 @@ func (ls *LeagueService) GetLeagueRoster(
 			if group[i].Spread != group[j].Spread {
 				return group[i].Spread > group[j].Spread
 			}
-			return strings.ToLower(group[i].Username.String) < strings.ToLower(group[j].Username.String)
+			return strings.ToLower(group[i].Username) < strings.ToLower(group[j].Username)
 		})
 		for i, row := range group {
-			ranks[rankKey{dk.season, row.UserUuid.String}] = int32(i + 1)
+			ranks[rankKey{dk.season, row.UserUuid}] = int32(i + 1)
 		}
 	}
 
@@ -1963,7 +1963,7 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 	}
 
 	rows, err := ls.store.GetPlayerLeagueH2H(ctx, models.GetPlayerLeagueH2HParams{
-		UserUuid: pgtype.Text{String: userID, Valid: true},
+		UserUuid: userID,
 		LeagueID: leagueUUID,
 	})
 	if err != nil {
@@ -1972,7 +1972,7 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 
 	// Fetch per-season game details
 	perSeasonRows, err := ls.store.GetPlayerLeagueH2HPerSeason(ctx, models.GetPlayerLeagueH2HPerSeasonParams{
-		UserUuid: pgtype.Text{String: userID, Valid: true},
+		UserUuid: userID,
 		LeagueID: leagueUUID,
 	})
 	if err != nil {
@@ -1982,7 +1982,7 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 	// Build map of opponent UUID -> []*H2HSeasonGame
 	seasonGamesMap := make(map[string][]*pb.H2HSeasonGame)
 	for _, row := range perSeasonRows {
-		oppUUID := row.OpponentUuid.String
+		oppUUID := row.OpponentUuid
 		game := &pb.H2HSeasonGame{
 			SeasonNumber:  row.SeasonNumber,
 			Won:           row.Won.Bool,
@@ -1997,13 +1997,13 @@ func (ls *LeagueService) GetPlayerLeagueH2H(
 	records := make([]*pb.H2HRecord, len(rows))
 	for i, row := range rows {
 		records[i] = &pb.H2HRecord{
-			OpponentUserId:   row.OpponentUuid.String,
-			OpponentUsername: row.OpponentUsername.String,
+			OpponentUserId:   row.OpponentUuid,
+			OpponentUsername: row.OpponentUsername,
 			Wins:             row.Wins,
 			Losses:           row.Losses,
 			Draws:            row.Draws,
 			Spread:           row.Spread,
-			SeasonGames:      seasonGamesMap[row.OpponentUuid.String],
+			SeasonGames:      seasonGamesMap[row.OpponentUuid],
 		}
 	}
 
@@ -2115,10 +2115,10 @@ func (ls *LeagueService) GetSeasonZeroMoveGames(
 		games = append(games, &pb.ZeroMoveGame{
 			GameId:          row.GameUuid.String,
 			CreatedAt:       timestamppb.New(row.CreatedAt.Time),
-			Player0Id:       row.Player0Uuid.String,
-			Player0Username: row.Player0Username.String,
-			Player1Id:       row.Player1Uuid.String,
-			Player1Username: row.Player1Username.String,
+			Player0Id:       row.Player0Uuid,
+			Player0Username: row.Player0Username,
+			Player1Id:       row.Player1Uuid,
+			Player1Username: row.Player1Username,
 			DivisionId:      row.DivisionID.String(),
 		})
 	}
@@ -2153,8 +2153,8 @@ func (ls *LeagueService) GetSeasonPlayersWithUnstartedGames(
 	players := make([]*pb.PlayerWithUnstartedGames, 0, len(playerRows))
 	for _, row := range playerRows {
 		players = append(players, &pb.PlayerWithUnstartedGames{
-			UserId:             row.UserUuid.String,
-			Username:           row.Username.String,
+			UserId:             row.UserUuid,
+			Username:           row.Username,
 			UnstartedGameCount: int32(row.UnstartedGameCount),
 		})
 	}

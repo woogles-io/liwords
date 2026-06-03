@@ -204,14 +204,19 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 	var query string
 	if editorID == "" {
 		query = `
-		SELECT game_uuid, creator_uuid, username,
-			private_broadcast, quickdata, game_request, games.created_at
-		FROM annotated_game_metadata
-		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
-		JOIN users ON users.uuid = annotated_game_metadata.creator_uuid
-		WHERE done = $1
-		ORDER BY games.created_at DESC
-		LIMIT $2 OFFSET $3
+		WITH recent_meta AS MATERIALIZED (
+			SELECT agm.game_uuid, agm.creator_uuid, agm.private_broadcast, agm.created_at
+			FROM annotated_game_metadata agm
+			WHERE agm.done = $1
+			ORDER BY agm.created_at DESC
+			LIMIT $2 OFFSET $3
+		)
+		SELECT rm.game_uuid, rm.creator_uuid, u.username,
+			rm.private_broadcast, g.quickdata, g.game_request, rm.created_at
+		FROM recent_meta rm
+		JOIN games g ON g.uuid = rm.game_uuid
+		JOIN users u ON u.uuid = rm.creator_uuid
+		ORDER BY rm.created_at DESC
 		`
 		if rows, err = s.dbPool.Query(ctx, query, !unfinished, limit, offset); err != nil {
 			if err == pgx.ErrNoRows {
@@ -222,14 +227,19 @@ func (s *DBStore) GamesForEditor(ctx context.Context, editorID string, unfinishe
 		}
 	} else {
 		query = `
-		SELECT game_uuid, creator_uuid, 'dummyusername', private_broadcast,
-			quickdata, game_request, created_at
-		FROM annotated_game_metadata
-		JOIN games ON games.uuid = annotated_game_metadata.game_uuid
-		WHERE creator_uuid = $1 AND done = $2
-		ORDER BY created_at DESC
-		LIMIT $3 OFFSET $4
-	`
+		WITH recent_meta AS MATERIALIZED (
+			SELECT agm.game_uuid, agm.creator_uuid, agm.private_broadcast, agm.created_at
+			FROM annotated_game_metadata agm
+			WHERE agm.creator_uuid = $1 AND agm.done = $2
+			ORDER BY agm.created_at DESC
+			LIMIT $3 OFFSET $4
+		)
+		SELECT rm.game_uuid, rm.creator_uuid, 'dummyusername',
+			rm.private_broadcast, g.quickdata, g.game_request, rm.created_at
+		FROM recent_meta rm
+		JOIN games g ON g.uuid = rm.game_uuid
+		ORDER BY rm.created_at DESC
+		`
 		if rows, err = s.dbPool.Query(ctx, query, editorID, !unfinished, limit, offset); err != nil {
 			if err == pgx.ErrNoRows {
 				log.Debug().Str("creatorUUID", editorID).Msg("no games for this editor")

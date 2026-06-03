@@ -61,6 +61,9 @@ func (r *Ratings) Scan(value interface{}) error {
 		b = v
 	case string:
 		b = []byte(v)
+	case nil:
+		*r = Ratings{}
+		return nil
 	default:
 		return fmt.Errorf("unexpected type %T for ratings", value)
 	}

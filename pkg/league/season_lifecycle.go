@@ -41,8 +41,8 @@ func (slm *SeasonLifecycleManager) GetRegisteredPlayerIDs(ctx context.Context, s
 
 	userIDs := make([]string, 0, len(registrations))
 	for _, reg := range registrations {
-		if reg.UserUuid.Valid {
-			userIDs = append(userIDs, reg.UserUuid.String)
+		if reg.UserUuid != "" {
+			userIDs = append(userIDs, reg.UserUuid)
 		}
 	}
 
@@ -256,11 +256,11 @@ func (slm *SeasonLifecycleManager) buildPlayerAssignments(ctx context.Context, s
 	divisionNames := make(map[uuid.UUID]string)   // divisionID -> divisionName
 
 	for _, reg := range registrations {
-		if !reg.UserUuid.Valid || !reg.DivisionID.Valid {
+		if reg.UserUuid == "" || !reg.DivisionID.Valid {
 			continue
 		}
 
-		userUUID := reg.UserUuid.String
+		userUUID := reg.UserUuid
 		divisionID := uuid.UUID(reg.DivisionID.Bytes)
 
 		playerDivisions[userUUID] = divisionID

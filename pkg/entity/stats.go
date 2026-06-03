@@ -146,6 +146,27 @@ type ProfileStats struct {
 	Data map[VariantKey]*Stats
 }
 
+func (s *ProfileStats) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
+func (s *ProfileStats) Scan(value interface{}) error {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	case nil:
+		*s = ProfileStats{}
+		return nil
+	default:
+		return fmt.Errorf("unexpected type %T for profile stats", value)
+	}
+
+	return json.Unmarshal(b, &s)
+}
+
 const (
 	ALL_TRIPLE_LETTERS_COVERED_STAT        string = "All Triple Letter Squares Covered"
 	ALL_TRIPLE_WORDS_COVERED_STAT          string = "All Triple Word Squares Covered"

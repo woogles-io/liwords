@@ -114,7 +114,7 @@ func (s *OrganizationService) ConnectOrganization(
 	}
 
 	_, err = s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
-		UserUuid:        pgtype.Text{String: user.UUID, Valid: true},
+		UserUuid:        user.UUID,
 		IntegrationName: string(orgCode),
 		Data:            dataJSON,
 	})
@@ -175,7 +175,7 @@ func (s *OrganizationService) DisconnectOrganization(
 
 	// Get the integration UUID first
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
-		UserUuid:        pgtype.Text{String: targetUserUUID, Valid: true},
+		UserUuid:        targetUserUUID,
 		IntegrationName: req.Msg.OrganizationCode,
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func (s *OrganizationService) DisconnectOrganization(
 	// Delete the integration
 	err = s.queries.DeleteIntegration(ctx, models.DeleteIntegrationParams{
 		IntegrationUuid: integrationData.Uuid,
-		UserUuid:        pgtype.Text{String: targetUserUUID, Valid: true},
+		UserUuid:        targetUserUUID,
 	})
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
@@ -247,7 +247,7 @@ func (s *OrganizationService) GetMyOrganizations(
 		return nil, err
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: user.UUID, Valid: true})
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -313,7 +313,7 @@ func (s *OrganizationService) GetPublicOrganizations(
 		return nil, apiserver.InvalidArg("user not found")
 	}
 
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: user.UUID, Valid: true})
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}
@@ -448,8 +448,8 @@ func (s *OrganizationService) GetPendingVerifications(
 		// Use GetVerificationImageUrl endpoint to get presigned URL on-demand when needed
 		protoRequests = append(protoRequests, &pb.VerificationRequestInfo{
 			RequestId:        r.ID,
-			UserUuid:         r.UserUuid.String,
-			Username:         r.Username.String,
+			UserUuid:         r.UserUuid,
+			Username:         r.Username,
 			OrganizationCode: r.IntegrationName,
 			MemberId:         r.MemberID,
 			FullName:         r.FullName,
@@ -589,7 +589,7 @@ func (s *OrganizationService) ApproveVerification(
 	}
 
 	_, err = s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
-		UserUuid:        pgtype.Text{String: verReq.UserUuid.String, Valid: true},
+		UserUuid:        verReq.UserUuid,
 		IntegrationName: verReq.IntegrationName,
 		Data:            dataJSON,
 	})
@@ -598,14 +598,14 @@ func (s *OrganizationService) ApproveVerification(
 	}
 
 	// Update profile title
-	if err := s.updateProfileTitle(ctx, verReq.UserUuid.String); err != nil {
+	if err := s.updateProfileTitle(ctx, verReq.UserUuid); err != nil {
 		log.Error().Err(err).Msg("failed to update profile title")
 	}
 
 	log.Info().
 		Int64("request_id", req.Msg.RequestId).
 		Str("reviewer", user.UUID).
-		Str("user", verReq.UserUuid.String).
+		Str("user", verReq.UserUuid).
 		Msg("verification request approved")
 
 	return connect.NewResponse(&pb.ApproveVerificationResponse{
@@ -776,7 +776,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 	}
 
 	_, err = s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
-		UserUuid:        pgtype.Text{String: targetUser.UUID, Valid: true},
+		UserUuid:        targetUser.UUID,
 		IntegrationName: req.Msg.OrganizationCode,
 		Data:            dataJSON,
 	})
@@ -858,7 +858,7 @@ func (s *OrganizationService) AdminRefreshUserTitles(
 // refreshTitlesForUser refreshes all organization titles for a specific user
 func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID string) ([]*pb.OrganizationTitle, []string, error) {
 	// Get all organization integrations for the user
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: userUUID, Valid: true})
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return nil, nil, apiserver.InternalErr(err)
 	}
@@ -972,7 +972,7 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 // GetCachedRealName returns the cached real name from the integrations table
 func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID string, orgCode string) (string, error) {
 	integrationData, err := s.queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
-		UserUuid:        pgtype.Text{String: userUUID, Valid: true},
+		UserUuid:        userUUID,
 		IntegrationName: orgCode,
 	})
 	if err != nil {
@@ -993,7 +993,7 @@ func (s *OrganizationService) GetCachedRealName(ctx context.Context, userUUID st
 
 func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID string) error {
 	// Get all organization integrations
-	integrations, err := s.queries.GetOrganizationIntegrations(ctx, pgtype.Text{String: userUUID, Valid: true})
+	integrations, err := s.queries.GetOrganizationIntegrations(ctx, userUUID)
 	if err != nil {
 		return err
 	}
@@ -1029,7 +1029,7 @@ func (s *OrganizationService) updateProfileTitle(ctx context.Context, userUUID s
 	}
 
 	return s.queries.UpdateProfileTitle(ctx, models.UpdateProfileTitleParams{
-		UserUuid:          pgtype.Text{String: userUUID, Valid: true},
+		UserUuid:          userUUID,
 		Title:             pgtype.Text{String: fullName, Valid: fullName != ""},
 		TitleOrganization: pgtype.Text{String: orgCode, Valid: orgCode != ""},
 	})

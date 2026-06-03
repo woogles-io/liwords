@@ -244,7 +244,7 @@ LIMIT $1
 `
 
 type GetAnalysisLeaderboardRow struct {
-	Username      pgtype.Text
+	Username      string
 	AnalysisCount int64
 }
 
@@ -371,7 +371,7 @@ LIMIT $1
 `
 
 type GetContributorsLeaderboardRow struct {
-	Username      pgtype.Text
+	Username      string
 	AnalysisCount int64
 }
 

@@ -520,8 +520,8 @@ func TestRecalculateStandingsPreservesMI(t *testing.T) {
 	}
 
 	store.registrations[divID] = []models.GetDivisionRegistrationsRow{
-		{UserID: 1, Username: pgtype.Text{String: "alice", Valid: true}},
-		{UserID: 2, Username: pgtype.Text{String: "bob", Valid: true}},
+		{UserID: 1, Username: "alice"},
+		{UserID: 2, Username: "bob"},
 	}
 
 	store.gameResults[divID] = []models.GetDivisionGameResultsRow{
@@ -587,8 +587,8 @@ func TestRecalculateStandingsSkipsOutcomesForActiveSeason(t *testing.T) {
 	}
 
 	store.registrations[divID] = []models.GetDivisionRegistrationsRow{
-		{UserID: 1, Username: pgtype.Text{String: "alice", Valid: true}},
-		{UserID: 2, Username: pgtype.Text{String: "bob", Valid: true}},
+		{UserID: 1, Username: "alice"},
+		{UserID: 2, Username: "bob"},
 	}
 
 	store.gameResults[divID] = []models.GetDivisionGameResultsRow{

@@ -13,7 +13,6 @@ import (
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
@@ -219,7 +218,7 @@ func (s *OAuthIntegrationService) patreonCallback(w http.ResponseWriter, r *http
 	}
 
 	id, err := s.queries.AddOrUpdateIntegration(ctx, models.AddOrUpdateIntegrationParams{
-		UserUuid:        pgtype.Text{String: sess.UserUUID, Valid: true},
+		UserUuid:        sess.UserUUID,
 		IntegrationName: PatreonIntegrationName,
 		Data:            td,
 	})
@@ -436,7 +435,7 @@ func DetermineUserTier(ctx context.Context, userID string, queries *models.Queri
 
 	row, err := queries.GetIntegrationData(ctx, models.GetIntegrationDataParams{
 		IntegrationName: PatreonIntegrationName,
-		UserUuid:        pgtype.Text{String: userID, Valid: true},
+		UserUuid:        userID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

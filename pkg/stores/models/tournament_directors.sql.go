@@ -70,8 +70,8 @@ ORDER BY td.created_at ASC
 
 type ListTournamentDirectorsRow struct {
 	UserID   int32
-	UserUuid pgtype.Text
-	Username pgtype.Text
+	UserUuid string
+	Username string
 	Role     TournamentDirectorRole
 }
 

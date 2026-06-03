@@ -70,85 +70,102 @@ func (s *DBStore) Disconnect() {
 	s.dbPool.Close()
 }
 
+// userFromRow converts a sqlc user+profile row to an entity.User without the profile.
+// Callers that need the profile should call profileFromRow separately.
+func userFromRow(id int32, username, uuid, email, password string, internalBot bool, notoriety int32,
+	verified bool, verificationToken pgtype.Text, verificationExpiresAt pgtype.Timestamptz) *entity.User {
+	return &entity.User{
+		ID:                    uint(id),
+		Username:              username,
+		UUID:                  uuid,
+		Email:                 email,
+		Password:              password,
+		IsBot:                 internalBot,
+		Notoriety:             int(notoriety),
+		Verified:              verified,
+		VerificationToken:     verificationToken.String,
+		VerificationExpiresAt: verificationExpiresAt.Time,
+	}
+}
+
+// profileFromRow converts the LEFT JOIN profile fields to an entity.Profile.
+// Returns nil if the profile row doesn't exist (first_name is NULL).
+func profileFromRow(firstName, lastName, birthDate, countryCode, title, about, avatarURL pgtype.Text,
+	ratings entity.Ratings, stats entity.ProfileStats) *entity.Profile {
+	if !firstName.Valid {
+		return nil
+	}
+	return &entity.Profile{
+		FirstName:   firstName.String,
+		LastName:    lastName.String,
+		BirthDate:   birthDate.String,
+		CountryCode: countryCode.String,
+		Title:       title.String,
+		About:       about.String,
+		AvatarUrl:   avatarURL.String,
+		Ratings:     ratings,
+		Stats:       stats,
+	}
+}
+
 // Get gets a user by username.
 func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetUserWithProfileByUsername(ctx, username)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: username, IncludeProfile: true})
-	if err != nil {
-		return nil, err
+	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+	if u.Profile == nil {
+		return nil, errors.New("profile not found")
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return entu, nil
+	return u, nil
 }
 
 func (s *DBStore) SetNotoriety(ctx context.Context, uuid string, notoriety int) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, []string{"notoriety"}, []interface{}{notoriety}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.SetUserNotoriety(ctx, models.SetUserNotorietyParams{
+		Notoriety: int32(notoriety),
+		Uuid:      uuid,
+	})
 }
 
 // GetByEmail gets the user by email. It does not try to get the profile.
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.
 func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetUserByEmail(ctx, email)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByEmail, Value: strings.ToLower(email)})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return entu, nil
+	return userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot,
+		row.Notoriety, row.Verified, row.VerificationToken, row.VerificationExpiresAt), nil
 }
 
 // GetByUUID gets user by UUID
 func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetUserWithProfileByUUID(ctx, uuid)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid, IncludeProfile: true})
-	if err != nil {
-		return nil, err
+	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+	if u.Profile == nil {
+		return nil, errors.New("profile not found")
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return entu, nil
+	return u, nil
 }
 
 // GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
@@ -157,22 +174,15 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	if apikey == "" {
 		return nil, errors.New("api-key is blank")
 	}
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetUserByAPIKey(ctx, pgtype.Text{String: apikey, Valid: true})
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByAPIKey, Value: apikey})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return entu, nil
+	return userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot,
+		row.Notoriety, row.Verified, row.VerificationToken, row.VerificationExpiresAt), nil
 }
 
 // GetByVerificationToken gets a user by their verification token
@@ -180,79 +190,36 @@ func (s *DBStore) GetByVerificationToken(ctx context.Context, token string) (*en
 	if token == "" {
 		return nil, errors.New("verification token is blank")
 	}
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetUserWithProfileByVerificationToken(ctx, pgtype.Text{String: token, Valid: true})
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{
-		TableType:      common.UsersTable,
-		SelectByType:   common.SelectByVerificationToken,
-		Value:          token,
-		IncludeProfile: true,
-	})
-	if err != nil {
-		return nil, err
+	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+	if u.Profile == nil {
+		return nil, errors.New("profile not found")
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-
-	return entu, nil
+	return u, nil
 }
 
 // SetEmailVerified marks a user's email as verified or unverified
 func (s *DBStore) SetEmailVerified(ctx context.Context, uuid string, verified bool) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	// Set verified status (keep verification token for idempotency - it will be cleaned up by maintenance job)
-	if verified {
-		err = common.Update(ctx, tx, []string{"verified"},
-			[]interface{}{true},
-			&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	} else {
-		err = common.Update(ctx, tx, []string{"verified"},
-			[]interface{}{false},
-			&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	// Keep verification token for idempotency - it will be cleaned up by a maintenance job.
+	return s.queries.SetUserVerified(ctx, models.SetUserVerifiedParams{Verified: verified, Uuid: uuid})
 }
 
 // UpdateVerificationToken updates a user's verification token and expiration
 func (s *DBStore) UpdateVerificationToken(ctx context.Context, uuid string, token string, expiresAt time.Time) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, []string{"verification_token", "verification_expires_at"},
-		[]interface{}{token, expiresAt},
-		&common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.SetUserVerificationToken(ctx, models.SetUserVerificationTokenParams{
+		VerificationToken:     pgtype.Text{String: token, Valid: true},
+		VerificationExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		Uuid:                  uuid,
+	})
 }
 
 // DeleteUnverifiedUsers deletes users who haven't verified their email after the specified duration
@@ -337,47 +304,15 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 
 // SetPassword sets the password for the user. The password is already hashed.
 func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	err = common.Update(ctx, tx, []string{"password"}, []interface{}{hashpass}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.SetUserPassword(ctx, models.SetUserPasswordParams{Password: hashpass, Uuid: uuid})
 }
 
 // SetAvatarUrl sets the avatar_url (profile field) for the user.
 func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
-		return err
-	}
-
-	err = common.Update(ctx, tx, []string{"avatar_url"}, []interface{}{avatarUrl}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.SetProfileAvatarUrl(ctx, models.SetProfileAvatarUrlParams{
+		AvatarUrl: pgtype.Text{String: avatarUrl, Valid: true},
+		Uuid:      uuid,
+	})
 }
 
 func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
@@ -393,9 +328,9 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	now := time.Now()
 
 	for pi := range profiles {
-		username := profiles[pi].Username.String
+		username := profiles[pi].Username
 		avatarUrl := profiles[pi].AvatarUrl.String
-		if avatarUrl == "" && profiles[pi].InternalBot.Bool {
+		if avatarUrl == "" && profiles[pi].InternalBot {
 			// see entity/user.go
 			log.Debug().Str("username", username).Msg("using-default-bot-avatar")
 			avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
@@ -425,7 +360,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			)
 		}
 
-		response[profiles[pi].Uuid.String] = &pb.BriefProfile{
+		response[profiles[pi].Uuid] = &pb.BriefProfile{
 			Username:              username,
 			CountryCode:           profiles[pi].CountryCode.String,
 			AvatarUrl:             censoredAvatarUrl,
@@ -447,26 +382,25 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	}
 	defer tx.Rollback(ctx)
 
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
+	qtx := s.queries.WithTx(tx)
+	err = qtx.SetProfilePersonalInfo(ctx, models.SetProfilePersonalInfoParams{
+		FirstName:   pgtype.Text{String: firstName, Valid: true},
+		LastName:    pgtype.Text{String: lastName, Valid: true},
+		BirthDate:   pgtype.Text{String: birthDate, Valid: true},
+		CountryCode: pgtype.Text{String: countryCode, Valid: true},
+		About:       pgtype.Text{String: about, Valid: true},
+		Uuid:        uuid,
+	})
 	if err != nil {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "birth_date", "country_code", "about"}, []interface{}{firstName, lastName, birthDate, countryCode, about}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
+	err = qtx.SetUserEmail(ctx, models.SetUserEmailParams{Email: email, Uuid: uuid})
 	if err != nil {
 		return err
 	}
 
-	err = common.Update(ctx, tx, []string{"email"}, []interface{}{email}, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUUID, Value: uuid})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
@@ -478,31 +412,23 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	}
 	defer tx.Rollback(ctx)
 
-	p0id, err := common.GetUserDBIDFromUUID(ctx, tx, p0uuid)
+	qtx := s.queries.WithTx(tx)
+	p0id, err := qtx.GetUserDBIDFromUUID(ctx, p0uuid)
+	if err != nil {
+		return err
+	}
+	p1id, err := qtx.GetUserDBIDFromUUID(ctx, p1uuid)
 	if err != nil {
 		return err
 	}
 
-	p1id, err := common.GetUserDBIDFromUUID(ctx, tx, p1uuid)
-	if err != nil {
+	if err = common.UpdateUserRating(ctx, tx, int64(p0id), variant, p0Rating); err != nil {
 		return err
 	}
-
-	err = common.UpdateUserRating(ctx, tx, p0id, variant, p0Rating)
-	if err != nil {
+	if err = common.UpdateUserRating(ctx, tx, int64(p1id), variant, p1Rating); err != nil {
 		return err
 	}
-
-	err = common.UpdateUserRating(ctx, tx, p1id, variant, p1Rating)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -513,63 +439,58 @@ func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, va
 	}
 	defer tx.Rollback(ctx)
 
-	p0id, err := common.GetUserDBIDFromUUID(ctx, tx, p0uuid)
+	qtx := s.queries.WithTx(tx)
+	p0id, err := qtx.GetUserDBIDFromUUID(ctx, p0uuid)
+	if err != nil {
+		return err
+	}
+	p1id, err := qtx.GetUserDBIDFromUUID(ctx, p1uuid)
 	if err != nil {
 		return err
 	}
 
-	p1id, err := common.GetUserDBIDFromUUID(ctx, tx, p1uuid)
-	if err != nil {
+	if err = common.UpdateUserStats(ctx, tx, int64(p0id), variant, p0Stats); err != nil {
 		return err
 	}
-
-	err = common.UpdateUserStats(ctx, tx, p0id, variant, p0Stats)
-	if err != nil {
+	if err = common.UpdateUserStats(ctx, tx, int64(p1id), variant, p1Stats); err != nil {
 		return err
 	}
-
-	err = common.UpdateUserStats(ctx, tx, p1id, variant, p1Stats)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCode) (*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	username := botNames[botType]
 
 	var botUsername string
-	err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE AND lower(username) = lower($1)`, username).Scan(&botUsername)
+	err := s.dbPool.QueryRow(ctx,
+		`SELECT username FROM users WHERE internal_bot IS TRUE AND lower(username) = lower($1)`, username).Scan(&botUsername)
 	if err == pgx.ErrNoRows {
 		// Just pick any random bot. This should not be done on prod.
 		log.Warn().Msg("picking-random-bot")
-		err = tx.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE ORDER BY RANDOM()`).Scan(&botUsername)
+		err = s.dbPool.QueryRow(ctx, `SELECT username FROM users WHERE internal_bot IS TRUE ORDER BY RANDOM()`).Scan(&botUsername)
 		if err == pgx.ErrNoRows {
 			return nil, errors.New("no bots found")
 		}
 	}
-
-	entu, err := common.GetUserBy(ctx, tx, &common.CommonDBConfig{TableType: common.UsersTable, SelectByType: common.SelectByUsername, Value: strings.ToLower(botUsername), IncludeProfile: true})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	row, err := s.queries.GetUserWithProfileByUsername(ctx, botUsername)
+	if err == pgx.ErrNoRows {
+		return nil, errors.New("bot user not found")
+	}
+	if err != nil {
 		return nil, err
 	}
-
-	return entu, nil
+	u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+		row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+	u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+		row.About, row.AvatarUrl, row.Ratings, row.Stats)
+	if u.Profile == nil {
+		return nil, errors.New("profile not found")
+	}
+	return u, nil
 }
 
 // AddFollower creates a follower -> target follow.
@@ -852,99 +773,29 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
-		return err
-	}
-
-	err = common.Update(ctx, tx, []string{"stats"}, []interface{}{&entity.Stats{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.ResetProfileStats(ctx, models.ResetProfileStatsParams{
+		Stats: entity.ProfileStats{},
+		Uuid:  uuid,
+	})
 }
 
 func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
-		return err
-	}
-
-	err = common.Update(ctx, tx, []string{"ratings"}, []interface{}{&entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.ResetProfileRatings(ctx, models.ResetProfileRatingsParams{
+		Ratings: entity.Ratings{},
+		Uuid:    uuid,
+	})
 }
 
 func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uuid string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
-		return err
-	}
-
-	err = common.Update(ctx, tx, []string{"stats", "ratings"}, []interface{}{&entity.Stats{}, &entity.Ratings{}}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.ResetProfileStatsAndRatings(ctx, models.ResetProfileStatsAndRatingsParams{
+		Stats:   entity.ProfileStats{},
+		Ratings: entity.Ratings{},
+		Uuid:    uuid,
+	})
 }
 
 func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	id, err := common.GetUserDBIDFromUUID(ctx, tx, uuid)
-	if err != nil {
-		return err
-	}
-
-	err = common.Update(ctx, tx, []string{"first_name", "last_name", "about", "title", "avatar_url", "country_code"}, []interface{}{"", "", "", "", "", ""}, &common.CommonDBConfig{TableType: common.ProfilesTable, SelectByType: common.SelectByUserID, Value: id})
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.ResetProfilePersonalInfo(ctx, uuid)
 }
 
 func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
@@ -1127,7 +978,7 @@ func getSingleActionDB(ctx context.Context, tx pgx.Tx, userUUID string, actionTy
 		return nil, nil, fmt.Errorf("not exactly one action %s found for user %s, found %d", actionType.String(), userUUID, len(modActions))
 	}
 
-	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	err = addUserUUIDsToActions(ctx, models.New(tx), modActions, dbUniqueValues)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1150,7 +1001,7 @@ func getActionsDB(ctx context.Context, tx pgx.Tx, userUUID string) (map[string]*
 		return nil, nil, err
 	}
 
-	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	err = addUserUUIDsToActions(ctx, models.New(tx), modActions, dbUniqueValues)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1195,25 +1046,25 @@ func updateActionForRemoval(ctx context.Context, tx pgx.Tx, removedActionDBID in
 	return err
 }
 
-func addUserUUID(ctx context.Context, tx pgx.Tx, userUUID string, userUUIDtoDBID map[string]int64) error {
+func addUserUUID(ctx context.Context, qtx *models.Queries, userUUID string, userUUIDtoDBID map[string]int64) error {
 	_, exists := userUUIDtoDBID[userUUID]
 	if exists {
 		return nil
 	}
-	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	id, err := qtx.GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return err
 	}
-	userUUIDtoDBID[userUUID] = userDBID
+	userUUIDtoDBID[userUUID] = int64(id)
 	return nil
 }
 
-func addUserDBID(ctx context.Context, tx pgx.Tx, userDBID int64, userDBIDtoUUID map[int64]string) error {
+func addUserDBID(ctx context.Context, qtx *models.Queries, userDBID int64, userDBIDtoUUID map[int64]string) error {
 	_, exists := userDBIDtoUUID[userDBID]
 	if exists {
 		return nil
 	}
-	userUUID, err := common.GetUserUUIDFromDBID(ctx, tx, userDBID)
+	userUUID, err := qtx.GetUserUUIDFromDBID(ctx, int32(userDBID))
 	if err != nil {
 		return err
 	}
@@ -1221,18 +1072,18 @@ func addUserDBID(ctx context.Context, tx pgx.Tx, userDBID int64, userDBIDtoUUID 
 	return nil
 }
 
-func getUserDBIDsFromActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAction) (map[string]int64, error) {
+func getUserDBIDsFromActions(ctx context.Context, qtx *models.Queries, actions []*ms.ModAction) (map[string]int64, error) {
 	userUUIDtoDBID := map[string]int64{}
 	for _, action := range actions {
 		if action.UserId == "" {
 			return nil, fmt.Errorf("user id missing for action %s", action.Type.String())
 		}
-		err := addUserUUID(ctx, tx, action.UserId, userUUIDtoDBID)
+		err := addUserUUID(ctx, qtx, action.UserId, userUUIDtoDBID)
 		if err != nil {
 			return nil, err
 		}
 		if action.ApplierUserId != "" {
-			err = addUserUUID(ctx, tx, action.ApplierUserId, userUUIDtoDBID)
+			err = addUserUUID(ctx, qtx, action.ApplierUserId, userUUIDtoDBID)
 			if err != nil {
 				return nil, err
 			}
@@ -1241,10 +1092,10 @@ func getUserDBIDsFromActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAc
 	return userUUIDtoDBID, nil
 }
 
-func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModAction, dbVals []*DBUniqueValues) error {
+func addUserUUIDsToActions(ctx context.Context, qtx *models.Queries, actions []*ms.ModAction, dbVals []*DBUniqueValues) error {
 	userDBIDtoUUID := map[int64]string{}
 	for idx, action := range actions {
-		err := addUserDBID(ctx, tx, dbVals[idx].userDBID, userDBIDtoUUID)
+		err := addUserDBID(ctx, qtx, dbVals[idx].userDBID, userDBIDtoUUID)
 		if err != nil {
 			return err
 		}
@@ -1252,7 +1103,7 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 		action.UserId = userDBIDtoUUID[dbVals[idx].userDBID]
 
 		if dbVals[idx].applierDBID.Valid {
-			err = addUserDBID(ctx, tx, dbVals[idx].applierDBID.Int64, userDBIDtoUUID)
+			err = addUserDBID(ctx, qtx, dbVals[idx].applierDBID.Int64, userDBIDtoUUID)
 			if err != nil {
 				return err
 			}
@@ -1260,7 +1111,7 @@ func addUserUUIDsToActions(ctx context.Context, tx pgx.Tx, actions []*ms.ModActi
 		}
 
 		if dbVals[idx].removerDBID.Valid {
-			err = addUserDBID(ctx, tx, dbVals[idx].removerDBID.Int64, userDBIDtoUUID)
+			err = addUserDBID(ctx, qtx, dbVals[idx].removerDBID.Int64, userDBIDtoUUID)
 			if err != nil {
 				return err
 			}
@@ -1301,11 +1152,10 @@ func (s *DBStore) GetActionsBatch(ctx context.Context, userUUIDs []string) (map[
 	result := make(map[string]map[string]*ms.ModAction)
 
 	for _, row := range rows {
-		// Convert pgtype.Text to string
-		if !row.UserUuid.Valid {
+		if row.UserUuid == "" {
 			continue
 		}
-		userUUID := row.UserUuid.String
+		userUUID := row.UserUuid
 
 		// Initialize map for this user if needed
 		if _, exists := result[userUUID]; !exists {
@@ -1345,7 +1195,8 @@ func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.
 	}
 	defer tx.Rollback(ctx)
 
-	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	qtx := s.queries.WithTx(tx)
+	userDBID, err := qtx.GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1354,15 +1205,13 @@ func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.
 	WHERE user_actions.user_id = $1 AND (user_actions.removed_time IS NOT NULL OR (user_actions.end_time IS NOT NULL AND user_actions.end_time < NOW()))
 	ORDER BY start_time ASC`, userActionsSQLSelection)
 	rows, err := tx.Query(ctx, query, userDBID)
-	// query := fmt.Sprintf(`SELECT %s	FROM user_actions`, userActionsSQLSelection)
-	// rows, err := tx.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
 	modActions, dbUniqueValues, err := scanRowsIntoModActions(ctx, tx, rows)
 
-	err = addUserUUIDsToActions(ctx, tx, modActions, dbUniqueValues)
+	err = addUserUUIDsToActions(ctx, qtx, modActions, dbUniqueValues)
 	if err != nil {
 		return nil, err
 	}
@@ -1381,7 +1230,8 @@ func applyOrRemoveActionsDB(ctx context.Context, s *DBStore, actions []*ms.ModAc
 	}
 	defer tx.Rollback(ctx)
 
-	userDBIDs, err := getUserDBIDsFromActions(ctx, tx, actions)
+	qtx := s.queries.WithTx(tx)
+	userDBIDs, err := getUserDBIDsFromActions(ctx, qtx, actions)
 	if err != nil {
 		return err
 	}

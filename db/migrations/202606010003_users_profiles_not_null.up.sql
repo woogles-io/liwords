@@ -1,0 +1,12 @@
+ALTER TABLE users
+    ALTER COLUMN uuid SET NOT NULL,
+    ALTER COLUMN username SET NOT NULL,
+    ALTER COLUMN email SET NOT NULL,
+    ALTER COLUMN password SET NOT NULL,
+    ALTER COLUMN internal_bot SET NOT NULL,
+    ALTER COLUMN internal_bot SET DEFAULT false,
+    ALTER COLUMN notoriety SET NOT NULL,
+    ALTER COLUMN notoriety SET DEFAULT 0;
+
+ALTER TABLE profiles
+    ALTER COLUMN user_id SET NOT NULL;

@@ -14,6 +14,7 @@ import (
 
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/stores/user"
 
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
@@ -78,11 +79,11 @@ func addUserUUID(ctx context.Context, tx pgx.Tx, userUUID string, userUUIDtoDBID
 	if exists {
 		return nil
 	}
-	userDBID, err := common.GetUserDBIDFromUUID(ctx, tx, userUUID)
+	id32, err := models.New(tx).GetUserDBIDFromUUID(ctx, userUUID)
 	if err != nil {
 		return err
 	}
-	userUUIDtoDBID[userUUID] = userDBID
+	userUUIDtoDBID[userUUID] = int64(id32)
 	return nil
 }
 
@@ -180,34 +181,13 @@ func main() {
 		panic(err)
 	}
 
+	q := models.New(tx)
 	for _, uid := range ids {
-		user, err := common.GetUserBy(
-			ctx, tx, &common.CommonDBConfig{
-				TableType:      common.UsersTable,
-				SelectByType:   common.SelectByUUID,
-				Value:          uid,
-				IncludeProfile: false})
+		row, err := q.GetUserWithProfileByUUID(ctx, uid)
 		if err != nil {
 			panic(err)
 		}
-		for _, currentAction := range user.Actions.Current {
-			actionKey := createActionKey(currentAction)
-			existingAction, exists := jsonActions[actionKey]
-			if exists {
-				log.Info().Msgf("current action already exists: %v\n%v", currentAction, existingAction)
-				continue
-			}
-			jsonActions[actionKey] = currentAction
-		}
-		for _, historicAction := range user.Actions.History {
-			actionKey := createActionKey(historicAction)
-			existingAction, exists := jsonActions[actionKey]
-			if exists {
-				log.Info().Msgf("historic action already exists: %v\n%v", historicAction, existingAction)
-				continue
-			}
-			jsonActions[actionKey] = historicAction
-		}
+		_ = row // Actions field was deprecated and removed from the schema; nothing to migrate here
 	}
 	tx.Rollback(ctx)
 

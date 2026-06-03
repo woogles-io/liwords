@@ -11,7 +11,6 @@ import (
 	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/mod"
-	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/pkg/user"
 	userservices "github.com/woogles-io/liwords/pkg/user/services"
@@ -144,7 +143,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *connect.Request[pb.
 	}
 	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
 
-	badges, err := ps.queries.GetBadgesForUser(ctx, common.ToPGTypeText(user.UUID))
+	badges, err := ps.queries.GetBadgesForUser(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(err)
 	}

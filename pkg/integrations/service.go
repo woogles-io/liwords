@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/woogles-io/liwords/pkg/apiserver"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
@@ -29,7 +28,7 @@ func (s *IntegrationService) GetIntegrations(ctx context.Context, req *connect.R
 		return nil, apiserver.Unauthenticated("need auth for this endpoint")
 	}
 
-	integrations, err := s.q.GetIntegrations(ctx, pgtype.Text{String: sess.UserUUID, Valid: true})
+	integrations, err := s.q.GetIntegrations(ctx, sess.UserUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +67,8 @@ func (s *IntegrationService) DeleteIntegration(ctx context.Context, req *connect
 	if err != nil {
 		return nil, apiserver.InvalidArg("invalid uuid")
 	}
-	userUuid := pgtype.Text{String: sess.UserUUID, Valid: true}
-
 	err = s.q.DeleteIntegration(ctx, models.DeleteIntegrationParams{
-		UserUuid:        userUuid,
+		UserUuid:        sess.UserUUID,
 		IntegrationUuid: iuuid,
 	})
 	if err != nil {

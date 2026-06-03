@@ -36,7 +36,7 @@ ORDER BY users.uuid, user_actions.action_type, user_actions.start_time DESC
 `
 
 type GetActionsBatchRow struct {
-	UserUuid    pgtype.Text
+	UserUuid    string
 	ID          int64
 	UserID      int64
 	ActionType  int32

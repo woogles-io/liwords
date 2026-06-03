@@ -82,8 +82,8 @@ type GetCommentsForAllGamesParams struct {
 type GetCommentsForAllGamesRow struct {
 	ID          uuid.UUID
 	GameUuid    pgtype.Text
-	UserUuid    pgtype.Text
-	Username    pgtype.Text
+	UserUuid    string
+	Username    string
 	EventNumber int32
 	EditedAt    pgtype.Timestamptz
 	Comment     string
@@ -141,8 +141,8 @@ type GetCommentsForCollectionGamesParams struct {
 type GetCommentsForCollectionGamesRow struct {
 	ID          uuid.UUID
 	GameUuid    pgtype.Text
-	UserUuid    pgtype.Text
-	Username    pgtype.Text
+	UserUuid    string
+	Username    string
 	EventNumber int32
 	EditedAt    pgtype.Timestamptz
 	Comment     string
@@ -191,8 +191,8 @@ ORDER BY game_comments.created_at ASC
 type GetCommentsForGameRow struct {
 	ID          uuid.UUID
 	GameUuid    pgtype.Text
-	UserUuid    pgtype.Text
-	Username    pgtype.Text
+	UserUuid    string
+	Username    string
 	EventNumber int32
 	EditedAt    pgtype.Timestamptz
 	Comment     string

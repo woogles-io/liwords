@@ -128,3 +128,14 @@ func (q *Queries) GetPotentialPuzzleGamesAvoidBots(ctx context.Context, arg GetP
 	}
 	return items, nil
 }
+
+const getPuzzleDBIDFromUUID = `-- name: GetPuzzleDBIDFromUUID :one
+SELECT id FROM puzzles WHERE uuid = $1
+`
+
+func (q *Queries) GetPuzzleDBIDFromUUID(ctx context.Context, uuid string) (int64, error) {
+	row := q.db.QueryRow(ctx, getPuzzleDBIDFromUUID, uuid)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}

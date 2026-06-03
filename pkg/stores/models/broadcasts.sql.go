@@ -199,7 +199,7 @@ type GetActiveBroadcastsRow struct {
 	Active              bool
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
-	CreatorUsername     pgtype.Text
+	CreatorUsername     string
 }
 
 func (q *Queries) GetActiveBroadcasts(ctx context.Context) ([]GetActiveBroadcastsRow, error) {
@@ -274,7 +274,7 @@ type GetAllBroadcastsRow struct {
 	Active              bool
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
-	CreatorUsername     pgtype.Text
+	CreatorUsername     string
 }
 
 func (q *Queries) GetAllBroadcasts(ctx context.Context) ([]GetAllBroadcastsRow, error) {
@@ -326,8 +326,8 @@ WHERE ba.broadcast_id = $1
 `
 
 type GetBroadcastAnnotatorsRow struct {
-	Uuid     pgtype.Text
-	Username pgtype.Text
+	Uuid     string
+	Username string
 }
 
 func (q *Queries) GetBroadcastAnnotators(ctx context.Context, broadcastID int32) ([]GetBroadcastAnnotatorsRow, error) {
@@ -381,7 +381,7 @@ type GetBroadcastBySlugRow struct {
 	Active              bool
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
-	CreatorUsername     pgtype.Text
+	CreatorUsername     string
 }
 
 func (q *Queries) GetBroadcastBySlug(ctx context.Context, slug string) (GetBroadcastBySlugRow, error) {
@@ -443,7 +443,7 @@ type GetBroadcastByUUIDRow struct {
 	Active              bool
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
-	CreatorUsername     pgtype.Text
+	CreatorUsername     string
 }
 
 func (q *Queries) GetBroadcastByUUID(ctx context.Context, argUuid uuid.UUID) (GetBroadcastByUUIDRow, error) {
@@ -482,8 +482,8 @@ WHERE bd.broadcast_id = $1
 `
 
 type GetBroadcastDirectorsRow struct {
-	Uuid     pgtype.Text
-	Username pgtype.Text
+	Uuid     string
+	Username string
 }
 
 func (q *Queries) GetBroadcastDirectors(ctx context.Context, broadcastID int32) ([]GetBroadcastDirectorsRow, error) {

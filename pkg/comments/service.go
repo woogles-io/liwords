@@ -60,8 +60,8 @@ func (cs *CommentsService) GetGameComments(ctx context.Context, req *connect.Req
 			return &pb.GameComment{
 				CommentId:   c.ID.String(),
 				GameId:      c.GameUuid.String,
-				UserId:      c.UserUuid.String,
-				Username:    c.Username.String,
+				UserId:      c.UserUuid,
+				Username:    c.Username,
 				EventNumber: uint32(c.EventNumber),
 				Comment:     c.Comment,
 				LastEdited:  timestamppb.New(c.EditedAt.Time),
@@ -128,8 +128,8 @@ func (cs *CommentsService) GetCommentsForAllGames(ctx context.Context, req *conn
 			return &pb.GameComment{
 				CommentId:   c.ID.String(),
 				GameId:      c.GameUuid.String,
-				UserId:      c.UserUuid.String,
-				Username:    c.Username.String,
+				UserId:      c.UserUuid,
+				Username:    c.Username,
 				EventNumber: uint32(c.EventNumber),
 				Comment:     c.Comment,
 				LastEdited:  timestamppb.New(c.EditedAt.Time),
@@ -161,8 +161,8 @@ func (cs *CommentsService) GetCollectionComments(ctx context.Context, req *conne
 			return &pb.GameComment{
 				CommentId:   c.ID.String(),
 				GameId:      c.GameUuid.String,
-				UserId:      c.UserUuid.String,
-				Username:    c.Username.String,
+				UserId:      c.UserUuid,
+				Username:    c.Username,
 				EventNumber: uint32(c.EventNumber),
 				Comment:     c.Comment,
 				LastEdited:  timestamppb.New(c.EditedAt.Time),
