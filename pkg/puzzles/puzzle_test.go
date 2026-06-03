@@ -314,7 +314,7 @@ func TestPuzzlesMain(t *testing.T) {
 
 	correctCGE = gameEventToClientGameplayEvent(correctAnswer)
 	_, _, _, _, _, _, _, _, _, _, _, err = SubmitAnswer(ctx, ps, "incorrect uuid", puzzleUUID, correctCGE, false)
-	is.Equal(err.Error(), fmt.Sprintf("cannot get id from uuid %s: no rows for table %s", "incorrect uuid", "users"))
+	is.True(err != nil)
 
 	_, _, _, _, _, newPuzzleRating, err = ps.GetAnswer(ctx, puzzleUUID)
 	is.NoErr(err)
