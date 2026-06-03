@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Card, AutoComplete, Button, App, Tag } from "antd";
+import { Card, AutoComplete, Button, App } from "antd";
 import { useMutation } from "@connectrpc/connect-query";
 import { useClient } from "../utils/hooks/connect";
 import { useDebounce } from "../utils/debounce";
@@ -163,11 +163,6 @@ export const InviteUserToLeaguesWidget = () => {
     <Card
       className="invite-user-card"
       style={{ marginBottom: 32, marginTop: 32 }}
-      title={
-        <span>
-          League Player Access <Tag color="blue">League Promoter</Tag>
-        </span>
-      }
     >
       <h3>Invite Users to Leagues</h3>
       <p className="invite-description">
