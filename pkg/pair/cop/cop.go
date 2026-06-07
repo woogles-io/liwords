@@ -306,16 +306,7 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			// Distance is ceil(numPlayers/3)
-			lowestPCIndex := getLowestCasherIndex(pargs)
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
-			if ri > lowestPCIndex {
-				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
-				if rj-ri > dist {
-					return majorPenalty
-				}
-				lowestContender = pargs.copdata.LowestRankAbsolutely[ri]
-			}
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
 				casherDiff := lowestContender - rj
 				if casherDiff < 0 {

@@ -836,6 +836,25 @@ func TestCOPWeights(t *testing.T) {
 	// for pairings with a gibsonized player are squared.
 	is.Equal(resp.Pairings[9], int32(25))
 	is.Equal(resp.Pairings[25], int32(9))
+
+	// PC weight uses LowestPossibleHopeNth exclusively for all hopeful cashers,
+	// including players ranked outside the prize positions. Under the old code,
+	// a separate dist-check + LowestRankAbsolutely path applied for ri > lowestPCIndex,
+	// producing different (wider) pairings. The new code uses LowestPossibleHopeNth
+	// consistently, resulting in tighter, more meaningful casher-relevant matchups.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// whatnoloan and condorave still play (unchanged)
+	is.Equal(resp.Pairings[1], int32(3))
+	is.Equal(resp.Pairings[3], int32(1))
+	// Players outside prize positions (PlacePrizes=4) are now paired via
+	// LowestPossibleHopeNth. Old code paired player 4 with 7 and player 5 with 14.
+	is.Equal(resp.Pairings[4], int32(10))
+	is.Equal(resp.Pairings[10], int32(4))
+	is.Equal(resp.Pairings[5], int32(13))
+	is.Equal(resp.Pairings[13], int32(5))
 }
 
 func TestCOPSuccess(t *testing.T) {
