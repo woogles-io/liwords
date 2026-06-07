@@ -855,6 +855,24 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[10], int32(4))
 	is.Equal(resp.Pairings[5], int32(13))
 	is.Equal(resp.Pairings[13], int32(5))
+
+	// PC weight retry: when a pairing would return majorPenalty (rj > lowestContender),
+	// the handler tries lowestContender+1 once. If rj == lowestContender+1, the pair
+	// receives a casherDiff weight of 0 instead of majorPenalty.
+	// Kingston 2023 after round 15 demonstrates this: without the retry the matching
+	// is forced into different (suboptimal) pairings. With the retry, players are
+	// allowed to pair with the rank just beyond their lowestContender, producing
+	// better overall matchups.
+	req = pairtestutils.CreateKingston2023AfterRound15PairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Player 0 is paired with player 18 (one rank below their natural lowestContender),
+	// enabled by the retry path that avoids majorPenalty.
+	is.Equal(resp.Pairings[0], int32(18))
+	is.Equal(resp.Pairings[18], int32(0))
+	is.Equal(resp.Pairings[1], int32(8))
+	is.Equal(resp.Pairings[8], int32(1))
 }
 
 func TestCOPSuccess(t *testing.T) {

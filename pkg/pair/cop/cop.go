@@ -306,13 +306,25 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
-			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
-				casherDiff := lowestContender - rj
-				if casherDiff < 0 {
-					casherDiff *= -1
+			pcWeight := func(lowestContender int) int64 {
+				if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
+					casherDiff := lowestContender - rj
+					if casherDiff < 0 {
+						casherDiff *= -1
+					}
+					return int64(math.Pow(float64(casherDiff), 3) * 2)
 				}
-				return int64(math.Pow(float64(casherDiff), 3) * 2)
+				return majorPenalty
+			}
+			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
+			w := pcWeight(lowestContender)
+			if w < majorPenalty {
+				return w
+			}
+			// Single retry: if lowestContender can be incremented, try once more.
+			numPlayers := pargs.copdata.Standings.GetNumPlayers()
+			if lowestContender+1 < numPlayers {
+				return pcWeight(lowestContender + 1)
 			}
 			return majorPenalty
 		},
