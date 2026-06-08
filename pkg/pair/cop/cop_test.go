@@ -717,7 +717,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 		Pairings: pairings,
 	})
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
 
 	// This is the second round that control loss is active, so first will
 	// be force paired with the 2 lowest contenders. Therefore, prepairing the lowest

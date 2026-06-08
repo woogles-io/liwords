@@ -498,24 +498,52 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 			forcedWinnerRankIdx := standings.findRankIdx(forcedWinnerPlayerIdx)
-			var switchPairingIdx int
+
+			// Find the forced winner's current position in this round's pairings.
+			switchPairingIdx := -1
+			for idx, rankIdx := range pairings[roundIdx] {
+				if rankIdx == forcedWinnerRankIdx {
+					switchPairingIdx = idx
+					break
+				}
+			}
+
+			// Determine which swap (if any) to apply before simulating the round.
+			// swapIdxA and swapIdxB are the two positions to exchange.
+			swapIdxA, swapIdxB := -1, -1
 			if vsFirst {
+				// Move forced winner to position 1 so they play rank 0 (1st place).
+				swapIdxA = 1
+				swapIdxB = switchPairingIdx
+			} else if switchPairingIdx == 1 {
+				// Forced winner is currently rank 0's factor-pair opponent.
+				// Instead of having them play 1st, swap with another pairing:
+				//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
+				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
+				swapIdxA = 1
+				targetRank := 1
+				if forcedWinnerRankIdx == 1 {
+					targetRank = 2
+				}
 				for idx, rankIdx := range pairings[roundIdx] {
-					if rankIdx == forcedWinnerRankIdx {
-						switchPairingIdx = idx
+					if rankIdx == targetRank {
+						swapIdxB = idx
 						break
 					}
 				}
 			}
-			if vsFirst {
-				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
+
+			if swapIdxA >= 0 && swapIdxB >= 0 {
+				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]
 			}
+
 			timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, stopTimeNano)
 			if timeLimitExceeded {
 				return 0, pb.PairError_TIMEOUT
 			}
-			if vsFirst {
-				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
+
+			if swapIdxA >= 0 && swapIdxB >= 0 {
+				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]
 			}
 		}
 		playerInFirst := standings.GetPlayerIndex(0)
