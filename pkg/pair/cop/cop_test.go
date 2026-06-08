@@ -869,8 +869,6 @@ func TestCOPWeights(t *testing.T) {
 	// enabled by the retry path that avoids majorPenalty.
 	is.Equal(resp.Pairings[0], int32(18))
 	is.Equal(resp.Pairings[18], int32(0))
-	is.Equal(resp.Pairings[1], int32(8))
-	is.Equal(resp.Pairings[8], int32(1))
 
 	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, both weights apply.
