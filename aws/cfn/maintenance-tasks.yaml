@@ -24,6 +24,15 @@ Resources:
                   - ses:SendEmail
                   - ses:SendRawEmail
                 Resource: '*'
+        - PolicyName: GameHistoryS3Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: 'arn:aws:s3:::woogles-gamehistories/*'
       Tags:
         - Key: Application
           Value: liwords
