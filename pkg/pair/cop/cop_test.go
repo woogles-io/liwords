@@ -874,17 +874,36 @@ func TestCOPWeights(t *testing.T) {
 
 	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, both weights apply.
-	// AlmostGibsonized with Rounds=10 has 2 rounds left (fourth quarter: 2*4=8 <= 10),
-	// so player 4 (a casher, PlacePrizes=4) uses PC weight only and pairs with player 7.
-	// With Rounds=12, there are 4 rounds left (4*4=16 > 12, NOT fourth quarter), so both
-	// PC and RD are active; RD drives player 4 to pair with player 10 instead.
+	//
+	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
+	//
+	// Casher side (player 4, rank 5): in Q4 only PC is active, pairing with player 7 (rank 2).
+	// Outside Q4 (Rounds=12, 4*4=16 > 12), PC+RD both active; RD drives player 4 to player 10 (rank 8).
+	//
+	// Non-casher side (player 10, rank 8): in Q4 only RD is active, so player 10 pairs with
+	// player 13 (rank 9), adjacent ranks. Outside Q4, casher player 4's PC weight targets rank 8
+	// (its lowestContender), pulling player 10 into a pairing with player 4 instead.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Rounds = 12
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Casher: PC+RD active outside Q4; RD widens the pairing for player 4.
 	is.Equal(resp.Pairings[4], int32(10))
 	is.Equal(resp.Pairings[10], int32(4))
+	// Non-casher: outside Q4, casher player 4's PC weight pulls non-casher player 10 into
+	// a pairing with player 4 rather than adjacent non-casher player 13.
+	is.Equal(resp.Pairings[13], int32(17))
+	is.Equal(resp.Pairings[17], int32(13))
+
+	// In Q4 (Rounds=10), non-casher player 10 (rank 8) uses RD only: pairs with
+	// adjacent non-casher player 13 (rank 9) instead of being pulled to casher player 4.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[10], int32(13))
+	is.Equal(resp.Pairings[13], int32(10))
 }
 
 func TestCOPSuccess(t *testing.T) {
