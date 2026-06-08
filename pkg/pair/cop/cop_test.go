@@ -837,11 +837,9 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[9], int32(25))
 	is.Equal(resp.Pairings[25], int32(9))
 
-	// PC weight uses LowestPossibleHopeNth exclusively for all hopeful cashers,
-	// including players ranked outside the prize positions. Under the old code,
-	// a separate dist-check + LowestRankAbsolutely path applied for ri > lowestPCIndex,
-	// producing different (wider) pairings. The new code uses LowestPossibleHopeNth
-	// consistently, resulting in tighter, more meaningful casher-relevant matchups.
+	// PC weight uses LowestPossibleHopeNth exclusively for all hopeful cashers.
+	// In the fourth quarter (2 rounds left of 10), cashers use PC weight only
+	// (RD is suppressed), so they pair with their nearest LowestPossibleHopeNth target.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
@@ -849,12 +847,12 @@ func TestCOPWeights(t *testing.T) {
 	// whatnoloan and condorave still play (unchanged)
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
-	// Players outside prize positions (PlacePrizes=4) are now paired via
-	// LowestPossibleHopeNth. Old code paired player 4 with 7 and player 5 with 14.
-	is.Equal(resp.Pairings[4], int32(10))
-	is.Equal(resp.Pairings[10], int32(4))
-	is.Equal(resp.Pairings[5], int32(13))
-	is.Equal(resp.Pairings[13], int32(5))
+	// In the fourth quarter, RD is suppressed for cashers; PC weight alone drives
+	// players 4 and 5 to their nearest LowestPossibleHopeNth opponents.
+	is.Equal(resp.Pairings[4], int32(7))
+	is.Equal(resp.Pairings[7], int32(4))
+	is.Equal(resp.Pairings[5], int32(14))
+	is.Equal(resp.Pairings[14], int32(5))
 
 	// PC weight retry: when a pairing would return majorPenalty (rj > lowestContender),
 	// the handler tries lowestContender+1 once. If rj == lowestContender+1, the pair
@@ -873,6 +871,20 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[18], int32(0))
 	is.Equal(resp.Pairings[1], int32(8))
 	is.Equal(resp.Pairings[8], int32(1))
+
+	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
+	// and non-cashers use RD weight only. Outside the fourth quarter, both weights apply.
+	// AlmostGibsonized with Rounds=10 has 2 rounds left (fourth quarter: 2*4=8 <= 10),
+	// so player 4 (a casher, PlacePrizes=4) uses PC weight only and pairs with player 7.
+	// With Rounds=12, there are 4 rounds left (4*4=16 > 12, NOT fourth quarter), so both
+	// PC and RD are active; RD drives player 4 to pair with player 10 instead.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Rounds = 12
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[4], int32(10))
+	is.Equal(resp.Pairings[10], int32(4))
 }
 
 func TestCOPSuccess(t *testing.T) {

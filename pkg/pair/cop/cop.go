@@ -280,6 +280,12 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
+			// In the fourth quarter, cashers use PC weight exclusively.
+			if pargs.roundsRemaining*4 <= int(pargs.req.Rounds) &&
+				!pargs.copdata.GibsonizedPlayers[ri] &&
+				ri <= pargs.lowestPossibleHopeCasher {
+				return 0
+			}
 			// If
 			//
 			// - either play is gibsonized, or
