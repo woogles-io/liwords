@@ -322,17 +322,7 @@ var weightPolicies = []weightPolicy{
 				}
 				return majorPenalty
 			}
-			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
-			w := pcWeight(lowestContender)
-			if w < majorPenalty {
-				return w
-			}
-			// Single retry: if lowestContender can be incremented, try once more.
-			numPlayers := pargs.copdata.Standings.GetNumPlayers()
-			if lowestContender+1 < numPlayers {
-				return pcWeight(lowestContender + 1)
-			}
-			return majorPenalty
+			return pcWeight(pargs.copdata.LowestPossibleHopeNth[ri])
 		},
 	},
 	{
@@ -1193,79 +1183,113 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	edges := []*matching.Edge{}
-
 	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
-	pairingDetails := [][]string{}
 	pairingDetailsheader := append(matchupHeader, []string{"S", "C", "PTP", "Total"}...)
 	for _, weightPolicy := range weightPolicies {
 		pairingDetailsheader = append(pairingDetailsheader, weightPolicy.name)
 	}
 	numColums := len(pairingDetailsheader)
-	pairingsToDetailsIndex := map[string]int{}
-	for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
-		for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
-			pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
-			pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
-			disallowReason, disallowPair := disallowedPairs[pairKey]
-			// Pairing selected bool placeholder
-			pairingDataRow = append(pairingDataRow, "")
-			if disallowPair {
-				pairingDataRow = append(pairingDataRow, disallowReason)
-				emptyColsToAdd := numColums - len(pairingDataRow)
-				for i := 0; i < emptyColsToAdd; i++ {
+
+	var pairings []int
+	var totalWeight int64
+	var pairingDetails [][]string
+	var pairingsToDetailsIndex map[string]int
+
+	for {
+		edges := []*matching.Edge{}
+		edgeWeights := map[string]int64{}
+		pairingDetails = [][]string{}
+		pairingsToDetailsIndex = map[string]int{}
+
+		for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
+			for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
+				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
+				pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
+				disallowReason, disallowPair := disallowedPairs[pairKey]
+				// Pairing selected bool placeholder
+				pairingDataRow = append(pairingDataRow, "")
+				if disallowPair {
+					pairingDataRow = append(pairingDataRow, disallowReason)
+					emptyColsToAdd := numColums - len(pairingDataRow)
+					for i := 0; i < emptyColsToAdd; i++ {
+						pairingDataRow = append(pairingDataRow, "")
+					}
+				} else {
+					// No disallow reason
 					pairingDataRow = append(pairingDataRow, "")
+					// Add the number of repeats for convenience
+					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[pairKey]))
+					// Placeholder for total weight
+					pairingDataRow = append(pairingDataRow, "")
+					weightSum := int64(0)
+					for _, weightPolicy := range weightPolicies {
+						weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
+						weightSum += weight
+						pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
+					}
+					pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
+					rankKey := getRankPairingKey(rankIdxI, rankIdxJ)
+					edgeWeights[rankKey] = weightSum
+					edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
 				}
-			} else {
-				// No disallow reason
-				pairingDataRow = append(pairingDataRow, "")
-				// Add the number of repeats for convenience
-				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[pairKey]))
-				// Placeholder for total weight
-				pairingDataRow = append(pairingDataRow, "")
-				weightSum := int64(0)
-				for _, weightPolicy := range weightPolicies {
-					weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
-					weightSum += weight
-					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
-				}
-				pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
-				edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
+				pairingsToDetailsIndex[getRankPairingKey(rankIdxI, rankIdxJ)] = len(pairingDetails)
+				pairingDetails = append(pairingDetails, pairingDataRow)
 			}
-			pairingsToDetailsIndex[getRankPairingKey(rankIdxI, rankIdxJ)] = len(pairingDetails)
-			pairingDetails = append(pairingDetails, pairingDataRow)
+			if rankIdxI < numPlayerNodes-2 {
+				spacingRow := make([]string, numColums)
+				pairingDetails = append(pairingDetails, spacingRow)
+			}
 		}
-		if rankIdxI < numPlayerNodes-2 {
-			spacingRow := make([]string, numColums)
-			pairingDetails = append(pairingDetails, spacingRow)
-		}
-	}
 
-	pairings, totalWeight, err := matching.MinWeightMatching(edges, true)
-
-	if err != nil {
-		return nil, &pb.PairResponse{
-			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
-			ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
+		var err error
+		pairings, totalWeight, err = matching.MinWeightMatching(edges, true)
+		if err != nil {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
+				ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
+			}
 		}
-	}
 
-	if addBye {
-		pairings = pairings[:len(pairings)-1]
-	}
+		if addBye {
+			pairings = pairings[:len(pairings)-1]
+		}
 
-	if len(pairings) > numPlayers {
-		return nil, &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
-			ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
+		if len(pairings) > numPlayers {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
+				ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
+			}
+		} else if len(pairings) < numPlayers {
+			numUnpairedAtBottom := numPlayers - len(pairings)
+			unpairedIndexes := make([]int, numUnpairedAtBottom)
+			for i := range unpairedIndexes {
+				unpairedIndexes[i] = -1
+			}
+			pairings = append(pairings, unpairedIndexes...)
 		}
-	} else if len(pairings) < numPlayers {
-		numUnpairedAtBottom := numPlayers - len(pairings)
-		unpairedIndexes := make([]int, numUnpairedAtBottom)
-		for i := range unpairedIndexes {
-			unpairedIndexes[i] = -1
+
+		// For each selected edge with weight >= majorPenalty, expand the contender
+		// group for both players by incrementing LowestPossibleHopeNth, then retry.
+		expanded := false
+		numStandingsPlayers := copdata.Standings.GetNumPlayers()
+		for playerRankIdx, oppRankIdx := range pairings {
+			if oppRankIdx <= playerRankIdx {
+				continue
+			}
+			rankKey := getRankPairingKey(playerRankIdx, oppRankIdx)
+			if edgeWeights[rankKey] >= majorPenalty {
+				for _, r := range []int{playerRankIdx, oppRankIdx} {
+					if r < len(copdata.LowestPossibleHopeNth) && copdata.LowestPossibleHopeNth[r]+1 < numStandingsPlayers {
+						copdata.LowestPossibleHopeNth[r]++
+						expanded = true
+					}
+				}
+			}
 		}
-		pairings = append(pairings, unpairedIndexes...)
+		if !expanded {
+			break
+		}
+		pargs.lowestPossibleHopeCasher = copdata.LowestPossibleHopeNth[int(req.PlacePrizes)-1]
 	}
 
 	for playerRankIdx, oppRankIdx := range pairings {

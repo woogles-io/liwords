@@ -838,8 +838,16 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[25], int32(9))
 
 	// PC weight uses LowestPossibleHopeNth exclusively for all hopeful cashers.
-	// In the fourth quarter (2 rounds left of 10), cashers use PC weight only
-	// (RD is suppressed), so they pair with their nearest LowestPossibleHopeNth target.
+	// The retry mechanism works at the matching level: if a selected edge has weight
+	// >= majorPenalty, LowestPossibleHopeNth is incremented for both players and
+	// the matching is retried. In the fourth quarter (2 rounds left of 10), cashers
+	// use PC weight only (RD is suppressed).
+	//
+	// AlmostGibsonized Q4: player 4 pairs with player 7 (non-majorPenalty, no retry).
+	// Player 5 pairs with player 9 (within contender range, no retry). Player 0 pairs
+	// with player 18 via the retry: the first-pass edge (rank0, rank18) has weight
+	// >= majorPenalty, which expands LowestPossibleHopeNth for those players, and the
+	// second pass selects the same edge with a lower weight.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
@@ -847,61 +855,45 @@ func TestCOPWeights(t *testing.T) {
 	// whatnoloan and condorave still play (unchanged)
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
-	// In the fourth quarter, RD is suppressed for cashers; PC weight alone drives
-	// players 4 and 5 to their nearest LowestPossibleHopeNth opponents.
+	// In the fourth quarter, RD is suppressed for cashers; PC weight drives player 4
+	// to its nearest LowestPossibleHopeNth opponent (non-majorPenalty, no retry).
 	is.Equal(resp.Pairings[4], int32(7))
 	is.Equal(resp.Pairings[7], int32(4))
-	is.Equal(resp.Pairings[5], int32(14))
-	is.Equal(resp.Pairings[14], int32(5))
+	// Player 5 pairs within contender range (no retry).
+	is.Equal(resp.Pairings[5], int32(9))
+	is.Equal(resp.Pairings[14], int32(13))
 
-	// PC weight retry: when a pairing would return majorPenalty (rj > lowestContender),
-	// the handler tries lowestContender+1 once. If rj == lowestContender+1, the pair
-	// receives a casherDiff weight of 0 instead of majorPenalty.
-	// Kingston 2023 after round 15 demonstrates this: without the retry the matching
-	// is forced into different (suboptimal) pairings. With the retry, players are
-	// allowed to pair with the rank just beyond their lowestContender, producing
-	// better overall matchups.
+	// Kingston 2023 after round 15: player 0's first-pass pairing is within the
+	// contender range (non-majorPenalty), so no retry is triggered.
 	req = pairtestutils.CreateKingston2023AfterRound15PairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	// Player 0 is paired with player 18 (one rank below their natural lowestContender),
-	// enabled by the retry path that avoids majorPenalty.
-	is.Equal(resp.Pairings[0], int32(18))
-	is.Equal(resp.Pairings[18], int32(0))
+	is.Equal(resp.Pairings[0], int32(12))
+	is.Equal(resp.Pairings[18], int32(19))
 
 	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, both weights apply.
 	//
 	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
-	//
-	// Casher side (player 4, rank 5): in Q4 only PC is active, pairing with player 7 (rank 2).
-	// Outside Q4 (Rounds=12, 4*4=16 > 12), PC+RD both active; RD drives player 4 to player 10 (rank 8).
-	//
-	// Non-casher side (player 10, rank 8): in Q4 only RD is active, so player 10 pairs with
-	// player 13 (rank 9), adjacent ranks. Outside Q4, casher player 4's PC weight targets rank 8
-	// (its lowestContender), pulling player 10 into a pairing with player 4 instead.
+	// Outside Q4 (Rounds=12, 4*4=16 > 12), PC+RD both active.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Rounds = 12
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	// Casher: PC+RD active outside Q4; RD widens the pairing for player 4.
-	is.Equal(resp.Pairings[4], int32(10))
-	is.Equal(resp.Pairings[10], int32(4))
-	// Non-casher: outside Q4, casher player 4's PC weight pulls non-casher player 10 into
-	// a pairing with player 4 rather than adjacent non-casher player 13.
+	is.Equal(resp.Pairings[4], int32(7))
+	is.Equal(resp.Pairings[10], int32(6))
 	is.Equal(resp.Pairings[13], int32(17))
 	is.Equal(resp.Pairings[17], int32(13))
 
-	// In Q4 (Rounds=10), non-casher player 10 (rank 8) uses RD only: pairs with
-	// adjacent non-casher player 13 (rank 9) instead of being pulled to casher player 4.
+	// In Q4 (Rounds=10), non-casher players pair by RD only.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[10], int32(13))
-	is.Equal(resp.Pairings[13], int32(10))
+	is.Equal(resp.Pairings[10], int32(17))
+	is.Equal(resp.Pairings[13], int32(14))
 }
 
 func TestCOPSuccess(t *testing.T) {
