@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"time"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -14,6 +17,8 @@ import (
 	"github.com/woogles-io/liwords/pkg/gameplay"
 	"github.com/woogles-io/liwords/pkg/league"
 	"github.com/woogles-io/liwords/pkg/stores"
+	gamestore "github.com/woogles-io/liwords/pkg/stores/game"
+	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
@@ -55,6 +60,23 @@ func initLeagueStores(ctx context.Context, cfg *config.Config) (*stores.Stores, 
 
 	// Wire up the league standings updater to avoid circular dependencies
 	allStores.SetLeagueStandingsUpdater(league.NewStandingsUpdaterImpl(allStores.LeagueStore))
+
+	// Wire up the game history archiver so adjudicated games are archived to S3.
+	// Requires GAMEHISTORY_UPLOAD_BUCKET and AWS_REGION env vars in the task definition.
+	// Credentials come from the ECS task role (liwordsMaintenanceTaskRole) automatically.
+	if bucket := os.Getenv("GAMEHISTORY_UPLOAD_BUCKET"); bucket != "" {
+		awscfg, awsErr := awsconfig.LoadDefaultConfig(ctx)
+		if awsErr != nil {
+			log.Warn().Err(awsErr).Msg("league-stores: aws-config-failed, game archival will be skipped")
+		} else {
+			s3Client := s3.NewFromConfig(awscfg, utilities.CustomClientOptions)
+			allStores.GameHistoryArchiver = gamestore.NewHistoryArchiver(bucket, s3Client, allStores.GameStore)
+			allStores.GameStore.SetHistoryFetcher(allStores.GameHistoryArchiver)
+			log.Info().Str("bucket", bucket).Msg("league-stores: game history archiver initialized")
+		}
+	} else {
+		log.Warn().Msg("league-stores: GAMEHISTORY_UPLOAD_BUCKET not set, game archival will be skipped")
+	}
 
 	return allStores, nil
 }

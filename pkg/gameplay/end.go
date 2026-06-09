@@ -267,12 +267,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 
 	if stores.GameHistoryArchiver != nil {
-		go func() {
-			archCtx := zerolog.Ctx(ctx).WithContext(context.WithoutCancel(ctx))
-			if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(archCtx, g); archErr != nil {
-				zerolog.Ctx(archCtx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
-			}
-		}()
+		if archErr := stores.GameHistoryArchiver.ArchiveAndCleanup(ctx, g); archErr != nil {
+			zerolog.Ctx(ctx).Error().Err(archErr).Str("gameID", g.GameID()).Msg("archive-cleanup-error")
+		}
 	}
 
 	// Insert entries into game_players table for query optimization
