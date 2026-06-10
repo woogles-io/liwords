@@ -312,17 +312,15 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			pcWeight := func(lowestContender int) int64 {
-				if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
-					casherDiff := lowestContender - rj
-					if casherDiff < 0 {
-						casherDiff *= -1
-					}
-					return int64(math.Pow(float64(casherDiff), 3) * 2)
+			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
+			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
+				casherDiff := lowestContender - rj
+				if casherDiff < 0 {
+					casherDiff *= -1
 				}
-				return majorPenalty
+				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
-			return pcWeight(pargs.copdata.LowestPossibleHopeNth[ri])
+			return majorPenalty
 		},
 	},
 	{
@@ -1195,6 +1193,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	var pairingDetails [][]string
 	var pairingsToDetailsIndex map[string]int
 
+	retried := false
 	for {
 		edges := []*matching.Edge{}
 		edgeWeights := map[string]int64{}
@@ -1268,8 +1267,12 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			pairings = append(pairings, unpairedIndexes...)
 		}
 
-		// For each selected edge with weight >= majorPenalty, expand the contender
-		// group for both players by incrementing LowestPossibleHopeNth, then retry.
+		// For each selected edge with weight >= majorPenalty, expand the PC contender
+		// group for both players by incrementing LowestPossibleHopeNth, then retry once.
+		// lowestPossibleHopeCasher (the global gate) is intentionally not updated.
+		if retried {
+			break
+		}
 		expanded := false
 		numStandingsPlayers := copdata.Standings.GetNumPlayers()
 		for playerRankIdx, oppRankIdx := range pairings {
@@ -1278,6 +1281,17 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 			}
 			rankKey := getRankPairingKey(playerRankIdx, oppRankIdx)
 			if edgeWeights[rankKey] >= majorPenalty {
+				nameForNode := func(rankIdx int) string {
+					pi := playerNodes[rankIdx]
+					if pi == pkgstnd.ByePlayerIndex {
+						return "BYE"
+					}
+					return req.PlayerNames[pi]
+				}
+				logsb.WriteString(fmt.Sprintf("Retry: majorPenalty edge %s vs %s (weight %d)\n",
+					nameForNode(playerRankIdx),
+					nameForNode(oppRankIdx),
+					edgeWeights[rankKey]))
 				for _, r := range []int{playerRankIdx, oppRankIdx} {
 					if r < len(copdata.LowestPossibleHopeNth) && copdata.LowestPossibleHopeNth[r]+1 < numStandingsPlayers {
 						copdata.LowestPossibleHopeNth[r]++
@@ -1289,7 +1303,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		if !expanded {
 			break
 		}
-		pargs.lowestPossibleHopeCasher = copdata.LowestPossibleHopeNth[int(req.PlacePrizes)-1]
+		retried = true
 	}
 
 	for playerRankIdx, oppRankIdx := range pairings {
