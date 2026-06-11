@@ -471,6 +471,60 @@ func TestRankBoundsWorstBnBSoundVsBrute(t *testing.T) {
 	t.Logf("worst-rank B&B vs brute over %d cases: 0 unsound, %d loose", cases, loose)
 }
 
+// TestRankBoundsBestInversionSoundVsBrute validates best-rank via the loss-score
+// inversion (best = n+1 - worst on the mirror) against the exact brute on random
+// small divisions. The inverted bound must be SOUND -- never tighter than the
+// exact best rank (bestViaInversion <= brute.best). The mirror's constant offset
+// CalculateExpectedGamesPerPlayer cancels in every pairwise comparison, and the
+// win/draw/loss dynamics map to +0/+1/+2 loss-score, so the inversion is exact
+// regardless of that constant. Reports how often it is merely loose.
+func TestRankBoundsBestInversionSoundVsBrute(t *testing.T) {
+	rng := rand.New(rand.NewSource(24680))
+	const cases = 3000
+	unsound, loose := 0, 0
+	for c := range cases {
+		n := 3 + rng.Intn(5) // 3..7
+		points := make([]int, n)
+		spreads := make([]int, n)
+		for i := range n {
+			points[i] = rng.Intn(7)
+			spreads[i] = rng.Intn(15) - 7
+		}
+		g := rng.Intn(8) // 0..7 games -> brute path, exact ground truth
+		var pairs [][2]int
+		for range g {
+			x, y := rng.Intn(n), rng.Intn(n)
+			if x != y {
+				pairs = append(pairs, [2]int{x, y})
+			}
+		}
+		st, unf := makeDivision(points, spreads, pairs)
+		brute := CalculatePossibleRanks(st, unf) // small division => exact brute
+		games := toGamePairs(st, unf)
+		mir := mirrorForBest(st)
+		fg := newFlowGraph(2 + len(games) + n)
+		candIdx := initSlice(n, -1)
+		for p := range n {
+			gi := decomposeGames(p, n, games)
+			b := bestViaInversion(p, mir, gi, fg, candIdx)
+			switch {
+			case b > brute[p].BestRank:
+				unsound++
+				if unsound <= 5 {
+					t.Errorf("case %d player %d: inversion best %d > brute best %d (UNSOUND)\n st=%+v\n unf=%+v",
+						c, p, b, brute[p].BestRank, st, unf)
+				}
+			case b < brute[p].BestRank:
+				loose++
+			}
+		}
+	}
+	if unsound > 0 {
+		t.Fatalf("%d unsound best-rank inversion bounds vs brute", unsound)
+	}
+	t.Logf("best-rank inversion vs brute over %d cases: 0 unsound, %d loose", cases, loose)
+}
+
 // --- Fourier-Motzkin feasibility (the oracle's joint-margin engine) ---
 //
 // oracleRanks asks, per leaf, whether a subset of points-tied players can be

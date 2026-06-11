@@ -85,6 +85,7 @@ func CalculatePossibleRanks(
 	// candIdx (avoids map allocation in inner loops).
 	fg := newFlowGraph(2 + len(games) + n)
 	candIdx := initSlice(n, -1)
+	mir := mirrorForBest(standings) // best rank = worst rank on this mirror
 
 	results := make([]RankBounds, n)
 	for p := 0; p < n; p++ {
@@ -102,7 +103,7 @@ func CalculatePossibleRanks(
 		}
 		gi := decomposeGames(p, n, games)
 		results[p] = RankBounds{
-			BestRank:  bestRankForPlayer(p, standings, gi, fg, candIdx),
+			BestRank:  bestViaInversion(p, mir, gi, fg, candIdx),
 			WorstRank: worstRankForPlayer(p, standings, gi, fg, candIdx),
 		}
 	}
@@ -410,321 +411,52 @@ type cand struct {
 	deficit int // points still needed from non-P games
 }
 
-type stayBelow struct {
-	idx        int
-	absorb     int // max additional points Q can receive without exceeding B
-	maxPerGame int // max points from a single game (1 = draws only, 2 = any outcome)
-}
-
 // ---------------------------------------------------------------------------
-// best rank: minimize the number of players forced above P
+// best rank via loss-score inversion
 //
-// Only reached when len(games) > bruteForceThreshold. For smaller divisions
-// CalculatePossibleRanks dispatches to bruteForceRanks, which enumerates
-// outcomes and returns tight bounds covering every spread interaction.
+// Best-rank is the mirror of worst-rank. Computing it directly would need its
+// own candidate set (players who could be forced BELOW P), whose count keys off
+// P's point ceiling pts+2*remaining -- which FALLS as P's games resolve, so the
+// count can rise. A rising candidate count is non-monotone: a gate on it could
+// flip tight->loose and widen the range. So instead we invert. With loss-score
+// 2L+D we have points = 2W+D = 2G-(2L+D) exactly (G = W+D+L, constant per player
+// at season end, draws included), so ranking by points descending is identical
+// to ranking by loss-score ascending. Hence
 //
-// Algorithm:
-//   1. Compute B = P's maximum possible score (P wins all remaining games).
-//   2. Classify each non-P player as guaranteedAbove, guaranteedBelow, or
-//      an open candidate.
-//   3. Precompute externalCnt[i] = open candidate Q's non-P games vs a
-//      guaranteedBelow opponent.
-//   4. Build belowCandidates with per-player absorb caps and per-game caps,
-//      tightened for spread (see below).
-//   5. Use max-flow to check if all belowCandidates can simultaneously absorb
-//      their within-set game points without exceeding B.
+//	bestRank(P) = n + 1 - worstRank(P on the loss-score mirror)
 //
-// Flow network:
-//
-//   Source ──2──> [game] ──cap──> [player] ──absorb──> Sink
-//
-//   - Each game node receives 2 points from the source.
-//   - Game-to-player edge capacity = maxPerGame (1 or 2, see below).
-//   - Player-to-sink edge capacity = absorb limit.
-//   - Feasible iff max_flow == total within-set game points.
-//
-// Spread treatment when Q can reach B:
-//
-//   Q.spread < P.spread, draws-only path (maxPerGame=1):
-//     Q reaches B via draws (1 pt each, 0 spread change), preserving
-//     Q.spread < P.spread so Q sits below P on tiebreak.
-//
-//   Q.spread >= P.spread, externalCnt[Q] >= 1:
-//     Q plays at least one guaranteedBelow opponent. Routing that game as
-//     Q's loss (opponent takes both pts, still capped below B) lets Q
-//     concede an arbitrary margin, dropping Q.finalSpread below P.spread
-//     even when Q hits B via wins elsewhere. Full absorb=maxBelow.
-//
-//   Q.spread >= P.spread, no external:
-//     Q at B ties P on points and beats P on spread (wins raise it, draws
-//     preserve it). Decrement maxBelow so Q stays strictly below B on points.
-//     This can still be pessimistic when Q's within-set opponents have
-//     maxPerGame=2 (Q could realize 1W+1L with a huge loss margin, reaching
-//     B at a dropped spread). For division sizes where this matters the
-//     brute-force path handles the case; the heuristic leaves it loose.
-//
-// Guarantees:
-//   - bestRank is achievable (flow outcomes map to real game outcomes, with
-//     realizable margins for the external-loss case).
-//   - bestRank-1 can be wrongly reported as impossible in the pessimistic
-//     case above (Q.spread >= P's, no external, opponents maxPerGame=2).
-//     Brute force covers small divisions; large divisions where this triggers
-//     are very rare in practice.
-//   - worstRank+1 is always impossible (sound upper bound).
-//   - worstRank can be pessimistic when the candidate set is a closed
-//     round-robin whose initial spread sum is too small for every member to
-//     strictly beat P on tiebreak. Brute force covers small divisions.
+// reusing the single monotone worst-rank routine. On the mirror, best-rank keys
+// off P's loss FLOOR, which rises over the season -- so its candidate count is
+// monotone, and one gate metric covers both directions. (See
+// rank_bounds_design.md for the full rationale.)
 // ---------------------------------------------------------------------------
 
-func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
+// mirrorForBest returns the loss-score mirror of a full division: each player's
+// points become its loss-score 2L+D and its spread is negated, so worst-rank on
+// the mirror equals best-rank on the original. Requires a full division
+// (constant total games per player) so expected = CalculateExpectedGamesPerPlayer
+// is each player's total games; then played = expected - remaining and
+// 2L+D = 2*expected - points - 2*remaining.
+func mirrorForBest(standings []standingInfo) []standingInfo {
 	n := len(standings)
-	B := standings[p].points + standings[p].gamesRemaining*2 // P wins all remaining
-
-	// When P wins all, P's opponents each LOSE their game vs P (get 0 from it).
-	// Q's effective points = Q.currentPoints (unchanged; the loss to P adds 0).
-	// Q can absorb at most B - Q.currentPoints points at or below B.
-
-	pHasGames := standings[p].gamesRemaining > 0
-
-	// First pass: classify each non-P player as guaranteedAbove, guaranteedBelow,
-	// or an open candidate. Stored as bool slices so externalCnt can reference them.
-	isGuaranteedAbove := make([]bool, n)
-	isGuaranteedBelow := make([]bool, n)
-	guaranteedAbove := 0
-	guaranteedBelow := 0
-	for i := 0; i < n; i++ {
-		if i == p {
-			continue
-		}
-		qWorst := standings[i].points
-		if qWorst > B {
-			isGuaranteedAbove[i] = true
-			guaranteedAbove++
-			continue
-		}
-		if qWorst == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
-			standings[i].spread > standings[p].spread {
-			isGuaranteedAbove[i] = true
-			guaranteedAbove++
-			continue
-		}
-
-		// Q's ceiling when P wins all: games vs P yield 0, non-P games up to 2.
-		maxPts := standings[i].points + gi.nonPGamesCnt[i]*2
-		if maxPts < B {
-			isGuaranteedBelow[i] = true
-			guaranteedBelow++
-			continue // Q cannot reach B on points
-		}
-		if maxPts == B {
-			if pHasGames {
-				// P's best spread is unbounded (wins by huge margins).
-				// Q at B loses the spread tiebreak to P.
-				isGuaranteedBelow[i] = true
-				guaranteedBelow++
-				continue
-			}
-			if gi.nonPGamesCnt[i] == 0 && standings[i].spread < standings[p].spread {
-				// Q finished at B with worse spread. Loses tiebreak to P.
-				isGuaranteedBelow[i] = true
-				guaranteedBelow++
-				continue
-			}
+	expected := CalculateExpectedGamesPerPlayer(n)
+	m := make([]standingInfo, n)
+	for i, s := range standings {
+		m[i] = standingInfo{
+			userID:         s.userID,
+			points:         2*expected - s.points - 2*s.gamesRemaining,
+			spread:         -s.spread,
+			gamesRemaining: s.gamesRemaining,
 		}
 	}
-
-	// externalCnt[i] = non-P games Q plays against a guaranteedBelow opponent.
-	// These opponents cannot reach B, so we route all 2 game pts to them
-	// (Q loses the game → +0 pts, arbitrary loss margin). A Q with spread
-	// >= P's can still end at B below P on spread by taking this external
-	// loss with a huge margin.
-	externalCnt := make([]int, n)
-	for _, g := range gi.nonPGames {
-		if isGuaranteedBelow[g.a] && !isGuaranteedBelow[g.b] {
-			externalCnt[g.b]++
-		} else if isGuaranteedBelow[g.b] && !isGuaranteedBelow[g.a] {
-			externalCnt[g.a]++
-		}
-	}
-
-	// Build the "stay below P" set with per-player constraints:
-	//
-	//   Q.spread < P.spread, can reach B via draws (maxBelow ≤ games):
-	//     maxPerGame=1 (draws preserve spread → Q below P at B)
-	//
-	//   Q.spread >= P.spread, externalCnt[i] >= 1:
-	//     full maxBelow (external loss drops spread arbitrarily → Q at B below P)
-	//
-	//   Q.spread >= P.spread, no external:
-	//     maxBelow-- (Q must stay strictly below B; a win lifts spread and
-	//     draws-only preserves it above P)
-	//
-	//   P has games (unbounded best spread):
-	//     no restriction (P always beats Q on spread at equal points)
-	//
-	//   both finished (no games):
-	//     fixed spread comparison, maxBelow-- if Q.spread >= P.spread
-	var belowCandidates []stayBelow
-	for i := 0; i < n; i++ {
-		if i == p || isGuaranteedAbove[i] || isGuaranteedBelow[i] {
-			continue
-		}
-
-		// Determine whether Q at exactly B points could be above P.
-		// If so, Q must stay strictly below B (maxBelow--) or use
-		// draws only (maxPerGame=1) to guarantee being below P.
-		maxBelow := B - standings[i].points
-		maxPerGame := 2
-
-		if pHasGames {
-			// P has unbounded best spread (wins by huge margins) → Q can
-			// never beat P on spread at equal points. No restriction needed.
-		} else if gi.nonPGamesCnt[i] == 0 {
-			// Both finished. Spread is fixed. Equal spread: Q could be
-			// ranked either side of P, so treat as potentially above.
-			if standings[i].spread >= standings[p].spread && maxBelow > 0 {
-				maxBelow--
-			}
-		} else if standings[i].spread < standings[p].spread &&
-			maxBelow <= gi.nonPGamesCnt[i] {
-			// Q has remaining games but worse spread than P. Q can reach B
-			// via draws only (each draw gives 1 point, preserves spread).
-			// Restrict per-game capacity to 1 so the flow only allows draws.
-			maxPerGame = 1
-		} else if externalCnt[i] >= 1 {
-			// Q has at least one game vs a guaranteedBelow opponent. We route
-			// that game as a Q-loss (opponent takes both pts, still capped
-			// below B). A sufficiently large loss margin drops Q's spread
-			// below P's even when Q reaches B via wins on other games. No
-			// decrement needed; Q can stay at B below P.
-		} else {
-			// Q at B could beat P on spread (spread >= P's, no external loss
-			// to absorb margin). Stay strictly below B.
-			if maxBelow > 0 {
-				maxBelow--
-			}
-		}
-
-		if maxBelow < 0 {
-			continue // Q is at B and beats P on spread → guaranteed above
-		}
-
-		absorb := maxBelow
-		if absorb >= gi.nonPGamesCnt[i]*2 {
-			absorb = gi.nonPGamesCnt[i] * 2
-		}
-		belowCandidates = append(belowCandidates, stayBelow{i, absorb, maxPerGame})
-	}
-
-	// Sort by absorb capacity ascending (tightest constraint first).
-	sort.Slice(belowCandidates, func(i, j int) bool {
-		return belowCandidates[i].absorb < belowCandidates[j].absorb
-	})
-
-	// Iteratively check if all belowCandidates can stay below P via max-flow.
-	for {
-		feasible, removeIdx := checkBestFeasibility(belowCandidates, gi.nonPGames, fg, candIdx)
-		if feasible {
-			break
-		}
-		if removeIdx >= 0 {
-			belowCandidates = append(belowCandidates[:removeIdx], belowCandidates[removeIdx+1:]...)
-		}
-		if len(belowCandidates) == 0 {
-			break
-		}
-	}
-
-	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove - guaranteedBelow) - len(belowCandidates))
-	return max(1, 1+minForcedAbove)
+	return m
 }
 
-// checkBestFeasibility checks whether all players in the set can absorb the
-// points from within-set games without anyone exceeding their absorb limit.
-//
-// Uses max-flow: source → game nodes → player nodes → sink.
-// Each game produces 2 points. Each player can absorb at most their limit.
-// Feasible if max_flow = total within-set game points.
-func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
-	k := len(candidates)
-	if k == 0 {
-		return true, -1
-	}
-
-	for ci, c := range candidates {
-		candIdx[c.idx] = ci
-	}
-	defer func() {
-		for _, c := range candidates {
-			candIdx[c.idx] = -1
-		}
-	}()
-
-	// Find within-set games
-	type withinGame struct{ ci, cj int }
-	var withinGames []withinGame
-	for _, g := range nonPGames {
-		ciA, ciB := candIdx[g.a], candIdx[g.b]
-		if ciA >= 0 && ciB >= 0 {
-			withinGames = append(withinGames, withinGame{ciA, ciB})
-		}
-	}
-
-	totalGamePoints := len(withinGames) * 2
-	if totalGamePoints == 0 {
-		return true, -1
-	}
-
-	// Quick check: if total absorb capacity can't cover all game points,
-	// definitely infeasible — skip building the flow graph.
-	totalAbsorb := 0
-	for _, c := range candidates {
-		totalAbsorb += c.absorb
-	}
-	if totalAbsorb < totalGamePoints {
-		worst := -1
-		worstAbsorb := math.MaxInt
-		for ci := range candidates {
-			if candidates[ci].absorb < worstAbsorb {
-				worstAbsorb = candidates[ci].absorb
-				worst = ci
-			}
-		}
-		return false, worst
-	}
-
-	numGameNodes := len(withinGames)
-	numNodes := 2 + numGameNodes + k
-	source, sink := 0, 1
-	playerNode := func(ci int) int { return 2 + numGameNodes + ci }
-	gameNode := func(gi int) int { return 2 + gi }
-
-	fg.reset(numNodes)
-	for gi, wg := range withinGames {
-		gn := gameNode(gi)
-		fg.addEdge(source, gn, 2)
-		fg.addEdge(gn, playerNode(wg.ci), candidates[wg.ci].maxPerGame)
-		fg.addEdge(gn, playerNode(wg.cj), candidates[wg.cj].maxPerGame)
-	}
-	for ci := 0; ci < k; ci++ {
-		fg.addEdge(playerNode(ci), sink, candidates[ci].absorb)
-	}
-
-	flow := fg.maxflow(source, sink)
-	if flow >= totalGamePoints {
-		return true, -1
-	}
-
-	// Not feasible. Remove the player with the smallest absorb capacity.
-	worst := -1
-	worstAbsorb := math.MaxInt
-	for ci := range candidates {
-		if candidates[ci].absorb < worstAbsorb {
-			worstAbsorb = candidates[ci].absorb
-			worst = ci
-		}
-	}
-	return false, worst
+// bestViaInversion computes P's best rank as n+1 minus P's worst rank on the
+// loss-score mirror. mir must be mirrorForBest(standings); gi is index-based, so
+// it is valid unchanged on the mirror (the unfinished games are the same).
+func bestViaInversion(p int, mir []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
+	return len(mir) + 1 - worstRankForPlayer(p, mir, gi, fg, candIdx)
 }
 
 // ---------------------------------------------------------------------------
