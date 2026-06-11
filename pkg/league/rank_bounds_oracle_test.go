@@ -174,6 +174,10 @@ func oracleRanks(st []standingInfo, unf []unfinishedGame) []RankBounds {
 
 func oracleLeaf(st []standingInfo, pts []int, spcoef [][]int64, g int, best, worst []int) {
 	n := len(st)
+	baseSpread := make([]int, n)
+	for i := range st {
+		baseSpread[i] = st[i].spread
+	}
 	for p := range n {
 		above := 0
 		var tied []int
@@ -190,8 +194,8 @@ func oracleLeaf(st []standingInfo, pts []int, spcoef [][]int64, g int, best, wor
 		}
 		// maxGE: most tied players that can simultaneously be at-or-above P on
 		// spread (spr_q - spr_p >= 0); maxLE: most that can be at-or-below.
-		maxGE := maxFeasibleSubset(st, spcoef, g, tied, p, true)
-		maxLE := maxFeasibleSubset(st, spcoef, g, tied, p, false)
+		maxGE := maxFeasibleSubset(baseSpread, spcoef, g, tied, p, true)
+		maxLE := maxFeasibleSubset(baseSpread, spcoef, g, tied, p, false)
 		lo := 1 + above + (len(tied) - maxLE) // min strictly-above
 		hi := 1 + above + maxGE               // max at-or-above (block worst)
 		if lo < best[p] {
@@ -201,144 +205,6 @@ func oracleLeaf(st []standingInfo, pts []int, spcoef [][]int64, g int, best, wor
 			worst[p] = hi
 		}
 	}
-}
-
-// maxFeasibleSubset returns the size of the largest subset S of tied such that
-// "spr_q >= spr_p for all q in S" (ge) or "spr_q <= spr_p for all q in S" (!ge)
-// is jointly feasible over the game margins. Feasibility is downward-closed, so
-// any feasible S of a given size means all smaller subsets are feasible too.
-func maxFeasibleSubset(st []standingInfo, spcoef [][]int64, g int, tied []int, p int, ge bool) int {
-	k := len(tied)
-	best := 0
-	for mask := range 1 << k {
-		size := bits.OnesCount(uint(mask))
-		if size <= best {
-			continue
-		}
-		ineqs := make([]fmIneq, 0, size)
-		for bi := range k {
-			if mask&(1<<bi) == 0 {
-				continue
-			}
-			q := tied[bi]
-			coef := make([]int64, g)
-			var c int64
-			if ge {
-				for j := range g {
-					coef[j] = spcoef[q][j] - spcoef[p][j]
-				}
-				c = int64(st[q].spread - st[p].spread)
-			} else {
-				for j := range g {
-					coef[j] = spcoef[p][j] - spcoef[q][j]
-				}
-				c = int64(st[p].spread - st[q].spread)
-			}
-			ineqs = append(ineqs, fmIneq{coef: coef, c: c})
-		}
-		if fmFeasible(ineqs, g) {
-			best = size
-		}
-	}
-	return best
-}
-
-// fmIneq is the linear inequality sum_i coef[i]*x[i] + c >= 0.
-type fmIneq struct {
-	coef []int64
-	c    int64
-}
-
-// fmFeasible reports whether {ineqs, x_i >= 1 for all i} has a real solution,
-// via Fourier-Motzkin elimination with exact integer arithmetic.
-func fmFeasible(ineqs []fmIneq, nv int) bool {
-	sys := make([]fmIneq, 0, len(ineqs)+nv)
-	for _, q := range ineqs {
-		cf := make([]int64, nv)
-		copy(cf, q.coef)
-		sys = append(sys, fmIneq{coef: cf, c: q.c})
-	}
-	for i := range nv {
-		cf := make([]int64, nv)
-		cf[i] = 1
-		sys = append(sys, fmIneq{coef: cf, c: -1}) // x_i >= 1
-	}
-	for j := nv - 1; j >= 0; j-- {
-		var pos, neg, next []fmIneq
-		for _, q := range sys {
-			switch {
-			case q.coef[j] > 0:
-				pos = append(pos, q)
-			case q.coef[j] < 0:
-				neg = append(neg, q)
-			default:
-				next = append(next, q)
-			}
-		}
-		for _, p := range pos {
-			for _, q := range neg {
-				a := p.coef[j]
-				b := -q.coef[j] // both > 0; combo a*q + b*p cancels x_j
-				cf := make([]int64, nv)
-				for i := range nv {
-					cf[i] = a*q.coef[i] + b*p.coef[i]
-				}
-				ni := fmIneq{coef: cf, c: a*q.c + b*p.c}
-				reduceIneq(&ni)
-				if ni.allZero() {
-					if ni.c < 0 {
-						return false
-					}
-					continue
-				}
-				next = append(next, ni)
-			}
-		}
-		sys = next
-	}
-	for _, q := range sys {
-		if q.c < 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func (q fmIneq) allZero() bool {
-	for _, v := range q.coef {
-		if v != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func reduceIneq(q *fmIneq) {
-	var g int64
-	for _, v := range q.coef {
-		g = gcd64(g, abs64(v))
-	}
-	g = gcd64(g, abs64(q.c))
-	if g > 1 {
-		for i := range q.coef {
-			q.coef[i] /= g
-		}
-		q.c /= g
-	}
-}
-
-func gcd64(a, b int64) int64 {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return a
-}
-
-func abs64(a int64) int64 {
-	if a < 0 {
-		return -a
-	}
-	return a
 }
 
 // --- test helpers ---
@@ -494,4 +360,211 @@ func TestOracleVsBruteSanity(t *testing.T) {
 		}
 	}
 	t.Logf("oracle vs brute over %d cases: tighter=%d (joint-margin target), wider=%d (brute unsoundness)", cases, tighter, wider)
+}
+
+// TestBruteJointExact confirms the production brute (after the joint-margin fix)
+// now matches the exact oracle on random small divisions -- the per-pair
+// looseness is gone.
+func TestBruteJointExact(t *testing.T) {
+	rng := rand.New(rand.NewSource(77777))
+	const cases = 500
+	for c := range cases {
+		n := 3 + rng.Intn(4) // 3..6
+		points := make([]int, n)
+		spreads := make([]int, n)
+		for i := range n {
+			points[i] = rng.Intn(5)
+			spreads[i] = rng.Intn(11) - 5
+		}
+		g := rng.Intn(5) // 0..4 games -> brute path (cluster <= bruteForceThreshold)
+		var pairs [][2]int
+		for range g {
+			x, y := rng.Intn(n), rng.Intn(n)
+			if x != y {
+				pairs = append(pairs, [2]int{x, y})
+			}
+		}
+		st, unf := makeDivision(points, spreads, pairs)
+		if got, want := CalculatePossibleRanks(st, unf), oracleRanks(st, unf); !eqBounds(got, want) {
+			t.Fatalf("case %d: brute=%v oracle=%v\n  st=%+v\n  unf=%+v", c, got, want, st, unf)
+		}
+	}
+}
+
+// TestBruteJointVsExhaustive confirms the production brute matches the
+// indisputable exhaustive integer-margin truth on random tiny divisions.
+func TestBruteJointVsExhaustive(t *testing.T) {
+	rng := rand.New(rand.NewSource(88888))
+	for c := range 250 {
+		n := 3 + rng.Intn(2) // 3 or 4
+		points := make([]int, n)
+		spreads := make([]int, n)
+		for i := range n {
+			points[i] = rng.Intn(4)
+			spreads[i] = rng.Intn(9) - 4
+		}
+		g := rng.Intn(4) // 0..3
+		var pairs [][2]int
+		for range g {
+			x, y := rng.Intn(n), rng.Intn(n)
+			if x != y {
+				pairs = append(pairs, [2]int{x, y})
+			}
+		}
+		st, unf := makeDivision(points, spreads, pairs)
+		if got, want := CalculatePossibleRanks(st, unf), exhaustiveRanks(st, unf, 16); !eqBounds(got, want) {
+			t.Fatalf("case %d: brute=%v exhaustive=%v\n  st=%+v\n  unf=%+v", c, got, want, st, unf)
+		}
+	}
+}
+
+// --- Fourier-Motzkin feasibility (the oracle's joint-margin engine) ---
+//
+// oracleRanks asks, per leaf, whether a subset of points-tied players can be
+// jointly ordered at/above (or at/below) P on spread. That is exact linear
+// feasibility over the game margins; we solve it by Fourier-Motzkin elimination
+// with integer arithmetic. This is the INDEPENDENT method that validates the
+// production closed-form (jointFixedTied) -- kept in the test, not production.
+
+// fmIneq is the linear inequality sum_i coef[i]*x[i] + c >= 0.
+type fmIneq struct {
+	coef []int64
+	c    int64
+}
+
+func (q fmIneq) allZero() bool {
+	for _, v := range q.coef {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// fmFeasible reports whether {ineqs, x_i >= 1 for all i} has a real solution,
+// via Fourier-Motzkin elimination with exact integer arithmetic. Margins are
+// integers >= 1; the systems arising here are integral, so real feasibility
+// coincides with integer feasibility (validated against exhaustive enumeration
+// in TestOracleVsExhaustive).
+func fmFeasible(ineqs []fmIneq, nv int) bool {
+	sys := make([]fmIneq, 0, len(ineqs)+nv)
+	for _, q := range ineqs {
+		cf := make([]int64, nv)
+		copy(cf, q.coef)
+		sys = append(sys, fmIneq{coef: cf, c: q.c})
+	}
+	for i := range nv {
+		cf := make([]int64, nv)
+		cf[i] = 1
+		sys = append(sys, fmIneq{coef: cf, c: -1}) // x_i >= 1
+	}
+	for j := nv - 1; j >= 0; j-- {
+		var pos, neg, next []fmIneq
+		for _, q := range sys {
+			switch {
+			case q.coef[j] > 0:
+				pos = append(pos, q)
+			case q.coef[j] < 0:
+				neg = append(neg, q)
+			default:
+				next = append(next, q)
+			}
+		}
+		for _, p := range pos {
+			for _, q := range neg {
+				a := p.coef[j]
+				b := -q.coef[j] // both > 0; combo a*q + b*p cancels x_j
+				cf := make([]int64, nv)
+				for i := range nv {
+					cf[i] = a*q.coef[i] + b*p.coef[i]
+				}
+				ni := fmIneq{coef: cf, c: a*q.c + b*p.c}
+				reduceIneq(&ni)
+				if ni.allZero() {
+					if ni.c < 0 {
+						return false
+					}
+					continue
+				}
+				next = append(next, ni)
+			}
+		}
+		sys = next
+	}
+	for _, q := range sys {
+		if q.c < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func reduceIneq(q *fmIneq) {
+	var g int64
+	for _, v := range q.coef {
+		g = gcd64(g, abs64(v))
+	}
+	g = gcd64(g, abs64(q.c))
+	if g > 1 {
+		for i := range q.coef {
+			q.coef[i] /= g
+		}
+		q.c /= g
+	}
+}
+
+func gcd64(a, b int64) int64 {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func abs64(a int64) int64 {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+// maxFeasibleSubset returns the size of the largest subset S of tied such that
+// "spr_q >= spr_p for all q in S" (ge) or "spr_q <= spr_p for all q in S"
+// (!ge) is jointly feasible over the game margins. baseSpread[i] is player i's
+// current spread; spcoef[i][j] is the coefficient of margin variable j in i's
+// final spread for the current leaf. Feasibility is downward-closed in S, so
+// the largest feasible subset bounds the count.
+func maxFeasibleSubset(baseSpread []int, spcoef [][]int64, g int, tied []int, p int, ge bool) int {
+	k := len(tied)
+	best := 0
+	for mask := range 1 << k {
+		size := bits.OnesCount(uint(mask))
+		if size <= best {
+			continue
+		}
+		ineqs := make([]fmIneq, 0, size)
+		for bi := range k {
+			if mask&(1<<bi) == 0 {
+				continue
+			}
+			q := tied[bi]
+			coef := make([]int64, g)
+			var c int64
+			if ge {
+				for j := range g {
+					coef[j] = spcoef[q][j] - spcoef[p][j]
+				}
+				c = int64(baseSpread[q] - baseSpread[p])
+			} else {
+				for j := range g {
+					coef[j] = spcoef[p][j] - spcoef[q][j]
+				}
+				c = int64(baseSpread[p] - baseSpread[q])
+			}
+			ineqs = append(ineqs, fmIneq{coef: coef, c: c})
+		}
+		if fmFeasible(ineqs, g) {
+			best = size
+		}
+	}
+	return best
 }

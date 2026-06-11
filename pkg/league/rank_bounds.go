@@ -2,6 +2,8 @@ package league
 
 import (
 	"math"
+	"math/bits"
+	"slices"
 	"sort"
 	"sync"
 
@@ -1068,6 +1070,27 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	winMask := make([]uint64, m)
 	loseMask := make([]uint64, m)
 
+	// baseSpread is constant across leaves; tied is reset per player.
+	// localGames holds each cluster game's two members in local indices.
+	baseSpread := make([]int, m)
+	maxPts := 0
+	for i := range m {
+		baseSpread[i] = standings[c.members[i]].spread
+		if pts := standings[c.members[i]].points; pts > maxPts {
+			maxPts = pts
+		}
+	}
+	tied := make([]int, 0, m)
+	localGames := make([][2]int, g)
+	for gi := range g {
+		gm := allGames[c.games[gi]]
+		localGames[gi] = [2]int{memberIdx[gm.a], memberIdx[gm.b]}
+	}
+	js := newJointScratch(m)
+	winsCnt := make([]int, m)
+	lossCnt := make([]int, m)
+	coupledVal := make([]bool, maxPts+2*g+1)
+
 	total := 1
 	for i := 0; i < g; i++ {
 		total *= 3
@@ -1103,35 +1126,81 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 			x /= 3
 		}
 
-		for p := 0; p < m; p++ {
+		for mi := range m {
+			winsCnt[mi] = bits.OnesCount64(winMask[mi])
+			lossCnt[mi] = bits.OnesCount64(loseMask[mi])
+		}
+		// Mark each points value with a decided game between two players both at
+		// that value -- the only values where a fixed P needs the joint
+		// closed-form rather than independent per-member spread boxes.
+		clear(coupledVal)
+		for gi, gp := range localGames {
+			a, b := gp[0], gp[1]
+			if points[a] == points[b] && (winMask[a]|winMask[b])&(uint64(1)<<gi) != 0 {
+				coupledVal[points[a]] = true
+			}
+		}
+
+		for p := range m {
 			strictAbove := 0
-			forcedAboveTied := 0
-			possiblyAboveTied := 0
-			pSpread := standings[c.members[p]].spread
-			for q := 0; q < m; q++ {
+			tied = tied[:0]
+			for q := range m {
 				if q == p {
 					continue
 				}
-				if points[q] > points[p] {
+				switch {
+				case points[q] > points[p]:
 					strictAbove++
-					continue
-				}
-				if points[q] < points[p] {
-					continue
-				}
-				forced, possible := spreadOrdering(
-					winMask[p], loseMask[p], winMask[q], loseMask[q],
-					pSpread, standings[c.members[q]].spread,
-				)
-				if forced {
-					forcedAboveTied++
-				}
-				if possible {
-					possiblyAboveTied++
+				case points[q] == points[p]:
+					tied = append(tied, q)
 				}
 			}
-			bestRank := 1 + fixedAbove + strictAbove + forcedAboveTied
-			worstRank := 1 + fixedAbove + strictAbove + possiblyAboveTied
+			var minAbove, maxGE int
+			if standings[c.members[p]].gamesRemaining > 0 {
+				// Free P: per-pair is exact in aggregate (the lose-all and
+				// win-all leaves give P's true rank extremes). Fast path.
+				for _, q := range tied {
+					forced, possible := spreadOrdering(
+						winMask[p], loseMask[p], winMask[q], loseMask[q],
+						baseSpread[p], baseSpread[q],
+					)
+					if forced {
+						minAbove++
+					}
+					if possible {
+						maxGE++
+					}
+				}
+			} else {
+				// Fixed P: the per-pair view over-counts coupled tied players.
+				// If no two of P's tied opponents are coupled (no decided game
+				// this leaf between two players both at P's points), each is
+				// independent and a per-member reachable-spread box is exact;
+				// only genuine coupling needs the joint closed-form.
+				if coupledVal[points[p]] {
+					minAbove, maxGE = jointFixedTied(p, tied, winMask, baseSpread, localGames, js)
+				} else {
+					sprP := baseSpread[p]
+					for _, q := range tied {
+						hiq := baseSpread[q] - lossCnt[q] // max spread: no win -> lose minimally
+						if winsCnt[q] > 0 {
+							hiq = 1 << 30 // a win runs spread to +inf
+						}
+						loq := baseSpread[q] + winsCnt[q] // min spread: no loss -> win minimally
+						if lossCnt[q] > 0 {
+							loq = -(1 << 30)
+						}
+						if hiq >= sprP {
+							maxGE++
+						}
+						if loq > sprP {
+							minAbove++
+						}
+					}
+				}
+			}
+			bestRank := 1 + fixedAbove + strictAbove + minAbove
+			worstRank := 1 + fixedAbove + strictAbove + maxGE
 			if bestRank < best[p] {
 				best[p] = bestRank
 			}
@@ -1146,34 +1215,25 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	}
 }
 
-// spreadOrdering decides, for a fixed outcome, two things about a pair (q, p)
-// tied on final points, using precomputed win/loss bitmasks:
-//   - forced: Q.spread > P.spread in every margin assignment.
-//   - possible: Q.spread >= P.spread in at least one margin assignment
-//     (equal spread counts as possibly-above via username tiebreak).
+// spreadInf is a sentinel for an unbounded (+/-inf) reachable spread. It is far
+// larger than any real spread sum (a cluster has <= ~26 players), so finite
+// values never reach it and sums of a handful of sentinels do not overflow.
+const spreadInf = int64(1) << 50
+
+// spreadOrdering decides, for one brute leaf, whether a points-tied opponent Q
+// sits above a FREE player P (P has remaining games) on spread. Across all
+// leaves the lose-all and win-all leaves give P its true rank extremes, and
+// there this per-pair test is exact -- so for a free P it yields the correct
+// brute bound even though it ignores the joint coupling in intermediate leaves.
+// (A FIXED P has no such extreme leaf; see jointFixedTied.)
+//   - possible: Q can reach spread >= P (counts toward P's worst rank).
+//   - forced:   Q must exceed P on spread (counts toward P's best rank).
 //
-// Derivation (see bruteForceRanks header for the Δ_g definition):
-//
-// For a non-draw game g, Δ_g = sign_Q(g) - sign_P(g) ∈ {±1, ±2} and is
-//   - > 0 iff q wins g OR p loses g (the only cases with sign_Q > sign_P)
-//   - < 0 iff q loses g OR p wins g (mirror)
-//
-// max Σ Δ_g · m_g is +∞ iff any Δ_g > 0 (push m_g → ∞):
-//
-//	maxUnbounded = (winMask[q] | loseMask[p]) != 0
-//
-// Similarly minUnbounded = (winMask[p] | loseMask[q]) != 0.
-//
-// When neither is unbounded, no non-draw game has p or q in it, so every
-// Δ_g = 0; the finite sums are 0 and the spread comparison falls to the
-// initial diff.
+// A non-draw game Q wins, or P loses, lets the margin run to +inf
+// (maxUnbounded); P winning or Q losing lets it run to -inf (minUnbounded).
 func spreadOrdering(pWins, pLosses, qWins, qLosses uint64, pSpread, qSpread int) (forced, possible bool) {
 	maxUnbounded := (qWins | pLosses) != 0
 	minUnbounded := (pWins | qLosses) != 0
-
-	// Q.final > P.final (strict):  forced   = min Σ > P.init - Q.init
-	// Q.final >= P.final (allow =): possible = max Σ >= P.init - Q.init
-	// When the relevant direction is bounded, Σ == 0.
 	if maxUnbounded {
 		possible = true
 	} else {
@@ -1185,4 +1245,214 @@ func spreadOrdering(pWins, pLosses, qWins, qLosses uint64, pSpread, qSpread int)
 		forced = qSpread > pSpread
 	}
 	return forced, possible
+}
+
+// jointScratch holds reusable buffers for jointFixedTied so the brute's inner
+// loop allocates nothing. One per enumerateBruteForceCluster goroutine.
+type jointScratch struct {
+	parent, wins, losses []int
+	isTied, external     []bool
+	comp                 []int
+	lo, hi, costs        []int64
+}
+
+func newJointScratch(m int) *jointScratch {
+	return &jointScratch{
+		parent:   make([]int, m),
+		wins:     make([]int, m),
+		losses:   make([]int, m),
+		isTied:   make([]bool, m),
+		external: make([]bool, m),
+		comp:     make([]int, 0, m),
+		lo:       make([]int64, 0, m),
+		hi:       make([]int64, 0, m),
+		costs:    make([]int64, 0, m),
+	}
+}
+
+func findUF(parent []int, x int) int {
+	for parent[x] != x {
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	}
+	return x
+}
+
+// jointFixedTied computes, for a FIXED player P (no remaining games, so P's
+// spread is the constant baseSpread[p]) in one brute leaf, the min number of
+// points-tied players that MUST finish strictly above P (best rank) and the max
+// that CAN finish at-or-above P (worst rank), accounting for the joint zero-sum
+// coupling of shared games that the per-pair view misses.
+//
+// Tied players are grouped into components by their internal (tied-vs-tied)
+// non-draw games. A component is OPEN if any member also has a non-draw game to
+// a non-tied player: that game leaks spread out of the component, and the leak
+// propagates through the internal edges, so every member can independently
+// reach its own spread box -- count each member by its box. A CLOSED component
+// has no such leak, so its total spread is conserved; the count is then a
+// box-constrained sum-feasibility (maxAtOrAbove / maxAtOrBelow).
+func jointFixedTied(p int, tied []int, winMask []uint64, baseSpread []int, localGames [][2]int, js *jointScratch) (minAbove, maxGE int) {
+	if len(tied) == 0 {
+		return 0, 0
+	}
+	sprP := int64(baseSpread[p])
+	parent, wins, losses := js.parent, js.wins, js.losses
+	isTied, external := js.isTied, js.external
+	for _, q := range tied {
+		parent[q] = q
+		wins[q] = 0
+		losses[q] = 0
+		isTied[q] = true
+		external[q] = false
+	}
+	defer func() {
+		for _, q := range tied {
+			isTied[q] = false
+		}
+	}()
+
+	for gi, gp := range localGames {
+		bit := uint64(1) << gi
+		a, b := gp[0], gp[1]
+		var w, l int
+		switch {
+		case winMask[a]&bit != 0:
+			w, l = a, b
+		case winMask[b]&bit != 0:
+			w, l = b, a
+		default:
+			continue // draw: no spread coupling
+		}
+		if isTied[w] {
+			wins[w]++
+		}
+		if isTied[l] {
+			losses[l]++
+		}
+		switch {
+		case isTied[w] && isTied[l]:
+			if rw, rl := findUF(parent, w), findUF(parent, l); rw != rl {
+				parent[rw] = rl
+			}
+		case isTied[w]:
+			external[w] = true
+		case isTied[l]:
+			external[l] = true
+		}
+	}
+
+	// Group tied players into coupled components (by union-find root). Sorting
+	// by root makes same-component members contiguous, so each component is
+	// handled once in O(|tied| log |tied|) -- no per-root rescan of the set.
+	comp := append(js.comp[:0], tied...)
+	js.comp = comp
+	slices.SortFunc(comp, func(a, b int) int { return findUF(parent, a) - findUF(parent, b) })
+	for i := 0; i < len(comp); {
+		r := findUF(parent, comp[i])
+		lo, hi := js.lo[:0], js.hi[:0]
+		closed := true
+		var sumC int64
+		j := i
+		for j < len(comp) && findUF(parent, comp[j]) == r {
+			t := comp[j]
+			if external[t] {
+				closed = false
+			}
+			var loq, hiq int64
+			if wins[t] > 0 {
+				hiq = spreadInf
+			} else {
+				hiq = int64(baseSpread[t] - losses[t])
+			}
+			if losses[t] > 0 {
+				loq = -spreadInf
+			} else {
+				loq = int64(baseSpread[t] + wins[t])
+			}
+			lo = append(lo, loq)
+			hi = append(hi, hiq)
+			sumC += int64(baseSpread[t])
+			j++
+		}
+		js.lo, js.hi = lo, hi
+		if closed {
+			maxGE += maxAtOrAbove(lo, hi, sumC, sprP, js.costs)
+			minAbove += len(lo) - maxAtOrBelow(lo, hi, sumC, sprP, js.costs)
+		} else {
+			for k := range lo {
+				if hi[k] >= sprP {
+					maxGE++
+				}
+				if lo[k] > sprP {
+					minAbove++
+				}
+			}
+		}
+		i = j
+	}
+	return minAbove, maxGE
+}
+
+// maxAtOrAbove returns the largest count of members that can have spread >= c
+// given each spread is in [lo_i, hi_i] and they sum to the conserved S. Placing
+// a member at-or-above c costs max(c,lo_i)-lo_i over its floor; greedily admit
+// the cheapest while the minimum achievable sum stays <= S. costs is scratch.
+func maxAtOrAbove(lo, hi []int64, s, c int64, costs []int64) int {
+	var base int64
+	for _, l := range lo {
+		base += l
+	}
+	costs = costs[:0]
+	for i := range lo {
+		if hi[i] >= c {
+			floor := lo[i]
+			if c > floor {
+				floor = c
+			}
+			costs = append(costs, floor-lo[i])
+		}
+	}
+	slices.Sort(costs)
+	cnt := 0
+	cur := base
+	for _, ct := range costs {
+		cur += ct
+		if cur <= s {
+			cnt++
+		} else {
+			break
+		}
+	}
+	return cnt
+}
+
+// maxAtOrBelow is the mirror of maxAtOrAbove: the largest count of members that
+// can have spread <= c, given the boxes and the conserved sum S.
+func maxAtOrBelow(lo, hi []int64, s, c int64, costs []int64) int {
+	var base int64
+	for _, h := range hi {
+		base += h
+	}
+	costs = costs[:0]
+	for i := range hi {
+		if lo[i] <= c {
+			ceil := hi[i]
+			if c < ceil {
+				ceil = c
+			}
+			costs = append(costs, hi[i]-ceil)
+		}
+	}
+	slices.Sort(costs)
+	cnt := 0
+	cur := base
+	for _, ct := range costs {
+		cur -= ct
+		if cur >= s {
+			cnt++
+		} else {
+			break
+		}
+	}
+	return cnt
 }

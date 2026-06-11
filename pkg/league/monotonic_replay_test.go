@@ -59,9 +59,17 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 type divKey struct{ season, div string }
+
+// worst single CalculatePossibleRanks call seen during a replay (perf guard:
+// the production budget is the worst per-division-snapshot, ~29ms).
+var (
+	maxCalcDur           time.Duration
+	maxCalcN, maxCalcRem int
+)
 
 type replayGame struct {
 	p0, p1 int32
@@ -96,6 +104,8 @@ func TestRankBoundsMonotonicReplay(t *testing.T) {
 
 	t.Logf("replayed %d division-seasons (%d skipped: incomplete schedule), %d snapshots",
 		rep.divisions, rep.skipped, rep.snapshots)
+	t.Logf("worst single CalculatePossibleRanks: %v (n=%d, remaining games=%d)",
+		maxCalcDur, maxCalcN, maxCalcRem)
 	t.Logf("monotonicity violations: %d total (MM=%d maxflow->maxflow, MB=%d maxflow->brute boundary, BB=%d brute->brute)",
 		rep.monoViol, rep.viaMM, rep.viaMB, rep.viaBB)
 	t.Logf("final-result mismatches: %d", rep.finalMiss)
@@ -258,7 +268,11 @@ func replayDivision(rep *replayReport, season, div string, played []replayGame, 
 		}
 		remCount := len(unf)
 
+		t0 := time.Now()
 		bounds := CalculatePossibleRanks(standings, unf)
+		if d := time.Since(t0); d > maxCalcDur {
+			maxCalcDur, maxCalcN, maxCalcRem = d, len(standings), remCount
+		}
 		rep.snapshots++
 		inMaxflow := remCount > bruteForceThreshold
 
