@@ -208,9 +208,15 @@ about as fast as today's brute worst case (machine-independent via the ratio of
 B&B-worst to brute-worst). Lowering a gate only loosens the result (still
 sound+monotone); it never makes a wrong answer.
 
-> Measured constants (gate thresholds, coverage, speedups) are finalized in the
-> last commit of this work and filled in here then; treat the `<= 10` / `k <= 13`
-> figures above as the intended design values until then.
+The thresholds are measured: brute runs at `<= 10` unfinished games per cluster
+(`bruteForceThreshold`), and the B&B at cluster-local `k <= 13`
+(`localCandidateGate`). At those gates the worst single division-snapshot over
+the full game-history replay is ~65ms and lands on a *brute* cluster -- the gated
+B&B never exceeds the brute worst case, so the budget is brute-bound. `k = 14`
+hits a single-player B&B blow-up (a fully-bunched division), which is why the
+gate sits at 13. Replaying every completed division-season in completion order,
+the monotonicity violations drop from 1220 (the reported bug) to 0, with zero
+final-result mismatches.
 
 ### What `k` is (the B&B gate metric)
 

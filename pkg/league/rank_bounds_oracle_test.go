@@ -525,6 +525,106 @@ func TestRankBoundsBestInversionSoundVsBrute(t *testing.T) {
 	t.Logf("best-rank inversion vs brute over %d cases: 0 unsound, %d loose", cases, loose)
 }
 
+// TestRankBoundsSyntheticMonotonicReplay exercises the full per-cluster dispatch
+// -- the frontend, branch-and-bound, and brute tiers and the gate flips between
+// them -- with no data file (the real-data replay is env-gated, skipped in CI).
+// It simulates a round-robin season, and at every prefix asserts the two hard
+// guarantees: as games complete each player's range only tightens (best
+// non-decreasing, worst non-increasing), and once every game is played the range
+// collapses to that player's actual block-tie finishing rank. n=15 starts in the
+// frontend tier (candidate count 14 > gate 13); n=6 and n=12 start in the B&B
+// tier; all pass through the brute tier as their cluster shrinks below 10 games.
+func TestRankBoundsSyntheticMonotonicReplay(t *testing.T) {
+	rng := rand.New(rand.NewSource(2026))
+	for _, n := range []int{6, 12, 15} {
+		type game struct{ a, b int }
+		var schedule []game
+		for i := range n {
+			for j := i + 1; j < n; j++ {
+				schedule = append(schedule, game{i, j})
+			}
+		}
+		rng.Shuffle(len(schedule), func(i, j int) { schedule[i], schedule[j] = schedule[j], schedule[i] })
+		winner := make([]int, len(schedule)) // 0 = a wins, 1 = b wins, 2 = draw
+		margin := make([]int, len(schedule))
+		for i := range schedule {
+			winner[i] = rng.Intn(3)
+			margin[i] = 1 + rng.Intn(50)
+		}
+
+		// accumulate points/spread/played for the first `upto` completed games.
+		tally := func(upto int) (pts, spr, played []int) {
+			pts, spr, played = make([]int, n), make([]int, n), make([]int, n)
+			for gi := range upto {
+				g := schedule[gi]
+				switch winner[gi] {
+				case 0:
+					pts[g.a] += 2
+					spr[g.a] += margin[gi]
+					spr[g.b] -= margin[gi]
+				case 1:
+					pts[g.b] += 2
+					spr[g.b] += margin[gi]
+					spr[g.a] -= margin[gi]
+				default:
+					pts[g.a]++
+					pts[g.b]++
+				}
+				played[g.a]++
+				played[g.b]++
+			}
+			return
+		}
+
+		prevBest := make([]int, n) // indexed by userID-1
+		prevWorst := make([]int, n)
+		for i := range prevBest {
+			prevBest[i], prevWorst[i] = 1, n
+		}
+		for done := 0; done <= len(schedule); done++ {
+			pts, spr, played := tally(done)
+			st := make([]standingInfo, n)
+			for i := range st {
+				st[i] = standingInfo{userID: int32(i + 1), points: pts[i], spread: spr[i], gamesRemaining: (n - 1) - played[i]}
+			}
+			var unf []unfinishedGame
+			for gi := done; gi < len(schedule); gi++ {
+				unf = append(unf, unfinishedGame{player0ID: int32(schedule[gi].a + 1), player1ID: int32(schedule[gi].b + 1)})
+			}
+			sortStandings(st)
+			bounds := CalculatePossibleRanks(st, unf)
+			for i, s := range st {
+				uid := int(s.userID) - 1
+				b := bounds[i]
+				if b.BestRank < 1 || b.WorstRank > n || b.BestRank > b.WorstRank {
+					t.Fatalf("n=%d done=%d uid=%d: invalid bounds %v", n, done, uid, b)
+				}
+				if b.BestRank < prevBest[uid] || b.WorstRank > prevWorst[uid] {
+					t.Fatalf("n=%d uid=%d widened at done=%d: [%d,%d] -> [%d,%d]",
+						n, uid, done, prevBest[uid], prevWorst[uid], b.BestRank, b.WorstRank)
+				}
+				prevBest[uid], prevWorst[uid] = b.BestRank, b.WorstRank
+			}
+		}
+		// All games played: each player's range must equal its exact finishing
+		// rank (block-tie convention), since nothing remains undecided.
+		pts, spr, _ := tally(len(schedule))
+		st := make([]standingInfo, n)
+		for i := range st {
+			st[i] = standingInfo{userID: int32(i + 1), points: pts[i], spread: spr[i]}
+		}
+		sortStandings(st)
+		bounds := CalculatePossibleRanks(st, nil)
+		for i, s := range st {
+			uid := int(s.userID) - 1
+			lo, hi := rankRange(pts, spr, uid)
+			if bounds[i].BestRank != lo || bounds[i].WorstRank != hi {
+				t.Errorf("n=%d uid=%d: final bounds %v != actual rank [%d,%d]", n, uid, bounds[i], lo, hi)
+			}
+		}
+	}
+}
+
 // --- Fourier-Motzkin feasibility (the oracle's joint-margin engine) ---
 //
 // oracleRanks asks, per leaf, whether a subset of points-tied players can be
