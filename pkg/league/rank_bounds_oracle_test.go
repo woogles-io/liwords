@@ -418,6 +418,59 @@ func TestBruteJointVsExhaustive(t *testing.T) {
 	}
 }
 
+// TestRankBoundsWorstBnBSoundVsBrute validates the worst-rank branch-and-bound
+// eviction (the max-flow tier) against the exact brute on random small divisions.
+// The B&B bound must be SOUND -- never tighter than the exact worst rank
+// (worstRankForPlayer >= brute.worst) -- because the flow model can only lose
+// tightness, never claim an unreachable rank. It is exercised here on the same
+// small divisions the brute solves exactly; in production the B&B runs on larger
+// clusters where the brute is infeasible. Reports how often it is merely loose.
+func TestRankBoundsWorstBnBSoundVsBrute(t *testing.T) {
+	rng := rand.New(rand.NewSource(13579))
+	const cases = 3000
+	unsound, loose := 0, 0
+	for c := range cases {
+		n := 3 + rng.Intn(5) // 3..7
+		points := make([]int, n)
+		spreads := make([]int, n)
+		for i := range n {
+			points[i] = rng.Intn(7)
+			spreads[i] = rng.Intn(15) - 7
+		}
+		g := rng.Intn(8) // 0..7 games -> brute path, exact ground truth
+		var pairs [][2]int
+		for range g {
+			x, y := rng.Intn(n), rng.Intn(n)
+			if x != y {
+				pairs = append(pairs, [2]int{x, y})
+			}
+		}
+		st, unf := makeDivision(points, spreads, pairs)
+		brute := CalculatePossibleRanks(st, unf) // small division => exact brute
+		games := toGamePairs(st, unf)
+		fg := newFlowGraph(2 + len(games) + n)
+		candIdx := initSlice(n, -1)
+		for p := range n {
+			gi := decomposeGames(p, n, games)
+			w := worstRankForPlayer(p, st, gi, fg, candIdx)
+			switch {
+			case w < brute[p].WorstRank:
+				unsound++
+				if unsound <= 5 {
+					t.Errorf("case %d player %d: B&B worst %d < brute worst %d (UNSOUND)\n st=%+v\n unf=%+v",
+						c, p, w, brute[p].WorstRank, st, unf)
+				}
+			case w > brute[p].WorstRank:
+				loose++
+			}
+		}
+	}
+	if unsound > 0 {
+		t.Fatalf("%d unsound worst-rank B&B bounds vs brute", unsound)
+	}
+	t.Logf("worst-rank B&B vs brute over %d cases: 0 unsound, %d loose", cases, loose)
+}
+
 // --- Fourier-Motzkin feasibility (the oracle's joint-margin engine) ---
 //
 // oracleRanks asks, per leaf, whether a subset of points-tied players can be

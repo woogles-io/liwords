@@ -242,34 +242,39 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *
 		return candidates[i].deficit < candidates[j].deficit
 	})
 
-	// Iteratively check feasibility via max-flow and remove infeasible candidates.
-	for {
-		feasible, infeasibleIdx := checkFeasibility(candidates, gi.nonPGames, fg, candIdx)
-		if feasible {
-			break
-		}
-		if infeasibleIdx >= 0 {
-			candidates = append(candidates[:infeasibleIdx], candidates[infeasibleIdx+1:]...)
-		}
-		if len(candidates) == 0 {
-			break
-		}
-	}
-
-	return 1 + len(candidates)
+	// The worst rank is 1 + (players guaranteed above P) + (minimum candidates
+	// that can be forced above P). The minimum forced-above count is the size of
+	// the candidate set minus the most that can simultaneously stay at/below P;
+	// finding that maximum is a minimum-eviction problem, solved exactly by
+	// branch-and-bound below. (A greedy eviction is faster but sub-optimal, and
+	// its error is not monotone in cluster size, so it can produce a widening
+	// bound. The exact search is kept cheap by the cluster-local-k gate in
+	// CalculatePossibleRanks, which never routes a large candidate set here.)
+	initial := len(candidates)
+	minEvict := minEvictAbove(candidates, gi.nonPGames, fg, candIdx, bnbBudget)
+	return 1 + (initial - minEvict)
 }
 
-// checkFeasibility uses max-flow to determine whether all candidates in the set
-// can simultaneously reach W points from non-P games.
-//
-// Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
+// bnbBudget caps the branch-and-bound recursion depth (the eviction count). It
+// is a finite-termination backstop only: the cluster-local-k gate already bounds
+// the candidate set so the true minimum eviction never approaches this, so the
+// budget never binds in production. (A depth cap is monotone -- under-counting
+// evictions only loosens the bound -- so even if it did bind it could not widen
+// the range; the gate, not the budget, is what keeps the search cheap.)
+const bnbBudget = 64
+
+// reachWCut builds the "every candidate gains its deficit of points from non-P
+// games" max-flow and reports feasibility. A candidate's deficit is first reduced
+// by 2 per game it plays against a non-candidate (an outright win it can always
+// take); the remainder must come from within-set games, each of which supplies 2
+// points to its two endpoints. The set is feasible iff the flow saturates every
+// game edge. On infeasibility it returns the source-side player nodes of the min
+// cut -- the candidates implicated in the bottleneck.
+func reachWCut(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, []int) {
 	k := len(candidates)
 	if k == 0 {
-		return true, -1
+		return true, nil
 	}
-
-	// Map candidate player indices → 0..k-1 via candIdx slice.
 	for ci, c := range candidates {
 		candIdx[c.idx] = ci
 	}
@@ -279,13 +284,9 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		}
 	}()
 
-	// Identify within-set games and external games for each candidate.
-	type withinGame struct {
-		ci, cj int // indices into candidates slice
-	}
+	type withinGame struct{ ci, cj int }
 	var withinGames []withinGame
 	externalCnt := make([]int, k)
-
 	for _, g := range nonPGames {
 		ciA, ciB := candIdx[g.a], candIdx[g.b]
 		aIn, bIn := ciA >= 0, ciB >= 0
@@ -298,7 +299,6 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		}
 	}
 
-	// Compute adjusted deficit (what each candidate needs from within-set games).
 	adjustedDeficit := make([]int, k)
 	totalNeeded := 0
 	for ci, c := range candidates {
@@ -306,29 +306,10 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		adjustedDeficit[ci] = adj
 		totalNeeded += adj
 	}
-
 	if totalNeeded == 0 {
-		return true, -1
+		return true, nil
 	}
 
-	// Quick check: total points from within-set games
-	if len(withinGames)*2 < totalNeeded {
-		worst := -1
-		worstDef := -1
-		for ci := range candidates {
-			if adjustedDeficit[ci] > worstDef {
-				worstDef = adjustedDeficit[ci]
-				worst = ci
-			}
-		}
-		return false, worst
-	}
-
-	// Build max-flow network:
-	//   0: source
-	//   1: sink
-	//   2 .. 2+numWithinGames-1: game nodes
-	//   2+numWithinGames .. 2+numWithinGames+k-1: player nodes
 	numGameNodes := len(withinGames)
 	numNodes := 2 + numGameNodes + k
 	source, sink := 0, 1
@@ -342,39 +323,86 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		fg.addEdge(gn, playerNode(wg.ci), 2)
 		fg.addEdge(gn, playerNode(wg.cj), 2)
 	}
-	for ci := 0; ci < k; ci++ {
+	for ci := range k {
 		if adjustedDeficit[ci] > 0 {
 			fg.addEdge(playerNode(ci), sink, adjustedDeficit[ci])
 		}
 	}
-
-	flow := fg.maxflow(source, sink)
-	if flow >= totalNeeded {
-		return true, -1
+	if fg.maxflow(source, sink) >= totalNeeded {
+		return true, nil
 	}
+	// Min cut: player nodes still reachable from the source in the residual graph
+	// (level >= 0 after the final BFS) are on the source side of the bottleneck.
+	var cut []int
+	for ci := range k {
+		if fg.level[playerNode(ci)] >= 0 {
+			cut = append(cut, ci)
+		}
+	}
+	if len(cut) == 0 {
+		for ci := range k {
+			cut = append(cut, ci)
+		}
+	}
+	return false, cut
+}
 
-	// Not feasible. Find the candidate with the largest remaining deficit.
-	playerFlow := make([]int, k)
-	for ci := 0; ci < k; ci++ {
-		pn := playerNode(ci)
-		for _, e := range fg.adj[pn] {
-			if e.to == sink {
-				playerFlow[ci] = adjustedDeficit[ci] - e.cap
+// minimalInfeasibleAbove shrinks an infeasible subset of candidates (indices into
+// candidates) to a minimal one: a subset that is still infeasible but becomes
+// feasible if any single member is removed. The minimum eviction set must contain
+// at least one member of every minimal infeasible subset, so branching on a small
+// one keeps the branch factor low.
+func minimalInfeasibleAbove(candidates []cand, idxs []int, nonPGames []gamePair, fg *flowGraph, candIdx []int) []int {
+	keep := append([]int(nil), idxs...)
+	for i := 0; i < len(keep); {
+		trial := append(append([]int{}, keep[:i]...), keep[i+1:]...)
+		sub := make([]cand, len(trial))
+		for j, ci := range trial {
+			sub[j] = candidates[ci]
+		}
+		if feasible, _ := reachWCut(sub, nonPGames, fg, candIdx); !feasible {
+			keep = trial
+		} else {
+			i++
+		}
+	}
+	return keep
+}
+
+// minEvictAbove returns the exact minimum number of candidates that must be
+// dropped (finish at/below P) so the rest can all simultaneously reach W. It
+// tests feasibility with reachWCut; if infeasible, it branches on a minimal
+// infeasible subset, evicting each member in turn and recursing. Branching on a
+// minimal infeasible subset (not the whole set, nor the min cut, which is not a
+// reliable infeasible subset for this flow) is exact and keeps the branch factor
+// small. budget bounds the recursion depth (see bnbBudget).
+func minEvictAbove(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int, budget int) int {
+	feasible, _ := reachWCut(candidates, nonPGames, fg, candIdx)
+	if feasible {
+		return 0
+	}
+	if budget <= 0 {
+		return 1
+	}
+	all := make([]int, len(candidates))
+	for i := range all {
+		all[i] = i
+	}
+	branch := minimalInfeasibleAbove(candidates, all, nonPGames, fg, candIdx)
+	best := budget + 1
+	sub := make([]cand, 0, len(candidates)-1)
+	for _, ci := range branch {
+		sub = sub[:0]
+		sub = append(sub, candidates[:ci]...)
+		sub = append(sub, candidates[ci+1:]...)
+		if r := 1 + minEvictAbove(sub, nonPGames, fg, candIdx, best-2); r < best {
+			best = r
+			if best == 1 {
 				break
 			}
 		}
 	}
-
-	worst := -1
-	worstGap := -1
-	for ci := range candidates {
-		gap := adjustedDeficit[ci] - playerFlow[ci]
-		if gap > worstGap {
-			worstGap = gap
-			worst = ci
-		}
-	}
-	return false, worst
+	return best
 }
 
 type cand struct {
