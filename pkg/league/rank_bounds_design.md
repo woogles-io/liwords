@@ -210,13 +210,14 @@ sound+monotone); it never makes a wrong answer.
 
 The thresholds are measured: brute runs at `<= 10` unfinished games per cluster
 (`bruteForceThreshold`), and the B&B at cluster-local `k <= 13`
-(`localCandidateGate`). At those gates the worst single division-snapshot over
-the full game-history replay is ~65ms and lands on a *brute* cluster -- the gated
-B&B never exceeds the brute worst case, so the budget is brute-bound. `k = 14`
-hits a single-player B&B blow-up (a fully-bunched division), which is why the
-gate sits at 13. Replaying every completed division-season in completion order,
-the monotonicity violations drop from 1220 (the reported bug) to 0, with zero
-final-result mismatches.
+(`localCandidateGate`). Over the full game-history replay the worst single
+division-snapshot is ~29ms and lands on a *B&B* cluster; the brute worst case (a
+bunched `m=26`, `g=10` cluster) is ~24ms after its per-leaf counting sort, so the
+budget is B&B-bound, not brute-bound. `k = 14` hits a single-player B&B blow-up
+(a fully-bunched division), which is why the gate sits at 13; the brute stays at
+`<= 10` because `3^11` leaves explode regardless of the per-leaf speed. Replaying
+every completed division-season in completion order, the monotonicity violations
+drop from 1220 (the reported bug) to 0, with zero final-result mismatches.
 
 ### What `k` is (the B&B gate metric)
 

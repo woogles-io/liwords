@@ -930,6 +930,12 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	winsCnt := make([]int, m)
 	lossCnt := make([]int, m)
 	coupledVal := make([]bool, maxPts+2*g+1)
+	// order + valOffset implement a per-leaf counting sort of members by points,
+	// so strictly-above and tied-on-points are read off contiguous groups in
+	// O(m + pointsRange) rather than rescanned per player in O(m^2). Sized by the
+	// points range and cluster size, never by a fixed division size.
+	order := make([]int, m)
+	valOffset := make([]int, maxPts+2*g+1)
 
 	total := 1
 	for i := 0; i < g; i++ {
@@ -944,11 +950,8 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 		}
 		x := k
 		for localGi := 0; localGi < g; localGi++ {
-			gm := allGames[c.games[localGi]]
-			// Both endpoints are guaranteed cluster members because games are
-			// assigned to clusters by the union-find root.
-			a := memberIdx[gm.a]
-			b := memberIdx[gm.b]
+			// localGames already holds both endpoints' local member indices.
+			a, b := localGames[localGi][0], localGames[localGi][1]
 			bit := uint64(1) << localGi
 			switch x % 3 {
 			case 0:
@@ -981,47 +984,75 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 			}
 		}
 
-		for p := range m {
-			strictAbove := 0
-			tied = tied[:0]
-			for q := range m {
-				if q == p {
-					continue
-				}
-				switch {
-				case points[q] > points[p]:
-					strictAbove++
-				case points[q] == points[p]:
-					tied = append(tied, q)
-				}
+		// Counting sort members by points into `order` (ascending), so each
+		// points value is a contiguous group. Then strictly-above is the suffix
+		// past the group and the group itself is the tied-on-points set -- read
+		// off in O(m + pointsRange) instead of an O(m^2) per-player rescan.
+		clear(valOffset)
+		for i := range m {
+			valOffset[points[i]]++
+		}
+		acc := 0
+		for v := range valOffset {
+			cnt := valOffset[v]
+			valOffset[v] = acc
+			acc += cnt
+		}
+		for i := range m {
+			v := points[i]
+			order[valOffset[v]] = i
+			valOffset[v]++
+		}
+
+		for lo := 0; lo < m; {
+			v := points[order[lo]]
+			hi := lo + 1
+			for hi < m && points[order[hi]] == v {
+				hi++
 			}
-			var minAbove, maxGE int
-			if standings[c.members[p]].gamesRemaining > 0 {
-				// Free P: per-pair is exact in aggregate (the lose-all and
-				// win-all leaves give P's true rank extremes). Fast path.
-				for _, q := range tied {
-					forced, possible := spreadOrdering(
-						winMask[p], loseMask[p], winMask[q], loseMask[q],
-						baseSpread[p], baseSpread[q],
-					)
-					if forced {
-						minAbove++
+			strictAbove := m - hi // members past this group have strictly higher points
+			coupled := coupledVal[v]
+			for gi := lo; gi < hi; gi++ {
+				p := order[gi]
+				var minAbove, maxGE int
+				if standings[c.members[p]].gamesRemaining > 0 {
+					// Free P: per-pair is exact in aggregate (the lose-all and
+					// win-all leaves give P's true rank extremes). Fast path.
+					for ti := lo; ti < hi; ti++ {
+						if ti == gi {
+							continue
+						}
+						q := order[ti]
+						forced, possible := spreadOrdering(
+							winMask[p], loseMask[p], winMask[q], loseMask[q],
+							baseSpread[p], baseSpread[q],
+						)
+						if forced {
+							minAbove++
+						}
+						if possible {
+							maxGE++
+						}
 					}
-					if possible {
-						maxGE++
+				} else if coupled {
+					// Fixed P tied with a coupled set: the per-pair view over-counts,
+					// so use the joint closed-form. tied = this group minus P.
+					tied = tied[:0]
+					for ti := lo; ti < hi; ti++ {
+						if ti != gi {
+							tied = append(tied, order[ti])
+						}
 					}
-				}
-			} else {
-				// Fixed P: the per-pair view over-counts coupled tied players.
-				// If no two of P's tied opponents are coupled (no decided game
-				// this leaf between two players both at P's points), each is
-				// independent and a per-member reachable-spread box is exact;
-				// only genuine coupling needs the joint closed-form.
-				if coupledVal[points[p]] {
 					minAbove, maxGE = jointFixedTied(p, tied, winMask, baseSpread, localGames, js)
 				} else {
+					// Fixed P, no coupling: each tied opponent's reachable-spread
+					// box is independent and exact.
 					sprP := baseSpread[p]
-					for _, q := range tied {
+					for ti := lo; ti < hi; ti++ {
+						if ti == gi {
+							continue
+						}
+						q := order[ti]
 						hiq := baseSpread[q] - lossCnt[q] // max spread: no win -> lose minimally
 						if winsCnt[q] > 0 {
 							hiq = 1 << 30 // a win runs spread to +inf
@@ -1038,15 +1069,16 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 						}
 					}
 				}
+				bestRank := 1 + fixedAbove + strictAbove + minAbove
+				worstRank := 1 + fixedAbove + strictAbove + maxGE
+				if bestRank < best[p] {
+					best[p] = bestRank
+				}
+				if worstRank > worst[p] {
+					worst[p] = worstRank
+				}
 			}
-			bestRank := 1 + fixedAbove + strictAbove + minAbove
-			worstRank := 1 + fixedAbove + strictAbove + maxGE
-			if bestRank < best[p] {
-				best[p] = bestRank
-			}
-			if worstRank > worst[p] {
-				worst[p] = worstRank
-			}
+			lo = hi
 		}
 	}
 
@@ -1055,9 +1087,10 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	}
 }
 
-// spreadInf is a sentinel for an unbounded (+/-inf) reachable spread. It is far
-// larger than any real spread sum (a cluster has <= ~26 players), so finite
-// values never reach it and sums of a handful of sentinels do not overflow.
+// spreadInf is a sentinel for an unbounded (+/-inf) reachable spread. At 1<<50
+// it dwarfs any real spread sum yet leaves int64 headroom for summing one per
+// cluster member (a sum stays safe up to thousands of members, far beyond any
+// division), so finite values never reach it and the sums never overflow.
 const spreadInf = int64(1) << 50
 
 // spreadOrdering decides, for one brute leaf, whether a points-tied opponent Q
