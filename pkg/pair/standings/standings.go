@@ -277,11 +277,12 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	startRankIdx := 0
 	endRankIdx := 0
 	leftoverGibsonPlayers := []int{}
+	controlLoss := lowestHopeControlLosser >= 0
 	pairingsStartIdx := 0
 	segmentRoundFactors := []int{}
 	for endRankIdx <= numPlayers {
 		if endRankIdx == numPlayers {
-			assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, leftoverGibsonPlayers, pairings, &segmentRoundFactors)
+			assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, leftoverGibsonPlayers, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 			for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
 				gibsonGroups[rankIdx] = 0
 			}
@@ -295,7 +296,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					// The number of players in the group is odd, so
 					// we have to pull in the gibsonized player at endRankIdx
 					// to even the group
-					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors)
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 					pairingsStartIdx += numPlayersInGibsonGroup + 1
 					for rankIdx := startRankIdx; rankIdx <= endRankIdx; rankIdx++ {
 						gibsonGroups[rankIdx] = nextGibsonGroup
@@ -306,7 +307,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					// The number of players in the group is even, so
 					// the gibsonized player is not included in the group
 					// and will be included in the bottom gibson group
-					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors)
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 					pairingsStartIdx += numPlayersInGibsonGroup
 					for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
 						gibsonGroups[rankIdx] = nextGibsonGroup
@@ -515,8 +516,10 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 				// Move forced winner to position 1 so they play rank 0 (1st place).
 				swapIdxA = 1
 				swapIdxB = switchPairingIdx
-			} else if switchPairingIdx == 1 {
+			} else if switchPairingIdx == 1 && roundIdx < roundsRemaining-1 {
 				// Forced winner is currently rank 0's factor-pair opponent.
+				// Only swap in non-last rounds: the last round is KOTH and should resolve
+				// naturally (forced winner faces rank 0 if they're rank 1, and still wins).
 				// Instead of having them play 1st, swap with another pairing:
 				//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
 				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
@@ -557,12 +560,16 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 
 // Unexported functions
 
-// Gets the factor pairings for players in [i, j] for all remaining rounds
-// Assumes i < j
-// Returns pairings in pairs of player indexes
-// For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 2
-// and player 1 plays player 3.
-func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, initialRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int) {
+// assignPairingsForSegment sets the simulation pairings for players in [startRankIdx, endRankIdx]
+// for all remaining rounds.
+//
+// When controlLoss is false (normal sim): each round uses multiple factor pairs followed by
+// consecutive KOTH pairings for the remainder.
+//
+// When controlLoss is true (always-wins sim): each round uses a single factor pair (top of
+// segment vs Nth player), then randomly pairs remaining players within totalNumPlayers/2
+// rank distance.
+func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, initialRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int, copRand *rand.Rand, totalNumPlayers int, controlLoss bool) {
 	numPlayers := endRankIdx - startRankIdx + 1
 
 	for roundsRemaining := initialRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
@@ -576,28 +583,89 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 		}
 		*segmentRoundFactors = append(*segmentRoundFactors, roundFactor)
 		roundIdx := initialRoundsRemaining - roundsRemaining
-		for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
-			basePairingIdx := pairingsStartIdx + 2*factorPairing
-			basePlayerIdx := startRankIdx + factorPairing
-			pairings[roundIdx][basePairingIdx] = basePlayerIdx
-			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
-		}
-		numKothPlayers := numPlayers - 2*roundFactor
-		numKothPairings := numKothPlayers / 2
-		var nextKothPairingIdx int
-		var nextKothPairingPlayerIdx int
-		for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
-			basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
-			basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
-			pairings[roundIdx][basePairingIdx] = basePlayerIdx
-			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
 
-			nextKothPairingIdx = basePairingIdx + 2
-			nextKothPairingPlayerIdx = basePlayerIdx + 2
+		// The last simulated round always uses KOTH (consecutive pairing) for all players.
+		if roundsRemaining == 1 {
+			for kothPairing := 0; kothPairing < numPlayers/2; kothPairing++ {
+				basePairingIdx := pairingsStartIdx + 2*kothPairing
+				basePlayerIdx := startRankIdx + 2*kothPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
+			}
+			if numPlayers%2 == 1 {
+				pairings[roundIdx][pairingsStartIdx+numPlayers-1] = startRankIdx + numPlayers - 1
+			}
+			if len(leftoverGibsonPlayers) > 0 {
+				baseGibsonPairingIdx := pairingsStartIdx + numPlayers
+				for playerIdx := 0; playerIdx < len(leftoverGibsonPlayers); playerIdx++ {
+					pairings[roundIdx][baseGibsonPairingIdx+playerIdx] = leftoverGibsonPlayers[playerIdx]
+				}
+			}
+			continue
 		}
-		if numKothPlayers%2 == 1 {
-			pairings[roundIdx][nextKothPairingIdx] = nextKothPairingPlayerIdx
+
+		if controlLoss {
+			// Single factor pair: top of segment vs Nth player.
+			pairings[roundIdx][pairingsStartIdx] = startRankIdx
+			pairings[roundIdx][pairingsStartIdx+1] = startRankIdx + roundFactor
+
+			// Collect remaining players (all except the factor pair).
+			remaining := make([]int, 0, numPlayers-2)
+			for rankIdx := startRankIdx; rankIdx <= endRankIdx; rankIdx++ {
+				if rankIdx != startRankIdx && rankIdx != startRankIdx+roundFactor {
+					remaining = append(remaining, rankIdx)
+				}
+			}
+
+			// Randomly pair remaining players within totalNumPlayers/2 rank distance.
+			// Shuffle and pair consecutively; retry up to 10 times to reduce violations.
+			halfP := totalNumPlayers / 2
+			best := make([]int, len(remaining))
+			copy(best, remaining)
+			bestViolations := countDistanceViolations(best, halfP)
+			shuffled := make([]int, len(remaining))
+			copy(shuffled, remaining)
+			for attempt := 0; attempt < 10 && bestViolations > 0; attempt++ {
+				copRand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
+				if v := countDistanceViolations(shuffled, halfP); v < bestViolations {
+					copy(best, shuffled)
+					bestViolations = v
+				}
+			}
+
+			for i := 0; i+1 < len(best); i += 2 {
+				pairings[roundIdx][pairingsStartIdx+2+i] = best[i]
+				pairings[roundIdx][pairingsStartIdx+2+i+1] = best[i+1]
+			}
+			if len(best)%2 == 1 {
+				pairings[roundIdx][pairingsStartIdx+2+len(best)-1] = best[len(best)-1]
+			}
+		} else {
+			// Multiple factor pairs followed by KOTH for the remainder.
+			for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
+				basePairingIdx := pairingsStartIdx + 2*factorPairing
+				basePlayerIdx := startRankIdx + factorPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
+			}
+			numKothPlayers := numPlayers - 2*roundFactor
+			numKothPairings := numKothPlayers / 2
+			var nextKothPairingIdx int
+			var nextKothPairingPlayerIdx int
+			for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
+				basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
+				basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
+
+				nextKothPairingIdx = basePairingIdx + 2
+				nextKothPairingPlayerIdx = basePlayerIdx + 2
+			}
+			if numKothPlayers%2 == 1 {
+				pairings[roundIdx][nextKothPairingIdx] = nextKothPairingPlayerIdx
+			}
 		}
+
 		if len(leftoverGibsonPlayers) > 0 {
 			baseGibsonPairingIdx := pairingsStartIdx + numPlayers
 			for playerIdx := 0; playerIdx < len(leftoverGibsonPlayers); playerIdx++ {
@@ -605,6 +673,20 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 			}
 		}
 	}
+}
+
+func countDistanceViolations(players []int, maxDist int) int {
+	violations := 0
+	for i := 0; i+1 < len(players); i += 2 {
+		d := players[i] - players[i+1]
+		if d < 0 {
+			d = -d
+		}
+		if d > maxDist {
+			violations++
+		}
+	}
+	return violations
 }
 
 func (standings *Standings) getPlayerIdxToRankIdxMap() map[int]int {

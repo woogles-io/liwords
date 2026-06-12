@@ -280,7 +280,7 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
-			// In the fourth quarter, cashers use PC weight exclusively.
+			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
 			if pargs.roundsRemaining*4 <= int(pargs.req.Rounds) &&
 				!pargs.copdata.GibsonizedPlayers[ri] &&
 				ri <= pargs.lowestPossibleHopeCasher {
@@ -313,13 +313,20 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
+			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
+				// Only apply PC weight in the fourth quarter.
+				if pargs.roundsRemaining*4 > int(pargs.req.Rounds) {
+					return 0
+				}
+				// Calculate the inverse distance penalty
 				casherDiff := lowestContender - rj
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
 				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
+			// Apply a major penalty if the lower ranked player cannot catch the higher ranked player
 			return majorPenalty
 		},
 	},

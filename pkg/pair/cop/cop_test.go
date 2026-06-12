@@ -701,9 +701,9 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 
-	// This is the first round that control loss is active, so first will
-	// be force paired with the lowest contender. Therefore, prepairing the lowest
-	// contender with someone else will result in an overconstrained error.
+	// With 6 rounds remaining and KOTH as the last round, rank 4 (not rank 3) is
+	// the lowest contender with control loss. Prepairing player 25 (rank 3) with
+	// player 6 no longer conflicts with the Destiny's Child requirement.
 	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
 	req.ControlLossActivationRound = 21
 	req.Seed = 1
@@ -717,7 +717,7 @@ func TestCOPConstraintPolicies(t *testing.T) {
 		Pairings: pairings,
 	})
 	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_OVERCONSTRAINED)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 	// This is the second round that control loss is active, so first will
 	// be force paired with the 2 lowest contenders. Therefore, prepairing the lowest
@@ -869,23 +869,23 @@ func TestCOPWeights(t *testing.T) {
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[0], int32(12))
-	is.Equal(resp.Pairings[18], int32(19))
+	is.Equal(resp.Pairings[0], int32(9))
+	is.Equal(resp.Pairings[18], int32(16))
 
 	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
-	// and non-cashers use RD weight only. Outside the fourth quarter, both weights apply.
+	// and non-cashers use RD weight only. Outside the fourth quarter, RD applies to all.
 	//
 	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
-	// Outside Q4 (Rounds=12, 4*4=16 > 12), PC+RD both active.
+	// Outside Q4 (Rounds=12, 4*4=16 > 12): RD-only for all players.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Rounds = 12
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[4], int32(7))
-	is.Equal(resp.Pairings[10], int32(6))
-	is.Equal(resp.Pairings[13], int32(17))
-	is.Equal(resp.Pairings[17], int32(13))
+	is.Equal(resp.Pairings[4], int32(9))
+	is.Equal(resp.Pairings[10], int32(13))
+	is.Equal(resp.Pairings[13], int32(10))
+	is.Equal(resp.Pairings[17], int32(7))
 
 	// In Q4 (Rounds=10), non-casher players pair by RD only.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()

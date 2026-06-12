@@ -13,328 +13,334 @@ import (
 	"golang.org/x/exp/rand"
 )
 
-// Pairing pattern from AddNDummyRounds for N players: (0,1),(2,3),(4,5),...
-// Results determine who wins each match.
-//
 // All tests require COP_SCENARIOS=1 to run (on-demand only).
+// All scenarios use AddNDummyRounds which fixes pairings as (0v1),(2v3),(4v5),...
+// so each pair always plays each other. Results strings determine who wins each round.
+// All scenarios have 2 rounds left (6 rounds completed, Rounds=8).
+
+const (
+	scenarioDivisionSims          = 100000
+	scenarioControlLossSims       = 10000
+	scenarioHopefulness           = 0.01
+	scenarioGibsonSpread          = 200
+	scenarioLastRoundGibsonSpread = 250
+)
 
 func writeScenarioLog(t *testing.T, filename string, log string) {
 	t.Helper()
-	if err := os.WriteFile(filename, []byte(log), 0644); err != nil {
-		t.Logf("failed to write log file %s: %v", filename, err)
+	if err := os.MkdirAll("logs", 0755); err != nil {
+		t.Logf("failed to create logs directory: %v", err)
+		return
+	}
+	path := "logs/" + filename
+	if err := os.WriteFile(path, []byte(log), 0644); err != nil {
+		t.Logf("failed to write log file %s: %v", path, err)
 	}
 }
 
-// Scenario 1: Tight race at the top; two players nearly tied for 1st with 2 rounds left.
-// After 6 rounds: P0=5-1 (big spread), P2=5-1 (small spread), PlacePrizes=2.
-func TestControlLoss_TightRaceAtTop(t *testing.T) {
+// Scenario 1: Five players tied at N wins with PlacePrizes=4.
+// Top 4 are secure on control; COP should pair 1st vs 5th.
+// 10 players, P0=P2=P4=P6=P8=5-1 with decreasing spreads (+300,+200,+150,+100,+50).
+func TestScenario1_FiveAtTopFourPrizes(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping tight-race-at-top scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skip("Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
 	req := &pb.PairRequest{
 		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"Alice", "Bob", "Charlie", "Dave", "Eric", "Frank", "Grace", "Holly"},
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 10,
+		ValidPlayers:               10,
+		Rounds:                     8,
+		PlacePrizes:                4,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// R1-R5: P0+64, P2+44, P4+34, P6+24, P8+14 (even players win)
+	// R6: all odd players win by 20
+	// Result: P0=5-1 +300, P2=5-1 +200, P4=5-1 +150, P6=5-1 +100, P8=5-1 +50
+	pairtestutils.AddNDummyRounds(req, 6)
+	pairtestutils.AddRoundResultsStr(req, "432 368 422 378 417 383 412 388 407 393")
+	pairtestutils.AddRoundResultsStr(req, "432 368 422 378 417 383 412 388 407 393")
+	pairtestutils.AddRoundResultsStr(req, "432 368 422 378 417 383 412 388 407 393")
+	pairtestutils.AddRoundResultsStr(req, "432 368 422 378 417 383 412 388 407 393")
+	pairtestutils.AddRoundResultsStr(req, "432 368 422 378 417 383 412 388 407 393")
+	pairtestutils.AddRoundResultsStr(req, "390 410 390 410 390 410 390 410 390 410")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_1_five_at_top_four_prizes.log", resp.Log)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+// Scenario 2: Two players at N wins, two at N-1 wins, close spreads.
+// COP should not force any pairing because 3rd/4th can win by winning out.
+// P0=5-1 +100, P2=5-1 +80, P4=4-2 +50, P6=4-2 +40, PlacePrizes=2.
+func TestScenario2_TwoNTwoNMinus1CloseSpread(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0},
 		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
+		GibsonSpread:               scenarioGibsonSpread,
 		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
+		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 8,
 		ValidPlayers:               8,
 		Rounds:                     8,
 		PlacePrizes:                2,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 6,
 		AllowRepeatByes:            false,
 	}
-	// 6 rounds with same pairing pattern: (0v1),(2v3),(4v5),(6v7)
-	// P0 wins 5/6, P2 wins 5/6 — tight race for 1st by spread.
-	// P0 wins by large margins; P2 wins by small margins.
+	// R1-R4: all even players win (P0+30, P2+26, P4+25, P6+20)
+	// R5: P0,P2 win; P5,P7 beat P4,P6 (P4,P6 first losses)
+	// R6: P1,P3 beat P0,P2; P5,P7 beat P4,P6 (P0,P2 first losses, P4,P6 second losses)
+	// Result: P0=5-1 +100, P2=5-1 +80, P4=4-2 +50, P6=4-2 +40
 	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "480 340 420 390 400 370 390 380") // R1: P0 big, P2 small
-	pairtestutils.AddRoundResultsStr(req, "470 350 415 395 395 375 385 385") // R2
-	pairtestutils.AddRoundResultsStr(req, "460 360 410 400 390 380 380 390") // R3: P6 wins
-	pairtestutils.AddRoundResultsStr(req, "450 370 405 405 385 385 390 380") // R4: tie→pick higher
-	pairtestutils.AddRoundResultsStr(req, "440 380 400 410 380 390 395 375") // R5: P0 wins, P2 LOSES
-	pairtestutils.AddRoundResultsStr(req, "430 390 395 415 375 395 400 370") // R6: P0 wins, P2 LOSES
+	pairtestutils.AddRoundResultsStr(req, "430 400 426 400 425 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "430 400 426 400 425 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "430 400 426 400 425 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "430 400 426 400 425 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "430 400 426 400 400 425 400 420")
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 450 400 425 400 420")
 
 	resp := cop.COPPair(req)
-	writeScenarioLog(t, "tight_race_at_top.log", resp.Log)
+	writeScenarioLog(t, "scenario_2_two_n_two_n_minus_1_close_spread.log", resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
-// Scenario 2: Dominant leader with huge spread; first place could be in control loss territory.
-// After 6 rounds: P0=6-0 with +700 spread, P2=4-2, PlacePrizes=2.
-func TestControlLoss_DominantLeader(t *testing.T) {
+// Scenario 3: Two players at N wins, two at N-1 wins, far inferior spreads.
+// The N-1 players need both more wins AND a spread comeback; 1% hopefulness threshold
+// determines whether they are locked out. 2nd's destiny control is not threatened,
+// so 1v2 is only forced if everyone else is locked out.
+// P0=5-1 +500, P2=5-1 +400, P4=4-2 -100, P6=4-2 -150, PlacePrizes=2.
+func TestScenario3_TwoNTwoNMinus1FarSpread(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping dominant-leader scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skip("Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
 	req := &pb.PairRequest{
 		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"Alice", "Bob", "Charlie", "Dave", "Eric", "Frank", "Grace", "Holly"},
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0},
 		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
+		GibsonSpread:               scenarioGibsonSpread,
 		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
+		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 8,
 		ValidPlayers:               8,
 		Rounds:                     8,
 		PlacePrizes:                2,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 6,
 		AllowRepeatByes:            false,
 	}
-	// P0 wins all 6 by 100+; P2 wins 4/6, P4 wins 3/6, P6 wins 3/6.
+	// R1-R4: P0+110, P2+90, P4+25, P6+25
+	// R5: P0,P2 still win; P5 beats P4 by 100, P7 beats P6 by 125
+	// R6: P1,P3 beat P0,P2; P5 beats P4 by 100, P7 beats P6 by 125
+	// Result: P0=5-1 +500, P2=5-1 +400, P4=4-2 -100, P6=4-2 -150
 	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "560 340 430 390 400 370 400 380") // R1
-	pairtestutils.AddRoundResultsStr(req, "570 350 420 400 390 380 410 370") // R2
-	pairtestutils.AddRoundResultsStr(req, "580 360 410 410 380 390 420 360") // R3: P2 loses
-	pairtestutils.AddRoundResultsStr(req, "590 370 400 420 370 400 430 350") // R4: P2 loses again
-	pairtestutils.AddRoundResultsStr(req, "600 380 440 430 360 410 400 360") // R5: P2 wins
-	pairtestutils.AddRoundResultsStr(req, "610 390 450 440 350 420 390 370") // R6: P2 wins
+	pairtestutils.AddRoundResultsStr(req, "510 400 490 400 425 400 425 400")
+	pairtestutils.AddRoundResultsStr(req, "510 400 490 400 425 400 425 400")
+	pairtestutils.AddRoundResultsStr(req, "510 400 490 400 425 400 425 400")
+	pairtestutils.AddRoundResultsStr(req, "510 400 490 400 425 400 425 400")
+	pairtestutils.AddRoundResultsStr(req, "510 400 490 400 300 400 275 400")
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 450 300 400 275 400")
 
 	resp := cop.COPPair(req)
-	writeScenarioLog(t, "dominant_leader.log", resp.Log)
+	writeScenarioLog(t, "scenario_3_two_n_two_n_minus_1_far_spread.log", resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
-// Scenario 3: Crowded second place; three players tied for 2nd with 2 rounds left.
-// 12 players, PlacePrizes=2: P0=6-0, P2=P4=P6=4-2, all chasing the single 2nd-place prize.
-func TestControlLoss_CrowdedSecond(t *testing.T) {
+// Scenario 4: One player at N, one at N-1, one at N-2; 2nd's spread is close to 1st.
+// Because 2nd can still win the tournament by winning out, COP should default to 1v3.
+// P0=5-1 +100, P2=4-2 +90, P4=3-3 ~0, PlacePrizes=1.
+func TestScenario4_OneNOneNMinus1OneNMinus2CloseSpread(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping crowded-second scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skip("Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
 	req := &pb.PairRequest{
 		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
-		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
-		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
-		AllPlayers:                 12,
-		ValidPlayers:               12,
-		Rounds:                     8,
-		PlacePrizes:                2,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
-		ControlLossActivationRound: 6,
-		AllowRepeatByes:            false,
-	}
-	// Pairings: (0v1),(2v3),(4v5),(6v7),(8v9),(10v11)
-	// P0=6-0, P2=P4=P6=4-2, P8=3-3, P10=2-4
-	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "550 350 420 390 410 380 400 390 390 400 380 390") // R1: P0,P2,P4,P6 win
-	pairtestutils.AddRoundResultsStr(req, "540 360 425 385 415 375 405 385 395 395 385 385") // R2: same
-	pairtestutils.AddRoundResultsStr(req, "530 370 430 380 420 370 410 380 400 390 390 380") // R3: same
-	pairtestutils.AddRoundResultsStr(req, "520 380 435 375 425 365 415 375 405 385 395 375") // R4: same
-	pairtestutils.AddRoundResultsStr(req, "510 390 380 440 360 430 360 420 400 380 380 390") // R5: P2,P4,P6 LOSE
-	pairtestutils.AddRoundResultsStr(req, "500 400 375 445 355 435 355 425 395 375 375 395") // R6: P2,P4,P6 LOSE
-
-	resp := cop.COPPair(req)
-	writeScenarioLog(t, "crowded_second.log", resp.Log)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-}
-
-// Scenario 4: Spread is the only differentiator; multiple players tied on wins with 2 rounds left.
-// After 6 rounds: P0=5-1 (+400 spread), P2=5-1 (+50 spread), P4=5-1 (+20 spread), PlacePrizes=1.
-func TestControlLoss_SpreadTiebreaker(t *testing.T) {
-	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping spread-tiebreaker scenario test. Set COP_SCENARIOS=1 to run.")
-	}
-	is := is.New(t)
-	req := &pb.PairRequest{
-		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"Alice", "Bob", "Charlie", "Dave", "Eric", "Frank", "Grace", "Holly"},
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0},
 		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
+		GibsonSpread:               scenarioGibsonSpread,
 		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
+		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 8,
 		ValidPlayers:               8,
 		Rounds:                     8,
 		PlacePrizes:                1,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 6,
 		AllowRepeatByes:            false,
 	}
-	// Pairings: (0v1),(2v3),(4v5),(6v7)
-	// P0 wins by 80 each round (5/6), P2 wins by 10 each round (5/6), P4 wins by 5 each round (5/6)
+	// P0: wins R1-R5 by 25, loses R6 by 25 → 5-1 +100
+	// P2: wins R1-R4 by 30, loses R5-R6 by 15 → 4-2 +90
+	// P4: wins R1,R3,R5 by 20, loses R2,R4,R6 by 20 → 3-3 ±0
+	// P6: wins R1,R3,R5 by 15, loses R2,R4,R6 by 15 → 3-3 ±0 (avoids filler players at 4-2)
 	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "480 400 410 400 405 400 390 400") // R1: P0+80,P2+10,P4+5,P6-10
-	pairtestutils.AddRoundResultsStr(req, "480 400 410 400 405 400 395 395") // R2: P6 ties→higher
-	pairtestutils.AddRoundResultsStr(req, "480 400 410 400 405 400 390 400") // R3
-	pairtestutils.AddRoundResultsStr(req, "480 400 410 400 405 400 390 400") // R4
-	pairtestutils.AddRoundResultsStr(req, "480 400 410 400 405 400 390 400") // R5
-	pairtestutils.AddRoundResultsStr(req, "390 480 399 410 399 406 400 380") // R6: P0,P2,P4 LOSE
+	pairtestutils.AddRoundResultsStr(req, "425 400 430 400 420 400 415 400")
+	pairtestutils.AddRoundResultsStr(req, "425 400 430 400 380 400 385 400")
+	pairtestutils.AddRoundResultsStr(req, "425 400 430 400 420 400 415 400")
+	pairtestutils.AddRoundResultsStr(req, "425 400 430 400 380 400 385 400")
+	pairtestutils.AddRoundResultsStr(req, "425 400 385 400 420 400 415 400")
+	pairtestutils.AddRoundResultsStr(req, "400 425 385 400 380 400 385 400")
 
 	resp := cop.COPPair(req)
-	writeScenarioLog(t, "spread_tiebreaker.log", resp.Log)
+	writeScenarioLog(t, "scenario_4_one_n_one_n_minus_1_one_n_minus_2_close_spread.log", resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
-// Scenario 5: Multiple cash prizes with many contenders, 2 rounds left.
-// 16 players, PlacePrizes=3: P0=6-0, P2=P4=5-1, P6=P8=P10=4-2.
-func TestControlLoss_MultiplePrizes(t *testing.T) {
+// Scenario 5: Two players at N wins, two at N-2 wins.
+// With KOTH in the last round, 3rd and 4th cannot win; COP should recognize this.
+// P0=5-1 +300, P2=5-1 +200, P4=3-3 ~0, P6=3-3 ~-48, PlacePrizes=2.
+func TestScenario5_TwoNTwoNMinus2KOTH(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping multiple-prizes scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skip("Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
 	req := &pb.PairRequest{
 		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13", "P14", "P15"},
-		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
-		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
-		AllPlayers:                 16,
-		ValidPlayers:               16,
-		Rounds:                     8,
-		PlacePrizes:                3,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
-		ControlLossActivationRound: 6,
-		AllowRepeatByes:            false,
-	}
-	// Pairings: (0v1),(2v3),(4v5),(6v7),(8v9),(10v11),(12v13),(14v15)
-	// P0=6-0, P2=P4=5-1, P6=P8=P10=4-2, P12=3-3, P14=2-4
-	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "540 350 470 390 460 380 440 390 420 390 410 390 400 390 390 400") // R1
-	pairtestutils.AddRoundResultsStr(req, "530 360 465 395 455 385 435 395 415 395 405 395 395 395 385 405") // R2
-	pairtestutils.AddRoundResultsStr(req, "520 370 460 400 450 390 430 400 410 400 400 400 390 400 380 410") // R3
-	pairtestutils.AddRoundResultsStr(req, "510 380 455 405 445 395 425 405 405 405 395 405 385 405 375 415") // R4
-	pairtestutils.AddRoundResultsStr(req, "500 390 440 420 430 410 400 420 390 420 380 420 380 400 370 400") // R5: P2,P4 lose
-	pairtestutils.AddRoundResultsStr(req, "490 400 430 430 420 420 390 430 380 430 370 430 375 395 365 395") // R6: P6,P8,P10 lose
-
-	resp := cop.COPPair(req)
-	writeScenarioLog(t, "multiple_prizes.log", resp.Log)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-}
-
-// Scenario 6: Near-Gibson situation; leader has spread just under the threshold.
-// After 6 rounds: P0=6-0 with +350 spread (near Gibson with GibsonSpread=200, 2 rounds left → max catchable=400).
-func TestControlLoss_NearGibson(t *testing.T) {
-	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping near-gibson scenario test. Set COP_SCENARIOS=1 to run.")
-	}
-	is := is.New(t)
-	req := &pb.PairRequest{
-		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"Alice", "Bob", "Charlie", "Dave", "Eric", "Frank", "Grace", "Holly"},
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0},
 		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
+		GibsonSpread:               scenarioGibsonSpread,
 		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
+		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 8,
 		ValidPlayers:               8,
 		Rounds:                     8,
 		PlacePrizes:                2,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 6,
 		AllowRepeatByes:            false,
 	}
-	// P0 wins all 6 by ~58 each (total +350). P2=5-1, P4=4-2.
+	// P0: wins R1-R5 by 70, loses R6 by 50 → 5-1 +300
+	// P2: wins R1-R5 by 50, loses R6 by 50 → 5-1 +200
+	// P4: alternates win(+20)/loss(-20) → 3-3 ±0
+	// P6: alternates win(+10)/loss(-26) → 3-3 ~-48
 	pairtestutils.AddNDummyRounds(req, 6)
-	pairtestutils.AddRoundResultsStr(req, "458 400 430 390 400 390 395 385") // R1: P0+58, P2+40
-	pairtestutils.AddRoundResultsStr(req, "456 400 425 395 395 395 390 390") // R2
-	pairtestutils.AddRoundResultsStr(req, "454 400 420 400 390 400 385 395") // R3: P2 wins barely, P4 loses
-	pairtestutils.AddRoundResultsStr(req, "452 400 415 405 385 405 380 400") // R4: P2 loses
-	pairtestutils.AddRoundResultsStr(req, "450 400 410 410 380 410 395 385") // R5: P2 wins, P4 loses
-	pairtestutils.AddRoundResultsStr(req, "448 400 440 380 375 415 390 390") // R6: P2 wins big
+	pairtestutils.AddRoundResultsStr(req, "470 400 450 400 420 400 410 400")
+	pairtestutils.AddRoundResultsStr(req, "470 400 450 400 380 400 374 400")
+	pairtestutils.AddRoundResultsStr(req, "470 400 450 400 420 400 410 400")
+	pairtestutils.AddRoundResultsStr(req, "470 400 450 400 380 400 374 400")
+	pairtestutils.AddRoundResultsStr(req, "470 400 450 400 420 400 410 400")
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 450 380 400 374 400")
 
 	resp := cop.COPPair(req)
-	writeScenarioLog(t, "near_gibson.log", resp.Log)
+	writeScenarioLog(t, "scenario_5_two_n_two_n_minus_2_koth.log", resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
-// Albany CSW ME 2025: simulate the last 16 rounds using COP, starting from after round 16.
-// Uses CreateBLSRound32PairRequest which is the same tournament data.
+// Scenario 6: One player at N wins, two at N-2 wins.
+// COP should find control loss for both N-2 players and pair 1st vs 2nd.
+// P0=5-1 +200, P2=3-3 +51, P4=3-3 ~0, PlacePrizes=2.
+func TestScenario6_OneNTwoNMinus2BothControlLoss(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 8,
+		ValidPlayers:               8,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+	}
+	// P0: wins R1-R5 by 50, loses R6 by 50 → 5-1 +200
+	// P2: wins R1-R3 by 40, loses R4-R6 by 23 → 3-3 +51
+	// P4: wins R1,R3,R5 by 20, loses R2,R4,R6 by 20 → 3-3 ±0
+	// P6: wins R1,R3,R5 by 20, loses R2,R4,R6 by 20 → 3-3 ±0 (avoids filler player at 4-2)
+	pairtestutils.AddNDummyRounds(req, 6)
+	pairtestutils.AddRoundResultsStr(req, "450 400 440 400 420 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "450 400 440 400 380 400 380 400")
+	pairtestutils.AddRoundResultsStr(req, "450 400 440 400 420 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "450 400 400 423 380 400 380 400")
+	pairtestutils.AddRoundResultsStr(req, "450 400 400 423 420 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "400 450 400 423 380 400 380 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_6_one_n_two_n_minus_2_both_control_loss.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+// Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
+// historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
-func TestAlbanyCSW2025ME_Last16Rounds(t *testing.T) {
+func TestScenarioMultiRound_AlbanyCSW2025ME_Last16Rounds(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
 		t.Skip("Skipping Albany CSW 2025 ME scenario test. Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
-	rng := rand.New(rand.NewSource(42))
-	spreadsDist := standings.GetScoreDifferences()
-	spreadsDistSize := len(spreadsDist)
 
-	// Build base request from BLS data (same tournament), trimmed to 16 rounds.
 	base := pairtestutils.CreateBLSRound32PairRequest()
-	numPlayers := int(base.AllPlayers)
 
-	req := &pb.PairRequest{
-		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                base.PlayerNames,
-		PlayerClasses:              base.PlayerClasses,
-		ClassPrizes:                base.ClassPrizes,
-		GibsonSpread:               base.GibsonSpread,
-		ControlLossThreshold:       base.ControlLossThreshold,
-		HopefulnessThreshold:       base.HopefulnessThreshold,
-		AllPlayers:                 base.AllPlayers,
-		ValidPlayers:               base.ValidPlayers,
-		Rounds:                     base.Rounds,
-		PlacePrizes:                base.PlacePrizes,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
-		ControlLossActivationRound: base.ControlLossActivationRound,
-		AllowRepeatByes:            base.AllowRepeatByes,
-		RemovedPlayers:             base.RemovedPlayers,
-		Seed:                       0,
-		DivisionPairings:           base.DivisionPairings[:16],
-		DivisionResults:            base.DivisionResults[:16],
-	}
-
-	// Simulate rounds 17-32 with COP pairing and random results.
 	for round := 17; round <= 32; round++ {
+		gibsonSpread := int32(scenarioGibsonSpread)
+		if round == int(base.Rounds) {
+			gibsonSpread = scenarioLastRoundGibsonSpread
+		}
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                base.PlayerNames,
+			PlayerClasses:              base.PlayerClasses,
+			ClassPrizes:                base.ClassPrizes,
+			GibsonSpread:               gibsonSpread,
+			ControlLossThreshold:       base.ControlLossThreshold,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 base.AllPlayers,
+			ValidPlayers:               base.ValidPlayers,
+			Rounds:                     base.Rounds,
+			PlacePrizes:                base.PlacePrizes,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: base.ControlLossActivationRound,
+			AllowRepeatByes:            base.AllowRepeatByes,
+			RemovedPlayers:             base.RemovedPlayers,
+			Seed:                       0,
+			DivisionPairings:           base.DivisionPairings[:round-1],
+			DivisionResults:            base.DivisionResults[:round-1],
+		}
+
 		resp := cop.COPPair(req)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 		fmt.Printf("Albany CSW 2025 ME round %d pairings: %v\n", round, resp.Pairings)
 		writeScenarioLog(t, fmt.Sprintf("albany_csw_2025_me_round_%02d.log", round), resp.Log)
-
-		pairings := make([]int32, numPlayers)
-		copy(pairings, resp.Pairings)
-		req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
-
-		// Generate random results for each player.
-		results := make([]int32, numPlayers)
-		byePlayer := -1
-		for i := 0; i < numPlayers; i++ {
-			if pairings[i] == int32(i) {
-				byePlayer = i
-			}
-		}
-		for i := 0; i < numPlayers; i++ {
-			if i == byePlayer {
-				results[i] = 50
-				continue
-			}
-			opp := int(pairings[i])
-			if i < opp {
-				spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
-				base := int32(400)
-				results[i] = base + spread/2
-				results[opp] = base - spread/2
-			}
-		}
-		req.DivisionResults = append(req.DivisionResults, &pb.RoundResults{Results: results})
 	}
 }
 
 // Fake 28-game 51-player event: 3 rounds of fontes-style pairings, then 25 rounds of COP.
 // Run with: COP_SCENARIOS=1 go test -run TestFake28Game51Players
-func TestFake28Game51Players(t *testing.T) {
+func TestScenarioMultiRound_Fake28Game51Players(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
 		t.Skip("Skipping fake 51-player scenario test. Set COP_SCENARIOS=1 to run.")
 	}
@@ -358,20 +364,19 @@ func TestFake28Game51Players(t *testing.T) {
 		PlayerNames:                names,
 		PlayerClasses:              classes,
 		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
-		ControlLossThreshold:       0.25,
-		HopefulnessThreshold:       0.02,
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.30,
+		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 int32(numPlayers),
 		ValidPlayers:               int32(numPlayers),
 		Rounds:                     int32(totalRounds),
 		PlacePrizes:                3,
-		DivisionSims:               1000,
-		ControlLossSims:            1000,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 22,
 		AllowRepeatByes:            false,
 	}
 
-	// Generate random results for a given pairing.
 	addRandomResults := func(pairings []int32) {
 		results := make([]int32, numPlayers)
 		byePlayer := -1
@@ -389,20 +394,23 @@ func TestFake28Game51Players(t *testing.T) {
 			if i < opp {
 				spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
 				baseScore := int32(400)
-				results[i] = baseScore + spread/2
-				results[opp] = baseScore - spread/2
+				if rng.Intn(2) == 0 {
+					results[i] = baseScore + spread/2
+					results[opp] = baseScore - spread/2
+				} else {
+					results[i] = baseScore - spread/2
+					results[opp] = baseScore + spread/2
+				}
 			}
 		}
 		req.DivisionResults = append(req.DivisionResults, &pb.RoundResults{Results: results})
 	}
 
-	// Fontes-style pairings for first 3 rounds: group players into N/F tiers,
-	// pair top-half vs bottom-half within each group. Use simple rotation for variety.
+	// Fontes-style pairings for first 3 rounds.
 	for r := 0; r < fontesRounds; r++ {
 		pairings := make([]int32, numPlayers)
 		paired := make([]bool, numPlayers)
 
-		// Each fontes round pairs player i with player (i + numPlayers/2 + r) % numPlayers.
 		step := numPlayers/2 + r
 		for i := 0; i < numPlayers; i++ {
 			if paired[i] {
@@ -410,7 +418,6 @@ func TestFake28Game51Players(t *testing.T) {
 			}
 			j := (i + step) % numPlayers
 			startJ := j
-			// Avoid pairing already-paired or self.
 			// Break if we've wrapped all the way around (no valid partner — will get bye).
 			for paired[j] || j == i {
 				j = (j + 1) % numPlayers
@@ -427,7 +434,6 @@ func TestFake28Game51Players(t *testing.T) {
 			paired[i] = true
 			paired[j] = true
 		}
-		// The one remaining unpaired player (51 is odd) gets a bye.
 		for i := 0; i < numPlayers; i++ {
 			if !paired[i] {
 				pairings[i] = int32(i)
@@ -441,6 +447,12 @@ func TestFake28Game51Players(t *testing.T) {
 
 	// COP rounds for the remaining 25 rounds.
 	for round := fontesRounds + 1; round <= totalRounds; round++ {
+		if round == totalRounds {
+			req.GibsonSpread = scenarioLastRoundGibsonSpread
+		} else {
+			req.GibsonSpread = scenarioGibsonSpread
+		}
+
 		resp := cop.COPPair(req)
 		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 		fmt.Printf("Fake 51-player round %d pairings: %v\n", round, resp.Pairings)
@@ -451,4 +463,25 @@ func TestFake28Game51Players(t *testing.T) {
 		req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
 		addRandomResults(pairings)
 	}
+}
+
+// Manhattan Open 2024 (or similar): 18 players, 16 rounds, PlacePrizes=2.
+// Pairs the final round (round 16) using historical data through round 15.
+func TestScenario_Manhattan(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := pairtestutils.CreateManhattanAfterRound14PairRequest()
+	req.DivisionSims = scenarioDivisionSims
+	req.ControlLossSims = scenarioControlLossSims
+	req.HopefulnessThreshold = scenarioHopefulness
+	req.GibsonSpread = scenarioGibsonSpread
+	req.ControlLossActivationRound = 10
+	req.Seed = 1
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_manhattan.log", resp.Log)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }

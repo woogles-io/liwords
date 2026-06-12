@@ -280,12 +280,13 @@ func TestStandings(t *testing.T) {
 	numSims = 1000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, 6, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, 3)
-	// When rank 3 is paired with rank 0 in the factor-pair simulation, the swap
-	// (rank 0 plays rank 1, rank 3 plays rank 1's old opponent) reduces vsFactorWins
-	// relative to vsFirstWins, demonstrating control loss for rank 3.
-	is.True(simResults.VsFirstWins[3] == numSims)
-	is.True(simResults.VsFirstWins[3]-simResults.AllControlLosses[3] >= int(req.ControlLossThreshold*float64(numSims)))
+	is.Equal(simResults.HighestControlLossRankIdx, 4)
+	// Rank 3 no longer triggers control loss because with KOTH in the last round,
+	// rank 3 (after winning non-KOTH rounds) naturally reaches rank 1 and faces rank 0.
+	// Rank 4 still triggers because it starts further behind and can't reliably reach
+	// rank 1 by KOTH, so rank 0 can still win the tournament in the vsFactor scenario.
+	is.True(simResults.VsFirstWins[4] == numSims)
+	is.True(simResults.VsFirstWins[4]-simResults.AllControlLosses[4] >= int(req.ControlLossThreshold*float64(numSims)))
 
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	// Give the player in 2nd more spread to trigger control loss
