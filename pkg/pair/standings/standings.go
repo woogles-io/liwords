@@ -650,8 +650,8 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 			}
 			numKothPlayers := numPlayers - 2*roundFactor
 			numKothPairings := numKothPlayers / 2
-			var nextKothPairingIdx int
-			var nextKothPairingPlayerIdx int
+			nextKothPairingIdx := pairingsStartIdx + 2*roundFactor
+			nextKothPairingPlayerIdx := startRankIdx + 2*roundFactor
 			for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
 				basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
 				basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
