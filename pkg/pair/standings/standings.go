@@ -21,7 +21,6 @@ const (
 	playerSpreadOffset  int     = 16
 	initialSpreadValue  int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
 	playerIndexMask     uint64  = 0xFFFF
-	byeSpread           int     = 50
 	simConfidence       float64 = 0.99
 	resimBatchSize      int     = 10000
 	initialSimTimeLimit int     = 6
@@ -168,7 +167,7 @@ func (standings *Standings) GetPlayerWins(rankIdx int) float64 {
 // GetPlayerWinsIntTimesTwo returns wins*2 + ties as an integer, avoiding
 // a float64 round-trip when callers need an integer win comparison.
 func (standings *Standings) GetPlayerWinsIntTimesTwo(rankIdx int) int {
-	return int(getWinsValue(standings.records[rankIdx])-initialWinsValue+standings.roundsPlayed)
+	return int(getWinsValue(standings.records[rankIdx]) - initialWinsValue + standings.roundsPlayed)
 }
 
 func (standings *Standings) GetPlayerSpread(rankIdx int) int {

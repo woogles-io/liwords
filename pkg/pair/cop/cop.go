@@ -50,6 +50,7 @@ type policyArgs struct {
 	gibsonGetsBye            bool
 	prepairedRoundIdx        int
 	prepairedPlayerIndexes   map[int]int
+	lowestHopeOverride       map[int]int
 }
 
 type constraintPolicy struct {
@@ -313,6 +314,9 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
+			if override, ok := pargs.lowestHopeOverride[ri]; ok {
+				lowestContender = override
+			}
 			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
 				// Only apply PC weight in the fourth quarter.
@@ -1204,6 +1208,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	for {
 		edges := []*matching.Edge{}
 		edgeWeights := map[string]int64{}
+		pcEdgeWeights := map[string]int64{}
 		pairingDetails = [][]string{}
 		pairingsToDetailsIndex = map[string]int{}
 
@@ -1232,6 +1237,10 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 						weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
 						weightSum += weight
 						pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
+						if weightPolicy.name == "PC" {
+							rankKey := getRankPairingKey(rankIdxI, rankIdxJ)
+							pcEdgeWeights[rankKey] = weight
+						}
 					}
 					pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
 					rankKey := getRankPairingKey(rankIdxI, rankIdxJ)
@@ -1282,12 +1291,13 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 		expanded := false
 		numStandingsPlayers := copdata.Standings.GetNumPlayers()
+		lowestHopeOverride := map[int]int{}
 		for playerRankIdx, oppRankIdx := range pairings {
 			if oppRankIdx <= playerRankIdx {
 				continue
 			}
 			rankKey := getRankPairingKey(playerRankIdx, oppRankIdx)
-			if edgeWeights[rankKey] >= majorPenalty {
+			if pcEdgeWeights[rankKey] >= majorPenalty {
 				nameForNode := func(rankIdx int) string {
 					pi := playerNodes[rankIdx]
 					if pi == pkgstnd.ByePlayerIndex {
@@ -1299,9 +1309,13 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 					nameForNode(playerRankIdx),
 					nameForNode(oppRankIdx),
 					edgeWeights[rankKey]))
-				for _, r := range []int{playerRankIdx, oppRankIdx} {
-					if r < len(copdata.LowestPossibleHopeNth) && copdata.LowestPossibleHopeNth[r]+1 < numStandingsPlayers {
-						copdata.LowestPossibleHopeNth[r]++
+				if playerRankIdx < len(copdata.LowestPossibleHopeNth) {
+					current := copdata.LowestPossibleHopeNth[playerRankIdx]
+					if override, ok := lowestHopeOverride[playerRankIdx]; ok {
+						current = override
+					}
+					if current+1 < numStandingsPlayers {
+						lowestHopeOverride[playerRankIdx] = current + 1
 						expanded = true
 					}
 				}
@@ -1310,6 +1324,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		if !expanded {
 			break
 		}
+		pargs.lowestHopeOverride = lowestHopeOverride
 		retried = true
 	}
 
