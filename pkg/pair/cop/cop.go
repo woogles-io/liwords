@@ -371,31 +371,23 @@ var weightPolicies = []weightPolicy{
 			//
 			// n-peat weight >= 2 * (n-1)-peat weight
 			//
-			// From this relationship and the existing code
-			// we can derive a recursive formula for what repeats should be:
+			// The minimal recursive formula satisfying this is:
 			//
 			// RE(1) = 1
-			// RE(n) = 2 * (RE(n-1) + 1)
+			// RE(n) = 2 * RE(n-1)
 			//
-			// we use a +1 for when both players are outside of cash, which results
-			// in the following values for repeats:
+			// which results in the following values for repeats:
 			// RE(1) = 1
-			// RE(2) = 4
-			// RE(3) = 10
-			// RE(4) = 22
-			// RE(5) = 46
+			// RE(2) = 2
+			// RE(3) = 4
+			// RE(4) = 8
+			// RE(5) = 16
 			// ...
 			multiplier := 0
 			if timesPlayed > 0 {
-				multiplier = 3*(1<<(timesPlayed-1)) - 2
+				multiplier = 1 << (timesPlayed - 1)
 			}
-			totalWeight := int64(multiplier) * unitWeight
-			// If both players are outside of cash, add an extra unit weight
-			// to the repeat weight.
-			if ri > getLowestCasherIndex(pargs) {
-				totalWeight += unitWeight
-			}
-			return totalWeight
+			return int64(multiplier) * unitWeight
 		},
 	},
 	{

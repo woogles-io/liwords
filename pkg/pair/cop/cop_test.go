@@ -882,9 +882,9 @@ func TestCOPWeights(t *testing.T) {
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[4], int32(9))
-	is.Equal(resp.Pairings[10], int32(13))
-	is.Equal(resp.Pairings[13], int32(10))
-	is.Equal(resp.Pairings[17], int32(7))
+	is.Equal(resp.Pairings[10], int32(0))
+	is.Equal(resp.Pairings[13], int32(17))
+	is.Equal(resp.Pairings[17], int32(13))
 
 	// In Q4 (Rounds=10), non-casher players pair by RD only.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()

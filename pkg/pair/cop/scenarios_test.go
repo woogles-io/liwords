@@ -370,7 +370,7 @@ func TestScenarioMultiRound_Fake28Game51Players(t *testing.T) {
 		AllPlayers:                 int32(numPlayers),
 		ValidPlayers:               int32(numPlayers),
 		Rounds:                     int32(totalRounds),
-		PlacePrizes:                3,
+		PlacePrizes:                10,
 		DivisionSims:               scenarioDivisionSims,
 		ControlLossSims:            scenarioControlLossSims,
 		ControlLossActivationRound: 22,
