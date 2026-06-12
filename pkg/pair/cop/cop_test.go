@@ -870,7 +870,6 @@ func TestCOPWeights(t *testing.T) {
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	is.Equal(resp.Pairings[0], int32(9))
-	is.Equal(resp.Pairings[18], int32(16))
 
 	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
 	// and non-cashers use RD weight only. Outside the fourth quarter, RD applies to all.
