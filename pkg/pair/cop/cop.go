@@ -369,23 +369,23 @@ var weightPolicies = []weightPolicy{
 			unitWeight := int64(4 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
 			// We would like the following to always be true:
 			//
-			// n-peat weight >= 2 * (n-1)-peat weight
+			// n-peat weight > 2 * (n-1)-peat weight
 			//
 			// The minimal recursive formula satisfying this is:
 			//
 			// RE(1) = 1
-			// RE(n) = 2 * RE(n-1)
+			// RE(n) = 2 * RE(n-1) + 1
 			//
 			// which results in the following values for repeats:
 			// RE(1) = 1
-			// RE(2) = 2
-			// RE(3) = 4
-			// RE(4) = 8
-			// RE(5) = 16
+			// RE(2) = 3
+			// RE(3) = 7
+			// RE(4) = 15
+			// RE(5) = 31
 			// ...
 			multiplier := 0
 			if timesPlayed > 0 {
-				multiplier = 1 << (timesPlayed - 1)
+				multiplier = (1 << timesPlayed) - 1
 			}
 			return int64(multiplier) * unitWeight
 		},
