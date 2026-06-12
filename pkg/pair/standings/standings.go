@@ -511,14 +511,13 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 			// Determine which swap (if any) to apply before simulating the round.
 			// swapIdxA and swapIdxB are the two positions to exchange.
 			swapIdxA, swapIdxB := -1, -1
-			if vsFirst {
+			if vsFirst && roundIdx < roundsRemaining-1 {
 				// Move forced winner to position 1 so they play rank 0 (1st place).
+				// Skip the final round: it is always KOTH and resolves naturally.
 				swapIdxA = 1
 				swapIdxB = switchPairingIdx
 			} else if switchPairingIdx == 1 && roundIdx < roundsRemaining-1 {
 				// Forced winner is currently rank 0's factor-pair opponent.
-				// Only swap in non-last rounds: the last round is KOTH and should resolve
-				// naturally (forced winner faces rank 0 if they're rank 1, and still wins).
 				// Instead of having them play 1st, swap with another pairing:
 				//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
 				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.

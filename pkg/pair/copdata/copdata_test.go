@@ -249,7 +249,7 @@ func TestCOPPrecompData(t *testing.T) {
 	copRand.Seed(1)
 	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(copdata.DestinysChild, 2)
+	is.Equal(copdata.DestinysChild, -1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}
