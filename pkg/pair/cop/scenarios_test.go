@@ -3,7 +3,9 @@ package cop_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/matryer/is"
 	"github.com/woogles-io/liwords/pkg/pair/cop"
@@ -28,11 +30,11 @@ const (
 
 func writeScenarioLog(t *testing.T, filename string, log string) {
 	t.Helper()
-	if err := os.MkdirAll("logs", 0755); err != nil {
+	path := filepath.Join("logs", filename)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Logf("failed to create logs directory: %v", err)
 		return
 	}
-	path := "logs/" + filename
 	if err := os.WriteFile(path, []byte(log), 0644); err != nil {
 		t.Logf("failed to write log file %s: %v", path, err)
 	}
@@ -338,130 +340,151 @@ func TestScenarioMultiRound_AlbanyCSW2025ME_Last16Rounds(t *testing.T) {
 	}
 }
 
-// Fake 28-game 51-player event: 3 rounds of fontes-style pairings, then 25 rounds of COP.
-// Run with: COP_SCENARIOS=1 go test -run TestFake28Game51Players
-func TestScenarioMultiRound_Fake28Game51Players(t *testing.T) {
+// July 4th 2026 28-game 53-player event: 3 rounds of fontes-style pairings, then 25 rounds of COP.
+// Uses the Division 1 player list from wordgameplayers.org/tournaments/1162.
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_July4th2026
+func TestScenarioMultiRound_July4th2026(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping fake 51-player scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skip("Skipping July 4th 2026 scenario test. Set COP_SCENARIOS=1 to run.")
 	}
 	is := is.New(t)
-	rng := rand.New(rand.NewSource(99))
 	spreadsDist := standings.GetScoreDifferences()
 	spreadsDistSize := len(spreadsDist)
 
-	numPlayers := 51
+	const numRuns = 10
+
+	numPlayers := 53
 	totalRounds := 28
 	fontesRounds := 3
 
-	names := make([]string, numPlayers)
+	names := []string{
+		"Wellington Jighere", "Nigel Richards", "Will Anderson", "Dave Wiegand",
+		"Adam Logan", "Josh Sokol", "Eta Karo", "Matthew Tunnicliffe",
+		"Joshua Castellano", "Enoch Nwali", "Matthew O'Connor", "Rob Robinsky",
+		"Austin Shin", "Kevin Fraley", "Noah Slatkoff", "Jason Keller",
+		"Thomas Reinke", "Edgar Odongkara", "Sammy Okosagah", "Charles Reinke",
+		"Lukeman Owolabi", "Brian Po", "Olawale Fashina", "Chukwudi Ehibudu",
+		"Rasheed Balogun", "Samuel Anikoh", "Chris Lipe", "Robert Linn",
+		"Jason Carney", "Joel Wapnick", "Jared Robinson", "Laurie Cohen",
+		"Anthony Ikolo", "Oshevire Avwenagha", "Amit Chakrabarti", "Mohammad Sulaiman",
+		"Scott Jackson", "Marlon Hill", "Akeem Adekunle", "Dipo Akanbi",
+		"Jason Ubeika", "Niel Gan", "Bharath Balakrishnan", "Femi Awowade",
+		"Mark Francillon", "Daniel Blake", "Osikhena Ojior", "Greg Harper",
+		"Zachary Dang", "Collins Okafor", "Tijan Jeng", "Ayotunde Adeyeri",
+		"Fidelis Olotu",
+	}
 	classes := make([]int32, numPlayers)
-	for i := 0; i < numPlayers; i++ {
-		names[i] = fmt.Sprintf("Player%02d", i)
-	}
 
-	req := &pb.PairRequest{
-		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                names,
-		PlayerClasses:              classes,
-		ClassPrizes:                []int32{2},
-		GibsonSpread:               scenarioGibsonSpread,
-		ControlLossThreshold:       0.30,
-		HopefulnessThreshold:       scenarioHopefulness,
-		AllPlayers:                 int32(numPlayers),
-		ValidPlayers:               int32(numPlayers),
-		Rounds:                     int32(totalRounds),
-		PlacePrizes:                10,
-		DivisionSims:               scenarioDivisionSims,
-		ControlLossSims:            scenarioControlLossSims,
-		ControlLossActivationRound: 22,
-		AllowRepeatByes:            false,
-	}
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("july4th2026_run_%02d", run+1)
 
-	addRandomResults := func(pairings []int32) {
-		results := make([]int32, numPlayers)
-		byePlayer := -1
-		for i := 0; i < numPlayers; i++ {
-			if pairings[i] == int32(i) {
-				byePlayer = i
-			}
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                10,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: 22,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
 		}
-		for i := 0; i < numPlayers; i++ {
-			if i == byePlayer {
-				results[i] = 50
-				continue
-			}
-			opp := int(pairings[i])
-			if i < opp {
-				spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
-				baseScore := int32(400)
-				if rng.Intn(2) == 0 {
-					results[i] = baseScore + spread/2
-					results[opp] = baseScore - spread/2
-				} else {
-					results[i] = baseScore - spread/2
-					results[opp] = baseScore + spread/2
+
+		addRandomResults := func(pairings []int32) {
+			results := make([]int32, numPlayers)
+			byePlayer := -1
+			for i := 0; i < numPlayers; i++ {
+				if pairings[i] == int32(i) {
+					byePlayer = i
 				}
 			}
-		}
-		req.DivisionResults = append(req.DivisionResults, &pb.RoundResults{Results: results})
-	}
-
-	// Fontes-style pairings for first 3 rounds.
-	for r := 0; r < fontesRounds; r++ {
-		pairings := make([]int32, numPlayers)
-		paired := make([]bool, numPlayers)
-
-		step := numPlayers/2 + r
-		for i := 0; i < numPlayers; i++ {
-			if paired[i] {
-				continue
-			}
-			j := (i + step) % numPlayers
-			startJ := j
-			// Break if we've wrapped all the way around (no valid partner — will get bye).
-			for paired[j] || j == i {
-				j = (j + 1) % numPlayers
-				if j == startJ {
-					j = -1
-					break
+			for i := 0; i < numPlayers; i++ {
+				if i == byePlayer {
+					results[i] = 50
+					continue
+				}
+				opp := int(pairings[i])
+				if i < opp {
+					spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
+					baseScore := int32(400)
+					if rng.Intn(2) == 0 {
+						results[i] = baseScore + spread/2
+						results[opp] = baseScore - spread/2
+					} else {
+						results[i] = baseScore - spread/2
+						results[opp] = baseScore + spread/2
+					}
 				}
 			}
-			if j < 0 {
-				continue
-			}
-			pairings[i] = int32(j)
-			pairings[j] = int32(i)
-			paired[i] = true
-			paired[j] = true
+			req.DivisionResults = append(req.DivisionResults, &pb.RoundResults{Results: results})
 		}
-		for i := 0; i < numPlayers; i++ {
-			if !paired[i] {
-				pairings[i] = int32(i)
+
+		// Fontes-style pairings for first 3 rounds.
+		for r := 0; r < fontesRounds; r++ {
+			pairings := make([]int32, numPlayers)
+			paired := make([]bool, numPlayers)
+
+			step := numPlayers/2 + r
+			for i := 0; i < numPlayers; i++ {
+				if paired[i] {
+					continue
+				}
+				j := (i + step) % numPlayers
+				startJ := j
+				// Break if we've wrapped all the way around (no valid partner — will get bye).
+				for paired[j] || j == i {
+					j = (j + 1) % numPlayers
+					if j == startJ {
+						j = -1
+						break
+					}
+				}
+				if j < 0 {
+					continue
+				}
+				pairings[i] = int32(j)
+				pairings[j] = int32(i)
 				paired[i] = true
+				paired[j] = true
 			}
+			for i := 0; i < numPlayers; i++ {
+				if !paired[i] {
+					pairings[i] = int32(i)
+					paired[i] = true
+				}
+			}
+
+			req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
+			addRandomResults(pairings)
 		}
 
-		req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
-		addRandomResults(pairings)
-	}
+		// COP rounds for the remaining 25 rounds.
+		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
 
-	// COP rounds for the remaining 25 rounds.
-	for round := fontesRounds + 1; round <= totalRounds; round++ {
-		if round == totalRounds {
-			req.GibsonSpread = scenarioLastRoundGibsonSpread
-		} else {
-			req.GibsonSpread = scenarioGibsonSpread
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("July 4th 2026 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
+			addRandomResults(pairings)
 		}
-
-		resp := cop.COPPair(req)
-		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-		fmt.Printf("Fake 51-player round %d pairings: %v\n", round, resp.Pairings)
-		writeScenarioLog(t, fmt.Sprintf("fake_28game_51players_round_%02d.log", round), resp.Log)
-
-		pairings := make([]int32, numPlayers)
-		copy(pairings, resp.Pairings)
-		req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
-		addRandomResults(pairings)
 	}
 }
 
