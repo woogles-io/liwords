@@ -656,6 +656,17 @@ func (g *Game) IsCorrespondence() bool {
 	return g.GameReq.GameMode == pb.GameMode_CORRESPONDENCE
 }
 
+// HasIncrement returns true if this game has a per-turn time increment
+// (IncrementSeconds > 0). An increment means the opponent can still move in
+// the future, which is what lets a timed-out game continue via auto-pass
+// instead of forfeiting.
+func (g *Game) HasIncrement() bool {
+	if g.GameReq == nil || g.GameReq.GameRequest == nil {
+		return false
+	}
+	return g.GameReq.IncrementSeconds > 0
+}
+
 // AddTimeToPlayer adds milliseconds to the specified player's remaining time.
 func (g *Game) AddTimeToPlayer(playerIdx int, milliseconds int) {
 	if playerIdx >= 0 && playerIdx < len(g.Timers.TimeRemaining) {

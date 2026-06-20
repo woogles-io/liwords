@@ -88,6 +88,17 @@ func WithCorrespondenceMode(incrementSeconds int32, timeBankMinutes int32) TestG
 	}
 }
 
+// WithRealtimeIncrement configures a real-time game with a per-turn increment
+// and no overtime, so a timed-out turn is reached quickly and deterministically.
+func WithRealtimeIncrement(initialTimeSeconds int32, incrementSeconds int32) TestGameOption {
+	return func(gr *pb.GameRequest) {
+		gr.GameMode = pb.GameMode_REAL_TIME
+		gr.InitialTimeSeconds = initialTimeSeconds
+		gr.IncrementSeconds = incrementSeconds
+		gr.MaxOvertimeMinutes = 0
+	}
+}
+
 type evtConsumer struct {
 	evts []*entity.EventWrapper
 	ch   chan *entity.EventWrapper
@@ -463,6 +474,104 @@ func TestCorrespondenceAutoPassOpponentClockCorrect(t *testing.T) {
 	// elapsed on their turn yet in this reloaded snapshot) is the full
 	// increment.
 	is.Equal(reloadedGame.CachedTimeRemaining(opponent), int(incrementSeconds)*1000)
+
+	cancel()
+	<-donechan
+}
+
+// TestRealtimeWithIncrementTimeoutAutoPasses tests that a real-time game that
+// has a per-turn increment auto-passes on timeout (the opponent can still
+// move) instead of forfeiting. This is gated by the autopassRealtimeWithIncrement
+// const; with that const set to false this game would forfeit (GameEndReason_TIME)
+// like TestRealtimeNoIncrementTimeoutStillForfeits below.
+func TestRealtimeWithIncrementTimeoutAutoPasses(t *testing.T) {
+	is := is.New(t)
+	stores := recreateDB()
+	defer stores.Disconnect()
+
+	cfg := DefaultConfig
+
+	// Real-time game with a 30s initial clock, a 5s increment, and no overtime.
+	initialTimeSeconds := int32(30)
+	g, nower, cancel, donechan, _ := makeCorrespondenceGame(stores, cfg,
+		WithRealtimeIncrement(initialTimeSeconds, 5))
+	is.True(!g.IsCorrespondence())
+	is.True(g.HasIncrement())
+	stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return nower
+	})
+
+	playerOnTurn := g.Game.PlayerOnTurn()
+	numEvtsBefore := len(g.History().Events)
+
+	// Blow past the initial clock (no overtime), so the on-turn player times out.
+	nower.Sleep(int64(initialTimeSeconds)*1000 + 1000)
+	is.True(g.TimeRanOut(playerOnTurn))
+
+	ctx := ctxForTests()
+	playerID := g.History().Players[playerOnTurn].UserId
+	err := gameplay.TimedOut(ctx, stores, playerID, g.GameID())
+	is.NoErr(err)
+
+	// The game did NOT forfeit: it continues, the on-turn player was
+	// auto-passed, and the turn advanced to the opponent.
+	reloadedGame, err := stores.GameStore.Get(ctx, g.GameID())
+	is.NoErr(err)
+	is.Equal(reloadedGame.GameEndReason, pb.GameEndReason_NONE)
+	is.Equal(reloadedGame.Game.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(reloadedGame.Game.PlayerOnTurn(), 1-playerOnTurn)
+	// A pass event was recorded for the timed-out player.
+	newEvts := reloadedGame.History().Events
+	is.Equal(len(newEvts), numEvtsBefore+1)
+	is.Equal(newEvts[len(newEvts)-1].Type, macondopb.GameEvent_PASS)
+
+	// The opponent's clock is correct: they get their full initial clock from
+	// their turn start (untouched by the timed-out player's pass).
+	is.Equal(reloadedGame.CachedTimeRemaining(1-playerOnTurn), int(initialTimeSeconds)*1000)
+
+	cancel()
+	<-donechan
+}
+
+// TestRealtimeNoIncrementTimeoutStillForfeits tests that a real-time game with
+// NO increment still forfeits on timeout (GameEndReason_TIME). This is the
+// behavior that autopassRealtimeWithIncrement = false would restore for ALL
+// real-time games: an increment is the only thing that makes a real-time game
+// auto-pass instead of forfeit.
+func TestRealtimeNoIncrementTimeoutStillForfeits(t *testing.T) {
+	is := is.New(t)
+	stores := recreateDB()
+	defer stores.Disconnect()
+
+	cfg := DefaultConfig
+
+	// Real-time game with a 30s initial clock, NO increment, and no overtime.
+	g, nower, cancel, donechan, _ := makeCorrespondenceGame(stores, cfg,
+		WithRealtimeIncrement(30, 0))
+	is.True(!g.IsCorrespondence())
+	is.True(!g.HasIncrement())
+	stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return nower
+	})
+
+	// Blow past the initial clock (no increment, no overtime) to time out.
+	nower.Sleep(31 * 1000)
+
+	playerOnTurn := g.Game.PlayerOnTurn()
+	is.True(g.TimeRanOut(playerOnTurn))
+
+	ctx := ctxForTests()
+	playerID := g.History().Players[playerOnTurn].UserId
+	err := gameplay.TimedOut(ctx, stores, playerID, g.GameID())
+	is.NoErr(err)
+
+	// Real-time game with no increment still forfeits on time.
+	reloadedGame, err := stores.GameStore.Get(ctx, g.GameID())
+	is.NoErr(err)
+	is.Equal(reloadedGame.GameEndReason, pb.GameEndReason_TIME)
+	is.Equal(reloadedGame.Game.Playing(), macondopb.PlayState_GAME_OVER)
+	// The player who timed out loses.
+	is.Equal(reloadedGame.WinnerIdx, 1-playerOnTurn)
 
 	cancel()
 	<-donechan
