@@ -131,6 +131,10 @@ type Props = {
   changeCurrentRack?: (rack: MachineWord, evtIdx: number) => void;
   gameMode?: number;
   annotated?: boolean;
+  // Correspondence-only: jump to the user's next on-turn game.
+  hasNextCorresGame?: boolean;
+  corresGamesWaiting?: number;
+  onNextCorresGame?: () => void;
 };
 
 export const BoardPanel = React.memo((props: Props) => {
@@ -1346,6 +1350,9 @@ export const BoardPanel = React.memo((props: Props) => {
         exitableExaminer={props.exitableExaminer}
         puzzleMode={props.puzzleMode}
         boardEditingMode={props.boardEditingMode}
+        hasNextCorresGame={props.hasNextCorresGame}
+        corresGamesWaiting={props.corresGamesWaiting}
+        onNextCorresGame={props.onNextCorresGame}
       />
     );
   }

@@ -285,6 +285,11 @@ export type Props = {
   showAbort: boolean;
   exitableExaminer?: boolean;
   boardEditingMode?: boolean;
+  // Correspondence-only: jump to the user's next on-turn game.
+  // nextCorresGame is non-null only when such a game exists (set by table.tsx).
+  hasNextCorresGame?: boolean;
+  corresGamesWaiting?: number;
+  onNextCorresGame?: () => void;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -648,14 +653,42 @@ const GameControls = React.memo((props: Props) => {
             <span className="key-command">4</span>
           </Button>
         </div>
-        <Button
-          type="primary"
-          className="play"
-          onClick={props.onCommit}
-          disabled={!props.myTurn || props.finalPassOrChallenge}
-        >
-          {props.puzzleMode ? "Solve" : "Play"}
-        </Button>
+        {(() => {
+          // Correspondence-only "Next (x)" affordance. Puzzles never show it.
+          const showNext = !props.puzzleMode && !!props.hasNextCorresGame;
+          const nextButton = showNext ? (
+            <Button
+              type="primary"
+              className="play next-game"
+              onClick={props.onNextCorresGame}
+            >
+              <RightOutlined /> Next
+              {props.corresGamesWaiting && props.corresGamesWaiting > 1 ? (
+                <span className="next-game-count">
+                  ({props.corresGamesWaiting})
+                </span>
+              ) : null}
+            </Button>
+          ) : null;
+          // When it's not the user's turn, the Play button would be a dead
+          // disabled control. If a next game exists, show "Next" in its place.
+          if (!props.myTurn && showNext) {
+            return nextButton;
+          }
+          return (
+            <React.Fragment>
+              <Button
+                type="primary"
+                className={showNext ? "play play-with-next" : "play"}
+                onClick={props.onCommit}
+                disabled={!props.myTurn || props.finalPassOrChallenge}
+              >
+                {props.puzzleMode ? "Solve" : "Play"}
+              </Button>
+              {nextButton}
+            </React.Fragment>
+          );
+        })()}
       </div>
       {props.boardEditingMode && (
         <div className="secondary-controls">
