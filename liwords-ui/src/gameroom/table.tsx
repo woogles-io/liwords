@@ -278,9 +278,12 @@ const ChatAreaDiv: React.FC<{
   children: React.ReactNode;
 }> = ({ baseClassName, children }) => {
   const { showComputerAnalysis } = useAnalyzerContext();
+  const { isExamining } = useExamineStoreContext();
   return (
     <div
-      className={`${baseClassName}${showComputerAnalysis ? " ca-fullscreen" : ""}`}
+      className={`${baseClassName}${
+        isExamining && showComputerAnalysis ? " ca-fullscreen" : ""
+      }`}
       id="left-sidebar"
     >
       {children}
@@ -292,7 +295,8 @@ const ChatIfVisible: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { showComputerAnalysis } = useAnalyzerContext();
-  if (showComputerAnalysis) return null;
+  const { isExamining } = useExamineStoreContext();
+  if (isExamining && showComputerAnalysis) return null;
   return <>{children}</>;
 };
 
