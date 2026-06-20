@@ -11,6 +11,9 @@ export default {
     pluginSvgr(),
   ],
   dev: { client: { overlay: false } },
+  // rsbuild 2's dev server binds localhost only by default; expose it on all
+  // interfaces so the docker-compose proxy (frontend service) can reach it.
+  server: { host: "0.0.0.0" },
   html: {
     template: "./index.html",
   },
