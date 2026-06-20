@@ -525,6 +525,28 @@ export const TournamentsAndLeaguesContent = ({
     return start > now && start <= in14Days;
   });
 
+  // upcomingTournaments holds tournaments that have not yet ended (or have no
+  // end time). Split them: not-yet-started ones stay "Upcoming", while
+  // already-started ones become "Live". Tournaments with a start time in the
+  // past but no end time are treated as live (ongoing indefinitely), and any
+  // not-ended tournament without a start time is also shown as live so it is
+  // not silently dropped.
+  const notStartedTournaments = upcomingTournaments.filter((t) => {
+    if (!t.scheduledStartTime) return false;
+    const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
+    return now < start;
+  });
+  // Source list is ordered by start time ascending; reversing yields
+  // descending (latest start first) for the live section.
+  const liveTournaments = upcomingTournaments
+    .filter((t) => {
+      if (!t.scheduledStartTime) return true;
+      const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
+      return now >= start;
+    })
+    .slice()
+    .reverse();
+
   const isEmpty =
     (!showBroadcasts ||
       (activeBroadcasts.length === 0 && pastBroadcasts.length === 0)) &&
@@ -556,11 +578,11 @@ export const TournamentsAndLeaguesContent = ({
         </>
       )}
 
-      {upcomingTournaments.length > 0 && (
+      {notStartedTournaments.length > 0 && (
         <>
           <h4>Upcoming Tournaments</h4>
           <div className="tournaments-list">
-            {upcomingTournaments.map((t) => (
+            {notStartedTournaments.map((t) => (
               <TournamentCard key={t.id} tournament={t} />
             ))}
           </div>
@@ -573,6 +595,17 @@ export const TournamentsAndLeaguesContent = ({
           <div className="leagues-list">
             {activeLeagues.map((ls) => (
               <LeagueStatusCard key={ls.league.uuid} leagueData={ls} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {liveTournaments.length > 0 && (
+        <>
+          <h4>Live Tournaments</h4>
+          <div className="tournaments-list">
+            {liveTournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
             ))}
           </div>
         </>
