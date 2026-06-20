@@ -20,6 +20,7 @@ import {
   useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useLobbyStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
   useRematchRequestStoreContext,
@@ -35,6 +36,10 @@ import { CommentsDrawer } from "./CommentsDrawer";
 import { defaultGameInfo, GameInfo } from "./game_info";
 import { useComments } from "../utils/hooks/comments";
 import { GameCommentService } from "../gen/api/proto/comments_service/comments_service_pb";
+import {
+  ActiveGame,
+  GameInfoResponseToActiveGame,
+} from "../store/reducers/lobby_reducer";
 import { gameEventsToTurns } from "../store/reducers/turns";
 import { BoopSounds } from "../sound/boop";
 import { StreakWidget } from "./streak_widget";
@@ -318,6 +323,11 @@ export const Table = React.memo((props: Props) => {
   const { username, userID, loggedIn } = loginState;
   const { tournamentContext, dispatchTournamentContext } =
     useTournamentStoreContext();
+  // Correspondence games kept live by the socket (ONGOING_GAME_EVENT upserts
+  // into lobbyContext.correspondenceGames on every opponent move, on any page).
+  const {
+    lobbyContext: { correspondenceGames: liveCorresGames },
+  } = useLobbyStoreContext();
   const competitorState = useTournamentCompetitorState();
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
@@ -329,9 +339,13 @@ export const Table = React.memo((props: Props) => {
       playersInfo: [],
     }),
   );
-  const [localCorresGames, setLocalCorresGames] = useState<
-    Array<GameInfoResponse>
-  >([]);
+  // Initial snapshot of the user's active correspondence games, fetched once on
+  // load to seed the next-game affordance. The game-page socket realm does not
+  // bulk-populate lobbyContext.correspondenceGames, so we need this seed; live
+  // updates are then overlaid from liveCorresGames (see corresGames below).
+  const [localCorresGames, setLocalCorresGames] = useState<Array<ActiveGame>>(
+    [],
+  );
   const [isObserver, setIsObserver] = useState(false);
   const prevGameIDRef = useRef<string | undefined>(undefined);
 
@@ -572,13 +586,19 @@ export const Table = React.memo((props: Props) => {
         }
 
         // If this is a correspondence game, fetch active correspondence games
-        // to populate the next game button (single source of truth from API)
+        // to seed the next-game button. Live opponent moves are then overlaid
+        // from the socket (see corresGames below), so the list stays current
+        // without a manual refresh.
         if (resp.gameRequest?.gameMode === GameMode.CORRESPONDENCE) {
           try {
             const activeCorresGames =
               await gmClient.getActiveCorrespondenceGames({});
 
-            setLocalCorresGames(activeCorresGames.gameInfo);
+            setLocalCorresGames(
+              activeCorresGames.gameInfo
+                .map((g) => GameInfoResponseToActiveGame(g))
+                .filter((ag): ag is ActiveGame => ag !== null),
+            );
           } catch (e) {
             console.error("Failed to fetch active correspondence games:", e);
           }
@@ -1003,8 +1023,23 @@ export const Table = React.memo((props: Props) => {
     return true;
   }, [gameDone, gameInfo.tournamentId, loggedIn]);
 
-  // Calculate next correspondence game where it's user's turn
-  // Uses localCorresGames as single source of truth (fetched via API)
+  // Calculate next correspondence game where it's user's turn.
+  // The seed (localCorresGames) is overlaid with live socket updates
+  // (liveCorresGames) so that an opponent's move in another game surfaces the
+  // now-your-turn game here without a manual refresh. Live entries win on
+  // conflict; absence from the live list does NOT remove a seeded game (the
+  // socket only reports games that changed this session, not the full set).
+  const corresGames = useMemo(() => {
+    const byID = new Map<string, ActiveGame>();
+    for (const ag of localCorresGames) {
+      byID.set(ag.gameID, ag);
+    }
+    for (const ag of liveCorresGames) {
+      byID.set(ag.gameID, ag);
+    }
+    return Array.from(byID.values());
+  }, [localCorresGames, liveCorresGames]);
+
   const { nextCorresGame, corresGamesWaiting } = useMemo(() => {
     const isCorrespondence =
       gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
@@ -1012,31 +1047,6 @@ export const Table = React.memo((props: Props) => {
     if (!isCorrespondence || !userID) {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
     }
-
-    // Convert localCorresGames to ActiveGame format
-    const corresGames = localCorresGames.map((g) => ({
-      gameID: g.gameId,
-      players: g.players.map((p) => ({
-        uuid: p.userId,
-        nickname: p.nickname,
-      })),
-      playerOnTurn: g.playerOnTurn,
-      lastUpdate: g.lastUpdate
-        ? Number(g.lastUpdate.seconds) * 1000
-        : Date.now(),
-      incrementSecs: g.gameRequest?.incrementSeconds || 86400,
-      lexicon: g.gameRequest?.lexicon || "",
-      variant: g.gameRequest?.rules?.variantName || "",
-      initialTimeSecs: g.gameRequest?.initialTimeSeconds || 0,
-      challengeRule: g.gameRequest?.challengeRule || 0,
-      rated: g.gameRequest?.ratingMode === 0, // RatingMode.RATED = 0
-      maxOvertimeMinutes: g.gameRequest?.maxOvertimeMinutes || 0,
-      tournamentID: g.tournamentId,
-      gameMode: g.gameRequest?.gameMode || 0,
-      // Current per-player time bank remaining (ms), used to compute the real
-      // time-until-expiry below instead of the bank-blind per-turn proxy.
-      timeBank: g.timeBank.length >= 2 ? g.timeBank.map((b) => Number(b)) : [],
-    }));
 
     if (corresGames.length === 0) {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
@@ -1061,7 +1071,7 @@ export const Table = React.memo((props: Props) => {
         // live bank, so this is bank-aware rather than the old per-turn proxy.
         const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
         const onTurnIdx = ag.playerOnTurn ?? 0;
-        const bankSecs = (ag.timeBank[onTurnIdx] ?? 0) / 1000;
+        const bankSecs = (ag.timeBank?.[onTurnIdx] ?? 0) / 1000;
         const { beforeExpiry } = onTurnCountdowns(
           ag.incrementSecs,
           bankSecs,
@@ -1102,7 +1112,7 @@ export const Table = React.memo((props: Props) => {
       corresGamesWaiting:
         gamesOnMyTurn.length + (currentGameIndex >= 0 ? -1 : 0),
     };
-  }, [gameInfo.gameRequest?.gameMode, userID, gameID, localCorresGames]);
+  }, [gameInfo.gameRequest?.gameMode, userID, gameID, corresGames]);
 
   const handleNextCorresGame = useCallback(() => {
     if (nextCorresGame) {
