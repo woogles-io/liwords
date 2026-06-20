@@ -39,6 +39,16 @@ func extractGameStats(g *entity.Game) (p0Stats, p1Stats GameStats) {
 			p1Stats.TimedOut = true
 		}
 	}
+	// An auto-passed abandonment ends as CONSECUTIVE_ZEROES, not TIME, but the
+	// player who was auto-passed on timeout still timed out -- count it, keyed
+	// to the actual abandoner (who may have been ahead on score) rather than to
+	// the game's score-loser.
+	if g.AutopassTimedOut(0) {
+		p0Stats.TimedOut = true
+	}
+	if g.AutopassTimedOut(1) {
+		p1Stats.TimedOut = true
+	}
 
 	// Extract stats from computed game stats if available
 	if g.Stats != nil {
