@@ -5,6 +5,10 @@ import { useNavigate } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
+import {
+  formatCoarseDuration,
+  onTurnCountdowns,
+} from "../utils/time_bank_calculator";
 import { getPlayerLeagueH2H } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { H2HRecord } from "../gen/api/proto/league_service/league_service_pb";
 
@@ -67,7 +71,22 @@ export const LeagueCorrespondenceGames: React.FC<
       (game) => game.leagueSlug === leagueSlug,
     );
 
-    // Sort: user's turn first, then by time remaining
+    // Real time-until-expiry for whoever is on turn: per-turn allowance + that
+    // player's remaining bank - elapsed. League games always have a time bank,
+    // so the old bank-blind `incrementSecs - elapsed` proxy sorted them wrong
+    // (it degenerated to roughly updated_at order). Lower = more urgent.
+    const now = Date.now();
+    const expiryOf = (game: (typeof filtered)[number]) => {
+      if (game.playerOnTurn === undefined || !game.lastUpdate) {
+        return Infinity;
+      }
+      const elapsedSecs = (now - game.lastUpdate) / 1000;
+      const bankSecs = (game.timeBank?.[game.playerOnTurn] ?? 0) / 1000;
+      return onTurnCountdowns(game.incrementSecs, bankSecs, elapsedSecs)
+        .beforeExpiry;
+    };
+
+    // Sort: user's turn first, then by the real time-until-expiry (ascending).
     return filtered.sort((a, b) => {
       const aOnTurn =
         a.playerOnTurn !== undefined &&
@@ -81,18 +100,7 @@ export const LeagueCorrespondenceGames: React.FC<
       if (aOnTurn && !bOnTurn) return -1;
       if (!aOnTurn && bOnTurn) return 1;
 
-      // Calculate time remaining for sorting
-      const now = Date.now();
-      const aTimeRemaining =
-        a.lastUpdate && a.incrementSecs
-          ? a.incrementSecs - (now - a.lastUpdate) / 1000
-          : Infinity;
-      const bTimeRemaining =
-        b.lastUpdate && b.incrementSecs
-          ? b.incrementSecs - (now - b.lastUpdate) / 1000
-          : Infinity;
-
-      return aTimeRemaining - bTimeRemaining;
+      return expiryOf(a) - expiryOf(b);
     });
   }, [correspondenceGames, leagueSlug, userID]);
 
@@ -129,14 +137,25 @@ export const LeagueCorrespondenceGames: React.FC<
             game.players.findIndex((p) => p.uuid === userID) ===
               game.playerOnTurn;
 
-          // Calculate if low time (< 24 hours)
+          // Bank-aware countdowns for the on-turn player: before-expiry is the
+          // hard deadline (per-turn allowance + bank - elapsed), before-bleed
+          // is the free-time window before the bank starts draining. Low-time
+          // and the bleeding warning flag off these rather than the bank-blind
+          // per-turn proxy.
           const now = Date.now();
           let isLowTime = false;
-          if (isUserTurn && game.lastUpdate && game.incrementSecs) {
+          let countdowns: ReturnType<typeof onTurnCountdowns> | undefined;
+          if (game.playerOnTurn !== undefined && game.lastUpdate) {
             const timeElapsedSecs = (now - game.lastUpdate) / 1000;
-            const timeRemainingSecs = game.incrementSecs - timeElapsedSecs;
-            isLowTime = timeRemainingSecs < 86400; // 24 hours
+            const bankSecs = (game.timeBank?.[game.playerOnTurn] ?? 0) / 1000;
+            countdowns = onTurnCountdowns(
+              game.incrementSecs,
+              bankSecs,
+              timeElapsedSecs,
+            );
+            isLowTime = isUserTurn ? countdowns.beforeExpiry < 86400 : false;
           }
+          const isBleeding = countdowns ? countdowns.beforeBleed <= 0 : false;
 
           // Get opponent name and scores
           const userPlayerIndex = game.players.findIndex(
@@ -218,7 +237,7 @@ export const LeagueCorrespondenceGames: React.FC<
                     </span>
                   )}
                 </div>
-                {isUserTurn && (
+                {isUserTurn ? (
                   <div className="turn-indicator-compact">
                     {isLowTime && (
                       <Tooltip title="Less than 24 hours remaining">
@@ -230,7 +249,36 @@ export const LeagueCorrespondenceGames: React.FC<
                     <span className={isLowTime ? "low-time" : ""}>
                       Your turn
                     </span>
+                    {countdowns && (
+                      <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                        {isBleeding ? (
+                          <Tooltip title="Per-turn time used; time bank is draining">
+                            bleeding, expires in{" "}
+                            {formatCoarseDuration(countdowns.beforeExpiry)}
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Time until you time out (per-turn time + time bank)">
+                            expires in{" "}
+                            {formatCoarseDuration(countdowns.beforeExpiry)},
+                            free for{" "}
+                            {formatCoarseDuration(countdowns.beforeBleed)}
+                          </Tooltip>
+                        )}
+                      </span>
+                    )}
                   </div>
+                ) : (
+                  countdowns && (
+                    <div
+                      className="turn-indicator-compact"
+                      style={{ opacity: 0.55 }}
+                    >
+                      <Tooltip title="Opponent's clock (not your deadline)">
+                        Their turn (expires in{" "}
+                        {formatCoarseDuration(countdowns.beforeExpiry)})
+                      </Tooltip>
+                    </div>
+                  )
                 )}
               </div>
             </div>

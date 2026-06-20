@@ -70,3 +70,68 @@ export function calculateHistoricalTimeBanks(
 
   return history;
 }
+
+/**
+ * Two countdowns (in seconds) for a player who is on turn in a
+ * correspondence/league game.
+ *
+ * The time model is "reset-to-increment": each turn the player gets a fresh
+ * per-turn allowance of `incrementSecs`, which does NOT bank. Separately there
+ * is a consumable time bank (`bankSecs`) that is only drained when the per-turn
+ * allowance is exceeded, and is never refilled. So the player is fine until
+ * `elapsed > incrementSecs` (they start bleeding the bank), and they only time
+ * out once `elapsed > incrementSecs + bankSecs`.
+ *
+ * - beforeBleed: free-time window remaining = max(0, perTurn - elapsed).
+ *   When this hits 0 the player has begun consuming the bank ("bleeding").
+ * - beforeExpiry: hard deadline = perTurn + bank - elapsed. When this hits 0
+ *   the player times out. Can go negative if already overdue.
+ *
+ * This is the real time-remaining the lists sort and flag by, as opposed to the
+ * bank-blind `incrementSecs - elapsed` proxy.
+ */
+export type OnTurnCountdowns = {
+  beforeBleed: number;
+  beforeExpiry: number;
+};
+
+export function onTurnCountdowns(
+  incrementSecs: number,
+  bankSecs: number,
+  elapsedSecs: number,
+): OnTurnCountdowns {
+  return {
+    beforeBleed: Math.max(0, incrementSecs - elapsedSecs),
+    beforeExpiry: incrementSecs + bankSecs - elapsedSecs,
+  };
+}
+
+/**
+ * Format a duration (in seconds) coarsely for the correspondence/league game
+ * lists. Granularity is intentionally low (at most two adjacent units, never
+ * per-second) since these are multi-hour/day countdowns that only refresh on
+ * list updates. Examples: "2d 3h", "5h 12m", "47m", "30s", "now".
+ *
+ * Non-positive inputs render as "now" (the deadline has passed / is imminent).
+ */
+export function formatCoarseDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "now";
+  }
+  const totalSeconds = Math.floor(seconds);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  }
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  return `${secs}s`;
+}

@@ -68,6 +68,7 @@ export type ActiveGame = {
   lastUpdate?: number; // Timestamp of last move in milliseconds
   leagueSlug?: string; // League slug if this is a league game
   scores?: number[]; // Current scores [player0, player1]
+  timeBank?: number[]; // Current time bank remaining per player, in milliseconds
 };
 
 export type LobbyState = {
@@ -177,6 +178,8 @@ export const GameInfoResponseToActiveGame = (
     lastUpdate,
     leagueSlug: gi.leagueSlug || undefined,
     scores: gi.scores.length >= 2 ? [...gi.scores] : undefined,
+    timeBank:
+      gi.timeBank.length >= 2 ? gi.timeBank.map((b) => Number(b)) : undefined,
   };
 };
 

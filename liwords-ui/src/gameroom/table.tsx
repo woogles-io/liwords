@@ -94,6 +94,7 @@ import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { showTurnNotification } from "../utils/notifications";
+import { onTurnCountdowns } from "../utils/time_bank_calculator";
 import { timeCtrlToDisplayName } from "../store/constants";
 
 type Props = {
@@ -1028,6 +1029,9 @@ export const Table = React.memo((props: Props) => {
       maxOvertimeMinutes: g.gameRequest?.maxOvertimeMinutes || 0,
       tournamentID: g.tournamentId,
       gameMode: g.gameRequest?.gameMode || 0,
+      // Current per-player time bank remaining (ms), used to compute the real
+      // time-until-expiry below instead of the bank-blind per-turn proxy.
+      timeBank: g.timeBank.length >= 2 ? g.timeBank.map((b) => Number(b)) : [],
     }));
 
     if (corresGames.length === 0) {
@@ -1048,14 +1052,21 @@ export const Table = React.memo((props: Props) => {
         return playerIndex === ag.playerOnTurn;
       })
       .map((ag) => {
-        // TODO: This cannot consider time banks unless backend sends them.
-        // Calculate time remaining for sorting
+        // Real time-until-expiry for the on-turn player (per-turn allowance +
+        // that player's remaining bank - elapsed). The backend now sends the
+        // live bank, so this is bank-aware rather than the old per-turn proxy.
         const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
-        const timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
+        const onTurnIdx = ag.playerOnTurn ?? 0;
+        const bankSecs = (ag.timeBank[onTurnIdx] ?? 0) / 1000;
+        const { beforeExpiry } = onTurnCountdowns(
+          ag.incrementSecs,
+          bankSecs,
+          timeElapsedSecs,
+        );
 
         return {
           game: ag,
-          timeRemaining: timeRemainingSecs,
+          timeRemaining: beforeExpiry,
         };
       })
       .sort((a, b) => {
