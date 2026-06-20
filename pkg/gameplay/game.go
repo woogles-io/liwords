@@ -44,16 +44,18 @@ var (
 )
 
 // autopassRealtimeWithIncrement: when true, a real-time game that has a
-// per-turn increment (IncrementSeconds > 0) auto-passes on timeout -- the
-// opponent can still move, so the game continues and ends naturally by score
-// -- instead of forfeiting. Flip to false to restore forfeit-on-time for all
-// real-time games (correspondence games still auto-pass regardless).
+// per-turn increment (IncrementSeconds > 0) also auto-passes on timeout --
+// the opponent can still move, so the game continues and ends naturally by
+// score -- instead of forfeiting. Default is false: only correspondence
+// games auto-pass; all real-time games (with or without an increment)
+// forfeit on time, the long-standing behavior.
 //
-// NOTE: this changes real-time flagging semantics. In a blitz game WITH an
-// increment, running out of time is no longer an instant loss: the player
-// auto-passes, the opponent plays on, and a player who is ahead on score can
-// still win. This const is the single rollback switch for that behavior.
-const autopassRealtimeWithIncrement = true
+// Set to true to also auto-pass real-time-with-increment games. NOTE that
+// this changes real-time semantics: in a blitz game WITH an increment,
+// running out of time would no longer be an instant loss -- the player
+// auto-passes, the opponent plays on, and a player ahead on score can still
+// win. This const is the single switch for that behavior.
+const autopassRealtimeWithIncrement = false
 
 // shouldAutopassOnTimeout reports whether a timed-out game should auto-pass
 // the on-turn player (turn advances, game continues and ends by score)
