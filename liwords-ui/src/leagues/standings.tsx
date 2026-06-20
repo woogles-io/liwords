@@ -18,6 +18,7 @@ import {
 } from "../gen/api/proto/ipc/league_pb";
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+import { UsernameWithContext } from "../shared/usernameWithContext";
 
 // Get placement status icon and tooltip
 const getPlacementIndicator = (
@@ -102,6 +103,7 @@ type DivisionStandingsProps = {
   nextSeasonRegistrations?: SeasonRegistrationsResponse;
   seasonActive?: boolean;
   onRegister?: () => void; // Callback to navigate to registration
+  onChat?: (uuid: string, username: string) => void; // Open a direct message
 };
 
 export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
@@ -115,6 +117,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   nextSeasonRegistrations,
   seasonActive,
   onRegister,
+  onChat,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<{
     userId: string;
@@ -408,15 +411,26 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
 
         return (
           <span
-            className="clickable-player"
-            onClick={() => handlePlayerClick(record.userId, username)}
+            className="standings-player"
             style={
               isCurrentUser
                 ? { color: "#d4af37", fontWeight: "bold" }
                 : undefined
             }
           >
-            <strong>{username}</strong>
+            <strong>
+              <UsernameWithContext
+                username={username}
+                userID={record.userId}
+                sendMessage={onChat}
+                omitSendMessage={!onChat}
+                omitBadges
+                infoText="View game history"
+                handleInfoText={() =>
+                  handlePlayerClick(record.userId, username)
+                }
+              />
+            </strong>
             {placementIndicator && (
               <Tooltip title={placementIndicator.tooltip}>
                 <span style={{ marginLeft: 4, opacity: 0.7 }}>
@@ -864,6 +878,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           username={selectedPlayer.username}
           seasonId={seasonId}
           seasonNumber={seasonNumber}
+          onChat={onChat}
         />
       )}
     </div>
