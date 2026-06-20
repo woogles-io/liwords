@@ -17,6 +17,8 @@ export const Secret = React.memo(() => {
   const [hidePool, setHidePool] = useLocalStorageBool("hidePool");
   const [enableBicolorMode, setEnableBicolorMode] =
     useLocalStorageBool("enableBicolorMode");
+  const [showBonusLabels, setShowBonusLabels] =
+    useLocalStorageBool("showBonusLabels");
 
   return (
     <div className="preferences secret">
@@ -115,6 +117,20 @@ export const Secret = React.memo(() => {
                 checked={enableBicolorMode}
                 onChange={setEnableBicolorMode}
                 className="bicolor-toggle"
+              />
+            </div>
+          </div>
+          <div className="toggle-section">
+            <div className="title">Always show premium-square labels</div>
+            <div>
+              <div>
+                Always display bonus-square labels (2x letter, 3x word, etc.)
+                instead of only on hover
+              </div>
+              <Switch
+                checked={showBonusLabels}
+                onChange={setShowBonusLabels}
+                className="bonus-labels-toggle"
               />
             </div>
           </div>
