@@ -238,6 +238,11 @@ message GameInfoResponse {
   // League information
   string league_id = 25;
   string league_slug = 26;
+  // time_bank is the current remaining time bank per player, in milliseconds.
+  // Populated for active correspondence/league games so clients can compute the
+  // real time until expiry (per-turn allowance + bank), not just the per-turn
+  // proxy. Empty for games without a time bank or for finished games.
+  repeated int64 time_bank = 27;
 }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }

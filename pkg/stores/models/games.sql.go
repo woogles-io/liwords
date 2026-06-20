@@ -857,7 +857,7 @@ func (q *Queries) ListActiveCorrespondenceGames(ctx context.Context) ([]ListActi
 }
 
 const listActiveCorrespondenceGamesForUser = `-- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -875,6 +875,7 @@ type ListActiveCorrespondenceGamesForUserRow struct {
 	TournamentData   entity.TournamentData
 	GameRequest      entity.GameRequest
 	PlayerOnTurn     pgtype.Int4
+	Timers           entity.Timers
 	UpdatedAt        pgtype.Timestamptz
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
@@ -898,6 +899,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.Timers,
 			&i.UpdatedAt,
 			&i.LeagueID,
 			&i.SeasonID,
@@ -915,7 +917,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUser(ctx context.Context, user
 }
 
 const listActiveCorrespondenceGamesForUserAndLeague = `-- name: ListActiveCorrespondenceGamesForUserAndLeague :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE league_id = $1::uuid
     AND game_end_reason = 0 -- NONE (ongoing games)
@@ -939,6 +941,7 @@ type ListActiveCorrespondenceGamesForUserAndLeagueRow struct {
 	TournamentData   entity.TournamentData
 	GameRequest      entity.GameRequest
 	PlayerOnTurn     pgtype.Int4
+	Timers           entity.Timers
 	UpdatedAt        pgtype.Timestamptz
 	LeagueID         pgtype.UUID
 	SeasonID         pgtype.UUID
@@ -962,6 +965,7 @@ func (q *Queries) ListActiveCorrespondenceGamesForUserAndLeague(ctx context.Cont
 			&i.TournamentData,
 			&i.GameRequest,
 			&i.PlayerOnTurn,
+			&i.Timers,
 			&i.UpdatedAt,
 			&i.LeagueID,
 			&i.SeasonID,

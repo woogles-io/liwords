@@ -200,7 +200,7 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGamesForUser :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE game_end_reason = 0 -- NONE (ongoing games)
     AND (game_request->>'game_mode')::int = 1 -- Only CORRESPONDENCE games
@@ -211,7 +211,7 @@ WHERE game_end_reason = 0 -- NONE (ongoing games)
 ORDER BY id;
 
 -- name: ListActiveCorrespondenceGamesForUserAndLeague :many
-SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, updated_at, league_id, season_id, league_division_id, history
+SELECT quickdata, uuid, started, tournament_data, game_request, player_on_turn, timers, updated_at, league_id, season_id, league_division_id, history
 FROM games
 WHERE league_id = @league_id::uuid
     AND game_end_reason = 0 -- NONE (ongoing games)

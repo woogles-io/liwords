@@ -1392,8 +1392,13 @@ type GameInfoResponse struct {
 	// compatibility.
 	PlayerOnTurn *uint32 `protobuf:"varint,24,opt,name=player_on_turn,json=playerOnTurn,proto3,oneof" json:"player_on_turn,omitempty"`
 	// League information
-	LeagueId      string `protobuf:"bytes,25,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
-	LeagueSlug    string `protobuf:"bytes,26,opt,name=league_slug,json=leagueSlug,proto3" json:"league_slug,omitempty"`
+	LeagueId   string `protobuf:"bytes,25,opt,name=league_id,json=leagueId,proto3" json:"league_id,omitempty"`
+	LeagueSlug string `protobuf:"bytes,26,opt,name=league_slug,json=leagueSlug,proto3" json:"league_slug,omitempty"`
+	// time_bank is the current remaining time bank per player, in milliseconds.
+	// Populated for active correspondence/league games so clients can compute the
+	// real time until expiry (per-turn allowance + bank), not just the per-turn
+	// proxy. Empty for games without a time bank or for finished games.
+	TimeBank      []int64 `protobuf:"varint,27,rep,packed,name=time_bank,json=timeBank,proto3" json:"time_bank,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1545,6 +1550,13 @@ func (x *GameInfoResponse) GetLeagueSlug() string {
 		return x.LeagueSlug
 	}
 	return ""
+}
+
+func (x *GameInfoResponse) GetTimeBank() []int64 {
+	if x != nil {
+		return x.TimeBank
+	}
+	return nil
 }
 
 type GameInfoResponses struct {
@@ -3362,7 +3374,7 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x06rating\x18\x05 \x01(\tR\x06rating\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\x12\x15\n" +
 	"\x06is_bot\x18\b \x01(\bR\x05isBot\x12\x18\n" +
-	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\xef\x05\n" +
+	"\x05first\x18\t \x01(\bB\x02\x18\x01R\x05first\"\x8c\x06\n" +
 	"\x10GameInfoResponse\x12)\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0f.ipc.PlayerInfoR\aplayers\x12*\n" +
 	"\x11time_control_name\x18\x04 \x01(\tR\x0ftimeControlName\x12#\n" +
@@ -3383,7 +3395,8 @@ const file_proto_ipc_omgwords_proto_rawDesc = "" +
 	"\x0eplayer_on_turn\x18\x18 \x01(\rH\x00R\fplayerOnTurn\x88\x01\x01\x12\x1b\n" +
 	"\tleague_id\x18\x19 \x01(\tR\bleagueId\x12\x1f\n" +
 	"\vleague_slug\x18\x1a \x01(\tR\n" +
-	"leagueSlugB\x11\n" +
+	"leagueSlug\x12\x1b\n" +
+	"\ttime_bank\x18\x1b \x03(\x03R\btimeBankB\x11\n" +
 	"\x0f_player_on_turn\"G\n" +
 	"\x11GameInfoResponses\x122\n" +
 	"\tgame_info\x18\x01 \x03(\v2\x15.ipc.GameInfoResponseR\bgameInfo\"\xcd\x01\n" +

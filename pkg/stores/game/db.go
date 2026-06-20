@@ -1248,6 +1248,7 @@ func (s *DBStore) ListActiveCorrespondence(ctx context.Context) (*pb.GameInfoRes
 			TournamentRound:     int32(trdata.Round),
 			TournamentGameIndex: int32(trdata.GameIndex),
 			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
+			TimeBank:            g.Timers.TimeBank,
 		}
 		if g.PlayerOnTurn.Valid {
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
@@ -1332,6 +1333,7 @@ func (s *DBStore) ListActiveCorrespondenceForUser(ctx context.Context, userID st
 			TournamentGameIndex: int32(trdata.GameIndex),
 			LastUpdate:          timestamppb.New(g.UpdatedAt.Time),
 			Scores:              ScoresFromHistory(g.History),
+			TimeBank:            g.Timers.TimeBank,
 		}
 		if g.PlayerOnTurn.Valid {
 			playerOnTurn := uint32(g.PlayerOnTurn.Int32)
@@ -1389,6 +1391,7 @@ func (s *DBStore) ListActiveCorrespondenceForUserAndLeague(ctx context.Context, 
 			LeagueId:    leagueID.String(),
 			LeagueSlug:  league.Slug,
 			Scores:      ScoresFromHistory(g.History),
+			TimeBank:    g.Timers.TimeBank,
 		}
 
 		if g.PlayerOnTurn.Valid {
