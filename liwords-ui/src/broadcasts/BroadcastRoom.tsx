@@ -90,7 +90,7 @@ export const BroadcastRoom: React.FC = () => {
     { enabled: !!slug && activeRound > 0, refetchInterval: 30_000 },
   );
 
-  const { data: statsData, isLoading: statsLoading } = useQuery(
+  const { data: statsData } = useQuery(
     getBroadcastGameStats,
     { slug: slug ?? "" },
     { enabled: !!slug, refetchInterval: 30_000 },
