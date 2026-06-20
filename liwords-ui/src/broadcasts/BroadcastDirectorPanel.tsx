@@ -165,7 +165,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
       }
     >
       {/* OBS Slots */}
-      <Divider titlePlacement="left" plain style={{ marginTop: 24 }}>
+      <Divider orientation="left" plain style={{ marginTop: 24 }}>
         OBS Slots
       </Divider>
       <Typography.Text
@@ -324,7 +324,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
       </Space>
 
       {/* Annotators */}
-      <Divider titlePlacement="left" plain style={{ marginTop: 24 }}>
+      <Divider orientation="left" plain style={{ marginTop: 24 }}>
         Annotators
       </Divider>
       <Space wrap style={{ marginBottom: 8 }}>
@@ -374,7 +374,7 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
       </Space.Compact>
 
       {/* Directors */}
-      <Divider titlePlacement="left" plain style={{ marginTop: 24 }}>
+      <Divider orientation="left" plain style={{ marginTop: 24 }}>
         Directors
       </Divider>
       <Space wrap style={{ marginBottom: 8 }}>
