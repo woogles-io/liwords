@@ -127,8 +127,41 @@ const formatH2H = (record: H2HRecord | undefined) => {
   );
 };
 
+// A player's best-ever achievement, used by the Peak column.
+//   season: the LeagueRosterSeason it was achieved in.
+//   displayRank: the rank shown in the cell (competition/tie-aware rank for
+//     placed seasons, 0 for an unplaced/registered-only season).
+//   tied: whether that finish was shared with another player (sole otherwise).
+type PeakCandidate = {
+  season: LeagueRosterSeason;
+  displayRank: number;
+  tied: boolean;
+};
+
+// Compare two peak candidates, ordered best -> worst. Returns negative when
+// `a` is the better peak. Key (best first):
+//   1. higher division (lower divisionNumber; 0 = unplaced = worst)
+//   2. higher finish (lower displayRank)
+//   3. a sole finish beats a tied one
+//   4. earlier season (lower seasonNumber)
+const peakSeasonBetter = (a: PeakCandidate, b: PeakCandidate): number => {
+  // Division: unplaced (0) is worse than any placed division.
+  const da = a.season.divisionNumber === 0 ? Infinity : a.season.divisionNumber;
+  const db = b.season.divisionNumber === 0 ? Infinity : b.season.divisionNumber;
+  if (da !== db) return da - db; // lower division number is better
+  const bothUnplaced = da === Infinity; // && db === Infinity
+  if (!bothUnplaced) {
+    // Higher finish (lower rank) is better.
+    if (a.displayRank !== b.displayRank) return a.displayRank - b.displayRank;
+    // A sole finish beats a tied one.
+    if (a.tied !== b.tied) return a.tied ? 1 : -1;
+  }
+  // Earlier season is the final tiebreak.
+  return a.season.seasonNumber - b.season.seasonNumber;
+};
+
 // Compare two players by their status in a given season.
-// Order: placed (by division ASC, rank ASC) → registered → absent.
+// Order: placed (by division ASC, rank ASC) -> registered -> absent.
 const seasonCompare = (
   a: LeagueRosterPlayer,
   b: LeagueRosterPlayer,
@@ -245,10 +278,15 @@ export const LeagueRoster: React.FC<Props> = ({
   }, [h2hData?.records]);
 
   // Precompute competition ranks per (season, division) group.
-  // Key: "seasonNumber:userId" → competition rank number.
-  const compRankMap = useMemo(() => {
+  //   rank: "seasonNumber:userId" -> competition (tie-aware) rank number.
+  //   tied: set of "seasonNumber:userId" whose competition rank is shared
+  //         with another player in the same (season, division) group, i.e.
+  //         a tied finish rather than a sole one. Players in a group with no
+  //         games played are treated as tied (no sole finish to claim yet).
+  const compRankInfo = useMemo(() => {
     const map = new Map<string, number>();
-    if (!data?.players) return map;
+    const tied = new Set<string>();
+    if (!data?.players) return { rank: map, tied };
 
     // Group entries by (season, division)
     const groups = new Map<
@@ -270,12 +308,17 @@ export const LeagueRoster: React.FC<Props> = ({
     }
 
     // Compute competition rank per group (sorted by server rank).
-    // Skip groups where no games have been played.
     for (const [groupKey, entries] of groups.entries()) {
-      if (entries.every((e) => e.points === 0 && e.spread === 0)) continue;
       const seasonNumber = groupKey.split(":")[0];
+      // No games played yet: nobody holds a sole finish.
+      if (entries.every((e) => e.points === 0 && e.spread === 0)) {
+        for (const e of entries) tied.add(`${seasonNumber}:${e.userId}`);
+        continue;
+      }
       entries.sort((a, b) => a.rank - b.rank);
       let currentRank = 1;
+      // Count players per competition rank to flag shared (tied) finishes.
+      const rankCounts = new Map<number, number>();
       for (let i = 0; i < entries.length; i++) {
         if (
           i > 0 &&
@@ -285,11 +328,49 @@ export const LeagueRoster: React.FC<Props> = ({
           currentRank = i + 1;
         }
         map.set(`${seasonNumber}:${entries[i].userId}`, currentRank);
+        rankCounts.set(currentRank, (rankCounts.get(currentRank) ?? 0) + 1);
+      }
+      for (const entry of entries) {
+        const cr = map.get(`${seasonNumber}:${entry.userId}`)!;
+        if ((rankCounts.get(cr) ?? 0) > 1) {
+          tied.add(`${seasonNumber}:${entry.userId}`);
+        }
       }
     }
 
-    return map;
+    return { rank: map, tied };
   }, [data?.players]);
+  const compRankMap = compRankInfo.rank;
+
+  // Compute each player's peak (best-ever) season across all their seasons.
+  // Key: userId -> { season, displayRank, tied }. Players with no seasons are
+  // absent from the map (treated as worst for sorting / shown as em-dash).
+  const peakMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { season: LeagueRosterSeason; displayRank: number; tied: boolean }
+    >();
+    if (!data?.players) return map;
+    for (const player of data.players) {
+      let best:
+        | { season: LeagueRosterSeason; displayRank: number; tied: boolean }
+        | undefined;
+      for (const season of player.seasons) {
+        const key = `${season.seasonNumber}:${player.userId}`;
+        const displayRank =
+          season.divisionNumber === 0
+            ? 0
+            : (compRankMap.get(key) ?? season.rank);
+        const tied = compRankInfo.tied.has(key);
+        const cand = { season, displayRank, tied };
+        if (!best || peakSeasonBetter(cand, best) < 0) {
+          best = cand;
+        }
+      }
+      if (best) map.set(player.userId, best);
+    }
+    return map;
+  }, [data?.players, compRankMap, compRankInfo.tied]);
 
   const filteredPlayers = useMemo(() => {
     if (!data?.players) return [];
@@ -390,6 +471,50 @@ export const LeagueRoster: React.FC<Props> = ({
         a.seasons.length - b.seasons.length,
       sortDirections: ["descend", "ascend"] as SortOrder[],
       sortOrder: sortKey === "count" ? sortOrder : undefined,
+    },
+    {
+      title: (
+        <Tooltip title="Best-ever finish across all seasons (highest division, then best rank; a sole rank beats a tied one)">
+          Peak
+        </Tooltip>
+      ),
+      key: "peak",
+      width: 130,
+      render: (_: unknown, record: LeagueRosterPlayer) => {
+        const peak = peakMap.get(record.userId);
+        if (!peak) return <span className="roster-empty">—</span>;
+        return (
+          <span className="roster-peak">
+            {formatSeason(
+              peak.season,
+              compRankMap.get(`${peak.season.seasonNumber}:${record.userId}`),
+            )}
+            <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 2 }}>
+              ·S{peak.season.seasonNumber}
+            </span>
+          </span>
+        );
+      },
+      // Ascending order is worst -> best, so the default (first click) descending
+      // sort surfaces the best peaks first.
+      sorter: (a: LeagueRosterPlayer, b: LeagueRosterPlayer) => {
+        const pa = peakMap.get(a.userId);
+        const pb = peakMap.get(b.userId);
+        // A player with any peak outranks one with none.
+        if (!pa && !pb) {
+          return b.username
+            .toLowerCase()
+            .localeCompare(a.username.toLowerCase());
+        }
+        if (!pa) return -1;
+        if (!pb) return 1;
+        const cmp = peakSeasonBetter(pa, pb);
+        if (cmp !== 0) return -cmp;
+        // Equal peaks: alphabetical under the default descending sort.
+        return b.username.toLowerCase().localeCompare(a.username.toLowerCase());
+      },
+      sortDirections: ["descend", "ascend"] as SortOrder[],
+      sortOrder: sortKey === "peak" ? sortOrder : undefined,
     },
     ...seasonNumbers.map((sn: number) => ({
       title: `S${sn}`,
