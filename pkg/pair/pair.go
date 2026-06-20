@@ -38,6 +38,8 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairTeamRoundRobin(members)
 	} else if pm == pb.PairingMethod_INTERLEAVED_ROUND_ROBIN {
 		pairings, err = pairInterleavedRoundRobin(members)
+	} else if pm == pb.PairingMethod_AUSTRALIAN_DRAW {
+		pairings, err = pairAustralianDraw(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching

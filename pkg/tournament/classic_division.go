@@ -887,6 +887,19 @@ func (t *ClassicDivision) PairRound(round int, preserveByes bool) (*pb.DivisionP
 		Repeats:     repeats,
 		Seed:        t.Seed}
 
+	// The Australian Draw needs to know which round each prior meeting
+	// occurred in (to honor reset_round and to relax the repeat rule one
+	// round at a time), which the totals-only Repeats map cannot express.
+	// Build the round-resolved history only for that method; round 0 has no
+	// prior rounds, so it is skipped there.
+	if pairingMethod == pb.PairingMethod_AUSTRALIAN_DRAW && round > 0 {
+		repeatRounds, err := getRepeatRounds(t, round-1)
+		if err != nil {
+			return nil, err
+		}
+		upm.RepeatRounds = repeatRounds
+	}
+
 	log.Info().Str("tournament", t.TournamentName).Str("division", t.DivisionName).Int("round", round+1).Int("numPoolMembers", len(poolMembers)).Msg("pairing-round")
 	pairings, err := pair.Pair(upm)
 	log.Info().Str("pairings", fmt.Sprintf("%v", pairings)).Msg("pairing-results")
@@ -1942,6 +1955,45 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 		}
 	}
 	return repeats, nil
+}
+
+// getRepeatRounds returns the per-round opponent history through the given
+// round, keyed by pair.GetRepeatKey. For each distinct pair of players it
+// lists the 0-indexed rounds in which they met, in ascending order and
+// without duplicates. Byes (a player paired with themselves) are excluded
+// because the Australian Draw never queries self-pairs. This is the
+// round-resolved counterpart to getRepeats, which only keeps totals; it
+// lets the Australian Draw avoid only repeats at or after a reset round.
+func getRepeatRounds(t *ClassicDivision, round int) (map[string][]int, error) {
+	if round >= len(t.Matrix) {
+		return nil, entity.NewWooglesError(pb.WooglesError_TOURNAMENT_ROUND_NUMBER_OUT_OF_RANGE, t.TournamentName, t.DivisionName, strconv.Itoa(round+1), "getRepeatRounds")
+	}
+	repeatRounds := make(map[string][]int)
+	for i := 0; i <= round; i++ {
+		// Within a single round a pairing key appears once per player, so
+		// record each meeting only from the player at the lower index to
+		// avoid double-counting the round.
+		seenThisRound := make(map[string]bool)
+		roundPairings := t.Matrix[i]
+		for _, pairingKey := range roundPairings {
+			pairing, ok := t.PairingMap[pairingKey]
+			if !ok || pairing.Players == nil {
+				continue
+			}
+			playerOne := t.Players.Persons[pairing.Players[0]]
+			playerTwo := t.Players.Persons[pairing.Players[1]]
+			if playerOne == playerTwo {
+				continue
+			}
+			key := pair.GetRepeatKey(playerOne.Id, playerTwo.Id)
+			if seenThisRound[key] {
+				continue
+			}
+			seenThisRound[key] = true
+			repeatRounds[key] = append(repeatRounds[key], i)
+		}
+	}
+	return repeatRounds, nil
 }
 
 func getEliminationOutcomes(games []*pb.TournamentGame, gamesPerRound int32) []pb.TournamentGameResult {

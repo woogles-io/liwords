@@ -32,5 +32,13 @@ type UnpairedPoolMembers struct {
 	PoolMembers   []*PoolMember
 	RoundControls *ipc.RoundControl
 	Repeats       map[string]int
-	Seed          uint64
+	// RepeatRounds is the per-round opponent history keyed by the same
+	// GetRepeatKey as Repeats: for each pair it lists, in ascending order,
+	// the 0-indexed rounds in which the two players met (byes excluded).
+	// Repeats carries only totals, which is enough for the matching-based
+	// methods, but the Australian Draw needs to know which round a meeting
+	// happened in so it can avoid only repeats at or after a reset round.
+	// It is populated by the caller solely for that method and may be nil.
+	RepeatRounds map[string][]int
+	Seed         uint64
 }
