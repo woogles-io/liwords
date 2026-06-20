@@ -632,6 +632,12 @@ func TestCorrespondenceLateMoveAutoPasses(t *testing.T) {
 	is.Equal(lastEvt.Type, macondopb.GameEvent_PASS)
 	is.Equal(lastEvt.Score, int32(0))
 
+	// The abandonment was recorded: player 0 was auto-passed on timeout,
+	// player 1 was not.
+	is.True(entGame.AutopassTimedOut(0))
+	is.True(!entGame.AutopassTimedOut(1))
+	is.Equal(entGame.AutopassAbandonerIdx(), 0)
+
 	gs.cancel()
 	<-gs.donechan
 	teardownGame(gs)

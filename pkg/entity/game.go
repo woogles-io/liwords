@@ -98,6 +98,12 @@ type Quickdata struct {
 	PlayerInfo        []*pb.PlayerInfo `json:"pi"`
 	OriginalRatings   []float64
 	NewRatings        []float64
+	// AutopassTimedOut[i] is true if player i was auto-passed because their
+	// time (and time bank) ran out -- i.e. they abandoned the game. The game
+	// still ends by score, but this lets automod and league standings treat
+	// the abandonment as a timeout even though the end reason is
+	// CONSECUTIVE_ZEROES.
+	AutopassTimedOut [2]bool `json:"apto"`
 }
 
 func (q *Quickdata) Value() (driver.Value, error) {
@@ -665,6 +671,41 @@ func (g *Game) HasIncrement() bool {
 		return false
 	}
 	return g.GameReq.IncrementSeconds > 0
+}
+
+// MarkAutopassTimedOut records that the player at idx was auto-passed because
+// their time (and time bank) ran out -- they abandoned the game. Idempotent;
+// safe to call on each repeated auto-pass. See Quickdata.AutopassTimedOut.
+func (g *Game) MarkAutopassTimedOut(idx int) {
+	if g.Quickdata == nil {
+		g.Quickdata = &Quickdata{}
+	}
+	if idx >= 0 && idx < len(g.Quickdata.AutopassTimedOut) {
+		g.Quickdata.AutopassTimedOut[idx] = true
+	}
+}
+
+// AutopassTimedOut reports whether the player at idx abandoned the game via an
+// auto-passed timeout.
+func (g *Game) AutopassTimedOut(idx int) bool {
+	if g.Quickdata == nil || idx < 0 || idx >= len(g.Quickdata.AutopassTimedOut) {
+		return false
+	}
+	return g.Quickdata.AutopassTimedOut[idx]
+}
+
+// AutopassAbandonerIdx returns the index of a player who abandoned via an
+// auto-passed timeout, or -1 if none. If both did, it returns the lower index.
+func (g *Game) AutopassAbandonerIdx() int {
+	if g.Quickdata == nil {
+		return -1
+	}
+	for i := range g.Quickdata.AutopassTimedOut {
+		if g.Quickdata.AutopassTimedOut[i] {
+			return i
+		}
+	}
+	return -1
 }
 
 // AddTimeToPlayer adds milliseconds to the specified player's remaining time.

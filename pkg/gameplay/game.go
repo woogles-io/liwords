@@ -729,6 +729,14 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 					Type:   pb.ClientGameplayEvent_PASS,
 					GameId: cge.GameId,
 				}
+				// Record that this player abandoned via timeout (their time
+				// bank is exhausted). The game still ends by score via the
+				// six-pass rule, but this lets automod and league standings
+				// treat it as a timeout even though the end reason will be
+				// CONSECUTIVE_ZEROES. Idempotent across repeated adjudicator
+				// fires; the ticker route also reaches here via
+				// handleEventAfterLockingGame.
+				entGame.MarkAutopassTimedOut(onTurn)
 			}
 		} else {
 			// Real-time game with no increment: forfeit on time (unchanged).
