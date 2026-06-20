@@ -88,6 +88,12 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           tournament.
         </li>
         <li>
+          - <strong>Australian Draw:</strong> These pairings pair adjacent
+          players by standing (1v2, 3v4, and so on) while avoiding earlier
+          repeat meetings. Use the Reset Round field to choose from which round
+          repeats start being avoided.
+        </li>
+        <li>
           - <strong>Factor:</strong> Factor 1 pairs 1 vs 2 and the rest Swiss.
           Factor 2 pairs 1v3, 2v4, and the rest Swiss. Factor 3 pairs 1v4, 2v5,
           3v6 and the rest Swiss, and so on.
@@ -139,6 +145,9 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
           <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
             King of the Hill
           </Select.Option>
+          <Select.Option value={PairingMethod.AUSTRALIAN_DRAW}>
+            Australian Draw
+          </Select.Option>
           <Select.Option value={PairingMethod.INTERLEAVED_ROUND_ROBIN}>
             Shirts and Skins
           </Select.Option>
@@ -169,7 +178,8 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
       {/* potential additional fields */}
       {addlFields.map((v: PairingMethodField, idx) => {
         const key = `ni-${idx}`;
-        const [fieldType, fieldName, displayName, help] = v;
+        const [fieldType, fieldName, displayName, help, fieldMin] = v;
+        const minValue = fieldMin ?? 0;
         switch (fieldType) {
           case "number":
             return (
@@ -182,8 +192,8 @@ export const SingleRoundControlFields = (props: SingleRdCtrlFieldsProps) => {
                 <InputNumber
                   inputMode="numeric"
                   key={key}
-                  min={0}
-                  value={setting[fieldName] as number}
+                  min={minValue}
+                  value={(setting[fieldName] as number) || minValue}
                   onChange={(e) => {
                     props.onChange(fieldName, e as number);
                   }}
@@ -323,6 +333,13 @@ export const rdCtrlFromSetting = (
 
     case PairingMethod.TEAM_ROUND_ROBIN:
       rdCtrl.gamesPerRound = rdSetting.gamesPerRound || 1;
+      break;
+
+    case PairingMethod.AUSTRALIAN_DRAW:
+      // resetRound is the 1-based reset point, stored directly in the proto
+      // (no offset). Round 1 = avoid all repeats. An unset value defaults to
+      // the input minimum of 1; the backend clamps anything below 1 to 1.
+      rdCtrl.resetRound = rdSetting.resetRound || 1;
       break;
 
     case PairingMethod.PAIRING_METHOD_COP:
