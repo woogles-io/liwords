@@ -115,6 +115,7 @@ export default defineConfig([
       // Disable React Compiler rules - we're not using React Compiler
       "react-hooks/preserve-manual-memoization": "off",
       "react-hooks/set-state-in-effect": "off",
+      "react-hooks/set-state-in-render": "off",
       "react-hooks/purity": "off",
       "react-hooks/refs": "off",
       "react-hooks/static-components": "off",
