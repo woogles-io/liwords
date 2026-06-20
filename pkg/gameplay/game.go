@@ -676,14 +676,36 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 
 		// If an ending game gets "challenge" just before "timed out",
 		// ignore the challenge, pass instead.
+		//
+		// Correspondence games auto-pass on timeout instead of forfeiting:
+		// the on-turn player's submitted move is discarded and replaced with
+		// a pass, the turn advances to the opponent, and the game ends
+		// naturally via the six-consecutive-pass rule. The pass is recorded
+		// by PlayMove -> RecordTimeOfMove at the expiry-capped time, so the
+		// opponent's clock starts correctly regardless of how late the move
+		// arrives. A resignation is exempt and falls through to the resign
+		// handler so it still ends the game with the resigner as the loser;
+		// real-time games are unchanged and still forfeit on time.
 		if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 			log.Debug().Msg("timed out, so passing instead of processing the submitted move")
 			cge = &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: cge.GameId,
 			}
+		} else if entGame.IsCorrespondence() {
+			if cge.Type == pb.ClientGameplayEvent_RESIGN {
+				// Honor a correspondence resignation even after time ran out.
+				log.Debug().Msg("correspondence timed out, but processing the submitted resignation")
+				// fall through to the resign handler below
+			} else {
+				log.Debug().Msg("correspondence timed out, so auto-passing instead of forfeiting")
+				cge = &pb.ClientGameplayEvent{
+					Type:   pb.ClientGameplayEvent_PASS,
+					GameId: cge.GameId,
+				}
+			}
 		} else {
-			// Basically skip to the bottom and exit.
+			// Real-time game: forfeit on time (unchanged).
 			return entGame, setTimedOut(ctx, entGame, onTurn, stores)
 		}
 	}
@@ -807,8 +829,19 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	}
 	// Ok, the time did run out after all.
 
-	// If opponent played out, auto-pass instead of forfeiting.
-	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
+	// Auto-pass instead of forfeiting when either:
+	//   - the opponent has already played out (WAITING_FOR_FINAL_PASS), or
+	//   - this is a correspondence game (auto-pass on bank/per-turn expiry).
+	// In both cases the on-turn player's turn becomes a pass, the turn
+	// advances, and the game ends naturally via the six-consecutive-pass
+	// rule. handleEventAfterLockingGame -> PlayMove -> RecordTimeOfMove
+	// records the pass at the expiry-capped time, so the opponent's clock
+	// starts correctly even though the correspondence adjudicator may fire
+	// up to AdjudicateCorrespondenceInterval (60s) after expiry. The
+	// adjudicator re-fires every interval, so an abandoning player keeps
+	// auto-passing each turn until the six-pass rule ends the game.
+	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS ||
+		entGame.IsCorrespondence() {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
 		_, err = handleEventAfterLockingGame(ctx, stores,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{

@@ -93,6 +93,16 @@ func WithInitialTimeSeconds(seconds int32) TestGameOption {
 	}
 }
 
+func WithCorrespondenceMode(incrementSeconds int32, timeBankMinutes int32) TestGameOption {
+	return func(gr *pb.GameRequest) {
+		gr.GameMode = pb.GameMode_CORRESPONDENCE
+		gr.IncrementSeconds = incrementSeconds
+		gr.TimeBankMinutes = timeBankMinutes
+		gr.InitialTimeSeconds = incrementSeconds
+		gr.MaxOvertimeMinutes = 0 // Correspondence games don't use max overtime
+	}
+}
+
 func makeGame(cfg *config.Config, stores *stores.Stores, opts ...TestGameOption) (
 	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
 
@@ -556,5 +566,102 @@ func TestQuickdata(t *testing.T) {
 	gs.cancel()
 	<-gs.donechan
 
+	teardownGame(gs)
+}
+
+// TestCorrespondenceLateMoveAutoPasses tests the move-path: a real move
+// submitted to a correspondence game after the player's time has run out is
+// discarded and turned into an auto-pass (rather than forfeiting). The turn
+// advances and the game continues.
+func TestCorrespondenceLateMoveAutoPasses(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+
+	// 60 second increment, no time bank.
+	gs := setupNewGame(WithCorrespondenceMode(60, 0))
+	// Make HandleEvent's reload of the (cache-bypassing) correspondence game
+	// share the same fake nower for deterministic timing.
+	gs.stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return gs.nower
+	})
+
+	is.Equal(gs.g.IsCorrespondence(), true)
+	is.Equal(gs.g.PlayerOnTurn(), 0)
+
+	// Give jesse (player 0) a known rack with a playable word, then let the
+	// clock blow past the per-turn allowance with no bank to fall back on.
+	gs.g.SetRacksForBoth([]*tilemapping.Rack{
+		tilemapping.RackFromString("ABEJNOR", gs.g.Alphabet()),
+		tilemapping.RackFromString("AGLSYYZ", gs.g.Alphabet()),
+	})
+	gs.stores.GameStore.Set(ctx, gs.g)
+
+	gs.nower.Sleep(120 * 1000) // 120 seconds, 2x the 60s allowance
+	is.True(gs.g.TimeRanOut(0))
+
+	// jesse tries to play BANJO well after timing out. The move is discarded
+	// and replaced with a pass.
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         gs.g.GameID(),
+		PositionCoords: "8D",
+		MachineLetters: []byte{2, 1, 14, 10, 15}, // BANJO
+	}
+	entGame, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge)
+	is.NoErr(err)
+
+	// Game continues, turn advanced to cesar (player 1).
+	is.Equal(entGame.Game.Playing(), macondopb.PlayState_PLAYING)
+	is.Equal(entGame.GameEndReason, pb.GameEndReason_NONE)
+	is.Equal(entGame.Game.PlayerOnTurn(), 1)
+
+	// The recorded event was a PASS, not BANJO. No points were scored.
+	evts := entGame.History().Events
+	lastEvt := evts[len(evts)-1]
+	is.Equal(lastEvt.Type, macondopb.GameEvent_PASS)
+	is.Equal(lastEvt.Score, int32(0))
+
+	gs.cancel()
+	<-gs.donechan
+	teardownGame(gs)
+}
+
+// TestCorrespondenceResignAfterTimeoutStillResigns tests that a resignation
+// submitted to a correspondence game after the player's time has run out is
+// still honored (ending the game with the resigner as the loser) rather than
+// being turned into an auto-pass.
+func TestCorrespondenceResignAfterTimeoutStillResigns(t *testing.T) {
+	is := is.New(t)
+	ctx := ctxForTests()
+
+	gs := setupNewGame(WithCorrespondenceMode(60, 0))
+	gs.stores.GameStore.SetTimerModuleCreator(func() entity.Nower {
+		return gs.nower
+	})
+
+	is.Equal(gs.g.IsCorrespondence(), true)
+	is.Equal(gs.g.PlayerOnTurn(), 0)
+
+	// Blow past the per-turn allowance with no bank.
+	gs.nower.Sleep(120 * 1000)
+	is.True(gs.g.TimeRanOut(0))
+
+	// jesse (player 0, on turn and timed out) resigns.
+	entGame, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi",
+		&pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_RESIGN,
+			GameId: gs.g.GameID(),
+		})
+	is.NoErr(err)
+
+	// The resignation is honored: the game ends, reason is RESIGNED, and the
+	// resigner (player 0) loses to the opponent (player 1).
+	is.Equal(entGame.Game.Playing(), macondopb.PlayState_GAME_OVER)
+	is.Equal(entGame.GameEndReason, pb.GameEndReason_RESIGNED)
+	is.Equal(entGame.WinnerIdx, 1)
+	is.Equal(entGame.LoserIdx, 0)
+
+	gs.cancel()
+	<-gs.donechan
 	teardownGame(gs)
 }
