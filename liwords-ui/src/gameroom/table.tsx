@@ -1368,6 +1368,7 @@ export const Table = React.memo((props: Props) => {
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={sortedRack}
+            tilesHidden={!us && !gameDone && sortedRack.length === 0}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
             alphabet={alphabet}
