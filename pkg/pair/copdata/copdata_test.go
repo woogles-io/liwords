@@ -64,6 +64,7 @@ func TestCOPPrecompData(t *testing.T) {
 
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	req.ControlLossActivationRound = 10
+	req.DivisionSims = 10000
 	copRand.Seed(1)
 	// 1st is gibsonized, so control loss should not be used
 	// even though it's set to true in the request

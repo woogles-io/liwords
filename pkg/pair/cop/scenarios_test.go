@@ -295,6 +295,78 @@ func TestScenario6_OneNTwoNMinus2BothControlLoss(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
+// Scenario 7: Factor-3 expansion in the 2nd-to-last round.
+// 1st has N wins, 2nd and 3rd have N-1 wins, 4th/5th/6th have N-2 wins, all with
+// close spreads so the factor-3 condition triggers and COP tries to force 1v4, 2v5, 3v6.
+// 12 players, 8 rounds, 6 completed, PlacePrizes=3.
+// P0=5-1 +100, P2=4-2 +50, P4=4-2 +30, P6=3-3 +10, P8=3-3 +5, P10=3-3 +0.
+func TestScenario7_Factor3ExpansionSecondToLastRound(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs: P0vP1, P2vP3, P4vP5, P6vP7, P8vP9, P10vP11
+	// Round 1-5: P0,P2,P4,P6,P8,P10 win (even players win)
+	//   P0 wins by 25: R1=425/400, R2=425/400, R3=425/400, R4=425/400, R5=425/400
+	//   P2 wins by 15: R1=415/400, ... (same pattern)
+	//   P4 wins by 10: R1=410/400, ...
+	//   P6 wins by  5: R1=405/400, ...
+	//   P8 wins by  3: R1=403/400, ...
+	//   P10 wins by 1: R1=401/400, ...
+	// Round 6: odd players win — P0,P2,P4 each lose to P1,P3,P5; P6,P8,P10 also lose
+	//   P0 loses: 400/425 → -25; P2 loses: 400/415; P4 loses: 400/410
+	//   P6 loses: 400/405; P8 loses: 400/403; P10 loses: 400/401
+	// After 6 rounds:
+	//   P0: 5-1, spread = 5*25 - 25 = 100
+	//   P2: 5-1 would need more losses... let's use explicit results.
+	// Instead use explicit score strings:
+	//   R1-R5 (even wins):
+	//     P0+25, P2+15, P4+10, P6+5, P8+3, P10+1 per round
+	//   R6 (odd wins):
+	//     all even players lose by same amount
+	// Spreads after 6 rounds: P0=5*25-25=100, P2=5*15-15=60... let me adjust
+	// R1-R5: P0 wins by 20, P2 wins by 12, P4 wins by 8, P6 wins by 4, P8 wins by 2, P10 wins by 1
+	// R6: P0 loses by 20, P2 loses by 12, P4 loses by 8, P6 loses by 4, P8 loses by 2, P10 loses by 1
+	// Spreads: P0=4*20=80, P2=4*12=48, P4=4*8=32, P6=4*4=16, P8=4*2=8, P10=4*1=4
+	// All within 500 of P0 → factor-3 check triggers.
+	pairtestutils.AddNDummyRounds(req, 6)
+	// R1
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400")
+	// R2
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400")
+	// R3
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400")
+	// R4
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400")
+	// R5
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400")
+	// R6: odd players win
+	pairtestutils.AddRoundResultsStr(req, "400 420 400 412 400 408 400 404 400 402 400 401")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_7_factor3_expansion.log", resp.Log)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
@@ -340,8 +412,94 @@ func TestScenarioMultiRound_AlbanyCSW2025ME_Last16Rounds(t *testing.T) {
 	}
 }
 
+// july4thOneBehindRounds lists the 1-indexed round numbers where pairings are based on
+// results from 1 game behind (i.e. all results available). All other rounds use 2 games
+// behind — the director pairs the next round before the current round finishes.
+var july4thOneBehindRounds = map[int]bool{
+	1: true, 5: true, 9: true, 13: true, 17: true, 21: true, 25: true, 26: true, 27: true, 28: true,
+}
+
+// makeRandomResults generates a random result for every game in pairings.
+func makeRandomResults(pairings []int32, numPlayers int, rng *rand.Rand, spreadsDist []uint64) *pb.RoundResults {
+	results := make([]int32, numPlayers)
+	spreadsDistSize := len(spreadsDist)
+	for i := 0; i < numPlayers; i++ {
+		if pairings[i] == int32(i) {
+			results[i] = 50 // bye
+			continue
+		}
+		opp := int(pairings[i])
+		if i < opp {
+			spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
+			base := int32(400)
+			if rng.Intn(2) == 0 {
+				results[i] = base + spread/2
+				results[opp] = base - spread/2
+			} else {
+				results[i] = base - spread/2
+				results[opp] = base + spread/2
+			}
+		}
+	}
+	return &pb.RoundResults{Results: results}
+}
+
+// generateFontesPairings returns deterministic Fontes-style pairings for round r (0-indexed).
+func generateFontesPairings(r int, numPlayers int) []int32 {
+	pairings := make([]int32, numPlayers)
+	paired := make([]bool, numPlayers)
+	step := numPlayers/2 + r
+	for i := 0; i < numPlayers; i++ {
+		if paired[i] {
+			continue
+		}
+		j := (i + step) % numPlayers
+		startJ := j
+		for paired[j] || j == i {
+			j = (j + 1) % numPlayers
+			if j == startJ {
+				j = -1
+				break
+			}
+		}
+		if j < 0 {
+			continue
+		}
+		pairings[i] = int32(j)
+		pairings[j] = int32(i)
+		paired[i] = true
+		paired[j] = true
+	}
+	for i := 0; i < numPlayers; i++ {
+		if !paired[i] {
+			pairings[i] = int32(i)
+			paired[i] = true
+		}
+	}
+	return pairings
+}
+
+// numResultsForRound returns how many past results to include when pairing the given
+// 1-indexed round, honouring the 1-behind / 2-behind timing rule.
+func numResultsForRound(roundNum int, available int) int {
+	behind := 2
+	if july4thOneBehindRounds[roundNum] {
+		behind = 1
+	}
+	n := roundNum - behind
+	if n < 0 {
+		n = 0
+	}
+	if n > available {
+		n = available
+	}
+	return n
+}
+
 // July 4th 2026 28-game 53-player event: 3 rounds of fontes-style pairings, then 25 rounds of COP.
 // Uses the Division 1 player list from wordgameplayers.org/tournaments/1162.
+// Pairings simulate real-tournament timing: most rounds are paired 2 games behind
+// (before previous round finishes); rounds 1,5,9,13,17,21,25-28 use 1-game-behind results.
 // Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_July4th2026
 func TestScenarioMultiRound_July4th2026(t *testing.T) {
 	if os.Getenv("COP_SCENARIOS") == "" {
@@ -349,7 +507,6 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 	}
 	is := is.New(t)
 	spreadsDist := standings.GetScoreDifferences()
-	spreadsDistSize := len(spreadsDist)
 
 	const numRuns = 10
 
@@ -399,76 +556,23 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 			Seed:                       seed,
 		}
 
-		addRandomResults := func(pairings []int32) {
-			results := make([]int32, numPlayers)
-			byePlayer := -1
-			for i := 0; i < numPlayers; i++ {
-				if pairings[i] == int32(i) {
-					byePlayer = i
-				}
-			}
-			for i := 0; i < numPlayers; i++ {
-				if i == byePlayer {
-					results[i] = 50
-					continue
-				}
-				opp := int(pairings[i])
-				if i < opp {
-					spread := int32(spreadsDist[rng.Intn(spreadsDistSize)])
-					baseScore := int32(400)
-					if rng.Intn(2) == 0 {
-						results[i] = baseScore + spread/2
-						results[opp] = baseScore - spread/2
-					} else {
-						results[i] = baseScore - spread/2
-						results[opp] = baseScore + spread/2
-					}
-				}
-			}
-			req.DivisionResults = append(req.DivisionResults, &pb.RoundResults{Results: results})
-		}
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
 
-		// Fontes-style pairings for first 3 rounds.
+		// Fontes-style pairings for the first 3 rounds.
 		for r := 0; r < fontesRounds; r++ {
-			pairings := make([]int32, numPlayers)
-			paired := make([]bool, numPlayers)
-
-			step := numPlayers/2 + r
-			for i := 0; i < numPlayers; i++ {
-				if paired[i] {
-					continue
-				}
-				j := (i + step) % numPlayers
-				startJ := j
-				// Break if we've wrapped all the way around (no valid partner — will get bye).
-				for paired[j] || j == i {
-					j = (j + 1) % numPlayers
-					if j == startJ {
-						j = -1
-						break
-					}
-				}
-				if j < 0 {
-					continue
-				}
-				pairings[i] = int32(j)
-				pairings[j] = int32(i)
-				paired[i] = true
-				paired[j] = true
-			}
-			for i := 0; i < numPlayers; i++ {
-				if !paired[i] {
-					pairings[i] = int32(i)
-					paired[i] = true
-				}
-			}
-
-			req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
-			addRandomResults(pairings)
+			pairings := generateFontesPairings(r, numPlayers)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
 		}
 
-		// COP rounds for the remaining 25 rounds.
+		// COP rounds for rounds 4–28, with real-tournament timing.
 		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			numRes := numResultsForRound(round, len(allResults))
+
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults[:numRes]
+
 			if round == totalRounds {
 				req.GibsonSpread = scenarioLastRoundGibsonSpread
 			} else {
@@ -482,8 +586,93 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 
 			pairings := make([]int32, numPlayers)
 			copy(pairings, resp.Pairings)
-			req.DivisionPairings = append(req.DivisionPairings, &pb.RoundPairings{Pairings: pairings})
-			addRandomResults(pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// July 4th 2026 WOW division: top half of the 35-player WOW field (18 players) from
+// wordgameplayers.org/tournaments/1161, using the same 28-round structure and real-tournament
+// timing as the main event (see TestScenarioMultiRound_July4th2026).
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_July4th2026WOW
+func TestScenarioMultiRound_July4th2026WOW(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping July 4th 2026 WOW scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	// Top 18 of 35 players (even number = top half rounded up) from tournament 1161.
+	numPlayers := 18
+	totalRounds := 28
+	fontesRounds := 3
+
+	names := []string{
+		"Orry Swift", "Karl Higby", "Michael Thelen", "Evan Chester",
+		"Sam Towne", "Michael Fagen", "Jeffrey Nelson", "John Scalzo",
+		"Brian McCarthy", "Joel Horn", "Beth Mix", "Samuel Heiman",
+		"Joshua Pepper", "Judy Horn", "Letitia Sears", "Nick Purifoy",
+		"Mary Krizan", "Sally Scalzo",
+	}
+	classes := make([]int32, numPlayers)
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("july4th2026wow_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                4,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: 22,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		for r := 0; r < fontesRounds; r++ {
+			pairings := generateFontesPairings(r, numPlayers)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+
+		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			numRes := numResultsForRound(round, len(allResults))
+
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults[:numRes]
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("July 4th 2026 WOW run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
 		}
 	}
 }

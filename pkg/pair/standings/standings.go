@@ -2,8 +2,10 @@ package standings
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -337,26 +339,20 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	totalSims := 0
 	if lowestHopeControlLosser < 0 {
 		initialSimStopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
-		for simIdx := 0; simIdx < sims; simIdx++ {
-			timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, initialSimStopTime)
-			if timeLimitExceeded {
-				break
+		count, tl := standings.runParallelSims(sims, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, initialSimStopTime)
+		totalSims += count
+		if !tl {
+			ranksToCheck := []int{int(req.PlacePrizes) - 1}
+			if !gibsonizedPlayers[0] {
+				ranksToCheck = append(ranksToCheck, 0)
 			}
-			totalSims++
-		}
-		ranksToCheck := []int{int(req.PlacePrizes) - 1}
-		if !gibsonizedPlayers[0] {
-			ranksToCheck = append(ranksToCheck, 0)
-		}
-		reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
-	outerThresholdLoop:
-		for !simResultsReachedThreshold(results, ranksToCheck, totalSims, req.HopefulnessThreshold) {
-			for resimIdx := 0; resimIdx < resimBatchSize; resimIdx++ {
-				timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
-				if timeLimitExceeded {
-					break outerThresholdLoop
+			reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
+			for !simResultsReachedThreshold(results, ranksToCheck, totalSims, req.HopefulnessThreshold) {
+				batchCount, batchTL := standings.runParallelSims(resimBatchSize, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, reSimStopTime)
+				totalSims += batchCount
+				if batchTL {
+					break
 				}
-				totalSims++
 			}
 		}
 	} else {
@@ -449,12 +445,12 @@ func (standings *Standings) evaluatePlayerControlLoss(
 		return vsFirst, allControlLosses[rankIdx], 0, pb.PairError_SUCCESS
 	}
 	playerIdx := standings.GetPlayerIndex(rankIdx)
-	vsFirst, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, true, stopTime)
+	vsFirst, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, true, stopTime)
 	if pairErr != pb.PairError_SUCCESS {
 		return 0, 0, 0, pairErr
 	}
 	vsFirstWins[rankIdx] = vsFirst
-	vsFactorPair, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, false, stopTime)
+	vsFactorPair, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, false, stopTime)
 	if pairErr != pb.PairError_SUCCESS {
 		return 0, 0, 0, pairErr
 	}
@@ -611,6 +607,116 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 		standings.RestoreFromBackup()
 	}
 	return tournamentWins, pb.PairError_SUCCESS
+}
+
+// runParallelSims distributes numSims iterations of simToEndAndRecordResults across
+// runtime.NumCPU() goroutines, each operating on an independent copy of standings.
+// Returns (totalSimsCompleted, timeLimitExceeded).
+func (standings *Standings) runParallelSims(
+	numSims int, copRand *rand.Rand, roundsRemaining int,
+	pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int,
+	stopTimeNano int64,
+) (int, bool) {
+	numWorkers := runtime.NumCPU()
+	if numWorkers > numSims {
+		numWorkers = numSims
+	}
+	numPlayers := len(standings.records)
+	simsPerWorker := numSims / numWorkers
+	remainder := numSims % numWorkers
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	totalSims := 0
+	timeLimitExceeded := false
+
+	for w := 0; w < numWorkers; w++ {
+		workerSims := simsPerWorker
+		if w < remainder {
+			workerSims++
+		}
+		wg.Add(1)
+		localStandings := standings.Copy()
+		workerRand := rand.New(rand.NewSource(uint64(copRand.Int63())))
+		localResults := make([][]int, numPlayers)
+		for i := range localResults {
+			localResults[i] = make([]int, numPlayers)
+		}
+		go func(sc *Standings, wr *rand.Rand, lr [][]int, ns int) {
+			defer wg.Done()
+			localCount := 0
+			localTL := false
+			for i := 0; i < ns; i++ {
+				if sc.simToEndAndRecordResults(roundsRemaining, wr, pairings, lr, playerIdxToRankIdx, stopTimeNano) {
+					localTL = true
+					break
+				}
+				localCount++
+			}
+			mu.Lock()
+			totalSims += localCount
+			if localTL {
+				timeLimitExceeded = true
+			}
+			for pi := range lr {
+				for rank := range lr[pi] {
+					results[pi][rank] += lr[pi][rank]
+				}
+			}
+			mu.Unlock()
+		}(localStandings, workerRand, localResults, workerSims)
+	}
+	wg.Wait()
+	return totalSims, timeLimitExceeded
+}
+
+// runParallelSimForceWinner distributes sims iterations of simForceWinner across
+// runtime.NumCPU() goroutines, each with its own standings and pairings copies.
+func (standings *Standings) runParallelSimForceWinner(
+	copRand *rand.Rand, sims int, roundsRemaining int,
+	pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64,
+) (int, pb.PairError) {
+	numWorkers := runtime.NumCPU()
+	if numWorkers > sims {
+		numWorkers = sims
+	}
+	simsPerWorker := sims / numWorkers
+	remainder := sims % numWorkers
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	totalWins := 0
+	var firstErr pb.PairError
+
+	for w := 0; w < numWorkers; w++ {
+		workerSims := simsPerWorker
+		if w < remainder {
+			workerSims++
+		}
+		wg.Add(1)
+		localStandings := standings.Copy()
+		workerRand := rand.New(rand.NewSource(uint64(copRand.Int63())))
+		localPairings := make([][]int, len(pairings))
+		for i := range pairings {
+			localPairings[i] = make([]int, len(pairings[i]))
+			copy(localPairings[i], pairings[i])
+		}
+		go func(sc *Standings, wr *rand.Rand, lp [][]int, ns int) {
+			defer wg.Done()
+			wins, pairErr := sc.simForceWinner(wr, ns, roundsRemaining, lp, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
+			mu.Lock()
+			totalWins += wins
+			if pairErr != pb.PairError_SUCCESS && firstErr == pb.PairError_SUCCESS {
+				firstErr = pairErr
+			}
+			mu.Unlock()
+		}(localStandings, workerRand, localPairings, workerSims)
+	}
+	wg.Wait()
+	if firstErr != pb.PairError_SUCCESS {
+		return 0, firstErr
+	}
+	return totalWins, pb.PairError_SUCCESS
 }
 
 // Unexported functions

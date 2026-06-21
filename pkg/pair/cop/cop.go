@@ -51,6 +51,7 @@ type policyArgs struct {
 	prepairedRoundIdx        int
 	prepairedPlayerIndexes   map[int]int
 	lowestHopeOverride       map[int]int
+	factor3ForcedPairings    [][2]int
 }
 
 type constraintPolicy struct {
@@ -179,6 +180,11 @@ var constraintPolicies = []constraintPolicy{
 			if pargs.copdata.DestinysChild < 0 {
 				return [][2]int{}, [][2]int{}
 			}
+			// Factor 3 expansion already constrains the top-6 pairings; applying
+			// control loss on top of it would overconstraint the matching.
+			if len(pargs.factor3ForcedPairings) > 0 {
+				return [][2]int{}, [][2]int{}
+			}
 			disallowedPairings := [][2]int{}
 			numPlayers := len(pargs.playerNodes)
 			for playerRankIdx := 1; playerRankIdx < numPlayers; playerRankIdx++ {
@@ -262,6 +268,16 @@ var constraintPolicies = []constraintPolicy{
 				}
 			}
 			return forcedBye, [][2]int{}
+		},
+	},
+	{
+		// Factor 3 expansion for the 2nd-to-last round
+		name: "F3",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if len(pargs.factor3ForcedPairings) == 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return pargs.factor3ForcedPairings, [][2]int{}
 		},
 	},
 }
@@ -513,7 +529,8 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 }
 
 func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	copdata, pairErr := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
+	copRand := rand.New(rand.NewSource(uint64(req.Seed)))
+	copdata, pairErr := copdatapkg.GetPrecompData(req, copRand, logsb)
 
 	if pairErr != pb.PairError_SUCCESS {
 		return &pb.PairResponse{
@@ -522,7 +539,8 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		}
 	}
 
-	pairings, resp := copMinWeightMatching(req, copdata, logsb)
+	factor3ForcedPairings := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	pairings, resp := copMinWeightMatching(req, copdata, factor3ForcedPairings, logsb)
 
 	if resp != nil {
 		return resp
@@ -533,6 +551,68 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		Pairings:          pairings,
 		GibsonizedPlayers: copdata.GibsonizedPlayers,
 	}
+}
+
+// computeFactor3ForcedPairings checks whether the 2nd-to-last round should use
+// factor-3 pairings (1v4, 2v5, 3v6). It runs a factor-3 simulation and, if each
+// of 4th/5th/6th can reach 1st/2nd/3rd respectively within the hopefulness
+// threshold, returns those three forced pairs. Otherwise it returns nil.
+func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
+	if pkgstnd.GetRoundsRemaining(req) != 2 {
+		return nil
+	}
+	numPlayers := copdata.Standings.GetNumPlayers()
+	if numPlayers < 6 {
+		return nil
+	}
+	// Skip if there is already a pre-paired (partial) round in the request.
+	n := len(req.DivisionPairings)
+	if n > 0 && slices.Contains(req.DivisionPairings[n-1].Pairings, -1) {
+		return nil
+	}
+	// Skip if control loss is active — it already handles destiny of 1st place.
+	if copdata.DestinysChild >= 0 {
+		return nil
+	}
+	// Condition: 3rd place is not more than 500 spread behind either 1st or 2nd.
+	spread0 := copdata.Standings.GetPlayerSpread(0)
+	spread1 := copdata.Standings.GetPlayerSpread(1)
+	spread2 := copdata.Standings.GetPlayerSpread(2)
+	if spread0-spread2 > 500 || spread1-spread2 > 500 {
+		return nil
+	}
+
+	factor3Sim, err := copdata.Standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), 3, -1, nil)
+	if err != pb.PairError_SUCCESS || factor3Sim == nil {
+		return nil
+	}
+	totalSims := factor3Sim.TotalSims
+	if totalSims == 0 {
+		return nil
+	}
+	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
+
+	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
+	if factor3Sim.FinalRanks[3][0] < minWins ||
+		factor3Sim.FinalRanks[4][1] < minWins ||
+		factor3Sim.FinalRanks[5][2] < minWins {
+		return nil
+	}
+
+	p0 := copdata.Standings.GetPlayerIndex(0)
+	p1 := copdata.Standings.GetPlayerIndex(1)
+	p2 := copdata.Standings.GetPlayerIndex(2)
+	p3 := copdata.Standings.GetPlayerIndex(3)
+	p4 := copdata.Standings.GetPlayerIndex(4)
+	p5 := copdata.Standings.GetPlayerIndex(5)
+
+	logsb.WriteString(fmt.Sprintf(
+		"Factor 3 expansion: forcing %s vs %s, %s vs %s, %s vs %s\n",
+		req.PlayerNames[p0], req.PlayerNames[p3],
+		req.PlayerNames[p1], req.PlayerNames[p4],
+		req.PlayerNames[p2], req.PlayerNames[p5],
+	))
+	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}
 }
 
 // extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
@@ -1076,7 +1156,7 @@ func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, ori
 	req.InitialNonperfRounds = origInitialNonperfRounds
 }
 
-func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
+func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
 	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := extractPrepairedPlayers(req)
 
 	for playerIdx, oppIdx := range prepairedPlayerIndexes {
@@ -1141,6 +1221,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		gibsonGetsBye:            gibsonGetsBye,
 		prepairedRoundIdx:        prepairedRoundIdx,
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
+		factor3ForcedPairings:    factor3ForcedPairings,
 	}
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
