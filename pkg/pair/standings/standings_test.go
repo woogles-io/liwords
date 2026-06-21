@@ -81,7 +81,7 @@ func TestStandings(t *testing.T) {
 	assertFactorPairings(is, simResults.Pairings[5], []int{0, 4, 1, 5, 2, 6, 3, 7})
 	assertFactorPairings(is, simResults.Pairings[6], []int{0, 4, 1, 5, 2, 6, 3, 7})
 	assertFactorPairings(is, simResults.Pairings[7], []int{0, 3, 1, 4, 2, 5, 6, 7})
-	assertFactorPairings(is, simResults.Pairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
+	assertFactorPairings(is, simResults.Pairings[8], []int{0, 2, 1, 3, 4, 6, 5, 7})
 	assertFactorPairings(is, simResults.Pairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
@@ -110,7 +110,7 @@ func TestStandings(t *testing.T) {
 	assertFactorPairings(is, simResults.Pairings[5], []int{0, 4, 1, 5, 2, 6, 3, 7})
 	assertFactorPairings(is, simResults.Pairings[6], []int{0, 4, 1, 5, 2, 6, 3, 7})
 	assertFactorPairings(is, simResults.Pairings[7], []int{0, 3, 1, 4, 2, 5, 6, 7})
-	assertFactorPairings(is, simResults.Pairings[8], []int{0, 2, 1, 3, 4, 5, 6, 7})
+	assertFactorPairings(is, simResults.Pairings[8], []int{0, 2, 1, 3, 4, 6, 5, 7})
 	assertFactorPairings(is, simResults.Pairings[9], []int{0, 1, 2, 3, 4, 5, 6, 7})
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
@@ -147,17 +147,13 @@ func TestStandings(t *testing.T) {
 	numSims := 10000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{1, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0})
+	assertFactorPairings(is, simResults.Pairings[0], []int{1, 3, 2, 4, 5, 16, 6, 17, 7, 18, 8, 19, 9, 20, 10, 21, 11, 22, 12, 23, 13, 24, 14, 25, 15, 26, 27, 0})
 	assertFactorPairings(is, simResults.Pairings[1], []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0})
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
 	}
 	// Jackson is gibsonized and should always be first
 	assertGibsonizedResult(is, simResults.FinalRanks, numSims, 0)
-	// Jeffrey cannot get 12th as he is two wins back with two to go and
-	// KOTH pairings will ensure at least one player with 6 wins will get
-	// to 8.
-	is.Equal(simResults.FinalRanks[20][11], 0)
 	assertResultSums(is, simResults.FinalRanks, int(req.ValidPlayers), numSims)
 
 	// 1st and 2nd are gibsonized
@@ -171,8 +167,8 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 1: true})
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 3, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{2, 5, 3, 6, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
-	assertFactorPairings(is, simResults.Pairings[1], []int{2, 4, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
+	assertFactorPairings(is, simResults.Pairings[0], []int{2, 5, 3, 6, 4, 7, 8, 19, 9, 20, 10, 21, 11, 22, 12, 23, 13, 24, 14, 25, 15, 26, 16, 27, 17, 28, 18, 29, 0, 1})
+	assertFactorPairings(is, simResults.Pairings[1], []int{2, 4, 3, 5, 6, 18, 7, 19, 8, 20, 9, 21, 10, 22, 11, 23, 12, 24, 13, 25, 14, 26, 15, 27, 16, 28, 17, 29, 0, 1})
 	assertFactorPairings(is, simResults.Pairings[2], []int{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 0, 1})
 	for i := 0; i < int(req.ValidPlayers); i++ {
 		is.Equal(simResults.GibsonGroups[i], 0)
@@ -190,7 +186,7 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{2: true})
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{0, 1, 3, 5, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2})
+	assertFactorPairings(is, simResults.Pairings[0], []int{0, 1, 3, 5, 4, 6, 7, 15, 8, 16, 9, 17, 10, 18, 11, 19, 12, 20, 13, 21, 14, 22, 23, 2})
 	assertFactorPairings(is, simResults.Pairings[1], []int{0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2})
 	is.Equal(simResults.GibsonGroups[0], 1)
 	is.Equal(simResults.GibsonGroups[1], 1)
@@ -207,7 +203,7 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{3: true})
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{0, 2, 1, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23})
+	assertFactorPairings(is, simResults.Pairings[0], []int{0, 2, 1, 3, 4, 6, 5, 7, 8, 16, 9, 17, 10, 18, 11, 19, 12, 20, 13, 21, 14, 22, 15, 23})
 	assertFactorPairings(is, simResults.Pairings[1], []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23})
 	is.Equal(simResults.GibsonGroups[0], 1)
 	is.Equal(simResults.GibsonGroups[1], 1)
@@ -226,7 +222,7 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 3: true})
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	assertFactorPairings(is, simResults.Pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 16, 9, 17, 10, 18, 11, 19, 12, 20, 13, 21, 14, 22, 15, 23, 0, 3})
 	assertFactorPairings(is, simResults.Pairings[1], []int{1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
 	is.Equal(simResults.GibsonGroups[0], 0)
 	is.Equal(simResults.GibsonGroups[1], 1)
@@ -246,7 +242,7 @@ func TestStandings(t *testing.T) {
 	assertGibsonizedPlayers(is, standings, req, map[int]bool{0: true, 3: true, 7: true})
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, -1, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	assertFactorPairings(is, simResults.Pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 10, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
+	assertFactorPairings(is, simResults.Pairings[0], []int{1, 2, 4, 6, 5, 7, 8, 10, 9, 11, 12, 18, 13, 19, 14, 20, 15, 21, 16, 22, 17, 23, 0, 3})
 	assertFactorPairings(is, simResults.Pairings[1], []int{1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 3})
 	is.Equal(simResults.GibsonGroups[0], 0)
 	is.Equal(simResults.GibsonGroups[1], 1)

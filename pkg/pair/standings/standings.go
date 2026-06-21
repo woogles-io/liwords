@@ -16,16 +16,17 @@ const (
 )
 
 const (
-	playerWinsOffset    int     = 48
-	initialWinsValue    int     = 1 << (64 - playerWinsOffset - 1)
-	playerSpreadOffset  int     = 16
-	initialSpreadValue  int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
-	playerIndexMask     uint64  = 0xFFFF
-	simConfidence       float64 = 0.99
-	resimBatchSize      int     = 10000
-	initialSimTimeLimit int     = 6
-	reSimTimeLimit      int     = 6
-	controlSimTimeLimit int     = 6
+	playerWinsOffset                     int     = 48
+	initialWinsValue                     int     = 1 << (64 - playerWinsOffset - 1)
+	playerSpreadOffset                   int     = 16
+	initialSpreadValue                   int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
+	playerIndexMask                      uint64  = 0xFFFF
+	simConfidence                        float64 = 0.99
+	resimBatchSize                       int     = 10000
+	initialSimTimeLimit                  int     = 6
+	reSimTimeLimit                       int     = 6
+	controlSimTimeLimit                  int     = 6
+	controlLossWinAllVsFirstRoundsThresh int     = 4
 )
 
 type Standings struct {
@@ -369,26 +370,60 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
-			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			vsFirstTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true, controlSimStopTime)
+			vsFirstTournamentWins, vsFactorPairTournamentWins, newSims, pairErr := standings.evaluatePlayerControlLoss(
+				copRand, sims, roundsRemaining, pairings, forcedWinnerRankIdx, controlSimStopTime,
+				vsFirstWins, allControlLosses,
+			)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
-			totalSims++
-			vsFirstWins[forcedWinnerRankIdx] = vsFirstTournamentWins
-			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false, controlSimStopTime)
-			if pairErr != pb.PairError_SUCCESS {
-				return nil, pairErr
-			}
-			totalSims++
-			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
-			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
-				rightPlayerRankIdx = forcedWinnerRankIdx - 1
-				if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
-					highestControlLossRankIdx = forcedWinnerRankIdx
+			totalSims += newSims
+			// The binary search conditions are different depending on the number of rounds remaining.
+			if roundsRemaining > controlLossWinAllVsFirstRoundsThresh {
+				if vsFirstTournamentWins < sims {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+				} else if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
+						highestControlLossRankIdx = forcedWinnerRankIdx
+					}
+				} else {
+					leftPlayerRankIdx = forcedWinnerRankIdx + 1
 				}
 			} else {
-				leftPlayerRankIdx = forcedWinnerRankIdx + 1
+				if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
+						highestControlLossRankIdx = forcedWinnerRankIdx
+					}
+				} else {
+					leftPlayerRankIdx = forcedWinnerRankIdx + 1
+				}
+			}
+
+		}
+		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
+			lowestFullWinRankIdx := -1
+			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
+				vsFirst, vsFactorPair, newSims, pairErr := standings.evaluatePlayerControlLoss(
+					copRand, sims, roundsRemaining, pairings, rankIdx, controlSimStopTime,
+					vsFirstWins, allControlLosses,
+				)
+				if pairErr != pb.PairError_SUCCESS {
+					return nil, pairErr
+				}
+				totalSims += newSims
+				if vsFirst == sims && vsFactorPair == sims {
+					lowestFullWinRankIdx = rankIdx
+				} else if lowestFullWinRankIdx != -1 {
+					break
+				}
+			}
+			if lowestFullWinRankIdx != -1 && lowestFullWinRankIdx+1 <= lowestHopeControlLosser {
+				bRankIdx := lowestFullWinRankIdx + 1
+				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
+					highestControlLossRankIdx = bRankIdx
+				}
 			}
 		}
 	}
@@ -403,6 +438,28 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		SegmentRoundFactors:       segmentRoundFactors,
 		TotalSims:                 totalSims,
 	}, pb.PairError_SUCCESS
+}
+
+func (standings *Standings) evaluatePlayerControlLoss(
+	copRand *rand.Rand, sims, roundsRemaining int, pairings [][]int,
+	rankIdx int, stopTime int64,
+	vsFirstWins, allControlLosses map[int]int,
+) (int, int, int, pb.PairError) {
+	if vsFirst, ok := vsFirstWins[rankIdx]; ok {
+		return vsFirst, allControlLosses[rankIdx], 0, pb.PairError_SUCCESS
+	}
+	playerIdx := standings.GetPlayerIndex(rankIdx)
+	vsFirst, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, true, stopTime)
+	if pairErr != pb.PairError_SUCCESS {
+		return 0, 0, 0, pairErr
+	}
+	vsFirstWins[rankIdx] = vsFirst
+	vsFactorPair, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, false, stopTime)
+	if pairErr != pb.PairError_SUCCESS {
+		return 0, 0, 0, pairErr
+	}
+	allControlLosses[rankIdx] = vsFactorPair
+	return vsFirst, vsFactorPair, 2, pb.PairError_SUCCESS
 }
 
 // Returns true if the time limit has been exceeded
@@ -562,7 +619,7 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 // for all remaining rounds.
 //
 // When controlLoss is false (normal sim): each round uses multiple factor pairs followed by
-// consecutive KOTH pairings for the remainder.
+// factor M/2 pairings for the remainder (where M is the number of remaining players).
 //
 // When controlLoss is true (always-wins sim): each round uses a single factor pair (top of
 // segment vs Nth player), then randomly pairs remaining players within totalNumPlayers/2
@@ -639,28 +696,26 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 				pairings[roundIdx][pairingsStartIdx+2+len(best)-1] = best[len(best)-1]
 			}
 		} else {
-			// Multiple factor pairs followed by KOTH for the remainder.
+			// Multiple factor pairs followed by factor M/2 pairings for the remainder,
+			// where M is the number of remaining players.
 			for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
 				basePairingIdx := pairingsStartIdx + 2*factorPairing
 				basePlayerIdx := startRankIdx + factorPairing
 				pairings[roundIdx][basePairingIdx] = basePlayerIdx
 				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
 			}
-			numKothPlayers := numPlayers - 2*roundFactor
-			numKothPairings := numKothPlayers / 2
-			nextKothPairingIdx := pairingsStartIdx + 2*roundFactor
-			nextKothPairingPlayerIdx := startRankIdx + 2*roundFactor
-			for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
-				basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
-				basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
+			numRemainingPlayers := numPlayers - 2*roundFactor
+			remainingFactor := numRemainingPlayers / 2
+			remainingStartRankIdx := startRankIdx + 2*roundFactor
+			remainingStartPairingIdx := pairingsStartIdx + 2*roundFactor
+			for remainingPairing := 0; remainingPairing < remainingFactor; remainingPairing++ {
+				basePairingIdx := remainingStartPairingIdx + 2*remainingPairing
+				basePlayerIdx := remainingStartRankIdx + remainingPairing
 				pairings[roundIdx][basePairingIdx] = basePlayerIdx
-				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
-
-				nextKothPairingIdx = basePairingIdx + 2
-				nextKothPairingPlayerIdx = basePlayerIdx + 2
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + remainingFactor
 			}
-			if numKothPlayers%2 == 1 {
-				pairings[roundIdx][nextKothPairingIdx] = nextKothPairingPlayerIdx
+			if numRemainingPlayers%2 == 1 {
+				pairings[roundIdx][remainingStartPairingIdx+numRemainingPlayers-1] = remainingStartRankIdx + numRemainingPlayers - 1
 			}
 		}
 

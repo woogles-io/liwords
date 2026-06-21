@@ -117,12 +117,12 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankHopefully[rank], 1)
 		is.Equal(copdata.HighestRankAbsolutely[rank], 1)
 	}
-	is.Equal(copdata.HighestRankHopefully[6], 3)
+	is.Equal(copdata.HighestRankHopefully[6], 4)
 	is.Equal(copdata.HighestRankAbsolutely[6], 3)
 	is.Equal(copdata.HighestRankHopefully[7], 4)
 	is.Equal(copdata.HighestRankAbsolutely[7], 3)
-	is.Equal(copdata.HighestRankHopefully[17], 9)
-	is.Equal(copdata.HighestRankAbsolutely[17], 7)
+	is.Equal(copdata.HighestRankHopefully[17], 8)
+	is.Equal(copdata.HighestRankAbsolutely[17], 6)
 	for _, group := range copdata.GibsonGroups {
 		is.Equal(group, 0)
 	}
@@ -175,12 +175,12 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankHopefully[rank], rank)
 		is.Equal(copdata.HighestRankAbsolutely[rank], rank)
 	}
-	is.Equal(copdata.HighestRankHopefully[23], 16)
-	is.Equal(copdata.HighestRankAbsolutely[23], 15)
+	is.Equal(copdata.HighestRankHopefully[23], 15)
+	is.Equal(copdata.HighestRankAbsolutely[23], 13)
 	is.Equal(copdata.LowestRankAbsolutely[0], 0)
 	is.Equal(copdata.LowestRankAbsolutely[1], 1)
-	is.Equal(copdata.LowestRankAbsolutely[2], 9)
-	is.Equal(copdata.LowestRankAbsolutely[17], 24)
+	is.Equal(copdata.LowestRankAbsolutely[2], 10)
+	is.Equal(copdata.LowestRankAbsolutely[17], 25)
 	is.Equal(copdata.LowestRankAbsolutely[29], 29)
 	is.Equal(copdata.DestinysChild, -1)
 
@@ -197,7 +197,7 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}
 	is.Equal(copdata.LowestRankAbsolutely[3], 3)
-	is.Equal(copdata.DestinysChild, -1)
+	is.Equal(copdata.DestinysChild, 2)
 
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 26
