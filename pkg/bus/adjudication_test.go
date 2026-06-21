@@ -479,12 +479,13 @@ func TestCorrespondenceAutoPassOpponentClockCorrect(t *testing.T) {
 	<-donechan
 }
 
-// TestRealtimeWithIncrementTimeoutAutoPasses tests that a real-time game that
-// has a per-turn increment auto-passes on timeout (the opponent can still
-// move) instead of forfeiting. This is gated by the autopassRealtimeWithIncrement
-// const; with that const set to false this game would forfeit (GameEndReason_TIME)
-// like TestRealtimeNoIncrementTimeoutStillForfeits below.
-func TestRealtimeWithIncrementTimeoutAutoPasses(t *testing.T) {
+// TestRealtimeWithIncrementTimeoutForfeits tests that a real-time game that has
+// a per-turn increment forfeits on timeout (GameEndReason_TIME) like every other
+// real-time game. Auto-passing real-time-with-increment games is gated by the
+// autopassRealtimeWithIncrement const, which is false: only correspondence games
+// auto-pass, so an increment no longer changes a real-time game's timeout
+// behavior (cf. TestRealtimeNoIncrementTimeoutStillForfeits below).
+func TestRealtimeWithIncrementTimeoutForfeits(t *testing.T) {
 	is := is.New(t)
 	stores := recreateDB()
 	defer stores.Disconnect()
@@ -502,7 +503,6 @@ func TestRealtimeWithIncrementTimeoutAutoPasses(t *testing.T) {
 	})
 
 	playerOnTurn := g.Game.PlayerOnTurn()
-	numEvtsBefore := len(g.History().Events)
 
 	// Blow past the initial clock (no overtime), so the on-turn player times out.
 	nower.Sleep(int64(initialTimeSeconds)*1000 + 1000)
@@ -513,21 +513,13 @@ func TestRealtimeWithIncrementTimeoutAutoPasses(t *testing.T) {
 	err := gameplay.TimedOut(ctx, stores, playerID, g.GameID())
 	is.NoErr(err)
 
-	// The game did NOT forfeit: it continues, the on-turn player was
-	// auto-passed, and the turn advanced to the opponent.
+	// The game forfeits on time even though it has an increment.
 	reloadedGame, err := stores.GameStore.Get(ctx, g.GameID())
 	is.NoErr(err)
-	is.Equal(reloadedGame.GameEndReason, pb.GameEndReason_NONE)
-	is.Equal(reloadedGame.Game.Playing(), macondopb.PlayState_PLAYING)
-	is.Equal(reloadedGame.Game.PlayerOnTurn(), 1-playerOnTurn)
-	// A pass event was recorded for the timed-out player.
-	newEvts := reloadedGame.History().Events
-	is.Equal(len(newEvts), numEvtsBefore+1)
-	is.Equal(newEvts[len(newEvts)-1].Type, macondopb.GameEvent_PASS)
-
-	// The opponent's clock is correct: they get their full initial clock from
-	// their turn start (untouched by the timed-out player's pass).
-	is.Equal(reloadedGame.CachedTimeRemaining(1-playerOnTurn), int(initialTimeSeconds)*1000)
+	is.Equal(reloadedGame.GameEndReason, pb.GameEndReason_TIME)
+	is.Equal(reloadedGame.Game.Playing(), macondopb.PlayState_GAME_OVER)
+	// The player who timed out loses.
+	is.Equal(reloadedGame.WinnerIdx, 1-playerOnTurn)
 
 	cancel()
 	<-donechan

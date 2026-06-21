@@ -683,13 +683,13 @@ func TestCorrespondenceResignAfterTimeoutStillResigns(t *testing.T) {
 	teardownGame(gs)
 }
 
-// TestRealtimeWithIncrementLateMoveAutoPasses tests the move-path for a
-// real-time game that has a per-turn increment: a real move submitted after
-// the player's time has run out is discarded and turned into an auto-pass
-// (rather than forfeiting). The turn advances and the game continues. This is
-// gated by the autopassRealtimeWithIncrement const; with that const false the
-// move path would forfeit on time instead.
-func TestRealtimeWithIncrementLateMoveAutoPasses(t *testing.T) {
+// TestRealtimeWithIncrementLateMoveForfeits tests the move-path for a real-time
+// game that has a per-turn increment: with autopassRealtimeWithIncrement false
+// (the current setting), a real move submitted after the player's time has run
+// out forfeits on time rather than auto-passing. Auto-pass is limited to
+// correspondence games; real-time games -- with or without an increment --
+// forfeit.
+func TestRealtimeWithIncrementLateMoveForfeits(t *testing.T) {
 	is := is.New(t)
 	ctx := ctxForTests()
 
@@ -714,8 +714,8 @@ func TestRealtimeWithIncrementLateMoveAutoPasses(t *testing.T) {
 	gs.nower.Sleep(int64(initialTimeSeconds)*1000 + 1000)
 	is.True(gs.g.TimeRanOut(0))
 
-	// jesse tries to play BANJO well after timing out. The move is discarded
-	// and replaced with a pass.
+	// jesse tries to play BANJO well after timing out. With auto-pass limited to
+	// correspondence games, this real-time game forfeits on time instead.
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         gs.g.GameID(),
@@ -725,16 +725,11 @@ func TestRealtimeWithIncrementLateMoveAutoPasses(t *testing.T) {
 	entGame, err := gameplay.HandleEvent(ctx, gs.stores, "3xpEkpRAy3AizbVmDg3kdi", cge)
 	is.NoErr(err)
 
-	// Game continues, turn advanced to cesar (player 1).
-	is.Equal(entGame.Game.Playing(), macondopb.PlayState_PLAYING)
-	is.Equal(entGame.GameEndReason, pb.GameEndReason_NONE)
-	is.Equal(entGame.Game.PlayerOnTurn(), 1)
-
-	// The recorded event was a PASS, not BANJO. No points were scored.
-	evts := entGame.History().Events
-	lastEvt := evts[len(evts)-1]
-	is.Equal(lastEvt.Type, macondopb.GameEvent_PASS)
-	is.Equal(lastEvt.Score, int32(0))
+	// The game forfeited on time: it is over and the timed-out player (jesse,
+	// player 0) lost.
+	is.Equal(entGame.Game.Playing(), macondopb.PlayState_GAME_OVER)
+	is.Equal(entGame.GameEndReason, pb.GameEndReason_TIME)
+	is.Equal(entGame.WinnerIdx, 1)
 
 	gs.cancel()
 	<-gs.donechan
