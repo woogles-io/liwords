@@ -69,6 +69,7 @@ function getPoolCount(
 
 type Props = {
   omitCard?: boolean;
+  tilesHidden?: boolean;
   pool: poolType;
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
@@ -177,7 +178,16 @@ const ActualPool = React.memo((props: Props & { hidePool: boolean }) => {
   const inbag = Math.max(unseen - 7, 0);
 
   let title: string;
-  if (inbag === 0) {
+  if (props.tilesHidden) {
+    // When tiles are hidden -- a spectator of a censored game (correspondence,
+    // league, or a private-analysis tournament; see pkg/bus/event_sanitizer.go)
+    // receives blanked racks -- the pool is every unseen tile, both players'
+    // racks plus the bag, so it can't be split into "in bag": subtracting one
+    // 7-tile rack is meaningless when the viewer holds no rack of their own.
+    // Report the unseen total, which matches the tiles listed below. A player
+    // always has their own rack, so this branch never applies to them.
+    title = `${singularCount(unseen, "tile", "tiles")} unseen`;
+  } else if (inbag === 0) {
     title = `Opponent has ${singularCount(unseen, "tile", "tiles")}`;
   } else {
     title = `${singularCount(inbag, "tile", "tiles")} in bag`;
