@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { LinkOutlined } from "@ant-design/icons";
 import type { BroadcastGameStat } from "../../gen/api/proto/broadcast_service/broadcast_service_pb";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 type Stat = BroadcastGameStat;
 
