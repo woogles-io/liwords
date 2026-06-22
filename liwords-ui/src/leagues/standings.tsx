@@ -274,7 +274,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   const divAvg = (total: number, decimals = 1) =>
     divTotals.gamesPlayed > 0
       ? (total / divTotals.gamesPlayed).toFixed(decimals)
-      : "—";
+      : "-";
 
   const dataSource = division.standings.map((standing) => ({
     key: standing.userId,
@@ -333,7 +333,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   })();
 
   const noGamesPlayed = dataSource.every((d) => d.gamesPlayed === 0);
-  // April 1 easter egg: March 31 12:00 UTC – April 2 12:00 UTC (covers all timezones)
+  // April 1 easter egg: March 31 12:00 UTC - April 2 12:00 UTC (covers all timezones)
   const now = new Date();
   const y = now.getUTCFullYear();
   const isMiaow =
@@ -544,8 +544,8 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           title={isMiaow ? "Miaow" : "MiAV"}
           tooltip={
             isMiaow
-              ? `${miaowBackronym} (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`
-              : `Average Mistake Index from BestBot analysis (lower is better; — if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "—"})`
+              ? `${miaowBackronym} (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
+              : `Average Mistake Index from BestBot analysis (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
           }
         />
       ),
@@ -563,7 +563,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       render: (
         _: unknown,
         record: { avgMistakeIndex: number; gamesAnalyzed: number },
-      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "—"),
+      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "-"),
     },
     {
       title: (
@@ -651,7 +651,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="TAV"
-          tooltip={`Turn average (points per turn) (div avg: ${divTotals.totalTurns > 0 ? (divTotals.totalScore / divTotals.totalTurns).toFixed(1) : "—"})`}
+          tooltip={`Turn average (points per turn) (div avg: ${divTotals.totalTurns > 0 ? (divTotals.totalScore / divTotals.totalTurns).toFixed(1) : "-"})`}
         />
       ),
       key: "turnAvg",
@@ -675,7 +675,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="HG"
-          tooltip={`High game score (div high: ${divTotals.highGame ?? "—"})`}
+          tooltip={`High game score (div high: ${divTotals.highGame ?? "-"})`}
         />
       ),
       key: "highGame",
@@ -692,7 +692,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
       title: (
         <ColHeader
           title="HT"
-          tooltip={`High turn score (div high: ${divTotals.highTurn ?? "—"})`}
+          tooltip={`High turn score (div high: ${divTotals.highTurn ?? "-"})`}
         />
       ),
       key: "highTurn",
