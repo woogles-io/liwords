@@ -39,6 +39,7 @@ type PlayerGameHistoryModalProps = {
   username: string;
   seasonId: string;
   seasonNumber: number;
+  onChat?: (uuid: string, username: string) => void;
 };
 
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
@@ -48,6 +49,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   username,
   seasonId,
   seasonNumber,
+  onChat,
 }) => {
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
     userId,
@@ -146,7 +148,12 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       className="league-game-modal"
       title={
         <React.Fragment>
-          <UsernameWithContext username={username} userID={userId} />
+          <UsernameWithContext
+            username={username}
+            userID={userId}
+            sendMessage={onChat}
+            omitSendMessage={!onChat}
+          />
           's Season {seasonNumber} Games
         </React.Fragment>
       }

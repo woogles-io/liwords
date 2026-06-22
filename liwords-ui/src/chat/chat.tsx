@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -33,6 +34,14 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import { MessageType } from "../gen/api/proto/ipc/ipc_pb";
 import { encodeToSocketFmt } from "../utils/protobuf";
 
+// ChatHandle exposes an imperative way to open a direct-message channel from
+// outside the Chat component (e.g. a sibling league surface). The "Chat"
+// context-menu action on player names normally only works for components
+// rendered inside Chat, because the DM-open logic is local to Chat's state.
+export type ChatHandle = {
+  openDirectMessage: (userId: string, username: string) => void;
+};
+
 export type Props = {
   sendChat: (msg: string, chan: string) => void;
   defaultChannel: string;
@@ -47,6 +56,7 @@ export type Props = {
   suppressDefault?: boolean;
   playerInfoMap?: Map<string, string>;
   onInfoTextClick?: (userId: string) => void;
+  ref?: React.Ref<ChatHandle>;
 };
 
 // userid -> channel -> string
@@ -260,6 +270,17 @@ export const Chat = React.memo((props: Props) => {
       }
     },
     [loginState],
+  );
+
+  // Allow parents (e.g. league surfaces rendered as siblings of Chat) to open
+  // a direct-message channel, reusing the same logic the in-chat "Chat" action
+  // uses.
+  useImperativeHandle(
+    props.ref,
+    () => ({
+      openDirectMessage: sendNewMessage,
+    }),
+    [sendNewMessage],
   );
 
   useEffect(() => {

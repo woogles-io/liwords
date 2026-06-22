@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import {
   Col,
   Row,
@@ -22,7 +28,7 @@ import moment from "moment";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { TopBar } from "../navigation/topbar";
-import { Chat } from "../chat/chat";
+import { Chat, ChatHandle } from "../chat/chat";
 import {
   getLeague,
   getAllSeasons,
@@ -127,6 +133,14 @@ export const LeaguePage = (props: Props) => {
   const rosterMounted = useRef(false);
   if (showRoster) rosterMounted.current = true;
   const pendingDivisionJump = useRef<number>(0);
+
+  // Ref to the league Chat so that player-name menus on sibling surfaces
+  // (standings, players-needing-to-start, season-games modal) can open a
+  // direct message, since the DM-open logic lives inside Chat.
+  const chatRef = useRef<ChatHandle>(null);
+  const openDirectMessage = useCallback((uuid: string, username: string) => {
+    chatRef.current?.openDirectMessage(uuid, username);
+  }, []);
 
   // Fetch league data
   const { data: leagueData, isPending: leaguePending } = useQuery(
@@ -579,6 +593,7 @@ export const LeaguePage = (props: Props) => {
             {league && (
               <div className="chat-area">
                 <Chat
+                  ref={chatRef}
                   sendChat={props.sendChat}
                   defaultChannel={`chat.league.${league.uuid.replace(/-/g, "")}`}
                   defaultDescription={`League Chat: ${league.name}`}
@@ -879,6 +894,7 @@ export const LeaguePage = (props: Props) => {
                         seasonId={displaySeasonId || ""}
                         seasonNumber={displayedSeason?.seasonNumber || 0}
                         currentUserId={userID}
+                        onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
                         timeBankWarnings={timeBankWarningsMap}
                         nextSeasonRegistrations={nextSeasonRegistrations}
@@ -928,6 +944,7 @@ export const LeaguePage = (props: Props) => {
                       seasonNumber={displayedSeason.seasonNumber}
                       playerToDivisionMap={playerToDivisionMap}
                       setSelectedDivisionId={setSelectedDivisionId}
+                      onChat={openDirectMessage}
                     />
                   )}
                 </div>
@@ -1302,7 +1319,7 @@ export const LeaguePage = (props: Props) => {
                     <UsernameWithContext
                       username={username}
                       userID={record.userId}
-                      omitSendMessage
+                      sendMessage={openDirectMessage}
                       omitFriend
                       omitBlock
                     />

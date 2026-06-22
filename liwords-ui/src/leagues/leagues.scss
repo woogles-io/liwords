@@ -564,18 +564,20 @@
           }
         }
 
-        // Clickable player names
-        .clickable-player {
-          cursor: pointer;
-          text-decoration: none;
+        // Clickable player names. The username itself is a context-menu
+        // trigger (UsernameWithContext); the decoration icons are siblings.
+        .standings-player {
           color: inherit;
+          text-decoration: none;
 
-          &:hover {
-            text-decoration: underline;
-            color: #1890ff;
+          .user-context-menu {
+            &:hover {
+              color: #1890ff;
+              text-decoration: underline;
 
-            @include colorModed {
-              color: #40a9ff;
+              @include colorModed {
+                color: #40a9ff;
+              }
             }
           }
         }

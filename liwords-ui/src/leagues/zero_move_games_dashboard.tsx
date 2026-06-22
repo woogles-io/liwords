@@ -10,6 +10,7 @@ type ZeroMoveGamesDashboardProps = {
   seasonNumber: number;
   playerToDivisionMap: Map<string, Division>;
   setSelectedDivisionId: React.Dispatch<React.SetStateAction<string>>;
+  onChat?: (uuid: string, username: string) => void;
 };
 
 export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
@@ -17,6 +18,7 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
   seasonNumber,
   playerToDivisionMap,
   setSelectedDivisionId,
+  onChat,
 }) => {
   const { data, isLoading, error } = useQuery(
     getSeasonPlayersWithUnstartedGames,
@@ -37,6 +39,8 @@ export const ZeroMoveGamesDashboard: React.FC<ZeroMoveGamesDashboardProps> = ({
             key={player.userId}
             username={player.username}
             userID={player.userId}
+            sendMessage={onChat}
+            omitSendMessage={!onChat}
             infoText={
               division
                 ? division.divisionName || `Division ${division.divisionNumber}`
