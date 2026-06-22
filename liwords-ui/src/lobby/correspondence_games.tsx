@@ -25,6 +25,11 @@ import {
   GameInfoResponse,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { useClient } from "../utils/hooks/connect";
+import {
+  formatCoarseDuration,
+  OnTurnCountdowns,
+  onTurnCountdowns,
+} from "../utils/time_bank_calculator";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 type Props = {
@@ -75,7 +80,10 @@ export const CorrespondenceGames = (props: Props) => {
     player1: string;
     player2: string;
     variant: string;
-    timeRemaining: number; // Time remaining in seconds, or Infinity if not applicable
+    // Real time (seconds) until the on-turn player times out: per-turn
+    // allowance + remaining bank - elapsed. Infinity if not applicable. This is
+    // the value the list sorts by. Lower = more urgent.
+    timeRemaining: number;
     finalScore?: ReactNode; // For finished games
     endReason?: ReactNode; // For finished games
     isLeagueGame?: boolean; // Whether this is a league game
@@ -143,27 +151,72 @@ export const CorrespondenceGames = (props: Props) => {
               ag.players[1]?.uuid === userID ? "Your turn" : "Opponent";
           }
 
-          // Calculate time remaining for low time warning (< 24 hours)
+          // Compute the bank-aware countdowns for whoever is on turn. The
+          // before-expiry value is the real time-remaining we sort and flag by
+          // (per-turn allowance + that player's remaining bank - elapsed); the
+          // before-bleed value is the free-time window before the bank starts
+          // draining. This replaces the old bank-blind `incrementSecs -
+          // elapsed` proxy, which sorted league games (which have banks) wrong.
           const now = Date.now();
           let timeRemainingSecs = Infinity;
           let isLowTime = false;
-          if (onTurn && ag.lastUpdate && ag.incrementSecs) {
+          let countdowns: OnTurnCountdowns | undefined;
+          if (
+            ag.playerOnTurn !== undefined &&
+            ag.lastUpdate &&
+            ag.incrementSecs
+          ) {
             const timeElapsedSecs = (now - ag.lastUpdate) / 1000;
-            timeRemainingSecs = ag.incrementSecs - timeElapsedSecs;
+            const bankSecs = (ag.timeBank?.[ag.playerOnTurn] ?? 0) / 1000;
+            countdowns = onTurnCountdowns(
+              ag.incrementSecs,
+              bankSecs,
+              timeElapsedSecs,
+            );
+            timeRemainingSecs = countdowns.beforeExpiry;
             isLowTime = timeRemainingSecs < 86400; // 24 hours in seconds
           }
+          const isBleeding = countdowns ? countdowns.beforeBleed <= 0 : false;
 
-          // Add low time indicator to turn text
+          // Build the turn / countdown display. For the user's own turn we show
+          // their hard deadline (and a bleeding warning once the bank is being
+          // consumed); for the opponent's turn we show their deadline greyed,
+          // since it is not the user's clock.
           let turnDisplay: ReactNode = turnIndicator;
-          if (isLowTime) {
-            turnDisplay = (
-              <span style={{ color: "#ff4d4f" }}>
-                <Tooltip title="Less than 24 hours remaining">
-                  <ClockCircleOutlined style={{ marginRight: 4 }} />
-                </Tooltip>
-                {turnIndicator}
-              </span>
-            );
+          if (countdowns) {
+            const expiryLabel = formatCoarseDuration(countdowns.beforeExpiry);
+            if (onTurn) {
+              turnDisplay = (
+                <span style={{ color: isLowTime ? "#ff4d4f" : undefined }}>
+                  {isLowTime && (
+                    <Tooltip title="Less than 24 hours remaining">
+                      <ClockCircleOutlined style={{ marginRight: 4 }} />
+                    </Tooltip>
+                  )}
+                  {turnIndicator}
+                  <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                    {isBleeding ? (
+                      <Tooltip title="Per-turn time used; time bank is draining">
+                        bleeding, expires in {expiryLabel}
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Time until you time out (per-turn time + time bank)">
+                        expires in {expiryLabel}, free for{" "}
+                        {formatCoarseDuration(countdowns.beforeBleed)}
+                      </Tooltip>
+                    )}
+                  </span>
+                </span>
+              );
+            } else {
+              turnDisplay = (
+                <span style={{ opacity: 0.55 }}>
+                  <Tooltip title="Opponent's clock (not your deadline)">
+                    {turnIndicator} (expires in {expiryLabel})
+                  </Tooltip>
+                </span>
+              );
+            }
           }
 
           return {
@@ -222,12 +275,14 @@ export const CorrespondenceGames = (props: Props) => {
         },
       );
 
-      // Sort: games where it's user's turn first, then by time remaining (least to most)
+      // Sort: games where it's user's turn first, then by the real
+      // time-until-expiry (bank-aware before-expiry, least to most).
       gameData.sort((a, b) => {
         // First prioritize games where it's user's turn
         if (a.onTurn && !b.onTurn) return -1;
         if (!a.onTurn && b.onTurn) return 1;
-        // Within each group (user's turn vs not), sort by time remaining (ascending)
+        // Within each group (user's turn vs not), sort by the hard deadline
+        // (per-turn allowance + bank - elapsed) ascending: most urgent first.
         return a.timeRemaining - b.timeRemaining;
       });
 
