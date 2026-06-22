@@ -2,6 +2,8 @@ package league
 
 import (
 	"math"
+	"math/bits"
+	"slices"
 	"sort"
 	"sync"
 
@@ -61,50 +63,118 @@ func CalculatePossibleRanks(
 		return bruteForceRanksFromClusters(clusters, standings, games)
 	}
 
-	// Precompute for per-player fast path: players with remaining games
-	// whose point range clearly spans [1, n] can skip max-flow.
-	maxFloor := 0 // highest current points (worst case for leader)
-	// Two smallest ceilings so we can get min-excluding-P in O(1).
-	minCeil1, minCeil2 := math.MaxInt, math.MaxInt
-	for _, s := range standings {
-		if s.points > maxFloor {
-			maxFloor = s.points
-		}
-		ceil := s.points + s.gamesRemaining*2
-		if ceil <= minCeil1 {
-			minCeil2 = minCeil1
-			minCeil1 = ceil
-		} else if ceil < minCeil2 {
-			minCeil2 = ceil
+	// Otherwise dispatch each cluster by its size. A cluster only ever shrinks as
+	// games complete (components split, point ranges tighten), so it crosses each
+	// threshold below at most once and only in the tightening direction -- which
+	// is what makes the displayed range provably monotone (never widens).
+	//
+	//   unfinished games <= bruteForceThreshold: enumerate every outcome (exact,
+	//     tightest). Per cluster, so a small cluster beside a large one still gets
+	//     exact bounds.
+	//   else, cluster-local candidate count k <= localCandidateGate: the exact
+	//     max-flow branch-and-bound (worst rank directly, best rank via the
+	//     loss-score inversion). k bounds the B&B cost, and the flow runs on the
+	//     cluster's own games only -- other clusters are rank-disjoint and add no
+	//     flow, so this equals a division-wide flow on a smaller graph.
+	//   else (large, dense cluster): the pairing-agnostic frontend bound. Loose,
+	//     but sound and monotone, and always at least as loose as the B&B bound,
+	//     so the loose->tight flip as the cluster shrinks past the gate only ever
+	//     tightens the range.
+	crossAbove := make([]int, len(clusters))
+	for i := range clusters {
+		for j := range clusters {
+			if i != j && clusters[j].minPts > clusters[i].maxPts {
+				crossAbove[i] += len(clusters[j].members)
+			}
 		}
 	}
 
-	// Reusable state: flow graph (adj slices grow and stabilize) and
-	// candIdx (avoids map allocation in inner loops).
+	// Reusable state for the (sequential) max-flow tier: flow graph (adj slices
+	// grow and stabilize) and candIdx (avoids map allocation in inner loops).
 	fg := newFlowGraph(2 + len(games) + n)
 	candIdx := initSlice(n, -1)
-
+	mir := mirrorForBest(standings) // best rank = worst rank on this mirror
 	results := make([]RankBounds, n)
-	for p := 0; p < n; p++ {
-		if standings[p].gamesRemaining > 0 {
-			bestPts := standings[p].points + standings[p].gamesRemaining*2
-			pCeil := bestPts
-			minCeilExP := minCeil1
-			if pCeil == minCeil1 {
-				minCeilExP = minCeil2
-			}
-			if bestPts >= maxFloor && minCeilExP >= standings[p].points {
-				results[p] = RankBounds{1, n}
-				continue
-			}
+	inCluster := make([]bool, n)
+	var wg sync.WaitGroup
+	for ci := range clusters {
+		c := &clusters[ci]
+		if len(c.games) <= bruteForceThreshold {
+			// Brute clusters are independent (disjoint members), so enumerate
+			// them in parallel; the max-flow tier below stays on this goroutine.
+			wg.Add(1)
+			go func(ci int) {
+				defer wg.Done()
+				enumerateBruteForceCluster(&clusters[ci], standings, games, results, crossAbove[ci])
+			}(ci)
+			continue
 		}
-		gi := decomposeGames(p, n, games)
-		results[p] = RankBounds{
-			BestRank:  bestRankForPlayer(p, standings, gi, fg, candIdx),
-			WorstRank: worstRankForPlayer(p, standings, gi, fg, candIdx),
+
+		clusterGames := make([]gamePair, len(c.games))
+		for j, gidx := range c.games {
+			clusterGames[j] = games[gidx]
+		}
+		for i := range inCluster {
+			inCluster[i] = false
+		}
+		for _, m := range c.members {
+			inCluster[m] = true
+		}
+		for _, m := range c.members {
+			gi := decomposeGames(m, n, clusterGames)
+			kReal := worstCandidateCountLocal(m, standings, gi, inCluster)
+			kMirror := worstCandidateCountLocal(m, mir, gi, inCluster)
+			if max(kReal, kMirror) <= localCandidateGate {
+				results[m] = RankBounds{
+					BestRank:  bestViaInversion(m, mir, gi, fg, candIdx),
+					WorstRank: worstRankForPlayer(m, standings, gi, fg, candIdx),
+				}
+			} else {
+				results[m] = frontendBound(m, standings)
+			}
 		}
 	}
+	wg.Wait()
 	return results
+}
+
+// localCandidateGate is the largest cluster-local candidate count for which the
+// exact max-flow branch-and-bound runs; above it a cluster's members fall back
+// to the frontend bound. It is a performance budget, not a correctness constant:
+// the threshold is chosen so the worst single division-snapshot stays about as
+// fast as the brute-force worst case (machine-independent via the ratio of
+// B&B-worst to brute-worst). Lowering it only loosens results -- still sound and
+// monotone -- never produces a wrong bound. Empirically, k <= 13 keeps the worst
+// snapshot brute-bound; k = 14 hits a single-player B&B blow-up.
+const localCandidateGate = 13
+
+// frontendBound is the pairing-agnostic possible-rank range for player p: for
+// the best rank P wins all its games (others hold their points), for the worst
+// rank P loses all (others win all). It ignores who plays whom, so it is loose,
+// but it is sound (best <= achievable best, worst >= achievable worst) and
+// monotone -- the above/below counts only grow as games complete (a counted
+// player's points pass P's ceiling, or its ceiling drops below P's points, and
+// neither reverts). It is also always at least as loose as the max-flow bound,
+// so swapping a member to the max-flow tier as its cluster shrinks past the gate
+// can only tighten, never widen. It is exactly the bound the web frontend can
+// compute itself from points and games-remaining, hence the name.
+func frontendBound(p int, standings []standingInfo) RankBounds {
+	n := len(standings)
+	pMax := standings[p].points + standings[p].gamesRemaining*2 // P wins all
+	pMin := standings[p].points                                 // P loses all
+	above, below := 0, 0
+	for i := range standings {
+		if i == p {
+			continue
+		}
+		if standings[i].points > pMax {
+			above++ // above P even if P wins out and this player stalls
+		}
+		if standings[i].points+standings[i].gamesRemaining*2 < pMin {
+			below++ // below P even if this player wins out and P stalls
+		}
+	}
+	return RankBounds{BestRank: 1 + above, WorstRank: n - below}
 }
 
 // standingInfo is the subset of standing data needed for rank calculation.
@@ -167,66 +237,58 @@ func decomposeGames(p int, n int, allGames []gamePair) playerGameInfo {
 // worst rank: maximize the number of players finishing above P
 // ---------------------------------------------------------------------------
 
+// worstCandidateDeficit classifies opponent i for P's worst rank: the points i
+// still needs from non-P games to finish at or above P, and whether it can reach
+// that at all (a candidate). P is assumed to lose all its remaining games, so
+// each opponent of P gains +2 per game vs P.
+//
+// When i would tie P on points, spread decides. How i can accumulate points
+// matters: a win gives 2 points and improves spread (potentially a lot), a draw
+// gives 1 point with no spread change. An odd deficit forces at least one draw,
+// but with deficit >= 2 (or more than one game) i can include wins for arbitrary
+// spread; the only forced-pure-draw case is deficit 1 with exactly 1 game.
+func worstCandidateDeficit(p, i int, standings []standingInfo, gi playerGameInfo) (deficit int, isCandidate bool) {
+	tieDeficit := standings[p].points - (standings[i].points + gi.gamesVsP[i]*2)
+	switch {
+	case standings[p].gamesRemaining > 0:
+		// P has -inf worst spread, so any opponent at P's points is above P.
+		deficit = max(0, tieDeficit)
+	case gi.nonPGamesCnt[i] == 0:
+		// i has no remaining games; its spread is fixed. Equal spread means
+		// either order (arbitrary tiebreak), so a tie still makes i a candidate.
+		if standings[i].spread >= standings[p].spread {
+			deficit = max(0, tieDeficit)
+		} else {
+			deficit = max(0, tieDeficit+1) // worse spread: needs strict points lead
+		}
+	case standings[i].spread >= standings[p].spread:
+		// Spread >= P's: draws preserve it, wins improve it. A tie suffices.
+		deficit = max(0, tieDeficit)
+	case tieDeficit == 1 && gi.nonPGamesCnt[i] == 1:
+		// Exactly 1 game, needs 1 point -> must draw (no spread change); with
+		// spread < P's it cannot win the tiebreak, so it must exceed P on points.
+		deficit = max(0, tieDeficit+1)
+	default:
+		// Spread < P's but deficit >= 2 or multiple games: i can include wins for
+		// arbitrary spread improvement, so a tie on points suffices.
+		deficit = max(0, tieDeficit)
+	}
+	return deficit, deficit <= gi.nonPGamesCnt[i]*2
+}
+
 func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
 	n := len(standings)
-	W := standings[p].points // P loses all remaining → keeps current points
 
-	// After P loses all, each opponent of P gets +2 per game vs P.
-	effectivePts := make([]int, n)
-	for i := range standings {
-		effectivePts[i] = standings[i].points + gi.gamesVsP[i]*2
-	}
-
-	// Build candidate list: players that can individually surpass P.
-	//
-	// When Q ties P on points, spread decides. Whether Q can beat P on
-	// spread depends on how Q accumulates points:
-	//   - A win gives Q 2 points AND improves spread (potentially a lot).
-	//   - A draw gives Q 1 point with 0 spread change.
-	//
-	// An odd deficit requires at least one draw. But as long as the deficit
-	// is ≥ 3, Q can include wins alongside the draw(s), giving Q arbitrary
-	// spread improvement. The only case where Q is forced into a pure draw
-	// (no spread change) is deficit = 1 with exactly 1 remaining game.
-	pHasGames := standings[p].gamesRemaining > 0
+	// Candidates: opponents that can individually finish at or above P (so could
+	// be forced above P). The per-opponent classification lives in
+	// worstCandidateDeficit, shared with the gate's cluster-local count so the
+	// two never drift.
 	var candidates []cand
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if i == p {
 			continue
 		}
-
-		tieDeficit := W - effectivePts[i] // points needed to match P
-		deficit := 0
-
-		if pHasGames {
-			// P has −∞ worst spread → any Q at W points is above P
-			deficit = max(0, tieDeficit)
-		} else if gi.nonPGamesCnt[i] == 0 {
-			// Q has no remaining games. Spread is fixed.
-			// Equal spread: Q could be ranked either side of P (username
-			// tiebreak is arbitrary), so Q is a valid candidate.
-			if standings[i].spread >= standings[p].spread {
-				deficit = max(0, tieDeficit) // tie suffices
-			} else {
-				deficit = max(0, tieDeficit+1) // need strict points advantage
-			}
-		} else if standings[i].spread >= standings[p].spread {
-			// Q has remaining games and spread ≥ P's. Draws preserve it,
-			// wins improve it. Tie on points suffices.
-			deficit = max(0, tieDeficit)
-		} else if tieDeficit == 1 && gi.nonPGamesCnt[i] == 1 {
-			// Q has exactly 1 remaining game and needs 1 point → must draw.
-			// Draw doesn't change spread. Q.spread < P.spread → can't beat
-			// P on spread. Must exceed P on points.
-			deficit = max(0, tieDeficit+1)
-		} else {
-			// Q has remaining games and spread < P's, but with deficit ≥ 2
-			// or multiple games, Q can include wins that give arbitrary
-			// spread improvement. Tie on points suffices.
-			deficit = max(0, tieDeficit)
-		}
-
-		if deficit <= gi.nonPGamesCnt[i]*2 {
+		if deficit, ok := worstCandidateDeficit(p, i, standings, gi); ok {
 			candidates = append(candidates, cand{i, deficit})
 		}
 	}
@@ -240,34 +302,59 @@ func worstRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *
 		return candidates[i].deficit < candidates[j].deficit
 	})
 
-	// Iteratively check feasibility via max-flow and remove infeasible candidates.
-	for {
-		feasible, infeasibleIdx := checkFeasibility(candidates, gi.nonPGames, fg, candIdx)
-		if feasible {
-			break
-		}
-		if infeasibleIdx >= 0 {
-			candidates = append(candidates[:infeasibleIdx], candidates[infeasibleIdx+1:]...)
-		}
-		if len(candidates) == 0 {
-			break
-		}
-	}
-
-	return 1 + len(candidates)
+	// The worst rank is 1 + (players guaranteed above P) + (minimum candidates
+	// that can be forced above P). The minimum forced-above count is the size of
+	// the candidate set minus the most that can simultaneously stay at/below P;
+	// finding that maximum is a minimum-eviction problem, solved exactly by
+	// branch-and-bound below. (A greedy eviction is faster but sub-optimal, and
+	// its error is not monotone in cluster size, so it can produce a widening
+	// bound. The exact search is kept cheap by the cluster-local-k gate in
+	// CalculatePossibleRanks, which never routes a large candidate set here.)
+	initial := len(candidates)
+	minEvict := minEvictAbove(candidates, gi.nonPGames, fg, candIdx, bnbBudget)
+	return 1 + (initial - minEvict)
 }
 
-// checkFeasibility uses max-flow to determine whether all candidates in the set
-// can simultaneously reach W points from non-P games.
-//
-// Returns (true, -1) if feasible, or (false, idxToRemove) if not.
-func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
+// worstCandidateCountLocal counts P's worst-rank candidates restricted to P's
+// own cluster (the inCluster mask). It is the branch-and-bound gate metric: the
+// candidate set drives the eviction search, so its size governs B&B cost.
+// Cross-cluster players are rank-disjoint -- they enter worstRankForPlayer's set
+// as trivial deficit-0 candidates that are never evicted and add ~no cost -- so
+// counting only in-cluster candidates gates on the true cost driver. Applied to
+// the real standings it bounds worst-rank cost; applied to the loss-score mirror
+// it bounds best-rank (inversion) cost, so one metric covers both directions.
+func worstCandidateCountLocal(p int, standings []standingInfo, gi playerGameInfo, inCluster []bool) int {
+	k := 0
+	for i := range standings {
+		if i == p || !inCluster[i] {
+			continue
+		}
+		if _, ok := worstCandidateDeficit(p, i, standings, gi); ok {
+			k++
+		}
+	}
+	return k
+}
+
+// bnbBudget caps the branch-and-bound recursion depth (the eviction count). It
+// is a finite-termination backstop only: the cluster-local-k gate already bounds
+// the candidate set so the true minimum eviction never approaches this, so the
+// budget never binds in production. (A depth cap is monotone -- under-counting
+// evictions only loosens the bound -- so even if it did bind it could not widen
+// the range; the gate, not the budget, is what keeps the search cheap.)
+const bnbBudget = 64
+
+// reachW builds the "every candidate gains its deficit of points from non-P
+// games" max-flow and reports feasibility. A candidate's deficit is first reduced
+// by 2 per game it plays against a non-candidate (an outright win it can always
+// take); the remainder must come from within-set games, each of which supplies 2
+// points to its two endpoints. The set is feasible iff the flow saturates every
+// game edge.
+func reachW(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int) bool {
 	k := len(candidates)
 	if k == 0 {
-		return true, -1
+		return true
 	}
-
-	// Map candidate player indices → 0..k-1 via candIdx slice.
 	for ci, c := range candidates {
 		candIdx[c.idx] = ci
 	}
@@ -277,13 +364,9 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		}
 	}()
 
-	// Identify within-set games and external games for each candidate.
-	type withinGame struct {
-		ci, cj int // indices into candidates slice
-	}
+	type withinGame struct{ ci, cj int }
 	var withinGames []withinGame
 	externalCnt := make([]int, k)
-
 	for _, g := range nonPGames {
 		ciA, ciB := candIdx[g.a], candIdx[g.b]
 		aIn, bIn := ciA >= 0, ciB >= 0
@@ -296,7 +379,6 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		}
 	}
 
-	// Compute adjusted deficit (what each candidate needs from within-set games).
 	adjustedDeficit := make([]int, k)
 	totalNeeded := 0
 	for ci, c := range candidates {
@@ -304,29 +386,10 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		adjustedDeficit[ci] = adj
 		totalNeeded += adj
 	}
-
 	if totalNeeded == 0 {
-		return true, -1
+		return true
 	}
 
-	// Quick check: total points from within-set games
-	if len(withinGames)*2 < totalNeeded {
-		worst := -1
-		worstDef := -1
-		for ci := range candidates {
-			if adjustedDeficit[ci] > worstDef {
-				worstDef = adjustedDeficit[ci]
-				worst = ci
-			}
-		}
-		return false, worst
-	}
-
-	// Build max-flow network:
-	//   0: source
-	//   1: sink
-	//   2 .. 2+numWithinGames-1: game nodes
-	//   2+numWithinGames .. 2+numWithinGames+k-1: player nodes
 	numGameNodes := len(withinGames)
 	numNodes := 2 + numGameNodes + k
 	source, sink := 0, 1
@@ -340,39 +403,69 @@ func checkFeasibility(candidates []cand, nonPGames []gamePair, fg *flowGraph, ca
 		fg.addEdge(gn, playerNode(wg.ci), 2)
 		fg.addEdge(gn, playerNode(wg.cj), 2)
 	}
-	for ci := 0; ci < k; ci++ {
+	for ci := range k {
 		if adjustedDeficit[ci] > 0 {
 			fg.addEdge(playerNode(ci), sink, adjustedDeficit[ci])
 		}
 	}
+	return fg.maxflow(source, sink) >= totalNeeded
+}
 
-	flow := fg.maxflow(source, sink)
-	if flow >= totalNeeded {
-		return true, -1
+// minimalInfeasibleAbove shrinks an infeasible subset of candidates (indices into
+// candidates) to a minimal one: a subset that is still infeasible but becomes
+// feasible if any single member is removed. The minimum eviction set must contain
+// at least one member of every minimal infeasible subset, so branching on a small
+// one keeps the branch factor low.
+func minimalInfeasibleAbove(candidates []cand, idxs []int, nonPGames []gamePair, fg *flowGraph, candIdx []int) []int {
+	keep := append([]int(nil), idxs...)
+	for i := 0; i < len(keep); {
+		trial := append(append([]int{}, keep[:i]...), keep[i+1:]...)
+		sub := make([]cand, len(trial))
+		for j, ci := range trial {
+			sub[j] = candidates[ci]
+		}
+		if !reachW(sub, nonPGames, fg, candIdx) {
+			keep = trial
+		} else {
+			i++
+		}
 	}
+	return keep
+}
 
-	// Not feasible. Find the candidate with the largest remaining deficit.
-	playerFlow := make([]int, k)
-	for ci := 0; ci < k; ci++ {
-		pn := playerNode(ci)
-		for _, e := range fg.adj[pn] {
-			if e.to == sink {
-				playerFlow[ci] = adjustedDeficit[ci] - e.cap
+// minEvictAbove returns the exact minimum number of candidates that must be
+// dropped (finish at/below P) so the rest can all simultaneously reach W. It
+// tests feasibility with reachW; if infeasible, it branches on a minimal
+// infeasible subset, evicting each member in turn and recursing. Branching on a
+// minimal infeasible subset (not the whole set, nor the min cut, which is not a
+// reliable infeasible subset for this flow) is exact and keeps the branch factor
+// small. budget bounds the recursion depth (see bnbBudget).
+func minEvictAbove(candidates []cand, nonPGames []gamePair, fg *flowGraph, candIdx []int, budget int) int {
+	if reachW(candidates, nonPGames, fg, candIdx) {
+		return 0
+	}
+	if budget <= 0 {
+		return 1
+	}
+	all := make([]int, len(candidates))
+	for i := range all {
+		all[i] = i
+	}
+	branch := minimalInfeasibleAbove(candidates, all, nonPGames, fg, candIdx)
+	best := budget + 1
+	sub := make([]cand, 0, len(candidates)-1)
+	for _, ci := range branch {
+		sub = sub[:0]
+		sub = append(sub, candidates[:ci]...)
+		sub = append(sub, candidates[ci+1:]...)
+		if r := 1 + minEvictAbove(sub, nonPGames, fg, candIdx, best-2); r < best {
+			best = r
+			if best == 1 {
 				break
 			}
 		}
 	}
-
-	worst := -1
-	worstGap := -1
-	for ci := range candidates {
-		gap := adjustedDeficit[ci] - playerFlow[ci]
-		if gap > worstGap {
-			worstGap = gap
-			worst = ci
-		}
-	}
-	return false, worst
+	return best
 }
 
 type cand struct {
@@ -380,321 +473,52 @@ type cand struct {
 	deficit int // points still needed from non-P games
 }
 
-type stayBelow struct {
-	idx        int
-	absorb     int // max additional points Q can receive without exceeding B
-	maxPerGame int // max points from a single game (1 = draws only, 2 = any outcome)
-}
-
 // ---------------------------------------------------------------------------
-// best rank: minimize the number of players forced above P
+// best rank via loss-score inversion
 //
-// Only reached when len(games) > bruteForceThreshold. For smaller divisions
-// CalculatePossibleRanks dispatches to bruteForceRanks, which enumerates
-// outcomes and returns tight bounds covering every spread interaction.
+// Best-rank is the mirror of worst-rank. Computing it directly would need its
+// own candidate set (players who could be forced BELOW P), whose count keys off
+// P's point ceiling pts+2*remaining -- which FALLS as P's games resolve, so the
+// count can rise. A rising candidate count is non-monotone: a gate on it could
+// flip tight->loose and widen the range. So instead we invert. With loss-score
+// 2L+D we have points = 2W+D = 2G-(2L+D) exactly (G = W+D+L, constant per player
+// at season end, draws included), so ranking by points descending is identical
+// to ranking by loss-score ascending. Hence
 //
-// Algorithm:
-//   1. Compute B = P's maximum possible score (P wins all remaining games).
-//   2. Classify each non-P player as guaranteedAbove, guaranteedBelow, or
-//      an open candidate.
-//   3. Precompute externalCnt[i] = open candidate Q's non-P games vs a
-//      guaranteedBelow opponent.
-//   4. Build belowCandidates with per-player absorb caps and per-game caps,
-//      tightened for spread (see below).
-//   5. Use max-flow to check if all belowCandidates can simultaneously absorb
-//      their within-set game points without exceeding B.
+//	bestRank(P) = n + 1 - worstRank(P on the loss-score mirror)
 //
-// Flow network:
-//
-//   Source ──2──> [game] ──cap──> [player] ──absorb──> Sink
-//
-//   - Each game node receives 2 points from the source.
-//   - Game-to-player edge capacity = maxPerGame (1 or 2, see below).
-//   - Player-to-sink edge capacity = absorb limit.
-//   - Feasible iff max_flow == total within-set game points.
-//
-// Spread treatment when Q can reach B:
-//
-//   Q.spread < P.spread, draws-only path (maxPerGame=1):
-//     Q reaches B via draws (1 pt each, 0 spread change), preserving
-//     Q.spread < P.spread so Q sits below P on tiebreak.
-//
-//   Q.spread >= P.spread, externalCnt[Q] >= 1:
-//     Q plays at least one guaranteedBelow opponent. Routing that game as
-//     Q's loss (opponent takes both pts, still capped below B) lets Q
-//     concede an arbitrary margin, dropping Q.finalSpread below P.spread
-//     even when Q hits B via wins elsewhere. Full absorb=maxBelow.
-//
-//   Q.spread >= P.spread, no external:
-//     Q at B ties P on points and beats P on spread (wins raise it, draws
-//     preserve it). Decrement maxBelow so Q stays strictly below B on points.
-//     This can still be pessimistic when Q's within-set opponents have
-//     maxPerGame=2 (Q could realize 1W+1L with a huge loss margin, reaching
-//     B at a dropped spread). For division sizes where this matters the
-//     brute-force path handles the case; the heuristic leaves it loose.
-//
-// Guarantees:
-//   - bestRank is achievable (flow outcomes map to real game outcomes, with
-//     realizable margins for the external-loss case).
-//   - bestRank-1 can be wrongly reported as impossible in the pessimistic
-//     case above (Q.spread >= P's, no external, opponents maxPerGame=2).
-//     Brute force covers small divisions; large divisions where this triggers
-//     are very rare in practice.
-//   - worstRank+1 is always impossible (sound upper bound).
-//   - worstRank can be pessimistic when the candidate set is a closed
-//     round-robin whose initial spread sum is too small for every member to
-//     strictly beat P on tiebreak. Brute force covers small divisions.
+// reusing the single monotone worst-rank routine. On the mirror, best-rank keys
+// off P's loss FLOOR, which rises over the season -- so its candidate count is
+// monotone, and one gate metric covers both directions. (See
+// rank_bounds_design.md for the full rationale.)
 // ---------------------------------------------------------------------------
 
-func bestRankForPlayer(p int, standings []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
+// mirrorForBest returns the loss-score mirror of a full division: each player's
+// points become its loss-score 2L+D and its spread is negated, so worst-rank on
+// the mirror equals best-rank on the original. Requires a full division
+// (constant total games per player) so expected = CalculateExpectedGamesPerPlayer
+// is each player's total games; then played = expected - remaining and
+// 2L+D = 2*expected - points - 2*remaining.
+func mirrorForBest(standings []standingInfo) []standingInfo {
 	n := len(standings)
-	B := standings[p].points + standings[p].gamesRemaining*2 // P wins all remaining
-
-	// When P wins all, P's opponents each LOSE their game vs P (get 0 from it).
-	// Q's effective points = Q.currentPoints (unchanged; the loss to P adds 0).
-	// Q can absorb at most B - Q.currentPoints points at or below B.
-
-	pHasGames := standings[p].gamesRemaining > 0
-
-	// First pass: classify each non-P player as guaranteedAbove, guaranteedBelow,
-	// or an open candidate. Stored as bool slices so externalCnt can reference them.
-	isGuaranteedAbove := make([]bool, n)
-	isGuaranteedBelow := make([]bool, n)
-	guaranteedAbove := 0
-	guaranteedBelow := 0
-	for i := 0; i < n; i++ {
-		if i == p {
-			continue
-		}
-		qWorst := standings[i].points
-		if qWorst > B {
-			isGuaranteedAbove[i] = true
-			guaranteedAbove++
-			continue
-		}
-		if qWorst == B && !pHasGames && gi.nonPGamesCnt[i] == 0 &&
-			standings[i].spread > standings[p].spread {
-			isGuaranteedAbove[i] = true
-			guaranteedAbove++
-			continue
-		}
-
-		// Q's ceiling when P wins all: games vs P yield 0, non-P games up to 2.
-		maxPts := standings[i].points + gi.nonPGamesCnt[i]*2
-		if maxPts < B {
-			isGuaranteedBelow[i] = true
-			guaranteedBelow++
-			continue // Q cannot reach B on points
-		}
-		if maxPts == B {
-			if pHasGames {
-				// P's best spread is unbounded (wins by huge margins).
-				// Q at B loses the spread tiebreak to P.
-				isGuaranteedBelow[i] = true
-				guaranteedBelow++
-				continue
-			}
-			if gi.nonPGamesCnt[i] == 0 && standings[i].spread < standings[p].spread {
-				// Q finished at B with worse spread. Loses tiebreak to P.
-				isGuaranteedBelow[i] = true
-				guaranteedBelow++
-				continue
-			}
+	expected := CalculateExpectedGamesPerPlayer(n)
+	m := make([]standingInfo, n)
+	for i, s := range standings {
+		m[i] = standingInfo{
+			userID:         s.userID,
+			points:         2*expected - s.points - 2*s.gamesRemaining,
+			spread:         -s.spread,
+			gamesRemaining: s.gamesRemaining,
 		}
 	}
-
-	// externalCnt[i] = non-P games Q plays against a guaranteedBelow opponent.
-	// These opponents cannot reach B, so we route all 2 game pts to them
-	// (Q loses the game → +0 pts, arbitrary loss margin). A Q with spread
-	// >= P's can still end at B below P on spread by taking this external
-	// loss with a huge margin.
-	externalCnt := make([]int, n)
-	for _, g := range gi.nonPGames {
-		if isGuaranteedBelow[g.a] && !isGuaranteedBelow[g.b] {
-			externalCnt[g.b]++
-		} else if isGuaranteedBelow[g.b] && !isGuaranteedBelow[g.a] {
-			externalCnt[g.a]++
-		}
-	}
-
-	// Build the "stay below P" set with per-player constraints:
-	//
-	//   Q.spread < P.spread, can reach B via draws (maxBelow ≤ games):
-	//     maxPerGame=1 (draws preserve spread → Q below P at B)
-	//
-	//   Q.spread >= P.spread, externalCnt[i] >= 1:
-	//     full maxBelow (external loss drops spread arbitrarily → Q at B below P)
-	//
-	//   Q.spread >= P.spread, no external:
-	//     maxBelow-- (Q must stay strictly below B; a win lifts spread and
-	//     draws-only preserves it above P)
-	//
-	//   P has games (unbounded best spread):
-	//     no restriction (P always beats Q on spread at equal points)
-	//
-	//   both finished (no games):
-	//     fixed spread comparison, maxBelow-- if Q.spread >= P.spread
-	var belowCandidates []stayBelow
-	for i := 0; i < n; i++ {
-		if i == p || isGuaranteedAbove[i] || isGuaranteedBelow[i] {
-			continue
-		}
-
-		// Determine whether Q at exactly B points could be above P.
-		// If so, Q must stay strictly below B (maxBelow--) or use
-		// draws only (maxPerGame=1) to guarantee being below P.
-		maxBelow := B - standings[i].points
-		maxPerGame := 2
-
-		if pHasGames {
-			// P has unbounded best spread (wins by huge margins) → Q can
-			// never beat P on spread at equal points. No restriction needed.
-		} else if gi.nonPGamesCnt[i] == 0 {
-			// Both finished. Spread is fixed. Equal spread: Q could be
-			// ranked either side of P, so treat as potentially above.
-			if standings[i].spread >= standings[p].spread && maxBelow > 0 {
-				maxBelow--
-			}
-		} else if standings[i].spread < standings[p].spread &&
-			maxBelow <= gi.nonPGamesCnt[i] {
-			// Q has remaining games but worse spread than P. Q can reach B
-			// via draws only (each draw gives 1 point, preserves spread).
-			// Restrict per-game capacity to 1 so the flow only allows draws.
-			maxPerGame = 1
-		} else if externalCnt[i] >= 1 {
-			// Q has at least one game vs a guaranteedBelow opponent. We route
-			// that game as a Q-loss (opponent takes both pts, still capped
-			// below B). A sufficiently large loss margin drops Q's spread
-			// below P's even when Q reaches B via wins on other games. No
-			// decrement needed; Q can stay at B below P.
-		} else {
-			// Q at B could beat P on spread (spread >= P's, no external loss
-			// to absorb margin). Stay strictly below B.
-			if maxBelow > 0 {
-				maxBelow--
-			}
-		}
-
-		if maxBelow < 0 {
-			continue // Q is at B and beats P on spread → guaranteed above
-		}
-
-		absorb := maxBelow
-		if absorb >= gi.nonPGamesCnt[i]*2 {
-			absorb = gi.nonPGamesCnt[i] * 2
-		}
-		belowCandidates = append(belowCandidates, stayBelow{i, absorb, maxPerGame})
-	}
-
-	// Sort by absorb capacity ascending (tightest constraint first).
-	sort.Slice(belowCandidates, func(i, j int) bool {
-		return belowCandidates[i].absorb < belowCandidates[j].absorb
-	})
-
-	// Iteratively check if all belowCandidates can stay below P via max-flow.
-	for {
-		feasible, removeIdx := checkBestFeasibility(belowCandidates, gi.nonPGames, fg, candIdx)
-		if feasible {
-			break
-		}
-		if removeIdx >= 0 {
-			belowCandidates = append(belowCandidates[:removeIdx], belowCandidates[removeIdx+1:]...)
-		}
-		if len(belowCandidates) == 0 {
-			break
-		}
-	}
-
-	minForcedAbove := guaranteedAbove + ((n - 1 - guaranteedAbove - guaranteedBelow) - len(belowCandidates))
-	return max(1, 1+minForcedAbove)
+	return m
 }
 
-// checkBestFeasibility checks whether all players in the set can absorb the
-// points from within-set games without anyone exceeding their absorb limit.
-//
-// Uses max-flow: source → game nodes → player nodes → sink.
-// Each game produces 2 points. Each player can absorb at most their limit.
-// Feasible if max_flow = total within-set game points.
-func checkBestFeasibility(candidates []stayBelow, nonPGames []gamePair, fg *flowGraph, candIdx []int) (bool, int) {
-	k := len(candidates)
-	if k == 0 {
-		return true, -1
-	}
-
-	for ci, c := range candidates {
-		candIdx[c.idx] = ci
-	}
-	defer func() {
-		for _, c := range candidates {
-			candIdx[c.idx] = -1
-		}
-	}()
-
-	// Find within-set games
-	type withinGame struct{ ci, cj int }
-	var withinGames []withinGame
-	for _, g := range nonPGames {
-		ciA, ciB := candIdx[g.a], candIdx[g.b]
-		if ciA >= 0 && ciB >= 0 {
-			withinGames = append(withinGames, withinGame{ciA, ciB})
-		}
-	}
-
-	totalGamePoints := len(withinGames) * 2
-	if totalGamePoints == 0 {
-		return true, -1
-	}
-
-	// Quick check: if total absorb capacity can't cover all game points,
-	// definitely infeasible — skip building the flow graph.
-	totalAbsorb := 0
-	for _, c := range candidates {
-		totalAbsorb += c.absorb
-	}
-	if totalAbsorb < totalGamePoints {
-		worst := -1
-		worstAbsorb := math.MaxInt
-		for ci := range candidates {
-			if candidates[ci].absorb < worstAbsorb {
-				worstAbsorb = candidates[ci].absorb
-				worst = ci
-			}
-		}
-		return false, worst
-	}
-
-	numGameNodes := len(withinGames)
-	numNodes := 2 + numGameNodes + k
-	source, sink := 0, 1
-	playerNode := func(ci int) int { return 2 + numGameNodes + ci }
-	gameNode := func(gi int) int { return 2 + gi }
-
-	fg.reset(numNodes)
-	for gi, wg := range withinGames {
-		gn := gameNode(gi)
-		fg.addEdge(source, gn, 2)
-		fg.addEdge(gn, playerNode(wg.ci), candidates[wg.ci].maxPerGame)
-		fg.addEdge(gn, playerNode(wg.cj), candidates[wg.cj].maxPerGame)
-	}
-	for ci := 0; ci < k; ci++ {
-		fg.addEdge(playerNode(ci), sink, candidates[ci].absorb)
-	}
-
-	flow := fg.maxflow(source, sink)
-	if flow >= totalGamePoints {
-		return true, -1
-	}
-
-	// Not feasible. Remove the player with the smallest absorb capacity.
-	worst := -1
-	worstAbsorb := math.MaxInt
-	for ci := range candidates {
-		if candidates[ci].absorb < worstAbsorb {
-			worstAbsorb = candidates[ci].absorb
-			worst = ci
-		}
-	}
-	return false, worst
+// bestViaInversion computes P's best rank as n+1 minus P's worst rank on the
+// loss-score mirror. mir must be mirrorForBest(standings); gi is index-based, so
+// it is valid unchanged on the mirror (the unfinished games are the same).
+func bestViaInversion(p int, mir []standingInfo, gi playerGameInfo, fg *flowGraph, candIdx []int) int {
+	return len(mir) + 1 - worstRankForPlayer(p, mir, gi, fg, candIdx)
 }
 
 // ---------------------------------------------------------------------------
@@ -1068,6 +892,33 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	winMask := make([]uint64, m)
 	loseMask := make([]uint64, m)
 
+	// baseSpread is constant across leaves; tied is reset per player.
+	// localGames holds each cluster game's two members in local indices.
+	baseSpread := make([]int, m)
+	maxPts := 0
+	for i := range m {
+		baseSpread[i] = standings[c.members[i]].spread
+		if pts := standings[c.members[i]].points; pts > maxPts {
+			maxPts = pts
+		}
+	}
+	tied := make([]int, 0, m)
+	localGames := make([][2]int, g)
+	for gi := range g {
+		gm := allGames[c.games[gi]]
+		localGames[gi] = [2]int{memberIdx[gm.a], memberIdx[gm.b]}
+	}
+	js := newJointScratch(m)
+	winsCnt := make([]int, m)
+	lossCnt := make([]int, m)
+	coupledVal := make([]bool, maxPts+2*g+1)
+	// order + valOffset implement a per-leaf counting sort of members by points,
+	// so strictly-above and tied-on-points are read off contiguous groups in
+	// O(m + pointsRange) rather than rescanned per player in O(m^2). Sized by the
+	// points range and cluster size, never by a fixed division size.
+	order := make([]int, m)
+	valOffset := make([]int, maxPts+2*g+1)
+
 	total := 1
 	for i := 0; i < g; i++ {
 		total *= 3
@@ -1081,11 +932,8 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 		}
 		x := k
 		for localGi := 0; localGi < g; localGi++ {
-			gm := allGames[c.games[localGi]]
-			// Both endpoints are guaranteed cluster members because games are
-			// assigned to clusters by the union-find root.
-			a := memberIdx[gm.a]
-			b := memberIdx[gm.b]
+			// localGames already holds both endpoints' local member indices.
+			a, b := localGames[localGi][0], localGames[localGi][1]
 			bit := uint64(1) << localGi
 			switch x % 3 {
 			case 0:
@@ -1103,41 +951,116 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 			x /= 3
 		}
 
-		for p := 0; p < m; p++ {
-			strictAbove := 0
-			forcedAboveTied := 0
-			possiblyAboveTied := 0
-			pSpread := standings[c.members[p]].spread
-			for q := 0; q < m; q++ {
-				if q == p {
-					continue
+		for mi := range m {
+			winsCnt[mi] = bits.OnesCount64(winMask[mi])
+			lossCnt[mi] = bits.OnesCount64(loseMask[mi])
+		}
+		// Mark each points value with a decided game between two players both at
+		// that value -- the only values where a fixed P needs the joint
+		// closed-form rather than independent per-member spread boxes.
+		clear(coupledVal)
+		for gi, gp := range localGames {
+			a, b := gp[0], gp[1]
+			if points[a] == points[b] && (winMask[a]|winMask[b])&(uint64(1)<<gi) != 0 {
+				coupledVal[points[a]] = true
+			}
+		}
+
+		// Counting sort members by points into `order` (ascending), so each
+		// points value is a contiguous group. Then strictly-above is the suffix
+		// past the group and the group itself is the tied-on-points set -- read
+		// off in O(m + pointsRange) instead of an O(m^2) per-player rescan.
+		clear(valOffset)
+		for i := range m {
+			valOffset[points[i]]++
+		}
+		acc := 0
+		for v := range valOffset {
+			cnt := valOffset[v]
+			valOffset[v] = acc
+			acc += cnt
+		}
+		for i := range m {
+			v := points[i]
+			order[valOffset[v]] = i
+			valOffset[v]++
+		}
+
+		for lo := 0; lo < m; {
+			v := points[order[lo]]
+			hi := lo + 1
+			for hi < m && points[order[hi]] == v {
+				hi++
+			}
+			strictAbove := m - hi // members past this group have strictly higher points
+			coupled := coupledVal[v]
+			for gi := lo; gi < hi; gi++ {
+				p := order[gi]
+				var minAbove, maxGE int
+				if standings[c.members[p]].gamesRemaining > 0 {
+					// Free P: per-pair is exact in aggregate (the lose-all and
+					// win-all leaves give P's true rank extremes). Fast path.
+					for ti := lo; ti < hi; ti++ {
+						if ti == gi {
+							continue
+						}
+						q := order[ti]
+						forced, possible := spreadOrdering(
+							winMask[p], loseMask[p], winMask[q], loseMask[q],
+							baseSpread[p], baseSpread[q],
+						)
+						if forced {
+							minAbove++
+						}
+						if possible {
+							maxGE++
+						}
+					}
+				} else if coupled {
+					// Fixed P tied with a coupled set: the per-pair view over-counts,
+					// so use the joint closed-form. tied = this group minus P.
+					tied = tied[:0]
+					for ti := lo; ti < hi; ti++ {
+						if ti != gi {
+							tied = append(tied, order[ti])
+						}
+					}
+					minAbove, maxGE = jointFixedTied(p, tied, winMask, baseSpread, localGames, js)
+				} else {
+					// Fixed P, no coupling: each tied opponent's reachable-spread
+					// box is independent and exact.
+					sprP := baseSpread[p]
+					for ti := lo; ti < hi; ti++ {
+						if ti == gi {
+							continue
+						}
+						q := order[ti]
+						hiq := baseSpread[q] - lossCnt[q] // max spread: no win -> lose minimally
+						if winsCnt[q] > 0 {
+							hiq = 1 << 30 // a win runs spread to +inf
+						}
+						loq := baseSpread[q] + winsCnt[q] // min spread: no loss -> win minimally
+						if lossCnt[q] > 0 {
+							loq = -(1 << 30)
+						}
+						if hiq >= sprP {
+							maxGE++
+						}
+						if loq > sprP {
+							minAbove++
+						}
+					}
 				}
-				if points[q] > points[p] {
-					strictAbove++
-					continue
+				bestRank := 1 + fixedAbove + strictAbove + minAbove
+				worstRank := 1 + fixedAbove + strictAbove + maxGE
+				if bestRank < best[p] {
+					best[p] = bestRank
 				}
-				if points[q] < points[p] {
-					continue
-				}
-				forced, possible := spreadOrdering(
-					winMask[p], loseMask[p], winMask[q], loseMask[q],
-					pSpread, standings[c.members[q]].spread,
-				)
-				if forced {
-					forcedAboveTied++
-				}
-				if possible {
-					possiblyAboveTied++
+				if worstRank > worst[p] {
+					worst[p] = worstRank
 				}
 			}
-			bestRank := 1 + fixedAbove + strictAbove + forcedAboveTied
-			worstRank := 1 + fixedAbove + strictAbove + possiblyAboveTied
-			if bestRank < best[p] {
-				best[p] = bestRank
-			}
-			if worstRank > worst[p] {
-				worst[p] = worstRank
-			}
+			lo = hi
 		}
 	}
 
@@ -1146,34 +1069,26 @@ func enumerateBruteForceCluster(c *bfCluster, standings []standingInfo, allGames
 	}
 }
 
-// spreadOrdering decides, for a fixed outcome, two things about a pair (q, p)
-// tied on final points, using precomputed win/loss bitmasks:
-//   - forced: Q.spread > P.spread in every margin assignment.
-//   - possible: Q.spread >= P.spread in at least one margin assignment
-//     (equal spread counts as possibly-above via username tiebreak).
+// spreadInf is a sentinel for an unbounded (+/-inf) reachable spread. At 1<<50
+// it dwarfs any real spread sum yet leaves int64 headroom for summing one per
+// cluster member (a sum stays safe up to thousands of members, far beyond any
+// division), so finite values never reach it and the sums never overflow.
+const spreadInf = int64(1) << 50
+
+// spreadOrdering decides, for one brute leaf, whether a points-tied opponent Q
+// sits above a FREE player P (P has remaining games) on spread. Across all
+// leaves the lose-all and win-all leaves give P its true rank extremes, and
+// there this per-pair test is exact -- so for a free P it yields the correct
+// brute bound even though it ignores the joint coupling in intermediate leaves.
+// (A FIXED P has no such extreme leaf; see jointFixedTied.)
+//   - possible: Q can reach spread >= P (counts toward P's worst rank).
+//   - forced:   Q must exceed P on spread (counts toward P's best rank).
 //
-// Derivation (see bruteForceRanks header for the Δ_g definition):
-//
-// For a non-draw game g, Δ_g = sign_Q(g) - sign_P(g) ∈ {±1, ±2} and is
-//   - > 0 iff q wins g OR p loses g (the only cases with sign_Q > sign_P)
-//   - < 0 iff q loses g OR p wins g (mirror)
-//
-// max Σ Δ_g · m_g is +∞ iff any Δ_g > 0 (push m_g → ∞):
-//
-//	maxUnbounded = (winMask[q] | loseMask[p]) != 0
-//
-// Similarly minUnbounded = (winMask[p] | loseMask[q]) != 0.
-//
-// When neither is unbounded, no non-draw game has p or q in it, so every
-// Δ_g = 0; the finite sums are 0 and the spread comparison falls to the
-// initial diff.
+// A non-draw game Q wins, or P loses, lets the margin run to +inf
+// (maxUnbounded); P winning or Q losing lets it run to -inf (minUnbounded).
 func spreadOrdering(pWins, pLosses, qWins, qLosses uint64, pSpread, qSpread int) (forced, possible bool) {
 	maxUnbounded := (qWins | pLosses) != 0
 	minUnbounded := (pWins | qLosses) != 0
-
-	// Q.final > P.final (strict):  forced   = min Σ > P.init - Q.init
-	// Q.final >= P.final (allow =): possible = max Σ >= P.init - Q.init
-	// When the relevant direction is bounded, Σ == 0.
 	if maxUnbounded {
 		possible = true
 	} else {
@@ -1185,4 +1100,214 @@ func spreadOrdering(pWins, pLosses, qWins, qLosses uint64, pSpread, qSpread int)
 		forced = qSpread > pSpread
 	}
 	return forced, possible
+}
+
+// jointScratch holds reusable buffers for jointFixedTied so the brute's inner
+// loop allocates nothing. One per enumerateBruteForceCluster goroutine.
+type jointScratch struct {
+	parent, wins, losses []int
+	isTied, external     []bool
+	comp                 []int
+	lo, hi, costs        []int64
+}
+
+func newJointScratch(m int) *jointScratch {
+	return &jointScratch{
+		parent:   make([]int, m),
+		wins:     make([]int, m),
+		losses:   make([]int, m),
+		isTied:   make([]bool, m),
+		external: make([]bool, m),
+		comp:     make([]int, 0, m),
+		lo:       make([]int64, 0, m),
+		hi:       make([]int64, 0, m),
+		costs:    make([]int64, 0, m),
+	}
+}
+
+func findUF(parent []int, x int) int {
+	for parent[x] != x {
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	}
+	return x
+}
+
+// jointFixedTied computes, for a FIXED player P (no remaining games, so P's
+// spread is the constant baseSpread[p]) in one brute leaf, the min number of
+// points-tied players that MUST finish strictly above P (best rank) and the max
+// that CAN finish at-or-above P (worst rank), accounting for the joint zero-sum
+// coupling of shared games that the per-pair view misses.
+//
+// Tied players are grouped into components by their internal (tied-vs-tied)
+// non-draw games. A component is OPEN if any member also has a non-draw game to
+// a non-tied player: that game leaks spread out of the component, and the leak
+// propagates through the internal edges, so every member can independently
+// reach its own spread box -- count each member by its box. A CLOSED component
+// has no such leak, so its total spread is conserved; the count is then a
+// box-constrained sum-feasibility (maxAtOrAbove / maxAtOrBelow).
+func jointFixedTied(p int, tied []int, winMask []uint64, baseSpread []int, localGames [][2]int, js *jointScratch) (minAbove, maxGE int) {
+	if len(tied) == 0 {
+		return 0, 0
+	}
+	sprP := int64(baseSpread[p])
+	parent, wins, losses := js.parent, js.wins, js.losses
+	isTied, external := js.isTied, js.external
+	for _, q := range tied {
+		parent[q] = q
+		wins[q] = 0
+		losses[q] = 0
+		isTied[q] = true
+		external[q] = false
+	}
+	defer func() {
+		for _, q := range tied {
+			isTied[q] = false
+		}
+	}()
+
+	for gi, gp := range localGames {
+		bit := uint64(1) << gi
+		a, b := gp[0], gp[1]
+		var w, l int
+		switch {
+		case winMask[a]&bit != 0:
+			w, l = a, b
+		case winMask[b]&bit != 0:
+			w, l = b, a
+		default:
+			continue // draw: no spread coupling
+		}
+		if isTied[w] {
+			wins[w]++
+		}
+		if isTied[l] {
+			losses[l]++
+		}
+		switch {
+		case isTied[w] && isTied[l]:
+			if rw, rl := findUF(parent, w), findUF(parent, l); rw != rl {
+				parent[rw] = rl
+			}
+		case isTied[w]:
+			external[w] = true
+		case isTied[l]:
+			external[l] = true
+		}
+	}
+
+	// Group tied players into coupled components (by union-find root). Sorting
+	// by root makes same-component members contiguous, so each component is
+	// handled once in O(|tied| log |tied|) -- no per-root rescan of the set.
+	comp := append(js.comp[:0], tied...)
+	js.comp = comp
+	slices.SortFunc(comp, func(a, b int) int { return findUF(parent, a) - findUF(parent, b) })
+	for i := 0; i < len(comp); {
+		r := findUF(parent, comp[i])
+		lo, hi := js.lo[:0], js.hi[:0]
+		closed := true
+		var sumC int64
+		j := i
+		for j < len(comp) && findUF(parent, comp[j]) == r {
+			t := comp[j]
+			if external[t] {
+				closed = false
+			}
+			var loq, hiq int64
+			if wins[t] > 0 {
+				hiq = spreadInf
+			} else {
+				hiq = int64(baseSpread[t] - losses[t])
+			}
+			if losses[t] > 0 {
+				loq = -spreadInf
+			} else {
+				loq = int64(baseSpread[t] + wins[t])
+			}
+			lo = append(lo, loq)
+			hi = append(hi, hiq)
+			sumC += int64(baseSpread[t])
+			j++
+		}
+		js.lo, js.hi = lo, hi
+		if closed {
+			maxGE += maxAtOrAbove(lo, hi, sumC, sprP, js.costs)
+			minAbove += len(lo) - maxAtOrBelow(lo, hi, sumC, sprP, js.costs)
+		} else {
+			for k := range lo {
+				if hi[k] >= sprP {
+					maxGE++
+				}
+				if lo[k] > sprP {
+					minAbove++
+				}
+			}
+		}
+		i = j
+	}
+	return minAbove, maxGE
+}
+
+// maxAtOrAbove returns the largest count of members that can have spread >= c
+// given each spread is in [lo_i, hi_i] and they sum to the conserved S. Placing
+// a member at-or-above c costs max(c,lo_i)-lo_i over its floor; greedily admit
+// the cheapest while the minimum achievable sum stays <= S. costs is scratch.
+func maxAtOrAbove(lo, hi []int64, s, c int64, costs []int64) int {
+	var base int64
+	for _, l := range lo {
+		base += l
+	}
+	costs = costs[:0]
+	for i := range lo {
+		if hi[i] >= c {
+			floor := lo[i]
+			if c > floor {
+				floor = c
+			}
+			costs = append(costs, floor-lo[i])
+		}
+	}
+	slices.Sort(costs)
+	cnt := 0
+	cur := base
+	for _, ct := range costs {
+		cur += ct
+		if cur <= s {
+			cnt++
+		} else {
+			break
+		}
+	}
+	return cnt
+}
+
+// maxAtOrBelow is the mirror of maxAtOrAbove: the largest count of members that
+// can have spread <= c, given the boxes and the conserved sum S.
+func maxAtOrBelow(lo, hi []int64, s, c int64, costs []int64) int {
+	var base int64
+	for _, h := range hi {
+		base += h
+	}
+	costs = costs[:0]
+	for i := range hi {
+		if lo[i] <= c {
+			ceil := hi[i]
+			if c < ceil {
+				ceil = c
+			}
+			costs = append(costs, hi[i]-ceil)
+		}
+	}
+	slices.Sort(costs)
+	cnt := 0
+	cur := base
+	for _, ct := range costs {
+		cur -= ct
+		if cur >= s {
+			cnt++
+		} else {
+			break
+		}
+	}
+	return cnt
 }
