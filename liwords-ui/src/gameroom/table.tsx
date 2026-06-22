@@ -1339,6 +1339,9 @@ export const Table = React.memo((props: Props) => {
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
+            hasNextCorresGame={!!nextCorresGame}
+            corresGamesWaiting={corresGamesWaiting}
+            onNextCorresGame={handleNextCorresGame}
           />
           {!gameDone && (
             <MetaEventControl
