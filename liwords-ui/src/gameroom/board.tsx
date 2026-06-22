@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 import BoardSpaces from "./board_spaces";
 import { useDrawing } from "./drawing";
 import { useExamineStoreContext } from "../store/store";
+import { useLocalStorageBool } from "../utils/use_local_storage";
 import { PlacementArrow } from "../utils/cwgame/tile_placement";
 import BoardCoordLabels from "./board_coord_labels";
 import Tiles from "./tiles";
@@ -53,6 +54,19 @@ const Board = React.memo((props: Props) => {
 
   const { outerDivProps, svgDrawing } = useDrawing(props.gridSize);
   const { isExamining } = useExamineStoreContext();
+
+  // Secret setting: when enabled, premium-square labels (2x letter, 3x word,
+  // etc.) are always shown instead of only on hover. The gameroom SCSS keys
+  // off the "show-bonus-labels" body class.
+  const [showBonusLabels] = useLocalStorageBool("showBonusLabels");
+  useEffect(() => {
+    if (!showBonusLabels) return;
+    document.body.classList.add("show-bonus-labels");
+    return () => {
+      document.body.classList.remove("show-bonus-labels");
+    };
+  }, [showBonusLabels]);
+
   let zomgClass = "";
   if (props.gridSize === SuperCrosswordGameGridLayout.length) {
     zomgClass = " zomgboard";
