@@ -614,7 +614,10 @@ export const Table = React.memo((props: Props) => {
         // the analysis-ready notification or a profile link -- lands here.
         // Redirect to the /anno/ view that can actually load it (replace, so the
         // dead /game/ URL is not left in history) instead of showing an error.
-        if (gameID && String(e).includes("GetDocument")) {
+        if (
+          gameID &&
+          String(e).includes("should be accessed via GetDocument")
+        ) {
           window.location.replace(`/anno/${encodeURIComponent(gameID)}`);
           return;
         }
