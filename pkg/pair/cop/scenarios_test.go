@@ -23,7 +23,7 @@ import (
 const (
 	scenarioDivisionSims          = 100000
 	scenarioControlLossSims       = 10000
-	scenarioHopefulness           = 0.01
+	scenarioHopefulness           = 0.02
 	scenarioGibsonSpread          = 200
 	scenarioLastRoundGibsonSpread = 250
 )
@@ -363,6 +363,65 @@ func TestScenario7_Factor3ExpansionSecondToLastRound(t *testing.T) {
 
 	resp := cop.COPPair(req)
 	writeScenarioLog(t, "scenario_7_factor3_expansion.log", resp.Log)
+	fmt.Println(resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+// Scenario 8: Factor-3 control loss for 2nd or 3rd in the 2nd-to-last round.
+// 1st has N wins, 2nd and 3rd have N-1 wins, 4th/5th/6th have N-2 wins.
+// 2nd and 3rd are very close in spread to each other and to 1st (tiny margins).
+// 4th has the most spread of any player in the tournament, which would make
+// factor-3 (1v4) dangerous for 1st. The new control loss check evaluates whether
+// 2nd or 3rd loses control under factor-3 pairings vs playing 1st directly.
+// 12 players, 8 rounds, 6 completed, PlacePrizes=3.
+// P0=5-1 +5, P2=4-2 +4, P4=4-2 +3, P6=3-3 +300, P8=3-3 +15, P10=3-3 ~-6.
+func TestScenario8_Factor3ControlLoss2ndOr3rd(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs: P0vP1, P2vP3, P4vP5, P6vP7, P8vP9, P10vP11
+	// After 6 rounds:
+	//   P0: 5-1, spread = 5*20 - 95 = +5
+	//   P2: 4-2, spread = 4*15 - 26 - 30 = +4
+	//   P4: 4-2, spread = 4*14 - 27 - 26 = +3
+	//   P6: 3-3, spread = 3*110 - 3*10 = +300 (most spread in tournament)
+	//   P8: 3-3, spread = 3*22 - 3*17 = +15
+	//   P10: 3-3, spread = 3*20 - 3*22 = -6
+	pairtestutils.AddNDummyRounds(req, 6)
+	// R1: all even players win
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	// R2: P0,P2,P4 win; P6,P8,P10 lose
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	// R3: same as R1
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	// R4: same as R2
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	// R5: P0 wins; P2,P4 lose (first losses); P6,P8,P10 win
+	pairtestutils.AddRoundResultsStr(req, "420 400 400 426 400 427 510 400 422 400 420 400")
+	// R6: all even players lose
+	pairtestutils.AddRoundResultsStr(req, "400 495 400 430 400 426 400 410 400 417 400 422")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_8_factor3_control_loss.log", resp.Log)
 	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }

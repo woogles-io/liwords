@@ -45,7 +45,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
-	writeFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor ceiling of %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
+	WriteFinalRankResultsToLog(fmt.Sprintf("Initial Sim Results (factor ceiling of %d)", initialFactor), initialSimResults.FinalRanks, standings, req, logsb)
 
 	numPlayers := standings.GetNumPlayers()
 
@@ -98,7 +98,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		improvedFactorSimResults = initialSimResults
 		logsb.WriteString("\n\nNo factor improvement made.\n\n")
 	} else {
-		writeFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
+		WriteFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
 	minWinsForHopeful := int(math.Round(float64(improvedFactorSimResults.TotalSims) * req.HopefulnessThreshold))
@@ -269,7 +269,7 @@ func writePrecompDataToLog(title string, simResults *pkgstnd.SimResults, allCont
 	WriteStringDataToLog(title, header, combineStringMatrices(standings.StringData(req), matrix), logsb)
 }
 
-func writeFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
+func WriteFinalRankResultsToLog(title string, finalRanks [][]int, standings *pkgstnd.Standings, req *pb.PairRequest, logsb *strings.Builder) {
 	header := append([]string{}, standingsHeader[:]...)
 	numPlayers := standings.GetNumPlayers()
 	totalSims := 0

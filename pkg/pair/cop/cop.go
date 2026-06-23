@@ -47,6 +47,7 @@ type policyArgs struct {
 	lowestPossibleAbsCasher  int
 	lowestPossibleHopeCasher int
 	roundsRemaining          int
+	roundPairingsRemaining   int
 	gibsonGetsBye            bool
 	prepairedRoundIdx        int
 	prepairedPlayerIndexes   map[int]int
@@ -298,7 +299,7 @@ var weightPolicies = []weightPolicy{
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
 			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
-			if pargs.roundsRemaining*4 <= int(pargs.req.Rounds) &&
+			if pargs.roundPairingsRemaining*4 <= int(pargs.req.Rounds) &&
 				!pargs.copdata.GibsonizedPlayers[ri] &&
 				ri <= pargs.lowestPossibleHopeCasher {
 				return 0
@@ -336,7 +337,7 @@ var weightPolicies = []weightPolicy{
 			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
 				// Only apply PC weight in the fourth quarter.
-				if pargs.roundsRemaining*4 > int(pargs.req.Rounds) {
+				if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
 					return 0
 				}
 				// Calculate the inverse distance penalty
@@ -554,9 +555,12 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 }
 
 // computeFactor3ForcedPairings checks whether the 2nd-to-last round should use
-// factor-3 pairings (1v4, 2v5, 3v6). It runs a factor-3 simulation and, if each
-// of 4th/5th/6th can reach 1st/2nd/3rd respectively within the hopefulness
-// threshold, returns those three forced pairs. Otherwise it returns nil.
+// factor-3 pairings (1v4, 2v5, 3v6). It first checks whether 2nd or 3rd place
+// would lose control of their destiny under factor-3 (compared to playing 1st
+// directly); if so, only the affected player is paired against 1st. Otherwise it
+// checks whether 4th/5th/6th can each reach 1st/2nd/3rd within the hopefulness
+// threshold, and if so returns the three factor-3 forced pairs. Returns nil when
+// no forced pairings are needed.
 func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
 	if pkgstnd.GetRoundsRemaining(req) != 2 {
 		return nil
@@ -570,38 +574,103 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	if n > 0 && slices.Contains(req.DivisionPairings[n-1].Pairings, -1) {
 		return nil
 	}
-	// Skip if control loss is active — it already handles destiny of 1st place.
-	if copdata.DestinysChild >= 0 {
-		return nil
-	}
-	// Condition: 3rd place is not more than 500 spread behind either 1st or 2nd.
+	// Condition: 3rd place is not more than int(req.GibsonSpread) * 2 spread behind either 1st or 2nd.
 	spread0 := copdata.Standings.GetPlayerSpread(0)
 	spread1 := copdata.Standings.GetPlayerSpread(1)
 	spread2 := copdata.Standings.GetPlayerSpread(2)
-	if spread0-spread2 > 500 || spread1-spread2 > 500 {
+	gibsonStandingsSpread := int(req.GibsonSpread) * 2
+	if spread0-spread2 > gibsonStandingsSpread || spread1-spread2 > gibsonStandingsSpread {
 		return nil
 	}
 
-	factor3Sim, err := copdata.Standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), 3, -1, nil)
-	if err != pb.PairError_SUCCESS || factor3Sim == nil {
+	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
+	// then factor M/2 for the remaining players) plus KOTH for the final round.
+	// pairingsLen is rounded up to even so simRound can always iterate in pairs
+	// (RunParallelSimForceWinner adds a dummy bye player for odd player counts).
+	pairingsLen := numPlayers
+	if pairingsLen%2 == 1 {
+		pairingsLen++
+	}
+	f3Pairings := make([][]int, 2)
+	f3Pairings[0] = make([]int, pairingsLen) // penultimate: factor-3
+	f3Pairings[1] = make([]int, pairingsLen) // final: KOTH
+	// Top 6: factor-3 pairs (0,3), (1,4), (2,5).
+	for i := 0; i < 3; i++ {
+		f3Pairings[0][2*i] = i
+		f3Pairings[0][2*i+1] = i + 3
+	}
+	// Remaining slots (ranks 6 to pairingsLen-1): factor (pairingsLen-6)/2.
+	remCount := pairingsLen - 6
+	remFactor := remCount / 2
+	for i := 0; i < remFactor; i++ {
+		f3Pairings[0][6+2*i] = 6 + i
+		f3Pairings[0][6+2*i+1] = 6 + i + remFactor
+	}
+	// Final round: KOTH (consecutive pairs).
+	for i := 0; i < pairingsLen/2; i++ {
+		f3Pairings[1][2*i] = 2 * i
+		f3Pairings[1][2*i+1] = 2*i + 1
+	}
+
+	// Simulate factor-3 pairings using the pre-built f3Pairings so the sim uses the
+	// correct factor-3 structure (roundsRemaining=2 < maxFactor=3, so SimFactorPairAll
+	// would cap at factor-2 internally).
+	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
+	if err != pb.PairError_SUCCESS {
 		return nil
 	}
-	totalSims := factor3Sim.TotalSims
 	if totalSims == 0 {
 		return nil
 	}
-	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
+	copdatapkg.WriteFinalRankResultsToLog("Factor 3 Sim Results", factor3FinalRanks, copdata.Standings, req, logsb)
 
-	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
-	if factor3Sim.FinalRanks[3][0] < minWins ||
-		factor3Sim.FinalRanks[4][1] < minWins ||
-		factor3Sim.FinalRanks[5][2] < minWins {
-		return nil
-	}
+	// Check whether 2nd or 3rd place loses control under factor-3 pairings.
+	// Each player is assumed to win all their games in both scenarios; the only
+	// difference is whether they play 1st (vsFirst) or their factor-3 opponent
+	// (vsFactor3) in the penultimate round.
+	roundsRemaining := pkgstnd.GetRoundsRemaining(req)
+	controlSims := int(req.ControlLossSims)
+	threshold := req.ControlLossThreshold * float64(controlSims)
+	stopTime := time.Now().Add(6 * time.Second).UnixNano()
 
 	p0 := copdata.Standings.GetPlayerIndex(0)
 	p1 := copdata.Standings.GetPlayerIndex(1)
 	p2 := copdata.Standings.GetPlayerIndex(2)
+
+	for _, rankIdx := range []int{1, 2} {
+		pIdx := copdata.Standings.GetPlayerIndex(rankIdx)
+		vsFirst, pairErr := copdata.Standings.RunParallelSimForceWinner(copRand, controlSims, roundsRemaining, 3, f3Pairings, pIdx, true, stopTime)
+		if pairErr != pb.PairError_SUCCESS {
+			continue
+		}
+		vsFactor3, pairErr := copdata.Standings.RunParallelSimForceWinner(copRand, controlSims, roundsRemaining, 3, f3Pairings, pIdx, false, stopTime)
+		if pairErr != pb.PairError_SUCCESS {
+			continue
+		}
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 control loss check rank %d (%s): vsFirst=%d vsFactor3=%d threshold=%.0f\n",
+			rankIdx+1, req.PlayerNames[pIdx], vsFirst, vsFactor3, threshold,
+		))
+		if float64(vsFirst-vsFactor3) >= threshold {
+			logsb.WriteString(fmt.Sprintf(
+				"Factor 3 control loss: rank %d %s loses control, forcing %s vs %s\n",
+				rankIdx+1, req.PlayerNames[pIdx], req.PlayerNames[p0], req.PlayerNames[pIdx],
+			))
+			return [][2]int{{p0, pIdx}}
+		}
+	}
+
+	// Neither 2nd nor 3rd loses control under factor-3; check whether 4th/5th/6th
+	// can each reach 1st/2nd/3rd respectively within the hopefulness threshold.
+	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
+
+	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
+	if factor3FinalRanks[3][0] < minWins ||
+		factor3FinalRanks[4][1] < minWins ||
+		factor3FinalRanks[5][2] < minWins {
+		return nil
+	}
+
 	p3 := copdata.Standings.GetPlayerIndex(3)
 	p4 := copdata.Standings.GetPlayerIndex(4)
 	p5 := copdata.Standings.GetPlayerIndex(5)
@@ -1218,6 +1287,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
 		roundsRemaining:          pkgstnd.GetRoundsRemaining(req),
+		roundPairingsRemaining:   int(req.Rounds) - copdata.CompletePairings,
 		gibsonGetsBye:            gibsonGetsBye,
 		prepairedRoundIdx:        prepairedRoundIdx,
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
@@ -1230,6 +1300,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", len(req.DivisionPairings)))
 	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
+	logsb.WriteString(fmt.Sprintf("Round Pairings Remaining: %d\n", pargs.roundPairingsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))

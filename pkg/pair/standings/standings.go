@@ -367,7 +367,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
 			vsFirstTournamentWins, vsFactorPairTournamentWins, newSims, pairErr := standings.evaluatePlayerControlLoss(
-				copRand, sims, roundsRemaining, pairings, forcedWinnerRankIdx, controlSimStopTime,
+				copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerRankIdx, controlSimStopTime,
 				vsFirstWins, allControlLosses,
 			)
 			if pairErr != pb.PairError_SUCCESS {
@@ -402,7 +402,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 			lowestFullWinRankIdx := -1
 			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
 				vsFirst, vsFactorPair, newSims, pairErr := standings.evaluatePlayerControlLoss(
-					copRand, sims, roundsRemaining, pairings, rankIdx, controlSimStopTime,
+					copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
 					vsFirstWins, allControlLosses,
 				)
 				if pairErr != pb.PairError_SUCCESS {
@@ -437,7 +437,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 }
 
 func (standings *Standings) evaluatePlayerControlLoss(
-	copRand *rand.Rand, sims, roundsRemaining int, pairings [][]int,
+	copRand *rand.Rand, sims, roundsRemaining, maxFactor int, pairings [][]int,
 	rankIdx int, stopTime int64,
 	vsFirstWins, allControlLosses map[int]int,
 ) (int, int, int, pb.PairError) {
@@ -445,12 +445,12 @@ func (standings *Standings) evaluatePlayerControlLoss(
 		return vsFirst, allControlLosses[rankIdx], 0, pb.PairError_SUCCESS
 	}
 	playerIdx := standings.GetPlayerIndex(rankIdx)
-	vsFirst, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, true, stopTime)
+	vsFirst, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, playerIdx, true, stopTime)
 	if pairErr != pb.PairError_SUCCESS {
 		return 0, 0, 0, pairErr
 	}
 	vsFirstWins[rankIdx] = vsFirst
-	vsFactorPair, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, pairings, playerIdx, false, stopTime)
+	vsFactorPair, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, playerIdx, false, stopTime)
 	if pairErr != pb.PairError_SUCCESS {
 		return 0, 0, 0, pairErr
 	}
@@ -546,7 +546,7 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
+func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
@@ -673,7 +673,7 @@ func (standings *Standings) runParallelSims(
 // runParallelSimForceWinner distributes sims iterations of simForceWinner across
 // runtime.NumCPU() goroutines, each with its own standings and pairings copies.
 func (standings *Standings) runParallelSimForceWinner(
-	copRand *rand.Rand, sims int, roundsRemaining int,
+	copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int,
 	pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64,
 ) (int, pb.PairError) {
 	numWorkers := runtime.NumCPU()
@@ -703,7 +703,7 @@ func (standings *Standings) runParallelSimForceWinner(
 		}
 		go func(sc *Standings, wr *rand.Rand, lp [][]int, ns int) {
 			defer wg.Done()
-			wins, pairErr := sc.simForceWinner(wr, ns, roundsRemaining, lp, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
+			wins, pairErr := sc.simForceWinner(wr, ns, roundsRemaining, maxFactor, lp, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
 			mu.Lock()
 			totalWins += wins
 			if pairErr != pb.PairError_SUCCESS && firstErr == pb.PairError_SUCCESS {
@@ -717,6 +717,66 @@ func (standings *Standings) runParallelSimForceWinner(
 		return 0, firstErr
 	}
 	return totalWins, pb.PairError_SUCCESS
+}
+
+// RunParallelSimForceWinner runs vsFirst or vsFactor simulations for forcedWinnerPlayerIdx using
+// the provided pairings. The player always wins every game; vsFirst=true swaps them to play rank 0
+// in each non-final round, vsFirst=false uses the pairings as given. Returns the number of
+// tournament wins (finishing in 1st place) out of sims.
+//
+// When the standings have an odd number of players, a dummy bye player is temporarily appended
+// (mirroring SimFactorPairAll) so simRound can iterate in pairs. The caller must supply pairings
+// with an even number of entries per round (pairingsLen = numPlayers rounded up to even).
+func (standings *Standings) RunParallelSimForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
+	numPlayers := standings.GetNumPlayers()
+	evenerAdded := false
+	if numPlayers%2 == 1 {
+		lowestWins := getWinsValue(standings.records[numPlayers-1])
+		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
+		standings.records[numPlayers] += uint64(ByePlayerIndex)
+		numPlayers++
+		standings.recordsBackup = make([]uint64, numPlayers)
+		evenerAdded = true
+	}
+	wins, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
+	if evenerAdded {
+		standings.records = standings.records[:numPlayers-1]
+		standings.recordsBackup = make([]uint64, numPlayers-1)
+	}
+	return wins, pairErr
+}
+
+// RunSimsWithPairings runs parallel sims using the provided pre-built pairings and returns
+// (FinalRanks, totalSims, error). This is used when the pairings have already been constructed
+// externally (e.g. factor-3 pairings where roundsRemaining < maxFactor).
+func (standings *Standings) RunSimsWithPairings(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int) ([][]int, int, pb.PairError) {
+	numPlayers := standings.GetNumPlayers()
+	evenerAdded := false
+	if numPlayers%2 == 1 {
+		lowestWins := getWinsValue(standings.records[numPlayers-1])
+		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
+		standings.records[numPlayers] += uint64(ByePlayerIndex)
+		numPlayers++
+		standings.recordsBackup = make([]uint64, numPlayers)
+		evenerAdded = true
+	}
+	results := make([][]int, numPlayers)
+	for i := range results {
+		results[i] = make([]int, numPlayers)
+	}
+	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
+	standings.Backup()
+	stopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
+	totalSims, _ := standings.runParallelSims(sims, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, stopTime)
+	if evenerAdded {
+		standings.records = standings.records[:numPlayers-1]
+		standings.recordsBackup = make([]uint64, numPlayers-1)
+		for i := range results {
+			results[i] = results[i][:numPlayers-1]
+		}
+		results = results[:numPlayers-1]
+	}
+	return results, totalSims, pb.PairError_SUCCESS
 }
 
 // Unexported functions
