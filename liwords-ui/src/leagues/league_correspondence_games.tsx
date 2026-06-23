@@ -1,14 +1,11 @@
 import React, { useMemo } from "react";
 import { Card, Empty, Tooltip } from "antd";
-import { ClockCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router";
 import { useQuery } from "@connectrpc/connect-query";
+import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { useLobbyStoreContext } from "../store/store";
 import { useLoginStateStoreContext } from "../store/store";
-import {
-  formatCoarseDuration,
-  onTurnCountdowns,
-} from "../utils/time_bank_calculator";
+import { onTurnCountdowns } from "../utils/time_bank_calculator";
 import { getPlayerLeagueH2H } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { H2HRecord } from "../gen/api/proto/league_service/league_service_pb";
 
@@ -139,23 +136,22 @@ export const LeagueCorrespondenceGames: React.FC<
 
           // Bank-aware countdowns for the on-turn player: before-expiry is the
           // hard deadline (per-turn allowance + bank - elapsed), before-bleed
-          // is the free-time window before the bank starts draining. Low-time
-          // and the bleeding warning flag off these rather than the bank-blind
-          // per-turn proxy.
+          // is the free-time window before the bank starts draining. The shared
+          // CorrespondenceTurnIndicator renders these (and the low-time /
+          // time-bank escalations) from the values below.
           const now = Date.now();
-          let isLowTime = false;
           let countdowns: ReturnType<typeof onTurnCountdowns> | undefined;
+          let hasTimeBank = false;
           if (game.playerOnTurn !== undefined && game.lastUpdate) {
             const timeElapsedSecs = (now - game.lastUpdate) / 1000;
             const bankSecs = (game.timeBank?.[game.playerOnTurn] ?? 0) / 1000;
+            hasTimeBank = bankSecs > 0;
             countdowns = onTurnCountdowns(
               game.incrementSecs,
               bankSecs,
               timeElapsedSecs,
             );
-            isLowTime = isUserTurn ? countdowns.beforeExpiry < 86400 : false;
           }
-          const isBleeding = countdowns ? countdowns.beforeBleed <= 0 : false;
 
           // Get opponent name and scores
           const userPlayerIndex = game.players.findIndex(
@@ -237,48 +233,14 @@ export const LeagueCorrespondenceGames: React.FC<
                     </span>
                   )}
                 </div>
-                {isUserTurn ? (
+                {(isUserTurn || countdowns) && (
                   <div className="turn-indicator-compact">
-                    {isLowTime && (
-                      <Tooltip title="Less than 24 hours remaining">
-                        <ClockCircleOutlined
-                          style={{ color: "#ff4d4f", marginRight: 4 }}
-                        />
-                      </Tooltip>
-                    )}
-                    <span className={isLowTime ? "low-time" : ""}>
-                      Your turn
-                    </span>
-                    {countdowns && (
-                      <span style={{ marginLeft: 6, opacity: 0.85 }}>
-                        {isBleeding ? (
-                          <Tooltip title="Per-turn time used; time bank is draining">
-                            bleeding, expires in{" "}
-                            {formatCoarseDuration(countdowns.beforeExpiry)}
-                          </Tooltip>
-                        ) : (
-                          <Tooltip title="Time until you time out (per-turn time + time bank)">
-                            expires in{" "}
-                            {formatCoarseDuration(countdowns.beforeExpiry)},
-                            free for{" "}
-                            {formatCoarseDuration(countdowns.beforeBleed)}
-                          </Tooltip>
-                        )}
-                      </span>
-                    )}
+                    <CorrespondenceTurnIndicator
+                      onTurn={!!isUserTurn}
+                      countdowns={countdowns}
+                      hasTimeBank={hasTimeBank}
+                    />
                   </div>
-                ) : (
-                  countdowns && (
-                    <div
-                      className="turn-indicator-compact"
-                      style={{ opacity: 0.55 }}
-                    >
-                      <Tooltip title="Opponent's clock (not your deadline)">
-                        Their turn (expires in{" "}
-                        {formatCoarseDuration(countdowns.beforeExpiry)})
-                      </Tooltip>
-                    </div>
-                  )
                 )}
               </div>
             </div>
