@@ -59,10 +59,27 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   const columns = [
     {
       title: "Opponent",
-      dataIndex: "opponentUsername",
       key: "opponent",
       fixed: "left" as const,
-      render: (username: string) => <strong>{username}</strong>,
+      render: (
+        _: unknown,
+        record: { opponentUsername: string; opponentUserId: string },
+      ) => (
+        // Same menu helper the modal header uses: it renders the M/IM title
+        // badge and the player context menu. Stop propagation so opening the
+        // menu does not also fire the row's navigate-to-game click.
+        <strong
+          onClick={(e) => e.stopPropagation()}
+          style={{ cursor: "default" }}
+        >
+          <UsernameWithContext
+            username={record.opponentUsername}
+            userID={record.opponentUserId}
+            sendMessage={onChat}
+            omitSendMessage={!onChat}
+          />
+        </strong>
+      ),
     },
     {
       title: "Result",
@@ -132,6 +149,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       key: game.gameId,
       gameId: game.gameId,
       opponentUsername: game.opponentUsername,
+      opponentUserId: game.opponentUserId,
       result: game.result,
       playerScore: game.playerScore,
       opponentScore: game.opponentScore,
