@@ -2973,19 +2973,12 @@ p.rune {
       margin: 0 6px;
     }
 
-    // Correspondence-only "Next (x)" jump button. Shown only in place of a dead
-    // Play (when it is not the user's turn), never beside a live Play. Styled
-    // like Play -- same big square footprint on mobile -- but the width is
-    // allowed to grow so the "Next (x)" label is not clipped.
-    &.play.next-game {
-      min-width: calc($board-size-mobile * 0.25);
-      width: auto;
-      height: calc($board-size-mobile * 0.25);
-
-      .next-game-count {
-        margin-left: 4px;
-        opacity: 0.7;
-      }
+    // Correspondence-only "Next (x)" jump button. It replaces a dead Play (when
+    // it is not the user's turn), so it inherits Play's size-aware box verbatim
+    // -- no dimensions of its own. Only the count badge needs styling.
+    &.play.next-game .next-game-count {
+      margin-left: 4px;
+      opacity: 0.7;
     }
   }
 
