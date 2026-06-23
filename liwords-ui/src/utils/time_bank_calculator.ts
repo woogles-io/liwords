@@ -135,3 +135,95 @@ export function formatCoarseDuration(seconds: number): string {
   }
   return `${secs}s`;
 }
+
+/**
+ * Like formatCoarseDuration but renders only the single largest unit, for the
+ * compact at-a-glance time shown inline in the correspondence/league game
+ * lists. The full two-unit value (and the free-time window) belong in a
+ * tooltip. Examples: "2d", "5h", "47m", "30s", "now".
+ *
+ * Non-positive inputs render as "now" (the deadline has passed / is imminent).
+ */
+export function formatCoarseDurationShort(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "now";
+  }
+  const totalSeconds = Math.floor(seconds);
+  const days = Math.floor(totalSeconds / 86400);
+  if (days > 0) {
+    return `${days}d`;
+  }
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  if (hours > 0) {
+    return `${hours}h`;
+  }
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  return `${totalSeconds % 60}s`;
+}
+
+export type NextCorresPick<T> = {
+  // The game to jump to next, or null when there is nowhere to cycle to.
+  next: T | null;
+  // How many OTHER on-turn games are waiting (excludes the current game when it
+  // is itself on turn). Drives the "(x)" count on the Next button.
+  waiting: number;
+};
+
+/**
+ * Pick the next on-turn correspondence game to jump to, cycling.
+ *
+ * The candidates are every game where it is the user's turn (the current game
+ * included if it is on turn). They are sorted by the bank-aware time-until-
+ * expiry (least first, gameID as a stable tiebreak) -- the same "most urgent
+ * first" order the correspondence/league lists use -- so this is the single
+ * source of truth shared by the in-game Next button and the gameroom's top-bar
+ * next-game cycler. Because the order is deterministic, clicking Next once per
+ * game walks every on-turn game exactly once and returns to the first after n
+ * clicks.
+ *
+ * The caller is expected to recompute this whenever the live correspondence-game
+ * set changes (e.g. a notification that another game became the user's turn), so
+ * the cycle stays current "as at last refresh".
+ */
+export function pickNextCorresGame<T>(
+  candidates: ReadonlyArray<{
+    game: T;
+    gameID: string;
+    beforeExpiry: number;
+  }>,
+  currentGameID: string | undefined,
+): NextCorresPick<T> {
+  const sorted = [...candidates].sort((a, b) => {
+    // Do not use a-b even if it should not overflow.
+    if (a.beforeExpiry < b.beforeExpiry) return -1;
+    if (a.beforeExpiry > b.beforeExpiry) return 1;
+    // Stable tiebreak so the cycle order is deterministic.
+    if (a.gameID < b.gameID) return -1;
+    if (a.gameID > b.gameID) return 1;
+    return 0;
+  });
+
+  const currentIndex = sorted.findIndex((c) => c.gameID === currentGameID);
+
+  if (currentIndex >= 0) {
+    // The current game is itself on the user's turn: advance to the next game
+    // in the cycle (null when this is the only on-turn game).
+    return {
+      next:
+        sorted.length > 1
+          ? sorted[(currentIndex + 1) % sorted.length].game
+          : null,
+      waiting: sorted.length - 1,
+    };
+  }
+
+  // The current game is not on the user's turn (opponent's move, a finished
+  // game, or a different game entirely): jump to the most urgent on-turn game.
+  return {
+    next: sorted.length > 0 ? sorted[0].game : null,
+    waiting: sorted.length,
+  };
+}
