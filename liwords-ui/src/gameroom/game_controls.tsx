@@ -654,39 +654,39 @@ const GameControls = React.memo((props: Props) => {
           </Button>
         </div>
         {(() => {
-          // Correspondence-only "Next (x)" affordance. Puzzles never show it.
+          // Correspondence-only: when it is NOT the user's turn, the Play button
+          // is a dead disabled control, so show "Next" in its place to jump to
+          // the user's next on-turn game. This Next targets the exact same game
+          // as the top-bar next-game cycler (props.onNextCorresGame ->
+          // nextCorresGame in table.tsx), so the two always agree. Puzzles never
+          // show it. We never render Next beside a live Play -- doing so led
+          // players to misclick Next instead of Play.
           const showNext = !props.puzzleMode && !!props.hasNextCorresGame;
-          const nextButton = showNext ? (
-            <Button
-              type="primary"
-              className="play next-game"
-              onClick={props.onNextCorresGame}
-            >
-              <RightOutlined /> Next
-              {props.corresGamesWaiting && props.corresGamesWaiting > 1 ? (
-                <span className="next-game-count">
-                  ({props.corresGamesWaiting})
-                </span>
-              ) : null}
-            </Button>
-          ) : null;
-          // When it's not the user's turn, the Play button would be a dead
-          // disabled control. If a next game exists, show "Next" in its place.
           if (!props.myTurn && showNext) {
-            return nextButton;
-          }
-          return (
-            <React.Fragment>
+            return (
               <Button
                 type="primary"
-                className={showNext ? "play play-with-next" : "play"}
-                onClick={props.onCommit}
-                disabled={!props.myTurn || props.finalPassOrChallenge}
+                className="play next-game"
+                onClick={props.onNextCorresGame}
               >
-                {props.puzzleMode ? "Solve" : "Play"}
+                <RightOutlined /> Next
+                {props.corresGamesWaiting && props.corresGamesWaiting > 1 ? (
+                  <span className="next-game-count">
+                    ({props.corresGamesWaiting})
+                  </span>
+                ) : null}
               </Button>
-              {nextButton}
-            </React.Fragment>
+            );
+          }
+          return (
+            <Button
+              type="primary"
+              className="play"
+              onClick={props.onCommit}
+              disabled={!props.myTurn || props.finalPassOrChallenge}
+            >
+              {props.puzzleMode ? "Solve" : "Play"}
+            </Button>
           );
         })()}
       </div>

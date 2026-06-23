@@ -213,7 +213,6 @@ p.streak-loss {
     }
   }
 
-
   .analyzer-card {
     .ant-card-body {
       padding: 0;
@@ -2974,9 +2973,10 @@ p.rune {
       margin: 0 6px;
     }
 
-    // Correspondence-only "Next (x)" jump button. Sits beside Play (or in its
-    // place when it is not the user's turn). Keep it a compact, normal-height
-    // button rather than the big square Play uses on mobile.
+    // Correspondence-only "Next (x)" jump button. Shown only in place of a dead
+    // Play (when it is not the user's turn), never beside a live Play. Keep it a
+    // compact, normal-height button rather than the big square Play uses on
+    // mobile.
     &.play.next-game {
       min-width: auto;
       width: auto;
@@ -2986,14 +2986,6 @@ p.rune {
         margin-left: 4px;
         opacity: 0.7;
       }
-    }
-
-    // When Play is shown alongside Next, shrink it from the big mobile square
-    // to a compact button so both fit on one row.
-    &.play.play-with-next {
-      min-width: auto;
-      width: auto;
-      height: calc(($board-size-mobile / 8) - 9px);
     }
   }
 
