@@ -82,6 +82,7 @@ enum PairingMethod {
   TEAM_ROUND_ROBIN = 9;
   INTERLEAVED_ROUND_ROBIN = 10;
   PAIRING_METHOD_COP = 11;
+  AUSTRALIAN_DRAW = 12;
 }
 
 enum FirstMethod {
@@ -133,6 +134,19 @@ message RoundControl {
   // control_loss_activation_round is 0-indexed relative to the start of this COP round range.
   int32 control_loss_activation_round = 18;
   int32 place_prizes = 19;
+
+  // reset_round is the Australian Draw repeat-reset point, stored as a
+  // 1-based round number (valid >= 1). A meeting in 1-based round r is
+  // avoided as a repeat iff r >= reset_round, so meetings in earlier rounds
+  // are allowed to recur. This emulates a day-based reset (e.g. set 9 so
+  // rounds 1-8 are forgiven when pairing round 9 onward). 0/unset is treated
+  // as 1 (reset from round 1 = avoid all prior meetings, the default
+  // no-repeat behavior); do not rely on the proto3 zero-default as a
+  // meaningful sentinel -- the reader clamps it explicitly. reset_round at or
+  // past the current round forgives every prior meeting (King-of-the-Hill).
+  // When even a strict pairing is impossible the reset point is relaxed
+  // upward one round at a time.
+  uint32 reset_round = 20;
 }
 
 message DivisionControls {

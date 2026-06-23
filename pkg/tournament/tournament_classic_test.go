@@ -13,6 +13,7 @@ import (
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/pair"
 	"github.com/woogles-io/liwords/pkg/utilities"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
@@ -1238,6 +1239,21 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	for _, v := range repeats {
 		is.True(v == 1)
 	}
+
+	// getRepeatRounds resolves each of those meetings to the round it
+	// happened in: round 0 paired 1-2 and 3-4, round 1 paired 1-3 and 2-4,
+	// round 2 paired 1-4 and 2-3. Each pair appears exactly once, with its
+	// single meeting round.
+	repeatRounds, err := getRepeatRounds(tc, 2)
+	is.NoErr(err)
+	is.Equal(repeatRounds, map[string][]int{
+		pair.GetRepeatKey(player1, player2): {0},
+		pair.GetRepeatKey(player3, player4): {0},
+		pair.GetRepeatKey(player1, player3): {1},
+		pair.GetRepeatKey(player2, player4): {1},
+		pair.GetRepeatKey(player1, player4): {2},
+		pair.GetRepeatKey(player2, player3): {2},
+	})
 
 	_, err = tc.SubmitResult(3, player2, player1, 900, 500,
 		pb.TournamentGameResult_WIN,

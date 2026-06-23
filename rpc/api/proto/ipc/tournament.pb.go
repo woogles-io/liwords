@@ -108,6 +108,7 @@ const (
 	PairingMethod_TEAM_ROUND_ROBIN        PairingMethod = 9
 	PairingMethod_INTERLEAVED_ROUND_ROBIN PairingMethod = 10
 	PairingMethod_PAIRING_METHOD_COP      PairingMethod = 11
+	PairingMethod_AUSTRALIAN_DRAW         PairingMethod = 12
 )
 
 // Enum value maps for PairingMethod.
@@ -125,6 +126,7 @@ var (
 		9:  "TEAM_ROUND_ROBIN",
 		10: "INTERLEAVED_ROUND_ROBIN",
 		11: "PAIRING_METHOD_COP",
+		12: "AUSTRALIAN_DRAW",
 	}
 	PairingMethod_value = map[string]int32{
 		"RANDOM":                  0,
@@ -139,6 +141,7 @@ var (
 		"TEAM_ROUND_ROBIN":        9,
 		"INTERLEAVED_ROUND_ROBIN": 10,
 		"PAIRING_METHOD_COP":      11,
+		"AUSTRALIAN_DRAW":         12,
 	}
 )
 
@@ -690,8 +693,20 @@ type RoundControl struct {
 	// control_loss_activation_round is 0-indexed relative to the start of this COP round range.
 	ControlLossActivationRound int32 `protobuf:"varint,18,opt,name=control_loss_activation_round,json=controlLossActivationRound,proto3" json:"control_loss_activation_round,omitempty"`
 	PlacePrizes                int32 `protobuf:"varint,19,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// reset_round is the Australian Draw repeat-reset point, stored as a
+	// 1-based round number (valid >= 1). A meeting in 1-based round r is
+	// avoided as a repeat iff r >= reset_round, so meetings in earlier rounds
+	// are allowed to recur. This emulates a day-based reset (e.g. set 9 so
+	// rounds 1-8 are forgiven when pairing round 9 onward). 0/unset is treated
+	// as 1 (reset from round 1 = avoid all prior meetings, the default
+	// no-repeat behavior); do not rely on the proto3 zero-default as a
+	// meaningful sentinel -- the reader clamps it explicitly. reset_round at or
+	// past the current round forgives every prior meeting (King-of-the-Hill).
+	// When even a strict pairing is impossible the reset point is relaxed
+	// upward one round at a time.
+	ResetRound    uint32 `protobuf:"varint,20,opt,name=reset_round,json=resetRound,proto3" json:"reset_round,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RoundControl) Reset() {
@@ -846,6 +861,13 @@ func (x *RoundControl) GetControlLossActivationRound() int32 {
 func (x *RoundControl) GetPlacePrizes() int32 {
 	if x != nil {
 		return x.PlacePrizes
+	}
+	return 0
+}
+
+func (x *RoundControl) GetResetRound() uint32 {
+	if x != nil {
+		return x.ResetRound
 	}
 	return 0
 }
@@ -2324,7 +2346,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x11TournamentPersons\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12/\n" +
-	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\xea\x06\n" +
+	"\apersons\x18\x03 \x03(\v2\x15.ipc.TournamentPersonR\apersons\"\x8b\a\n" +
 	"\fRoundControl\x129\n" +
 	"\x0epairing_method\x18\x01 \x01(\x0e2\x12.ipc.PairingMethodR\rpairingMethod\x123\n" +
 	"\ffirst_method\x18\x02 \x01(\x0e2\x10.ipc.FirstMethodR\vfirstMethod\x12&\n" +
@@ -2345,7 +2367,9 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\rdivision_sims\x18\x10 \x01(\x05R\fdivisionSims\x12*\n" +
 	"\x11control_loss_sims\x18\x11 \x01(\x05R\x0fcontrolLossSims\x12A\n" +
 	"\x1dcontrol_loss_activation_round\x18\x12 \x01(\x05R\x1acontrolLossActivationRound\x12!\n" +
-	"\fplace_prizes\x18\x13 \x01(\x05R\vplacePrizesB\x16\n" +
+	"\fplace_prizes\x18\x13 \x01(\x05R\vplacePrizes\x12\x1f\n" +
+	"\vreset_round\x18\x14 \x01(\rR\n" +
+	"resetRoundB\x16\n" +
 	"\x14_spread_cap_overrideJ\x04\b\v\x10\f\"\xc6\x03\n" +
 	"\x10DivisionControls\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2492,7 +2516,7 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\fFORFEIT_LOSS\x10\x06\x12\x0e\n" +
 	"\n" +
 	"ELIMINATED\x10\a\x12\b\n" +
-	"\x04VOID\x10\b*\xe4\x01\n" +
+	"\x04VOID\x10\b*\xf9\x01\n" +
 	"\rPairingMethod\x12\n" +
 	"\n" +
 	"\x06RANDOM\x10\x00\x12\x0f\n" +
@@ -2509,7 +2533,8 @@ const file_proto_ipc_tournament_proto_rawDesc = "" +
 	"\x10TEAM_ROUND_ROBIN\x10\t\x12\x1b\n" +
 	"\x17INTERLEAVED_ROUND_ROBIN\x10\n" +
 	"\x12\x16\n" +
-	"\x12PAIRING_METHOD_COP\x10\v*F\n" +
+	"\x12PAIRING_METHOD_COP\x10\v\x12\x13\n" +
+	"\x0fAUSTRALIAN_DRAW\x10\f*F\n" +
 	"\vFirstMethod\x12\x10\n" +
 	"\fMANUAL_FIRST\x10\x00\x12\x10\n" +
 	"\fRANDOM_FIRST\x10\x01\x12\x13\n" +
