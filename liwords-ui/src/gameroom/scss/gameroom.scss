@@ -2974,13 +2974,13 @@ p.rune {
     }
 
     // Correspondence-only "Next (x)" jump button. Shown only in place of a dead
-    // Play (when it is not the user's turn), never beside a live Play. Keep it a
-    // compact, normal-height button rather than the big square Play uses on
-    // mobile.
+    // Play (when it is not the user's turn), never beside a live Play. Styled
+    // like Play -- same big square footprint on mobile -- but the width is
+    // allowed to grow so the "Next (x)" label is not clipped.
     &.play.next-game {
-      min-width: auto;
+      min-width: calc($board-size-mobile * 0.25);
       width: auto;
-      height: calc(($board-size-mobile / 8) - 9px);
+      height: calc($board-size-mobile * 0.25);
 
       .next-game-count {
         margin-left: 4px;
