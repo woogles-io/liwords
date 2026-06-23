@@ -99,7 +99,10 @@ import { MachineLetter, MachineWord } from "../utils/cwgame/common";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { showTurnNotification } from "../utils/notifications";
-import { onTurnCountdowns } from "../utils/time_bank_calculator";
+import {
+  onTurnCountdowns,
+  pickNextCorresGame,
+} from "../utils/time_bank_calculator";
 import { timeCtrlToDisplayName } from "../store/constants";
 
 type Props = {
@@ -1052,18 +1055,13 @@ export const Table = React.memo((props: Props) => {
       return { nextCorresGame: null, corresGamesWaiting: 0 };
     }
 
-    // Get all correspondence games where it's user's turn, including current game
-    const now = Date.now(); // Use the same reference time during iteration
-    // ("now" does not have to be Date.now(), it can be any const picked to minimize overflow)
-    const gamesOnMyTurn = corresGames
+    // Every game where it is the user's turn (current game included). "now"
+    // need not be Date.now(); any const that minimizes overflow works.
+    const now = Date.now();
+    const candidates = corresGames
       .filter((ag) => {
-        // Check if it's user's turn
         const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
-        if (playerIndex === -1) {
-          return false;
-        }
-
-        return playerIndex === ag.playerOnTurn;
+        return playerIndex !== -1 && playerIndex === ag.playerOnTurn;
       })
       .map((ag) => {
         // Real time-until-expiry for the on-turn player (per-turn allowance +
@@ -1077,41 +1075,14 @@ export const Table = React.memo((props: Props) => {
           bankSecs,
           timeElapsedSecs,
         );
+        return { game: ag, gameID: ag.gameID, beforeExpiry };
+      });
 
-        return {
-          game: ag,
-          timeRemaining: beforeExpiry,
-        };
-      })
-      .sort((a, b) => {
-        // Do not use a-b even if it should not overflow
-        if (a.timeRemaining < b.timeRemaining) return -1;
-        if (a.timeRemaining > b.timeRemaining) return 1;
-        // Tiebreak to stabilize order (this may not be the same as the backend)
-        if (a.game.gameID < b.game.gameID) return -1;
-        if (a.game.gameID > b.game.gameID) return 1;
-        return 0;
-      }); // Sort by most urgent first
-
-    // This would exist if current game is on my turn.
-    const currentGameIndex = gamesOnMyTurn.findIndex(
-      (gomt) => gomt.game.gameID === gameID,
-    );
-
-    // If not on my turn (opponent's turn, completed game, others' game),
-    // next game is the first one that is on my turn.
-    return {
-      nextCorresGame:
-        currentGameIndex >= 0
-          ? gamesOnMyTurn.length > 1
-            ? gamesOnMyTurn[(currentGameIndex + 1) % gamesOnMyTurn.length].game
-            : null
-          : gamesOnMyTurn.length > 0
-            ? gamesOnMyTurn[0].game
-            : null,
-      corresGamesWaiting:
-        gamesOnMyTurn.length + (currentGameIndex >= 0 ? -1 : 0),
-    };
+    // Shared "next urgent, cycling" selection -- the same logic the gameroom
+    // top-bar next-game cycler and the in-game Next button both consume, so the
+    // two always point at the same game.
+    const { next, waiting } = pickNextCorresGame(candidates, gameID);
+    return { nextCorresGame: next, corresGamesWaiting: waiting };
   }, [gameInfo.gameRequest?.gameMode, userID, gameID, corresGames]);
 
   const handleNextCorresGame = useCallback(() => {
