@@ -19,7 +19,8 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
     s1.maxRepeats === s2.maxRepeats &&
     s1.allowOverMaxRepeats === s2.allowOverMaxRepeats &&
     s1.repeatRelativeWeight === s2.repeatRelativeWeight &&
-    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight //&&
+    s1.winDifferenceRelativeWeight === s2.winDifferenceRelativeWeight &&
+    s1.resetRound === s2.resetRound //&&
     //    s1.controlLossActivationRound === s2.controlLossActivationRound &&
     //    s1.controlLossSims === s2.controlLossSims &&
     //    s1.controlLossThreshold === s2.controlLossThreshold &&
@@ -30,7 +31,16 @@ export const settingsEqual = (s1: RoundControl, s2: RoundControl): boolean => {
   );
 };
 
-export type PairingMethodField = [string, keyof RoundControl, string, string];
+// [fieldType, fieldName, displayName, help, minValue?]. minValue is the
+// smallest value the director may enter (and the display default when the
+// stored value is unset); it defaults to 0 when omitted.
+export type PairingMethodField = [
+  string,
+  keyof RoundControl,
+  string,
+  string,
+  number?,
+];
 
 export const fieldsForMethod = (
   m: PairingMethod,
@@ -82,6 +92,19 @@ export const fieldsForMethod = (
         "gamesPerRound",
         "Games per Round",
         "The number of games per round. For example, set this to two if you wish each team member to play the other team member twice.",
+      ]);
+      break;
+
+    case PairingMethod.AUSTRALIAN_DRAW:
+      fields.push([
+        "number",
+        "resetRound",
+        "Reset Round",
+        "Reset round N: opponents from rounds before N may be re-paired; round N " +
+          "onward avoids repeats. N=1 avoids all repeats. The first-round draw only " +
+          "ever happens in round 1 -- a later reset does NOT re-trigger it. " +
+          "Example: N=9 for rounds 9-16 lets round 1-8 opponents recur.",
+        1,
       ]);
       break;
 

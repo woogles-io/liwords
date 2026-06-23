@@ -517,6 +517,10 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
           allowOverMaxRepeats: v.allowOverMaxRepeats,
           repeatRelativeWeight: v.repeatRelativeWeight,
           winDifferenceRelativeWeight: v.winDifferenceRelativeWeight,
+          // Australian Draw-specific field, stored 1-based in the proto (the
+          // reset point as a round number). Carry it through unchanged; the
+          // editor and rdCtrlFromSetting use the same 1-based value.
+          resetRound: v.resetRound,
           // COP-specific fields
           gibsonSpreads: v.gibsonSpreads,
           hopefulnessThresholds: v.hopefulnessThresholds,
