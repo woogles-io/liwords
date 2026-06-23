@@ -1,9 +1,5 @@
 import { Table, Tag, Tooltip } from "antd";
-import {
-  FundOutlined,
-  ClockCircleOutlined,
-  TrophyOutlined,
-} from "@ant-design/icons";
+import { FundOutlined, TrophyOutlined } from "@ant-design/icons";
 import React, {
   ReactNode,
   useCallback,
@@ -15,6 +11,7 @@ import { useNavigate } from "react-router";
 import { RatingBadge } from "./rating_badge";
 import { challengeFormat, PlayerDisplay, SoughtGames } from "./sought_games";
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
+import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { VariantIcon } from "../shared/variant_icons";
 import { lexiconOrder, MatchLexiconDisplay } from "../shared/lexicon_display";
 import { useLoginStateStoreContext } from "../store/store";
@@ -26,7 +23,6 @@ import {
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { useClient } from "../utils/hooks/connect";
 import {
-  formatCoarseDuration,
   OnTurnCountdowns,
   onTurnCountdowns,
 } from "../utils/time_bank_calculator";
@@ -141,25 +137,15 @@ export const CorrespondenceGames = (props: Props) => {
             onTurn = playerIndex === ag.playerOnTurn;
           }
 
-          // Determine turn indicator text
-          let turnIndicator = "";
-          if (ag.playerOnTurn === 0) {
-            turnIndicator =
-              ag.players[0]?.uuid === userID ? "Your turn" : "Opponent";
-          } else if (ag.playerOnTurn === 1) {
-            turnIndicator =
-              ag.players[1]?.uuid === userID ? "Your turn" : "Opponent";
-          }
-
           // Compute the bank-aware countdowns for whoever is on turn. The
-          // before-expiry value is the real time-remaining we sort and flag by
-          // (per-turn allowance + that player's remaining bank - elapsed); the
-          // before-bleed value is the free-time window before the bank starts
-          // draining. This replaces the old bank-blind `incrementSecs -
+          // before-expiry value is the real time-remaining we sort by (per-turn
+          // allowance + that player's remaining bank - elapsed); the shared
+          // CorrespondenceTurnIndicator renders it (and the low-time / time-bank
+          // escalations). This replaces the old bank-blind `incrementSecs -
           // elapsed` proxy, which sorted league games (which have banks) wrong.
           const now = Date.now();
           let timeRemainingSecs = Infinity;
-          let isLowTime = false;
+          let hasTimeBank = false;
           let countdowns: OnTurnCountdowns | undefined;
           if (
             ag.playerOnTurn !== undefined &&
@@ -168,56 +154,26 @@ export const CorrespondenceGames = (props: Props) => {
           ) {
             const timeElapsedSecs = (now - ag.lastUpdate) / 1000;
             const bankSecs = (ag.timeBank?.[ag.playerOnTurn] ?? 0) / 1000;
+            hasTimeBank = bankSecs > 0;
             countdowns = onTurnCountdowns(
               ag.incrementSecs,
               bankSecs,
               timeElapsedSecs,
             );
             timeRemainingSecs = countdowns.beforeExpiry;
-            isLowTime = timeRemainingSecs < 86400; // 24 hours in seconds
           }
-          const isBleeding = countdowns ? countdowns.beforeBleed <= 0 : false;
 
-          // Build the turn / countdown display. For the user's own turn we show
-          // their hard deadline (and a bleeding warning once the bank is being
-          // consumed); for the opponent's turn we show their deadline greyed,
-          // since it is not the user's clock.
-          let turnDisplay: ReactNode = turnIndicator;
-          if (countdowns) {
-            const expiryLabel = formatCoarseDuration(countdowns.beforeExpiry);
-            if (onTurn) {
-              turnDisplay = (
-                <span style={{ color: isLowTime ? "#ff4d4f" : undefined }}>
-                  {isLowTime && (
-                    <Tooltip title="Less than 24 hours remaining">
-                      <ClockCircleOutlined style={{ marginRight: 4 }} />
-                    </Tooltip>
-                  )}
-                  {turnIndicator}
-                  <span style={{ marginLeft: 6, opacity: 0.85 }}>
-                    {isBleeding ? (
-                      <Tooltip title="Per-turn time used; time bank is draining">
-                        bleeding, expires in {expiryLabel}
-                      </Tooltip>
-                    ) : (
-                      <Tooltip title="Time until you time out (per-turn time + time bank)">
-                        expires in {expiryLabel}, free for{" "}
-                        {formatCoarseDuration(countdowns.beforeBleed)}
-                      </Tooltip>
-                    )}
-                  </span>
-                </span>
-              );
-            } else {
-              turnDisplay = (
-                <span style={{ opacity: 0.55 }}>
-                  <Tooltip title="Opponent's clock (not your deadline)">
-                    {turnIndicator} (expires in {expiryLabel})
-                  </Tooltip>
-                </span>
-              );
-            }
-          }
+          // Condensed shared turn / countdown indicator: red "Your turn" with a
+          // coarse time inline and the full "expires in X, free for Y" detail in
+          // the tooltip; the opponent's clock is greyed since it is not the
+          // user's deadline.
+          const turnDisplay: ReactNode = (
+            <CorrespondenceTurnIndicator
+              onTurn={onTurn}
+              countdowns={countdowns}
+              hasTimeBank={hasTimeBank}
+            />
+          );
 
           return {
             gameID: ag.gameID,
