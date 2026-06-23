@@ -227,3 +227,35 @@ export function pickNextCorresGame<T>(
     waiting: sorted.length,
   };
 }
+
+/**
+ * Decide which on-turn game the "Next" affordance should point at, given the
+ * previously pinned target. The target is pinned on first sight and then held
+ * across live refreshes -- a refresh must not move it. Otherwise, once the
+ * current game leaves the on-turn set (you moved, or an opponent's move
+ * arrived), pickNextCorresGame falls back to the most-urgent game and yanks you
+ * back to the top of the list, so you can never play once through all your
+ * games. The pin is replaced only when it goes invalid (the pinned game is no
+ * longer on the user's turn -- e.g. it was played in another tab) or when there
+ * was no target and one has now appeared. It resets on navigation (a new page
+ * is a fresh mount with prevPinned === undefined).
+ *
+ * - prevPinned: the currently pinned game id, null (no target), or undefined
+ *   (nothing pinned yet -- first evaluation on this page).
+ * - onTurnGameIDs: the games where it is currently the user's turn.
+ * - immediateNextGameID: the freshly-computed urgency-ranked next, or null.
+ */
+export function nextPin(
+  prevPinned: string | null | undefined,
+  onTurnGameIDs: ReadonlySet<string>,
+  immediateNextGameID: string | null,
+): string | null {
+  // Keep a still-valid pin: a live refresh changes the "(n)" count, not the
+  // target.
+  if (prevPinned != null && onTurnGameIDs.has(prevPinned)) {
+    return prevPinned;
+  }
+  // First sight, a next that has just appeared, or a repick after the pinned
+  // game went invalid.
+  return immediateNextGameID;
+}
