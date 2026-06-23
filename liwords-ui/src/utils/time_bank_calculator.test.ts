@@ -1,6 +1,7 @@
 import {
   formatCoarseDuration,
   formatCoarseDurationShort,
+  nextPin,
   onTurnCountdowns,
   pickNextCorresGame,
 } from "./time_bank_calculator";
@@ -141,4 +142,29 @@ it("pickNextCorresGame: equal urgency is broken stably by gameID", () => {
   expect(pickNextCorresGame(candidates, "a").next).toBe("b");
   expect(pickNextCorresGame(candidates, "b").next).toBe("c");
   expect(pickNextCorresGame(candidates, "c").next).toBe("a");
+});
+
+it("nextPin: pins on first sight and holds it across refreshes", () => {
+  const onTurn = new Set(["a", "b", "c"]);
+  // First evaluation on the page (undefined) takes the immediate-next.
+  expect(nextPin(undefined, onTurn, "b")).toBe("b");
+  // A later refresh keeps the pinned target even though the urgency-ranked
+  // immediate-next has changed (this is the bug fix: no bouncing to [0]).
+  expect(nextPin("b", onTurn, "c")).toBe("b");
+  expect(nextPin("b", onTurn, "a")).toBe("b");
+});
+
+it("nextPin: pins a next that appears only after a later refresh", () => {
+  // No game was on the user's turn at load.
+  expect(nextPin(null, new Set<string>(), null)).toBe(null);
+  // An opponent moved -> a next appeared -> pin it.
+  expect(nextPin(null, new Set(["x"]), "x")).toBe("x");
+});
+
+it("nextPin: repicks when the pinned game leaves the on-turn set", () => {
+  // Pinned "b" was played in another tab, so it is no longer on the user's
+  // turn -> fall back to the freshly-computed immediate-next.
+  expect(nextPin("b", new Set(["a", "c"]), "c")).toBe("c");
+  // Nothing left to pin.
+  expect(nextPin("b", new Set<string>(), null)).toBe(null);
 });

@@ -100,6 +100,7 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { showTurnNotification } from "../utils/notifications";
 import {
+  nextPin,
   onTurnCountdowns,
   pickNextCorresGame,
 } from "../utils/time_bank_calculator";
@@ -1043,47 +1044,72 @@ export const Table = React.memo((props: Props) => {
     return Array.from(byID.values());
   }, [localCorresGames, liveCorresGames]);
 
-  const { nextCorresGame, corresGamesWaiting } = useMemo(() => {
-    const isCorrespondence =
-      gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+  // Live snapshot: the games where it is the user's turn, the urgency-ranked
+  // immediate-next candidate, and the (live) count of other waiting games.
+  const { corresCandidates, immediateNextID, corresGamesWaiting } =
+    useMemo(() => {
+      const isCorrespondence =
+        gameInfo.gameRequest?.gameMode === GameMode.CORRESPONDENCE;
+      if (!isCorrespondence || !userID || corresGames.length === 0) {
+        return {
+          corresCandidates: [],
+          immediateNextID: null,
+          corresGamesWaiting: 0,
+        };
+      }
 
-    if (!isCorrespondence || !userID) {
-      return { nextCorresGame: null, corresGamesWaiting: 0 };
-    }
+      // Every game where it is the user's turn (current game included). "now"
+      // need not be Date.now(); any const that minimizes overflow works.
+      const now = Date.now();
+      const corresCandidates = corresGames
+        .filter((ag) => {
+          const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
+          return playerIndex !== -1 && playerIndex === ag.playerOnTurn;
+        })
+        .map((ag) => {
+          // Real time-until-expiry for the on-turn player (per-turn allowance +
+          // that player's remaining bank - elapsed). The backend now sends the
+          // live bank, so this is bank-aware rather than the old per-turn proxy.
+          const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
+          const onTurnIdx = ag.playerOnTurn ?? 0;
+          const bankSecs = (ag.timeBank?.[onTurnIdx] ?? 0) / 1000;
+          const { beforeExpiry } = onTurnCountdowns(
+            ag.incrementSecs,
+            bankSecs,
+            timeElapsedSecs,
+          );
+          return { game: ag, gameID: ag.gameID, beforeExpiry };
+        });
 
-    if (corresGames.length === 0) {
-      return { nextCorresGame: null, corresGamesWaiting: 0 };
-    }
+      // Urgency-ranked "next" -- the same logic the top-bar cycler and the
+      // in-game Next button share. This is the candidate to pin on first sight.
+      const { next, waiting } = pickNextCorresGame(corresCandidates, gameID);
+      return {
+        corresCandidates,
+        immediateNextID: next?.gameID ?? null,
+        corresGamesWaiting: waiting,
+      };
+    }, [gameInfo.gameRequest?.gameMode, userID, gameID, corresGames]);
 
-    // Every game where it is the user's turn (current game included). "now"
-    // need not be Date.now(); any const that minimizes overflow works.
-    const now = Date.now();
-    const candidates = corresGames
-      .filter((ag) => {
-        const playerIndex = ag.players.findIndex((p) => p.uuid === userID);
-        return playerIndex !== -1 && playerIndex === ag.playerOnTurn;
-      })
-      .map((ag) => {
-        // Real time-until-expiry for the on-turn player (per-turn allowance +
-        // that player's remaining bank - elapsed). The backend now sends the
-        // live bank, so this is bank-aware rather than the old per-turn proxy.
-        const timeElapsedSecs = (now - (ag.lastUpdate || 0)) / 1000;
-        const onTurnIdx = ag.playerOnTurn ?? 0;
-        const bankSecs = (ag.timeBank?.[onTurnIdx] ?? 0) / 1000;
-        const { beforeExpiry } = onTurnCountdowns(
-          ag.incrementSecs,
-          bankSecs,
-          timeElapsedSecs,
-        );
-        return { game: ag, gameID: ag.gameID, beforeExpiry };
-      });
+  // Pin the Next target so a live refresh cannot move it. Once you move (or an
+  // opponent's move arrives), the current game leaves the on-turn set and the
+  // picker would otherwise fall back to the most-urgent game -- yanking you
+  // back to the top instead of letting you play once through all your games.
+  // The pin is set on first sight and held; nextPin only replaces it when it
+  // goes invalid or when a next first appears. It resets on navigation (a new
+  // page is a fresh mount). The "(n)" count above stays live.
+  const [pinnedNextID, setPinnedNextID] = useState<string | null | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    const onTurnIDs = new Set(corresCandidates.map((c) => c.gameID));
+    setPinnedNextID((prev) => nextPin(prev, onTurnIDs, immediateNextID));
+  }, [corresCandidates, immediateNextID]);
 
-    // Shared "next urgent, cycling" selection -- the same logic the gameroom
-    // top-bar next-game cycler and the in-game Next button both consume, so the
-    // two always point at the same game.
-    const { next, waiting } = pickNextCorresGame(candidates, gameID);
-    return { nextCorresGame: next, corresGamesWaiting: waiting };
-  }, [gameInfo.gameRequest?.gameMode, userID, gameID, corresGames]);
+  const nextCorresGame = useMemo(
+    () => corresCandidates.find((c) => c.gameID === pinnedNextID)?.game ?? null,
+    [corresCandidates, pinnedNextID],
+  );
 
   const handleNextCorresGame = useCallback(() => {
     if (nextCorresGame) {
