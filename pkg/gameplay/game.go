@@ -43,6 +43,31 @@ var (
 	errGameAlreadyStarted = errors.New("game already started")
 )
 
+// autopassRealtimeWithIncrement: when true, a real-time game that has a
+// per-turn increment (IncrementSeconds > 0) also auto-passes on timeout --
+// the opponent can still move, so the game continues and ends naturally by
+// score -- instead of forfeiting. Default is false: only correspondence
+// games auto-pass; all real-time games (with or without an increment)
+// forfeit on time, the long-standing behavior.
+//
+// Set to true to also auto-pass real-time-with-increment games. NOTE that
+// this changes real-time semantics: in a blitz game WITH an increment,
+// running out of time would no longer be an instant loss -- the player
+// auto-passes, the opponent plays on, and a player ahead on score can still
+// win. This const is the single switch for that behavior.
+const autopassRealtimeWithIncrement = false
+
+// shouldAutopassOnTimeout reports whether a timed-out game should auto-pass
+// the on-turn player (turn advances, game continues and ends by score)
+// instead of forfeiting on time. True for any correspondence game, and -- when
+// autopassRealtimeWithIncrement is enabled -- for a real-time game that has a
+// per-turn increment. Used by both timeout routes (the move path and the
+// ticker path) so they stay consistent.
+func shouldAutopassOnTimeout(entGame *entity.Game) bool {
+	return entGame.IsCorrespondence() ||
+		(autopassRealtimeWithIncrement && entGame.HasIncrement())
+}
+
 const (
 	IdentificationAuthority = "io.woogles"
 )
@@ -676,14 +701,45 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 
 		// If an ending game gets "challenge" just before "timed out",
 		// ignore the challenge, pass instead.
+		//
+		// Auto-pass-on-timeout games discard the on-turn player's submitted
+		// move and replace it with a pass: the turn advances to the opponent
+		// and the game ends naturally via the six-consecutive-pass rule. The
+		// pass is recorded by PlayMove -> RecordTimeOfMove at the expiry-capped
+		// time, so the opponent's clock starts correctly regardless of how late
+		// the move arrives. A resignation is exempt and falls through to the
+		// resign handler so it still ends the game with the resigner as the
+		// loser. This covers all correspondence games and (per
+		// autopassRealtimeWithIncrement) real-time games that have a per-turn
+		// increment; real-time games without an increment still forfeit on time.
 		if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 			log.Debug().Msg("timed out, so passing instead of processing the submitted move")
 			cge = &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: cge.GameId,
 			}
+		} else if shouldAutopassOnTimeout(entGame) {
+			if cge.Type == pb.ClientGameplayEvent_RESIGN {
+				// Honor a resignation even after time ran out.
+				log.Debug().Msg("timed out, but processing the submitted resignation")
+				// fall through to the resign handler below
+			} else {
+				log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
+				cge = &pb.ClientGameplayEvent{
+					Type:   pb.ClientGameplayEvent_PASS,
+					GameId: cge.GameId,
+				}
+				// Record that this player abandoned via timeout (their time
+				// bank is exhausted). The game still ends by score via the
+				// six-pass rule, but this lets automod and league standings
+				// treat it as a timeout even though the end reason will be
+				// CONSECUTIVE_ZEROES. Idempotent across repeated adjudicator
+				// fires; the ticker route also reaches here via
+				// handleEventAfterLockingGame.
+				entGame.MarkAutopassTimedOut(onTurn)
+			}
 		} else {
-			// Basically skip to the bottom and exit.
+			// Real-time game with no increment: forfeit on time (unchanged).
 			return entGame, setTimedOut(ctx, entGame, onTurn, stores)
 		}
 	}
@@ -807,8 +863,21 @@ func TimedOut(ctx context.Context, stores *stores.Stores, timedout string, gameI
 	}
 	// Ok, the time did run out after all.
 
-	// If opponent played out, auto-pass instead of forfeiting.
-	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
+	// Auto-pass instead of forfeiting when either:
+	//   - the opponent has already played out (WAITING_FOR_FINAL_PASS), or
+	//   - the game auto-passes on timeout (shouldAutopassOnTimeout): any
+	//     correspondence game, plus -- per autopassRealtimeWithIncrement -- a
+	//     real-time game that has a per-turn increment.
+	// In both cases the on-turn player's turn becomes a pass, the turn
+	// advances, and the game ends naturally via the six-consecutive-pass
+	// rule. handleEventAfterLockingGame -> PlayMove -> RecordTimeOfMove
+	// records the pass at the expiry-capped time, so the opponent's clock
+	// starts correctly even though the correspondence adjudicator may fire
+	// up to AdjudicateCorrespondenceInterval (60s) after expiry. The
+	// adjudicator re-fires every interval, so an abandoning player keeps
+	// auto-passing each turn until the six-pass rule ends the game.
+	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS ||
+		shouldAutopassOnTimeout(entGame) {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
 		_, err = handleEventAfterLockingGame(ctx, stores,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
