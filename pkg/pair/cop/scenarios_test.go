@@ -386,7 +386,7 @@ func TestScenario8_Factor3ControlLoss2ndOr3rd(t *testing.T) {
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		ClassPrizes:                []int32{2},
 		GibsonSpread:               scenarioGibsonSpread,
-		ControlLossThreshold:       0.25,
+		ControlLossThreshold:       0.30,
 		HopefulnessThreshold:       scenarioHopefulness,
 		AllPlayers:                 12,
 		ValidPlayers:               12,
@@ -726,6 +726,94 @@ func TestScenarioMultiRound_July4th2026WOW(t *testing.T) {
 			resp := cop.COPPair(req)
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 WOW run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// July 4th 2026 Division 2: 33 players from wordgameplayers.org/tournaments/1162,
+// using the same 28-round structure and real-tournament timing as the main event
+// (see TestScenarioMultiRound_July4th2026).
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_July4th2026Div2
+func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping July 4th 2026 Div2 scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	numPlayers := 33
+	totalRounds := 28
+	fontesRounds := 3
+
+	names := []string{
+		"Terry Kang", "K Kaia", "Nitya Chagti", "Justin Morris",
+		"David Nwabor", "Benjamin Bloom", "Heidi Robertson", "Rebecca Soble",
+		"Ayodele Odekunle", "Elise Bickford", "Yvonne Lobo", "Priya Fernando",
+		"Yaacov Barak", "Roger Cullman", "Lindsay Shin", "Joe Roberdeau",
+		"Ather Sharif", "Sharmaine Farini", "Jane Geary", "Thomas Stumpf",
+		"Jean-Louis Guill", "Samuel Fomum", "Kaveri Warriar", "Nancy Bowen",
+		"Caroline Polak Scowcroft", "Joan Kavanaugh", "Iliana Filby", "Cheryl Melvin",
+		"Absar Mustajab", "Hema Shah", "Ida Ann Shapiro", "Ben Tu'itahi",
+		"Donald Ituah",
+	}
+	classes := make([]int32, numPlayers)
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("july4th2026div2_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                6,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: 22,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		for r := 0; r < fontesRounds; r++ {
+			pairings := generateFontesPairings(r, numPlayers)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+
+		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			numRes := numResultsForRound(round, len(allResults))
+
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults[:numRes]
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("July 4th 2026 Div2 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 
 			pairings := make([]int32, numPlayers)
