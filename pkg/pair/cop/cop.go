@@ -253,7 +253,7 @@ var constraintPolicies = []constraintPolicy{
 		name: "TB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			numPlayers := len(pargs.playerNodes)
-			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex {
+			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
 				return [][2]int{}, [][2]int{}
 			}
 			forcedBye := [][2]int{{-1, pkgstnd.ByePlayerIndex}}
@@ -281,10 +281,6 @@ var constraintPolicies = []constraintPolicy{
 			return pargs.factor3ForcedPairings, [][2]int{}
 		},
 	},
-}
-
-func getLowestCasherIndex(pargs *policyArgs) int {
-	return int(pargs.req.PlacePrizes) - 1
 }
 
 var weightPolicies = []weightPolicy{
@@ -563,23 +559,12 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 // no forced pairings are needed.
 func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
 	if pkgstnd.GetRoundsRemaining(req) != 2 {
+		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
 		return nil
 	}
 	numPlayers := copdata.Standings.GetNumPlayers()
 	if numPlayers < 6 {
-		return nil
-	}
-	// Skip if there is already a pre-paired (partial) round in the request.
-	n := len(req.DivisionPairings)
-	if n > 0 && slices.Contains(req.DivisionPairings[n-1].Pairings, -1) {
-		return nil
-	}
-	// Condition: 3rd place is not more than int(req.GibsonSpread) * 2 spread behind either 1st or 2nd.
-	spread0 := copdata.Standings.GetPlayerSpread(0)
-	spread1 := copdata.Standings.GetPlayerSpread(1)
-	spread2 := copdata.Standings.GetPlayerSpread(2)
-	gibsonStandingsSpread := int(req.GibsonSpread) * 2
-	if spread0-spread2 > gibsonStandingsSpread || spread1-spread2 > gibsonStandingsSpread {
+		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: fewer than 6 players (%d)\n", numPlayers))
 		return nil
 	}
 
@@ -617,9 +602,11 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	// would cap at factor-2 internally).
 	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
 	if err != pb.PairError_SUCCESS {
+		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: sim error %v\n", err))
 		return nil
 	}
 	if totalSims == 0 {
+		logsb.WriteString("Factor 3 skipped: zero sims completed\n")
 		return nil
 	}
 	copdatapkg.WriteFinalRankResultsToLog("Factor 3 Sim Results", factor3FinalRanks, copdata.Standings, req, logsb)
@@ -637,6 +624,16 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	p1 := copdata.Standings.GetPlayerIndex(1)
 	p2 := copdata.Standings.GetPlayerIndex(2)
 
+	logsb.WriteString(fmt.Sprintf(
+		"Factor 3 control loss standings: %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d)\n",
+		req.PlayerNames[p0], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(0))/2, copdata.Standings.GetPlayerSpread(0),
+		req.PlayerNames[p1], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(1))/2, copdata.Standings.GetPlayerSpread(1),
+		req.PlayerNames[p2], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(2))/2, copdata.Standings.GetPlayerSpread(2),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(3)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(3))/2, copdata.Standings.GetPlayerSpread(3),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(4)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(4))/2, copdata.Standings.GetPlayerSpread(4),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(5)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(5))/2, copdata.Standings.GetPlayerSpread(5),
+	))
+
 	for _, rankIdx := range []int{1, 2} {
 		pIdx := copdata.Standings.GetPlayerIndex(rankIdx)
 		vsFirst, pairErr := copdata.Standings.RunParallelSimForceWinner(copRand, controlSims, roundsRemaining, 3, f3Pairings, pIdx, true, stopTime)
@@ -648,8 +645,8 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 			continue
 		}
 		logsb.WriteString(fmt.Sprintf(
-			"Factor 3 control loss check rank %d (%s): vsFirst=%d vsFactor3=%d threshold=%.0f\n",
-			rankIdx+1, req.PlayerNames[pIdx], vsFirst, vsFactor3, threshold,
+			"Factor 3 control loss check rank %d (%s): vsFirst=%d/%d vsFactor3=%d/%d threshold=%.0f\n",
+			rankIdx+1, req.PlayerNames[pIdx], vsFirst, controlSims, vsFactor3, controlSims, threshold,
 		))
 		if float64(vsFirst-vsFactor3) >= threshold {
 			logsb.WriteString(fmt.Sprintf(
@@ -665,15 +662,21 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
 
 	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
-	if factor3FinalRanks[3][0] < minWins ||
-		factor3FinalRanks[4][1] < minWins ||
-		factor3FinalRanks[5][2] < minWins {
-		return nil
-	}
-
 	p3 := copdata.Standings.GetPlayerIndex(3)
 	p4 := copdata.Standings.GetPlayerIndex(4)
 	p5 := copdata.Standings.GetPlayerIndex(5)
+	if factor3FinalRanks[3][0] < minWins ||
+		factor3FinalRanks[4][1] < minWins ||
+		factor3FinalRanks[5][2] < minWins {
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st:%d 5th=%s->2nd:%d 6th=%s->3rd:%d)\n",
+			minWins,
+			req.PlayerNames[p3], factor3FinalRanks[3][0],
+			req.PlayerNames[p4], factor3FinalRanks[4][1],
+			req.PlayerNames[p5], factor3FinalRanks[5][2],
+		))
+		return nil
+	}
 
 	logsb.WriteString(fmt.Sprintf(
 		"Factor 3 expansion: forcing %s vs %s, %s vs %s, %s vs %s\n",

@@ -22,7 +22,7 @@ import (
 
 const (
 	scenarioDivisionSims          = 100000
-	scenarioControlLossSims       = 10000
+	scenarioControlLossSims       = 20000
 	scenarioHopefulness           = 0.02
 	scenarioGibsonSpread          = 200
 	scenarioLastRoundGibsonSpread = 250
@@ -787,6 +787,7 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 			ControlLossSims:            scenarioControlLossSims,
 			ControlLossActivationRound: 22,
 			AllowRepeatByes:            false,
+			TopDownByes:                true,
 			Seed:                       seed,
 		}
 
@@ -812,9 +813,9 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 			}
 
 			resp := cop.COPPair(req)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 Div2 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
-			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 
 			pairings := make([]int32, numPlayers)
 			copy(pairings, resp.Pairings)

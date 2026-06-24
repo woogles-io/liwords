@@ -738,6 +738,7 @@ func (standings *Standings) RunParallelSimForceWinner(copRand *rand.Rand, sims i
 		standings.recordsBackup = make([]uint64, numPlayers)
 		evenerAdded = true
 	}
+	standings.Backup()
 	wins, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
 	if evenerAdded {
 		standings.records = standings.records[:numPlayers-1]
