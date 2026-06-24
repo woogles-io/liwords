@@ -1,15 +1,22 @@
 package copdata_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/matryer/is"
 	pkgcopdata "github.com/woogles-io/liwords/pkg/pair/copdata"
 	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
+	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"golang.org/x/exp/rand"
 )
+
+func TestMain(m *testing.M) {
+	pkgstnd.NumSimWorkersOverride = 1
+	os.Exit(m.Run())
+}
 
 func TestCOPPrecompData(t *testing.T) {
 	is := is.New(t)
@@ -177,7 +184,7 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankAbsolutely[rank], rank)
 	}
 	is.Equal(copdata.HighestRankHopefully[23], 15)
-	is.Equal(copdata.HighestRankAbsolutely[23], 13)
+	is.Equal(copdata.HighestRankAbsolutely[23], 14)
 	is.Equal(copdata.LowestRankAbsolutely[0], 0)
 	is.Equal(copdata.LowestRankAbsolutely[1], 1)
 	is.Equal(copdata.LowestRankAbsolutely[2], 10)

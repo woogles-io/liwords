@@ -17,6 +17,10 @@ const (
 	ByePlayerIndex int = 0xFFFF
 )
 
+// NumSimWorkersOverride, when non-zero, overrides runtime.NumCPU() in parallel sim
+// functions. Set this in tests to get deterministic results across machines.
+var NumSimWorkersOverride int
+
 const (
 	playerWinsOffset                     int     = 48
 	initialWinsValue                     int     = 1 << (64 - playerWinsOffset - 1)
@@ -617,7 +621,10 @@ func (standings *Standings) runParallelSims(
 	pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int,
 	stopTimeNano int64,
 ) (int, bool) {
-	numWorkers := runtime.NumCPU()
+	numWorkers := NumSimWorkersOverride
+	if numWorkers == 0 {
+		numWorkers = runtime.NumCPU()
+	}
 	if numWorkers > numSims {
 		numWorkers = numSims
 	}
@@ -676,7 +683,10 @@ func (standings *Standings) runParallelSimForceWinner(
 	copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int,
 	pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64,
 ) (int, pb.PairError) {
-	numWorkers := runtime.NumCPU()
+	numWorkers := NumSimWorkersOverride
+	if numWorkers == 0 {
+		numWorkers = runtime.NumCPU()
+	}
 	if numWorkers > sims {
 		numWorkers = sims
 	}
