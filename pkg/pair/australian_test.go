@@ -875,6 +875,33 @@ func TestAustralianResetRoundBehavior(t *testing.T) {
 	is.True(err != nil)
 }
 
+func TestAustralianResetStopsAtCurrentRound(t *testing.T) {
+	is := is.New(t)
+
+	// When no pairing exists even after fully relaxing the repeat rule, the
+	// loop must stop at reset == currentRound. A prior meeting can only be in a
+	// round < currentRound (the round being paired has not happened yet), so
+	// reset == currentRound already forgives every repeat; the pass at
+	// currentRound+1 would rebuild an identical block matrix and fail
+	// identically. Pin that the redundant currentRound+1 pass is not run by
+	// recording the largest reset the loop ever consults.
+	n := 2
+	currentRound := 5
+	maxReset := -1
+	hasPlayedSince := func(a, b, reset int) bool {
+		if reset > maxReset {
+			maxReset = reset
+		}
+		// Never forgiven, so the loop relaxes all the way and then fails.
+		return true
+	}
+	blockedPair := func(a, b int) bool { return false }
+
+	_, err := australianMatchWithReset(n, 0, currentRound, hasPlayedSince, blockedPair)
+	is.True(err != nil)
+	is.Equal(maxReset, currentRound)
+}
+
 func TestAustralianResetRoundForgivesEarlierRepeats(t *testing.T) {
 	is := is.New(t)
 

@@ -319,9 +319,11 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 // considered a repeat at the active reset round, and blockedPair reports a hard
 // director block. currentRound is the round being paired. The reset starts at
 // earliestReset and is relaxed (incremented) one round at a time; raising it
-// must be monotonically more permissive. The final, fully relaxed pass uses
-// reset == currentRound+1 (no past round counts as a repeat); if even that pass
-// cannot pair the field the failure is final. n is the padded, even field size.
+// must be monotonically more permissive. The fully relaxed pass uses
+// reset == currentRound: a prior meeting can only be in a round < currentRound
+// (the round being paired has not happened yet), so reset == currentRound
+// already forgives every repeat. If even that pass cannot pair the field the
+// failure is final. n is the padded, even field size.
 func australianMatchWithReset(
 	n int,
 	earliestReset int,
@@ -348,13 +350,15 @@ func australianMatchWithReset(
 		}
 
 		// The next pass relaxes the repeat rule by one round. The pass at
-		// reset == currentRound+1 forbids no repeats at all, so if it still
-		// fails the obstruction is a hard block (director block or parity), not
-		// a repeat, and the failure is final.
-		if reset >= currentRound+1 {
+		// reset == currentRound already forbids no repeats at all -- every prior
+		// meeting is in a round < currentRound -- so if it still fails the
+		// obstruction is a hard block (director block or parity), not a repeat,
+		// and the failure is final. (Relaxing further, to currentRound+1, would
+		// rebuild an identical block matrix and fail identically.)
+		if reset >= currentRound {
 			return nil, fmt.Errorf(
 				"australian draw could not pair %d players even after relaxing"+
-					" the repeat rule past round %d", n, currentRound)
+					" the repeat rule to round %d", n, currentRound)
 		}
 	}
 }
