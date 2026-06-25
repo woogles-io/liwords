@@ -157,8 +157,16 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 	// its writes on a failed branch, so on return false pairings is unchanged.
 	// The field is even and each step removes a pair, so every recursive r is
 	// even too.
-	var casement func(r []int, allowFlip bool) bool
-	casement = func(r []int, allowFlip bool) bool {
+	// Per-depth scratch buffers for the remaining-positions list, so the
+	// backtracking allocates nothing per node. Each level removes a pair, so
+	// the recursion depth is bounded by n/2.
+	scratch := make([][]int, n/2+1)
+	for i := range scratch {
+		scratch[i] = make([]int, n)
+	}
+
+	var casement func(r []int, allowFlip bool, depth int) bool
+	casement = func(r []int, allowFlip bool, depth int) bool {
 		if len(r) == 0 {
 			return true
 		}
@@ -178,7 +186,7 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 			}
 			pairings[p] = b
 			pairings[b] = p
-			if casement(without(r, p, b), allowFlip) {
+			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
 				return true
 			}
 			pairings[p] = -1
@@ -195,7 +203,7 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 			}
 			pairings[p] = b
 			pairings[b] = p
-			if casement(without(r, p, b), allowFlip) {
+			if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
 				return true
 			}
 			pairings[p] = -1
@@ -212,7 +220,7 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 				}
 				pairings[p] = b
 				pairings[b] = p
-				if casement(without(r, p, b), allowFlip) {
+				if casement(withoutInto(scratch[depth], r, p, b), allowFlip, depth+1) {
 					return true
 				}
 				pairings[p] = -1
@@ -233,7 +241,7 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 	for i := range pairings {
 		pairings[i] = -1
 	}
-	if casement(all, false) {
+	if casement(all, false, 0) {
 		return pairings, nil
 	}
 
@@ -242,7 +250,7 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 	for i := range pairings {
 		pairings[i] = -1
 	}
-	if casement(all, true) {
+	if casement(all, true, 0) {
 		return pairings, nil
 	}
 
@@ -251,18 +259,21 @@ func australianCasementBlocked(n int, blocked [][]bool) ([]int, error) {
 			" configured blocks", n)
 }
 
-// without returns the positions in r (ascending) with a and b removed,
-// preserving order. r[0] is always a; b is some later element. The result is a
-// fresh slice so recursion never aliases the caller's view of r.
-func without(r []int, a, b int) []int {
-	rest := make([]int, 0, len(r)-2)
+// withoutInto writes the positions in r (ascending) with a and b removed into
+// dst, preserving order, and returns the dst prefix holding them. r[0] is
+// always a; b is some later element. dst is a caller-provided per-depth scratch
+// buffer, so the backtracking search never allocates per node and never aliases
+// an ancestor's list (each recursion depth has its own buffer).
+func withoutInto(dst, r []int, a, b int) []int {
+	m := 0
 	for _, x := range r {
 		if x == a || x == b {
 			continue
 		}
-		rest = append(rest, x)
+		dst[m] = x
+		m++
 	}
-	return rest
+	return dst[:m]
 }
 
 // australianMatch pairs the even field of n positions in standings order by
@@ -283,8 +294,16 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 		pairings[i] = -1
 	}
 
-	var match func(r []int) bool
-	match = func(r []int) bool {
+	// Per-depth scratch buffers for the remaining-positions list, so the
+	// backtracking allocates nothing per node. Each level removes a pair, so
+	// the recursion depth is bounded by n/2.
+	scratch := make([][]int, n/2+1)
+	for i := range scratch {
+		scratch[i] = make([]int, n)
+	}
+
+	var match func(r []int, depth int) bool
+	match = func(r []int, depth int) bool {
 		if len(r) == 0 {
 			return true
 		}
@@ -295,7 +314,7 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 			}
 			pairings[p] = q
 			pairings[q] = p
-			if match(without(r, p, q)) {
+			if match(withoutInto(scratch[depth], r, p, q), depth+1) {
 				return true
 			}
 			pairings[p] = -1
@@ -308,7 +327,7 @@ func australianMatch(n int, blocked [][]bool) ([]int, bool) {
 	for i := range all {
 		all[i] = i
 	}
-	if !match(all) {
+	if !match(all, 0) {
 		return nil, false
 	}
 	return pairings, true
