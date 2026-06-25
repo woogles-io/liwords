@@ -134,25 +134,6 @@ export const LeagueCorrespondenceGames: React.FC<
             game.players.findIndex((p) => p.uuid === userID) ===
               game.playerOnTurn;
 
-          // Bank-aware countdowns for the on-turn player: before-expiry is the
-          // hard deadline (per-turn allowance + bank - elapsed), before-bleed
-          // is the free-time window before the bank starts draining. The shared
-          // CorrespondenceTurnIndicator renders these (and the low-time /
-          // time-bank escalations) from the values below.
-          const now = Date.now();
-          let countdowns: ReturnType<typeof onTurnCountdowns> | undefined;
-          let hasTimeBank = false;
-          if (game.playerOnTurn !== undefined && game.lastUpdate) {
-            const timeElapsedSecs = (now - game.lastUpdate) / 1000;
-            const bankSecs = (game.timeBank?.[game.playerOnTurn] ?? 0) / 1000;
-            hasTimeBank = bankSecs > 0;
-            countdowns = onTurnCountdowns(
-              game.incrementSecs,
-              bankSecs,
-              timeElapsedSecs,
-            );
-          }
-
           // Get opponent name and scores
           const userPlayerIndex = game.players.findIndex(
             (p) => p.uuid === userID,
@@ -233,12 +214,17 @@ export const LeagueCorrespondenceGames: React.FC<
                     </span>
                   )}
                 </div>
-                {(isUserTurn || countdowns) && (
+                {game.playerOnTurn !== undefined && (
                   <div className="turn-indicator-compact">
                     <CorrespondenceTurnIndicator
-                      onTurn={!!isUserTurn}
-                      countdowns={countdowns}
-                      hasTimeBank={hasTimeBank}
+                      perspective={
+                        isUserTurn
+                          ? { kind: "mine" }
+                          : { kind: "opponent", playerName: opponentName }
+                      }
+                      lastUpdateMs={game.lastUpdate || undefined}
+                      incrementMs={game.incrementSecs * 1000}
+                      bankMs={game.timeBank?.[game.playerOnTurn] ?? 0}
                     />
                   </div>
                 )}
