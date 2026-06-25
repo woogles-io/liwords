@@ -106,64 +106,6 @@ export function onTurnCountdowns(
   };
 }
 
-/**
- * Format a duration (in seconds) coarsely for the correspondence/league game
- * lists. Granularity is intentionally low (at most two adjacent units, never
- * per-second) since these are multi-hour/day countdowns that only refresh on
- * list updates. Examples: "2d 3h", "5h 12m", "47m", "30s", "now".
- *
- * Non-positive inputs render as "now" (the deadline has passed / is imminent).
- */
-export function formatCoarseDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return "now";
-  }
-  const totalSeconds = Math.floor(seconds);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-
-  if (days > 0) {
-    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
-  }
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
-  return `${secs}s`;
-}
-
-/**
- * Like formatCoarseDuration but renders only the single largest unit, for the
- * compact at-a-glance time shown inline in the correspondence/league game
- * lists. The full two-unit value (and the free-time window) belong in a
- * tooltip. Examples: "2d", "5h", "47m", "30s", "now".
- *
- * Non-positive inputs render as "now" (the deadline has passed / is imminent).
- */
-export function formatCoarseDurationShort(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return "now";
-  }
-  const totalSeconds = Math.floor(seconds);
-  const days = Math.floor(totalSeconds / 86400);
-  if (days > 0) {
-    return `${days}d`;
-  }
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  if (hours > 0) {
-    return `${hours}h`;
-  }
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
-  return `${totalSeconds % 60}s`;
-}
-
 export type NextCorresPick<T> = {
   // The game to jump to next, or null when there is nowhere to cycle to.
   next: T | null;
