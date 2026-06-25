@@ -693,17 +693,16 @@ type RoundControl struct {
 	// control_loss_activation_round is 0-indexed relative to the start of this COP round range.
 	ControlLossActivationRound int32 `protobuf:"varint,18,opt,name=control_loss_activation_round,json=controlLossActivationRound,proto3" json:"control_loss_activation_round,omitempty"`
 	PlacePrizes                int32 `protobuf:"varint,19,opt,name=place_prizes,json=placePrizes,proto3" json:"place_prizes,omitempty"`
-	// reset_round is the Australian Draw repeat-reset point, stored as a
-	// 1-based round number (valid >= 1). A meeting in 1-based round r is
-	// avoided as a repeat iff r >= reset_round, so meetings in earlier rounds
-	// are allowed to recur. This emulates a day-based reset (e.g. set 9 so
-	// rounds 1-8 are forgiven when pairing round 9 onward). 0/unset is treated
-	// as 1 (reset from round 1 = avoid all prior meetings, the default
-	// no-repeat behavior); do not rely on the proto3 zero-default as a
-	// meaningful sentinel -- the reader clamps it explicitly. reset_round at or
-	// past the current round forgives every prior meeting (King-of-the-Hill).
-	// When even a strict pairing is impossible the reset point is relaxed
-	// upward one round at a time.
+	// reset_round is the Australian Draw repeat-reset point, a 0-based round
+	// number (matching the 0-based rounds used everywhere else). A meeting in
+	// round r is avoided as a repeat iff r >= reset_round, so meetings in
+	// earlier rounds are allowed to recur. This emulates a day-based reset (e.g.
+	// set 8 so rounds 0-7 are forgiven when pairing round 8 onward). The proto3
+	// zero-default (0) means reset from round 0 = avoid all prior meetings (the
+	// default no-repeat behavior). reset_round at or past the current round
+	// forgives every prior meeting (King-of-the-Hill). When even a strict
+	// pairing is impossible the reset point is relaxed upward one round at a
+	// time.
 	ResetRound    uint32 `protobuf:"varint,20,opt,name=reset_round,json=resetRound,proto3" json:"reset_round,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

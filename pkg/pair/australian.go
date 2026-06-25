@@ -18,9 +18,10 @@ import (
 // pairs the top remaining player with the highest-standing opponent they are
 // allowed to face, recursing on the rest and backtracking if no completion
 // exists. A rematch is avoided only when the two players met in a round at or
-// after the reset point (reset_round, a 1-based round number), so a configured
-// day boundary forgives earlier meetings; meetings before the reset may recur
-// freely. reset_round of 1 avoids every prior meeting (the default); a
+// after the reset point (reset_round, a 0-based round number, matching the
+// 0-based rounds used everywhere else), so a configured day boundary forgives
+// earlier meetings; meetings before the reset may recur freely. reset_round of
+// 0 avoids every prior meeting (the default); a
 // reset_round at or past the current round forgives them all. If no draw
 // exists under the current reset, the reset point is raised one round at a
 // time -- forgiving the next-oldest round of repeats -- and the search is
@@ -436,25 +437,15 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 			return nil, err
 		}
 	} else {
-		// reset_round is stored 1-based (the reset point as a round number).
-		// Clamp it explicitly: 0/unset/legacy values mean round 1 = reset from
-		// round 1 = avoid every prior meeting (the default no-repeat behavior).
-		// Do not lean on the proto3 zero-default as API -- treat <1 as 1 here.
-		resetRound := int(members.RoundControls.ResetRound)
-		if resetRound < 1 {
-			resetRound = 1
-		}
-
-		// earliestReset is the 0-indexed round threshold the repeat rule uses
-		// (members.RoundControls.Round and the RepeatRounds history are
-		// 0-indexed). A meeting in 1-based round r == 0-indexed round r-1 is
-		// avoided iff r >= resetRound, i.e. (r-1) >= resetRound-1, so the
-		// 0-indexed threshold is resetRound-1. resetRound==1 gives threshold 0
-		// => every prior round is avoided; a large resetRound gives a high
-		// threshold => no prior round counts (King-of-the-Hill). The retry loop
-		// relaxes this threshold upward one round at a time when a strict
-		// pairing is impossible.
-		earliestReset := resetRound - 1
+		// reset_round is the 0-indexed round threshold the repeat rule uses
+		// (members.RoundControls.Round and the RepeatRounds history are also
+		// 0-indexed). A meeting in round r is avoided iff r >= reset_round, so
+		// reset_round == 0 avoids every prior round (the default) and a large
+		// reset_round forgives them all (King-of-the-Hill). The proto3 zero-
+		// default (0) is therefore the correct default and needs no clamping.
+		// The retry loop relaxes this threshold upward one round at a time when
+		// a strict pairing is impossible.
+		earliestReset := int(members.RoundControls.ResetRound)
 		if earliestReset > currentRound {
 			// A reset point past the current round would forgive everything;
 			// clamp the threshold so the strictest pass still avoids the most
@@ -466,7 +457,7 @@ func pairAustralianDraw(members *entity.UnpairedPoolMembers) ([]int, error) {
 		// when the number of rounds >= reset in which they met exceeds
 		// MaxRepeats. Meetings in rounds before reset are forgiven, so as the
 		// retry loop raises reset the rule relaxes one round at a time. The
-		// final relaxed pass (reset == currentRound+1) counts no prior round, so
+		// final relaxed pass (reset == currentRound) counts no prior round, so
 		// the field can always be paired when no hard block stands in the way.
 		// RepeatRounds may be nil (e.g. the dispatcher path on a pre-round-1
 		// sub-pool); a nil map yields no meetings and thus no repeat blocks,

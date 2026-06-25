@@ -336,10 +336,11 @@ export const rdCtrlFromSetting = (
       break;
 
     case PairingMethod.AUSTRALIAN_DRAW:
-      // resetRound is the 1-based reset point, stored directly in the proto
-      // (no offset). Round 1 = avoid all repeats. An unset value defaults to
-      // the input minimum of 1; the backend clamps anything below 1 to 1.
-      rdCtrl.resetRound = rdSetting.resetRound || 1;
+      // The Reset Round field is 1-based (a round number; the default is 1 =
+      // avoid all repeats), but the proto/engine store reset_round 0-based like
+      // every other round. Convert on the way in: input N -> N-1. Default input
+      // 1 -> 0, which is also the proto3 zero-default ("avoid all").
+      rdCtrl.resetRound = (rdSetting.resetRound ?? 1) - 1;
       break;
 
     case PairingMethod.PAIRING_METHOD_COP:

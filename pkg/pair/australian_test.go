@@ -34,8 +34,8 @@ func auMembers(round int32, maxRepeats int32, repeats map[string]int, ids ...str
 
 // auMembersRounds is auMembers with explicit control over the reset round and
 // the per-round meeting history. resetRound is the proto reset_round field,
-// stored 1-based (the reset point as a round number; a meeting in 1-based
-// round r is avoided iff r >= resetRound, and 0/unset means 1 = avoid all).
+// a 0-based round threshold (a meeting in 0-indexed round r is avoided iff
+// r >= resetRound, and 0/unset means 0 = avoid all prior meetings).
 // repeatRounds maps each pair key to the ascending list of 0-indexed rounds
 // in which the two players met (the history is 0-indexed, like round).
 func auMembersRounds(round int32, maxRepeats int32, resetRound uint32, repeats map[string]int, repeatRounds map[string][]int, ids ...string) *entity.UnpairedPoolMembers {
@@ -913,22 +913,21 @@ func TestAustralianResetRoundForgivesEarlierRepeats(t *testing.T) {
 		GetRepeatKey("a", "c"): {9},
 	}
 
-	// reset_round 9 (1-based) emulates a day boundary at round 9: the round-2
-	// a-b meeting is before it (1-based round 3 < 9) and may recur, but the
-	// round-9 a-c meeting is at or after it (1-based round 10 >= 9) and is
-	// avoided. The matcher therefore pairs a with its highest opponent b,
-	// leaving c-d.
-	m := auMembersRounds(10, 0, 9, nil, repeatRounds, "a", "b", "c", "d")
+	// reset_round 8 (0-based) emulates a day boundary at round 8: the round-2
+	// a-b meeting is before it (2 < 8) and may recur, but the round-9 a-c
+	// meeting is at or after it (9 >= 8) and is avoided. The matcher therefore
+	// pairs a with its highest opponent b, leaving c-d.
+	m := auMembersRounds(10, 0, 8, nil, repeatRounds, "a", "b", "c", "d")
 	pairings, err := pairAustralianDraw(m)
 	is.NoErr(err)
 	assertSymmetric(is, pairings)
 	got := idPairings(m, pairings)
 	is.Equal(got, map[string]string{"a": "b", "b": "a", "c": "d", "d": "c"})
 
-	// With reset_round 1 (the strict default: avoid every prior meeting) on
+	// With reset_round 0 (the strict default: avoid every prior meeting) on
 	// the same history, both prior meetings are avoided: a cannot take b
 	// (round 2) or c (round 9), so a falls to d, leaving b-c (who never met).
-	m2 := auMembersRounds(10, 0, 1, nil, repeatRounds, "a", "b", "c", "d")
+	m2 := auMembersRounds(10, 0, 0, nil, repeatRounds, "a", "b", "c", "d")
 	pairings2, err := pairAustralianDraw(m2)
 	is.NoErr(err)
 	got2 := idPairings(m2, pairings2)
@@ -939,18 +938,17 @@ func TestAustralianResetRoundRelaxesStepwise(t *testing.T) {
 	is := is.New(t)
 
 	// Two players a and b who met in (0-indexed) round 7, pairing round 10
-	// with MaxRepeats 0. reset_round starts at 7 (1-based), giving a 0-indexed
-	// threshold of 6, so the round-7 meeting is at or after the reset and is
-	// avoided; with only two players the strict pass has no legal pairing. The
-	// relaxation must raise the threshold one step at a time: thresholds 6 and
-	// 7 both still avoid the round-7 meeting (the boundary is inclusive), but
-	// threshold 8 forgives it, so the pair is finally allowed. This exercises
-	// the per-round relaxation -- it is not the all-or-nothing jump the totals
-	// map could only express.
+	// with MaxRepeats 0. reset_round starts at 6 (0-based), so the round-7
+	// meeting is at or after the reset (7 >= 6) and is avoided; with only two
+	// players the strict pass has no legal pairing. The relaxation must raise
+	// the threshold one step at a time: thresholds 6 and 7 both still avoid the
+	// round-7 meeting (the boundary is inclusive), but threshold 8 forgives it,
+	// so the pair is finally allowed. This exercises the per-round relaxation
+	// -- it is not the all-or-nothing jump the totals map could only express.
 	repeatRounds := map[string][]int{
 		GetRepeatKey("a", "b"): {7},
 	}
-	m := auMembersRounds(10, 0, 7, nil, repeatRounds, "a", "b")
+	m := auMembersRounds(10, 0, 6, nil, repeatRounds, "a", "b")
 	pairings, err := pairAustralianDraw(m)
 	is.NoErr(err)
 	assertSymmetric(is, pairings)
