@@ -332,14 +332,30 @@ func australianMatchWithReset(
 	hasPlayedSince func(a, b, reset int) bool,
 	blockedPair func(a, b int) bool,
 ) ([]int, error) {
-	for reset := earliestReset; ; reset++ {
-		blocked := make([][]bool, n)
-		for i := range blocked {
-			blocked[i] = make([]bool, n)
+	// The director-block half of the block matrix is constant across reset
+	// passes (blockedPair does not depend on reset), so compute it once. Only
+	// the repeat half (hasPlayedSince) changes as the reset relaxes, so each
+	// pass overwrites the reused blocked matrix in place rather than allocating
+	// a fresh one. australianMatch reads blocked without mutating it, so reuse
+	// is safe.
+	dirBlocked := make([][]bool, n)
+	blocked := make([][]bool, n)
+	for i := range blocked {
+		dirBlocked[i] = make([]bool, n)
+		blocked[i] = make([]bool, n)
+	}
+	for a := 0; a < n; a++ {
+		for b := a + 1; b < n; b++ {
+			d := blockedPair(a, b)
+			dirBlocked[a][b] = d
+			dirBlocked[b][a] = d
 		}
+	}
+
+	for reset := earliestReset; ; reset++ {
 		for a := 0; a < n; a++ {
 			for b := a + 1; b < n; b++ {
-				block := blockedPair(a, b) || hasPlayedSince(a, b, reset)
+				block := dirBlocked[a][b] || hasPlayedSince(a, b, reset)
 				blocked[a][b] = block
 				blocked[b][a] = block
 			}
