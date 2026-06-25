@@ -1162,3 +1162,56 @@ func CreateLG2025Round15PairRequest() *pb.PairRequest {
 	}
 	return request
 }
+
+func CreateManhattanAfterRound14PairRequest() *pb.PairRequest {
+	request := &pb.PairRequest{
+		PairMethod:   pb.PairMethod_COP,
+		AllPlayers:   18,
+		ValidPlayers: 18,
+		Rounds:       16,
+		PlayerNames:  []string{"Jackson Smylie", "Joel Sherman", "Cesar Del Solar", "Evan Chester", "Kenneth Rubin", "Samuel Kaplan", "Kurt Davies", "Eric Goldstein", "Zach Bittker", "Samuel Moch", "Noah Goldstein", "Lynn Cushman", "Jeremy Frank", "Cameron Siegal", "Jeremy Hall", "Edwin Roth", "Stefan Fatsis", "Sam Masling"},
+		DivisionPairings: []*pb.RoundPairings{
+			{Pairings: []int32{17, 4, 5, 10, 1, 2, 13, 12, 9, 8, 3, 16, 7, 6, 15, 14, 11, 0}},
+			{Pairings: []int32{11, 6, 17, 12, 5, 4, 1, 14, 13, 10, 9, 0, 3, 8, 7, 16, 15, 2}},
+			{Pairings: []int32{15, 8, 11, 14, 17, 6, 5, 16, 1, 12, 13, 2, 9, 10, 3, 0, 7, 4}},
+			{Pairings: []int32{7, 10, 15, 16, 11, 8, 17, 0, 5, 14, 1, 4, 13, 12, 9, 2, 3, 6}},
+			{Pairings: []int32{3, 12, 7, 0, 15, 10, 11, 2, 17, 16, 5, 6, 1, 14, 13, 4, 9, 8}},
+			{Pairings: []int32{9, 14, 3, 2, 7, 12, 15, 4, 11, 0, 17, 8, 5, 16, 1, 6, 13, 10}},
+			{Pairings: []int32{13, 16, 9, 4, 3, 14, 7, 6, 15, 2, 11, 10, 17, 0, 5, 8, 1, 12}},
+			{Pairings: []int32{1, 0, 13, 6, 9, 16, 3, 8, 7, 4, 15, 12, 11, 2, 17, 10, 5, 14}},
+			{Pairings: []int32{5, 2, 1, 8, 13, 0, 9, 10, 3, 6, 7, 14, 15, 4, 11, 12, 17, 16}},
+			{Pairings: []int32{4, 3, 14, 1, 0, 13, 16, 9, 11, 7, 12, 8, 10, 5, 2, 17, 6, 15}},
+			{Pairings: []int32{9, 13, 4, 15, 2, 7, 12, 5, 14, 0, 16, 17, 6, 1, 8, 3, 10, 11}},
+			{Pairings: []int32{2, 7, 0, 13, 8, 9, 17, 1, 4, 5, 14, 15, 16, 3, 10, 11, 12, 6}},
+			{Pairings: []int32{4, 5, 10, 11, 0, 1, 15, 9, 16, 7, 2, 3, 14, 17, 12, 6, 8, 13}},
+			{Pairings: []int32{10, 11, 9, 7, 5, 4, 16, 3, 12, 2, 0, 1, 8, 15, 17, 13, 6, 14}},
+		},
+		DivisionResults: []*pb.RoundResults{
+			{Results: []int32{591, 358, 389, 360, 450, 417, 393, 312, 450, 355, 430, 336, 509, 447, 333, 423, 463, 364}},
+			{Results: []int32{454, 271, 420, 457, 385, 510, 452, 287, 378, 473, 339, 418, 363, 575, 501, 368, 436, 358}},
+			{Results: []int32{465, 328, 454, 440, 320, 391, 373, 436, 394, 547, 447, 444, 365, 366, 383, 305, 414, 378}},
+			{Results: []int32{532, 504, 461, 463, 460, 455, 529, 272, 356, 442, 360, 353, 356, 437, 422, 374, 371, 347}},
+			{Results: []int32{526, 376, 389, 289, 535, 385, 327, 425, 406, 416, 463, 449, 427, 356, 560, 199, 366, 455}},
+			{Results: []int32{414, 475, 434, 424, 398, 398, 393, 496, 377, 414, 445, 469, 390, 410, 305, 380, 389, 362}},
+			{Results: []int32{390, 459, 358, 339, 442, 300, 340, 368, 353, 421, 289, 488, 401, 559, 407, 342, 452, 358}},
+			{Results: []int32{428, 353, 577, 444, 504, 375, 364, 411, 371, 391, 338, 470, 345, 323, 423, 384, 443, 349}},
+			{Results: []int32{398, 518, 355, 357, 600, 366, 397, 476, 457, 475, 323, 355, 538, 346, 457, 305, 314, 484}},
+			{Results: []int32{377, 576, 500, 412, 473, 415, 342, 392, 431, 407, 449, 376, 351, 362, 299, 402, 413, 391}},
+			{Results: []int32{347, 528, 515, 426, 362, 439, 333, 386, 456, 426, 499, 426, 354, 338, 366, 430, 304, 449}},
+			{Results: []int32{423, 352, 461, 496, 480, 466, 416, 502, 311, 358, 366, 455, 413, 400, 401, 363, 324, 465}},
+			{Results: []int32{326, 407, 286, 323, 502, 380, 387, 365, 406, 389, 356, 519, 358, 418, 400, 357, 360, 624}},
+			{Results: []int32{506, 379, 511, 513, 454, 366, 329, 381, 461, 363, 327, 315, 453, 573, 501, 396, 389, 459}},
+		},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.30,
+		HopefulnessThreshold:       0.02,
+		PlacePrizes:                2,
+		DivisionSims:               10000,
+		ControlLossSims:            100000,
+		ControlLossActivationRound: 15,
+		AllowRepeatByes:            false,
+	}
+	return request
+}

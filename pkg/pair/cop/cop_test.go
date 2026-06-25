@@ -701,9 +701,9 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	req = pairtestutils.CreateLakeGeorgeAfterRound13PairRequest()
 	is.Equal(verifyreq.Verify(req), nil)
 
-	// This is the first round that control loss is active, so first will
-	// be force paired with the lowest contender. Therefore, prepairing the lowest
-	// contender with someone else will result in an overconstrained error.
+	// With 6 rounds remaining and KOTH as the last round, rank 4 (not rank 3) is
+	// the lowest contender with control loss. Prepairing player 25 (rank 3) with
+	// player 6 no longer conflicts with the Destiny's Child requirement.
 	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
 	req.ControlLossActivationRound = 21
 	req.Seed = 1
@@ -836,6 +836,63 @@ func TestCOPWeights(t *testing.T) {
 	// for pairings with a gibsonized player are squared.
 	is.Equal(resp.Pairings[9], int32(25))
 	is.Equal(resp.Pairings[25], int32(9))
+
+	// PC weight uses LowestPossibleHopeNth exclusively for all hopeful cashers.
+	// The retry mechanism works at the matching level: if a selected edge has weight
+	// >= majorPenalty, LowestPossibleHopeNth is incremented for both players and
+	// the matching is retried. In the fourth quarter (2 rounds left of 10), cashers
+	// use PC weight only (RD is suppressed).
+	//
+	// AlmostGibsonized Q4: player 4 pairs with player 7 (non-majorPenalty, no retry).
+	// Player 5 pairs with player 9 (within contender range, no retry). Player 0 pairs
+	// with player 18 via the retry: the first-pass edge (rank0, rank18) has weight
+	// >= majorPenalty, which expands LowestPossibleHopeNth for those players, and the
+	// second pass selects the same edge with a lower weight.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// whatnoloan and condorave still play (unchanged)
+	is.Equal(resp.Pairings[1], int32(3))
+	is.Equal(resp.Pairings[3], int32(1))
+	// In the fourth quarter, RD is suppressed for cashers; PC weight drives player 4
+	// to its nearest LowestPossibleHopeNth opponent (non-majorPenalty, no retry).
+	is.Equal(resp.Pairings[4], int32(7))
+	is.Equal(resp.Pairings[7], int32(4))
+	// Player 5 pairs within contender range (no retry).
+	is.Equal(resp.Pairings[5], int32(9))
+	is.Equal(resp.Pairings[14], int32(13))
+
+	// Kingston 2023 after round 15: player 0's first-pass pairing is within the
+	// contender range (non-majorPenalty), so no retry is triggered.
+	req = pairtestutils.CreateKingston2023AfterRound15PairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(9))
+
+	// In the fourth quarter (roundsRemaining*4 <= Rounds), cashers use PC weight only
+	// and non-cashers use RD weight only. Outside the fourth quarter, RD applies to all.
+	//
+	// AlmostGibsonized: lowestPossibleHopeCasher = rank 7. Rounds=10 is Q4 (2*4=8 <= 10).
+	// Outside Q4 (Rounds=12, 4*4=16 > 12): RD-only for all players.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Rounds = 12
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[4], int32(9))
+	is.Equal(resp.Pairings[10], int32(0))
+	is.Equal(resp.Pairings[13], int32(17))
+	is.Equal(resp.Pairings[17], int32(13))
+
+	// In Q4 (Rounds=10), non-casher players pair by RD only.
+	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
+	req.Seed = 1
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[10], int32(17))
+	is.Equal(resp.Pairings[13], int32(14))
 }
 
 func TestCOPSuccess(t *testing.T) {

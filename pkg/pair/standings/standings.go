@@ -2,8 +2,10 @@ package standings
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
@@ -15,18 +17,22 @@ const (
 	ByePlayerIndex int = 0xFFFF
 )
 
+// NumSimWorkersOverride, when non-zero, overrides runtime.NumCPU() in parallel sim
+// functions. Set this in tests to get deterministic results across machines.
+var NumSimWorkersOverride int
+
 const (
-	playerWinsOffset    int     = 48
-	initialWinsValue    int     = 1 << (64 - playerWinsOffset - 1)
-	playerSpreadOffset  int     = 16
-	initialSpreadValue  int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
-	playerIndexMask     uint64  = 0xFFFF
-	byeSpread           int     = 50
-	simConfidence       float64 = 0.99
-	resimBatchSize      int     = 10000
-	initialSimTimeLimit int     = 6
-	reSimTimeLimit      int     = 6
-	controlSimTimeLimit int     = 6
+	playerWinsOffset                     int     = 48
+	initialWinsValue                     int     = 1 << (64 - playerWinsOffset - 1)
+	playerSpreadOffset                   int     = 16
+	initialSpreadValue                   int     = 1 << (playerWinsOffset - playerSpreadOffset - 1)
+	playerIndexMask                      uint64  = 0xFFFF
+	simConfidence                        float64 = 0.99
+	resimBatchSize                       int     = 10000
+	initialSimTimeLimit                  int     = 6
+	reSimTimeLimit                       int     = 6
+	controlSimTimeLimit                  int     = 6
+	controlLossWinAllVsFirstRoundsThresh int     = 4
 )
 
 type Standings struct {
@@ -168,7 +174,7 @@ func (standings *Standings) GetPlayerWins(rankIdx int) float64 {
 // GetPlayerWinsIntTimesTwo returns wins*2 + ties as an integer, avoiding
 // a float64 round-trip when callers need an integer win comparison.
 func (standings *Standings) GetPlayerWinsIntTimesTwo(rankIdx int) int {
-	return int(getWinsValue(standings.records[rankIdx])-initialWinsValue+standings.roundsPlayed)
+	return int(getWinsValue(standings.records[rankIdx]) - initialWinsValue + standings.roundsPlayed)
 }
 
 func (standings *Standings) GetPlayerSpread(rankIdx int) int {
@@ -277,11 +283,12 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	startRankIdx := 0
 	endRankIdx := 0
 	leftoverGibsonPlayers := []int{}
+	controlLoss := lowestHopeControlLosser >= 0
 	pairingsStartIdx := 0
 	segmentRoundFactors := []int{}
 	for endRankIdx <= numPlayers {
 		if endRankIdx == numPlayers {
-			assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, leftoverGibsonPlayers, pairings, &segmentRoundFactors)
+			assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, leftoverGibsonPlayers, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 			for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
 				gibsonGroups[rankIdx] = 0
 			}
@@ -295,7 +302,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					// The number of players in the group is odd, so
 					// we have to pull in the gibsonized player at endRankIdx
 					// to even the group
-					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors)
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 					pairingsStartIdx += numPlayersInGibsonGroup + 1
 					for rankIdx := startRankIdx; rankIdx <= endRankIdx; rankIdx++ {
 						gibsonGroups[rankIdx] = nextGibsonGroup
@@ -306,7 +313,7 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					// The number of players in the group is even, so
 					// the gibsonized player is not included in the group
 					// and will be included in the bottom gibson group
-					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors)
+					assignPairingsForSegment(pairingsStartIdx, startRankIdx, endRankIdx-1, roundsRemaining, maxFactor, []int{}, pairings, &segmentRoundFactors, copRand, numPlayers, controlLoss)
 					pairingsStartIdx += numPlayersInGibsonGroup
 					for rankIdx := startRankIdx; rankIdx < endRankIdx; rankIdx++ {
 						gibsonGroups[rankIdx] = nextGibsonGroup
@@ -336,26 +343,20 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	totalSims := 0
 	if lowestHopeControlLosser < 0 {
 		initialSimStopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
-		for simIdx := 0; simIdx < sims; simIdx++ {
-			timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, initialSimStopTime)
-			if timeLimitExceeded {
-				break
+		count, tl := standings.runParallelSims(sims, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, initialSimStopTime)
+		totalSims += count
+		if !tl {
+			ranksToCheck := []int{int(req.PlacePrizes) - 1}
+			if !gibsonizedPlayers[0] {
+				ranksToCheck = append(ranksToCheck, 0)
 			}
-			totalSims++
-		}
-		ranksToCheck := []int{int(req.PlacePrizes) - 1}
-		if !gibsonizedPlayers[0] {
-			ranksToCheck = append(ranksToCheck, 0)
-		}
-		reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
-	outerThresholdLoop:
-		for !simResultsReachedThreshold(results, ranksToCheck, totalSims, req.HopefulnessThreshold) {
-			for resimIdx := 0; resimIdx < resimBatchSize; resimIdx++ {
-				timeLimitExceeded := standings.simToEndAndRecordResults(roundsRemaining, copRand, pairings, results, playerIdxToRankIdx, reSimStopTime)
-				if timeLimitExceeded {
-					break outerThresholdLoop
+			reSimStopTime := time.Now().UnixNano() + int64(reSimTimeLimit)*1e9
+			for !simResultsReachedThreshold(results, ranksToCheck, totalSims, req.HopefulnessThreshold) {
+				batchCount, batchTL := standings.runParallelSims(resimBatchSize, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, reSimStopTime)
+				totalSims += batchCount
+				if batchTL {
+					break
 				}
-				totalSims++
 			}
 		}
 	} else {
@@ -369,26 +370,60 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
 		for leftPlayerRankIdx <= rightPlayerRankIdx {
 			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
-			forcedWinnerPlayerIdx := standings.GetPlayerIndex(forcedWinnerRankIdx)
-			vsFirstTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, true, controlSimStopTime)
+			vsFirstTournamentWins, vsFactorPairTournamentWins, newSims, pairErr := standings.evaluatePlayerControlLoss(
+				copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerRankIdx, controlSimStopTime,
+				vsFirstWins, allControlLosses,
+			)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
-			totalSims++
-			vsFirstWins[forcedWinnerRankIdx] = vsFirstTournamentWins
-			vsFactorPairTournamentWins, pairErr := standings.simForceWinner(copRand, sims, roundsRemaining, pairings, forcedWinnerPlayerIdx, false, controlSimStopTime)
-			if pairErr != pb.PairError_SUCCESS {
-				return nil, pairErr
-			}
-			totalSims++
-			allControlLosses[forcedWinnerRankIdx] = vsFactorPairTournamentWins
-			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
-				rightPlayerRankIdx = forcedWinnerRankIdx - 1
-				if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
-					highestControlLossRankIdx = forcedWinnerRankIdx
+			totalSims += newSims
+			// The binary search conditions are different depending on the number of rounds remaining.
+			if roundsRemaining > controlLossWinAllVsFirstRoundsThresh {
+				if vsFirstTournamentWins < sims {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+				} else if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
+						highestControlLossRankIdx = forcedWinnerRankIdx
+					}
+				} else {
+					leftPlayerRankIdx = forcedWinnerRankIdx + 1
 				}
 			} else {
-				leftPlayerRankIdx = forcedWinnerRankIdx + 1
+				if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
+					rightPlayerRankIdx = forcedWinnerRankIdx - 1
+					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
+						highestControlLossRankIdx = forcedWinnerRankIdx
+					}
+				} else {
+					leftPlayerRankIdx = forcedWinnerRankIdx + 1
+				}
+			}
+
+		}
+		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
+			lowestFullWinRankIdx := -1
+			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
+				vsFirst, vsFactorPair, newSims, pairErr := standings.evaluatePlayerControlLoss(
+					copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
+					vsFirstWins, allControlLosses,
+				)
+				if pairErr != pb.PairError_SUCCESS {
+					return nil, pairErr
+				}
+				totalSims += newSims
+				if vsFirst == sims && vsFactorPair == sims {
+					lowestFullWinRankIdx = rankIdx
+				} else if lowestFullWinRankIdx != -1 {
+					break
+				}
+			}
+			if lowestFullWinRankIdx != -1 && lowestFullWinRankIdx+1 <= lowestHopeControlLosser {
+				bRankIdx := lowestFullWinRankIdx + 1
+				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
+					highestControlLossRankIdx = bRankIdx
+				}
 			}
 		}
 	}
@@ -403,6 +438,28 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		SegmentRoundFactors:       segmentRoundFactors,
 		TotalSims:                 totalSims,
 	}, pb.PairError_SUCCESS
+}
+
+func (standings *Standings) evaluatePlayerControlLoss(
+	copRand *rand.Rand, sims, roundsRemaining, maxFactor int, pairings [][]int,
+	rankIdx int, stopTime int64,
+	vsFirstWins, allControlLosses map[int]int,
+) (int, int, int, pb.PairError) {
+	if vsFirst, ok := vsFirstWins[rankIdx]; ok {
+		return vsFirst, allControlLosses[rankIdx], 0, pb.PairError_SUCCESS
+	}
+	playerIdx := standings.GetPlayerIndex(rankIdx)
+	vsFirst, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, playerIdx, true, stopTime)
+	if pairErr != pb.PairError_SUCCESS {
+		return 0, 0, 0, pairErr
+	}
+	vsFirstWins[rankIdx] = vsFirst
+	vsFactorPair, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, playerIdx, false, stopTime)
+	if pairErr != pb.PairError_SUCCESS {
+		return 0, 0, 0, pairErr
+	}
+	allControlLosses[rankIdx] = vsFactorPair
+	return vsFirst, vsFactorPair, 2, pb.PairError_SUCCESS
 }
 
 // Returns true if the time limit has been exceeded
@@ -493,29 +550,58 @@ func (standings *Standings) findRankIdx(playerIdx int) int {
 	return -1
 }
 
-func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
+func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
 	tournamentWins := 0
 	for simIdx := 0; simIdx < sims; simIdx++ {
 		for roundIdx := 0; roundIdx < roundsRemaining; roundIdx++ {
 			forcedWinnerRankIdx := standings.findRankIdx(forcedWinnerPlayerIdx)
-			var switchPairingIdx int
-			if vsFirst {
+
+			// Find the forced winner's current position in this round's pairings.
+			switchPairingIdx := -1
+			for idx, rankIdx := range pairings[roundIdx] {
+				if rankIdx == forcedWinnerRankIdx {
+					switchPairingIdx = idx
+					break
+				}
+			}
+
+			// Determine which swap (if any) to apply before simulating the round.
+			// swapIdxA and swapIdxB are the two positions to exchange.
+			swapIdxA, swapIdxB := -1, -1
+			if vsFirst && roundIdx < roundsRemaining-1 {
+				// Move forced winner to position 1 so they play rank 0 (1st place).
+				// Skip the final round: it is always KOTH and resolves naturally.
+				swapIdxA = 1
+				swapIdxB = switchPairingIdx
+			} else if switchPairingIdx == 1 && roundIdx < roundsRemaining-1 {
+				// Forced winner is currently rank 0's factor-pair opponent.
+				// Instead of having them play 1st, swap with another pairing:
+				//   - If forced winner is 2nd (rank 1): do 1st vs 3rd, 2nd vs 3rd's opponent.
+				//   - Otherwise: do 1st vs 2nd, forced winner vs 2nd's opponent.
+				swapIdxA = 1
+				targetRank := 1
+				if forcedWinnerRankIdx == 1 {
+					targetRank = 2
+				}
 				for idx, rankIdx := range pairings[roundIdx] {
-					if rankIdx == forcedWinnerRankIdx {
-						switchPairingIdx = idx
+					if rankIdx == targetRank {
+						swapIdxB = idx
 						break
 					}
 				}
 			}
-			if vsFirst {
-				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
+
+			if swapIdxA >= 0 && swapIdxB >= 0 {
+				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]
 			}
+
 			timeLimitExceeded := standings.simRound(copRand, pairings, roundIdx, forcedWinnerRankIdx, stopTimeNano)
 			if timeLimitExceeded {
 				return 0, pb.PairError_TIMEOUT
 			}
-			if vsFirst {
-				pairings[roundIdx][1], pairings[roundIdx][switchPairingIdx] = pairings[roundIdx][switchPairingIdx], pairings[roundIdx][1]
+
+			if swapIdxA >= 0 && swapIdxB >= 0 {
+				pairings[roundIdx][swapIdxA], pairings[roundIdx][swapIdxB] = pairings[roundIdx][swapIdxB], pairings[roundIdx][swapIdxA]
 			}
 		}
 		playerInFirst := standings.GetPlayerIndex(0)
@@ -527,14 +613,195 @@ func (standings *Standings) simForceWinner(copRand *rand.Rand, sims int, roundsR
 	return tournamentWins, pb.PairError_SUCCESS
 }
 
+// runParallelSims distributes numSims iterations of simToEndAndRecordResults across
+// runtime.NumCPU() goroutines, each operating on an independent copy of standings.
+// Returns (totalSimsCompleted, timeLimitExceeded).
+func (standings *Standings) runParallelSims(
+	numSims int, copRand *rand.Rand, roundsRemaining int,
+	pairings [][]int, results [][]int, playerIdxToRankIdx map[int]int,
+	stopTimeNano int64,
+) (int, bool) {
+	numWorkers := NumSimWorkersOverride
+	if numWorkers == 0 {
+		numWorkers = runtime.NumCPU()
+	}
+	if numWorkers > numSims {
+		numWorkers = numSims
+	}
+	numPlayers := len(standings.records)
+	simsPerWorker := numSims / numWorkers
+	remainder := numSims % numWorkers
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	totalSims := 0
+	timeLimitExceeded := false
+
+	for w := 0; w < numWorkers; w++ {
+		workerSims := simsPerWorker
+		if w < remainder {
+			workerSims++
+		}
+		wg.Add(1)
+		localStandings := standings.Copy()
+		workerRand := rand.New(rand.NewSource(uint64(copRand.Int63())))
+		localResults := make([][]int, numPlayers)
+		for i := range localResults {
+			localResults[i] = make([]int, numPlayers)
+		}
+		go func(sc *Standings, wr *rand.Rand, lr [][]int, ns int) {
+			defer wg.Done()
+			localCount := 0
+			localTL := false
+			for i := 0; i < ns; i++ {
+				if sc.simToEndAndRecordResults(roundsRemaining, wr, pairings, lr, playerIdxToRankIdx, stopTimeNano) {
+					localTL = true
+					break
+				}
+				localCount++
+			}
+			mu.Lock()
+			totalSims += localCount
+			if localTL {
+				timeLimitExceeded = true
+			}
+			for pi := range lr {
+				for rank := range lr[pi] {
+					results[pi][rank] += lr[pi][rank]
+				}
+			}
+			mu.Unlock()
+		}(localStandings, workerRand, localResults, workerSims)
+	}
+	wg.Wait()
+	return totalSims, timeLimitExceeded
+}
+
+// runParallelSimForceWinner distributes sims iterations of simForceWinner across
+// runtime.NumCPU() goroutines, each with its own standings and pairings copies.
+func (standings *Standings) runParallelSimForceWinner(
+	copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int,
+	pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64,
+) (int, pb.PairError) {
+	numWorkers := NumSimWorkersOverride
+	if numWorkers == 0 {
+		numWorkers = runtime.NumCPU()
+	}
+	if numWorkers > sims {
+		numWorkers = sims
+	}
+	simsPerWorker := sims / numWorkers
+	remainder := sims % numWorkers
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	totalWins := 0
+	var firstErr pb.PairError
+
+	for w := 0; w < numWorkers; w++ {
+		workerSims := simsPerWorker
+		if w < remainder {
+			workerSims++
+		}
+		wg.Add(1)
+		localStandings := standings.Copy()
+		workerRand := rand.New(rand.NewSource(uint64(copRand.Int63())))
+		localPairings := make([][]int, len(pairings))
+		for i := range pairings {
+			localPairings[i] = make([]int, len(pairings[i]))
+			copy(localPairings[i], pairings[i])
+		}
+		go func(sc *Standings, wr *rand.Rand, lp [][]int, ns int) {
+			defer wg.Done()
+			wins, pairErr := sc.simForceWinner(wr, ns, roundsRemaining, maxFactor, lp, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
+			mu.Lock()
+			totalWins += wins
+			if pairErr != pb.PairError_SUCCESS && firstErr == pb.PairError_SUCCESS {
+				firstErr = pairErr
+			}
+			mu.Unlock()
+		}(localStandings, workerRand, localPairings, workerSims)
+	}
+	wg.Wait()
+	if firstErr != pb.PairError_SUCCESS {
+		return 0, firstErr
+	}
+	return totalWins, pb.PairError_SUCCESS
+}
+
+// RunParallelSimForceWinner runs vsFirst or vsFactor simulations for forcedWinnerPlayerIdx using
+// the provided pairings. The player always wins every game; vsFirst=true swaps them to play rank 0
+// in each non-final round, vsFirst=false uses the pairings as given. Returns the number of
+// tournament wins (finishing in 1st place) out of sims.
+//
+// When the standings have an odd number of players, a dummy bye player is temporarily appended
+// (mirroring SimFactorPairAll) so simRound can iterate in pairs. The caller must supply pairings
+// with an even number of entries per round (pairingsLen = numPlayers rounded up to even).
+func (standings *Standings) RunParallelSimForceWinner(copRand *rand.Rand, sims int, roundsRemaining int, maxFactor int, pairings [][]int, forcedWinnerPlayerIdx int, vsFirst bool, stopTimeNano int64) (int, pb.PairError) {
+	numPlayers := standings.GetNumPlayers()
+	evenerAdded := false
+	if numPlayers%2 == 1 {
+		lowestWins := getWinsValue(standings.records[numPlayers-1])
+		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
+		standings.records[numPlayers] += uint64(ByePlayerIndex)
+		numPlayers++
+		standings.recordsBackup = make([]uint64, numPlayers)
+		evenerAdded = true
+	}
+	standings.Backup()
+	wins, pairErr := standings.runParallelSimForceWinner(copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerPlayerIdx, vsFirst, stopTimeNano)
+	if evenerAdded {
+		standings.records = standings.records[:numPlayers-1]
+		standings.recordsBackup = make([]uint64, numPlayers-1)
+	}
+	return wins, pairErr
+}
+
+// RunSimsWithPairings runs parallel sims using the provided pre-built pairings and returns
+// (FinalRanks, totalSims, error). This is used when the pairings have already been constructed
+// externally (e.g. factor-3 pairings where roundsRemaining < maxFactor).
+func (standings *Standings) RunSimsWithPairings(copRand *rand.Rand, sims int, roundsRemaining int, pairings [][]int) ([][]int, int, pb.PairError) {
+	numPlayers := standings.GetNumPlayers()
+	evenerAdded := false
+	if numPlayers%2 == 1 {
+		lowestWins := getWinsValue(standings.records[numPlayers-1])
+		standings.records = append(standings.records, getRecordFromWinsAndSpread(lowestWins-(roundsRemaining+1)*2, initialSpreadValue))
+		standings.records[numPlayers] += uint64(ByePlayerIndex)
+		numPlayers++
+		standings.recordsBackup = make([]uint64, numPlayers)
+		evenerAdded = true
+	}
+	results := make([][]int, numPlayers)
+	for i := range results {
+		results[i] = make([]int, numPlayers)
+	}
+	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
+	standings.Backup()
+	stopTime := time.Now().UnixNano() + int64(initialSimTimeLimit)*1e9
+	totalSims, _ := standings.runParallelSims(sims, copRand, roundsRemaining, pairings, results, playerIdxToRankIdx, stopTime)
+	if evenerAdded {
+		standings.records = standings.records[:numPlayers-1]
+		standings.recordsBackup = make([]uint64, numPlayers-1)
+		for i := range results {
+			results[i] = results[i][:numPlayers-1]
+		}
+		results = results[:numPlayers-1]
+	}
+	return results, totalSims, pb.PairError_SUCCESS
+}
+
 // Unexported functions
 
-// Gets the factor pairings for players in [i, j] for all remaining rounds
-// Assumes i < j
-// Returns pairings in pairs of player indexes
-// For example, pairings of [0, 2, 1, 3] indicate player 0 plays player 2
-// and player 1 plays player 3.
-func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, initialRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int) {
+// assignPairingsForSegment sets the simulation pairings for players in [startRankIdx, endRankIdx]
+// for all remaining rounds.
+//
+// When controlLoss is false (normal sim): each round uses multiple factor pairs followed by
+// factor M/2 pairings for the remainder (where M is the number of remaining players).
+//
+// When controlLoss is true (always-wins sim): each round uses a single factor pair (top of
+// segment vs Nth player), then randomly pairs remaining players within totalNumPlayers/2
+// rank distance.
+func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx int, initialRoundsRemaining int, maxFactor int, leftoverGibsonPlayers []int, pairings [][]int, segmentRoundFactors *[]int, copRand *rand.Rand, totalNumPlayers int, controlLoss bool) {
 	numPlayers := endRankIdx - startRankIdx + 1
 
 	for roundsRemaining := initialRoundsRemaining; roundsRemaining > 0; roundsRemaining-- {
@@ -548,28 +815,87 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 		}
 		*segmentRoundFactors = append(*segmentRoundFactors, roundFactor)
 		roundIdx := initialRoundsRemaining - roundsRemaining
-		for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
-			basePairingIdx := pairingsStartIdx + 2*factorPairing
-			basePlayerIdx := startRankIdx + factorPairing
-			pairings[roundIdx][basePairingIdx] = basePlayerIdx
-			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
-		}
-		numKothPlayers := numPlayers - 2*roundFactor
-		numKothPairings := numKothPlayers / 2
-		var nextKothPairingIdx int
-		var nextKothPairingPlayerIdx int
-		for kothPairing := 0; kothPairing < numKothPairings; kothPairing++ {
-			basePairingIdx := pairingsStartIdx + 2*roundFactor + 2*kothPairing
-			basePlayerIdx := startRankIdx + 2*roundFactor + 2*kothPairing
-			pairings[roundIdx][basePairingIdx] = basePlayerIdx
-			pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
 
-			nextKothPairingIdx = basePairingIdx + 2
-			nextKothPairingPlayerIdx = basePlayerIdx + 2
+		// The last simulated round always uses KOTH (consecutive pairing) for all players.
+		if roundsRemaining == 1 {
+			for kothPairing := 0; kothPairing < numPlayers/2; kothPairing++ {
+				basePairingIdx := pairingsStartIdx + 2*kothPairing
+				basePlayerIdx := startRankIdx + 2*kothPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + 1
+			}
+			if numPlayers%2 == 1 {
+				pairings[roundIdx][pairingsStartIdx+numPlayers-1] = startRankIdx + numPlayers - 1
+			}
+			if len(leftoverGibsonPlayers) > 0 {
+				baseGibsonPairingIdx := pairingsStartIdx + numPlayers
+				for playerIdx := 0; playerIdx < len(leftoverGibsonPlayers); playerIdx++ {
+					pairings[roundIdx][baseGibsonPairingIdx+playerIdx] = leftoverGibsonPlayers[playerIdx]
+				}
+			}
+			continue
 		}
-		if numKothPlayers%2 == 1 {
-			pairings[roundIdx][nextKothPairingIdx] = nextKothPairingPlayerIdx
+
+		if controlLoss {
+			// Single factor pair: top of segment vs Nth player.
+			pairings[roundIdx][pairingsStartIdx] = startRankIdx
+			pairings[roundIdx][pairingsStartIdx+1] = startRankIdx + roundFactor
+
+			// Collect remaining players (all except the factor pair).
+			remaining := make([]int, 0, numPlayers-2)
+			for rankIdx := startRankIdx; rankIdx <= endRankIdx; rankIdx++ {
+				if rankIdx != startRankIdx && rankIdx != startRankIdx+roundFactor {
+					remaining = append(remaining, rankIdx)
+				}
+			}
+
+			// Randomly pair remaining players within totalNumPlayers/2 rank distance.
+			// Shuffle and pair consecutively; retry up to 10 times to reduce violations.
+			halfP := totalNumPlayers / 2
+			best := make([]int, len(remaining))
+			copy(best, remaining)
+			bestViolations := countDistanceViolations(best, halfP)
+			shuffled := make([]int, len(remaining))
+			copy(shuffled, remaining)
+			for attempt := 0; attempt < 10 && bestViolations > 0; attempt++ {
+				copRand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
+				if v := countDistanceViolations(shuffled, halfP); v < bestViolations {
+					copy(best, shuffled)
+					bestViolations = v
+				}
+			}
+
+			for i := 0; i+1 < len(best); i += 2 {
+				pairings[roundIdx][pairingsStartIdx+2+i] = best[i]
+				pairings[roundIdx][pairingsStartIdx+2+i+1] = best[i+1]
+			}
+			if len(best)%2 == 1 {
+				pairings[roundIdx][pairingsStartIdx+2+len(best)-1] = best[len(best)-1]
+			}
+		} else {
+			// Multiple factor pairs followed by factor M/2 pairings for the remainder,
+			// where M is the number of remaining players.
+			for factorPairing := 0; factorPairing < roundFactor; factorPairing++ {
+				basePairingIdx := pairingsStartIdx + 2*factorPairing
+				basePlayerIdx := startRankIdx + factorPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + roundFactor
+			}
+			numRemainingPlayers := numPlayers - 2*roundFactor
+			remainingFactor := numRemainingPlayers / 2
+			remainingStartRankIdx := startRankIdx + 2*roundFactor
+			remainingStartPairingIdx := pairingsStartIdx + 2*roundFactor
+			for remainingPairing := 0; remainingPairing < remainingFactor; remainingPairing++ {
+				basePairingIdx := remainingStartPairingIdx + 2*remainingPairing
+				basePlayerIdx := remainingStartRankIdx + remainingPairing
+				pairings[roundIdx][basePairingIdx] = basePlayerIdx
+				pairings[roundIdx][basePairingIdx+1] = basePlayerIdx + remainingFactor
+			}
+			if numRemainingPlayers%2 == 1 {
+				pairings[roundIdx][remainingStartPairingIdx+numRemainingPlayers-1] = remainingStartRankIdx + numRemainingPlayers - 1
+			}
 		}
+
 		if len(leftoverGibsonPlayers) > 0 {
 			baseGibsonPairingIdx := pairingsStartIdx + numPlayers
 			for playerIdx := 0; playerIdx < len(leftoverGibsonPlayers); playerIdx++ {
@@ -577,6 +903,20 @@ func assignPairingsForSegment(pairingsStartIdx int, startRankIdx int, endRankIdx
 			}
 		}
 	}
+}
+
+func countDistanceViolations(players []int, maxDist int) int {
+	violations := 0
+	for i := 0; i+1 < len(players); i += 2 {
+		d := players[i] - players[i+1]
+		if d < 0 {
+			d = -d
+		}
+		if d > maxDist {
+			violations++
+		}
+	}
+	return violations
 }
 
 func (standings *Standings) getPlayerIdxToRankIdxMap() map[int]int {

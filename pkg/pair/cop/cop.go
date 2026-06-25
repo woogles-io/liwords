@@ -47,9 +47,12 @@ type policyArgs struct {
 	lowestPossibleAbsCasher  int
 	lowestPossibleHopeCasher int
 	roundsRemaining          int
+	roundPairingsRemaining   int
 	gibsonGetsBye            bool
 	prepairedRoundIdx        int
 	prepairedPlayerIndexes   map[int]int
+	lowestHopeOverride       map[int]int
+	factor3ForcedPairings    [][2]int
 }
 
 type constraintPolicy struct {
@@ -178,6 +181,11 @@ var constraintPolicies = []constraintPolicy{
 			if pargs.copdata.DestinysChild < 0 {
 				return [][2]int{}, [][2]int{}
 			}
+			// Factor 3 expansion already constrains the top-6 pairings; applying
+			// control loss on top of it would overconstraint the matching.
+			if len(pargs.factor3ForcedPairings) > 0 {
+				return [][2]int{}, [][2]int{}
+			}
 			disallowedPairings := [][2]int{}
 			numPlayers := len(pargs.playerNodes)
 			for playerRankIdx := 1; playerRankIdx < numPlayers; playerRankIdx++ {
@@ -245,7 +253,7 @@ var constraintPolicies = []constraintPolicy{
 		name: "TB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
 			numPlayers := len(pargs.playerNodes)
-			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex {
+			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
 				return [][2]int{}, [][2]int{}
 			}
 			forcedBye := [][2]int{{-1, pkgstnd.ByePlayerIndex}}
@@ -263,10 +271,16 @@ var constraintPolicies = []constraintPolicy{
 			return forcedBye, [][2]int{}
 		},
 	},
-}
-
-func getLowestCasherIndex(pargs *policyArgs) int {
-	return int(pargs.req.PlacePrizes) - 1
+	{
+		// Factor 3 expansion for the 2nd-to-last round
+		name: "F3",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if len(pargs.factor3ForcedPairings) == 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return pargs.factor3ForcedPairings, [][2]int{}
+		},
+	},
 }
 
 var weightPolicies = []weightPolicy{
@@ -279,6 +293,12 @@ var weightPolicies = []weightPolicy{
 			rjGibsonized := false
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
+			}
+			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
+			if pargs.roundPairingsRemaining*4 <= int(pargs.req.Rounds) &&
+				!pargs.copdata.GibsonizedPlayers[ri] &&
+				ri <= pargs.lowestPossibleHopeCasher {
+				return 0
 			}
 			// If
 			//
@@ -306,23 +326,24 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
-			// Distance is ceil(numPlayers/3)
-			lowestPCIndex := getLowestCasherIndex(pargs)
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
-			if ri > lowestPCIndex {
-				dist := int(pargs.copdata.Standings.GetNumPlayers()+2) / 3
-				if rj-ri > dist {
-					return majorPenalty
-				}
-				lowestContender = pargs.copdata.LowestRankAbsolutely[ri]
+			if override, ok := pargs.lowestHopeOverride[ri]; ok {
+				lowestContender = override
 			}
+			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
+				// Only apply PC weight in the fourth quarter.
+				if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+					return 0
+				}
+				// Calculate the inverse distance penalty
 				casherDiff := lowestContender - rj
 				if casherDiff < 0 {
 					casherDiff *= -1
 				}
 				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
+			// Apply a major penalty if the lower ranked player cannot catch the higher ranked player
 			return majorPenalty
 		},
 	},
@@ -361,33 +382,25 @@ var weightPolicies = []weightPolicy{
 			unitWeight := int64(4 * int(math.Pow(float64(pargs.copdata.Standings.GetNumPlayers())/3.0, 3)))
 			// We would like the following to always be true:
 			//
-			// n-peat weight >= 2 * (n-1)-peat weight
+			// n-peat weight > 2 * (n-1)-peat weight
 			//
-			// From this relationship and the existing code
-			// we can derive a recursive formula for what repeats should be:
+			// The minimal recursive formula satisfying this is:
 			//
 			// RE(1) = 1
-			// RE(n) = 2 * (RE(n-1) + 1)
+			// RE(n) = 2 * RE(n-1) + 1
 			//
-			// we use a +1 for when both players are outside of cash, which results
-			// in the following values for repeats:
+			// which results in the following values for repeats:
 			// RE(1) = 1
-			// RE(2) = 4
-			// RE(3) = 10
-			// RE(4) = 22
-			// RE(5) = 46
+			// RE(2) = 3
+			// RE(3) = 7
+			// RE(4) = 15
+			// RE(5) = 31
 			// ...
 			multiplier := 0
 			if timesPlayed > 0 {
-				multiplier = 3*(1<<(timesPlayed-1)) - 2
+				multiplier = (1 << timesPlayed) - 1
 			}
-			totalWeight := int64(multiplier) * unitWeight
-			// If both players are outside of cash, add an extra unit weight
-			// to the repeat weight.
-			if ri > getLowestCasherIndex(pargs) {
-				totalWeight += unitWeight
-			}
-			return totalWeight
+			return int64(multiplier) * unitWeight
 		},
 	},
 	{
@@ -513,7 +526,8 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 }
 
 func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	copdata, pairErr := copdatapkg.GetPrecompData(req, rand.New(rand.NewSource(uint64(req.Seed))), logsb)
+	copRand := rand.New(rand.NewSource(uint64(req.Seed)))
+	copdata, pairErr := copdatapkg.GetPrecompData(req, copRand, logsb)
 
 	if pairErr != pb.PairError_SUCCESS {
 		return &pb.PairResponse{
@@ -522,7 +536,8 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		}
 	}
 
-	pairings, resp := copMinWeightMatching(req, copdata, logsb)
+	factor3ForcedPairings := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	pairings, resp := copMinWeightMatching(req, copdata, factor3ForcedPairings, logsb)
 
 	if resp != nil {
 		return resp
@@ -533,6 +548,143 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		Pairings:          pairings,
 		GibsonizedPlayers: copdata.GibsonizedPlayers,
 	}
+}
+
+// computeFactor3ForcedPairings checks whether the 2nd-to-last round should use
+// factor-3 pairings (1v4, 2v5, 3v6). It first checks whether 2nd or 3rd place
+// would lose control of their destiny under factor-3 (compared to playing 1st
+// directly); if so, only the affected player is paired against 1st. Otherwise it
+// checks whether 4th/5th/6th can each reach 1st/2nd/3rd within the hopefulness
+// threshold, and if so returns the three factor-3 forced pairs. Returns nil when
+// no forced pairings are needed.
+func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
+	if pkgstnd.GetRoundsRemaining(req) != 2 {
+		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
+		return nil
+	}
+	numPlayers := copdata.Standings.GetNumPlayers()
+	if numPlayers < 6 {
+		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: fewer than 6 players (%d)\n", numPlayers))
+		return nil
+	}
+
+	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
+	// then factor M/2 for the remaining players) plus KOTH for the final round.
+	// pairingsLen is rounded up to even so simRound can always iterate in pairs
+	// (RunParallelSimForceWinner adds a dummy bye player for odd player counts).
+	pairingsLen := numPlayers
+	if pairingsLen%2 == 1 {
+		pairingsLen++
+	}
+	f3Pairings := make([][]int, 2)
+	f3Pairings[0] = make([]int, pairingsLen) // penultimate: factor-3
+	f3Pairings[1] = make([]int, pairingsLen) // final: KOTH
+	// Top 6: factor-3 pairs (0,3), (1,4), (2,5).
+	for i := 0; i < 3; i++ {
+		f3Pairings[0][2*i] = i
+		f3Pairings[0][2*i+1] = i + 3
+	}
+	// Remaining slots (ranks 6 to pairingsLen-1): factor (pairingsLen-6)/2.
+	remCount := pairingsLen - 6
+	remFactor := remCount / 2
+	for i := 0; i < remFactor; i++ {
+		f3Pairings[0][6+2*i] = 6 + i
+		f3Pairings[0][6+2*i+1] = 6 + i + remFactor
+	}
+	// Final round: KOTH (consecutive pairs).
+	for i := 0; i < pairingsLen/2; i++ {
+		f3Pairings[1][2*i] = 2 * i
+		f3Pairings[1][2*i+1] = 2*i + 1
+	}
+
+	// Simulate factor-3 pairings using the pre-built f3Pairings so the sim uses the
+	// correct factor-3 structure (roundsRemaining=2 < maxFactor=3, so SimFactorPairAll
+	// would cap at factor-2 internally).
+	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
+	if err != pb.PairError_SUCCESS {
+		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: sim error %v\n", err))
+		return nil
+	}
+	if totalSims == 0 {
+		logsb.WriteString("Factor 3 skipped: zero sims completed\n")
+		return nil
+	}
+	copdatapkg.WriteFinalRankResultsToLog("Factor 3 Sim Results", factor3FinalRanks, copdata.Standings, req, logsb)
+
+	// Check whether 2nd or 3rd place loses control under factor-3 pairings.
+	// Each player is assumed to win all their games in both scenarios; the only
+	// difference is whether they play 1st (vsFirst) or their factor-3 opponent
+	// (vsFactor3) in the penultimate round.
+	roundsRemaining := pkgstnd.GetRoundsRemaining(req)
+	controlSims := int(req.ControlLossSims)
+	threshold := req.ControlLossThreshold * float64(controlSims)
+	stopTime := time.Now().Add(6 * time.Second).UnixNano()
+
+	p0 := copdata.Standings.GetPlayerIndex(0)
+	p1 := copdata.Standings.GetPlayerIndex(1)
+	p2 := copdata.Standings.GetPlayerIndex(2)
+
+	logsb.WriteString(fmt.Sprintf(
+		"Factor 3 control loss standings: %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d) %s (%.1f/%d)\n",
+		req.PlayerNames[p0], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(0))/2, copdata.Standings.GetPlayerSpread(0),
+		req.PlayerNames[p1], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(1))/2, copdata.Standings.GetPlayerSpread(1),
+		req.PlayerNames[p2], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(2))/2, copdata.Standings.GetPlayerSpread(2),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(3)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(3))/2, copdata.Standings.GetPlayerSpread(3),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(4)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(4))/2, copdata.Standings.GetPlayerSpread(4),
+		req.PlayerNames[copdata.Standings.GetPlayerIndex(5)], float64(copdata.Standings.GetPlayerWinsIntTimesTwo(5))/2, copdata.Standings.GetPlayerSpread(5),
+	))
+
+	for _, rankIdx := range []int{1, 2} {
+		pIdx := copdata.Standings.GetPlayerIndex(rankIdx)
+		vsFirst, pairErr := copdata.Standings.RunParallelSimForceWinner(copRand, controlSims, roundsRemaining, 3, f3Pairings, pIdx, true, stopTime)
+		if pairErr != pb.PairError_SUCCESS {
+			continue
+		}
+		vsFactor3, pairErr := copdata.Standings.RunParallelSimForceWinner(copRand, controlSims, roundsRemaining, 3, f3Pairings, pIdx, false, stopTime)
+		if pairErr != pb.PairError_SUCCESS {
+			continue
+		}
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 control loss check rank %d (%s): vsFirst=%d/%d vsFactor3=%d/%d threshold=%.0f\n",
+			rankIdx+1, req.PlayerNames[pIdx], vsFirst, controlSims, vsFactor3, controlSims, threshold,
+		))
+		if float64(vsFirst-vsFactor3) >= threshold {
+			logsb.WriteString(fmt.Sprintf(
+				"Factor 3 control loss: rank %d %s loses control, forcing %s vs %s\n",
+				rankIdx+1, req.PlayerNames[pIdx], req.PlayerNames[p0], req.PlayerNames[pIdx],
+			))
+			return [][2]int{{p0, pIdx}}
+		}
+	}
+
+	// Neither 2nd nor 3rd loses control under factor-3; check whether 4th/5th/6th
+	// can each reach 1st/2nd/3rd respectively within the hopefulness threshold.
+	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
+
+	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
+	p3 := copdata.Standings.GetPlayerIndex(3)
+	p4 := copdata.Standings.GetPlayerIndex(4)
+	p5 := copdata.Standings.GetPlayerIndex(5)
+	if factor3FinalRanks[3][0] < minWins ||
+		factor3FinalRanks[4][1] < minWins ||
+		factor3FinalRanks[5][2] < minWins {
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st:%d 5th=%s->2nd:%d 6th=%s->3rd:%d)\n",
+			minWins,
+			req.PlayerNames[p3], factor3FinalRanks[3][0],
+			req.PlayerNames[p4], factor3FinalRanks[4][1],
+			req.PlayerNames[p5], factor3FinalRanks[5][2],
+		))
+		return nil
+	}
+
+	logsb.WriteString(fmt.Sprintf(
+		"Factor 3 expansion: forcing %s vs %s, %s vs %s, %s vs %s\n",
+		req.PlayerNames[p0], req.PlayerNames[p3],
+		req.PlayerNames[p1], req.PlayerNames[p4],
+		req.PlayerNames[p2], req.PlayerNames[p5],
+	))
+	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}
 }
 
 // extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
@@ -1076,7 +1228,7 @@ func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, ori
 	req.InitialNonperfRounds = origInitialNonperfRounds
 }
 
-func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
+func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
 	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := extractPrepairedPlayers(req)
 
 	for playerIdx, oppIdx := range prepairedPlayerIndexes {
@@ -1138,9 +1290,11 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		lowestPossibleAbsCasher:  lowestPossibleAbsCasher,
 		lowestPossibleHopeCasher: lowestPossibleHopeCasher,
 		roundsRemaining:          pkgstnd.GetRoundsRemaining(req),
+		roundPairingsRemaining:   int(req.Rounds) - copdata.CompletePairings,
 		gibsonGetsBye:            gibsonGetsBye,
 		prepairedRoundIdx:        prepairedRoundIdx,
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
+		factor3ForcedPairings:    factor3ForcedPairings,
 	}
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
@@ -1149,6 +1303,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", len(req.DivisionPairings)))
 	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))
 	logsb.WriteString(fmt.Sprintf("Rounds Remaining: %d\n", pargs.roundsRemaining))
+	logsb.WriteString(fmt.Sprintf("Round Pairings Remaining: %d\n", pargs.roundPairingsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
@@ -1184,79 +1339,140 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		}
 	}
 
-	edges := []*matching.Edge{}
-
 	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
-	pairingDetails := [][]string{}
 	pairingDetailsheader := append(matchupHeader, []string{"S", "C", "PTP", "Total"}...)
 	for _, weightPolicy := range weightPolicies {
 		pairingDetailsheader = append(pairingDetailsheader, weightPolicy.name)
 	}
 	numColums := len(pairingDetailsheader)
-	pairingsToDetailsIndex := map[string]int{}
-	for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
-		for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
-			pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
-			pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
-			disallowReason, disallowPair := disallowedPairs[pairKey]
-			// Pairing selected bool placeholder
-			pairingDataRow = append(pairingDataRow, "")
-			if disallowPair {
-				pairingDataRow = append(pairingDataRow, disallowReason)
-				emptyColsToAdd := numColums - len(pairingDataRow)
-				for i := 0; i < emptyColsToAdd; i++ {
+
+	var pairings []int
+	var totalWeight int64
+	var pairingDetails [][]string
+	var pairingsToDetailsIndex map[string]int
+
+	retried := false
+	for {
+		edges := []*matching.Edge{}
+		edgeWeights := map[string]int64{}
+		pcEdgeWeights := map[string]int64{}
+		pairingDetails = [][]string{}
+		pairingsToDetailsIndex = map[string]int{}
+
+		for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
+			for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
+				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
+				pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
+				disallowReason, disallowPair := disallowedPairs[pairKey]
+				// Pairing selected bool placeholder
+				pairingDataRow = append(pairingDataRow, "")
+				if disallowPair {
+					pairingDataRow = append(pairingDataRow, disallowReason)
+					emptyColsToAdd := numColums - len(pairingDataRow)
+					for i := 0; i < emptyColsToAdd; i++ {
+						pairingDataRow = append(pairingDataRow, "")
+					}
+				} else {
+					// No disallow reason
 					pairingDataRow = append(pairingDataRow, "")
+					// Add the number of repeats for convenience
+					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[pairKey]))
+					// Placeholder for total weight
+					pairingDataRow = append(pairingDataRow, "")
+					weightSum := int64(0)
+					for _, weightPolicy := range weightPolicies {
+						weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
+						weightSum += weight
+						pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
+						if weightPolicy.name == "PC" {
+							rankKey := getRankPairingKey(rankIdxI, rankIdxJ)
+							pcEdgeWeights[rankKey] = weight
+						}
+					}
+					pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
+					rankKey := getRankPairingKey(rankIdxI, rankIdxJ)
+					edgeWeights[rankKey] = weightSum
+					edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
 				}
-			} else {
-				// No disallow reason
-				pairingDataRow = append(pairingDataRow, "")
-				// Add the number of repeats for convenience
-				pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", copdata.PairingCounts[pairKey]))
-				// Placeholder for total weight
-				pairingDataRow = append(pairingDataRow, "")
-				weightSum := int64(0)
-				for _, weightPolicy := range weightPolicies {
-					weight := weightPolicy.handler(pargs, rankIdxI, rankIdxJ)
-					weightSum += weight
-					pairingDataRow = append(pairingDataRow, fmt.Sprintf("%d", weight))
-				}
-				pairingDataRow[len(matchupHeader)+3] = fmt.Sprintf("%d", weightSum)
-				edges = append(edges, matching.NewEdge(rankIdxI, rankIdxJ, weightSum))
+				pairingsToDetailsIndex[getRankPairingKey(rankIdxI, rankIdxJ)] = len(pairingDetails)
+				pairingDetails = append(pairingDetails, pairingDataRow)
 			}
-			pairingsToDetailsIndex[getRankPairingKey(rankIdxI, rankIdxJ)] = len(pairingDetails)
-			pairingDetails = append(pairingDetails, pairingDataRow)
+			if rankIdxI < numPlayerNodes-2 {
+				spacingRow := make([]string, numColums)
+				pairingDetails = append(pairingDetails, spacingRow)
+			}
 		}
-		if rankIdxI < numPlayerNodes-2 {
-			spacingRow := make([]string, numColums)
-			pairingDetails = append(pairingDetails, spacingRow)
-		}
-	}
 
-	pairings, totalWeight, err := matching.MinWeightMatching(edges, true)
-
-	if err != nil {
-		return nil, &pb.PairResponse{
-			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
-			ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
+		var err error
+		pairings, totalWeight, err = matching.MinWeightMatching(edges, true)
+		if err != nil {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
+				ErrorMessage: fmt.Sprintf("min weight matching error: %s\n", err.Error()),
+			}
 		}
-	}
 
-	if addBye {
-		pairings = pairings[:len(pairings)-1]
-	}
+		if addBye {
+			pairings = pairings[:len(pairings)-1]
+		}
 
-	if len(pairings) > numPlayers {
-		return nil, &pb.PairResponse{
-			ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
-			ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
+		if len(pairings) > numPlayers {
+			return nil, &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_PAIRINGS_LENGTH,
+				ErrorMessage: fmt.Sprintf("invalid pairings length %d for %d players", len(pairings), numPlayers),
+			}
+		} else if len(pairings) < numPlayers {
+			numUnpairedAtBottom := numPlayers - len(pairings)
+			unpairedIndexes := make([]int, numUnpairedAtBottom)
+			for i := range unpairedIndexes {
+				unpairedIndexes[i] = -1
+			}
+			pairings = append(pairings, unpairedIndexes...)
 		}
-	} else if len(pairings) < numPlayers {
-		numUnpairedAtBottom := numPlayers - len(pairings)
-		unpairedIndexes := make([]int, numUnpairedAtBottom)
-		for i := range unpairedIndexes {
-			unpairedIndexes[i] = -1
+
+		// For each selected edge with weight >= majorPenalty, expand the PC contender
+		// group for both players by incrementing LowestPossibleHopeNth, then retry once.
+		// lowestPossibleHopeCasher (the global gate) is intentionally not updated.
+		if retried {
+			break
 		}
-		pairings = append(pairings, unpairedIndexes...)
+		expanded := false
+		numStandingsPlayers := copdata.Standings.GetNumPlayers()
+		lowestHopeOverride := map[int]int{}
+		for playerRankIdx, oppRankIdx := range pairings {
+			if oppRankIdx <= playerRankIdx {
+				continue
+			}
+			rankKey := getRankPairingKey(playerRankIdx, oppRankIdx)
+			if pcEdgeWeights[rankKey] >= majorPenalty {
+				nameForNode := func(rankIdx int) string {
+					pi := playerNodes[rankIdx]
+					if pi == pkgstnd.ByePlayerIndex {
+						return "BYE"
+					}
+					return req.PlayerNames[pi]
+				}
+				logsb.WriteString(fmt.Sprintf("Retry: majorPenalty edge %s vs %s (weight %d)\n",
+					nameForNode(playerRankIdx),
+					nameForNode(oppRankIdx),
+					edgeWeights[rankKey]))
+				if playerRankIdx < len(copdata.LowestPossibleHopeNth) {
+					current := copdata.LowestPossibleHopeNth[playerRankIdx]
+					if override, ok := lowestHopeOverride[playerRankIdx]; ok {
+						current = override
+					}
+					if current+1 < numStandingsPlayers {
+						lowestHopeOverride[playerRankIdx] = current + 1
+						expanded = true
+					}
+				}
+			}
+		}
+		if !expanded {
+			break
+		}
+		pargs.lowestHopeOverride = lowestHopeOverride
+		retried = true
 	}
 
 	for playerRankIdx, oppRankIdx := range pairings {
