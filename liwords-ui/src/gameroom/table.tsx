@@ -608,6 +608,19 @@ export const Table = React.memo((props: Props) => {
           }
         }
       } catch (e) {
+        // Annotated games are stored as GameDocuments; the metadata Get endpoint
+        // rejects them ("annotated game ... should be accessed via GetDocument,
+        // not Get"). A faulty /game/<id> link to an annotated game -- e.g. from
+        // the analysis-ready notification or a profile link -- lands here.
+        // Redirect to the /anno/ view that can actually load it (replace, so the
+        // dead /game/ URL is not left in history) instead of showing an error.
+        if (
+          gameID &&
+          String(e).includes("should be accessed via GetDocument")
+        ) {
+          window.location.replace(`/anno/${encodeURIComponent(gameID)}`);
+          return;
+        }
         message.error({
           content: `Failed to fetch game information; please refresh. (Error: ${e})`,
           duration: 10,
