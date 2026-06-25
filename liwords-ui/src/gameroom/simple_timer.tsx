@@ -6,10 +6,15 @@ export const SimpleTimer = ({
   lastRefreshedPerformanceNow,
   millisAtLastRefresh,
   isRunning,
+  format,
 }: {
   lastRefreshedPerformanceNow: Millis;
   millisAtLastRefresh: Millis;
   isRunning: boolean;
+  // Optional formatter for the displayed (clamped, non-negative) millis. When
+  // omitted, the timer renders as "M:SS". Correspondence/league deadline
+  // displays pass millisToTimeStrWithoutDays for a "d:hh:mm:ss" clock.
+  format?: (millis: number) => string;
 }) => {
   const [, setRerender] = useState(0);
   const requestRerender = useCallback(
@@ -31,6 +36,10 @@ export const SimpleTimer = ({
       return () => clearTimeout(t);
     }
   }); // no dependency list, this effect should run on every render.
+
+  if (format) {
+    return <>{format(Math.max(currentMillis, 0))}</>;
+  }
 
   const currentSec = Math.ceil(currentMillis / 1000);
   const nonnegativeSec = Math.max(currentSec, 0);
