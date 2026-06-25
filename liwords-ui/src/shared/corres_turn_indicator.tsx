@@ -29,10 +29,15 @@ const fmtClock = (millis: number) => millisToTimeStrWithoutDays(millis, false);
 // subject -- never the ticking. "mine"/"opponent" are the participant views (the
 // league card and lobby list, which only ever show the viewer's own games);
 // "spectator" is the third-person view for the all-players standings popup.
+// "bare" shows just the ticking time (no turn label) for a surface that already
+// identifies the player and whose turn it is (the season-games modal's Time
+// column); the tooltip still names the player, since a floating tooltip does not
+// say which row it belongs to.
 export type CorrespondencePerspective =
   | { kind: "mine" }
   | { kind: "opponent"; playerName: string }
-  | { kind: "spectator"; playerName: string };
+  | { kind: "spectator"; playerName: string }
+  | { kind: "bare"; playerName: string };
 
 type Props = {
   perspective: CorrespondencePerspective;
@@ -126,6 +131,13 @@ export const CorrespondenceTurnIndicator = (props: Props) => {
       subject = `${perspective.playerName}'s`;
       turnClass = "spectator-turn";
       break;
+    case "bare":
+      // No inline label -- just the ticking time. The tooltip keeps the
+      // player's name so it is clear whose clock it describes.
+      label = "";
+      subject = `${perspective.playerName}'s`;
+      turnClass = "bare-turn";
+      break;
   }
 
   if (!haveClock) {
@@ -214,10 +226,10 @@ export const CorrespondenceTurnIndicator = (props: Props) => {
     >
       <Tooltip title={tooltip}>
         {icon}
-        <span style={{ color: labelColor }}>{label}</span>
+        {label ? <span style={{ color: labelColor }}>{label}</span> : null}
         <span
           className="corres-turn-time"
-          style={{ marginLeft: 6, opacity: timeOpacity }}
+          style={{ marginLeft: label ? 6 : 0, opacity: timeOpacity }}
         >
           {xTimer}
         </span>

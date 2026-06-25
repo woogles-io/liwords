@@ -4,6 +4,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
+import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
 export const endReasonLabel = (reason: GameEndReason): string => {
@@ -55,6 +56,47 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     userId,
     seasonId,
   });
+
+  // The "Time" column appears only when this season has live (in-progress)
+  // games -- past seasons are all finished, so it stays hidden there.
+  const hasLiveClocks = (data?.games ?? []).some(
+    (g) => (g.result === "turn" || g.result === "in_progress") && g.lastUpdate,
+  );
+  const timeColumn = {
+    title: "Time",
+    key: "time",
+    align: "right" as const,
+    render: (
+      _: unknown,
+      record: {
+        result: string;
+        lastUpdateMs?: number;
+        incrementSecs: number;
+        onTurnTimeBankMs: number;
+        opponentUsername: string;
+      },
+    ) => {
+      if (
+        (record.result !== "turn" && record.result !== "in_progress") ||
+        record.lastUpdateMs === undefined
+      ) {
+        return null;
+      }
+      // Bare view: just the ticking d:hh:mm:ss (the Result column already shows
+      // whose turn it is). The tooltip still names the on-turn player -- this
+      // player when it is their turn, otherwise the opponent.
+      const onTurnName =
+        record.result === "turn" ? username : record.opponentUsername;
+      return (
+        <CorrespondenceTurnIndicator
+          perspective={{ kind: "bare", playerName: onTurnName }}
+          lastUpdateMs={record.lastUpdateMs}
+          incrementMs={record.incrementSecs * 1000}
+          bankMs={record.onTurnTimeBankMs}
+        />
+      );
+    },
+  };
 
   const columns = [
     {
@@ -111,6 +153,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         );
       },
     },
+    ...(hasLiveClocks ? [timeColumn] : []),
     {
       title: "Score",
       key: "score",
@@ -155,6 +198,11 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       opponentScore: game.opponentScore,
       gameDate: game.gameDate ? timestampDate(game.gameDate) : undefined,
       gameEndReason: game.gameEndReason,
+      lastUpdateMs: game.lastUpdate
+        ? timestampDate(game.lastUpdate).getTime()
+        : undefined,
+      incrementSecs: game.incrementSecs,
+      onTurnTimeBankMs: Number(game.onTurnTimeBankMs),
     })) || [];
 
   const handleRowClick = (record: { gameId: string }) => {
