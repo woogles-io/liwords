@@ -15,6 +15,7 @@ import {
 import { ActiveGame, SoughtGame } from "../store/reducers/lobby_reducer";
 import { ActionType } from "../actions/actions";
 import { useClient } from "../utils/hooks/connect";
+import { hasPermission, Perm } from "../mod/perms";
 import { ConfigService } from "../gen/api/proto/config_service/config_service_pb";
 import "./seek_form.scss";
 import "../shared/gameLists.scss";
@@ -55,7 +56,7 @@ export const GameLists = React.memo((props: Props) => {
   >(undefined);
 
   const configClient = useClient(ConfigService);
-  const isAdmin = loginState.perms.includes("adm");
+  const isAdmin = hasPermission(loginState.permissions, Perm.AdminAllAccess);
 
   // Fetch correspondence game count if user is admin
   useEffect(() => {

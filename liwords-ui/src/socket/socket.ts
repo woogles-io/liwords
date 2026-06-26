@@ -45,7 +45,6 @@ type DecodedToken = {
   uid: string;
   cs: string;
   a: boolean; // authed
-  perms: string;
 };
 
 // Returning undefined from useEffect is fine, but some linters dislike it.
@@ -228,7 +227,6 @@ export const LiwordsSocket = (props: {
           connID: cid,
           isChild: decoded.cs,
           path: pathname,
-          perms: decoded.perms?.split(","),
         },
       });
       const bdateWarning = localStorage?.getItem("birthdateWarning");

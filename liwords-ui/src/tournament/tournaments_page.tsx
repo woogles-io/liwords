@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import {
   TournamentsAndLeaguesContent,
   TournamentCard,
@@ -64,8 +65,8 @@ export const TournamentsPage = () => {
   const { loginState } = useLoginStateStoreContext();
 
   const canCreateTournament = useMemo(
-    () => loginState.perms.includes("toc") || loginState.perms.includes("adm"),
-    [loginState.perms],
+    () => hasPermission(loginState.permissions, Perm.CanCreateTournaments),
+    [loginState.permissions],
   );
 
   const isLoggedIn = !!loginState.username;

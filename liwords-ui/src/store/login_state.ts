@@ -7,7 +7,10 @@ export type LoginState = {
   connID: string;
   connectedToSocket: boolean;
   path: string;
-  perms: Array<string>;
+  // permissions holds the user's effective granular permission codes
+  // (e.g. "can_create_broadcasts") fetched via GetSelfPermissions RPC.
+  // Gate all UI on these codes rather than on roles or JWT short codes.
+  permissions: Array<string>;
 };
 
 export type AuthInfo = {
@@ -15,7 +18,6 @@ export type AuthInfo = {
   userID: string;
   loggedIn: boolean;
   connID: string;
-  perms: Array<string>;
 };
 
 export function LoginStateReducer(
@@ -25,10 +27,17 @@ export function LoginStateReducer(
   switch (action.actionType) {
     case ActionType.SetAuthentication: {
       const auth = action.payload as AuthInfo;
-      console.log("decoded auth", auth);
       return {
         ...state,
         ...auth,
+      };
+    }
+
+    case ActionType.SetPermissions: {
+      const permissions = (action.payload as Array<string>) ?? [];
+      return {
+        ...state,
+        permissions,
       };
     }
 

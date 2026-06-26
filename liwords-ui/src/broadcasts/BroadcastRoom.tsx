@@ -40,6 +40,7 @@ import type {
 } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { BroadcastDirectorPanel } from "./BroadcastDirectorPanel";
 import { BroadcastAnnotatorPanel } from "./BroadcastAnnotatorPanel";
 import { flashError } from "../utils/hooks/connect";
@@ -159,7 +160,7 @@ export const BroadcastRoom: React.FC = () => {
   const isDirector = broadcastData.directorUsernames.includes(
     loginState.username,
   );
-  const isAdmin = loginState.perms.includes("adm");
+  const canManageBroadcast = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
 
   const slots: BroadcastSlot[] = slotsData?.slots ?? [];
 
@@ -246,7 +247,7 @@ export const BroadcastRoom: React.FC = () => {
             width: 130,
             render: (_: unknown, row: BroadcastRoundGame) => {
               const rowSlots = slotsByTable.get(row.tableNumber) ?? [];
-              if (!isDirector && !isAdmin) {
+              if (!isDirector && !canManageBroadcast) {
                 return rowSlots.length > 0 ? (
                   <Space size={4} wrap>
                     {rowSlots.map((s) => (
@@ -356,7 +357,7 @@ export const BroadcastRoom: React.FC = () => {
             </Space>
           );
         }
-        if (isAnnotator || isDirector || isAdmin) {
+        if (isAnnotator || isDirector || canManageBroadcast) {
           return (
             <Button
               size="small"
@@ -497,7 +498,7 @@ export const BroadcastRoom: React.FC = () => {
               {broadcast.name}
             </Title>
             {!broadcast.active && <Tag color="default">Archived</Tag>}
-            {(isAdmin || broadcast.creatorUsername === loginState.username) && (
+            {(canManageBroadcast || broadcast.creatorUsername === loginState.username) && (
               <Button
                 size="small"
                 onClick={() => navigate(`/broadcasts/${slug}/edit`)}
@@ -535,11 +536,11 @@ export const BroadcastRoom: React.FC = () => {
           </div>
         )}
 
-        {(isAnnotator || isDirector || isAdmin) && (
+        {(isAnnotator || isDirector || canManageBroadcast) && (
           <BroadcastAnnotatorPanel slug={slug ?? ""} />
         )}
 
-        {(isDirector || isAdmin) && (
+        {(isDirector || canManageBroadcast) && (
           <BroadcastDirectorPanel
             broadcast={broadcast}
             annotatorUsernames={broadcastData.annotatorUsernames}

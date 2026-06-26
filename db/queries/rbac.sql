@@ -65,6 +65,13 @@ WHERE
 AND
     permission_id = (SELECT id FROM permissions WHERE code = @permission_code);
 
+-- name: GetUserPermissions :many
+SELECT DISTINCT p.code
+FROM user_roles ur
+JOIN role_permissions rp ON ur.role_id = rp.role_id
+JOIN permissions p ON rp.permission_id = p.id
+WHERE ur.user_id = @user_id;
+
 -- name: GetRolesWithPermissions :many
 SELECT
     r.name,

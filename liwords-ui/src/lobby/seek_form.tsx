@@ -25,6 +25,7 @@ import { useDebounce } from "../utils/debounce";
 import { ChallengeRulesFormItem } from "./challenge_rules_form_item";
 import {
   useFriendsStoreContext,
+  useLoginStateStoreContext,
   useLobbyStoreContext,
   usePresenceStoreContext,
   useTournamentStoreContext,
@@ -47,10 +48,8 @@ import BotSelector from "./bot_selector";
 import { useQuery } from "@connectrpc/connect-query";
 import { getIntegrations } from "../gen/api/proto/user_service/user_service-IntegrationService_connectquery";
 import { useLocalStorageBool } from "../utils/use_local_storage";
-import {
-  getSelfRoles,
-  getSubscriptionCriteria,
-} from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { getSubscriptionCriteria } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { hasPermission, Perm } from "../mod/perms";
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -196,11 +195,7 @@ export const SeekForm = (props: Props) => {
     { enabled: !!props.vsBot },
   );
 
-  const { data: ourRoles } = useQuery(
-    getSelfRoles,
-    {},
-    { enabled: !!props.vsBot },
-  );
+  const { loginState } = useLoginStateStoreContext();
 
   const [enableAllLexicons] = useLocalStorageBool("enableAllLexicons");
   const [enableCSW24X] = useLocalStorageBool("enableCSW24X");
@@ -637,7 +632,7 @@ export const SeekForm = (props: Props) => {
           lexicon={selections?.lexicon || ""}
           subscriptionCriteria={subscriptionCriteria}
           specialAccessPlayer={
-            ourRoles?.roles.includes("Special Access Player") || false
+            hasPermission(loginState.permissions, Perm.CanPlayEliteBot)
           }
           botType={initialValues.botType}
           hasPatreonIntegration={userIntegrations?.integrations.some(

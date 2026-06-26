@@ -6,6 +6,7 @@ import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { TopBar } from "../navigation/topbar";
 import { Chat } from "../chat/chat";
 import { TournamentInfo } from "./tournament_info";
@@ -18,8 +19,6 @@ import { useTourneyMetadata } from "./utils";
 import { useSearchParams } from "react-router";
 import { OwnScoreEnterer } from "./enter_own_scores";
 import { ConfigProvider } from "antd";
-import { useQuery } from "@connectrpc/connect-query";
-import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { useTournamentCompetitorState } from "../hooks/use_tournament_competitor_state";
 import { readyForTournamentGame } from "./ready";
 import { MonitoringModal } from "./monitoring/monitoring_modal";
@@ -68,11 +67,7 @@ export const TournamentRoom = (props: Props) => {
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
-  const { data: selfRoles } = useQuery(
-    getSelfRoles,
-    {},
-    { enabled: loginState.loggedIn },
-  );
+
 
   useTourneyMetadata(
     path,
@@ -160,11 +155,8 @@ export const TournamentRoom = (props: Props) => {
   }, [tournamentContext.directors, username]);
 
   const canManageTournaments = useMemo(() => {
-    return !!(
-      selfRoles?.roles.includes("Admin") ||
-      selfRoles?.roles.includes("Tournament Manager")
-    );
-  }, [selfRoles?.roles]);
+    return hasPermission(loginState.permissions, Perm.CanManageTournaments);
+  }, [loginState.permissions]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {

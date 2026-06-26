@@ -65,6 +65,7 @@ export enum ActionType {
 
   /* login state actions */
   SetAuthentication,
+  SetPermissions,
   SetConnectedToSocket,
   SetCurrentLagMs,
 }

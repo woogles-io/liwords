@@ -13,7 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/woogles-io/liwords/pkg/apiserver"
-	"github.com/woogles-io/liwords/pkg/auth/rbac"
 	"github.com/woogles-io/liwords/pkg/config"
 	"github.com/woogles-io/liwords/pkg/emailer"
 	"github.com/woogles-io/liwords/pkg/mod"
@@ -205,36 +204,12 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 	uuid = u.UUID
 	unn = u.Username
 
-	roles, err := rbac.UserRoles(ctx, as.q, u.Username)
-	if err != nil {
-		return nil, err
-	}
-	perms := []string{}
-
-	moderator := string(rbac.Moderator)
-	admin := string(rbac.Admin)
-	tournamentCreator := string(rbac.TournamentCreator)
-	tournamentManager := string(rbac.TournamentManager)
-
-	for _, r := range roles {
-		if r == moderator {
-			perms = append(perms, "mod")
-		}
-		if r == admin {
-			perms = append(perms, "adm")
-		}
-		if r == tournamentCreator || r == tournamentManager {
-			perms = append(perms, "toc")
-		}
-	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":   time.Now().Add(WebSocketTokenExpiration).Unix(),
-		"uid":   uuid,
-		"unn":   unn,
-		"a":     authed,
-		"cs":    u.IsChild(),
-		"perms": strings.Join(perms, ","),
+		"exp": time.Now().Add(WebSocketTokenExpiration).Unix(),
+		"uid": uuid,
+		"unn": unn,
+		"a":   authed,
+		"cs":  u.IsChild(),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
@@ -248,7 +223,6 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *connect.
 		Str("userID", uuid).
 		Str("connectionID", cid).
 		Bool("authenticated", authed).
-		Strs("permissions", perms).
 		Msg("issued-authenticated-socket-token")
 
 	return connect.NewResponse(&pb.SocketTokenResponse{
@@ -262,12 +236,11 @@ func (as *AuthenticationService) unauthedToken(ctx context.Context, feHash strin
 	cid := shortuuid.New()
 	uid := "anon-" + cid
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":   time.Now().Add(WebSocketTokenExpiration).Unix(),
-		"uid":   uid,
-		"unn":   uid,
-		"a":     false, // not authed
-		"cs":    ipc.ChildStatus_UNKNOWN,
-		"perms": "",
+		"exp": time.Now().Add(WebSocketTokenExpiration).Unix(),
+		"uid": uid,
+		"unn": uid,
+		"a":   false, // not authed
+		"cs":  ipc.ChildStatus_UNKNOWN,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {

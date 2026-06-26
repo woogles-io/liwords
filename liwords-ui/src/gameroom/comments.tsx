@@ -4,7 +4,7 @@ import moment from "moment";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { GameComment } from "../gen/api/proto/comments_service/comments_service_pb";
-import { canMod } from "../mod/perms";
+import { hasPermission, Perm } from "../mod/perms";
 import { useLoginStateStoreContext } from "../store/store";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 
@@ -209,7 +209,7 @@ export const Comments = (props: Props) => {
             mine={c.userId === loginState.userID}
             deleteComment={props.deleteComment}
             editComment={props.editComment}
-            canMod={canMod(loginState.perms)}
+            canMod={hasPermission(loginState.permissions, Perm.CanModerateUsers)}
           />
         );
       })}

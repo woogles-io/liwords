@@ -243,7 +243,7 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     connectedToSocket: false,
     connID: "",
     path: "",
-    perms: [],
+    permissions: [],
   },
   dispatchLoginState: defaultFunction,
 });
@@ -884,7 +884,7 @@ const RealStore = ({ children, ...props }: Props) => {
     connectedToSocket: false,
     connID: "",
     path: "",
-    perms: new Array<string>(),
+    permissions: new Array<string>(),
   });
   const dispatchLoginState = useCallback(
     (action: Action) =>

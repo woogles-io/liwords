@@ -3,6 +3,8 @@ import { MenuInfo } from "rc-menu/lib/interface";
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { TopBar } from "../navigation/topbar";
+import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { TourneyEditor } from "./tourney_editor";
 // import { UserEditor } from './user_editor';
 import { AnnouncementEditor } from "./announcement_editor";
@@ -58,6 +60,17 @@ const Sider = (props: SiderProps) => {
 
 export const Admin = () => {
   const [visibleTab, setVisibleTab] = useState("");
+  const { loginState } = useLoginStateStoreContext();
+
+  if (!hasPermission(loginState.permissions, Perm.AdminAllAccess)) {
+    return (
+      <>
+        <TopBar />
+        <p style={{ padding: 24 }}>Not authorized.</p>
+      </>
+    );
+  }
+
   return (
     <>
       <Layout>

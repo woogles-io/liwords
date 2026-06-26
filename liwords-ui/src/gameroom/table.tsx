@@ -27,6 +27,7 @@ import {
   useTimerStoreContext,
   useTournamentStoreContext,
 } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { PlayerCards } from "./player_cards";
 import Pool from "./pool";
 import { encodeToSocketFmt } from "../utils/protobuf";
@@ -493,8 +494,8 @@ export const Table = React.memo((props: Props) => {
       (director) =>
         director === username || director === `${username}:readonly`,
     );
-    return isObserver && !isDirector && !loginState.perms.includes("adm");
-  }, [isObserver, loginState.perms, username, tournamentContext.directors]);
+    return isObserver && !isDirector && !hasPermission(loginState.permissions, Perm.AdminAllAccess);
+  }, [isObserver, loginState.permissions, username, tournamentContext.directors]);
   useFirefoxPatch();
   const gmClient = useClient(GameMetadataService);
   const omgClient = useClient(GameEventService);

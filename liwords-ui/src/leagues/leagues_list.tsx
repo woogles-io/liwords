@@ -6,7 +6,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
 import { getAllLeagues } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { hasPermission, Perm } from "../mod/perms";
 import { InviteUserToLeaguesWidget } from "./invite_user_widget";
 import "./leagues.scss";
 
@@ -23,21 +23,9 @@ export const LeaguesList = () => {
     [loginState.userID, loginState.username],
   );
 
-  // Fetch user roles for permission checks
-  const { data: selfRoles } = useQuery(
-    getSelfRoles,
-    {},
-    { enabled: !!loggedIn },
-  );
-
   const canInviteToLeagues = useMemo(() => {
-    const roles = selfRoles?.roles || [];
-    return (
-      roles.includes("League Promoter") ||
-      roles.includes("Admin") ||
-      roles.includes("Manager")
-    );
-  }, [selfRoles?.roles]);
+    return hasPermission(loginState.permissions, Perm.CanInviteToLeagues);
+  }, [loginState.permissions]);
 
   const location = useLocation();
   const [activeFaqKey, setActiveFaqKey] = useState<

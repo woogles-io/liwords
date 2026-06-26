@@ -74,8 +74,12 @@ import { CreateBroadcast } from "./broadcasts/CreateBroadcast";
 import { EditBroadcast } from "./broadcasts/EditBroadcast";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
-import { getModList } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import {
+  getModList,
+  getSelfPermissions,
+} from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 import { getBadgesMetadata } from "./gen/api/proto/user_service/user_service-ProfileService_connectquery";
+import { ActionType } from "./actions/actions";
 
 // Theme, board, and tile classes are now managed by Zustand store (see stores/ui-store.ts)
 // The store automatically applies body classes on module load
@@ -153,7 +157,7 @@ const App = React.memo(() => {
     setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
 
-  const { loginState } = useLoginStateStoreContext();
+  const { loginState, dispatchLoginState } = useLoginStateStoreContext();
   const { loggedIn, userID } = loginState;
 
   const { setAdmins, setModerators } = useModeratorStoreContext();
@@ -176,6 +180,20 @@ const App = React.memo(() => {
   );
   // get badge metadata into internal cache.
   useQuery(getBadgesMetadata, {}, { enabled: !isEmbeddedPath });
+
+  // Fetch the current user's effective permission codes whenever they log in/out.
+  // These drive all UI gating via hasPermission() in perms.ts.
+  const { data: selfPerms } = useQuery(
+    getSelfPermissions,
+    {},
+    { enabled: !isEmbeddedPath && loggedIn },
+  );
+  useEffect(() => {
+    dispatchLoginState({
+      actionType: ActionType.SetPermissions,
+      payload: selfPerms?.permissions ?? [],
+    });
+  }, [selfPerms, loggedIn, dispatchLoginState]);
 
   // Get theme from Zustand store
   const themeMode = useUIStore(selectThemeMode);

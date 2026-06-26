@@ -18,6 +18,7 @@ import {
   useLoginStateStoreContext,
   useLobbyStoreContext,
 } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { ActionType } from "../actions/actions";
 import { normalizeVariant, VariantSectionHeader } from "./variant_utils";
 
@@ -39,9 +40,9 @@ export const ActiveGames = (props: Props) => {
   );
   const navigate = useNavigate();
   const {
-    loginState: { perms },
+    loginState: { permissions },
   } = useLoginStateStoreContext();
-  const isAdmin = perms.includes("adm");
+  const isAdmin = hasPermission(permissions, Perm.AdminAllAccess);
 
   const handleChange = useCallback(
     (

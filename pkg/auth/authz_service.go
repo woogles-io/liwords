@@ -256,6 +256,22 @@ func (as *AuthorizationService) GetSelfRoles(ctx context.Context, r *connect.Req
 	}), nil
 }
 
+func (as *AuthorizationService) GetSelfPermissions(ctx context.Context, r *connect.Request[pb.GetSelfPermissionsRequest]) (
+	*connect.Response[pb.SelfPermissionsResponse], error) {
+
+	user, err := apiserver.AuthUser(ctx, as.userStore)
+	if err != nil {
+		return nil, err
+	}
+	permissions, err := rbac.UserPermissions(ctx, as.q, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pb.SelfPermissionsResponse{
+		Permissions: permissions,
+	}), nil
+}
+
 func (as *AuthorizationService) GetUsersWithRoles(ctx context.Context, r *connect.Request[pb.GetUsersWithRolesRequest]) (
 	*connect.Response[pb.GetUsersWithRolesResponse], error) {
 

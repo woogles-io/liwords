@@ -113,7 +113,7 @@ it("tests initial fulldivisions message", () => {
     loggedIn: true,
     connID: "conn-123",
     path: "/foo",
-    perms: [],
+    permissions: [],
     connectedToSocket: true,
   };
   const newState = TournamentReducer(state, {

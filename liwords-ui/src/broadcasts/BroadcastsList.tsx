@@ -7,6 +7,7 @@ import { getAllBroadcasts } from "../gen/api/proto/broadcast_service/broadcast_s
 import type { Broadcast } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 const { Title, Text } = Typography;
@@ -117,7 +118,7 @@ export const BroadcastsList: React.FC = () => {
   // Past: inactive, show last 5 most recent
   const past = all.filter((b) => !b.active).slice(0, 5);
 
-  const canManage = loginState.perms.includes("adm");
+  const canManage = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
 
   const renderSection = (broadcasts: Broadcast[]) =>
     broadcasts.map((b) => <BroadcastCard key={b.slug} b={b} />);

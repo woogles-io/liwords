@@ -87,3 +87,14 @@ func UserRoles(ctx context.Context, q *models.Queries, username string) ([]strin
 		return item.Name
 	}), nil
 }
+
+// UserPermissions returns the effective permission codes for the given user
+// (via their roles). This includes admin_all_access if the user is an Admin,
+// which the frontend treats as a wildcard granting all permissions.
+func UserPermissions(ctx context.Context, q *models.Queries, userID uint) ([]string, error) {
+	codes, err := q.GetUserPermissions(ctx, int32(userID))
+	if err != nil {
+		return nil, err
+	}
+	return codes, nil
+}

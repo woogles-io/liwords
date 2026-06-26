@@ -6,7 +6,7 @@ import {
   useContextMatchContext,
   useLoginStateStoreContext,
 } from "../store/store";
-import { canMod } from "../mod/perms";
+import { hasPermission, Perm } from "../mod/perms";
 import { DisplayUserFlag } from "./display_flag";
 import { SettingOutlined } from "@ant-design/icons";
 import { FollowerHandle, TheFollower } from "./follower";
@@ -54,7 +54,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   } = props;
   const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
-  const { loggedIn, userID, perms } = loginState;
+  const { loggedIn, userID, permissions } = loginState;
 
   const followerRef = useRef<FollowerHandle>(undefined);
   const blockerRef = useRef<BlockerHandle>(undefined);
@@ -196,13 +196,13 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ),
     });
   }
-  if (props.showModTools && canMod(perms)) {
+  if (props.showModTools && hasPermission(permissions, Perm.CanModerateUsers)) {
     userMenuOptions.push({
       key: `mod-${props.userID}`,
       label: `Moderate`,
     });
   }
-  if (props.showDeleteMessage && canMod(perms)) {
+  if (props.showDeleteMessage && hasPermission(permissions, Perm.CanModerateUsers)) {
     userMenuOptions.push({
       key: `delete-${props.userID}`,
       label: "Delete this message",

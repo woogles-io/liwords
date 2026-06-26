@@ -366,6 +366,9 @@ message UserRolesResponse { repeated string roles = 1; }
 
 message GetSelfRolesRequest {}
 
+message GetSelfPermissionsRequest {}
+message SelfPermissionsResponse { repeated string permissions = 1; }
+
 message GetUsersWithRolesRequest { repeated string roles = 1; }
 message GetUsersWithRolesResponse {
   repeated UserAndRole user_and_role_objs = 1;
@@ -400,6 +403,9 @@ service AuthorizationService {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
   rpc GetSelfRoles(GetSelfRolesRequest) returns (UserRolesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc GetSelfPermissions(GetSelfPermissionsRequest) returns (SelfPermissionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
   rpc GetUsersWithRoles(GetUsersWithRolesRequest)

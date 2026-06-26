@@ -29,6 +29,7 @@ import type { TournamentMetadata } from "../gen/api/proto/tournament_service/tou
 import { flashError, useClient } from "../utils/hooks/connect";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import {
   SettingsForm,
   DisplayedGameSetting,
@@ -92,8 +93,7 @@ export const TournamentWizard = () => {
   const tournamentClient = useClient(TournamentService);
   const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
 
-  const canCreate =
-    loginState.perms.includes("toc") || loginState.perms.includes("adm");
+  const canCreate = hasPermission(loginState.permissions, Perm.CanCreateTournaments);
 
   const [wizardData, setWizardData] = useState<WizardData>({
     tournamentMode: "online",

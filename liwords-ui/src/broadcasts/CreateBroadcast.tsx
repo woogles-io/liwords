@@ -14,6 +14,7 @@ import { useNavigate } from "react-router";
 import { useMutation } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { LexiconFormItem } from "../shared/lexicon_display";
 import { ChallengeRulesFormItem } from "../lobby/challenge_rules_form_item";
 import { createBroadcast } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
@@ -37,8 +38,8 @@ export const CreateBroadcast: React.FC = () => {
     onError: (e) => flashError(e),
   });
 
-  const isAdmin = loginState.perms.includes("adm");
-  if (!loginState.loggedIn || !isAdmin) {
+  const canCreate = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
+  if (!loginState.loggedIn || !canCreate) {
     return (
       <div>
         <TopBar />

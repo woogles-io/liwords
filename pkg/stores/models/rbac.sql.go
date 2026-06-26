@@ -91,6 +91,34 @@ func (q *Queries) GetRolesWithPermissions(ctx context.Context) ([]GetRolesWithPe
 	return items, nil
 }
 
+const getUserPermissions = `-- name: GetUserPermissions :many
+SELECT DISTINCT p.code
+FROM user_roles ur
+JOIN role_permissions rp ON ur.role_id = rp.role_id
+JOIN permissions p ON rp.permission_id = p.id
+WHERE ur.user_id = $1
+`
+
+func (q *Queries) GetUserPermissions(ctx context.Context, userID int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUserPermissions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserRoles = `-- name: GetUserRoles :many
 SELECT r.id, r.name, r.description
 FROM roles r

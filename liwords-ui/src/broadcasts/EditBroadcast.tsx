@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router";
 import { useQuery, useMutation } from "@connectrpc/connect-query";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
+import { hasPermission, Perm } from "../mod/perms";
 import { LexiconFormItem } from "../shared/lexicon_display";
 import { ChallengeRulesFormItem } from "../lobby/challenge_rules_form_item";
 import {
@@ -48,7 +49,7 @@ export const EditBroadcast: React.FC = () => {
 
   const canEdit =
     loginState.loggedIn &&
-    (loginState.perms.includes("adm") ||
+    (hasPermission(loginState.permissions, Perm.CanCreateBroadcasts) ||
       broadcast?.creatorUsername === loginState.username);
 
   useEffect(() => {

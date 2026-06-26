@@ -39,7 +39,7 @@ import {
   openRegistration,
   getDivisionTimeBankWarnings,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { hasPermission, Perm } from "../mod/perms";
 import { DivisionStandings } from "./standings";
 import { LeagueRoster } from "./league_roster";
 import { LeagueCorrespondenceGames } from "./league_correspondence_games";
@@ -160,8 +160,7 @@ export const LeaguePage = (props: Props) => {
     { enabled: !!slug },
   );
 
-  // Fetch user roles for admin checks
-  const { data: selfRoles } = useQuery(getSelfRoles, {}, { enabled: loggedIn });
+  // Permission checks now use loginState.permissions from GetSelfPermissions
 
   // Data processing - get all seasons and find the active one
   const league = leagueData?.league;
@@ -424,14 +423,9 @@ export const LeaguePage = (props: Props) => {
     return map;
   }, [registrants, standingsData, compRankMap]);
 
-  // Check if user can manage leagues (Admin, Manager, or League Promoter role)
   const canManageLeagues = useMemo(() => {
-    return !!(
-      selfRoles?.roles.includes("Admin") ||
-      selfRoles?.roles.includes("Manager") ||
-      selfRoles?.roles.includes("League Promoter")
-    );
-  }, [selfRoles?.roles]);
+    return hasPermission(loginState.permissions, Perm.CanManageLeagues);
+  }, [loginState.permissions]);
 
   // Register/Unregister mutations
   const registerMutation = useMutation(registerForSeason, {
