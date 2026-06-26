@@ -594,8 +594,8 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	// Check rate limit
-	// Contributors (users who have completed analysis jobs) get 20 per day
-	// Regular users get 5 per day
+	// Volunteers (users who have completed analysis jobs) get 30 per day
+	// Regular users get 15 per day
 	requestCount, err := s.queries.GetUserRequestCountToday(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to check rate limit: %w", err))
@@ -608,15 +608,15 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	isContributor := jobCount > 0
-	dailyLimit := int64(5)
+	dailyLimit := int64(15)
 	if isContributor {
-		dailyLimit = 20
+		dailyLimit = 30
 	}
 
 	if requestCount >= dailyLimit {
 		message := fmt.Sprintf("You have reached the daily limit of %d analysis requests. Please try again tomorrow.", dailyLimit)
 		if !isContributor {
-			message += " Contributors who run the analysis worker get 20 requests per day!"
+			message += " Volunteers who run the analysis worker get 30 requests per day!"
 		}
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_RATE_LIMITED,

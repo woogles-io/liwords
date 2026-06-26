@@ -160,7 +160,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		return nil, apiserver.PermissionDenied("not permitted to create tournaments")
 	}
 
-	// Rate limit: max 3 tournaments per week unless user can manage tournaments (unlimited)
+	// Rate limit: max 6 tournaments per week unless user can manage tournaments (unlimited)
 	unlimited, err := rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanManageTournaments)
 	if err != nil {
 		return nil, err
@@ -170,8 +170,8 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
-		if count >= 3 {
-			return nil, apiserver.PermissionDenied("you have reached the maximum of 3 tournament creations per week; please contact us if you need to create more")
+		if count >= 6 {
+			return nil, apiserver.PermissionDenied("you have reached the maximum of 6 tournament creations per week; please contact us if you need to create more")
 		}
 	}
 
