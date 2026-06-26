@@ -103,6 +103,22 @@ it("spectator: labels by the on-turn player's name, no 'Your'/'Their'", () => {
   expect(queryByText("Their turn")).not.toBeInTheDocument();
 });
 
+it("bare: time only inline (no turn label / name), tooltip still names the player", async () => {
+  const { getByText, queryByText, findByText } = renderIndicator(
+    { kind: "bare", playerName: "ather" },
+    notBleeding,
+  );
+  // Inline is just the ticking deadline -- no turn label, no name.
+  expect(getByText("4:09:58:00")).toBeInTheDocument();
+  expect(queryByText("Your turn")).not.toBeInTheDocument();
+  expect(queryByText("ather")).not.toBeInTheDocument();
+  // The tooltip still names the on-turn player.
+  fireEvent.mouseOver(getByText("4:09:58:00"));
+  expect(
+    await findByText(/ather's free time: 09:58:00, time bank: 4:00:00:00/),
+  ).toBeInTheDocument();
+});
+
 it("no clock anchor: renders the label only, no time, no crash", () => {
   const { getByText, queryByText } = render(
     <CorrespondenceTurnIndicator perspective={{ kind: "mine" }} />,

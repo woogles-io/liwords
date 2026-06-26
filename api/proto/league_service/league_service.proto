@@ -228,6 +228,16 @@ message PlayerSeasonGame {
   google.protobuf.Timestamp game_date = 7;
   int32 round = 8; // Optional round number
   ipc.GameEndReason game_end_reason = 9;
+
+  // Live clock anchor, populated only for in-progress correspondence/league
+  // games (zero/unset for finished games), so a client can tick the on-turn
+  // player's deadline. last_update is the time of the last move; increment_secs
+  // is the per-turn allowance; on_turn_time_bank_ms is the on-turn player's
+  // remaining time bank in milliseconds. Whose turn it is is read from result
+  // ("turn" = this player, "in_progress" = the opponent).
+  google.protobuf.Timestamp last_update = 10;
+  int32 increment_secs = 11;
+  int64 on_turn_time_bank_ms = 12;
 }
 
 message InviteUserRequest {
