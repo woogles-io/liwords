@@ -35,6 +35,8 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/tournament_service"
 )
 
+const maxTournamentsPerWeek = 6
+
 // TournamentService is a service that contains functions that
 // allow directors to interact with their tournaments
 type TournamentService struct {
@@ -160,7 +162,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		return nil, apiserver.PermissionDenied("not permitted to create tournaments")
 	}
 
-	// Rate limit: max 6 tournaments per week unless user can manage tournaments (unlimited)
+	// Rate limit: max maxTournamentsPerWeek per week unless user can manage tournaments (unlimited)
 	unlimited, err := rbac.HasPermission(ctx, ts.queries, user.ID, rbac.CanManageTournaments)
 	if err != nil {
 		return nil, err
@@ -170,8 +172,8 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 		if err != nil {
 			return nil, apiserver.InternalErr(err)
 		}
-		if count >= 6 {
-			return nil, apiserver.PermissionDenied("you have reached the maximum of 6 tournament creations per week; please contact us if you need to create more")
+		if count >= maxTournamentsPerWeek {
+			return nil, apiserver.PermissionDenied(fmt.Sprintf("you have reached the maximum of %d tournament creations per week; please contact us if you need to create more", maxTournamentsPerWeek))
 		}
 	}
 
