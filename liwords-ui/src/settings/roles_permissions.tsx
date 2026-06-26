@@ -25,6 +25,9 @@ const PERMISSION_LABELS: Record<string, string> = {
   can_manage_leagues: "Manage Leagues",
   can_play_leagues: "Play in Leagues",
   can_invite_to_leagues: "Invite Users to Leagues",
+  can_revoke_from_leagues: "Revoke Users from Leagues",
+  can_verify_user_identities: "Verify User Identities",
+  can_create_broadcasts: "Create & Manage Broadcasts",
 };
 
 export const RolesPermissions = () => {
