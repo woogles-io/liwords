@@ -38,7 +38,10 @@ export const CreateBroadcast: React.FC = () => {
     onError: (e) => flashError(e),
   });
 
-  const canCreate = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
+  const canCreate = hasPermission(
+    loginState.permissions,
+    Perm.CanCreateBroadcasts,
+  );
   if (!loginState.loggedIn || !canCreate) {
     return (
       <div>

@@ -118,7 +118,10 @@ export const BroadcastsList: React.FC = () => {
   // Past: inactive, show last 5 most recent
   const past = all.filter((b) => !b.active).slice(0, 5);
 
-  const canManage = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
+  const canManage = hasPermission(
+    loginState.permissions,
+    Perm.CanCreateBroadcasts,
+  );
 
   const renderSection = (broadcasts: Broadcast[]) =>
     broadcasts.map((b) => <BroadcastCard key={b.slug} b={b} />);

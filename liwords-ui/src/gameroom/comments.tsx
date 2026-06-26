@@ -209,7 +209,10 @@ export const Comments = (props: Props) => {
             mine={c.userId === loginState.userID}
             deleteComment={props.deleteComment}
             editComment={props.editComment}
-            canMod={hasPermission(loginState.permissions, Perm.CanModerateUsers)}
+            canMod={hasPermission(
+              loginState.permissions,
+              Perm.CanModerateUsers,
+            )}
           />
         );
       })}

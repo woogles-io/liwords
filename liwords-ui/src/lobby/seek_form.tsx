@@ -631,9 +631,10 @@ export const SeekForm = (props: Props) => {
         <BotSelector
           lexicon={selections?.lexicon || ""}
           subscriptionCriteria={subscriptionCriteria}
-          specialAccessPlayer={
-            hasPermission(loginState.permissions, Perm.CanPlayEliteBot)
-          }
+          specialAccessPlayer={hasPermission(
+            loginState.permissions,
+            Perm.CanPlayEliteBot,
+          )}
           botType={initialValues.botType}
           hasPatreonIntegration={userIntegrations?.integrations.some(
             (i) => i.integrationName === "patreon",
