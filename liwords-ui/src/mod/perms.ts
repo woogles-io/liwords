@@ -33,3 +33,29 @@ export const hasPermission = (
   code: PermCode,
 ): boolean =>
   permissions.includes(Perm.AdminAllAccess) || permissions.includes(code);
+
+/**
+ * Returns true if the user has any of the given permission codes.
+ * Useful for gating pages accessible to multiple staff roles.
+ */
+export const hasAnyPermission = (
+  permissions: Array<string>,
+  codes: Array<PermCode>,
+): boolean => codes.some((code) => hasPermission(permissions, code));
+
+// Permissions that grant access to the /admin panel.
+// Admins get in via AdminAllAccess; managers and moderators get in via their
+// specific granular permissions.
+export const ADMIN_PANEL_PERMS: Array<PermCode> = [
+  Perm.AdminAllAccess,
+  Perm.CanModerateUsers,
+  Perm.CanSeePrivateUserData,
+  Perm.CanManageUserRoles,
+  Perm.CanViewUserRoles,
+  Perm.CanManageBadges,
+  Perm.CanManageAppRolesAndPermissions,
+  Perm.CanResetAndDeleteAccounts,
+  Perm.CanModifyAnnouncements,
+  Perm.CanCreatePuzzles,
+  Perm.CanVerifyUserIdentities,
+];

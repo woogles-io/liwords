@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Link } from "react-router";
 import { TopBar } from "../navigation/topbar";
 import { useLoginStateStoreContext } from "../store/store";
-import { hasPermission, Perm } from "../mod/perms";
+import { hasAnyPermission, ADMIN_PANEL_PERMS } from "../mod/perms";
 import { TourneyEditor } from "./tourney_editor";
 // import { UserEditor } from './user_editor';
 import { AnnouncementEditor } from "./announcement_editor";
@@ -62,7 +62,7 @@ export const Admin = () => {
   const [visibleTab, setVisibleTab] = useState("");
   const { loginState } = useLoginStateStoreContext();
 
-  if (!hasPermission(loginState.permissions, Perm.AdminAllAccess)) {
+  if (!hasAnyPermission(loginState.permissions, ADMIN_PANEL_PERMS)) {
     return (
       <>
         <TopBar />
