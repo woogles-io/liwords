@@ -2,26 +2,10 @@ import React from "react";
 import { Tag, Card, Spin, Alert, Divider } from "antd";
 import { SafetyOutlined, CrownOutlined } from "@ant-design/icons";
 import { useQuery } from "@connectrpc/connect-query";
-import { getSelfRoles } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
-
-// Map of roles to their associated permissions
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  Admin: ["admin_all_access"],
-  Manager: [
-    "can_create_tournaments",
-    "can_manage_tournaments",
-    "can_modify_announcements",
-    "can_create_puzzles",
-    "can_manage_badges",
-    "can_manage_leagues",
-  ],
-  Moderator: ["can_moderate_users"],
-  "Tournament Creator": ["can_create_tournaments"],
-  "Tournament Manager": ["can_manage_tournaments"],
-  "Special Access Player": ["can_bypass_elitebot_paywall"],
-  "League Player": ["can_play_leagues"],
-  "League Promoter": ["can_invite_to_leagues", "can_play_leagues"],
-};
+import {
+  getSelfRoles,
+  getSelfPermissions,
+} from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
 
 // Human-readable permission names
 const PERMISSION_LABELS: Record<string, string> = {
@@ -41,12 +25,19 @@ const PERMISSION_LABELS: Record<string, string> = {
   can_manage_leagues: "Manage Leagues",
   can_play_leagues: "Play in Leagues",
   can_invite_to_leagues: "Invite Users to Leagues",
+  can_revoke_from_leagues: "Revoke Users from Leagues",
+  can_verify_user_identities: "Verify User Identities",
+  can_create_broadcasts: "Create & Manage Broadcasts",
 };
 
 export const RolesPermissions = () => {
   const { data: selfRoles, isLoading, error } = useQuery(getSelfRoles, {});
+  const { data: selfPermissions, isLoading: permsLoading } = useQuery(
+    getSelfPermissions,
+    {},
+  );
 
-  if (isLoading) {
+  if (isLoading || permsLoading) {
     return (
       <div style={{ padding: "24px", textAlign: "center" }}>
         <Spin size="large" />
@@ -68,13 +59,7 @@ export const RolesPermissions = () => {
   }
 
   const roles = selfRoles?.roles || [];
-  const allPermissions = new Set<string>();
-
-  // Collect all unique permissions from all roles
-  roles.forEach((role) => {
-    const permissions = ROLE_PERMISSIONS[role] || [];
-    permissions.forEach((permission) => allPermissions.add(permission));
-  });
+  const allPermissions = selfPermissions?.permissions || [];
 
   return (
     <div className="roles-permissions-container" style={{ padding: "24px" }}>
@@ -132,7 +117,7 @@ export const RolesPermissions = () => {
             >
               These permissions are granted by your roles:
             </p>
-            {allPermissions.size === 0 ? (
+            {allPermissions.length === 0 ? (
               <p style={{ color: "#999" }}>
                 No specific permissions listed for your roles.
               </p>
@@ -144,29 +129,27 @@ export const RolesPermissions = () => {
                   gap: "8px",
                 }}
               >
-                {Array.from(allPermissions)
-                  .sort()
-                  .map((permission) => (
-                    <div
-                      key={permission}
-                      className="permission-item"
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "4px",
-                        fontSize: "14px",
-                      }}
+                {[...allPermissions].sort().map((permission) => (
+                  <div
+                    key={permission}
+                    className="permission-item"
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "4px",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <strong>
+                      {PERMISSION_LABELS[permission] || permission}
+                    </strong>
+                    <span
+                      className="permission-code"
+                      style={{ fontSize: "12px", marginLeft: "8px" }}
                     >
-                      <strong>
-                        {PERMISSION_LABELS[permission] || permission}
-                      </strong>
-                      <span
-                        className="permission-code"
-                        style={{ fontSize: "12px", marginLeft: "8px" }}
-                      >
-                        ({permission})
-                      </span>
-                    </div>
-                  ))}
+                      ({permission})
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
