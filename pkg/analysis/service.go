@@ -33,6 +33,11 @@ import (
 // Workers older than this are rejected at ClaimJob.
 const MinMacondoVersion = "v0.12.4"
 
+const (
+	dailyAnalysisLimitRegular   = int64(15)
+	dailyAnalysisLimitVolunteer = int64(30)
+)
+
 // normalizeMacondoVersion strips the git-describe suffix (-N-gHASH) so that
 // "v0.12.3-3-gabcdef" (3 commits after v0.12.3) compares as >= "v0.12.3".
 // Dev builds that report "dev" or an empty string are allowed through.
@@ -594,8 +599,8 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	// Check rate limit
-	// Contributors (users who have completed analysis jobs) get 20 per day
-	// Regular users get 5 per day
+	// Volunteers (users who have completed analysis jobs) get 30 per day
+	// Regular users get 15 per day
 	requestCount, err := s.queries.GetUserRequestCountToday(ctx, user.UUID)
 	if err != nil {
 		return nil, apiserver.InternalErr(fmt.Errorf("failed to check rate limit: %w", err))
@@ -608,15 +613,15 @@ func (s *AnalysisService) RequestAnalysis(
 	}
 
 	isContributor := jobCount > 0
-	dailyLimit := int64(5)
+	dailyLimit := dailyAnalysisLimitRegular
 	if isContributor {
-		dailyLimit = 20
+		dailyLimit = dailyAnalysisLimitVolunteer
 	}
 
 	if requestCount >= dailyLimit {
 		message := fmt.Sprintf("You have reached the daily limit of %d analysis requests. Please try again tomorrow.", dailyLimit)
 		if !isContributor {
-			message += " Contributors who run the analysis worker get 20 requests per day!"
+			message += fmt.Sprintf(" Volunteers who run the analysis worker get %d requests per day!", dailyAnalysisLimitVolunteer)
 		}
 		return connect.NewResponse(&pb.RequestAnalysisResponse{
 			Status:  pb.RequestAnalysisResponse_RATE_LIMITED,

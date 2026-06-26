@@ -9,7 +9,7 @@ ALTER TABLE analysis_jobs ADD COLUMN request_type TEXT DEFAULT 'automatic';
 CREATE INDEX idx_analysis_jobs_requested_by ON analysis_jobs(requested_by_user_uuid)
 WHERE requested_by_user_uuid IS NOT NULL;
 
--- Table for tracking daily analysis request limits (5 per day per user)
+-- Table for tracking daily analysis request limits (15 per day per user, 30 for volunteers)
 CREATE TABLE user_analysis_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_uuid TEXT NOT NULL,
