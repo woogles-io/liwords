@@ -93,7 +93,10 @@ export const TournamentWizard = () => {
   const tournamentClient = useClient(TournamentService);
   const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
 
-  const canCreate = hasPermission(loginState.permissions, Perm.CanCreateTournaments);
+  const canCreate = hasPermission(
+    loginState.permissions,
+    Perm.CanCreateTournaments,
+  );
 
   const [wizardData, setWizardData] = useState<WizardData>({
     tournamentMode: "online",

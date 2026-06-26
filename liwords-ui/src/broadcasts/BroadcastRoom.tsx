@@ -160,7 +160,10 @@ export const BroadcastRoom: React.FC = () => {
   const isDirector = broadcastData.directorUsernames.includes(
     loginState.username,
   );
-  const canManageBroadcast = hasPermission(loginState.permissions, Perm.CanCreateBroadcasts);
+  const canManageBroadcast = hasPermission(
+    loginState.permissions,
+    Perm.CanCreateBroadcasts,
+  );
 
   const slots: BroadcastSlot[] = slotsData?.slots ?? [];
 
@@ -498,7 +501,8 @@ export const BroadcastRoom: React.FC = () => {
               {broadcast.name}
             </Title>
             {!broadcast.active && <Tag color="default">Archived</Tag>}
-            {(canManageBroadcast || broadcast.creatorUsername === loginState.username) && (
+            {(canManageBroadcast ||
+              broadcast.creatorUsername === loginState.username) && (
               <Button
                 size="small"
                 onClick={() => navigate(`/broadcasts/${slug}/edit`)}

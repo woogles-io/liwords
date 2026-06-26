@@ -67,8 +67,6 @@ export const TournamentRoom = (props: Props) => {
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
-
-
   useTourneyMetadata(
     path,
     "",

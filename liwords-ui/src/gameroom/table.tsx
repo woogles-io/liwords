@@ -494,8 +494,17 @@ export const Table = React.memo((props: Props) => {
       (director) =>
         director === username || director === `${username}:readonly`,
     );
-    return isObserver && !isDirector && !hasPermission(loginState.permissions, Perm.AdminAllAccess);
-  }, [isObserver, loginState.permissions, username, tournamentContext.directors]);
+    return (
+      isObserver &&
+      !isDirector &&
+      !hasPermission(loginState.permissions, Perm.AdminAllAccess)
+    );
+  }, [
+    isObserver,
+    loginState.permissions,
+    username,
+    tournamentContext.directors,
+  ]);
   useFirefoxPatch();
   const gmClient = useClient(GameMetadataService);
   const omgClient = useClient(GameEventService);
