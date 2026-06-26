@@ -1,6 +1,4 @@
 import {
-  formatCoarseDuration,
-  formatCoarseDurationShort,
   nextPin,
   onTurnCountdowns,
   pickNextCorresGame,
@@ -58,32 +56,6 @@ it("onTurnCountdowns: the bank changes sort order vs the bank-blind proxy", () =
   const lowBank = onTurnCountdowns(perTurn, 3600, elapsed).beforeExpiry;
   const highBank = onTurnCountdowns(perTurn, 10 * 3600, elapsed).beforeExpiry;
   expect(lowBank).toBeLessThan(highBank);
-});
-
-it("formatCoarseDuration: renders coarse two-unit-max labels", () => {
-  expect(formatCoarseDuration(2 * 86400 + 3 * 3600)).toBe("2d 3h");
-  expect(formatCoarseDuration(2 * 86400)).toBe("2d");
-  expect(formatCoarseDuration(5 * 3600 + 12 * 60)).toBe("5h 12m");
-  expect(formatCoarseDuration(5 * 3600)).toBe("5h");
-  expect(formatCoarseDuration(47 * 60)).toBe("47m");
-  expect(formatCoarseDuration(30)).toBe("30s");
-});
-
-it("formatCoarseDuration: non-positive and non-finite render as 'now'", () => {
-  expect(formatCoarseDuration(0)).toBe("now");
-  expect(formatCoarseDuration(-100)).toBe("now");
-  expect(formatCoarseDuration(Infinity)).toBe("now");
-  expect(formatCoarseDuration(NaN)).toBe("now");
-});
-
-it("formatCoarseDurationShort: renders only the single largest unit", () => {
-  expect(formatCoarseDurationShort(2 * 86400 + 3 * 3600)).toBe("2d");
-  expect(formatCoarseDurationShort(5 * 3600 + 12 * 60)).toBe("5h");
-  expect(formatCoarseDurationShort(47 * 60 + 30)).toBe("47m");
-  expect(formatCoarseDurationShort(30)).toBe("30s");
-  expect(formatCoarseDurationShort(0)).toBe("now");
-  expect(formatCoarseDurationShort(-5)).toBe("now");
-  expect(formatCoarseDurationShort(Infinity)).toBe("now");
 });
 
 it("pickNextCorresGame: clicking Next once per game cycles through all and returns to the first", () => {

@@ -22,10 +22,7 @@ import {
   GameInfoResponse,
 } from "../gen/api/proto/ipc/omgwords_pb";
 import { useClient } from "../utils/hooks/connect";
-import {
-  OnTurnCountdowns,
-  onTurnCountdowns,
-} from "../utils/time_bank_calculator";
+import { onTurnCountdowns } from "../utils/time_bank_calculator";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 type Props = {
@@ -137,16 +134,13 @@ export const CorrespondenceGames = (props: Props) => {
             onTurn = playerIndex === ag.playerOnTurn;
           }
 
-          // Compute the bank-aware countdowns for whoever is on turn. The
-          // before-expiry value is the real time-remaining we sort by (per-turn
-          // allowance + that player's remaining bank - elapsed); the shared
-          // CorrespondenceTurnIndicator renders it (and the low-time / time-bank
-          // escalations). This replaces the old bank-blind `incrementSecs -
-          // elapsed` proxy, which sorted league games (which have banks) wrong.
+          // The before-expiry value is the real time-remaining we sort by
+          // (per-turn allowance + that player's remaining bank - elapsed). This
+          // replaces the old bank-blind `incrementSecs - elapsed` proxy, which
+          // sorted league games (which have banks) wrong. The indicator itself
+          // ticks the live deadline from the clock anchor below.
           const now = Date.now();
           let timeRemainingSecs = Infinity;
-          let hasTimeBank = false;
-          let countdowns: OnTurnCountdowns | undefined;
           if (
             ag.playerOnTurn !== undefined &&
             ag.lastUpdate &&
@@ -154,26 +148,33 @@ export const CorrespondenceGames = (props: Props) => {
           ) {
             const timeElapsedSecs = (now - ag.lastUpdate) / 1000;
             const bankSecs = (ag.timeBank?.[ag.playerOnTurn] ?? 0) / 1000;
-            hasTimeBank = bankSecs > 0;
-            countdowns = onTurnCountdowns(
+            timeRemainingSecs = onTurnCountdowns(
               ag.incrementSecs,
               bankSecs,
               timeElapsedSecs,
-            );
-            timeRemainingSecs = countdowns.beforeExpiry;
+            ).beforeExpiry;
           }
 
-          // Condensed shared turn / countdown indicator: red "Your turn" with a
-          // coarse time inline and the full "expires in X, free for Y" detail in
-          // the tooltip; the opponent's clock is greyed since it is not the
-          // user's deadline.
-          const turnDisplay: ReactNode = (
-            <CorrespondenceTurnIndicator
-              onTurn={onTurn}
-              countdowns={countdowns}
-              hasTimeBank={hasTimeBank}
-            />
-          );
+          // Shared turn / countdown indicator: the live "d:hh:mm:ss" deadline
+          // inline (red "Your turn" / greyed "Their turn") with the free-time /
+          // time-bank breakdown ticking in the tooltip.
+          const turnDisplay: ReactNode =
+            ag.playerOnTurn === undefined ? null : (
+              <CorrespondenceTurnIndicator
+                perspective={
+                  onTurn
+                    ? { kind: "mine" }
+                    : {
+                        kind: "opponent",
+                        playerName:
+                          ag.players[ag.playerOnTurn]?.displayName || "?",
+                      }
+                }
+                lastUpdateMs={ag.lastUpdate || undefined}
+                incrementMs={(ag.incrementSecs || 0) * 1000}
+                bankMs={ag.timeBank?.[ag.playerOnTurn] ?? 0}
+              />
+            );
 
           return {
             gameID: ag.gameID,
