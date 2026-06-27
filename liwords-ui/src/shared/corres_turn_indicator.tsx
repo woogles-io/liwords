@@ -47,6 +47,11 @@ type Props = {
   lastUpdateMs?: number;
   incrementMs?: number;
   bankMs?: number;
+  // Shorten the participant labels ("Your turn" -> "You", "Their turn" -> "Opp")
+  // for width-constrained surfaces. The lobby correspondence list opts in (its
+  // narrow TURN column wraps the two-word label past the ticking clock); the
+  // wider league card keeps the full wording.
+  compact?: boolean;
 };
 
 // Turn / time indicator shared by the lobby correspondence list and the league
@@ -56,7 +61,7 @@ type Props = {
 // each ticking. Exactly one of Y/Z drains at a time: Y until the bank starts
 // bleeding, then Z.
 export const CorrespondenceTurnIndicator = (props: Props) => {
-  const { perspective, lastUpdateMs, incrementMs, bankMs } = props;
+  const { perspective, lastUpdateMs, incrementMs, bankMs, compact } = props;
 
   const [, setRerender] = useState(0);
   const requestRerender = useCallback(
@@ -113,14 +118,14 @@ export const CorrespondenceTurnIndicator = (props: Props) => {
   let turnClass: string;
   switch (perspective.kind) {
     case "mine":
-      label = "Your turn";
+      label = compact ? "You" : "Your turn";
       labelColor = YOUR_TURN_COLOR;
       timeOpacity = 0.7;
       subject = "Your";
       turnClass = "your-turn";
       break;
     case "opponent":
-      label = "Their turn";
+      label = compact ? "Opp" : "Their turn";
       outerOpacity = 0.55;
       subject = `${perspective.playerName}'s`;
       turnClass = "their-turn";
