@@ -227,10 +227,13 @@ export const CorrespondenceTurnIndicator = (props: Props) => {
       <Tooltip title={tooltip}>
         {icon}
         {label ? <span style={{ color: labelColor }}>{label}</span> : null}
-        <span
-          className="corres-turn-time"
-          style={{ marginLeft: label ? 6 : 0, opacity: timeOpacity }}
-        >
+        {/* Separate label and clock with a real space, not the time span's
+            margin: a space is a line-break opportunity, so a narrow column
+            wraps cleanly to label / clock ("Your turn" / "10:09:33:33")
+            rather than overflowing as one unbreakable run. A margin gives
+            the gap but never breaks, and would indent the clock on wrap. */}
+        {label ? " " : null}
+        <span className="corres-turn-time" style={{ opacity: timeOpacity }}>
           {xTimer}
         </span>
       </Tooltip>
