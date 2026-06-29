@@ -154,15 +154,30 @@ const ManageWindowTitleAndTurnSound = (props: {
   const canPlaySound = !gameDone && gameContext.gameID;
   const soundUnlocked = useRef(false);
   const notificationShown = useRef(false);
+  // High-water mark: the number of turns seen the last time we played a sound.
+  // A reconnect-driven GAME_HISTORY_REFRESHER resends the same turn history, so
+  // turns.length stays equal to lastTurnCount.current and no sound fires.
+  // A real new move pushes a new event, making turns.length > lastTurnCount.current.
+  const lastTurnCount = useRef(-1);
 
   useEffect(() => {
+    const turnCount = gameContext.turns.length;
     if (canPlaySound) {
       if (!soundUnlocked.current) {
-        // ignore first sound
+        // Suppress the very first sound on initial load / reconnect.
+        // Initialise the high-water mark so refresher replays are ignored.
         soundUnlocked.current = true;
+        lastTurnCount.current = turnCount;
         notificationShown.current = false;
         return;
       }
+
+      // Only play a sound when a genuinely new move has arrived.
+      // Equal counts mean a reconnect replayed the same history — stay silent.
+      if (turnCount <= lastTurnCount.current) {
+        return;
+      }
+      lastTurnCount.current = turnCount;
 
       if (myId === gameContext.onturn) {
         BoopSounds.playSound("oppMoveSound");
@@ -211,11 +226,13 @@ const ManageWindowTitleAndTurnSound = (props: {
     } else {
       soundUnlocked.current = false;
       notificationShown.current = false;
+      lastTurnCount.current = -1;
     }
   }, [
     canPlaySound,
     myId,
     gameContext.onturn,
+    gameContext.turns.length,
     playerNicks,
     gameContext.gameID,
     props.gameInfo.gameRequest?.gameMode,
