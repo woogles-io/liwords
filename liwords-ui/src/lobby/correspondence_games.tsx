@@ -173,6 +173,7 @@ export const CorrespondenceGames = (props: Props) => {
                 lastUpdateMs={ag.lastUpdate || undefined}
                 incrementMs={(ag.incrementSecs || 0) * 1000}
                 bankMs={ag.timeBank?.[ag.playerOnTurn] ?? 0}
+                compact
               />
             );
 

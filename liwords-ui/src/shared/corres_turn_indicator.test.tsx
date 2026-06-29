@@ -24,7 +24,12 @@ afterEach(() => {
 
 function renderIndicator(
   perspective: CorrespondencePerspective,
-  opts: { elapsedMs: number; incrementMs: number; bankMs: number },
+  opts: {
+    elapsedMs: number;
+    incrementMs: number;
+    bankMs: number;
+    compact?: boolean;
+  },
 ) {
   return render(
     <CorrespondenceTurnIndicator
@@ -32,6 +37,7 @@ function renderIndicator(
       lastUpdateMs={FIXED_NOW - opts.elapsedMs}
       incrementMs={opts.incrementMs}
       bankMs={opts.bankMs}
+      compact={opts.compact}
     />,
   );
 }
@@ -87,6 +93,31 @@ it("opponent: greyed 'Their turn' + possessive, bank-free tooltip", async () => 
   expect(getByText("Their turn")).toBeInTheDocument();
   expect(getByText("23:58:00")).toBeInTheDocument();
   fireEvent.mouseOver(getByText("Their turn"));
+  expect(
+    await findByText(/Blibble's clock times out in 23:58:00/),
+  ).toBeInTheDocument();
+});
+
+it("compact mine: 'You' replaces 'Your turn'; the ticking deadline still shows", () => {
+  const { getByText, queryByText } = renderIndicator(
+    { kind: "mine" },
+    { ...notBleeding, compact: true },
+  );
+  expect(getByText("You")).toBeInTheDocument();
+  expect(queryByText("Your turn")).not.toBeInTheDocument();
+  expect(getByText("4:09:58:00")).toBeInTheDocument();
+});
+
+it("compact opponent: 'Opp' replaces 'Their turn'; tooltip keeps the full possessive", async () => {
+  const { getByText, queryByText, findByText } = renderIndicator(
+    { kind: "opponent", playerName: "Blibble" },
+    { elapsedMs: 2 * MIN, incrementMs: 24 * HOUR, bankMs: 0, compact: true },
+  );
+  expect(getByText("Opp")).toBeInTheDocument();
+  expect(queryByText("Their turn")).not.toBeInTheDocument();
+  // compact only shrinks the inline label -- the tooltip still spells out whose
+  // clock it is.
+  fireEvent.mouseOver(getByText("Opp"));
   expect(
     await findByText(/Blibble's clock times out in 23:58:00/),
   ).toBeInTheDocument();
