@@ -507,6 +507,25 @@ func PlayMove(ctx context.Context,
 
 	_, err := entGame.Game.ValidateMove(m)
 	if err != nil {
+		// Invalid-word plays (VOID challenge rule) form legal words on the board but
+		// fail lexicon validation. FormedWords succeeds only for a geometrically legal
+		// tile play, so a successful call here — after ValidateMove failed — uniquely
+		// identifies the invalid-words case. Log all words (valid + invalid) plus the
+		// game ID for analysis. The error returned to the client is unchanged.
+		if m.Action() == move.MoveTypePlay {
+			if formed, fwErr := entGame.Board().FormedWords(m); fwErr == nil && len(formed) > 0 {
+				words := make([]string, len(formed))
+				for i, w := range formed {
+					words[i] = w.UserVisible(entGame.Alphabet())
+				}
+				log.Info().
+					Str("gameID", entGame.GameID()).
+					Str("userID", userID).
+					Strs("words", words).
+					Err(err).
+					Msg("invalid-word-play")
+			}
+		}
 		return err
 	}
 	// This cannot be deferred, because if performEndgameDuties expires the game this would unexpire it.
