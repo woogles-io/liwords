@@ -413,21 +413,53 @@ type TwoColTurnProps = {
   turnIndex?: number;
 };
 
-const TwoColTurn = React.memo((props: TwoColTurnProps) => {
-  const { turn, board, alphabet, onSeek, isSelected } = props;
-  const evt = turn.events[0];
-
-  const coords = evt.position || "";
-  const play: React.ReactNode = displaySummary(evt, board, alphabet);
-  let score: React.ReactNode =
+// Build the compact score text for the two-column scorecard. A single turn can
+// aggregate several events: the play, a valid-challenge bonus, and end-of-game
+// rack points when a player plays out. Segments that belong on their own line
+// are joined with "\n"; the render site splits on it and inserts <br/>. Keeping
+// this a plain string (rather than nested JSX) avoids interpolating a ReactNode,
+// which would render as "[object Object]".
+export function twoColScore(events: Array<GameEvent>): string {
+  const evt = events[0];
+  // Explicitly string (not ReactNode): assigning a JSX fragment here is what
+  // produced "[object Object]" once a later branch interpolated it. See #1895.
+  let score: string =
     evt.type === GameEvent_Type.END_RACK_PTS
       ? `+${evt.endRackPoints}`
       : evt.lostScore > 0
         ? `-${evt.lostScore}`
         : `+${evt.score}`;
-  let cumulative = evt.cumulative;
+  if (events.length <= 1) {
+    return score;
+  }
+  // A returned phony zeroes the play; the score column shows nothing.
+  if (events.some((e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED)) {
+    return "";
+  }
+  for (let i = 1; i < events.length; i++) {
+    switch (events[i].type) {
+      case GameEvent_Type.CHALLENGE_BONUS:
+        score = `${score}\n+${events[i].bonus}`;
+        break;
+      case GameEvent_Type.END_RACK_PTS:
+        score = `${score}+${events[i].endRackPoints}`;
+        break;
+    }
+  }
+  return score;
+}
 
-  // Handle multi-event turns (challenges, etc.)
+export const TwoColTurn = React.memo((props: TwoColTurnProps) => {
+  const { turn, board, alphabet, onSeek, isSelected } = props;
+  const evt = turn.events[0];
+
+  const coords = evt.position || "";
+  const play: React.ReactNode = displaySummary(evt, board, alphabet);
+  const score = twoColScore(turn.events);
+  // cumulative is the running total after the turn's final event.
+  const cumulative = turn.events[turn.events.length - 1].cumulative;
+
+  // phonyEvt/bonusEvt drive the challenge label shown in the rack row below.
   // Use find() rather than checking index 1 — single challenge inserts a CHALLENGE event before PHONY/BONUS.
   const phonyEvt = turn.events.find(
     (e) => e.type === GameEvent_Type.PHONY_TILES_RETURNED,
@@ -435,29 +467,6 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
   const bonusEvt = turn.events.find(
     (e) => e.type === GameEvent_Type.CHALLENGE_BONUS,
   );
-  if (turn.events.length > 1) {
-    if (phonyEvt) {
-      score = "";
-      cumulative = phonyEvt.cumulative;
-    } else {
-      for (let i = 1; i < turn.events.length; i++) {
-        switch (turn.events[i].type) {
-          case GameEvent_Type.CHALLENGE_BONUS:
-            score = (
-              <>
-                {score}
-                <br />+{turn.events[i].bonus}
-              </>
-            );
-            break;
-          case GameEvent_Type.END_RACK_PTS:
-            score = `${score}+${turn.events[i].endRackPoints}`;
-            break;
-        }
-        cumulative = turn.events[i].cumulative;
-      }
-    }
-  }
 
   const isPhony = !!phonyEvt;
   const isValidChallenge = !!bonusEvt;
@@ -483,7 +492,14 @@ const TwoColTurn = React.memo((props: TwoColTurnProps) => {
         {play}
       </div>
       <div className="two-col-scores">
-        <div className="two-col-score">{score}</div>
+        <div className="two-col-score">
+          {score.split("\n").map((line, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <br />}
+              {line}
+            </React.Fragment>
+          ))}
+        </div>
         <div className="two-col-cumulative">{cumulative}</div>
       </div>
       <div className="two-col-comment-spot">
