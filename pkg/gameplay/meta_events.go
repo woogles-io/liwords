@@ -8,6 +8,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
+	"github.com/woogles-io/liwords/pkg/mod"
 	"github.com/woogles-io/liwords/pkg/stores"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"google.golang.org/protobuf/proto"
@@ -278,12 +279,17 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
 		eventChan <- wrapped
 
-		// Also send updated time info via GameHistoryRefresher.
-		// Censor racks for spectators in league/private-analysis games.
+		// Also send updated time info via GameHistoryRefresher. Send it to
+		// each player individually (AudUser) so the bus sanitizes opponent
+		// racks; an AudGame broadcast bypasses sanitization and would reveal
+		// both racks to both players.
 		refresher := g.HistoryRefresherEvent()
+		refresher.History = proto.Clone(mod.CensorHistory(ctx, stores.UserStore, refresher.History)).(*macondopb.GameHistory)
 		if shouldCensorRacksForViewers(ctx, g, stores) {
 			playerRefresher := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
-			playerRefresher.AddAudience(entity.AudGame, evt.GameId)
+			for _, p := range players(g) {
+				playerRefresher.AddAudience(entity.AudUser, p+".game."+evt.GameId)
+			}
 			eventChan <- playerRefresher
 
 			censoredRefresher := proto.Clone(refresher).(*pb.GameHistoryRefresher)
@@ -293,8 +299,10 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			eventChan <- tvRefresher
 		} else {
 			refresherWrapped := entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER)
-			refresherWrapped.AddAudience(entity.AudGame, evt.GameId)
 			refresherWrapped.AddAudience(entity.AudGameTV, evt.GameId)
+			for _, p := range players(g) {
+				refresherWrapped.AddAudience(entity.AudUser, p+".game."+evt.GameId)
+			}
 			eventChan <- refresherWrapped
 		}
 
