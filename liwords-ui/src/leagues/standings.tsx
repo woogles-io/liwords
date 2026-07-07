@@ -18,6 +18,7 @@ import {
 } from "../gen/api/proto/ipc/league_pb";
 import { SeasonRegistrationsResponse } from "../gen/api/proto/league_service/league_service_pb";
 import { PlayerGameHistoryModal } from "./player_game_history_modal";
+import { DisplayUserTitle } from "../shared/display_title";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 
 // Get placement status icon and tooltip
@@ -419,17 +420,31 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
             }
           >
             <strong>
-              <UsernameWithContext
-                username={username}
-                userID={record.userId}
-                sendMessage={onChat}
-                omitSendMessage={!onChat}
-                omitBadges
-                infoText="View game history"
-                handleInfoText={() =>
-                  handlePlayerClick(record.userId, username)
-                }
-              />
+              {isCurrentUser ? (
+                // Own name: skip the context menu (which would offer "View
+                // profile") and open this player's game history directly on a
+                // single click, while still showing the title badge.
+                <span
+                  className="user-context-menu"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handlePlayerClick(record.userId, username)}
+                >
+                  {username}
+                  <DisplayUserTitle uuid={record.userId} />
+                </span>
+              ) : (
+                <UsernameWithContext
+                  username={username}
+                  userID={record.userId}
+                  sendMessage={onChat}
+                  omitSendMessage={!onChat}
+                  omitBadges
+                  infoText="View game history"
+                  handleInfoText={() =>
+                    handlePlayerClick(record.userId, username)
+                  }
+                />
+              )}
             </strong>
             {placementIndicator && (
               <Tooltip title={placementIndicator.tooltip}>
