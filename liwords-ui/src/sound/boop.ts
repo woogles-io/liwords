@@ -14,6 +14,24 @@ import newpuzzleSound from "../assets/newpuzzle.mp3";
 import puzzlecorrectSound from "../assets/puzzlecorrect-acoustic-fast.mp3";
 import puzzlewrongSound from "../assets/puzzlewrong.mp3";
 
+// iOS Safari (16.4+) defaults its Web Audio session to a category that
+// INTERRUPTS other audio, so playing a sound effect stops any background
+// audio (e.g. a music or video stream) instead of mixing with it. Opt into
+// the "ambient" session type so our sound effects mix with other audio.
+// "ambient" also respects the hardware mute switch, which is the expected
+// behavior for game sound effects. Feature-detected: a no-op on browsers
+// without the Audio Session API (Android, desktop).
+try {
+  const audioSession = (
+    navigator as unknown as { audioSession?: { type: string } }
+  ).audioSession;
+  if (audioSession) {
+    audioSession.type = "ambient";
+  }
+} catch {
+  // Ignore: the Audio Session API is unavailable or disallowed here.
+}
+
 const soundToggleCache: { all: boolean | undefined } = { all: undefined };
 
 // Invalidate cache when another tab changes the setting.
