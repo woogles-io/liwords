@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -21,10 +22,19 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/user_service"
 )
 
+// badgesCacheTTL is the duration for which GetBadgesMetadata results are
+// cached in-process. Badge definitions change only when the hourly
+// sub-badge-updater maintenance task runs, so 60 seconds of staleness is fine.
+const badgesCacheTTL = 60 * time.Second
+
 type ProfileService struct {
 	userStore     user.Store
 	avatarService userservices.UploadService
 	queries       *models.Queries
+
+	badgesCacheMu      sync.RWMutex
+	badgesCache        *pb.BadgeMetadataResponse
+	badgesCacheFetched time.Time
 }
 
 func NewProfileService(u user.Store, us userservices.UploadService, q *models.Queries) *ProfileService {
@@ -338,6 +348,17 @@ func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *connect.Reque
 func (ps *ProfileService) GetBadgesMetadata(ctx context.Context, r *connect.Request[pb.BadgeMetadataRequest],
 ) (*connect.Response[pb.BadgeMetadataResponse], error) {
 
+	// Fast path: return cached result if still fresh.
+	ps.badgesCacheMu.RLock()
+	cached := ps.badgesCache
+	fetched := ps.badgesCacheFetched
+	ps.badgesCacheMu.RUnlock()
+
+	if cached != nil && time.Since(fetched) < badgesCacheTTL {
+		return connect.NewResponse(cached), nil
+	}
+
+	// Cache miss or expired: fetch from DB and populate cache.
 	allbadges, err := ps.queries.GetBadgesMetadata(ctx)
 	if err != nil {
 		return nil, err
@@ -346,8 +367,12 @@ func (ps *ProfileService) GetBadgesMetadata(ctx context.Context, r *connect.Requ
 	for i := range allbadges {
 		pbbadges[allbadges[i].Code] = allbadges[i].Description
 	}
+	resp := &pb.BadgeMetadataResponse{Badges: pbbadges}
 
-	return connect.NewResponse(&pb.BadgeMetadataResponse{
-		Badges: pbbadges,
-	}), nil
+	ps.badgesCacheMu.Lock()
+	ps.badgesCache = resp
+	ps.badgesCacheFetched = time.Now()
+	ps.badgesCacheMu.Unlock()
+
+	return connect.NewResponse(resp), nil
 }
