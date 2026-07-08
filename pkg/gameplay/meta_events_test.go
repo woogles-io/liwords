@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -750,6 +751,60 @@ func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
 	// expected events: game history, request abort
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
 	is.Equal(len(gsetup.consumer.evts), 2)
+
+	teardownGame(gsetup)
+}
+
+func TestAddTimeDoesNotBroadcastRacksToGameChannel(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+
+	// Jesse adds time to their opponent.
+	opponentIdx := -1
+	for i, p := range gsetup.g.History().Players {
+		if p.UserId != "3xpEkpRAy3AizbVmDg3kdi" {
+			opponentIdx = i
+		}
+	}
+	opponentTimeBefore := gsetup.g.TimeRemaining(opponentIdx)
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ADD_TIME,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: shortuuid.New(),
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.stores)
+	is.NoErr(err)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	is.Equal(gsetup.g.TimeRemaining(opponentIdx), opponentTimeBefore+15000)
+
+	// History refreshers contain both players' racks. They must never be
+	// published to the plain game channel, which is unsanitized; they should
+	// go to each player's user channel (sanitized by the bus) and to gametv.
+	refresherCt := 0
+	for _, evt := range gsetup.consumer.evts {
+		if evt.Type != pb.MessageType_GAME_HISTORY_REFRESHER {
+			continue
+		}
+		refresherCt++
+		userAudiences := 0
+		for _, aud := range evt.Audience() {
+			is.True(!strings.HasPrefix(aud, "game."))
+			if strings.HasPrefix(aud, "user.") {
+				userAudiences++
+			}
+		}
+		is.Equal(userAudiences, 2)
+	}
+	// one refresher from StartGame, one from the ADD_TIME event.
+	is.Equal(refresherCt, 2)
 
 	teardownGame(gsetup)
 }
