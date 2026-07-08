@@ -1,115 +1,72 @@
--- OMGWords
-WITH duplicated_games AS
-((SELECT
-    created_at,
-    player0_id AS player
-FROM public.games)
-UNION ALL
-(SELECT
-    created_at,
-    player1_id AS player
-FROM public.games)),
+-- Monthly active users for OMGWords, puzzles, and Board Editor, plus games played per month.
+-- Bot rule: internal_bot flag, plus ids 42-46 (early bots that predate the flag).
 
-mau_omgwords_report AS
-(SELECT
-	DATE_TRUNC('month',duplicated_games.created_at) AS month,
-	COUNT(DISTINCT player) AS mau_omgwords
-FROM duplicated_games
-LEFT JOIN public.users ON duplicated_games.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
-GROUP BY 1),
+-- NOTE: As of right now, a user will not count as an MAU if they are only continuing
+-- correspondence games that were started in a previous month.
 
--- we now have a flag for users who are bots, but our earliest
--- bots predate the existence of that flag, hence this query
-bot_users AS
-(SELECT
-   id,
-   internal_bot OR id IN (42,43,44,45,46) AS is_bot
-FROM public.users),
+WITH engagement_events AS (
+    -- One row per engagement event, built in a single scan of games:
+    -- each player from each game, each puzzle attempt with a recorded result,
+    -- and each annotated game created (credited to its annotator).
+    SELECT
+        DATE_TRUNC('month', g.created_at) AS month,
+        g.id AS game_id,
+        participants.user_id,
+        participants.is_human,
+        (NOT (u0.internal_bot OR u0.id IN (42, 43, 44, 45, 46))
+         AND NOT (u1.internal_bot OR u1.id IN (42, 43, 44, 45, 46))) AS vs_human,
+        'game' AS event_type
+    FROM public.games g
+    JOIN public.users u0 ON u0.id = g.player0_id
+    JOIN public.users u1 ON u1.id = g.player1_id
+    -- Unpivot each game into one row per player/two rows per game in a single scan 
+    -- (vs the previous UNION ALL that scanned the whole games table twice)
+    CROSS JOIN LATERAL (VALUES
+        (g.player0_id, NOT (u0.internal_bot OR u0.id IN (42, 43, 44, 45, 46))),
+        (g.player1_id, NOT (u1.internal_bot OR u1.id IN (42, 43, 44, 45, 46)))
+    ) AS participants(user_id, is_human)
 
-pvp_games as
-(SELECT
-   created_at,
-   games.player0_id,
-   games.player1_id
- FROM public.games
- LEFT JOIN bot_users b1 ON games.player0_id=b1.id
- LEFT JOIN bot_users b2 ON games.player1_id=b2.id
- WHERE (NOT b1.is_bot)
-   AND (NOT b2.is_bot)
- ),
- 
-duplicated_games_between_humans AS
-((SELECT
-    created_at,
-    player0_id AS player
-FROM pvp_games)
-UNION ALL
-(SELECT
-    created_at,
-    player1_id AS player
-FROM pvp_games)),
-mau_omgwords_vs_human_report AS
-(SELECT
-    DATE_TRUNC('month',created_at) AS month,
-	COUNT(DISTINCT player) AS mau_omgwords_vs_human
-FROM duplicated_games_between_humans
-GROUP BY 1),
+    UNION ALL
 
--- Puzzles
-mau_puzzles AS
-(SELECT
-   created_at,
-   user_id AS player
-FROM public.puzzle_attempts
-WHERE correct IS NOT NULL),
+    SELECT
+        DATE_TRUNC('month', p.created_at) AS month,
+        NULL AS game_id,
+        p.user_id AS user_id,
+        TRUE AS is_human,
+        FALSE AS vs_human,
+        'puzzle' AS event_type
+    FROM public.puzzle_attempts p
+    JOIN public.users pu ON pu.id = p.user_id
+    WHERE p.correct IS NOT NULL
+      AND NOT (pu.internal_bot OR pu.id IN (42, 43, 44, 45, 46))
 
-mau_puzzles_report AS
-(SELECT
-	DATE_TRUNC('month',mau_puzzles.created_at) AS month,
-	COUNT(DISTINCT player) AS mau_puzzles
-FROM mau_puzzles
-LEFT JOIN public.users ON mau_puzzles.player = users.id
-WHERE NOT users.internal_bot
-GROUP BY 1),
+    UNION ALL
 
--- Joint reporting
-games_plus_puzzle_attempts AS
-((SELECT
-    created_at,
-    player0_id AS player
-FROM public.games)
-UNION ALL
-(SELECT
-    created_at,
-    player1_id AS player
-FROM public.games)
-UNION ALL
-(SELECT
-   created_at,
-   user_id AS player
-FROM public.puzzle_attempts
-WHERE correct IS NOT NULL)),
-
-omgwords_plus_puzzles_report AS
-(SELECT
-	DATE_TRUNC('month',games_plus_puzzle_attempts.created_at) AS month,
-	COUNT(DISTINCT player) AS mau
-FROM games_plus_puzzle_attempts
-LEFT JOIN public.users ON games_plus_puzzle_attempts.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
-GROUP BY 1)
+    SELECT
+        DATE_TRUNC('month', agm.created_at) AS month,
+        NULL AS game_id,
+        au.id AS user_id,
+        TRUE AS is_human,
+        FALSE AS vs_human,
+        'annotation' AS event_type
+    FROM public.annotated_game_metadata agm
+    JOIN public.users au ON au.uuid = agm.creator_uuid
+)
 
 SELECT
-  mau_omgwords_report.month,
-  mau_omgwords_report.mau_omgwords,
-  mau_omgwords_vs_human_report.mau_omgwords_vs_human,
-  TRUNC(100.0*mau_omgwords_vs_human_report.mau_omgwords_vs_human/mau_omgwords_report.mau_omgwords,1)
-    AS pct_of_omgwords_dau_who_played_a_human,
-  mau_puzzles_report.mau_puzzles,
-  omgwords_plus_puzzles_report.mau
-FROM mau_omgwords_report
-LEFT JOIN mau_omgwords_vs_human_report ON mau_omgwords_report.month = mau_omgwords_vs_human_report.month
-LEFT JOIN mau_puzzles_report ON mau_omgwords_report.month = mau_puzzles_report.month
-LEFT JOIN omgwords_plus_puzzles_report ON mau_omgwords_report.month = omgwords_plus_puzzles_report.month
-ORDER BY 1 DESC
+    month,
+    COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END) AS mau_omgwords,
+    COUNT(DISTINCT game_id) AS games_played, --excludes annotated games
+    TRUNC(1.0 * COUNT(DISTINCT game_id)
+              / NULLIF(COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END), 0), 2)
+        AS games_played_per_mau,
+    COUNT(DISTINCT CASE WHEN is_human AND vs_human THEN user_id END) AS mau_omgwords_vs_human,
+    TRUNC(100.0 * COUNT(DISTINCT CASE WHEN is_human AND vs_human THEN user_id END)
+                / NULLIF(COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END), 0), 1)
+        AS pct_of_omgwords_mau_who_played_a_human,
+    COUNT(DISTINCT CASE WHEN event_type = 'puzzle' THEN user_id END) AS mau_puzzles,
+    COUNT(DISTINCT CASE WHEN event_type = 'annotation' THEN user_id END) AS mau_annotators,
+    COUNT(DISTINCT CASE WHEN is_human THEN user_id END) AS mau
+FROM engagement_events
+GROUP BY month
+ORDER BY month DESC;
