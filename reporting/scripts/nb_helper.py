@@ -39,7 +39,7 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-_REPORTING_DIR = Path(__file__).resolve().parent
+_REPORTING_DIR = Path(__file__).resolve().parent.parent
 _DEFAULT_TIMEOUT_MS = int(os.environ.get("WOOGLES_STATEMENT_TIMEOUT_MS", "60000"))
 
 

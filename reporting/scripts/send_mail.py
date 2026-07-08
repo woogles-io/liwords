@@ -14,7 +14,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-ENV_FILE = SCRIPT_DIR / ".env"
+ENV_FILE = SCRIPT_DIR.parent / ".env"
 
 
 def load_env(path):

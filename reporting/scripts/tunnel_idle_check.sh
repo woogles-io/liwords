@@ -16,8 +16,8 @@
 # using it.
 #
 # Usage:
-#   reporting/tunnel_idle_check.sh            # check and act
-#   reporting/tunnel_idle_check.sh --dry-run  # report the decision, change nothing
+#   reporting/scripts/tunnel_idle_check.sh            # check and act
+#   reporting/scripts/tunnel_idle_check.sh --dry-run  # report the decision, change nothing
 set -uo pipefail
 
 VPN_SERVICE="Woogles"
@@ -29,8 +29,9 @@ if [ "${1:-}" == "--dry-run" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RESULTS_DIR="$SCRIPT_DIR/_results"
-ENV_FILE="$SCRIPT_DIR/.env"
+REPORTING_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+RESULTS_DIR="$REPORTING_DIR/_results"
+ENV_FILE="$REPORTING_DIR/.env"
 ACTIVITY_FILE="$RESULTS_DIR/.last_activity"
 LOG_FILE="$RESULTS_DIR/.tunnel_idle_check.log"
 

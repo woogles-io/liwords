@@ -5,8 +5,8 @@
 # WireGuard VPN service automatically if it isn't already connected.
 #
 # Usage:
-#   reporting/run_query.sh reporting/omgwords/games_per_month.sql
-#   reporting/run_query.sh reporting/omgwords/games_per_month.sql --no-open
+#   reporting/scripts/run_query.sh reporting/omgwords/games_per_month.sql
+#   reporting/scripts/run_query.sh reporting/omgwords/games_per_month.sql --no-open
 #
 # Connection details live in reporting/.env (gitignored). The DB password
 # is read from ~/.pgpass, not from this script.
@@ -38,8 +38,9 @@ ensure_vpn_connected() {
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
-LOCK_DIR="$SCRIPT_DIR/_results/.run_query.lock"
+REPORTING_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$REPORTING_DIR/.env"
+LOCK_DIR="$REPORTING_DIR/_results/.run_query.lock"
 
 acquire_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -85,8 +86,8 @@ if [ $# -lt 1 ]; then
 fi
 
 QUERY_FILE="$1"
-if [ ! -f "$QUERY_FILE" ] && [ -f "$SCRIPT_DIR/$QUERY_FILE" ]; then
-  QUERY_FILE="$SCRIPT_DIR/$QUERY_FILE"
+if [ ! -f "$QUERY_FILE" ] && [ -f "$REPORTING_DIR/$QUERY_FILE" ]; then
+  QUERY_FILE="$REPORTING_DIR/$QUERY_FILE"
 fi
 if [ ! -f "$QUERY_FILE" ]; then
   echo "Query file not found: $1" >&2
@@ -98,7 +99,7 @@ if [ "${2:-}" == "--no-open" ]; then
   NO_OPEN=1
 fi
 
-RESULTS_DIR="$SCRIPT_DIR/_results"
+RESULTS_DIR="$REPORTING_DIR/_results"
 mkdir -p "$RESULTS_DIR"
 
 acquire_lock "$QUERY_FILE"

@@ -19,7 +19,7 @@
 # email is sent (per month) so a persistent problem gets noticed without
 # hourly spam.
 #
-# Usage: reporting/monthly_report.sh   (safe to run manually at any time)
+# Usage: reporting/scripts/monthly_report.sh   (safe to run manually at any time)
 set -uo pipefail
 
 # launchd agents get PATH=/usr/bin:/bin:/usr/sbin:/sbin, which is missing psql
@@ -27,8 +27,9 @@ set -uo pipefail
 export PATH="/Applications/Postgres.app/Contents/Versions/latest/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-RESULTS_DIR="$SCRIPT_DIR/_results"
+REPORTING_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RESULTS_DIR="$REPORTING_DIR/_results"
 LOG_FILE="$RESULTS_DIR/.monthly_report.log"
 STAMP_FILE="$RESULTS_DIR/.monthly_report_sent"      # YYYY-MM of last successful send
 ALERT_STAMP="$RESULTS_DIR/.monthly_report_alerted"  # YYYY-MM of last failure alert
