@@ -25,3 +25,16 @@ cmd/convert-pb/convert-pb
 liwords-ui/public/wasm/macondo.wasm
 
 *.out
+
+reporting/.env
+reporting/_results/
+reporting/dbhub.toml
+
+# Jupyter notebook checkpoints (never commit)
+**/.ipynb_checkpoints/
+# Local Python venv for reporting notebooks
+reporting/.venv/
+# bestbot generated chart artifacts; keep only the queries/notebooks
+reporting/bestbot/*.jpg
+# never commit query result data snapshots anywhere under reporting/
+reporting/**/*.csv
