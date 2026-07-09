@@ -1,69 +1,84 @@
 package organizations
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
-	"sync"
 	"time"
 )
 
-// wespaPlayer represents a player in the WESPA database
-type wespaPlayer struct {
-	Name  string
-	Title string
-}
-
-// wespaCache holds the in-memory database with TTL
-type wespaCache struct {
-	mu        sync.RWMutex
-	players   map[string]*wespaPlayer // Key: lowercase normalized name
-	lastFetch time.Time
-	cacheTTL  time.Duration
-}
-
-// WESPAIntegration handles WESPA ratings and player lookup via the xerafin API
+// WESPAIntegration handles player lookup via the WESPA (xerafin) player API
 type WESPAIntegration struct {
-	RatingsURL string
 	HTTPClient *http.Client
-	cache      *wespaCache
 }
 
 // NewWESPAIntegration creates a new WESPA integration instance
 func NewWESPAIntegration() *WESPAIntegration {
 	return &WESPAIntegration{
-		RatingsURL: "https://wespa.xerafin.net/latest.txt",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
-		},
-		cache: &wespaCache{
-			players:  make(map[string]*wespaPlayer),
-			cacheTTL: 24 * time.Hour,
 		},
 	}
 }
 
-// FetchTitle fetches title from the embedded WESPA titlists by matching the player's name
-func (w *WESPAIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
-	// Fetch the player's full name from their WESPA page
-	fullName, err := w.GetRealName(memberID, credentials)
+// wespaPlayerResponse is the subset of the WESPA player API response we use.
+type wespaPlayerResponse struct {
+	Name  string `json:"name"`
+	Title string `json:"title"` // "GM"/"IM"/"M", or "" (JSON null) when untitled
+}
+
+// fetchPlayer performs a single GET against the WESPA player API and returns
+// the player's name and title.
+func (w *WESPAIntegration) fetchPlayer(memberID string) (*wespaPlayerResponse, error) {
+	apiURL := fmt.Sprintf("https://wespa.xerafin.net/api/v2/player/%s", memberID)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch player name: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "woogles.io")
+
+	resp, err := w.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch WESPA player: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("WESPA API returned status %d", resp.StatusCode)
 	}
 
-	// Search for title in titlists using prefix matching
-	title := w.findTitleByName(fullName)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read WESPA API response: %w", err)
+	}
+
+	var payload wespaPlayerResponse
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse WESPA API response: %w", err)
+	}
+
+	return &payload, nil
+}
+
+// FetchTitle fetches the player's name and title from the WESPA player API.
+func (w *WESPAIntegration) FetchTitle(memberID string, credentials map[string]string) (*TitleInfo, error) {
+	payload, err := w.fetchPlayer(memberID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch player: %w", err)
+	}
+	if payload.Name == "" {
+		return nil, fmt.Errorf("WESPA API returned empty name for player %s", memberID)
+	}
 
 	now := time.Now()
 	return &TitleInfo{
 		Organization:     OrgWESPA,
 		OrganizationName: "WESPA",
-		RawTitle:         title,
+		RawTitle:         payload.Title,
 		MemberID:         memberID,
-		FullName:         fullName,
+		FullName:         payload.Name,
 		LastFetched:      &now,
 	}, nil
 }
@@ -75,164 +90,13 @@ func (w *WESPAIntegration) GetOrganizationCode() OrganizationCode {
 
 // GetRealName fetches the user's real name from the WESPA API.
 func (w *WESPAIntegration) GetRealName(memberID string, credentials map[string]string) (string, error) {
-	apiURL := fmt.Sprintf("https://wespa.xerafin.net/api/v2/player/%s", memberID)
-
-	req, err := http.NewRequest("GET", apiURL, nil)
+	payload, err := w.fetchPlayer(memberID)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("User-Agent", "woogles.io")
-
-	resp, err := w.HTTPClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch WESPA player: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("WESPA API returned status %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read WESPA API response: %w", err)
-	}
-
-	var payload struct {
-		Name string `json:"name"`
-	}
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return "", fmt.Errorf("failed to parse WESPA API response: %w", err)
+		return "", err
 	}
 	if payload.Name == "" {
 		return "", fmt.Errorf("WESPA API returned empty name for player %s", memberID)
 	}
 
 	return payload.Name, nil
-}
-
-// ensureCacheValid checks if cache needs refresh and updates if necessary
-func (w *WESPAIntegration) ensureCacheValid() error {
-	w.cache.mu.RLock()
-	needsRefresh := time.Since(w.cache.lastFetch) > w.cache.cacheTTL || len(w.cache.players) == 0
-	w.cache.mu.RUnlock()
-
-	if !needsRefresh {
-		return nil
-	}
-
-	// Need to refresh - acquire write lock
-	return w.refreshCache()
-}
-
-// refreshCache downloads and parses the WESPA database
-func (w *WESPAIntegration) refreshCache() error {
-	req, err := http.NewRequest("GET", w.RatingsURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("User-Agent", "woogles.io")
-
-	resp, err := w.HTTPClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to download WESPA database: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("WESPA database returned status %d", resp.StatusCode)
-	}
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read WESPA database: %w", err)
-	}
-
-	// Parse the file
-	players := parseLatestTxt(string(body))
-
-	// Update cache with write lock
-	w.cache.mu.Lock()
-	w.cache.players = players
-	w.cache.lastFetch = time.Now()
-	w.cache.mu.Unlock()
-
-	return nil
-}
-
-// parseLatestTxt parses the WESPA latest.txt file
-func parseLatestTxt(data string) map[string]*wespaPlayer {
-	players := make(map[string]*wespaPlayer)
-	scanner := bufio.NewScanner(strings.NewReader(data))
-
-	// Skip header line (first line)
-	if !scanner.Scan() {
-		return players
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) < 30 {
-			continue // Line too short
-		}
-
-		// Extract name from fixed-width column (chars 9-29, 21 chars)
-		name := strings.TrimSpace(line[9:30])
-		if name == "" {
-			continue
-		}
-
-		// Extract remaining fields after position 30
-		remainder := strings.TrimSpace(line[30:])
-		fields := strings.Fields(remainder)
-
-		// Title is at index 4 of the remaining fields (column 8 overall)
-		title := ""
-		if len(fields) >= 5 {
-			title = fields[4]
-			if title == "--" {
-				title = ""
-			}
-		}
-
-		// Use lowercase name as key for prefix matching
-		key := strings.ToLower(name)
-		players[key] = &wespaPlayer{
-			Name:  name,
-			Title: title,
-		}
-	}
-
-	return players
-}
-
-// findTitleByName searches for a title by name using prefix matching
-// The WESPA page has the full real name, but database names may be shortened
-// e.g., "Conrad Bassett-Bouch" in database matches "Conrad Bassett-Bouchard" from page
-func (w *WESPAIntegration) findTitleByName(fullName string) string {
-	if fullName == "" {
-		return ""
-	}
-
-	// Ensure cache is valid before lookup
-	if err := w.ensureCacheValid(); err != nil {
-		// If cache fetch fails, return empty title
-		return ""
-	}
-
-	// Normalize the full name for matching
-	normalizedFullName := strings.ToLower(strings.TrimSpace(fullName))
-
-	w.cache.mu.RLock()
-	defer w.cache.mu.RUnlock()
-
-	for key, player := range w.cache.players {
-		// Check if the database name is a prefix of the full name from WESPA page
-		if strings.HasPrefix(normalizedFullName, key) {
-			return player.Title
-		}
-	}
-
-	return ""
 }

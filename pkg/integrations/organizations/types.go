@@ -94,7 +94,7 @@ var OrganizationRegistry = map[OrganizationCode]OrganizationMetadata{
 	OrgWESPA: {
 		Code:                 OrgWESPA,
 		Name:                 "WESPA",
-		HasAPI:               true, // Uses titlists with HTML scraping (no auth required)
+		HasAPI:               true, // Uses the WESPA player API for name + title (no auth required)
 		RequiresAuth:         false,
 		RequiresVerification: true,
 	},
