@@ -542,7 +542,7 @@ func (s *OrganizationService) ApproveVerification(
 	orgCode := organizations.OrganizationCode(verReq.IntegrationName)
 	integration, err := organizations.GetIntegration(orgCode)
 	if err == nil {
-		// For WESPA, use FetchTitle to get both name and title from titlists
+		// For WESPA, use FetchTitle to get both name and title from the player API
 		if orgCode == organizations.OrgWESPA {
 			if titleInfo, err := integration.FetchTitle(verReq.MemberID, nil); err == nil {
 				fullName = titleInfo.FullName
@@ -739,7 +739,7 @@ func (s *OrganizationService) ManuallySetOrgMembership(
 			rawTitle = titleInfo.RawTitle
 
 		case organizations.OrgWESPA:
-			// WESPA uses titlists with HTML scraping (no auth required)
+			// WESPA uses its public player API for name + title (no auth required)
 			titleInfo, err := integration.FetchTitle(req.Msg.MemberId, nil)
 			if err != nil {
 				return nil, apiserver.InvalidArg(fmt.Sprintf("failed to fetch data from WESPA: %v", err))
@@ -922,7 +922,7 @@ func (s *OrganizationService) refreshTitlesForUser(ctx context.Context, userUUID
 				abspIntegration := integration.(*organizations.ABSPIntegration)
 				titleInfo, err = abspIntegration.FetchTitleWithoutAuth(integData.MemberID)
 			case organizations.OrgWESPA:
-				// WESPA uses titlists with HTML scraping (no auth required)
+				// WESPA uses its public player API for name + title (no auth required)
 				titleInfo, err = integration.FetchTitle(integData.MemberID, nil)
 			default:
 				// Other orgs with APIs but no public access - skip
