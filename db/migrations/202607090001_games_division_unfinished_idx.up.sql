@@ -1,0 +1,29 @@
+-- ============================================================================
+-- GAMES DIVISION-UNFINISHED INDEX - MANUAL EXECUTION REQUIRED
+-- ============================================================================
+--
+-- Speeds up GetUnfinishedDivisionGames (pkg/league/service.go), called once per
+-- division by GetAllDivisionStandings on every public /leagues/:slug page load.
+-- Previously fell back to a BitmapAnd against idx_games_game_end_reason, a
+-- full-table index bloated ~18x from UPDATE churn (12M-row games table).
+-- This partial index scopes to only currently-unfinished games, so it starts
+-- (and stays) compact, and INCLUDEs the two returned columns for an
+-- index-only scan (no heap fetch once the visibility map catches up).
+--
+-- Verified on prod via EXPLAIN (ANALYZE, BUFFERS): 14.8ms/762 buffers ->
+-- 0.111ms/39 buffers, plan changed from BitmapAnd to Index Only Scan.
+--
+-- CREATE INDEX CONCURRENTLY cannot run inside a transaction block, so run this
+-- manually against each environment:
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_games_division_unfinished
+--   ON games (league_division_id)
+--   INCLUDE (player0_id, player1_id)
+--   WHERE game_end_reason = 0;
+--
+-- Creation time: seconds (partial index, small matching set)
+-- Downtime during creation: ZERO (thanks to CONCURRENTLY)
+-- Status on prod: already created and validated as of this migration.
+
+-- No-op statement to make migration valid
+SELECT 'games division-unfinished index documented - manual execution required' AS migration_status;
