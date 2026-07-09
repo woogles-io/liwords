@@ -110,6 +110,9 @@ const (
 	// LeagueServiceMovePlayerToDivisionProcedure is the fully-qualified name of the LeagueService's
 	// MovePlayerToDivision RPC.
 	LeagueServiceMovePlayerToDivisionProcedure = "/league_service.LeagueService/MovePlayerToDivision"
+	// LeagueServiceDeleteDivisionProcedure is the fully-qualified name of the LeagueService's
+	// DeleteDivision RPC.
+	LeagueServiceDeleteDivisionProcedure = "/league_service.LeagueService/DeleteDivision"
 	// LeagueServiceGetSeasonZeroMoveGamesProcedure is the fully-qualified name of the LeagueService's
 	// GetSeasonZeroMoveGames RPC.
 	LeagueServiceGetSeasonZeroMoveGamesProcedure = "/league_service.LeagueService/GetSeasonZeroMoveGames"
@@ -169,6 +172,7 @@ type LeagueServiceClient interface {
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
+	DeleteDivision(context.Context, *connect.Request[league_service.DeleteDivisionRequest]) (*connect.Response[league_service.DeleteDivisionResponse], error)
 	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
 	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
 	UpdateSeasonDates(context.Context, *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error)
@@ -345,6 +349,12 @@ func NewLeagueServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteDivision: connect.NewClient[league_service.DeleteDivisionRequest, league_service.DeleteDivisionResponse](
+			httpClient,
+			baseURL+LeagueServiceDeleteDivisionProcedure,
+			connect.WithSchema(leagueServiceMethods.ByName("DeleteDivision")),
+			connect.WithClientOptions(opts...),
+		),
 		getSeasonZeroMoveGames: connect.NewClient[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse](
 			httpClient,
 			baseURL+LeagueServiceGetSeasonZeroMoveGamesProcedure,
@@ -418,6 +428,7 @@ type leagueServiceClient struct {
 	getPlayerLeagueH2H                 *connect.Client[league_service.GetPlayerLeagueH2HRequest, league_service.GetPlayerLeagueH2HResponse]
 	getLeagueStatistics                *connect.Client[league_service.LeagueRequest, league_service.LeagueStatisticsResponse]
 	movePlayerToDivision               *connect.Client[league_service.MovePlayerToDivisionRequest, league_service.MovePlayerToDivisionResponse]
+	deleteDivision                     *connect.Client[league_service.DeleteDivisionRequest, league_service.DeleteDivisionResponse]
 	getSeasonZeroMoveGames             *connect.Client[league_service.SeasonRequest, league_service.SeasonZeroMoveGamesResponse]
 	getSeasonPlayersWithUnstartedGames *connect.Client[league_service.SeasonRequest, league_service.SeasonPlayersWithUnstartedGamesResponse]
 	updateSeasonDates                  *connect.Client[league_service.UpdateSeasonDatesRequest, league_service.SeasonResponse]
@@ -557,6 +568,11 @@ func (c *leagueServiceClient) MovePlayerToDivision(ctx context.Context, req *con
 	return c.movePlayerToDivision.CallUnary(ctx, req)
 }
 
+// DeleteDivision calls league_service.LeagueService.DeleteDivision.
+func (c *leagueServiceClient) DeleteDivision(ctx context.Context, req *connect.Request[league_service.DeleteDivisionRequest]) (*connect.Response[league_service.DeleteDivisionResponse], error) {
+	return c.deleteDivision.CallUnary(ctx, req)
+}
+
 // GetSeasonZeroMoveGames calls league_service.LeagueService.GetSeasonZeroMoveGames.
 func (c *leagueServiceClient) GetSeasonZeroMoveGames(ctx context.Context, req *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error) {
 	return c.getSeasonZeroMoveGames.CallUnary(ctx, req)
@@ -629,6 +645,7 @@ type LeagueServiceHandler interface {
 	GetLeagueStatistics(context.Context, *connect.Request[league_service.LeagueRequest]) (*connect.Response[league_service.LeagueStatisticsResponse], error)
 	// Admin operations
 	MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error)
+	DeleteDivision(context.Context, *connect.Request[league_service.DeleteDivisionRequest]) (*connect.Response[league_service.DeleteDivisionResponse], error)
 	GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error)
 	GetSeasonPlayersWithUnstartedGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonPlayersWithUnstartedGamesResponse], error)
 	UpdateSeasonDates(context.Context, *connect.Request[league_service.UpdateSeasonDatesRequest]) (*connect.Response[league_service.SeasonResponse], error)
@@ -801,6 +818,12 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(leagueServiceMethods.ByName("MovePlayerToDivision")),
 		connect.WithHandlerOptions(opts...),
 	)
+	leagueServiceDeleteDivisionHandler := connect.NewUnaryHandler(
+		LeagueServiceDeleteDivisionProcedure,
+		svc.DeleteDivision,
+		connect.WithSchema(leagueServiceMethods.ByName("DeleteDivision")),
+		connect.WithHandlerOptions(opts...),
+	)
 	leagueServiceGetSeasonZeroMoveGamesHandler := connect.NewUnaryHandler(
 		LeagueServiceGetSeasonZeroMoveGamesProcedure,
 		svc.GetSeasonZeroMoveGames,
@@ -897,6 +920,8 @@ func NewLeagueServiceHandler(svc LeagueServiceHandler, opts ...connect.HandlerOp
 			leagueServiceGetLeagueStatisticsHandler.ServeHTTP(w, r)
 		case LeagueServiceMovePlayerToDivisionProcedure:
 			leagueServiceMovePlayerToDivisionHandler.ServeHTTP(w, r)
+		case LeagueServiceDeleteDivisionProcedure:
+			leagueServiceDeleteDivisionHandler.ServeHTTP(w, r)
 		case LeagueServiceGetSeasonZeroMoveGamesProcedure:
 			leagueServiceGetSeasonZeroMoveGamesHandler.ServeHTTP(w, r)
 		case LeagueServiceGetSeasonPlayersWithUnstartedGamesProcedure:
@@ -1022,6 +1047,10 @@ func (UnimplementedLeagueServiceHandler) GetLeagueStatistics(context.Context, *c
 
 func (UnimplementedLeagueServiceHandler) MovePlayerToDivision(context.Context, *connect.Request[league_service.MovePlayerToDivisionRequest]) (*connect.Response[league_service.MovePlayerToDivisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.MovePlayerToDivision is not implemented"))
+}
+
+func (UnimplementedLeagueServiceHandler) DeleteDivision(context.Context, *connect.Request[league_service.DeleteDivisionRequest]) (*connect.Response[league_service.DeleteDivisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("league_service.LeagueService.DeleteDivision is not implemented"))
 }
 
 func (UnimplementedLeagueServiceHandler) GetSeasonZeroMoveGames(context.Context, *connect.Request[league_service.SeasonRequest]) (*connect.Response[league_service.SeasonZeroMoveGamesResponse], error) {
