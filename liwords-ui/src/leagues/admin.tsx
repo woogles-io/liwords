@@ -28,6 +28,7 @@ import {
   getAllDivisionStandings,
   getAllSeasons,
   movePlayerToDivision,
+  deleteDivision,
   updateSeasonDates,
   unregisterFromSeason,
   cancelPlayerResults,
@@ -66,6 +67,8 @@ export const LeagueAdmin = () => {
     useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [selectedPlayerDivisionId, setSelectedPlayerDivisionId] =
+    useState<string>("");
+  const [selectedDeleteDivisionId, setSelectedDeleteDivisionId] =
     useState<string>("");
 
   // Kick player from season state
@@ -230,6 +233,20 @@ export const LeagueAdmin = () => {
       setSelectedPlayerId("");
       setSelectedPlayerDivisionId("");
       movePlayerForm.resetFields();
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const deleteDivisionMutation = useMutation(deleteDivision, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "Division Deleted",
+        description: response.message || "Division deleted successfully!",
+      });
+      refetchDivisions();
+      setSelectedDeleteDivisionId("");
     },
     onError: (error) => {
       flashError(error);
@@ -1309,6 +1326,7 @@ export const LeagueAdmin = () => {
                   setSelectedMoveLeagueId(value);
                   setSelectedPlayerId("");
                   setSelectedPlayerDivisionId("");
+                  setSelectedDeleteDivisionId("");
                   movePlayerForm.resetFields();
                 }}
                 value={selectedMoveLeagueId || undefined}
@@ -1411,6 +1429,70 @@ export const LeagueAdmin = () => {
                     </Button>
                   </Form.Item>
                 </Form>
+              </>
+            )}
+          </Card>
+
+          {/* Delete Empty Division */}
+          <Card
+            title={
+              <span>
+                Delete Empty Division <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
+            <Alert
+              message="Delete Division"
+              description="Deletes a division with zero players and renumbers the remaining divisions to close the gap. Use Move Player above to empty a division first. Only works when season is SCHEDULED."
+              type="warning"
+              style={{ marginBottom: 16 }}
+            />
+
+            {selectedMoveLeagueId && latestSeason && (
+              <>
+                <Form.Item label="Select Division">
+                  <Select
+                    placeholder="Choose a division to delete"
+                    onChange={setSelectedDeleteDivisionId}
+                    value={selectedDeleteDivisionId || undefined}
+                    disabled={
+                      latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                    }
+                  >
+                    {divisionsData?.divisions?.map((division) => (
+                      <Option key={division.uuid} value={division.uuid}>
+                        Division {division.divisionNumber} (
+                        {division.standings?.length || 0} players)
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+
+                <Popconfirm
+                  title="Delete this division?"
+                  description="This permanently deletes the division and renumbers the remaining divisions. It will fail if the division still has players."
+                  onConfirm={() => {
+                    if (selectedDeleteDivisionId && latestSeason?.uuid) {
+                      deleteDivisionMutation.mutate({
+                        seasonId: latestSeason.uuid,
+                        divisionId: selectedDeleteDivisionId,
+                      });
+                    }
+                  }}
+                  okText="Yes, delete division"
+                  cancelText="Cancel"
+                >
+                  <Button
+                    danger
+                    disabled={
+                      !selectedDeleteDivisionId ||
+                      latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                    }
+                    loading={deleteDivisionMutation.isPending}
+                  >
+                    Delete Division
+                  </Button>
+                </Popconfirm>
               </>
             )}
           </Card>

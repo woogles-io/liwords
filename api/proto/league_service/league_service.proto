@@ -55,6 +55,7 @@ service LeagueService {
 
   // Admin operations
   rpc MovePlayerToDivision(MovePlayerToDivisionRequest) returns (MovePlayerToDivisionResponse);
+  rpc DeleteDivision(DeleteDivisionRequest) returns (DeleteDivisionResponse);
   rpc GetSeasonZeroMoveGames(SeasonRequest) returns (SeasonZeroMoveGamesResponse);
   rpc GetSeasonPlayersWithUnstartedGames(SeasonRequest) returns (SeasonPlayersWithUnstartedGamesResponse);
   rpc UpdateSeasonDates(UpdateSeasonDatesRequest) returns (SeasonResponse);
@@ -259,6 +260,17 @@ message MovePlayerToDivisionRequest {
 message MovePlayerToDivisionResponse {
   bool success = 1;
   string message = 2;
+}
+
+message DeleteDivisionRequest {
+  string season_id = 1;    // UUID of season
+  string division_id = 2;  // UUID of division to delete; must have no players registered to it
+}
+
+message DeleteDivisionResponse {
+  bool success = 1;
+  string message = 2;
+  int32 divisions_renumbered = 3; // Remaining divisions with a higher number that were shifted down to close the gap
 }
 
 message SeasonZeroMoveGamesResponse {

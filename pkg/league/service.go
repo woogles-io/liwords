@@ -3,6 +3,7 @@ package league
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -2152,6 +2153,68 @@ func (ls *LeagueService) MovePlayerToDivision(
 	return connect.NewResponse(&pb.MovePlayerToDivisionResponse{
 		Success: true,
 		Message: fmt.Sprintf("Player successfully moved to new division"),
+	}), nil
+}
+
+func (ls *LeagueService) DeleteDivision(
+	ctx context.Context,
+	req *connect.Request[pb.DeleteDivisionRequest],
+) (*connect.Response[pb.DeleteDivisionResponse], error) {
+	// Authenticate - requires can_manage_leagues permission (admin only)
+	_, err := apiserver.AuthenticateWithPermission(ctx, ls.userStore, ls.queries, rbac.CanManageLeagues)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate input
+	if req.Msg.SeasonId == "" {
+		return nil, apiserver.InvalidArg("season_id is required")
+	}
+	if req.Msg.DivisionId == "" {
+		return nil, apiserver.InvalidArg("division_id is required")
+	}
+
+	// Parse UUIDs
+	seasonID, err := uuid.Parse(req.Msg.SeasonId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid season_id")
+	}
+	divisionID, err := uuid.Parse(req.Msg.DivisionId)
+	if err != nil {
+		return nil, apiserver.InvalidArg("invalid division_id")
+	}
+
+	// Get the season to check status
+	season, err := ls.store.GetSeason(ctx, seasonID)
+	if err != nil {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("season not found: %s", req.Msg.SeasonId))
+	}
+
+	// Only allow deleting divisions when season is SCHEDULED, same guard as MovePlayerToDivision.
+	if season.Status != int32(ipc.SeasonStatus_SEASON_SCHEDULED) {
+		return nil, apiserver.InvalidArg(fmt.Sprintf("can only delete divisions when season is SCHEDULED (current status: %s)", ipc.SeasonStatus(season.Status).String()))
+	}
+
+	// Use the ManualDivisionManager to delete the division
+	mdm := NewManualDivisionManager(ls.stores)
+	result, err := mdm.DeleteEmptyDivision(ctx, seasonID, divisionID)
+	if err != nil {
+		if errors.Is(err, ErrDivisionNotEmpty) {
+			return nil, apiserver.InvalidArg(err.Error())
+		}
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to delete division: %w", err))
+	}
+
+	log.Info().
+		Str("seasonID", seasonID.String()).
+		Str("divisionID", divisionID.String()).
+		Int("divisionsRenumbered", result.DivisionsRenumbered).
+		Msg("division-deleted")
+
+	return connect.NewResponse(&pb.DeleteDivisionResponse{
+		Success:             true,
+		Message:             "Division deleted",
+		DivisionsRenumbered: int32(result.DivisionsRenumbered),
 	}), nil
 }
 

@@ -151,6 +151,11 @@ export const getLeagueStatistics = LeagueService.method.getLeagueStatistics;
 export const movePlayerToDivision = LeagueService.method.movePlayerToDivision;
 
 /**
+ * @generated from rpc league_service.LeagueService.DeleteDivision
+ */
+export const deleteDivision = LeagueService.method.deleteDivision;
+
+/**
  * @generated from rpc league_service.LeagueService.GetSeasonZeroMoveGames
  */
 export const getSeasonZeroMoveGames = LeagueService.method.getSeasonZeroMoveGames;

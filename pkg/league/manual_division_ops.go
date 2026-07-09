@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -13,6 +14,11 @@ import (
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ipc "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
+
+// ErrDivisionNotEmpty is returned by DeleteEmptyDivision when the division
+// still has players registered to it. Callers must move them out first,
+// e.g. via MovePlayer.
+var ErrDivisionNotEmpty = errors.New("division still has players registered")
 
 // ManualDivisionManager provides tools for manual division management
 type ManualDivisionManager struct {
@@ -41,6 +47,11 @@ type MoveResult struct {
 	UserID             string
 	PreviousDivisionID uuid.UUID
 	NewDivisionID      uuid.UUID
+}
+
+// DeleteDivisionResult tracks the outcome of deleting an empty division
+type DeleteDivisionResult struct {
+	DivisionsRenumbered int
 }
 
 // MergeDivisions merges all players from mergingDiv into receivingDiv,
@@ -138,6 +149,64 @@ func (mdm *ManualDivisionManager) MergeDivisions(
 		DeletedDivisionID:   mergingDivID,
 		ReceivingDivisionID: receivingDivID,
 	}, nil
+}
+
+// DeleteEmptyDivision deletes a division that has no players registered to
+// it, then renumbers the remaining divisions sequentially to close the gap.
+// Returns ErrDivisionNotEmpty if the division still has players — callers
+// must move them out first (e.g. via MovePlayer).
+func (mdm *ManualDivisionManager) DeleteEmptyDivision(
+	ctx context.Context,
+	seasonID uuid.UUID,
+	divisionID uuid.UUID,
+) (*DeleteDivisionResult, error) {
+	div, err := mdm.stores.LeagueStore.GetDivision(ctx, divisionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get division: %w", err)
+	}
+	if div.SeasonID != seasonID {
+		return nil, fmt.Errorf("division is not in the specified season")
+	}
+
+	remainingPlayers, err := mdm.stores.LeagueStore.GetDivisionRegistrations(ctx, divisionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get division players: %w", err)
+	}
+	if len(remainingPlayers) > 0 {
+		return nil, fmt.Errorf("%w: %d player(s) remaining", ErrDivisionNotEmpty, len(remainingPlayers))
+	}
+
+	if err := mdm.stores.LeagueStore.DeleteDivision(ctx, divisionID); err != nil {
+		return nil, fmt.Errorf("failed to delete division: %w", err)
+	}
+
+	// Renumber remaining divisions sequentially (1, 2, 3, ...) to close the gap.
+	allDivisions, err := mdm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get season divisions: %w", err)
+	}
+	sort.Slice(allDivisions, func(i, j int) bool {
+		return allDivisions[i].DivisionNumber < allDivisions[j].DivisionNumber
+	})
+
+	divisionsRenumbered := 0
+	for i, d := range allDivisions {
+		newNumber := int32(i + 1)
+		if d.DivisionNumber != newNumber {
+			divName := fmt.Sprintf("Division %d", newNumber)
+			err := mdm.stores.LeagueStore.UpdateDivisionNumber(ctx, models.UpdateDivisionNumberParams{
+				Uuid:           d.Uuid,
+				DivisionNumber: newNumber,
+				DivisionName:   pgtype.Text{String: divName, Valid: true},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to renumber division %s: %w", d.Uuid, err)
+			}
+			divisionsRenumbered++
+		}
+	}
+
+	return &DeleteDivisionResult{DivisionsRenumbered: divisionsRenumbered}, nil
 }
 
 // MovePlayer moves a single player from one division to another.
