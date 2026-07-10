@@ -19,7 +19,7 @@ human_vs_human_games AS
 FROM games LEFT JOIN users u1 ON games.player0_id = u1.id
   LEFT JOIN users u2 ON games.player1_id = u2.id
   WHERE games.created_at-u1.created_at < interval '14 days'
-  AND NOT (u2.internal_bot OR u2.id IN (42,43,44,45,46)))
+  AND NOT (u2.internal_bot OR u2.id IN (42,43,44,45,46,6216)))
 UNION ALL
 (SELECT
   games.player1_id AS player,
@@ -27,7 +27,7 @@ UNION ALL
 FROM games LEFT JOIN users u1 ON games.player1_id = u1.id
   LEFT JOIN users u2 ON games.player0_id = u2.id
   WHERE games.created_at-u1.created_at < interval '14 days'
-  AND NOT (u2.internal_bot OR u2.id IN (42,43,44,45,46)))
+  AND NOT (u2.internal_bot OR u2.id IN (42,43,44,45,46,6216)))
  ),
 all_stats AS
 (SELECT

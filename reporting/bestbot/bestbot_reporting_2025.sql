@@ -18,5 +18,5 @@ select
 	count(*)
 from duplicated_games g
 left join public.users u ON g.player = u.id
-where (u.internal_bot OR u.id IN (42,43,44,45,46))
+where (u.internal_bot OR u.id IN (42,43,44,45,46,6216))
 group by 1,2

@@ -16,7 +16,7 @@ dau_omgwords_report AS
 	COUNT(DISTINCT player) AS dau_omgwords
 FROM duplicated_games
 LEFT JOIN public.users ON duplicated_games.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
+WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46,6216))
 GROUP BY 1),
 
 -- we now have a flag for users who are bots, but our earliest
@@ -24,7 +24,7 @@ GROUP BY 1),
 bot_users AS
 (SELECT
    id,
-   internal_bot OR id IN (42,43,44,45,46) AS is_bot
+   internal_bot OR id IN (42,43,44,45,46,6216) AS is_bot
 FROM public.users),
 
 pvp_games as
@@ -99,7 +99,7 @@ omgwords_plus_puzzles_report AS
 	COUNT(DISTINCT player) AS dau
 FROM games_plus_puzzle_attempts
 LEFT JOIN public.users ON games_plus_puzzle_attempts.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
+WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46,6216))
 GROUP BY 1)
 
 SELECT

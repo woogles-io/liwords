@@ -23,7 +23,7 @@ mau_omgwords_report AS
 	COUNT(DISTINCT player) AS mau_omgwords
 FROM duplicated_games
 LEFT JOIN public.users ON duplicated_games.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
+WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46,6216))
 GROUP BY 1,2
 ORDER BY 1,3 DESC),
 
@@ -32,7 +32,7 @@ ORDER BY 1,3 DESC),
 bot_users AS
 (SELECT
    id,
-   internal_bot OR id IN (42,43,44,45,46) AS is_bot
+   internal_bot OR id IN (42,43,44,45,46,6216) AS is_bot
 FROM public.users),
 
 pvp_games as
@@ -127,7 +127,7 @@ omgwords_plus_puzzles_report AS
 	COUNT(DISTINCT player) AS mau
 FROM games_plus_puzzle_attempts
 LEFT JOIN public.users ON games_plus_puzzle_attempts.player = users.id
-WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46))
+WHERE NOT (users.internal_bot OR users.id IN (42,43,44,45,46,6216))
 GROUP BY 1,2
 ORDER BY 1 DESC,3 DESC)
 
