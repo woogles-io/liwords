@@ -297,18 +297,14 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 }
 
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
+// ListOpenSeeks is a read-only query: no explicit transaction needed.
 func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	var rows pgx.Rows
+	var err error
 	if tourneyID != "" {
-		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2`, receiverID, tourneyID)
+		rows, err = s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2`, receiverID, tourneyID)
 	} else {
-		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
+		rows, err = s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
 	}
 	if err != nil {
 		return nil, err
@@ -324,25 +320,20 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 		}
 		games = append(games, &entity.SoughtGame{SeekRequest: &req})
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return games, nil
 }
 
 // ListCorrespondenceSeeksForUser lists all correspondence match requests and open seeks for a user.
+// Read-only query: no explicit transaction needed.
 func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	// Get correspondence seeks where:
 	// - user is the seeker (their own open seeks or match requests)
 	// - user is the receiver (match requests sent to them)
 	// - open seeks available to all (receiver is empty)
-	rows, err := tx.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')`, userID)
+	rows, err := s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +348,7 @@ func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID str
 		}
 		games = append(games, &entity.SoughtGame{SeekRequest: &req})
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return games, nil

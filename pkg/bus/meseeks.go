@@ -836,22 +836,54 @@ func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
 	return b.sendReceiverAbsent(ctx, req)
 }
 
+// blockedByUUIDSet returns the set of UUIDs of users who block the given user (by DB ID),
+// i.e. the receiver's GetBlockedBy list turned into a membership set. It's fetched once
+// per seek list rather than per seek to avoid an O(seeks) blockings query.
+func (b *Bus) blockedByUUIDSet(ctx context.Context, uid uint) (map[string]bool, error) {
+	blockers, err := b.stores.UserStore.GetBlockedBy(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]bool, len(blockers))
+	for _, u := range blockers {
+		set[u.UUID] = true
+	}
+	return set, nil
+}
+
+// seekersByUUID batch-fetches the seeker profiles referenced by the given sought games in a
+// single query, to avoid one GetByUUID lookup per seek.
+func (b *Bus) seekersByUUID(ctx context.Context, sgs []*entity.SoughtGame) (map[string]*entity.User, error) {
+	seen := make(map[string]bool, len(sgs))
+	uuids := make([]string, 0, len(sgs))
+	for _, sg := range sgs {
+		if sg.SeekRequest == nil || sg.SeekRequest.User == nil {
+			continue
+		}
+		uid := sg.SeekRequest.User.UserId
+		if seen[uid] {
+			continue
+		}
+		seen[uid] = true
+		uuids = append(uuids, uid)
+	}
+	return b.stores.UserStore.GetByUUIDs(ctx, uuids)
+}
+
 // shouldIncludeSeek filters a seek based on blocks, rating range, established rating, and followed players requirements.
 // Returns true if the seek should be shown to the receiver, false if it should be filtered out.
-func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, receiver *entity.User) bool {
+// blockedByReceiver and seekers should be precomputed once per seek list (see blockedByUUIDSet
+// and seekersByUUID) rather than looked up per seek.
+func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, receiver *entity.User, blockedByReceiver map[string]bool, seekers map[string]*entity.User) bool {
 	if receiver == nil {
 		// No receiver to filter for, include the seek
 		return true
 	}
 
-	// Get the seeker
-	seeker, err := b.stores.UserStore.GetByUUID(ctx, sg.SeekRequest.User.UserId)
-	if err != nil {
-		return false
-	}
+	seekerUUID := sg.SeekRequest.User.UserId
 
 	// Always show seekers their own seeks (don't apply filters to your own seeks)
-	if seeker.UUID == receiver.UUID {
+	if seekerUUID == receiver.UUID {
 		return true
 	}
 
@@ -860,13 +892,14 @@ func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, rece
 		return true
 	}
 
-	// Check for blocks
-	block, err := b.blockExists(ctx, seeker, receiver)
-	if err != nil {
+	// Check for blocks: filter out if the seeker blocks the receiver.
+	if blockedByReceiver[seekerUUID] {
 		return false
 	}
-	if block == 0 {
-		// Receiver is blocked by seeker
+
+	// Everything past this point needs the seeker's full profile (rating / DB id).
+	seeker, ok := seekers[seekerUUID]
+	if !ok {
 		return false
 	}
 
@@ -922,7 +955,10 @@ func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, rece
 	return true
 }
 
-func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
+// openSeeks returns the open seeks visible to receiverID. If receiver is non-nil, it is used
+// as the already-resolved receiving user instead of re-fetching by UUID (callers that have
+// already looked up the user, e.g. sendLobbyContext, should pass it in).
+func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string, receiver *entity.User) (*entity.EventWrapper, error) {
 	sgs, err := b.stores.SoughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
@@ -931,9 +967,21 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 		return nil, nil
 	}
 
-	var receiver *entity.User
-	if !userIsAnon(receiverID) {
+	if receiver == nil && !userIsAnon(receiverID) {
 		receiver, err = b.stores.UserStore.GetByUUID(ctx, receiverID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var blockedByReceiver map[string]bool
+	var seekers map[string]*entity.User
+	if receiver != nil {
+		blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
+		if err != nil {
+			return nil, err
+		}
+		seekers, err = b.seekersByUUID(ctx, sgs)
 		if err != nil {
 			return nil, err
 		}
@@ -942,7 +990,7 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-matches")
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {
-		if b.shouldIncludeSeek(ctx, sg, receiver) {
+		if b.shouldIncludeSeek(ctx, sg, receiver, blockedByReceiver, seekers) {
 			pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 		}
 	}

@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 
 	nats "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
@@ -1131,16 +1132,29 @@ func (b *Bus) correspondenceGamesForUser(ctx context.Context, userID string) (*e
 	return evt, nil
 }
 
-// correspondenceSeeksForUser returns all correspondence match requests and open seeks for a specific user
-func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*entity.EventWrapper, error) {
+// correspondenceSeeksForUser returns all correspondence match requests and open seeks for a specific user.
+// If receiver is non-nil, it is used as the already-resolved user instead of re-fetching by UUID.
+func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string, receiver *entity.User) (*entity.EventWrapper, error) {
 	seeks, err := b.stores.SoughtGameStore.ListCorrespondenceSeeksForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	var receiver *entity.User
-	if !userIsAnon(userID) {
+	if receiver == nil && !userIsAnon(userID) {
 		receiver, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var blockedByReceiver map[string]bool
+	var seekers map[string]*entity.User
+	if receiver != nil {
+		blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
+		if err != nil {
+			return nil, err
+		}
+		seekers, err = b.seekersByUUID(ctx, seeks)
 		if err != nil {
 			return nil, err
 		}
@@ -1153,7 +1167,7 @@ func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string) (*e
 		}
 
 		// Use shared filtering logic (blocks, established rating, followed players)
-		if b.shouldIncludeSeek(ctx, seek, receiver) {
+		if b.shouldIncludeSeek(ctx, seek, receiver, blockedByReceiver, seekers) {
 			seekRequests = append(seekRequests, seek.SeekRequest)
 		}
 	}
@@ -1213,8 +1227,12 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 }
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
+	// Resolve the connecting user once and reuse it below (openSeeks and
+	// correspondenceSeeksForUser both need it), instead of each re-fetching by UUID.
+	var u *entity.User
 	if !userIsAnon(userID) {
-		u, err := b.stores.UserStore.GetByUUID(ctx, userID)
+		var err error
+		u, err = b.stores.UserStore.GetByUUID(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -1233,45 +1251,57 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 			return err
 		}
 	}
-	// open seeks
-	seeks, err := b.openSeeks(ctx, userID, "")
-	if err != nil {
+	// The remaining sections are independent of one another (each is its own set of
+	// DB reads), so fetch them concurrently. Publishing still happens afterward in the
+	// original order (seeks, active games, correspondence games, correspondence seeks)
+	// since clients may rely on that ordering.
+	var seeks, activeGames, correspondenceGames, correspondenceSeeks *entity.EventWrapper
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		seeks, err = b.openSeeks(gctx, userID, "", u)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		activeGames, err = b.activeGames(gctx, "")
+		return err
+	})
+	if !userIsAnon(userID) {
+		g.Go(func() error {
+			var err error
+			correspondenceGames, err = b.correspondenceGamesForUser(gctx, userID)
+			return err
+		})
+		g.Go(func() error {
+			var err error
+			correspondenceSeeks, err = b.correspondenceSeeksForUser(gctx, userID, u)
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
 		return err
 	}
+
+	// open seeks
 	if seeks != nil {
-		err = b.pubToConnectionID(connID, userID, seeks)
-		if err != nil {
+		if err := b.pubToConnectionID(connID, userID, seeks); err != nil {
 			return err
 		}
 	}
 	// live games
-	activeGames, err := b.activeGames(ctx, "")
-	if err != nil {
-		return err
-	}
-	err = b.pubToConnectionID(connID, userID, activeGames)
-	if err != nil {
+	if err := b.pubToConnectionID(connID, userID, activeGames); err != nil {
 		return err
 	}
 
-	// correspondence games (only for logged-in users)
+	// correspondence games and seeks (only for logged-in users)
 	if !userIsAnon(userID) {
-		correspondenceGames, err := b.correspondenceGamesForUser(ctx, userID)
-		if err != nil {
+		if err := b.pubToConnectionID(connID, userID, correspondenceGames); err != nil {
 			return err
 		}
-		err = b.pubToConnectionID(connID, userID, correspondenceGames)
-		if err != nil {
-			return err
-		}
-
 		// correspondence seeks (pending match requests)
-		correspondenceSeeks, err := b.correspondenceSeeksForUser(ctx, userID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToConnectionID(connID, userID, correspondenceSeeks)
-		if err != nil {
+		if err := b.pubToConnectionID(connID, userID, correspondenceSeeks); err != nil {
 			return err
 		}
 	}
@@ -1293,7 +1323,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		return err
 	}
 	// open match reqs
-	matches, err := b.openSeeks(ctx, userID, tourneyID)
+	matches, err := b.openSeeks(ctx, userID, tourneyID, nil)
 	if err != nil {
 		return err
 	}
