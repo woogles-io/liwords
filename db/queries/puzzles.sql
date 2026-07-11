@@ -21,8 +21,8 @@ WHERE puzzles.id IS NULL
     AND NOT (quickdata @> '{"pi": [{"is_bot": true}]}'::jsonb)
     AND type = 0
 
-    ORDER BY games.id DESC
-    LIMIT $4 OFFSET $5;
+    ORDER BY RANDOM()
+    LIMIT $4;
 
 
 -- name: GetPotentialPuzzleGames :many
@@ -44,7 +44,14 @@ WHERE puzzles.id IS NULL
     AND game_end_reason not in (0, 5, 7)
     AND type = 0
 
-    ORDER BY games.id DESC
-    LIMIT $4 OFFSET $5;
+    ORDER BY RANDOM()
+    LIMIT $4;
 -- name: GetPuzzleDBIDFromUUID :one
 SELECT id FROM puzzles WHERE uuid = @uuid;
+
+-- name: GetPuzzleTagsByUUID :many
+SELECT ptt.tag_title
+FROM puzzle_tags pt
+JOIN puzzle_tag_titles ptt ON pt.tag_id = ptt.id
+JOIN puzzles p ON pt.puzzle_id = p.id
+WHERE p.uuid = @uuid;

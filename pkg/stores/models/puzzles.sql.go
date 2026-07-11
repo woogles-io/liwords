@@ -30,8 +30,8 @@ WHERE puzzles.id IS NULL
     AND game_end_reason not in (0, 5, 7)
     AND type = 0
 
-    ORDER BY games.id DESC
-    LIMIT $4 OFFSET $5
+    ORDER BY RANDOM()
+    LIMIT $4
 `
 
 type GetPotentialPuzzleGamesParams struct {
@@ -39,7 +39,6 @@ type GetPotentialPuzzleGamesParams struct {
 	CreatedAt_2 pgtype.Timestamptz
 	Column3     string
 	Limit       int32
-	Offset      int32
 }
 
 func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialPuzzleGamesParams) ([]pgtype.Text, error) {
@@ -48,7 +47,6 @@ func (q *Queries) GetPotentialPuzzleGames(ctx context.Context, arg GetPotentialP
 		arg.CreatedAt_2,
 		arg.Column3,
 		arg.Limit,
-		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -90,8 +88,8 @@ WHERE puzzles.id IS NULL
     AND NOT (quickdata @> '{"pi": [{"is_bot": true}]}'::jsonb)
     AND type = 0
 
-    ORDER BY games.id DESC
-    LIMIT $4 OFFSET $5
+    ORDER BY RANDOM()
+    LIMIT $4
 `
 
 type GetPotentialPuzzleGamesAvoidBotsParams struct {
@@ -99,7 +97,6 @@ type GetPotentialPuzzleGamesAvoidBotsParams struct {
 	CreatedAt_2 pgtype.Timestamptz
 	Column3     string
 	Limit       int32
-	Offset      int32
 }
 
 // puzzle generation
@@ -109,7 +106,6 @@ func (q *Queries) GetPotentialPuzzleGamesAvoidBots(ctx context.Context, arg GetP
 		arg.CreatedAt_2,
 		arg.Column3,
 		arg.Limit,
-		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -138,4 +134,32 @@ func (q *Queries) GetPuzzleDBIDFromUUID(ctx context.Context, uuid string) (int64
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getPuzzleTagsByUUID = `-- name: GetPuzzleTagsByUUID :many
+SELECT ptt.tag_title
+FROM puzzle_tags pt
+JOIN puzzle_tag_titles ptt ON pt.tag_id = ptt.id
+JOIN puzzles p ON pt.puzzle_id = p.id
+WHERE p.uuid = $1
+`
+
+func (q *Queries) GetPuzzleTagsByUUID(ctx context.Context, uuid string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getPuzzleTagsByUUID, uuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var tag_title string
+		if err := rows.Scan(&tag_title); err != nil {
+			return nil, err
+		}
+		items = append(items, tag_title)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

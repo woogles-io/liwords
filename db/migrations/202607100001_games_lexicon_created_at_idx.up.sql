@@ -1,0 +1,9 @@
+-- This index must be created manually with CONCURRENTLY outside a transaction
+-- because CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
+--
+-- Run on prod before deploying:
+--   CREATE INDEX CONCURRENTLY idx_games_lexicon_created_at
+--   ON games ((game_request->>'lexicon'), created_at DESC);
+--
+-- Speeds up puzzle candidate queries that filter by lexicon + date range,
+-- avoiding a full heap scan of all games in the window (~80K/week).

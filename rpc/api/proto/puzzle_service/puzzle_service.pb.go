@@ -420,10 +420,14 @@ func (x *NextClosestRatingPuzzleIdResponse) GetQueryResult() PuzzleQueryResult {
 }
 
 type PuzzleRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PuzzleId      string                 `protobuf:"bytes,1,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PuzzleId string                 `protobuf:"bytes,1,opt,name=puzzle_id,json=puzzleId,proto3" json:"puzzle_id,omitempty"`
+	// If true and the user has a prior finalized attempt, the server will include
+	// the correct answer, game_id, turn_number, and after_text in the response.
+	// Omitting this keeps the board position unspoiled so the user can retry.
+	IncludeSolution bool `protobuf:"varint,2,opt,name=include_solution,json=includeSolution,proto3" json:"include_solution,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *PuzzleRequest) Reset() {
@@ -461,6 +465,13 @@ func (x *PuzzleRequest) GetPuzzleId() string {
 		return x.PuzzleId
 	}
 	return ""
+}
+
+func (x *PuzzleRequest) GetIncludeSolution() bool {
+	if x != nil {
+		return x.IncludeSolution
+	}
+	return false
 }
 
 type AnswerResponse struct {
@@ -580,12 +591,17 @@ func (x *AnswerResponse) GetLastAttemptTime() *timestamppb.Timestamp {
 }
 
 type PuzzleResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	History       *macondo.GameHistory   `protobuf:"bytes,1,opt,name=history,proto3" json:"history,omitempty"`
-	BeforeText    string                 `protobuf:"bytes,2,opt,name=before_text,json=beforeText,proto3" json:"before_text,omitempty"`
-	Answer        *AnswerResponse        `protobuf:"bytes,3,opt,name=answer,proto3" json:"answer,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	History    *macondo.GameHistory   `protobuf:"bytes,1,opt,name=history,proto3" json:"history,omitempty"`
+	BeforeText string                 `protobuf:"bytes,2,opt,name=before_text,json=beforeText,proto3" json:"before_text,omitempty"`
+	Answer     *AnswerResponse        `protobuf:"bytes,3,opt,name=answer,proto3" json:"answer,omitempty"`
+	// Broad puzzle type (e.g. "EQUITY"). Safe to send before solve.
+	CategoryTags []string `protobuf:"bytes,4,rep,name=category_tags,json=categoryTags,proto3" json:"category_tags,omitempty"`
+	// Granular tags (e.g. "BINGO", "BLANK_BINGO"). Only sent after the user
+	// has a finalized attempt, because they reveal solution properties.
+	DescriptiveTags []string `protobuf:"bytes,5,rep,name=descriptive_tags,json=descriptiveTags,proto3" json:"descriptive_tags,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *PuzzleResponse) Reset() {
@@ -635,6 +651,20 @@ func (x *PuzzleResponse) GetBeforeText() string {
 func (x *PuzzleResponse) GetAnswer() *AnswerResponse {
 	if x != nil {
 		return x.Answer
+	}
+	return nil
+}
+
+func (x *PuzzleResponse) GetCategoryTags() []string {
+	if x != nil {
+		return x.CategoryTags
+	}
+	return nil
+}
+
+func (x *PuzzleResponse) GetDescriptiveTags() []string {
+	if x != nil {
+		return x.DescriptiveTags
 	}
 	return nil
 }
@@ -703,8 +733,11 @@ type SubmissionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserIsCorrect bool                   `protobuf:"varint,1,opt,name=user_is_correct,json=userIsCorrect,proto3" json:"user_is_correct,omitempty"`
 	Answer        *AnswerResponse        `protobuf:"bytes,2,opt,name=answer,proto3" json:"answer,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Populated when the attempt is finalized (correct or gave up).
+	// Same set as PuzzleResponse.descriptive_tags.
+	DescriptiveTags []string `protobuf:"bytes,3,rep,name=descriptive_tags,json=descriptiveTags,proto3" json:"descriptive_tags,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SubmissionResponse) Reset() {
@@ -747,6 +780,13 @@ func (x *SubmissionResponse) GetUserIsCorrect() bool {
 func (x *SubmissionResponse) GetAnswer() *AnswerResponse {
 	if x != nil {
 		return x.Answer
+	}
+	return nil
+}
+
+func (x *SubmissionResponse) GetDescriptiveTags() []string {
+	if x != nil {
+		return x.DescriptiveTags
 	}
 	return nil
 }
@@ -944,8 +984,11 @@ type PuzzleGenerationJobRequest struct {
 	EquityLossTotalLimit uint32 `protobuf:"varint,9,opt,name=equity_loss_total_limit,json=equityLossTotalLimit,proto3" json:"equity_loss_total_limit,omitempty"`
 	AvoidBotGames        bool   `protobuf:"varint,10,opt,name=avoid_bot_games,json=avoidBotGames,proto3" json:"avoid_bot_games,omitempty"`
 	DaysPerChunk         uint32 `protobuf:"varint,11,opt,name=days_per_chunk,json=daysPerChunk,proto3" json:"days_per_chunk,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// earliest_start_date is a YYYY-MM-DD date that caps how far back the
+	// generator will walk. If empty, defaults to 2021-01-01.
+	EarliestStartDate string `protobuf:"bytes,12,opt,name=earliest_start_date,json=earliestStartDate,proto3" json:"earliest_start_date,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PuzzleGenerationJobRequest) Reset() {
@@ -1054,6 +1097,13 @@ func (x *PuzzleGenerationJobRequest) GetDaysPerChunk() uint32 {
 		return x.DaysPerChunk
 	}
 	return 0
+}
+
+func (x *PuzzleGenerationJobRequest) GetEarliestStartDate() string {
+	if x != nil {
+		return x.EarliestStartDate
+	}
+	return ""
 }
 
 type APIPuzzleGenerationJobResponse struct {
@@ -1351,9 +1401,10 @@ const file_proto_puzzle_service_puzzle_service_proto_rawDesc = "" +
 	"\alexicon\x18\x01 \x01(\tR\alexicon\"\x86\x01\n" +
 	"!NextClosestRatingPuzzleIdResponse\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12D\n" +
-	"\fquery_result\x18\x02 \x01(\x0e2!.puzzle_service.PuzzleQueryResultR\vqueryResult\",\n" +
+	"\fquery_result\x18\x02 \x01(\x0e2!.puzzle_service.PuzzleQueryResultR\vqueryResult\"W\n" +
 	"\rPuzzleRequest\x12\x1b\n" +
-	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\"\xdc\x03\n" +
+	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12)\n" +
+	"\x10include_solution\x18\x02 \x01(\bR\x0fincludeSolution\"\xdc\x03\n" +
 	"\x0eAnswerResponse\x129\n" +
 	"\x0ecorrect_answer\x18\x01 \x01(\v2\x12.macondo.GameEventR\rcorrectAnswer\x124\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x1c.puzzle_service.PuzzleStatusR\x06status\x12\x1a\n" +
@@ -1367,19 +1418,22 @@ const file_proto_puzzle_service_puzzle_service_proto_rawDesc = "" +
 	"\x11new_puzzle_rating\x18\b \x01(\x05R\x0fnewPuzzleRating\x12H\n" +
 	"\x12first_attempt_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10firstAttemptTime\x12F\n" +
 	"\x11last_attempt_time\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\x0flastAttemptTime\"\x99\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x0flastAttemptTime\"\xe9\x01\n" +
 	"\x0ePuzzleResponse\x12.\n" +
 	"\ahistory\x18\x01 \x01(\v2\x14.macondo.GameHistoryR\ahistory\x12\x1f\n" +
 	"\vbefore_text\x18\x02 \x01(\tR\n" +
 	"beforeText\x126\n" +
-	"\x06answer\x18\x03 \x01(\v2\x1e.puzzle_service.AnswerResponseR\x06answer\"\x87\x01\n" +
+	"\x06answer\x18\x03 \x01(\v2\x1e.puzzle_service.AnswerResponseR\x06answer\x12#\n" +
+	"\rcategory_tags\x18\x04 \x03(\tR\fcategoryTags\x12)\n" +
+	"\x10descriptive_tags\x18\x05 \x03(\tR\x0fdescriptiveTags\"\x87\x01\n" +
 	"\x11SubmissionRequest\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x120\n" +
 	"\x06answer\x18\x02 \x01(\v2\x18.ipc.ClientGameplayEventR\x06answer\x12#\n" +
-	"\rshow_solution\x18\x03 \x01(\bR\fshowSolution\"t\n" +
+	"\rshow_solution\x18\x03 \x01(\bR\fshowSolution\"\x9f\x01\n" +
 	"\x12SubmissionResponse\x12&\n" +
 	"\x0fuser_is_correct\x18\x01 \x01(\bR\ruserIsCorrect\x126\n" +
-	"\x06answer\x18\x02 \x01(\v2\x1e.puzzle_service.AnswerResponseR\x06answer\"4\n" +
+	"\x06answer\x18\x02 \x01(\v2\x1e.puzzle_service.AnswerResponseR\x06answer\x12)\n" +
+	"\x10descriptive_tags\x18\x03 \x03(\tR\x0fdescriptiveTags\"4\n" +
 	"\x15PreviousPuzzleRequest\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\"5\n" +
 	"\x16PreviousPuzzleResponse\x12\x1b\n" +
@@ -1387,7 +1441,7 @@ const file_proto_puzzle_service_puzzle_service_proto_rawDesc = "" +
 	"\x11PuzzleVoteRequest\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12\x12\n" +
 	"\x04vote\x18\x02 \x01(\x05R\x04vote\"\x14\n" +
-	"\x12PuzzleVoteResponse\"\xf2\x03\n" +
+	"\x12PuzzleVoteResponse\"\xa2\x04\n" +
 	"\x1aPuzzleGenerationJobRequest\x12\x1c\n" +
 	"\n" +
 	"bot_vs_bot\x18\x01 \x01(\bR\bbotVsBot\x12\x18\n" +
@@ -1403,7 +1457,8 @@ const file_proto_puzzle_service_puzzle_service_proto_rawDesc = "" +
 	"\x17equity_loss_total_limit\x18\t \x01(\rR\x14equityLossTotalLimit\x12&\n" +
 	"\x0favoid_bot_games\x18\n" +
 	" \x01(\bR\ravoidBotGames\x12$\n" +
-	"\x0edays_per_chunk\x18\v \x01(\rR\fdaysPerChunk\":\n" +
+	"\x0edays_per_chunk\x18\v \x01(\rR\fdaysPerChunk\x12.\n" +
+	"\x13earliest_start_date\x18\f \x01(\tR\x11earliestStartDate\":\n" +
 	"\x1eAPIPuzzleGenerationJobResponse\x12\x18\n" +
 	"\astarted\x18\x01 \x01(\bR\astarted\"\x84\x01\n" +
 	"\x1dAPIPuzzleGenerationJobRequest\x12D\n" +

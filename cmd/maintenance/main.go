@@ -83,6 +83,9 @@ func main() {
 		case "resend-season-started-emails":
 			err := ResendSeasonStartedEmails()
 			log.Err(err).Msg("ran resendSeasonStartedEmails")
+		case "weekly-puzzle-gen":
+			err := WeeklyPuzzleGen()
+			log.Err(err).Msg("ran weeklyPuzzleGen")
 		default:
 			log.Error().Str("command", command).Msg("command not recognized")
 		}

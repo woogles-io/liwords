@@ -24,6 +24,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// categoryTagAllowlist is the single source of truth for tags that are safe
+// to send before a user has a finalized attempt. Everything else is a
+// descriptive tag that reveals solution properties (e.g. BINGO, BLANK_BINGO)
+// and must be withheld until the attempt is finalized.
+var categoryTagAllowlist = map[string]bool{
+	"EQUITY": true,
+	// Add as new puzzle category types are introduced:
+	// "ENDGAME": true, "PREENDGAME": true, "WINPCT": true,
+}
+
 type PuzzleStore interface {
 	CreateGenerationLog(ctx context.Context, req *pb.PuzzleGenerationJobRequest) (int, error)
 	UpdateGenerationLogStatus(ctx context.Context, genId int, fulfilled bool, err error) error
@@ -43,6 +53,7 @@ type PuzzleStore interface {
 	GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error)
 	GetPotentialPuzzleGames(ctx context.Context, time1, time2 time.Time, limit int, lexicon string, avoidBots bool) ([]pgtype.Text, error)
 	GetJobLogs(ctx context.Context, limit, offset int) ([]*pb.PuzzleJobLog, error)
+	GetPuzzleTags(ctx context.Context, puzzleUUID string) ([]string, error)
 }
 
 func CreatePuzzlesFromGame(ctx context.Context, eqLossLimit uint32, req *macondopb.PuzzleGenerationRequest, reqId int, gs gameplay.GameStore, ps PuzzleStore,
@@ -106,6 +117,10 @@ func GetNextPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon
 
 func GetNextClosestRatingPuzzleId(ctx context.Context, ps PuzzleStore, userId string, lexicon string) (string, pb.PuzzleQueryResult, error) {
 	return ps.GetNextClosestRatingPuzzleId(ctx, userId, lexicon, entity.LexiconToPuzzleVariantKey(lexicon))
+}
+
+func GetPuzzleTags(ctx context.Context, ps PuzzleStore, puzzleUUID string) ([]string, error) {
+	return ps.GetPuzzleTags(ctx, puzzleUUID)
 }
 
 func GetPuzzle(ctx context.Context, ps PuzzleStore, userId string, puzzleUUID string) (*macondopb.GameHistory, string, int32, *bool, time.Time, time.Time, *entity.SingleRating, *entity.SingleRating, error) {

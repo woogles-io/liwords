@@ -202,7 +202,7 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 
 func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon string, ratingKey entity.VariantKey) (string, puzzle_service.PuzzleQueryResult, error) {
 	var pqr puzzle_service.PuzzleQueryResult
-	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return "", pqr, err
 	}
@@ -266,7 +266,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 
 func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
 	var pqr puzzle_service.PuzzleQueryResult
-	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return "", pqr, err
 	}
@@ -296,7 +296,7 @@ func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon 
 
 func (s *DBStore) GetNextClosestRatingPuzzleId(ctx context.Context, userId string, lexicon string, ratingKey entity.VariantKey) (string, puzzle_service.PuzzleQueryResult, error) {
 	var pqr puzzle_service.PuzzleQueryResult
-	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
 	if err != nil {
 		return "", pqr, err
 	}
@@ -755,7 +755,6 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 			CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
 			Column3:     lexicon,
 			Limit:       int32(limit),
-			Offset:      0,
 		})
 		return ids, err
 	}
@@ -764,9 +763,12 @@ func (s *DBStore) GetPotentialPuzzleGames(ctx context.Context, time1, time2 time
 		CreatedAt_2: pgtype.Timestamptz{Valid: true, Time: time2},
 		Column3:     lexicon,
 		Limit:       int32(limit),
-		Offset:      0,
 	})
 	return ids, err
+}
+
+func (s *DBStore) GetPuzzleTags(ctx context.Context, puzzleUUID string) ([]string, error) {
+	return models.New(s.dbPool).GetPuzzleTagsByUUID(ctx, puzzleUUID)
 }
 
 func getUserRating(ctx context.Context, tx pgx.Tx, userID string, ratingKey entity.VariantKey) (*entity.SingleRating, error) {
