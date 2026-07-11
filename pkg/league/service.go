@@ -1123,36 +1123,57 @@ func (ls *LeagueService) GetAllDivisionStandings(
 		return nil, apiserver.InvalidArg("invalid season_id")
 	}
 
-	// Get all divisions for season
-	divisions, err := ls.store.GetDivisionsBySeason(ctx, seasonID)
+	// Fetch the whole season's divisions, standings, registrations, and
+	// unfinished games in one repeatable-read transaction. A consistent snapshot
+	// is required for correct rank bounds: CalculatePossibleRanks correlates each
+	// player's games remaining (from standings) with the unfinished pairing list,
+	// so a game finishing between two reads would desync them into impossible
+	// bounds. It also collapses the old per-division N*3 query fan-out into three
+	// batched queries.
+	snapshot, err := ls.store.GetSeasonStandingsSnapshot(ctx, seasonID)
 	if err != nil {
-		return nil, apiserver.InternalErr(fmt.Errorf("failed to get divisions: %w", err))
+		return nil, apiserver.InternalErr(fmt.Errorf("failed to get season standings: %w", err))
 	}
+	divisions := snapshot.Divisions
 
-	// Get standings for each division. Divisions are independent, so run the
-	// per-division work concurrently; the CPU-bound CalculatePossibleRanks
-	// call dominates on large divisions near mid-season and bounds wall-clock
-	// at max-per-division instead of sum.
-	protoDivisions := make([]*ipc.Division, len(divisions))
-	eg, egCtx := errgroup.WithContext(ctx)
+	// Split the batched, division_number-ordered rows into per-division buckets
+	// aligned to divisions. The standings and registration row shapes match the
+	// single-division queries, so convert them and reuse the assembly below.
+	divIDs := make([]uuid.UUID, len(divisions))
 	for i, division := range divisions {
+		divisionUUID, err := uuid.FromBytes(division.Uuid[:])
+		if err != nil {
+			return nil, apiserver.InternalErr(fmt.Errorf("failed to parse division UUID: %w", err))
+		}
+		divIDs[i] = divisionUUID
+	}
+	allStandings := make([]models.GetStandingsRow, len(snapshot.Standings))
+	for i, r := range snapshot.Standings {
+		allStandings[i] = models.GetStandingsRow(r)
+	}
+	allRegistrations := make([]models.GetDivisionRegistrationsRow, len(snapshot.Registrations))
+	for i, r := range snapshot.Registrations {
+		allRegistrations[i] = models.GetDivisionRegistrationsRow(r)
+	}
+	standingsByDivision := groupByDivision(divIDs, allStandings,
+		func(r models.GetStandingsRow) uuid.UUID { return r.DivisionID })
+	registrationsByDivision := groupByDivision(divIDs, allRegistrations,
+		func(r models.GetDivisionRegistrationsRow) uuid.UUID { return uuid.UUID(r.DivisionID.Bytes) })
+	unfinishedByDivision := groupByDivision(divIDs, snapshot.Unfinished,
+		func(r models.GetUnfinishedGamesForDivisionsRow) uuid.UUID { return uuid.UUID(r.DivisionID.Bytes) })
+
+	// Divisions are independent, so run the per-division assembly concurrently;
+	// the CPU-bound CalculatePossibleRanks call dominates on large divisions near
+	// mid-season and bounds wall-clock at max-per-division instead of sum. All DB
+	// I/O is already done above, so these goroutines are pure CPU.
+	protoDivisions := make([]*ipc.Division, len(divisions))
+	var eg errgroup.Group
+	for i, division := range divisions {
+		divisionUUID := divIDs[i]
+		standings := standingsByDivision[i]
+		registrations := registrationsByDivision[i]
+		unfinished := unfinishedByDivision[i]
 		eg.Go(func() error {
-			divisionUUID, err := uuid.FromBytes(division.Uuid[:])
-			if err != nil {
-				return apiserver.InternalErr(fmt.Errorf("failed to parse division UUID: %w", err))
-			}
-
-			standings, err := ls.store.GetStandings(egCtx, divisionUUID)
-			if err != nil {
-				return apiserver.InternalErr(fmt.Errorf("failed to get standings: %w", err))
-			}
-
-			// Get registrations for the division to ensure all players are shown
-			registrations, err := ls.store.GetDivisionRegistrations(egCtx, divisionUUID)
-			if err != nil {
-				return apiserver.InternalErr(fmt.Errorf("failed to get registrations: %w", err))
-			}
-
 			// Build a map of existing standings by user ID
 			standingsMap := make(map[int32]models.GetStandingsRow)
 			for _, standing := range standings {
@@ -1250,10 +1271,6 @@ func (ls *LeagueService) GetAllDivisionStandings(
 			}
 
 			// Compute possible rank bounds using actual remaining pairings
-			unfinished, err := ls.store.GetUnfinishedDivisionGames(egCtx, divisionUUID)
-			if err != nil {
-				return apiserver.InternalErr(fmt.Errorf("failed to get unfinished games: %w", err))
-			}
 			standingInfos := make([]standingInfo, len(standings))
 			for j, s := range standings {
 				standingInfos[j] = StandingInfoFromRow(
