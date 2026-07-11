@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -90,6 +91,10 @@ type Store interface {
 	GetGameLeagueInfo(ctx context.Context, gameUUID string) (models.GetGameLeagueInfoRow, error)
 	GetSeasonPlayersWithUnstartedGames(ctx context.Context, seasonID uuid.UUID) ([]models.GetSeasonPlayersWithUnstartedGamesRow, error)
 	GetPlayerSeasonOpponents(ctx context.Context, seasonID uuid.UUID, userUUID string) ([]string, error)
+
+	// Batched season snapshot for GetAllDivisionStandings, read in a single
+	// repeatable-read transaction so the rank-bounds inputs stay consistent.
+	GetSeasonStandingsSnapshot(ctx context.Context, seasonID uuid.UUID) (*SeasonStandingsSnapshot, error)
 
 	// Time bank operations
 	AddTimeBankSinglePlayer(ctx context.Context, arg models.AddTimeBankSinglePlayerParams) (int64, error)
@@ -434,6 +439,69 @@ func (s *DBStore) GetUnfinishedLeagueGames(ctx context.Context, seasonID uuid.UU
 
 func (s *DBStore) GetUnfinishedDivisionGames(ctx context.Context, divisionID uuid.UUID) ([]models.GetUnfinishedDivisionGamesRow, error) {
 	return s.queries.GetUnfinishedDivisionGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+}
+
+// SeasonStandingsSnapshot is a single repeatable-read view of everything
+// GetAllDivisionStandings needs: the season's divisions plus every division's
+// standings, registrations, and unfinished games. Each list is fetched in one
+// batched query (= ANY over the season's division ids) ordered by
+// division_number, so the caller can split them into contiguous per-division
+// buckets with groupByDivision. Reading them in one transaction keeps the
+// rank-bounds inputs -- games remaining (from standings) and the unfinished
+// pairing list -- mutually consistent; separate per-division reads on pooled
+// connections can observe a game finishing mid-scan and produce impossible
+// bounds.
+type SeasonStandingsSnapshot struct {
+	Divisions     []models.LeagueDivision
+	Standings     []models.GetStandingsForDivisionsRow
+	Registrations []models.GetDivisionRegistrationsForDivisionsRow
+	Unfinished    []models.GetUnfinishedGamesForDivisionsRow
+}
+
+func (s *DBStore) GetSeasonStandingsSnapshot(ctx context.Context, seasonID uuid.UUID) (*SeasonStandingsSnapshot, error) {
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel:   pgx.RepeatableRead,
+		AccessMode: pgx.ReadOnly,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) // read-only snapshot; nothing to commit
+
+	q := s.queries.WithTx(tx)
+
+	divisions, err := q.GetDivisionsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	divIDs := make([]uuid.UUID, len(divisions))
+	for i, d := range divisions {
+		id, err := uuid.FromBytes(d.Uuid[:])
+		if err != nil {
+			return nil, err
+		}
+		divIDs[i] = id
+	}
+
+	standings, err := q.GetStandingsForDivisions(ctx, divIDs)
+	if err != nil {
+		return nil, err
+	}
+	registrations, err := q.GetDivisionRegistrationsForDivisions(ctx, divIDs)
+	if err != nil {
+		return nil, err
+	}
+	unfinished, err := q.GetUnfinishedGamesForDivisions(ctx, divIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SeasonStandingsSnapshot{
+		Divisions:     divisions,
+		Standings:     standings,
+		Registrations: registrations,
+		Unfinished:    unfinished,
+	}, nil
 }
 
 func (s *DBStore) ForceFinishGame(ctx context.Context, arg models.ForceFinishGameParams) error {
