@@ -422,6 +422,51 @@ FROM games
 WHERE league_division_id = $1
   AND game_end_reason = 0;
 
+-- name: GetStandingsForDivisions :many
+-- Batched GetStandings for a whole season: fetch every listed division's
+-- standings in one query, ordered by division_number so the caller can split
+-- the flat result into contiguous per-division buckets (groupByDivision).
+-- Reuses idx_league_standings_division_id via = ANY. Row shape matches
+-- GetStandings; sorting within a division is still done in Go.
+SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
+       ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at,
+       ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
+       ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
+       ls.total_tiles_played, ls.total_opponent_tiles_played,
+       ls.total_mistake_index, ls.games_analyzed,
+       u.uuid as user_uuid, u.username
+FROM league_standings ls
+JOIN users u ON ls.user_id = u.id
+JOIN league_divisions d ON d.uuid = ls.division_id
+WHERE ls.division_id = ANY(@division_ids::uuid[])
+ORDER BY d.division_number;
+
+-- name: GetDivisionRegistrationsForDivisions :many
+-- Batched GetDivisionRegistrations for a whole season, ordered by
+-- division_number then registration_date (preserving the single-division
+-- order within each division). Reuses idx_league_registrations_division_id
+-- via = ANY.
+SELECT lr.*, u.uuid as user_uuid, u.username
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_divisions d ON d.uuid = lr.division_id
+WHERE lr.division_id = ANY(@division_ids::uuid[])
+ORDER BY d.division_number, lr.registration_date;
+
+-- name: GetUnfinishedGamesForDivisions :many
+-- Batched GetUnfinishedDivisionGames for a whole season. Adds league_division_id
+-- to the projection (the single-division query omits it) so the flat result can
+-- be split by division. Reuses the idx_games_division_unfinished partial index
+-- via = ANY; ordered by division_number to align with the divisions list.
+SELECT g.league_division_id AS division_id,
+       g.player0_id,
+       g.player1_id
+FROM games g
+JOIN league_divisions d ON d.uuid = g.league_division_id
+WHERE g.league_division_id = ANY(@division_ids::uuid[])
+  AND g.game_end_reason = 0
+ORDER BY d.division_number;
+
 -- name: GetSeasonZeroMoveGames :many
 -- Get all in-progress games in a season that have zero moves
 -- Uses timers field: if lu (last update) == ts (time started), no moves have been made

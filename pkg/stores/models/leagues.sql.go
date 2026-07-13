@@ -660,6 +660,71 @@ func (q *Queries) GetDivisionRegistrations(ctx context.Context, divisionID pgtyp
 	return items, nil
 }
 
+const getDivisionRegistrationsForDivisions = `-- name: GetDivisionRegistrationsForDivisions :many
+SELECT lr.id, lr.user_id, lr.season_id, lr.division_id, lr.registration_date, lr.firsts_count, lr.status, lr.placement_status, lr.previous_division_rank, lr.seasons_away, lr.created_at, lr.updated_at, u.uuid as user_uuid, u.username
+FROM league_registrations lr
+JOIN users u ON lr.user_id = u.id
+JOIN league_divisions d ON d.uuid = lr.division_id
+WHERE lr.division_id = ANY($1::uuid[])
+ORDER BY d.division_number, lr.registration_date
+`
+
+type GetDivisionRegistrationsForDivisionsRow struct {
+	ID                   int64
+	UserID               int32
+	SeasonID             uuid.UUID
+	DivisionID           pgtype.UUID
+	RegistrationDate     pgtype.Timestamptz
+	FirstsCount          pgtype.Int4
+	Status               pgtype.Text
+	PlacementStatus      pgtype.Int4
+	PreviousDivisionRank pgtype.Int4
+	SeasonsAway          pgtype.Int4
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	UserUuid             string
+	Username             string
+}
+
+// Batched GetDivisionRegistrations for a whole season, ordered by
+// division_number then registration_date (preserving the single-division
+// order within each division). Reuses idx_league_registrations_division_id
+// via = ANY.
+func (q *Queries) GetDivisionRegistrationsForDivisions(ctx context.Context, divisionIds []uuid.UUID) ([]GetDivisionRegistrationsForDivisionsRow, error) {
+	rows, err := q.db.Query(ctx, getDivisionRegistrationsForDivisions, divisionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDivisionRegistrationsForDivisionsRow
+	for rows.Next() {
+		var i GetDivisionRegistrationsForDivisionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SeasonID,
+			&i.DivisionID,
+			&i.RegistrationDate,
+			&i.FirstsCount,
+			&i.Status,
+			&i.PlacementStatus,
+			&i.PreviousDivisionRank,
+			&i.SeasonsAway,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserUuid,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDivisionTimeBankStatus = `-- name: GetDivisionTimeBankStatus :many
 SELECT
     u.id as user_id,
@@ -2213,6 +2278,102 @@ func (q *Queries) GetStandings(ctx context.Context, divisionID uuid.UUID) ([]Get
 	return items, nil
 }
 
+const getStandingsForDivisions = `-- name: GetStandingsForDivisions :many
+SELECT ls.id, ls.division_id, ls.user_id, ls.wins, ls.losses, ls.draws,
+       ls.spread, ls.games_played, ls.games_remaining, ls.result, ls.updated_at,
+       ls.total_score, ls.total_opponent_score, ls.total_bingos, ls.total_opponent_bingos,
+       ls.total_turns, ls.high_turn, ls.high_game, ls.timeouts, ls.blanks_played,
+       ls.total_tiles_played, ls.total_opponent_tiles_played,
+       ls.total_mistake_index, ls.games_analyzed,
+       u.uuid as user_uuid, u.username
+FROM league_standings ls
+JOIN users u ON ls.user_id = u.id
+JOIN league_divisions d ON d.uuid = ls.division_id
+WHERE ls.division_id = ANY($1::uuid[])
+ORDER BY d.division_number
+`
+
+type GetStandingsForDivisionsRow struct {
+	ID                       int64
+	DivisionID               uuid.UUID
+	UserID                   int32
+	Wins                     pgtype.Int4
+	Losses                   pgtype.Int4
+	Draws                    pgtype.Int4
+	Spread                   pgtype.Int4
+	GamesPlayed              pgtype.Int4
+	GamesRemaining           pgtype.Int4
+	Result                   pgtype.Int4
+	UpdatedAt                pgtype.Timestamptz
+	TotalScore               pgtype.Int4
+	TotalOpponentScore       pgtype.Int4
+	TotalBingos              pgtype.Int4
+	TotalOpponentBingos      pgtype.Int4
+	TotalTurns               pgtype.Int4
+	HighTurn                 pgtype.Int4
+	HighGame                 pgtype.Int4
+	Timeouts                 pgtype.Int4
+	BlanksPlayed             pgtype.Int4
+	TotalTilesPlayed         pgtype.Int4
+	TotalOpponentTilesPlayed pgtype.Int4
+	TotalMistakeIndex        pgtype.Float8
+	GamesAnalyzed            pgtype.Int4
+	UserUuid                 string
+	Username                 string
+}
+
+// Batched GetStandings for a whole season: fetch every listed division's
+// standings in one query, ordered by division_number so the caller can split
+// the flat result into contiguous per-division buckets (groupByDivision).
+// Reuses idx_league_standings_division_id via = ANY. Row shape matches
+// GetStandings; sorting within a division is still done in Go.
+func (q *Queries) GetStandingsForDivisions(ctx context.Context, divisionIds []uuid.UUID) ([]GetStandingsForDivisionsRow, error) {
+	rows, err := q.db.Query(ctx, getStandingsForDivisions, divisionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetStandingsForDivisionsRow
+	for rows.Next() {
+		var i GetStandingsForDivisionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DivisionID,
+			&i.UserID,
+			&i.Wins,
+			&i.Losses,
+			&i.Draws,
+			&i.Spread,
+			&i.GamesPlayed,
+			&i.GamesRemaining,
+			&i.Result,
+			&i.UpdatedAt,
+			&i.TotalScore,
+			&i.TotalOpponentScore,
+			&i.TotalBingos,
+			&i.TotalOpponentBingos,
+			&i.TotalTurns,
+			&i.HighTurn,
+			&i.HighGame,
+			&i.Timeouts,
+			&i.BlanksPlayed,
+			&i.TotalTilesPlayed,
+			&i.TotalOpponentTilesPlayed,
+			&i.TotalMistakeIndex,
+			&i.GamesAnalyzed,
+			&i.UserUuid,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUnfinishedDivisionGames = `-- name: GetUnfinishedDivisionGames :many
 SELECT
     player0_id,
@@ -2238,6 +2399,47 @@ func (q *Queries) GetUnfinishedDivisionGames(ctx context.Context, leagueDivision
 	for rows.Next() {
 		var i GetUnfinishedDivisionGamesRow
 		if err := rows.Scan(&i.Player0ID, &i.Player1ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUnfinishedGamesForDivisions = `-- name: GetUnfinishedGamesForDivisions :many
+SELECT g.league_division_id AS division_id,
+       g.player0_id,
+       g.player1_id
+FROM games g
+JOIN league_divisions d ON d.uuid = g.league_division_id
+WHERE g.league_division_id = ANY($1::uuid[])
+  AND g.game_end_reason = 0
+ORDER BY d.division_number
+`
+
+type GetUnfinishedGamesForDivisionsRow struct {
+	DivisionID pgtype.UUID
+	Player0ID  pgtype.Int4
+	Player1ID  pgtype.Int4
+}
+
+// Batched GetUnfinishedDivisionGames for a whole season. Adds league_division_id
+// to the projection (the single-division query omits it) so the flat result can
+// be split by division. Reuses the idx_games_division_unfinished partial index
+// via = ANY; ordered by division_number to align with the divisions list.
+func (q *Queries) GetUnfinishedGamesForDivisions(ctx context.Context, divisionIds []uuid.UUID) ([]GetUnfinishedGamesForDivisionsRow, error) {
+	rows, err := q.db.Query(ctx, getUnfinishedGamesForDivisions, divisionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnfinishedGamesForDivisionsRow
+	for rows.Next() {
+		var i GetUnfinishedGamesForDivisionsRow
+		if err := rows.Scan(&i.DivisionID, &i.Player0ID, &i.Player1ID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
