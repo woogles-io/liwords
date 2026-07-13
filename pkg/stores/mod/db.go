@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/woogles-io/liwords/pkg/stores/common"
 	"github.com/woogles-io/liwords/pkg/stores/models"
 	ms "github.com/woogles-io/liwords/rpc/api/proto/mod_service"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,21 +25,12 @@ func (s *DBStore) Disconnect() {
 }
 
 func (s *DBStore) AddNotoriousGame(ctx context.Context, playerID string, gameID string, gameType int, time int64) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `INSERT INTO notoriousgames (game_id, player_id, type, timestamp) VALUES ($1, $2, $3, $4)`, gameID, playerID, gameType, time)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.AddNotoriousGame(ctx, models.AddNotoriousGameParams{
+		GameID:    pgtype.Text{String: gameID, Valid: true},
+		PlayerID:  pgtype.Text{String: playerID, Valid: true},
+		Type:      pgtype.Int4{Int32: int32(gameType), Valid: true},
+		Timestamp: pgtype.Int8{Int64: time, Valid: true},
+	})
 }
 
 func ConvertUnixToTimestampPb(unixTime int64) *timestamppb.Timestamp {
@@ -71,19 +61,5 @@ func (s *DBStore) GetNotoriousGames(ctx context.Context, playerID string, limit 
 }
 
 func (s *DBStore) DeleteNotoriousGames(ctx context.Context, playerID string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `DELETE FROM notoriousgames WHERE player_id = $1`, playerID)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.DeleteNotoriousGamesForPlayer(ctx, pgtype.Text{String: playerID, Valid: true})
 }

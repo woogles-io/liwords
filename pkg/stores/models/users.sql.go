@@ -12,6 +12,103 @@ import (
 	"github.com/woogles-io/liwords/pkg/entity"
 )
 
+const addBlock = `-- name: AddBlock :exec
+INSERT INTO blockings (user_id, blocker_id) VALUES ($1, $2)
+`
+
+type AddBlockParams struct {
+	TargetUser pgtype.Int4
+	Blocker    pgtype.Int4
+}
+
+func (q *Queries) AddBlock(ctx context.Context, arg AddBlockParams) error {
+	_, err := q.db.Exec(ctx, addBlock, arg.TargetUser, arg.Blocker)
+	return err
+}
+
+const addFollower = `-- name: AddFollower :exec
+INSERT INTO followings (user_id, follower_id) VALUES ($1, $2)
+`
+
+type AddFollowerParams struct {
+	TargetUser pgtype.Int4
+	Follower   pgtype.Int4
+}
+
+func (q *Queries) AddFollower(ctx context.Context, arg AddFollowerParams) error {
+	_, err := q.db.Exec(ctx, addFollower, arg.TargetUser, arg.Follower)
+	return err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getBlockedBy = `-- name: GetBlockedBy :many
+SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = $1
+`
+
+type GetBlockedByRow struct {
+	Uuid     string
+	Username string
+}
+
+func (q *Queries) GetBlockedBy(ctx context.Context, userID pgtype.Int4) ([]GetBlockedByRow, error) {
+	rows, err := q.db.Query(ctx, getBlockedBy, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBlockedByRow
+	for rows.Next() {
+		var i GetBlockedByRow
+		if err := rows.Scan(&i.Uuid, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBlocks = `-- name: GetBlocks :many
+SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id WHERE blocker_id = $1
+`
+
+type GetBlocksRow struct {
+	Uuid     string
+	Username string
+}
+
+func (q *Queries) GetBlocks(ctx context.Context, blockerID pgtype.Int4) ([]GetBlocksRow, error) {
+	rows, err := q.db.Query(ctx, getBlocks, blockerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBlocksRow
+	for rows.Next() {
+		var i GetBlocksRow
+		if err := rows.Scan(&i.Uuid, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getBriefProfiles = `-- name: GetBriefProfiles :many
 SELECT
     u.uuid,
@@ -72,6 +169,64 @@ func (q *Queries) GetBriefProfiles(ctx context.Context, userUuids []string) ([]G
 			&i.TitleOrganization,
 			&i.BadgeCodes,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFollowedBy = `-- name: GetFollowedBy :many
+SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = follower_id WHERE user_id = $1
+`
+
+type GetFollowedByRow struct {
+	Uuid     string
+	Username string
+}
+
+func (q *Queries) GetFollowedBy(ctx context.Context, userID pgtype.Int4) ([]GetFollowedByRow, error) {
+	rows, err := q.db.Query(ctx, getFollowedBy, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFollowedByRow
+	for rows.Next() {
+		var i GetFollowedByRow
+		if err := rows.Scan(&i.Uuid, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFollows = `-- name: GetFollows :many
+SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = user_id WHERE follower_id = $1
+`
+
+type GetFollowsRow struct {
+	Uuid     string
+	Username string
+}
+
+func (q *Queries) GetFollows(ctx context.Context, followerID pgtype.Int4) ([]GetFollowsRow, error) {
+	rows, err := q.db.Query(ctx, getFollows, followerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFollowsRow
+	for rows.Next() {
+		var i GetFollowsRow
+		if err := rows.Scan(&i.Uuid, &i.Username); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -451,6 +606,78 @@ func (q *Queries) GetUsernameFromUUID(ctx context.Context, uuid string) (string,
 	return username, err
 }
 
+const listAllUserIDs = `-- name: ListAllUserIDs :many
+SELECT uuid FROM users
+`
+
+func (q *Queries) ListAllUserIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listAllUserIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeBlock = `-- name: RemoveBlock :execrows
+DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2
+`
+
+type RemoveBlockParams struct {
+	TargetUser pgtype.Int4
+	Blocker    pgtype.Int4
+}
+
+func (q *Queries) RemoveBlock(ctx context.Context, arg RemoveBlockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeBlock, arg.TargetUser, arg.Blocker)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removeFollower = `-- name: RemoveFollower :exec
+DELETE FROM followings WHERE user_id = $1 AND follower_id = $2
+`
+
+type RemoveFollowerParams struct {
+	TargetUser pgtype.Int4
+	Follower   pgtype.Int4
+}
+
+func (q *Queries) RemoveFollower(ctx context.Context, arg RemoveFollowerParams) error {
+	_, err := q.db.Exec(ctx, removeFollower, arg.TargetUser, arg.Follower)
+	return err
+}
+
+const setUserAPIKey = `-- name: SetUserAPIKey :execrows
+UPDATE users SET api_key = $1 WHERE uuid = $2
+`
+
+type SetUserAPIKeyParams struct {
+	ApiKey pgtype.Text
+	Uuid   string
+}
+
+func (q *Queries) SetUserAPIKey(ctx context.Context, arg SetUserAPIKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setUserAPIKey, arg.ApiKey, arg.Uuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setUserEmail = `-- name: SetUserEmail :exec
 UPDATE users SET email = $1, updated_at = NOW() WHERE uuid = $2
 `
@@ -524,4 +751,47 @@ type SetUserVerifiedParams struct {
 func (q *Queries) SetUserVerified(ctx context.Context, arg SetUserVerifiedParams) error {
 	_, err := q.db.Exec(ctx, setUserVerified, arg.Verified, arg.Uuid)
 	return err
+}
+
+const usersByPrefix = `-- name: UsersByPrefix :many
+SELECT username, uuid FROM users
+WHERE substr(lower(users.username), 1, length($1::text)) = $1
+  AND users.internal_bot IS FALSE
+  AND NOT EXISTS(
+    SELECT 1 FROM user_actions
+    WHERE user_actions.user_id = users.id AND
+    user_actions.removed_time IS NULL AND
+    user_actions.end_time IS NULL AND
+    user_actions.action_type = $2
+)
+`
+
+type UsersByPrefixParams struct {
+	Prefix            string
+	SuspendActionType int32
+}
+
+type UsersByPrefixRow struct {
+	Username string
+	Uuid     string
+}
+
+func (q *Queries) UsersByPrefix(ctx context.Context, arg UsersByPrefixParams) ([]UsersByPrefixRow, error) {
+	rows, err := q.db.Query(ctx, usersByPrefix, arg.Prefix, arg.SuspendActionType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UsersByPrefixRow
+	for rows.Next() {
+		var i UsersByPrefixRow
+		if err := rows.Scan(&i.Username, &i.Uuid); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

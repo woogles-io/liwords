@@ -3,6 +3,12 @@ SELECT game_id, type, timestamp FROM notoriousgames
 WHERE player_id = $1
 ORDER BY timestamp DESC LIMIT $2;
 
+-- name: AddNotoriousGame :exec
+INSERT INTO notoriousgames (game_id, player_id, type, timestamp) VALUES (@game_id, @player_id, @type, @timestamp);
+
+-- name: DeleteNotoriousGamesForPlayer :exec
+DELETE FROM notoriousgames WHERE player_id = @player_id;
+
 -- name: GetActionsBatch :many
 -- Get current actions for multiple users in a single query
 -- Returns one row per (user_uuid, action_type) combination

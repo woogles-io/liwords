@@ -390,3 +390,7 @@ LIMIT @lim;
 
 -- name: GetGameDBIDFromUUID :one
 SELECT id FROM games WHERE uuid = @uuid;
+
+-- name: OutstandingAnnotatedGames :many
+SELECT game_uuid, private_broadcast FROM annotated_game_metadata
+WHERE creator_uuid = @creator_uuid AND done = 'f';

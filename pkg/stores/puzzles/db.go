@@ -53,52 +53,35 @@ func (s *DBStore) Disconnect() {
 }
 
 func (s *DBStore) CreateGenerationLog(ctx context.Context, req *puzzle_service.PuzzleGenerationJobRequest) (int, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return -1, err
-	}
-	defer tx.Rollback(ctx)
-
 	data, err := json.Marshal(req)
 	if err != nil {
 		return -1, err
 	}
 
-	var id int
-	err = tx.QueryRow(ctx, `INSERT INTO puzzle_generation_logs (request, created_at) VALUES ($1, NOW()) RETURNING id`, data).Scan(&id)
+	id, err := s.queries.CreatePuzzleGenerationLog(ctx, data)
 	if err != nil {
 		return -1, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return -1, err
-	}
-
-	return id, nil
+	return int(id), nil
 }
 
 func (s *DBStore) UpdateGenerationLogStatus(ctx context.Context, id int, fulfilled bool, procErr error) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	errorStatus := &pgtype.Text{}
+	errorStatus := pgtype.Text{}
 	if procErr != nil {
 		errorStatus.Valid = true
 		errorStatus.String = procErr.Error()
 	}
-	result, err := tx.Exec(ctx, `UPDATE puzzle_generation_logs SET completed_at = NOW(), error_status = $1, fulfilled = $2 WHERE id = $3`, errorStatus, fulfilled, id)
-	if result.RowsAffected() != 1 {
-		return fmt.Errorf("no rows affecting when updating log %d", id)
-	}
+	rowsAffected, err := s.queries.UpdateGenerationLogStatus(ctx, models.UpdateGenerationLogStatusParams{
+		ErrorStatus: errorStatus,
+		Fulfilled:   pgtype.Bool{Bool: fulfilled, Valid: true},
+		ID:          int64(id),
+	})
 	if err != nil {
 		return err
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
+	if rowsAffected != 1 {
+		return fmt.Errorf("no rows affecting when updating log %d", id)
 	}
 
 	return nil
@@ -266,7 +249,7 @@ func (s *DBStore) GetStartPuzzleId(ctx context.Context, userUUID string, lexicon
 
 func (s *DBStore) GetNextPuzzleId(ctx context.Context, userUUID string, lexicon string) (string, puzzle_service.PuzzleQueryResult, error) {
 	var pqr puzzle_service.PuzzleQueryResult
-	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadReadOnlyTxOptions)
 	if err != nil {
 		return "", pqr, err
 	}
@@ -403,7 +386,7 @@ func (s *DBStore) GetPuzzle(ctx context.Context, userUUID string, puzzleUUID str
 }
 
 func (s *DBStore) GetPreviousPuzzleId(ctx context.Context, userUUID string, puzzleUUID string) (string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadReadOnlyTxOptions)
 	if err != nil {
 		return "", err
 	}
@@ -451,7 +434,7 @@ func (s *DBStore) GetPreviousPuzzleId(ctx context.Context, userUUID string, puzz
 }
 
 func (s *DBStore) GetAnswer(ctx context.Context, puzzleUUID string) (*macondopb.GameEvent, string, int32, string, *ipc.GameRequest, *entity.SingleRating, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
 	if err != nil {
 		return nil, "", -1, "", nil, nil, err
 	}
@@ -626,12 +609,11 @@ func (s *DBStore) SetPuzzleVote(ctx context.Context, userID string, puzzleID str
 		return err
 	}
 
-	result, err := tx.Exec(ctx, `INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3) ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3`, pid, uid, vote)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected := result.RowsAffected()
+	rowsAffected, err := s.queries.WithTx(tx).UpsertPuzzleVote(ctx, models.UpsertPuzzleVoteParams{
+		PuzzleID: int64(pid),
+		UserID:   int64(uid),
+		Vote:     pgtype.Int4{Int32: int32(vote), Valid: true},
+	})
 	if err != nil {
 		return err
 	}
@@ -666,7 +648,7 @@ func (s *DBStore) GetAttempts(ctx context.Context, userUUID string, puzzleUUID s
 }
 
 func (s *DBStore) GetJobInfo(ctx context.Context, genId int) (time.Time, time.Time, time.Duration, *bool, *string, int, int, [][]int, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.RepeatableReadReadOnlyTxOptions)
 	if err != nil {
 		return time.Time{}, time.Time{}, -1, nil, nil, -1, -1, nil, err
 	}
