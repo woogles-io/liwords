@@ -19,7 +19,21 @@ SELECT
            AND (u1.internal_bot OR u1.id IN (42,43,44,45,46,6216))) THEN 1 ELSE 0 END AS bot_vs_bot_game,
     -- annotated games (type=1) have NULL game_end_reason so they never land in any end-reason bucket below
 	-- this is also why the sum of the game_end_reason percentages is slightly less than 100%
-    CASE WHEN g.type = 1 THEN 1 ELSE 0 END AS annotated_game
+    CASE WHEN g.type = 1 THEN 1 ELSE 0 END AS annotated_game,
+    CASE WHEN g.type = 0 AND COALESCE(g.game_request ->> 'rating_mode', '0') = '0' THEN 1 ELSE 0 END AS rated_game,
+    g.game_request ->> 'lexicon' AS lexicon,
+    LOWER(REPLACE(COALESCE(g.game_request -> 'rules' ->> 'letter_distribution_name',
+                           g.game_request -> 'rules' ->> 'letterDistributionName'), '_super', '')) AS language_norm,
+    -- ZOMGWords = Super Scrabble (super board / super tile bag); WordSmog = Clabbers variant.
+    -- A super-wordsmog game would match both (none exist yet).
+    CASE WHEN COALESCE(g.game_request -> 'rules' ->> 'board_layout_name',
+                       g.game_request -> 'rules' ->> 'boardLayoutName') = 'SuperCrosswordGame'
+           OR COALESCE(g.game_request -> 'rules' ->> 'letter_distribution_name',
+                       g.game_request -> 'rules' ->> 'letterDistributionName') ILIKE '%\_super'
+         THEN 1 ELSE 0 END AS zomgwords_game,
+    CASE WHEN COALESCE(g.game_request -> 'rules' ->> 'variant_name',
+                       g.game_request -> 'rules' ->> 'variantName') LIKE 'wordsmog%'
+         THEN 1 ELSE 0 END AS wordsmog_game
 FROM public.games g
 LEFT JOIN public.users u0 ON g.player0_id = u0.id
 LEFT JOIN public.users u1 ON g.player1_id = u1.id
@@ -71,7 +85,22 @@ SELECT
 	SUM(CASE WHEN game_end_reason=5 THEN 1 ELSE 0 END) AS
 	  aborted_count,
 	SUM(CASE WHEN game_end_reason=6 THEN 1 ELSE 0 END) AS
-	  triple_challenge_ending_count
+	  triple_challenge_ending_count,
+	SUM(rated_game) AS rated_game_count,
+	-- CSW = Collins family (CSW*); NWL = North American family (NWL*, NSWL*, OSPD6);
+	-- versions folded together. ECWL counts as English but neither CSW nor NWL, so
+	-- csw + nwl <= english. Language columns fold CSW and NWL both into English.
+	SUM(CASE WHEN lexicon LIKE 'CSW%' THEN 1 ELSE 0 END) AS csw_game_count,
+	SUM(CASE WHEN lexicon LIKE 'NWL%' OR lexicon LIKE 'NSWL%' OR lexicon = 'OSPD6' THEN 1 ELSE 0 END) AS nwl_game_count,
+	SUM(CASE WHEN language_norm = 'english'   THEN 1 ELSE 0 END) AS english_game_count,
+	SUM(CASE WHEN language_norm = 'german'    THEN 1 ELSE 0 END) AS german_game_count,
+	SUM(CASE WHEN language_norm = 'french'    THEN 1 ELSE 0 END) AS french_game_count,
+	SUM(CASE WHEN language_norm = 'spanish'   THEN 1 ELSE 0 END) AS spanish_game_count,
+	SUM(CASE WHEN language_norm = 'polish'    THEN 1 ELSE 0 END) AS polish_game_count,
+	SUM(CASE WHEN language_norm = 'norwegian' THEN 1 ELSE 0 END) AS norwegian_game_count,
+	SUM(CASE WHEN language_norm = 'catalan'   THEN 1 ELSE 0 END) AS catalan_game_count,
+	SUM(zomgwords_game) AS zomgwords_game_count,
+	SUM(wordsmog_game) AS wordsmog_game_count
 FROM games_with_bot_flags
 GROUP BY 1
 ORDER BY 1 DESC
