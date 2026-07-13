@@ -65,8 +65,10 @@ func (s *DBStore) GetListItems(ctx context.Context, statType int, gameIds []stri
 	listItems := []*entity.ListItem{}
 	for _, row := range rows {
 		var item entity.ListDatum
-		if err := json.Unmarshal(row.Item, &item); err != nil {
-			return nil, err
+		if len(row.Item) > 0 {
+			if err := json.Unmarshal(row.Item, &item); err != nil {
+				return nil, err
+			}
 		}
 		listItems = append(listItems, &entity.ListItem{
 			GameId:   row.GameID.String,

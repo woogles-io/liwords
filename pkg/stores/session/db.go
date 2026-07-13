@@ -42,8 +42,10 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 	}
 
 	var data sessionInfo
-	if err := json.Unmarshal(row.Data, &data); err != nil {
-		return nil, err
+	if len(row.Data) > 0 {
+		if err := json.Unmarshal(row.Data, &data); err != nil {
+			return nil, err
+		}
 	}
 
 	return &entity.Session{
