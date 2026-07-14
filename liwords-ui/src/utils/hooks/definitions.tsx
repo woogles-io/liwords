@@ -198,6 +198,10 @@ export const useDefinitionAndPhonyChecker = ({
 
   const [playedWords, setPlayedWords] = useState(new Set<string>());
   useEffect(() => {
+    console.log(
+      "[phony-debug] playedWords-effect fire, turns:",
+      gameContext.turns.length,
+    );
     setPlayedWords((oldPlayedWords) => {
       const playedWords = new Set(oldPlayedWords);
       for (const turn of gameContext.turns) {
@@ -213,6 +217,12 @@ export const useDefinitionAndPhonyChecker = ({
 
   useEffect(() => {
     // forget everything if it goes to a new game
+    console.log(
+      "[phony-debug] RESET effect fire, gameID:",
+      gameID,
+      "lexicon:",
+      lexicon,
+    );
     setWordInfo({});
     setPlayedWords(new Set());
     setUnrace(new Unrace());
@@ -221,6 +231,12 @@ export const useDefinitionAndPhonyChecker = ({
   }, [gameID, lexicon]);
 
   useEffect(() => {
+    console.log(
+      "[phony-debug] compute-wordInfo effect, gameDone:",
+      gameDone,
+      "playedWords.size:",
+      playedWords.size,
+    );
     if (gameDone || showDefinitionHover) {
       // when definition is requested, get definitions for all words (up to
       // that point) that have not yet been defined. this is an intentional
@@ -322,6 +338,16 @@ export const useDefinitionAndPhonyChecker = ({
   }, [anagrams, showDefinitionHover, lexicon, wordClient, wordInfo, unrace]);
 
   useEffect(() => {
+    console.log(
+      "[phony-debug] phonies-compute effect, phonies:",
+      phonies,
+      "gameDone:",
+      gameDone,
+      "playedWords.size:",
+      playedWords.size,
+      "wordInfo keys:",
+      Object.keys(wordInfo).length,
+    );
     if (phonies === null) {
       if (gameDone) {
         const phonies: Array<string> = [];
@@ -348,6 +374,7 @@ export const useDefinitionAndPhonyChecker = ({
 
   const lastPhonyReport = useRef("");
   useEffect(() => {
+    console.log("[phony-debug] post effect, phonies:", phonies);
     if (!phonies) return;
     if (phonies.length) {
       // since +false === 0 and +true === 1, this is [unchallenged, challenged]

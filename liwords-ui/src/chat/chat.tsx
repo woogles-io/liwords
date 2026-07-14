@@ -583,6 +583,12 @@ export const Chat = React.memo((props: Props) => {
         const chats = await socializeClient.getChatsForChannel({
           channel: newChannel,
         });
+        console.log(
+          "[phony-debug] chat channel-load clearChat, channel:",
+          newChannel,
+          "server messages:",
+          chats.messages?.length,
+        );
         clearChat();
         const messages: Array<ChatMessage> = chats.messages;
         if (messages) {
