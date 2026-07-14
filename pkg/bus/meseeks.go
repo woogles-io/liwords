@@ -957,8 +957,10 @@ func (b *Bus) shouldIncludeSeek(ctx context.Context, sg *entity.SoughtGame, rece
 
 // openSeeks returns the open seeks visible to receiverID. If receiver is non-nil, it is used
 // as the already-resolved receiving user instead of re-fetching by UUID (callers that have
-// already looked up the user, e.g. sendLobbyContext, should pass it in).
-func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string, receiver *entity.User) (*entity.EventWrapper, error) {
+// already looked up the user, e.g. sendLobbyContext, should pass it in). blockedByReceiver, if
+// non-nil, is used as the already-computed "who blocks the receiver" set (see blockedByUUIDSet)
+// instead of recomputing it; pass nil to have it computed here.
+func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string, receiver *entity.User, blockedByReceiver map[string]bool) (*entity.EventWrapper, error) {
 	sgs, err := b.stores.SoughtGameStore.ListOpenSeeks(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
@@ -974,12 +976,13 @@ func (b *Bus) openSeeks(ctx context.Context, receiverID string, tourneyID string
 		}
 	}
 
-	var blockedByReceiver map[string]bool
 	var seekers map[string]*entity.User
 	if receiver != nil {
-		blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
-		if err != nil {
-			return nil, err
+		if blockedByReceiver == nil {
+			blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
+			if err != nil {
+				return nil, err
+			}
 		}
 		seekers, err = b.seekersByUUID(ctx, sgs)
 		if err != nil {

@@ -1134,7 +1134,9 @@ func (b *Bus) correspondenceGamesForUser(ctx context.Context, userID string) (*e
 
 // correspondenceSeeksForUser returns all correspondence match requests and open seeks for a specific user.
 // If receiver is non-nil, it is used as the already-resolved user instead of re-fetching by UUID.
-func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string, receiver *entity.User) (*entity.EventWrapper, error) {
+// blockedByReceiver, if non-nil, is used as the already-computed "who blocks the receiver" set
+// (see blockedByUUIDSet) instead of recomputing it; pass nil to have it computed here.
+func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string, receiver *entity.User, blockedByReceiver map[string]bool) (*entity.EventWrapper, error) {
 	seeks, err := b.stores.SoughtGameStore.ListCorrespondenceSeeksForUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -1147,12 +1149,13 @@ func (b *Bus) correspondenceSeeksForUser(ctx context.Context, userID string, rec
 		}
 	}
 
-	var blockedByReceiver map[string]bool
 	var seekers map[string]*entity.User
 	if receiver != nil {
-		blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
-		if err != nil {
-			return nil, err
+		if blockedByReceiver == nil {
+			blockedByReceiver, err = b.blockedByUUIDSet(ctx, receiver.ID)
+			if err != nil {
+				return nil, err
+			}
 		}
 		seekers, err = b.seekersByUUID(ctx, seeks)
 		if err != nil {
@@ -1228,11 +1231,17 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 
 func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
 	// Resolve the connecting user once and reuse it below (openSeeks and
-	// correspondenceSeeksForUser both need it), instead of each re-fetching by UUID.
+	// correspondenceSeeksForUser both need it), instead of each re-fetching by UUID. Likewise,
+	// compute the "who blocks the receiver" set once here rather than once per seek list.
 	var u *entity.User
+	var blockedByReceiver map[string]bool
 	if !userIsAnon(userID) {
 		var err error
 		u, err = b.stores.UserStore.GetByUUID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		blockedByReceiver, err = b.blockedByUUIDSet(ctx, u.ID)
 		if err != nil {
 			return err
 		}
@@ -1260,7 +1269,7 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 
 	g.Go(func() error {
 		var err error
-		seeks, err = b.openSeeks(gctx, userID, "", u)
+		seeks, err = b.openSeeks(gctx, userID, "", u, blockedByReceiver)
 		return err
 	})
 	g.Go(func() error {
@@ -1276,7 +1285,7 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 		})
 		g.Go(func() error {
 			var err error
-			correspondenceSeeks, err = b.correspondenceSeeksForUser(gctx, userID, u)
+			correspondenceSeeks, err = b.correspondenceSeeksForUser(gctx, userID, u, blockedByReceiver)
 			return err
 		})
 	}
@@ -1323,7 +1332,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		return err
 	}
 	// open match reqs
-	matches, err := b.openSeeks(ctx, userID, tourneyID, nil)
+	matches, err := b.openSeeks(ctx, userID, tourneyID, nil, nil)
 	if err != nil {
 		return err
 	}
