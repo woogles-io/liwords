@@ -304,6 +304,7 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 }
 
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
+// ListOpenSeeks is a read-only query: no explicit transaction needed.
 func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
 	var reqs [][]byte
 	var err error
@@ -331,6 +332,7 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 }
 
 // ListCorrespondenceSeeksForUser lists all correspondence match requests and open seeks for a user.
+// Read-only query: no explicit transaction needed.
 func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
 	// Get correspondence seeks where:
 	// - user is the seeker (their own open seeks or match requests)

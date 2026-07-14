@@ -606,6 +606,78 @@ func (q *Queries) GetUsernameFromUUID(ctx context.Context, uuid string) (string,
 	return username, err
 }
 
+const getUsersWithProfileByUUIDs = `-- name: GetUsersWithProfileByUUIDs :many
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings, p.stats
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE u.uuid = ANY($1::text[])
+`
+
+type GetUsersWithProfileByUUIDsRow struct {
+	ID                    int32
+	Username              string
+	Uuid                  string
+	Email                 string
+	Password              string
+	InternalBot           bool
+	Notoriety             int32
+	Verified              bool
+	VerificationToken     pgtype.Text
+	VerificationExpiresAt pgtype.Timestamptz
+	FirstName             pgtype.Text
+	LastName              pgtype.Text
+	BirthDate             pgtype.Text
+	CountryCode           pgtype.Text
+	Title                 pgtype.Text
+	About                 pgtype.Text
+	AvatarUrl             pgtype.Text
+	Ratings               entity.Ratings
+	Stats                 entity.ProfileStats
+}
+
+func (q *Queries) GetUsersWithProfileByUUIDs(ctx context.Context, uuids []string) ([]GetUsersWithProfileByUUIDsRow, error) {
+	rows, err := q.db.Query(ctx, getUsersWithProfileByUUIDs, uuids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersWithProfileByUUIDsRow
+	for rows.Next() {
+		var i GetUsersWithProfileByUUIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Uuid,
+			&i.Email,
+			&i.Password,
+			&i.InternalBot,
+			&i.Notoriety,
+			&i.Verified,
+			&i.VerificationToken,
+			&i.VerificationExpiresAt,
+			&i.FirstName,
+			&i.LastName,
+			&i.BirthDate,
+			&i.CountryCode,
+			&i.Title,
+			&i.About,
+			&i.AvatarUrl,
+			&i.Ratings,
+			&i.Stats,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllUserIDs = `-- name: ListAllUserIDs :many
 SELECT uuid FROM users
 `

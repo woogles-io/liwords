@@ -69,6 +69,15 @@ FROM users u
 LEFT JOIN profiles p ON p.user_id = u.id
 WHERE u.uuid = @uuid;
 
+-- name: GetUsersWithProfileByUUIDs :many
+SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
+       u.notoriety, u.verified, u.verification_token, u.verification_expires_at,
+       p.first_name, p.last_name, p.birth_date, p.country_code, p.title,
+       p.about, p.avatar_url, p.ratings, p.stats
+FROM users u
+LEFT JOIN profiles p ON p.user_id = u.id
+WHERE u.uuid = ANY(@uuids::text[]);
+
 -- name: GetUserWithProfileByUsername :one
 SELECT u.id, u.username, u.uuid, u.email, u.password, u.internal_bot,
        u.notoriety, u.verified, u.verification_token, u.verification_expires_at,

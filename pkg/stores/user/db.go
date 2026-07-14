@@ -168,6 +168,32 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	return u, nil
 }
 
+// GetByUUIDs batch-fetches users (with profiles) by UUID in a single query, to avoid
+// N+1 lookups when a caller needs several users at once (e.g. filtering a list of seeks).
+// Users with no profile row, or UUIDs with no matching user, are silently omitted from
+// the result rather than erroring, so callers should look up by UUID in the returned map.
+func (s *DBStore) GetByUUIDs(ctx context.Context, uuids []string) (map[string]*entity.User, error) {
+	if len(uuids) == 0 {
+		return map[string]*entity.User{}, nil
+	}
+	rows, err := s.queries.GetUsersWithProfileByUUIDs(ctx, uuids)
+	if err != nil {
+		return nil, err
+	}
+	users := make(map[string]*entity.User, len(rows))
+	for _, row := range rows {
+		u := userFromRow(row.ID, row.Username, row.Uuid, row.Email, row.Password, row.InternalBot, row.Notoriety,
+			row.Verified, row.VerificationToken, row.VerificationExpiresAt)
+		u.Profile = profileFromRow(row.FirstName, row.LastName, row.BirthDate, row.CountryCode, row.Title,
+			row.About, row.AvatarUrl, row.Ratings, row.Stats)
+		if u.Profile == nil {
+			continue
+		}
+		users[u.UUID] = u
+	}
+	return users, nil
+}
+
 // GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
 // call this for API functions where we care about access levels, etc.
 func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error) {
@@ -510,6 +536,8 @@ func (s *DBStore) RemoveFollower(ctx context.Context, targetUser, follower uint)
 }
 
 // GetFollows gets all the users that the passed-in user DB ID is following.
+// Read-only single-statement query: no explicit transaction needed, which avoids
+// a wasted BEGIN/ROLLBACK round-trip on this hot path.
 func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
 	rows, err := s.queries.GetFollows(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
@@ -524,6 +552,7 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 }
 
 // GetFollowedBy gets all the users that are following the passed-in user DB ID.
+// Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
 	rows, err := s.queries.GetFollowedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
@@ -568,6 +597,7 @@ func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) err
 }
 
 // GetBlocks gets all the users that the passed-in user DB ID is blocking.
+// Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
 	rows, err := s.queries.GetBlocks(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
@@ -582,6 +612,7 @@ func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, erro
 }
 
 // GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
+// Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
 	rows, err := s.queries.GetBlockedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
@@ -625,6 +656,7 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 	return plist, nil
 }
 
+// UsersByPrefix is a read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
 	rows, err := s.queries.UsersByPrefix(ctx, models.UsersByPrefixParams{
 		Prefix:            strings.ToLower(prefix),
