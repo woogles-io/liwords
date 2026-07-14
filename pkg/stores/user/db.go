@@ -495,90 +495,44 @@ func (s *DBStore) GetBot(ctx context.Context, botType macondopb.BotRequest_BotCo
 
 // AddFollower creates a follower -> target follow.
 func (s *DBStore) AddFollower(ctx context.Context, targetUser, follower uint) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `INSERT INTO followings (user_id, follower_id) VALUES ($1, $2)`, targetUser, follower)
-	if err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.AddFollower(ctx, models.AddFollowerParams{
+		TargetUser: pgtype.Int4{Int32: int32(targetUser), Valid: true},
+		Follower:   pgtype.Int4{Int32: int32(follower), Valid: true},
+	})
 }
 
 // RemoveFollower removes a follower -> target follow.
 func (s *DBStore) RemoveFollower(ctx context.Context, targetUser, follower uint) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `DELETE FROM followings WHERE user_id = $1 AND follower_id = $2`, targetUser, follower)
-	if err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.RemoveFollower(ctx, models.RemoveFollowerParams{
+		TargetUser: pgtype.Int4{Int32: int32(targetUser), Valid: true},
+		Follower:   pgtype.Int4{Int32: int32(follower), Valid: true},
+	})
 }
 
 // GetFollows gets all the users that the passed-in user DB ID is following.
 func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rows, err := s.queries.GetFollows(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = user_id WHERE follower_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
 	entUsers := []*entity.User{}
-	for rows.Next() {
-		if err := rows.Scan(&UUID, &username); err != nil {
-			return nil, err
-		}
-		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
+	for _, row := range rows {
+		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
 	}
 	return entUsers, nil
 }
 
 // GetFollowedBy gets all the users that are following the passed-in user DB ID.
 func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rows, err := s.queries.GetFollowedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = follower_id WHERE user_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
 	entUsers := []*entity.User{}
-	for rows.Next() {
-		if err := rows.Scan(&UUID, &username); err != nil {
-			return nil, err
-		}
-		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
+	for _, row := range rows {
+		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
 	}
 	return entUsers, nil
 }
@@ -593,92 +547,50 @@ func (s *DBStore) IsFollowing(ctx context.Context, followerID, userID uint) (boo
 }
 
 func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `INSERT INTO blockings (user_id, blocker_id) VALUES ($1, $2)`, targetUser, blocker)
-	if err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return s.queries.AddBlock(ctx, models.AddBlockParams{
+		TargetUser: pgtype.Int4{Int32: int32(targetUser), Valid: true},
+		Blocker:    pgtype.Int4{Int32: int32(blocker), Valid: true},
+	})
 }
 
 func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rowsAffected, err := s.queries.RemoveBlock(ctx, models.RemoveBlockParams{
+		TargetUser: pgtype.Int4{Int32: int32(targetUser), Valid: true},
+		Blocker:    pgtype.Int4{Int32: int32(blocker), Valid: true},
+	})
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
-
-	result, err := tx.Exec(ctx, `DELETE FROM blockings WHERE user_id = $1 AND blocker_id = $2`, targetUser, blocker)
-	if err != nil {
-		return err
-	}
-	if result.RowsAffected() != 1 {
+	if rowsAffected != 1 {
 		return errors.New("block does not exist")
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 // GetBlocks gets all the users that the passed-in user DB ID is blocking.
 func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rows, err := s.queries.GetBlocks(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id WHERE blocker_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
 	entUsers := []*entity.User{}
-	for rows.Next() {
-		if err := rows.Scan(&UUID, &username); err != nil {
-			return nil, err
-		}
-		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
+	for _, row := range rows {
+		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
 	}
 	return entUsers, nil
 }
 
 // GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
 func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rows, err := s.queries.GetBlockedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
 	entUsers := []*entity.User{}
-	for rows.Next() {
-		if err := rows.Scan(&UUID, &username); err != nil {
-			return nil, err
-		}
-		entUsers = append(entUsers, &entity.User{UUID: UUID, Username: username})
+	for _, row := range rows {
+		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
 	}
 	return entUsers, nil
 }
@@ -714,62 +626,24 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 }
 
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rows, err := s.queries.UsersByPrefix(ctx, models.UsersByPrefixParams{
+		Prefix:            strings.ToLower(prefix),
+		SuspendActionType: int32(ms.ModActionType_SUSPEND_ACCOUNT),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `SELECT username, uuid FROM users
-	WHERE substr(lower(users.username), 1, length($1)) = $1
-	AND users.internal_bot IS FALSE
-	AND NOT EXISTS(
-		SELECT 1 FROM user_actions
-		WHERE user_actions.user_id = users.id AND
-		user_actions.removed_time IS NULL AND
-		user_actions.end_time IS NULL AND
-		user_actions.action_type = $2
-	)`, strings.ToLower(prefix), ms.ModActionType_SUSPEND_ACCOUNT)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
 	users := []*pb.BasicUser{}
-	for rows.Next() {
-		if err := rows.Scan(&username, &UUID); err != nil {
-			return nil, err
-		}
-		users = append(users, &pb.BasicUser{Uuid: UUID, Username: username})
+	for _, row := range rows {
+		users = append(users, &pb.BasicUser{Uuid: row.Uuid, Username: row.Username})
 	}
 	return users, nil
 }
 
 // List all user IDs.
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	rows, err := tx.Query(ctx, `SELECT uuid FROM users`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	users := []string{}
-	var UUID string
-	for rows.Next() {
-		if err := rows.Scan(&UUID); err != nil {
-			return nil, err
-		}
-		users = append(users, UUID)
-	}
-	return users, nil
+	return s.queries.ListAllUserIDs(ctx)
 }
 
 func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
@@ -807,23 +681,7 @@ func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-
-	var count int64
-	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-
-	return count, nil
+	return s.queries.CountUsers(ctx)
 }
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
@@ -831,23 +689,7 @@ func (s *DBStore) CachedCount(ctx context.Context) int {
 }
 
 func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return "", err
-	}
-	defer tx.Rollback(ctx)
-
-	var username string
-	err = tx.QueryRow(ctx, "SELECT username FROM users WHERE uuid = $1", uuid).Scan(&username)
-	if err != nil {
-		return "", err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return "", err
-	}
-
-	return username, nil
+	return s.queries.GetUsernameFromUUID(ctx, uuid)
 }
 
 func (s *DBStore) GetAPIKey(ctx context.Context, uuid string) (string, error) {
@@ -862,23 +704,17 @@ func (s *DBStore) GetAPIKey(ctx context.Context, uuid string) (string, error) {
 }
 
 func (s *DBStore) ResetAPIKey(ctx context.Context, uuid string) (string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return "", err
-	}
-	defer tx.Rollback(ctx)
 	apikey := shortuuid.New() + shortuuid.New()
 
-	result, err := tx.Exec(ctx, `
-		UPDATE users SET api_key = $1 WHERE uuid = $2`, apikey, uuid)
-	if result.RowsAffected() != 1 {
-		return "", fmt.Errorf("unable to reset api key")
-	}
+	rowsAffected, err := s.queries.SetUserAPIKey(ctx, models.SetUserAPIKeyParams{
+		ApiKey: pgtype.Text{String: apikey, Valid: true},
+		Uuid:   uuid,
+	})
 	if err != nil {
 		return "", err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return "", err
+	if rowsAffected != 1 {
+		return "", fmt.Errorf("unable to reset api key")
 	}
 	return apikey, nil
 }
@@ -1122,7 +958,7 @@ func addUserUUIDsToActions(ctx context.Context, qtx *models.Queries, actions []*
 }
 
 func (s *DBStore) GetActions(ctx context.Context, userUUID string) (map[string]*ms.ModAction, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1189,7 +1025,7 @@ func (s *DBStore) GetActionsBatch(ctx context.Context, userUUIDs []string) (map[
 }
 
 func (s *DBStore) GetActionHistory(ctx context.Context, userUUID string) ([]*ms.ModAction, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
 	if err != nil {
 		return nil, err
 	}

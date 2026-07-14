@@ -9,28 +9,29 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/woogles-io/liwords/pkg/config"
-	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 	"github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
 var ErrDoesNotExist = errors.New("does not exist")
 
 type GameDocumentStore struct {
-	dbPool *pgxpool.Pool
-	cfg    *config.Config
+	dbPool  *pgxpool.Pool
+	cfg     *config.Config
+	queries *models.Queries
 }
 
 func NewGameDocumentStore(cfg *config.Config, db *pgxpool.Pool) (*GameDocumentStore, error) {
-	return &GameDocumentStore{cfg: cfg, dbPool: db}, nil
+	return &GameDocumentStore{cfg: cfg, dbPool: db, queries: models.New(db)}, nil
 }
 
 // GetDocument gets a game document from PostgreSQL.
 //
 // CONCURRENCY WARNING: This does NOT prevent concurrent modifications!
 // If multi-user editing is needed, implement one of:
-//   1. Transaction-based locking: Wrap Get+Update in BEGIN...COMMIT with SELECT FOR UPDATE
-//   2. Optimistic locking: Add version column, retry on conflict
-//   3. Application-level locking: Serialize edits at a higher level
+//  1. Transaction-based locking: Wrap Get+Update in BEGIN...COMMIT with SELECT FOR UPDATE
+//  2. Optimistic locking: Add version column, retry on conflict
+//  3. Application-level locking: Serialize edits at a higher level
 //
 // Currently safe because annotated games are single-editor (only creator can edit).
 func (gs *GameDocumentStore) GetDocument(ctx context.Context, uuid string) (*ipc.GameDocument, error) {
@@ -85,22 +86,10 @@ func (gs *GameDocumentStore) saveToDatabase(ctx context.Context, gdoc *ipc.GameD
 	if err != nil {
 		return err
 	}
-	tx, err := gs.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx,
-		`INSERT INTO game_documents (game_id, document) VALUES ($1, $2)
-		 ON CONFLICT (game_id) DO UPDATE
-		 SET document = $2
-		`,
-		gdoc.Uid, data)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
+	return gs.queries.UpsertGameDocument(ctx, models.UpsertGameDocumentParams{
+		GameID:   gdoc.Uid,
+		Document: data,
+	})
 }
 
 func (gs *GameDocumentStore) DisconnectRDB() {

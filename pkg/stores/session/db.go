@@ -2,14 +2,16 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
 // The data inside the session's Data object.
@@ -20,11 +22,12 @@ type sessionInfo struct {
 }
 
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	return &DBStore{dbPool: p, queries: models.New(p)}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -33,50 +36,42 @@ func (s *DBStore) Disconnect() {
 
 // Get gets a session by session ID
 func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	row, err := s.queries.GetSession(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
-	var expiry time.Time
 	var data sessionInfo
-	err = tx.QueryRow(ctx, `SELECT expires_at, data FROM db_sessions WHERE uuid = $1`, sessionID).Scan(&expiry, &data)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+	if len(row.Data) > 0 {
+		if err := json.Unmarshal(row.Data, &data); err != nil {
+			return nil, err
+		}
 	}
 
 	return &entity.Session{
 		ID:        sessionID,
 		Username:  data.Username,
 		UserUUID:  data.UserUUID,
-		Expiry:    expiry,
+		Expiry:    row.ExpiresAt.Time,
 		CSRFToken: data.CSRFToken,
 	}, nil
 }
 
 // New should be called when a user logs in. It'll create a new session.
 func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	newSessionID := shortuuid.New()
 	expiresAt := time.Now().Add(entity.SessionExpiration)
-	data := sessionInfo{Username: user.Username, UserUUID: user.UUID}
-
-	_, err = tx.Exec(ctx, `INSERT INTO db_sessions (uuid, expires_at, data) VALUES ($1, $2, $3)`, newSessionID, expiresAt, data)
+	data, err := json.Marshal(sessionInfo{Username: user.Username, UserUUID: user.UUID})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	err = s.queries.CreateSession(ctx, models.CreateSessionParams{
+		Uuid:      newSessionID,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		Data:      data,
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &entity.Session{
@@ -88,69 +83,34 @@ func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, 
 
 // Delete deletes the session with the given ID, essentially logging the user out.
 func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `DELETE FROM db_sessions WHERE uuid = $1`, sess.ID)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.DeleteSession(ctx, sess.ID)
 }
 
 // ExtendExpiry extends the expiry of the given cookie.
 func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rowsAffected, err := s.queries.ExtendSessionExpiry(ctx, models.ExtendSessionExpiryParams{
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(entity.SessionExpiration), Valid: true},
+		Uuid:      sess.ID,
+	})
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
-
-	result, err := tx.Exec(ctx, `UPDATE db_sessions SET expires_at = $1 WHERE uuid = $2`, time.Now().Add(entity.SessionExpiration), sess.ID)
-	if err != nil {
-		return err
-	}
-	if result.RowsAffected() != 1 {
+	if rowsAffected != 1 {
 		return fmt.Errorf("could not extend expiry of session %s", sess.ID)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
 	}
 	return nil
 }
 
 func (s *DBStore) SetCSRFToken(ctx context.Context, sess *entity.Session, csrfToken string) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	rowsAffected, err := s.queries.SetSessionCSRFToken(ctx, models.SetSessionCSRFTokenParams{
+		CsrfToken: csrfToken,
+		Uuid:      sess.ID,
+	})
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
-
-	// Update the CSRFToken in the JSONB blob
-	query := `
-		UPDATE db_sessions
-		SET data = jsonb_set(data, '{csrf_token}', to_jsonb($1::text))
-		WHERE uuid = $2
-	`
-	result, err := tx.Exec(ctx, query, csrfToken, sess.ID)
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected() != 1 {
+	if rowsAffected != 1 {
 		return fmt.Errorf("could not update CSRF token for session %s", sess.ID)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
 	}
 	return nil
 }

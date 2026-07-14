@@ -29,6 +29,19 @@ var RepeatableReadTxOptions = pgx.TxOptions{
 	DeferrableMode: pgx.Deferrable, // not used for this isolevel/access mode
 }
 
+// ReadOnlyTxOptions is for transactions that only issue SELECTs.
+var ReadOnlyTxOptions = pgx.TxOptions{
+	IsoLevel:   pgx.ReadCommitted,
+	AccessMode: pgx.ReadOnly,
+}
+
+// RepeatableReadReadOnlyTxOptions is for read-only transactions that need a
+// consistent snapshot across multiple SELECTs.
+var RepeatableReadReadOnlyTxOptions = pgx.TxOptions{
+	IsoLevel:   pgx.RepeatableRead,
+	AccessMode: pgx.ReadOnly,
+}
+
 var InitialRating = &entity.SingleRating{
 	Rating:          float64(glicko.InitialRating),
 	RatingDeviation: float64(glicko.InitialRatingDeviation),

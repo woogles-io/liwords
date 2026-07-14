@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createPuzzleGenerationLog = `-- name: CreatePuzzleGenerationLog :one
+INSERT INTO puzzle_generation_logs (request, created_at) VALUES ($1, NOW()) RETURNING id
+`
+
+func (q *Queries) CreatePuzzleGenerationLog(ctx context.Context, request []byte) (int64, error) {
+	row := q.db.QueryRow(ctx, createPuzzleGenerationLog, request)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getPotentialPuzzleGames = `-- name: GetPotentialPuzzleGames :many
 SELECT games.uuid FROM games
 LEFT JOIN puzzles on puzzles.game_id = games.id
@@ -138,4 +149,41 @@ func (q *Queries) GetPuzzleDBIDFromUUID(ctx context.Context, uuid string) (int64
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateGenerationLogStatus = `-- name: UpdateGenerationLogStatus :execrows
+UPDATE puzzle_generation_logs SET completed_at = NOW(), error_status = $1, fulfilled = $2 WHERE id = $3
+`
+
+type UpdateGenerationLogStatusParams struct {
+	ErrorStatus pgtype.Text
+	Fulfilled   pgtype.Bool
+	ID          int64
+}
+
+func (q *Queries) UpdateGenerationLogStatus(ctx context.Context, arg UpdateGenerationLogStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateGenerationLogStatus, arg.ErrorStatus, arg.Fulfilled, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const upsertPuzzleVote = `-- name: UpsertPuzzleVote :execrows
+INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES ($1, $2, $3)
+ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = $3
+`
+
+type UpsertPuzzleVoteParams struct {
+	PuzzleID int64
+	UserID   int64
+	Vote     pgtype.Int4
+}
+
+func (q *Queries) UpsertPuzzleVote(ctx context.Context, arg UpsertPuzzleVoteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertPuzzleVote, arg.PuzzleID, arg.UserID, arg.Vote)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

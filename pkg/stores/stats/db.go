@@ -2,24 +2,24 @@ package stats
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog/log"
 	"github.com/woogles-io/liwords/pkg/entity"
-	"github.com/woogles-io/liwords/pkg/stores/common"
+	"github.com/woogles-io/liwords/pkg/stores/models"
 )
 
 // A ListStatStore stores "list-based" statistics (for example, lists of player
 // bingos).
 type DBStore struct {
-	dbPool *pgxpool.Pool
+	dbPool  *pgxpool.Pool
+	queries *models.Queries
 }
 
 func NewDBStore(p *pgxpool.Pool) (*DBStore, error) {
-	return &DBStore{dbPool: p}, nil
+	return &DBStore{dbPool: p, queries: models.New(p)}, nil
 }
 
 func (s *DBStore) Disconnect() {
@@ -30,22 +30,17 @@ func (s *DBStore) Disconnect() {
 // Fix before beta.
 func (s *DBStore) AddListItem(ctx context.Context, gameID string, playerID string, statType int,
 	time int64, item entity.ListDatum) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	data, err := json.Marshal(item)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `INSERT INTO liststats (game_id, player_id, timestamp, stat_type, item) VALUES ($1, $2, $3, $4, $5)`,
-		gameID, playerID, time, statType, item)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.AddListItem(ctx, models.AddListItemParams{
+		GameID:    pgtype.Text{String: gameID, Valid: true},
+		PlayerID:  pgtype.Text{String: playerID, Valid: true},
+		Timestamp: pgtype.Int8{Int64: time, Valid: true},
+		StatType:  pgtype.Int4{Int32: int32(statType), Valid: true},
+		Item:      data,
+	})
 }
 
 // GetListItems gets list items for a stat type, a list of game IDs, and an optional
@@ -53,54 +48,32 @@ func (s *DBStore) AddListItem(ctx context.Context, gameID string, playerID strin
 // XXX: This function will need to be modified a bit to work with a player ID of
 // "opponent" -- that is when we want to get user list stats for arbitrary opponents.
 func (s *DBStore) GetListItems(ctx context.Context, statType int, gameIds []string, playerID string) ([]*entity.ListItem, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-	// playerID is optional
 	// gameIds should have at least one item.
 	if len(gameIds) == 0 {
 		return nil, errors.New("need to provide a game id")
 	}
-	where := " stat_type = $1 "
-	args := []interface{}{statType}
-	nextPosArgCounter := 2
-	if playerID != "" {
-		nextPosArgCounter = 3
-		where += " AND player_id = $2 "
-		args = append(args, playerID)
-	}
 
-	inClause := common.BuildIn(len(gameIds), nextPosArgCounter)
-
-	where += " AND game_id IN (" + inClause + ")"
-	for _, gid := range gameIds {
-		args = append(args, gid)
-	}
-
-	log.Info().Str("where", where).Interface("args", args).Msg("query")
-
-	query := fmt.Sprintf("SELECT game_id, player_id, timestamp, item FROM liststats WHERE %s ORDER BY timestamp", where)
-	rows, err := tx.Query(ctx, query, args...)
+	rows, err := s.queries.GetListItems(ctx, models.GetListItemsParams{
+		StatType: pgtype.Int4{Int32: int32(statType), Valid: true},
+		PlayerID: playerID,
+		GameIds:  gameIds,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	listItems := []*entity.ListItem{}
-	for rows.Next() {
-		var gameID pgtype.Text
-		var playerID pgtype.Text
-		var timestamp pgtype.Int8
+	for _, row := range rows {
 		var item entity.ListDatum
-		if err := rows.Scan(&gameID, &playerID, &timestamp, &item); err != nil {
-			return nil, err
+		if len(row.Item) > 0 {
+			if err := json.Unmarshal(row.Item, &item); err != nil {
+				return nil, err
+			}
 		}
 		listItems = append(listItems, &entity.ListItem{
-			GameId:   gameID.String,
-			PlayerId: playerID.String,
-			Time:     timestamp.Int64,
+			GameId:   row.GameID.String,
+			PlayerId: row.PlayerID.String,
+			Time:     row.Timestamp.Int64,
 			Item:     item,
 		})
 	}

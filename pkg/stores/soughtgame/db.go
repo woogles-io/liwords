@@ -2,6 +2,7 @@ package soughtgame
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -40,12 +41,6 @@ func soughtGameFromBytes(data []byte) (*entity.SoughtGame, error) {
 }
 
 func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
 	// For open seek requests, receiverConnID
 	// might return errors. This is okay, when setting
 	// sought games, we just want to set whatever is available
@@ -57,22 +52,28 @@ func (s *DBStore) New(ctx context.Context, game *entity.SoughtGame) error {
 	receiverConnID, _ := game.ReceiverConnID()
 
 	// Extract game_mode from the GameRequest (nullable for backwards compatibility)
-	var gameMode *int32
+	gameMode := pgtype.Int4{Valid: false}
 	if game.SeekRequest != nil && game.SeekRequest.GameRequest != nil {
-		mode := int32(game.SeekRequest.GameRequest.GameMode)
-		gameMode = &mode
+		gameMode = pgtype.Int4{Int32: int32(game.SeekRequest.GameRequest.GameMode), Valid: true}
 	}
 
-	_, err = tx.Exec(ctx, `INSERT INTO soughtgames (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request, game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		id, seeker, seekerConnID, receiver, receiverConnID, game.SeekRequest, gameMode)
+	// Matches pgx's default jsonb encoding of a Go value (plain encoding/json,
+	// using the struct's json tags), which is what this column was written
+	// with previously via direct tx.Exec.
+	request, err := json.Marshal(game.SeekRequest)
 	if err != nil {
 		return err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-	return nil
+	return s.queries.InsertSoughtGame(ctx, models.InsertSoughtGameParams{
+		Uuid:           pgtype.Text{String: id, Valid: true},
+		Seeker:         pgtype.Text{String: seeker, Valid: true},
+		SeekerConnID:   pgtype.Text{String: seekerConnID, Valid: true},
+		Receiver:       pgtype.Text{String: receiver, Valid: true},
+		ReceiverConnID: pgtype.Text{String: receiverConnID, Valid: true},
+		Request:        request,
+		GameMode:       gameMode,
+	})
 }
 
 // Get gets the sought game with the given ID.
@@ -113,32 +114,22 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 // unless something weird happens.
 // Real-time seeks expire after 2 hours, correspondence seeks expire after 60 hours.
 func (s *DBStore) ExpireOld(ctx context.Context) error {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil
-	}
-	defer tx.Rollback(ctx)
-
 	// Delete real-time seeks older than 2 hours (game_mode IS NULL or game_mode = 0)
-	result, err := tx.Exec(ctx, `DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_at < NOW() - INTERVAL '2 hours'`)
+	rowsAffected, err := s.queries.ExpireOldRealtimeSeeks(ctx)
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() > 0 {
-		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-realtime-seeks")
+	if rowsAffected > 0 {
+		log.Info().Int64("rows-affected", rowsAffected).Msg("expire-old-realtime-seeks")
 	}
 
 	// Delete correspondence seeks older than 60 hours (game_mode = 1)
-	result, err = tx.Exec(ctx, `DELETE FROM soughtgames WHERE game_mode = 1 AND created_at < NOW() - INTERVAL '60 hours'`)
+	rowsAffected, err = s.queries.ExpireOldCorrespondenceSeeks(ctx)
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() > 0 {
-		log.Info().Int("rows-affected", int(result.RowsAffected())).Msg("expire-old-correspondence-seeks")
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil
+	if rowsAffected > 0 {
+		log.Info().Int64("rows-affected", rowsAffected).Msg("expire-old-correspondence-seeks")
 	}
 	return nil
 }
@@ -192,7 +183,8 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 	}
 	defer tx.Rollback(ctx)
 
-	data, err := s.queries.WithTx(tx).GetSoughtGameByReceiverID(ctx, pgtype.Text{String: receiverID, Valid: true})
+	qtx := s.queries.WithTx(tx)
+	data, err := qtx.GetSoughtGameByReceiverID(ctx, pgtype.Text{String: receiverID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -205,12 +197,19 @@ func (s *DBStore) UpdateForReceiver(ctx context.Context, receiverID string) (*en
 	}
 
 	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver = $2`, pb.SeekState_ABSENT, receiverID)
+	receiverState, err := json.Marshal(int32(pb.SeekState_ABSENT))
 	if err != nil {
 		return nil, err
 	}
-	if result.RowsAffected() != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", receiverID, result.RowsAffected())
+	rowsAffected, err := qtx.UpdateSoughtGameReceiverAbsentByReceiverID(ctx, models.UpdateSoughtGameReceiverAbsentByReceiverIDParams{
+		ReceiverState: receiverState,
+		ReceiverID:    pgtype.Text{String: receiverID, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if rowsAffected != 1 {
+		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", receiverID, rowsAffected)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -268,7 +267,8 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 	}
 	defer tx.Rollback(ctx)
 
-	data, err := s.queries.WithTx(tx).GetSoughtGameByReceiverConnID(ctx, pgtype.Text{String: connID, Valid: true})
+	qtx := s.queries.WithTx(tx)
+	data, err := qtx.GetSoughtGameByReceiverConnID(ctx, pgtype.Text{String: connID, Valid: true})
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -281,12 +281,19 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 	}
 
 	sg.SeekRequest.ReceiverState = pb.SeekState_ABSENT
-	result, err := tx.Exec(ctx, `UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver_conn_id = $2`, pb.SeekState_ABSENT, connID)
+	receiverState, err := json.Marshal(int32(pb.SeekState_ABSENT))
 	if err != nil {
 		return nil, err
 	}
-	if result.RowsAffected() != 1 {
-		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", connID, result.RowsAffected())
+	rowsAffected, err := qtx.UpdateSoughtGameReceiverAbsentByReceiverConnID(ctx, models.UpdateSoughtGameReceiverAbsentByReceiverConnIDParams{
+		ReceiverState:  receiverState,
+		ReceiverConnID: pgtype.Text{String: connID, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if rowsAffected != 1 {
+		return nil, fmt.Errorf("failed to update receiver status: %s (%d rows affected)", connID, rowsAffected)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -298,90 +305,56 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
 func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	var rows pgx.Rows
+	var reqs [][]byte
+	var err error
 	if tourneyID != "" {
-		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2`, receiverID, tourneyID)
+		reqs, err = s.queries.ListOpenSeeksByTourney(ctx, models.ListOpenSeeksByTourneyParams{
+			ReceiverID:   pgtype.Text{String: receiverID, Valid: true},
+			TournamentID: tourneyID,
+		})
 	} else {
-		rows, err = tx.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
+		reqs, err = s.queries.ListOpenSeeksAll(ctx, pgtype.Text{String: receiverID, Valid: true})
 	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	games := []*entity.SoughtGame{}
-
-	for rows.Next() {
-		var req pb.SeekRequest
-		if err := rows.Scan(&req); err != nil {
+	for _, data := range reqs {
+		sg, err := soughtGameFromBytes(data)
+		if err != nil {
 			return nil, err
 		}
-		games = append(games, &entity.SoughtGame{SeekRequest: &req})
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		games = append(games, sg)
 	}
 	return games, nil
 }
 
 // ListCorrespondenceSeeksForUser lists all correspondence match requests and open seeks for a user.
 func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID string) ([]*entity.SoughtGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
 	// Get correspondence seeks where:
 	// - user is the seeker (their own open seeks or match requests)
 	// - user is the receiver (match requests sent to them)
 	// - open seeks available to all (receiver is empty)
-	rows, err := tx.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')`, userID)
+	reqs, err := s.queries.ListCorrespondenceSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	games := []*entity.SoughtGame{}
-
-	for rows.Next() {
-		var req pb.SeekRequest
-		if err := rows.Scan(&req); err != nil {
+	for _, data := range reqs {
+		sg, err := soughtGameFromBytes(data)
+		if err != nil {
 			return nil, err
 		}
-		games = append(games, &entity.SoughtGame{SeekRequest: &req})
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		games = append(games, sg)
 	}
 	return games, nil
 }
 
 // ExistsForUser returns true if the user already has an outstanding seek request.
 func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx)
-
-	var exists bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM soughtgames WHERE seeker = $1)`, userID).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return false, err
-	}
-
-	return exists, nil
+	return s.queries.ExistsSeekForUser(ctx, pgtype.Text{String: userID, Valid: true})
 }
 
 // CanCreateSeek returns true if the user can create a new seek/match request.
@@ -389,24 +362,21 @@ func (s *DBStore) ExistsForUser(ctx context.Context, userID string) (bool, error
 // For all other types (real-time or open seeks), only one can exist at a time.
 // Returns (canCreate, conflictType, error) where conflictType indicates what kind of conflict exists.
 func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.GameMode, receiverID string) (bool, string, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	tx, err := s.dbPool.BeginTx(ctx, common.ReadOnlyTxOptions)
 	if err != nil {
 		return false, "", err
 	}
 	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
 
 	// Check if user has any existing seeks
-	var count int
-	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM soughtgames WHERE seeker = $1`, userID).Scan(&count)
+	count, err := qtx.CountSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		return false, "", err
 	}
 
 	// If no existing seeks, always allow
 	if count == 0 {
-		if err := tx.Commit(ctx); err != nil {
-			return false, "", err
-		}
 		return true, "", nil
 	}
 
@@ -415,35 +385,20 @@ func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.
 
 	if !isCorrespondenceMatch {
 		// For real-time or open seeks, don't allow if any existing seeks exist
-		if err := tx.Commit(ctx); err != nil {
-			return false, "", err
-		}
 		return false, "has_other_seek", nil
 	}
 
 	// For correspondence match requests, check what kind of conflicts exist
-	var hasOpenSeek int
-	var hasRealtimeSeek int
-	err = tx.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (WHERE receiver = ''),
-			COUNT(*) FILTER (WHERE game_mode IS NULL OR game_mode != 1)
-		FROM soughtgames
-		WHERE seeker = $1
-	`, userID).Scan(&hasOpenSeek, &hasRealtimeSeek)
+	conflicts, err := qtx.CountSeekConflictsForCorrespondence(ctx, pgtype.Text{String: userID, Valid: true})
 	if err != nil {
 		return false, "", err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return false, "", err
-	}
-
 	// Determine conflict type
-	if hasOpenSeek > 0 {
+	if conflicts.HasOpenSeek > 0 {
 		return false, "has_open_seek", nil
 	}
-	if hasRealtimeSeek > 0 {
+	if conflicts.HasRealtimeSeek > 0 {
 		return false, "has_realtime_seek", nil
 	}
 
@@ -453,19 +408,11 @@ func (s *DBStore) CanCreateSeek(ctx context.Context, userID string, gameMode pb.
 
 // UserMatchedBy returns true if there is an open seek request from matcher for user
 func (s *DBStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
+	exists, err := s.queries.SeekExistsFromMatcher(ctx, models.SeekExistsFromMatcherParams{
+		UserID:  pgtype.Text{String: userID, Valid: true},
+		Matcher: pgtype.Text{String: matcher, Valid: true},
+	})
 	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx)
-
-	var exists bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM soughtgames WHERE receiver = $1 AND seeker = $2)`, userID, matcher).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
 		return false, err
 	}
 
