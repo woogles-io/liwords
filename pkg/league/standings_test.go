@@ -112,6 +112,13 @@ func (m *mockLeagueStore) GetGameLeagueInfo(ctx context.Context, gameUUID string
 	return models.GetGameLeagueInfoRow{}, nil
 }
 
+func (m *mockLeagueStore) GetSeasonStandingsSnapshot(ctx context.Context, seasonID uuid.UUID) (*league.SeasonStandingsSnapshot, error) {
+	// Not exercised by the current tests. GetAllDivisionStandings assembly is
+	// covered via the groupByDivision unit tests; wire this up if a
+	// handler-level test needs it.
+	return nil, fmt.Errorf("GetSeasonStandingsSnapshot not implemented in mockLeagueStore")
+}
+
 // Stubs for other interface methods
 func (m *mockLeagueStore) CreateLeague(ctx context.Context, arg models.CreateLeagueParams) (models.League, error) {
 	return models.League{}, nil

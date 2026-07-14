@@ -48,3 +48,13 @@ WHERE puzzles.id IS NULL
     LIMIT $4 OFFSET $5;
 -- name: GetPuzzleDBIDFromUUID :one
 SELECT id FROM puzzles WHERE uuid = @uuid;
+
+-- name: CreatePuzzleGenerationLog :one
+INSERT INTO puzzle_generation_logs (request, created_at) VALUES (@request, NOW()) RETURNING id;
+
+-- name: UpdateGenerationLogStatus :execrows
+UPDATE puzzle_generation_logs SET completed_at = NOW(), error_status = @error_status, fulfilled = @fulfilled WHERE id = @id;
+
+-- name: UpsertPuzzleVote :execrows
+INSERT INTO puzzle_votes (puzzle_id, user_id, vote) VALUES (@puzzle_id, @user_id, @vote)
+ON CONFLICT (puzzle_id, user_id) DO UPDATE SET vote = @vote;

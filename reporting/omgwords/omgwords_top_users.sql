@@ -13,13 +13,13 @@ human_vs_human_games AS
   player0_id AS player,
   player1_id AS opponent
 FROM games
-WHERE player1_id NOT IN (42,43,44,45,46,230))
+WHERE player1_id NOT IN (42,43,44,45,46,230,6216))
 UNION ALL
 (SELECT
   player1_id AS player, 
   player0_id AS opponent
 FROM games
-WHERE player0_id NOT IN (42,43,44,45,46,230))),
+WHERE player0_id NOT IN (42,43,44,45,46,230,6216))),
 all_stats AS
 (SELECT
   all_games.player,

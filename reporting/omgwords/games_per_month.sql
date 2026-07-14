@@ -6,8 +6,8 @@ WITH games_with_bot_flags AS (
 SELECT
     DATE_TRUNC('month', g.created_at) AS month,
     g.game_end_reason,
-    CASE WHEN NOT (u0.internal_bot OR u0.id IN (42,43,44,45,46)
-                OR u1.internal_bot OR u1.id IN (42,43,44,45,46)) THEN 1 ELSE 0 END AS pvp_game,
+    CASE WHEN NOT (u0.internal_bot OR u0.id IN (42,43,44,45,46,6216)
+                OR u1.internal_bot OR u1.id IN (42,43,44,45,46,6216)) THEN 1 ELSE 0 END AS pvp_game,
     CASE WHEN (u0.username = 'BestBot' OR u1.username = 'BestBot') THEN 1 ELSE 0 END AS best_bot_game,
     CASE WHEN game_request -> 'initial_time_seconds' = '432000' THEN 1 ELSE 0 END AS correspondence_game,
     CASE WHEN g.league_id IS NOT NULL THEN 1 ELSE 0 END AS league_game,
@@ -15,8 +15,8 @@ SELECT
     -- game in progress at query time (no end reason yet), should be almost all correspondence games
     CASE WHEN g.type = 0 AND g.game_end_reason = 0 THEN 1 ELSE 0 END AS ongoing_game,
     -- sanity check: should always be 0 for now
-    CASE WHEN ((u0.internal_bot OR u0.id IN (42,43,44,45,46))
-           AND (u1.internal_bot OR u1.id IN (42,43,44,45,46))) THEN 1 ELSE 0 END AS bot_vs_bot_game,
+    CASE WHEN ((u0.internal_bot OR u0.id IN (42,43,44,45,46,6216))
+           AND (u1.internal_bot OR u1.id IN (42,43,44,45,46,6216))) THEN 1 ELSE 0 END AS bot_vs_bot_game,
     -- annotated games (type=1) have NULL game_end_reason so they never land in any end-reason bucket below
 	-- this is also why the sum of the game_end_reason percentages is slightly less than 100%
     CASE WHEN g.type = 1 THEN 1 ELSE 0 END AS annotated_game

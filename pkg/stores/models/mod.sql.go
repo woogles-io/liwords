@@ -11,6 +11,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addNotoriousGame = `-- name: AddNotoriousGame :exec
+INSERT INTO notoriousgames (game_id, player_id, type, timestamp) VALUES ($1, $2, $3, $4)
+`
+
+type AddNotoriousGameParams struct {
+	GameID    pgtype.Text
+	PlayerID  pgtype.Text
+	Type      pgtype.Int4
+	Timestamp pgtype.Int8
+}
+
+func (q *Queries) AddNotoriousGame(ctx context.Context, arg AddNotoriousGameParams) error {
+	_, err := q.db.Exec(ctx, addNotoriousGame,
+		arg.GameID,
+		arg.PlayerID,
+		arg.Type,
+		arg.Timestamp,
+	)
+	return err
+}
+
+const deleteNotoriousGamesForPlayer = `-- name: DeleteNotoriousGamesForPlayer :exec
+DELETE FROM notoriousgames WHERE player_id = $1
+`
+
+func (q *Queries) DeleteNotoriousGamesForPlayer(ctx context.Context, playerID pgtype.Text) error {
+	_, err := q.db.Exec(ctx, deleteNotoriousGamesForPlayer, playerID)
+	return err
+}
+
 const getActionsBatch = `-- name: GetActionsBatch :many
 SELECT DISTINCT ON (users.uuid, user_actions.action_type)
     users.uuid as user_uuid,

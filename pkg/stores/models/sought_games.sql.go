@@ -11,6 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSeekConflictsForCorrespondence = `-- name: CountSeekConflictsForCorrespondence :one
+SELECT
+    COUNT(*) FILTER (WHERE receiver = '') AS has_open_seek,
+    COUNT(*) FILTER (WHERE game_mode IS NULL OR game_mode != 1) AS has_realtime_seek
+FROM soughtgames
+WHERE seeker = $1
+`
+
+type CountSeekConflictsForCorrespondenceRow struct {
+	HasOpenSeek     int64
+	HasRealtimeSeek int64
+}
+
+func (q *Queries) CountSeekConflictsForCorrespondence(ctx context.Context, seekerID pgtype.Text) (CountSeekConflictsForCorrespondenceRow, error) {
+	row := q.db.QueryRow(ctx, countSeekConflictsForCorrespondence, seekerID)
+	var i CountSeekConflictsForCorrespondenceRow
+	err := row.Scan(&i.HasOpenSeek, &i.HasRealtimeSeek)
+	return i, err
+}
+
+const countSeeksForUser = `-- name: CountSeeksForUser :one
+SELECT COUNT(*) FROM soughtgames WHERE seeker = $1
+`
+
+func (q *Queries) CountSeeksForUser(ctx context.Context, seekerID pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countSeeksForUser, seekerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteSoughtGameBySeekerConnID = `-- name: DeleteSoughtGameBySeekerConnID :exec
 DELETE FROM soughtgames WHERE seeker_conn_id = $1
 `
@@ -36,6 +67,41 @@ DELETE FROM soughtgames WHERE uuid = $1
 func (q *Queries) DeleteSoughtGameByUUID(ctx context.Context, uuid pgtype.Text) error {
 	_, err := q.db.Exec(ctx, deleteSoughtGameByUUID, uuid)
 	return err
+}
+
+const existsSeekForUser = `-- name: ExistsSeekForUser :one
+SELECT EXISTS(SELECT 1 FROM soughtgames WHERE seeker = $1)
+`
+
+func (q *Queries) ExistsSeekForUser(ctx context.Context, seekerID pgtype.Text) (bool, error) {
+	row := q.db.QueryRow(ctx, existsSeekForUser, seekerID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const expireOldCorrespondenceSeeks = `-- name: ExpireOldCorrespondenceSeeks :execrows
+DELETE FROM soughtgames WHERE game_mode = 1 AND created_at < NOW() - INTERVAL '60 hours'
+`
+
+func (q *Queries) ExpireOldCorrespondenceSeeks(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, expireOldCorrespondenceSeeks)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const expireOldRealtimeSeeks = `-- name: ExpireOldRealtimeSeeks :execrows
+DELETE FROM soughtgames WHERE (game_mode IS NULL OR game_mode = 0) AND created_at < NOW() - INTERVAL '2 hours'
+`
+
+func (q *Queries) ExpireOldRealtimeSeeks(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, expireOldRealtimeSeeks)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getSoughtGameByReceiverConnID = `-- name: GetSoughtGameByReceiverConnID :one
@@ -91,4 +157,159 @@ func (q *Queries) GetSoughtGameByUUID(ctx context.Context, uuid pgtype.Text) ([]
 	var request []byte
 	err := row.Scan(&request)
 	return request, err
+}
+
+const insertSoughtGame = `-- name: InsertSoughtGame :exec
+INSERT INTO soughtgames (uuid, seeker, seeker_conn_id, receiver, receiver_conn_id, request, game_mode)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSoughtGameParams struct {
+	Uuid           pgtype.Text
+	Seeker         pgtype.Text
+	SeekerConnID   pgtype.Text
+	Receiver       pgtype.Text
+	ReceiverConnID pgtype.Text
+	Request        []byte
+	GameMode       pgtype.Int4
+}
+
+func (q *Queries) InsertSoughtGame(ctx context.Context, arg InsertSoughtGameParams) error {
+	_, err := q.db.Exec(ctx, insertSoughtGame,
+		arg.Uuid,
+		arg.Seeker,
+		arg.SeekerConnID,
+		arg.Receiver,
+		arg.ReceiverConnID,
+		arg.Request,
+		arg.GameMode,
+	)
+	return err
+}
+
+const listCorrespondenceSeeksForUser = `-- name: ListCorrespondenceSeeksForUser :many
+SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')
+`
+
+func (q *Queries) ListCorrespondenceSeeksForUser(ctx context.Context, userID pgtype.Text) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listCorrespondenceSeeksForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var request []byte
+		if err := rows.Scan(&request); err != nil {
+			return nil, err
+		}
+		items = append(items, request)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenSeeksAll = `-- name: ListOpenSeeksAll :many
+SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''
+`
+
+func (q *Queries) ListOpenSeeksAll(ctx context.Context, receiverID pgtype.Text) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listOpenSeeksAll, receiverID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var request []byte
+		if err := rows.Scan(&request); err != nil {
+			return nil, err
+		}
+		items = append(items, request)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenSeeksByTourney = `-- name: ListOpenSeeksByTourney :many
+SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2::text
+`
+
+type ListOpenSeeksByTourneyParams struct {
+	ReceiverID   pgtype.Text
+	TournamentID string
+}
+
+func (q *Queries) ListOpenSeeksByTourney(ctx context.Context, arg ListOpenSeeksByTourneyParams) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listOpenSeeksByTourney, arg.ReceiverID, arg.TournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var request []byte
+		if err := rows.Scan(&request); err != nil {
+			return nil, err
+		}
+		items = append(items, request)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const seekExistsFromMatcher = `-- name: SeekExistsFromMatcher :one
+SELECT EXISTS(SELECT 1 FROM soughtgames WHERE receiver = $1 AND seeker = $2)
+`
+
+type SeekExistsFromMatcherParams struct {
+	UserID  pgtype.Text
+	Matcher pgtype.Text
+}
+
+func (q *Queries) SeekExistsFromMatcher(ctx context.Context, arg SeekExistsFromMatcherParams) (bool, error) {
+	row := q.db.QueryRow(ctx, seekExistsFromMatcher, arg.UserID, arg.Matcher)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const updateSoughtGameReceiverAbsentByReceiverConnID = `-- name: UpdateSoughtGameReceiverAbsentByReceiverConnID :execrows
+UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver_conn_id = $2
+`
+
+type UpdateSoughtGameReceiverAbsentByReceiverConnIDParams struct {
+	ReceiverState  []byte
+	ReceiverConnID pgtype.Text
+}
+
+func (q *Queries) UpdateSoughtGameReceiverAbsentByReceiverConnID(ctx context.Context, arg UpdateSoughtGameReceiverAbsentByReceiverConnIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSoughtGameReceiverAbsentByReceiverConnID, arg.ReceiverState, arg.ReceiverConnID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateSoughtGameReceiverAbsentByReceiverID = `-- name: UpdateSoughtGameReceiverAbsentByReceiverID :execrows
+UPDATE soughtgames SET request = jsonb_set(request, array['receiver_state'], $1) WHERE receiver = $2
+`
+
+type UpdateSoughtGameReceiverAbsentByReceiverIDParams struct {
+	ReceiverState []byte
+	ReceiverID    pgtype.Text
+}
+
+func (q *Queries) UpdateSoughtGameReceiverAbsentByReceiverID(ctx context.Context, arg UpdateSoughtGameReceiverAbsentByReceiverIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSoughtGameReceiverAbsentByReceiverID, arg.ReceiverState, arg.ReceiverID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

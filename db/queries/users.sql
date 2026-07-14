@@ -114,3 +114,48 @@ UPDATE users
 
 -- name: SetUserEmail :exec
 UPDATE users SET email = @email, updated_at = NOW() WHERE uuid = @uuid;
+
+-- name: ListAllUserIDs :many
+SELECT uuid FROM users;
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users;
+
+-- name: SetUserAPIKey :execrows
+UPDATE users SET api_key = @api_key WHERE uuid = @uuid;
+
+-- name: UsersByPrefix :many
+SELECT username, uuid FROM users
+WHERE substr(lower(users.username), 1, length(@prefix::text)) = @prefix
+  AND users.internal_bot IS FALSE
+  AND NOT EXISTS(
+    SELECT 1 FROM user_actions
+    WHERE user_actions.user_id = users.id AND
+    user_actions.removed_time IS NULL AND
+    user_actions.end_time IS NULL AND
+    user_actions.action_type = @suspend_action_type
+);
+
+-- name: AddFollower :exec
+INSERT INTO followings (user_id, follower_id) VALUES (@target_user, @follower);
+
+-- name: RemoveFollower :exec
+DELETE FROM followings WHERE user_id = @target_user AND follower_id = @follower;
+
+-- name: GetFollows :many
+SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = user_id WHERE follower_id = @follower_id;
+
+-- name: GetFollowedBy :many
+SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = follower_id WHERE user_id = @user_id;
+
+-- name: AddBlock :exec
+INSERT INTO blockings (user_id, blocker_id) VALUES (@target_user, @blocker);
+
+-- name: RemoveBlock :execrows
+DELETE FROM blockings WHERE user_id = @target_user AND blocker_id = @blocker;
+
+-- name: GetBlocks :many
+SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id WHERE blocker_id = @blocker_id;
+
+-- name: GetBlockedBy :many
+SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = @user_id;

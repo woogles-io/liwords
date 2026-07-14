@@ -1263,6 +1263,36 @@ func (q *Queries) ListPendingArchival(ctx context.Context) ([]pgtype.Text, error
 	return items, nil
 }
 
+const outstandingAnnotatedGames = `-- name: OutstandingAnnotatedGames :many
+SELECT game_uuid, private_broadcast FROM annotated_game_metadata
+WHERE creator_uuid = $1 AND done = 'f'
+`
+
+type OutstandingAnnotatedGamesRow struct {
+	GameUuid         string
+	PrivateBroadcast bool
+}
+
+func (q *Queries) OutstandingAnnotatedGames(ctx context.Context, creatorUuid string) ([]OutstandingAnnotatedGamesRow, error) {
+	rows, err := q.db.Query(ctx, outstandingAnnotatedGames, creatorUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutstandingAnnotatedGamesRow
+	for rows.Next() {
+		var i OutstandingAnnotatedGamesRow
+		if err := rows.Scan(&i.GameUuid, &i.PrivateBroadcast); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setGameHistoryS3Key = `-- name: SetGameHistoryS3Key :exec
 UPDATE games SET history_s3_key = $1 WHERE uuid = $2
 `

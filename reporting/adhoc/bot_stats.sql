@@ -2,7 +2,7 @@ WITH bot_users AS
 (SELECT
    id,
    username,
-   internal_bot OR id IN (42,43,44,45,46) AS is_bot
+   internal_bot OR id IN (42,43,44,45,46,6216) AS is_bot
 FROM public.users),
 bot_games as
 (SELECT

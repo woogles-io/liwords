@@ -250,6 +250,17 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return ErrNotAllowed
 		}
 
+		// Add time is a casual-only courtesy. Reject it server-side for rated,
+		// tournament, league, and bot games -- mirroring the frontend's
+		// canAddTime gating -- so a crafted client cannot invoke it (and its
+		// clock change) where the button is hidden.
+		if g.GameReq.RatingMode == pb.RatingMode_RATED ||
+			g.GameReq.PlayerVsBot ||
+			g.LeagueID != nil ||
+			(g.TournamentData != nil && g.TournamentData.Id != "") {
+			return ErrNotAllowed
+		}
+
 		// Find opponent index (the player who is NOT the sender)
 		hist := g.History()
 		opponentIdx := -1

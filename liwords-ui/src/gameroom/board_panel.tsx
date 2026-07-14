@@ -456,8 +456,17 @@ export const BoardPanel = React.memo((props: Props) => {
       // Prevent stuck tiles.
       fullReset = true;
     } else if (!dep.isMyTurn) {
-      // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
-      fullReset = true;
+      // Opponent's turn usually means we have just made a move. (Assumption:
+      // there are only two players.) But a GameHistoryRefresher can also
+      // arrive mid-turn without any move being made (e.g. the opponent's
+      // clock was given more time), in which case the board is unchanged and
+      // tentatively placed tiles should be left alone.
+      const lettersChanged =
+        lastLetters.length !== props.board.letters.length ||
+        lastLetters.some((ml, idx) => ml !== props.board.letters[idx]);
+      if (lettersChanged) {
+        fullReset = true;
+      }
     } else {
       // Opponent just did something. Check if it affects any premove.
       // TODO: revisit when supporting non-square boards.

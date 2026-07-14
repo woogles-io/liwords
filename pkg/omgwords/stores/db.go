@@ -144,16 +144,7 @@ func (s *DBStore) MarkAnnotatedGameDone(ctx context.Context, uuid string) error 
 // annotated. The system will only allow a certain number of games to remain
 // undone for an annotator.
 func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*AnnotatedGame, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	query := `SELECT game_uuid, private_broadcast FROM annotated_game_metadata
-	WHERE creator_uuid = $1 AND done = 'f'`
-
-	rows, err := tx.Query(ctx, query, creatorUUID)
+	rows, err := s.queries.OutstandingAnnotatedGames(ctx, creatorUUID)
 	if err == pgx.ErrNoRows {
 		log.Debug().Str("creatorUUID", creatorUUID).Msg("outstanding games - no rows match")
 		return nil, nil
@@ -161,25 +152,15 @@ func (s *DBStore) OutstandingGames(ctx context.Context, creatorUUID string) ([]*
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	games := []*AnnotatedGame{}
-	for rows.Next() {
-		var uuid string
-		var private bool
-		if err := rows.Scan(&uuid, &private); err != nil {
-			return nil, err
-		}
+	for _, row := range rows {
 		games = append(games, &AnnotatedGame{
-			GameUUID:    uuid,
+			GameUUID:    row.GameUuid,
 			CreatorUUID: creatorUUID,
-			Private:     private,
+			Private:     row.PrivateBroadcast,
 			Finished:    false,
 		})
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
 	}
 	return games, nil
 }

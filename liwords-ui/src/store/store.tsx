@@ -991,12 +991,17 @@ const RealStore = ({ children, ...props }: Props) => {
   const challengeResultEvent = useCallback(
     (sge: ServerChallengeResultEvent) => {
       console.log("sge", sge);
+      const message = sge.valid
+        ? "Challenged play was valid"
+        : `Play was challenged off the board! Returned tiles: ${machineWordToRunes(sortTiles(runesToMachineWord(sge.returnedTiles, gameContext.alphabet), gameContext.alphabet), gameContext.alphabet)}`;
+      console.log(
+        "[phony-debug] challengeResultEvent addChat, message:",
+        message,
+      );
       addChat({
         entityType: ChatEntityType.ServerMsg,
         sender: "",
-        message: sge.valid
-          ? "Challenged play was valid"
-          : `Play was challenged off the board! Returned tiles: ${machineWordToRunes(sortTiles(runesToMachineWord(sge.returnedTiles, gameContext.alphabet), gameContext.alphabet), gameContext.alphabet)}`,
+        message,
         id: randomID(),
         channel: "server",
       });
