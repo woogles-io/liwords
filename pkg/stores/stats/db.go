@@ -79,7 +79,7 @@ func (s *DBStore) GetListItems(ctx context.Context, statType int, gameIds []stri
 		args = append(args, gid)
 	}
 
-	log.Info().Str("where", where).Interface("args", args).Msg("query")
+	log.Debug().Str("where", where).Interface("args", args).Msg("query")
 
 	query := fmt.Sprintf("SELECT game_id, player_id, timestamp, item FROM liststats WHERE %s ORDER BY timestamp", where)
 	rows, err := tx.Query(ctx, query, args...)
