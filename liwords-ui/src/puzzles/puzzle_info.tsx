@@ -31,6 +31,8 @@ type Props = {
   dateSolved?: Date;
   loadNewPuzzle: () => void;
   showSolution: () => void;
+  retryMode?: boolean;
+  retryCompleted?: boolean;
 };
 
 export const renderStars = (stars: number, useEmoji = false) => {
@@ -78,7 +80,16 @@ export const PuzzleInfo = React.memo((props: Props) => {
     dateSolved,
     loadNewPuzzle,
     showSolution,
+    retryMode,
+    retryCompleted,
   } = props;
+
+  // Previously-finalized puzzles now enter retry mode immediately on load
+  // (see puzzle.tsx), so this is effectively always false in practice; kept
+  // so the notice below still has a fallback if that ever changes.
+  const isPreviouslyFinalized = !retryMode && solved !== PuzzleStatus.UNANSWERED;
+  const showAlreadySolvedNotice =
+    isPreviouslyFinalized || (retryMode && !retryCompleted);
 
   // TODO: should be determined on the back end and not hardcoded
   const puzzleType = "Equity puzzle";
@@ -119,7 +130,11 @@ export const PuzzleInfo = React.memo((props: Props) => {
   }, [attempts, dateSolved, solved]);
 
   const actions = useMemo(() => {
-    if (!solved || solved === PuzzleStatus.UNANSWERED) {
+    if (
+      !solved ||
+      solved === PuzzleStatus.UNANSWERED ||
+      (retryMode && !retryCompleted)
+    ) {
       return (
         <div className="actions">
           <Button type="default" onClick={loadNewPuzzle}>
@@ -143,7 +158,15 @@ export const PuzzleInfo = React.memo((props: Props) => {
         />
       </div>
     );
-  }, [loadNewPuzzle, showSolution, solved, puzzleID, attempts]);
+  }, [
+    loadNewPuzzle,
+    showSolution,
+    solved,
+    puzzleID,
+    attempts,
+    retryMode,
+    retryCompleted,
+  ]);
 
   const formattedGameDate = useMemo(() => {
     return moment(gameDate).format("MMMM D, YYYY");
@@ -181,7 +204,8 @@ export const PuzzleInfo = React.memo((props: Props) => {
       Game played by {player1NameDisplay} vs {player2NameDisplay}
     </span>
   );
-  const stillSolving = solved === PuzzleStatus.UNANSWERED;
+  const stillSolving =
+    solved === PuzzleStatus.UNANSWERED || (retryMode && !retryCompleted);
   let settingsDisplay;
   if (!initialTimeSeconds && !incrementSeconds && !maxOvertimeMinutes) {
     settingsDisplay = (
@@ -204,6 +228,15 @@ export const PuzzleInfo = React.memo((props: Props) => {
   return (
     <Card className="puzzle-info" title={`Puzzle Mode`} extra={puzzleType}>
       <div className="puzzle-details">
+        {showAlreadySolvedNotice && (
+          <div className="already-solved-notice">
+            You already solved this puzzle
+            {dateSolved
+              ? ` on ${moment(dateSolved).format("MMMM D, YYYY")}`
+              : ""}
+            . Try again — it won't affect your rating.
+          </div>
+        )}
         {!stillSolving && (
           <>
             {renderStars(score)}

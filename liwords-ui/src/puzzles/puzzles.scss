@@ -2,6 +2,16 @@
 @use "../tile_modes" as *;
 
 .puzzle-container {
+  .already-solved-notice {
+    padding: 6px 10px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    @include colorModed() {
+      background-color: m($secondary-lighter);
+      color: m($secondary-medium);
+    }
+  }
   .ant-card.pool {
     order: 2;
   }

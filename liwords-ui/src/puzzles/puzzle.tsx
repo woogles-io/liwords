@@ -106,6 +106,7 @@ type PuzzleInfo = {
   player2?: {
     nickname: string;
   };
+  tags?: string[];
 };
 
 const defaultPuzzleInfo = {
@@ -114,6 +115,7 @@ const defaultPuzzleInfo = {
   lexicon: "",
   variantName: "",
   solved: PuzzleStatus.UNANSWERED,
+  tags: [] as string[],
 };
 
 export const SinglePuzzle = (props: Props) => {
@@ -126,6 +128,8 @@ export const SinglePuzzle = (props: Props) => {
     localStorage?.getItem("puzzleLexicon") || undefined,
   );
   const [pendingSolution, setPendingSolution] = useState(false);
+  const [retryMode, setRetryMode] = useState(false);
+  const [retryCompleted, setRetryCompleted] = useState(false);
   const [gameHistory, setGameHistory] = useState<GameHistory | null>(null);
   const [showResponseModalWrong, setShowResponseModalWrong] = useState(false);
   const [checkWordsPending, setCheckWordsPending] = useState(false);
@@ -322,7 +326,11 @@ export const SinglePuzzle = (props: Props) => {
         turn: answerResponse.turnNumber,
         puzzleRating: answerResponse.newPuzzleRating,
         userRating: answerResponse.newUserRating,
+        tags: [...(x.tags || []), ...resp.descriptiveTags],
       }));
+      if (retryMode) {
+        setRetryCompleted(true);
+      }
       // Place the tiles from the event.
       if (solution) {
         setPendingSolution(true);
@@ -331,7 +339,13 @@ export const SinglePuzzle = (props: Props) => {
     } catch (err) {
       flashError(err);
     }
-  }, [puzzleID, userIDOnTurn, examinableGameContext.players, puzzleClient]);
+  }, [
+    puzzleID,
+    userIDOnTurn,
+    examinableGameContext.players,
+    puzzleClient,
+    retryMode,
+  ]);
 
   useEffect(() => {
     if (puzzleInfo.gameId) {
@@ -380,7 +394,11 @@ export const SinglePuzzle = (props: Props) => {
             solved: answerResponse.status,
             puzzleRating: answerResponse.newPuzzleRating,
             userRating: answerResponse.newUserRating,
+            tags: [...(x.tags || []), ...resp.descriptiveTags],
           }));
+          if (retryMode) {
+            setRetryCompleted(true);
+          }
           setShowResponseModalCorrect(true);
         } else {
           // Wrong answer
@@ -412,6 +430,7 @@ export const SinglePuzzle = (props: Props) => {
       puzzleID,
       puzzleClient,
       setGameInfo,
+      retryMode,
     ],
   );
 
@@ -462,9 +481,15 @@ export const SinglePuzzle = (props: Props) => {
           turn: answerResponse.turnNumber,
           puzzleRating: answerResponse.newPuzzleRating,
           userRating: answerResponse.newUserRating,
+          tags: resp.categoryTags,
         });
         setInitialUserRating(answerResponse.newUserRating);
-        setPendingSolution(answerResponse.status !== PuzzleStatus.UNANSWERED);
+        setRetryCompleted(false);
+        if (answerResponse.status !== PuzzleStatus.UNANSWERED) {
+          setRetryMode(true);
+        } else {
+          setRetryMode(false);
+        }
       } catch (err) {
         flashError(err);
       }
@@ -707,8 +732,12 @@ export const SinglePuzzle = (props: Props) => {
   }, [showResponseModalCorrect, puzzleInfo, loadNewPuzzle, puzzleID]);
 
   const allowAttempt = useMemo(() => {
-    return loggedIn && puzzleInfo.solved === PuzzleStatus.UNANSWERED;
-  }, [loggedIn, puzzleInfo.solved]);
+    return (
+      loggedIn &&
+      (puzzleInfo.solved === PuzzleStatus.UNANSWERED ||
+        (retryMode && !retryCompleted))
+    );
+  }, [loggedIn, puzzleInfo.solved, retryMode, retryCompleted]);
 
   let ret = (
     <div className="game-container puzzle-container">
@@ -791,6 +820,8 @@ export const SinglePuzzle = (props: Props) => {
             loadNewPuzzle={loadNewPuzzle}
             puzzleID={puzzleID}
             showSolution={showSolution}
+            retryMode={retryMode}
+            retryCompleted={retryCompleted}
           />
           {/* alphabet && (
             <Pool

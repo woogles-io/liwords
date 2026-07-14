@@ -35,7 +35,13 @@ message NextClosestRatingPuzzleIdResponse {
   PuzzleQueryResult query_result = 2;
 }
 
-message PuzzleRequest { string puzzle_id = 1; }
+message PuzzleRequest {
+  string puzzle_id = 1;
+  // If true and the user has a prior finalized attempt, the server will include
+  // the correct answer, game_id, turn_number, and after_text in the response.
+  // Omitting this keeps the board position unspoiled so the user can retry.
+  bool include_solution = 2;
+}
 
 enum PuzzleStatus {
   UNANSWERED = 0;
@@ -60,6 +66,11 @@ message PuzzleResponse {
   macondo.GameHistory history = 1;
   string before_text = 2;
   AnswerResponse answer = 3;
+  // Broad puzzle type (e.g. "EQUITY"). Safe to send before solve.
+  repeated string category_tags = 4;
+  // Granular tags (e.g. "BINGO", "BLANK_BINGO"). Only sent after the user
+  // has a finalized attempt, because they reveal solution properties.
+  repeated string descriptive_tags = 5;
 }
 
 message SubmissionRequest {
@@ -71,6 +82,9 @@ message SubmissionRequest {
 message SubmissionResponse {
   bool user_is_correct = 1;
   AnswerResponse answer = 2;
+  // Populated when the attempt is finalized (correct or gave up).
+  // Same set as PuzzleResponse.descriptive_tags.
+  repeated string descriptive_tags = 3;
 }
 
 message PreviousPuzzleRequest { string puzzle_id = 1; }
@@ -99,6 +113,9 @@ message PuzzleGenerationJobRequest {
   uint32 equity_loss_total_limit = 9;
   bool avoid_bot_games = 10;
   uint32 days_per_chunk = 11;
+  // earliest_start_date is a YYYY-MM-DD date that caps how far back the
+  // generator will walk. If empty, defaults to 2021-01-01.
+  string earliest_start_date = 12;
 }
 
 message APIPuzzleGenerationJobResponse { bool started = 1; }

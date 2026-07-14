@@ -76,12 +76,32 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *connect.Request[pb.
 		return nil, apiserver.InvalidArg(err.Error())
 	}
 
+	allTags, err := GetPuzzleTags(ctx, ps.puzzleStore, req.Msg.PuzzleId)
+	if err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+	var categoryTags, descriptiveTags []string
+	for _, t := range allTags {
+		if categoryTagAllowlist[t] {
+			categoryTags = append(categoryTags, t)
+		} else {
+			descriptiveTags = append(descriptiveTags, t)
+		}
+	}
+	// Descriptive tags reveal solution properties (e.g. BINGO, BLANK_BINGO).
+	// Only expose them once the user has a finalized attempt in the DB.
+	// We gate on the server-derived status, not the client flag, so dev-tools
+	// cannot bypass this by setting include_solution=true on a fresh visit.
+	if status == nil {
+		descriptiveTags = nil
+	}
+
 	var correctAnswer *macondo.GameEvent
 	var gameId string
 	var turnNumber int32
 	var afterText string
 
-	if status != nil {
+	if status != nil && req.Msg.IncludeSolution {
 		correctAnswer, gameId, turnNumber, afterText, _, _, err = GetAnswer(ctx, ps.puzzleStore, req.Msg.PuzzleId)
 		if err != nil {
 			return nil, apiserver.InvalidArg(err.Error())
@@ -99,8 +119,10 @@ func (ps *PuzzleService) GetPuzzle(ctx context.Context, req *connect.Request[pb.
 	}
 
 	return connect.NewResponse(&pb.PuzzleResponse{
-		History:    gameHist,
-		BeforeText: beforeText,
+		History:         gameHist,
+		BeforeText:      beforeText,
+		CategoryTags:    categoryTags,
+		DescriptiveTags: descriptiveTags,
 		Answer: &pb.AnswerResponse{
 			Status:           boolPtrToPuzzleStatus(status),
 			CorrectAnswer:    correctAnswer,
@@ -148,8 +170,22 @@ func (ps *PuzzleService) SubmitAnswer(ctx context.Context, req *connect.Request[
 		nur = int32(newUserRating.Rating + 0.5)
 	}
 
+	var descriptiveTags []string
+	if status != nil {
+		allTags, err := GetPuzzleTags(ctx, ps.puzzleStore, req.Msg.PuzzleId)
+		if err != nil {
+			return nil, apiserver.InvalidArg(err.Error())
+		}
+		for _, t := range allTags {
+			if !categoryTagAllowlist[t] {
+				descriptiveTags = append(descriptiveTags, t)
+			}
+		}
+	}
+
 	return connect.NewResponse(&pb.SubmissionResponse{
-		UserIsCorrect: userIsCorrect,
+		UserIsCorrect:   userIsCorrect,
+		DescriptiveTags: descriptiveTags,
 		Answer: &pb.AnswerResponse{
 			Status:           boolPtrToPuzzleStatus(status),
 			CorrectAnswer:    correctAnswer,

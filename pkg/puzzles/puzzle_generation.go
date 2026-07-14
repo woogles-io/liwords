@@ -108,7 +108,11 @@ func processWithRealGames(ctx context.Context, cfg *config.Config, req *pb.Puzzl
 	}
 	csgen := &cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd}
 
-	minimumStartTime, err := time.Parse("2006-01-02", "2021-01-01")
+	minimumStartStr := req.EarliestStartDate
+	if minimumStartStr == "" {
+		minimumStartStr = "2021-01-01"
+	}
+	minimumStartTime, err := time.Parse("2006-01-02", minimumStartStr)
 	if err != nil {
 		return false, err
 	}
