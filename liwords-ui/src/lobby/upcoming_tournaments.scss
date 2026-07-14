@@ -118,6 +118,16 @@
     }
   }
 
+  .tournament-lexicon {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .lexicon-icon {
+      font-size: 11px;
+    }
+  }
+
   .registration-badge {
     font-size: 10px;
     font-weight: 600;
@@ -279,6 +289,16 @@
     gap: 4px;
 
     .registrants-icon {
+      font-size: 11px;
+    }
+  }
+
+  .tournament-lexicon {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .lexicon-icon {
       font-size: 11px;
     }
   }

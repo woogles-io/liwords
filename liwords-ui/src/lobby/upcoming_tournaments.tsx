@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, Tooltip } from "antd";
 import { Link } from "react-router";
 import {
+  BookOutlined,
   GlobalOutlined,
   DesktopOutlined,
   TeamOutlined,
@@ -9,6 +10,7 @@ import {
 import { useClient } from "../utils/hooks/connect";
 import { TournamentService } from "../gen/api/proto/tournament_service/tournament_service_pb";
 import type { TournamentMetadata } from "../gen/api/proto/tournament_service/tournament_service_pb";
+import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import "./upcoming_tournaments.scss";
 
 const formatRelativeTime = (date: Date): string => {
@@ -61,6 +63,16 @@ const TournamentCard = ({ tournament }: { tournament: TournamentMetadata }) => {
   const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
   const isUpcoming = startDate && now < startDate;
 
+  // Distinct lexica configured across the tournament's divisions. Empty for
+  // IRL-mode or not-yet-configured tournaments, in which case we show nothing.
+  const lexica = Array.from(
+    new Set(
+      (tournament.divisions ?? [])
+        .map((d) => d.gameRequest?.lexicon)
+        .filter((l): l is string => !!l),
+    ),
+  );
+
   return (
     <div className="tournament-card">
       <div className="tournament-header">
@@ -90,6 +102,17 @@ const TournamentCard = ({ tournament }: { tournament: TournamentMetadata }) => {
             <TeamOutlined className="registrants-icon" />
             {tournament.registrantCount}
           </span>
+          {lexica.length > 0 && (
+            <span className="tournament-lexicon">
+              <BookOutlined className="lexicon-icon" />
+              {lexica.map((lex, i) => (
+                <span key={lex}>
+                  {i > 0 ? ", " : ""}
+                  <MatchLexiconDisplay lexiconCode={lex} />
+                </span>
+              ))}
+            </span>
+          )}
           {isUpcoming && (
             <Tooltip
               title={`Registrations are ${tournament.registrationOpen ? "open" : "closed"}`}
