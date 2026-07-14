@@ -18,6 +18,18 @@ export type MetaEventState = {
   evtCreator: string; // the user ID of the player that generated this event.
 };
 
+// A single add-time grant is 15 seconds; the toast shows for this long.
+const ADD_TIME_SECONDS = 15;
+const ADD_TIME_TOAST_DURATION = 3;
+
+// Coalesce a burst of add-time grants (e.g. someone spamming the +time
+// button) into a single, updating toast keyed per game, so the combined
+// total is shown once instead of a stack of "15 seconds" messages covering
+// the board. The running total resets once a burst settles.
+const addTimeBursts: {
+  [gameId: string]: { total: number; timer: ReturnType<typeof setTimeout> };
+} = {};
+
 export const metaStateFromMetaEvent = (
   message: MessageInstance,
   oldState: MetaEventState,
@@ -113,13 +125,25 @@ export const metaStateFromMetaEvent = (
     }
 
     case GameMetaEvent_EventType.ADD_TIME: {
-      let content: string;
-      if (us === metaEvent.playerId) {
-        content = "You added 15 seconds to your opponent's clock.";
-      } else {
-        content = "Your opponent added 15 seconds to your clock.";
+      const gameId = metaEvent.gameId;
+      const key = `add-time-${gameId}`;
+      const existing = addTimeBursts[gameId];
+      if (existing) {
+        clearTimeout(existing.timer);
       }
-      message.info({ content });
+      const total = (existing?.total ?? 0) + ADD_TIME_SECONDS;
+      addTimeBursts[gameId] = {
+        total,
+        timer: setTimeout(() => {
+          delete addTimeBursts[gameId];
+        }, ADD_TIME_TOAST_DURATION * 1000),
+      };
+      const content =
+        us === metaEvent.playerId
+          ? `You added ${total} seconds to your opponent's clock.`
+          : `Your opponent added ${total} seconds to your clock.`;
+      // Stable key so repeated grants update one toast instead of stacking.
+      message.info({ key, content, duration: ADD_TIME_TOAST_DURATION });
       // No state change needed - timer update comes via GameHistoryRefresher
       break;
     }
