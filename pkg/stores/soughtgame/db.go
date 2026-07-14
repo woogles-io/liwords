@@ -306,14 +306,6 @@ func (s *DBStore) UpdateForReceiverConnID(ctx context.Context, connID string) (*
 // ListOpenSeeks lists all open seek requests for receiverID, in tourneyID (optional)
 // ListOpenSeeks is a read-only query: no explicit transaction needed.
 func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
-<<<<<<< HEAD
-	var rows pgx.Rows
-	var err error
-	if tourneyID != "" {
-		rows, err = s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 AND request->>'tournament_id' = $2`, receiverID, tourneyID)
-	} else {
-		rows, err = s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE receiver = $1 OR receiver = ''`, receiverID)
-=======
 	var reqs [][]byte
 	var err error
 	if tourneyID != "" {
@@ -323,7 +315,6 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 		})
 	} else {
 		reqs, err = s.queries.ListOpenSeeksAll(ctx, pgtype.Text{String: receiverID, Valid: true})
->>>>>>> origin/master
 	}
 	if err != nil {
 		return nil, err
@@ -335,14 +326,7 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context, receiverID, tourneyID strin
 		if err != nil {
 			return nil, err
 		}
-<<<<<<< HEAD
-		games = append(games, &entity.SoughtGame{SeekRequest: &req})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-=======
 		games = append(games, sg)
->>>>>>> origin/master
 	}
 	return games, nil
 }
@@ -354,11 +338,7 @@ func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID str
 	// - user is the seeker (their own open seeks or match requests)
 	// - user is the receiver (match requests sent to them)
 	// - open seeks available to all (receiver is empty)
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT request FROM soughtgames WHERE game_mode = 1 AND (seeker = $1 OR receiver = $1 OR receiver = '')`, userID)
-=======
 	reqs, err := s.queries.ListCorrespondenceSeeksForUser(ctx, pgtype.Text{String: userID, Valid: true})
->>>>>>> origin/master
 	if err != nil {
 		return nil, err
 	}
@@ -369,14 +349,7 @@ func (s *DBStore) ListCorrespondenceSeeksForUser(ctx context.Context, userID str
 		if err != nil {
 			return nil, err
 		}
-<<<<<<< HEAD
-		games = append(games, &entity.SoughtGame{SeekRequest: &req})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-=======
 		games = append(games, sg)
->>>>>>> origin/master
 	}
 	return games, nil
 }

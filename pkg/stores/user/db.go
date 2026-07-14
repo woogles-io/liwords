@@ -539,22 +539,11 @@ func (s *DBStore) RemoveFollower(ctx context.Context, targetUser, follower uint)
 // Read-only single-statement query: no explicit transaction needed, which avoids
 // a wasted BEGIN/ROLLBACK round-trip on this hot path.
 func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = user_id WHERE follower_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
-=======
 	rows, err := s.queries.GetFollows(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
->>>>>>> origin/master
 	entUsers := []*entity.User{}
 	for _, row := range rows {
 		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
@@ -565,22 +554,11 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 // GetFollowedBy gets all the users that are following the passed-in user DB ID.
 // Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT u0.uuid, u0.username FROM followings JOIN users AS u0 ON u0.id = follower_id WHERE user_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
-=======
 	rows, err := s.queries.GetFollowedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
->>>>>>> origin/master
 	entUsers := []*entity.User{}
 	for _, row := range rows {
 		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
@@ -621,22 +599,11 @@ func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) err
 // GetBlocks gets all the users that the passed-in user DB ID is blocking.
 // Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = user_id WHERE blocker_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
-=======
 	rows, err := s.queries.GetBlocks(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
->>>>>>> origin/master
 	entUsers := []*entity.User{}
 	for _, row := range rows {
 		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
@@ -647,22 +614,11 @@ func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, erro
 // GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
 // Read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT u0.uuid, u0.username FROM blockings JOIN users AS u0 ON u0.id = blocker_id WHERE user_id = $1`, uid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
-=======
 	rows, err := s.queries.GetBlockedBy(ctx, pgtype.Int4{Int32: int32(uid), Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
->>>>>>> origin/master
 	entUsers := []*entity.User{}
 	for _, row := range rows {
 		entUsers = append(entUsers, &entity.User{UUID: row.Uuid, Username: row.Username})
@@ -702,25 +658,6 @@ func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, 
 
 // UsersByPrefix is a read-only single-statement query: no explicit transaction needed.
 func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
-<<<<<<< HEAD
-	rows, err := s.dbPool.Query(ctx, `SELECT username, uuid FROM users
-	WHERE substr(lower(users.username), 1, length($1)) = $1
-	AND users.internal_bot IS FALSE
-	AND NOT EXISTS(
-		SELECT 1 FROM user_actions
-		WHERE user_actions.user_id = users.id AND
-		user_actions.removed_time IS NULL AND
-		user_actions.end_time IS NULL AND
-		user_actions.action_type = $2
-	)`, strings.ToLower(prefix), ms.ModActionType_SUSPEND_ACCOUNT)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var UUID string
-	var username string
-=======
 	rows, err := s.queries.UsersByPrefix(ctx, models.UsersByPrefixParams{
 		Prefix:            strings.ToLower(prefix),
 		SuspendActionType: int32(ms.ModActionType_SUSPEND_ACCOUNT),
@@ -729,7 +666,6 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 		return nil, err
 	}
 
->>>>>>> origin/master
 	users := []*pb.BasicUser{}
 	for _, row := range rows {
 		users = append(users, &pb.BasicUser{Uuid: row.Uuid, Username: row.Username})
