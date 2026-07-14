@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Tabs, Tooltip } from "antd";
+import { Button, Card, Tabs, Tooltip } from "antd";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
 import {
@@ -324,11 +324,14 @@ const LeagueStatusCard = ({ leagueData }: { leagueData: LeagueWithSeason }) => {
   );
 };
 
+// Live tournaments can pile up (some misconfigured to run for months, which
+// domino edits by hand), so cap the Live Tournaments list and offer a "show
+// all" toggle instead of letting it push everything else down.
+const LIVE_TOURNAMENTS_CAP = 5;
+
 export const TournamentsAndLeaguesContent = ({
-  showLeagues = true,
   showBroadcasts = true,
 }: {
-  showLeagues?: boolean;
   showBroadcasts?: boolean;
 } = {}) => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<
@@ -337,9 +340,8 @@ export const TournamentsAndLeaguesContent = ({
   const [pastTournaments, setPastTournaments] = useState<
     Array<TournamentMetadata>
   >([]);
-  const [leagueStatuses, setLeagueStatuses] = useState<LeagueWithSeason[]>([]);
+  const [showAllLive, setShowAllLive] = useState(false);
   const tournamentClient = useClient(TournamentService);
-  const leagueClient = useClient(LeagueService);
   const { data: broadcastsData } = useQuery(getAllBroadcasts, {});
 
   useEffect(() => {
@@ -369,6 +371,172 @@ export const TournamentsAndLeaguesContent = ({
       }
     })();
   }, [tournamentClient]);
+
+  const now = new Date();
+  const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const allBroadcasts = broadcastsData?.broadcasts ?? [];
+  const activeBroadcasts = allBroadcasts.filter((b) => b.active);
+  const pastBroadcasts = allBroadcasts.filter((b) => !b.active).slice(0, 3);
+  const liveBroadcasts = activeBroadcasts.filter((b) => {
+    const s = b.pollStartTime?.seconds;
+    return s == null || new Date(Number(s) * 1000) <= now;
+  });
+  // Only show upcoming broadcasts starting within the next 14 days.
+  const upcomingBroadcasts = activeBroadcasts.filter((b) => {
+    const s = b.pollStartTime?.seconds;
+    if (s == null) return false;
+    const start = new Date(Number(s) * 1000);
+    return start > now && start <= in14Days;
+  });
+
+  // upcomingTournaments holds tournaments that have not yet ended (or have no
+  // end time). Split them: not-yet-started ones stay "Upcoming", while
+  // already-started ones become "Live". Tournaments with a start time in the
+  // past but no end time are treated as live (ongoing indefinitely), and any
+  // not-ended tournament without a start time is also shown as live so it is
+  // not silently dropped.
+  const notStartedTournaments = upcomingTournaments.filter((t) => {
+    if (!t.scheduledStartTime) return false;
+    const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
+    return now < start;
+  });
+  // Source list is ordered by start time ascending; reversing yields
+  // descending (latest start first) for the live section.
+  const liveTournaments = upcomingTournaments
+    .filter((t) => {
+      if (!t.scheduledStartTime) return true;
+      const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
+      return now >= start;
+    })
+    .slice()
+    .reverse();
+
+  const isEmpty =
+    (!showBroadcasts ||
+      (activeBroadcasts.length === 0 && pastBroadcasts.length === 0)) &&
+    upcomingTournaments.length === 0 &&
+    pastTournaments.length === 0;
+
+  const shownLiveTournaments = showAllLive
+    ? liveTournaments
+    : liveTournaments.slice(0, LIVE_TOURNAMENTS_CAP);
+
+  return (
+    <div className="tournaments-leagues-content">
+      {showBroadcasts && liveBroadcasts.length > 0 && (
+        <>
+          <h4>Live Broadcasts</h4>
+          <div className="tournaments-list">
+            {liveBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {liveTournaments.length > 0 && (
+        <>
+          <h4>Live Tournaments</h4>
+          <div className="tournaments-list">
+            {shownLiveTournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+          {!showAllLive && liveTournaments.length > LIVE_TOURNAMENTS_CAP && (
+            <Button
+              type="link"
+              className="show-more-live"
+              onClick={() => setShowAllLive(true)}
+            >
+              Show all {liveTournaments.length} live tournaments
+            </Button>
+          )}
+        </>
+      )}
+
+      {showBroadcasts && upcomingBroadcasts.length > 0 && (
+        <>
+          <h4>Upcoming Broadcasts</h4>
+          <div className="tournaments-list">
+            {upcomingBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {notStartedTournaments.length > 0 && (
+        <>
+          <h4>Upcoming Tournaments</h4>
+          <div className="tournaments-list">
+            {notStartedTournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {isEmpty && <div className="empty-state">No tournaments</div>}
+
+      {pastTournaments.length > 0 && (
+        <>
+          <h4>Past Tournaments</h4>
+          <div className="tournaments-list">
+            {pastTournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {showBroadcasts && pastBroadcasts.length > 0 && (
+        <>
+          <h4>Past Broadcasts</h4>
+          <div className="tournaments-list">
+            {pastBroadcasts.map((b) => (
+              <BroadcastCard key={b.uuid} broadcast={b} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const AnnouncementsContent = () => {
+  const [announcements, setAnnouncements] = useState<Array<Announcement>>([]);
+  const configClient = useClient(ConfigService);
+
+  useEffect(() => {
+    (async () => {
+      const resp = await configClient.getAnnouncements({});
+      setAnnouncements(resp.announcements);
+    })();
+  }, [configClient]);
+
+  const renderAnnouncements = announcements.map((a, idx) => (
+    <a href={a.link} target="_blank" rel="noopener noreferrer" key={idx}>
+      <li>
+        <h4>{a.title}</h4>
+        <div>
+          <ReactMarkdown
+            components={{
+              img: ({ src }) => <img src={src} style={{ maxWidth: 300 }} />,
+            }}
+          >
+            {a.body}
+          </ReactMarkdown>
+        </div>
+      </li>
+    </a>
+  ));
+
+  return <ul className="announcements-list">{renderAnnouncements}</ul>;
+};
+
+export const LeaguesContent = () => {
+  const [leagueStatuses, setLeagueStatuses] = useState<LeagueWithSeason[]>([]);
+  const leagueClient = useClient(LeagueService);
 
   useEffect(() => {
     (async () => {
@@ -497,6 +665,8 @@ export const TournamentsAndLeaguesContent = ({
     })();
   }, [leagueClient]);
 
+  // GetAllLeagues already returns leagues ORDER BY name and filter() preserves
+  // that order, so Collins (CSW) stays first with no extra sort.
   const activeLeagues = leagueStatuses.filter((ls) => {
     if (!ls.currentSeason) return false;
     // Show if active, registration open, or recently completed with champion
@@ -508,88 +678,9 @@ export const TournamentsAndLeaguesContent = ({
     return false;
   });
 
-  const now = new Date();
-  const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-  const allBroadcasts = broadcastsData?.broadcasts ?? [];
-  const activeBroadcasts = allBroadcasts.filter((b) => b.active);
-  const pastBroadcasts = allBroadcasts.filter((b) => !b.active).slice(0, 3);
-  const liveBroadcasts = activeBroadcasts.filter((b) => {
-    const s = b.pollStartTime?.seconds;
-    return s == null || new Date(Number(s) * 1000) <= now;
-  });
-  // Only show upcoming broadcasts starting within the next 14 days.
-  const upcomingBroadcasts = activeBroadcasts.filter((b) => {
-    const s = b.pollStartTime?.seconds;
-    if (s == null) return false;
-    const start = new Date(Number(s) * 1000);
-    return start > now && start <= in14Days;
-  });
-
-  // upcomingTournaments holds tournaments that have not yet ended (or have no
-  // end time). Split them: not-yet-started ones stay "Upcoming", while
-  // already-started ones become "Live". Tournaments with a start time in the
-  // past but no end time are treated as live (ongoing indefinitely), and any
-  // not-ended tournament without a start time is also shown as live so it is
-  // not silently dropped.
-  const notStartedTournaments = upcomingTournaments.filter((t) => {
-    if (!t.scheduledStartTime) return false;
-    const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
-    return now < start;
-  });
-  // Source list is ordered by start time ascending; reversing yields
-  // descending (latest start first) for the live section.
-  const liveTournaments = upcomingTournaments
-    .filter((t) => {
-      if (!t.scheduledStartTime) return true;
-      const start = new Date(Number(t.scheduledStartTime.seconds) * 1000);
-      return now >= start;
-    })
-    .slice()
-    .reverse();
-
-  const isEmpty =
-    (!showBroadcasts ||
-      (activeBroadcasts.length === 0 && pastBroadcasts.length === 0)) &&
-    upcomingTournaments.length === 0 &&
-    pastTournaments.length === 0 &&
-    (!showLeagues || activeLeagues.length === 0);
-
   return (
     <div className="tournaments-leagues-content">
-      {showBroadcasts && liveBroadcasts.length > 0 && (
-        <>
-          <h4>Live Broadcasts</h4>
-          <div className="tournaments-list">
-            {liveBroadcasts.map((b) => (
-              <BroadcastCard key={b.uuid} broadcast={b} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {showBroadcasts && upcomingBroadcasts.length > 0 && (
-        <>
-          <h4>Upcoming Broadcasts</h4>
-          <div className="tournaments-list">
-            {upcomingBroadcasts.map((b) => (
-              <BroadcastCard key={b.uuid} broadcast={b} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {notStartedTournaments.length > 0 && (
-        <>
-          <h4>Upcoming Tournaments</h4>
-          <div className="tournaments-list">
-            {notStartedTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {showLeagues && activeLeagues.length > 0 && (
+      {activeLeagues.length > 0 ? (
         <>
           <h4>Leagues</h4>
           <div className="leagues-list">
@@ -598,75 +689,11 @@ export const TournamentsAndLeaguesContent = ({
             ))}
           </div>
         </>
-      )}
-
-      {liveTournaments.length > 0 && (
-        <>
-          <h4>Live Tournaments</h4>
-          <div className="tournaments-list">
-            {liveTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {isEmpty && <div className="empty-state">No tournaments or leagues</div>}
-
-      {pastTournaments.length > 0 && (
-        <>
-          <h4>Past Tournaments</h4>
-          <div className="tournaments-list">
-            {pastTournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {showBroadcasts && pastBroadcasts.length > 0 && (
-        <>
-          <h4>Past Broadcasts</h4>
-          <div className="tournaments-list">
-            {pastBroadcasts.map((b) => (
-              <BroadcastCard key={b.uuid} broadcast={b} />
-            ))}
-          </div>
-        </>
+      ) : (
+        <div className="empty-state">No leagues</div>
       )}
     </div>
   );
-};
-
-const AnnouncementsContent = () => {
-  const [announcements, setAnnouncements] = useState<Array<Announcement>>([]);
-  const configClient = useClient(ConfigService);
-
-  useEffect(() => {
-    (async () => {
-      const resp = await configClient.getAnnouncements({});
-      setAnnouncements(resp.announcements);
-    })();
-  }, [configClient]);
-
-  const renderAnnouncements = announcements.map((a, idx) => (
-    <a href={a.link} target="_blank" rel="noopener noreferrer" key={idx}>
-      <li>
-        <h4>{a.title}</h4>
-        <div>
-          <ReactMarkdown
-            components={{
-              img: ({ src }) => <img src={src} style={{ maxWidth: 300 }} />,
-            }}
-          >
-            {a.body}
-          </ReactMarkdown>
-        </div>
-      </li>
-    </a>
-  ));
-
-  return <ul className="announcements-list">{renderAnnouncements}</ul>;
 };
 
 export const AnnouncementsWidget = () => {
@@ -675,6 +702,11 @@ export const AnnouncementsWidget = () => {
       key: "tournaments-leagues",
       label: "Events",
       children: <TournamentsAndLeaguesContent />,
+    },
+    {
+      key: "leagues",
+      label: "Leagues",
+      children: <LeaguesContent />,
     },
     {
       key: "announcements",

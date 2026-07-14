@@ -86,10 +86,7 @@ export const TournamentsPage = () => {
           )}
         </div>
         <div className="tournaments-page-content">
-          <TournamentsAndLeaguesContent
-            showLeagues={false}
-            showBroadcasts={false}
-          />
+          <TournamentsAndLeaguesContent showBroadcasts={false} />
         </div>
         {isLoggedIn && <MyTournamentsSection />}
       </div>
