@@ -758,6 +758,9 @@ func TestDisallowSamePlayerAbortAcceptance(t *testing.T) {
 func TestAddTimeDoesNotBroadcastRacksToGameChannel(t *testing.T) {
 	is := is.New(t)
 	gsetup := setupNewGame()
+	// Add-time is now gated to casual games, so make this one casual; otherwise
+	// the ADD_TIME event is rejected and no history refresher is broadcast.
+	gsetup.g.GameReq.RatingMode = pb.RatingMode_CASUAL
 
 	// Jesse adds time to their opponent.
 	opponentIdx := -1
@@ -806,5 +809,22 @@ func TestAddTimeDoesNotBroadcastRacksToGameChannel(t *testing.T) {
 	// one refresher from StartGame, one from the ADD_TIME event.
 	is.Equal(refresherCt, 2)
 
+	teardownGame(gsetup)
+}
+
+func TestHandleAddTimeRejectedInRatedGame(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	// The default test game is rated: add-time must be rejected server-side.
+	is.Equal(gsetup.g.GameReq.RatingMode, pb.RatingMode_RATED)
+	err := gameplay.HandleMetaEvent(context.Background(), &pb.GameMetaEvent{
+		Timestamp: timestamppb.New(time.Now()),
+		Type:      pb.GameMetaEvent_ADD_TIME,
+		PlayerId:  "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:    gsetup.g.GameID(),
+	}, gsetup.consumer.ch, gsetup.stores)
+	is.Equal(err, gameplay.ErrNotAllowed)
+	gsetup.cancel()
+	<-gsetup.donechan
 	teardownGame(gsetup)
 }
