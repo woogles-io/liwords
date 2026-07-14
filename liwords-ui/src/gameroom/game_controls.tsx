@@ -469,6 +469,9 @@ const GameControls = React.memo((props: Props) => {
         darkMode={darkMode}
         puzzleMode={!!props.puzzleMode}
         gameID={gameContext.gameID}
+        hasNextCorresGame={props.hasNextCorresGame}
+        onNextCorresGame={props.onNextCorresGame}
+        corresGamesWaiting={props.corresGamesWaiting}
       />
     );
   }
@@ -727,6 +730,9 @@ type EGCProps = {
   darkMode: boolean;
   puzzleMode: boolean;
   gameID: string;
+  hasNextCorresGame?: boolean;
+  onNextCorresGame?: () => void;
+  corresGamesWaiting?: number;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -812,7 +818,51 @@ const EndGameControls = (props: EGCProps) => {
         </div>
         {props.showRematch &&
           !props.tournamentPairedMode &&
-          !rematchDisabled && (
+          !rematchDisabled &&
+          (props.hasNextCorresGame ? (
+            // When a "Next" game is also available (correspondence/league),
+            // the play-slot button was "Next" during the game and then
+            // silently became "Rematch" at game end, so muscle-memory clicks
+            // fired accidental rematch requests. Offer both actions in a menu
+            // instead, so a click opens choices rather than firing Rematch.
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: "next",
+                    label: props.corresGamesWaiting
+                      ? `Next (${props.corresGamesWaiting})`
+                      : "Next",
+                  },
+                  {
+                    key: "rematch",
+                    label: "Rematch",
+                  },
+                ],
+                onClick: ({ key }) => {
+                  if (key === "next") {
+                    props.onNextCorresGame?.();
+                  } else if (key === "rematch") {
+                    setRematchDisabled(true);
+                    props.onRematch();
+                  }
+                },
+              }}
+              trigger={["click"]}
+              placement="topLeft"
+            >
+              <Button type="primary" className="play">
+                Game over
+                {props.corresGamesWaiting ? (
+                  <span className="next-game-count">
+                    {" "}
+                    <RightOutlined />
+                    {props.corresGamesWaiting}
+                  </span>
+                ) : null}
+              </Button>
+            </Dropdown>
+          ) : (
             <Button
               type="primary"
               data-testid="rematch-button"
@@ -826,7 +876,7 @@ const EndGameControls = (props: EGCProps) => {
             >
               Rematch
             </Button>
-          )}
+          ))}
       </div>
       {board3DData && (
         <React.Suspense fallback={null}>
