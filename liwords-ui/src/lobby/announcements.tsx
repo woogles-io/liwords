@@ -102,7 +102,10 @@ const BroadcastCard = ({ broadcast }: { broadcast: Broadcast }) => {
             <span className="registration-badge closed">Ended</span>
           )}
           {broadcast.lexicon && (
-            <span className="tournament-director">{broadcast.lexicon}</span>
+            <span className="tournament-lexicon">
+              <BookOutlined className="lexicon-icon" />
+              <MatchLexiconDisplay lexiconCode={broadcast.lexicon} />
+            </span>
           )}
         </div>
         {isUpcoming && startDate && (
