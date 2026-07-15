@@ -20,7 +20,12 @@ SELECT
     -- annotated games (type=1) have NULL game_end_reason so they never land in any end-reason bucket below
 	-- this is also why the sum of the game_end_reason percentages is slightly less than 100%
     CASE WHEN g.type = 1 THEN 1 ELSE 0 END AS annotated_game,
-    CASE WHEN g.type = 0 AND COALESCE(g.game_request ->> 'rating_mode', '0') = '0' THEN 1 ELSE 0 END AS rated_game,
+    -- rating_mode is serialized as camelCase string enum ("ratingMode": "CASUAL")
+    -- up to ~Sep 2025 and snake_case numeric ("rating_mode": 1) after; the RATED
+    -- default is usually omitted entirely, so absent = rated.
+    CASE WHEN g.type = 0 AND COALESCE(g.game_request ->> 'rating_mode',
+                                      g.game_request ->> 'ratingMode',
+                                      '0') NOT IN ('1', 'CASUAL') THEN 1 ELSE 0 END AS rated_game,
     g.game_request ->> 'lexicon' AS lexicon,
     LOWER(REPLACE(COALESCE(g.game_request -> 'rules' ->> 'letter_distribution_name',
                            g.game_request -> 'rules' ->> 'letterDistributionName'), '_super', '')) AS language_norm,
