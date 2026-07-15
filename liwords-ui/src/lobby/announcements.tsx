@@ -3,6 +3,7 @@ import { Button, Card, Tabs, Tooltip } from "antd";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
 import {
+  BookOutlined,
   GlobalOutlined,
   DesktopOutlined,
   TeamOutlined,
@@ -19,6 +20,7 @@ import type { League, Season } from "../gen/api/proto/ipc/league_pb";
 import { useQuery } from "@connectrpc/connect-query";
 import { getAllBroadcasts } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import type { Broadcast } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
+import { MatchLexiconDisplay } from "../shared/lexicon_display";
 import "./upcoming_tournaments.scss";
 
 export type Announcements = {
@@ -130,6 +132,16 @@ export const TournamentCard = ({
   const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
   const isUpcoming = startDate && now < startDate;
 
+  // Distinct lexica configured across the tournament's divisions. Empty for
+  // IRL-mode or not-yet-configured tournaments, in which case we show nothing.
+  const lexica = Array.from(
+    new Set(
+      (tournament.divisions ?? [])
+        .map((d) => d.gameRequest?.lexicon)
+        .filter((l): l is string => !!l),
+    ),
+  );
+
   return (
     <div className="tournament-card">
       <div className="tournament-header">
@@ -159,6 +171,17 @@ export const TournamentCard = ({
             <TeamOutlined className="registrants-icon" />
             {tournament.registrantCount}
           </span>
+          {lexica.length > 0 && (
+            <span className="tournament-lexicon">
+              <BookOutlined className="lexicon-icon" />
+              {lexica.map((lex, i) => (
+                <span key={lex}>
+                  {i > 0 ? ", " : ""}
+                  <MatchLexiconDisplay lexiconCode={lex} />
+                </span>
+              ))}
+            </span>
+          )}
           {isUpcoming && (
             <Tooltip
               title={`Registrations are ${tournament.registrationOpen ? "open" : "closed"}`}
