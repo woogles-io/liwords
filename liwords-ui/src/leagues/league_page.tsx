@@ -36,7 +36,6 @@ import {
   getSeasonRegistrations,
   registerForSeason,
   unregisterFromSeason,
-  openRegistration,
   getDivisionTimeBankWarnings,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { hasPermission, Perm } from "../mod/perms";
@@ -460,24 +459,6 @@ export const LeaguePage = (props: Props) => {
     },
   });
 
-  // Admin mutation to open registration
-  const openRegistrationMutation = useMutation(openRegistration, {
-    onSuccess: async (response) => {
-      // Refetch queries with proper Connect Query syntax
-      await queryClient.refetchQueries({
-        queryKey: ["connect-query", { methodName: "GetAllSeasons" }],
-      });
-      const seasonNumber = response.season?.seasonNumber || "next";
-      notification.success({
-        message: "Registration Opened",
-        description: `Registration has been opened for Season ${seasonNumber}.`,
-      });
-    },
-    onError: (error) => {
-      flashError(error);
-    },
-  });
-
   // Handler functions
   const handleRegister = () => {
     // Show commitment modal before registering
@@ -508,19 +489,6 @@ export const LeaguePage = (props: Props) => {
     });
     setShowUnregisterConfirm(false);
   };
-
-  const handleOpenRegistration = () => {
-    if (!slug || !scheduledSeason) return;
-    openRegistrationMutation.mutate({
-      leagueId: slug,
-      seasonId: scheduledSeason.uuid,
-    });
-  };
-
-  // Check if registration is open (any season has REGISTRATION_OPEN status)
-  const isRegistrationOpen = useMemo(() => {
-    return registrationOpenSeason !== null;
-  }, [registrationOpenSeason]);
 
   // Define "next season".
   const nextSeason = registrationOpenSeason ?? scheduledSeason;
@@ -719,20 +687,6 @@ export const LeaguePage = (props: Props) => {
                     })}
                   </Select>
                 )}
-                {/* Admin button to open registration */}
-                {canManageLeagues &&
-                  loggedIn &&
-                  !isRegistrationOpen &&
-                  scheduledSeason && (
-                    <Button
-                      type="default"
-                      size="small"
-                      onClick={handleOpenRegistration}
-                      loading={openRegistrationMutation.isPending}
-                    >
-                      Open Registration
-                    </Button>
-                  )}
               </div>
             </div>
 
