@@ -56,7 +56,11 @@ func playerStandingFields(fd *FeedData, name string) (record, place, spread, rat
 	if n := placeInDivision(fd, name); n > 0 {
 		placeStr = ordinal(n)
 	}
-	return formatRecord(stats.wins, stats.losses), placeStr, formatSpread(stats.spread), fmt.Sprintf("%d", p.Rating)
+	// Rating and spread are each their own standalone OBS field (unlike
+	// score, there's no " - " to center around), so a plain fixed
+	// right-justified width is enough to keep them from jittering in place
+	// as digit count changes.
+	return formatRecord(stats.wins, stats.losses), placeStr, fmt.Sprintf("%4s", formatSpread(stats.spread)), fmt.Sprintf("%4d", p.Rating)
 }
 
 func findFeedPlayerByName(fd *FeedData, name string) *FeedPlayer {

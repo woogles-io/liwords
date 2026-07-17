@@ -965,6 +965,7 @@ func obsIsBlank(suffix string) bool {
 //
 //	bg        background color  (default: white)
 //	color     text color        (default: black)
+//	align     text-align: left, center, or right (default: center)
 //	size      font size in px   (default: per field — 48 for score, 24 for last_play, 20 otherwise)
 //	font      font-family CSS   (default: 'Courier New', monospace)
 //	bold      0 to disable bold (default: bold on)
@@ -1036,6 +1037,7 @@ body {
   var p = new URLSearchParams(location.search);
   var bg         = p.get('bg')      || 'white';
   var color      = p.get('color')   || 'black';
+  var align      = p.get('align')   || 'center';
   var size       = parseInt(p.get('size') || defSize, 10);
   var font       = p.get('font')    || "'Courier New', monospace";
   var bold       = p.get('bold')    !== '0';
@@ -1053,6 +1055,7 @@ body {
   content.style.fontSize   = size + 'px';
   content.style.fontFamily = font;
   content.style.fontWeight = bold ? 'bold' : 'normal';
+  content.style.textAlign  = align;
 
   /* ---- marquee setup ---- */
   function setMarqueeSpeed(el) {

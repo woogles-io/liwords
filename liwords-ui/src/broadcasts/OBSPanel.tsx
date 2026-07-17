@@ -44,9 +44,13 @@ export const OBS_SUFFIX_LABELS: Record<OBSSuffix, string> = {
   opponent_name: "Opponent Name",
 };
 
-// Sample data shown in the preview (no real SSE needed)
+// Sample data shown in the preview (no real SSE needed). Numeric fields use
+// the same space-padding the backend applies (see obs.go/obs_tournament.go):
+// score right-justifies the left number and left-justifies the right one so
+// both hug the " - " while padding lands on the outer edges; rating/spread
+// are simple fixed-width right-justify since they're standalone fields.
 const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
-  score: "345 - 298",
+  score: " 45 - 7  ",
   p1_score: "345",
   p2_score: "298",
   unseen_tiles: "AAEIOU BCDFG HKLMN PRSTT ?",
@@ -63,9 +67,9 @@ const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
   p1_place: "2nd",
   p2_place: "4th",
   p1_spread: "+245",
-  p2_spread: "-30",
+  p2_spread: " -30",
   p1_rating: "1875",
-  p2_rating: "1802",
+  p2_rating: " 802",
   division: "Championship",
   tournament: "Albany Open 2026",
   round: "7 of 31",
@@ -174,6 +178,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   const [bg, setBg] = useState("#ffffff");
   const [transparentBg, setTransparentBg] = useState(true);
   const [textColor, setTextColor] = useState("#000000");
+  const [align, setAlign] = useState<"left" | "center" | "right">("center");
   const [size, setSize] = useState(defaultSizeForSuffix("score"));
   const [font, setFont] = useState("mono");
   const [bold, setBold] = useState(true);
@@ -249,6 +254,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
     if (transparentBg) params.set("bg", "transparent");
     else if (bg !== "#ffffff") params.set("bg", bg);
     if (textColor !== "#000000") params.set("color", textColor);
+    if (align !== "center") params.set("align", align);
     const defSize = defaultSizeForSuffix(suffix);
     if (size !== defSize) params.set("size", String(size));
     if (font !== "mono") params.set("font", FONT_FAMILY_MAP[font]);
@@ -297,6 +303,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
     whiteSpace: "pre",
     lineHeight: 1.2,
     width: "100%",
+    textAlign: align,
   };
 
   // Measure the marquee's inner element (which holds two duplicated copies
@@ -444,6 +451,23 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
                 value={textColor}
                 onChange={(e) => setTextColor(e.target.value)}
                 style={{ width: 60, height: 32, cursor: "pointer", padding: 2 }}
+              />
+            </div>
+            <div>
+              <Typography.Text
+                style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+              >
+                Alignment
+              </Typography.Text>
+              <Select
+                value={align}
+                onChange={setAlign}
+                options={[
+                  { value: "left", label: "Left" },
+                  { value: "center", label: "Center" },
+                  { value: "right", label: "Right" },
+                ]}
+                style={{ width: 110 }}
               />
             </div>
             <div>

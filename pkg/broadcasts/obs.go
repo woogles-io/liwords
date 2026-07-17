@@ -156,11 +156,15 @@ func renderMainWordWithBlanks(evt *ipc.GameEvent, rm *tilemapping.TileMapping) (
 	return sb.String(), true
 }
 
-// formatScore returns the combined score string, WatchGCG std-compatible.
-// Example: "045 - 032"
+// formatScore returns the combined score string, space-padded (not
+// zero-padded) so the " - " separator holds a stable position regardless of
+// digit count: the left score is right-justified and the right score is
+// left-justified, so padding accumulates on the two outer edges rather than
+// pushing the numbers apart from the dash.
+// Example: " 45 - 32 ", " 45 - 7  "
 func formatScore(doc *ipc.GameDocument) string {
 	p1, p2 := scoresPair(doc)
-	return fmt.Sprintf("%03d - %03d", p1, p2)
+	return fmt.Sprintf("%3d - %-3d", p1, p2)
 }
 
 // formatPlayerScore returns the score for a single player, right-justified to
