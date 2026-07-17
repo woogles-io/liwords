@@ -83,7 +83,11 @@ export const LeagueCorrespondenceGames: React.FC<
         .beforeExpiry;
     };
 
-    // Sort: user's turn first, then by the real time-until-expiry (ascending).
+    // Sort: user's turn first (by real time-until-expiry, ascending, since
+    // those are the urgent ones), then opponent's-turn games by updated_at
+    // (ascending, oldest first) - you don't act on those, so a deadline you
+    // don't own is not a useful ordering. updated_at is the time of the last
+    // event (normally our move, since it is now their turn).
     return filtered.sort((a, b) => {
       const aOnTurn =
         a.playerOnTurn !== undefined &&
@@ -97,7 +101,10 @@ export const LeagueCorrespondenceGames: React.FC<
       if (aOnTurn && !bOnTurn) return -1;
       if (!aOnTurn && bOnTurn) return 1;
 
-      return expiryOf(a) - expiryOf(b);
+      if (aOnTurn && bOnTurn) {
+        return expiryOf(a) - expiryOf(b);
+      }
+      return (a.lastUpdate ?? Infinity) - (b.lastUpdate ?? Infinity);
     });
   }, [correspondenceGames, leagueSlug, userID]);
 
