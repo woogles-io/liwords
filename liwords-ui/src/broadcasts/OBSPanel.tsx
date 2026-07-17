@@ -9,7 +9,12 @@ import {
   Typography,
   App,
 } from "antd";
-import { OBS_SUFFIXES, type OBSSuffix } from "./constants";
+import {
+  OBS_SUFFIXES,
+  OBS_SLOT_ONLY_SUFFIXES,
+  OBS_USER_ONLY_SUFFIXES,
+  type OBSSuffix,
+} from "./constants";
 
 // Human-readable labels for each OBS suffix
 export const OBS_SUFFIX_LABELS: Record<OBSSuffix, string> = {
@@ -24,6 +29,19 @@ export const OBS_SUFFIX_LABELS: Record<OBSSuffix, string> = {
   p1_name: "Player 1 Name",
   p2_name: "Player 2 Name",
   combined_names: "Both Names (P1 - P2)",
+  p1_record: "Player 1 Record (W-L)",
+  p2_record: "Player 2 Record (W-L)",
+  p1_place: "Player 1 Place",
+  p2_place: "Player 2 Place",
+  p1_spread: "Player 1 Spread",
+  p2_spread: "Player 2 Spread",
+  p1_rating: "Player 1 Rating",
+  p2_rating: "Player 2 Rating",
+  division: "Division",
+  tournament: "Tournament Name",
+  round: "Round",
+  table: "Table Number",
+  opponent_name: "Opponent Name",
 };
 
 // Sample data shown in the preview (no real SSE needed)
@@ -40,6 +58,19 @@ const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
   p1_name: "Alice Smith",
   p2_name: "Bob Jones",
   combined_names: "Alice Smith - Bob Jones",
+  p1_record: "6-1",
+  p2_record: "5-2",
+  p1_place: "2",
+  p2_place: "4",
+  p1_spread: "+245",
+  p2_spread: "-30",
+  p1_rating: "1875",
+  p2_rating: "1802",
+  division: "Championship",
+  tournament: "Albany Open 2026",
+  round: "7 of 31",
+  table: "12",
+  opponent_name: "Bob Jones",
 };
 
 const FONT_OPTIONS = [
@@ -181,6 +212,26 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
         ? `/api/annotations/obs/user/${username}`
         : `/api/annotations/obs/game/${gameID}`;
 
+  // Tournament-standings fields only resolve in slot mode (the feed is tied
+  // to a slot's tournament); opponent_name only makes sense relative to a
+  // single tracked player, which only user mode has.
+  const isSuffixAvailable = (val: OBSSuffix, forMode: OBSMode) => {
+    if (OBS_SLOT_ONLY_SUFFIXES.includes(val)) return forMode === "slot";
+    if (OBS_USER_ONLY_SUFFIXES.includes(val)) return forMode === "user";
+    return true;
+  };
+  const availableSuffixes = OBS_SUFFIXES.filter((s) =>
+    isSuffixAvailable(s, mode),
+  );
+
+  const handleModeChange = (val: OBSMode) => {
+    setMode(val);
+    if (!isSuffixAvailable(suffix, val)) {
+      setSuffix("score");
+      setSize(defaultSizeForSuffix("score"));
+    }
+  };
+
   const isMarquee = suffix === "last_play";
   const isBlankField = suffix === "blank1" || suffix === "blank2";
   const isWrappable = suffix === "unseen_tiles";
@@ -307,7 +358,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               <br />
               <Select<OBSMode>
                 value={mode}
-                onChange={setMode}
+                onChange={handleModeChange}
                 style={{ width: "100%", marginTop: 4 }}
                 options={modeOptions}
               />
@@ -321,7 +372,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
               value={suffix}
               onChange={handleSuffixChange}
               style={{ width: "100%", marginTop: 4 }}
-              options={OBS_SUFFIXES.map((s) => ({
+              options={availableSuffixes.map((s) => ({
                 value: s,
                 label: OBS_SUFFIX_LABELS[s],
               }))}
