@@ -1,6 +1,6 @@
-import { createElement, useCallback } from "react";
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -1072,24 +1072,34 @@ export const useOnSocketMsg = () => {
             if (ev.gameId !== gameContext.gameID) {
               const key = `analysis-complete-${ev.gameId}`;
               const analysisPath = `/game/${encodeURIComponent(ev.gameId)}`;
-              // Render the toast text as router links so a plain click stays a
-              // cheap same-tab navigation, while ctrl/cmd/middle-click opens the
-              // analysis in a new tab natively -- no popup blocker, and no
-              // forced full-page reload for users who just want the same tab.
-              const analysisLink = (text: string) =>
-                createElement(
-                  Link,
-                  {
-                    to: analysisPath,
-                    onClick: () => notification.destroy(key),
-                  },
-                  text,
-                );
               notification.success({
-                message: analysisLink("Computer analysis ready"),
-                description: analysisLink("Click to view the analysis"),
+                message: "Computer analysis ready",
+                description: "Click to view the analysis",
                 key,
                 duration: 0,
+                // antd types this as a zero-arg callback, but it is passed
+                // straight through to the notice div, so React does hand us the
+                // event. An optional parameter keeps that usable without a cast.
+                onClick: (event?: React.MouseEvent<HTMLDivElement>) => {
+                  if (event?.ctrlKey || event?.altKey || event?.metaKey) {
+                    window.open(analysisPath);
+                  } else {
+                    navigate(analysisPath);
+                  }
+                  notification.destroy(key);
+                },
+                // antd spreads `props` onto the notice div and then sets its
+                // own onClick last, so an onClick here would be clobbered --
+                // onAuxClick is untouched and is the only way to get one.
+                props: {
+                  onAuxClick: (event: React.MouseEvent<HTMLDivElement>) => {
+                    if (event.button === 1) {
+                      // middle-click
+                      window.open(analysisPath);
+                      notification.destroy(key);
+                    }
+                  },
+                },
               });
             }
             break;
