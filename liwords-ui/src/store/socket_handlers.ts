@@ -1071,14 +1071,34 @@ export const useOnSocketMsg = () => {
             });
             if (ev.gameId !== gameContext.gameID) {
               const key = `analysis-complete-${ev.gameId}`;
+              const analysisPath = `/game/${encodeURIComponent(ev.gameId)}`;
               notification.success({
                 message: "Computer analysis ready",
                 description: "Click to view the analysis",
                 key,
                 duration: 0,
-                onClick: () => {
-                  navigate(`/game/${encodeURIComponent(ev.gameId)}`);
+                // antd types this as a zero-arg callback, but it is passed
+                // straight through to the notice div, so React does hand us the
+                // event. An optional parameter keeps that usable without a cast.
+                onClick: (event?: React.MouseEvent<HTMLDivElement>) => {
+                  if (event?.ctrlKey || event?.altKey || event?.metaKey) {
+                    window.open(analysisPath);
+                  } else {
+                    navigate(analysisPath);
+                  }
                   notification.destroy(key);
+                },
+                // antd spreads `props` onto the notice div and then sets its
+                // own onClick last, so an onClick here would be clobbered --
+                // onAuxClick is untouched and is the only way to get one.
+                props: {
+                  onAuxClick: (event: React.MouseEvent<HTMLDivElement>) => {
+                    if (event.button === 1) {
+                      // middle-click
+                      window.open(analysisPath);
+                      notification.destroy(key);
+                    }
+                  },
                 },
               });
             }
