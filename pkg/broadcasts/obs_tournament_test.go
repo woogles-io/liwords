@@ -34,9 +34,9 @@ func TestPlayerStandingFields(t *testing.T) {
 		wantSpread string
 		wantRating string
 	}{
-		{"Alice", "2-0", "1", "+130", "1500"},
-		{"Bob", "1-1", "2", "-30", "1400"},
-		{"Carol", "0-2", "3", "-100", "1300"},
+		{"Alice", "2-0", "1st", "+130", "1500"},
+		{"Bob", "1-1", "2nd", "-30", "1400"},
+		{"Carol", "0-2", "3rd", "-100", "1300"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -92,11 +92,11 @@ func TestApplyTournamentFields(t *testing.T) {
 	if data.Round != "2 of 3" {
 		t.Errorf("Round = %q", data.Round)
 	}
-	if data.P1Record != "2-0" || data.P1Place != "1" || data.P1Spread != "+130" || data.P1Rating != "1500" {
+	if data.P1Record != "2-0" || data.P1Place != "1st" || data.P1Spread != "+130" || data.P1Rating != "1500" {
 		t.Errorf("p1 fields wrong: record=%q place=%q spread=%q rating=%q",
 			data.P1Record, data.P1Place, data.P1Spread, data.P1Rating)
 	}
-	if data.P2Record != "1-1" || data.P2Place != "2" || data.P2Spread != "-30" || data.P2Rating != "1400" {
+	if data.P2Record != "1-1" || data.P2Place != "2nd" || data.P2Spread != "-30" || data.P2Rating != "1400" {
 		t.Errorf("p2 fields wrong: record=%q place=%q spread=%q rating=%q",
 			data.P2Record, data.P2Place, data.P2Spread, data.P2Rating)
 	}

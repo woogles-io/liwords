@@ -54,7 +54,7 @@ func playerStandingFields(fd *FeedData, name string) (record, place, spread, rat
 	stats := computePlayerStats(*p, fd.Players)
 	placeStr := obsPlaceholder
 	if n := placeInDivision(fd, name); n > 0 {
-		placeStr = fmt.Sprintf("%d", n)
+		placeStr = ordinal(n)
 	}
 	return formatRecord(stats.wins, stats.losses), placeStr, formatSpread(stats.spread), fmt.Sprintf("%d", p.Rating)
 }
@@ -106,4 +106,21 @@ func formatSpread(spread int) string {
 		return fmt.Sprintf("+%d", spread)
 	}
 	return fmt.Sprintf("%d", spread)
+}
+
+// ordinal renders a 1-based rank as an ordinal, e.g. 1 -> "1st", 2 -> "2nd",
+// 3 -> "3rd", 4 -> "4th", 11 -> "11th", 21 -> "21st".
+func ordinal(n int) string {
+	suffix := "th"
+	if n%100 < 11 || n%100 > 13 {
+		switch n % 10 {
+		case 1:
+			suffix = "st"
+		case 2:
+			suffix = "nd"
+		case 3:
+			suffix = "rd"
+		}
+	}
+	return fmt.Sprintf("%d%s", n, suffix)
 }

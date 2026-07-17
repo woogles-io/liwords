@@ -60,8 +60,8 @@ const OBS_SAMPLE_DATA: Record<OBSSuffix, string> = {
   combined_names: "Alice Smith - Bob Jones",
   p1_record: "6-1",
   p2_record: "5-2",
-  p1_place: "2",
-  p2_place: "4",
+  p1_place: "2nd",
+  p2_place: "4th",
   p1_spread: "+245",
   p2_spread: "-30",
   p1_rating: "1875",
@@ -299,26 +299,48 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
     width: "100%",
   };
 
-  // Measure the marquee span after it renders so we can derive the
-  // animation duration in px/s.  useLayoutEffect fires synchronously
-  // before the browser paints, so the two renders (first with
-  // duration=null → animation off, second with computed duration) are
-  // batched into a single paint by the browser.
-  const marqueeSpanRef = useRef<HTMLSpanElement>(null);
-  const [marqueeDuration, setMarqueeDuration] = useState<number | null>(null);
+  // Measure the marquee's inner element (which holds two duplicated copies
+  // of the text, back to back, for a seamless loop — see obs_handler.go's
+  // .mq-inner/.mq-seg) after it renders, to derive the animation duration in
+  // px/s. Duration is based on ONE copy's width (half the measured total).
+  // useLayoutEffect fires synchronously before the browser paints, so the
+  // two renders (first with duration=null → animation off, second with
+  // computed duration) are batched into a single paint by the browser.
+  const marqueeInnerRef = useRef<HTMLDivElement>(null);
+  const [marqueeAnimation, setMarqueeAnimation] = useState<string | null>(
+    null,
+  );
   useLayoutEffect(() => {
-    if (!isMarquee || !marqueeSpanRef.current) {
-      setMarqueeDuration(null);
+    if (!isMarquee || !marqueeInnerRef.current) {
+      setMarqueeAnimation(null);
       return;
     }
-    const w = marqueeSpanRef.current.offsetWidth;
-    if (w > 0) setMarqueeDuration(w / speed);
-  }, [isMarquee, speed, sampleText]);
+    const copyWidth = marqueeInnerRef.current.offsetWidth / 2;
+    if (copyWidth <= 0) {
+      setMarqueeAnimation(null);
+      return;
+    }
+    // Chain a one-shot obs-mq-intro (the 1em head start) into the infinite
+    // obs-mq-scroll loop, handing off at the exact position/time obs-mq-scroll
+    // expects. Baking the head start into obs-mq-scroll's own keyframes
+    // instead would break its loop math — it only repeats seamlessly when it
+    // travels exactly one copy-width per cycle, so a jump would reappear at
+    // every restart. See obs_handler.go's setMarqueeSpeed for the Go twin.
+    const introDur = size / speed; // 1em resolves to the size (px) value
+    const loopDur = copyWidth / speed;
+    setMarqueeAnimation(
+      `obs-mq-intro ${introDur}s linear 1 forwards, obs-mq-scroll ${loopDur}s linear ${introDur}s infinite`,
+    );
+  }, [isMarquee, speed, sampleText, size]);
 
   const marqueeKeyframes = `
+    @keyframes obs-mq-intro {
+      from { transform: translateX(1em); }
+      to   { transform: translateX(0); }
+    }
     @keyframes obs-mq-scroll {
       from { transform: translateX(0); }
-      to   { transform: translateX(-100%); }
+      to   { transform: translateX(-50%); }
     }
   `;
 
@@ -542,21 +564,33 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
                 <>
                   <style>{marqueeKeyframes}</style>
                   <div style={{ width: "100%", overflow: "hidden" }}>
-                    <span
-                      ref={marqueeSpanRef}
+                    <div
+                      ref={marqueeInnerRef}
                       style={{
-                        ...previewTextStyle,
-                        width: "auto",
-                        display: "inline-block",
+                        display: "inline-flex",
                         whiteSpace: "nowrap",
-                        paddingLeft: "100%",
-                        ...(marqueeDuration !== null && {
-                          animation: `obs-mq-scroll ${marqueeDuration}s linear infinite`,
+                        // Sets the base for the keyframes' 1em head-start so
+                        // it tracks the configured text size.
+                        fontSize: size,
+                        ...(marqueeAnimation !== null && {
+                          animation: marqueeAnimation,
                         }),
                       }}
                     >
-                      {sampleText}
-                    </span>
+                      {[0, 1].map((i) => (
+                        <span
+                          key={i}
+                          style={{
+                            ...previewTextStyle,
+                            width: "auto",
+                            flex: "0 0 auto",
+                            paddingRight: "2em",
+                          }}
+                        >
+                          {sampleText}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </>
               ) : isBlankField ? (

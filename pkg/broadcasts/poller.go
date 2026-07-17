@@ -2,8 +2,12 @@ package broadcasts
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -86,8 +90,98 @@ func (bs *BroadcastService) pollBroadcast(ctx context.Context, id int32, broadca
 	return nil
 }
 
+// aiaCertCache caches intermediate certificates fetched via the Authority
+// Information Access "CA Issuers" URL, keyed by that URL.
+var aiaCertCache sync.Map // string -> *x509.Certificate
+
+// fetchIssuerCert downloads and parses the issuer certificate served at an
+// Authority Information Access "CA Issuers" URL, caching the result.
+func fetchIssuerCert(url string) (*x509.Certificate, error) {
+	if v, ok := aiaCertCache.Load(url); ok {
+		return v.(*x509.Certificate), nil
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url) //nolint:gosec // fixed AIA URL taken from a verified leaf cert
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	cert, err := x509.ParseCertificate(body)
+	if err != nil {
+		return nil, fmt.Errorf("parse issuer cert from %s: %w", url, err)
+	}
+	aiaCertCache.Store(url, cert)
+	return cert, nil
+}
+
+// verifyWithAIAFallback verifies the server's certificate chain, fetching
+// missing intermediate certificates via the leaf's Authority Information
+// Access extension when the server doesn't send a full chain (as browsers
+// do automatically but Go's TLS stack does not). This works around broadcast
+// feed hosts, such as event.scrabbleplayers.org, that omit their
+// intermediate CA cert from the TLS handshake.
+func verifyWithAIAFallback(cs tls.ConnectionState) error {
+	if len(cs.PeerCertificates) == 0 {
+		return fmt.Errorf("no peer certificates presented")
+	}
+	roots, err := x509.SystemCertPool()
+	if err != nil || roots == nil {
+		roots = x509.NewCertPool()
+	}
+	intermediates := x509.NewCertPool()
+	for _, c := range cs.PeerCertificates[1:] {
+		intermediates.AddCert(c)
+	}
+
+	leaf := cs.PeerCertificates[0]
+	opts := x509.VerifyOptions{
+		DNSName:       cs.ServerName,
+		Roots:         roots,
+		Intermediates: intermediates,
+	}
+	_, verifyErr := leaf.Verify(opts)
+
+	// Walk up the chain, fetching each missing issuer, until verification
+	// succeeds, fails for a reason other than a missing issuer, or we run
+	// out of AIA URLs to follow.
+	cert := leaf
+	for range 5 {
+		if verifyErr == nil {
+			return nil
+		}
+		if _, ok := verifyErr.(x509.UnknownAuthorityError); !ok {
+			return verifyErr
+		}
+		if len(cert.IssuingCertificateURL) == 0 {
+			return verifyErr
+		}
+		issuer, fetchErr := fetchIssuerCert(cert.IssuingCertificateURL[0])
+		if fetchErr != nil {
+			return verifyErr
+		}
+		intermediates.AddCert(issuer)
+		cert = issuer
+		_, verifyErr = leaf.Verify(opts)
+	}
+	return verifyErr
+}
+
+var broadcastHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // verified manually via VerifyConnection below
+			VerifyConnection:   verifyWithAIAFallback,
+		},
+	},
+}
+
 func fetchURL(url string) ([]byte, error) {
-	resp, err := http.Get(url) //nolint:gosec // URL is admin-configured
+	resp, err := broadcastHTTPClient.Get(url) //nolint:gosec // URL is admin-configured
 	if err != nil {
 		return nil, err
 	}

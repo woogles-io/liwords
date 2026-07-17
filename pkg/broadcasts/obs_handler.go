@@ -997,14 +997,26 @@ body {
   overflow: hidden;
 }
 .mq-inner {
-  display: inline-block;
+  display: inline-flex;
   white-space: nowrap;
-  padding-left: 100%;
-  animation: mq-scroll linear infinite;
+  /* animation set in JS below, once the text's rendered width is known */
+}
+.mq-seg {
+  flex: 0 0 auto;
+  padding-right: 2em;
+}
+/* One-shot lead-in: slides in the last 1em before the resting/flush
+   position, then hands off to the perfectly seamless mq-scroll loop. Baking
+   this offset into mq-scroll's own keyframes instead would break the loop's
+   math — it only repeats seamlessly when it travels exactly one copy-width
+   per cycle, so a jump would reappear at every restart. */
+@keyframes mq-intro {
+  from { transform: translateX(1em); }
+  to   { transform: translateX(0); }
 }
 @keyframes mq-scroll {
   from { transform: translateX(0); }
-  to   { transform: translateX(-100%); }
+  to   { transform: translateX(-50%); }
 }
 /* blank-designated letters */
 .blank-letter { color: var(--blank-color, #d33300); }
@@ -1044,10 +1056,19 @@ body {
 
   /* ---- marquee setup ---- */
   function setMarqueeSpeed(el) {
-    var w = el.offsetWidth;
-    if (w > 0) {
-      el.style.animationDuration = (w / speed) + 's';
-    }
+    /* el contains two identical copies of the text (for a seamless loop),
+       so one copy's width is half of the element's total width. Chain a
+       one-shot mq-intro (the 1em head start) into the infinite mq-scroll
+       loop, handing off at the exact position/time mq-scroll expects —
+       otherwise the loop restarts from a different offset than it ended
+       on, and jumps every cycle. */
+    var copyWidth = el.offsetWidth / 2;
+    if (copyWidth <= 0) return;
+    var introDur = size / speed;   /* 1em resolves to the size (px) variable */
+    var loopDur  = copyWidth / speed;
+    el.style.animation =
+      'mq-intro ' + introDur + 's linear 1 forwards, ' +
+      'mq-scroll ' + loopDur + 's linear ' + introDur + 's infinite';
   }
 
   /* ---- line wrapping ---- */
@@ -1082,14 +1103,30 @@ body {
     });
   }
 
+  var lastText = null;
+
   function setText(text) {
     text = wrapText(text);
+    /* Skip the DOM rebuild when the value hasn't actually changed — the SSE
+       stream re-sends every field on any game-state update (e.g. a rack
+       edit), not just the fields that changed, and rebuilding the marquee's
+       DOM restarts its CSS animation from scratch. */
+    if (text === lastText) return;
+    lastText = text;
+
     if (isMarquee) {
       var mwrap = document.createElement('div');
       mwrap.className = 'mq-wrap';
-      var inner = document.createElement('span');
+      var inner = document.createElement('div');
       inner.className = 'mq-inner';
-      inner.textContent = text;
+      var seg1 = document.createElement('span');
+      seg1.className = 'mq-seg';
+      seg1.textContent = text;
+      var seg2 = document.createElement('span');
+      seg2.className = 'mq-seg';
+      seg2.textContent = text;
+      inner.appendChild(seg1);
+      inner.appendChild(seg2);
       mwrap.appendChild(inner);
       content.innerHTML = '';
       content.appendChild(mwrap);

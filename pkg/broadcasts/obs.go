@@ -44,7 +44,7 @@ type OBSData struct {
 	// is unavailable. See obs_tournament.go.
 	P1Record   string `json:"p1_record"` // "W-L", e.g. "6-1" or "5.5-1.5" (ties)
 	P2Record   string `json:"p2_record"`
-	P1Place    string `json:"p1_place"` // 1-based rank within the division
+	P1Place    string `json:"p1_place"` // ordinal rank within the division, e.g. "1st", "11th"
 	P2Place    string `json:"p2_place"`
 	P1Spread   string `json:"p1_spread"` // signed cumulative spread, e.g. "+245"
 	P2Spread   string `json:"p2_spread"`
