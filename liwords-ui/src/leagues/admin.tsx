@@ -32,6 +32,7 @@ import {
   updateSeasonDates,
   unregisterFromSeason,
   cancelPlayerResults,
+  openRegistration,
 } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { flashError } from "../utils/hooks/connect";
 import { useLoginStateStoreContext } from "../store/store";
@@ -64,6 +65,10 @@ export const LeagueAdmin = () => {
   const [selectedEditDatesLeagueId, setSelectedEditDatesLeagueId] =
     useState<string>("");
   const [selectedEditDatesSeasonId, setSelectedEditDatesSeasonId] =
+    useState<string>("");
+  const [selectedOpenRegLeagueId, setSelectedOpenRegLeagueId] =
+    useState<string>("");
+  const [selectedOpenRegSeasonId, setSelectedOpenRegSeasonId] =
     useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
   const [selectedPlayerDivisionId, setSelectedPlayerDivisionId] =
@@ -103,6 +108,13 @@ export const LeagueAdmin = () => {
       { leagueId: selectedEditDatesLeagueId },
       { enabled: !!selectedEditDatesLeagueId },
     );
+
+  // Fetch all seasons for the open registration league
+  const { data: openRegSeasonsData, refetch: refetchOpenRegSeasons } = useQuery(
+    getAllSeasons,
+    { leagueId: selectedOpenRegLeagueId },
+    { enabled: !!selectedOpenRegLeagueId },
+  );
 
   // Find the latest season (try SCHEDULED first, then fall back to highest season number)
   const latestSeason = useMemo(() => {
@@ -261,6 +273,19 @@ export const LeagueAdmin = () => {
       });
       refetchEditDatesSeasons();
       editSeasonDatesForm.resetFields(["startDate", "endDate"]);
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const openRegistrationMutation = useMutation(openRegistration, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "Registration Opened",
+        description: `Registration has been opened for Season ${response.season?.seasonNumber ?? ""}.`,
+      });
+      refetchOpenRegSeasons();
     },
     onError: (error) => {
       flashError(error);
@@ -942,6 +967,83 @@ export const LeagueAdmin = () => {
                 </Button>
               </Form.Item>
             </Form>
+          </Card>
+
+          {/* Open Registration */}
+          <Card
+            title={
+              <span>
+                Open Registration <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
+            <Alert
+              message="Open Registration"
+              description="Moves a season from SCHEDULED to REGISTRATION_OPEN so players can sign up. This is rejected if the season's divisions have already been prepared for its next start (i.e. registration already closed and the season is just waiting on its start date) - that state should not be reopened."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form.Item label="Select League">
+              <Select
+                placeholder="Choose a league"
+                onChange={(value) => {
+                  setSelectedOpenRegLeagueId(value);
+                  setSelectedOpenRegSeasonId("");
+                }}
+                value={selectedOpenRegLeagueId || undefined}
+              >
+                {leaguesData?.leagues?.map((league) => (
+                  <Option key={league.uuid} value={league.uuid}>
+                    {league.name} ({league.slug})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {selectedOpenRegLeagueId &&
+              openRegSeasonsData?.seasons &&
+              openRegSeasonsData.seasons.length > 0 && (
+                <>
+                  <Form.Item label="Select Season">
+                    <Select
+                      placeholder="Choose a season"
+                      onChange={setSelectedOpenRegSeasonId}
+                      value={selectedOpenRegSeasonId || undefined}
+                    >
+                      {openRegSeasonsData.seasons.map((season) => (
+                        <Option key={season.uuid} value={season.uuid}>
+                          Season {season.seasonNumber} (
+                          {SeasonStatus[season.status]})
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Popconfirm
+                    title="Open registration for this season?"
+                    description="Only do this for a season that has never had registration opened before."
+                    onConfirm={() => {
+                      if (selectedOpenRegSeasonId) {
+                        openRegistrationMutation.mutate({
+                          leagueId: selectedOpenRegLeagueId,
+                          seasonId: selectedOpenRegSeasonId,
+                        });
+                      }
+                    }}
+                    okText="Yes, open registration"
+                    cancelText="Cancel"
+                  >
+                    <Button
+                      type="primary"
+                      disabled={!selectedOpenRegSeasonId}
+                      loading={openRegistrationMutation.isPending}
+                    >
+                      Open Registration
+                    </Button>
+                  </Popconfirm>
+                </>
+              )}
           </Card>
 
           {/* Edit Season Dates */}

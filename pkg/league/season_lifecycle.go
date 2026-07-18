@@ -316,6 +316,19 @@ func (slm *SeasonLifecycleManager) OpenRegistrationForSeason(
 		return nil, fmt.Errorf("season must be SCHEDULED to open registration, current status: %d", season.Status)
 	}
 
+	// SCHEDULED is reused for two different points in time: a brand-new season
+	// that has never had registration opened, and a season whose registration
+	// already closed and whose divisions were already built, just waiting on
+	// its start date. DivisionsPreparedAt distinguishes the two - reject the
+	// latter, since reopening it strands the season (the hourly cron requires
+	// SCHEDULED to start it, and skips re-preparing divisions once this is set).
+	if season.DivisionsPreparedAt.Valid {
+		return nil, fmt.Errorf(
+			"season %s already has divisions prepared (at %s); registration cannot be reopened without re-running division preparation",
+			seasonID, season.DivisionsPreparedAt.Time,
+		)
+	}
+
 	// Get league info
 	dbLeague, err := slm.stores.LeagueStore.GetLeagueByUUID(ctx, season.LeagueID)
 	if err != nil {
