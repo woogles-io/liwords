@@ -295,21 +295,48 @@ type tshNewt struct {
 	Divisions []tshDivision   `json:"divisions"`
 }
 
+// flexString is a string that unmarshals from either a JSON string or a JSON
+// number. Some TSH feeds emit division and player names as numbers (e.g.
+// divisions numbered 1, 2, 3 instead of lettered A, B, C), which would
+// otherwise fail to unmarshal into a plain string field and abort the whole
+// parse.
+type flexString string
+
+func (f *flexString) UnmarshalJSON(data []byte) error {
+	// Fast path: already a JSON string.
+	if len(data) > 0 && data[0] == '"' {
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		*f = flexString(s)
+		return nil
+	}
+	// Fall back to a number (or any other scalar) and coerce to its literal
+	// textual form.
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err != nil {
+		return err
+	}
+	*f = flexString(n.String())
+	return nil
+}
+
 type tshDivision struct {
-	Name string `json:"name"`
-	MaxR int    `json:"maxr"` // 0-indexed
+	Name flexString `json:"name"`
+	MaxR int        `json:"maxr"` // 0-indexed
 	// Players is 1-indexed; index 0 is always null.
 	Players []json.RawMessage `json:"players"`
 }
 
 // tshPlayer is the per-player structure inside a division.
 type tshPlayer struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Rating   int    `json:"rating"`
-	Scores   []int  `json:"scores"`
-	Pairings []int  `json:"pairings"`
-	Etc      tshEtc `json:"etc"`
+	ID       int        `json:"id"`
+	Name     flexString `json:"name"`
+	Rating   int        `json:"rating"`
+	Scores   []int      `json:"scores"`
+	Pairings []int      `json:"pairings"`
+	Etc      tshEtc     `json:"etc"`
 }
 
 type tshEtc struct {
@@ -341,7 +368,7 @@ func (p *TSHNewtParser) ListDivisions(data []byte) ([]string, error) {
 	}
 	names := make([]string, len(newt.Divisions))
 	for i, d := range newt.Divisions {
-		names[i] = d.Name
+		names[i] = string(d.Name)
 	}
 	return names, nil
 }
@@ -367,7 +394,7 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 	} else {
 		found := false
 		for _, d := range newt.Divisions {
-			if d.Name == divisionName {
+			if string(d.Name) == divisionName {
 				div = d
 				found = true
 				break
@@ -392,7 +419,7 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		}
 		players = append(players, FeedPlayer{
 			ID:       tp.ID,
-			Name:     tp.Name,
+			Name:     string(tp.Name),
 			Rating:   tp.Rating,
 			Scores:   tp.Scores,
 			Pairings: tp.Pairings,
@@ -416,7 +443,7 @@ func (p *TSHNewtParser) ParseDivision(data []byte, divisionName string) (*FeedDa
 		Players:      players,
 		TotalRounds:  totalRounds,
 		CurrentRound: currentRound,
-		DivisionName: div.Name,
+		DivisionName: string(div.Name),
 	}, nil
 }
 

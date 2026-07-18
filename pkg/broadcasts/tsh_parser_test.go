@@ -33,6 +33,62 @@ const undefinedTSHFeed = `newt={"config":{},"divisions":[{"players":[null,` +
 	`{"id":2,"name":"Bob","rating":1400,"scores":[380,0],"pairings":[1,0],"etc":{"board":[1,0],"p12":[2,0]}}` +
 	`]}]};`
 
+// numericNamesTSHFeed exercises the case where a TSH feed emits division and
+// player names as JSON numbers rather than strings (e.g. divisions numbered
+// 1, 2, 3 instead of lettered A, B, C). Without the flexString coercion the
+// unmarshal fails with "cannot unmarshal number into Go struct field ... name
+// of type string" and aborts the entire parse.
+const numericNamesTSHFeed = `newt={"config":{},"divisions":[{"name":1,"players":[null,` +
+	`{"id":1,"name":100,"rating":1500,"scores":[400,0],"pairings":[2,0],"etc":{"board":[1,0],"p12":[1,0]}},` +
+	`{"id":2,"name":"Bob","rating":1400,"scores":[380,0],"pairings":[1,0],"etc":{"board":[1,0],"p12":[2,0]}}` +
+	`]}]};`
+
+func TestTSHNewtParser_NumericNames(t *testing.T) {
+	p := &TSHNewtParser{}
+	fd, err := p.Parse([]byte(numericNamesTSHFeed))
+	if err != nil {
+		t.Fatalf("Parse() with numeric names should not error: %v", err)
+	}
+	if fd.DivisionName != "1" {
+		t.Errorf("DivisionName = %q, want %q", fd.DivisionName, "1")
+	}
+	if len(fd.Players) != 2 {
+		t.Fatalf("expected 2 players, got %d", len(fd.Players))
+	}
+	p1 := findPlayer(fd.Players, 1)
+	if p1 == nil {
+		t.Fatal("player id=1 not found")
+	}
+	if p1.Name != "100" {
+		t.Errorf("player 1 name = %q, want %q", p1.Name, "100")
+	}
+	p2 := findPlayer(fd.Players, 2)
+	if p2 == nil {
+		t.Fatal("player id=2 not found")
+	}
+	if p2.Name != "Bob" {
+		t.Errorf("player 2 name = %q, want %q", p2.Name, "Bob")
+	}
+
+	// ListDivisions must also handle the numeric name.
+	divs, err := p.ListDivisions([]byte(numericNamesTSHFeed))
+	if err != nil {
+		t.Fatalf("ListDivisions() error: %v", err)
+	}
+	if len(divs) != 1 || divs[0] != "1" {
+		t.Errorf("ListDivisions() = %v, want [1]", divs)
+	}
+
+	// The numerically-named division must be selectable by its coerced name.
+	fd2, err := p.ParseDivision([]byte(numericNamesTSHFeed), "1")
+	if err != nil {
+		t.Fatalf("ParseDivision(\"1\") error: %v", err)
+	}
+	if fd2.DivisionName != "1" {
+		t.Errorf("ParseDivision DivisionName = %q, want %q", fd2.DivisionName, "1")
+	}
+}
+
 func TestExtractNewtJSON(t *testing.T) {
 	tests := []struct {
 		name    string
