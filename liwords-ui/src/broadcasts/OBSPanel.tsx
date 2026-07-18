@@ -314,9 +314,7 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   // two renders (first with duration=null → animation off, second with
   // computed duration) are batched into a single paint by the browser.
   const marqueeInnerRef = useRef<HTMLDivElement>(null);
-  const [marqueeAnimation, setMarqueeAnimation] = useState<string | null>(
-    null,
-  );
+  const [marqueeAnimation, setMarqueeAnimation] = useState<string | null>(null);
   useLayoutEffect(() => {
     if (!isMarquee || !marqueeInnerRef.current) {
       setMarqueeAnimation(null);
