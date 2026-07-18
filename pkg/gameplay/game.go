@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"time"
 
@@ -767,6 +768,20 @@ func handleEventAfterLockingGame(ctx context.Context, stores *stores.Stores, use
 			if err != nil {
 				log.Err(err).Msg("error-getting-metadata-for-correspondence-update")
 			} else {
+				// GetMetadata returns final-scores/no-turn data, which is blank
+				// mid-game. Populate the live fields the lobby list needs (whose
+				// turn, current scores, time bank) so the update doesn't wipe them
+				// on the client. Mirrors ListActiveCorrespondenceForUser.
+				playerOnTurn := uint32(entGame.Game.PlayerOnTurn())
+				metadata.PlayerOnTurn = &playerOnTurn
+				metadata.Scores = []int32{
+					int32(entGame.Game.PointsFor(0)),
+					int32(entGame.Game.PointsFor(1)),
+				}
+				// Clone: the payload is serialized downstream (async), while the
+				// live game's TimeBank slice is mutated in place on later turns.
+				metadata.TimeBank = slices.Clone(entGame.Timers.TimeBank)
+
 				// Send updated game info to both players
 				wrapped := entity.WrapEvent(metadata, pb.MessageType_ONGOING_GAME_EVENT)
 				players := players(entGame)
