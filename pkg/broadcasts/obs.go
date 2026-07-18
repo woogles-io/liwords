@@ -37,6 +37,27 @@ type OBSData struct {
 	P1Name        string `json:"p1_name"`        // player 1 display name
 	P2Name        string `json:"p2_name"`        // player 2 display name
 	CombinedNames string `json:"combined_names"` // "P1 - P2"
+
+	// Tournament-standings fields — broadcast-slot mode only, resolved from the
+	// tournament feed by matching P1Name/P2Name against the feed's player
+	// names. Left as the placeholder string when the feed or the name match
+	// is unavailable. See obs_tournament.go.
+	P1Record   string `json:"p1_record"` // "W-L", e.g. "6-1" or "5.5-1.5" (ties)
+	P2Record   string `json:"p2_record"`
+	P1Place    string `json:"p1_place"` // ordinal rank within the division, e.g. "1st", "11th"
+	P2Place    string `json:"p2_place"`
+	P1Spread   string `json:"p1_spread"` // signed cumulative spread, e.g. "+245"
+	P2Spread   string `json:"p2_spread"`
+	P1Rating   string `json:"p1_rating"` // feed rating
+	P2Rating   string `json:"p2_rating"`
+	Division   string `json:"division"`   // the slot's division name
+	Tournament string `json:"tournament"` // the broadcast/tournament name
+	Round      string `json:"round"`      // "7 of 31"
+	Table      string `json:"table"`      // the slot's table number
+
+	// OpponentName — user-alias mode only: the player who is NOT the tracked
+	// user in their current game. Empty in slot/game modes.
+	OpponentName string `json:"opponent_name"`
 }
 
 // ComputeOBSData renders all display strings from a live GameDocument.
@@ -135,11 +156,15 @@ func renderMainWordWithBlanks(evt *ipc.GameEvent, rm *tilemapping.TileMapping) (
 	return sb.String(), true
 }
 
-// formatScore returns the combined score string, WatchGCG std-compatible.
-// Example: "045 - 032"
+// formatScore returns the combined score string, space-padded (not
+// zero-padded) so the " - " separator holds a stable position regardless of
+// digit count: the left score is right-justified and the right score is
+// left-justified, so padding accumulates on the two outer edges rather than
+// pushing the numbers apart from the dash.
+// Example: " 45 - 32 ", " 45 - 7  "
 func formatScore(doc *ipc.GameDocument) string {
 	p1, p2 := scoresPair(doc)
-	return fmt.Sprintf("%03d - %03d", p1, p2)
+	return fmt.Sprintf("%3d - %-3d", p1, p2)
 }
 
 // formatPlayerScore returns the score for a single player, right-justified to
@@ -317,6 +342,36 @@ func playerName(doc *ipc.GameDocument, playerIdx uint32) string {
 		return players[playerIdx].GetNickname()
 	}
 	return fmt.Sprintf("Player%d", playerIdx+1)
+}
+
+// opponentName returns the display name of the player who is NOT the tracked
+// user, for the user-alias OBS mode. Resolution is primarily by user ID
+// (trackedUserUUID vs each player's UserId); if that doesn't match — e.g. an
+// annotator who isn't themselves a player in the game — it falls back to
+// comparing trackedUsername against each player's RealName/Nickname.
+// Returns "" if no match is found or the game doesn't have exactly 2 players.
+func opponentName(doc *ipc.GameDocument, trackedUserUUID, trackedUsername string) string {
+	players := doc.GetPlayers()
+	if len(players) != 2 {
+		return ""
+	}
+	if trackedUserUUID != "" {
+		for i, p := range players {
+			if p.GetUserId() == trackedUserUUID {
+				return playerName(doc, uint32(1-i))
+			}
+		}
+	}
+	lname := strings.ToLower(trackedUsername)
+	if lname == "" {
+		return ""
+	}
+	for i, p := range players {
+		if strings.ToLower(p.GetRealName()) == lname || strings.ToLower(p.GetNickname()) == lname {
+			return playerName(doc, uint32(1-i))
+		}
+	}
+	return ""
 }
 
 // machineWordToDisplay converts PlayedTiles bytes to a human-friendly string.

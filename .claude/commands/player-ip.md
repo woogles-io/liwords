@@ -45,3 +45,16 @@ curl -s https://ipinfo.io/IP_HERE/json
    - The unique client IP(s) found with geolocation details (city, region, country, org/ISP, hostname)
    - A session summary table: date/time, client IP, duration (first to last pong in the session), connection ID
    - Note if the IP looks like a VPN, proxy, or datacenter vs. residential ISP
+
+7. For each unique client IP, check whether any other registered players used it, over the **same DAYS window** (never unbounded — filtering by IP scans every log event, not just this user's, so it is much slower than the username filter and must stay time-boxed):
+
+```bash
+AWS_PROFILE=woogles-prod aws logs filter-log-events \
+  --log-group-name "/ecs/liwords-socket" \
+  --filter-pattern '{ $.ips = "IP_HERE*" }' \
+  --start-time $(date -d 'DAYS days ago' +%s000) \
+  --query 'events[*].message' \
+  --output json
+```
+
+   Extract the `username` field from each matching event and collect the unique set. Exclude the original username and any `anon-*` entries (anonymous/pre-login sessions — expected noise, not a match) before reporting. If other registered usernames remain, call them out explicitly as a possible shared-IP/multi-account signal. If this step would need a longer lookback than DAYS to be useful, ask the user before widening it rather than scanning further unprompted.

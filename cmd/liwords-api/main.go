@@ -490,7 +490,7 @@ func main() {
 	broadcastService.SetEventChannel(pubsubBus.GameEventChannel())
 	broadcastService.SetNatsConn(natsconn)
 
-	obsHandler := broadcasts.NewOBSHandler(stores.Queries, stores.GameDocumentStore, cfg, natsconn, wordService)
+	obsHandler := broadcasts.NewOBSHandler(stores.Queries, stores.GameDocumentStore, cfg, natsconn, wordService, broadcastService)
 	router.Handle(broadcasts.OBSHandlerPrefix, otelhttp.NewHandler(
 		obsHandler,
 		"obs-broadcast-api",
