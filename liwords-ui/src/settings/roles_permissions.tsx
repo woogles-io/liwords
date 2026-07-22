@@ -1,11 +1,13 @@
 import React from "react";
-import { Tag, Card, Spin, Alert, Divider } from "antd";
-import { SafetyOutlined, CrownOutlined } from "@ant-design/icons";
+import { Link } from "react-router";
+import { Alert, Button, Card, Divider, Spin, Tag } from "antd";
+import { CrownOutlined, SafetyOutlined, ToolOutlined } from "@ant-design/icons";
 import { useQuery } from "@connectrpc/connect-query";
 import {
   getSelfRoles,
   getSelfPermissions,
 } from "../gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
+import { hasAnyPermission, ADMIN_PANEL_PERMS } from "../mod/perms";
 
 // Human-readable permission names
 const PERMISSION_LABELS: Record<string, string> = {
@@ -60,6 +62,7 @@ export const RolesPermissions = () => {
 
   const roles = selfRoles?.roles || [];
   const allPermissions = selfPermissions?.permissions || [];
+  const canAccessAdmin = hasAnyPermission(allPermissions, ADMIN_PANEL_PERMS);
 
   return (
     <div className="roles-permissions-container" style={{ padding: "24px" }}>
@@ -70,6 +73,16 @@ export const RolesPermissions = () => {
       <p className="description" style={{ marginBottom: "24px" }}>
         View your assigned roles and permissions on Woogles.
       </p>
+
+      {canAccessAdmin && (
+        <div style={{ marginBottom: "24px" }}>
+          <Link to="/admin">
+            <Button type="primary" icon={<ToolOutlined />} size="large">
+              Go to Admin Panel
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {roles.length === 0 ? (
         <Alert
