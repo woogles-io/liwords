@@ -210,6 +210,7 @@ export const TourneyEditor = (props: Props) => {
         directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
+        irlMode: vals.irlMode,
         scheduledStartTime: scheduledStartTime
           ? timestampFromMs(scheduledStartTime.unix() * 1000)
           : undefined,
@@ -475,7 +476,6 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item
               name="irlMode"
               label="Use tournament mode for IRL games"
-              hidden={props.mode === "new"}
               valuePropName="checked"
             >
               <Switch />
