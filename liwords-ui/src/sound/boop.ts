@@ -55,13 +55,46 @@ const soundIsEnabled = (soundName: string) => {
   return cachedToggle;
 };
 
+// A ~50ms WAV of pure silence, generated in memory. Unlocking plays this
+// instead of the real sound files: it cannot make noise no matter how the
+// browser schedules mute/pause operations, and it is available immediately
+// even when the real files are still downloading.
+const silentWavUrl = (() => {
+  const sampleRate = 8000;
+  const sampleCount = 400;
+  const dataSize = sampleCount * 2;
+  const buf = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buf);
+  const ascii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i++) {
+      view.setUint8(offset + i, text.charCodeAt(i));
+    }
+  };
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  ascii(36, "data");
+  view.setUint32(40, dataSize, true);
+  // Sample bytes stay zero-initialized: pure silence.
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+})();
+
 class Booper {
   private audio: HTMLAudioElement;
   private unlocked = false;
+  private unlocking: Promise<boolean> | null = null;
 
   constructor(
     readonly soundName: string,
-    src: string,
+    private readonly src: string,
   ) {
     this.audio = new Audio(src);
     // Preload so the buffer is ready before it's needed.
@@ -69,18 +102,36 @@ class Booper {
   }
 
   // Must be called from within a user gesture event handler.
-  // Plays the element muted so iOS will allow programmatic plays later.
+  //
+  // Browsers (iOS Safari in particular) only allow programmatic play() on
+  // elements that have already played during a user gesture. Earlier
+  // versions played the real sound muted here, but engines that don't apply
+  // mute/pause sample-accurately would blast all fifteen sounds at once on
+  // the first click. Playing generated silence makes that impossible.
   async unlock(): Promise<boolean> {
     if (this.unlocked) return true;
+    if (!this.unlocking) {
+      this.unlocking = this.unlockWithSilence().finally(() => {
+        this.unlocking = null;
+      });
+    }
+    return this.unlocking;
+  }
+
+  private async unlockWithSilence(): Promise<boolean> {
+    const { audio } = this;
     try {
-      this.audio.muted = true;
-      this.audio.currentTime = 0;
-      await this.audio.play();
-      this.audio.pause();
-      this.audio.muted = false;
+      audio.src = silentWavUrl;
+      await audio.play();
+      audio.pause();
       this.unlocked = true;
     } catch {
-      // Audio not yet loaded or blocked — will retry on the next gesture.
+      // Autoplay still blocked — will retry on the next gesture.
+    } finally {
+      // Point the element back at its real sound whether or not the unlock
+      // worked; the browser will normally serve it from cache.
+      audio.src = this.src;
+      audio.load();
     }
     return this.unlocked;
   }
