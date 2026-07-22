@@ -173,6 +173,22 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       },
     },
     {
+      title: "Mistakes",
+      key: "mistakeIndex",
+      align: "right" as const,
+      render: (_: unknown, record: { mistakeIndex?: number }) =>
+        record.mistakeIndex === undefined ? (
+          "-"
+        ) : (
+          <Tooltip
+            placement="left"
+            title="Mistake Score from BestBot analysis (lower is better; 0 is a perfect game; - until the game has been analyzed)."
+          >
+            {record.mistakeIndex.toFixed(1)}
+          </Tooltip>
+        ),
+    },
+    {
       title: "Date",
       dataIndex: "gameDate",
       key: "date",
@@ -196,6 +212,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       result: game.result,
       playerScore: game.playerScore,
       opponentScore: game.opponentScore,
+      mistakeIndex: game.mistakeIndex,
       gameDate: game.gameDate ? timestampDate(game.gameDate) : undefined,
       gameEndReason: game.gameEndReason,
       lastUpdateMs: game.lastUpdate
