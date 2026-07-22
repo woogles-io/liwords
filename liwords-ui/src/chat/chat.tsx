@@ -200,8 +200,11 @@ export const Chat = React.memo((props: Props) => {
     Set<string> | undefined
   >(undefined);
   const onChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurMsg(e.target.value);
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      // Collapse any newlines (e.g. from a paste) into spaces so messages
+      // stay single-line: they render without line breaks anyway, and this
+      // avoids newline-flooding to scroll away others' chat.
+      setCurMsg(e.target.value.replace(/[\r\n]+/g, " "));
     },
     [setCurMsg],
   );
@@ -701,7 +704,11 @@ export const Chat = React.memo((props: Props) => {
   }, []);
 
   const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Any Enter sends. Chat messages are single-line (a newline renders as
+      // a space, so it is never a real line break); the auto-sizing textarea
+      // only exists to read a long message while typing, not to compose
+      // multi-line paragraphs.
       if (e.key === "Enter" && channel) {
         e.preventDefault();
         // Send if non-trivial
@@ -944,9 +951,10 @@ export const Chat = React.memo((props: Props) => {
                     {entities}
                   </div>
                   <form>
-                    <Input
+                    <Input.TextArea
                       autoFocus={!defaultChannel.startsWith("chat.game")}
                       autoComplete="off"
+                      autoSize={{ minRows: 1, maxRows: 6 }}
                       placeholder={
                         channel === "chat.lobby"
                           ? "Ask or answer question..."

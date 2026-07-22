@@ -477,12 +477,16 @@ p {
   }
 }
 
-.chat input[name="chat-input"] {
+.chat textarea[name="chat-input"] {
   position: absolute;
   bottom: 0;
   left: 0;
   width: calc(100% - 12px);
   margin: 6px;
+  // Auto-sizes up to a few rows so a full message can be read while typing;
+  // it grows upward from the bottom over the most recent messages and
+  // collapses back to one row after sending.
+  resize: none;
   @include colorModed() {
     background: m($card-background);
     color: m($gray-extreme);
