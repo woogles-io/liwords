@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -1692,7 +1693,17 @@ func removeTournamentPersons(tournamentName string, divisionName string, persons
 	return persons, nil
 }
 
+// visitableSlugRe matches slugs that a browser leaves unchanged in a URL path.
+// It excludes "%" and "+" (both stand in for a space, so they would smuggle
+// spaces back in) and anything a browser would percent-encode (notably a
+// literal space); such a slug would never match the encoded URL when visited,
+// making the tournament unreachable.
+var visitableSlugRe = regexp.MustCompile(`^[A-Za-z0-9\-._~!$&'()*,;=:@/]*$`)
+
 func validateTournamentTypeMatchesSlug(ttype pb.TType, slug string) (entity.CompetitionType, error) {
+	if !visitableSlugRe.MatchString(slug) {
+		return "", apiserver.InvalidArg("tournament slug may only contain URL-safe characters (letters, digits, and - . _ ~ etc.) and cannot contain spaces")
+	}
 	var tt entity.CompetitionType
 	switch ttype {
 	case pb.TType_CLUB:
