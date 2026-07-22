@@ -630,10 +630,28 @@ SELECT
     gp_player.won,
     gp_player.game_end_reason,
     u_opponent.uuid as opponent_uuid,
-    u_opponent.username as opponent_username
+    u_opponent.username as opponent_username,
+    -- This player's mistake index from the latest completed analysis of the
+    -- game, picking the right playerSummaries entry by this player's slot.
+    -- has_mistake_index is false when the game has not been analyzed yet, which
+    -- lets the caller tell "unanalyzed" apart from a genuine 0 (a perfect game).
+    (mi.mistake_index IS NOT NULL)::boolean AS has_mistake_index,
+    COALESCE(mi.mistake_index, 0) AS player_mistake_index
 FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
+LEFT JOIN LATERAL (
+    SELECT (CASE gp_player.player_index
+        WHEN 0 THEN aj.result->'playerSummaries'->0->>'mistakeIndex'
+        ELSE aj.result->'playerSummaries'->1->>'mistakeIndex'
+    END)::DOUBLE PRECISION AS mistake_index
+    FROM analysis_jobs aj
+    WHERE aj.game_id = gp_player.game_uuid
+      AND aj.status = 'completed'
+      AND aj.result IS NOT NULL
+    ORDER BY aj.completed_at DESC
+    LIMIT 1
+) mi ON true
 WHERE gp_player.player_id = (SELECT id FROM users WHERE users.uuid = @user_uuid)
   AND gp_player.league_season_id = @season_id
 ORDER BY gp_player.created_at DESC;
