@@ -142,6 +142,7 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		nil,
 		nil,
 		0,
+		false,
 	)
 }
 
@@ -151,6 +152,30 @@ func makeTournamentPersons(persons map[string]int32) *ipc.TournamentPersons {
 		tp.Persons = append(tp.Persons, &ipc.TournamentPerson{Id: key, Rating: value})
 	}
 	return tp
+}
+
+func TestNewTournamentIRLMode(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	stores, _ := recreateDB()
+	defer stores.Disconnect()
+	tstore := stores.TournamentStore
+
+	directors := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0})
+
+	irl, err := tournament.NewTournament(ctx, tstore, "irlTournament",
+		"An IRL tournament", directors, entity.TypeStandard, "",
+		"/tournament/irl-on", nil, nil, 0, true)
+	is.NoErr(err)
+	is.True(irl.ExtraMeta != nil)
+	is.Equal(irl.ExtraMeta.IRLMode, true)
+
+	online, err := tournament.NewTournament(ctx, tstore, "onlineTournament",
+		"An online tournament", directors, entity.TypeStandard, "",
+		"/tournament/irl-off", nil, nil, 0, false)
+	is.NoErr(err)
+	is.True(online.ExtraMeta != nil)
+	is.Equal(online.ExtraMeta.IRLMode, false)
 }
 
 func TestTournamentSingleDivision(t *testing.T) {

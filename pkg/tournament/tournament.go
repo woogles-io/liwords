@@ -118,6 +118,7 @@ func NewTournament(ctx context.Context,
 	scheduledStartTime *time.Time,
 	scheduledEndTime *time.Time,
 	createdBy uint,
+	irlMode bool,
 ) (*entity.Tournament, error) {
 	id := shortuuid.New()
 
@@ -130,7 +131,7 @@ func NewTournament(ctx context.Context,
 		Type:               ttype,
 		ParentID:           parent,
 		Slug:               slug,
-		ExtraMeta:          &entity.TournamentMeta{},
+		ExtraMeta:          &entity.TournamentMeta{IRLMode: irlMode},
 		ScheduledStartTime: scheduledStartTime,
 		ScheduledEndTime:   scheduledEndTime,
 		CreatedBy:          createdBy,
