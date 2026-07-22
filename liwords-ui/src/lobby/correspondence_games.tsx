@@ -77,6 +77,7 @@ export const CorrespondenceGames = (props: Props) => {
     // allowance + remaining bank - elapsed. Infinity if not applicable. This is
     // the value the list sorts by. Lower = more urgent.
     timeRemaining: number;
+    lastUpdate?: number; // Timestamp of last move (ms); opponent-turn sort key
     finalScore?: ReactNode; // For finished games
     endReason?: ReactNode; // For finished games
     isLeagueGame?: boolean; // Whether this is a league game
@@ -205,6 +206,7 @@ export const CorrespondenceGames = (props: Props) => {
             onTurn,
             variant: ag.variant || "classic",
             timeRemaining: timeRemainingSecs,
+            lastUpdate: ag.lastUpdate,
             isLeagueGame: !!ag.leagueSlug,
             details:
               ag.tournamentID !== "" ? (
@@ -233,15 +235,18 @@ export const CorrespondenceGames = (props: Props) => {
         },
       );
 
-      // Sort: games where it's user's turn first, then by the real
-      // time-until-expiry (bank-aware before-expiry, least to most).
+      // Sort: games where it's user's turn first, ordered by the real
+      // time-until-expiry (bank-aware before-expiry, most urgent first) since
+      // those are the ones you act on. Opponent's-turn games follow, ordered by
+      // updated_at (oldest first) - a deadline you don't own is not a useful
+      // ordering there; updated_at is normally the time of your own last move.
       gameData.sort((a, b) => {
-        // First prioritize games where it's user's turn
         if (a.onTurn && !b.onTurn) return -1;
         if (!a.onTurn && b.onTurn) return 1;
-        // Within each group (user's turn vs not), sort by the hard deadline
-        // (per-turn allowance + bank - elapsed) ascending: most urgent first.
-        return a.timeRemaining - b.timeRemaining;
+        if (a.onTurn && b.onTurn) {
+          return a.timeRemaining - b.timeRemaining;
+        }
+        return (a.lastUpdate ?? Infinity) - (b.lastUpdate ?? Infinity);
       });
 
       return gameData;
