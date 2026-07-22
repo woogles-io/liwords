@@ -1830,7 +1830,7 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			}
 		}
 
-		allGames = append(allGames, &pb.PlayerSeasonGame{
+		game := &pb.PlayerSeasonGame{
 			GameId:           row.GameUuid,
 			OpponentUserId:   row.OpponentUuid,
 			OpponentUsername: row.OpponentUsername,
@@ -1840,7 +1840,15 @@ func (ls *LeagueService) GetPlayerSeasonGames(
 			GameDate:         timestamppb.New(row.UpdatedAt.Time),
 			Round:            0,
 			GameEndReason:    ipc.GameEndReason(row.GameEndReason),
-		})
+		}
+		// Populated only for games with completed BestBot analysis; left unset
+		// (not 0) otherwise, so the client can distinguish "not yet analyzed"
+		// from a genuine perfect game.
+		if row.HasMistakeIndex {
+			mi := row.PlayerMistakeIndex
+			game.MistakeIndex = &mi
+		}
+		allGames = append(allGames, game)
 	}
 
 	// Convert in-progress games to proto
