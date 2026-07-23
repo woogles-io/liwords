@@ -139,6 +139,10 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		entity.TypeStandard,
 		"",
 		"/tournament/slug-tourney",
+		nil,
+		nil,
+		0,
+		false,
 	)
 }
 
