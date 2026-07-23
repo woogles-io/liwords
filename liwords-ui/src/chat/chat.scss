@@ -289,8 +289,51 @@ p {
     }
   }
 
+  .chat-context {
+    position: relative;
+  }
+
+  .chat-font-size {
+    display: flex;
+    gap: 4px;
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    z-index: 2;
+  }
+
+  .chat-font-size-btn {
+    background: transparent;
+    border: 1px solid;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 7px;
+    @include colorModed() {
+      border-color: m($gray-medium);
+      color: m($gray-medium);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.4;
+    }
+
+    &:first-child {
+      font-size: 12px;
+    }
+
+    &:last-child {
+      font-size: 16px;
+    }
+  }
+
   .entities {
     padding: 12px 24px 0px;
+    // Multiply the message text size by the user's chat font-size setting
+    // (1 = default, so no visual change unless the user opts into a larger
+    // size). Applied here so it scales the whole message list uniformly.
+    font-size: calc(1em * var(--chat-font-scale, 1));
     .chat-entity {
       width: 100%;
       width: 100%;
@@ -376,7 +419,9 @@ p {
           color: m($secondary);
         }
         & {
-          visibility: hidden;
+          // Base visibility is driven by the "always show timestamps" pref
+          // (default hidden); the :hover rule above still reveals it on hover.
+          visibility: var(--chat-timestamp-visibility, hidden);
           float: right;
           font-size: 75%;
           margin: 3px 0;

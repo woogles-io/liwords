@@ -10,6 +10,7 @@ import { Card, Input, Tabs, App } from "antd";
 import { LeftOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
 import { ChatEntity } from "./chat_entity";
+import { useApplyChatPrefs, useChatFontScaleControl } from "./chat_prefs";
 import {
   useChatStoreContext,
   useLoginStateStoreContext,
@@ -199,6 +200,12 @@ export const Chat = React.memo((props: Props) => {
   const [updatedChannels, setUpdatedChannels] = useState<
     Set<string> | undefined
   >(undefined);
+  // Apply the chat display prefs (text size + always-show-timestamps) as CSS
+  // variables. They are configured under Settings > Preferences and via the
+  // in-chat A-/A+ control, and sync live across open tabs (no refresh).
+  useApplyChatPrefs();
+  const chatFontControl = useChatFontScaleControl();
+
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Collapse any newlines (e.g. from a paste) into spaces so messages
@@ -866,6 +873,26 @@ export const Chat = React.memo((props: Props) => {
                 id="chat-context"
                 className={`chat-context${hasScroll ? " scrolling" : ""}`}
               >
+                <div className="chat-font-size">
+                  <button
+                    type="button"
+                    className="chat-font-size-btn"
+                    aria-label="Decrease chat text size"
+                    disabled={chatFontControl.atMin}
+                    onClick={chatFontControl.decrease}
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-font-size-btn"
+                    aria-label="Increase chat text size"
+                    disabled={chatFontControl.atMax}
+                    onClick={chatFontControl.increase}
+                  >
+                    A+
+                  </button>
+                </div>
                 {loggedIn ? (
                   <p
                     className={`breadcrumb clickable${

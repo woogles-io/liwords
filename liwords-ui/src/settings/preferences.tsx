@@ -1,6 +1,15 @@
 import React, { useCallback, useState } from "react";
 import { Col, Row, Select, Switch } from "antd";
 import {
+  useLocalStorage,
+  useLocalStorageBool,
+} from "../utils/use_local_storage";
+import {
+  CHAT_ALWAYS_TIMESTAMPS_KEY,
+  CHAT_FONT_SCALE_KEY,
+  CHAT_FONT_SCALE_OPTIONS,
+} from "../chat/chat_prefs";
+import {
   preferredSortOrder,
   setPreferredSortOrder,
   setSharedEnableAutoShuffle,
@@ -178,6 +187,13 @@ export const Preferences = React.memo(() => {
   const setBoardMode = useUIStore((state) => state.setBoardMode);
   const tileMode = useUIStore(selectTileMode);
   const setTileMode = useUIStore((state) => state.setTileMode);
+
+  const [chatFontScale, setChatFontScale] = useLocalStorage(
+    CHAT_FONT_SCALE_KEY,
+    "1",
+  );
+  const [alwaysShowChatTimestamps, setAlwaysShowChatTimestamps] =
+    useLocalStorageBool(CHAT_ALWAYS_TIMESTAMPS_KEY);
 
   const initialPuzzleLexicon =
     localStorage?.getItem("puzzleLexicon") || undefined;
@@ -502,6 +518,41 @@ export const Preferences = React.memo(() => {
           </Select>
         </Col>
       </Row>
+      <div className="section-header">Chat</div>
+      <Row>
+        <Col span={12}>
+          <div className="chat-text-size">Chat text size</div>
+          <div className="chat-size-selection">
+            <Select
+              className="chat-font-size-select"
+              size="large"
+              value={chatFontScale}
+              onChange={setChatFontScale}
+            >
+              {CHAT_FONT_SCALE_OPTIONS.map(({ label, value }) => (
+                <Select.Option value={value} key={value}>
+                  {label}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+        </Col>
+      </Row>
+      <div className="toggles-section">
+        <div className="chat-toggle-fill">
+          <div className="toggle-section">
+            <div className="title">Always show chat timestamps</div>
+            <div>
+              <div>Show chat timestamps instead of only on hover</div>
+              <Switch
+                checked={alwaysShowChatTimestamps}
+                onChange={setAlwaysShowChatTimestamps}
+                className="chat-timestamps-toggle"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 });
