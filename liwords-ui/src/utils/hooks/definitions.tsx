@@ -196,23 +196,39 @@ export const useDefinitionAndPhonyChecker = ({
     [enableHoverDefine, definedAnagram],
   );
 
-  const [playedWords, setPlayedWords] = useState(new Set<string>());
-  useEffect(() => {
+  // The current game's played words, derived straight from gameContext.turns.
+  // The reducer builds that list synchronously (stateFromHistory) per dispatch,
+  // so no render sees a partial list. A pure derivation -- not useState+effect
+  // that RESET could clear -- so it can never be stranded empty, which is what
+  // stopped the phony report from ever computing.
+  const playedWordsRef = useRef<Set<string>>(new Set());
+  const playedWords = useMemo(() => {
     console.log(
-      "[phony-debug] playedWords-effect fire, turns:",
+      "[phony-debug] playedWords memo, turns:",
       gameContext.turns.length,
     );
-    setPlayedWords((oldPlayedWords) => {
-      const playedWords = new Set(oldPlayedWords);
-      for (const turn of gameContext.turns) {
-        for (const word of turn.wordsFormed) {
-          playedWords.add(word);
+    const words = new Set<string>();
+    for (const turn of gameContext.turns) {
+      for (const word of turn.wordsFormed) {
+        words.add(word);
+      }
+    }
+    // Reuse the previous Set instance when the word set is unchanged (a pass,
+    // or replaying a word already on the board) so effects keyed on
+    // playedWords don't re-run just because gameContext got a new reference.
+    const prev = playedWordsRef.current;
+    if (words.size === prev.size) {
+      let same = true;
+      for (const word of words) {
+        if (!prev.has(word)) {
+          same = false;
+          break;
         }
       }
-      return playedWords.size === oldPlayedWords.size
-        ? oldPlayedWords
-        : playedWords;
-    });
+      if (same) return prev;
+    }
+    playedWordsRef.current = words;
+    return words;
   }, [gameContext]);
 
   useEffect(() => {
@@ -224,7 +240,10 @@ export const useDefinitionAndPhonyChecker = ({
       lexicon,
     );
     setWordInfo({});
-    setPlayedWords(new Set());
+    // playedWords is derived from gameContext via the useMemo above -- there is
+    // nothing to clear here. The old setPlayedWords(new Set()) raced with that
+    // derivation and could leave playedWords stale-empty in production, which is
+    // why the phony report never computed.
     setUnrace(new Unrace());
     setPhonies(undefined);
     setShowDefinitionHover(undefined);
