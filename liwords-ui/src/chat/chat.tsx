@@ -10,6 +10,7 @@ import { Card, Input, Tabs, App } from "antd";
 import { LeftOutlined } from "@ant-design/icons";
 import { singularCount } from "../utils/plural";
 import { ChatEntity } from "./chat_entity";
+import { useApplyChatPrefs, useChatFontScaleControl } from "./chat_prefs";
 import {
   useChatStoreContext,
   useLoginStateStoreContext,
@@ -199,9 +200,18 @@ export const Chat = React.memo((props: Props) => {
   const [updatedChannels, setUpdatedChannels] = useState<
     Set<string> | undefined
   >(undefined);
+  // Apply the chat display prefs (text size + always-show-timestamps) as CSS
+  // variables. They are configured under Settings > Preferences and via the
+  // in-chat A-/A+ control, and sync live across open tabs (no refresh).
+  useApplyChatPrefs();
+  const chatFontControl = useChatFontScaleControl();
+
   const onChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurMsg(e.target.value);
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      // Collapse any newlines (e.g. from a paste) into spaces so messages
+      // stay single-line: they render without line breaks anyway, and this
+      // avoids newline-flooding to scroll away others' chat.
+      setCurMsg(e.target.value.replace(/[\r\n]+/g, " "));
     },
     [setCurMsg],
   );
@@ -701,7 +711,11 @@ export const Chat = React.memo((props: Props) => {
   }, []);
 
   const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Any Enter sends. Chat messages are single-line (a newline renders as
+      // a space, so it is never a real line break); the auto-sizing textarea
+      // only exists to read a long message while typing, not to compose
+      // multi-line paragraphs.
       if (e.key === "Enter" && channel) {
         e.preventDefault();
         // Send if non-trivial
@@ -859,6 +873,26 @@ export const Chat = React.memo((props: Props) => {
                 id="chat-context"
                 className={`chat-context${hasScroll ? " scrolling" : ""}`}
               >
+                <div className="chat-font-size">
+                  <button
+                    type="button"
+                    className="chat-font-size-btn"
+                    aria-label="Decrease chat text size"
+                    disabled={chatFontControl.atMin}
+                    onClick={chatFontControl.decrease}
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-font-size-btn"
+                    aria-label="Increase chat text size"
+                    disabled={chatFontControl.atMax}
+                    onClick={chatFontControl.increase}
+                  >
+                    A+
+                  </button>
+                </div>
                 {loggedIn ? (
                   <p
                     className={`breadcrumb clickable${
@@ -944,9 +978,10 @@ export const Chat = React.memo((props: Props) => {
                     {entities}
                   </div>
                   <form>
-                    <Input
+                    <Input.TextArea
                       autoFocus={!defaultChannel.startsWith("chat.game")}
                       autoComplete="off"
+                      autoSize={{ minRows: 1, maxRows: 6 }}
                       placeholder={
                         channel === "chat.lobby"
                           ? "Ask or answer question..."
