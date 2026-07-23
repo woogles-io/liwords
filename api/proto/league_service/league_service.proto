@@ -239,6 +239,12 @@ message PlayerSeasonGame {
   google.protobuf.Timestamp last_update = 10;
   int32 increment_secs = 11;
   int64 on_turn_time_bank_ms = 12;
+
+  // mistake_index is this player's "mistake score" for the game from BestBot
+  // analysis (lower is better; 0 is a perfect game). It is only present once
+  // the game has completed analysis; when absent the client should show a
+  // placeholder rather than 0, since 0 is itself a meaningful (perfect) value.
+  optional double mistake_index = 13;
 }
 
 message InviteUserRequest {

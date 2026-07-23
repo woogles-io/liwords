@@ -1913,8 +1913,13 @@ type PlayerSeasonGame struct {
 	LastUpdate       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
 	IncrementSecs    int32                  `protobuf:"varint,11,opt,name=increment_secs,json=incrementSecs,proto3" json:"increment_secs,omitempty"`
 	OnTurnTimeBankMs int64                  `protobuf:"varint,12,opt,name=on_turn_time_bank_ms,json=onTurnTimeBankMs,proto3" json:"on_turn_time_bank_ms,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// mistake_index is this player's "mistake score" for the game from BestBot
+	// analysis (lower is better; 0 is a perfect game). It is only present once
+	// the game has completed analysis; when absent the client should show a
+	// placeholder rather than 0, since 0 is itself a meaningful (perfect) value.
+	MistakeIndex  *float64 `protobuf:"fixed64,13,opt,name=mistake_index,json=mistakeIndex,proto3,oneof" json:"mistake_index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlayerSeasonGame) Reset() {
@@ -2027,6 +2032,13 @@ func (x *PlayerSeasonGame) GetIncrementSecs() int32 {
 func (x *PlayerSeasonGame) GetOnTurnTimeBankMs() int64 {
 	if x != nil {
 		return x.OnTurnTimeBankMs
+	}
+	return 0
+}
+
+func (x *PlayerSeasonGame) GetMistakeIndex() float64 {
+	if x != nil && x.MistakeIndex != nil {
+		return *x.MistakeIndex
 	}
 	return 0
 }
@@ -3410,7 +3422,7 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tseason_id\x18\x02 \x01(\tR\bseasonId\"V\n" +
 	"\x1cGetPlayerSeasonGamesResponse\x126\n" +
-	"\x05games\x18\x01 \x03(\v2 .league_service.PlayerSeasonGameR\x05games\"\x83\x04\n" +
+	"\x05games\x18\x01 \x03(\v2 .league_service.PlayerSeasonGameR\x05games\"\xbf\x04\n" +
 	"\x10PlayerSeasonGame\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12(\n" +
 	"\x10opponent_user_id\x18\x02 \x01(\tR\x0eopponentUserId\x12+\n" +
@@ -3425,7 +3437,9 @@ const file_proto_league_service_league_service_proto_rawDesc = "" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastUpdate\x12%\n" +
 	"\x0eincrement_secs\x18\v \x01(\x05R\rincrementSecs\x12.\n" +
-	"\x14on_turn_time_bank_ms\x18\f \x01(\x03R\x10onTurnTimeBankMs\",\n" +
+	"\x14on_turn_time_bank_ms\x18\f \x01(\x03R\x10onTurnTimeBankMs\x12(\n" +
+	"\rmistake_index\x18\r \x01(\x01H\x00R\fmistakeIndex\x88\x01\x01B\x10\n" +
+	"\x0e_mistake_index\",\n" +
 	"\x11InviteUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"H\n" +
 	"\x12InviteUserResponse\x12\x18\n" +
@@ -3756,6 +3770,7 @@ func file_proto_league_service_league_service_proto_init() {
 	if File_proto_league_service_league_service_proto != nil {
 		return
 	}
+	file_proto_league_service_league_service_proto_msgTypes[34].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
