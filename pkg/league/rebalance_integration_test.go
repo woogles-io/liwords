@@ -706,3 +706,128 @@ func TestEnforceGuarantees_StayedPlayerNotRelegated(t *testing.T) {
 		is.True(status == ipc.PlacementStatus_PLACEMENT_STAYED || status == ipc.PlacementStatus_PLACEMENT_PROMOTED)
 	}
 }
+
+// TestEnforceGuarantees_BottomDivisionStayedCanSeedNewDivision verifies the
+// fix for the bug that produced a near-empty Division 8 for NWL season 19:
+// a STAYED player whose previous division was already the previous season's
+// bottom division carries no ceiling guarantee, so when league growth
+// requires a new, lower division this season, the lowest-priority STAYED
+// players from that old bottom division can seed it instead of being pulled
+// back up by enforceGuarantees.
+//
+// Scenario: season 1 has a single division (the league's only, and therefore
+// bottom, division) with 28 STAYED players and distinct previous_division_rank
+// values (1=best .. 28=worst) so bucketing is deterministic. idealDivisionSize
+// is 15, so season 2 needs round(28/15)=2 divisions -- the league is growing
+// a new bottom division. The 13 lowest-priority players (ranks 16-28) get
+// bucketed into that new Division 2. Pre-fix, ceilingForStatus pinned every
+// STAYED player to previous_div=1, so enforceGuarantees would have yanked all
+// 13 back into Division 1, leaving Division 2 empty.
+func TestEnforceGuarantees_BottomDivisionStayedCanSeedNewDivision(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	allStores, cleanup := setupIntegrationTest(t)
+	defer cleanup()
+
+	store := allStores.LeagueStore
+	leagueID, season1ID := createLeagueAndSeason(t, ctx, allStores)
+
+	// Season 1: a single division -- the previous season's bottom division.
+	div1S1 := uuid.New()
+	_, err := store.CreateDivision(ctx, models.CreateDivisionParams{
+		Uuid: div1S1, SeasonID: season1ID, DivisionNumber: 1,
+		DivisionName: pgtype.Text{String: "Division 1", Valid: true},
+	})
+	is.NoErr(err)
+
+	for i := 1; i <= 28; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season1ID,
+			Status:     pgtype.Text{String: "REGISTERED", Valid: true},
+			DivisionID: pgtype.UUID{Bytes: div1S1, Valid: true},
+		})
+		is.NoErr(err)
+		err = store.UpsertStanding(ctx, models.UpsertStandingParams{
+			UserID: int32(i), DivisionID: div1S1,
+		})
+		is.NoErr(err)
+		err = store.UpdateStandingResult(ctx, models.UpdateStandingResultParams{
+			DivisionID: div1S1, UserID: int32(i),
+			Result: pgtype.Int4{Int32: int32(ipc.StandingResult_RESULT_STAYED), Valid: true},
+		})
+		is.NoErr(err)
+		// Explicit distinct rank so priority scoring -- and thus bucketing
+		// order -- is deterministic instead of relying on tie-breaking.
+		err = store.UpdatePreviousDivisionRank(ctx, models.UpdatePreviousDivisionRankParams{
+			UserID: int32(i), SeasonID: season1ID,
+			PreviousDivisionRank: pgtype.Int4{Int32: int32(i), Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	// Season 2: the same 28 players return.
+	season2ID := uuid.New()
+	_, err = store.CreateSeason(ctx, models.CreateSeasonParams{
+		Uuid: season2ID, LeagueID: leagueID, SeasonNumber: 2,
+		StartDate: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EndDate:   pgtype.Timestamptz{Time: time.Now().AddDate(0, 0, 14), Valid: true},
+		Status:    int32(ipc.SeasonStatus_SEASON_SCHEDULED),
+	})
+	is.NoErr(err)
+
+	for i := 1; i <= 28; i++ {
+		_, err = store.RegisterPlayer(ctx, models.RegisterPlayerParams{
+			UserID: int32(i), SeasonID: season2ID,
+			Status: pgtype.Text{String: "REGISTERED", Valid: true},
+		})
+		is.NoErr(err)
+	}
+
+	regs, err := store.GetSeasonRegistrations(ctx, season2ID)
+	is.NoErr(err)
+	is.Equal(len(regs), 28)
+
+	categorized := make([]CategorizedPlayer, 28)
+	for i, r := range regs {
+		categorized[i] = CategorizedPlayer{Registration: r, Category: PlayerCategoryReturning}
+	}
+
+	rm := NewRebalanceManager(allStores)
+	result, err := rm.RebalanceDivisions(ctx, leagueID, season1ID, season2ID, 2, categorized, 15)
+	is.NoErr(err)
+	is.Equal(result.DivisionsCreated, 2) // league grew from 1 division to 2
+
+	s2Divs, err := store.GetDivisionsBySeason(ctx, season2ID)
+	is.NoErr(err)
+	var div1S2, div2S2 uuid.UUID
+	for _, d := range s2Divs {
+		switch d.DivisionNumber {
+		case 1:
+			div1S2 = d.Uuid
+		case 2:
+			div2S2 = d.Uuid
+		}
+	}
+	is.True(div1S2 != uuid.UUID{})
+	is.True(div2S2 != uuid.UUID{})
+
+	div1Count, div2Count := 0, 0
+	for i := 1; i <= 28; i++ {
+		reg, err := store.GetPlayerRegistration(ctx, models.GetPlayerRegistrationParams{
+			SeasonID: season2ID, UserID: int32(i),
+		})
+		is.NoErr(err)
+		is.True(reg.DivisionID.Valid)
+		switch uuid.UUID(reg.DivisionID.Bytes) {
+		case div1S2:
+			div1Count++
+		case div2S2:
+			div2Count++
+		}
+	}
+	// Pre-fix this would be div1Count=28, div2Count=0 -- every STAYED player
+	// pulled back into Division 1 by their unconditional ceiling guarantee.
+	is.Equal(div1Count, 15)
+	is.Equal(div2Count, 13)
+}
