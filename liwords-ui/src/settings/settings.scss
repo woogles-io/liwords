@@ -204,7 +204,8 @@
   .preferences {
     .tile-order,
     .tile-style,
-    .board-style {
+    .board-style,
+    .chat-text-size {
       font-weight: bold;
     }
     .tile-order-select {
@@ -214,6 +215,12 @@
     }
     .toggles-section {
       display: flex;
+    }
+    // Make a lone toggle row fill the width so its switch sits at the far
+    // right, matching the dark-mode toggle (whose row is widened by a
+    // long-description sibling).
+    .chat-toggle-fill {
+      flex: 1;
     }
     .toggle-section {
       margin-bottom: 24px;
@@ -514,7 +521,8 @@
 }
 .tile-selection,
 .board-selection,
-.puzzle-lexicon-selection {
+.puzzle-lexicon-selection,
+.chat-size-selection {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
