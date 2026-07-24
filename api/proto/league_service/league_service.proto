@@ -55,6 +55,7 @@ service LeagueService {
 
   // Admin operations
   rpc MovePlayerToDivision(MovePlayerToDivisionRequest) returns (MovePlayerToDivisionResponse);
+  rpc CreateDivision(CreateDivisionRequest) returns (CreateDivisionResponse);
   rpc DeleteDivision(DeleteDivisionRequest) returns (DeleteDivisionResponse);
   rpc GetSeasonZeroMoveGames(SeasonRequest) returns (SeasonZeroMoveGamesResponse);
   rpc GetSeasonPlayersWithUnstartedGames(SeasonRequest) returns (SeasonPlayersWithUnstartedGamesResponse);
@@ -260,6 +261,18 @@ message MovePlayerToDivisionRequest {
 message MovePlayerToDivisionResponse {
   bool success = 1;
   string message = 2;
+}
+
+message CreateDivisionRequest {
+  string season_id = 1;       // UUID of season
+  int32 division_number = 2;  // Division number to create; existing divisions numbered >= this are shifted up by one
+  string division_name = 3;   // Optional; defaults to "Division {division_number}"
+}
+
+message CreateDivisionResponse {
+  bool success = 1;
+  string message = 2;
+  string division_id = 3;  // UUID of the newly created division
 }
 
 message DeleteDivisionRequest {

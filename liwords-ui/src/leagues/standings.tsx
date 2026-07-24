@@ -556,33 +556,6 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
     {
       title: (
         <ColHeader
-          title={isMiaow ? "Miaow" : "MiAV"}
-          tooltip={
-            isMiaow
-              ? `${miaowBackronym} (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
-              : `Average Mistake Index from BestBot analysis (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
-          }
-        />
-      ),
-      key: "avgMistakeIndex",
-      width: 50,
-      sorter: (a: StandingRecord, b: StandingRecord) => {
-        // Players with no analysis sort to the bottom
-        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
-        if (a.gamesAnalyzed === 0) return 1;
-        if (b.gamesAnalyzed === 0) return -1;
-        return a.avgMistakeIndex - b.avgMistakeIndex;
-      },
-      sortDirections: ["ascend", "descend"] as SortOrder[],
-      sortIcon: noSortIcon,
-      render: (
-        _: unknown,
-        record: { avgMistakeIndex: number; gamesAnalyzed: number },
-      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "-"),
-    },
-    {
-      title: (
-        <ColHeader
           title="ScAV"
           tooltip={`Average score per game (div avg: ${divAvg(divTotals.totalScore)})`}
         />
@@ -620,6 +593,33 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
         _: unknown,
         record: { totalOpponentScore: number; gamesPlayed: number },
       ) => formatAvg(record.totalOpponentScore, record.gamesPlayed),
+    },
+    {
+      title: (
+        <ColHeader
+          title={isMiaow ? "Miaow" : "MiAV"}
+          tooltip={
+            isMiaow
+              ? `${miaowBackronym} (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
+              : `Average Mistake Index from BestBot analysis (lower is better; - if no analysis) (div avg: ${divTotals.gamesAnalyzed > 0 ? (divTotals.totalMistakeIndex / divTotals.gamesAnalyzed).toFixed(1) : "-"})`
+          }
+        />
+      ),
+      key: "avgMistakeIndex",
+      width: 50,
+      sorter: (a: StandingRecord, b: StandingRecord) => {
+        // Players with no analysis sort to the bottom
+        if (a.gamesAnalyzed === 0 && b.gamesAnalyzed === 0) return 0;
+        if (a.gamesAnalyzed === 0) return 1;
+        if (b.gamesAnalyzed === 0) return -1;
+        return a.avgMistakeIndex - b.avgMistakeIndex;
+      },
+      sortDirections: ["ascend", "descend"] as SortOrder[],
+      sortIcon: noSortIcon,
+      render: (
+        _: unknown,
+        record: { avgMistakeIndex: number; gamesAnalyzed: number },
+      ) => (record.gamesAnalyzed > 0 ? record.avgMistakeIndex.toFixed(1) : "-"),
     },
     {
       title: (

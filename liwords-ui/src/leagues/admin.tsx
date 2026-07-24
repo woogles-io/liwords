@@ -28,6 +28,7 @@ import {
   getAllDivisionStandings,
   getAllSeasons,
   movePlayerToDivision,
+  createDivision,
   deleteDivision,
   updateSeasonDates,
   unregisterFromSeason,
@@ -58,6 +59,7 @@ export const LeagueAdmin = () => {
   const [seasonForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [movePlayerForm] = Form.useForm();
+  const [createDivisionForm] = Form.useForm();
   const [editSeasonDatesForm] = Form.useForm();
   const [createdLeagueSlug, setCreatedLeagueSlug] = useState<string>("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string>("");
@@ -245,6 +247,20 @@ export const LeagueAdmin = () => {
       setSelectedPlayerId("");
       setSelectedPlayerDivisionId("");
       movePlayerForm.resetFields();
+    },
+    onError: (error) => {
+      flashError(error);
+    },
+  });
+
+  const createDivisionMutation = useMutation(createDivision, {
+    onSuccess: (response) => {
+      notification.success({
+        message: "Division Created",
+        description: response.message || "Division created successfully!",
+      });
+      refetchDivisions();
+      createDivisionForm.resetFields();
     },
     onError: (error) => {
       flashError(error);
@@ -463,6 +479,25 @@ export const LeagueAdmin = () => {
       seasonId: latestSeason.uuid,
       fromDivisionId: selectedPlayerDivisionId,
       toDivisionId: values.toDivisionId,
+    });
+  };
+
+  const handleCreateDivision = (values: {
+    divisionNumber: number;
+    divisionName?: string;
+  }) => {
+    if (!latestSeason?.uuid) {
+      notification.error({
+        message: "Season Error",
+        description: "No season found for this league",
+      });
+      return;
+    }
+
+    createDivisionMutation.mutate({
+      seasonId: latestSeason.uuid,
+      divisionNumber: values.divisionNumber,
+      divisionName: values.divisionName || "",
     });
   };
 
@@ -1528,6 +1563,84 @@ export const LeagueAdmin = () => {
                       }
                     >
                       Move Player
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </>
+            )}
+          </Card>
+
+          {/* Create Division */}
+          <Card
+            title={
+              <span>
+                Create Division <Tag color="orange">Manager only</Tag>
+              </span>
+            }
+          >
+            <Alert
+              message="Create Division"
+              description="Creates a new blank division at the given number. Any existing divisions numbered at or above it are shifted up by one. Only works when season is SCHEDULED."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+
+            {selectedMoveLeagueId && latestSeason && (
+              <>
+                {latestSeason.status !== SeasonStatus.SEASON_SCHEDULED && (
+                  <Alert
+                    message="Season must be SCHEDULED to create divisions"
+                    type="warning"
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+
+                <Form
+                  form={createDivisionForm}
+                  layout="vertical"
+                  onFinish={handleCreateDivision}
+                >
+                  <Form.Item
+                    label="Division Number"
+                    name="divisionNumber"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Please enter a division number",
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      min={1}
+                      style={{ width: "100%" }}
+                      disabled={
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Division Name (optional)"
+                    name="divisionName"
+                  >
+                    <Input
+                      placeholder="Defaults to 'Division {number}'"
+                      disabled={
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    />
+                  </Form.Item>
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={createDivisionMutation.isPending}
+                      disabled={
+                        latestSeason.status !== SeasonStatus.SEASON_SCHEDULED
+                      }
+                    >
+                      Create Division
                     </Button>
                   </Form.Item>
                 </Form>

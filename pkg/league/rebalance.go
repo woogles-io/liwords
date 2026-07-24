@@ -99,7 +99,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	}
 
 	// Step 2: Assign virtual divisions to all players
-	playersWithVirtualDivs, err := rm.AssignVirtualDivisions(ctx, leagueID, previousSeasonID, newSeasonID, categorizedPlayers)
+	playersWithVirtualDivs, highestPrevDivNumber, err := rm.AssignVirtualDivisions(ctx, leagueID, previousSeasonID, newSeasonID, categorizedPlayers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign virtual divisions: %w", err)
 	}
@@ -150,7 +150,7 @@ func (rm *RebalanceManager) RebalanceDivisions(
 	// Merge only ever moves players upward (lower-numbered divisions), so it
 	// cannot introduce guarantee violations; enforcement then fixes any that
 	// remain from the initial bucketing.
-	if err := rm.enforceGuarantees(ctx, newSeasonID, playersWithPriority); err != nil {
+	if err := rm.enforceGuarantees(ctx, newSeasonID, playersWithPriority, highestPrevDivNumber); err != nil {
 		return nil, fmt.Errorf("failed to enforce placement guarantees: %w", err)
 	}
 
@@ -204,7 +204,13 @@ func (rm *RebalanceManager) RebalanceDivisions(
 // ceilingForStatus returns the maximum division number (highest-numbered = lowest tier)
 // that a player may land in given their status and previous division.
 // Returns (0, false) when the status carries no placement guarantee.
-func ceilingForStatus(status ipc.PlacementStatus, prevDiv int32) (int32, bool) {
+//
+// highestPrevDivNumber is the previous season's bottom (highest-numbered)
+// division. A STAYED player whose previous division was already that bottom
+// division carries no ceiling: if the league grew and needs a new, lower
+// division this season, someone has to seed it, and a player who was already
+// at the bottom shouldn't be pinned above it.
+func ceilingForStatus(status ipc.PlacementStatus, prevDiv int32, highestPrevDivNumber int32) (int32, bool) {
 	switch status {
 	case ipc.PlacementStatus_PLACEMENT_PROMOTED:
 		if prevDiv <= 1 {
@@ -215,6 +221,9 @@ func ceilingForStatus(status ipc.PlacementStatus, prevDiv int32) (int32, bool) {
 		}
 		return prevDiv - 1, true
 	case ipc.PlacementStatus_PLACEMENT_STAYED:
+		if highestPrevDivNumber > 0 && prevDiv >= highestPrevDivNumber {
+			return 0, false
+		}
 		return prevDiv, true
 	default:
 		return 0, false
@@ -233,6 +242,7 @@ func (rm *RebalanceManager) enforceGuarantees(
 	ctx context.Context,
 	seasonID uuid.UUID,
 	playersWithPriority []PlayerWithPriority,
+	highestPrevDivNumber int32,
 ) error {
 	// Build a map from division number to UUID once, to avoid per-player DB hits.
 	allDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, seasonID)
@@ -245,7 +255,7 @@ func (rm *RebalanceManager) enforceGuarantees(
 	}
 
 	for _, p := range playersWithPriority {
-		ceiling, hasGuarantee := ceilingForStatus(p.PlacementStatus, p.PreviousDivisionNumber)
+		ceiling, hasGuarantee := ceilingForStatus(p.PlacementStatus, p.PreviousDivisionNumber, highestPrevDivNumber)
 		if !hasGuarantee {
 			continue
 		}
@@ -491,13 +501,13 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 	previousSeasonID uuid.UUID,
 	newSeasonID uuid.UUID,
 	categorizedPlayers []CategorizedPlayer,
-) ([]PlayerWithVirtualDiv, error) {
+) ([]PlayerWithVirtualDiv, int32, error) {
 	players := []PlayerWithVirtualDiv{}
 
 	// Fetch all registrations for the season at once to avoid N+1 queries
 	allRegistrations, err := rm.stores.LeagueStore.GetSeasonRegistrations(ctx, newSeasonID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get season registrations: %w", err)
+		return nil, 0, fmt.Errorf("failed to get season registrations: %w", err)
 	}
 
 	// Create a map for O(1) lookup by user_id
@@ -510,7 +520,7 @@ func (rm *RebalanceManager) AssignVirtualDivisions(
 	for _, catPlayer := range categorizedPlayers {
 		regRow, exists := registrationMap[catPlayer.Registration.UserID]
 		if !exists {
-			return nil, fmt.Errorf("registration not found for user %d in season", catPlayer.Registration.UserID)
+			return nil, 0, fmt.Errorf("registration not found for user %d in season", catPlayer.Registration.UserID)
 		}
 
 		// Convert GetSeasonRegistrationsRow to LeagueRegistration
@@ -587,11 +597,11 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 	leagueID uuid.UUID,
 	previousSeasonID uuid.UUID,
 	players []PlayerWithVirtualDiv,
-) ([]PlayerWithVirtualDiv, error) {
+) ([]PlayerWithVirtualDiv, int32, error) {
 	// Get previous season divisions to determine virtual division structure
 	prevDivisions, err := rm.stores.LeagueStore.GetDivisionsBySeason(ctx, previousSeasonID)
 	if err != nil && previousSeasonID != uuid.Nil {
-		return nil, fmt.Errorf("failed to get previous season divisions: %w", err)
+		return nil, 0, fmt.Errorf("failed to get previous season divisions: %w", err)
 	}
 
 	// Sort divisions by division number
@@ -614,7 +624,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 			LeagueID: leagueID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get history for %s: %w", p.UserID, err)
+			return nil, 0, fmt.Errorf("failed to get history for %s: %w", p.UserID, err)
 		}
 
 		prevDivNumber := int32(1) // Default
@@ -656,7 +666,7 @@ func (rm *RebalanceManager) calculateVirtualDivisions(
 		}
 	}
 
-	return result, nil
+	return result, highestPrevDivNumber, nil
 }
 
 // CalculatePriorityScores calculates priority scores for all players

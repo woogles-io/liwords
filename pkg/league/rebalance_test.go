@@ -364,26 +364,30 @@ func TestHiatusWeight_HalvesEveryTenSeasons(t *testing.T) {
 
 func TestCeilingForStatus(t *testing.T) {
 	tests := []struct {
-		name          string
-		status        ipc.PlacementStatus
-		prevDiv       int32
-		wantCeiling   int32
-		wantGuarantee bool
+		name                 string
+		status               ipc.PlacementStatus
+		prevDiv              int32
+		highestPrevDivNumber int32
+		wantCeiling          int32
+		wantGuarantee        bool
 	}{
-		{"promoted from div 3", ipc.PlacementStatus_PLACEMENT_PROMOTED, 3, 2, true},
-		{"promoted from div 2", ipc.PlacementStatus_PLACEMENT_PROMOTED, 2, 1, true},
-		{"promoted from div 1 (should not occur)", ipc.PlacementStatus_PLACEMENT_PROMOTED, 1, 1, false},
-		{"stayed in div 1", ipc.PlacementStatus_PLACEMENT_STAYED, 1, 1, true},
-		{"stayed in div 4", ipc.PlacementStatus_PLACEMENT_STAYED, 4, 4, true},
-		{"relegated from div 2 (no ceiling)", ipc.PlacementStatus_PLACEMENT_RELEGATED, 2, 0, false},
-		{"new player (no ceiling)", ipc.PlacementStatus_PLACEMENT_NEW, 0, 0, false},
-		{"short hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, 3, 0, false},
-		{"long hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING, 3, 0, false},
+		{"promoted from div 3", ipc.PlacementStatus_PLACEMENT_PROMOTED, 3, 7, 2, true},
+		{"promoted from div 2", ipc.PlacementStatus_PLACEMENT_PROMOTED, 2, 7, 1, true},
+		{"promoted from div 1 (should not occur)", ipc.PlacementStatus_PLACEMENT_PROMOTED, 1, 7, 1, false},
+		{"stayed in div 1", ipc.PlacementStatus_PLACEMENT_STAYED, 1, 7, 1, true},
+		{"stayed in div 4", ipc.PlacementStatus_PLACEMENT_STAYED, 4, 7, 4, true},
+		{"stayed in previous season's bottom division (no ceiling)", ipc.PlacementStatus_PLACEMENT_STAYED, 7, 7, 0, false},
+		{"stayed in div 1 when div 1 was also the bottom division (no ceiling)", ipc.PlacementStatus_PLACEMENT_STAYED, 1, 1, 0, false},
+		{"stayed with no previous-season division info (highestPrevDivNumber unset)", ipc.PlacementStatus_PLACEMENT_STAYED, 4, 0, 4, true},
+		{"relegated from div 2 (no ceiling)", ipc.PlacementStatus_PLACEMENT_RELEGATED, 2, 7, 0, false},
+		{"new player (no ceiling)", ipc.PlacementStatus_PLACEMENT_NEW, 0, 7, 0, false},
+		{"short hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_SHORT_HIATUS_RETURNING, 3, 7, 0, false},
+		{"long hiatus (no ceiling)", ipc.PlacementStatus_PLACEMENT_LONG_HIATUS_RETURNING, 3, 7, 0, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ceiling, hasGuarantee := ceilingForStatus(tt.status, tt.prevDiv)
+			ceiling, hasGuarantee := ceilingForStatus(tt.status, tt.prevDiv, tt.highestPrevDivNumber)
 			assert.Equal(t, tt.wantGuarantee, hasGuarantee)
 			if tt.wantGuarantee {
 				assert.Equal(t, tt.wantCeiling, ceiling)
