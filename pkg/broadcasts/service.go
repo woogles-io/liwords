@@ -113,11 +113,20 @@ func (bs *BroadcastService) invalidateSlugCaches(slug string) {
 	}
 }
 
-// requireDirector checks that the authenticated user is a director for the broadcast.
+// requireDirector checks that the authenticated user is a director for the
+// broadcast, or holds the can_manage_broadcasts permission (site-wide
+// broadcast admins, who can administer any broadcast regardless of ownership).
 func (bs *BroadcastService) requireDirector(ctx context.Context, broadcastID int32) (*entity.User, error) {
 	u, err := apiserver.AuthUser(ctx, bs.userStore)
 	if err != nil {
 		return nil, err
+	}
+	canManage, err := rbac.HasPermission(ctx, bs.queries, u.ID, rbac.CanManageBroadcasts)
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if canManage {
+		return u, nil
 	}
 	isDir, err := bs.queries.IsBroadcastDirector(ctx, models.IsBroadcastDirectorParams{
 		BroadcastID: broadcastID,

@@ -30,6 +30,7 @@ const (
 	CanRevokeFromLeagues            Permission = "can_revoke_from_leagues"
 	CanVerifyUserIdentities         Permission = "can_verify_user_identities"
 	CanCreateBroadcasts             Permission = "can_create_broadcasts"
+	CanManageBroadcasts             Permission = "can_manage_broadcasts"
 )
 
 // These Roles are also defined in the database.
