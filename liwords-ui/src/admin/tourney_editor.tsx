@@ -140,6 +140,7 @@ export const TourneyEditor = (props: Props) => {
   const name = useWatch("name", form);
   const color = useWatch("color", form);
   const logo = useWatch("logo", form);
+  const slug = useWatch("slug", form);
 
   const tournamentClient = useClient(TournamentService);
   const timeFormat = doesCurrentUserUse24HourTime() ? "HH:mm" : "hh:mm A";
@@ -210,6 +211,7 @@ export const TourneyEditor = (props: Props) => {
         directorUsernames: directors,
         freeformClubSettingFields: vals.freeformItems,
         defaultClubSettings: selectedGameRequest,
+        irlMode: vals.irlMode,
         scheduledStartTime: scheduledStartTime
           ? timestampFromMs(scheduledStartTime.unix() * 1000)
           : undefined,
@@ -321,7 +323,23 @@ export const TourneyEditor = (props: Props) => {
               <Input />
             </Form.Item>
 
-            <Form.Item name="slug" label="Tournament Slug (URL)">
+            <Form.Item
+              name="slug"
+              label="Tournament Slug (URL)"
+              extra={
+                // Show a clickable link for same-origin slugs so the URL can
+                // be checked with one click. Use the slug as-is (no encoding)
+                // so an already-encoded value isn't double-escaped; the browser
+                // encodes it on navigation. Require a single leading slash and
+                // reject "//" so a protocol-relative value can't become an
+                // off-site link.
+                slug?.startsWith("/") && !slug.startsWith("//") ? (
+                  <a href={slug} target="_blank" rel="noreferrer">
+                    {slug}
+                  </a>
+                ) : null
+              }
+            >
               <Input />
             </Form.Item>
 
@@ -475,7 +493,6 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item
               name="irlMode"
               label="Use tournament mode for IRL games"
-              hidden={props.mode === "new"}
               valuePropName="checked"
             >
               <Switch />

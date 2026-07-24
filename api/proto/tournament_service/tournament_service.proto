@@ -32,6 +32,11 @@ message NewTournamentRequest {
   TType type = 5;
   google.protobuf.Timestamp scheduled_start_time = 6;
   google.protobuf.Timestamp scheduled_end_time = 7;
+  // irl_mode creates the tournament with over-the-board (IRL) pairing mode
+  // enabled, so that usernames need not be registered on the site. It can
+  // also be toggled later via SetTournamentMetadata, but only before any
+  // players have been added.
+  bool irl_mode = 8;
 }
 
 message TournamentMetadata {

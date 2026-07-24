@@ -231,7 +231,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *connect.Req
 	}
 
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Msg.Name, req.Msg.Description, directors,
-		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime, user.ID)
+		tt, "", req.Msg.Slug, scheduledStartTime, scheduledEndTime, user.ID, req.Msg.IrlMode)
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())
 	}
@@ -641,7 +641,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *connect
 	}
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeChild, club.UUID, slug, scheduledStartTime, nil, 0 /*fix me when we ever have club sessions*/)
+		entity.TypeChild, club.UUID, slug, scheduledStartTime, nil, 0 /*fix me when we ever have club sessions*/, false)
 
 	if err != nil {
 		return nil, apiserver.InvalidArg(err.Error())

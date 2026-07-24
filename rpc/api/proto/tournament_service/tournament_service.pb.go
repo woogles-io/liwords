@@ -141,8 +141,13 @@ type NewTournamentRequest struct {
 	Type               TType                  `protobuf:"varint,5,opt,name=type,proto3,enum=tournament_service.TType" json:"type,omitempty"`
 	ScheduledStartTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=scheduled_start_time,json=scheduledStartTime,proto3" json:"scheduled_start_time,omitempty"`
 	ScheduledEndTime   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=scheduled_end_time,json=scheduledEndTime,proto3" json:"scheduled_end_time,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// irl_mode creates the tournament with over-the-board (IRL) pairing mode
+	// enabled, so that usernames need not be registered on the site. It can
+	// also be toggled later via SetTournamentMetadata, but only before any
+	// players have been added.
+	IrlMode       bool `protobuf:"varint,8,opt,name=irl_mode,json=irlMode,proto3" json:"irl_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NewTournamentRequest) Reset() {
@@ -222,6 +227,13 @@ func (x *NewTournamentRequest) GetScheduledEndTime() *timestamppb.Timestamp {
 		return x.ScheduledEndTime
 	}
 	return nil
+}
+
+func (x *NewTournamentRequest) GetIrlMode() bool {
+	if x != nil {
+		return x.IrlMode
+	}
+	return false
 }
 
 type TournamentMetadata struct {
@@ -3166,7 +3178,7 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"1proto/tournament_service/tournament_service.proto\x12\x12tournament_service\x1a\x18proto/ipc/omgwords.proto\x1a\x1aproto/ipc/tournament.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x14proto/ipc/pair.proto\"N\n" +
 	"\x11StartRoundRequest\x12#\n" +
 	"\rtournament_id\x18\x01 \x01(\tR\ftournamentId\x12\x14\n" +
-	"\x05round\x18\x02 \x01(\x05R\x05round\"\xd6\x02\n" +
+	"\x05round\x18\x02 \x01(\x05R\x05round\"\xf1\x02\n" +
 	"\x14NewTournamentRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -3174,7 +3186,8 @@ const file_proto_tournament_service_tournament_service_proto_rawDesc = "" +
 	"\x12director_usernames\x18\x04 \x03(\tR\x11directorUsernames\x12-\n" +
 	"\x04type\x18\x05 \x01(\x0e2\x19.tournament_service.TTypeR\x04type\x12L\n" +
 	"\x14scheduled_start_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x12scheduledStartTime\x12H\n" +
-	"\x12scheduled_end_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x10scheduledEndTime\"\xb7\a\n" +
+	"\x12scheduled_end_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x10scheduledEndTime\x12\x19\n" +
+	"\birl_mode\x18\b \x01(\bR\airlMode\"\xb7\a\n" +
 	"\x12TournamentMetadata\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
