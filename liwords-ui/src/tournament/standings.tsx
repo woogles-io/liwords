@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Table } from "antd";
+import { signed } from "./format";
 import { competitionRanks, rankLabel } from "./ranks";
 // import { PlayerTag } from './player_tags';
 
@@ -105,10 +106,13 @@ export const Standings = (props: Props) => {
       className: "losses",
     },
     {
+      // Signed, so a spread of 50 cannot be read as a bare count. Already
+      // right-aligned.
       title: "Spread",
       dataIndex: "spread",
       key: "spread",
       className: "spread",
+      render: (spread: number) => signed(spread),
     },
     /*    {
       title: '',
