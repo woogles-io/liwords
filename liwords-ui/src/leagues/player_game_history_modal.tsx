@@ -10,7 +10,7 @@ import {
 } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
-import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
@@ -50,6 +50,10 @@ type PlayerGameHistoryModalProps = {
   username: string;
   seasonId: string;
   seasonNumber: number;
+  // The season's start (all league games are created then). Passed in from the
+  // league page, which already has it, so the title's date range does not
+  // refetch it. When absent the range falls back to the games' own span.
+  seasonStartDate?: Timestamp;
   onChat?: (uuid: string, username: string) => void;
 };
 
@@ -154,6 +158,21 @@ export const timeMistakeSorter = (a: GameRow, b: GameRow): number => {
   }
 };
 
+// Formats the span of the season's games for the modal title. Intl's
+// formatRange collapses the shared parts locale-appropriately (e.g.
+// "16-30 Jul 2026", "30 Jul - 14 Aug 2026", "30 Dec 2025 - 14 Jan 2026"); a
+// single day shows once. The year lives here so the per-row Date cells can drop
+// it without a screenshot losing which season it was.
+const seasonRangeFormat = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+export const formatSeasonRange = (start: Date, end: Date): string =>
+  start.toDateString() === end.toDateString()
+    ? seasonRangeFormat.format(start)
+    : seasonRangeFormat.formatRange(start, end);
+
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   visible,
   onClose,
@@ -161,6 +180,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   username,
   seasonId,
   seasonNumber,
+  seasonStartDate,
   onChat,
 }) => {
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
@@ -320,9 +340,17 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       key: "date",
       render: (date?: Date) => {
         if (!date) return "—";
+        // Locale short date without the year (the season's year lives in the
+        // modal title) plus the time -- the part that actually varies row to
+        // row, previously buried in the hover. Full timestamp stays on hover.
         return (
           <Tooltip title={date.toLocaleString()}>
-            {date.toLocaleDateString()}
+            {date.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Tooltip>
         );
       },
@@ -349,6 +377,25 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       onTurnTimeBankMs: Number(game.onTurnTimeBankMs),
     })) || [];
 
+  // Title range, shown once so the per-row Date cells can drop the year: from
+  // the season start (all league games are created then) to this player's
+  // latest activity. Min/max over the games' last-updated times plus the start,
+  // so it spans the whole season even if the earliest game was last touched
+  // well after it began; falls back to the games' own span if no start is given.
+  const rangeMs = dataSource
+    .map((row) => row.gameDate?.getTime())
+    .filter((t): t is number => t !== undefined);
+  if (seasonStartDate) {
+    rangeMs.push(timestampDate(seasonStartDate).getTime());
+  }
+  const seasonRange =
+    rangeMs.length === 0
+      ? null
+      : formatSeasonRange(
+          new Date(Math.min(...rangeMs)),
+          new Date(Math.max(...rangeMs)),
+        );
+
   const handleRowClick = (record: { gameId: string }) => {
     window.open(`/game/${record.gameId}`, "_blank");
   };
@@ -365,6 +412,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             omitSendMessage={!onChat}
           />
           's Season {seasonNumber} Games
+          {seasonRange ? ` (${seasonRange})` : null}
         </React.Fragment>
       }
       open={visible}

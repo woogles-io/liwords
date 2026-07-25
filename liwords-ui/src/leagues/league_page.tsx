@@ -841,6 +841,7 @@ export const LeaguePage = (props: Props) => {
                         totalDivisions={standingsData.divisions.length}
                         seasonId={displaySeasonId || ""}
                         seasonNumber={displayedSeason?.seasonNumber || 0}
+                        seasonStartDate={displayedSeason?.startDate}
                         currentUserId={userID}
                         onChat={openDirectMessage}
                         promotionFormula={displayedSeason?.promotionFormula}
