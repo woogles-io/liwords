@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Spin, Table, Tag, Tooltip } from "antd";
+import { Modal, Spin, Table, type TableColumnsType, Tag, Tooltip } from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
@@ -41,6 +41,27 @@ type PlayerGameHistoryModalProps = {
   seasonId: string;
   seasonNumber: number;
   onChat?: (uuid: string, username: string) => void;
+};
+
+// One row of the season game list. Finished games carry scores, a result and an
+// optional mistake index (absent until the game has been analyzed); in-progress
+// games carry the live-clock anchor (lastUpdateMs / incrementSecs /
+// onTurnTimeBankMs) so the clock can tick. gameDate is the last-updated time for
+// both, and is what the list sorts by, by default.
+type GameRow = {
+  key: string;
+  gameId: string;
+  opponentUsername: string;
+  opponentUserId: string;
+  result: string;
+  playerScore: number;
+  opponentScore: number;
+  mistakeIndex?: number;
+  gameDate?: Date;
+  gameEndReason: GameEndReason;
+  lastUpdateMs?: number;
+  incrementSecs: number;
+  onTurnTimeBankMs: number;
 };
 
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
@@ -98,7 +119,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     },
   };
 
-  const columns = [
+  const columns: TableColumnsType<GameRow> = [
     {
       title: "Opponent",
       key: "opponent",
@@ -203,7 +224,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     },
   ];
 
-  const dataSource =
+  const dataSource: GameRow[] =
     data?.games.map((game) => ({
       key: game.gameId,
       gameId: game.gameId,
