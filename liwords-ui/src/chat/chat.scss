@@ -528,6 +528,10 @@ p {
   left: 0;
   width: calc(100% - 12px);
   margin: 6px;
+  // Scale the input text with the same chat font-size setting the messages use
+  // (1 = default, so no change unless the user picks a larger size), so what you
+  // type matches what you read.
+  font-size: calc(1em * var(--chat-font-scale, 1));
   // Auto-sizes up to a few rows so a full message can be read while typing;
   // it grows upward from the bottom over the most recent messages and
   // collapses back to one row after sending.
