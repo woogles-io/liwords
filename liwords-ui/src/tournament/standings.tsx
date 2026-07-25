@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Table } from "antd";
+import { competitionRanks, rankLabel } from "./ranks";
 // import { PlayerTag } from './player_tags';
 
 type Props = {
@@ -10,7 +11,10 @@ type Props = {
 };
 
 type StandingsTableData = {
+  // The row's position, which the table needs as a key, and its rank as a
+  // competition scores it, which ties can share.
   rank: number;
+  displayRank: string;
   player: ReactNode;
   //rating: number;
   wins: number;
@@ -43,11 +47,15 @@ export const Standings = (props: Props) => {
   // tentative next round would silently repeat the current standings under its
   // own heading.
   if (currentRound > -1 && props.selectedRound <= currentRound) {
-    formatStandings = division.standingsMap[props.selectedRound]?.standings.map(
+    const roundStandings =
+      division.standingsMap[props.selectedRound]?.standings;
+    const ranks = competitionRanks(roundStandings ?? []);
+    formatStandings = roundStandings?.map(
       (standing, index): StandingsTableData => {
         const [playerId, playerName] = standing.playerId.split(":");
         return {
           rank: index + 1,
+          displayRank: rankLabel(ranks[index], index + 1),
           player: (
             <>
               <UsernameWithContext
@@ -74,7 +82,7 @@ export const Standings = (props: Props) => {
   const columns = [
     {
       title: "",
-      dataIndex: "rank",
+      dataIndex: "displayRank",
       key: "rank",
       className: "rank",
     },

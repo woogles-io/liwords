@@ -111,4 +111,24 @@ describe("standings for the selected round", () => {
     renderAt(-1, 0);
     expect(screen.getByText("Standings are not yet available.")).toBeVisible();
   });
+
+  it("shares a place between players the table cannot tell apart", () => {
+    // After round 2 both josh and lola are 1-0 with a spread of 50.
+    renderAt(7, 1);
+    expect(rows()).toEqual([
+      ["1=", "lola", "1", "0", "50"],
+      ["1=", "josh", "1", "0", "50"],
+      ["3", "thedirector", "0", "0", "0"],
+    ]);
+  });
+
+  it("shares a place below the leader too", () => {
+    // Round 1 gave josh a bye, and left the other two on nothing at all.
+    renderAt(7, 0);
+    expect(rows()).toEqual([
+      ["1", "josh", "1", "0", "50"],
+      ["2=", "lola", "0", "0", "0"],
+      ["2=", "thedirector", "0", "0", "0"],
+    ]);
+  });
 });
