@@ -145,6 +145,7 @@ export const Standings = (props: Props) => {
           throughRound={props.selectedRound}
           irlMode={tournamentContext.metadata?.irlMode ?? false}
           onClose={() => setScorecardPlayer(undefined)}
+          onSelectPlayer={setScorecardPlayer}
         />
       )}
     </>

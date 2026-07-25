@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -21,9 +22,30 @@ import {
 import { ftData } from "../store/reducers/testdata/tourney_1_divisions";
 import { PlayerScorecardModal } from "./player_scorecard_modal";
 
+// The real one is a dropdown needing the login, match and pet contexts. Its
+// "View scorecard" entry becomes a button so the wiring can still be clicked.
 vi.mock("../shared/usernameWithContext", () => ({
-  UsernameWithContext: (props: { username: string }) => (
-    <span>{props.username}</span>
+  UsernameWithContext: (props: {
+    username: string;
+    infoText?: string;
+    handleInfoText?: () => void;
+  }) => (
+    <span>
+      {props.username}
+      {props.infoText && (
+        <button
+          onClick={(e) => {
+            props.handleInfoText?.();
+            // The real menu is portalled outside the modal and unmounts on
+            // click, which drops focus onto the body. Reproduce that, since it
+            // is what stops Escape reaching the dialog wrapper.
+            e.currentTarget.blur();
+          }}
+        >
+          {props.infoText} for {props.username}
+        </button>
+      )}
+    </span>
   ),
 }));
 
@@ -183,6 +205,7 @@ const showScorecard = (
   playerId: string,
   throughRound: number,
   irlMode = true,
+  onSelectPlayer: (id: string) => void = () => {},
 ) =>
   render(
     <PlayerScorecardModal
@@ -191,19 +214,30 @@ const showScorecard = (
       throughRound={throughRound}
       irlMode={irlMode}
       onClose={() => {}}
+      onSelectPlayer={onSelectPlayer}
     />,
   );
+
+// A real Escape press lands on whatever holds focus.
+const pressEscape = () =>
+  fireEvent.keyDown(document.activeElement ?? document.body, {
+    key: "Escape",
+    keyCode: 27,
+  });
+
+// A cell's text without the stand-in scorecard button.
+const cellText = (cell: HTMLElement) => {
+  const clone = cell.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll("button").forEach((button) => button.remove());
+  return clone.textContent?.trim();
+};
 
 // Every row as [round, opponent, result, score, W, L, spread, rank].
 const rows = () =>
   within(screen.getByRole("dialog"))
     .getAllByRole("row")
     .slice(1)
-    .map((row) =>
-      within(row)
-        .getAllByRole("cell")
-        .map((cell) => cell.textContent?.trim()),
-    );
+    .map((row) => within(row).getAllByRole("cell").map(cellText));
 
 describe("the player scorecard", () => {
   it("lays out one row per round, through the round it was opened at", () => {
@@ -249,6 +283,65 @@ describe("the player scorecard", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "Average score 415.00, average opponent score 410.00, over 2 games.",
     );
+  });
+
+  it("hands an opponent over so their scorecard can replace this one", async () => {
+    const selected: string[] = [];
+    showScorecard(madeUpDivision(), ALICE, 1, true, (id) => selected.push(id));
+    await userEvent.click(screen.getByText("View scorecard for carol"));
+    expect(selected).toEqual([CAROL]);
+  });
+
+  // jsdom never runs the motion callback rc-dialog focuses from, so without a
+  // focus target of our own nothing inside the modal holds focus here, even on
+  // first open. A browser does focus it -- this pins that the wrapper serves
+  // both paths.
+  it("closes on escape", () => {
+    const closed: string[] = [];
+    render(
+      <PlayerScorecardModal
+        division={madeUpDivision()}
+        playerId={ALICE}
+        throughRound={1}
+        irlMode
+        onClose={() => closed.push(ALICE)}
+        onSelectPlayer={() => {}}
+      />,
+    );
+    pressEscape();
+    expect(closed).toEqual([ALICE]);
+  });
+
+  it("still closes on escape after following an opponent", async () => {
+    // Switching players re-renders this modal rather than reopening it, so
+    // rc-dialog never re-runs its focus-on-open, and the click that switched
+    // came from a menu outside the modal. Escape is bound to the dialog
+    // wrapper, so it only works while focus is still inside.
+    const closed: string[] = [];
+    const Harness = () => {
+      const [playerId, setPlayerId] = React.useState(ALICE);
+      return (
+        <PlayerScorecardModal
+          division={madeUpDivision()}
+          playerId={playerId}
+          throughRound={1}
+          irlMode
+          onClose={() => closed.push(playerId)}
+          onSelectPlayer={setPlayerId}
+        />
+      );
+    };
+    render(<Harness />);
+
+    await userEvent.click(screen.getByText("View scorecard for carol"));
+    expect(screen.getByRole("dialog")).toHaveTextContent("carol");
+
+    // Escape has to be fired at whatever holds focus, since rc-dialog listens
+    // on the dialog wrapper and a keydown from the body never reaches it.
+    // user-event omits the deprecated keyCode that rc-dialog checks, so this
+    // goes through fireEvent.
+    pressEscape();
+    expect(closed).toEqual([CAROL]);
   });
 
   it("hides the first-move tag outside in-real-life events", () => {

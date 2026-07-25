@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Modal, Table, Tag, Typography } from "antd";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Division, SinglePairing } from "../store/reducers/tournament_reducer";
@@ -18,6 +18,9 @@ type Props = {
   throughRound: number;
   irlMode: boolean;
   onClose: () => void;
+  // Swaps the modal over to another player's scorecard, so an opponent can be
+  // followed without going back to the standings.
+  onSelectPlayer: (playerId: string) => void;
 };
 
 type ScorecardRow = {
@@ -193,6 +196,16 @@ export const PlayerScorecardModal = (props: Props) => {
     [division, playerId, throughRound],
   );
 
+  // Following an opponent re-renders this modal rather than reopening it, so
+  // rc-dialog never re-runs the focus-on-open it does from onDialogVisibleChanged.
+  // The click that got us here came from a menu antd portals outside the modal,
+  // which leaves focus on the body once it unmounts -- and Escape is a keydown
+  // handler on the dialog wrapper, so it stops reaching it. Put focus back.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bodyRef.current?.focus();
+  }, [playerId]);
+
   const averages = useMemo(() => {
     const played = rows.filter(isPlayedGame);
     if (!played.length) {
@@ -229,6 +242,8 @@ export const PlayerScorecardModal = (props: Props) => {
               userID={splitPlayerId(row.opponentId).uuid}
               omitSendMessage
               omitBlock
+              infoText="View scorecard"
+              handleInfoText={() => props.onSelectPlayer(row.opponentId!)}
             />{" "}
             {row.opponentRemoved && (
               <Tag className="ant-tag-removed">Removed</Tag>
@@ -326,26 +341,28 @@ export const PlayerScorecardModal = (props: Props) => {
       footer={null}
       width={720}
     >
-      <div style={{ overflowX: "auto" }}>
-        <Table
-          className="player-scorecard"
-          columns={columns}
-          dataSource={rows}
-          pagination={false}
-          size="small"
-          rowKey="key"
-          locale={{ emptyText: "No rounds have been played yet." }}
-        />
+      <div ref={bodyRef} tabIndex={-1} style={{ outline: "none" }}>
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            className="player-scorecard"
+            columns={columns}
+            dataSource={rows}
+            pagination={false}
+            size="small"
+            rowKey="key"
+            locale={{ emptyText: "No rounds have been played yet." }}
+          />
+        </div>
+        {averages && (
+          <p>
+            <Text type="secondary">
+              Average score {averages.score.toFixed(2)}, average opponent score{" "}
+              {averages.opponentScore.toFixed(2)}, over {averages.games}{" "}
+              {averages.games === 1 ? "game" : "games"}.
+            </Text>
+          </p>
+        )}
       </div>
-      {averages && (
-        <p>
-          <Text type="secondary">
-            Average score {averages.score.toFixed(2)}, average opponent score{" "}
-            {averages.opponentScore.toFixed(2)}, over {averages.games}{" "}
-            {averages.games === 1 ? "game" : "games"}.
-          </Text>
-        </p>
-      )}
     </Modal>
   );
 };
