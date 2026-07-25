@@ -58,7 +58,7 @@ type PlayerGameHistoryModalProps = {
 // games carry the live-clock anchor (lastUpdateMs / incrementSecs /
 // onTurnTimeBankMs) so the clock can tick. gameDate is the last-updated time for
 // both, and is what the list sorts by, by default.
-type GameRow = {
+export type GameRow = {
   key: string;
   gameId: string;
   opponentUsername: string;
@@ -73,6 +73,45 @@ type GameRow = {
   incrementSecs: number;
   onTurnTimeBankMs: number;
 };
+
+// Sort rank for the Result column: live games first (they are the actionable
+// ones), then wins, draws, losses. The sorter breaks ties by spread.
+export const resultRank = (result: string): number => {
+  switch (result) {
+    case "turn":
+      return 0;
+    case "in_progress":
+      return 1;
+    case "win":
+      return 2;
+    case "draw":
+      return 3;
+    case "loss":
+      return 4;
+    default:
+      return 5;
+  }
+};
+
+// Column sorters, pulled out as named functions so they can be unit-tested --
+// the modal has no local season data to exercise them by hand. All sort
+// ascending; antd's header toggle reverses. The direction each encodes (Result
+// live-first, timeMistake not-done-first) is the useful default.
+export const opponentSorter = (a: GameRow, b: GameRow): number =>
+  a.opponentUsername.localeCompare(b.opponentUsername);
+
+// Result: live games first (actionable), then win/draw/loss, ties by spread.
+export const resultSorter = (a: GameRow, b: GameRow): number =>
+  resultRank(a.result) - resultRank(b.result) ||
+  b.playerScore - b.opponentScore - (a.playerScore - a.opponentScore);
+
+// Score: by spread (player - opponent).
+export const scoreSorter = (a: GameRow, b: GameRow): number =>
+  a.playerScore - a.opponentScore - (b.playerScore - b.opponentScore);
+
+// Date: by last-updated timestamp.
+export const dateSorter = (a: GameRow, b: GameRow): number =>
+  (a.gameDate?.getTime() ?? 0) - (b.gameDate?.getTime() ?? 0);
 
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   visible,
@@ -174,6 +213,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           />
         </strong>
       ),
+      sorter: opponentSorter,
     },
     {
       title: "Result",
@@ -204,6 +244,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           tag
         );
       },
+      sorter: resultSorter,
     },
     {
       title: "Score",
@@ -227,6 +268,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           </span>
         );
       },
+      sorter: scoreSorter,
     },
     ...(hasLiveClocks || hasMistakeData ? [timeMistakeColumn] : []),
     {
@@ -241,6 +283,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           </Tooltip>
         );
       },
+      sorter: dateSorter,
     },
   ];
 
@@ -312,6 +355,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
               dataSource={dataSource}
               pagination={false}
               size="small"
+              showSorterTooltip={false}
               scroll={{ x: "max-content" }}
               onRow={(record) => ({
                 onClick: () => handleRowClick(record),
