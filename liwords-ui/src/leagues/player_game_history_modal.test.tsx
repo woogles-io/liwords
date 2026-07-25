@@ -8,16 +8,17 @@ import {
   dateSorter,
   formatSeasonRange,
   type GameRow,
+  mistakeSorter,
   opponentSorter,
   PlayerGameHistoryModal,
   resultSorter,
   scoreSorter,
-  timeMistakeSorter,
+  timeSorter,
 } from "./player_game_history_modal";
 
 // The modal has no local season data to render against, so the sort logic and
-// the display rules (combined column, spread sign, 0-vs-unanalyzed, title
-// range) are pinned here instead of by hand.
+// the display rules (the split Time/Mistakes columns, spread sign,
+// 0-vs-unanalyzed, title range) are pinned here instead of by hand.
 
 afterEach(cleanup);
 
@@ -99,31 +100,10 @@ describe("game-history sorters", () => {
     expect(order(rows, dateSorter)).toEqual(["a", "b", "c"]);
   });
 
-  it("time/mistakes: not-done first, then done; keyed within each band", () => {
+  it("time: live games by soonest deadline, finished games last", () => {
     const now = Date.now();
     const rows = [
-      mkRow({
-        gameId: "analyzed-2",
-        mistakeIndex: 2,
-        gameDate: new Date(2026, 6, 1),
-      }),
-      mkRow({
-        gameId: "analyzed-8",
-        mistakeIndex: 8,
-        gameDate: new Date(2026, 6, 1),
-      }),
-      mkRow({ gameId: "finished-old", gameDate: new Date(2026, 6, 10) }),
-      mkRow({ gameId: "finished-new", gameDate: new Date(2026, 6, 20) }),
-      mkRow({
-        gameId: "opp-old",
-        result: "in_progress",
-        gameDate: new Date(2026, 6, 10),
-      }),
-      mkRow({
-        gameId: "opp-new",
-        result: "in_progress",
-        gameDate: new Date(2026, 6, 20),
-      }),
+      mkRow({ gameId: "finished", gameDate: new Date(2026, 6, 10) }),
       mkRow({
         gameId: "turn-lots",
         result: "turn",
@@ -136,16 +116,36 @@ describe("game-history sorters", () => {
         lastUpdateMs: now,
         incrementSecs: 10,
       }),
+      mkRow({
+        gameId: "opp",
+        result: "in_progress",
+        lastUpdateMs: now,
+        incrementSecs: 50000,
+      }),
     ];
-    expect(order(rows, timeMistakeSorter)).toEqual([
-      "turn-soon", // band 0: soonest deadline first
+    expect(order(rows, timeSorter)).toEqual([
+      "turn-soon", // soonest deadline first
+      "opp",
       "turn-lots",
-      "opp-new", // band 1: most recent first
-      "opp-old",
-      "finished-new", // band 2: most recent first
-      "finished-old",
-      "analyzed-8", // band 3: worst mistake first
-      "analyzed-2",
+      "finished", // no clock -> last
+    ]);
+  });
+
+  it("mistakes: by score ascending, no-score games last", () => {
+    const rows = [
+      mkRow({ gameId: "m8", mistakeIndex: 8 }),
+      mkRow({ gameId: "m0", mistakeIndex: 0 }),
+      mkRow({ gameId: "live", result: "turn" }), // no score
+      mkRow({ gameId: "pending" }), // finished, unanalyzed -> no score
+      mkRow({ gameId: "m2", mistakeIndex: 2 }),
+    ];
+    // 0, 2, 8, then the two no-score rows (tied, stable input order).
+    expect(order(rows, mistakeSorter)).toEqual([
+      "m0",
+      "m2",
+      "m8",
+      "live",
+      "pending",
     ]);
   });
 });
@@ -282,12 +282,14 @@ const renderModal = (
 describe.each(["default", "dark"] as const)(
   "modal render in %s mode",
   (mode) => {
-    it("uses the combined Time / Mistakes header when both kinds are present", () => {
+    it("shows separate Time and Mistakes headers when both kinds are present", () => {
       renderModal(mode, mixed);
       const headers = screen
         .getAllByRole("columnheader")
         .map((h) => h.textContent ?? "");
-      expect(headers.some((h) => h.includes("Time / Mistakes"))).toBe(true);
+      expect(headers.some((h) => h.includes("Time"))).toBe(true);
+      expect(headers.some((h) => h.includes("Mistakes"))).toBe(true);
+      expect(headers.some((h) => h.includes("Time / Mistakes"))).toBe(false);
     });
 
     it("shows 0.0 for a perfect game and - for an unanalyzed one", () => {
@@ -315,12 +317,15 @@ describe.each(["default", "dark"] as const)(
   },
 );
 
-it("header reads just Mistakes when the season has no live games", () => {
+it("shows only the Mistakes column when the season has no live games", () => {
   renderModal("default", [
     mkGame({ gameId: "a", result: "loss", mistakeIndex: 3 }),
   ]);
-  expect(screen.getAllByText("Mistakes").length).toBeGreaterThan(0);
-  expect(screen.queryByText("Time / Mistakes")).toBeNull();
+  const headers = screen
+    .getAllByRole("columnheader")
+    .map((h) => h.textContent ?? "");
+  expect(headers.some((h) => h.includes("Mistakes"))).toBe(true);
+  expect(headers.some((h) => h.includes("Time"))).toBe(false);
 });
 
 it("extends the title range back to the season start", () => {

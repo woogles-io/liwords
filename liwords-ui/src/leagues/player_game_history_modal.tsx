@@ -97,16 +97,6 @@ export const resultRank = (result: string): number => {
   }
 };
 
-// Composite band for the combined Time/Mistakes column: not-done games first
-// (your turn, then opponent's), then done games (just-finished, then analyzed).
-// The band groups not-done vs done; the sorter orders within each band.
-export const timeMistakeBand = (record: GameRow): number => {
-  if (record.result === "turn") return 0;
-  if (record.result === "in_progress") return 1;
-  if (record.mistakeIndex === undefined) return 2; // finished, unanalyzed
-  return 3; // finished, analyzed
-};
-
 // Milliseconds until this player's on-turn game forfeits (per-turn allowance +
 // time bank - elapsed), matching the deadline the clock ticks toward. Only
 // meaningful for a live game with a clock anchor; unknown clocks sort last.
@@ -121,8 +111,7 @@ export const clockRemainingMs = (record: GameRow): number => {
 
 // Column sorters, pulled out as named functions so they can be unit-tested --
 // the modal has no local season data to exercise them by hand. All sort
-// ascending; antd's header toggle reverses. The direction each encodes (Result
-// live-first, timeMistake not-done-first) is the useful default.
+// ascending; antd's header toggle reverses.
 export const opponentSorter = (a: GameRow, b: GameRow): number =>
   a.opponentUsername.localeCompare(b.opponentUsername);
 
@@ -139,24 +128,16 @@ export const scoreSorter = (a: GameRow, b: GameRow): number =>
 export const dateSorter = (a: GameRow, b: GameRow): number =>
   (a.gameDate?.getTime() ?? 0) - (b.gameDate?.getTime() ?? 0);
 
-// Time/Mistakes: not-done games first (your turn by soonest deadline, then
-// opponent's by recency), then done games (just-finished by recency, then
-// analyzed by worst mistake first) -- so one click surfaces what needs a move,
-// and the reverse toggle surfaces the cleanest games.
-export const timeMistakeSorter = (a: GameRow, b: GameRow): number => {
-  const ba = timeMistakeBand(a);
-  const bb = timeMistakeBand(b);
-  if (ba !== bb) return ba - bb;
-  switch (ba) {
-    case 0:
-      return clockRemainingMs(a) - clockRemainingMs(b);
-    case 1:
-    case 2:
-      return (b.gameDate?.getTime() ?? 0) - (a.gameDate?.getTime() ?? 0);
-    default:
-      return (b.mistakeIndex ?? 0) - (a.mistakeIndex ?? 0);
-  }
-};
+// Time: by soonest forfeit deadline for live games; finished games have no
+// clock and sort to the bottom (clockRemainingMs returns MAX_SAFE_INTEGER).
+export const timeSorter = (a: GameRow, b: GameRow): number =>
+  clockRemainingMs(a) - clockRemainingMs(b);
+
+// Mistakes: by score, lowest (best) first; games with no score -- live (blank)
+// or finished-but-unanalyzed ("-") -- have no index and sort to the bottom.
+export const mistakeSorter = (a: GameRow, b: GameRow): number =>
+  (a.mistakeIndex ?? Number.MAX_SAFE_INTEGER) -
+  (b.mistakeIndex ?? Number.MAX_SAFE_INTEGER);
 
 // Formats the span of the season's games for the modal title. Intl's
 // formatRange collapses the shared parts locale-appropriately (e.g.
@@ -188,38 +169,23 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     seasonId,
   });
 
-  // These gate the combined "Time / Mistakes" column and pick its header. A
-  // season with live games has ticking clocks; a season with any analyzed game
-  // has mistake scores. The column is hidden only when the list has neither.
+  // Gate the Time and Mistakes columns. A season with live games has ticking
+  // clocks (Time); a season with any analyzed game has mistake scores
+  // (Mistakes). Each column is blank for the other kind of game, so each hides
+  // when the list has none of its kind -- during an active season both show.
   const hasLiveClocks = (data?.games ?? []).some(
     (g) => (g.result === "turn" || g.result === "in_progress") && g.lastUpdate,
   );
   const hasMistakeData = (data?.games ?? []).some(
     (g) => g.mistakeIndex !== undefined,
   );
-  // Time and Mistakes never apply to the same row -- a game is either live (show
-  // its clock) or finished (show its mistake score once analyzed) -- so they
-  // share one column. The just-finished-but-unanalyzed gap shows "-". The header
-  // names whichever kind(s) the current list actually has.
-  // Header label plus one explanatory tooltip on the header itself (reachable
-  // even when every row is "-"), rather than repeating the note on each cell.
-  const timeMistakeLabel = hasLiveClocks
-    ? hasMistakeData
-      ? "Time / Mistakes"
-      : "Time"
-    : "Mistakes";
-  const timeMistakeHint = hasLiveClocks
-    ? hasMistakeData
-      ? "Time until the on-turn player's clock forfeits for a live game; its BestBot Mistake Score once finished and analyzed (lower is better; 0 is a perfect game; - until analyzed)."
-      : "Time until the on-turn player's clock forfeits."
-    : "BestBot Mistake Score (lower is better; 0 is a perfect game; - until the game has been analyzed).";
-  const timeMistakeColumn: TableColumnsType<GameRow>[number] = {
+  const timeColumn: TableColumnsType<GameRow>[number] = {
     title: (
-      <Tooltip title={timeMistakeHint}>
-        <span style={{ cursor: "help" }}>{timeMistakeLabel}</span>
+      <Tooltip title="Time until the on-turn player's clock forfeits.">
+        <span style={{ cursor: "help" }}>Time</span>
       </Tooltip>
     ),
-    key: "timeMistake",
+    key: "time",
     align: "right" as const,
     render: (_, record) => {
       if (
@@ -240,16 +206,32 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
           />
         );
       }
-      // Finished games: the mistake score once analyzed, else "-". Absent (not
-      // 0) means unanalyzed, so 0 renders as a genuine perfect game. The column
-      // header carries the explanation, so the cell is just the number.
+      // Finished games have no clock.
+      return null;
+    },
+    sorter: timeSorter,
+  };
+  const mistakeColumn: TableColumnsType<GameRow>[number] = {
+    title: (
+      <Tooltip title="BestBot Mistake Score (lower is better; 0 is a perfect game; - until the game has been analyzed).">
+        <span style={{ cursor: "help" }}>Mistakes</span>
+      </Tooltip>
+    ),
+    key: "mistakes",
+    align: "right" as const,
+    render: (_, record) => {
+      // Live games are not analyzed -- blank (not "-", which reads as pending).
+      if (record.result === "turn" || record.result === "in_progress") {
+        return null;
+      }
+      // Finished: the score once analyzed, else "-". Absent (not 0) means
+      // unanalyzed, so 0 renders as a genuine perfect game.
       if (record.mistakeIndex === undefined) {
         return "-";
       }
       return record.mistakeIndex.toFixed(1);
     },
-    // Click-sort by urgency then learnability (see timeMistakeSorter).
-    sorter: timeMistakeSorter,
+    sorter: mistakeSorter,
   };
 
   const columns: TableColumnsType<GameRow> = [
@@ -333,7 +315,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       },
       sorter: scoreSorter,
     },
-    ...(hasLiveClocks || hasMistakeData ? [timeMistakeColumn] : []),
+    ...(hasLiveClocks ? [timeColumn] : []),
+    ...(hasMistakeData ? [mistakeColumn] : []),
     {
       title: "Date",
       dataIndex: "gameDate",
