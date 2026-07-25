@@ -93,6 +93,28 @@ export const resultRank = (result: string): number => {
   }
 };
 
+// Composite band for the combined Time/Mistakes column: not-done games first
+// (your turn, then opponent's), then done games (just-finished, then analyzed).
+// The band groups not-done vs done; the sorter orders within each band.
+export const timeMistakeBand = (record: GameRow): number => {
+  if (record.result === "turn") return 0;
+  if (record.result === "in_progress") return 1;
+  if (record.mistakeIndex === undefined) return 2; // finished, unanalyzed
+  return 3; // finished, analyzed
+};
+
+// Milliseconds until this player's on-turn game forfeits (per-turn allowance +
+// time bank - elapsed), matching the deadline the clock ticks toward. Only
+// meaningful for a live game with a clock anchor; unknown clocks sort last.
+export const clockRemainingMs = (record: GameRow): number => {
+  if (record.lastUpdateMs === undefined) return Number.MAX_SAFE_INTEGER;
+  return (
+    record.incrementSecs * 1000 +
+    record.onTurnTimeBankMs -
+    (Date.now() - record.lastUpdateMs)
+  );
+};
+
 // Column sorters, pulled out as named functions so they can be unit-tested --
 // the modal has no local season data to exercise them by hand. All sort
 // ascending; antd's header toggle reverses. The direction each encodes (Result
@@ -112,6 +134,25 @@ export const scoreSorter = (a: GameRow, b: GameRow): number =>
 // Date: by last-updated timestamp.
 export const dateSorter = (a: GameRow, b: GameRow): number =>
   (a.gameDate?.getTime() ?? 0) - (b.gameDate?.getTime() ?? 0);
+
+// Time/Mistakes: not-done games first (your turn by soonest deadline, then
+// opponent's by recency), then done games (just-finished by recency, then
+// analyzed by worst mistake first) -- so one click surfaces what needs a move,
+// and the reverse toggle surfaces the cleanest games.
+export const timeMistakeSorter = (a: GameRow, b: GameRow): number => {
+  const ba = timeMistakeBand(a);
+  const bb = timeMistakeBand(b);
+  if (ba !== bb) return ba - bb;
+  switch (ba) {
+    case 0:
+      return clockRemainingMs(a) - clockRemainingMs(b);
+    case 1:
+    case 2:
+      return (b.gameDate?.getTime() ?? 0) - (a.gameDate?.getTime() ?? 0);
+    default:
+      return (b.mistakeIndex ?? 0) - (a.mistakeIndex ?? 0);
+  }
+};
 
 export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   visible,
@@ -187,6 +228,8 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       }
       return record.mistakeIndex.toFixed(1);
     },
+    // Click-sort by urgency then learnability (see timeMistakeSorter).
+    sorter: timeMistakeSorter,
   };
 
   const columns: TableColumnsType<GameRow> = [
