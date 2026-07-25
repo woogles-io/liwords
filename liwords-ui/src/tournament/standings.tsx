@@ -6,6 +6,7 @@ import { Table } from "antd";
 
 type Props = {
   selectedDivision: string;
+  selectedRound: number;
 };
 
 type StandingsTableData = {
@@ -36,8 +37,13 @@ export const Standings = (props: Props) => {
   }
 
   let formatStandings;
-  if (currentRound > -1) {
-    formatStandings = division.standingsMap[currentRound]?.standings.map(
+  // Standings accumulate the results so far, so the server will happily compute
+  // them for a round that has not been opened yet -- they come back as a copy
+  // of the current round's. Gate on the round rather than on the map, or the
+  // tentative next round would silently repeat the current standings under its
+  // own heading.
+  if (currentRound > -1 && props.selectedRound <= currentRound) {
+    formatStandings = division.standingsMap[props.selectedRound]?.standings.map(
       (standing, index): StandingsTableData => {
         const [playerId, playerName] = standing.playerId.split(":");
         return {
