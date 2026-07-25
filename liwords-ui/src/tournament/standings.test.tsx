@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { fromBinary } from "@bufbuild/protobuf";
 import { describe, expect, it, vi } from "vitest";
 import { FullTournamentDivisionsSchema } from "../gen/api/proto/ipc/tournament_pb";
@@ -17,9 +18,23 @@ import { Standings } from "./standings";
 // current one, and rendering that would repeat the current numbers under the
 // wrong heading.
 
+// The real one is a dropdown that needs the login, match and pet contexts. Its
+// "View scorecard" entry becomes a button here so the wiring can still be
+// clicked.
 vi.mock("../shared/usernameWithContext", () => ({
-  UsernameWithContext: (props: { username: string }) => (
-    <span>{props.username}</span>
+  UsernameWithContext: (props: {
+    username: string;
+    infoText?: string;
+    handleInfoText?: () => void;
+  }) => (
+    <span>
+      {props.username}
+      {props.infoText && (
+        <button onClick={props.handleInfoText}>
+          {props.infoText} for {props.username}
+        </button>
+      )}
+    </span>
   ),
 }));
 
@@ -63,16 +78,19 @@ const renderAt = (currentRound: number, selectedRound: number) => {
   render(<Standings selectedDivision="NWL" selectedRound={selectedRound} />);
 };
 
+// A cell's text without the stand-in scorecard button.
+const cellText = (cell: HTMLElement) => {
+  const clone = cell.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll("button").forEach((button) => button.remove());
+  return clone.textContent?.trim();
+};
+
 // Every row as [rank, player, W, L, spread].
 const rows = () =>
   screen
     .getAllByRole("row")
     .slice(1)
-    .map((row) =>
-      within(row)
-        .getAllByRole("cell")
-        .map((cell) => cell.textContent?.trim()),
-    );
+    .map((row) => within(row).getAllByRole("cell").map(cellText));
 
 describe("standings for the selected round", () => {
   it("shows a past round rather than the current one", () => {
@@ -130,5 +148,11 @@ describe("standings for the selected round", () => {
       ["2=", "lola", "0", "0", "+0"],
       ["2=", "thedirector", "0", "0", "+0"],
     ]);
+  });
+
+  it("opens a scorecard covering the rounds up to the one on screen", async () => {
+    renderAt(7, 2);
+    await userEvent.click(screen.getByText("View scorecard for lola"));
+    expect(screen.getByRole("dialog")).toHaveTextContent("rounds 1 to 3");
   });
 });

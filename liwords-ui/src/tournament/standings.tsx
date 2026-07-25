@@ -1,8 +1,9 @@
-import React, { ReactNode, useMemo } from "react";
+import React, { ReactNode, useMemo, useState } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Table } from "antd";
 import { signed } from "./format";
+import { PlayerScorecardModal } from "./player_scorecard_modal";
 import { competitionRanks, rankLabel } from "./ranks";
 // import { PlayerTag } from './player_tags';
 
@@ -26,6 +27,7 @@ type StandingsTableData = {
 export const Standings = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
+  const [scorecardPlayer, setScorecardPlayer] = useState<string>();
   const currentRound = useMemo(
     () =>
       divisions.hasOwnProperty(props.selectedDivision)
@@ -64,6 +66,8 @@ export const Standings = (props: Props) => {
                 userID={playerId}
                 omitSendMessage
                 omitBlock
+                infoText="View scorecard"
+                handleInfoText={() => setScorecardPlayer(standing.playerId)}
               />{" "}
               {/* <PlayerTag
                 username={playerName}
@@ -75,7 +79,6 @@ export const Standings = (props: Props) => {
           wins: standing.wins + standing.draws / 2,
           losses: standing.losses + standing.draws / 2,
           spread: standing.spread,
-          //actions: null, //scorecard button goes here
         };
       },
     );
@@ -122,17 +125,28 @@ export const Standings = (props: Props) => {
     },*/
   ];
   return (
-    <Table
-      className="standings"
-      columns={columns}
-      rowKey={(record) => {
-        return `${record.rank}`;
-      }}
-      locale={{
-        emptyText: "Standings are not yet available.",
-      }}
-      dataSource={formatStandings}
-      pagination={false}
-    />
+    <>
+      <Table
+        className="standings"
+        columns={columns}
+        rowKey={(record) => {
+          return `${record.rank}`;
+        }}
+        locale={{
+          emptyText: "Standings are not yet available.",
+        }}
+        dataSource={formatStandings}
+        pagination={false}
+      />
+      {scorecardPlayer && (
+        <PlayerScorecardModal
+          division={division}
+          playerId={scorecardPlayer}
+          throughRound={props.selectedRound}
+          irlMode={tournamentContext.metadata?.irlMode ?? false}
+          onClose={() => setScorecardPlayer(undefined)}
+        />
+      )}
+    </>
   );
 };
