@@ -78,44 +78,65 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     seasonId,
   });
 
-  // The "Time" column appears only when this season has live (in-progress)
-  // games -- past seasons are all finished, so it stays hidden there.
+  // These gate the combined "Time / Mistakes" column and pick its header. A
+  // season with live games has ticking clocks; a season with any analyzed game
+  // has mistake scores. The column is hidden only when the list has neither.
   const hasLiveClocks = (data?.games ?? []).some(
     (g) => (g.result === "turn" || g.result === "in_progress") && g.lastUpdate,
   );
-  const timeColumn = {
-    title: "Time",
-    key: "time",
+  const hasMistakeData = (data?.games ?? []).some(
+    (g) => g.mistakeIndex !== undefined,
+  );
+  // Time and Mistakes never apply to the same row -- a game is either live (show
+  // its clock) or finished (show its mistake score once analyzed) -- so they
+  // share one column. The just-finished-but-unanalyzed gap shows "-". The header
+  // names whichever kind(s) the current list actually has.
+  // Header label plus one explanatory tooltip on the header itself (reachable
+  // even when every row is "-"), rather than repeating the note on each cell.
+  const timeMistakeLabel = hasLiveClocks
+    ? hasMistakeData
+      ? "Time / Mistakes"
+      : "Time"
+    : "Mistakes";
+  const timeMistakeHint = hasLiveClocks
+    ? hasMistakeData
+      ? "Time until the on-turn player's clock forfeits for a live game; its BestBot Mistake Score once finished and analyzed (lower is better; 0 is a perfect game; - until analyzed)."
+      : "Time until the on-turn player's clock forfeits."
+    : "BestBot Mistake Score (lower is better; 0 is a perfect game; - until the game has been analyzed).";
+  const timeMistakeColumn: TableColumnsType<GameRow>[number] = {
+    title: (
+      <Tooltip title={timeMistakeHint}>
+        <span style={{ cursor: "help" }}>{timeMistakeLabel}</span>
+      </Tooltip>
+    ),
+    key: "timeMistake",
     align: "right" as const,
-    render: (
-      _: unknown,
-      record: {
-        result: string;
-        lastUpdateMs?: number;
-        incrementSecs: number;
-        onTurnTimeBankMs: number;
-        opponentUsername: string;
-      },
-    ) => {
+    render: (_, record) => {
       if (
-        (record.result !== "turn" && record.result !== "in_progress") ||
-        record.lastUpdateMs === undefined
+        (record.result === "turn" || record.result === "in_progress") &&
+        record.lastUpdateMs !== undefined
       ) {
-        return null;
+        // Bare view: just the ticking d:hh:mm:ss (the Result column already
+        // shows whose turn it is). The tooltip still names the on-turn player --
+        // this player when it is their turn, otherwise the opponent.
+        const onTurnName =
+          record.result === "turn" ? username : record.opponentUsername;
+        return (
+          <CorrespondenceTurnIndicator
+            perspective={{ kind: "bare", playerName: onTurnName }}
+            lastUpdateMs={record.lastUpdateMs}
+            incrementMs={record.incrementSecs * 1000}
+            bankMs={record.onTurnTimeBankMs}
+          />
+        );
       }
-      // Bare view: just the ticking d:hh:mm:ss (the Result column already shows
-      // whose turn it is). The tooltip still names the on-turn player -- this
-      // player when it is their turn, otherwise the opponent.
-      const onTurnName =
-        record.result === "turn" ? username : record.opponentUsername;
-      return (
-        <CorrespondenceTurnIndicator
-          perspective={{ kind: "bare", playerName: onTurnName }}
-          lastUpdateMs={record.lastUpdateMs}
-          incrementMs={record.incrementSecs * 1000}
-          bankMs={record.onTurnTimeBankMs}
-        />
-      );
+      // Finished games: the mistake score once analyzed, else "-". Absent (not
+      // 0) means unanalyzed, so 0 renders as a genuine perfect game. The column
+      // header carries the explanation, so the cell is just the number.
+      if (record.mistakeIndex === undefined) {
+        return "-";
+      }
+      return record.mistakeIndex.toFixed(1);
     },
   };
 
@@ -174,7 +195,6 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         );
       },
     },
-    ...(hasLiveClocks ? [timeColumn] : []),
     {
       title: "Score",
       key: "score",
@@ -193,22 +213,7 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
         );
       },
     },
-    {
-      title: "Mistakes",
-      key: "mistakeIndex",
-      align: "right" as const,
-      render: (_: unknown, record: { mistakeIndex?: number }) =>
-        record.mistakeIndex === undefined ? (
-          "-"
-        ) : (
-          <Tooltip
-            placement="left"
-            title="Mistake Score from BestBot analysis (lower is better; 0 is a perfect game; - until the game has been analyzed)."
-          >
-            {record.mistakeIndex.toFixed(1)}
-          </Tooltip>
-        ),
-    },
+    ...(hasLiveClocks || hasMistakeData ? [timeMistakeColumn] : []),
     {
       title: "Date",
       dataIndex: "gameDate",
