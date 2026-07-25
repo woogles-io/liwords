@@ -1,11 +1,21 @@
 import React from "react";
-import { Modal, Spin, Table, type TableColumnsType, Tag, Tooltip } from "antd";
+import {
+  Modal,
+  Spin,
+  Table,
+  type TableColumnsType,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import { useQuery } from "@connectrpc/connect-query";
 import { getPlayerSeasonGames } from "../gen/api/proto/league_service/league_service-LeagueService_connectquery";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
 import { CorrespondenceTurnIndicator } from "../shared/corres_turn_indicator";
 import { UsernameWithContext } from "../shared/usernameWithContext";
+
+const { Text } = Typography;
 
 export const endReasonLabel = (reason: GameEndReason): string => {
   switch (reason) {
@@ -198,18 +208,23 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
     {
       title: "Score",
       key: "score",
-      render: (
-        _: unknown,
-        record: { playerScore: number; opponentScore: number; result: string },
-      ) => {
+      render: (_, record) => {
         const spread = record.playerScore - record.opponentScore;
+        // Spread inline (was hover-only): green ahead, red behind, muted at
+        // level. The running margin while a game is live, the final one once
+        // it has finished.
         return (
-          <Tooltip
-            placement="left"
-            title={`${spread >= 0 ? "+" : ""}${spread}`}
-          >
-            {record.playerScore}-{record.opponentScore}
-          </Tooltip>
+          <span style={{ whiteSpace: "nowrap" }}>
+            {record.playerScore}-{record.opponentScore}{" "}
+            <Text
+              type={
+                spread > 0 ? "success" : spread < 0 ? "danger" : "secondary"
+              }
+            >
+              ({spread >= 0 ? "+" : ""}
+              {spread})
+            </Text>
+          </span>
         );
       },
     },
