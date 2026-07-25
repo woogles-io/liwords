@@ -28,6 +28,9 @@ export const Standings = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
   const [scorecardPlayer, setScorecardPlayer] = useState<string>();
+  // An in-real-life division holds names rather than accounts, so its "players"
+  // have no profile to open and cannot be befriended.
+  const irlMode = tournamentContext.metadata?.irlMode ?? false;
   const currentRound = useMemo(
     () =>
       divisions.hasOwnProperty(props.selectedDivision)
@@ -66,6 +69,8 @@ export const Standings = (props: Props) => {
                 userID={playerId}
                 omitSendMessage
                 omitBlock
+                omitProfileLink={irlMode}
+                omitFriend={irlMode}
                 infoText="View scorecard"
                 handleInfoText={() => setScorecardPlayer(standing.playerId)}
               />{" "}
@@ -143,7 +148,7 @@ export const Standings = (props: Props) => {
           division={division}
           playerId={scorecardPlayer}
           throughRound={props.selectedRound}
-          irlMode={tournamentContext.metadata?.irlMode ?? false}
+          irlMode={irlMode}
           onClose={() => setScorecardPlayer(undefined)}
           onSelectPlayer={setScorecardPlayer}
         />

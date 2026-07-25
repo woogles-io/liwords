@@ -242,6 +242,8 @@ export const PlayerScorecardModal = (props: Props) => {
               userID={splitPlayerId(row.opponentId).uuid}
               omitSendMessage
               omitBlock
+              omitProfileLink={irlMode}
+              omitFriend={irlMode}
               infoText="View scorecard"
               handleInfoText={() => props.onSelectPlayer(row.opponentId!)}
             />{" "}

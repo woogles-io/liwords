@@ -26,8 +26,17 @@ vi.mock("../shared/usernameWithContext", () => ({
     username: string;
     infoText?: string;
     handleInfoText?: () => void;
+    omitProfileLink?: boolean;
+    omitFriend?: boolean;
   }) => (
-    <span>
+    <span
+      data-omits={[
+        props.omitProfileLink ? "profile" : "",
+        props.omitFriend ? "friend" : "",
+      ]
+        .filter(Boolean)
+        .join(",")}
+    >
       {props.username}
       {props.infoText && (
         <button onClick={props.handleInfoText}>
@@ -39,10 +48,11 @@ vi.mock("../shared/usernameWithContext", () => ({
 }));
 
 const divisions = vi.hoisted(() => ({ value: {} as Record<string, Division> }));
+const metadata = vi.hoisted(() => ({ value: {} as { irlMode?: boolean } }));
 
 vi.mock("../store/store", () => ({
   useTournamentStoreContext: () => ({
-    tournamentContext: { divisions: divisions.value, metadata: {} },
+    tournamentContext: { divisions: divisions.value, metadata: metadata.value },
   }),
 }));
 
@@ -73,10 +83,18 @@ const nwlDivision = (): Division => {
   return state.divisions["NWL"];
 };
 
-const renderAt = (currentRound: number, selectedRound: number) => {
+const renderAt = (
+  currentRound: number,
+  selectedRound: number,
+  irlMode = false,
+) => {
   divisions.value = { NWL: { ...nwlDivision(), currentRound } };
+  metadata.value = { irlMode };
   render(<Standings selectedDivision="NWL" selectedRound={selectedRound} />);
 };
+
+const omitsFor = (username: string) =>
+  screen.getByText(username).closest("span")?.getAttribute("data-omits");
 
 // A cell's text without the stand-in scorecard button.
 const cellText = (cell: HTMLElement) => {
@@ -148,6 +166,18 @@ describe("standings for the selected round", () => {
       ["2=", "lola", "0", "0", "+0"],
       ["2=", "thedirector", "0", "0", "+0"],
     ]);
+  });
+
+  it("offers no profile or friend for a name that is not an account", () => {
+    // An in-real-life division holds real names, and /profile/Some%20Name is a
+    // 404.
+    renderAt(7, 2, true);
+    expect(omitsFor("josh")).toBe("profile,friend");
+  });
+
+  it("keeps both for an online division", () => {
+    renderAt(7, 2);
+    expect(omitsFor("josh")).toBe("");
   });
 
   it("opens a scorecard covering the rounds up to the one on screen", async () => {
