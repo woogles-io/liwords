@@ -1,15 +1,22 @@
-import React, { ReactNode, useMemo } from "react";
+import React, { ReactNode, useMemo, useState } from "react";
 import { useTournamentStoreContext } from "../store/store";
 import { UsernameWithContext } from "../shared/usernameWithContext";
 import { Table } from "antd";
+import { signed } from "./format";
+import { PlayerScorecardModal } from "./player_scorecard_modal";
+import { competitionRanks, rankLabel } from "./ranks";
 // import { PlayerTag } from './player_tags';
 
 type Props = {
   selectedDivision: string;
+  selectedRound: number;
 };
 
 type StandingsTableData = {
+  // The row's position, which the table needs as a key, and its rank as a
+  // competition scores it, which ties can share.
   rank: number;
+  displayRank: string;
   player: ReactNode;
   //rating: number;
   wins: number;
@@ -20,6 +27,10 @@ type StandingsTableData = {
 export const Standings = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
+  const [scorecardPlayer, setScorecardPlayer] = useState<string>();
+  // An in-real-life division holds names rather than accounts, so its "players"
+  // have no profile to open and cannot be befriended.
+  const irlMode = tournamentContext.metadata?.irlMode ?? false;
   const currentRound = useMemo(
     () =>
       divisions.hasOwnProperty(props.selectedDivision)
@@ -36,12 +47,21 @@ export const Standings = (props: Props) => {
   }
 
   let formatStandings;
-  if (currentRound > -1) {
-    formatStandings = division.standingsMap[currentRound]?.standings.map(
+  // Standings accumulate the results so far, so the server will happily compute
+  // them for a round that has not been opened yet -- they come back as a copy
+  // of the current round's. Gate on the round rather than on the map, or the
+  // tentative next round would silently repeat the current standings under its
+  // own heading.
+  if (currentRound > -1 && props.selectedRound <= currentRound) {
+    const roundStandings =
+      division.standingsMap[props.selectedRound]?.standings;
+    const ranks = competitionRanks(roundStandings ?? []);
+    formatStandings = roundStandings?.map(
       (standing, index): StandingsTableData => {
         const [playerId, playerName] = standing.playerId.split(":");
         return {
           rank: index + 1,
+          displayRank: rankLabel(ranks[index], index + 1),
           player: (
             <>
               <UsernameWithContext
@@ -49,6 +69,10 @@ export const Standings = (props: Props) => {
                 userID={playerId}
                 omitSendMessage
                 omitBlock
+                omitProfileLink={irlMode}
+                omitFriend={irlMode}
+                infoText="View scorecard"
+                handleInfoText={() => setScorecardPlayer(standing.playerId)}
               />{" "}
               {/* <PlayerTag
                 username={playerName}
@@ -60,7 +84,6 @@ export const Standings = (props: Props) => {
           wins: standing.wins + standing.draws / 2,
           losses: standing.losses + standing.draws / 2,
           spread: standing.spread,
-          //actions: null, //scorecard button goes here
         };
       },
     );
@@ -68,7 +91,7 @@ export const Standings = (props: Props) => {
   const columns = [
     {
       title: "",
-      dataIndex: "rank",
+      dataIndex: "displayRank",
       key: "rank",
       className: "rank",
     },
@@ -91,10 +114,13 @@ export const Standings = (props: Props) => {
       className: "losses",
     },
     {
+      // Signed, so a spread of 50 cannot be read as a bare count. Already
+      // right-aligned.
       title: "Spread",
       dataIndex: "spread",
       key: "spread",
       className: "spread",
+      render: (spread: number) => signed(spread),
     },
     /*    {
       title: '',
@@ -104,17 +130,29 @@ export const Standings = (props: Props) => {
     },*/
   ];
   return (
-    <Table
-      className="standings"
-      columns={columns}
-      rowKey={(record) => {
-        return `${record.rank}`;
-      }}
-      locale={{
-        emptyText: "Standings are not yet available.",
-      }}
-      dataSource={formatStandings}
-      pagination={false}
-    />
+    <>
+      <Table
+        className="standings"
+        columns={columns}
+        rowKey={(record) => {
+          return `${record.rank}`;
+        }}
+        locale={{
+          emptyText: "Standings are not yet available.",
+        }}
+        dataSource={formatStandings}
+        pagination={false}
+      />
+      {scorecardPlayer && (
+        <PlayerScorecardModal
+          division={division}
+          playerId={scorecardPlayer}
+          throughRound={props.selectedRound}
+          irlMode={irlMode}
+          onClose={() => setScorecardPlayer(undefined)}
+          onSelectPlayer={setScorecardPlayer}
+        />
+      )}
+    </>
   );
 };

@@ -346,7 +346,10 @@ export const ActionsPanel = React.memo((props: Props) => {
       return (
         <div className="standings-container">
           <div className="round-options">{renderDivisionSelector}</div>
-          <Standings selectedDivision={selectedDivision} />
+          <Standings
+            selectedDivision={selectedDivision}
+            selectedRound={selectedRound}
+          />
         </div>
       );
     }
@@ -447,9 +450,6 @@ export const ActionsPanel = React.memo((props: Props) => {
   ]);
 
   const actions = useMemo(() => {
-    if (selectedGameTab === "STANDINGS") {
-      return [];
-    }
     let matchButtonText = "Start tournament game";
     if (isClubType(tournamentContext.metadata?.type)) {
       matchButtonText = "Start club game";
@@ -523,7 +523,6 @@ export const ActionsPanel = React.memo((props: Props) => {
     tournamentContext,
     selectedDivision,
     selectedRound,
-    selectedGameTab,
   ]);
   return (
     <div className="game-lists">
