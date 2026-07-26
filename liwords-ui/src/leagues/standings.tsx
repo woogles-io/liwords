@@ -10,6 +10,7 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import {
   Division,
   PromotionFormula,
@@ -98,6 +99,7 @@ type DivisionStandingsProps = {
   totalDivisions: number;
   seasonId: string;
   seasonNumber: number;
+  seasonStartDate?: Timestamp;
   currentUserId?: string;
   promotionFormula?: PromotionFormula;
   timeBankWarnings?: Map<string, number>; // Map of userId to count of low timebank games
@@ -112,6 +114,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
   totalDivisions,
   seasonId,
   seasonNumber,
+  seasonStartDate,
   currentUserId,
   promotionFormula = PromotionFormula.PROMO_N_DIV_6,
   timeBankWarnings,
@@ -893,6 +896,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           username={selectedPlayer.username}
           seasonId={seasonId}
           seasonNumber={seasonNumber}
+          seasonStartDate={seasonStartDate}
           onChat={onChat}
         />
       )}
