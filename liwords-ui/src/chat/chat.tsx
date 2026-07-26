@@ -206,6 +206,18 @@ export const Chat = React.memo((props: Props) => {
   useApplyChatPrefs();
   const chatFontControl = useChatFontScaleControl();
 
+  // The chat input scales with the chat font-size setting, but antd only
+  // re-measures the auto-sized textarea on input or an element resize. When the
+  // size changes (in-chat A-/A+, Settings, or another tab), nudge the height by
+  // a pixel so antd's resize observer fires and re-measures the height for the
+  // new font -- it reads the content and ignores this value. No remount, so the
+  // caret and any selection stay put.
+  const chatInputRef = useRef<React.ComponentRef<typeof Input.TextArea>>(null);
+  useEffect(() => {
+    const ta = chatInputRef.current?.resizableTextArea?.textArea;
+    if (ta) ta.style.height = `${ta.offsetHeight + 1}px`;
+  }, [chatFontControl.scale]);
+
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Collapse any newlines (e.g. from a paste) into spaces so messages
@@ -979,6 +991,7 @@ export const Chat = React.memo((props: Props) => {
                   </div>
                   <form>
                     <Input.TextArea
+                      ref={chatInputRef}
                       autoFocus={!defaultChannel.startsWith("chat.game")}
                       autoComplete="off"
                       autoSize={{ minRows: 1, maxRows: 6 }}

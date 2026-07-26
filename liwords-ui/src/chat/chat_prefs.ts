@@ -56,6 +56,7 @@ export const useApplyChatPrefs = (): void => {
 // pref, so it stays in sync with the Settings dropdown and every open tab, and
 // steps through the discrete sizes.
 export const useChatFontScaleControl = (): {
+  scale: string;
   atMin: boolean;
   atMax: boolean;
   decrease: () => void;
@@ -65,6 +66,7 @@ export const useChatFontScaleControl = (): {
   const values = CHAT_FONT_SCALE_OPTIONS.map((o) => o.value);
   const idx = Math.max(0, values.indexOf(scale));
   return {
+    scale,
     atMin: idx <= 0,
     atMax: idx >= values.length - 1,
     decrease: () => setScale(values[Math.max(0, idx - 1)]),
