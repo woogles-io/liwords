@@ -55,6 +55,9 @@ type PlayerGameHistoryModalProps = {
   // refetch it. When absent the range falls back to the games' own span.
   seasonStartDate?: Timestamp;
   onChat?: (uuid: string, username: string) => void;
+  // Swaps the modal over to another player's games, so an opponent can be
+  // followed without going back to the standings.
+  onSelectPlayer: (userId: string, username: string) => void;
 };
 
 // One row of the season game list. Finished games carry scores, a result and an
@@ -163,11 +166,23 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
   seasonNumber,
   seasonStartDate,
   onChat,
+  onSelectPlayer,
 }) => {
   const { data, isLoading, error } = useQuery(getPlayerSeasonGames, {
     userId,
     seasonId,
   });
+
+  // Following an opponent re-renders this modal rather than reopening it, so
+  // rc-dialog never re-runs the focus-on-open it does from
+  // onDialogVisibleChanged. The click that got us here came from a menu antd
+  // portals outside the modal, which leaves focus on the body once it unmounts
+  // -- and Escape is a keydown handler on the dialog wrapper, so it stops
+  // reaching it. Put focus back.
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    bodyRef.current?.focus();
+  }, [userId]);
 
   // Gate the Time and Mistakes columns. A season with live games has ticking
   // clocks (Time); a season with any analyzed game has mistake scores
@@ -255,6 +270,10 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
             userID={record.opponentUserId}
             sendMessage={onChat}
             omitSendMessage={!onChat}
+            infoText="View game history"
+            handleInfoText={() =>
+              onSelectPlayer(record.opponentUserId, record.opponentUsername)
+            }
           />
         </strong>
       ),
@@ -404,41 +423,43 @@ export const PlayerGameHistoryModal: React.FC<PlayerGameHistoryModalProps> = ({
       width={700}
       zIndex={2000}
     >
-      {isLoading && (
-        <div style={{ textAlign: "center", padding: "40px" }}>
-          <Spin size="large" />
-        </div>
-      )}
-      {error && (
-        <div style={{ color: "red", padding: "20px", textAlign: "center" }}>
-          Failed to load game history: {error.message}
-        </div>
-      )}
-      {!isLoading && !error && (
-        <>
-          {dataSource.length === 0 ? (
-            <div
-              style={{ textAlign: "center", padding: "40px" }}
-              className="league-color-999"
-            >
-              No games found for this season.
-            </div>
-          ) : (
-            <Table
-              columns={columns}
-              dataSource={dataSource}
-              pagination={false}
-              size="small"
-              showSorterTooltip={false}
-              scroll={{ x: "max-content" }}
-              onRow={(record) => ({
-                onClick: () => handleRowClick(record),
-                style: { cursor: "pointer" },
-              })}
-            />
-          )}
-        </>
-      )}
+      <div ref={bodyRef} tabIndex={-1} style={{ outline: "none" }}>
+        {isLoading && (
+          <div style={{ textAlign: "center", padding: "40px" }}>
+            <Spin size="large" />
+          </div>
+        )}
+        {error && (
+          <div style={{ color: "red", padding: "20px", textAlign: "center" }}>
+            Failed to load game history: {error.message}
+          </div>
+        )}
+        {!isLoading && !error && (
+          <>
+            {dataSource.length === 0 ? (
+              <div
+                style={{ textAlign: "center", padding: "40px" }}
+                className="league-color-999"
+              >
+                No games found for this season.
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={dataSource}
+                pagination={false}
+                size="small"
+                showSorterTooltip={false}
+                scroll={{ x: "max-content" }}
+                onRow={(record) => ({
+                  onClick: () => handleRowClick(record),
+                  style: { cursor: "pointer" },
+                })}
+              />
+            )}
+          </>
+        )}
+      </div>
     </Modal>
   );
 };
