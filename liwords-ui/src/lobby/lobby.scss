@@ -88,11 +88,14 @@
         color: m($gray-extreme);
       }
 
+      // NB: no `color` here. It used to be `color: inherit`, which was dead
+      // because colorModed() above emitted a higher-specificity selector.
+      // Now that colorModed() is a passthrough it would win and paint these
+      // links $primary-dark, so the declaration is gone rather than reordered.
       &,
       &:focus,
       &:active,
       &:hover {
-        color: inherit;
         letter-spacing: 0;
         font-weight: inherit;
       }
