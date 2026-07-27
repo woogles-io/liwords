@@ -589,15 +589,17 @@ SELECT DISTINCT ON (aj.game_id)
     aj.game_id,
     g.player0_id,
     g.player1_id,
-    (aj.result->'playerSummaries'->0->>'mistakeIndex')::DOUBLE PRECISION as player0_mistake_index,
-    (aj.result->'playerSummaries'->1->>'mistakeIndex')::DOUBLE PRECISION as player1_mistake_index
+    -- Stored as protojson, which drops a field that holds its zero value, so a
+    -- perfect game has no mistakeIndex key at all. A game counts as analyzed
+    -- when both summaries are there; a summary without the key means 0.
+    COALESCE(aj.result->'playerSummaries'->0->>'mistakeIndex', '0')::DOUBLE PRECISION as player0_mistake_index,
+    COALESCE(aj.result->'playerSummaries'->1->>'mistakeIndex', '0')::DOUBLE PRECISION as player1_mistake_index
 FROM analysis_jobs aj
 JOIN games g ON g.uuid = aj.game_id
 WHERE g.league_division_id = $1
   AND aj.status = 'completed'
-  AND aj.result IS NOT NULL
-  AND aj.result->'playerSummaries'->0->>'mistakeIndex' IS NOT NULL
-  AND aj.result->'playerSummaries'->1->>'mistakeIndex' IS NOT NULL
+  AND aj.result->'playerSummaries'->0 IS NOT NULL
+  AND aj.result->'playerSummaries'->1 IS NOT NULL
 ORDER BY aj.game_id, aj.completed_at DESC;
 
 -- name: GetGameLeagueInfo :one
@@ -641,14 +643,18 @@ FROM game_players gp_player
 INNER JOIN games g ON gp_player.game_uuid = g.uuid
 INNER JOIN users u_opponent ON gp_player.opponent_id = u_opponent.id
 LEFT JOIN LATERAL (
-    SELECT (CASE gp_player.player_index
-        WHEN 0 THEN aj.result->'playerSummaries'->0->>'mistakeIndex'
-        ELSE aj.result->'playerSummaries'->1->>'mistakeIndex'
-    END)::DOUBLE PRECISION AS mistake_index
+    -- The result is stored as protojson, which drops a field that holds its
+    -- zero value, so a perfect game has no mistakeIndex key at all. Presence
+    -- is therefore this player's summary, not the key inside it, and a
+    -- summary without the key means 0.
+    SELECT COALESCE(
+        aj.result->'playerSummaries'->gp_player.player_index::INT->>'mistakeIndex',
+        '0'
+    )::DOUBLE PRECISION AS mistake_index
     FROM analysis_jobs aj
     WHERE aj.game_id = gp_player.game_uuid
       AND aj.status = 'completed'
-      AND aj.result IS NOT NULL
+      AND aj.result->'playerSummaries'->gp_player.player_index::INT IS NOT NULL
     ORDER BY aj.completed_at DESC
     LIMIT 1
 ) mi ON true
