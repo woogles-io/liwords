@@ -61,29 +61,37 @@ You can do `docker compose up app` and `docker compose up frontend` in two diffe
 
 <summary>Using a hybrid stack on Docker</summary>
 
-**NOTE: These instructions need to be updated and might not work currently.**
-
+In this setup, Docker runs only the long-running services (postgres, Redis, NATS, via `dc-local-services.yml`), and the Go servers and frontend run natively on your machine. The frontend dev server (port 3000) proxies `/api` and `/ws`.
 
 1. Download Docker for your operating system
 2. Download the latest stable version of Node.js for your operating system and install it
 3. Download and install Go from golang.org
-4. Copy the `local_skeleton.env` file in this directory to `local.env`, and modify the copy to match your local paths. (See all the variables ending in _PATH).
-5. Open up a few tabs or panels in your terminal so you can bring up the services separately. In each tab, you can do `source local.env`, or alternatively you can put this command in your profile to do it automatically.
-6. Bring up the `dc-local-services.yml` file with `docker compose -f dc-local-services.yml up` in one tab.
-7. You can bring up the other services in your other tabs:
+4. Clone the `macondo` repository from `https://github.com/domino14/macondo`, and place it at the same level as this repo.
+5. Copy the `local_skeleton.env` file in this directory to `local.env`, and modify the copy to match your local paths. (See all the variables ending in \_PATH).
+6. Run `./scripts/dev-hybrid.sh`. It brings up the Docker services, waits for postgres, and then runs the API server, socket server, and frontend together in one terminal, with prefixed logs. Add `--bot` to also run the macondo bot. Ctrl-C stops the local processes (the Docker services are left running; stop them with `docker compose -f dc-local-services.yml stop`).
+7. Go to `http://localhost:3000` to see Woogles.
+8. You can register a user by clicking on `SIGN UP` at the top right.
+
+To have two players play each other you must have one browser window in incognito mode, or use another browser.
+
+9. To register a bot, register a user the regular way. Then run the following, replacing the `$1` with the bot username you just registered.
+
+`docker compose -f dc-local-services.yml exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
+
+**Running the services by hand**
+
+If you'd rather run the services in separate terminal tabs instead of using the script, do `source local.env` in each tab, bring up `docker compose -f dc-local-services.yml up` in one of them, and then:
+
 - For the api server, do `go run cmd/liwords-api/*.go`
 - For the socket server, do `go run cmd/socketsrv/main.go`
 - For the frontend, do `npm start` in the `liwords-ui` directory.
 - For the bot, do `go run cmd/bot/*.go` in the `macondo` directory.
 
-8. Go to `http://localhost:3000` to see Woogles.
-9. You can register a user by clicking on `SIGN UP` at the top right.
+**Notes and troubleshooting**
 
-To have two players play each other you must have one browser window in incognito mode, or use another browser.
-
-10. To register a bot, register a user the regular way. Then run this following script, replacing the `$1` with the bot username you just registered.
-
-`docker compose exec db psql -U postgres liwords -c "UPDATE users SET internal_bot='t' WHERE username = '$1';"`
+- Both `docker-compose.yml` and `dc-local-services.yml` run under the same Docker compose project name, so they share the same postgres data volume. Keep the `db` service definitions (especially the pinned image version) in sync between the two files — a newer postgres major version will refuse to start on a data volume initialized by an older one. For the same reason, don't run both stacks at the same time (they also both publish NATS on port 4222).
+- _ERROR: relation "users" does not exist_: migrations haven't run. Make sure `RUN_MIGRATIONS=1` is in your `local.env` (see `local_skeleton.env`) and restart the API server.
+- _"Please verify your email address" on login_: the user was registered while the API server was running without `SKIP_EMAIL_VERIFICATION=1`. Add it and restart, then mark the existing user verified: `docker compose -f dc-local-services.yml exec db psql -U postgres liwords -c "UPDATE users SET verified='t' WHERE username='<name>';"`
 
 </details>
 
