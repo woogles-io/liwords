@@ -231,32 +231,48 @@ export const useDefinitionAndPhonyChecker = ({
     return words;
   }, [gameContext]);
 
-  useEffect(() => {
-    // forget everything if it goes to a new game
-    console.log(
-      "[phony-debug] RESET effect fire, gameID:",
-      gameID,
-      "lexicon:",
-      lexicon,
-    );
-    setWordInfo({});
-    // playedWords is derived from gameContext via the useMemo above -- there is
-    // nothing to clear here. The old setPlayedWords(new Set()) raced with that
-    // derivation and could leave playedWords stale-empty in production, which is
-    // why the phony report never computed.
-    setUnrace(new Unrace());
-    setPhonies(undefined);
-    setShowDefinitionHover(undefined);
-  }, [gameID, lexicon]);
+  // What everything below is about: the game being looked at, and the lexicon
+  // its words are judged against.
+  const resetKey = `${gameID ?? ""} ${lexicon}`;
+  const resetKeyRef = useRef(resetKey);
 
+  // Forgetting the old game and listing the current one's words to define are
+  // one effect on purpose. They used to be two, and the listing one re-ran only
+  // when playedWords, gameDone or showDefinitionHover changed. So a reset
+  // landing after it -- an annotated game whose metadata, and with it the
+  // lexicon, arrives after the game document -- cleared the list with nothing
+  // left to rebuild it, and the phony report never computed. Opening a
+  // definition was the way out, since that moved showDefinitionHover.
   useEffect(() => {
+    const isReset = resetKeyRef.current !== resetKey;
+    if (isReset) {
+      // forget everything if it goes to a new game
+      console.log(
+        "[phony-debug] RESET effect fire, gameID:",
+        gameID,
+        "lexicon:",
+        lexicon,
+      );
+      resetKeyRef.current = resetKey;
+      setWordInfo({});
+      // playedWords is derived from gameContext via the useMemo above -- there
+      // is nothing to clear here. The old setPlayedWords(new Set()) raced with
+      // that derivation and could leave playedWords stale-empty in production,
+      // which is why the phony report never computed.
+      setUnrace(new Unrace());
+      setPhonies(undefined);
+      setShowDefinitionHover(undefined);
+    }
+    // A reset clears the hover too, so this render's one is on its way out --
+    // its words belong to the game being left behind.
+    const hover = isReset ? undefined : showDefinitionHover;
     console.log(
       "[phony-debug] compute-wordInfo effect, gameDone:",
       gameDone,
       "playedWords.size:",
       playedWords.size,
     );
-    if (gameDone || showDefinitionHover) {
+    if (gameDone || hover) {
       // when definition is requested, get definitions for all words (up to
       // that point) that have not yet been defined. this is an intentional
       // design decision to improve usability and responsiveness.
@@ -268,9 +284,9 @@ export const useDefinitionAndPhonyChecker = ({
             wordInfo[word] = undefined;
           }
         });
-        if (showDefinitionHover) {
+        if (hover) {
           // also define tentative words (mostly from examiner) if no undesignated blanks.
-          for (const word of showDefinitionHover.words) {
+          for (const word of hover.words) {
             if (!word.includes(Blank)) {
               const uppercasedWord = word.toUpperCase();
               if (!(uppercasedWord in wordInfo)) {
@@ -284,7 +300,7 @@ export const useDefinitionAndPhonyChecker = ({
         return wordInfo;
       });
     }
-  }, [playedWords, gameDone, showDefinitionHover]);
+  }, [resetKey, gameID, lexicon, playedWords, gameDone, showDefinitionHover]);
 
   const wordClient = useClient(WordService);
 
