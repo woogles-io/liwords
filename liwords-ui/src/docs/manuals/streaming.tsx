@@ -1,6 +1,6 @@
 import React from "react";
 import type { Manual } from "../types";
-import { C, P, H, DocImage } from "../prose";
+import { C, P, H } from "../prose";
 import { OBSFieldPreview } from "../../broadcasts/OBSFieldPreview";
 import type { OBSSuffix } from "../../broadcasts/constants";
 import { Tag } from "antd";
@@ -172,22 +172,46 @@ const Solo = () => (
         Click <b>OBS Builder</b>, pick a field (start with <C>score</C>), style
         it, and copy the URL.
       </li>
-      <li>
-        In OBS: <b>Sources → + → Browser</b>, paste the URL, and set a width and
-        height. The text centres itself in whatever box you give it.
-      </li>
-      <li>Repeat step 4–5 for each field you want on screen.</li>
+      <li>Add it to OBS as a browser source — see below.</li>
+      <li>Repeat steps 4–5 for each field you want on screen.</li>
     </ol>
-    <DocImage
-      src="/docs/obs-add-browser-source.png"
-      alt="OBS Sources panel with the + menu open and Browser highlighted"
-      caption="Adding a browser source in OBS."
-    />
-    <DocImage
-      src="/docs/obs-browser-source-properties.png"
-      alt="OBS browser source properties dialog showing the URL, width and height fields"
-      caption="Paste the URL here and give the source a width and height."
-    />
+
+    <H>Adding one to OBS</H>
+    <P>
+      Every field is a separate browser source, so you do this once per field.
+      In OBS:
+    </P>
+    <ol className="doc-ol">
+      <li>
+        In the <b>Sources</b> panel at the bottom of the window, click <b>+</b>{" "}
+        and choose <b>Browser</b>.
+      </li>
+      <li>
+        Name it after the field — <C>score</C>, <C>last play</C> — so the
+        Sources list stays readable once you have six of them. Click <b>OK</b>.
+      </li>
+      <li>
+        In the properties dialog that opens, paste your URL into <b>URL</b>,
+        replacing the <C>https://absolutelyfreegovernmentmoney.com</C>{" "}
+        placeholder OBS puts there.
+      </li>
+      <li>
+        Set <b>Width</b> and <b>Height</b> to the space you want the overlay to
+        occupy. The page fills whatever box you give it and centres the text
+        vertically, so size the box, not the text.
+      </li>
+      <li>
+        Leave everything else at its default, click <b>OK</b>, then drag and
+        resize the source on the canvas.
+      </li>
+    </ol>
+    <P>
+      Two settings in that dialog are worth knowing about. <b>Custom CSS</b> is
+      not needed — the styling options in the OBS Builder cover the same ground
+      and travel with the URL. And <b>Shutdown source when not visible</b>{" "}
+      should stay <i>off</i>, so the overlay stays connected and current while
+      the scene is hidden rather than reconnecting each time you cut to it.
+    </P>
 
     <H>Every session after that</H>
     <P>
@@ -705,15 +729,21 @@ const Styling = () => (
       <C>last_play</C> a wide, short box — it scrolls horizontally, and needs
       the room to do it.
     </P>
+
+    <H>What a finished scene looks like</H>
     <P>
-      Leave the source's "Shutdown source when not visible" option off if you
-      want it to stay connected and current while the scene is hidden.
+      One browser source per field, arranged around whatever you are showing the
+      game on — a camera pointed at the board, a screen capture of the Woogles
+      game, or a static background. A typical layout puts <C>combined_names</C>{" "}
+      and <C>score</C> in a bar across the top, <C>last_play</C> as a scrolling
+      ticker across the bottom, and the standings fields (<C>p1_record</C>,{" "}
+      <C>p1_spread</C>) in a corner beside each player's name.
     </P>
-    <DocImage
-      src="/docs/obs-scene-layout.png"
-      alt="An OBS scene with several Woogles overlay browser sources positioned over a board camera"
-      caption="A finished scene: one browser source per field, positioned over the board."
-    />
+    <P>
+      Because every field is its own source, you can build that up one piece at
+      a time and rearrange freely — and none of it needs revisiting when the
+      event changes, provided the sources point at a stream slot.
+    </P>
   </>
 );
 
