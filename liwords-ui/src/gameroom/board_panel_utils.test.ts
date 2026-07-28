@@ -135,3 +135,32 @@ it("resets when the opponent plays where the placement arrow is", () => {
     ),
   ).toBe(true);
 });
+
+// The premove backed up when the opponent's phony displaced it (the hooking
+// case above) is reinstated by the caller once the board and the rack are back
+// at their backed up values. That only happens while we say no reset is
+// needed, so the rest of the sequence has to keep saying no: clock changes
+// either way, then challenging the phony off.
+describe("reinstating a premove the opponent's phony displaced", () => {
+  const displaced = () =>
+    inputs({
+      lastLetters: withWord(emptyBoard(), 6, 7, "QIS"),
+      letters: withWord(emptyBoard(), 6, 7, "QIS"),
+      placedTiles: new Set<EphemeralTile>(),
+      displayedRack: [3, 1, 20, 5, 19, 9, 14],
+    });
+
+  it("keeps out of the way when either player is given time", () => {
+    expect(needsFullReset(displaced())).toBe(false);
+  });
+
+  it("keeps out of the way when the phony is challenged off", () => {
+    expect(
+      needsFullReset({
+        ...displaced(),
+        letters: emptyBoard(),
+        numEventsChanged: true,
+      }),
+    ).toBe(false);
+  });
+});
