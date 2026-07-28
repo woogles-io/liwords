@@ -192,8 +192,7 @@ const Solo = () => (
       </li>
       <li>
         In the properties dialog that opens, paste your URL into <b>URL</b>,
-        replacing the <C>https://absolutelyfreegovernmentmoney.com</C>{" "}
-        placeholder OBS puts there.
+        replacing the placeholder address already in the box.
       </li>
       <li>
         Set <b>Width</b> and <b>Height</b> to the space you want the overlay to
