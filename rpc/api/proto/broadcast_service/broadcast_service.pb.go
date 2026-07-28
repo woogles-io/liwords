@@ -2142,8 +2142,15 @@ type BroadcastSlot struct {
 	Division    string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"` // empty string = use first division from feed
 	Round       int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
 	TableNumber int32                  `protobuf:"varint,4,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
-	// How many user stream slots currently mirror this slot. The UI warns before
-	// deleting or re-pointing a slot somebody is streaming from.
+	// How many user stream slots currently mirror this slot. Surfaced as a tag on
+	// the slot, and as a warning before deleting one somebody is streaming from.
+	//
+	// Deletion only, deliberately. Re-pointing a slot at the next round's table is
+	// routine and happens to every slot every round — and it is not a hazard but
+	// the mechanism itself, since stream slots mirror a broadcast slot precisely
+	// so that directors can move it and everyone downstream follows. Warning there
+	// would be warning that the feature works. Deleting is the opposite: rare, and
+	// it permanently breaks browser sources somebody has already configured.
 	StreamSlotCount int32 `protobuf:"varint,5,opt,name=stream_slot_count,json=streamSlotCount,proto3" json:"stream_slot_count,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

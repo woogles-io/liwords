@@ -1003,8 +1003,15 @@ export type BroadcastSlot = Message<"broadcast_service.BroadcastSlot"> & {
   tableNumber: number;
 
   /**
-   * How many user stream slots currently mirror this slot. The UI warns before
-   * deleting or re-pointing a slot somebody is streaming from.
+   * How many user stream slots currently mirror this slot. Surfaced as a tag on
+   * the slot, and as a warning before deleting one somebody is streaming from.
+   *
+   * Deletion only, deliberately. Re-pointing a slot at the next round's table is
+   * routine and happens to every slot every round — and it is not a hazard but
+   * the mechanism itself, since stream slots mirror a broadcast slot precisely
+   * so that directors can move it and everyone downstream follows. Warning there
+   * would be warning that the feature works. Deleting is the opposite: rare, and
+   * it permanently breaks browser sources somebody has already configured.
    *
    * @generated from field: int32 stream_slot_count = 5;
    */
