@@ -11,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/woogles-io/liwords/pkg/analysis"
 	"github.com/woogles-io/liwords/pkg/entity"
 	"github.com/woogles-io/liwords/pkg/stores/common"
@@ -429,6 +431,138 @@ func TestQueuePosition(t *testing.T) {
 	pos3, err := queries.GetQueuePosition(ctx, jobID3)
 	is.NoErr(err)
 	is.Equal(pos3, int32(2))
+}
+
+// insertLeagueGame adds a finished league game between users 1 and 2, with the
+// game_players rows the season queries read, and returns its id.
+func insertLeagueGame(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
+	leagueID, seasonID, divisionID uuid.UUID, playedAt time.Time,
+	player0Score, player1Score int) string {
+	is := is.New(t)
+
+	// Game ids are at most 24 characters.
+	gameID := "leaguegame" + uuid.New().String()[:10]
+	_, err := pool.Exec(ctx, `
+		INSERT INTO games(uuid, created_at, updated_at, player0_id, player1_id, started,
+		                  game_end_reason, type, game_request, history, quickdata, timers,
+		                  league_id, season_id, league_division_id)
+		VALUES ($1, $2, $2, 1, 2, true, $3, 0, '{}', '', '{}', '{}', $4, $5, $6)`,
+		gameID, playedAt, int(ipc.GameEndReason_STANDARD), leagueID, seasonID, divisionID)
+	is.NoErr(err)
+
+	for _, p := range []struct {
+		playerID, index, score, opponentID, opponentScore int
+	}{
+		{1, 0, player0Score, 2, player1Score},
+		{2, 1, player1Score, 1, player0Score},
+	} {
+		_, err = pool.Exec(ctx, `
+			INSERT INTO game_players(game_uuid, player_id, player_index, score, won,
+			                         game_end_reason, created_at, game_type, opponent_id,
+			                         opponent_score, league_season_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, $9, $10)`,
+			gameID, p.playerID, p.index, p.score, p.score > p.opponentScore,
+			int(ipc.GameEndReason_STANDARD), playedAt, p.opponentID, p.opponentScore, seasonID)
+		is.NoErr(err)
+	}
+
+	return gameID
+}
+
+// completeAnalysis stores result against gameID the way the worker path does,
+// through protojson.
+func completeAnalysis(t *testing.T, ctx context.Context, queries *models.Queries,
+	gameID string, result *macondopb.GameAnalysisResult) []byte {
+	is := is.New(t)
+
+	err := analysis.EnqueueGameForAnalysis(ctx, queries, gameID, 0)
+	is.NoErr(err)
+
+	workerUUID := pgtype.Text{String: "test-uuid-3", Valid: true}
+	job, err := queries.ClaimNextJob(ctx, workerUUID)
+	is.NoErr(err)
+
+	resultJSON, err := protojson.Marshal(result)
+	is.NoErr(err)
+
+	_, err = queries.CompleteJob(ctx, models.CompleteJobParams{
+		Result:            resultJSON,
+		ID:                job.ID,
+		ClaimedByUserUuid: workerUUID,
+	})
+	is.NoErr(err)
+
+	return resultJSON
+}
+
+// TestPerfectGameReadsBackAsAnalyzed covers a mistake index of 0 -- a perfect
+// game. protojson drops a field holding its zero value, so the stored result
+// has no mistakeIndex key at all, and reading presence off that key reported
+// the game as unanalyzed: the game history modal showed "-" and the season
+// recalculation dropped the game from both players' analyzed counts.
+func TestPerfectGameReadsBackAsAnalyzed(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	pool, queries := setupTestDB(t)
+	defer pool.Close()
+
+	createTestUsers(t, pool)
+	leagueID, seasonID, divisionID := createMinimalLeague(t, ctx, queries)
+
+	now := time.Now()
+	analyzed := insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID,
+		now.Add(-time.Hour), 500, 288)
+	insertLeagueGame(t, ctx, pool, leagueID, seasonID, divisionID,
+		now.Add(-2*time.Hour), 400, 380)
+
+	resultJSON := completeAnalysis(t, ctx, queries, analyzed, &macondopb.GameAnalysisResult{
+		AnalysisVersion: 2,
+		PlayerSummaries: []*macondopb.PlayerSummary{
+			{PlayerName: "testuser1", MistakeIndex: 0},
+			{PlayerName: "testuser2", MistakeIndex: 2.2},
+		},
+	})
+
+	// The premise: the perfect player's summary carries no mistakeIndex key.
+	var stored struct {
+		PlayerSummaries []map[string]any `json:"playerSummaries"`
+	}
+	is.NoErr(json.Unmarshal(resultJSON, &stored))
+	_, present := stored.PlayerSummaries[0]["mistakeIndex"]
+	is.True(!present)
+
+	seasonUUID := pgtype.UUID{Bytes: seasonID, Valid: true}
+	// The perfect game is analyzed, and its index is 0 rather than missing.
+	// Games are newest first, so the unanalyzed one is second.
+	perfect, err := queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+		UserUuid: "test-uuid-1",
+		SeasonID: seasonUUID,
+	})
+	is.NoErr(err)
+	is.Equal(len(perfect), 2)
+	is.Equal(perfect[0].GameUuid, analyzed)
+	is.Equal(perfect[0].HasMistakeIndex, true)
+	is.Equal(perfect[0].PlayerMistakeIndex, float64(0))
+	is.Equal(perfect[1].HasMistakeIndex, false)
+
+	// The opponent's own index still comes from their own summary.
+	opponent, err := queries.GetPlayerSeasonGames(ctx, models.GetPlayerSeasonGamesParams{
+		UserUuid: "test-uuid-2",
+		SeasonID: seasonUUID,
+	})
+	is.NoErr(err)
+	is.Equal(len(opponent), 2)
+	is.Equal(opponent[0].HasMistakeIndex, true)
+	is.Equal(opponent[0].PlayerMistakeIndex, 2.2)
+
+	// The season recalculation counts the game for both players.
+	games, err := queries.GetDivisionAnalyzedGames(ctx, pgtype.UUID{Bytes: divisionID, Valid: true})
+	is.NoErr(err)
+	is.Equal(len(games), 1)
+	is.Equal(games[0].GameID, analyzed)
+	is.Equal(games[0].Player0MistakeIndex, float64(0))
+	is.Equal(games[0].Player1MistakeIndex, 2.2)
 }
 
 // NOTE: Integration test for "league game finishes -> gets enqueued"
