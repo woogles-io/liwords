@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   nats:
     image: "nats"
@@ -19,7 +17,7 @@ services:
       - aeronet
 
   db:
-    image: postgres
+    image: postgres:17
     restart: always
     environment:
       POSTGRES_PASSWORD: pass
