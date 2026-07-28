@@ -106,6 +106,8 @@ const Footer = React.memo(() => {
           <a href="https://blog.woogles.io/articles">Articles</a>
           <a href="https://blog.woogles.io/posts">Blog posts</a>
           <a href="https://blog.woogles.io/guides">Guides</a>
+          <h4>Documentation</h4>
+          <Link to="/docs">Feature manuals</Link>
         </div>
 
         <div className="links-about-resources link-group">

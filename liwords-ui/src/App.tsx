@@ -28,6 +28,8 @@ import {
 } from "./store/store";
 
 import { LiwordsSocket } from "./socket/socket";
+import { DocsIndex } from "./docs/DocsIndex";
+import { DocPage } from "./docs/DocPage";
 import { Team } from "./about/team";
 import { Register } from "./lobby/register";
 import { PlayerProfile } from "./profile/profile";
@@ -458,6 +460,9 @@ const App = React.memo(() => {
               path="scrabblecam/callback"
               element={<ScrabblecamCallbackHandler />}
             />
+            <Route path="docs" element={<DocsIndex />} />
+            <Route path="docs/:manualId" element={<DocPage />} />
+            <Route path="docs/:manualId/:sectionId" element={<DocPage />} />
             <Route path="about" element={<Team />} />
             <Route path="team" element={<Team />} />
             <Route path="terms" element={<TermsOfService />} />
