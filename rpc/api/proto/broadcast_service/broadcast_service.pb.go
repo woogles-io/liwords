@@ -22,6 +22,65 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// What a StreamSlot currently follows.
+type StreamSlotTargetKind int32
+
+const (
+	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_UNSPECIFIED StreamSlotTargetKind = 0
+	// Nothing pointed yet — the OBS URL renders the placeholder.
+	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_NONE StreamSlotTargetKind = 1
+	// Mirrors a broadcast slot, so it follows whatever table that event features.
+	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT StreamSlotTargetKind = 2
+	// Follows the owner's most recently started annotated game. Lets someone
+	// stream without creating a broadcast at all. Started, not edited: playing a
+	// move does not re-order it, so returning to an older game does not bring it
+	// back to the front.
+	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION StreamSlotTargetKind = 3
+)
+
+// Enum value maps for StreamSlotTargetKind.
+var (
+	StreamSlotTargetKind_name = map[int32]string{
+		0: "STREAM_SLOT_TARGET_KIND_UNSPECIFIED",
+		1: "STREAM_SLOT_TARGET_KIND_NONE",
+		2: "STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT",
+		3: "STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION",
+	}
+	StreamSlotTargetKind_value = map[string]int32{
+		"STREAM_SLOT_TARGET_KIND_UNSPECIFIED":       0,
+		"STREAM_SLOT_TARGET_KIND_NONE":              1,
+		"STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT":    2,
+		"STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION": 3,
+	}
+)
+
+func (x StreamSlotTargetKind) Enum() *StreamSlotTargetKind {
+	p := new(StreamSlotTargetKind)
+	*p = x
+	return p
+}
+
+func (x StreamSlotTargetKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StreamSlotTargetKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_broadcast_service_broadcast_service_proto_enumTypes[0].Descriptor()
+}
+
+func (StreamSlotTargetKind) Type() protoreflect.EnumType {
+	return &file_proto_broadcast_service_broadcast_service_proto_enumTypes[0]
+}
+
+func (x StreamSlotTargetKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StreamSlotTargetKind.Descriptor instead.
+func (StreamSlotTargetKind) EnumDescriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{0}
+}
+
 type Broadcast struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Uuid                string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
@@ -2078,13 +2137,23 @@ func (x *GetBroadcastGameContextResponse) GetAnnotationDone() bool {
 }
 
 type BroadcastSlot struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SlotName      string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
-	Division      string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"` // empty string = use first division from feed
-	Round         int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
-	TableNumber   int32                  `protobuf:"varint,4,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SlotName    string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
+	Division    string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"` // empty string = use first division from feed
+	Round       int32                  `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
+	TableNumber int32                  `protobuf:"varint,4,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
+	// How many user stream slots currently mirror this slot. Surfaced as a tag on
+	// the slot, and as a warning before deleting one somebody is streaming from.
+	//
+	// Deletion only, deliberately. Re-pointing a slot at the next round's table is
+	// routine and happens to every slot every round — and it is not a hazard but
+	// the mechanism itself, since stream slots mirror a broadcast slot precisely
+	// so that directors can move it and everyone downstream follows. Warning there
+	// would be warning that the feature works. Deleting is the opposite: rare, and
+	// it permanently breaks browser sources somebody has already configured.
+	StreamSlotCount int32 `protobuf:"varint,5,opt,name=stream_slot_count,json=streamSlotCount,proto3" json:"stream_slot_count,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *BroadcastSlot) Reset() {
@@ -2145,6 +2214,491 @@ func (x *BroadcastSlot) GetTableNumber() int32 {
 	return 0
 }
 
+func (x *BroadcastSlot) GetStreamSlotCount() int32 {
+	if x != nil {
+		return x.StreamSlotCount
+	}
+	return 0
+}
+
+// A StreamSlot is a user-owned, permanent OBS pointer.
+// Its URL (/api/annotations/obs/user/<username>/<slot_name>/<field>) contains
+// only the owner's username and the slot name, so it survives across
+// broadcasts: switching what a stream covers is a re-point here, not an edit
+// in OBS. Because the target kind is part of the slot rather than part of the
+// URL, a slot can move between following your own annotations and mirroring a
+// broadcast slot without the browser source changing.
+type StreamSlot struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	SlotName            string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
+	TargetBroadcastSlug string                 `protobuf:"bytes,2,opt,name=target_broadcast_slug,json=targetBroadcastSlug,proto3" json:"target_broadcast_slug,omitempty"` // set only for BROADCAST_SLOT
+	TargetBroadcastName string                 `protobuf:"bytes,3,opt,name=target_broadcast_name,json=targetBroadcastName,proto3" json:"target_broadcast_name,omitempty"`
+	TargetSlotName      string                 `protobuf:"bytes,4,opt,name=target_slot_name,json=targetSlotName,proto3" json:"target_slot_name,omitempty"`
+	// Resolved target, for display in the management UI. Zero-valued when the
+	// slot is unpointed or its target broadcast slot no longer exists.
+	Division      string               `protobuf:"bytes,5,opt,name=division,proto3" json:"division,omitempty"`
+	Round         int32                `protobuf:"varint,6,opt,name=round,proto3" json:"round,omitempty"`
+	TableNumber   int32                `protobuf:"varint,7,opt,name=table_number,json=tableNumber,proto3" json:"table_number,omitempty"`
+	GameUuid      string               `protobuf:"bytes,8,opt,name=game_uuid,json=gameUuid,proto3" json:"game_uuid,omitempty"` // empty if no game claimed at the target
+	Player1Name   string               `protobuf:"bytes,9,opt,name=player1_name,json=player1Name,proto3" json:"player1_name,omitempty"`
+	Player2Name   string               `protobuf:"bytes,10,opt,name=player2_name,json=player2Name,proto3" json:"player2_name,omitempty"`
+	TargetKind    StreamSlotTargetKind `protobuf:"varint,11,opt,name=target_kind,json=targetKind,proto3,enum=broadcast_service.StreamSlotTargetKind" json:"target_kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamSlot) Reset() {
+	*x = StreamSlot{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamSlot) ProtoMessage() {}
+
+func (x *StreamSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamSlot.ProtoReflect.Descriptor instead.
+func (*StreamSlot) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *StreamSlot) GetSlotName() string {
+	if x != nil {
+		return x.SlotName
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetTargetBroadcastSlug() string {
+	if x != nil {
+		return x.TargetBroadcastSlug
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetTargetBroadcastName() string {
+	if x != nil {
+		return x.TargetBroadcastName
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetTargetSlotName() string {
+	if x != nil {
+		return x.TargetSlotName
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetDivision() string {
+	if x != nil {
+		return x.Division
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetRound() int32 {
+	if x != nil {
+		return x.Round
+	}
+	return 0
+}
+
+func (x *StreamSlot) GetTableNumber() int32 {
+	if x != nil {
+		return x.TableNumber
+	}
+	return 0
+}
+
+func (x *StreamSlot) GetGameUuid() string {
+	if x != nil {
+		return x.GameUuid
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetPlayer1Name() string {
+	if x != nil {
+		return x.Player1Name
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetPlayer2Name() string {
+	if x != nil {
+		return x.Player2Name
+	}
+	return ""
+}
+
+func (x *StreamSlot) GetTargetKind() StreamSlotTargetKind {
+	if x != nil {
+		return x.TargetKind
+	}
+	return StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_UNSPECIFIED
+}
+
+type ListMyStreamSlotsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyStreamSlotsRequest) Reset() {
+	*x = ListMyStreamSlotsRequest{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyStreamSlotsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyStreamSlotsRequest) ProtoMessage() {}
+
+func (x *ListMyStreamSlotsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyStreamSlotsRequest.ProtoReflect.Descriptor instead.
+func (*ListMyStreamSlotsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{35}
+}
+
+type ListMyStreamSlotsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slots         []*StreamSlot          `protobuf:"bytes,1,rep,name=slots,proto3" json:"slots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyStreamSlotsResponse) Reset() {
+	*x = ListMyStreamSlotsResponse{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyStreamSlotsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyStreamSlotsResponse) ProtoMessage() {}
+
+func (x *ListMyStreamSlotsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyStreamSlotsResponse.ProtoReflect.Descriptor instead.
+func (*ListMyStreamSlotsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ListMyStreamSlotsResponse) GetSlots() []*StreamSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+type CreateStreamSlotRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SlotName      string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateStreamSlotRequest) Reset() {
+	*x = CreateStreamSlotRequest{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateStreamSlotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateStreamSlotRequest) ProtoMessage() {}
+
+func (x *CreateStreamSlotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateStreamSlotRequest.ProtoReflect.Descriptor instead.
+func (*CreateStreamSlotRequest) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *CreateStreamSlotRequest) GetSlotName() string {
+	if x != nil {
+		return x.SlotName
+	}
+	return ""
+}
+
+type CreateStreamSlotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateStreamSlotResponse) Reset() {
+	*x = CreateStreamSlotResponse{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateStreamSlotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateStreamSlotResponse) ProtoMessage() {}
+
+func (x *CreateStreamSlotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateStreamSlotResponse.ProtoReflect.Descriptor instead.
+func (*CreateStreamSlotResponse) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{38}
+}
+
+type PointStreamSlotRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SlotName string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
+	// Required only for target_kind = BROADCAST_SLOT; ignored otherwise.
+	TargetBroadcastSlug string               `protobuf:"bytes,2,opt,name=target_broadcast_slug,json=targetBroadcastSlug,proto3" json:"target_broadcast_slug,omitempty"`
+	TargetSlotName      string               `protobuf:"bytes,3,opt,name=target_slot_name,json=targetSlotName,proto3" json:"target_slot_name,omitempty"`
+	TargetKind          StreamSlotTargetKind `protobuf:"varint,4,opt,name=target_kind,json=targetKind,proto3,enum=broadcast_service.StreamSlotTargetKind" json:"target_kind,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *PointStreamSlotRequest) Reset() {
+	*x = PointStreamSlotRequest{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PointStreamSlotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PointStreamSlotRequest) ProtoMessage() {}
+
+func (x *PointStreamSlotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PointStreamSlotRequest.ProtoReflect.Descriptor instead.
+func (*PointStreamSlotRequest) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *PointStreamSlotRequest) GetSlotName() string {
+	if x != nil {
+		return x.SlotName
+	}
+	return ""
+}
+
+func (x *PointStreamSlotRequest) GetTargetBroadcastSlug() string {
+	if x != nil {
+		return x.TargetBroadcastSlug
+	}
+	return ""
+}
+
+func (x *PointStreamSlotRequest) GetTargetSlotName() string {
+	if x != nil {
+		return x.TargetSlotName
+	}
+	return ""
+}
+
+func (x *PointStreamSlotRequest) GetTargetKind() StreamSlotTargetKind {
+	if x != nil {
+		return x.TargetKind
+	}
+	return StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_UNSPECIFIED
+}
+
+type PointStreamSlotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PointStreamSlotResponse) Reset() {
+	*x = PointStreamSlotResponse{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PointStreamSlotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PointStreamSlotResponse) ProtoMessage() {}
+
+func (x *PointStreamSlotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PointStreamSlotResponse.ProtoReflect.Descriptor instead.
+func (*PointStreamSlotResponse) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{40}
+}
+
+type DeleteStreamSlotRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SlotName      string                 `protobuf:"bytes,1,opt,name=slot_name,json=slotName,proto3" json:"slot_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteStreamSlotRequest) Reset() {
+	*x = DeleteStreamSlotRequest{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteStreamSlotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStreamSlotRequest) ProtoMessage() {}
+
+func (x *DeleteStreamSlotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStreamSlotRequest.ProtoReflect.Descriptor instead.
+func (*DeleteStreamSlotRequest) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *DeleteStreamSlotRequest) GetSlotName() string {
+	if x != nil {
+		return x.SlotName
+	}
+	return ""
+}
+
+type DeleteStreamSlotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteStreamSlotResponse) Reset() {
+	*x = DeleteStreamSlotResponse{}
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteStreamSlotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStreamSlotResponse) ProtoMessage() {}
+
+func (x *DeleteStreamSlotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStreamSlotResponse.ProtoReflect.Descriptor instead.
+func (*DeleteStreamSlotResponse) Descriptor() ([]byte, []int) {
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{42}
+}
+
 type ListSlotsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -2154,7 +2708,7 @@ type ListSlotsRequest struct {
 
 func (x *ListSlotsRequest) Reset() {
 	*x = ListSlotsRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[34]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2166,7 +2720,7 @@ func (x *ListSlotsRequest) String() string {
 func (*ListSlotsRequest) ProtoMessage() {}
 
 func (x *ListSlotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[34]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2179,7 +2733,7 @@ func (x *ListSlotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSlotsRequest.ProtoReflect.Descriptor instead.
 func (*ListSlotsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{34}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ListSlotsRequest) GetSlug() string {
@@ -2198,7 +2752,7 @@ type ListSlotsResponse struct {
 
 func (x *ListSlotsResponse) Reset() {
 	*x = ListSlotsResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[35]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2210,7 +2764,7 @@ func (x *ListSlotsResponse) String() string {
 func (*ListSlotsResponse) ProtoMessage() {}
 
 func (x *ListSlotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[35]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2223,7 +2777,7 @@ func (x *ListSlotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSlotsResponse.ProtoReflect.Descriptor instead.
 func (*ListSlotsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{35}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ListSlotsResponse) GetSlots() []*BroadcastSlot {
@@ -2246,7 +2800,7 @@ type CreateSlotRequest struct {
 
 func (x *CreateSlotRequest) Reset() {
 	*x = CreateSlotRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[36]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2258,7 +2812,7 @@ func (x *CreateSlotRequest) String() string {
 func (*CreateSlotRequest) ProtoMessage() {}
 
 func (x *CreateSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[36]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2271,7 +2825,7 @@ func (x *CreateSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSlotRequest.ProtoReflect.Descriptor instead.
 func (*CreateSlotRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{36}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *CreateSlotRequest) GetSlug() string {
@@ -2317,7 +2871,7 @@ type CreateSlotResponse struct {
 
 func (x *CreateSlotResponse) Reset() {
 	*x = CreateSlotResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[37]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2329,7 +2883,7 @@ func (x *CreateSlotResponse) String() string {
 func (*CreateSlotResponse) ProtoMessage() {}
 
 func (x *CreateSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[37]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2342,7 +2896,7 @@ func (x *CreateSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSlotResponse.ProtoReflect.Descriptor instead.
 func (*CreateSlotResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{37}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{46}
 }
 
 type AssignSlotRequest struct {
@@ -2358,7 +2912,7 @@ type AssignSlotRequest struct {
 
 func (x *AssignSlotRequest) Reset() {
 	*x = AssignSlotRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[38]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2370,7 +2924,7 @@ func (x *AssignSlotRequest) String() string {
 func (*AssignSlotRequest) ProtoMessage() {}
 
 func (x *AssignSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[38]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2383,7 +2937,7 @@ func (x *AssignSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignSlotRequest.ProtoReflect.Descriptor instead.
 func (*AssignSlotRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{38}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *AssignSlotRequest) GetSlug() string {
@@ -2429,7 +2983,7 @@ type AssignSlotResponse struct {
 
 func (x *AssignSlotResponse) Reset() {
 	*x = AssignSlotResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[39]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2441,7 +2995,7 @@ func (x *AssignSlotResponse) String() string {
 func (*AssignSlotResponse) ProtoMessage() {}
 
 func (x *AssignSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[39]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2454,7 +3008,7 @@ func (x *AssignSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignSlotResponse.ProtoReflect.Descriptor instead.
 func (*AssignSlotResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{39}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{48}
 }
 
 type GetSlotCurrentGameRequest struct {
@@ -2467,7 +3021,7 @@ type GetSlotCurrentGameRequest struct {
 
 func (x *GetSlotCurrentGameRequest) Reset() {
 	*x = GetSlotCurrentGameRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[40]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2479,7 +3033,7 @@ func (x *GetSlotCurrentGameRequest) String() string {
 func (*GetSlotCurrentGameRequest) ProtoMessage() {}
 
 func (x *GetSlotCurrentGameRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[40]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2492,7 +3046,7 @@ func (x *GetSlotCurrentGameRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSlotCurrentGameRequest.ProtoReflect.Descriptor instead.
 func (*GetSlotCurrentGameRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{40}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetSlotCurrentGameRequest) GetSlug() string {
@@ -2524,7 +3078,7 @@ type GetSlotCurrentGameResponse struct {
 
 func (x *GetSlotCurrentGameResponse) Reset() {
 	*x = GetSlotCurrentGameResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[41]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2536,7 +3090,7 @@ func (x *GetSlotCurrentGameResponse) String() string {
 func (*GetSlotCurrentGameResponse) ProtoMessage() {}
 
 func (x *GetSlotCurrentGameResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[41]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2549,7 +3103,7 @@ func (x *GetSlotCurrentGameResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSlotCurrentGameResponse.ProtoReflect.Descriptor instead.
 func (*GetSlotCurrentGameResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{41}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *GetSlotCurrentGameResponse) GetGameUuid() string {
@@ -2611,7 +3165,7 @@ type DeleteSlotRequest struct {
 
 func (x *DeleteSlotRequest) Reset() {
 	*x = DeleteSlotRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[42]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2623,7 +3177,7 @@ func (x *DeleteSlotRequest) String() string {
 func (*DeleteSlotRequest) ProtoMessage() {}
 
 func (x *DeleteSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[42]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2636,7 +3190,7 @@ func (x *DeleteSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSlotRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSlotRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{42}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *DeleteSlotRequest) GetSlug() string {
@@ -2661,7 +3215,7 @@ type DeleteSlotResponse struct {
 
 func (x *DeleteSlotResponse) Reset() {
 	*x = DeleteSlotResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[43]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2673,7 +3227,7 @@ func (x *DeleteSlotResponse) String() string {
 func (*DeleteSlotResponse) ProtoMessage() {}
 
 func (x *DeleteSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[43]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2686,7 +3240,7 @@ func (x *DeleteSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSlotResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSlotResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{43}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{52}
 }
 
 // BroadcastGameStat is the pre-computed stats for a single annotated game.
@@ -2722,7 +3276,7 @@ type BroadcastGameStat struct {
 
 func (x *BroadcastGameStat) Reset() {
 	*x = BroadcastGameStat{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[44]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2734,7 +3288,7 @@ func (x *BroadcastGameStat) String() string {
 func (*BroadcastGameStat) ProtoMessage() {}
 
 func (x *BroadcastGameStat) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[44]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2747,7 +3301,7 @@ func (x *BroadcastGameStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BroadcastGameStat.ProtoReflect.Descriptor instead.
 func (*BroadcastGameStat) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{44}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *BroadcastGameStat) GetGameUuid() string {
@@ -2906,7 +3460,7 @@ type GetBroadcastGameStatsRequest struct {
 
 func (x *GetBroadcastGameStatsRequest) Reset() {
 	*x = GetBroadcastGameStatsRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[45]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2918,7 +3472,7 @@ func (x *GetBroadcastGameStatsRequest) String() string {
 func (*GetBroadcastGameStatsRequest) ProtoMessage() {}
 
 func (x *GetBroadcastGameStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[45]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2931,7 +3485,7 @@ func (x *GetBroadcastGameStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBroadcastGameStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetBroadcastGameStatsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{45}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *GetBroadcastGameStatsRequest) GetSlug() string {
@@ -2950,7 +3504,7 @@ type GetBroadcastGameStatsResponse struct {
 
 func (x *GetBroadcastGameStatsResponse) Reset() {
 	*x = GetBroadcastGameStatsResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[46]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2962,7 +3516,7 @@ func (x *GetBroadcastGameStatsResponse) String() string {
 func (*GetBroadcastGameStatsResponse) ProtoMessage() {}
 
 func (x *GetBroadcastGameStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[46]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2975,7 +3529,7 @@ func (x *GetBroadcastGameStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBroadcastGameStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetBroadcastGameStatsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{46}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetBroadcastGameStatsResponse) GetStats() []*BroadcastGameStat {
@@ -2994,7 +3548,7 @@ type GetBroadcastAllGamesRequest struct {
 
 func (x *GetBroadcastAllGamesRequest) Reset() {
 	*x = GetBroadcastAllGamesRequest{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[47]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3006,7 +3560,7 @@ func (x *GetBroadcastAllGamesRequest) String() string {
 func (*GetBroadcastAllGamesRequest) ProtoMessage() {}
 
 func (x *GetBroadcastAllGamesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[47]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3019,7 +3573,7 @@ func (x *GetBroadcastAllGamesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBroadcastAllGamesRequest.ProtoReflect.Descriptor instead.
 func (*GetBroadcastAllGamesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{47}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GetBroadcastAllGamesRequest) GetSlug() string {
@@ -3038,7 +3592,7 @@ type GetBroadcastAllGamesResponse struct {
 
 func (x *GetBroadcastAllGamesResponse) Reset() {
 	*x = GetBroadcastAllGamesResponse{}
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[48]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3050,7 +3604,7 @@ func (x *GetBroadcastAllGamesResponse) String() string {
 func (*GetBroadcastAllGamesResponse) ProtoMessage() {}
 
 func (x *GetBroadcastAllGamesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[48]
+	mi := &file_proto_broadcast_service_broadcast_service_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3063,7 +3617,7 @@ func (x *GetBroadcastAllGamesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBroadcastAllGamesResponse.ProtoReflect.Descriptor instead.
 func (*GetBroadcastAllGamesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{48}
+	return file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *GetBroadcastAllGamesResponse) GetStats() []*BroadcastGameStat {
@@ -3227,12 +3781,44 @@ const file_proto_broadcast_service_broadcast_service_proto_rawDesc = "" +
 	"\ftable_number\x18\x04 \x01(\x05R\vtableNumber\x12\x1a\n" +
 	"\bdivision\x18\x05 \x01(\tR\bdivision\x12\x1b\n" +
 	"\tslot_name\x18\x06 \x01(\tR\bslotName\x12'\n" +
-	"\x0fannotation_done\x18\a \x01(\bR\x0eannotationDone\"\x81\x01\n" +
+	"\x0fannotation_done\x18\a \x01(\bR\x0eannotationDone\"\xad\x01\n" +
 	"\rBroadcastSlot\x12\x1b\n" +
 	"\tslot_name\x18\x01 \x01(\tR\bslotName\x12\x1a\n" +
 	"\bdivision\x18\x02 \x01(\tR\bdivision\x12\x14\n" +
 	"\x05round\x18\x03 \x01(\x05R\x05round\x12!\n" +
-	"\ftable_number\x18\x04 \x01(\x05R\vtableNumber\"&\n" +
+	"\ftable_number\x18\x04 \x01(\x05R\vtableNumber\x12*\n" +
+	"\x11stream_slot_count\x18\x05 \x01(\x05R\x0fstreamSlotCount\"\xbd\x03\n" +
+	"\n" +
+	"StreamSlot\x12\x1b\n" +
+	"\tslot_name\x18\x01 \x01(\tR\bslotName\x122\n" +
+	"\x15target_broadcast_slug\x18\x02 \x01(\tR\x13targetBroadcastSlug\x122\n" +
+	"\x15target_broadcast_name\x18\x03 \x01(\tR\x13targetBroadcastName\x12(\n" +
+	"\x10target_slot_name\x18\x04 \x01(\tR\x0etargetSlotName\x12\x1a\n" +
+	"\bdivision\x18\x05 \x01(\tR\bdivision\x12\x14\n" +
+	"\x05round\x18\x06 \x01(\x05R\x05round\x12!\n" +
+	"\ftable_number\x18\a \x01(\x05R\vtableNumber\x12\x1b\n" +
+	"\tgame_uuid\x18\b \x01(\tR\bgameUuid\x12!\n" +
+	"\fplayer1_name\x18\t \x01(\tR\vplayer1Name\x12!\n" +
+	"\fplayer2_name\x18\n" +
+	" \x01(\tR\vplayer2Name\x12H\n" +
+	"\vtarget_kind\x18\v \x01(\x0e2'.broadcast_service.StreamSlotTargetKindR\n" +
+	"targetKind\"\x1a\n" +
+	"\x18ListMyStreamSlotsRequest\"P\n" +
+	"\x19ListMyStreamSlotsResponse\x123\n" +
+	"\x05slots\x18\x01 \x03(\v2\x1d.broadcast_service.StreamSlotR\x05slots\"6\n" +
+	"\x17CreateStreamSlotRequest\x12\x1b\n" +
+	"\tslot_name\x18\x01 \x01(\tR\bslotName\"\x1a\n" +
+	"\x18CreateStreamSlotResponse\"\xdd\x01\n" +
+	"\x16PointStreamSlotRequest\x12\x1b\n" +
+	"\tslot_name\x18\x01 \x01(\tR\bslotName\x122\n" +
+	"\x15target_broadcast_slug\x18\x02 \x01(\tR\x13targetBroadcastSlug\x12(\n" +
+	"\x10target_slot_name\x18\x03 \x01(\tR\x0etargetSlotName\x12H\n" +
+	"\vtarget_kind\x18\x04 \x01(\x0e2'.broadcast_service.StreamSlotTargetKindR\n" +
+	"targetKind\"\x19\n" +
+	"\x17PointStreamSlotResponse\"6\n" +
+	"\x17DeleteStreamSlotRequest\x12\x1b\n" +
+	"\tslot_name\x18\x01 \x01(\tR\bslotName\"\x1a\n" +
+	"\x18DeleteStreamSlotResponse\"&\n" +
 	"\x10ListSlotsRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"K\n" +
 	"\x11ListSlotsResponse\x126\n" +
@@ -3297,7 +3883,12 @@ const file_proto_broadcast_service_broadcast_service_proto_rawDesc = "" +
 	"\x1bGetBroadcastAllGamesRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"Z\n" +
 	"\x1cGetBroadcastAllGamesResponse\x12:\n" +
-	"\x05stats\x18\x01 \x03(\v2$.broadcast_service.BroadcastGameStatR\x05stats2\xfc\x12\n" +
+	"\x05stats\x18\x01 \x03(\v2$.broadcast_service.BroadcastGameStatR\x05stats*\xbc\x01\n" +
+	"\x14StreamSlotTargetKind\x12'\n" +
+	"#STREAM_SLOT_TARGET_KIND_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cSTREAM_SLOT_TARGET_KIND_NONE\x10\x01\x12*\n" +
+	"&STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT\x10\x02\x12-\n" +
+	")STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION\x10\x032\xb0\x16\n" +
 	"\x10BroadcastService\x12h\n" +
 	"\x0fCreateBroadcast\x12).broadcast_service.CreateBroadcastRequest\x1a*.broadcast_service.CreateBroadcastResponse\x12_\n" +
 	"\fGetBroadcast\x12&.broadcast_service.GetBroadcastRequest\x1a'.broadcast_service.GetBroadcastResponse\x12n\n" +
@@ -3323,7 +3914,11 @@ const file_proto_broadcast_service_broadcast_service_proto_rawDesc = "" +
 	"\n" +
 	"DeleteSlot\x12$.broadcast_service.DeleteSlotRequest\x1a%.broadcast_service.DeleteSlotResponse\x12z\n" +
 	"\x15GetBroadcastGameStats\x12/.broadcast_service.GetBroadcastGameStatsRequest\x1a0.broadcast_service.GetBroadcastGameStatsResponse\x12w\n" +
-	"\x14GetBroadcastAllGames\x12..broadcast_service.GetBroadcastAllGamesRequest\x1a/.broadcast_service.GetBroadcastAllGamesResponseB\xcd\x01\n" +
+	"\x14GetBroadcastAllGames\x12..broadcast_service.GetBroadcastAllGamesRequest\x1a/.broadcast_service.GetBroadcastAllGamesResponse\x12n\n" +
+	"\x11ListMyStreamSlots\x12+.broadcast_service.ListMyStreamSlotsRequest\x1a,.broadcast_service.ListMyStreamSlotsResponse\x12k\n" +
+	"\x10CreateStreamSlot\x12*.broadcast_service.CreateStreamSlotRequest\x1a+.broadcast_service.CreateStreamSlotResponse\x12h\n" +
+	"\x0fPointStreamSlot\x12).broadcast_service.PointStreamSlotRequest\x1a*.broadcast_service.PointStreamSlotResponse\x12k\n" +
+	"\x10DeleteStreamSlot\x12*.broadcast_service.DeleteStreamSlotRequest\x1a+.broadcast_service.DeleteStreamSlotResponseB\xcd\x01\n" +
 	"\x15com.broadcast_serviceB\x15BroadcastServiceProtoP\x01Z=github.com/woogles-io/liwords/rpc/api/proto/broadcast_service\xa2\x02\x03BXX\xaa\x02\x10BroadcastService\xca\x02\x10BroadcastService\xe2\x02\x1cBroadcastService\\GPBMetadata\xea\x02\x10BroadcastServiceb\x06proto3"
 
 var (
@@ -3338,126 +3933,148 @@ func file_proto_broadcast_service_broadcast_service_proto_rawDescGZIP() []byte {
 	return file_proto_broadcast_service_broadcast_service_proto_rawDescData
 }
 
-var file_proto_broadcast_service_broadcast_service_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
+var file_proto_broadcast_service_broadcast_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_broadcast_service_broadcast_service_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
 var file_proto_broadcast_service_broadcast_service_proto_goTypes = []any{
-	(*Broadcast)(nil),                         // 0: broadcast_service.Broadcast
-	(*BroadcastRoundGame)(nil),                // 1: broadcast_service.BroadcastRoundGame
-	(*BroadcastPlayer)(nil),                   // 2: broadcast_service.BroadcastPlayer
-	(*CreateBroadcastRequest)(nil),            // 3: broadcast_service.CreateBroadcastRequest
-	(*CreateBroadcastResponse)(nil),           // 4: broadcast_service.CreateBroadcastResponse
-	(*GetBroadcastRequest)(nil),               // 5: broadcast_service.GetBroadcastRequest
-	(*GetBroadcastResponse)(nil),              // 6: broadcast_service.GetBroadcastResponse
-	(*GetBroadcastGamesRequest)(nil),          // 7: broadcast_service.GetBroadcastGamesRequest
-	(*GetBroadcastGamesResponse)(nil),         // 8: broadcast_service.GetBroadcastGamesResponse
-	(*UpdateBroadcastRequest)(nil),            // 9: broadcast_service.UpdateBroadcastRequest
-	(*UpdateBroadcastResponse)(nil),           // 10: broadcast_service.UpdateBroadcastResponse
-	(*ClaimGameRequest)(nil),                  // 11: broadcast_service.ClaimGameRequest
-	(*ClaimGameResponse)(nil),                 // 12: broadcast_service.ClaimGameResponse
-	(*UnclaimGameRequest)(nil),                // 13: broadcast_service.UnclaimGameRequest
-	(*UnclaimGameResponse)(nil),               // 14: broadcast_service.UnclaimGameResponse
-	(*AddBroadcastDirectorsRequest)(nil),      // 15: broadcast_service.AddBroadcastDirectorsRequest
-	(*AddBroadcastDirectorsResponse)(nil),     // 16: broadcast_service.AddBroadcastDirectorsResponse
-	(*RemoveBroadcastDirectorsRequest)(nil),   // 17: broadcast_service.RemoveBroadcastDirectorsRequest
-	(*RemoveBroadcastDirectorsResponse)(nil),  // 18: broadcast_service.RemoveBroadcastDirectorsResponse
-	(*AddBroadcastAnnotatorsRequest)(nil),     // 19: broadcast_service.AddBroadcastAnnotatorsRequest
-	(*AddBroadcastAnnotatorsResponse)(nil),    // 20: broadcast_service.AddBroadcastAnnotatorsResponse
-	(*RemoveBroadcastAnnotatorsRequest)(nil),  // 21: broadcast_service.RemoveBroadcastAnnotatorsRequest
-	(*RemoveBroadcastAnnotatorsResponse)(nil), // 22: broadcast_service.RemoveBroadcastAnnotatorsResponse
-	(*GetActiveBroadcastsRequest)(nil),        // 23: broadcast_service.GetActiveBroadcastsRequest
-	(*GetActiveBroadcastsResponse)(nil),       // 24: broadcast_service.GetActiveBroadcastsResponse
-	(*GetAllBroadcastsRequest)(nil),           // 25: broadcast_service.GetAllBroadcastsRequest
-	(*GetAllBroadcastsResponse)(nil),          // 26: broadcast_service.GetAllBroadcastsResponse
-	(*TriggerPollRequest)(nil),                // 27: broadcast_service.TriggerPollRequest
-	(*TriggerPollResponse)(nil),               // 28: broadcast_service.TriggerPollResponse
-	(*GetMyClaimedGamesRequest)(nil),          // 29: broadcast_service.GetMyClaimedGamesRequest
-	(*GetMyClaimedGamesResponse)(nil),         // 30: broadcast_service.GetMyClaimedGamesResponse
-	(*GetBroadcastGameContextRequest)(nil),    // 31: broadcast_service.GetBroadcastGameContextRequest
-	(*GetBroadcastGameContextResponse)(nil),   // 32: broadcast_service.GetBroadcastGameContextResponse
-	(*BroadcastSlot)(nil),                     // 33: broadcast_service.BroadcastSlot
-	(*ListSlotsRequest)(nil),                  // 34: broadcast_service.ListSlotsRequest
-	(*ListSlotsResponse)(nil),                 // 35: broadcast_service.ListSlotsResponse
-	(*CreateSlotRequest)(nil),                 // 36: broadcast_service.CreateSlotRequest
-	(*CreateSlotResponse)(nil),                // 37: broadcast_service.CreateSlotResponse
-	(*AssignSlotRequest)(nil),                 // 38: broadcast_service.AssignSlotRequest
-	(*AssignSlotResponse)(nil),                // 39: broadcast_service.AssignSlotResponse
-	(*GetSlotCurrentGameRequest)(nil),         // 40: broadcast_service.GetSlotCurrentGameRequest
-	(*GetSlotCurrentGameResponse)(nil),        // 41: broadcast_service.GetSlotCurrentGameResponse
-	(*DeleteSlotRequest)(nil),                 // 42: broadcast_service.DeleteSlotRequest
-	(*DeleteSlotResponse)(nil),                // 43: broadcast_service.DeleteSlotResponse
-	(*BroadcastGameStat)(nil),                 // 44: broadcast_service.BroadcastGameStat
-	(*GetBroadcastGameStatsRequest)(nil),      // 45: broadcast_service.GetBroadcastGameStatsRequest
-	(*GetBroadcastGameStatsResponse)(nil),     // 46: broadcast_service.GetBroadcastGameStatsResponse
-	(*GetBroadcastAllGamesRequest)(nil),       // 47: broadcast_service.GetBroadcastAllGamesRequest
-	(*GetBroadcastAllGamesResponse)(nil),      // 48: broadcast_service.GetBroadcastAllGamesResponse
-	(*timestamppb.Timestamp)(nil),             // 49: google.protobuf.Timestamp
+	(StreamSlotTargetKind)(0),                 // 0: broadcast_service.StreamSlotTargetKind
+	(*Broadcast)(nil),                         // 1: broadcast_service.Broadcast
+	(*BroadcastRoundGame)(nil),                // 2: broadcast_service.BroadcastRoundGame
+	(*BroadcastPlayer)(nil),                   // 3: broadcast_service.BroadcastPlayer
+	(*CreateBroadcastRequest)(nil),            // 4: broadcast_service.CreateBroadcastRequest
+	(*CreateBroadcastResponse)(nil),           // 5: broadcast_service.CreateBroadcastResponse
+	(*GetBroadcastRequest)(nil),               // 6: broadcast_service.GetBroadcastRequest
+	(*GetBroadcastResponse)(nil),              // 7: broadcast_service.GetBroadcastResponse
+	(*GetBroadcastGamesRequest)(nil),          // 8: broadcast_service.GetBroadcastGamesRequest
+	(*GetBroadcastGamesResponse)(nil),         // 9: broadcast_service.GetBroadcastGamesResponse
+	(*UpdateBroadcastRequest)(nil),            // 10: broadcast_service.UpdateBroadcastRequest
+	(*UpdateBroadcastResponse)(nil),           // 11: broadcast_service.UpdateBroadcastResponse
+	(*ClaimGameRequest)(nil),                  // 12: broadcast_service.ClaimGameRequest
+	(*ClaimGameResponse)(nil),                 // 13: broadcast_service.ClaimGameResponse
+	(*UnclaimGameRequest)(nil),                // 14: broadcast_service.UnclaimGameRequest
+	(*UnclaimGameResponse)(nil),               // 15: broadcast_service.UnclaimGameResponse
+	(*AddBroadcastDirectorsRequest)(nil),      // 16: broadcast_service.AddBroadcastDirectorsRequest
+	(*AddBroadcastDirectorsResponse)(nil),     // 17: broadcast_service.AddBroadcastDirectorsResponse
+	(*RemoveBroadcastDirectorsRequest)(nil),   // 18: broadcast_service.RemoveBroadcastDirectorsRequest
+	(*RemoveBroadcastDirectorsResponse)(nil),  // 19: broadcast_service.RemoveBroadcastDirectorsResponse
+	(*AddBroadcastAnnotatorsRequest)(nil),     // 20: broadcast_service.AddBroadcastAnnotatorsRequest
+	(*AddBroadcastAnnotatorsResponse)(nil),    // 21: broadcast_service.AddBroadcastAnnotatorsResponse
+	(*RemoveBroadcastAnnotatorsRequest)(nil),  // 22: broadcast_service.RemoveBroadcastAnnotatorsRequest
+	(*RemoveBroadcastAnnotatorsResponse)(nil), // 23: broadcast_service.RemoveBroadcastAnnotatorsResponse
+	(*GetActiveBroadcastsRequest)(nil),        // 24: broadcast_service.GetActiveBroadcastsRequest
+	(*GetActiveBroadcastsResponse)(nil),       // 25: broadcast_service.GetActiveBroadcastsResponse
+	(*GetAllBroadcastsRequest)(nil),           // 26: broadcast_service.GetAllBroadcastsRequest
+	(*GetAllBroadcastsResponse)(nil),          // 27: broadcast_service.GetAllBroadcastsResponse
+	(*TriggerPollRequest)(nil),                // 28: broadcast_service.TriggerPollRequest
+	(*TriggerPollResponse)(nil),               // 29: broadcast_service.TriggerPollResponse
+	(*GetMyClaimedGamesRequest)(nil),          // 30: broadcast_service.GetMyClaimedGamesRequest
+	(*GetMyClaimedGamesResponse)(nil),         // 31: broadcast_service.GetMyClaimedGamesResponse
+	(*GetBroadcastGameContextRequest)(nil),    // 32: broadcast_service.GetBroadcastGameContextRequest
+	(*GetBroadcastGameContextResponse)(nil),   // 33: broadcast_service.GetBroadcastGameContextResponse
+	(*BroadcastSlot)(nil),                     // 34: broadcast_service.BroadcastSlot
+	(*StreamSlot)(nil),                        // 35: broadcast_service.StreamSlot
+	(*ListMyStreamSlotsRequest)(nil),          // 36: broadcast_service.ListMyStreamSlotsRequest
+	(*ListMyStreamSlotsResponse)(nil),         // 37: broadcast_service.ListMyStreamSlotsResponse
+	(*CreateStreamSlotRequest)(nil),           // 38: broadcast_service.CreateStreamSlotRequest
+	(*CreateStreamSlotResponse)(nil),          // 39: broadcast_service.CreateStreamSlotResponse
+	(*PointStreamSlotRequest)(nil),            // 40: broadcast_service.PointStreamSlotRequest
+	(*PointStreamSlotResponse)(nil),           // 41: broadcast_service.PointStreamSlotResponse
+	(*DeleteStreamSlotRequest)(nil),           // 42: broadcast_service.DeleteStreamSlotRequest
+	(*DeleteStreamSlotResponse)(nil),          // 43: broadcast_service.DeleteStreamSlotResponse
+	(*ListSlotsRequest)(nil),                  // 44: broadcast_service.ListSlotsRequest
+	(*ListSlotsResponse)(nil),                 // 45: broadcast_service.ListSlotsResponse
+	(*CreateSlotRequest)(nil),                 // 46: broadcast_service.CreateSlotRequest
+	(*CreateSlotResponse)(nil),                // 47: broadcast_service.CreateSlotResponse
+	(*AssignSlotRequest)(nil),                 // 48: broadcast_service.AssignSlotRequest
+	(*AssignSlotResponse)(nil),                // 49: broadcast_service.AssignSlotResponse
+	(*GetSlotCurrentGameRequest)(nil),         // 50: broadcast_service.GetSlotCurrentGameRequest
+	(*GetSlotCurrentGameResponse)(nil),        // 51: broadcast_service.GetSlotCurrentGameResponse
+	(*DeleteSlotRequest)(nil),                 // 52: broadcast_service.DeleteSlotRequest
+	(*DeleteSlotResponse)(nil),                // 53: broadcast_service.DeleteSlotResponse
+	(*BroadcastGameStat)(nil),                 // 54: broadcast_service.BroadcastGameStat
+	(*GetBroadcastGameStatsRequest)(nil),      // 55: broadcast_service.GetBroadcastGameStatsRequest
+	(*GetBroadcastGameStatsResponse)(nil),     // 56: broadcast_service.GetBroadcastGameStatsResponse
+	(*GetBroadcastAllGamesRequest)(nil),       // 57: broadcast_service.GetBroadcastAllGamesRequest
+	(*GetBroadcastAllGamesResponse)(nil),      // 58: broadcast_service.GetBroadcastAllGamesResponse
+	(*timestamppb.Timestamp)(nil),             // 59: google.protobuf.Timestamp
 }
 var file_proto_broadcast_service_broadcast_service_proto_depIdxs = []int32{
-	49, // 0: broadcast_service.Broadcast.poll_start_time:type_name -> google.protobuf.Timestamp
-	49, // 1: broadcast_service.Broadcast.poll_end_time:type_name -> google.protobuf.Timestamp
-	49, // 2: broadcast_service.Broadcast.created_at:type_name -> google.protobuf.Timestamp
-	49, // 3: broadcast_service.CreateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
-	49, // 4: broadcast_service.CreateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
-	0,  // 5: broadcast_service.GetBroadcastResponse.broadcast:type_name -> broadcast_service.Broadcast
-	2,  // 6: broadcast_service.GetBroadcastResponse.players:type_name -> broadcast_service.BroadcastPlayer
-	1,  // 7: broadcast_service.GetBroadcastGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
-	49, // 8: broadcast_service.UpdateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
-	49, // 9: broadcast_service.UpdateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
-	0,  // 10: broadcast_service.GetActiveBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
-	0,  // 11: broadcast_service.GetAllBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
-	1,  // 12: broadcast_service.GetMyClaimedGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
-	33, // 13: broadcast_service.ListSlotsResponse.slots:type_name -> broadcast_service.BroadcastSlot
-	49, // 14: broadcast_service.BroadcastGameStat.completed_at:type_name -> google.protobuf.Timestamp
-	44, // 15: broadcast_service.GetBroadcastGameStatsResponse.stats:type_name -> broadcast_service.BroadcastGameStat
-	44, // 16: broadcast_service.GetBroadcastAllGamesResponse.stats:type_name -> broadcast_service.BroadcastGameStat
-	3,  // 17: broadcast_service.BroadcastService.CreateBroadcast:input_type -> broadcast_service.CreateBroadcastRequest
-	5,  // 18: broadcast_service.BroadcastService.GetBroadcast:input_type -> broadcast_service.GetBroadcastRequest
-	7,  // 19: broadcast_service.BroadcastService.GetBroadcastGames:input_type -> broadcast_service.GetBroadcastGamesRequest
-	9,  // 20: broadcast_service.BroadcastService.UpdateBroadcast:input_type -> broadcast_service.UpdateBroadcastRequest
-	11, // 21: broadcast_service.BroadcastService.ClaimGame:input_type -> broadcast_service.ClaimGameRequest
-	13, // 22: broadcast_service.BroadcastService.UnclaimGame:input_type -> broadcast_service.UnclaimGameRequest
-	15, // 23: broadcast_service.BroadcastService.AddBroadcastDirectors:input_type -> broadcast_service.AddBroadcastDirectorsRequest
-	17, // 24: broadcast_service.BroadcastService.RemoveBroadcastDirectors:input_type -> broadcast_service.RemoveBroadcastDirectorsRequest
-	19, // 25: broadcast_service.BroadcastService.AddBroadcastAnnotators:input_type -> broadcast_service.AddBroadcastAnnotatorsRequest
-	21, // 26: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:input_type -> broadcast_service.RemoveBroadcastAnnotatorsRequest
-	23, // 27: broadcast_service.BroadcastService.GetActiveBroadcasts:input_type -> broadcast_service.GetActiveBroadcastsRequest
-	25, // 28: broadcast_service.BroadcastService.GetAllBroadcasts:input_type -> broadcast_service.GetAllBroadcastsRequest
-	27, // 29: broadcast_service.BroadcastService.TriggerPoll:input_type -> broadcast_service.TriggerPollRequest
-	29, // 30: broadcast_service.BroadcastService.GetMyClaimedGames:input_type -> broadcast_service.GetMyClaimedGamesRequest
-	31, // 31: broadcast_service.BroadcastService.GetBroadcastGameContext:input_type -> broadcast_service.GetBroadcastGameContextRequest
-	34, // 32: broadcast_service.BroadcastService.ListSlots:input_type -> broadcast_service.ListSlotsRequest
-	40, // 33: broadcast_service.BroadcastService.GetSlotCurrentGame:input_type -> broadcast_service.GetSlotCurrentGameRequest
-	36, // 34: broadcast_service.BroadcastService.CreateSlot:input_type -> broadcast_service.CreateSlotRequest
-	38, // 35: broadcast_service.BroadcastService.AssignSlot:input_type -> broadcast_service.AssignSlotRequest
-	42, // 36: broadcast_service.BroadcastService.DeleteSlot:input_type -> broadcast_service.DeleteSlotRequest
-	45, // 37: broadcast_service.BroadcastService.GetBroadcastGameStats:input_type -> broadcast_service.GetBroadcastGameStatsRequest
-	47, // 38: broadcast_service.BroadcastService.GetBroadcastAllGames:input_type -> broadcast_service.GetBroadcastAllGamesRequest
-	4,  // 39: broadcast_service.BroadcastService.CreateBroadcast:output_type -> broadcast_service.CreateBroadcastResponse
-	6,  // 40: broadcast_service.BroadcastService.GetBroadcast:output_type -> broadcast_service.GetBroadcastResponse
-	8,  // 41: broadcast_service.BroadcastService.GetBroadcastGames:output_type -> broadcast_service.GetBroadcastGamesResponse
-	10, // 42: broadcast_service.BroadcastService.UpdateBroadcast:output_type -> broadcast_service.UpdateBroadcastResponse
-	12, // 43: broadcast_service.BroadcastService.ClaimGame:output_type -> broadcast_service.ClaimGameResponse
-	14, // 44: broadcast_service.BroadcastService.UnclaimGame:output_type -> broadcast_service.UnclaimGameResponse
-	16, // 45: broadcast_service.BroadcastService.AddBroadcastDirectors:output_type -> broadcast_service.AddBroadcastDirectorsResponse
-	18, // 46: broadcast_service.BroadcastService.RemoveBroadcastDirectors:output_type -> broadcast_service.RemoveBroadcastDirectorsResponse
-	20, // 47: broadcast_service.BroadcastService.AddBroadcastAnnotators:output_type -> broadcast_service.AddBroadcastAnnotatorsResponse
-	22, // 48: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:output_type -> broadcast_service.RemoveBroadcastAnnotatorsResponse
-	24, // 49: broadcast_service.BroadcastService.GetActiveBroadcasts:output_type -> broadcast_service.GetActiveBroadcastsResponse
-	26, // 50: broadcast_service.BroadcastService.GetAllBroadcasts:output_type -> broadcast_service.GetAllBroadcastsResponse
-	28, // 51: broadcast_service.BroadcastService.TriggerPoll:output_type -> broadcast_service.TriggerPollResponse
-	30, // 52: broadcast_service.BroadcastService.GetMyClaimedGames:output_type -> broadcast_service.GetMyClaimedGamesResponse
-	32, // 53: broadcast_service.BroadcastService.GetBroadcastGameContext:output_type -> broadcast_service.GetBroadcastGameContextResponse
-	35, // 54: broadcast_service.BroadcastService.ListSlots:output_type -> broadcast_service.ListSlotsResponse
-	41, // 55: broadcast_service.BroadcastService.GetSlotCurrentGame:output_type -> broadcast_service.GetSlotCurrentGameResponse
-	37, // 56: broadcast_service.BroadcastService.CreateSlot:output_type -> broadcast_service.CreateSlotResponse
-	39, // 57: broadcast_service.BroadcastService.AssignSlot:output_type -> broadcast_service.AssignSlotResponse
-	43, // 58: broadcast_service.BroadcastService.DeleteSlot:output_type -> broadcast_service.DeleteSlotResponse
-	46, // 59: broadcast_service.BroadcastService.GetBroadcastGameStats:output_type -> broadcast_service.GetBroadcastGameStatsResponse
-	48, // 60: broadcast_service.BroadcastService.GetBroadcastAllGames:output_type -> broadcast_service.GetBroadcastAllGamesResponse
-	39, // [39:61] is the sub-list for method output_type
-	17, // [17:39] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	59, // 0: broadcast_service.Broadcast.poll_start_time:type_name -> google.protobuf.Timestamp
+	59, // 1: broadcast_service.Broadcast.poll_end_time:type_name -> google.protobuf.Timestamp
+	59, // 2: broadcast_service.Broadcast.created_at:type_name -> google.protobuf.Timestamp
+	59, // 3: broadcast_service.CreateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
+	59, // 4: broadcast_service.CreateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
+	1,  // 5: broadcast_service.GetBroadcastResponse.broadcast:type_name -> broadcast_service.Broadcast
+	3,  // 6: broadcast_service.GetBroadcastResponse.players:type_name -> broadcast_service.BroadcastPlayer
+	2,  // 7: broadcast_service.GetBroadcastGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
+	59, // 8: broadcast_service.UpdateBroadcastRequest.poll_start_time:type_name -> google.protobuf.Timestamp
+	59, // 9: broadcast_service.UpdateBroadcastRequest.poll_end_time:type_name -> google.protobuf.Timestamp
+	1,  // 10: broadcast_service.GetActiveBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
+	1,  // 11: broadcast_service.GetAllBroadcastsResponse.broadcasts:type_name -> broadcast_service.Broadcast
+	2,  // 12: broadcast_service.GetMyClaimedGamesResponse.games:type_name -> broadcast_service.BroadcastRoundGame
+	0,  // 13: broadcast_service.StreamSlot.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
+	35, // 14: broadcast_service.ListMyStreamSlotsResponse.slots:type_name -> broadcast_service.StreamSlot
+	0,  // 15: broadcast_service.PointStreamSlotRequest.target_kind:type_name -> broadcast_service.StreamSlotTargetKind
+	34, // 16: broadcast_service.ListSlotsResponse.slots:type_name -> broadcast_service.BroadcastSlot
+	59, // 17: broadcast_service.BroadcastGameStat.completed_at:type_name -> google.protobuf.Timestamp
+	54, // 18: broadcast_service.GetBroadcastGameStatsResponse.stats:type_name -> broadcast_service.BroadcastGameStat
+	54, // 19: broadcast_service.GetBroadcastAllGamesResponse.stats:type_name -> broadcast_service.BroadcastGameStat
+	4,  // 20: broadcast_service.BroadcastService.CreateBroadcast:input_type -> broadcast_service.CreateBroadcastRequest
+	6,  // 21: broadcast_service.BroadcastService.GetBroadcast:input_type -> broadcast_service.GetBroadcastRequest
+	8,  // 22: broadcast_service.BroadcastService.GetBroadcastGames:input_type -> broadcast_service.GetBroadcastGamesRequest
+	10, // 23: broadcast_service.BroadcastService.UpdateBroadcast:input_type -> broadcast_service.UpdateBroadcastRequest
+	12, // 24: broadcast_service.BroadcastService.ClaimGame:input_type -> broadcast_service.ClaimGameRequest
+	14, // 25: broadcast_service.BroadcastService.UnclaimGame:input_type -> broadcast_service.UnclaimGameRequest
+	16, // 26: broadcast_service.BroadcastService.AddBroadcastDirectors:input_type -> broadcast_service.AddBroadcastDirectorsRequest
+	18, // 27: broadcast_service.BroadcastService.RemoveBroadcastDirectors:input_type -> broadcast_service.RemoveBroadcastDirectorsRequest
+	20, // 28: broadcast_service.BroadcastService.AddBroadcastAnnotators:input_type -> broadcast_service.AddBroadcastAnnotatorsRequest
+	22, // 29: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:input_type -> broadcast_service.RemoveBroadcastAnnotatorsRequest
+	24, // 30: broadcast_service.BroadcastService.GetActiveBroadcasts:input_type -> broadcast_service.GetActiveBroadcastsRequest
+	26, // 31: broadcast_service.BroadcastService.GetAllBroadcasts:input_type -> broadcast_service.GetAllBroadcastsRequest
+	28, // 32: broadcast_service.BroadcastService.TriggerPoll:input_type -> broadcast_service.TriggerPollRequest
+	30, // 33: broadcast_service.BroadcastService.GetMyClaimedGames:input_type -> broadcast_service.GetMyClaimedGamesRequest
+	32, // 34: broadcast_service.BroadcastService.GetBroadcastGameContext:input_type -> broadcast_service.GetBroadcastGameContextRequest
+	44, // 35: broadcast_service.BroadcastService.ListSlots:input_type -> broadcast_service.ListSlotsRequest
+	50, // 36: broadcast_service.BroadcastService.GetSlotCurrentGame:input_type -> broadcast_service.GetSlotCurrentGameRequest
+	46, // 37: broadcast_service.BroadcastService.CreateSlot:input_type -> broadcast_service.CreateSlotRequest
+	48, // 38: broadcast_service.BroadcastService.AssignSlot:input_type -> broadcast_service.AssignSlotRequest
+	52, // 39: broadcast_service.BroadcastService.DeleteSlot:input_type -> broadcast_service.DeleteSlotRequest
+	55, // 40: broadcast_service.BroadcastService.GetBroadcastGameStats:input_type -> broadcast_service.GetBroadcastGameStatsRequest
+	57, // 41: broadcast_service.BroadcastService.GetBroadcastAllGames:input_type -> broadcast_service.GetBroadcastAllGamesRequest
+	36, // 42: broadcast_service.BroadcastService.ListMyStreamSlots:input_type -> broadcast_service.ListMyStreamSlotsRequest
+	38, // 43: broadcast_service.BroadcastService.CreateStreamSlot:input_type -> broadcast_service.CreateStreamSlotRequest
+	40, // 44: broadcast_service.BroadcastService.PointStreamSlot:input_type -> broadcast_service.PointStreamSlotRequest
+	42, // 45: broadcast_service.BroadcastService.DeleteStreamSlot:input_type -> broadcast_service.DeleteStreamSlotRequest
+	5,  // 46: broadcast_service.BroadcastService.CreateBroadcast:output_type -> broadcast_service.CreateBroadcastResponse
+	7,  // 47: broadcast_service.BroadcastService.GetBroadcast:output_type -> broadcast_service.GetBroadcastResponse
+	9,  // 48: broadcast_service.BroadcastService.GetBroadcastGames:output_type -> broadcast_service.GetBroadcastGamesResponse
+	11, // 49: broadcast_service.BroadcastService.UpdateBroadcast:output_type -> broadcast_service.UpdateBroadcastResponse
+	13, // 50: broadcast_service.BroadcastService.ClaimGame:output_type -> broadcast_service.ClaimGameResponse
+	15, // 51: broadcast_service.BroadcastService.UnclaimGame:output_type -> broadcast_service.UnclaimGameResponse
+	17, // 52: broadcast_service.BroadcastService.AddBroadcastDirectors:output_type -> broadcast_service.AddBroadcastDirectorsResponse
+	19, // 53: broadcast_service.BroadcastService.RemoveBroadcastDirectors:output_type -> broadcast_service.RemoveBroadcastDirectorsResponse
+	21, // 54: broadcast_service.BroadcastService.AddBroadcastAnnotators:output_type -> broadcast_service.AddBroadcastAnnotatorsResponse
+	23, // 55: broadcast_service.BroadcastService.RemoveBroadcastAnnotators:output_type -> broadcast_service.RemoveBroadcastAnnotatorsResponse
+	25, // 56: broadcast_service.BroadcastService.GetActiveBroadcasts:output_type -> broadcast_service.GetActiveBroadcastsResponse
+	27, // 57: broadcast_service.BroadcastService.GetAllBroadcasts:output_type -> broadcast_service.GetAllBroadcastsResponse
+	29, // 58: broadcast_service.BroadcastService.TriggerPoll:output_type -> broadcast_service.TriggerPollResponse
+	31, // 59: broadcast_service.BroadcastService.GetMyClaimedGames:output_type -> broadcast_service.GetMyClaimedGamesResponse
+	33, // 60: broadcast_service.BroadcastService.GetBroadcastGameContext:output_type -> broadcast_service.GetBroadcastGameContextResponse
+	45, // 61: broadcast_service.BroadcastService.ListSlots:output_type -> broadcast_service.ListSlotsResponse
+	51, // 62: broadcast_service.BroadcastService.GetSlotCurrentGame:output_type -> broadcast_service.GetSlotCurrentGameResponse
+	47, // 63: broadcast_service.BroadcastService.CreateSlot:output_type -> broadcast_service.CreateSlotResponse
+	49, // 64: broadcast_service.BroadcastService.AssignSlot:output_type -> broadcast_service.AssignSlotResponse
+	53, // 65: broadcast_service.BroadcastService.DeleteSlot:output_type -> broadcast_service.DeleteSlotResponse
+	56, // 66: broadcast_service.BroadcastService.GetBroadcastGameStats:output_type -> broadcast_service.GetBroadcastGameStatsResponse
+	58, // 67: broadcast_service.BroadcastService.GetBroadcastAllGames:output_type -> broadcast_service.GetBroadcastAllGamesResponse
+	37, // 68: broadcast_service.BroadcastService.ListMyStreamSlots:output_type -> broadcast_service.ListMyStreamSlotsResponse
+	39, // 69: broadcast_service.BroadcastService.CreateStreamSlot:output_type -> broadcast_service.CreateStreamSlotResponse
+	41, // 70: broadcast_service.BroadcastService.PointStreamSlot:output_type -> broadcast_service.PointStreamSlotResponse
+	43, // 71: broadcast_service.BroadcastService.DeleteStreamSlot:output_type -> broadcast_service.DeleteStreamSlotResponse
+	46, // [46:72] is the sub-list for method output_type
+	20, // [20:46] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_proto_broadcast_service_broadcast_service_proto_init() }
@@ -3470,13 +4087,14 @@ func file_proto_broadcast_service_broadcast_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_broadcast_service_broadcast_service_proto_rawDesc), len(file_proto_broadcast_service_broadcast_service_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   49,
+			NumEnums:      1,
+			NumMessages:   58,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_broadcast_service_broadcast_service_proto_goTypes,
 		DependencyIndexes: file_proto_broadcast_service_broadcast_service_proto_depIdxs,
+		EnumInfos:         file_proto_broadcast_service_broadcast_service_proto_enumTypes,
 		MessageInfos:      file_proto_broadcast_service_broadcast_service_proto_msgTypes,
 	}.Build()
 	File_proto_broadcast_service_broadcast_service_proto = out.File

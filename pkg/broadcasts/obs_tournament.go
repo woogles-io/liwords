@@ -29,6 +29,27 @@ func orPlaceholder(s string) string {
 	return s
 }
 
+// placeholderOBSData is every field blanked to the placeholder, for pushing to
+// live subscribers when a stream stops resolving to a game. Without it the
+// browser source would keep displaying the last game it saw: re-pointing a
+// stream slot at an event whose featured table nobody has claimed yet has to
+// clear the overlay, not freeze the previous event on screen.
+func placeholderOBSData() OBSData {
+	return OBSData{
+		Score: obsPlaceholder, P1Score: obsPlaceholder, P2Score: obsPlaceholder,
+		UnseenTiles: obsPlaceholder, UnseenCount: obsPlaceholder,
+		LastPlay: obsPlaceholder, Blank1: obsPlaceholder, Blank2: obsPlaceholder,
+		P1Name: obsPlaceholder, P2Name: obsPlaceholder, CombinedNames: obsPlaceholder,
+		P1Record: obsPlaceholder, P2Record: obsPlaceholder,
+		P1Place: obsPlaceholder, P2Place: obsPlaceholder,
+		P1Spread: obsPlaceholder, P2Spread: obsPlaceholder,
+		P1Rating: obsPlaceholder, P2Rating: obsPlaceholder,
+		Division: obsPlaceholder, Tournament: obsPlaceholder,
+		Round: obsPlaceholder, Table: obsPlaceholder,
+		OpponentName: obsPlaceholder,
+	}
+}
+
 // formatRound renders "<slot round> of <total rounds>", falling back to just
 // the slot round when the feed (and therefore the total-round count) isn't
 // available.

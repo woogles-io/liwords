@@ -565,6 +565,15 @@ type UserBadge struct {
 	BadgeID int32
 }
 
+type UserObsSlot struct {
+	UserID            int64
+	SlotName          string
+	TargetKind        string
+	TargetBroadcastID pgtype.Int8
+	TargetSlotName    string
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type UserRole struct {
 	UserID int32
 	RoleID int32

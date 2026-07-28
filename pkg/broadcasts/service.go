@@ -3,6 +3,7 @@ package broadcasts
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sync"
 	"time"
 
@@ -956,10 +957,11 @@ func (bs *BroadcastService) computeListSlots(ctx context.Context, slug string) (
 	slots := make([]*pb.BroadcastSlot, 0, len(rows))
 	for _, row := range rows {
 		slots = append(slots, &pb.BroadcastSlot{
-			SlotName:    row.SlotName,
-			Division:    row.Division,
-			Round:       row.Round,
-			TableNumber: row.TableNumber,
+			SlotName:        row.SlotName,
+			Division:        row.Division,
+			Round:           row.Round,
+			TableNumber:     row.TableNumber,
+			StreamSlotCount: int32(row.StreamSlotCount),
 		})
 	}
 	return &pb.ListSlotsResponse{Slots: slots}, nil
@@ -1051,7 +1053,207 @@ func (bs *BroadcastService) DeleteSlot(ctx context.Context, req *connect.Request
 		return nil, apiserver.InternalErr(err)
 	}
 	bs.invalidateSlugCaches(broadcast.Slug)
+	// Notify so OBS pages still open on this slot clear themselves. Without
+	// this they never hear about the deletion at all, and sit frozen on the
+	// last game the slot pointed at.
+	bs.notifyBroadcastGamesUpdated(broadcast.Uuid.String(), broadcast.Slug)
 	return connect.NewResponse(&pb.DeleteSlotResponse{}), nil
+}
+
+// ---------------------------------------------------------------------------
+// Stream slots
+//
+// A stream slot is owned by a user and points at a broadcast slot. Its OBS URL
+// carries only the owner's username, so it outlives any single broadcast:
+// covering a different event is a re-point here rather than an edit in OBS.
+// Pointing one at a broadcast requires directing that broadcast (requireDirector);
+// listing, creating and deleting your own slots requires only authentication.
+// ---------------------------------------------------------------------------
+
+// maxStreamSlotsPerUser bounds how many permanent OBS URLs one account can mint.
+const maxStreamSlotsPerUser = 10
+
+// streamSlotNameRe keeps slot names URL-safe and unambiguous. Lowercase only:
+// these are compared verbatim against a path segment, and a name differing only
+// by case would silently 404.
+var streamSlotNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
+
+func (bs *BroadcastService) ListMyStreamSlots(ctx context.Context, req *connect.Request[pb.ListMyStreamSlotsRequest]) (
+	*connect.Response[pb.ListMyStreamSlotsResponse], error) {
+
+	u, err := apiserver.AuthUser(ctx, bs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := bs.queries.ListUserObsSlots(ctx, int64(u.ID))
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	slots := make([]*pb.StreamSlot, 0, len(rows))
+	for _, row := range rows {
+		slots = append(slots, &pb.StreamSlot{
+			SlotName:            row.SlotName,
+			TargetKind:          targetKindToProto(row.TargetKind),
+			TargetBroadcastSlug: row.BroadcastSlug,
+			TargetBroadcastName: row.BroadcastName,
+			TargetSlotName:      row.TargetSlotName,
+			Division:            row.Division,
+			Round:               row.Round,
+			TableNumber:         row.TableNumber,
+			GameUuid:            row.GameUuid,
+			Player1Name:         asStr(row.Player1Name),
+			Player2Name:         asStr(row.Player2Name),
+		})
+	}
+	return connect.NewResponse(&pb.ListMyStreamSlotsResponse{Slots: slots}), nil
+}
+
+func targetKindToProto(kind string) pb.StreamSlotTargetKind {
+	switch kind {
+	case targetKindBroadcastSlot:
+		return pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT
+	case targetKindLatestAnnotation:
+		return pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION
+	default:
+		return pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_NONE
+	}
+}
+
+func (bs *BroadcastService) CreateStreamSlot(ctx context.Context, req *connect.Request[pb.CreateStreamSlotRequest]) (
+	*connect.Response[pb.CreateStreamSlotResponse], error) {
+
+	u, err := apiserver.AuthUser(ctx, bs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if !streamSlotNameRe.MatchString(req.Msg.SlotName) {
+		return nil, apiserver.InvalidArg(
+			"slot name must be 1-32 characters of lowercase letters, numbers or dashes, and start with a letter or number")
+	}
+	count, err := bs.queries.CountUserObsSlots(ctx, int64(u.ID))
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if count >= maxStreamSlotsPerUser {
+		return nil, apiserver.InvalidArg(
+			fmt.Sprintf("you can have at most %d stream slots", maxStreamSlotsPerUser))
+	}
+
+	// Unlike CreateSlot, a name collision is surfaced rather than silently
+	// ignored: the caller would otherwise think they minted a fresh URL.
+	rows, err := bs.queries.CreateUserObsSlot(ctx, models.CreateUserObsSlotParams{
+		UserID:   int64(u.ID),
+		SlotName: req.Msg.SlotName,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if rows == 0 {
+		return nil, apiserver.InvalidArg("you already have a stream slot with that name")
+	}
+	return connect.NewResponse(&pb.CreateStreamSlotResponse{}), nil
+}
+
+func (bs *BroadcastService) PointStreamSlot(ctx context.Context, req *connect.Request[pb.PointStreamSlotRequest]) (
+	*connect.Response[pb.PointStreamSlotResponse], error) {
+
+	u, err := apiserver.AuthUser(ctx, bs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.SlotName == "" {
+		return nil, apiserver.InvalidArg("slot_name is required")
+	}
+
+	// Clearing (or following your own annotations) drops the broadcast target;
+	// the OBS URL then renders the placeholder rather than 404ing, so a live
+	// browser source stays intact through any re-point.
+	var targetBroadcastID pgtype.Int8
+	targetSlotName := ""
+	targetKind := targetKindNone
+
+	switch req.Msg.TargetKind {
+	case pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT:
+		if req.Msg.TargetBroadcastSlug == "" || req.Msg.TargetSlotName == "" {
+			return nil, apiserver.InvalidArg(
+				"target_broadcast_slug and target_slot_name are required for a broadcast-slot target")
+		}
+		broadcast, err := bs.queries.GetBroadcastBySlug(ctx, req.Msg.TargetBroadcastSlug)
+		if err != nil {
+			return nil, apiserver.NotFound("broadcast not found")
+		}
+		// Pointing at an event requires directing it. Reads are public either
+		// way, so this is about not letting anyone list themselves as covering
+		// someone else's broadcast.
+		if _, err := bs.requireDirector(ctx, broadcast.ID); err != nil {
+			return nil, err
+		}
+		targetBroadcastID = pgtype.Int8{Int64: int64(broadcast.ID), Valid: true}
+		targetSlotName = req.Msg.TargetSlotName
+		targetKind = targetKindBroadcastSlot
+
+	case pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION:
+		// Needs no broadcast at all — this is the path for someone streaming
+		// their own annotated games without ever creating a broadcast.
+		targetKind = targetKindLatestAnnotation
+
+	case pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_NONE,
+		pb.StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_UNSPECIFIED:
+		targetKind = targetKindNone
+
+	default:
+		return nil, apiserver.InvalidArg("unknown target_kind")
+	}
+
+	rows, err := bs.queries.UpdateUserObsSlotTarget(ctx, models.UpdateUserObsSlotTargetParams{
+		TargetKind:        targetKind,
+		TargetBroadcastID: targetBroadcastID,
+		TargetSlotName:    targetSlotName,
+		UserID:            int64(u.ID),
+		SlotName:          req.Msg.SlotName,
+	})
+	if err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	if rows == 0 {
+		return nil, apiserver.NotFound("stream slot not found")
+	}
+
+	bs.notifyUserSlotUpdated(u.UUID)
+	return connect.NewResponse(&pb.PointStreamSlotResponse{}), nil
+}
+
+func (bs *BroadcastService) DeleteStreamSlot(ctx context.Context, req *connect.Request[pb.DeleteStreamSlotRequest]) (
+	*connect.Response[pb.DeleteStreamSlotResponse], error) {
+
+	u, err := apiserver.AuthUser(ctx, bs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.SlotName == "" {
+		return nil, apiserver.InvalidArg("slot_name is required")
+	}
+	if _, err := bs.queries.DeleteUserObsSlot(ctx, models.DeleteUserObsSlotParams{
+		UserID:   int64(u.ID),
+		SlotName: req.Msg.SlotName,
+	}); err != nil {
+		return nil, apiserver.InternalErr(err)
+	}
+	bs.notifyUserSlotUpdated(u.UUID)
+	return connect.NewResponse(&pb.DeleteStreamSlotResponse{}), nil
+}
+
+// notifyUserSlotUpdated tells live OBS streams that one of this user's stream
+// slots was re-pointed, so they re-resolve their target. Unlike a broadcast
+// slot, a stream slot can move to a *different* broadcast, so the OBS handler
+// has to swap its broadcast-level subscription too; the payload is unused.
+func (bs *BroadcastService) notifyUserSlotUpdated(userUUID string) {
+	if bs.natsConn == nil {
+		return
+	}
+	if err := bs.natsConn.Publish(NatsUserSlotSubjectPrefix+userUUID, nil); err != nil {
+		log.Err(err).Str("user_uuid", userUUID).Msg("user-slot-updated-publish-failed")
+	}
 }
 
 func (bs *BroadcastService) UpdateBroadcast(ctx context.Context, req *connect.Request[pb.UpdateBroadcastRequest]) (

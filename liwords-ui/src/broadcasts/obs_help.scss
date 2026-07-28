@@ -1,0 +1,53 @@
+@use "../base.scss" as *;
+
+// The "?" that opens the manual. It sits inline inside divider titles and
+// running prose, so it has to read as a quiet inline affordance rather than a
+// control — a real button element for keyboard and screen readers, with every
+// button style stripped off.
+.obs-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+
+  @include colorModed() {
+    color: m($primary-middle);
+  }
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.obs-help-tabs {
+  // Keep the chapter list visible while a long chapter scrolls under it.
+  max-height: 62vh;
+
+  .ant-tabs-content-holder {
+    overflow-y: auto;
+  }
+
+  .ant-tabs-nav {
+    min-width: 190px;
+  }
+}
+
+.obs-help-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

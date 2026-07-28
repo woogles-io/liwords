@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/domino14/word-golib/tilemapping"
+	"github.com/jackc/pgx/v5"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
@@ -26,8 +27,9 @@ const OBSHandlerPrefix = "/api/broadcasts/obs/"
 // OBSGameHandlerPrefix is the URL prefix for direct per-game OBS endpoints.
 const OBSGameHandlerPrefix = "/api/annotations/obs/game/"
 
-// OBSUserHandlerPrefix is the URL prefix for user-alias OBS endpoints.
-// The URL resolves dynamically to the user's most-recently-edited annotated game.
+// OBSUserHandlerPrefix is the URL prefix for stream-slot OBS endpoints.
+// The URL resolves dynamically through the slot's target: a broadcast slot, or
+// the owner's most recently started annotated game.
 const OBSUserHandlerPrefix = "/api/annotations/obs/user/"
 
 // natsUserAnnoSubjectPrefix mirrors omgwords.NatsUserAnnoSubjectPrefix to avoid
@@ -70,15 +72,19 @@ var validSuffixes = map[string]bool{
 // obsPlaceholder is the value shown when no game is assigned to a slot.
 const obsPlaceholder = "(no game assigned)"
 
-// obsStreamMode identifies which of the three OBS URL families a stream
-// belongs to, so the live-update path knows which augmentation to apply on
-// top of the base game-doc OBSData.
+// obsStreamMode identifies which of the OBS URL families a stream belongs to,
+// so the live-update path knows which augmentation to apply on top of the base
+// game-doc OBSData.
 type obsStreamMode int
 
 const (
 	obsStreamModeGame obsStreamMode = iota
 	obsStreamModeSlot
-	obsStreamModeUser
+	// obsStreamModeUserSlot is a user-owned stream slot. It augments like
+	// obsStreamModeSlot, but what it points at — including which broadcast, or
+	// whether there is a broadcast at all — can change under a live stream, so
+	// its subscriptions have to be re-bindable.
+	obsStreamModeUserSlot
 )
 
 // obsStream tracks all SSE subscribers and NATS subscriptions for one stream key.
@@ -88,13 +94,31 @@ type obsStream struct {
 	subscribers   map[chan OBSData]struct{}
 	annoSub       *nats.Subscription // per-turn game events (may be nil)
 	broadcastSub  *nats.Subscription // slot reassignment events (nil for game streams)
+	userSlotSub   *nats.Subscription // stream-slot re-point events (user-slot mode only)
+	userAnnoSub   *nats.Subscription // owner annotation activity (user-slot mode only)
 	currentGameID string
 	initialized   bool
 
+	// targetKind is the stream slot's current target kind (user-slot mode only).
+	// It can change under a live stream, which is the point: a slot can move
+	// between following its owner's annotations and mirroring a broadcast slot
+	// without the OBS browser source changing.
+	targetKind string
+
+	// currentBroadcastUUID is the broadcast broadcastSub is currently bound to.
+	// Only meaningful in user-slot mode, where re-pointing a stream slot can
+	// move it to a different broadcast; broadcast slots never move.
+	currentBroadcastUUID string
+
 	// Mode + context needed to augment the base OBSData on every push: slot
-	// mode merges in tournament-standings fields, user mode resolves
-	// opponent_name. Set once when the stream is created (slot division/
-	// round/table are refreshed on slot reassignment); always read under mu.
+	// modes merge in tournament-standings fields, user mode resolves
+	// opponent_name. Always read under mu.
+	//
+	// How much of this is mutable depends on the mode. In slot mode only
+	// division/round/table move (on slot reassignment). In user-slot mode the
+	// whole block moves, including slug — which doubles as the feed cache key
+	// in augmentSlotFields — because re-pointing a stream slot can land it on
+	// an entirely different broadcast. See applyUserSlotRow.
 	mode               obsStreamMode
 	slug               string
 	division           string
@@ -498,12 +522,16 @@ func (h *OBSHandler) removeSubscriber(key string, ch chan OBSData) {
 	stream.mu.Lock()
 	delete(stream.subscribers, ch)
 	empty := len(stream.subscribers) == 0
-	var annoSub, broadcastSub *nats.Subscription
+	var annoSub, broadcastSub, userSlotSub, userAnnoSub *nats.Subscription
 	if empty {
 		annoSub = stream.annoSub
 		broadcastSub = stream.broadcastSub
+		userSlotSub = stream.userSlotSub
+		userAnnoSub = stream.userAnnoSub
 		stream.annoSub = nil
 		stream.broadcastSub = nil
+		stream.userSlotSub = nil
+		stream.userAnnoSub = nil
 		delete(h.streams, key)
 	}
 	stream.mu.Unlock()
@@ -514,6 +542,12 @@ func (h *OBSHandler) removeSubscriber(key string, ch chan OBSData) {
 	}
 	if broadcastSub != nil {
 		broadcastSub.Unsubscribe()
+	}
+	if userSlotSub != nil {
+		userSlotSub.Unsubscribe()
+	}
+	if userAnnoSub != nil {
+		userAnnoSub.Unsubscribe()
 	}
 }
 
@@ -535,8 +569,9 @@ func (h *OBSHandler) fanout(key string, data OBSData) {
 }
 
 // reloadDoc rebuilds OBSData from the current game document, then applies
-// whatever mode-specific augmentation stream carries (tournament-standings
-// fields for slot mode, opponent resolution for user mode).
+// whatever mode-specific augmentation stream carries: tournament-standings
+// fields whenever a broadcast is behind the game, plus opponent resolution for
+// a stream slot following its owner's own annotations.
 func (h *OBSHandler) reloadDoc(stream *obsStream, gameUUID string) (OBSData, bool) {
 	ctx := context.Background()
 	data, doc, err := h.loadGameOBSData(ctx, gameUUID)
@@ -546,22 +581,26 @@ func (h *OBSHandler) reloadDoc(stream *obsStream, gameUUID string) (OBSData, boo
 
 	stream.mu.Lock()
 	mode := stream.mode
-	slug := stream.slug
-	division := stream.division
-	round := stream.round
-	table := stream.table
-	broadcastName := stream.broadcastName
-	broadcastURL := stream.broadcastURL
-	broadcastURLFormat := stream.broadcastURLFormat
-	trackedUserUUID := stream.trackedUserUUID
+	target := streamSlotTarget{
+		targetKind:         stream.targetKind,
+		userUUID:           stream.trackedUserUUID,
+		broadcastSlug:      stream.slug,
+		broadcastName:      stream.broadcastName,
+		broadcastURL:       stream.broadcastURL,
+		broadcastURLFormat: stream.broadcastURLFormat,
+		division:           stream.division,
+		round:              stream.round,
+		table:              stream.table,
+	}
 	trackedUsername := stream.trackedUsername
 	stream.mu.Unlock()
 
 	switch mode {
 	case obsStreamModeSlot:
-		h.augmentSlotFields(&data, slug, division, round, table, broadcastName, broadcastURL, broadcastURLFormat)
-	case obsStreamModeUser:
-		data.OpponentName = opponentName(doc, trackedUserUUID, trackedUsername)
+		h.augmentSlotFields(&data, target.broadcastSlug, target.division, target.round, target.table,
+			target.broadcastName, target.broadcastURL, target.broadcastURLFormat)
+	case obsStreamModeUserSlot:
+		h.applyTargetFields(&data, doc, target, trackedUsername)
 	}
 	return data, true
 }
@@ -655,6 +694,13 @@ func (h *OBSHandler) ensureSlotNATSSubs(stream *obsStream, key, slug, slotName s
 			SlotName: slotName,
 		})
 		if err != nil {
+			// The slot itself is gone: it resolves to nothing from here on, so
+			// clear the overlay. Any other error is treated as transient — a
+			// database blip must not blank an otherwise healthy live stream.
+			if err == pgx.ErrNoRows {
+				h.clearStream(stream, key)
+				return
+			}
 			log.Err(err).Str("streamKey", key).Msg("obs-slot-rebind-error")
 			return
 		}
@@ -672,12 +718,19 @@ func (h *OBSHandler) ensureSlotNATSSubs(stream *obsStream, key, slug, slotName s
 		stream.table = row.TableNumber
 		stream.mu.Unlock()
 
+		// Reassigned onto a table nobody has claimed yet, or the game was
+		// unclaimed underneath us. Both are routine — a director typically
+		// moves a slot to the next round's top table before an annotator picks
+		// it up — and both must clear rather than strand the previous game on
+		// screen, where it looks plausible enough that nobody notices.
+		if newGameUUID == "" {
+			h.clearStream(stream, key)
+			return
+		}
 		if newGameUUID != currentGameID {
 			h.rebindAnnoSub(stream, key, newGameUUID)
 		}
-		if newGameUUID != "" {
-			h.reloadAndFanout(stream, key, newGameUUID)
-		}
+		h.reloadAndFanout(stream, key, newGameUUID)
 	})
 	if err != nil {
 		log.Err(err).Str("broadcastUUID", broadcastUUID).Msg("obs-broadcast-sub-error")
@@ -703,6 +756,32 @@ func (h *OBSHandler) ensureSlotNATSSubs(stream *obsStream, key, slug, slotName s
 	stream.broadcastSub = broadcastSub
 	stream.mu.Unlock()
 	h.mu.Unlock()
+}
+
+// clearStream stops tracking whatever game a stream was showing and pushes the
+// placeholder to its live subscribers.
+//
+// The push is the important half. An SSE page only ever repaints when a message
+// arrives, so staying silent reads as "nothing changed" rather than "nothing to
+// show" — the browser source would sit there displaying a game the slot no
+// longer points at, indefinitely and with no sign anything is wrong. Worse, a
+// fresh load of the same URL renders the placeholder, so two machines on the
+// same URL would disagree.
+//
+// Guarded on actually having been showing something, so an already-empty stream
+// doesn't re-broadcast the placeholder on every unrelated broadcast event.
+func (h *OBSHandler) clearStream(stream *obsStream, key string) {
+	stream.mu.Lock()
+	wasShowing := stream.currentGameID != ""
+	stream.mu.Unlock()
+
+	// Idempotent when already empty; also drops the per-turn subscription so we
+	// stop listening to a game that is no longer ours.
+	h.rebindAnnoSub(stream, key, "")
+
+	if wasShowing {
+		h.fanout(key, placeholderOBSData())
+	}
 }
 
 // rebindAnnoSub swaps the per-game NATS subscription to a new game UUID.
@@ -750,27 +829,208 @@ func (h *OBSHandler) rebindAnnoSub(stream *obsStream, key, newGameUUID string) {
 	h.mu.Unlock()
 }
 
-// ---------------------------------------------------------------------------
-// User-alias handler
-// ---------------------------------------------------------------------------
-
-// ServeUserHTTP dispatches user-alias requests:
-//
-//	/api/annotations/obs/user/<username>/<suffix>[.txt]
-//
-// The username is resolved to the user's most-recently-edited annotated game.
-// If no annotated game exists yet the placeholder text is returned, but the
-// SSE stream is still connectable — it will push data once a game appears.
-func (h *OBSHandler) ServeUserHTTP(w http.ResponseWriter, r *http.Request) {
-	tail := strings.TrimPrefix(r.URL.Path, OBSUserHandlerPrefix)
-	parts := strings.SplitN(tail, "/", 2)
-	if len(parts) != 2 {
-		http.Error(w, "usage: /api/annotations/obs/user/<username>/<suffix>", http.StatusBadRequest)
+// rebindBroadcastSub swaps the broadcast-level NATS subscription to a different
+// broadcast. Only user-slot streams need this: a broadcast slot lives inside
+// one broadcast forever, but a stream slot can be re-pointed at another event.
+func (h *OBSHandler) rebindBroadcastSub(stream *obsStream, key, username, slotName, newBroadcastUUID string) {
+	stream.mu.Lock()
+	if stream.currentBroadcastUUID == newBroadcastUUID {
+		stream.mu.Unlock()
 		return
 	}
-	username, rawSuffix := parts[0], parts[1]
-	if username == "" {
-		http.Error(w, "username is required", http.StatusBadRequest)
+	oldSub := stream.broadcastSub
+	stream.broadcastSub = nil
+	stream.currentBroadcastUUID = newBroadcastUUID
+	stream.mu.Unlock()
+
+	if oldSub != nil {
+		oldSub.Unsubscribe()
+	}
+
+	if newBroadcastUUID == "" {
+		return
+	}
+
+	newSub, err := h.natsConn.Subscribe(NatsBroadcastSubjectPrefix+newBroadcastUUID, func(_ *nats.Msg) {
+		h.refreshUserSlot(stream, key, username, slotName)
+	})
+	if err != nil {
+		log.Err(err).Str("broadcastUUID", newBroadcastUUID).Msg("obs-user-slot-broadcast-rebind-error")
+		return
+	}
+
+	// Only assign if the stream is still live AND the target hasn't moved again.
+	h.mu.Lock()
+	if h.streams[key] != stream {
+		h.mu.Unlock()
+		newSub.Unsubscribe()
+		return
+	}
+	stream.mu.Lock()
+	if stream.currentBroadcastUUID != newBroadcastUUID {
+		stream.mu.Unlock()
+		h.mu.Unlock()
+		newSub.Unsubscribe()
+		return
+	}
+	stream.broadcastSub = newSub
+	stream.mu.Unlock()
+	h.mu.Unlock()
+}
+
+// ---------------------------------------------------------------------------
+// Stream-slot request dispatch
+// ---------------------------------------------------------------------------
+
+// ServeUserHTTP dispatches stream-slot requests:
+//
+//	/api/annotations/obs/user/<username>/<slot>/<suffix>[.txt]
+//	/api/annotations/obs/user/<username>/<slot>/events
+//
+// The two-segment form this endpoint used to serve (an implicit alias for
+// "whichever annotated game this user touched last") is gone. It is now the
+// 'latest_annotation' kind of a named stream slot, which resolves the same way
+// but is explicit, can be pointed elsewhere later, and shares one URL shape
+// with every other slot. Requests in the old shape get an error naming the
+// replacement — see legacyAliasMessage.
+//
+// If nothing resolves yet the placeholder text is returned, but the SSE stream
+// is still connectable — it will push data once a game appears.
+func (h *OBSHandler) ServeUserHTTP(w http.ResponseWriter, r *http.Request) {
+	tail := strings.TrimPrefix(r.URL.Path, OBSUserHandlerPrefix)
+	username, slotName, rawSuffix, ok := parseUserOBSPath(tail)
+	if !ok {
+		http.Error(w, legacyAliasMessage, http.StatusBadRequest)
+		return
+	}
+	h.serveUserSlot(w, r, username, slotName, rawSuffix)
+}
+
+// legacyAliasMessage is written into the browser source itself, which is the
+// only place the person who set the URL up will actually look.
+const legacyAliasMessage = "This OBS URL format has been replaced. " +
+	"Create a stream slot on Woogles (broadcast director panel, or the Share & " +
+	"broadcast panel in the game editor) and use " +
+	"/api/annotations/obs/user/<username>/<slot>/<field>"
+
+// resolveUserGame returns the game UUID of the user's most recently started
+// annotated game, or "" if none exists.
+//
+// Started, not edited: the ordering is games.updated_at, which a move does not
+// bump. See GetLatestAnnotationForUser in db/queries/broadcasts.sql.
+func (h *OBSHandler) resolveUserGame(ctx context.Context, username string) string {
+	row, err := h.queries.GetLatestAnnotatedGameForUsername(ctx, username)
+	if err != nil {
+		return ""
+	}
+	return row.GameUuid
+}
+
+// ---------------------------------------------------------------------------
+// Stream-slot handler
+// ---------------------------------------------------------------------------
+
+// parseUserOBSPath splits the tail of a /api/annotations/obs/user/ path into
+// its two shapes, which are told apart purely by arity:
+//
+//	"<username>/<slot>/<suffix>" → slotName non-empty (stream slot)
+//	"<username>/<suffix>"        → slotName empty     (legacy alias)
+//
+// Arity is what lets stream slots be added without a migration: every alias URL
+// already in someone's OBS scene has two segments and keeps its old meaning.
+// Suffixes never contain a slash, so the two can't collide.
+func parseUserOBSPath(tail string) (username, slotName, rawSuffix string, ok bool) {
+	parts := strings.SplitN(tail, "/", 3)
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", false
+	}
+	return parts[0], parts[1], parts[2], true
+}
+
+// Target kinds, mirroring user_obs_slots.target_kind.
+const (
+	targetKindNone             = "none"
+	targetKindBroadcastSlot    = "broadcast_slot"
+	targetKindLatestAnnotation = "latest_annotation"
+)
+
+// streamSlotTarget is a stream slot resolved to concrete data, flattening away
+// which target kind produced it. Both kinds can carry broadcast context — a
+// 'latest_annotation' slot picks it up whenever the game it lands on happens to
+// belong to a broadcast — so everything downstream treats them identically.
+type streamSlotTarget struct {
+	userUUID           string
+	targetKind         string
+	gameUUID           string
+	broadcastUUID      string
+	broadcastSlug      string
+	broadcastName      string
+	broadcastURL       string
+	broadcastURLFormat string
+	division           string
+	round              int32
+	table              int32
+}
+
+// resolveStreamSlot resolves (username, slotName) through whichever target kind
+// the slot carries. It errors only when the slot itself doesn't exist; an
+// unpointed slot, a dangling broadcast-slot target and a user with no
+// annotations all resolve successfully to an empty game, which renders as the
+// placeholder.
+func (h *OBSHandler) resolveStreamSlot(ctx context.Context, username, slotName string) (streamSlotTarget, error) {
+	row, err := h.queries.GetUserSlotGame(ctx, models.GetUserSlotGameParams{
+		Username: username,
+		SlotName: slotName,
+	})
+	if err != nil {
+		return streamSlotTarget{}, err
+	}
+
+	t := streamSlotTarget{userUUID: row.UserUuid, targetKind: row.TargetKind}
+
+	switch row.TargetKind {
+	case targetKindBroadcastSlot:
+		t.gameUUID = row.GameUuid
+		t.broadcastUUID = row.BroadcastUuid
+		t.broadcastSlug = row.BroadcastSlug
+		t.broadcastName = row.BroadcastName
+		t.broadcastURL = row.BroadcastUrl
+		t.broadcastURLFormat = row.BroadcastUrlFormat
+		t.division = row.Division
+		t.round = row.Round
+		t.table = row.TableNumber
+
+	case targetKindLatestAnnotation:
+		// Not an error when the user has never annotated anything — that is a
+		// perfectly normal empty state for a freshly created slot.
+		la, err := h.queries.GetLatestAnnotationForUser(ctx, username)
+		if err != nil {
+			break
+		}
+		t.gameUUID = la.GameUuid
+		t.broadcastUUID = la.BroadcastUuid
+		t.broadcastSlug = la.BroadcastSlug
+		t.broadcastName = la.BroadcastName
+		t.broadcastURL = la.BroadcastUrl
+		t.broadcastURLFormat = la.BroadcastUrlFormat
+		t.division = la.Division
+		t.round = la.Round
+		t.table = la.TableNumber
+	}
+
+	return t, nil
+}
+
+// serveUserSlot serves /api/annotations/obs/user/<username>/<slot>/<suffix>.
+//
+// Only an unknown username/slot pair 404s. An unpointed slot, a dangling target
+// (the event's director renamed or deleted the broadcast slot), and a target
+// table nobody has claimed all render the placeholder — a browser source that
+// has been set up once must never start showing an error page because of a
+// configuration change elsewhere.
+func (h *OBSHandler) serveUserSlot(w http.ResponseWriter, r *http.Request, username, slotName, rawSuffix string) {
+	if username == "" || slotName == "" {
+		http.Error(w, "username and slot are required", http.StatusBadRequest)
 		return
 	}
 
@@ -781,69 +1041,56 @@ func (h *OBSHandler) ServeUserHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	streamKey := "user/" + strings.ToLower(username)
+	streamKey := "userslot/" + strings.ToLower(username) + "/" + slotName
 
 	if suffix == "events" {
-		h.serveUserSSE(w, r, streamKey, username)
+		h.serveUserSlotSSE(w, r, streamKey, username, slotName)
 		return
 	}
 
 	ctx := r.Context()
-	gameUUID := h.resolveUserGame(ctx, username)
+	target, err := h.resolveStreamSlot(ctx, username, slotName)
+	if err != nil {
+		http.Error(w, "stream slot not found", http.StatusNotFound)
+		return
+	}
 
 	var value string
-	if gameUUID == "" {
+	if target.gameUUID == "" {
 		value = obsPlaceholder
-	} else if data, doc, err := h.loadGameOBSData(ctx, gameUUID); err != nil {
+	} else if data, doc, err := h.loadGameOBSData(ctx, target.gameUUID); err != nil {
 		value = obsPlaceholder
 	} else {
-		// Best-effort: an unresolved UUID just falls back to username matching.
-		userUUID, _ := h.queries.GetUserUUIDByUsername(ctx, username)
-		data.OpponentName = opponentName(doc, userUUID, username)
+		h.applyTargetFields(&data, doc, target, username)
 		value = obsFieldValue(data, suffix)
 	}
 
-	eventsURL := OBSUserHandlerPrefix + username + "/events"
+	eventsURL := OBSUserHandlerPrefix + username + "/" + slotName + "/events"
 	h.serveResponse(w, suffix, value, eventsURL, rawText)
 }
 
-// resolveUserGame returns the game UUID of the user's most-recently-edited
-// annotated game, or "" if none exists.
-func (h *OBSHandler) resolveUserGame(ctx context.Context, username string) string {
-	row, err := h.queries.GetLatestAnnotatedGameForUsername(ctx, username)
-	if err != nil {
-		return ""
+// applyTargetFields layers the stream-slot-specific fields onto base OBSData:
+// tournament standings whenever a broadcast is behind the game, and
+// opponent_name for a slot following its owner's own annotations (the only
+// case where "the tracked player" is well defined).
+func (h *OBSHandler) applyTargetFields(data *OBSData, doc *ipc.GameDocument, t streamSlotTarget, username string) {
+	h.augmentSlotFields(data, t.broadcastSlug, t.division, t.round, t.table,
+		t.broadcastName, t.broadcastURL, t.broadcastURLFormat)
+	if t.targetKind == targetKindLatestAnnotation {
+		data.OpponentName = opponentName(doc, t.userUUID, username)
 	}
-	return row.GameUuid
 }
 
-// serveUserSSE opens a Server-Sent Events stream for the user-alias endpoint.
-func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, streamKey, username string) {
+// serveUserSlotSSE opens a Server-Sent Events stream for a stream slot.
+func (h *OBSHandler) serveUserSlotSSE(w http.ResponseWriter, r *http.Request, streamKey, username, slotName string) {
 	ctx := r.Context()
 
-	// Resolve username → userUUID once at connect time (needed for NATS subject).
-	userUUID, err := h.queries.GetUserUUIDByUsername(ctx, username)
-	if err != nil || userUUID == "" {
-		// Unknown username — still serve an open SSE so the browser source doesn't
-		// error out. It will just receive heartbeats until data appears.
-		flusher, ok := sseSetup(w)
-		if !ok {
-			return
-		}
-		heartbeat := time.NewTicker(20 * time.Second)
-		defer heartbeat.Stop()
-		for {
-			select {
-			case <-heartbeat.C:
-				fmt.Fprintf(w, ": heartbeat\n\n")
-				flusher.Flush()
-			case <-ctx.Done():
-				return
-			}
-		}
+	// Resolve before writing headers so an unknown slot can still 404.
+	target, err := h.resolveStreamSlot(ctx, username, slotName)
+	if err != nil {
+		http.Error(w, "stream slot not found", http.StatusNotFound)
+		return
 	}
-
-	gameUUID := h.resolveUserGame(ctx, username)
 
 	flusher, ok := sseSetup(w)
 	if !ok {
@@ -854,79 +1101,161 @@ func (h *OBSHandler) serveUserSSE(w http.ResponseWriter, r *http.Request, stream
 	stream := h.addSubscriber(streamKey, ch)
 	defer h.removeSubscriber(streamKey, ch)
 
-	h.ensureUserNATSSubs(stream, streamKey, userUUID, gameUUID, username)
+	h.ensureUserSlotNATSSubs(stream, streamKey, username, slotName, target)
 
-	h.serveSSELoop(w, ctx, stream, ch, flusher, gameUUID)
+	h.serveSSELoop(w, ctx, stream, ch, flusher, target.gameUUID)
 }
 
-// ensureUserNATSSubs subscribes once to:
-//  1. channel.anno<gameUUID>   — per-turn events for the current game
-//  2. anno.user.<userUUID>     — activity signal; fires when the user's latest game may change
-func (h *OBSHandler) ensureUserNATSSubs(stream *obsStream, key, userUUID, gameUUID, username string) {
+// applyStreamSlotTarget copies a resolved target onto the stream. Unlike a
+// broadcast slot — where only division/round/table can change — re-pointing a
+// stream slot changes the broadcast too, and stream.slug doubles as the feed
+// cache key in augmentSlotFields. So all of it has to be refreshed together.
+// Caller holds stream.mu.
+func applyStreamSlotTarget(stream *obsStream, t streamSlotTarget) {
+	stream.targetKind = t.targetKind
+	stream.slug = t.broadcastSlug
+	stream.division = t.division
+	stream.round = t.round
+	stream.table = t.table
+	stream.broadcastName = t.broadcastName
+	stream.broadcastURL = t.broadcastURL
+	stream.broadcastURLFormat = t.broadcastURLFormat
+	stream.trackedUserUUID = t.userUUID
+}
+
+// refreshUserSlot re-resolves a stream slot and rebinds whatever moved. It is
+// the callback for every trigger that can change what the slot shows: the
+// target broadcast changing underneath us (its director re-pointed the
+// broadcast slot, or the poller saw new feed data), the owner re-pointing the
+// slot somewhere else entirely, and — for a slot following its owner's
+// annotations — the owner starting to edit a different game.
+func (h *OBSHandler) refreshUserSlot(stream *obsStream, key, username, slotName string) {
+	ctx := context.Background()
+	target, err := h.resolveStreamSlot(ctx, username, slotName)
+	if err != nil {
+		// The owner deleted the slot while it was on air. Clear it, same as a
+		// deleted broadcast slot; other errors are treated as transient.
+		if err == pgx.ErrNoRows {
+			h.clearStream(stream, key)
+			return
+		}
+		log.Err(err).Str("streamKey", key).Msg("obs-user-slot-refresh-error")
+		return
+	}
+
+	stream.mu.Lock()
+	currentGameID := stream.currentGameID
+	applyStreamSlotTarget(stream, target)
+	stream.mu.Unlock()
+
+	h.rebindBroadcastSub(stream, key, username, slotName, target.broadcastUUID)
+
+	// Re-pointed somewhere with no game — an unclaimed table, or an owner who
+	// hasn't annotated anything yet. Clear rather than strand the previous
+	// game on screen.
+	if target.gameUUID == "" {
+		h.clearStream(stream, key)
+		return
+	}
+	if target.gameUUID != currentGameID {
+		h.rebindAnnoSub(stream, key, target.gameUUID)
+	}
+	h.reloadAndFanout(stream, key, target.gameUUID)
+}
+
+// ensureUserSlotNATSSubs subscribes once to:
+//  1. channel.anno<gameUUID>       — per-turn events for the current game
+//     (re-bindable: see rebindAnnoSub)
+//  2. broadcasts.<broadcastUUID>   — the event's own slot moved, or the poller
+//     picked up new feed data (re-bindable: see rebindBroadcastSub)
+//  3. obs.userslot.<userUUID>      — the owner re-pointed this stream slot
+//  4. anno.user.<userUUID>         — the owner edited one of their annotated
+//     games, which for a 'latest_annotation' slot may mean a different game
+//
+// 3 and 4 are keyed by the owner rather than the target, so they stay valid for
+// the life of the stream — including across a re-point that changes the target
+// kind. 4 would be wasted work for a slot mirroring a broadcast slot, so its
+// callback checks the current kind before touching the database.
+func (h *OBSHandler) ensureUserSlotNATSSubs(stream *obsStream, key, username, slotName string, target streamSlotTarget) {
 	stream.mu.Lock()
 	if stream.initialized {
 		stream.mu.Unlock()
 		return
 	}
 	stream.initialized = true
-	stream.currentGameID = gameUUID
-	stream.mode = obsStreamModeUser
-	stream.trackedUserUUID = userUUID
+	stream.currentGameID = target.gameUUID
+	stream.mode = obsStreamModeUserSlot
 	stream.trackedUsername = username
+	applyStreamSlotTarget(stream, target)
 	stream.mu.Unlock()
 
-	// Per-turn subscription for the currently-resolved game.
+	// Per-turn subscription, only if the target currently resolves to a game.
 	var annoSub *nats.Subscription
-	if gameUUID != "" {
+	if target.gameUUID != "" {
+		gameUUID := target.gameUUID
 		var err error
 		annoSub, err = h.natsConn.Subscribe("channel.anno"+gameUUID, func(_ *nats.Msg) {
 			h.reloadAndFanout(stream, key, gameUUID)
 		})
 		if err != nil {
-			log.Err(err).Str("gameUUID", gameUUID).Msg("obs-user-anno-sub-error")
+			log.Err(err).Str("gameUUID", gameUUID).Msg("obs-user-slot-anno-sub-error")
 			annoSub = nil
 		}
 	}
 
-	// User-level activity subscription — re-queries and rebinds if the latest game changed.
-	userSub, err := h.natsConn.Subscribe(natsUserAnnoSubjectPrefix+userUUID, func(_ *nats.Msg) {
-		ctx := context.Background()
-		newGameUUID := h.resolveUserGame(ctx, username)
-
-		stream.mu.Lock()
-		currentGameID := stream.currentGameID
-		stream.mu.Unlock()
-
-		if newGameUUID != currentGameID {
-			h.rebindAnnoSub(stream, key, newGameUUID)
-		}
-		if newGameUUID != "" {
-			h.reloadAndFanout(stream, key, newGameUUID)
-		}
+	// Owner re-point subscription. Bound to the user, not the target, so it
+	// survives the slot moving between events.
+	userSlotSub, err := h.natsConn.Subscribe(NatsUserSlotSubjectPrefix+target.userUUID, func(_ *nats.Msg) {
+		h.refreshUserSlot(stream, key, username, slotName)
 	})
 	if err != nil {
-		log.Err(err).Str("userUUID", userUUID).Msg("obs-user-sub-error")
+		log.Err(err).Str("userUUID", target.userUUID).Msg("obs-user-slot-sub-error")
 		if annoSub != nil {
 			annoSub.Unsubscribe()
 		}
 		return
 	}
 
-	// Atomically assign both subs only if the stream is still live.
+	// Owner annotation-activity subscription, for the 'latest_annotation' kind.
+	userAnnoSub, err := h.natsConn.Subscribe(natsUserAnnoSubjectPrefix+target.userUUID, func(_ *nats.Msg) {
+		stream.mu.Lock()
+		kind := stream.targetKind
+		stream.mu.Unlock()
+		if kind != targetKindLatestAnnotation {
+			return
+		}
+		h.refreshUserSlot(stream, key, username, slotName)
+	})
+	if err != nil {
+		log.Err(err).Str("userUUID", target.userUUID).Msg("obs-user-anno-sub-error")
+		if annoSub != nil {
+			annoSub.Unsubscribe()
+		}
+		userSlotSub.Unsubscribe()
+		return
+	}
+
+	// Assign atomically, but only if the stream is still live.
 	h.mu.Lock()
 	if h.streams[key] != stream {
 		h.mu.Unlock()
 		if annoSub != nil {
 			annoSub.Unsubscribe()
 		}
-		userSub.Unsubscribe()
+		userSlotSub.Unsubscribe()
+		userAnnoSub.Unsubscribe()
 		return
 	}
 	stream.mu.Lock()
 	stream.annoSub = annoSub
-	stream.broadcastSub = userSub // reuse broadcastSub slot for the user-level sub
+	stream.userSlotSub = userSlotSub
+	stream.userAnnoSub = userAnnoSub
 	stream.mu.Unlock()
 	h.mu.Unlock()
+
+	// Bind the broadcast-level sub last: it is the one that can be swapped
+	// later, so it goes through the same rebind path used on every re-point.
+	h.rebindBroadcastSub(stream, key, username, slotName, target.broadcastUUID)
 }
 
 // ---------------------------------------------------------------------------

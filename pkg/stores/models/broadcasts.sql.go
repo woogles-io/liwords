@@ -44,6 +44,17 @@ func (q *Queries) AddBroadcastDirector(ctx context.Context, arg AddBroadcastDire
 	return err
 }
 
+const countUserObsSlots = `-- name: CountUserObsSlots :one
+SELECT COUNT(*) FROM user_obs_slots WHERE user_id = $1
+`
+
+func (q *Queries) CountUserObsSlots(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserObsSlots, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBroadcast = `-- name: CreateBroadcast :one
 INSERT INTO broadcasts (uuid, slug, name, description, broadcast_url, broadcast_url_format,
     poll_interval_seconds, poll_start_time, poll_end_time,
@@ -152,6 +163,26 @@ func (q *Queries) CreateBroadcastSlot(ctx context.Context, arg CreateBroadcastSl
 	return err
 }
 
+const createUserObsSlot = `-- name: CreateUserObsSlot :execrows
+INSERT INTO user_obs_slots (user_id, slot_name)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type CreateUserObsSlotParams struct {
+	UserID   int64
+	SlotName string
+}
+
+// Returns 0 rows when the user already has a slot by that name.
+func (q *Queries) CreateUserObsSlot(ctx context.Context, arg CreateUserObsSlotParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createUserObsSlot, arg.UserID, arg.SlotName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteBroadcastSlot = `-- name: DeleteBroadcastSlot :exec
 DELETE FROM broadcast_slots
 WHERE broadcast_id = $1 AND slot_name = $2
@@ -165,6 +196,24 @@ type DeleteBroadcastSlotParams struct {
 func (q *Queries) DeleteBroadcastSlot(ctx context.Context, arg DeleteBroadcastSlotParams) error {
 	_, err := q.db.Exec(ctx, deleteBroadcastSlot, arg.BroadcastID, arg.SlotName)
 	return err
+}
+
+const deleteUserObsSlot = `-- name: DeleteUserObsSlot :execrows
+DELETE FROM user_obs_slots
+WHERE user_id = $1 AND slot_name = $2
+`
+
+type DeleteUserObsSlotParams struct {
+	UserID   int64
+	SlotName string
+}
+
+func (q *Queries) DeleteUserObsSlot(ctx context.Context, arg DeleteUserObsSlotParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUserObsSlot, arg.UserID, arg.SlotName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getActiveBroadcasts = `-- name: GetActiveBroadcasts :many
@@ -888,6 +937,68 @@ func (q *Queries) GetBroadcastsForPolling(ctx context.Context) ([]GetBroadcastsF
 	return items, nil
 }
 
+const getLatestAnnotationForUser = `-- name: GetLatestAnnotationForUser :one
+SELECT
+    COALESCE(agm.game_uuid, '')                           AS game_uuid,
+    COALESCE(b.uuid::text, '')::text                      AS broadcast_uuid,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(b.broadcast_url, '')                         AS broadcast_url,
+    COALESCE(b.broadcast_url_format, '')                  AS broadcast_url_format,
+    COALESCE(bg.division, '')                             AS division,
+    COALESCE(bg.round, 0)::int                            AS round,
+    COALESCE(bg.table_number, 0)::int                     AS table_number
+FROM annotated_game_metadata agm
+JOIN games g ON g.uuid = agm.game_uuid
+LEFT JOIN broadcast_games bg ON bg.game_uuid = agm.game_uuid
+LEFT JOIN broadcasts b ON b.id = bg.broadcast_id
+WHERE agm.creator_uuid = (SELECT uuid FROM users WHERE lower(username) = lower($1))
+ORDER BY g.updated_at DESC
+LIMIT 1
+`
+
+type GetLatestAnnotationForUserRow struct {
+	GameUuid           string
+	BroadcastUuid      string
+	BroadcastSlug      string
+	BroadcastName      string
+	BroadcastUrl       string
+	BroadcastUrlFormat string
+	Division           string
+	Round              int32
+	TableNumber        int32
+}
+
+// Resolution for target_kind = 'latest_annotation': the user's most recently
+// started annotated game, plus its broadcast context when it happens to belong
+// to one. That LEFT JOIN is what lets the standings fields work for someone
+// annotating a broadcast game without owning a stream slot pointed at it —
+// when the game is a plain annotated game the columns come back empty and the
+// standings fields fall back to the placeholder.
+//
+// "Started", not "edited": this orders by games.updated_at, and playing a move
+// does not touch it. SendGameEvent only upserts game_documents; games.updated_at
+// moves on creation, on a player-name/metadata patch, and when an annotation is
+// marked done. So returning to an older game does not make it the latest again.
+// Fixing that means giving game_documents its own updated_at (it has no
+// timestamp at all today) and ordering by that instead.
+func (q *Queries) GetLatestAnnotationForUser(ctx context.Context, username string) (GetLatestAnnotationForUserRow, error) {
+	row := q.db.QueryRow(ctx, getLatestAnnotationForUser, username)
+	var i GetLatestAnnotationForUserRow
+	err := row.Scan(
+		&i.GameUuid,
+		&i.BroadcastUuid,
+		&i.BroadcastSlug,
+		&i.BroadcastName,
+		&i.BroadcastUrl,
+		&i.BroadcastUrlFormat,
+		&i.Division,
+		&i.Round,
+		&i.TableNumber,
+	)
+	return i, err
+}
+
 const getMyClaimedGames = `-- name: GetMyClaimedGames :many
 SELECT bg.id, bg.broadcast_id, bg.game_uuid, bg.division, bg.round, bg.table_number,
        bg.annotator_user_id, bg.claimed_at, bg.created_at,
@@ -1051,6 +1162,85 @@ func (q *Queries) GetSlotsByGame(ctx context.Context, gameUuid string) ([]GetSlo
 	return items, nil
 }
 
+const getUserSlotGame = `-- name: GetUserSlotGame :one
+
+SELECT
+    u.uuid::text                                          AS user_uuid,
+    us.target_kind,
+    COALESCE(b.uuid::text, '')::text                      AS broadcast_uuid,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(b.broadcast_url, '')                         AS broadcast_url,
+    COALESCE(b.broadcast_url_format, '')                  AS broadcast_url_format,
+    COALESCE(us.target_slot_name, '')                     AS target_slot_name,
+    COALESCE(bs.division, '')                             AS division,
+    COALESCE(bs.round, 0)::int                            AS round,
+    COALESCE(bs.table_number, 0)::int                     AS table_number,
+    COALESCE(bg.game_uuid, '')                            AS game_uuid
+FROM user_obs_slots us
+JOIN users u ON u.id = us.user_id
+LEFT JOIN broadcasts b ON b.id = us.target_broadcast_id
+LEFT JOIN broadcast_slots bs
+    ON  bs.broadcast_id = us.target_broadcast_id
+    AND bs.slot_name    = us.target_slot_name
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE lower(u.username) = lower($1) AND us.slot_name = $2
+`
+
+type GetUserSlotGameParams struct {
+	Username string
+	SlotName string
+}
+
+type GetUserSlotGameRow struct {
+	UserUuid           string
+	TargetKind         string
+	BroadcastUuid      string
+	BroadcastSlug      string
+	BroadcastName      string
+	BroadcastUrl       string
+	BroadcastUrlFormat string
+	TargetSlotName     string
+	Division           string
+	Round              int32
+	TableNumber        int32
+	GameUuid           string
+}
+
+// ---------------------------------------------------------------------------
+// Stream slots (user_obs_slots): user-owned pointers at a broadcast slot.
+// Every column of the target chain is LEFT JOINed and COALESCEd, because a
+// stream slot is legitimately unpointed, or pointed at a broadcast slot that
+// has since been renamed/deleted. Those resolve to zero values, which the OBS
+// handler renders as the "(no game assigned)" placeholder rather than a 404.
+// ---------------------------------------------------------------------------
+// Resolves (username, slot_name) → target broadcast + current game, in one trip.
+// Only meaningful for target_kind = 'broadcast_slot'; the caller branches on
+// target_kind and uses GetLatestAnnotationForUser for the other kind.
+func (q *Queries) GetUserSlotGame(ctx context.Context, arg GetUserSlotGameParams) (GetUserSlotGameRow, error) {
+	row := q.db.QueryRow(ctx, getUserSlotGame, arg.Username, arg.SlotName)
+	var i GetUserSlotGameRow
+	err := row.Scan(
+		&i.UserUuid,
+		&i.TargetKind,
+		&i.BroadcastUuid,
+		&i.BroadcastSlug,
+		&i.BroadcastName,
+		&i.BroadcastUrl,
+		&i.BroadcastUrlFormat,
+		&i.TargetSlotName,
+		&i.Division,
+		&i.Round,
+		&i.TableNumber,
+		&i.GameUuid,
+	)
+	return i, err
+}
+
 const isBroadcastAnnotator = `-- name: IsBroadcastAnnotator :one
 SELECT EXISTS(
     SELECT 1 FROM broadcast_annotators
@@ -1090,20 +1280,26 @@ func (q *Queries) IsBroadcastDirector(ctx context.Context, arg IsBroadcastDirect
 }
 
 const listBroadcastSlots = `-- name: ListBroadcastSlots :many
-SELECT slot_name, division, round, table_number, updated_at
-FROM broadcast_slots
-WHERE broadcast_id = $1
-ORDER BY slot_name
+SELECT bs.slot_name, bs.division, bs.round, bs.table_number, bs.updated_at,
+       (SELECT COUNT(*) FROM user_obs_slots us
+         WHERE us.target_broadcast_id = bs.broadcast_id
+           AND us.target_slot_name    = bs.slot_name) AS stream_slot_count
+FROM broadcast_slots bs
+WHERE bs.broadcast_id = $1
+ORDER BY bs.slot_name
 `
 
 type ListBroadcastSlotsRow struct {
-	SlotName    string
-	Division    string
-	Round       int32
-	TableNumber int32
-	UpdatedAt   pgtype.Timestamptz
+	SlotName        string
+	Division        string
+	Round           int32
+	TableNumber     int32
+	UpdatedAt       pgtype.Timestamptz
+	StreamSlotCount int64
 }
 
+// stream_slot_count is how many user stream slots currently mirror this slot;
+// the UI warns before deleting a slot somebody is streaming from.
 func (q *Queries) ListBroadcastSlots(ctx context.Context, broadcastID int64) ([]ListBroadcastSlotsRow, error) {
 	rows, err := q.db.Query(ctx, listBroadcastSlots, broadcastID)
 	if err != nil {
@@ -1119,6 +1315,83 @@ func (q *Queries) ListBroadcastSlots(ctx context.Context, broadcastID int64) ([]
 			&i.Round,
 			&i.TableNumber,
 			&i.UpdatedAt,
+			&i.StreamSlotCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserObsSlots = `-- name: ListUserObsSlots :many
+SELECT
+    us.slot_name,
+    us.target_kind,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(us.target_slot_name, '')                     AS target_slot_name,
+    COALESCE(bs.division, '')                             AS division,
+    COALESCE(bs.round, 0)::int                            AS round,
+    COALESCE(bs.table_number, 0)::int                     AS table_number,
+    COALESCE(bg.game_uuid, '')                            AS game_uuid,
+    COALESCE(gd.document->'players'->0->>'realName', '')  AS player1_name,
+    COALESCE(gd.document->'players'->1->>'realName', '')  AS player2_name
+FROM user_obs_slots us
+LEFT JOIN broadcasts b ON b.id = us.target_broadcast_id
+LEFT JOIN broadcast_slots bs
+    ON  bs.broadcast_id = us.target_broadcast_id
+    AND bs.slot_name    = us.target_slot_name
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
+WHERE us.user_id = $1
+ORDER BY us.slot_name
+`
+
+type ListUserObsSlotsRow struct {
+	SlotName       string
+	TargetKind     string
+	BroadcastSlug  string
+	BroadcastName  string
+	TargetSlotName string
+	Division       string
+	Round          int32
+	TableNumber    int32
+	GameUuid       string
+	Player1Name    interface{}
+	Player2Name    interface{}
+}
+
+// Same resolution as GetUserSlotGame, for every slot the user owns, plus player
+// names so the management UI can show what each slot is currently pointed at.
+func (q *Queries) ListUserObsSlots(ctx context.Context, userID int64) ([]ListUserObsSlotsRow, error) {
+	rows, err := q.db.Query(ctx, listUserObsSlots, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserObsSlotsRow
+	for rows.Next() {
+		var i ListUserObsSlotsRow
+		if err := rows.Scan(
+			&i.SlotName,
+			&i.TargetKind,
+			&i.BroadcastSlug,
+			&i.BroadcastName,
+			&i.TargetSlotName,
+			&i.Division,
+			&i.Round,
+			&i.TableNumber,
+			&i.GameUuid,
+			&i.Player1Name,
+			&i.Player2Name,
 		); err != nil {
 			return nil, err
 		}
@@ -1291,4 +1564,37 @@ func (q *Queries) UpdateBroadcastSlotTarget(ctx context.Context, arg UpdateBroad
 		arg.TableNumber,
 	)
 	return err
+}
+
+const updateUserObsSlotTarget = `-- name: UpdateUserObsSlotTarget :execrows
+UPDATE user_obs_slots
+SET target_kind         = $1,
+    target_broadcast_id = $2,
+    target_slot_name    = $3,
+    updated_at          = NOW()
+WHERE user_id = $4 AND slot_name = $5
+`
+
+type UpdateUserObsSlotTargetParams struct {
+	TargetKind        string
+	TargetBroadcastID pgtype.Int8
+	TargetSlotName    string
+	UserID            int64
+	SlotName          string
+}
+
+// Returns 0 rows when the slot doesn't exist. Callers pass a NULL broadcast and
+// an empty slot name for the 'none' and 'latest_annotation' kinds.
+func (q *Queries) UpdateUserObsSlotTarget(ctx context.Context, arg UpdateUserObsSlotTargetParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUserObsSlotTarget,
+		arg.TargetKind,
+		arg.TargetBroadcastID,
+		arg.TargetSlotName,
+		arg.UserID,
+		arg.SlotName,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

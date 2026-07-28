@@ -1,0 +1,260 @@
+@use "../base.scss" as *;
+
+// Manual prose. Shared by /docs pages and by help modals, so a chapter reads
+// the same either way. Priorities: a comfortable measure, scannable tables, and
+// code that stands out from prose without shouting.
+
+// The OBS manual. It is a long read, so the priorities here are a comfortable
+// measure, scannable tables, and code that stands out from prose without
+// shouting.
+.doc-body {
+  padding-right: 12px;
+  max-width: 62em;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.doc-h {
+  margin-top: 20px !important;
+  margin-bottom: 6px !important;
+
+  &:first-child {
+    margin-top: 0 !important;
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.doc-p {
+  margin-bottom: 10px !important;
+  line-height: 1.6;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.doc-ol,
+.doc-ul {
+  margin: 0 0 12px 0;
+  padding-left: 22px;
+  line-height: 1.6;
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.doc-code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 0.92em;
+  word-break: break-word;
+
+  @include colorModed() {
+    background: m($off-background);
+    color: m($gray-extreme);
+  }
+}
+
+// The pointer-chain diagram. Monospace and indentation carry the meaning, so
+// it must not wrap — it scrolls instead.
+.doc-diagram {
+  margin: 0 0 12px 0;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+
+  @include colorModed() {
+    background: m($off-background);
+    color: m($gray-extreme);
+  }
+}
+
+.doc-table {
+  width: 100%;
+  margin: 0 0 14px 0;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+
+  th,
+  td {
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+
+    @include colorModed() {
+      border-bottom: 1px solid m($gray-subtle);
+    }
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  // Leading label column in the comparison tables.
+  td:first-child {
+    white-space: nowrap;
+
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /docs page layout (the modals supply their own chrome)
+// ---------------------------------------------------------------------------
+
+.docs-page {
+  @include container;
+  padding: 24px 16px 64px;
+}
+
+.docs-breadcrumb {
+  margin-bottom: 4px;
+  font-size: 12px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.docs-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.docs-card-link {
+  flex: 1 1 320px;
+  max-width: 480px;
+  text-decoration: none;
+}
+
+.docs-card {
+  height: 100%;
+
+  @include colorModed() {
+    background: m($card-background);
+  }
+}
+
+.docs-card-audience {
+  margin-bottom: 8px;
+  @include type-overline;
+
+  @include colorModed() {
+    color: m($primary-dark);
+  }
+}
+
+.docs-card-chapters {
+  font-size: 12px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.docs-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.docs-nav {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex: 0 0 200px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docs-nav-item {
+  padding: 6px 10px;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+  text-decoration: none;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+
+  &:hover {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+
+  &.active {
+    font-weight: 700;
+
+    @include colorModed() {
+      border-left-color: m($primary-dark);
+      color: m($primary-dark);
+    }
+  }
+}
+
+.docs-nav-select {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.docs-article {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Below md the nav becomes a select, so the layout is a single column.
+@media (max-width: 767px) {
+  .docs-layout {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+// Field previews rendered by OBSFieldPreview, laid out two-up on wide screens.
+.doc-preview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.doc-preview {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.doc-preview-label {
+  margin-bottom: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}

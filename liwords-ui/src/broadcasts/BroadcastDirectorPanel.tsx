@@ -1,24 +1,7 @@
 import React, { useState } from "react";
 import "./broadcasts.scss";
-import {
-  Card,
-  Button,
-  Input,
-  InputNumber,
-  Space,
-  Tag,
-  Divider,
-  App,
-  Popconfirm,
-  Typography,
-  Select,
-} from "antd";
-import {
-  UserAddOutlined,
-  ReloadOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import { Card, Button, Grid, Select, Space, Tabs, App } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,12 +11,13 @@ import {
   removeBroadcastDirectors,
   triggerPoll,
   listSlots,
-  createSlot,
-  deleteSlot,
 } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import type { Broadcast } from "../gen/api/proto/broadcast_service/broadcast_service_pb";
 import { flashError } from "../utils/hooks/connect";
-import { OBSPanel } from "./OBSPanel";
+import { StreamSlotsPanel } from "./StreamSlotsPanel";
+import { BroadcastSlotsSection } from "./BroadcastSlotsSection";
+import { UserListSection } from "./UserListSection";
+import { useLoginStateStoreContext } from "../store/store";
 
 type Props = {
   broadcast: Broadcast;
@@ -54,49 +38,40 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
 }) => {
   const { notification } = App.useApp();
   const queryClient = useQueryClient();
-  const [newAnnotator, setNewAnnotator] = useState("");
-  const [newDirector, setNewDirector] = useState("");
-  const [newSlotName, setNewSlotName] = useState("");
-  const [newSlotDivision, setNewSlotDivision] = useState(activeDivision);
-  const [newSlotRound, setNewSlotRound] = useState(activeRound);
-  const [newSlotTable, setNewSlotTable] = useState(1);
+  const { loginState } = useLoginStateStoreContext();
+  const screens = Grid.useBreakpoint();
+  const [activeTab, setActiveTab] = useState("slots");
 
   const invalidateBroadcast = () =>
     queryClient.invalidateQueries({
       queryKey: ["connect-query", { methodName: "GetBroadcast" }],
     });
 
-  const invalidateSlots = () =>
-    queryClient.invalidateQueries({
-      queryKey: ["connect-query", { methodName: "ListSlots" }],
-    });
-
-  // ----- Annotator / director mutations -----
+  const { data: slotsData } = useQuery(
+    listSlots,
+    { slug: broadcast.slug },
+    { refetchInterval: 10_000 },
+  );
+  const slots = slotsData?.slots ?? [];
 
   const addAnnotatorMutation = useMutation(addBroadcastAnnotators, {
-    onSuccess: () => {
-      setNewAnnotator("");
-      invalidateBroadcast();
-    },
+    onSuccess: invalidateBroadcast,
     onError: (e) => flashError(e),
   });
 
   const removeAnnotatorMutation = useMutation(removeBroadcastAnnotators, {
-    onError: (e) => flashError(e),
     onSuccess: invalidateBroadcast,
+    onError: (e) => flashError(e),
   });
 
   const addDirectorMutation = useMutation(addBroadcastDirectors, {
-    onSuccess: () => {
-      setNewDirector("");
-      invalidateBroadcast();
-    },
+    onSuccess: invalidateBroadcast,
     onError: (e) => flashError(e),
   });
 
   const removeDirectorMutation = useMutation(removeBroadcastDirectors, {
-    onError: (e) => flashError(e),
     onSuccess: invalidateBroadcast,
+    onError: (e) => flashError(e),
   });
 
   const pollMutation = useMutation(triggerPoll, {
@@ -104,47 +79,88 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
     onError: (e) => flashError(e),
   });
 
-  // ----- Slot mutations -----
+  const peopleCount = annotatorUsernames.length + directorUsernames.length;
 
-  const { data: slotsData } = useQuery(
-    listSlots,
-    { slug: broadcast.slug },
-    { refetchInterval: 10_000 },
-  );
-
-  const createSlotMutation = useMutation(createSlot, {
-    onSuccess: () => {
-      setNewSlotName("");
-      invalidateSlots();
+  const tabItems = [
+    {
+      key: "slots",
+      label: `Broadcast slots (${slots.length})`,
+      children: (
+        <BroadcastSlotsSection
+          slug={broadcast.slug}
+          slots={slots}
+          divisions={divisions}
+          activeDivision={activeDivision}
+          activeRound={activeRound}
+        />
+      ),
     },
-    onError: (e) => flashError(e),
-  });
-
-  const deleteSlotMutation = useMutation(deleteSlot, {
-    onSuccess: invalidateSlots,
-    onError: (e) => flashError(e),
-  });
-
-  const doCreateSlot = () => {
-    if (!newSlotName.trim()) return;
-    createSlotMutation.mutate({
-      slug: broadcast.slug,
-      slotName: newSlotName.trim(),
-      division: newSlotDivision,
-      round: newSlotRound,
-      tableNumber: newSlotTable,
-    });
-  };
-
-  const slots = slotsData?.slots ?? [];
-
-  // Compute next free table for the current div/round as a convenience default.
-  const nextTableForCurrentTarget = () => {
-    const matching = slots
-      .filter((s) => s.division === newSlotDivision && s.round === newSlotRound)
-      .map((s) => s.tableNumber);
-    return matching.length > 0 ? Math.max(...matching) + 1 : 1;
-  };
+    // Stream slots belong to the viewer, not the broadcast, so this tab is only
+    // meaningful for a signed-in user.
+    ...(loginState.loggedIn
+      ? [
+          {
+            key: "stream",
+            label: "My stream",
+            children: (
+              <StreamSlotsPanel
+                broadcastSlug={broadcast.slug}
+                broadcastName={broadcast.name}
+                slots={slots}
+                username={loginState.username}
+              />
+            ),
+          },
+        ]
+      : []),
+    {
+      key: "people",
+      label: `People (${peopleCount})`,
+      children: (
+        <div className="panel-people">
+          <UserListSection
+            title="Annotators"
+            hint="Annotators can claim tables and enter moves for this broadcast."
+            usernames={annotatorUsernames}
+            adding={addAnnotatorMutation.isPending}
+            emptyText="No annotators yet."
+            onAdd={(username) =>
+              addAnnotatorMutation.mutate({
+                slug: broadcast.slug,
+                usernames: [username],
+              })
+            }
+            onRemove={(username) =>
+              removeAnnotatorMutation.mutate({
+                slug: broadcast.slug,
+                usernames: [username],
+              })
+            }
+          />
+          <UserListSection
+            title="Directors"
+            hint="Directors manage slots, annotators and this panel."
+            usernames={directorUsernames}
+            adding={addDirectorMutation.isPending}
+            emptyText="No directors yet."
+            confirmRemove={(u) => `Remove ${u} as director?`}
+            onAdd={(username) =>
+              addDirectorMutation.mutate({
+                slug: broadcast.slug,
+                usernames: [username],
+              })
+            }
+            onRemove={(username) =>
+              removeDirectorMutation.mutate({
+                slug: broadcast.slug,
+                usernames: [username],
+              })
+            }
+          />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Card
@@ -164,266 +180,22 @@ export const BroadcastDirectorPanel: React.FC<Props> = ({
         </Button>
       }
     >
-      {/* OBS Slots */}
-      <Divider orientation="left" plain style={{ marginTop: 24 }}>
-        OBS Slots
-      </Divider>
-      <Typography.Text
-        type="secondary"
-        style={{ fontSize: 12, display: "block", marginBottom: 8 }}
-      >
-        Slots point at a (division, round, table). Reassign them from the games
-        table above when a new round starts.
-      </Typography.Text>
-      <Space direction="vertical" style={{ width: "100%" }}>
-        {slots.length === 0 && (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            No slots yet — add one below.
-          </Typography.Text>
-        )}
-        {slots.map((slot) => {
-          const target = slot.division
-            ? `Div ${slot.division}, R${slot.round}, T${slot.tableNumber}`
-            : `R${slot.round}, T${slot.tableNumber}`;
-          return (
-            <Card
-              key={slot.slotName}
-              size="small"
-              style={{ background: "rgba(255,255,255,0.04)" }}
-            >
-              <Space style={{ width: "100%", justifyContent: "space-between" }}>
-                <Space>
-                  <strong>{slot.slotName}</strong>
-                  <Tag>{target}</Tag>
-                </Space>
-                <Space size="small">
-                  <OBSPanel
-                    compact
-                    broadcastSlug={broadcast.slug}
-                    slotName={slot.slotName}
-                  />
-                  <Popconfirm
-                    title={`Delete slot "${slot.slotName}"?`}
-                    onConfirm={() =>
-                      deleteSlotMutation.mutate({
-                        slug: broadcast.slug,
-                        slotName: slot.slotName,
-                      })
-                    }
-                  >
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      loading={deleteSlotMutation.isPending}
-                    />
-                  </Popconfirm>
-                </Space>
-              </Space>
-            </Card>
-          );
-        })}
-
-        {/* Add slot form */}
-        <Space wrap size="small" align="end">
-          <div>
-            <Typography.Text
-              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
-            >
-              Slot name
-            </Typography.Text>
-            <Input
-              size="small"
-              placeholder="e.g. main"
-              value={newSlotName}
-              onChange={(e) => setNewSlotName(e.target.value)}
-              style={{ width: 120 }}
-            />
-          </div>
-          <div>
-            <Typography.Text
-              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
-            >
-              Division
-            </Typography.Text>
-            {divisions.length > 1 ? (
-              <Select
-                size="small"
-                value={newSlotDivision}
-                onChange={setNewSlotDivision}
-                options={divisions.map((d) => ({
-                  value: d,
-                  label: `Div ${d}`,
-                }))}
-                style={{ minWidth: 90 }}
-              />
-            ) : (
-              <Input
-                size="small"
-                placeholder="e.g. A"
-                value={newSlotDivision}
-                onChange={(e) => setNewSlotDivision(e.target.value)}
-                style={{ width: 90 }}
-              />
-            )}
-          </div>
-          <div>
-            <Typography.Text
-              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
-            >
-              Round
-            </Typography.Text>
-            <InputNumber
-              size="small"
-              value={newSlotRound}
-              min={1}
-              onChange={(v) => {
-                setNewSlotRound(v ?? 1);
-                setNewSlotTable(nextTableForCurrentTarget());
-              }}
-              style={{ width: 80 }}
-            />
-          </div>
-          <div>
-            <Typography.Text
-              style={{ fontSize: 11, display: "block", marginBottom: 2 }}
-            >
-              Table
-            </Typography.Text>
-            <InputNumber
-              size="small"
-              value={newSlotTable}
-              min={1}
-              onChange={(v) => setNewSlotTable(v ?? 1)}
-              style={{ width: 80 }}
-            />
-          </div>
-          <div>
-            <Typography.Text
-              style={{
-                fontSize: 11,
-                display: "block",
-                marginBottom: 2,
-                visibility: "hidden",
-              }}
-            >
-              &nbsp;
-            </Typography.Text>
-            <Button
-              size="small"
-              icon={<PlusOutlined />}
-              loading={createSlotMutation.isPending}
-              onClick={doCreateSlot}
-              disabled={!newSlotName.trim() || !newSlotDivision}
-              style={{ height: 24 }}
-            >
-              Add slot
-            </Button>
-          </div>
+      {/* The global tabs mixin hides antd's overflow arrows, so tabs that don't
+          fit would be unreachable. Below sm, swap the bar for a select — the
+          same fallback BroadcastRoom uses for its own tabs. */}
+      {screens.sm ? (
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      ) : (
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <Select
+            value={activeTab}
+            onChange={setActiveTab}
+            style={{ width: "100%", marginTop: 12 }}
+            options={tabItems.map((t) => ({ value: t.key, label: t.label }))}
+          />
+          {tabItems.find((t) => t.key === activeTab)?.children}
         </Space>
-      </Space>
-
-      {/* Annotators */}
-      <Divider orientation="left" plain style={{ marginTop: 24 }}>
-        Annotators
-      </Divider>
-      <Space wrap style={{ marginBottom: 8 }}>
-        {annotatorUsernames.map((u) => (
-          <Tag
-            key={u}
-            closable
-            onClose={() =>
-              removeAnnotatorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [u],
-              })
-            }
-          >
-            {u}
-          </Tag>
-        ))}
-      </Space>
-      <Space.Compact style={{ width: "100%" }}>
-        <Input
-          placeholder="Username"
-          value={newAnnotator}
-          onChange={(e) => setNewAnnotator(e.target.value)}
-          onPressEnter={() => {
-            if (newAnnotator.trim()) {
-              addAnnotatorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [newAnnotator.trim()],
-              });
-            }
-          }}
-        />
-        <Button
-          icon={<UserAddOutlined />}
-          loading={addAnnotatorMutation.isPending}
-          onClick={() => {
-            if (newAnnotator.trim()) {
-              addAnnotatorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [newAnnotator.trim()],
-              });
-            }
-          }}
-        >
-          Add
-        </Button>
-      </Space.Compact>
-
-      {/* Directors */}
-      <Divider orientation="left" plain style={{ marginTop: 24 }}>
-        Directors
-      </Divider>
-      <Space wrap style={{ marginBottom: 8 }}>
-        {directorUsernames.map((u) => (
-          <Popconfirm
-            key={u}
-            title={`Remove ${u} as director?`}
-            onConfirm={() =>
-              removeDirectorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [u],
-              })
-            }
-          >
-            <Tag key={u} closable onClose={(e) => e.preventDefault()}>
-              {u}
-            </Tag>
-          </Popconfirm>
-        ))}
-      </Space>
-      <Space.Compact style={{ width: "100%" }}>
-        <Input
-          placeholder="Username"
-          value={newDirector}
-          onChange={(e) => setNewDirector(e.target.value)}
-          onPressEnter={() => {
-            if (newDirector.trim()) {
-              addDirectorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [newDirector.trim()],
-              });
-            }
-          }}
-        />
-        <Button
-          icon={<UserAddOutlined />}
-          loading={addDirectorMutation.isPending}
-          onClick={() => {
-            if (newDirector.trim()) {
-              addDirectorMutation.mutate({
-                slug: broadcast.slug,
-                usernames: [newDirector.trim()],
-              });
-            }
-          }}
-        >
-          Add
-        </Button>
-      </Space.Compact>
+      )}
     </Card>
   );
 };
