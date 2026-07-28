@@ -1,6 +1,9 @@
 import React from "react";
 import type { Manual } from "../types";
-import { C, P, H } from "../prose";
+import { C, P, H, DocImage } from "../prose";
+import { OBSFieldPreview } from "../../broadcasts/OBSFieldPreview";
+import type { OBSSuffix } from "../../broadcasts/constants";
+import { Tag } from "antd";
 
 /**
  * The streaming manual: broadcast slots, stream slots, and getting them into
@@ -175,6 +178,16 @@ const Solo = () => (
       </li>
       <li>Repeat step 4–5 for each field you want on screen.</li>
     </ol>
+    <DocImage
+      src="/docs/obs-add-browser-source.png"
+      alt="OBS Sources panel with the + menu open and Browser highlighted"
+      caption="Adding a browser source in OBS."
+    />
+    <DocImage
+      src="/docs/obs-browser-source-properties.png"
+      alt="OBS browser source properties dialog showing the URL, width and height fields"
+      caption="Paste the URL here and give the source a width and height."
+    />
 
     <H>Every session after that</H>
     <P>
@@ -266,9 +279,11 @@ const Director = () => (
 
     <H>Who is streaming you</H>
     <P>
-      A slot with a purple <b>streamed by N</b> tag has N stream slots mirroring
-      it. Deleting or re-pointing it will change what those people are showing,
-      so the delete confirmation warns you.
+      A slot marked <Tag color="purple">streamed by 2</Tag> has two stream slots
+      mirroring it, so deleting it would blank two people's overlays — the
+      delete confirmation says so. Re-pointing it does not warn, because that is
+      the normal thing to do at the end of a round and everyone mirroring it is
+      meant to follow along.
     </P>
   </>
 );
@@ -381,6 +396,34 @@ const Fields = () => (
       Each field is its own URL and its own browser source, so you can place and
       style them independently. Every field below works with any kind of slot,
       except where the last column says otherwise.
+    </P>
+
+    <H>What they look like</H>
+    <P>
+      These are rendered by the same component the OBS Builder previews with, at
+      each field's default size, over a checkerboard standing in for
+      transparency. Sample data, not a live game.
+    </P>
+    <div className="doc-preview-grid">
+      {(
+        [
+          "score",
+          "combined_names",
+          "unseen_tiles",
+          "blank1",
+          "p1_spread",
+          "last_play",
+        ] as OBSSuffix[]
+      ).map((f) => (
+        <div className="doc-preview" key={f}>
+          <div className="doc-preview-label">{f}</div>
+          <OBSFieldPreview field={f} minHeight={64} />
+        </div>
+      ))}
+    </div>
+    <P>
+      <C>last_play</C> scrolls — give it a wide, short browser source. The
+      lowercase letter in <C>blank1</C> is the one that was played as a blank.
     </P>
     <table className="doc-table">
       <thead>
@@ -666,6 +709,11 @@ const Styling = () => (
       Leave the source's "Shutdown source when not visible" option off if you
       want it to stay connected and current while the scene is hidden.
     </P>
+    <DocImage
+      src="/docs/obs-scene-layout.png"
+      alt="An OBS scene with several Woogles overlay browser sources positioned over a board camera"
+      caption="A finished scene: one browser source per field, positioned over the board."
+    />
   </>
 );
 

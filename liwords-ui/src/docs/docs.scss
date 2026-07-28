@@ -235,3 +235,64 @@
     gap: 0;
   }
 }
+
+// Screenshots. Only used where the subject is another application; Woogles UI
+// is embedded live instead.
+.doc-figure {
+  margin: 0 0 16px;
+
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+
+    @include colorModed() {
+      border: 1px solid m($gray-subtle);
+    }
+  }
+
+  figcaption {
+    margin-top: 6px;
+    font-size: 12px;
+
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+}
+
+.doc-figure-missing {
+  padding: 20px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+
+  @include colorModed() {
+    border: 1px dashed m($gray-subtle);
+    color: m($gray-medium);
+  }
+}
+
+// Field previews rendered by OBSFieldPreview, laid out two-up on wide screens.
+.doc-preview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.doc-preview {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.doc-preview-label {
+  margin-bottom: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
