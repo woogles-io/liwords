@@ -1711,8 +1711,10 @@ export enum StreamSlotTargetKind {
   BROADCAST_SLOT = 2,
 
   /**
-   * Follows the owner's most recently edited annotated game. Lets someone
-   * stream without creating a broadcast at all.
+   * Follows the owner's most recently started annotated game. Lets someone
+   * stream without creating a broadcast at all. Started, not edited: playing a
+   * move does not re-order it, so returning to an older game does not bring it
+   * back to the front.
    *
    * @generated from enum value: STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION = 3;
    */

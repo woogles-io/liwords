@@ -31,8 +31,10 @@ const (
 	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_NONE StreamSlotTargetKind = 1
 	// Mirrors a broadcast slot, so it follows whatever table that event features.
 	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT StreamSlotTargetKind = 2
-	// Follows the owner's most recently edited annotated game. Lets someone
-	// stream without creating a broadcast at all.
+	// Follows the owner's most recently started annotated game. Lets someone
+	// stream without creating a broadcast at all. Started, not edited: playing a
+	// move does not re-order it, so returning to an older game does not bring it
+	// back to the front.
 	StreamSlotTargetKind_STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION StreamSlotTargetKind = 3
 )
 

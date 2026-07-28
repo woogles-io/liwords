@@ -27,8 +27,9 @@ const OBSHandlerPrefix = "/api/broadcasts/obs/"
 // OBSGameHandlerPrefix is the URL prefix for direct per-game OBS endpoints.
 const OBSGameHandlerPrefix = "/api/annotations/obs/game/"
 
-// OBSUserHandlerPrefix is the URL prefix for user-alias OBS endpoints.
-// The URL resolves dynamically to the user's most-recently-edited annotated game.
+// OBSUserHandlerPrefix is the URL prefix for stream-slot OBS endpoints.
+// The URL resolves dynamically through the slot's target: a broadcast slot, or
+// the owner's most recently started annotated game.
 const OBSUserHandlerPrefix = "/api/annotations/obs/user/"
 
 // natsUserAnnoSubjectPrefix mirrors omgwords.NatsUserAnnoSubjectPrefix to avoid
@@ -912,8 +913,11 @@ const legacyAliasMessage = "This OBS URL format has been replaced. " +
 	"broadcast panel in the game editor) and use " +
 	"/api/annotations/obs/user/<username>/<slot>/<field>"
 
-// resolveUserGame returns the game UUID of the user's most-recently-edited
+// resolveUserGame returns the game UUID of the user's most recently started
 // annotated game, or "" if none exists.
+//
+// Started, not edited: the ordering is games.updated_at, which a move does not
+// bump. See GetLatestAnnotationForUser in db/queries/broadcasts.sql.
 func (h *OBSHandler) resolveUserGame(ctx context.Context, username string) string {
 	row, err := h.queries.GetLatestAnnotatedGameForUsername(ctx, username)
 	if err != nil {

@@ -970,11 +970,18 @@ type GetLatestAnnotationForUserRow struct {
 }
 
 // Resolution for target_kind = 'latest_annotation': the user's most recently
-// edited annotated game, plus its broadcast context when it happens to belong
+// started annotated game, plus its broadcast context when it happens to belong
 // to one. That LEFT JOIN is what lets the standings fields work for someone
 // annotating a broadcast game without owning a stream slot pointed at it —
 // when the game is a plain annotated game the columns come back empty and the
 // standings fields fall back to the placeholder.
+//
+// "Started", not "edited": this orders by games.updated_at, and playing a move
+// does not touch it. SendGameEvent only upserts game_documents; games.updated_at
+// moves on creation, on a player-name/metadata patch, and when an annotation is
+// marked done. So returning to an older game does not make it the latest again.
+// Fixing that means giving game_documents its own updated_at (it has no
+// timestamp at all today) and ordering by that instead.
 func (q *Queries) GetLatestAnnotationForUser(ctx context.Context, username string) (GetLatestAnnotationForUserRow, error) {
 	row := q.db.QueryRow(ctx, getLatestAnnotationForUser, username)
 	var i GetLatestAnnotationForUserRow

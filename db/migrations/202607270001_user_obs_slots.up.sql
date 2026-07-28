@@ -10,8 +10,9 @@
 --   'none'              -- nothing pointed yet; renders the placeholder
 --   'broadcast_slot'    -- mirrors (target_broadcast_id, target_slot_name),
 --                          so it follows whatever table that event features
---   'latest_annotation' -- follows the owner's most recently edited annotated
+--   'latest_annotation' -- follows the owner's most recently started annotated
 --                          game, for streaming without creating a broadcast
+--                          (started, not edited -- see GetLatestAnnotationForUser)
 --
 -- Keeping these as kinds of one slot rather than separate URL shapes means a
 -- slot can move between them without the OBS browser source changing: stream
