@@ -393,6 +393,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<Array<MachineLetter>>(undefined);
+  const lastNumEventsRef = useRef<number>(undefined);
   const lastRackRef = useRef<Array<MachineLetter>>(undefined);
   const lastIsExaminingRef = useRef<boolean>(undefined);
   const readOnlyEffectDependenciesRef = useRef<{
@@ -427,6 +428,10 @@ export const BoardPanel = React.memo((props: Props) => {
     let fullReset = false;
     const lastLetters = lastLettersRef.current;
     const dep = readOnlyEffectDependenciesRef.current!;
+    // Several events can arrive in the same packet, in which case the board
+    // never renders in between them. Watching the board alone is therefore
+    // not enough to tell a move apart from a mere refresher.
+    const numEventsChanged = lastNumEventsRef.current !== props.events.length;
     if (lastLetters === undefined) {
       // First load.
       fullReset = true;
@@ -455,6 +460,11 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (isExamining) {
       // Prevent stuck tiles.
       fullReset = true;
+    } else if (numEventsChanged && clearBackupRef.current) {
+      // We have committed a move and the game has moved on since. Whatever is
+      // still placed is a leftover of that move, even when the board looks
+      // untouched, so recall it.
+      fullReset = true;
     } else if (!dep.isMyTurn) {
       // Opponent's turn usually means we have just made a move. (Assumption:
       // there are only two players.) But a GameHistoryRefresher can also
@@ -464,7 +474,7 @@ export const BoardPanel = React.memo((props: Props) => {
       const lettersChanged =
         lastLetters.length !== props.board.letters.length ||
         lastLetters.some((ml, idx) => ml !== props.board.letters[idx]);
-      if (lettersChanged) {
+      if (lettersChanged || numEventsChanged) {
         fullReset = true;
       }
     } else {
@@ -574,6 +584,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
     }
     lastLettersRef.current = props.board.letters;
+    lastNumEventsRef.current = props.events.length;
     lastRackRef.current = props.currentRack;
   }, [
     isExamining,
@@ -581,6 +592,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.board.letters,
     props.boardEditingMode,
     props.currentRack,
+    props.events.length,
     props.puzzleMode,
     setArrowProperties,
     setDisplayedRack,
