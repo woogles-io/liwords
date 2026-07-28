@@ -1,5 +1,7 @@
+import React from "react";
 import { ConfigProvider } from "antd";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GameEndReason } from "../gen/api/proto/ipc/omgwords_pb";
@@ -188,9 +190,31 @@ vi.mock("@connectrpc/connect-query", async (importActual) => ({
   }),
 }));
 
+// The real one is a dropdown needing the login, match and pet contexts. Its
+// "View game history" entry becomes a button so the wiring can still be
+// clicked.
 vi.mock("../shared/usernameWithContext", () => ({
-  UsernameWithContext: (props: { username: string }) => (
-    <span>{props.username}</span>
+  UsernameWithContext: (props: {
+    username: string;
+    infoText?: string;
+    handleInfoText?: () => void;
+  }) => (
+    <span>
+      {props.username}
+      {props.infoText && (
+        <button
+          onClick={(e) => {
+            props.handleInfoText?.();
+            // The real menu is portalled outside the modal and unmounts on
+            // click, which drops focus onto the body. Reproduce that, since it
+            // is what stops Escape reaching the dialog wrapper.
+            e.currentTarget.blur();
+          }}
+        >
+          {props.infoText} for {props.username}
+        </button>
+      )}
+    </span>
   ),
 }));
 
@@ -259,6 +283,7 @@ const renderModal = (
   mode: "default" | "dark",
   games: unknown[],
   seasonStartDate?: Timestamp,
+  onSelectPlayer: (userId: string, username: string) => void = () => {},
 ) => {
   mock.games = games;
   document.body.className = `mode--${mode}`;
@@ -274,6 +299,7 @@ const renderModal = (
         seasonId="s"
         seasonNumber={18}
         seasonStartDate={seasonStartDate}
+        onSelectPlayer={onSelectPlayer}
       />
     </ConfigProvider>,
   );
@@ -336,6 +362,101 @@ it("extends the title range back to the season start", () => {
   expect(title).toContain(
     formatSeasonRange(new Date(2026, 6, 1), new Date(2026, 6, 20)),
   );
+});
+
+// --- following an opponent --------------------------------------------------
+
+const carol = [
+  mkGame({
+    gameId: "beaten",
+    result: "loss",
+    mistakeIndex: 5.4,
+    opponentUserId: "u-carol",
+    opponentUsername: "carol",
+  }),
+];
+
+// A real Escape press lands on whatever holds focus.
+const pressEscape = () =>
+  fireEvent.keyDown(document.activeElement ?? document.body, {
+    key: "Escape",
+    keyCode: 27,
+  });
+
+const showPlayer = (
+  player: { userId: string; username: string },
+  onClose: () => void,
+  onSelectPlayer: (userId: string, username: string) => void,
+) => (
+  <PlayerGameHistoryModal
+    visible
+    onClose={onClose}
+    userId={player.userId}
+    username={player.username}
+    seasonId="s"
+    seasonNumber={18}
+    onSelectPlayer={onSelectPlayer}
+  />
+);
+
+it("hands an opponent over so their games can replace this one", async () => {
+  const selected: Array<[string, string]> = [];
+  renderModal("default", carol, undefined, (userId, username) =>
+    selected.push([userId, username]),
+  );
+  await userEvent.click(screen.getByText("View game history for carol"));
+  expect(selected).toEqual([["u-carol", "carol"]]);
+});
+
+// jsdom never runs the motion callback rc-dialog focuses from, so without a
+// focus target of our own nothing inside the modal holds focus here, even on
+// first open. A browser does focus it -- this pins that the wrapper serves both
+// paths.
+it("closes on escape", () => {
+  const closed: string[] = [];
+  mock.games = carol;
+  render(
+    showPlayer(
+      { userId: "me", username: "Me" },
+      () => closed.push("Me"),
+      () => {},
+    ),
+  );
+  pressEscape();
+  expect(closed).toEqual(["Me"]);
+});
+
+it("still closes on escape after following an opponent", async () => {
+  // Switching players re-renders this modal rather than reopening it, so
+  // rc-dialog never re-runs its focus-on-open, and the click that switched came
+  // from a menu outside the modal. Escape is bound to the dialog wrapper, so it
+  // only works while focus is still inside.
+  const closed: string[] = [];
+  mock.games = carol;
+  const Harness = () => {
+    const [player, setPlayer] = React.useState({
+      userId: "me",
+      username: "Me",
+    });
+    return showPlayer(
+      player,
+      () => closed.push(player.username),
+      (userId, username) => setPlayer({ userId, username }),
+    );
+  };
+  render(<Harness />);
+
+  await userEvent.click(screen.getByText("View game history for carol"));
+  expect(document.querySelector(".ant-modal-title")?.textContent).toContain(
+    "carol's Season 18 Games",
+  );
+
+  // Escape has to be fired at whatever holds focus, since rc-dialog listens on
+  // the dialog wrapper and a keydown from the body never reaches it. user-event
+  // omits the deprecated keyCode that rc-dialog checks, so this goes through
+  // fireEvent.
+  pressEscape();
+  expect(closed).toEqual(["carol"]);
 });
 
 it("renders the whole table (dumped for eyeballing)", () => {

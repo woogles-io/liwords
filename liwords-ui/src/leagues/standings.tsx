@@ -898,6 +898,7 @@ export const DivisionStandings: React.FC<DivisionStandingsProps> = ({
           seasonNumber={seasonNumber}
           seasonStartDate={seasonStartDate}
           onChat={onChat}
+          onSelectPlayer={handlePlayerClick}
         />
       )}
     </div>
