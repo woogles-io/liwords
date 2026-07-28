@@ -193,10 +193,17 @@ const Solo = () => (
 
     <H>Every session after that</H>
     <P>
-      Nothing. Start annotating a game and your overlay follows it. Start
-      annotating a different one and the overlay switches within a second. The
-      slot tracks <i>the annotated game you most recently edited</i>, so
-      whichever board you are actively working on is the one on screen.
+      Nothing. Create or claim an annotated game and your overlay follows it,
+      updating as you enter moves.
+    </P>
+    <P>
+      Be careful about what "latest" means here, though: the slot follows the
+      annotated game you most recently <i>started</i> — created or claimed — not
+      the one you happen to be typing into. Entering moves in an older game does
+      not bring it back to the front. So if you keep several annotated games on
+      the go at once, start them in the order you intend to stream them, or use
+      a slot pointed at a broadcast slot instead, which tracks a table rather
+      than a game and can be re-aimed whenever you like.
     </P>
 
     <H>What you get</H>
@@ -698,9 +705,18 @@ const Trouble = () => (
         <b>
           Following your own annotations, but you haven't annotated anything.
         </b>{" "}
-        Open a game in the editor and enter a move.
+        Create an annotated game in the editor.
       </li>
     </ul>
+
+    <H>It's showing the wrong one of my annotated games</H>
+    <P>
+      A slot following your latest annotation picks the game you most recently{" "}
+      <i>started</i>, not the one you are currently entering moves into — so
+      going back to an earlier game does not pull the overlay back to it. Either
+      start that game again after the others, or point the slot at a broadcast
+      slot, which follows a table and can be re-aimed at will.
+    </P>
 
     <H>It says "target missing"</H>
     <P>
