@@ -10,7 +10,7 @@ export const OBS_SUFFIXES = [
   "p1_name",
   "p2_name",
   "combined_names",
-  // Tournament-standings fields — broadcast-slot mode only.
+  // Tournament-standings fields — need a broadcast feed.
   "p1_record",
   "p2_record",
   "p1_place",
@@ -29,9 +29,11 @@ export const OBS_SUFFIXES = [
 
 export type OBSSuffix = (typeof OBS_SUFFIXES)[number];
 
-// Tournament-standings fields resolve from the broadcast feed, which only
-// exists in "slot" mode (a slot tied to a tournament). Hidden in game/user modes.
-export const OBS_SLOT_ONLY_SUFFIXES: readonly OBSSuffix[] = [
+// Tournament-standings fields resolve from the broadcast feed, so they need a
+// mode that reaches a broadcast: a broadcast slot, or a stream slot (which
+// points at one). Hidden in game mode and in the legacy user-alias mode, which
+// resolve to a bare annotated game with no tournament behind it.
+export const OBS_FEED_SUFFIXES: readonly OBSSuffix[] = [
   "p1_record",
   "p2_record",
   "p1_place",
@@ -47,5 +49,6 @@ export const OBS_SLOT_ONLY_SUFFIXES: readonly OBSSuffix[] = [
 ];
 
 // opponent_name only makes sense relative to a single tracked player, which
-// only "user" mode has (slot mode already exposes both p1_name/p2_name).
+// only the legacy user-alias mode has (slot modes already expose both
+// p1_name/p2_name, and a stream slot's owner need not be playing at all).
 export const OBS_USER_ONLY_SUFFIXES: readonly OBSSuffix[] = ["opponent_name"];

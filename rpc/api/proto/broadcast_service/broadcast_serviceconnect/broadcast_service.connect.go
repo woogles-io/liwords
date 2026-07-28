@@ -99,6 +99,18 @@ const (
 	// BroadcastServiceGetBroadcastAllGamesProcedure is the fully-qualified name of the
 	// BroadcastService's GetBroadcastAllGames RPC.
 	BroadcastServiceGetBroadcastAllGamesProcedure = "/broadcast_service.BroadcastService/GetBroadcastAllGames"
+	// BroadcastServiceListMyStreamSlotsProcedure is the fully-qualified name of the BroadcastService's
+	// ListMyStreamSlots RPC.
+	BroadcastServiceListMyStreamSlotsProcedure = "/broadcast_service.BroadcastService/ListMyStreamSlots"
+	// BroadcastServiceCreateStreamSlotProcedure is the fully-qualified name of the BroadcastService's
+	// CreateStreamSlot RPC.
+	BroadcastServiceCreateStreamSlotProcedure = "/broadcast_service.BroadcastService/CreateStreamSlot"
+	// BroadcastServicePointStreamSlotProcedure is the fully-qualified name of the BroadcastService's
+	// PointStreamSlot RPC.
+	BroadcastServicePointStreamSlotProcedure = "/broadcast_service.BroadcastService/PointStreamSlot"
+	// BroadcastServiceDeleteStreamSlotProcedure is the fully-qualified name of the BroadcastService's
+	// DeleteStreamSlot RPC.
+	BroadcastServiceDeleteStreamSlotProcedure = "/broadcast_service.BroadcastService/DeleteStreamSlot"
 )
 
 // BroadcastServiceClient is a client for the broadcast_service.BroadcastService service.
@@ -125,6 +137,10 @@ type BroadcastServiceClient interface {
 	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
 	GetBroadcastGameStats(context.Context, *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error)
 	GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error)
+	ListMyStreamSlots(context.Context, *connect.Request[broadcast_service.ListMyStreamSlotsRequest]) (*connect.Response[broadcast_service.ListMyStreamSlotsResponse], error)
+	CreateStreamSlot(context.Context, *connect.Request[broadcast_service.CreateStreamSlotRequest]) (*connect.Response[broadcast_service.CreateStreamSlotResponse], error)
+	PointStreamSlot(context.Context, *connect.Request[broadcast_service.PointStreamSlotRequest]) (*connect.Response[broadcast_service.PointStreamSlotResponse], error)
+	DeleteStreamSlot(context.Context, *connect.Request[broadcast_service.DeleteStreamSlotRequest]) (*connect.Response[broadcast_service.DeleteStreamSlotResponse], error)
 }
 
 // NewBroadcastServiceClient constructs a client for the broadcast_service.BroadcastService service.
@@ -270,6 +286,30 @@ func NewBroadcastServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastAllGames")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyStreamSlots: connect.NewClient[broadcast_service.ListMyStreamSlotsRequest, broadcast_service.ListMyStreamSlotsResponse](
+			httpClient,
+			baseURL+BroadcastServiceListMyStreamSlotsProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("ListMyStreamSlots")),
+			connect.WithClientOptions(opts...),
+		),
+		createStreamSlot: connect.NewClient[broadcast_service.CreateStreamSlotRequest, broadcast_service.CreateStreamSlotResponse](
+			httpClient,
+			baseURL+BroadcastServiceCreateStreamSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("CreateStreamSlot")),
+			connect.WithClientOptions(opts...),
+		),
+		pointStreamSlot: connect.NewClient[broadcast_service.PointStreamSlotRequest, broadcast_service.PointStreamSlotResponse](
+			httpClient,
+			baseURL+BroadcastServicePointStreamSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("PointStreamSlot")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteStreamSlot: connect.NewClient[broadcast_service.DeleteStreamSlotRequest, broadcast_service.DeleteStreamSlotResponse](
+			httpClient,
+			baseURL+BroadcastServiceDeleteStreamSlotProcedure,
+			connect.WithSchema(broadcastServiceMethods.ByName("DeleteStreamSlot")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -297,6 +337,10 @@ type broadcastServiceClient struct {
 	deleteSlot                *connect.Client[broadcast_service.DeleteSlotRequest, broadcast_service.DeleteSlotResponse]
 	getBroadcastGameStats     *connect.Client[broadcast_service.GetBroadcastGameStatsRequest, broadcast_service.GetBroadcastGameStatsResponse]
 	getBroadcastAllGames      *connect.Client[broadcast_service.GetBroadcastAllGamesRequest, broadcast_service.GetBroadcastAllGamesResponse]
+	listMyStreamSlots         *connect.Client[broadcast_service.ListMyStreamSlotsRequest, broadcast_service.ListMyStreamSlotsResponse]
+	createStreamSlot          *connect.Client[broadcast_service.CreateStreamSlotRequest, broadcast_service.CreateStreamSlotResponse]
+	pointStreamSlot           *connect.Client[broadcast_service.PointStreamSlotRequest, broadcast_service.PointStreamSlotResponse]
+	deleteStreamSlot          *connect.Client[broadcast_service.DeleteStreamSlotRequest, broadcast_service.DeleteStreamSlotResponse]
 }
 
 // CreateBroadcast calls broadcast_service.BroadcastService.CreateBroadcast.
@@ -409,6 +453,26 @@ func (c *broadcastServiceClient) GetBroadcastAllGames(ctx context.Context, req *
 	return c.getBroadcastAllGames.CallUnary(ctx, req)
 }
 
+// ListMyStreamSlots calls broadcast_service.BroadcastService.ListMyStreamSlots.
+func (c *broadcastServiceClient) ListMyStreamSlots(ctx context.Context, req *connect.Request[broadcast_service.ListMyStreamSlotsRequest]) (*connect.Response[broadcast_service.ListMyStreamSlotsResponse], error) {
+	return c.listMyStreamSlots.CallUnary(ctx, req)
+}
+
+// CreateStreamSlot calls broadcast_service.BroadcastService.CreateStreamSlot.
+func (c *broadcastServiceClient) CreateStreamSlot(ctx context.Context, req *connect.Request[broadcast_service.CreateStreamSlotRequest]) (*connect.Response[broadcast_service.CreateStreamSlotResponse], error) {
+	return c.createStreamSlot.CallUnary(ctx, req)
+}
+
+// PointStreamSlot calls broadcast_service.BroadcastService.PointStreamSlot.
+func (c *broadcastServiceClient) PointStreamSlot(ctx context.Context, req *connect.Request[broadcast_service.PointStreamSlotRequest]) (*connect.Response[broadcast_service.PointStreamSlotResponse], error) {
+	return c.pointStreamSlot.CallUnary(ctx, req)
+}
+
+// DeleteStreamSlot calls broadcast_service.BroadcastService.DeleteStreamSlot.
+func (c *broadcastServiceClient) DeleteStreamSlot(ctx context.Context, req *connect.Request[broadcast_service.DeleteStreamSlotRequest]) (*connect.Response[broadcast_service.DeleteStreamSlotResponse], error) {
+	return c.deleteStreamSlot.CallUnary(ctx, req)
+}
+
 // BroadcastServiceHandler is an implementation of the broadcast_service.BroadcastService service.
 type BroadcastServiceHandler interface {
 	CreateBroadcast(context.Context, *connect.Request[broadcast_service.CreateBroadcastRequest]) (*connect.Response[broadcast_service.CreateBroadcastResponse], error)
@@ -433,6 +497,10 @@ type BroadcastServiceHandler interface {
 	DeleteSlot(context.Context, *connect.Request[broadcast_service.DeleteSlotRequest]) (*connect.Response[broadcast_service.DeleteSlotResponse], error)
 	GetBroadcastGameStats(context.Context, *connect.Request[broadcast_service.GetBroadcastGameStatsRequest]) (*connect.Response[broadcast_service.GetBroadcastGameStatsResponse], error)
 	GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error)
+	ListMyStreamSlots(context.Context, *connect.Request[broadcast_service.ListMyStreamSlotsRequest]) (*connect.Response[broadcast_service.ListMyStreamSlotsResponse], error)
+	CreateStreamSlot(context.Context, *connect.Request[broadcast_service.CreateStreamSlotRequest]) (*connect.Response[broadcast_service.CreateStreamSlotResponse], error)
+	PointStreamSlot(context.Context, *connect.Request[broadcast_service.PointStreamSlotRequest]) (*connect.Response[broadcast_service.PointStreamSlotResponse], error)
+	DeleteStreamSlot(context.Context, *connect.Request[broadcast_service.DeleteStreamSlotRequest]) (*connect.Response[broadcast_service.DeleteStreamSlotResponse], error)
 }
 
 // NewBroadcastServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -574,6 +642,30 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 		connect.WithSchema(broadcastServiceMethods.ByName("GetBroadcastAllGames")),
 		connect.WithHandlerOptions(opts...),
 	)
+	broadcastServiceListMyStreamSlotsHandler := connect.NewUnaryHandler(
+		BroadcastServiceListMyStreamSlotsProcedure,
+		svc.ListMyStreamSlots,
+		connect.WithSchema(broadcastServiceMethods.ByName("ListMyStreamSlots")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceCreateStreamSlotHandler := connect.NewUnaryHandler(
+		BroadcastServiceCreateStreamSlotProcedure,
+		svc.CreateStreamSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("CreateStreamSlot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServicePointStreamSlotHandler := connect.NewUnaryHandler(
+		BroadcastServicePointStreamSlotProcedure,
+		svc.PointStreamSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("PointStreamSlot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	broadcastServiceDeleteStreamSlotHandler := connect.NewUnaryHandler(
+		BroadcastServiceDeleteStreamSlotProcedure,
+		svc.DeleteStreamSlot,
+		connect.WithSchema(broadcastServiceMethods.ByName("DeleteStreamSlot")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/broadcast_service.BroadcastService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BroadcastServiceCreateBroadcastProcedure:
@@ -620,6 +712,14 @@ func NewBroadcastServiceHandler(svc BroadcastServiceHandler, opts ...connect.Han
 			broadcastServiceGetBroadcastGameStatsHandler.ServeHTTP(w, r)
 		case BroadcastServiceGetBroadcastAllGamesProcedure:
 			broadcastServiceGetBroadcastAllGamesHandler.ServeHTTP(w, r)
+		case BroadcastServiceListMyStreamSlotsProcedure:
+			broadcastServiceListMyStreamSlotsHandler.ServeHTTP(w, r)
+		case BroadcastServiceCreateStreamSlotProcedure:
+			broadcastServiceCreateStreamSlotHandler.ServeHTTP(w, r)
+		case BroadcastServicePointStreamSlotProcedure:
+			broadcastServicePointStreamSlotHandler.ServeHTTP(w, r)
+		case BroadcastServiceDeleteStreamSlotProcedure:
+			broadcastServiceDeleteStreamSlotHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -715,4 +815,20 @@ func (UnimplementedBroadcastServiceHandler) GetBroadcastGameStats(context.Contex
 
 func (UnimplementedBroadcastServiceHandler) GetBroadcastAllGames(context.Context, *connect.Request[broadcast_service.GetBroadcastAllGamesRequest]) (*connect.Response[broadcast_service.GetBroadcastAllGamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.GetBroadcastAllGames is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) ListMyStreamSlots(context.Context, *connect.Request[broadcast_service.ListMyStreamSlotsRequest]) (*connect.Response[broadcast_service.ListMyStreamSlotsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.ListMyStreamSlots is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) CreateStreamSlot(context.Context, *connect.Request[broadcast_service.CreateStreamSlotRequest]) (*connect.Response[broadcast_service.CreateStreamSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.CreateStreamSlot is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) PointStreamSlot(context.Context, *connect.Request[broadcast_service.PointStreamSlotRequest]) (*connect.Response[broadcast_service.PointStreamSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.PointStreamSlot is not implemented"))
+}
+
+func (UnimplementedBroadcastServiceHandler) DeleteStreamSlot(context.Context, *connect.Request[broadcast_service.DeleteStreamSlotRequest]) (*connect.Response[broadcast_service.DeleteStreamSlotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("broadcast_service.BroadcastService.DeleteStreamSlot is not implemented"))
 }

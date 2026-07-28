@@ -62,4 +62,146 @@
       }
     }
   }
+
+  // The card body holds the tab bar, so it shouldn't add its own top padding.
+  .ant-card-body {
+    padding-top: 0;
+  }
+
+  // base.scss's global tabs mixin zeroes the nav margin, which leaves the tab
+  // bar flush against the panel content. Put the gap back, but only here — the
+  // extra selector depth is what beats the mixin's own `.ant-tabs .ant-tabs-nav`.
+  .ant-tabs .ant-tabs-nav {
+    margin-bottom: 16px;
+  }
+}
+
+// Panel layout. These live outside .director-panel because the stream-slot
+// section is also rendered standalone in the game editor, where there is no
+// director panel around it.
+
+// Sub-heading inside a panel tab. Uses base.scss's overline type rather than
+// settings.scss's .section-header, which is only loaded on settings routes.
+.panel-section-title {
+  @include type-overline;
+  margin-bottom: 8px;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+// Muted one-or-two-line explanation under a section heading.
+.panel-hint {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.panel-empty {
+  display: block;
+  padding: 4px 0 10px;
+  font-size: 12px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+// One slot. Deliberately a plain bordered row rather than a nested Card: these
+// already sit inside a card inside a tab, and a stack of cards at that depth
+// reads as clutter.
+.slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 3px;
+
+  @include colorModed() {
+    background: m($off-background);
+  }
+
+  + .slot-row {
+    margin-top: 6px;
+  }
+}
+
+.slot-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.slot-row-name {
+  font-weight: 600;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.slot-row-detail {
+  font-size: 12px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.slot-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// Inline create form. Each control is a labelled cell so they line up along
+// their baselines however the row wraps.
+.add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.add-form-label {
+  font-size: 11px;
+
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.panel-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+
+  > * {
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+}
+
+.user-list-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
 }

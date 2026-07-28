@@ -19,7 +19,10 @@ import (
 
 const (
 	NatsBroadcastSubjectPrefix = "broadcasts."
-	pollerTickInterval         = 30 * time.Second
+	// NatsUserSlotSubjectPrefix is published when a user re-points one of their
+	// stream slots, so live OBS streams rebind to the new target broadcast.
+	NatsUserSlotSubjectPrefix = "obs.userslot."
+	pollerTickInterval        = 30 * time.Second
 )
 
 // StartPoller launches the background feed-polling goroutine.

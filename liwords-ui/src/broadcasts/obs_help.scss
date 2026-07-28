@@ -1,0 +1,162 @@
+@use "../base.scss" as *;
+
+// The "?" that opens the manual. It sits inline inside divider titles and
+// running prose, so it has to read as a quiet inline affordance rather than a
+// control — a real button element for keyboard and screen readers, with every
+// button style stripped off.
+.obs-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+
+  @include colorModed() {
+    color: m($primary-middle);
+  }
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+// The OBS manual. It is a long read, so the priorities here are a comfortable
+// measure, scannable tables, and code that stands out from prose without
+// shouting.
+.obs-help-tabs {
+  // Keep the chapter list visible while a long chapter scrolls under it.
+  max-height: 62vh;
+
+  .ant-tabs-content-holder {
+    overflow-y: auto;
+  }
+
+  .ant-tabs-nav {
+    min-width: 190px;
+  }
+}
+
+.obs-help-body {
+  padding-right: 12px;
+  max-width: 62em;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.obs-help-h {
+  margin-top: 20px !important;
+  margin-bottom: 6px !important;
+
+  &:first-child {
+    margin-top: 0 !important;
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.obs-help-p {
+  margin-bottom: 10px !important;
+  line-height: 1.6;
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.obs-help-ol,
+.obs-help-ul {
+  margin: 0 0 12px 0;
+  padding-left: 22px;
+  line-height: 1.6;
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.obs-help-code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 0.92em;
+  word-break: break-word;
+
+  @include colorModed() {
+    background: m($off-background);
+    color: m($gray-extreme);
+  }
+}
+
+// The pointer-chain diagram. Monospace and indentation carry the meaning, so
+// it must not wrap — it scrolls instead.
+.obs-help-diagram {
+  margin: 0 0 12px 0;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+
+  @include colorModed() {
+    background: m($off-background);
+    color: m($gray-extreme);
+  }
+}
+
+.obs-help-table {
+  width: 100%;
+  margin: 0 0 14px 0;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+
+  th,
+  td {
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+
+    @include colorModed() {
+      border-bottom: 1px solid m($gray-subtle);
+    }
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  // Leading label column in the comparison tables.
+  td:first-child {
+    white-space: nowrap;
+
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}

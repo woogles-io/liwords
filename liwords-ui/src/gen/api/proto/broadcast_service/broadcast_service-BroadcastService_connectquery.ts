@@ -113,3 +113,23 @@ export const getBroadcastGameStats = BroadcastService.method.getBroadcastGameSta
  * @generated from rpc broadcast_service.BroadcastService.GetBroadcastAllGames
  */
 export const getBroadcastAllGames = BroadcastService.method.getBroadcastAllGames;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.ListMyStreamSlots
+ */
+export const listMyStreamSlots = BroadcastService.method.listMyStreamSlots;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.CreateStreamSlot
+ */
+export const createStreamSlot = BroadcastService.method.createStreamSlot;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.PointStreamSlot
+ */
+export const pointStreamSlot = BroadcastService.method.pointStreamSlot;
+
+/**
+ * @generated from rpc broadcast_service.BroadcastService.DeleteStreamSlot
+ */
+export const deleteStreamSlot = BroadcastService.method.deleteStreamSlot;

@@ -205,10 +205,15 @@ VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT DO NOTHING;
 
 -- name: ListBroadcastSlots :many
-SELECT slot_name, division, round, table_number, updated_at
-FROM broadcast_slots
-WHERE broadcast_id = $1
-ORDER BY slot_name;
+-- stream_slot_count is how many user stream slots currently mirror this slot;
+-- the UI warns before deleting a slot somebody is streaming from.
+SELECT bs.slot_name, bs.division, bs.round, bs.table_number, bs.updated_at,
+       (SELECT COUNT(*) FROM user_obs_slots us
+         WHERE us.target_broadcast_id = bs.broadcast_id
+           AND us.target_slot_name    = bs.slot_name) AS stream_slot_count
+FROM broadcast_slots bs
+WHERE bs.broadcast_id = $1
+ORDER BY bs.slot_name;
 
 -- name: UpdateBroadcastSlotTarget :exec
 UPDATE broadcast_slots
@@ -268,3 +273,118 @@ JOIN broadcast_games bg
     AND bg.round         = bs.round
     AND bg.table_number  = bs.table_number
 WHERE bg.game_uuid = $1;
+
+-- ---------------------------------------------------------------------------
+-- Stream slots (user_obs_slots): user-owned pointers at a broadcast slot.
+-- Every column of the target chain is LEFT JOINed and COALESCEd, because a
+-- stream slot is legitimately unpointed, or pointed at a broadcast slot that
+-- has since been renamed/deleted. Those resolve to zero values, which the OBS
+-- handler renders as the "(no game assigned)" placeholder rather than a 404.
+-- ---------------------------------------------------------------------------
+
+-- name: GetUserSlotGame :one
+-- Resolves (username, slot_name) → target broadcast + current game, in one trip.
+-- Only meaningful for target_kind = 'broadcast_slot'; the caller branches on
+-- target_kind and uses GetLatestAnnotationForUser for the other kind.
+SELECT
+    u.uuid::text                                          AS user_uuid,
+    us.target_kind,
+    COALESCE(b.uuid::text, '')::text                      AS broadcast_uuid,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(b.broadcast_url, '')                         AS broadcast_url,
+    COALESCE(b.broadcast_url_format, '')                  AS broadcast_url_format,
+    COALESCE(us.target_slot_name, '')                     AS target_slot_name,
+    COALESCE(bs.division, '')                             AS division,
+    COALESCE(bs.round, 0)::int                            AS round,
+    COALESCE(bs.table_number, 0)::int                     AS table_number,
+    COALESCE(bg.game_uuid, '')                            AS game_uuid
+FROM user_obs_slots us
+JOIN users u ON u.id = us.user_id
+LEFT JOIN broadcasts b ON b.id = us.target_broadcast_id
+LEFT JOIN broadcast_slots bs
+    ON  bs.broadcast_id = us.target_broadcast_id
+    AND bs.slot_name    = us.target_slot_name
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+WHERE lower(u.username) = lower(@username) AND us.slot_name = @slot_name;
+
+-- name: ListUserObsSlots :many
+-- Same resolution as GetUserSlotGame, for every slot the user owns, plus player
+-- names so the management UI can show what each slot is currently pointed at.
+SELECT
+    us.slot_name,
+    us.target_kind,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(us.target_slot_name, '')                     AS target_slot_name,
+    COALESCE(bs.division, '')                             AS division,
+    COALESCE(bs.round, 0)::int                            AS round,
+    COALESCE(bs.table_number, 0)::int                     AS table_number,
+    COALESCE(bg.game_uuid, '')                            AS game_uuid,
+    COALESCE(gd.document->'players'->0->>'realName', '')  AS player1_name,
+    COALESCE(gd.document->'players'->1->>'realName', '')  AS player2_name
+FROM user_obs_slots us
+LEFT JOIN broadcasts b ON b.id = us.target_broadcast_id
+LEFT JOIN broadcast_slots bs
+    ON  bs.broadcast_id = us.target_broadcast_id
+    AND bs.slot_name    = us.target_slot_name
+LEFT JOIN broadcast_games bg
+    ON  bg.broadcast_id  = bs.broadcast_id
+    AND bg.division      = bs.division
+    AND bg.round         = bs.round
+    AND bg.table_number  = bs.table_number
+LEFT JOIN game_documents gd ON gd.game_id = bg.game_uuid
+WHERE us.user_id = $1
+ORDER BY us.slot_name;
+
+-- name: GetLatestAnnotationForUser :one
+-- Resolution for target_kind = 'latest_annotation': the user's most recently
+-- edited annotated game, plus its broadcast context when it happens to belong
+-- to one. That LEFT JOIN is what lets the standings fields work for someone
+-- annotating a broadcast game without owning a stream slot pointed at it —
+-- when the game is a plain annotated game the columns come back empty and the
+-- standings fields fall back to the placeholder.
+SELECT
+    COALESCE(agm.game_uuid, '')                           AS game_uuid,
+    COALESCE(b.uuid::text, '')::text                      AS broadcast_uuid,
+    COALESCE(b.slug, '')                                  AS broadcast_slug,
+    COALESCE(b.name, '')                                  AS broadcast_name,
+    COALESCE(b.broadcast_url, '')                         AS broadcast_url,
+    COALESCE(b.broadcast_url_format, '')                  AS broadcast_url_format,
+    COALESCE(bg.division, '')                             AS division,
+    COALESCE(bg.round, 0)::int                            AS round,
+    COALESCE(bg.table_number, 0)::int                     AS table_number
+FROM annotated_game_metadata agm
+JOIN games g ON g.uuid = agm.game_uuid
+LEFT JOIN broadcast_games bg ON bg.game_uuid = agm.game_uuid
+LEFT JOIN broadcasts b ON b.id = bg.broadcast_id
+WHERE agm.creator_uuid = (SELECT uuid FROM users WHERE lower(username) = lower(@username))
+ORDER BY g.updated_at DESC
+LIMIT 1;
+
+-- name: CreateUserObsSlot :execrows
+-- Returns 0 rows when the user already has a slot by that name.
+INSERT INTO user_obs_slots (user_id, slot_name)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING;
+
+-- name: UpdateUserObsSlotTarget :execrows
+-- Returns 0 rows when the slot doesn't exist. Callers pass a NULL broadcast and
+-- an empty slot name for the 'none' and 'latest_annotation' kinds.
+UPDATE user_obs_slots
+SET target_kind         = @target_kind,
+    target_broadcast_id = sqlc.narg('target_broadcast_id'),
+    target_slot_name    = @target_slot_name,
+    updated_at          = NOW()
+WHERE user_id = @user_id AND slot_name = @slot_name;
+
+-- name: DeleteUserObsSlot :execrows
+DELETE FROM user_obs_slots
+WHERE user_id = $1 AND slot_name = $2;
+
+-- name: CountUserObsSlots :one
+SELECT COUNT(*) FROM user_obs_slots WHERE user_id = $1;

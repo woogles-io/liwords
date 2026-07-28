@@ -210,7 +210,73 @@ message BroadcastSlot {
   string division = 2;    // empty string = use first division from feed
   int32 round = 3;
   int32 table_number = 4;
+  // How many user stream slots currently mirror this slot. The UI warns before
+  // deleting or re-pointing a slot somebody is streaming from.
+  int32 stream_slot_count = 5;
 }
+
+// What a StreamSlot currently follows.
+enum StreamSlotTargetKind {
+  STREAM_SLOT_TARGET_KIND_UNSPECIFIED = 0;
+  // Nothing pointed yet — the OBS URL renders the placeholder.
+  STREAM_SLOT_TARGET_KIND_NONE = 1;
+  // Mirrors a broadcast slot, so it follows whatever table that event features.
+  STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT = 2;
+  // Follows the owner's most recently edited annotated game. Lets someone
+  // stream without creating a broadcast at all.
+  STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION = 3;
+}
+
+// A StreamSlot is a user-owned, permanent OBS pointer.
+// Its URL (/api/annotations/obs/user/<username>/<slot_name>/<field>) contains
+// only the owner's username and the slot name, so it survives across
+// broadcasts: switching what a stream covers is a re-point here, not an edit
+// in OBS. Because the target kind is part of the slot rather than part of the
+// URL, a slot can move between following your own annotations and mirroring a
+// broadcast slot without the browser source changing.
+message StreamSlot {
+  string slot_name = 1;
+  string target_broadcast_slug = 2;   // set only for BROADCAST_SLOT
+  string target_broadcast_name = 3;
+  string target_slot_name = 4;
+  // Resolved target, for display in the management UI. Zero-valued when the
+  // slot is unpointed or its target broadcast slot no longer exists.
+  string division = 5;
+  int32 round = 6;
+  int32 table_number = 7;
+  string game_uuid = 8;               // empty if no game claimed at the target
+  string player1_name = 9;
+  string player2_name = 10;
+  StreamSlotTargetKind target_kind = 11;
+}
+
+message ListMyStreamSlotsRequest {}
+
+message ListMyStreamSlotsResponse {
+  repeated StreamSlot slots = 1;
+}
+
+message CreateStreamSlotRequest {
+  string slot_name = 1;
+}
+
+message CreateStreamSlotResponse {}
+
+message PointStreamSlotRequest {
+  string slot_name = 1;
+  // Required only for target_kind = BROADCAST_SLOT; ignored otherwise.
+  string target_broadcast_slug = 2;
+  string target_slot_name = 3;
+  StreamSlotTargetKind target_kind = 4;
+}
+
+message PointStreamSlotResponse {}
+
+message DeleteStreamSlotRequest {
+  string slot_name = 1;
+}
+
+message DeleteStreamSlotResponse {}
 
 message ListSlotsRequest {
   string slug = 1;
@@ -329,4 +395,8 @@ service BroadcastService {
   rpc DeleteSlot(DeleteSlotRequest) returns (DeleteSlotResponse);
   rpc GetBroadcastGameStats(GetBroadcastGameStatsRequest) returns (GetBroadcastGameStatsResponse);
   rpc GetBroadcastAllGames(GetBroadcastAllGamesRequest) returns (GetBroadcastAllGamesResponse);
+  rpc ListMyStreamSlots(ListMyStreamSlotsRequest) returns (ListMyStreamSlotsResponse);
+  rpc CreateStreamSlot(CreateStreamSlotRequest) returns (CreateStreamSlotResponse);
+  rpc PointStreamSlot(PointStreamSlotRequest) returns (PointStreamSlotResponse);
+  rpc DeleteStreamSlot(DeleteStreamSlotRequest) returns (DeleteStreamSlotResponse);
 }

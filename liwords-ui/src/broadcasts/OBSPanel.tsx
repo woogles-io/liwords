@@ -11,10 +11,11 @@ import {
 } from "antd";
 import {
   OBS_SUFFIXES,
-  OBS_SLOT_ONLY_SUFFIXES,
+  OBS_FEED_SUFFIXES,
   OBS_USER_ONLY_SUFFIXES,
   type OBSSuffix,
 } from "./constants";
+import { OBSHelpButton } from "./OBSHelp";
 
 // Human-readable labels for each OBS suffix
 export const OBS_SUFFIX_LABELS: Record<OBSSuffix, string> = {
@@ -149,15 +150,25 @@ function BlankPreview({
   return <>{parts}</>;
 }
 
-type OBSMode = "game" | "slot" | "user";
+type OBSMode = "game" | "slot" | "streamSlot";
 
 type OBSPanelProps = {
   /** Game UUID for direct per-game URLs. */
   gameID?: string;
   broadcastSlug?: string;
   slotName?: string;
-  /** Username for user-alias URLs (follows the user's latest annotated game). */
+  /** Username — required for stream-slot URLs. */
   username?: string;
+  /**
+   * Name of one of the user's own stream slots. Produces a URL that survives
+   * across broadcasts, since it carries only the username and the slot name.
+   */
+  streamSlotName?: string;
+  /**
+   * True when that stream slot follows its owner's own latest annotation,
+   * which is the only case where "the opponent" is a well-defined player.
+   */
+  streamSlotFollowsSelf?: boolean;
   /** Which mode to default to. Inferred from props when not specified. */
   defaultMode?: OBSMode;
   /** When true renders only a button; when false (default) renders a Card wrapper. */
@@ -169,6 +180,8 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
   broadcastSlug,
   slotName,
   username,
+  streamSlotName,
+  streamSlotFollowsSelf = false,
   defaultMode,
   compact = false,
 }) => {
@@ -189,17 +202,20 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
 
   // Determine which modes are available based on props.
   const hasSlot = !!(broadcastSlug && slotName);
-  const hasUser = !!username;
+  const hasStreamSlot = !!(username && streamSlotName);
   const hasGame = !!gameID;
 
-  // Resolve the default mode: explicit prop > broadcast slot > game > user alias.
+  // Resolve the default mode: explicit prop > stream slot > broadcast slot > game.
+  // Stream slot wins because its URL is the one that survives the event ending.
   const resolvedDefault: OBSMode =
-    defaultMode ??
-    (hasSlot ? "slot" : hasGame ? "game" : hasUser ? "user" : "game");
+    defaultMode ?? (hasStreamSlot ? "streamSlot" : hasSlot ? "slot" : "game");
 
   const [mode, setMode] = useState<OBSMode>(resolvedDefault);
 
-  // Build the available mode options for the dropdown.
+  // Build the available mode options for the dropdown. The old "user alias"
+  // URL shape is gone: "whichever game this user touched last" is now the
+  // latest-annotation kind of a named stream slot, which resolves the same way
+  // but is explicit and can be re-pointed later.
   const modeOptions: { value: OBSMode; label: string }[] = [];
   if (hasGame) modeOptions.push({ value: "game", label: "This game" });
   if (hasSlot)
@@ -207,22 +223,28 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
       value: "slot",
       label: `Broadcast slot (${slotName})`,
     });
-  if (hasUser)
-    modeOptions.push({ value: "user", label: `My alias (${username})` });
+  if (hasStreamSlot)
+    modeOptions.push({
+      value: "streamSlot",
+      label: `My stream slot (${streamSlotName})`,
+    });
 
   const urlBase =
     mode === "slot"
       ? `/api/broadcasts/obs/${broadcastSlug}/${slotName}`
-      : mode === "user"
-        ? `/api/annotations/obs/user/${username}`
+      : mode === "streamSlot"
+        ? `/api/annotations/obs/user/${username}/${streamSlotName}`
         : `/api/annotations/obs/game/${gameID}`;
 
-  // Tournament-standings fields only resolve in slot mode (the feed is tied
-  // to a slot's tournament); opponent_name only makes sense relative to a
-  // single tracked player, which only user mode has.
+  // Tournament-standings fields need a broadcast feed behind them, which both
+  // slot modes have and plain game mode doesn't. opponent_name is the mirror
+  // image: it needs a single tracked player, which only a stream slot
+  // following its own owner's annotations has.
   const isSuffixAvailable = (val: OBSSuffix, forMode: OBSMode) => {
-    if (OBS_SLOT_ONLY_SUFFIXES.includes(val)) return forMode === "slot";
-    if (OBS_USER_ONLY_SUFFIXES.includes(val)) return forMode === "user";
+    if (OBS_FEED_SUFFIXES.includes(val))
+      return forMode === "slot" || forMode === "streamSlot";
+    if (OBS_USER_ONLY_SUFFIXES.includes(val))
+      return forMode === "streamSlot" && streamSlotFollowsSelf;
     return true;
   };
   const availableSuffixes = OBS_SUFFIXES.filter((s) =>
@@ -364,7 +386,12 @@ export const OBSPanel: React.FC<OBSPanelProps> = ({
 
       <Modal
         open={modalOpen}
-        title="OBS URL Builder"
+        title={
+          <Space>
+            OBS URL Builder
+            <OBSHelpButton section="fields" />
+          </Space>
+        }
         width={720}
         zIndex={1100}
         onCancel={() => setModalOpen(false)}

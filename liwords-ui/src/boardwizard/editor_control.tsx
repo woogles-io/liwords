@@ -10,6 +10,7 @@ import {
   Typography,
   Card,
   Space,
+  Divider,
   message,
 } from "antd";
 import { BookOutlined, CloseOutlined, SwapOutlined } from "@ant-design/icons";
@@ -34,6 +35,7 @@ import {
   unclaimGame,
 } from "../gen/api/proto/broadcast_service/broadcast_service-BroadcastService_connectquery";
 import { OBSPanel } from "../broadcasts/OBSPanel";
+import { StreamSlotsPanel } from "../broadcasts/StreamSlotsPanel";
 
 type Props = {
   gameID?: string;
@@ -170,13 +172,23 @@ export const EditorControl = (props: Props) => {
             gameID={props.gameID}
             broadcastSlug={broadcastCtx?.broadcastSlug}
             slotName={broadcastCtx?.slotName}
-            username={loginState.loggedIn ? loginState.username : undefined}
             defaultMode={
               broadcastCtx?.broadcastSlug && broadcastCtx?.slotName
                 ? "slot"
                 : "game"
             }
           />
+          {/* Stream slots are reachable here, not just from a broadcast's
+              director panel — streaming your own annotated games must not
+              require creating a broadcast first. */}
+          {loginState.loggedIn && (
+            <>
+              <Divider orientation="left" plain style={{ marginBottom: 8 }}>
+                My stream slots
+              </Divider>
+              <StreamSlotsPanel username={loginState.username} />
+            </>
+          )}
         </Space>
       ),
     },

@@ -2,8 +2,8 @@
 // @generated from file proto/broadcast_service/broadcast_service.proto (package broadcast_service, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/broadcast_service/broadcast_service.proto.
  */
 export const file_proto_broadcast_service_broadcast_service: GenFile = /*@__PURE__*/
-  fileDesc("Ci9wcm90by9icm9hZGNhc3Rfc2VydmljZS9icm9hZGNhc3Rfc2VydmljZS5wcm90bxIRYnJvYWRjYXN0X3NlcnZpY2Ui0wMKCUJyb2FkY2FzdBIMCgR1dWlkGAEgASgJEgwKBHNsdWcYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIVCg1icm9hZGNhc3RfdXJsGAUgASgJEhwKFGJyb2FkY2FzdF91cmxfZm9ybWF0GAYgASgJEh0KFXBvbGxfaW50ZXJ2YWxfc2Vjb25kcxgHIAEoBRIzCg9wb2xsX3N0YXJ0X3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXBvbGxfZW5kX3RpbWUYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2xleGljb24YCiABKAkSFAoMYm9hcmRfbGF5b3V0GAsgASgJEhsKE2xldHRlcl9kaXN0cmlidXRpb24YDCABKAkSFgoOY2hhbGxlbmdlX3J1bGUYDSABKAUSFQoNY3VycmVudF9yb3VuZBgOIAEoBRIOCgZhY3RpdmUYDyABKAgSGAoQY3JlYXRvcl91c2VybmFtZRgQIAEoCRIuCgpjcmVhdGVkX2F0GBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKHAgoSQnJvYWRjYXN0Um91bmRHYW1lEg0KBXJvdW5kGAEgASgFEhQKDHRhYmxlX251bWJlchgCIAEoBRIUCgxwbGF5ZXIxX25hbWUYAyABKAkSFAoMcGxheWVyMl9uYW1lGAQgASgJEhUKDXBsYXllcjFfc2NvcmUYBSABKAUSFQoNcGxheWVyMl9zY29yZRgGIAEoBRIYChBzY29yZXNfZmluYWxpemVkGAcgASgIEhEKCWdhbWVfdXVpZBgIIAEoCRIaChJhbm5vdGF0b3JfdXNlcm5hbWUYCSABKAkSFwoPYW5ub3RhdGlvbl9kb25lGAogASgIEhAKCGRpdmlzaW9uGAsgASgJIoYBCg9Ccm9hZGNhc3RQbGF5ZXISEQoJcGxheWVyX2lkGAEgASgFEgwKBG5hbWUYAiABKAkSDgoGcmF0aW5nGAMgASgFEgwKBHdpbnMYBCABKAESDgoGbG9zc2VzGAUgASgBEg4KBnNwcmVhZBgGIAEoBRIUCgxnYW1lc19wbGF5ZWQYByABKAUi4QIKFkNyZWF0ZUJyb2FkY2FzdFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhUKDWJyb2FkY2FzdF91cmwYBCABKAkSHAoUYnJvYWRjYXN0X3VybF9mb3JtYXQYBSABKAkSHQoVcG9sbF9pbnRlcnZhbF9zZWNvbmRzGAYgASgFEjMKD3BvbGxfc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoNcG9sbF9lbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHbGV4aWNvbhgJIAEoCRIUCgxib2FyZF9sYXlvdXQYCiABKAkSGwoTbGV0dGVyX2Rpc3RyaWJ1dGlvbhgLIAEoCRIWCg5jaGFsbGVuZ2VfcnVsZRgMIAEoBSI1ChdDcmVhdGVCcm9hZGNhc3RSZXNwb25zZRIMCgR1dWlkGAEgASgJEgwKBHNsdWcYAiABKAkiNQoTR2V0QnJvYWRjYXN0UmVxdWVzdBIMCgRzbHVnGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJIt4BChRHZXRCcm9hZGNhc3RSZXNwb25zZRIvCglicm9hZGNhc3QYASABKAsyHC5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3QSMwoHcGxheWVycxgCIAMoCzIiLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdFBsYXllchIaChJkaXJlY3Rvcl91c2VybmFtZXMYAyADKAkSGwoTYW5ub3RhdG9yX3VzZXJuYW1lcxgEIAMoCRIUCgx0b3RhbF9yb3VuZHMYBSABKAUSEQoJZGl2aXNpb25zGAYgAygJIkkKGEdldEJyb2FkY2FzdEdhbWVzUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBXJvdW5kGAIgASgFEhAKCGRpdmlzaW9uGAMgASgJInYKGUdldEJyb2FkY2FzdEdhbWVzUmVzcG9uc2USNAoFZ2FtZXMYASADKAsyJS5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3RSb3VuZEdhbWUSDQoFcm91bmQYAiABKAUSFAoMdG90YWxfcm91bmRzGAMgASgFIvECChZVcGRhdGVCcm9hZGNhc3RSZXF1ZXN0EgwKBHNsdWcYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIVCg1icm9hZGNhc3RfdXJsGAQgASgJEhwKFGJyb2FkY2FzdF91cmxfZm9ybWF0GAUgASgJEh0KFXBvbGxfaW50ZXJ2YWxfc2Vjb25kcxgGIAEoBRIzCg9wb2xsX3N0YXJ0X3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXBvbGxfZW5kX3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2xleGljb24YCSABKAkSFAoMYm9hcmRfbGF5b3V0GAogASgJEhsKE2xldHRlcl9kaXN0cmlidXRpb24YCyABKAkSFgoOY2hhbGxlbmdlX3J1bGUYDCABKAUSDgoGYWN0aXZlGA0gASgIIhkKF1VwZGF0ZUJyb2FkY2FzdFJlc3BvbnNlIlcKEENsYWltR2FtZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVyb3VuZBgCIAEoBRIUCgx0YWJsZV9udW1iZXIYAyABKAUSEAoIZGl2aXNpb24YBCABKAkiJAoRQ2xhaW1HYW1lUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCSJZChJVbmNsYWltR2FtZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVyb3VuZBgCIAEoBRIUCgx0YWJsZV9udW1iZXIYAyABKAUSEAoIZGl2aXNpb24YBCABKAkiFQoTVW5jbGFpbUdhbWVSZXNwb25zZSI/ChxBZGRCcm9hZGNhc3REaXJlY3RvcnNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJdXNlcm5hbWVzGAIgAygJIh8KHUFkZEJyb2FkY2FzdERpcmVjdG9yc1Jlc3BvbnNlIkIKH1JlbW92ZUJyb2FkY2FzdERpcmVjdG9yc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCgl1c2VybmFtZXMYAiADKAkiIgogUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzUmVzcG9uc2UiQAodQWRkQnJvYWRjYXN0QW5ub3RhdG9yc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCgl1c2VybmFtZXMYAiADKAkiIAoeQWRkQnJvYWRjYXN0QW5ub3RhdG9yc1Jlc3BvbnNlIkMKIFJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJdXNlcm5hbWVzGAIgAygJIiMKIVJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXNwb25zZSIcChpHZXRBY3RpdmVCcm9hZGNhc3RzUmVxdWVzdCJPChtHZXRBY3RpdmVCcm9hZGNhc3RzUmVzcG9uc2USMAoKYnJvYWRjYXN0cxgBIAMoCzIcLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdCIZChdHZXRBbGxCcm9hZGNhc3RzUmVxdWVzdCJMChhHZXRBbGxCcm9hZGNhc3RzUmVzcG9uc2USMAoKYnJvYWRjYXN0cxgBIAMoCzIcLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdCIiChJUcmlnZ2VyUG9sbFJlcXVlc3QSDAoEc2x1ZxgBIAEoCSIrChNUcmlnZ2VyUG9sbFJlc3BvbnNlEhQKDGRhdGFfY2hhbmdlZBgBIAEoCCI3ChhHZXRNeUNsYWltZWRHYW1lc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVsaW1pdBgCIAEoBSJRChlHZXRNeUNsYWltZWRHYW1lc1Jlc3BvbnNlEjQKBWdhbWVzGAEgAygLMiUuYnJvYWRjYXN0X3NlcnZpY2UuQnJvYWRjYXN0Um91bmRHYW1lIjMKHkdldEJyb2FkY2FzdEdhbWVDb250ZXh0UmVxdWVzdBIRCglnYW1lX3V1aWQYASABKAkitAEKH0dldEJyb2FkY2FzdEdhbWVDb250ZXh0UmVzcG9uc2USFgoOYnJvYWRjYXN0X3NsdWcYASABKAkSFgoOYnJvYWRjYXN0X25hbWUYAiABKAkSDQoFcm91bmQYAyABKAUSFAoMdGFibGVfbnVtYmVyGAQgASgFEhAKCGRpdmlzaW9uGAUgASgJEhEKCXNsb3RfbmFtZRgGIAEoCRIXCg9hbm5vdGF0aW9uX2RvbmUYByABKAgiWQoNQnJvYWRjYXN0U2xvdBIRCglzbG90X25hbWUYASABKAkSEAoIZGl2aXNpb24YAiABKAkSDQoFcm91bmQYAyABKAUSFAoMdGFibGVfbnVtYmVyGAQgASgFIiAKEExpc3RTbG90c1JlcXVlc3QSDAoEc2x1ZxgBIAEoCSJEChFMaXN0U2xvdHNSZXNwb25zZRIvCgVzbG90cxgBIAMoCzIgLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdFNsb3QiawoRQ3JlYXRlU2xvdFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCglzbG90X25hbWUYAiABKAkSEAoIZGl2aXNpb24YAyABKAkSDQoFcm91bmQYBCABKAUSFAoMdGFibGVfbnVtYmVyGAUgASgFIhQKEkNyZWF0ZVNsb3RSZXNwb25zZSJrChFBc3NpZ25TbG90UmVxdWVzdBIMCgRzbHVnGAEgASgJEhEKCXNsb3RfbmFtZRgCIAEoCRIQCghkaXZpc2lvbhgDIAEoCRINCgVyb3VuZBgEIAEoBRIUCgx0YWJsZV9udW1iZXIYBSABKAUiFAoSQXNzaWduU2xvdFJlc3BvbnNlIjwKGUdldFNsb3RDdXJyZW50R2FtZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCglzbG90X25hbWUYAiABKAkiqwEKGkdldFNsb3RDdXJyZW50R2FtZVJlc3BvbnNlEhEKCWdhbWVfdXVpZBgBIAEoCRIUCgxwbGF5ZXIxX25hbWUYAiABKAkSFAoMcGxheWVyMl9uYW1lGAMgASgJEhAKCGRpdmlzaW9uGAQgASgJEg0KBXJvdW5kGAUgASgFEhQKDHRhYmxlX251bWJlchgGIAEoBRIXCg9hbm5vdGF0aW9uX2RvbmUYByABKAgiNAoRRGVsZXRlU2xvdFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCglzbG90X25hbWUYAiABKAkiFAoSRGVsZXRlU2xvdFJlc3BvbnNlIoAEChFCcm9hZGNhc3RHYW1lU3RhdBIRCglnYW1lX3V1aWQYASABKAkSEAoIZGl2aXNpb24YAiABKAkSDQoFcm91bmQYAyABKAUSFAoMdGFibGVfbnVtYmVyGAQgASgFEhQKDHBsYXllcjFfbmFtZRgFIAEoCRIUCgxwbGF5ZXIyX25hbWUYBiABKAkSFgoOcGxheWVyMV9yYXRpbmcYByABKAUSFgoOcGxheWVyMl9yYXRpbmcYCCABKAUSFQoNcGxheWVyMV9zY29yZRgJIAEoBRIVCg1wbGF5ZXIyX3Njb3JlGAogASgFEg4KBndpbm5lchgLIAEoBRIWCg5wbGF5ZXIxX2JpbmdvcxgMIAEoBRIWCg5wbGF5ZXIyX2JpbmdvcxgNIAEoBRIWCg5tYXhfcGxheV9zY29yZRgOIAEoBRIVCg1tYXhfcGxheV93b3JkGA8gASgJEhIKCm1vdmVfY291bnQYECABKAUSFgoOd2Fsa19vZmZfYmluZ28YESABKAgSMAoMY29tcGxldGVkX2F0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIWCg5jdXJyZW50X3Njb3JlMRgTIAEoBRIWCg5jdXJyZW50X3Njb3JlMhgUIAEoBRIaChJwbGF5ZXIxX2dvZXNfZmlyc3QYFSABKAgiLAocR2V0QnJvYWRjYXN0R2FtZVN0YXRzUmVxdWVzdBIMCgRzbHVnGAEgASgJIlQKHUdldEJyb2FkY2FzdEdhbWVTdGF0c1Jlc3BvbnNlEjMKBXN0YXRzGAEgAygLMiQuYnJvYWRjYXN0X3NlcnZpY2UuQnJvYWRjYXN0R2FtZVN0YXQiKwobR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXF1ZXN0EgwKBHNsdWcYASABKAkiUwocR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXNwb25zZRIzCgVzdGF0cxgBIAMoCzIkLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdEdhbWVTdGF0MvwSChBCcm9hZGNhc3RTZXJ2aWNlEmgKD0NyZWF0ZUJyb2FkY2FzdBIpLmJyb2FkY2FzdF9zZXJ2aWNlLkNyZWF0ZUJyb2FkY2FzdFJlcXVlc3QaKi5icm9hZGNhc3Rfc2VydmljZS5DcmVhdGVCcm9hZGNhc3RSZXNwb25zZRJfCgxHZXRCcm9hZGNhc3QSJi5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RSZXF1ZXN0GicuYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0UmVzcG9uc2USbgoRR2V0QnJvYWRjYXN0R2FtZXMSKy5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lc1JlcXVlc3QaLC5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lc1Jlc3BvbnNlEmgKD1VwZGF0ZUJyb2FkY2FzdBIpLmJyb2FkY2FzdF9zZXJ2aWNlLlVwZGF0ZUJyb2FkY2FzdFJlcXVlc3QaKi5icm9hZGNhc3Rfc2VydmljZS5VcGRhdGVCcm9hZGNhc3RSZXNwb25zZRJWCglDbGFpbUdhbWUSIy5icm9hZGNhc3Rfc2VydmljZS5DbGFpbUdhbWVSZXF1ZXN0GiQuYnJvYWRjYXN0X3NlcnZpY2UuQ2xhaW1HYW1lUmVzcG9uc2USXAoLVW5jbGFpbUdhbWUSJS5icm9hZGNhc3Rfc2VydmljZS5VbmNsYWltR2FtZVJlcXVlc3QaJi5icm9hZGNhc3Rfc2VydmljZS5VbmNsYWltR2FtZVJlc3BvbnNlEnoKFUFkZEJyb2FkY2FzdERpcmVjdG9ycxIvLmJyb2FkY2FzdF9zZXJ2aWNlLkFkZEJyb2FkY2FzdERpcmVjdG9yc1JlcXVlc3QaMC5icm9hZGNhc3Rfc2VydmljZS5BZGRCcm9hZGNhc3REaXJlY3RvcnNSZXNwb25zZRKDAQoYUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzEjIuYnJvYWRjYXN0X3NlcnZpY2UuUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzUmVxdWVzdBozLmJyb2FkY2FzdF9zZXJ2aWNlLlJlbW92ZUJyb2FkY2FzdERpcmVjdG9yc1Jlc3BvbnNlEn0KFkFkZEJyb2FkY2FzdEFubm90YXRvcnMSMC5icm9hZGNhc3Rfc2VydmljZS5BZGRCcm9hZGNhc3RBbm5vdGF0b3JzUmVxdWVzdBoxLmJyb2FkY2FzdF9zZXJ2aWNlLkFkZEJyb2FkY2FzdEFubm90YXRvcnNSZXNwb25zZRKGAQoZUmVtb3ZlQnJvYWRjYXN0QW5ub3RhdG9ycxIzLmJyb2FkY2FzdF9zZXJ2aWNlLlJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXF1ZXN0GjQuYnJvYWRjYXN0X3NlcnZpY2UuUmVtb3ZlQnJvYWRjYXN0QW5ub3RhdG9yc1Jlc3BvbnNlEnQKE0dldEFjdGl2ZUJyb2FkY2FzdHMSLS5icm9hZGNhc3Rfc2VydmljZS5HZXRBY3RpdmVCcm9hZGNhc3RzUmVxdWVzdBouLmJyb2FkY2FzdF9zZXJ2aWNlLkdldEFjdGl2ZUJyb2FkY2FzdHNSZXNwb25zZRJrChBHZXRBbGxCcm9hZGNhc3RzEiouYnJvYWRjYXN0X3NlcnZpY2UuR2V0QWxsQnJvYWRjYXN0c1JlcXVlc3QaKy5icm9hZGNhc3Rfc2VydmljZS5HZXRBbGxCcm9hZGNhc3RzUmVzcG9uc2USXAoLVHJpZ2dlclBvbGwSJS5icm9hZGNhc3Rfc2VydmljZS5UcmlnZ2VyUG9sbFJlcXVlc3QaJi5icm9hZGNhc3Rfc2VydmljZS5UcmlnZ2VyUG9sbFJlc3BvbnNlEm4KEUdldE15Q2xhaW1lZEdhbWVzEisuYnJvYWRjYXN0X3NlcnZpY2UuR2V0TXlDbGFpbWVkR2FtZXNSZXF1ZXN0GiwuYnJvYWRjYXN0X3NlcnZpY2UuR2V0TXlDbGFpbWVkR2FtZXNSZXNwb25zZRKAAQoXR2V0QnJvYWRjYXN0R2FtZUNvbnRleHQSMS5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lQ29udGV4dFJlcXVlc3QaMi5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lQ29udGV4dFJlc3BvbnNlElYKCUxpc3RTbG90cxIjLmJyb2FkY2FzdF9zZXJ2aWNlLkxpc3RTbG90c1JlcXVlc3QaJC5icm9hZGNhc3Rfc2VydmljZS5MaXN0U2xvdHNSZXNwb25zZRJxChJHZXRTbG90Q3VycmVudEdhbWUSLC5icm9hZGNhc3Rfc2VydmljZS5HZXRTbG90Q3VycmVudEdhbWVSZXF1ZXN0Gi0uYnJvYWRjYXN0X3NlcnZpY2UuR2V0U2xvdEN1cnJlbnRHYW1lUmVzcG9uc2USWQoKQ3JlYXRlU2xvdBIkLmJyb2FkY2FzdF9zZXJ2aWNlLkNyZWF0ZVNsb3RSZXF1ZXN0GiUuYnJvYWRjYXN0X3NlcnZpY2UuQ3JlYXRlU2xvdFJlc3BvbnNlElkKCkFzc2lnblNsb3QSJC5icm9hZGNhc3Rfc2VydmljZS5Bc3NpZ25TbG90UmVxdWVzdBolLmJyb2FkY2FzdF9zZXJ2aWNlLkFzc2lnblNsb3RSZXNwb25zZRJZCgpEZWxldGVTbG90EiQuYnJvYWRjYXN0X3NlcnZpY2UuRGVsZXRlU2xvdFJlcXVlc3QaJS5icm9hZGNhc3Rfc2VydmljZS5EZWxldGVTbG90UmVzcG9uc2USegoVR2V0QnJvYWRjYXN0R2FtZVN0YXRzEi8uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0R2FtZVN0YXRzUmVxdWVzdBowLmJyb2FkY2FzdF9zZXJ2aWNlLkdldEJyb2FkY2FzdEdhbWVTdGF0c1Jlc3BvbnNlEncKFEdldEJyb2FkY2FzdEFsbEdhbWVzEi4uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXF1ZXN0Gi8uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXNwb25zZULNAQoVY29tLmJyb2FkY2FzdF9zZXJ2aWNlQhVCcm9hZGNhc3RTZXJ2aWNlUHJvdG9QAVo9Z2l0aHViLmNvbS93b29nbGVzLWlvL2xpd29yZHMvcnBjL2FwaS9wcm90by9icm9hZGNhc3Rfc2VydmljZaICA0JYWKoCEEJyb2FkY2FzdFNlcnZpY2XKAhBCcm9hZGNhc3RTZXJ2aWNl4gIcQnJvYWRjYXN0U2VydmljZVxHUEJNZXRhZGF0YeoCEEJyb2FkY2FzdFNlcnZpY2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("Ci9wcm90by9icm9hZGNhc3Rfc2VydmljZS9icm9hZGNhc3Rfc2VydmljZS5wcm90bxIRYnJvYWRjYXN0X3NlcnZpY2Ui0wMKCUJyb2FkY2FzdBIMCgR1dWlkGAEgASgJEgwKBHNsdWcYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIVCg1icm9hZGNhc3RfdXJsGAUgASgJEhwKFGJyb2FkY2FzdF91cmxfZm9ybWF0GAYgASgJEh0KFXBvbGxfaW50ZXJ2YWxfc2Vjb25kcxgHIAEoBRIzCg9wb2xsX3N0YXJ0X3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXBvbGxfZW5kX3RpbWUYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2xleGljb24YCiABKAkSFAoMYm9hcmRfbGF5b3V0GAsgASgJEhsKE2xldHRlcl9kaXN0cmlidXRpb24YDCABKAkSFgoOY2hhbGxlbmdlX3J1bGUYDSABKAUSFQoNY3VycmVudF9yb3VuZBgOIAEoBRIOCgZhY3RpdmUYDyABKAgSGAoQY3JlYXRvcl91c2VybmFtZRgQIAEoCRIuCgpjcmVhdGVkX2F0GBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKHAgoSQnJvYWRjYXN0Um91bmRHYW1lEg0KBXJvdW5kGAEgASgFEhQKDHRhYmxlX251bWJlchgCIAEoBRIUCgxwbGF5ZXIxX25hbWUYAyABKAkSFAoMcGxheWVyMl9uYW1lGAQgASgJEhUKDXBsYXllcjFfc2NvcmUYBSABKAUSFQoNcGxheWVyMl9zY29yZRgGIAEoBRIYChBzY29yZXNfZmluYWxpemVkGAcgASgIEhEKCWdhbWVfdXVpZBgIIAEoCRIaChJhbm5vdGF0b3JfdXNlcm5hbWUYCSABKAkSFwoPYW5ub3RhdGlvbl9kb25lGAogASgIEhAKCGRpdmlzaW9uGAsgASgJIoYBCg9Ccm9hZGNhc3RQbGF5ZXISEQoJcGxheWVyX2lkGAEgASgFEgwKBG5hbWUYAiABKAkSDgoGcmF0aW5nGAMgASgFEgwKBHdpbnMYBCABKAESDgoGbG9zc2VzGAUgASgBEg4KBnNwcmVhZBgGIAEoBRIUCgxnYW1lc19wbGF5ZWQYByABKAUi4QIKFkNyZWF0ZUJyb2FkY2FzdFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhUKDWJyb2FkY2FzdF91cmwYBCABKAkSHAoUYnJvYWRjYXN0X3VybF9mb3JtYXQYBSABKAkSHQoVcG9sbF9pbnRlcnZhbF9zZWNvbmRzGAYgASgFEjMKD3BvbGxfc3RhcnRfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoNcG9sbF9lbmRfdGltZRgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHbGV4aWNvbhgJIAEoCRIUCgxib2FyZF9sYXlvdXQYCiABKAkSGwoTbGV0dGVyX2Rpc3RyaWJ1dGlvbhgLIAEoCRIWCg5jaGFsbGVuZ2VfcnVsZRgMIAEoBSI1ChdDcmVhdGVCcm9hZGNhc3RSZXNwb25zZRIMCgR1dWlkGAEgASgJEgwKBHNsdWcYAiABKAkiNQoTR2V0QnJvYWRjYXN0UmVxdWVzdBIMCgRzbHVnGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJIt4BChRHZXRCcm9hZGNhc3RSZXNwb25zZRIvCglicm9hZGNhc3QYASABKAsyHC5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3QSMwoHcGxheWVycxgCIAMoCzIiLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdFBsYXllchIaChJkaXJlY3Rvcl91c2VybmFtZXMYAyADKAkSGwoTYW5ub3RhdG9yX3VzZXJuYW1lcxgEIAMoCRIUCgx0b3RhbF9yb3VuZHMYBSABKAUSEQoJZGl2aXNpb25zGAYgAygJIkkKGEdldEJyb2FkY2FzdEdhbWVzUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBXJvdW5kGAIgASgFEhAKCGRpdmlzaW9uGAMgASgJInYKGUdldEJyb2FkY2FzdEdhbWVzUmVzcG9uc2USNAoFZ2FtZXMYASADKAsyJS5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3RSb3VuZEdhbWUSDQoFcm91bmQYAiABKAUSFAoMdG90YWxfcm91bmRzGAMgASgFIvECChZVcGRhdGVCcm9hZGNhc3RSZXF1ZXN0EgwKBHNsdWcYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIVCg1icm9hZGNhc3RfdXJsGAQgASgJEhwKFGJyb2FkY2FzdF91cmxfZm9ybWF0GAUgASgJEh0KFXBvbGxfaW50ZXJ2YWxfc2Vjb25kcxgGIAEoBRIzCg9wb2xsX3N0YXJ0X3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDXBvbGxfZW5kX3RpbWUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB2xleGljb24YCSABKAkSFAoMYm9hcmRfbGF5b3V0GAogASgJEhsKE2xldHRlcl9kaXN0cmlidXRpb24YCyABKAkSFgoOY2hhbGxlbmdlX3J1bGUYDCABKAUSDgoGYWN0aXZlGA0gASgIIhkKF1VwZGF0ZUJyb2FkY2FzdFJlc3BvbnNlIlcKEENsYWltR2FtZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVyb3VuZBgCIAEoBRIUCgx0YWJsZV9udW1iZXIYAyABKAUSEAoIZGl2aXNpb24YBCABKAkiJAoRQ2xhaW1HYW1lUmVzcG9uc2USDwoHZ2FtZV9pZBgBIAEoCSJZChJVbmNsYWltR2FtZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVyb3VuZBgCIAEoBRIUCgx0YWJsZV9udW1iZXIYAyABKAUSEAoIZGl2aXNpb24YBCABKAkiFQoTVW5jbGFpbUdhbWVSZXNwb25zZSI/ChxBZGRCcm9hZGNhc3REaXJlY3RvcnNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJdXNlcm5hbWVzGAIgAygJIh8KHUFkZEJyb2FkY2FzdERpcmVjdG9yc1Jlc3BvbnNlIkIKH1JlbW92ZUJyb2FkY2FzdERpcmVjdG9yc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCgl1c2VybmFtZXMYAiADKAkiIgogUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzUmVzcG9uc2UiQAodQWRkQnJvYWRjYXN0QW5ub3RhdG9yc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCgl1c2VybmFtZXMYAiADKAkiIAoeQWRkQnJvYWRjYXN0QW5ub3RhdG9yc1Jlc3BvbnNlIkMKIFJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJdXNlcm5hbWVzGAIgAygJIiMKIVJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXNwb25zZSIcChpHZXRBY3RpdmVCcm9hZGNhc3RzUmVxdWVzdCJPChtHZXRBY3RpdmVCcm9hZGNhc3RzUmVzcG9uc2USMAoKYnJvYWRjYXN0cxgBIAMoCzIcLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdCIZChdHZXRBbGxCcm9hZGNhc3RzUmVxdWVzdCJMChhHZXRBbGxCcm9hZGNhc3RzUmVzcG9uc2USMAoKYnJvYWRjYXN0cxgBIAMoCzIcLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdCIiChJUcmlnZ2VyUG9sbFJlcXVlc3QSDAoEc2x1ZxgBIAEoCSIrChNUcmlnZ2VyUG9sbFJlc3BvbnNlEhQKDGRhdGFfY2hhbmdlZBgBIAEoCCI3ChhHZXRNeUNsYWltZWRHYW1lc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVsaW1pdBgCIAEoBSJRChlHZXRNeUNsYWltZWRHYW1lc1Jlc3BvbnNlEjQKBWdhbWVzGAEgAygLMiUuYnJvYWRjYXN0X3NlcnZpY2UuQnJvYWRjYXN0Um91bmRHYW1lIjMKHkdldEJyb2FkY2FzdEdhbWVDb250ZXh0UmVxdWVzdBIRCglnYW1lX3V1aWQYASABKAkitAEKH0dldEJyb2FkY2FzdEdhbWVDb250ZXh0UmVzcG9uc2USFgoOYnJvYWRjYXN0X3NsdWcYASABKAkSFgoOYnJvYWRjYXN0X25hbWUYAiABKAkSDQoFcm91bmQYAyABKAUSFAoMdGFibGVfbnVtYmVyGAQgASgFEhAKCGRpdmlzaW9uGAUgASgJEhEKCXNsb3RfbmFtZRgGIAEoCRIXCg9hbm5vdGF0aW9uX2RvbmUYByABKAgidAoNQnJvYWRjYXN0U2xvdBIRCglzbG90X25hbWUYASABKAkSEAoIZGl2aXNpb24YAiABKAkSDQoFcm91bmQYAyABKAUSFAoMdGFibGVfbnVtYmVyGAQgASgFEhkKEXN0cmVhbV9zbG90X2NvdW50GAUgASgFIqsCCgpTdHJlYW1TbG90EhEKCXNsb3RfbmFtZRgBIAEoCRIdChV0YXJnZXRfYnJvYWRjYXN0X3NsdWcYAiABKAkSHQoVdGFyZ2V0X2Jyb2FkY2FzdF9uYW1lGAMgASgJEhgKEHRhcmdldF9zbG90X25hbWUYBCABKAkSEAoIZGl2aXNpb24YBSABKAkSDQoFcm91bmQYBiABKAUSFAoMdGFibGVfbnVtYmVyGAcgASgFEhEKCWdhbWVfdXVpZBgIIAEoCRIUCgxwbGF5ZXIxX25hbWUYCSABKAkSFAoMcGxheWVyMl9uYW1lGAogASgJEjwKC3RhcmdldF9raW5kGAsgASgOMicuYnJvYWRjYXN0X3NlcnZpY2UuU3RyZWFtU2xvdFRhcmdldEtpbmQiGgoYTGlzdE15U3RyZWFtU2xvdHNSZXF1ZXN0IkkKGUxpc3RNeVN0cmVhbVNsb3RzUmVzcG9uc2USLAoFc2xvdHMYASADKAsyHS5icm9hZGNhc3Rfc2VydmljZS5TdHJlYW1TbG90IiwKF0NyZWF0ZVN0cmVhbVNsb3RSZXF1ZXN0EhEKCXNsb3RfbmFtZRgBIAEoCSIaChhDcmVhdGVTdHJlYW1TbG90UmVzcG9uc2UiogEKFlBvaW50U3RyZWFtU2xvdFJlcXVlc3QSEQoJc2xvdF9uYW1lGAEgASgJEh0KFXRhcmdldF9icm9hZGNhc3Rfc2x1ZxgCIAEoCRIYChB0YXJnZXRfc2xvdF9uYW1lGAMgASgJEjwKC3RhcmdldF9raW5kGAQgASgOMicuYnJvYWRjYXN0X3NlcnZpY2UuU3RyZWFtU2xvdFRhcmdldEtpbmQiGQoXUG9pbnRTdHJlYW1TbG90UmVzcG9uc2UiLAoXRGVsZXRlU3RyZWFtU2xvdFJlcXVlc3QSEQoJc2xvdF9uYW1lGAEgASgJIhoKGERlbGV0ZVN0cmVhbVNsb3RSZXNwb25zZSIgChBMaXN0U2xvdHNSZXF1ZXN0EgwKBHNsdWcYASABKAkiRAoRTGlzdFNsb3RzUmVzcG9uc2USLwoFc2xvdHMYASADKAsyIC5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3RTbG90ImsKEUNyZWF0ZVNsb3RSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJc2xvdF9uYW1lGAIgASgJEhAKCGRpdmlzaW9uGAMgASgJEg0KBXJvdW5kGAQgASgFEhQKDHRhYmxlX251bWJlchgFIAEoBSIUChJDcmVhdGVTbG90UmVzcG9uc2UiawoRQXNzaWduU2xvdFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIRCglzbG90X25hbWUYAiABKAkSEAoIZGl2aXNpb24YAyABKAkSDQoFcm91bmQYBCABKAUSFAoMdGFibGVfbnVtYmVyGAUgASgFIhQKEkFzc2lnblNsb3RSZXNwb25zZSI8ChlHZXRTbG90Q3VycmVudEdhbWVSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJc2xvdF9uYW1lGAIgASgJIqsBChpHZXRTbG90Q3VycmVudEdhbWVSZXNwb25zZRIRCglnYW1lX3V1aWQYASABKAkSFAoMcGxheWVyMV9uYW1lGAIgASgJEhQKDHBsYXllcjJfbmFtZRgDIAEoCRIQCghkaXZpc2lvbhgEIAEoCRINCgVyb3VuZBgFIAEoBRIUCgx0YWJsZV9udW1iZXIYBiABKAUSFwoPYW5ub3RhdGlvbl9kb25lGAcgASgIIjQKEURlbGV0ZVNsb3RSZXF1ZXN0EgwKBHNsdWcYASABKAkSEQoJc2xvdF9uYW1lGAIgASgJIhQKEkRlbGV0ZVNsb3RSZXNwb25zZSKABAoRQnJvYWRjYXN0R2FtZVN0YXQSEQoJZ2FtZV91dWlkGAEgASgJEhAKCGRpdmlzaW9uGAIgASgJEg0KBXJvdW5kGAMgASgFEhQKDHRhYmxlX251bWJlchgEIAEoBRIUCgxwbGF5ZXIxX25hbWUYBSABKAkSFAoMcGxheWVyMl9uYW1lGAYgASgJEhYKDnBsYXllcjFfcmF0aW5nGAcgASgFEhYKDnBsYXllcjJfcmF0aW5nGAggASgFEhUKDXBsYXllcjFfc2NvcmUYCSABKAUSFQoNcGxheWVyMl9zY29yZRgKIAEoBRIOCgZ3aW5uZXIYCyABKAUSFgoOcGxheWVyMV9iaW5nb3MYDCABKAUSFgoOcGxheWVyMl9iaW5nb3MYDSABKAUSFgoObWF4X3BsYXlfc2NvcmUYDiABKAUSFQoNbWF4X3BsYXlfd29yZBgPIAEoCRISCgptb3ZlX2NvdW50GBAgASgFEhYKDndhbGtfb2ZmX2JpbmdvGBEgASgIEjAKDGNvbXBsZXRlZF9hdBgSIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFgoOY3VycmVudF9zY29yZTEYEyABKAUSFgoOY3VycmVudF9zY29yZTIYFCABKAUSGgoScGxheWVyMV9nb2VzX2ZpcnN0GBUgASgIIiwKHEdldEJyb2FkY2FzdEdhbWVTdGF0c1JlcXVlc3QSDAoEc2x1ZxgBIAEoCSJUCh1HZXRCcm9hZGNhc3RHYW1lU3RhdHNSZXNwb25zZRIzCgVzdGF0cxgBIAMoCzIkLmJyb2FkY2FzdF9zZXJ2aWNlLkJyb2FkY2FzdEdhbWVTdGF0IisKG0dldEJyb2FkY2FzdEFsbEdhbWVzUmVxdWVzdBIMCgRzbHVnGAEgASgJIlMKHEdldEJyb2FkY2FzdEFsbEdhbWVzUmVzcG9uc2USMwoFc3RhdHMYASADKAsyJC5icm9hZGNhc3Rfc2VydmljZS5Ccm9hZGNhc3RHYW1lU3RhdCq8AQoUU3RyZWFtU2xvdFRhcmdldEtpbmQSJwojU1RSRUFNX1NMT1RfVEFSR0VUX0tJTkRfVU5TUEVDSUZJRUQQABIgChxTVFJFQU1fU0xPVF9UQVJHRVRfS0lORF9OT05FEAESKgomU1RSRUFNX1NMT1RfVEFSR0VUX0tJTkRfQlJPQURDQVNUX1NMT1QQAhItCilTVFJFQU1fU0xPVF9UQVJHRVRfS0lORF9MQVRFU1RfQU5OT1RBVElPThADMrAWChBCcm9hZGNhc3RTZXJ2aWNlEmgKD0NyZWF0ZUJyb2FkY2FzdBIpLmJyb2FkY2FzdF9zZXJ2aWNlLkNyZWF0ZUJyb2FkY2FzdFJlcXVlc3QaKi5icm9hZGNhc3Rfc2VydmljZS5DcmVhdGVCcm9hZGNhc3RSZXNwb25zZRJfCgxHZXRCcm9hZGNhc3QSJi5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RSZXF1ZXN0GicuYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0UmVzcG9uc2USbgoRR2V0QnJvYWRjYXN0R2FtZXMSKy5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lc1JlcXVlc3QaLC5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lc1Jlc3BvbnNlEmgKD1VwZGF0ZUJyb2FkY2FzdBIpLmJyb2FkY2FzdF9zZXJ2aWNlLlVwZGF0ZUJyb2FkY2FzdFJlcXVlc3QaKi5icm9hZGNhc3Rfc2VydmljZS5VcGRhdGVCcm9hZGNhc3RSZXNwb25zZRJWCglDbGFpbUdhbWUSIy5icm9hZGNhc3Rfc2VydmljZS5DbGFpbUdhbWVSZXF1ZXN0GiQuYnJvYWRjYXN0X3NlcnZpY2UuQ2xhaW1HYW1lUmVzcG9uc2USXAoLVW5jbGFpbUdhbWUSJS5icm9hZGNhc3Rfc2VydmljZS5VbmNsYWltR2FtZVJlcXVlc3QaJi5icm9hZGNhc3Rfc2VydmljZS5VbmNsYWltR2FtZVJlc3BvbnNlEnoKFUFkZEJyb2FkY2FzdERpcmVjdG9ycxIvLmJyb2FkY2FzdF9zZXJ2aWNlLkFkZEJyb2FkY2FzdERpcmVjdG9yc1JlcXVlc3QaMC5icm9hZGNhc3Rfc2VydmljZS5BZGRCcm9hZGNhc3REaXJlY3RvcnNSZXNwb25zZRKDAQoYUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzEjIuYnJvYWRjYXN0X3NlcnZpY2UuUmVtb3ZlQnJvYWRjYXN0RGlyZWN0b3JzUmVxdWVzdBozLmJyb2FkY2FzdF9zZXJ2aWNlLlJlbW92ZUJyb2FkY2FzdERpcmVjdG9yc1Jlc3BvbnNlEn0KFkFkZEJyb2FkY2FzdEFubm90YXRvcnMSMC5icm9hZGNhc3Rfc2VydmljZS5BZGRCcm9hZGNhc3RBbm5vdGF0b3JzUmVxdWVzdBoxLmJyb2FkY2FzdF9zZXJ2aWNlLkFkZEJyb2FkY2FzdEFubm90YXRvcnNSZXNwb25zZRKGAQoZUmVtb3ZlQnJvYWRjYXN0QW5ub3RhdG9ycxIzLmJyb2FkY2FzdF9zZXJ2aWNlLlJlbW92ZUJyb2FkY2FzdEFubm90YXRvcnNSZXF1ZXN0GjQuYnJvYWRjYXN0X3NlcnZpY2UuUmVtb3ZlQnJvYWRjYXN0QW5ub3RhdG9yc1Jlc3BvbnNlEnQKE0dldEFjdGl2ZUJyb2FkY2FzdHMSLS5icm9hZGNhc3Rfc2VydmljZS5HZXRBY3RpdmVCcm9hZGNhc3RzUmVxdWVzdBouLmJyb2FkY2FzdF9zZXJ2aWNlLkdldEFjdGl2ZUJyb2FkY2FzdHNSZXNwb25zZRJrChBHZXRBbGxCcm9hZGNhc3RzEiouYnJvYWRjYXN0X3NlcnZpY2UuR2V0QWxsQnJvYWRjYXN0c1JlcXVlc3QaKy5icm9hZGNhc3Rfc2VydmljZS5HZXRBbGxCcm9hZGNhc3RzUmVzcG9uc2USXAoLVHJpZ2dlclBvbGwSJS5icm9hZGNhc3Rfc2VydmljZS5UcmlnZ2VyUG9sbFJlcXVlc3QaJi5icm9hZGNhc3Rfc2VydmljZS5UcmlnZ2VyUG9sbFJlc3BvbnNlEm4KEUdldE15Q2xhaW1lZEdhbWVzEisuYnJvYWRjYXN0X3NlcnZpY2UuR2V0TXlDbGFpbWVkR2FtZXNSZXF1ZXN0GiwuYnJvYWRjYXN0X3NlcnZpY2UuR2V0TXlDbGFpbWVkR2FtZXNSZXNwb25zZRKAAQoXR2V0QnJvYWRjYXN0R2FtZUNvbnRleHQSMS5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lQ29udGV4dFJlcXVlc3QaMi5icm9hZGNhc3Rfc2VydmljZS5HZXRCcm9hZGNhc3RHYW1lQ29udGV4dFJlc3BvbnNlElYKCUxpc3RTbG90cxIjLmJyb2FkY2FzdF9zZXJ2aWNlLkxpc3RTbG90c1JlcXVlc3QaJC5icm9hZGNhc3Rfc2VydmljZS5MaXN0U2xvdHNSZXNwb25zZRJxChJHZXRTbG90Q3VycmVudEdhbWUSLC5icm9hZGNhc3Rfc2VydmljZS5HZXRTbG90Q3VycmVudEdhbWVSZXF1ZXN0Gi0uYnJvYWRjYXN0X3NlcnZpY2UuR2V0U2xvdEN1cnJlbnRHYW1lUmVzcG9uc2USWQoKQ3JlYXRlU2xvdBIkLmJyb2FkY2FzdF9zZXJ2aWNlLkNyZWF0ZVNsb3RSZXF1ZXN0GiUuYnJvYWRjYXN0X3NlcnZpY2UuQ3JlYXRlU2xvdFJlc3BvbnNlElkKCkFzc2lnblNsb3QSJC5icm9hZGNhc3Rfc2VydmljZS5Bc3NpZ25TbG90UmVxdWVzdBolLmJyb2FkY2FzdF9zZXJ2aWNlLkFzc2lnblNsb3RSZXNwb25zZRJZCgpEZWxldGVTbG90EiQuYnJvYWRjYXN0X3NlcnZpY2UuRGVsZXRlU2xvdFJlcXVlc3QaJS5icm9hZGNhc3Rfc2VydmljZS5EZWxldGVTbG90UmVzcG9uc2USegoVR2V0QnJvYWRjYXN0R2FtZVN0YXRzEi8uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0R2FtZVN0YXRzUmVxdWVzdBowLmJyb2FkY2FzdF9zZXJ2aWNlLkdldEJyb2FkY2FzdEdhbWVTdGF0c1Jlc3BvbnNlEncKFEdldEJyb2FkY2FzdEFsbEdhbWVzEi4uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXF1ZXN0Gi8uYnJvYWRjYXN0X3NlcnZpY2UuR2V0QnJvYWRjYXN0QWxsR2FtZXNSZXNwb25zZRJuChFMaXN0TXlTdHJlYW1TbG90cxIrLmJyb2FkY2FzdF9zZXJ2aWNlLkxpc3RNeVN0cmVhbVNsb3RzUmVxdWVzdBosLmJyb2FkY2FzdF9zZXJ2aWNlLkxpc3RNeVN0cmVhbVNsb3RzUmVzcG9uc2USawoQQ3JlYXRlU3RyZWFtU2xvdBIqLmJyb2FkY2FzdF9zZXJ2aWNlLkNyZWF0ZVN0cmVhbVNsb3RSZXF1ZXN0GisuYnJvYWRjYXN0X3NlcnZpY2UuQ3JlYXRlU3RyZWFtU2xvdFJlc3BvbnNlEmgKD1BvaW50U3RyZWFtU2xvdBIpLmJyb2FkY2FzdF9zZXJ2aWNlLlBvaW50U3RyZWFtU2xvdFJlcXVlc3QaKi5icm9hZGNhc3Rfc2VydmljZS5Qb2ludFN0cmVhbVNsb3RSZXNwb25zZRJrChBEZWxldGVTdHJlYW1TbG90EiouYnJvYWRjYXN0X3NlcnZpY2UuRGVsZXRlU3RyZWFtU2xvdFJlcXVlc3QaKy5icm9hZGNhc3Rfc2VydmljZS5EZWxldGVTdHJlYW1TbG90UmVzcG9uc2VCzQEKFWNvbS5icm9hZGNhc3Rfc2VydmljZUIVQnJvYWRjYXN0U2VydmljZVByb3RvUAFaPWdpdGh1Yi5jb20vd29vZ2xlcy1pby9saXdvcmRzL3JwYy9hcGkvcHJvdG8vYnJvYWRjYXN0X3NlcnZpY2WiAgNCWFiqAhBCcm9hZGNhc3RTZXJ2aWNlygIQQnJvYWRjYXN0U2VydmljZeICHEJyb2FkY2FzdFNlcnZpY2VcR1BCTWV0YWRhdGHqAhBCcm9hZGNhc3RTZXJ2aWNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message broadcast_service.Broadcast
@@ -1001,6 +1001,14 @@ export type BroadcastSlot = Message<"broadcast_service.BroadcastSlot"> & {
    * @generated from field: int32 table_number = 4;
    */
   tableNumber: number;
+
+  /**
+   * How many user stream slots currently mirror this slot. The UI warns before
+   * deleting or re-pointing a slot somebody is streaming from.
+   *
+   * @generated from field: int32 stream_slot_count = 5;
+   */
+  streamSlotCount: number;
 };
 
 /**
@@ -1009,6 +1017,225 @@ export type BroadcastSlot = Message<"broadcast_service.BroadcastSlot"> & {
  */
 export const BroadcastSlotSchema: GenMessage<BroadcastSlot> = /*@__PURE__*/
   messageDesc(file_proto_broadcast_service_broadcast_service, 33);
+
+/**
+ * A StreamSlot is a user-owned, permanent OBS pointer.
+ * Its URL (/api/annotations/obs/user/<username>/<slot_name>/<field>) contains
+ * only the owner's username and the slot name, so it survives across
+ * broadcasts: switching what a stream covers is a re-point here, not an edit
+ * in OBS. Because the target kind is part of the slot rather than part of the
+ * URL, a slot can move between following your own annotations and mirroring a
+ * broadcast slot without the browser source changing.
+ *
+ * @generated from message broadcast_service.StreamSlot
+ */
+export type StreamSlot = Message<"broadcast_service.StreamSlot"> & {
+  /**
+   * @generated from field: string slot_name = 1;
+   */
+  slotName: string;
+
+  /**
+   * set only for BROADCAST_SLOT
+   *
+   * @generated from field: string target_broadcast_slug = 2;
+   */
+  targetBroadcastSlug: string;
+
+  /**
+   * @generated from field: string target_broadcast_name = 3;
+   */
+  targetBroadcastName: string;
+
+  /**
+   * @generated from field: string target_slot_name = 4;
+   */
+  targetSlotName: string;
+
+  /**
+   * Resolved target, for display in the management UI. Zero-valued when the
+   * slot is unpointed or its target broadcast slot no longer exists.
+   *
+   * @generated from field: string division = 5;
+   */
+  division: string;
+
+  /**
+   * @generated from field: int32 round = 6;
+   */
+  round: number;
+
+  /**
+   * @generated from field: int32 table_number = 7;
+   */
+  tableNumber: number;
+
+  /**
+   * empty if no game claimed at the target
+   *
+   * @generated from field: string game_uuid = 8;
+   */
+  gameUuid: string;
+
+  /**
+   * @generated from field: string player1_name = 9;
+   */
+  player1Name: string;
+
+  /**
+   * @generated from field: string player2_name = 10;
+   */
+  player2Name: string;
+
+  /**
+   * @generated from field: broadcast_service.StreamSlotTargetKind target_kind = 11;
+   */
+  targetKind: StreamSlotTargetKind;
+};
+
+/**
+ * Describes the message broadcast_service.StreamSlot.
+ * Use `create(StreamSlotSchema)` to create a new message.
+ */
+export const StreamSlotSchema: GenMessage<StreamSlot> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 34);
+
+/**
+ * @generated from message broadcast_service.ListMyStreamSlotsRequest
+ */
+export type ListMyStreamSlotsRequest = Message<"broadcast_service.ListMyStreamSlotsRequest"> & {
+};
+
+/**
+ * Describes the message broadcast_service.ListMyStreamSlotsRequest.
+ * Use `create(ListMyStreamSlotsRequestSchema)` to create a new message.
+ */
+export const ListMyStreamSlotsRequestSchema: GenMessage<ListMyStreamSlotsRequest> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 35);
+
+/**
+ * @generated from message broadcast_service.ListMyStreamSlotsResponse
+ */
+export type ListMyStreamSlotsResponse = Message<"broadcast_service.ListMyStreamSlotsResponse"> & {
+  /**
+   * @generated from field: repeated broadcast_service.StreamSlot slots = 1;
+   */
+  slots: StreamSlot[];
+};
+
+/**
+ * Describes the message broadcast_service.ListMyStreamSlotsResponse.
+ * Use `create(ListMyStreamSlotsResponseSchema)` to create a new message.
+ */
+export const ListMyStreamSlotsResponseSchema: GenMessage<ListMyStreamSlotsResponse> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 36);
+
+/**
+ * @generated from message broadcast_service.CreateStreamSlotRequest
+ */
+export type CreateStreamSlotRequest = Message<"broadcast_service.CreateStreamSlotRequest"> & {
+  /**
+   * @generated from field: string slot_name = 1;
+   */
+  slotName: string;
+};
+
+/**
+ * Describes the message broadcast_service.CreateStreamSlotRequest.
+ * Use `create(CreateStreamSlotRequestSchema)` to create a new message.
+ */
+export const CreateStreamSlotRequestSchema: GenMessage<CreateStreamSlotRequest> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 37);
+
+/**
+ * @generated from message broadcast_service.CreateStreamSlotResponse
+ */
+export type CreateStreamSlotResponse = Message<"broadcast_service.CreateStreamSlotResponse"> & {
+};
+
+/**
+ * Describes the message broadcast_service.CreateStreamSlotResponse.
+ * Use `create(CreateStreamSlotResponseSchema)` to create a new message.
+ */
+export const CreateStreamSlotResponseSchema: GenMessage<CreateStreamSlotResponse> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 38);
+
+/**
+ * @generated from message broadcast_service.PointStreamSlotRequest
+ */
+export type PointStreamSlotRequest = Message<"broadcast_service.PointStreamSlotRequest"> & {
+  /**
+   * @generated from field: string slot_name = 1;
+   */
+  slotName: string;
+
+  /**
+   * Required only for target_kind = BROADCAST_SLOT; ignored otherwise.
+   *
+   * @generated from field: string target_broadcast_slug = 2;
+   */
+  targetBroadcastSlug: string;
+
+  /**
+   * @generated from field: string target_slot_name = 3;
+   */
+  targetSlotName: string;
+
+  /**
+   * @generated from field: broadcast_service.StreamSlotTargetKind target_kind = 4;
+   */
+  targetKind: StreamSlotTargetKind;
+};
+
+/**
+ * Describes the message broadcast_service.PointStreamSlotRequest.
+ * Use `create(PointStreamSlotRequestSchema)` to create a new message.
+ */
+export const PointStreamSlotRequestSchema: GenMessage<PointStreamSlotRequest> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 39);
+
+/**
+ * @generated from message broadcast_service.PointStreamSlotResponse
+ */
+export type PointStreamSlotResponse = Message<"broadcast_service.PointStreamSlotResponse"> & {
+};
+
+/**
+ * Describes the message broadcast_service.PointStreamSlotResponse.
+ * Use `create(PointStreamSlotResponseSchema)` to create a new message.
+ */
+export const PointStreamSlotResponseSchema: GenMessage<PointStreamSlotResponse> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 40);
+
+/**
+ * @generated from message broadcast_service.DeleteStreamSlotRequest
+ */
+export type DeleteStreamSlotRequest = Message<"broadcast_service.DeleteStreamSlotRequest"> & {
+  /**
+   * @generated from field: string slot_name = 1;
+   */
+  slotName: string;
+};
+
+/**
+ * Describes the message broadcast_service.DeleteStreamSlotRequest.
+ * Use `create(DeleteStreamSlotRequestSchema)` to create a new message.
+ */
+export const DeleteStreamSlotRequestSchema: GenMessage<DeleteStreamSlotRequest> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 41);
+
+/**
+ * @generated from message broadcast_service.DeleteStreamSlotResponse
+ */
+export type DeleteStreamSlotResponse = Message<"broadcast_service.DeleteStreamSlotResponse"> & {
+};
+
+/**
+ * Describes the message broadcast_service.DeleteStreamSlotResponse.
+ * Use `create(DeleteStreamSlotResponseSchema)` to create a new message.
+ */
+export const DeleteStreamSlotResponseSchema: GenMessage<DeleteStreamSlotResponse> = /*@__PURE__*/
+  messageDesc(file_proto_broadcast_service_broadcast_service, 42);
 
 /**
  * @generated from message broadcast_service.ListSlotsRequest
@@ -1025,7 +1252,7 @@ export type ListSlotsRequest = Message<"broadcast_service.ListSlotsRequest"> & {
  * Use `create(ListSlotsRequestSchema)` to create a new message.
  */
 export const ListSlotsRequestSchema: GenMessage<ListSlotsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 34);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 43);
 
 /**
  * @generated from message broadcast_service.ListSlotsResponse
@@ -1042,7 +1269,7 @@ export type ListSlotsResponse = Message<"broadcast_service.ListSlotsResponse"> &
  * Use `create(ListSlotsResponseSchema)` to create a new message.
  */
 export const ListSlotsResponseSchema: GenMessage<ListSlotsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 35);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 44);
 
 /**
  * @generated from message broadcast_service.CreateSlotRequest
@@ -1081,7 +1308,7 @@ export type CreateSlotRequest = Message<"broadcast_service.CreateSlotRequest"> &
  * Use `create(CreateSlotRequestSchema)` to create a new message.
  */
 export const CreateSlotRequestSchema: GenMessage<CreateSlotRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 36);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 45);
 
 /**
  * @generated from message broadcast_service.CreateSlotResponse
@@ -1094,7 +1321,7 @@ export type CreateSlotResponse = Message<"broadcast_service.CreateSlotResponse">
  * Use `create(CreateSlotResponseSchema)` to create a new message.
  */
 export const CreateSlotResponseSchema: GenMessage<CreateSlotResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 37);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 46);
 
 /**
  * @generated from message broadcast_service.AssignSlotRequest
@@ -1133,7 +1360,7 @@ export type AssignSlotRequest = Message<"broadcast_service.AssignSlotRequest"> &
  * Use `create(AssignSlotRequestSchema)` to create a new message.
  */
 export const AssignSlotRequestSchema: GenMessage<AssignSlotRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 38);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 47);
 
 /**
  * @generated from message broadcast_service.AssignSlotResponse
@@ -1146,7 +1373,7 @@ export type AssignSlotResponse = Message<"broadcast_service.AssignSlotResponse">
  * Use `create(AssignSlotResponseSchema)` to create a new message.
  */
 export const AssignSlotResponseSchema: GenMessage<AssignSlotResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 39);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 48);
 
 /**
  * @generated from message broadcast_service.GetSlotCurrentGameRequest
@@ -1168,7 +1395,7 @@ export type GetSlotCurrentGameRequest = Message<"broadcast_service.GetSlotCurren
  * Use `create(GetSlotCurrentGameRequestSchema)` to create a new message.
  */
 export const GetSlotCurrentGameRequestSchema: GenMessage<GetSlotCurrentGameRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 40);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 49);
 
 /**
  * @generated from message broadcast_service.GetSlotCurrentGameResponse
@@ -1217,7 +1444,7 @@ export type GetSlotCurrentGameResponse = Message<"broadcast_service.GetSlotCurre
  * Use `create(GetSlotCurrentGameResponseSchema)` to create a new message.
  */
 export const GetSlotCurrentGameResponseSchema: GenMessage<GetSlotCurrentGameResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 41);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 50);
 
 /**
  * @generated from message broadcast_service.DeleteSlotRequest
@@ -1239,7 +1466,7 @@ export type DeleteSlotRequest = Message<"broadcast_service.DeleteSlotRequest"> &
  * Use `create(DeleteSlotRequestSchema)` to create a new message.
  */
 export const DeleteSlotRequestSchema: GenMessage<DeleteSlotRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 42);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 51);
 
 /**
  * @generated from message broadcast_service.DeleteSlotResponse
@@ -1252,7 +1479,7 @@ export type DeleteSlotResponse = Message<"broadcast_service.DeleteSlotResponse">
  * Use `create(DeleteSlotResponseSchema)` to create a new message.
  */
 export const DeleteSlotResponseSchema: GenMessage<DeleteSlotResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 43);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 52);
 
 /**
  * BroadcastGameStat is the pre-computed stats for a single annotated game.
@@ -1388,7 +1615,7 @@ export type BroadcastGameStat = Message<"broadcast_service.BroadcastGameStat"> &
  * Use `create(BroadcastGameStatSchema)` to create a new message.
  */
 export const BroadcastGameStatSchema: GenMessage<BroadcastGameStat> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 44);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 53);
 
 /**
  * @generated from message broadcast_service.GetBroadcastGameStatsRequest
@@ -1405,7 +1632,7 @@ export type GetBroadcastGameStatsRequest = Message<"broadcast_service.GetBroadca
  * Use `create(GetBroadcastGameStatsRequestSchema)` to create a new message.
  */
 export const GetBroadcastGameStatsRequestSchema: GenMessage<GetBroadcastGameStatsRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 45);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 54);
 
 /**
  * @generated from message broadcast_service.GetBroadcastGameStatsResponse
@@ -1422,7 +1649,7 @@ export type GetBroadcastGameStatsResponse = Message<"broadcast_service.GetBroadc
  * Use `create(GetBroadcastGameStatsResponseSchema)` to create a new message.
  */
 export const GetBroadcastGameStatsResponseSchema: GenMessage<GetBroadcastGameStatsResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 46);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 55);
 
 /**
  * @generated from message broadcast_service.GetBroadcastAllGamesRequest
@@ -1439,7 +1666,7 @@ export type GetBroadcastAllGamesRequest = Message<"broadcast_service.GetBroadcas
  * Use `create(GetBroadcastAllGamesRequestSchema)` to create a new message.
  */
 export const GetBroadcastAllGamesRequestSchema: GenMessage<GetBroadcastAllGamesRequest> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 47);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 56);
 
 /**
  * @generated from message broadcast_service.GetBroadcastAllGamesResponse
@@ -1456,7 +1683,47 @@ export type GetBroadcastAllGamesResponse = Message<"broadcast_service.GetBroadca
  * Use `create(GetBroadcastAllGamesResponseSchema)` to create a new message.
  */
 export const GetBroadcastAllGamesResponseSchema: GenMessage<GetBroadcastAllGamesResponse> = /*@__PURE__*/
-  messageDesc(file_proto_broadcast_service_broadcast_service, 48);
+  messageDesc(file_proto_broadcast_service_broadcast_service, 57);
+
+/**
+ * What a StreamSlot currently follows.
+ *
+ * @generated from enum broadcast_service.StreamSlotTargetKind
+ */
+export enum StreamSlotTargetKind {
+  /**
+   * @generated from enum value: STREAM_SLOT_TARGET_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Nothing pointed yet — the OBS URL renders the placeholder.
+   *
+   * @generated from enum value: STREAM_SLOT_TARGET_KIND_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * Mirrors a broadcast slot, so it follows whatever table that event features.
+   *
+   * @generated from enum value: STREAM_SLOT_TARGET_KIND_BROADCAST_SLOT = 2;
+   */
+  BROADCAST_SLOT = 2,
+
+  /**
+   * Follows the owner's most recently edited annotated game. Lets someone
+   * stream without creating a broadcast at all.
+   *
+   * @generated from enum value: STREAM_SLOT_TARGET_KIND_LATEST_ANNOTATION = 3;
+   */
+  LATEST_ANNOTATION = 3,
+}
+
+/**
+ * Describes the enum broadcast_service.StreamSlotTargetKind.
+ */
+export const StreamSlotTargetKindSchema: GenEnum<StreamSlotTargetKind> = /*@__PURE__*/
+  enumDesc(file_proto_broadcast_service_broadcast_service, 0);
 
 /**
  * @generated from service broadcast_service.BroadcastService
@@ -1637,6 +1904,38 @@ export const BroadcastService: GenService<{
     methodKind: "unary";
     input: typeof GetBroadcastAllGamesRequestSchema;
     output: typeof GetBroadcastAllGamesResponseSchema;
+  },
+  /**
+   * @generated from rpc broadcast_service.BroadcastService.ListMyStreamSlots
+   */
+  listMyStreamSlots: {
+    methodKind: "unary";
+    input: typeof ListMyStreamSlotsRequestSchema;
+    output: typeof ListMyStreamSlotsResponseSchema;
+  },
+  /**
+   * @generated from rpc broadcast_service.BroadcastService.CreateStreamSlot
+   */
+  createStreamSlot: {
+    methodKind: "unary";
+    input: typeof CreateStreamSlotRequestSchema;
+    output: typeof CreateStreamSlotResponseSchema;
+  },
+  /**
+   * @generated from rpc broadcast_service.BroadcastService.PointStreamSlot
+   */
+  pointStreamSlot: {
+    methodKind: "unary";
+    input: typeof PointStreamSlotRequestSchema;
+    output: typeof PointStreamSlotResponseSchema;
+  },
+  /**
+   * @generated from rpc broadcast_service.BroadcastService.DeleteStreamSlot
+   */
+  deleteStreamSlot: {
+    methodKind: "unary";
+    input: typeof DeleteStreamSlotRequestSchema;
+    output: typeof DeleteStreamSlotResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_broadcast_service_broadcast_service, 0);
