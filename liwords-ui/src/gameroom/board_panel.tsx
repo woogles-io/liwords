@@ -78,7 +78,12 @@ import { useClient } from "../utils/hooks/connect";
 import { GameMetadataService } from "../gen/api/proto/game_service/game_service_pb";
 
 import { RackEditor } from "./rack_editor";
-import { shuffleLetters, gcgExport, backupKey } from "./board_panel_utils";
+import {
+  shuffleLetters,
+  gcgExport,
+  backupKey,
+  needsFullReset,
+} from "./board_panel_utils";
 import { handleBlindfoldKeydown } from "./blindfold_mode";
 import { useBoardPanelState } from "./useBoardPanelState";
 import { useTilePlacement } from "./useTilePlacement";
@@ -393,6 +398,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const clearBackupRef = useRef<boolean>(false);
   const lastLettersRef = useRef<Array<MachineLetter>>(undefined);
+  const lastNumEventsRef = useRef<number>(undefined);
   const lastRackRef = useRef<Array<MachineLetter>>(undefined);
   const lastIsExaminingRef = useRef<boolean>(undefined);
   const readOnlyEffectDependenciesRef = useRef<{
@@ -424,97 +430,26 @@ export const BoardPanel = React.memo((props: Props) => {
       lastIsExaminingRef.current = isExamining;
       backupStatesRef.current.clear();
     }
-    let fullReset = false;
     const lastLetters = lastLettersRef.current;
     const dep = readOnlyEffectDependenciesRef.current!;
-    if (lastLetters === undefined) {
-      // First load.
-      fullReset = true;
-    } else if (props.puzzleMode) {
-      // XXX: Without this, when exiting from examining an earlier turn on
-      // puzzle mode, it does not reset the rack to the latest rack. Why?
-      fullReset = true;
-    } else if (props.boardEditingMode) {
-      // See comment above. I don't know why it doesn't show the latest rack
-      // when we edit more than once.
-      fullReset = true;
-    } else if (
-      JSON.stringify(
-        [
-          ...[...dep.placedTiles].map((ephemeralTile) => {
-            const ml = ephemeralTile.letter;
-            return (ml & 0x80) !== 0 ? 0 : ml;
-          }),
-          ...dep.displayedRack.filter((ml) => ml !== 0x80),
-        ].sort(),
-      ) !== JSON.stringify([...props.currentRack].sort())
-    ) {
-      // First load after receiving rack.
-      // Or other cases where the tiles don't match up.
-      fullReset = true;
-    } else if (isExamining) {
-      // Prevent stuck tiles.
-      fullReset = true;
-    } else if (!dep.isMyTurn) {
-      // Opponent's turn usually means we have just made a move. (Assumption:
-      // there are only two players.) But a GameHistoryRefresher can also
-      // arrive mid-turn without any move being made (e.g. the opponent's
-      // clock was given more time), in which case the board is unchanged and
-      // tentatively placed tiles should be left alone.
-      const lettersChanged =
-        lastLetters.length !== props.board.letters.length ||
-        lastLetters.some((ml, idx) => ml !== props.board.letters[idx]);
-      if (lettersChanged) {
-        fullReset = true;
-      }
-    } else {
-      // Opponent just did something. Check if it affects any premove.
-      // TODO: revisit when supporting non-square boards.
-      const letterAt = (
-        row: number,
-        col: number,
-        letters: Array<MachineLetter>,
-      ) =>
-        row < 0 || row >= dep.dim || col < 0 || col >= dep.dim
-          ? null
-          : letters[row * dep.dim + col];
-      const letterChanged = (row: number, col: number) =>
-        letterAt(row, col, lastLetters) !==
-        letterAt(row, col, props.board.letters);
-      const hookChanged = (
-        row: number,
-        col: number,
-        drow: number,
-        dcol: number,
-      ) => {
-        while (true) {
-          row += drow;
-          col += dcol;
-          if (letterChanged(row, col)) return true;
-          const letter = letterAt(row, col, props.board.letters);
-          if (letter === null || letter === EmptyBoardSpaceMachineLetter) {
-            return false;
-          }
-        }
-      };
-      const placedTileAffected = (row: number, col: number) =>
-        letterChanged(row, col) ||
-        hookChanged(row, col, -1, 0) ||
-        hookChanged(row, col, +1, 0) ||
-        hookChanged(row, col, 0, -1) ||
-        hookChanged(row, col, 0, +1);
-      // If no tiles have been placed, but placement arrow is shown,
-      // reset based on if that position is affected.
-      // This avoids having the placement arrow behind a tile.
-      if (
-        (dep.placedTiles.size === 0 && dep.arrowProperties.show
-          ? [dep.arrowProperties as { row: number; col: number }]
-          : Array.from(dep.placedTiles)
-        ).some(({ row, col }) => placedTileAffected(row, col))
-      ) {
-        fullReset = true;
-      }
-    }
+    const fullReset = needsFullReset({
+      lastLetters,
+      letters: props.board.letters,
+      dim: dep.dim,
+      currentRack: props.currentRack,
+      displayedRack: dep.displayedRack,
+      placedTiles: dep.placedTiles,
+      arrowProperties: dep.arrowProperties,
+      isMyTurn: dep.isMyTurn,
+      isExamining,
+      puzzleMode: props.puzzleMode,
+      boardEditingMode: props.boardEditingMode,
+      // Several events can arrive in the same packet, in which case the board
+      // never renders in between them. Watching the board alone is therefore
+      // not enough to tell a move apart from a mere refresher.
+      numEventsChanged: lastNumEventsRef.current !== props.events.length,
+      justCommitted: clearBackupRef.current,
+    });
     const bak = backupStatesRef.current.get(
       backupKey(props.board.letters, props.currentRack),
     );
@@ -574,6 +509,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
     }
     lastLettersRef.current = props.board.letters;
+    lastNumEventsRef.current = props.events.length;
     lastRackRef.current = props.currentRack;
   }, [
     isExamining,
@@ -581,6 +517,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.board.letters,
     props.boardEditingMode,
     props.currentRack,
+    props.events.length,
     props.puzzleMode,
     setArrowProperties,
     setDisplayedRack,
