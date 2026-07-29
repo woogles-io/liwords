@@ -29,6 +29,8 @@ export const defaultLetterDistribution = (lexicon: string): string => {
     return "polish";
   } else if (lowercasedLexicon.startsWith("file")) {
     return "spanish";
+  } else if (lowercasedLexicon.startsWith("slv")) {
+    return "slovene";
   } else {
     return "english";
   }

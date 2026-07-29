@@ -17,9 +17,9 @@ enum GameEndReason {
   STANDARD = 2;
   // 6 consecutive zeroes ends the game.
   CONSECUTIVE_ZEROES = 3;
-  RESIGNED = 4;
+  RESIGNED           = 4;
   // Aborted games are aborted by mutual agreement.
-  ABORTED = 5;
+  ABORTED          = 5;
   TRIPLE_CHALLENGE = 6;
   // CANCELLED means the game never started. Game start signal was not sent.
   CANCELLED = 7;
@@ -35,14 +35,14 @@ enum GameEndReason {
 message ClientGameplayEvent {
   enum EventType {
     TILE_PLACEMENT = 0;
-    PASS = 1;
-    EXCHANGE = 2;
+    PASS           = 1;
+    EXCHANGE       = 2;
     CHALLENGE_PLAY = 3;
-    RESIGN = 4;
+    RESIGN         = 4;
   }
 
-  EventType type = 1;
-  string game_id = 2;
+  EventType type    = 1;
+  string    game_id = 2;
   // position coordinates, like H8 or G10. Only matters for TILE_PLACEMENT.
   string position_coords = 3;
   // tiles that are being played (or exchanged). The `.` character is used
@@ -63,7 +63,7 @@ message GameRules {
   // The supported board layout names are CrosswordGame and SuperCrosswordGame
   string board_layout_name = 1;
   // The supported letter distributions are english, french, norwegian, german,
-  // catalan, spanish. There are more to come!
+  // catalan, spanish, slovene. There are more to come!
   string letter_distribution_name = 2;
   // Use "classic" for our classic game, otherwise it could be some other game
   // (a is worth 100, dogworms, etc.)
@@ -71,12 +71,12 @@ message GameRules {
 }
 
 enum GameMode {
-  REAL_TIME = 0;
+  REAL_TIME      = 0;
   CORRESPONDENCE = 1;
 }
 
 enum RatingMode {
-  RATED = 0;
+  RATED  = 0;
   CASUAL = 1;
 }
 
@@ -88,23 +88,23 @@ enum GameType {
   // An ANNOTATED game does not feature Woogles players, but is instead
   // created by a broadcaster/annotator to represent a real-life game.
   // It is created using the liwords "editor" mode or by importing a GCG.
-  ANNOTATED = 1;
+  ANNOTATED  = 1;
   BOT_VS_BOT = 2;
 }
 
 message GameRequest {
-  string lexicon = 1;
-  GameRules rules = 2;
-  int32 initial_time_seconds = 3;
-  int32 increment_seconds = 4;
-  macondo.ChallengeRule challenge_rule = 5;
-  GameMode game_mode = 6;
-  RatingMode rating_mode = 7;
-  string request_id = 8;
-  int32 max_overtime_minutes = 9;
-  bool player_vs_bot = 10;
-  string original_request_id = 11;
-  macondo.BotRequest.BotCode bot_type = 12;
+  string                     lexicon              = 1;
+  GameRules                  rules                = 2;
+  int32                      initial_time_seconds = 3;
+  int32                      increment_seconds    = 4;
+  macondo.ChallengeRule      challenge_rule       = 5;
+  GameMode                   game_mode            = 6;
+  RatingMode                 rating_mode          = 7;
+  string                     request_id           = 8;
+  int32                      max_overtime_minutes = 9;
+  bool                       player_vs_bot        = 10;
+  string                     original_request_id  = 11;
+  macondo.BotRequest.BotCode bot_type             = 12;
   // time_bank_minutes is the number of minutes of time bank for correspondence games.
   // When a player exceeds their per-turn time (increment_seconds), the deficit is
   // deducted from their time bank. Player times out only when time bank is exhausted.
@@ -118,22 +118,22 @@ message GameMetaEvent {
     REQUEST_ABORT = 0;
     // Adjudication is just seen as a "nudge" on the front end.
     REQUEST_ADJUDICATION = 1;
-    REQUEST_UNDO = 2;
-    REQUEST_ADJOURN = 3; // Are we going to implement this someday?
+    REQUEST_UNDO         = 2;
+    REQUEST_ADJOURN      = 3; // Are we going to implement this someday?
 
     // And these are responses:
     // A user can accept an abort, or the client will auto-accept when time
     // expires:
     ABORT_ACCEPTED = 4;
-    ABORT_DENIED = 5;
+    ABORT_DENIED   = 5;
     // A user would not accept an adjudication. The client auto-accepts this
     // when time expires
     ADJUDICATION_ACCEPTED = 6;
     // An adjudication is denied when the receiver responds positively to a
     // nudge.
     ADJUDICATION_DENIED = 7;
-    UNDO_ACCEPTED = 8;
-    UNDO_DENIED = 9;
+    UNDO_ACCEPTED       = 8;
+    UNDO_DENIED         = 9;
 
     // More:
     ADD_TIME = 10; // add X seconds at a time (30?) to opponent's clock
@@ -142,13 +142,12 @@ message GameMetaEvent {
     // original event id after time has expired.
     TIMER_EXPIRED = 11;
   }
-  string orig_event_id = 1;
-  google.protobuf.Timestamp timestamp = 2;
-  EventType type = 3;
-  string player_id = 4; // the player that performed the event.
-  string game_id = 5;
-  int32 expiry =
-      6; // how long should this event remain active, in milliseconds?
+  string                    orig_event_id = 1;
+  google.protobuf.Timestamp timestamp     = 2;
+  EventType                 type          = 3;
+  string                    player_id     = 4; // the player that performed the event.
+  string                    game_id       = 5;
+  int32                     expiry        = 6; // how long should this event remain active, in milliseconds?
   // 4M seconds should be enough for an event of this type.
 }
 
@@ -171,8 +170,8 @@ message GameHistoryRefresher {
   // as of the "refresher", in milliseconds.
   // player1 is the player who is listed first in the game history, regardless
   // of whether they went first.
-  int32 time_player1 = 2;
-  int32 time_player2 = 3;
+  int32 time_player1         = 2;
+  int32 time_player2         = 3;
   int32 max_overtime_minutes = 4;
   // outstanding_event refers to any possible outstanding game meta event that
   // has not yet been responded to or expired.
@@ -190,22 +189,22 @@ message GameDocumentEvent { ipc.GameDocument doc = 1; }
 
 message TournamentDataForGame {
   // The ID of the tournament
-  string tid = 1;
-  string division = 2;
-  int32 round = 3;
-  int32 game_index = 4;
+  string tid        = 1;
+  string division   = 2;
+  int32  round      = 3;
+  int32  game_index = 4;
 }
 
 // Meta information about the player of a particular game.
 message PlayerInfo {
-  string user_id = 1;
-  string nickname = 2;
-  string full_name = 3;
+  string user_id      = 1;
+  string nickname     = 2;
+  string full_name    = 3;
   string country_code = 4;
   // Rating for the particular mode of the game. String because it could be
   // provisional or some other strings.
   string rating = 5;
-  string title = 6;
+  string title  = 6;
   // string avatar_url = 7; // the UserService now offers Avatar info
   bool is_bot = 8;
   // first is true if the player went first. This is deprecated because it
@@ -214,29 +213,29 @@ message PlayerInfo {
 }
 
 message GameInfoResponse {
-  repeated PlayerInfo players = 1;
-  string time_control_name = 4;
-  string tournament_id = 6;
+  repeated PlayerInfo players           = 1;
+  string              time_control_name = 4;
+  string              tournament_id     = 6;
   // done - is game done?
   // bool done = 9;
-  ipc.GameEndReason game_end_reason = 11;
-  repeated int32 scores = 13;
-  int32 winner = 14;
-  google.protobuf.Timestamp created_at = 15;
-  string game_id = 16;
-  google.protobuf.Timestamp last_update = 18;
+  ipc.GameEndReason         game_end_reason = 11;
+  repeated int32            scores          = 13;
+  int32                     winner          = 14;
+  google.protobuf.Timestamp created_at      = 15;
+  string                    game_id         = 16;
+  google.protobuf.Timestamp last_update     = 18;
 
-  ipc.GameRequest game_request = 19;
-  string tournament_division = 20;
-  int32 tournament_round = 21;
+  ipc.GameRequest game_request        = 19;
+  string          tournament_division = 20;
+  int32           tournament_round    = 21;
   // a game index within a round.
-  int32 tournament_game_index = 22;
-  GameType type = 23;
+  int32    tournament_game_index = 22;
+  GameType type                  = 23;
   // Index of the player whose turn it is (0 or 1). Optional for backwards
   // compatibility.
   optional uint32 player_on_turn = 24;
   // League information
-  string league_id = 25;
+  string league_id   = 25;
   string league_slug = 26;
   // time_bank is the current remaining time bank per player, in milliseconds.
   // Populated for active correspondence/league games so clients can compute the
@@ -250,10 +249,10 @@ message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
 // InstantiateGame is an internal message passed to gamesvc in order to
 // instantiate a game.
 message InstantiateGame {
-  repeated string user_ids = 1;
-  GameRequest game_request = 2;
+  repeated string user_ids     = 1;
+  GameRequest     game_request = 2;
   // assigned_first is -1 if random, or the player index in user_ids otherwise
-  int32 assigned_first = 3;
+  int32                 assigned_first  = 3;
   TournamentDataForGame tournament_data = 4;
 }
 
@@ -261,13 +260,13 @@ message GameDeletion { string id = 1; }
 
 message ActiveGamePlayer {
   string username = 1;
-  string user_id = 2;
+  string user_id  = 2;
 }
 
 message ActiveGameEntry {
-  string id = 1;
+  string                    id     = 1;
   repeated ActiveGamePlayer player = 2;
-  int64 ttl = 3; // time to live, in seconds
+  int64                     ttl    = 3; // time to live, in seconds
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -278,13 +277,13 @@ message ReadyForGame { string game_id = 1; }
 // XXX: This message type is obsolete and will be replaced by
 // ServerOMGWordsEvent
 message ServerGameplayEvent {
-  macondo.GameEvent event = 1; // XXX: move to ipc.GameEvent
-  string game_id = 2;
-  string new_rack = 3;
-  int32 time_remaining = 4;
-  macondo.PlayState playing = 5; // XXX: move to ipc.PlayState
-  string user_id = 6; // the event has the nickname, but not the userid.
-  int32 time_bank = 7; // time bank remaining for the player who just moved, in milliseconds
+  macondo.GameEvent event          = 1; // XXX: move to ipc.GameEvent
+  string            game_id        = 2;
+  string            new_rack       = 3;
+  int32             time_remaining = 4;
+  macondo.PlayState playing        = 5; // XXX: move to ipc.PlayState
+  string            user_id        = 6; // the event has the nickname, but not the userid.
+  int32             time_bank      = 7; // time bank remaining for the player who just moved, in milliseconds
   // opponent_rack is populated for annotated games to keep frontend state in sync
   // when rack inference borrows tiles from opponent
   string opponent_rack = 8;
@@ -292,12 +291,12 @@ message ServerGameplayEvent {
 
 // ServerOMGWordsEvent is a new event type.
 message ServerOMGWordsEvent {
-  GameEvent event = 1;
-  string game_id = 2;
-  bytes new_rack = 3;
-  int32 time_remaining = 4;
-  PlayState playing = 5;
-  string user_id = 6;
+  GameEvent event          = 1;
+  string    game_id        = 2;
+  bytes     new_rack       = 3;
+  int32     time_remaining = 4;
+  PlayState playing        = 5;
+  string    user_id        = 6;
   // opponent_rack is populated for annotated games to keep frontend state in sync
   // when rack inference borrows tiles from opponent
   bytes opponent_rack = 7;
@@ -314,28 +313,28 @@ message ServerOMGWordsEvent {
 // XXX: This message type is obsolete, and will be replaced by
 // OMGWordsChallengeResultEvent
 message ServerChallengeResultEvent {
-  bool valid = 1;
-  string challenger = 2;
+  bool                  valid          = 1;
+  string                challenger     = 2;
   macondo.ChallengeRule challenge_rule = 3;
-  string returned_tiles = 4;
+  string                returned_tiles = 4;
 }
 
 message OMGWordsChallengeResultEvent {
-  bool valid = 1;
-  string challenger = 2;
+  bool          valid          = 1;
+  string        challenger     = 2;
   ChallengeRule challenge_rule = 3;
-  bytes returned_tiles = 4;
+  bytes         returned_tiles = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
 message GameEndedEvent {
-  map<string, int32> scores = 1;
+  map<string, int32> scores      = 1;
   map<string, int32> new_ratings = 2;
-  GameEndReason end_reason = 3;
+  GameEndReason      end_reason  = 3;
   // The winner is not always the highest scoring player; one player can
   // time out. The end_reason should make it clear what happened.
   string winner = 4;
-  string loser = 5;
+  string loser  = 5;
   // If it was a tie, the winner and loser above can be interchanged.
   bool tie = 6;
   // Time that the game ended
@@ -359,7 +358,7 @@ message NewGameEvent {
   string game_id = 1;
   // These are the connection IDs of the requesting and accepting users.
   string requester_cid = 2;
-  string accepter_cid = 3;
+  string accepter_cid  = 3;
 }
 
 message TimedOut {
@@ -370,13 +369,13 @@ message TimedOut {
 // GameEvent is an internal game event, saved in the GameDocument.
 message GameEvent {
   enum Type {
-    TILE_PLACEMENT_MOVE = 0;
+    TILE_PLACEMENT_MOVE  = 0;
     PHONY_TILES_RETURNED = 1;
-    PASS = 2;
-    CHALLENGE_BONUS = 3;
-    EXCHANGE = 4;
-    END_RACK_PTS = 5;
-    TIME_PENALTY = 6;
+    PASS                 = 2;
+    CHALLENGE_BONUS      = 3;
+    EXCHANGE             = 4;
+    END_RACK_PTS         = 5;
+    TIME_PENALTY         = 6;
     // Only for international rules (or after 6 zeroes)
     END_RACK_PENALTY = 7;
     // Lose a turn for challenging a word incorrectly (only for double
@@ -385,36 +384,36 @@ message GameEvent {
     // Issue a challenge
     CHALLENGE = 9;
     TIMED_OUT = 10;
-    RESIGNED = 11;
+    RESIGNED  = 11;
   }
 
   enum Direction {
     HORIZONTAL = 0;
-    VERTICAL = 1;
+    VERTICAL   = 1;
   }
-  string note = 2;
-  bytes rack = 3;
-  Type type = 4;
-  int32 cumulative = 5;
-  int32 row = 6;
-  int32 column = 7;
-  Direction direction = 8;
-  string position = 9;
-  bytes played_tiles = 10;
+  string    note         = 2;
+  bytes     rack         = 3;
+  Type      type         = 4;
+  int32     cumulative   = 5;
+  int32     row          = 6;
+  int32     column       = 7;
+  Direction direction    = 8;
+  string    position     = 9;
+  bytes     played_tiles = 10;
   // An event will not have all of these; it depends on the type of the event.
-  bytes exchanged = 11;
-  int32 score = 12;
-  int32 bonus = 13;
+  bytes exchanged       = 11;
+  int32 score           = 12;
+  int32 bonus           = 13;
   int32 end_rack_points = 14;
-  int32 lost_score = 15;
+  int32 lost_score      = 15;
 
   bool is_bingo = 16;
   // words_formed is a list of all words made by this play
-  repeated bytes words_formed = 17;
-  int32 millis_remaining = 18;
+  repeated bytes words_formed     = 17;
+  int32          millis_remaining = 18;
   // The player who played this move is encoded in player_index. This should
   // be the index in GameDocument.players.
-  uint32 player_index = 19;
+  uint32          player_index          = 19;
   repeated string words_formed_friendly = 20;
 
   // For CHALLENGE events, indices of words that were challenged.
@@ -423,19 +422,19 @@ message GameEvent {
 }
 
 enum PlayState {
-  PLAYING = 0;
+  PLAYING                = 0;
   WAITING_FOR_FINAL_PASS = 1;
-  GAME_OVER = 2;
-  UNSTARTED = 3;
+  GAME_OVER              = 2;
+  UNSTARTED              = 3;
 }
 
 enum ChallengeRule {
-  ChallengeRule_VOID = 0;
-  ChallengeRule_SINGLE = 1;
-  ChallengeRule_DOUBLE = 2;
+  ChallengeRule_VOID       = 0;
+  ChallengeRule_SINGLE     = 1;
+  ChallengeRule_DOUBLE     = 2;
   ChallengeRule_FIVE_POINT = 3;
-  ChallengeRule_TEN_POINT = 4;
-  ChallengeRule_TRIPLE = 5;
+  ChallengeRule_TEN_POINT  = 4;
+  ChallengeRule_TRIPLE     = 5;
 }
 
 message Timers {
@@ -472,8 +471,8 @@ message GameBoard {
   int32 num_rows = 1;
   int32 num_cols = 2;
   // tiles are laid out in row-major form
-  bytes tiles = 3;
-  bool is_empty = 4;
+  bytes tiles    = 3;
+  bool  is_empty = 4;
   //   repeated int32 h_cross_scores = 4;
   //   repeated int32 v_cross_scores = 5;
 }
@@ -486,27 +485,27 @@ message Bag { bytes tiles = 1; }
 // from a GameDocument state at any given time.
 message GameDocument {
   message MinimalPlayerInfo {
-    string nickname = 1;
+    string nickname  = 1;
     string real_name = 2;
     // user_id is an internal, unchangeable user ID, whereas the other two user
     // identifiers might possibly be mutable.
     string user_id = 3;
-    bool quit = 4;
+    bool   quit    = 4;
   }
   // players are in order of who went first.
   repeated MinimalPlayerInfo players = 1;
 
   repeated GameEvent events = 2;
 
-  uint32 version = 3;
-  string lexicon = 4;
-  string uid = 5;
-  string description = 6;
-  repeated bytes racks = 7;
-  ChallengeRule challenge_rule = 8;
-  PlayState play_state = 9;
+  uint32         version        = 3;
+  string         lexicon        = 4;
+  string         uid            = 5;
+  string         description    = 6;
+  repeated bytes racks          = 7;
+  ChallengeRule  challenge_rule = 8;
+  PlayState      play_state     = 9;
   repeated int32 current_scores = 10;
-  string variant = 11;
+  string         variant        = 11;
   // The index of the player who won, or -1 if it was a tie.
   int32 winner = 12;
   // The board layout is just the name for the layout of the board.
@@ -514,20 +513,20 @@ message GameDocument {
   string board_layout = 13;
   // The letter distribution is the name of the distribution of tiles used for
   // this game. If blank, should default to "english".
-  string letter_distribution = 14;
-  GameType type = 15;
-  bool timers_started = 16;
-  GameEndReason end_reason = 17;
-  MetaEventData meta_event_data = 18;
-  google.protobuf.Timestamp created_at = 19;
+  string                    letter_distribution = 14;
+  GameType                  type                = 15;
+  bool                      timers_started      = 16;
+  GameEndReason             end_reason          = 17;
+  MetaEventData             meta_event_data     = 18;
+  google.protobuf.Timestamp created_at          = 19;
 
   // gameplay-specific structures:
   // board is the current state of the board
   GameBoard board = 20;
   // bag is the current tiles in the bag.
-  Bag bag = 21;
+  Bag    bag             = 21;
   uint32 scoreless_turns = 22;
   // The index of the player on turn
   uint32 player_on_turn = 23;
-  Timers timers = 24;
+  Timers timers         = 24;
 }
