@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/domino14/macondo/board"
@@ -128,6 +129,9 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req == nil {
 		return errors.New("game request is missing")
 	}
+	if req.Rules == nil {
+		return errors.New("game rules are missing")
+	}
 
 	// Correspondence games have different time limits
 	if req.GameMode == pb.GameMode_CORRESPONDENCE {
@@ -172,22 +176,31 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 		}
 	}
 
-	// Modify the game request if the variant calls for it.
-	if req.Rules.VariantName == game.VarClassicSuper {
+	if !slices.Contains(AllowedNewGameLexica, req.Lexicon) {
+		return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
+	}
+
+	// Modify the game request if the variant calls for it. english_super is
+	// the only super distribution that exists, hence the english-only check.
+	if req.Rules.VariantName == game.VarClassicSuper ||
+		req.Rules.VariantName == game.VarWordSmogSuper {
 		if !isEnglish(req.Lexicon) {
 			return errors.New("non-english lexica not supported for this variant")
 		}
 		req.Rules.BoardLayoutName = board.SuperCrosswordGameLayout
 		req.Rules.LetterDistributionName = "english_super"
-	}
-
-	for _, lex := range AllowedNewGameLexica {
-		if req.Lexicon == lex {
-			return nil
+	} else {
+		// Always derive this from the lexicon; whatever the client sent is
+		// irrelevant at best, and at worst it's a distribution whose alphabet
+		// doesn't match the lexicon, which panics the bot's move generator.
+		ld, err := LetterDistributionForLexicon(req.Lexicon)
+		if err != nil {
+			return err
 		}
+		req.Rules.LetterDistributionName = ld
 	}
 
-	return fmt.Errorf("%s is not a supported lexicon", req.Lexicon)
+	return nil
 }
 
 func (sg *SoughtGame) Value() (driver.Value, error) {

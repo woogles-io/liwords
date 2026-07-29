@@ -185,6 +185,13 @@ func createAnnotatedGameDoc(
 	metadataStore *stores.DBStore,
 	gameEventChan chan *entity.EventWrapper,
 ) (*ipc.GameDocument, error) {
+	// A distribution whose alphabet doesn't match the lexicon's crashes
+	// anything that later walks the lexicon for this game (the bot, the
+	// analyzer), so don't take the client's word for it.
+	if err := entity.ValidateLetterDistribution(lexicon, letterDistributionName); err != nil {
+		return nil, apiserver.InvalidArg(err.Error())
+	}
+
 	// We can just make the user ID the same as the nickname, as it
 	// doesn't matter in this case
 	mcplayers := []*ipc.GameDocument_MinimalPlayerInfo{

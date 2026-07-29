@@ -14,6 +14,7 @@ const lexiconCodeToInternalRatingName = (code: string) => {
   if (code.startsWith("DISC")) return "DISC";
   if (code.startsWith("OSPS")) return "OSPS";
   if (code.startsWith("FILE")) return "FILE";
+  if (code.startsWith("SLV")) return "SLV";
   return code;
 };
 
@@ -33,6 +34,7 @@ const InternalRatingNameToProfileRatingName: {
   DISC: "Català",
   OSPS: "Polski",
   FILE: "Español",
+  SLV: "Slovenščina",
 };
 
 export const lexiconCodeToProfileRatingName = (code: string) => {
@@ -131,5 +133,13 @@ export const AllLexica: { [code: string]: Lexicon } = {
     matchName: "Català",
     longDescription:
       "«Diccionari Informatitzat de l'Scrabble en Català» (DISC) is GPLv3-licensed. Copyright 2012 - 2022 Joan Montané.",
+  },
+  SLV26: {
+    code: "SLV26",
+    shortDescription: "Slovenščina (Slovene)",
+    matchName: "Slovenščina",
+    longDescription:
+      "Inštitut za slovenski jezik Frana Ramovša, ZRC SAZU (fran.si)",
+    flagCode: "si",
   },
 };

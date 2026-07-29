@@ -710,6 +710,83 @@ export const StandardPolishAlphabet: Alphabet = {
   name: "polish",
 };
 
+export const StandardSloveneAlphabet: Alphabet = {
+  letters: [
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: "A", score: 1, count: 10, vowel: true, category: 0 },
+    { rune: "B", score: 4, count: 2, vowel: false, category: 2 },
+    { rune: "C", score: 8, count: 1, vowel: false, category: 3 },
+    { rune: "Č", score: 5, count: 1, vowel: false, category: 3 },
+    { rune: "D", score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "E", score: 1, count: 11, vowel: true, category: 0 },
+    { rune: "F", score: 10, count: 1, vowel: false, category: 3 },
+    { rune: "G", score: 4, count: 2, vowel: false, category: 2 },
+    {
+      rune: "H",
+      score: 5,
+      count: 1,
+      vowel: false,
+      category: 3,
+      bnjyable: true,
+    },
+    { rune: "I", score: 1, count: 9, vowel: true, category: 0, bnjyable: true },
+    { rune: "J", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "K", score: 3, count: 3, vowel: false, category: 2 },
+    { rune: "L", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "M", score: 3, count: 2, vowel: false, category: 2 },
+    {
+      rune: "N",
+      score: 1,
+      count: 7,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    { rune: "O", score: 1, count: 8, vowel: true, category: 0, bnjyable: true },
+    { rune: "P", score: 3, count: 2, vowel: false, category: 2 },
+    // Slovene has several letters in its alphabet that there are zero of
+    // (we need to show them here for the blank designation panel)
+    { rune: "Q", score: 0, count: 0, vowel: false, category: -1 },
+    { rune: "R", score: 1, count: 6, vowel: false, category: 1 },
+    {
+      rune: "S",
+      score: 1,
+      count: 6,
+      vowel: false,
+      category: 1,
+      bnjyable: true,
+    },
+    { rune: "Š", score: 6, count: 1, vowel: false, category: 3 },
+    { rune: "T", score: 1, count: 4, vowel: false, category: 1 },
+    { rune: "U", score: 3, count: 2, vowel: true, category: 0 },
+    { rune: "V", score: 2, count: 4, vowel: false, category: 1 },
+    { rune: "W", score: 0, count: 0, vowel: false, category: -1 },
+    {
+      rune: "X",
+      score: 0,
+      count: 0,
+      vowel: false,
+      category: -1,
+      bnjyable: true,
+    },
+    { rune: "Y", score: 0, count: 0, vowel: false, category: -1 },
+    {
+      rune: "Z",
+      score: 4,
+      count: 2,
+      vowel: false,
+      category: 2,
+      bnjyable: true,
+    },
+    { rune: "Ž", score: 10, count: 1, vowel: false, category: 3 },
+  ],
+  letterMap: {},
+  machineLetterMap: {},
+  shortcutMap: {},
+  longestPossibleTileRune: 1,
+  name: "slovene",
+};
+
 // Create letter maps for faster access.
 [
   StandardEnglishAlphabet,
@@ -720,6 +797,7 @@ export const StandardPolishAlphabet: Alphabet = {
   StandardCatalanAlphabet,
   StandardSpanishAlphabet,
   StandardPolishAlphabet,
+  StandardSloveneAlphabet,
 ].forEach((alph) => {
   alph.letters.forEach((letter, idx) => {
     alph.letterMap[letter.rune] = letter;
@@ -750,6 +828,8 @@ export const alphabetFromName = (
       return StandardSpanishAlphabet;
     case "polish":
       return StandardPolishAlphabet;
+    case "slovene":
+      return StandardSloveneAlphabet;
     default:
       return StandardEnglishAlphabet;
   }
