@@ -12,7 +12,7 @@
 
 | # | Phase | Branch | Status | Notes |
 |---|---|---|---|---|
-| 0.5 | Cascade hygiene + `cascade-diff` script | `mantine-00-cascade-hygiene` | **done** | 34/38 stylesheets proven cascade-neutral; 4 blocked pending derived tokens. Fixed 4 latent dark-mode bugs. |
+| 0.5 | Cascade hygiene + `cascade-diff` script | `mantine-00-cascade-hygiene` | [#1953](https://github.com/woogles-io/liwords/pull/1953) | 34/38 stylesheets proven cascade-neutral; 4 blocked pending derived tokens. Fixed 4 latent dark-mode bugs. Also declares `postcss` explicitly. |
 | 1a | Derived tokens + token bridge | `mantine-01-token-bridge` | next | Unblocks the 4 files calling Sass colour fns on `m()` |
 | 1b | Unwrap `colorModed()` entirely | — | todo | Mechanical codemod; deletes the mixin and `m()` |
 | 0 | Mantine boot: deps, PostCSS, CSS layers, providers | — | todo | Includes `<StyleProvider layer>` for antd |
