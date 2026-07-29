@@ -81,7 +81,6 @@ $profile-game-tie: "color-profile-game-tie";
 $profile-game-loss: "color-profile-game-loss";
 
 $shadow: "shadow";
-$shadow-lower: "shadow-lower";
 $board-shadow: "board-shadow";
 
 $column-sorter: "color-column-sorter";
@@ -89,7 +88,6 @@ $column-sorter: "color-column-sorter";
 $modes: (
   default: (
     shadow: 0px 0px 12px rgba(0, 0, 0, 0.1),
-    shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.1),
     board-shadow: 0 0 6px #777777,
 
     color-white: #ffffff,
@@ -161,7 +159,6 @@ $modes: (
   ),
   dark: (
     shadow: 0px 0px 12px rgba(0, 0, 0, 0.2),
-    shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.2),
     board-shadow: 0 0 6px #1a1a1a,
 
     color-white: #ffffff,

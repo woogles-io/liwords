@@ -1,5 +1,5 @@
 @use "sass:color";
-@import "../base";
+@use "../base" as *;
 
 // Ant's hover and ::before on sticky columns force transparent backgrounds,
 // causing scroll-through artifacts. Override both.
