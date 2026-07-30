@@ -1,0 +1,34 @@
+// Declares the --woogles-* design tokens. Imported once, from src/index.tsx.
+//
+// This is the runtime half of the theming system. color_modes.scss holds the
+// values (the $modes map plus the $derived table); this file turns them into CSS
+// custom properties, and m() / d() in any stylesheet read them back as var().
+//
+// Everything is declared on :root rather than body. Custom property
+// substitution resolves at the element that declares it, and Mantine's
+// cssVariablesResolver output lands on :root -- so a :root-level
+// `--mantine-color-text: var(--woogles-color-gray-extreme)` would find nothing
+// if the woogles tokens lived on body.
+@use "../color_modes" as *;
+
+// Light is the base, so there is never a paint with unresolved tokens.
+:root {
+  @include emitTokens(default);
+}
+
+// `html.mode--dark` (0,1,1) beats `:root` (0,1,0). src/stores/ui-store.ts sets
+// this class on documentElement at module-evaluation time, before React renders,
+// which is what avoids a light-mode flash. It also still sets it on body, which
+// the remaining antd portal overrides in base.scss depend on.
+html.mode--dark {
+  @include emitTokens(dark);
+}
+
+// Slightly darker than --woogles-color-background on purpose: this is the area
+// outside the app shell. Carried over from the top of color_modes.scss, where it
+// was emitted once per entry point. Selector kept byte-identical so its
+// specificity (0,1,1) is unchanged; ui-store.ts sets the class on body as well
+// as on documentElement.
+body.mode--dark {
+  background: #2e2e2e;
+}

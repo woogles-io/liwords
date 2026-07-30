@@ -197,15 +197,13 @@ const App = React.memo(() => {
     });
   }, [selfPerms, loggedIn, dispatchLoginState]);
 
-  // Get theme from Zustand store
+  // Get theme from Zustand store. The mode--* classes and the darkMode
+  // localStorage key are written by src/stores/ui-store.ts, which owns them --
+  // at module-evaluation time for the initial value, and in setThemeMode
+  // thereafter. An effect here used to duplicate both writes, but it only ever
+  // touched body, not documentElement, which is where the --woogles-* tokens are
+  // declared. Two writers with different targets is a bug waiting to happen.
   const themeMode = useUIStore(selectThemeMode);
-  useEffect(() => {
-    const isDark = themeMode === "dark";
-    console.log("Detected themeMode = ", themeMode);
-    localStorage.setItem("darkMode", isDark ? "true" : "false");
-    document?.body?.classList?.add(`mode--${isDark ? "dark" : "default"}`);
-    document?.body?.classList?.remove(`mode--${isDark ? "default" : "dark"}`);
-  }, [themeMode]);
 
   const antdTheme = useMemo(() => {
     if (themeMode === "dark") {

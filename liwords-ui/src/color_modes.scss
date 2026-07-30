@@ -1,10 +1,10 @@
+// Definitions only -- this file must emit no CSS of its own. Every feature
+// stylesheet @uses it, and each one is a separate Sass compilation, so anything
+// emitted here ships once per entry point. The dark body background that used
+// to live at the top of this file now lives in src/theme/tokens.scss.
 @use "sass:color";
 @use "sass:list";
 @use "sass:map";
-// The body itself is an outlier
-body.mode--dark {
-  background: #2e2e2e;
-}
 
 // Theming system by Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-mode-in-sass-609f131a3995
 
@@ -314,33 +314,32 @@ $derived: (
   }
 }
 
+// ---------------------------------------------------------------------------
+// The bridge.
+//
+// This used to emit its @content twice -- once under `.mode--default &`, once
+// under `.mode--dark &` -- with the token values baked in as literals. With
+// ~620 call sites that meant every themed rule existed twice in the shipped
+// stylesheet, nothing was overridable at runtime, and JS could not read a
+// colour.
+//
+// Now the values are CSS custom properties, declared per mode in
+// src/theme/tokens.scss, and there is nothing left to duplicate: colorModed()
+// is a passthrough. It is kept rather than deleted so the ~620 existing call
+// sites keep compiling unchanged; a follow-up removes it mechanically.
+//
+// NB: this drops one class of specificity from every themed rule. That is
+// verified safe by scripts/cascade-diff.mjs, which compiles the whole
+// stylesheet both ways and fails if any declaration changes its winner.
+// ---------------------------------------------------------------------------
 @mixin colorModed() {
-  @each $mode, $map in $modes {
-    .mode--#{$mode} & {
-      $mode-map: () !global;
-      $current-mode: $mode !global;
-      @each $key, $submap in $map {
-        $value: map.get(map.get($modes, $mode), "#{$key}");
-        $mode-map: map.merge(
-          $mode-map,
-          (
-            $key: $value,
-          )
-        ) !global;
-      }
-      @content;
-      $mode-map: null !global;
-      $current-mode: null !global;
-    }
-  }
+  @content;
 }
 
 @function m($key) {
-  @return map.get($mode-map, $key);
+  @return var(--woogles-#{$key});
 }
 
-// Resolves a $derived entry for whichever mode colorModed() is currently
-// emitting. Only valid inside a colorModed() block, exactly like m().
 @function d($name) {
-  @return -derive($current-mode, map.get($derived, $name));
+  @return var(--woogles-d-#{$name});
 }
