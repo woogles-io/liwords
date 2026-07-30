@@ -170,6 +170,24 @@ message GetAnalysisResultResponse {
   bool found = 1;
   bytes result_proto = 2;                // Deprecated: raw bytes for backward compat
   macondo.GameAnalysisResult result = 3; // Typed result
+  AnalysisRunInfo run_info = 4;          // How this analysis was produced
+}
+
+// AnalysisRunInfo describes the job that produced an analysis. The engine
+// version is not repeated here: it already travels with the result itself, as
+// GameAnalysisResult.analyzer_version.
+message AnalysisRunInfo {
+  // Username of the volunteer whose worker ran the analysis. Empty for jobs
+  // predating worker tracking, or if the account no longer exists.
+  string analyzed_by_username = 1;
+  // Unix milliseconds; 0 if unknown.
+  int64 completed_at_ms = 2;
+  // Wall-clock time the worker spent on the job (completed_at - claimed_at),
+  // in milliseconds. 0 if either timestamp is missing.
+  int64 duration_ms = 3;
+  // Time the job sat in the queue before a worker picked it up
+  // (claimed_at - created_at), in milliseconds. 0 if either is missing.
+  int64 queue_wait_ms = 4;
 }
 
 // Admin service messages

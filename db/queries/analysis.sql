@@ -70,11 +70,17 @@ VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: GetJobByGameID :one
--- Get most recent job for a game
-SELECT id, game_id, status, config_json, result, error_message, completed_at, created_at
-FROM analysis_jobs
-WHERE game_id = $1
-ORDER BY created_at DESC
+-- Get most recent job for a game, along with the volunteer who ran it.
+-- claimed_at is returned so callers can derive how long the run took
+-- (completed_at - claimed_at) and how long it waited (claimed_at - created_at).
+SELECT
+    aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
+    aj.completed_at, aj.created_at, aj.claimed_at,
+    COALESCE(u.username, '') as analyzed_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.game_id = $1
+ORDER BY aj.created_at DESC
 LIMIT 1;
 
 -- name: GetUserJobCount :one

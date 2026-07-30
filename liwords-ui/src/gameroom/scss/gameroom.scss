@@ -388,7 +388,8 @@ p.streak-loss {
     gap: 4px;
     font-size: 11px;
     padding: 5px 0 0;
-    padding-right: 24px;
+    // Room for the two absolutely-positioned icon buttons in the top right.
+    padding-right: 46px;
     margin-top: 4px;
     flex-shrink: 0;
     position: relative;
@@ -425,7 +426,7 @@ p.streak-loss {
       cursor: pointer;
       position: absolute;
       top: 5px;
-      right: 0;
+      right: 22px;
       font-size: 15px;
       line-height: 1;
 
@@ -438,6 +439,10 @@ p.streak-loss {
           color: m($gray-extreme);
         }
       }
+    }
+
+    .ca-info-btn {
+      right: 0;
     }
   }
 
@@ -797,6 +802,54 @@ p.streak-loss {
         }
       }
     }
+  }
+}
+
+// Analysis run-info card. Rendered inside an antd Popover, which portals out
+// of .computer-analysis, so these have to be top-level rules.
+.ca-run-info {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 12px;
+
+  dt {
+    font-weight: 400;
+
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+    white-space: nowrap;
+
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+}
+
+.ca-run-info-note {
+  max-width: 220px;
+  margin-top: 8px;
+  padding-top: 6px;
+  font-size: 11px;
+
+  @include colorModed() {
+    border-top: 1px solid m($gray-subtle);
+    color: m($gray-medium);
+  }
+}
+
+.ca-run-info-empty {
+  font-size: 12px;
+
+  @include colorModed() {
+    color: m($gray-medium);
   }
 }
 
