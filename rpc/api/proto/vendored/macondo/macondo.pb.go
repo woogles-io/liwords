@@ -2020,8 +2020,14 @@ type EndgameMove struct {
 	MoveDescription string                 `protobuf:"bytes,1,opt,name=move_description,json=moveDescription,proto3" json:"move_description,omitempty"`
 	Score           int32                  `protobuf:"varint,2,opt,name=score,proto3" json:"score,omitempty"`
 	MoveNumber      int32                  `protobuf:"varint,3,opt,name=move_number,json=moveNumber,proto3" json:"move_number,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// is_estimated is true for moves past the search horizon. The endgame solver
+	// plays the position out greedily from wherever the search stopped, so the
+	// tail of a variation is a plausible continuation rather than a proven one.
+	// move_description is left clean; render the distinction however suits the
+	// client (macondo's shell prefixes "~").
+	IsEstimated   bool `protobuf:"varint,4,opt,name=is_estimated,json=isEstimated,proto3" json:"is_estimated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EndgameMove) Reset() {
@@ -2073,6 +2079,13 @@ func (x *EndgameMove) GetMoveNumber() int32 {
 		return x.MoveNumber
 	}
 	return 0
+}
+
+func (x *EndgameMove) GetIsEstimated() bool {
+	if x != nil {
+		return x.IsEstimated
+	}
+	return false
 }
 
 // GameAnalysisResult contains analysis results for a completed game
@@ -2707,12 +2720,13 @@ const file_proto_vendored_macondo_macondo_proto_rawDesc = "" +
 	"\x05count\x18\x03 \x01(\x05R\x05count\"a\n" +
 	"\x10EndgameVariation\x12*\n" +
 	"\x05moves\x18\x01 \x03(\v2\x14.macondo.EndgameMoveR\x05moves\x12!\n" +
-	"\ffinal_spread\x18\x02 \x01(\x05R\vfinalSpread\"o\n" +
+	"\ffinal_spread\x18\x02 \x01(\x05R\vfinalSpread\"\x92\x01\n" +
 	"\vEndgameMove\x12)\n" +
 	"\x10move_description\x18\x01 \x01(\tR\x0fmoveDescription\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x05R\x05score\x12\x1f\n" +
 	"\vmove_number\x18\x03 \x01(\x05R\n" +
-	"moveNumber\"\xda\x01\n" +
+	"moveNumber\x12!\n" +
+	"\fis_estimated\x18\x04 \x01(\bR\visEstimated\"\xda\x01\n" +
 	"\x12GameAnalysisResult\x12+\n" +
 	"\x05turns\x18\x01 \x03(\v2\x15.macondo.TurnAnalysisR\x05turns\x12A\n" +
 	"\x10player_summaries\x18\x02 \x03(\v2\x16.macondo.PlayerSummaryR\x0fplayerSummaries\x12)\n" +

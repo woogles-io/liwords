@@ -292,6 +292,12 @@ message EndgameMove {
   string move_description = 1;
   int32 score = 2;
   int32 move_number = 3;
+  // is_estimated is true for moves past the search horizon. The endgame solver
+  // plays the position out greedily from wherever the search stopped, so the
+  // tail of a variation is a plausible continuation rather than a proven one.
+  // move_description is left clean; render the distinction however suits the
+  // client (macondo's shell prefixes "~").
+  bool is_estimated = 4;
 }
 
 // GameAnalysisResult contains analysis results for a completed game

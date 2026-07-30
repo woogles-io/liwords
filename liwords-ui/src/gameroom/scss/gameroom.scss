@@ -699,9 +699,10 @@ p.streak-loss {
   }
 
   .ca-endgame-seq {
-    ol.ca-endgame-moves {
+    ul.ca-endgame-moves {
       margin: 4px 0 4px 18px;
       padding: 0;
+      list-style: none;
 
       li {
         margin-bottom: 2px;
@@ -718,11 +719,48 @@ p.streak-loss {
         }
       }
 
+      // Marks where the endgame search ran out of depth and handed off to the
+      // greedy playout. Dashed to read as an uncertain boundary, and distinct
+      // from the solid rail on .ca-endgame-alt.
+      li.ca-endgame-horizon {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 6px 0 4px;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: help;
+
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+
+        &::before,
+        &::after {
+          content: "";
+          flex: 1;
+
+          @include colorModed() {
+            border-top: 1px dashed m($gray-subtle);
+          }
+        }
+
+        &::before {
+          flex: 0 0 8px;
+        }
+      }
+
+      .ca-endgame-num,
       .ca-endgame-score {
         @include colorModed() {
           color: m($gray-medium);
         }
       }
+    }
+
+    .ca-endgame-approx {
+      cursor: help;
     }
 
     .ca-endgame-others {
