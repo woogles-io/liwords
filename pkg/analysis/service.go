@@ -31,7 +31,7 @@ import (
 
 // MinMacondoVersion is the minimum macondo worker version accepted.
 // Workers older than this are rejected at ClaimJob.
-const MinMacondoVersion = "v0.13.4"
+const MinMacondoVersion = "v0.13.3"
 
 const (
 	dailyAnalysisLimitRegular   = int64(15)
