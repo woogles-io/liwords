@@ -75,6 +75,9 @@ function makeShadowTree() {
     filter: (s) => statSync(s).isDirectory() || s.endsWith(".scss"),
   });
 
+  // Everything from `@mixin colorModed()` onward is replaced with the bridge
+  // versions. emitTokens(), $derived and -derive() are defined above that point
+  // and survive, which is what lets tokenTable() resolve derived tokens.
   const patched =
     readFileSync(join(SRC, "color_modes.scss"), "utf8").replace(
       /@mixin colorModed\(\)[\s\S]*$/,
@@ -83,6 +86,7 @@ function makeShadowTree() {
     `
 @mixin colorModed() { @content; }
 @function m($key) { @return var(--woogles-#{$key}); }
+@function d($name) { @return var(--woogles-d-#{$name}); }
 `;
   writeFileSync(join(root, "color_modes.scss"), patched);
   return { dir, root };
@@ -106,9 +110,8 @@ function tokenTable() {
   const table = {};
   for (const mode of MODES) {
     const css = sass.compileString(
-      `@use "sass:map";
-       @use "color_modes" as cm;
-       :root { @each $k, $v in map.get(cm.$modes, ${mode}) { --woogles-#{$k}: #{$v}; } }`,
+      `@use "color_modes" as cm;
+       :root { @include cm.emitTokens(${mode}); }`,
       {
         loadPaths: [SRC],
         silenceDeprecations: ["import", "global-builtin"],

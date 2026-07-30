@@ -541,10 +541,7 @@
 
         .ant-table-tbody > tr.promotion-row:hover > td {
           @include colorModed {
-            background: color.adjust(
-              m($profile-game-win),
-              $lightness: 5%
-            ) !important;
+            background: d(win-hover) !important;
           }
         }
 
@@ -557,10 +554,7 @@
 
         .ant-table-tbody > tr.relegation-row:hover > td {
           @include colorModed {
-            background: color.adjust(
-              m($profile-game-loss),
-              $lightness: 5%
-            ) !important;
+            background: d(loss-hover) !important;
           }
         }
 
@@ -629,8 +623,7 @@
 
           @include colorModed {
             background: m($profile-game-win);
-            border: 1px solid
-              color.adjust(m($profile-game-win), $lightness: -20%);
+            border: 1px solid d(win-border);
           }
         }
 
@@ -644,8 +637,7 @@
 
           @include colorModed {
             background: m($profile-game-loss);
-            border: 1px solid
-              color.adjust(m($profile-game-loss), $lightness: -20%);
+            border: 1px solid d(loss-border);
           }
         }
       }

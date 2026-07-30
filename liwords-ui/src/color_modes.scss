@@ -1,3 +1,5 @@
+@use "sass:color";
+@use "sass:list";
 @use "sass:map";
 // The body itself is an outlier
 body.mode--dark {
@@ -230,10 +232,93 @@ $modes: (
   ),
 );
 
+// ---------------------------------------------------------------------------
+// Derived tokens.
+//
+// A number of declarations need a colour that is computed from other tokens --
+// a bonus square mixed with the board background, a hover state a few percent
+// lighter. Those used to be written inline as color.mix(m($a), m($b), ...).
+//
+// That works only while m() returns a real Sass colour. The Mantine migration
+// makes m() return a var(), which a Sass colour function cannot consume, so the
+// arithmetic is hoisted here instead: computed once per mode, at build time,
+// named, and reachable through d().
+//
+// CSS color-mix() is deliberately not used. There is no .browserslistrc, so the
+// build inherits rsbuild's default targets, and color.scale($lightness: -10%)
+// is HSL-space scaling (L -> L * 0.9) which color-mix() cannot express at all.
+//
+// Each entry is (operation, token-a, token-b-or-null, amount).
+// ---------------------------------------------------------------------------
+$derived: (
+  // gameroom: bonus-square labels and selected states
+  qws-label: (mix, "color-board-qws", "color-gray-extreme", 30%),
+  qws-selected: (mix, "color-board-qws", "color-timer-light", 60%),
+  tws-label: (mix, "color-board-tws", "color-gray-extreme", 30%),
+  tws-selected: (mix, "color-board-tws", "color-white", 70%),
+  dws-selected: (mix, "color-board-dws", "color-timer-light", 60%),
+  qls-label: (mix, "color-board-qls", "color-gray-extreme", 20%),
+  qls-selected: (mix, "color-board-qls", "color-timer-light", 30%),
+  tls-label: (mix, "color-board-tls", "color-gray-extreme", 20%),
+  tls-selected: (mix, "color-board-tls", "color-white", 70%),
+  dls-selected: (mix, "color-board-dls", "color-timer-light", 30%),
+  timer-light-shade: (scale, "color-timer-light", null, -10%),
+  // game lists: sort-column and hover backgrounds
+  column-sorter-hover: (scale, "color-column-sorter", null, 10%),
+  off-background-hover: (scale, "color-off-background", null, 10%),
+  card-on-timer-low: (
+    mix,
+    "color-card-background",
+    "color-timer-low-light",
+    90%
+  ),
+  off-on-card: (mix, "color-off-background", "color-card-background", 30%),
+  // leagues: promotion/relegation row hover and border
+  win-hover: (adjust, "color-profile-game-win", null, 5%),
+  loss-hover: (adjust, "color-profile-game-loss", null, 5%),
+  win-border: (adjust, "color-profile-game-win", null, -20%),
+  loss-border: (adjust, "color-profile-game-loss", null, -20%),
+  // lobby: announcement hover
+  primary-middle-on-bg: (mix, "color-primary-middle", "color-background", 50%)
+);
+
+@function -raw($mode, $key) {
+  @return map.get(map.get($modes, $mode), $key);
+}
+
+@function -derive($mode, $spec) {
+  $op: list.nth($spec, 1);
+  $a: -raw($mode, list.nth($spec, 2));
+  $b: list.nth($spec, 3);
+  $amount: list.nth($spec, 4);
+
+  @if $op == scale {
+    @return color.scale($a, $lightness: $amount);
+  }
+  @if $op == adjust {
+    @return color.adjust($a, $lightness: $amount);
+  }
+  @return color.mix($a, -raw($mode, $b), $weight: $amount);
+}
+
+// Emits every --woogles-* custom property for one mode. Intended to be called
+// exactly twice, from src/theme/tokens.scss. Do NOT call it from a feature
+// stylesheet: each .scss entry point is its own Sass compilation, so it would
+// emit one copy per entry point.
+@mixin emitTokens($mode) {
+  @each $key, $value in map.get($modes, $mode) {
+    --woogles-#{$key}: #{$value};
+  }
+  @each $name, $spec in $derived {
+    --woogles-d-#{$name}: #{-derive($mode, $spec)};
+  }
+}
+
 @mixin colorModed() {
   @each $mode, $map in $modes {
     .mode--#{$mode} & {
       $mode-map: () !global;
+      $current-mode: $mode !global;
       @each $key, $submap in $map {
         $value: map.get(map.get($modes, $mode), "#{$key}");
         $mode-map: map.merge(
@@ -245,10 +330,17 @@ $modes: (
       }
       @content;
       $mode-map: null !global;
+      $current-mode: null !global;
     }
   }
 }
 
 @function m($key) {
   @return map.get($mode-map, $key);
+}
+
+// Resolves a $derived entry for whichever mode colorModed() is currently
+// emitting. Only valid inside a colorModed() block, exactly like m().
+@function d($name) {
+  @return -derive($current-mode, map.get($derived, $name));
 }
