@@ -3,6 +3,7 @@ package puzzles
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -170,7 +171,20 @@ func (s *DBStore) CreatePuzzle(ctx context.Context, gameUUID string, turnNumber 
 	}
 
 	for _, tag := range tags {
-		_, err := tx.Exec(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ((SELECT id FROM puzzle_tag_titles WHERE tag_title = $1), $2)`, tag.String(), id)
+		// Resolve the tag id first rather than inlining the lookup as a
+		// subquery in the INSERT. A subquery that matches nothing yields NULL,
+		// which surfaces as an opaque NOT NULL violation on puzzle_tags.tag_id
+		// and gives no hint as to which tag is missing. macondo adds PuzzleTag
+		// values from time to time, so name the culprit instead.
+		var tagID int
+		err := tx.QueryRow(ctx, `SELECT id FROM puzzle_tag_titles WHERE tag_title = $1`, tag.String()).Scan(&tagID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("unknown puzzle tag %q; add it to puzzle_tag_titles in a migration", tag.String())
+		}
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO puzzle_tags(tag_id, puzzle_id) VALUES ($1, $2)`, tagID, id)
 		if err != nil {
 			return err
 		}
