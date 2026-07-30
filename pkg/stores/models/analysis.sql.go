@@ -397,25 +397,33 @@ func (q *Queries) GetContributorsLeaderboard(ctx context.Context, limit int32) (
 }
 
 const getJobByGameID = `-- name: GetJobByGameID :one
-SELECT id, game_id, status, config_json, result, error_message, completed_at, created_at
-FROM analysis_jobs
-WHERE game_id = $1
-ORDER BY created_at DESC
+SELECT
+    aj.id, aj.game_id, aj.status, aj.config_json, aj.result, aj.error_message,
+    aj.completed_at, aj.created_at, aj.claimed_at,
+    COALESCE(u.username, '') as analyzed_by_username
+FROM analysis_jobs aj
+LEFT JOIN users u ON u.uuid = aj.claimed_by_user_uuid
+WHERE aj.game_id = $1
+ORDER BY aj.created_at DESC
 LIMIT 1
 `
 
 type GetJobByGameIDRow struct {
-	ID           uuid.UUID
-	GameID       string
-	Status       string
-	ConfigJson   []byte
-	Result       []byte
-	ErrorMessage pgtype.Text
-	CompletedAt  pgtype.Timestamptz
-	CreatedAt    pgtype.Timestamptz
+	ID                 uuid.UUID
+	GameID             string
+	Status             string
+	ConfigJson         []byte
+	Result             []byte
+	ErrorMessage       pgtype.Text
+	CompletedAt        pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	ClaimedAt          pgtype.Timestamptz
+	AnalyzedByUsername string
 }
 
-// Get most recent job for a game
+// Get most recent job for a game, along with the volunteer who ran it.
+// claimed_at is returned so callers can derive how long the run took
+// (completed_at - claimed_at) and how long it waited (claimed_at - created_at).
 func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGameIDRow, error) {
 	row := q.db.QueryRow(ctx, getJobByGameID, gameID)
 	var i GetJobByGameIDRow
@@ -428,6 +436,8 @@ func (q *Queries) GetJobByGameID(ctx context.Context, gameID string) (GetJobByGa
 		&i.ErrorMessage,
 		&i.CompletedAt,
 		&i.CreatedAt,
+		&i.ClaimedAt,
+		&i.AnalyzedByUsername,
 	)
 	return i, err
 }

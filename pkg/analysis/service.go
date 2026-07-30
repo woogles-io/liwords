@@ -793,9 +793,30 @@ func (s *AnalysisService) GetAnalysisResult(
 	}
 
 	return connect.NewResponse(&pb.GetAnalysisResultResponse{
-		Found:  true,
-		Result: &result,
+		Found:   true,
+		Result:  &result,
+		RunInfo: runInfoForJob(job),
 	}), nil
+}
+
+// runInfoForJob summarizes how a completed job was produced. Every timestamp is
+// nullable in the schema -- jobs predating worker tracking have no claimed_at --
+// so each derived value is reported as 0 rather than a bogus duration when the
+// inputs are missing.
+func runInfoForJob(job models.GetJobByGameIDRow) *pb.AnalysisRunInfo {
+	info := &pb.AnalysisRunInfo{
+		AnalyzedByUsername: job.AnalyzedByUsername,
+	}
+	if job.CompletedAt.Valid {
+		info.CompletedAtMs = job.CompletedAt.Time.UnixMilli()
+		if job.ClaimedAt.Valid {
+			info.DurationMs = job.CompletedAt.Time.Sub(job.ClaimedAt.Time).Milliseconds()
+		}
+	}
+	if job.ClaimedAt.Valid && job.CreatedAt.Valid {
+		info.QueueWaitMs = job.ClaimedAt.Time.Sub(job.CreatedAt.Time).Milliseconds()
+	}
+	return info
 }
 
 func (s *AnalysisService) GetGamesAnalysisStatus(

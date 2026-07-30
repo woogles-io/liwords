@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Button, Modal, Table, Tag, Typography } from "antd";
-import { QuestionCircleOutlined } from "@ant-design/icons";
+import { Button, Modal, Popover, Table, Tag, Typography } from "antd";
+import { InfoCircleOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { Link } from "react-router";
 import { fromJsonString } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
 import { getAnalysisResult } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
+import { AnalysisRunInfo } from "../gen/api/proto/analysis_service/analysis_service_pb";
 import {
   EndgameMove,
   EndgameVariation,
@@ -780,6 +782,12 @@ const parseEndgameVariation = (
   return results;
 };
 
+// Explanation shown on hover wherever we flag past-the-horizon output.
+const ESTIMATED_PLAYOUT_TOOLTIP =
+  "Past this point the endgame solver ran out of search depth and played the " +
+  "position out greedily. These moves — and the resulting spread — are a " +
+  "plausible continuation, not a proven line.";
+
 const EndgameVariationMoves: React.FC<{
   moves: EndgameMove[];
   boardCtx: BoardContext;
@@ -790,28 +798,45 @@ const EndgameVariationMoves: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [moves, boardCtx.dim, boardCtx.boardLetters, boardCtx.alphabet],
   );
+  // Moves past the search horizon are always a contiguous tail, so a single
+  // divider before the first of them marks the boundary. When the whole line
+  // came from the playout (nothing was searched) the divider lands at the top
+  // and reads as a caption for the list.
+  const firstEstimatedIdx = moves.findIndex((m) => m.isEstimated);
+  // Numbered explicitly rather than with <ol>, so the divider can be a list
+  // item without consuming a counter and shifting every number after it.
   return (
-    <ol className="ca-endgame-moves">
+    <ul className="ca-endgame-moves">
       {moves.map((m, i) => {
         const parsed = parsedMoves[i];
         return (
-          <li
-            key={m.moveNumber}
-            className="ca-endgame-move-clickable"
-            onClick={() => onClickPlay(parsed)}
-          >
-            <Text code>
-              {parsed
-                ? parsed.coordinates
-                  ? `${parsed.coordinates} ${parsed.displayMove}`
-                  : parsed.displayMove
-                : m.moveDescription}
-            </Text>{" "}
-            <span className="ca-endgame-score">({m.score})</span>
-          </li>
+          <React.Fragment key={m.moveNumber}>
+            {i === firstEstimatedIdx && (
+              <li
+                className="ca-endgame-horizon"
+                title={ESTIMATED_PLAYOUT_TOOLTIP}
+              >
+                <span>estimated playout</span>
+              </li>
+            )}
+            <li
+              className="ca-endgame-move-clickable"
+              onClick={() => onClickPlay(parsed)}
+            >
+              <span className="ca-endgame-num">{m.moveNumber})</span>{" "}
+              <Text code>
+                {parsed
+                  ? parsed.coordinates
+                    ? `${parsed.coordinates} ${parsed.displayMove}`
+                    : parsed.displayMove
+                  : m.moveDescription}
+              </Text>{" "}
+              <span className="ca-endgame-score">({m.score})</span>
+            </li>
+          </React.Fragment>
         );
       })}
-    </ol>
+    </ul>
   );
 };
 
@@ -833,12 +858,25 @@ const EndgameSequence: React.FC<{
         principalVariation.moves[0]?.moveDescription,
   );
 
-  const spreadSign = principalVariation.finalSpread >= 0 ? "+" : "";
+  // A variation that ends in a greedy playout has an approximate final spread,
+  // since the moves that produced it were never actually solved.
+  const spread = (v: EndgameVariation) => {
+    const isApprox = v.moves.some((m) => m.isEstimated);
+    const sign = v.finalSpread >= 0 ? "+" : "";
+    const text = `${isApprox ? "≈" : ""}${sign}${v.finalSpread}`;
+    return isApprox ? (
+      <span className="ca-endgame-approx" title={ESTIMATED_PLAYOUT_TOOLTIP}>
+        {text}
+      </span>
+    ) : (
+      text
+    );
+  };
+
   return (
     <div className="ca-enriched-section ca-endgame-seq">
       <div className="ca-enriched-header">
-        Endgame (best spread: {spreadSign}
-        {principalVariation.finalSpread})
+        Endgame (best spread: {spread(principalVariation)})
       </div>
       <EndgameVariationMoves
         moves={principalVariation.moves}
@@ -855,25 +893,105 @@ const EndgameSequence: React.FC<{
             {dedupedVariations.length})
           </button>
           {showOthers &&
-            dedupedVariations.map((v, i) => {
-              const vSign = v.finalSpread >= 0 ? "+" : "";
-              return (
-                <div key={i} className="ca-endgame-alt">
-                  <span className="ca-endgame-alt-spread">
-                    Spread: {vSign}
-                    {v.finalSpread}
-                  </span>
-                  <EndgameVariationMoves
-                    moves={v.moves}
-                    boardCtx={boardCtx}
-                    onClickPlay={onClickPlay}
-                  />
-                </div>
-              );
-            })}
+            dedupedVariations.map((v, i) => (
+              <div key={i} className="ca-endgame-alt">
+                <span className="ca-endgame-alt-spread">
+                  Spread: {spread(v)}
+                </span>
+                <EndgameVariationMoves
+                  moves={v.moves}
+                  boardCtx={boardCtx}
+                  onClickPlay={onClickPlay}
+                />
+              </div>
+            ))}
         </div>
       )}
     </div>
+  );
+};
+
+// formatRunDuration renders a millisecond span as a compact human duration.
+const formatRunDuration = (ms: number): string => {
+  if (ms < 1000) return "<1s";
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
+const formatRunTimestamp = (ms: bigint): string =>
+  new Date(Number(ms)).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+// AnalysisRunInfoCard shows who produced an analysis and what it cost them.
+// Every row is optional: jobs predating worker tracking carry no timings, and
+// legacy (v0/v1) results carry no engine version, so the card renders only
+// what the job actually recorded.
+const AnalysisRunInfoCard: React.FC<{
+  runInfo?: AnalysisRunInfo;
+  analyzerVersion: string;
+}> = ({ runInfo, analyzerVersion }) => {
+  const rows: Array<[string, React.ReactNode]> = [];
+  if (runInfo?.completedAtMs) {
+    rows.push(["Analyzed", formatRunTimestamp(runInfo.completedAtMs)]);
+  }
+  if (analyzerVersion) {
+    rows.push(["Engine", `macondo ${analyzerVersion}`]);
+  }
+  if (runInfo?.analyzedByUsername) {
+    rows.push([
+      "Run by",
+      <Link
+        key="run-by"
+        to={`/profile/${encodeURIComponent(runInfo.analyzedByUsername)}`}
+        target="_blank"
+      >
+        {runInfo.analyzedByUsername}
+      </Link>,
+    ]);
+  }
+  if (runInfo?.durationMs) {
+    rows.push(["Took", formatRunDuration(Number(runInfo.durationMs))]);
+  }
+  if (runInfo?.queueWaitMs) {
+    rows.push([
+      "Waited in queue",
+      formatRunDuration(Number(runInfo.queueWaitMs)),
+    ]);
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="ca-run-info-empty">No run details were recorded.</div>
+    );
+  }
+
+  return (
+    <>
+      <dl className="ca-run-info">
+        {rows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </React.Fragment>
+        ))}
+      </dl>
+      {runInfo?.analyzedByUsername && (
+        <div className="ca-run-info-note">
+          Analyses are donated by volunteers running the BestBot worker.
+        </div>
+      )}
+    </>
   );
 };
 
@@ -910,22 +1028,30 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
     ],
   );
 
-  const { data: result, isLoading } = useQuery(
+  const { data, isLoading } = useQuery(
     getAnalysisResult,
     { gameId: gameID },
     {
       select: (resp) => {
-        if (!resp.found) return null;
-        // Prefer typed result (v2+), fall back to deprecated bytes
-        if (resp.result && resp.result.turns.length > 0) return resp.result;
-        if (resp.resultProto.length) {
-          const jsonStr = new TextDecoder().decode(resp.resultProto);
-          return fromJsonString(GameAnalysisResultSchema, jsonStr);
-        }
-        return null;
+        // runInfo is carried alongside the analysis rather than merged into it:
+        // it describes the job that produced the result, not the game.
+        const runInfo = resp.found ? resp.runInfo : undefined;
+        const analysis = (() => {
+          if (!resp.found) return null;
+          // Prefer typed result (v2+), fall back to deprecated bytes
+          if (resp.result && resp.result.turns.length > 0) return resp.result;
+          if (resp.resultProto.length) {
+            const jsonStr = new TextDecoder().decode(resp.resultProto);
+            return fromJsonString(GameAnalysisResultSchema, jsonStr);
+          }
+          return null;
+        })();
+        return { analysis, runInfo };
       },
     },
   );
+  const result = data?.analysis ?? null;
+  const runInfo = data?.runInfo;
 
   const turnsForCurrentPosition = result?.turns.filter(
     (t) => t.turnNumber === currentTurn + 1,
@@ -1085,6 +1211,23 @@ export const ComputerAnalysis: React.FC<ComputerAnalysisProps> = ({
       >
         <QuestionCircleOutlined />
       </button>
+      <Popover
+        title="How this analysis was run"
+        trigger={["hover", "click"]}
+        content={
+          <AnalysisRunInfoCard
+            runInfo={runInfo}
+            analyzerVersion={result.analyzerVersion}
+          />
+        }
+      >
+        <button
+          className="ca-help-btn ca-info-btn"
+          aria-label="How this analysis was run"
+        >
+          <InfoCircleOutlined />
+        </button>
+      </Popover>
     </div>
   ) : null;
 

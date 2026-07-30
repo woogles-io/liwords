@@ -126,7 +126,7 @@ export type GameRules = Message<"ipc.GameRules"> & {
 
   /**
    * The supported letter distributions are english, french, norwegian, german,
-   * catalan, spanish. There are more to come!
+   * catalan, spanish, slovene. There are more to come!
    *
    * @generated from field: string letter_distribution_name = 2;
    */
