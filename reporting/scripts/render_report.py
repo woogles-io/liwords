@@ -68,6 +68,25 @@ REPORTS = {
         "split": 3,
         "ylabel": "active users",
     },
+    "new_user_funnel_monthly": {
+        "date_col": "month_joined",
+        "chart_title": "Woogles new-user funnel by signup month",
+        # Cohort sizes on top, conversion rates below. The panels carry
+        # different units rather than different magnitudes, so ylabel is a
+        # two-element list here; the counts alone would hide whether a big
+        # cohort actually converted.
+        "chart_fields": [
+            "new_user_count",
+            "played_at_least_one_game_count",
+            "played_at_least_one_human_count",
+            "played_at_least_two_different_people_count",
+            "played_at_least_one_game_frac",
+            "played_at_least_one_human_frac",
+            "played_at_least_two_different_people_frac",
+        ],
+        "split": 4,
+        "ylabel": ["new users", "% of cohort"],
+    },
 }
 
 
@@ -136,10 +155,17 @@ def render_chart(df, key, cfg, out_dir):
     # per series across panels; cfg["split"] says where the big panel ends.
     # Missing columns (older CSVs) are skipped per panel, but each field keeps
     # the hue of its chart_fields position so colors are stable across runs.
+    # ylabel is either one string for both panels, or one per panel when the
+    # panels carry different units (counts vs percentages).
     split = cfg.get("split", 2)
+    ylabel = cfg.get("ylabel", "")
+    ylabels = list(ylabel) if isinstance(ylabel, (list, tuple)) else [ylabel, ylabel]
     big = [f for f in fields[:split] if f in df.columns]
     small = [f for f in fields[split:] if f in df.columns]
-    panel_fields_list = [p for p in (big, small) if p]
+    # Keep each surviving panel paired with its own label, so a panel dropped
+    # for missing columns can't shift the other panel's label onto it.
+    panel_specs = [(p, lab) for p, lab in zip((big, small), ylabels) if p]
+    panel_fields_list = [p for p, _ in panel_specs]
     sns.set_theme(style="whitegrid", context="notebook")
     if len(panel_fields_list) == 2:
         fig, axes = plt.subplots(
@@ -148,19 +174,19 @@ def render_chart(df, key, cfg, out_dir):
         fig, ax = plt.subplots(figsize=(11, 5.5))
         axes = [ax]
     ax_top = axes[0]
-    panels = list(zip(axes, panel_fields_list))
+    panels = [(ax, p, lab) for ax, (p, lab) in zip(axes, panel_specs)]
 
     # {:g} keeps 1.5k / drops 2.0k -> 2k; plain rounding would label both
     # 1,500 and 2,000 as "2k" on low-magnitude axes.
     kfmt = mticker.FuncFormatter(
         lambda v, _: f"{round(v/1000, 1):g}k" if v >= 1000 else f"{v:,.0f}")
-    for ax, panel_fields in panels:
+    for ax, panel_fields, panel_ylabel in panels:
         for field in panel_fields:
             ax.plot(plot_df[date_col], plot_df[field],
                     color=PALETTE[fields.index(field) % len(PALETTE)],
                     linewidth=2, label=pretty_col(field))
         ax.yaxis.set_major_formatter(kfmt)
-        ax.set_ylabel(cfg.get("ylabel", ""))
+        ax.set_ylabel(panel_ylabel)
         ax.set_xlabel("")
         ax.margins(x=0.01)
         ax.set_ylim(bottom=0)
