@@ -13,8 +13,8 @@
 | # | Phase | Branch | Status | Notes |
 |---|---|---|---|---|
 | 0.5 | Cascade hygiene + `cascade-diff` script | `mantine-00-cascade-hygiene` | [#1953](https://github.com/woogles-io/liwords/pull/1953) | 34/38 stylesheets proven cascade-neutral; 4 blocked pending derived tokens. Fixed 4 latent dark-mode bugs. Also declares `postcss` explicitly. |
-| 1a | Derived tokens + token bridge | `mantine-01-token-bridge` | next | Unblocks the 4 files calling Sass colour fns on `m()` |
-| 1b | Unwrap `colorModed()` entirely | — | todo | Mechanical codemod; deletes the mixin and `m()` |
+| 1a | Derived tokens + token bridge | `mantine-01-token-bridge` | **done** | CSS 356.7 → 277.6 kB. `.mode--*` selectors 1710 → 34. 77 tokens on `:root`, 765 `var()` uses. `cascade-diff` repointed at a git ref. |
+| 1b | Unwrap `colorModed()` entirely | — | next | Mechanical codemod over ~620 call sites; deletes the passthrough mixin and `m()`/`d()` |
 | 0 | Mantine boot: deps, PostCSS, CSS layers, providers | — | todo | Includes `<StyleProvider layer>` for antd |
 | 2 | Global component theme | — | todo | From `base.scss`'s reskin mixins |
 | 3 | Notifications / modals / confirms façade | — | todo | Deletes `HookAPI` prop threading |
