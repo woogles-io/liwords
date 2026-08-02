@@ -87,7 +87,7 @@ REPORTS = {
             "played_at_least_two_different_people_frac",
         ],
         "split": 5,
-        "ylabel": ["new users", "% of cohort"],
+        "ylabel": ["new users", "% of cohort (verified users only)"],
     },
 }
 

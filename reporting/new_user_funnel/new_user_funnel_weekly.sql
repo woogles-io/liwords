@@ -60,10 +60,14 @@ funnel AS (
     FROM player_stats
     GROUP BY 1
 ),
+-- verified_count is current state, not 14-day-windowed like the columns above -
+-- unverified users are blocked at login, and pile up here when the 48h cleanup
+-- job stalls.
 cohorts AS (
     SELECT
         DATE_TRUNC('week', created_at) AS week_joined,
-        COUNT(DISTINCT id) AS new_user_count
+        COUNT(DISTINCT id) AS new_user_count,
+        SUM(CASE WHEN verified THEN 1 ELSE 0 END) AS verified_count
     FROM public.users
     GROUP BY 1
 ),
@@ -89,7 +93,8 @@ SELECT
     COALESCE(funnel.played_at_least_two_different_people_count, 0)
         AS played_at_least_two_different_people_count,
     COALESCE(annotators.annotated_at_least_one_game_count, 0)
-        AS annotated_at_least_one_game_count
+        AS annotated_at_least_one_game_count,
+    cohorts.verified_count
 FROM cohorts
 LEFT JOIN funnel ON funnel.week_joined = cohorts.week_joined
 LEFT JOIN annotators ON annotators.week_joined = cohorts.week_joined)
@@ -99,6 +104,7 @@ SELECT
 	TRUNC(100.0*played_at_least_one_game_count/new_user_count,1) AS played_at_least_one_game_frac,
 	TRUNC(100.0*played_at_least_one_human_count/new_user_count,1) AS played_at_least_one_human_frac,
 	TRUNC(100.0*played_at_least_two_different_people_count/new_user_count,1) AS played_at_least_two_different_people_frac,
-	TRUNC(100.0*annotated_at_least_one_game_count/new_user_count,1) AS annotated_at_least_one_game_frac
+	TRUNC(100.0*annotated_at_least_one_game_count/new_user_count,1) AS annotated_at_least_one_game_frac,
+	TRUNC(100.0*verified_count/new_user_count,1) AS verified_frac
 FROM reporting
 ORDER BY 1 DESC
