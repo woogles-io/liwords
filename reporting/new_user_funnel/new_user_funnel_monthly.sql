@@ -4,57 +4,13 @@
 --
 -- updated 2/27 to only include games played within 14 days of signup.
 -- updated 9/4 to correctly determine when opponent is a bot.
--- updated 8/26: single-scan rewrite (see PERFORMANCE below), and annotated games
---   split out of the play counts into their own engagement measure.
+-- updated 8/26 to scan games once, and to score annotating separately from playing.
 --
 -- Bot rule: internal_bot flag, plus ids 42-46 and 6216 (early bots that predate
--- the flag). It is applied to the OPPONENT only - a bot's own signup still counts
--- toward new_user_count, as it always has.
---
--- ANNOTATED GAMES. Uploading an annotated game is its own vector of early
--- engagement, not a proxy for playing, so:
---   * games.type = 1 (annotated) no longer counts toward the three play columns.
---     Those numbers are therefore slightly lower than before this change.
---   * annotated_at_least_one_game_count is measured from annotated_game_metadata
---     and credited to the ANNOTATOR (creator_uuid), which is the person who did
---     the work - games.player0_id/player1_id on an annotated game are the players
---     in the transcribed game, who often aren't the uploader and are frequently
---     synthesized ids that match no account at all.
---   * IS DISTINCT FROM 1 rather than <> 1 so a NULL type counts as not-annotated,
---     matching how omgwords/games_per_month.sql buckets it.
---
--- PERFORMANCE. Two separate problems, both fixed here.
---
--- (1) The original scanned public.games four times: all_games and
--- human_vs_human_games were each a two-branch UNION ALL, and the same player-rows
--- were then aggregated twice. Now games is scanned once and unpivoted into one
--- row per player per game by CROSS JOIN LATERAL (VALUES ...) - the same technique
--- as reporting/mau_reporting.sql - with the two stat sets collapsed into one
--- aggregation of conditional CASE WHEN counts.
---
--- (2) The first attempt at (1) was still catastrophically slow (19+ min, killed),
--- for a reason worth recording. It ended with
---     FROM public.users LEFT JOIN player_stats ON users.id = player_stats.player
--- and the planner estimated player_stats at *2 rows* when the truth is one row
--- per player who has played, so it chose a Nested Loop with a Materialize on the
--- inner side and rescanned ~100k materialized rows once per each of ~240k users.
--- The estimate is wrong because the GROUP BY key comes from a VALUES list
--- ("*VALUES*".column1), for which Postgres has no n_distinct statistic and falls
--- back to a hardcoded guess - the same class of trap as the materialized-CTE note
--- atop omgwords/games_per_month.sql.
---
--- The fix is to never join at player grain. Each side is aggregated to month
--- grain first and the joins happen on ~70 month rows, where any row-estimate
--- error is harmless. COUNT(DISTINCT ...) still forces a sort-based GroupAggregate
--- over the unpivoted rows, and the full scan of games is unavoidable because the
--- funnel has no date predicate to push down; those are the remaining floor.
---
--- The LEFT JOINs to users are kept rather than tightened to inner joins because
--- the original used LEFT JOIN: a game whose player has no users row still
--- contributes the other player's row, and an opponent with no users row yields a
--- NULL bot flag that drops the row from the human-vs-human counts without
--- dropping it from the all-games counts. Inner joins would change both.
+-- the flag). Applied to the opponent only - a bot's own signup still counts toward
+-- new_user_count.
 WITH new_user_games AS (
+    -- One row per player per game, in a single scan of games.
     SELECT
         participants.player,
         DATE_TRUNC('month', participants.player_created_at) AS month_joined,
@@ -63,31 +19,25 @@ WITH new_user_games AS (
     FROM public.games g
     LEFT JOIN public.users u0 ON u0.id = g.player0_id
     LEFT JOIN public.users u1 ON u1.id = g.player1_id
-    -- One row per player per game in a single scan. Each row carries the player's
-    -- own signup time (for the 14-day window) and whether that row's OPPONENT is
-    -- a bot. Three-valued on purpose: NULL when the opponent has no users row,
-    -- matching the old NOT (u2.internal_bot OR u2.id IN (...)).
     CROSS JOIN LATERAL (VALUES
         (g.player0_id, g.player1_id, u0.created_at,
          (u1.internal_bot OR u1.id IN (42,43,44,45,46,6216))),
         (g.player1_id, g.player0_id, u1.created_at,
          (u0.internal_bot OR u0.id IN (42,43,44,45,46,6216)))
     ) AS participants(player, opponent, player_created_at, opponent_is_bot)
+    -- IS DISTINCT FROM 1 so a NULL type counts as not-annotated, matching
+    -- omgwords/games_per_month.sql.
     WHERE g.type IS DISTINCT FROM 1
       AND g.created_at - participants.player_created_at < interval '14 days'
 ),
--- The original grouped by (player, username) via an extra join to users. username
--- was never referenced downstream and player -> username is functional, so
--- dropping that join changes no row and no count.
 player_stats AS (
     SELECT
         player,
         month_joined,
         COUNT(*) AS games_played,
         COUNT(DISTINCT opponent) AS num_of_opponents,
-        -- opponent_is_bot is NULL when the opponent has no users row, so
-        -- NOT opponent_is_bot is NULL: the row falls through to ELSE 0, and to a
-        -- NULL that COUNT DISTINCT ignores. Same rows drop out as before.
+        -- opponent_is_bot is NULL when the opponent has no users row, which drops
+        -- the row from these two counts but not from the two above.
         SUM(CASE WHEN NOT opponent_is_bot THEN 1 ELSE 0 END)
             AS games_played_against_humans,
         COUNT(DISTINCT CASE WHEN NOT opponent_is_bot THEN opponent END)
@@ -95,9 +45,9 @@ player_stats AS (
     FROM new_user_games
     GROUP BY 1, 2
 ),
--- Aggregating to month grain HERE, before any join, is the whole point of the
--- rewrite. A user who never played simply has no player_stats row and adds 0 to
--- these sums, exactly as the old LEFT JOIN + "NULL > 0 is false" did.
+-- Each side is aggregated to cohort grain BEFORE joining. Joining users to
+-- player_stats at player grain instead makes the planner nested-loop ~240k users
+-- against the whole aggregate, which takes it from seconds to many minutes.
 funnel AS (
     SELECT
         month_joined,
@@ -117,6 +67,8 @@ cohorts AS (
     FROM public.users
     GROUP BY 1
 ),
+-- Credited to the annotator, not to either player_id on the annotated game -
+-- those are the players in the transcribed game, often synthesized ids.
 annotators AS (
     SELECT
         DATE_TRUNC('month', au.created_at) AS month_joined,
@@ -127,9 +79,6 @@ annotators AS (
     GROUP BY 1
 ),
 reporting AS (
--- Every player and every annotator is a user, so cohorts is the complete spine
--- and these joins can only fail to match for a month where nobody converted -
--- hence the COALESCE to 0 rather than leaving a NULL.
 SELECT
     cohorts.month_joined,
     cohorts.new_user_count,

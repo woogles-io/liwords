@@ -71,10 +71,8 @@ REPORTS = {
     "new_user_funnel_monthly": {
         "date_col": "month_joined",
         "chart_title": "Woogles new-user funnel by signup month",
-        # Cohort sizes on top, conversion rates below. The panels carry
-        # different units rather than different magnitudes, so ylabel is a
-        # two-element list here; the counts alone would hide whether a big
-        # cohort actually converted.
+        # Cohort sizes on top, conversion rates below - different units, not
+        # just different magnitudes, hence the two-element ylabel.
         "chart_fields": [
             "new_user_count",
             "played_at_least_one_game_count",
@@ -164,8 +162,8 @@ def render_chart(df, key, cfg, out_dir):
     ylabels = list(ylabel) if isinstance(ylabel, (list, tuple)) else [ylabel, ylabel]
     big = [f for f in fields[:split] if f in df.columns]
     small = [f for f in fields[split:] if f in df.columns]
-    # Keep each surviving panel paired with its own label, so a panel dropped
-    # for missing columns can't shift the other panel's label onto it.
+    # Pair each panel with its own label before dropping empty ones, so a panel
+    # missing its columns can't shift the other's label onto it.
     panel_specs = [(p, lab) for p, lab in zip((big, small), ylabels) if p]
     panel_fields_list = [p for p, _ in panel_specs]
     sns.set_theme(style="whitegrid", context="notebook")
