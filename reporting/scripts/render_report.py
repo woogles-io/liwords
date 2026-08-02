@@ -72,7 +72,10 @@ REPORTS = {
         "date_col": "month_joined",
         "chart_title": "Woogles new-user funnel by signup month",
         # Cohort sizes on top, conversion rates below - different units, not
-        # just different magnitudes, hence the two-element ylabel.
+        # just different magnitudes, hence the two-element ylabel. The
+        # annotation rate (~0.3%) is charted as a count only; on the percentage
+        # panel it sits on the axis and reads as missing. Both fracs are still
+        # in the table and the CSV.
         "chart_fields": [
             "new_user_count",
             "played_at_least_one_game_count",
@@ -82,7 +85,6 @@ REPORTS = {
             "played_at_least_one_game_frac",
             "played_at_least_one_human_frac",
             "played_at_least_two_different_people_frac",
-            "annotated_at_least_one_game_frac",
         ],
         "split": 5,
         "ylabel": ["new users", "% of cohort"],
