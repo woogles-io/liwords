@@ -43,6 +43,7 @@ QUERY_TIMEOUT_SECS=2700
 QUERIES=(
   "reporting/omgwords/games_per_month.sql"
   "reporting/reporting/mau_reporting.sql"
+  "reporting/new_user_funnel/new_user_funnel_monthly.sql"
 )
 
 mkdir -p "$RESULTS_DIR"
