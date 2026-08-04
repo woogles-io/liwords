@@ -248,48 +248,9 @@ func (s *DBStore) UpdateVerificationToken(ctx context.Context, uuid string, toke
 	})
 }
 
-// DeleteUnverifiedUsers deletes users who haven't verified their email after the specified duration
-func (s *DBStore) DeleteUnverifiedUsers(ctx context.Context, olderThan time.Duration) (int, error) {
-	tx, err := s.dbPool.BeginTx(ctx, common.DefaultTxOptions)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-
-	cutoffTime := time.Now().Add(-olderThan)
-
-	// Delete profiles first (foreign key constraint)
-	_, err = tx.Exec(ctx, `
-		DELETE FROM profiles
-		WHERE user_id IN (
-			SELECT id FROM users
-			WHERE verified = false AND created_at < $1
-		)
-	`, cutoffTime)
-	if err != nil {
-		return 0, fmt.Errorf("failed to delete unverified user profiles: %w", err)
-	}
-
-	// Delete users
-	result, err := tx.Exec(ctx, `
-		DELETE FROM users
-		WHERE verified = false AND created_at < $1
-	`, cutoffTime)
-	if err != nil {
-		return 0, fmt.Errorf("failed to delete unverified users: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-
-	rowsAffected := int(result.RowsAffected())
-	if rowsAffected > 0 {
-		log.Info().Int("count", rowsAffected).Dur("older_than", olderThan).Msg("deleted-unverified-users")
-	}
-
-	return rowsAffected, nil
-}
+// NOTE: DeleteUnverifiedUsers used to live here, but it was never called and
+// its delete ordering was incomplete (it missed both followings and blockings).
+// The real cleanup is UnverifiedUsersCleanup in cmd/maintenance/main.go.
 
 // New creates a new user in the DB.
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {

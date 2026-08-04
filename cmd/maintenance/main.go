@@ -509,7 +509,29 @@ func UnverifiedUsersCleanup() error {
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete followings first (foreign key constraint)
+	// Delete blockings first (foreign key constraint).
+	// Both blockings FKs are ON DELETE RESTRICT, so a single leftover row here
+	// aborts the whole transaction and the cleanup silently deletes nothing.
+	// Remove both where unverified users are blocked AND where they're the blocker.
+	queryBlockings := `
+		DELETE FROM blockings
+		WHERE user_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+		OR blocker_id IN (
+			SELECT id FROM users
+			WHERE verified = false AND created_at < NOW() - INTERVAL '48 hours'
+		)
+	`
+	resultBlockings, err := tx.Exec(ctx, queryBlockings)
+	if err != nil {
+		return err
+	}
+	blockingsDeleted := resultBlockings.RowsAffected()
+	log.Info().Int64("blockingsDeleted", blockingsDeleted).Msg("deleted unverified user blockings")
+
+	// Delete followings next (foreign key constraint)
 	// Remove both where unverified users are being followed AND where they're following others
 	queryFollowings := `
 		DELETE FROM followings
@@ -562,6 +584,7 @@ func UnverifiedUsersCleanup() error {
 	}
 
 	log.Info().
+		Int64("blockingsDeleted", blockingsDeleted).
 		Int64("followingsDeleted", followingsDeleted).
 		Int64("profilesDeleted", profilesDeleted).
 		Int64("usersDeleted", usersDeleted).
