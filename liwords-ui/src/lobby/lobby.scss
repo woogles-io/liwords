@@ -107,11 +107,7 @@
       &:hover h4,
       &:hover p {
         @include colorModed() {
-          background-color: color.mix(
-            m($primary-middle),
-            m($background),
-            $weight: 50%
-          );
+          background-color: d(primary-middle-on-bg);
         }
       }
     }

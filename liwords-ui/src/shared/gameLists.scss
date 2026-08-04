@@ -176,16 +176,12 @@
         }
         &:hover {
           @include colorModed() {
-            background-color: color.scale(m($column-sorter), $lightness: 10%);
+            background-color: d(column-sorter-hover);
           }
         }
         td.ant-table-column-sort {
           @include colorModed() {
-            background-color: color.mix(
-              m($card-background),
-              m($timer-low-light),
-              $weight: 90%
-            );
+            background-color: d(card-on-timer-low);
           }
         }
         td {
@@ -231,7 +227,7 @@
         }
         &:hover {
           @include colorModed() {
-            background-color: color.scale(m($off-background), $lightness: 10%);
+            background-color: d(off-background-hover);
           }
         }
         td.seeker {
@@ -262,11 +258,7 @@
         &:hover {
           opacity: 0.85;
           @include colorModed() {
-            background-color: color.mix(
-              m($off-background),
-              m($card-background),
-              $weight: 30%
-            );
+            background-color: d(off-on-card);
           }
         }
       }

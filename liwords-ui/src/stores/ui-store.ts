@@ -140,8 +140,20 @@ export const useUIStore = create<UIState>()(
 function updateBodyClass(mode: ThemeMode) {
   if (typeof document === "undefined") return;
 
-  document.body.classList.remove("mode--default", "mode--dark");
-  document.body.classList.add(`mode--${mode === "dark" ? "dark" : "default"}`);
+  const next = `mode--${mode === "dark" ? "dark" : "default"}`;
+
+  // documentElement carries the class because src/theme/tokens.scss declares the
+  // --woogles-* custom properties on :root / html.mode--dark. Custom property
+  // substitution resolves at the declaring element, so they have to live above
+  // body for anything on :root to be able to reference them.
+  //
+  // body keeps the class too: the remaining antd portal overrides in base.scss
+  // are written as `body.mode--dark .ant-notification-notice`, and portals render
+  // outside the app shell. Those go away with the antd notification migration.
+  for (const el of [document.documentElement, document.body]) {
+    el.classList.remove("mode--default", "mode--dark");
+    el.classList.add(next);
+  }
 }
 
 /**
