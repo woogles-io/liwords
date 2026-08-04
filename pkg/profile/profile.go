@@ -23,8 +23,17 @@ import (
 )
 
 // badgesCacheTTL is the duration for which GetBadgesMetadata results are
-// cached in-process. Badge definitions change only when the hourly
-// sub-badge-updater maintenance task runs, so 60 seconds of staleness is fine.
+// cached in-process. Badge definitions change only via the admin-only
+// ConfigService.AddBadge RPC, which appends a row and is used a handful of
+// times a year, so 60 seconds of staleness is fine.
+//
+// Note: the hourly sub-badge-updater maintenance task does NOT invalidate this
+// cache's data — BulkRemoveBadges and UpsertPatreonBadges write only to
+// user_badges (the assignment join table), never to badges.
+//
+// The web frontend no longer calls GetBadgesMetadata on the hot path; it
+// compiles the map in at build time via cmd/gen-badges. This endpoint remains
+// the source of truth for the admin UI and any other client.
 const badgesCacheTTL = 60 * time.Second
 
 type ProfileService struct {

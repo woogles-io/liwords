@@ -6159,7 +6159,7 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x13RegistrationService\x12U\n" +
 	"\bRegister\x12%.user_service.UserRegistrationRequest\x1a\".user_service.RegistrationResponse\x12R\n" +
 	"\vVerifyEmail\x12 .user_service.VerifyEmailRequest\x1a!.user_service.VerifyEmailResponse\x12v\n" +
-	"\x17ResendVerificationEmail\x12,.user_service.ResendVerificationEmailRequest\x1a-.user_service.ResendVerificationEmailResponse2\x97\x06\n" +
+	"\x17ResendVerificationEmail\x12,.user_service.ResendVerificationEmailRequest\x1a-.user_service.ResendVerificationEmailResponse2\xa1\x06\n" +
 	"\x0eProfileService\x12I\n" +
 	"\n" +
 	"GetRatings\x12\x1c.user_service.RatingsRequest\x1a\x1d.user_service.RatingsResponse\x12C\n" +
@@ -6169,9 +6169,9 @@ const file_proto_user_service_user_service_proto_rawDesc = "" +
 	"\x0fGetPersonalInfo\x12!.user_service.PersonalInfoRequest\x1a\".user_service.PersonalInfoResponse\x12g\n" +
 	"\x12UpdatePersonalInfo\x12'.user_service.UpdatePersonalInfoRequest\x1a(.user_service.UpdatePersonalInfoResponse\x12U\n" +
 	"\fUpdateAvatar\x12!.user_service.UpdateAvatarRequest\x1a\".user_service.UpdateAvatarResponse\x12U\n" +
-	"\fRemoveAvatar\x12!.user_service.RemoveAvatarRequest\x1a\".user_service.RemoveAvatarResponse\x12[\n" +
-	"\x10GetBriefProfiles\x12\".user_service.BriefProfilesRequest\x1a#.user_service.BriefProfilesResponse\x12\\\n" +
-	"\x11GetBadgesMetadata\x12\".user_service.BadgeMetadataRequest\x1a#.user_service.BadgeMetadataResponse2q\n" +
+	"\fRemoveAvatar\x12!.user_service.RemoveAvatarRequest\x1a\".user_service.RemoveAvatarResponse\x12`\n" +
+	"\x10GetBriefProfiles\x12\".user_service.BriefProfilesRequest\x1a#.user_service.BriefProfilesResponse\"\x03\x90\x02\x01\x12a\n" +
+	"\x11GetBadgesMetadata\x12\".user_service.BadgeMetadataRequest\x1a#.user_service.BadgeMetadataResponse\"\x03\x90\x02\x012q\n" +
 	"\x13AutocompleteService\x12Z\n" +
 	"\rGetCompletion\x12#.user_service.UsernameSearchRequest\x1a$.user_service.UsernameSearchResponse2\xde\x05\n" +
 	"\x10SocializeService\x12E\n" +
