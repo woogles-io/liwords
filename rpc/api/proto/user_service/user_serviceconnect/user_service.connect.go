@@ -725,12 +725,14 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+ProfileServiceGetBriefProfilesProcedure,
 			connect.WithSchema(profileServiceMethods.ByName("GetBriefProfiles")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getBadgesMetadata: connect.NewClient[user_service.BadgeMetadataRequest, user_service.BadgeMetadataResponse](
 			httpClient,
 			baseURL+ProfileServiceGetBadgesMetadataProcedure,
 			connect.WithSchema(profileServiceMethods.ByName("GetBadgesMetadata")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -860,12 +862,14 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		ProfileServiceGetBriefProfilesProcedure,
 		svc.GetBriefProfiles,
 		connect.WithSchema(profileServiceMethods.ByName("GetBriefProfiles")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceGetBadgesMetadataHandler := connect.NewUnaryHandler(
 		ProfileServiceGetBadgesMetadataProcedure,
 		svc.GetBadgesMetadata,
 		connect.WithSchema(profileServiceMethods.ByName("GetBadgesMetadata")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/user_service.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

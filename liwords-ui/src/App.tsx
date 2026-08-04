@@ -80,7 +80,6 @@ import {
   getModList,
   getSelfPermissions,
 } from "./gen/api/proto/user_service/user_service-AuthorizationService_connectquery";
-import { getBadgesMetadata } from "./gen/api/proto/user_service/user_service-ProfileService_connectquery";
 import { ActionType } from "./actions/actions";
 
 // Theme, board, and tile classes are now managed by Zustand store (see stores/ui-store.ts)
@@ -180,9 +179,6 @@ const App = React.memo(() => {
     {},
     { enabled: !isEmbeddedPath },
   );
-  // get badge metadata into internal cache.
-  useQuery(getBadgesMetadata, {}, { enabled: !isEmbeddedPath });
-
   // Fetch the current user's effective permission codes whenever they log in/out.
   // These drive all UI gating via hasPermission() in perms.ts.
   const { data: selfPerms } = useQuery(

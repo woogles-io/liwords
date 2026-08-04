@@ -212,8 +212,12 @@ service ProfileService {
       returns (UpdatePersonalInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
   rpc RemoveAvatar(RemoveAvatarRequest) returns (RemoveAvatarResponse);
-  rpc GetBriefProfiles(BriefProfilesRequest) returns (BriefProfilesResponse);
-  rpc GetBadgesMetadata(BadgeMetadataRequest) returns (BadgeMetadataResponse);
+  rpc GetBriefProfiles(BriefProfilesRequest) returns (BriefProfilesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetBadgesMetadata(BadgeMetadataRequest) returns (BadgeMetadataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Autocomplete

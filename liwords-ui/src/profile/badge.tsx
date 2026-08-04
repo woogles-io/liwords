@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useBriefProfile } from "../utils/brief_profiles";
 import { ConfigProvider, Tooltip } from "antd";
-import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
-import { useQuery } from "@connectrpc/connect-query";
+import { BADGE_DESCRIPTIONS } from "../gen/badges";
 
 const imageCache: Record<string, string> = {}; // Local cache
 
@@ -54,7 +53,6 @@ export const DisplayUserBadges: React.FC<DisplayUserBadgeProps> = ({
   uuid,
 }) => {
   const briefProfile = useBriefProfile(uuid);
-  const { data: badgeMetadata } = useQuery(getBadgesMetadata);
   return (
     <ConfigProvider
       theme={{
@@ -76,7 +74,7 @@ export const DisplayUserBadges: React.FC<DisplayUserBadgeProps> = ({
                 <div
                   style={{ width: 272, flexShrink: 0, alignSelf: "stretch" }}
                 >
-                  {badgeMetadata?.badges[bc]}
+                  {BADGE_DESCRIPTIONS[bc]}
                 </div>
               </div>
             }

@@ -33,7 +33,7 @@ import { AnnotatedGamesHistoryCard } from "./annotated_games_history";
 import { UserCollectionsCard } from "./user_collections";
 import variables from "../base.module.scss";
 import { useQuery } from "@connectrpc/connect-query";
-import { getBadgesMetadata } from "../gen/api/proto/user_service/user_service-ProfileService_connectquery";
+import { BADGE_DESCRIPTIONS } from "../gen/badges";
 import { getGamesAnalysisStatus } from "../gen/api/proto/analysis_service/analysis_service-AnalysisService_connectquery";
 import { Badge } from "./badge";
 import { DisplayUserOrganizations } from "./organizations";
@@ -248,7 +248,6 @@ export const PlayerProfile = React.memo(() => {
   const profileClient = useClient(ProfileService);
   const gameMetadataClient = useClient(GameMetadataService);
   const gameEventClient = useClient(GameEventService);
-  const { data: badgeMetadata } = useQuery(getBadgesMetadata);
 
   const checkWide = useMemo(
     () => window.matchMedia(`(min-width: ${screenSizeTablet}px)`),
@@ -577,9 +576,7 @@ export const PlayerProfile = React.memo(() => {
               {badges.map((b) => (
                 <div key={b} style={{ marginBottom: 16 }}>
                   <Badge name={b} width={36} />
-                  <span style={{ marginLeft: 8 }}>
-                    {badgeMetadata?.badges[b]}
-                  </span>
+                  <span style={{ marginLeft: 8 }}>{BADGE_DESCRIPTIONS[b]}</span>
                 </div>
               ))}
               {username && <DisplayUserOrganizations username={username} />}
