@@ -57,9 +57,17 @@ SELECT
     month,
     COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END) AS mau_omgwords,
     COUNT(DISTINCT game_id) AS games_played, --excludes annotated games
-    TRUNC(1.0 * COUNT(DISTINCT game_id)
+    -- Games per active user, NOT games per MAU. The distinction matters: a
+    -- human-vs-human game is ONE game but TWO people's games, so dividing the
+    -- distinct game count by MAU systematically understates how much an active
+    -- user plays, and understates it *more* in months that skew PvP - which
+    -- makes the ratio move with the bot/human mix rather than with engagement.
+    -- Counting participation rows instead (each player's side of each game)
+    -- gives the per-person number that actually answers "how much does an
+    -- active user play".
+    TRUNC(1.0 * COUNT(CASE WHEN is_human AND event_type = 'game' THEN 1 END)
               / NULLIF(COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END), 0), 2)
-        AS games_played_per_mau,
+        AS games_per_active_user,
     COUNT(DISTINCT CASE WHEN is_human AND vs_human THEN user_id END) AS mau_omgwords_vs_human,
     TRUNC(100.0 * COUNT(DISTINCT CASE WHEN is_human AND vs_human THEN user_id END)
                 / NULLIF(COUNT(DISTINCT CASE WHEN is_human AND event_type = 'game' THEN user_id END), 0), 1)
