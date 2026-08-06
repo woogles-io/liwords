@@ -99,12 +99,14 @@ FROM cohorts
 LEFT JOIN funnel ON funnel.month_joined = cohorts.month_joined
 LEFT JOIN annotators ON annotators.month_joined = cohorts.month_joined)
 
+-- Denominator is verified_count, not new_user_count: unverified users can't
+-- play/annotate, so they'd otherwise deflate every rate below.
 SELECT
     *,
-	TRUNC(100.0*played_at_least_one_game_count/new_user_count,1) AS played_at_least_one_game_frac,
-	TRUNC(100.0*played_at_least_one_human_count/new_user_count,1) AS played_at_least_one_human_frac,
-	TRUNC(100.0*played_at_least_two_different_people_count/new_user_count,1) AS played_at_least_two_different_people_frac,
-	TRUNC(100.0*annotated_at_least_one_game_count/new_user_count,1) AS annotated_at_least_one_game_frac,
+	TRUNC(100.0*played_at_least_one_game_count/verified_count,1) AS played_at_least_one_game_frac,
+	TRUNC(100.0*played_at_least_one_human_count/verified_count,1) AS played_at_least_one_human_frac,
+	TRUNC(100.0*played_at_least_two_different_people_count/verified_count,1) AS played_at_least_two_different_people_frac,
+	TRUNC(100.0*annotated_at_least_one_game_count/verified_count,1) AS annotated_at_least_one_game_frac,
 	TRUNC(100.0*verified_count/new_user_count,1) AS verified_frac
 FROM reporting
 ORDER BY 1 DESC
