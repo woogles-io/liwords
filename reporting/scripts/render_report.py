@@ -9,10 +9,11 @@ just no chart.
 Usage (called by monthly_report.sh):
     render_report.py --out-html body.html --out-dir _results csv [csv ...]
 
-Writes one <basename>.png per charted CSV into --out-dir, prints each PNG
-path on stdout (one per line), and writes the full HTML body to --out-html.
-The HTML references each chart as <img src="cid:<basename>"> — send_mail.py
-attaches the PNGs inline with matching Content-IDs.
+Writes one <basename>.png per charted CSV into --out-dir, prints each PNG path
+on stdout (one per line), and writes the full HTML body to --out-html. The HTML
+references each chart as <img src="cid:<basename>"> — send_mail.py attaches the
+PNGs inline with matching Content-IDs, and report_pdf.py inlines the sibling
+<basename>.png as a data: URI for the PDF.
 """
 import argparse
 import re

@@ -18,6 +18,15 @@ Two things the email body needs before it can be printed:
     size, repeating the date column as the key. Tables are measured in a real
     headless-browser pass; estimating widths from character counts was off ~2x.
 
+  * The page wears Woogles' own branding rather than browser defaults: Mulish
+    for text and Fjalla One for the title (liwords-ui/src/base.scss's
+    $font-default / $font-deco), the #2d6a9e primary, and Woogles the dog (the
+    site is named after him) in the top-right corner. Fonts come from
+    assets/fonts/woogles-fonts.css,
+    base64-inlined by scripts/fetch_report_fonts.py - a <link> to Google Fonts
+    would race the print pass and silently fall back to Helvetica. Branding is
+    best-effort: if either asset is missing the PDF still prints, unstyled.
+
 Usage: report_pdf.py <body.html> <out.pdf> [subtitle]
        body.html's sibling <key>.png files are the charts to inline.
 """
@@ -30,17 +39,48 @@ import tempfile
 from pathlib import Path
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+ASSETS = Path(__file__).resolve().parent.parent / "assets"
+# liwords-ui/src/base.scss: :export colorPrimary, $font-default, $font-deco.
+WOOGLES_BLUE = "#2d6a9e"
+WOOGLES_TINT = "#eaf2f8"    # a light wash of the primary, for table headers
+FONT_BODY = '"Mulish", -apple-system, Helvetica, Arial, sans-serif'
+FONT_DECO = '"Fjalla One", "Mulish", Helvetica, Arial, sans-serif'
 CSS_PX_PER_IN = 96          # Chrome lays out CSS px at 96/in regardless of @page
 PAGE_W_IN = 17.0
 PAGE_H_IN = 11.0
 MARGIN_IN = 0.45
 CHART_W_IN = 15.0
 # Printable height is PAGE_H - 2*MARGIN; leave room for the title block and the
-# section heading above the chart, or it gets bumped to a page of its own.
-CHART_MAX_H_IN = 8.6
+# section heading above the chart, or it gets bumped to a page of its own -
+# which leaves the page it came from nearly empty. The branded masthead is
+# taller than the old bare <h1>, so this budget dropped from 8.6 to match.
+CHART_MAX_H_IN = 8.25
+LOGO_IN = 0.62
 AVAIL_PX = (PAGE_W_IN - 2 * MARGIN_IN) * CSS_PX_PER_IN
 # Below this, shrinking makes 8px text illegible - split into column groups instead.
 MIN_SCALE = 0.8
+
+
+def brand_font_css():
+    """The inlined Woogles @font-face rules, or '' if they were never fetched."""
+    css = ASSETS / "fonts" / "woogles-fonts.css"
+    if not css.exists():
+        print("WARNING: no woogles-fonts.css; run scripts/fetch_report_fonts.py",
+              file=sys.stderr)
+        return ""
+    return css.read_text()
+
+
+def brand_logo_img():
+    """Woogles the dog as an <img>, or '' if the asset is missing."""
+    png = ASSETS / "woogles-dog.png"
+    if not png.exists():
+        print("WARNING: no assets/woogles-dog.png; printing without the logo",
+              file=sys.stderr)
+        return ""
+    b64 = base64.b64encode(png.read_bytes()).decode()
+    return (f'<img class="logo" src="data:image/png;base64,{b64}" '
+            f'alt="Woogles">')
 
 
 def split_wide(html, i, width):
@@ -105,11 +145,28 @@ def main():
             doc = re.sub(r'<table data-i="(\d+)" ', wrap, doc)
             doc = doc.replace("</table>", "</table></div>")
         style = f"""
+  {brand_font_css()}
   @page {{ size: {PAGE_W_IN:.1f}in {PAGE_H_IN}in; margin: {MARGIN_IN}in; }}
-  body {{ font: 13px/1.5 -apple-system, Helvetica, Arial, sans-serif; color:#111; }}
-  h1 {{ font-size: 20px; margin: 0 0 2px; }}
-  h3 {{ page-break-after: avoid; font-size: 17px !important; }}
+  body {{ font: 13px/1.5 {FONT_BODY}; color:#111; }}
+  h1 {{ font-family: {FONT_DECO}; font-size: 26px; font-weight: 400;
+        letter-spacing: 0.3px; color: {WOOGLES_BLUE}; margin: 0 0 2px; }}
+  h3 {{ page-break-after: avoid; font-family: {FONT_BODY} !important;
+        font-size: 17px !important; font-weight: 800 !important;
+        color: {WOOGLES_BLUE}; border-bottom: 2px solid {WOOGLES_TINT};
+        padding-bottom: 3px; }}
   h3 ~ h3 {{ page-break-before: always; }}
+  /* Masthead: title block on the left, Woogles in the top-right corner. The
+     header sits in the flow, so it prints once on page 1 rather than as a
+     running header on every page. */
+  .masthead {{ display: flex; align-items: flex-start;
+               justify-content: space-between; gap: 24px;
+               border-bottom: 3px solid {WOOGLES_BLUE};
+               padding-bottom: 8px; margin-bottom: 14px; }}
+  .masthead img.logo {{ width: {LOGO_IN}in !important; max-width: {LOGO_IN}in;
+                        max-height: {LOGO_IN}in; margin: 0; flex: none; }}
+  table th {{ background: {WOOGLES_TINT} !important;
+              color: {WOOGLES_BLUE} !important;
+              border-bottom: 2px solid {WOOGLES_BLUE} !important; }}
   /* Constrain height as well as width: a chart taller than the printable area
      gets pushed whole to the next page by page-break-inside, leaving a blank
      one behind. max-height keeps the aspect ratio and guarantees it fits. */
@@ -129,8 +186,11 @@ def main():
         return f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>Woogles monthly reporting</title>
 <style>{style}</style>{probe}</head><body>
-<h1>Woogles monthly reporting</h1>
-<p class="sub">{subtitle}</p>
+<div class="masthead">
+  <div><h1>Woogles monthly reporting</h1>
+  <p class="sub">{subtitle}</p></div>
+  {brand_logo_img()}
+</div>
 {doc}
 </body></html>"""
 
