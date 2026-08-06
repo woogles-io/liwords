@@ -698,7 +698,12 @@ func (sm *StandingsManager) recalculateDivisionExtendedStats(
 			p1Standing.HighGame = p1Score
 		}
 
-		// Track timeouts (game_end_reason 1 = TIME)
+		// Track timeouts (game_end_reason 1 = TIME).
+		// NOTE: auto-pass abandonments end as CONSECUTIVE_ZEROES (3), not TIME,
+		// so a full recompute does not yet re-attribute those timeouts the way
+		// the live path (extractGameStats) does. Threading the abandonment
+		// marker through GetDivisionGamesWithStats (a query + sqlc change) is a
+		// follow-up; until then a recompute undercounts auto-pass timeouts.
 		if game.GameEndReason == 1 {
 			// The loser timed out - determine who lost
 			if game.Player0Won.Valid {
