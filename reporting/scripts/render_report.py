@@ -55,18 +55,23 @@ REPORTS = {
     },
     "mau_reporting": {
         "date_col": "month",
-        "chart_title": "Woogles monthly active users",
-        # Sitewide/OMGWords MAU (~15k) on top; puzzle and annotation MAU
-        # (hundreds to low thousands) below so they stay readable.
+        "chart_title": "Woogles monthly active users, and games per active user",
+        # Every MAU series shares the top panel - puzzle and annotation MAU are
+        # small enough to ride the same axis, and separating them implied an
+        # importance they don't have. The bottom panel is engagement depth
+        # against the same x-axis, which is the point of the pairing: the
+        # troughs in games per active user line up with the MAU spikes, because
+        # a wave of new or returning users arrives playing few games each.
         "chart_fields": [
             "mau",
             "mau_omgwords",
             "mau_omgwords_vs_human",
             "mau_puzzles",
             "mau_annotators",
+            "games_per_active_user",
         ],
-        "split": 3,
-        "ylabel": "active users",
+        "split": 5,
+        "ylabel": ["active users", "games per active user"],
     },
     "new_user_funnel_monthly": {
         "date_col": "month_joined",
@@ -139,6 +144,21 @@ def html_table(df, date_col):
             + "".join(cells) + "</table>")
 
 
+def label_last_point(ax, plot_df, date_col, field, color):
+    """Mark the most recent complete month and print its value beside it."""
+    series = plot_df[[date_col, field]].dropna()
+    if series.empty:
+        return
+    x, y = series.iloc[-1][date_col], series.iloc[-1][field]
+    ax.plot([x], [y], marker="o", markersize=8, color=color,
+            markeredgecolor="white", markeredgewidth=2, zorder=5)
+    # Text stays in ink, not the series color: the marker beside it already
+    # carries the identity.
+    ax.annotate(f"{y:,.1f}", xy=(x, y), xytext=(-6, 12),
+                textcoords="offset points", ha="right", fontsize=11,
+                fontweight="bold", color="#333")
+
+
 def render_chart(df, key, cfg, out_dir):
     date_col = cfg["date_col"]
     fields = cfg["chart_fields"]
@@ -179,9 +199,10 @@ def render_chart(df, key, cfg, out_dir):
     panels = [(ax, p, lab) for ax, (p, lab) in zip(axes, panel_specs)]
 
     # {:g} keeps 1.5k / drops 2.0k -> 2k; plain rounding would label both
-    # 1,500 and 2,000 as "2k" on low-magnitude axes.
+    # 1,500 and 2,000 as "2k" on low-magnitude axes. Below 1000 it also has to
+    # keep a decimal: a ratio axis running 0-30 would otherwise label 2.5 as 2.
     kfmt = mticker.FuncFormatter(
-        lambda v, _: f"{round(v/1000, 1):g}k" if v >= 1000 else f"{v:,.0f}")
+        lambda v, _: f"{round(v/1000, 1):g}k" if v >= 1000 else f"{round(v, 1):g}")
     for ax, panel_fields, panel_ylabel in panels:
         for field in panel_fields:
             ax.plot(plot_df[date_col], plot_df[field],
@@ -192,7 +213,14 @@ def render_chart(df, key, cfg, out_dir):
         ax.set_xlabel("")
         ax.margins(x=0.01)
         ax.set_ylim(bottom=0)
-        ax.legend(loc="upper left", frameon=True, framealpha=0.9)
+        # A lone series needs no legend - the title already names it - but it
+        # does deserve its latest value called out, since there is no second
+        # line to read it against.
+        if len(panel_fields) > 1:
+            ax.legend(loc="upper left", frameon=True, framealpha=0.9)
+        else:
+            label_last_point(ax, plot_df, date_col, panel_fields[0],
+                             PALETTE[fields.index(panel_fields[0]) % len(PALETTE)])
 
     last_full = plot_df[date_col].max()
     ax_top.set_title(
