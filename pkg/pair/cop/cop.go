@@ -53,6 +53,35 @@ type policyArgs struct {
 	prepairedPlayerIndexes   map[int]int
 	lowestHopeOverride       map[int]int
 	factor3ForcedPairings    [][2]int
+	// topDownByePlayer is the player index chosen to receive the top-down bye,
+	// or -1 if top-down byes don't apply. It is computed once (see
+	// computeTopDownByePlayer) so that KH can avoid forcing a KOTH pairing
+	// that would conflict with it; top-down byes take precedence over KOTH.
+	topDownByePlayer int
+}
+
+// computeTopDownByePlayer determines which player (if any) should receive the
+// top-down bye: the player with the fewest previous byes, scanning from the
+// top of the standings down (ties go to the higher-ranked player). Returns -1
+// if top-down byes don't apply in this round.
+func computeTopDownByePlayer(pargs *policyArgs) int {
+	numPlayers := len(pargs.playerNodes)
+	if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
+		return -1
+	}
+	byePlayer := -1
+	leastByes := int(pargs.req.Rounds + 1)
+	// Use numPlayers - 1 to exclude the bye
+	for playerRankIdx := range numPlayers - 1 {
+		pi := pargs.playerNodes[playerRankIdx]
+		pairingKey := copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)
+		numByes := pargs.copdata.PairingCounts[pairingKey]
+		if numByes < leastByes {
+			leastByes = numByes
+			byePlayer = pi
+		}
+	}
+	return byePlayer
 }
 
 type constraintPolicy struct {
@@ -107,6 +136,11 @@ var constraintPolicies = []constraintPolicy{
 					continue
 				}
 				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
+					continue
+				}
+				// Top-down byes take precedence over cash prize KOTH: don't force
+				// a pairing that would conflict with the player selected for the bye.
+				if pi == pargs.topDownByePlayer || pj == pargs.topDownByePlayer {
 					continue
 				}
 				forcedPairings = append(forcedPairings, [2]int{pi, pj})
@@ -166,7 +200,11 @@ var constraintPolicies = []constraintPolicy{
 					} else if playerToCatch >= 0 && !pargs.copdata.Standings.CanCatch(1, KOTHCumeGibsonSpread, playerToCatch, rj) {
 						break
 					}
-					forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
+					// Top-down byes take precedence over class prize KOTH: don't force
+					// a pairing that would conflict with the player selected for the bye.
+					if pargs.playerNodes[ri] != pargs.topDownByePlayer && pargs.playerNodes[rj] != pargs.topDownByePlayer {
+						forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
+					}
 					numPlayersAhead += 2
 					ri = rj + 1
 				}
@@ -252,23 +290,10 @@ var constraintPolicies = []constraintPolicy{
 		// Top Down Byes
 		name: "TB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			numPlayers := len(pargs.playerNodes)
-			if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
+			if pargs.topDownByePlayer < 0 {
 				return [][2]int{}, [][2]int{}
 			}
-			forcedBye := [][2]int{{-1, pkgstnd.ByePlayerIndex}}
-			leastByes := int(pargs.req.Rounds + 1)
-			// Use numPlayers - 1 to exclude the bye
-			for playerRankIdx := range numPlayers - 1 {
-				pi := pargs.playerNodes[playerRankIdx]
-				pairingKey := copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)
-				numByes := pargs.copdata.PairingCounts[pairingKey]
-				if numByes < leastByes {
-					leastByes = numByes
-					forcedBye[0][0] = pi
-				}
-			}
-			return forcedBye, [][2]int{}
+			return [][2]int{{pargs.topDownByePlayer, pkgstnd.ByePlayerIndex}}, [][2]int{}
 		},
 	},
 	{
@@ -1296,6 +1321,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		prepairedPlayerIndexes:   prepairedPlayerIndexes,
 		factor3ForcedPairings:    factor3ForcedPairings,
 	}
+	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))

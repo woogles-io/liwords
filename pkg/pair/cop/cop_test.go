@@ -824,6 +824,55 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.Pairings[5], int32(5))
 }
 
+// TestTopDownByePrecedence checks that top-down byes take precedence over
+// KOTH-forced pairings (cash prize or class prize) in the final round. Before
+// the fix, KH could force a pairing for the same player TB independently
+// selected for the bye, which disallowed the bye pairing TB needed and the
+// pairing KH needed on the same edge, producing OVERCONSTRAINED.
+func TestTopDownByePrecedence(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"},
+		PlayerClasses:              []int32{0, 0, 0, 1, 1, 1, 1, 1, 1},
+		ClassPrizes:                []int32{1},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 9,
+		ValidPlayers:               9,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 8,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 7)
+	res := "420 380 415 385 410 390 405 395 400"
+	for range 7 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// P0 (rank 2, 0 prior byes) receives the top-down bye, even though cash
+	// prize KOTH would otherwise force it to play P8 (rank 1).
+	is.Equal(resp.Pairings[0], int32(0))
+	// The rest of the field still gets KOTH-appropriate pairings.
+	is.Equal(resp.Pairings[8], int32(5))
+	is.Equal(resp.Pairings[5], int32(8))
+	is.Equal(resp.Pairings[2], int32(4))
+	is.Equal(resp.Pairings[4], int32(2))
+	is.Equal(resp.Pairings[6], int32(7))
+	is.Equal(resp.Pairings[7], int32(6))
+	is.Equal(resp.Pairings[3], int32(1))
+	is.Equal(resp.Pairings[1], int32(3))
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
