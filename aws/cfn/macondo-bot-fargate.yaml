@@ -37,8 +37,12 @@ Parameters:
   MacondoImage:
     Type: String
     Description: >-
-      macondo-bot image, pinned by digest so a rollback is byte-identical. This digest is
-      tag master-gh487 == macondo commit 26e5ab6.
+      macondo-bot image to run. Built by domino14/macondo CI, which tags each master build
+      ghcr.io/domino14/macondo-bot:master-gh<run-number>. Either form works here, but prefer
+      the @sha256: digest a tag resolves to: tags are mutable, so a redeploy of a tag can
+      quietly pick up a different image, and a rollback to one is not guaranteed to be a
+      rollback. Deploying is a commit that changes this default, so the repo says what is
+      running; overriding it at deploy time works but breaks that.
     Default: ghcr.io/domino14/macondo-bot@sha256:be63363d879cd8cf2a86ace1f0fcb6ab33283213154d49fb61b47e43fdc41690
 
   NatsUrl:
