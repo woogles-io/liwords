@@ -371,6 +371,31 @@ var constraintPolicies = []constraintPolicy{
 	},
 }
 
+// hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the HH
+// and B6 weight policies. In divisions of 12+ players it's clamped so the
+// bottom 6 are never counted as hopeful to cash, even if the normal
+// lowestPossibleHopeCasher computation would reach that far down. Without
+// this clamp, a bottom-6 player who is still (barely) hopeful to cash would
+// have no non-major-penalty pairing available: HH would major-penalize
+// pairing them with a non-hopeful player, and B6 would major-penalize
+// pairing them with a hopeful one.
+func hopeToCashBoundary(pargs *policyArgs) int {
+	boundary := pargs.lowestPossibleHopeCasher
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 12 {
+		return boundary
+	}
+	maxBoundary := numPlayers - 6 - 1
+	if boundary > maxBoundary {
+		boundary = maxBoundary
+	}
+	return boundary
+}
+
 var weightPolicies = []weightPolicy{
 	{
 		// Rank diff
@@ -450,8 +475,9 @@ var weightPolicies = []weightPolicy{
 			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
 				return 0
 			}
-			riHopeful := ri <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[ri]
-			rjHopeful := rj <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[rj]
+			hopeCasherBoundary := hopeToCashBoundary(pargs)
+			riHopeful := ri <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[ri]
+			rjHopeful := rj <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[rj]
 			if riHopeful != rjHopeful {
 				return majorPenalty
 			}
@@ -479,8 +505,9 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			bottomSixBoundary := numPlayers - 6
-			riHopeful := ri <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[ri]
-			rjHopeful := rj <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[rj]
+			hopeCasherBoundary := hopeToCashBoundary(pargs)
+			riHopeful := ri <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[ri]
+			rjHopeful := rj <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[rj]
 			riBottomSix := ri >= bottomSixBoundary
 			rjBottomSix := rj >= bottomSixBoundary
 			if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {

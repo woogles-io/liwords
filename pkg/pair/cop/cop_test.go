@@ -1114,6 +1114,51 @@ func TestBottomSixMajorWeight(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
+// TestBottomSixHopefulOverlap regression-tests the interaction between HH
+// (Feature 2) and B6 (Feature 3) when a bottom-6 player is still
+// (mathematically) hopeful to cash. Before the fix, such a player had no
+// non-major-penalty pairing available: HH would major-penalize pairing them
+// with a non-hopeful player, and B6 would major-penalize pairing them with a
+// hopeful one. The fix clamps the hopeful-to-cash boundary these two
+// policies use so the bottom 6 are never counted as hopeful in divisions of
+// 12+, giving bottom-6 players a clean pairing among themselves.
+func TestBottomSixHopefulOverlap(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"},
+		PlayerClasses:              make([]int32, 13),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		// A generous HopefulnessThreshold and PlacePrizes push the hopeful-to-
+		// cash boundary deep enough to otherwise reach into the bottom 6.
+		HopefulnessThreshold:       0.2,
+		AllPlayers:                 13,
+		ValidPlayers:               13,
+		Rounds:                     8,
+		PlacePrizes:                8,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 420 380 415 385 410 390 405 395 400"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	// P11 (bottom 6, still hopeful under the unclamped boundary) gets a
+	// clean pairing with P9, another bottom-6 player, rather than being
+	// forced into a major-penalty pairing no matter who it plays.
+	is.Equal(resp.Pairings[11], int32(9))
+	is.Equal(resp.Pairings[9], int32(11))
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
