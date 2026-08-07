@@ -58,6 +58,49 @@ type policyArgs struct {
 	// computeTopDownByePlayer) so that KH can avoid forcing a KOTH pairing
 	// that would conflict with it; top-down byes take precedence over KOTH.
 	topDownByePlayer int
+	// disallowedLeaderOpponent is the player index added to an odd hopeful
+	// contender group (for 1st place) who is barred from playing the leader,
+	// or -1 if no such player exists this round. It is computed once (see
+	// computeDisallowedLeaderOpponent) so that KH can avoid forcing a cash
+	// prize KOTH pairing that would conflict with it.
+	disallowedLeaderOpponent int
+}
+
+// computeDisallowedLeaderOpponent implements the odd-hopeful-contender-group
+// rule: the group of players still hopeful to reach 1st is ranks
+// [0..LowestPossibleHopeNth[0]]. If that group's size is odd, the next player
+// down is pulled in to even it out, but is barred from playing the leader.
+//
+// Exception: if the group has exactly one player (only the leader itself)
+// and the leader isn't gibsonized, no player is added or barred - 1st and
+// 2nd are left to play each other via the usual weight policies.
+func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
+	// Factor 3 expansion already constrains the top-6 pairings (including the
+	// leader's); applying this rule on top of it would overconstrain the matching.
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 1 {
+		return -1
+	}
+	contenderBoundary := pargs.copdata.LowestPossibleHopeNth[0]
+	groupSize := contenderBoundary + 1
+	if groupSize%2 == 0 {
+		return -1
+	}
+	if groupSize == 1 && !pargs.copdata.GibsonizedPlayers[0] {
+		return -1
+	}
+	extraRankIdx := contenderBoundary + 1
+	if extraRankIdx >= numPlayers {
+		return -1
+	}
+	return pargs.playerNodes[extraRankIdx]
 }
 
 // computeTopDownByePlayer determines which player (if any) should receive the
@@ -141,6 +184,15 @@ var constraintPolicies = []constraintPolicy{
 				// Top-down byes take precedence over cash prize KOTH: don't force
 				// a pairing that would conflict with the player selected for the bye.
 				if pi == pargs.topDownByePlayer || pj == pargs.topDownByePlayer {
+					continue
+				}
+				// The odd-hopeful-contender-group rule also takes precedence over
+				// cash prize KOTH: don't force the leader to play the player barred
+				// from playing them. In practice this only matters if HG's
+				// single-contender exception doesn't apply (i.e. the leader is
+				// gibsonized), in which case the gibsonized check above already
+				// skips this pairing - this guard is kept for defense in depth.
+				if playerRankIdx == 0 && (pi == pargs.disallowedLeaderOpponent || pj == pargs.disallowedLeaderOpponent) {
 					continue
 				}
 				forcedPairings = append(forcedPairings, [2]int{pi, pj})
@@ -284,6 +336,17 @@ var constraintPolicies = []constraintPolicy{
 				disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pkgstnd.ByePlayerIndex})
 			}
 			return [][2]int{}, disallowedPairings
+		},
+	},
+	{
+		// Odd hopeful contender group for 1st: bar the added player from
+		// playing the leader
+		name: "HG",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.disallowedLeaderOpponent < 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return [][2]int{}, [][2]int{{pargs.playerNodes[0], pargs.disallowedLeaderOpponent}}
 		},
 	},
 	{
@@ -1081,6 +1144,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		factor3ForcedPairings:    factor3ForcedPairings,
 	}
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
+	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))

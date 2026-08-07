@@ -874,6 +874,131 @@ func TestTopDownByePrecedence(t *testing.T) {
 	is.Equal(resp.Pairings[1], int32(3))
 }
 
+// TestOddHopefulContenderGroup checks Feature 5: when the group of players
+// still hopeful to reach 1st is odd, the next player down is barred from
+// playing the leader; a lone hopeful contender is left alone unless the
+// leader is gibsonized.
+func TestOddHopefulContenderGroup(t *testing.T) {
+	is := is.New(t)
+
+	oddGroupReq := func() *pb.PairRequest {
+		return &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"},
+			PlayerClasses:              make([]int32, 10),
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               200,
+			ControlLossThreshold:       0.25,
+			HopefulnessThreshold:       0.05,
+			AllPlayers:                 10,
+			ValidPlayers:               10,
+			Rounds:                     10,
+			PlacePrizes:                2,
+			DivisionSims:               3000,
+			ControlLossSims:            1000,
+			ControlLossActivationRound: 10,
+			Seed:                       1,
+		}
+	}
+
+	// Leader P8 has a 7-player hopeful-for-1st group (odd); P7 is pulled in
+	// as the 8th (even it out) but barred from playing the leader.
+	req := oddGroupReq()
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 400 3 450 2 400 5 450 4 400 7 450 6 400 9 450 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 3 400 0 450 1 400 6 400 7 400 4 400 5 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 2 400 1 450 0 400 7 400 6 400 5 400 4 400 9 400 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 400 5 400 6 400 7 400 0 400 1 500 2 400 3 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 400 4 400 7 400 6 400 1 400 0 500 3 400 2 400 9 400 8 400")
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(resp.Pairings[8] != int32(7))
+	is.True(resp.Pairings[7] != int32(8))
+	checkSymmetric(t, resp.Pairings)
+
+	// Exception: exactly one hopeful contender (only the leader) and the
+	// leader isn't gibsonized - no one is barred, and the natural weight
+	// policies still pair the leader with rank 2 (1v2).
+	req = &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
+		PlayerClasses:              make([]int32, 8),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               5000,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 8,
+		ValidPlayers:               8,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	r1 := "700 300 420 380 415 385 410 390"
+	r2 := "700 300 380 420 385 415 390 410"
+	r3 := "300 700 380 420 385 415 390 410"
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r2)
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r2)
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r3)
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(7))
+	is.Equal(resp.Pairings[7], int32(0))
+
+	// Same single-contender setup, but the leader is gibsonized (tighter
+	// GibsonSpread): the exception no longer applies, so P7 is barred from
+	// playing the leader.
+	req.GibsonSpread = 200
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(resp.Pairings[0] != int32(7))
+	is.True(resp.Pairings[7] != int32(0))
+	checkSymmetric(t, resp.Pairings)
+}
+
+// TestOddHopefulContenderGroupVsFactor3 regression-tests a conflict the odd-
+// hopeful-contender-group rule can have with Factor 3 expansion: F3 forces
+// specific pairings among the top 6 (including the leader's), and the group
+// rule must not also try to bar the leader's F3-forced opponent - it must
+// stand down, mirroring the CL policy's existing precedent for F3.
+func TestOddHopefulContenderGroupVsFactor3(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.30,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	pairtestutils.AddRoundResultsStr(req, "420 400 400 426 400 427 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "400 495 400 430 400 426 400 410 400 417 400 422")
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
