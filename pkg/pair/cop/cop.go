@@ -371,12 +371,12 @@ var constraintPolicies = []constraintPolicy{
 	},
 }
 
-// hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the HH
+// hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the CC
 // and B6 weight policies. In divisions of 12+ players it's clamped so the
 // bottom 6 are never counted as hopeful to cash, even if the normal
 // lowestPossibleHopeCasher computation would reach that far down. Without
 // this clamp, a bottom-6 player who is still (barely) hopeful to cash would
-// have no non-major-penalty pairing available: HH would major-penalize
+// have no non-major-penalty pairing available: CC would major-penalize
 // pairing them with a non-hopeful player, and B6 would major-penalize
 // pairing them with a hopeful one.
 func hopeToCashBoundary(pargs *policyArgs) int {
@@ -465,7 +465,7 @@ var weightPolicies = []weightPolicy{
 		// are hopeful to cash should play other hopeful-to-cash players, and
 		// players who aren't hopeful to cash should play other players who
 		// aren't hopeful to cash.
-		name: "HH",
+		name: "CC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
 			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
 				return 0

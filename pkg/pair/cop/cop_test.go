@@ -1039,7 +1039,7 @@ func TestHopefulCasherGrouping(t *testing.T) {
 		is.Equal(hopeful[int32(pi)], hopeful[opp])
 	}
 
-	// Outside Q4 (Rounds=30, same 6-round history: 24 rounds left), HH doesn't
+	// Outside Q4 (Rounds=30, same 6-round history: 24 rounds left), CC doesn't
 	// apply; confirm the pairing algorithm still succeeds and isn't required
 	// to keep the same grouping.
 	req.Rounds = 30
@@ -1114,10 +1114,10 @@ func TestBottomSixMajorWeight(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
-// TestBottomSixHopefulOverlap regression-tests the interaction between HH
+// TestBottomSixHopefulOverlap regression-tests the interaction between CC
 // (Feature 2) and B6 (Feature 3) when a bottom-6 player is still
 // (mathematically) hopeful to cash. Before the fix, such a player had no
-// non-major-penalty pairing available: HH would major-penalize pairing them
+// non-major-penalty pairing available: CC would major-penalize pairing them
 // with a non-hopeful player, and B6 would major-penalize pairing them with a
 // hopeful one. The fix clamps the hopeful-to-cash boundary these two
 // policies use so the bottom 6 are never counted as hopeful in divisions of
@@ -1181,7 +1181,7 @@ func TestCOPWeights(t *testing.T) {
 	// AlmostGibsonized Q4: player 0 pairs with player 18 via the retry: the
 	// first-pass edge (rank0, rank18) has weight >= majorPenalty, which expands
 	// LowestPossibleHopeNth for those players, and the second pass selects the
-	// same edge with a lower weight. HH (hopeful-to-cash vs hopeful-to-cash,
+	// same edge with a lower weight. CC (hopeful-to-cash vs hopeful-to-cash,
 	// also Q4-only) then reshuffles who pairs with whom among the remaining
 	// non-majorPenalty options so hopeful cashers stay together.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
@@ -1191,7 +1191,7 @@ func TestCOPWeights(t *testing.T) {
 	// whatnoloan and condorave still play (unchanged)
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
-	// In the fourth quarter, RD is suppressed for cashers; PC and HH weight
+	// In the fourth quarter, RD is suppressed for cashers; PC and CC weight
 	// drive player 4 to player 9 (non-majorPenalty, no retry).
 	is.Equal(resp.Pairings[4], int32(9))
 	is.Equal(resp.Pairings[9], int32(4))
@@ -1222,7 +1222,7 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[13], int32(17))
 	is.Equal(resp.Pairings[17], int32(13))
 
-	// In Q4 (Rounds=10), non-casher players pair by RD (and HH, which agrees
+	// In Q4 (Rounds=10), non-casher players pair by RD (and CC, which agrees
 	// here since both are non-hopeful-to-cash) rather than crossing into the
 	// hopeful-to-cash group.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
