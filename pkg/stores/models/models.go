@@ -379,6 +379,32 @@ type Notoriousgame struct {
 	Timestamp pgtype.Int8
 }
 
+type OngoingGame struct {
+	GameUuid           string
+	State              []byte
+	PlayState          int16
+	OnTurn             pgtype.Int2
+	Lexicon            string
+	LetterDistribution string
+	BoardLayout        string
+	Variant            string
+	ChallengeRule      int16
+	Player0ID          int32
+	Player1ID          int32
+	Timers             []byte
+	MetaEvents         []byte
+	ReadyFlag          int64
+	Started            bool
+	GameMode           int16
+	GameType           int16
+	TournamentID       pgtype.Text
+	LeagueID           pgtype.UUID
+	SeasonID           pgtype.UUID
+	LeagueDivisionID   pgtype.UUID
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
 type Permission struct {
 	ID          int32
 	Code        string
