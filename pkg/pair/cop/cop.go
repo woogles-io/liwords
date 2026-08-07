@@ -540,7 +540,9 @@ func copPairWithLog(req *pb.PairRequest, logsb *strings.Builder) *pb.PairRespons
 
 	switch req.PairMethod {
 	case pb.PairMethod_PAIR_SWISS:
-		return swissPair(req, logsb)
+		// Swiss is just COP: COP's weight policies (repeats, win/rank diff, etc.)
+		// subsume Swiss's simpler weighting, so there's no separate implementation.
+		return copMethodPair(req, logsb)
 	case pb.PairMethod_COP:
 		return copMethodPair(req, logsb)
 	case pb.PairMethod_PAIR_AUTO:
@@ -952,241 +954,6 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	}
 }
 
-// swissPair implements a minimum weight matching Swiss pairing where:
-//   - prepaired player requests are fulfilled
-//   - repeats and bye repeats get a major penalty
-//   - win differences of WD get a penalty of WD * minor penalty
-//   - spread diff is a bonus when both players have the same wins, otherwise a penalty
-func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
-	prepairedPlayerIndexes, _, _ := extractPrepairedPlayers(req)
-	pairingCounts := computePairingCounts(req)
-
-	removedPlayersSet := map[int]bool{}
-	for _, idx := range req.RemovedPlayers {
-		removedPlayersSet[int(idx)] = true
-	}
-
-	standings := pkgstnd.CreateInitialStandings(req)
-	standings.Sort()
-	numStandingsPlayers := standings.GetNumPlayers()
-
-	// Build a player-index-to-standings-rank lookup for O(1) access.
-	playerToRankIdx := make(map[int]int, numStandingsPlayers)
-	for rankIdx := range numStandingsPlayers {
-		playerToRankIdx[standings.GetPlayerIndex(rankIdx)] = rankIdx
-	}
-
-	// Build rank-ordered list of unpaired valid players.
-	playerOrder := []int{}
-	for rankIdx := range numStandingsPlayers {
-		pi := standings.GetPlayerIndex(rankIdx)
-		if !removedPlayersSet[pi] {
-			if _, isPrepaired := prepairedPlayerIndexes[pi]; !isPrepaired {
-				playerOrder = append(playerOrder, pi)
-			}
-		}
-	}
-
-	poolSize := len(playerOrder)
-	addBye := poolSize%2 == 1
-
-	type playerRecord struct {
-		wins   int // wins*2 + ties, so wins count 2 and ties count 1
-		spread int
-	}
-	records := make([]playerRecord, poolSize)
-	poolPlayerData := make([][]string, poolSize)
-	for poolIdx, pi := range playerOrder {
-		rankIdx := playerToRankIdx[pi]
-		poolPlayerData[poolIdx] = standings.StringDataForPlayer(req, rankIdx)
-		records[poolIdx] = playerRecord{
-			wins:   standings.GetPlayerWinsIntTimesTwo(rankIdx),
-			spread: standings.GetPlayerSpread(rankIdx),
-		}
-	}
-
-	// The bye is appended as an extra node at index byeIdx when addBye is true.
-	byeIdx := poolSize
-	numPoolNodes := poolSize
-	if addBye {
-		numPoolNodes++
-	}
-
-	swissWeightHeader := []string{"Player", "W", "S", "Player", "W", "S", "*", "PTP", "Total", "RP", "WD", "SD", "BR"}
-	pairingDetails := [][]string{}
-	edgeToDetailIdx := map[string]int{}
-
-	edges := []*matching.Edge{}
-	for poolIdxI := 0; poolIdxI < numPoolNodes; poolIdxI++ {
-		for poolIdxJ := poolIdxI + 1; poolIdxJ < numPoolNodes; poolIdxJ++ {
-			var repeatPenalty, winDiffPenalty, spreadComp, byeRepeatPenalty int64
-
-			iIsBye := addBye && poolIdxI == byeIdx
-			jIsBye := addBye && poolIdxJ == byeIdx
-
-			var iData, jData []string
-			if iIsBye {
-				iData = []string{byePlayerName, "", ""}
-			} else {
-				iData = getPlayerRecordStrArray(poolPlayerData[poolIdxI])
-			}
-			if jIsBye {
-				jData = []string{byePlayerName, "", ""}
-			} else {
-				jData = getPlayerRecordStrArray(poolPlayerData[poolIdxJ])
-			}
-
-			var timesPlayed int
-			if !iIsBye && !jIsBye {
-				pi := playerOrder[poolIdxI]
-				pj := playerOrder[poolIdxJ]
-
-				key := copdatapkg.GetPairingKey(pi, pj)
-				timesPlayed = pairingCounts[key]
-				if timesPlayed > 0 {
-					repeatPenalty = majorPenalty * int64(timesPlayed)
-				}
-
-				winDiff := records[poolIdxI].wins - records[poolIdxJ].wins
-				if winDiff < 0 {
-					winDiff = -winDiff
-				}
-				winDiffPenalty = int64(winDiff) * int64(winDiff) * int64(minorPenalty) / 2
-
-				spreadDiff := records[poolIdxI].spread - records[poolIdxJ].spread
-				if spreadDiff < 0 {
-					spreadDiff = -spreadDiff
-				}
-				// Spread diff is a bonus (reduces weight) when wins are equal,
-				// encouraging wide spread gaps, and a penalty otherwise.
-				if records[poolIdxI].wins == records[poolIdxJ].wins {
-					spreadComp = -int64(spreadDiff)
-				} else {
-					spreadComp = int64(spreadDiff)
-				}
-			} else {
-				var pi int
-				if iIsBye {
-					pi = playerOrder[poolIdxJ]
-				} else {
-					pi = playerOrder[poolIdxI]
-				}
-				byeKey := copdatapkg.GetPairingKey(pi, pi)
-				timesPlayed = pairingCounts[byeKey]
-				if timesPlayed > 0 {
-					byeRepeatPenalty = majorPenalty * int64(timesPlayed)
-				}
-			}
-
-			totalWeight := repeatPenalty + winDiffPenalty + spreadComp + byeRepeatPenalty
-
-			row := make([]string, 0, len(swissWeightHeader))
-			row = append(row, iData...)
-			row = append(row, jData...)
-			row = append(row, "")                                  // * placeholder
-			row = append(row, fmt.Sprintf("%d", timesPlayed))      // PTP
-			row = append(row, fmt.Sprintf("%d", totalWeight))      // Total
-			row = append(row, fmt.Sprintf("%d", repeatPenalty))    // RP
-			row = append(row, fmt.Sprintf("%d", winDiffPenalty))   // WD
-			row = append(row, fmt.Sprintf("%d", spreadComp))       // SD
-			row = append(row, fmt.Sprintf("%d", byeRepeatPenalty)) // BR
-
-			edgeKey := getRankPairingKey(poolIdxI, poolIdxJ)
-			edgeToDetailIdx[edgeKey] = len(pairingDetails)
-			pairingDetails = append(pairingDetails, row)
-
-			edges = append(edges, matching.NewEdge(poolIdxI, poolIdxJ, totalWeight))
-		}
-		if poolIdxI < numPoolNodes-2 {
-			pairingDetails = append(pairingDetails, make([]string, len(swissWeightHeader)))
-		}
-	}
-
-	poolPairings, _, err := matching.MinWeightMatching(edges, true)
-	if err != nil {
-		return &pb.PairResponse{
-			ErrorCode:    pb.PairError_MIN_WEIGHT_MATCHING,
-			ErrorMessage: fmt.Sprintf("swiss min weight matching error: %s", err.Error()),
-		}
-	}
-
-	if addBye {
-		poolPairings = poolPairings[:len(poolPairings)-1]
-	}
-
-	// Mark selected pairings in the weight table.
-	for poolIdx, poolOppIdx := range poolPairings {
-		if poolOppIdx < poolIdx {
-			continue
-		}
-		edgeKey := getRankPairingKey(poolIdx, poolOppIdx)
-		if detailIdx, ok := edgeToDetailIdx[edgeKey]; ok {
-			pairingDetails[detailIdx][6] = "*"
-		}
-	}
-
-	copdatapkg.WriteStringDataToLog("Swiss Pairing Weights", swissWeightHeader, pairingDetails, logsb)
-
-	allPlayerPairings := make([]int32, req.AllPlayers)
-	for idx := range allPlayerPairings {
-		allPlayerPairings[idx] = -1
-	}
-
-	for poolIdx, poolOppIdx := range poolPairings {
-		if poolIdx >= len(playerOrder) {
-			break
-		}
-		pi := playerOrder[poolIdx]
-		if poolOppIdx < 0 || (addBye && poolOppIdx == byeIdx) {
-			allPlayerPairings[pi] = int32(pi) // bye
-		} else if poolOppIdx < len(playerOrder) {
-			pj := playerOrder[poolOppIdx]
-			allPlayerPairings[pi] = int32(pj)
-		}
-	}
-
-	// Fill in prepaired players.
-	for pi, oppIdx := range prepairedPlayerIndexes {
-		allPlayerPairings[pi] = int32(oppIdx)
-	}
-
-	// Log the pairings array (player i plays allPlayerPairings[i]).
-	logsb.WriteString("Pairings: [")
-	for i, opp := range allPlayerPairings {
-		if i > 0 {
-			logsb.WriteString(" ")
-		}
-		logsb.WriteString(fmt.Sprintf("%d", opp))
-	}
-	logsb.WriteString("]\n")
-
-	// Log pairings by standings rank with player records.
-	playerIndexToPoolIdx := make(map[int]int, len(playerOrder))
-	for poolIdx, pi := range playerOrder {
-		playerIndexToPoolIdx[pi] = poolIdx
-	}
-	matchupHeader := []string{"Player", "W", "S", "Player", "W", "S"}
-	pairingsLogMx := [][]string{}
-	for poolIdx, pi := range playerOrder {
-		opp := int(allPlayerPairings[pi])
-		if opp < 0 {
-			continue
-		}
-		oppPoolIdx, oppInPool := playerIndexToPoolIdx[opp]
-		if !oppInPool || oppPoolIdx < poolIdx {
-			continue
-		}
-		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(poolPlayerData, poolIdx, oppPoolIdx))
-	}
-	copdatapkg.WriteStringDataToLog("Final Swiss Pairings", matchupHeader, pairingsLogMx, logsb)
-
-	logsb.WriteString("Method: SWISS\n")
-	return &pb.PairResponse{
-		ErrorCode: pb.PairError_SUCCESS,
-		Pairings:  allPlayerPairings,
-	}
-}
-
 // autoPair selects the most appropriate pairing method based on the tournament state.
 //
 // Compute rrRoundsTotal = floor(numRounds / (numValidPlayers-1)) * (numValidPlayers-1),
@@ -1197,8 +964,7 @@ func swissPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 //
 // Otherwise (numRounds < numValidPlayers-1):
 //   - Rounds 0–2: Initial Fontes
-//   - Rounds 3 to numRounds/2-1: Swiss
-//   - Round numRounds/2 onward: COP
+//   - Round 3 onward: COP
 func autoPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	origMethod := req.PairMethod
 	origInitialNonperfRounds := req.InitialNonperfRounds
@@ -1236,15 +1002,8 @@ func autoPairInner(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		return simplePair(req, logsb)
 	}
 
-	halfway := numRounds / 2
-	if currentRound < halfway {
-		req.PairMethod = pb.PairMethod_PAIR_SWISS
-		fmt.Fprintf(logsb, "Auto: round %d < halfway (%d), using Swiss\n", currentRound, halfway)
-		return swissPair(req, logsb)
-	}
-
 	req.PairMethod = pb.PairMethod_COP
-	fmt.Fprintf(logsb, "Auto: round %d >= halfway (%d), using COP\n", currentRound, halfway)
+	fmt.Fprintf(logsb, "Auto: round %d >= 3, using COP\n", currentRound)
 	return copMethodPair(req, logsb)
 }
 

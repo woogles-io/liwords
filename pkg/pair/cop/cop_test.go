@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"testing"
 	"time"
 
@@ -1188,107 +1189,43 @@ func TestInitialFontes(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
+// TestSwiss verifies that PAIR_SWISS delegates entirely to COP: it produces
+// exactly the same pairings as calling COP directly with the same request.
+// swissPair was removed because COP's weight policies (repeats, rank/win
+// diff, etc.) subsume its simpler win/spread-diff weighting.
 func TestSwiss(t *testing.T) {
 	is := is.New(t)
 
-	// Winners play winners, losers play losers.
-	// Setup: pairings "7 6 5 4 3 2 1 0", results "400 400 400 400 0 0 0 0"
-	// → players 0-3: 1 win; players 4-7: 0 wins.
-	req := makeSimpleReq(pb.PairMethod_PAIR_SWISS, 8, 10)
-	pairtestutils.AddRoundPairingsStr(req, "7 6 5 4 3 2 1 0")
-	pairtestutils.AddRoundResultsStr(req, "400 400 400 400 0 0 0 0")
-	resp := cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	for _, pi := range []int{0, 1, 2, 3} {
-		opp := int(resp.Pairings[pi])
-		is.True(opp >= 0 && opp <= 3)
-	}
+	req := pairtestutils.CreateDefaultPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_SWISS
+	pairtestutils.AddNDummyRounds(req, 3)
+	pairtestutils.AddRoundResultsStr(req, "430 370 420 380 415 385 410 390")
+	pairtestutils.AddRoundResultsStr(req, "370 430 380 420 385 415 390 410")
+	pairtestutils.AddRoundResultsStr(req, "420 380 430 370 405 395 400 400")
 
-	// Odd player count: exactly one bye.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 5, 10)
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(countByes(resp.Pairings), 1)
+	swissResp := cop.COPPair(req)
+	is.Equal(swissResp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, swissResp.Pairings)
 
-	// Repeat avoidance with 4 players over 3 rounds.
-	// Round 1: 0 beats 1, 2 beats 3.
-	// Round 2: 2 beats 0, 1 beats 3.
-	// After 2 rounds: wins = [1,1,2,0]; played: 0-1, 2-3, 0-2, 1-3.
-	// Round 3: only repeat-free matching is 2 vs 1 and 0 vs 3.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 300")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 300 3 400 0 400 1 300")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(resp.Pairings[2], int32(1))
-	is.Equal(resp.Pairings[1], int32(2))
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
+	copReq := pairtestutils.CreateDefaultPairRequest()
+	copReq.PairMethod = pb.PairMethod_COP
+	pairtestutils.AddNDummyRounds(copReq, 3)
+	pairtestutils.AddRoundResultsStr(copReq, "430 370 420 380 415 385 410 390")
+	pairtestutils.AddRoundResultsStr(copReq, "370 430 380 420 385 415 390 410")
+	pairtestutils.AddRoundResultsStr(copReq, "420 380 430 370 405 395 400 400")
+	copReq.Seed = req.Seed
 
-	// Ties count as 1 in the doubled-win system (wins count 2, ties count 1).
-	// Round 1: 0 beats 1 (+100 spread), 2 ties 3.
-	// After R1: doubled wins = [2, 0, 1, 1]; valid pairing avoids 0-1 and 2-3 repeats.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 400")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
+	copResp := cop.COPPair(copReq)
+	is.Equal(copResp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(swissResp.Pairings, copResp.Pairings)
 
-	// Two rounds with ties; only repeat-free matching is 0 vs 3 and 1 vs 2.
-	// R1: 0 beats 1, 2 ties 3. R2: 0 ties 2, 3 beats 1.
-	// After R2 doubled wins: [3, 0, 2, 3]; played: (0,1),(2,3),(0,2),(1,3).
-	// Only remaining non-repeat matching: 0 vs 3, 1 vs 2.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 400")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 3 300 0 400 1 400")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
-	is.Equal(resp.Pairings[1], int32(2))
-	is.Equal(resp.Pairings[2], int32(1))
-
-	// Forced cross-win pairing with spread penalty selecting the better match.
-	//
-	// 6 players, 3 rounds of history constructed so that after 3 rounds:
-	//   - Every within-win-group pair has been played (9 of 15 total pairs used)
-	//   - Only two repeat-free perfect matchings remain:
-	//       M1: {0-3, 1-5, 2-4}  and  M2: {0-4, 1-3, 2-5}
-	//   - Both matchings have equal total win-diff penalty (pairs (3vs1),(2vs1),(1vs1))
-	//   - Spread penalty favours M1 because spread0≈spread3 and spread1≈spread5,
-	//     whereas M2 would pair spread0(+450) with spread4(-410) — a much larger gap.
-	//
-	// Rounds:
-	//   R1: P0 beats P1, P2 beats P3, P4 beats P5
-	//   R2: P0 beats P2, P1 beats P4, P5 beats P3
-	//   R3: P0 beats P5, P1 beats P2, P3 beats P4
-	//
-	// Final wins: P0=3, P1=2, P2=1, P3=1, P4=1, P5=1.
-	// Played pairs: (0,1),(2,3),(4,5),(0,2),(1,4),(3,5),(0,5),(1,2),(3,4).
-	// Unplayed:     (0,3),(0,4),(1,3),(1,5),(2,4),(2,5)  → exactly M1 ∪ M2 edges.
-	//
-	// Cumulative spreads: P0=+450, P1=+250, P2=+150, P3=-250, P4=-410, P5=-190.
-	// M1 total spread penalty: |450−(−250)|+|250−(−190)|−|150−(−410)| = 700+440−560 = 580
-	// M2 total spread penalty: |450−(−410)|+|250−(−250)|−|150−(−190)| = 860+500−340 = 1020
-	// Swiss minimum-weight matching selects M1.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 6, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 450 0 350 3 500 2 100 5 420 4 380")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 4 450 0 350 5 300 1 300 3 450")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 500 2 500 1 300 4 500 3 200 0 200")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	// M1 selected: P0 plays P3, P1 plays P5, P2 plays P4.
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
-	is.Equal(resp.Pairings[1], int32(5))
-	is.Equal(resp.Pairings[5], int32(1))
-	is.Equal(resp.Pairings[2], int32(4))
-	is.Equal(resp.Pairings[4], int32(2))
+	// Odd player count: exactly one bye, same as COP.
+	req = pairtestutils.CreateDefaultOddPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_SWISS
+	swissResp = cop.COPPair(req)
+	is.Equal(swissResp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, swissResp.Pairings)
+	is.Equal(countByes(swissResp.Pairings), 1)
 }
 
 func TestTeamRoundRobin(t *testing.T) {
@@ -1421,6 +1358,31 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+
+	// AUTO with 10 players and R=8 (< rrRounds=9): rounds 0-2 use Initial
+	// Fontes, and round 3 onward now uses COP directly (Swiss was removed).
+	autoNames := []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"}
+	autoReq10 := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_PAIR_AUTO,
+		PlayerNames:                autoNames,
+		PlayerClasses:              make([]int32, 10),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 10,
+		ValidPlayers:               10,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+	}
+	pairtestutils.AddNDummyRounds(autoReq10, 3)
+	resp = cop.COPPair(autoReq10)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "round 3 >= 3, using COP"))
+	is.True(!strings.Contains(resp.Log, "using Swiss"))
 }
 
 func TestCOPProf(t *testing.T) {
