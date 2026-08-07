@@ -1049,6 +1049,71 @@ func TestHopefulCasherGrouping(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
+// TestBottomSixMajorWeight checks Feature 3: in divisions of 12+ players,
+// during the last quarter, a major weight discourages hopeful-to-cash
+// players from playing players in the bottom 6 of the standings.
+func TestBottomSixMajorWeight(t *testing.T) {
+	is := is.New(t)
+
+	makeReq := func(names []int) *pb.PairRequest {
+		playerNames := make([]string, len(names))
+		for i := range playerNames {
+			playerNames[i] = fmt.Sprintf("P%d", i)
+		}
+		return &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                playerNames,
+			PlayerClasses:              make([]int32, len(names)),
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               200,
+			ControlLossThreshold:       0.25,
+			HopefulnessThreshold:       0.05,
+			AllPlayers:                 int32(len(names)),
+			ValidPlayers:               int32(len(names)),
+			Rounds:                     8,
+			PlacePrizes:                4,
+			DivisionSims:               5000,
+			ControlLossSims:            1000,
+			ControlLossActivationRound: 8,
+			Seed:                       1,
+		}
+	}
+
+	// 12 players (>= 12): P0,P2,P4,P6,P8,P10 are a clean 6-0 top half
+	// (hopeful to cash); P1,P3,P5,P7,P9,P11 are a clean 0-6 bottom half,
+	// which is also exactly the bottom 6 of the 12-player standings. No
+	// pairing crosses that line.
+	req := makeReq(make([]int, 12))
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 440 360 430 370 420 380 410 390"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	bottomSix := map[int32]bool{1: true, 3: true, 5: true, 7: true, 9: true, 11: true}
+	hopeful := map[int32]bool{0: true, 2: true, 4: true, 6: true, 8: true, 10: true}
+	for pi, opp := range resp.Pairings {
+		if hopeful[int32(pi)] {
+			is.True(!bottomSix[opp])
+		}
+	}
+
+	// Same shape of scenario, but with only 11 players (< 12): the bottom-6
+	// rule never applies, regardless of the standings shape.
+	req = makeReq(make([]int, 11))
+	req.PlacePrizes = 4
+	pairtestutils.AddNDummyRounds(req, 6)
+	res = "460 340 450 350 420 380 415 385 410 390 405"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 

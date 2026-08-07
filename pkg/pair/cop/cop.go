@@ -459,6 +459,37 @@ var weightPolicies = []weightPolicy{
 		},
 	},
 	{
+		// Hopeful-to-cash vs bottom 6 (divisions of 12+ players, 4th quarter
+		// only): add a major weight discouraging hopeful-to-cash players from
+		// playing players in the bottom 6 of the standings.
+		name: "B6",
+		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+				return 0
+			}
+			numPlayers := len(pargs.playerNodes)
+			// Do not consider the bye as a player in this case
+			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+				numPlayers--
+			}
+			if numPlayers < 12 {
+				return 0
+			}
+			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				return 0
+			}
+			bottomSixBoundary := numPlayers - 6
+			riHopeful := ri <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[ri]
+			rjHopeful := rj <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[rj]
+			riBottomSix := ri >= bottomSixBoundary
+			rjBottomSix := rj >= bottomSixBoundary
+			if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {
+				return majorPenalty
+			}
+			return 0
+		},
+	},
+	{
 		// Gibson cashers
 		name: "GC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
