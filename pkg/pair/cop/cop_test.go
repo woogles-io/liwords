@@ -999,6 +999,56 @@ func TestOddHopefulContenderGroupVsFactor3(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
+// TestHopefulCasherGrouping checks Feature 2: in the last quarter of the
+// tournament, players who are hopeful to cash play other hopeful-to-cash
+// players, and players who aren't hopeful to cash play other non-hopeful
+// players. P0,P2,P4,P6,P8,P10 are a clean 6-0 top half (all hopeful to cash);
+// P1,P3,P5,P7,P9,P11 are a clean 0-6 bottom half (none hopeful to cash).
+func TestHopefulCasherGrouping(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              make([]int32, 12),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.05,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 440 360 430 370 420 380 410 390"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+
+	// Q4 (2 rounds left of 8): no pairing crosses the hopeful/non-hopeful line.
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	hopeful := map[int32]bool{0: true, 2: true, 4: true, 6: true, 8: true, 10: true}
+	for pi, opp := range resp.Pairings {
+		is.Equal(hopeful[int32(pi)], hopeful[opp])
+	}
+
+	// Outside Q4 (Rounds=30, same 6-round history: 24 rounds left), HH doesn't
+	// apply; confirm the pairing algorithm still succeeds and isn't required
+	// to keep the same grouping.
+	req.Rounds = 30
+	req.ControlLossActivationRound = 30
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
@@ -1018,11 +1068,12 @@ func TestCOPWeights(t *testing.T) {
 	// the matching is retried. In the fourth quarter (2 rounds left of 10), cashers
 	// use PC weight only (RD is suppressed).
 	//
-	// AlmostGibsonized Q4: player 4 pairs with player 7 (non-majorPenalty, no retry).
-	// Player 5 pairs with player 9 (within contender range, no retry). Player 0 pairs
-	// with player 18 via the retry: the first-pass edge (rank0, rank18) has weight
-	// >= majorPenalty, which expands LowestPossibleHopeNth for those players, and the
-	// second pass selects the same edge with a lower weight.
+	// AlmostGibsonized Q4: player 0 pairs with player 18 via the retry: the
+	// first-pass edge (rank0, rank18) has weight >= majorPenalty, which expands
+	// LowestPossibleHopeNth for those players, and the second pass selects the
+	// same edge with a lower weight. HH (hopeful-to-cash vs hopeful-to-cash,
+	// also Q4-only) then reshuffles who pairs with whom among the remaining
+	// non-majorPenalty options so hopeful cashers stay together.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
@@ -1030,13 +1081,13 @@ func TestCOPWeights(t *testing.T) {
 	// whatnoloan and condorave still play (unchanged)
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
-	// In the fourth quarter, RD is suppressed for cashers; PC weight drives player 4
-	// to its nearest LowestPossibleHopeNth opponent (non-majorPenalty, no retry).
-	is.Equal(resp.Pairings[4], int32(7))
-	is.Equal(resp.Pairings[7], int32(4))
-	// Player 5 pairs within contender range (no retry).
-	is.Equal(resp.Pairings[5], int32(9))
-	is.Equal(resp.Pairings[14], int32(13))
+	// In the fourth quarter, RD is suppressed for cashers; PC and HH weight
+	// drive player 4 to player 9 (non-majorPenalty, no retry).
+	is.Equal(resp.Pairings[4], int32(9))
+	is.Equal(resp.Pairings[9], int32(4))
+	// Player 5 pairs with player 14 (within contender range, no retry).
+	is.Equal(resp.Pairings[5], int32(14))
+	is.Equal(resp.Pairings[14], int32(5))
 
 	// Kingston 2023 after round 15: player 0's first-pass pairing is within the
 	// contender range (non-majorPenalty), so no retry is triggered.
@@ -1061,13 +1112,15 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[13], int32(17))
 	is.Equal(resp.Pairings[17], int32(13))
 
-	// In Q4 (Rounds=10), non-casher players pair by RD only.
+	// In Q4 (Rounds=10), non-casher players pair by RD (and HH, which agrees
+	// here since both are non-hopeful-to-cash) rather than crossing into the
+	// hopeful-to-cash group.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[10], int32(17))
-	is.Equal(resp.Pairings[13], int32(14))
+	is.Equal(resp.Pairings[10], int32(13))
+	is.Equal(resp.Pairings[13], int32(10))
 }
 
 func TestCOPSuccess(t *testing.T) {

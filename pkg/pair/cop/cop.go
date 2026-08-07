@@ -436,6 +436,29 @@ var weightPolicies = []weightPolicy{
 		},
 	},
 	{
+		// Hopeful-to-cash vs hopeful-to-cash (4th quarter only): players who
+		// are hopeful to cash should play other hopeful-to-cash players, and
+		// players who aren't hopeful to cash should play other players who
+		// aren't hopeful to cash.
+		name: "HH",
+		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+				return 0
+			}
+			// The bye is neither hopeful nor unhopeful to cash; leave it out
+			// of this policy so it doesn't get major-penalized against everyone.
+			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				return 0
+			}
+			riHopeful := ri <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[ri]
+			rjHopeful := rj <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[rj]
+			if riHopeful != rjHopeful {
+				return majorPenalty
+			}
+			return 0
+		},
+	},
+	{
 		// Gibson cashers
 		name: "GC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
