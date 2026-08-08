@@ -182,8 +182,8 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 
 	// Modify the game request if the variant calls for it. english_super is
 	// the only super distribution that exists, hence the english-only check.
-	if req.Rules.VariantName == game.VarClassicSuper ||
-		req.Rules.VariantName == game.VarWordSmogSuper {
+	if req.Rules.VariantName == string(game.VarClassicSuper) ||
+		req.Rules.VariantName == string(game.VarWordSmogSuper) {
 		if !isEnglish(req.Lexicon) {
 			return errors.New("non-english lexica not supported for this variant")
 		}
