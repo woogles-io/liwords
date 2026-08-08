@@ -115,12 +115,17 @@ Resources:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
+            # Deliberately unconditioned, matching liwordsMaintenanceTaskRole, which is a
+            # working task role in this account. An aws:SourceAccount/aws:SourceArn
+            # confused-deputy condition is the usual hardening here, but it is the one part
+            # of this role that cannot be verified before deploying -- if ECS does not
+            # populate those keys as expected the condition never matches, assume-role
+            # fails, and the task will not start. The permission below is proven by
+            # simulate-custom-policy; the trust half is proven by being the same shape as a
+            # role already running. What the condition would buy is small next to that: it
+            # guards against a third party inducing ECS to assume a role whose only power is
+            # invoking our own Lambda.
             Action: sts:AssumeRole
-            Condition:
-              StringEquals:
-                aws:SourceAccount: !Ref AWS::AccountId
-              ArnLike:
-                aws:SourceArn: !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:*
       Policies:
         # Narrower than the instance-profile policy this replaces, which granted lambda:*
         # on the same function. asyncLambdaCall only ever calls Invoke.
