@@ -188,10 +188,11 @@ var constraintPolicies = []constraintPolicy{
 				}
 				// The odd-hopeful-contender-group rule also takes precedence over
 				// cash prize KOTH: don't force the leader to play the player barred
-				// from playing them. In practice this only matters if HG's
-				// single-contender exception doesn't apply (i.e. the leader is
-				// gibsonized), in which case the gibsonized check above already
-				// skips this pairing - this guard is kept for defense in depth.
+				// from playing them. In practice this only matters if
+				// computeDisallowedLeaderOpponent's single-contender exception
+				// doesn't apply (i.e. the leader is gibsonized), in which case the
+				// gibsonized check above already skips this pairing - this guard is
+				// kept for defense in depth.
 				if playerRankIdx == 0 && (pi == pargs.disallowedLeaderOpponent || pj == pargs.disallowedLeaderOpponent) {
 					continue
 				}
@@ -339,17 +340,6 @@ var constraintPolicies = []constraintPolicy{
 		},
 	},
 	{
-		// Odd hopeful contender group for 1st: bar the added player from
-		// playing the leader
-		name: "HG",
-		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if pargs.disallowedLeaderOpponent < 0 {
-				return [][2]int{}, [][2]int{}
-			}
-			return [][2]int{}, [][2]int{{pargs.playerNodes[0], pargs.disallowedLeaderOpponent}}
-		},
-	},
-	{
 		// Top Down Byes
 		name: "TB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
@@ -372,13 +362,14 @@ var constraintPolicies = []constraintPolicy{
 }
 
 // hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the CC
-// and B6 weight policies. In divisions of 12+ players it's clamped so the
-// bottom 6 are never counted as hopeful to cash, even if the normal
+// weight policy. In divisions of 12+ players it's clamped so the bottom 6
+// are never counted as hopeful to cash, even if the normal
 // lowestPossibleHopeCasher computation would reach that far down. Without
 // this clamp, a bottom-6 player who is still (barely) hopeful to cash would
-// have no non-major-penalty pairing available: CC would major-penalize
-// pairing them with a non-hopeful player, and B6 would major-penalize
-// pairing them with a hopeful one.
+// have no non-major-penalty pairing available: CC's hopeful-vs-hopeful rule
+// would major-penalize pairing them with a non-hopeful player, and its
+// hopeful-vs-bottom-6 rule would major-penalize pairing them with a hopeful
+// one.
 func hopeToCashBoundary(pargs *policyArgs) int {
 	boundary := pargs.lowestPossibleHopeCasher
 	numPlayers := len(pargs.playerNodes)
@@ -461,12 +452,35 @@ var weightPolicies = []weightPolicy{
 		},
 	},
 	{
-		// Hopeful-to-cash vs hopeful-to-cash (4th quarter only): players who
-		// are hopeful to cash should play other hopeful-to-cash players, and
-		// players who aren't hopeful to cash should play other players who
-		// aren't hopeful to cash.
+		// Cash contention. This folds together three rules that all turn on
+		// who's still "hopeful" for something, so that they're expressed as
+		// one set of major-penalty weights instead of separate rules that
+		// could stack into a hard, unsatisfiable constraint for a player who
+		// straddles more than one boundary at once:
+		//
+		//   - Hopeful-to-cash vs hopeful-to-cash (4th quarter only): players
+		//     who are hopeful to cash should play other hopeful-to-cash
+		//     players, and players who aren't hopeful to cash should play
+		//     other players who aren't hopeful to cash.
+		//   - Hopeful-to-cash vs bottom 6 (divisions of 12+ players, 4th
+		//     quarter only): discourage hopeful-to-cash players from playing
+		//     players in the bottom 6 of the standings.
+		//   - Odd hopeful-contender-group for 1st (any round): when the
+		//     group of players still hopeful to reach 1st is odd-sized, the
+		//     extra player pulled in to even it out is barred from playing
+		//     the leader. This used to be a hard-disallowed pairing; folding
+		//     it in here as a major penalty instead means it can never
+		//     combine with the other two rules to leave a player with no
+		//     legal pairing at all.
 		name: "CC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// Odd hopeful-contender-group for 1st: bar the added player from
+			// playing the leader (rank 0). This applies in every round, not
+			// just the fourth quarter.
+			if ri == 0 && pargs.disallowedLeaderOpponent >= 0 &&
+				pargs.playerNodes[rj] == pargs.disallowedLeaderOpponent {
+				return majorPenalty
+			}
 			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
 				return 0
 			}
@@ -481,37 +495,18 @@ var weightPolicies = []weightPolicy{
 			if riHopeful != rjHopeful {
 				return majorPenalty
 			}
-			return 0
-		},
-	},
-	{
-		// Hopeful-to-cash vs bottom 6 (divisions of 12+ players, 4th quarter
-		// only): add a major weight discouraging hopeful-to-cash players from
-		// playing players in the bottom 6 of the standings.
-		name: "B6",
-		handler: func(pargs *policyArgs, ri int, rj int) int64 {
-			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
-				return 0
-			}
 			numPlayers := len(pargs.playerNodes)
 			// Do not consider the bye as a player in this case
 			if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
 				numPlayers--
 			}
-			if numPlayers < 12 {
-				return 0
-			}
-			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
-				return 0
-			}
-			bottomSixBoundary := numPlayers - 6
-			hopeCasherBoundary := hopeToCashBoundary(pargs)
-			riHopeful := ri <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[ri]
-			rjHopeful := rj <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[rj]
-			riBottomSix := ri >= bottomSixBoundary
-			rjBottomSix := rj >= bottomSixBoundary
-			if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {
-				return majorPenalty
+			if numPlayers >= 12 {
+				bottomSixBoundary := numPlayers - 6
+				riBottomSix := ri >= bottomSixBoundary
+				rjBottomSix := rj >= bottomSixBoundary
+				if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {
+					return majorPenalty
+				}
 			}
 			return 0
 		},

@@ -1114,14 +1114,16 @@ func TestBottomSixMajorWeight(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
-// TestBottomSixHopefulOverlap regression-tests the interaction between CC
-// (Feature 2) and B6 (Feature 3) when a bottom-6 player is still
-// (mathematically) hopeful to cash. Before the fix, such a player had no
-// non-major-penalty pairing available: CC would major-penalize pairing them
-// with a non-hopeful player, and B6 would major-penalize pairing them with a
-// hopeful one. The fix clamps the hopeful-to-cash boundary these two
-// policies use so the bottom 6 are never counted as hopeful in divisions of
-// 12+, giving bottom-6 players a clean pairing among themselves.
+// TestBottomSixHopefulOverlap regression-tests the interaction between CC's
+// hopeful-vs-hopeful rule (Feature 2) and its hopeful-vs-bottom-6 rule
+// (Feature 3) when a bottom-6 player is still (mathematically) hopeful to
+// cash. Before the fix, such a player had no non-major-penalty pairing
+// available: the hopeful-vs-hopeful rule would major-penalize pairing them
+// with a non-hopeful player, and the hopeful-vs-bottom-6 rule would
+// major-penalize pairing them with a hopeful one. The fix clamps the
+// hopeful-to-cash boundary these two rules use so the bottom 6 are never
+// counted as hopeful in divisions of 12+, giving bottom-6 players a clean
+// pairing among themselves.
 func TestBottomSixHopefulOverlap(t *testing.T) {
 	is := is.New(t)
 

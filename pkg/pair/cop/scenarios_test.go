@@ -471,6 +471,54 @@ func TestScenarioMultiRound_AlbanyCSW2025ME_Last16Rounds(t *testing.T) {
 	}
 }
 
+// Albany CSW ME July 2026 (wordgameplayers.org/directors/AA003954/2026-07-02-Albany-CSW-ME):
+// show what COP would have paired for the last quarter (rounds 22-28 of 28), given the actual
+// historical results for all prior rounds. Each round uses only real data - no simulated
+// results, unlike TestScenarioMultiRound_July4th2026.
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_AlbanyCSWJuly2026_LastQuarter
+func TestScenarioMultiRound_AlbanyCSWJuly2026_LastQuarter(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping Albany CSW July 2026 scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+
+	base := pairtestutils.CreateAlbanyCSWJuly2026Round28PairRequest()
+
+	// Last quarter: rounds 22-28 of 28 (roundPairingsRemaining*4 <= Rounds starting at round 22).
+	for round := int(base.Rounds)*3/4 + 1; round <= int(base.Rounds); round++ {
+		gibsonSpread := int32(scenarioGibsonSpread)
+		if round == int(base.Rounds) {
+			gibsonSpread = scenarioLastRoundGibsonSpread
+		}
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                base.PlayerNames,
+			PlayerClasses:              base.PlayerClasses,
+			ClassPrizes:                base.ClassPrizes,
+			GibsonSpread:               gibsonSpread,
+			ControlLossThreshold:       base.ControlLossThreshold,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 base.AllPlayers,
+			ValidPlayers:               base.ValidPlayers,
+			Rounds:                     base.Rounds,
+			PlacePrizes:                base.PlacePrizes,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: base.ControlLossActivationRound,
+			AllowRepeatByes:            base.AllowRepeatByes,
+			RemovedPlayers:             base.RemovedPlayers,
+			Seed:                       0,
+			DivisionPairings:           base.DivisionPairings[:round-1],
+			DivisionResults:            base.DivisionResults[:round-1],
+		}
+
+		resp := cop.COPPair(req)
+		is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+		fmt.Printf("Albany CSW July 2026 round %d pairings: %v\n", round, resp.Pairings)
+		writeScenarioLog(t, fmt.Sprintf("albany_csw_july_2026_round_%02d.log", round), resp.Log)
+	}
+}
+
 // july4thOneBehindRounds lists the 1-indexed round numbers where pairings are based on
 // results from 1 game behind (i.e. all results available). All other rounds use 2 games
 // behind — the director pairs the next round before the current round finishes.
@@ -816,6 +864,162 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 Div2 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// Hypothetical 18-player, 15-round tournament: 3 rounds of Fontes-style pairings, then 12
+// rounds of COP, with simulated (random) results throughout, standard 1-game-behind timing.
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_Hypothetical18Player15Round
+func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping hypothetical 18-player scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	numPlayers := 18
+	totalRounds := 15
+	fontesRounds := 3
+
+	names := make([]string, numPlayers)
+	for i := range names {
+		names[i] = fmt.Sprintf("P%d", i)
+	}
+	classes := make([]int32, numPlayers)
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("hypothetical18p15r_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                4,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: 11,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		for r := 0; r < fontesRounds; r++ {
+			pairings := generateFontesPairings(r, numPlayers)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+
+		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("Hypothetical 18p/15r run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// Hypothetical 26-player, 15-round tournament: 3 rounds of Fontes-style pairings, then 12
+// rounds of COP, with simulated (random) results throughout, standard 1-game-behind timing.
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_Hypothetical26Player15Round
+func TestScenarioMultiRound_Hypothetical26Player15Round(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping hypothetical 26-player scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	numPlayers := 26
+	totalRounds := 15
+	fontesRounds := 3
+
+	names := make([]string, numPlayers)
+	for i := range names {
+		names[i] = fmt.Sprintf("P%d", i)
+	}
+	classes := make([]int32, numPlayers)
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("hypothetical26p15r_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                6,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			ControlLossActivationRound: 11,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		for r := 0; r < fontesRounds; r++ {
+			pairings := generateFontesPairings(r, numPlayers)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+
+		for round := fontesRounds + 1; round <= totalRounds; round++ {
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("Hypothetical 26p/15r run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 
 			pairings := make([]int32, numPlayers)
 			copy(pairings, resp.Pairings)
