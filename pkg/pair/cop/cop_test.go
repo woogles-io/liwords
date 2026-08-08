@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"testing"
 	"time"
 
@@ -824,6 +825,342 @@ func TestCOPConstraintPolicies(t *testing.T) {
 	is.Equal(resp.Pairings[5], int32(5))
 }
 
+// TestTopDownByePrecedence checks that top-down byes take precedence over
+// KOTH-forced pairings (cash prize or class prize) in the final round. Before
+// the fix, KH could force a pairing for the same player TB independently
+// selected for the bye, which disallowed the bye pairing TB needed and the
+// pairing KH needed on the same edge, producing OVERCONSTRAINED.
+func TestTopDownByePrecedence(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"},
+		PlayerClasses:              []int32{0, 0, 0, 1, 1, 1, 1, 1, 1},
+		ClassPrizes:                []int32{1},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 9,
+		ValidPlayers:               9,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 8,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 7)
+	res := "420 380 415 385 410 390 405 395 400"
+	for range 7 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// P0 (rank 2, 0 prior byes) receives the top-down bye, even though cash
+	// prize KOTH would otherwise force it to play P8 (rank 1).
+	is.Equal(resp.Pairings[0], int32(0))
+	// The rest of the field still gets KOTH-appropriate pairings.
+	is.Equal(resp.Pairings[8], int32(5))
+	is.Equal(resp.Pairings[5], int32(8))
+	is.Equal(resp.Pairings[2], int32(4))
+	is.Equal(resp.Pairings[4], int32(2))
+	is.Equal(resp.Pairings[6], int32(7))
+	is.Equal(resp.Pairings[7], int32(6))
+	is.Equal(resp.Pairings[3], int32(1))
+	is.Equal(resp.Pairings[1], int32(3))
+}
+
+// TestOddHopefulContenderGroup checks Feature 5: when the group of players
+// still hopeful to reach 1st is odd, the next player down is barred from
+// playing the leader; a lone hopeful contender is left alone unless the
+// leader is gibsonized.
+func TestOddHopefulContenderGroup(t *testing.T) {
+	is := is.New(t)
+
+	oddGroupReq := func() *pb.PairRequest {
+		return &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"},
+			PlayerClasses:              make([]int32, 10),
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               200,
+			ControlLossThreshold:       0.25,
+			HopefulnessThreshold:       0.05,
+			AllPlayers:                 10,
+			ValidPlayers:               10,
+			Rounds:                     10,
+			PlacePrizes:                2,
+			DivisionSims:               3000,
+			ControlLossSims:            1000,
+			ControlLossActivationRound: 10,
+			Seed:                       1,
+		}
+	}
+
+	// Leader P8 has a 7-player hopeful-for-1st group (odd); P7 is pulled in
+	// as the 8th (even it out) but barred from playing the leader.
+	req := oddGroupReq()
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 400 3 450 2 400 5 450 4 400 7 450 6 400 9 450 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 3 400 0 450 1 400 6 400 7 400 4 400 5 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 2 400 1 450 0 400 7 400 6 400 5 400 4 400 9 400 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 400 5 400 6 400 7 400 0 400 1 500 2 400 3 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 400 4 400 7 400 6 400 1 400 0 500 3 400 2 400 9 400 8 400")
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(resp.Pairings[8] != int32(7))
+	is.True(resp.Pairings[7] != int32(8))
+	checkSymmetric(t, resp.Pairings)
+
+	// Exception: exactly one hopeful contender (only the leader) and the
+	// leader isn't gibsonized - no one is barred, and the natural weight
+	// policies still pair the leader with rank 2 (1v2).
+	req = &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7"},
+		PlayerClasses:              make([]int32, 8),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               5000,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 8,
+		ValidPlayers:               8,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	r1 := "700 300 420 380 415 385 410 390"
+	r2 := "700 300 380 420 385 415 390 410"
+	r3 := "300 700 380 420 385 415 390 410"
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r2)
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r2)
+	pairtestutils.AddRoundResultsStr(req, r1)
+	pairtestutils.AddRoundResultsStr(req, r3)
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(7))
+	is.Equal(resp.Pairings[7], int32(0))
+
+	// Same single-contender setup, but the leader is gibsonized (tighter
+	// GibsonSpread): the exception no longer applies, so P7 is barred from
+	// playing the leader.
+	req.GibsonSpread = 200
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(resp.Pairings[0] != int32(7))
+	is.True(resp.Pairings[7] != int32(0))
+	checkSymmetric(t, resp.Pairings)
+}
+
+// TestOddHopefulContenderGroupVsFactor3 regression-tests a conflict the odd-
+// hopeful-contender-group rule can have with Factor 3 expansion: F3 forces
+// specific pairings among the top 6 (including the leader's), and the group
+// rule must not also try to bar the leader's F3-forced opponent - it must
+// stand down, mirroring the CL policy's existing precedent for F3.
+func TestOddHopefulContenderGroupVsFactor3(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.30,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               20000,
+		ControlLossSims:            5000,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "420 400 415 400 414 400 400 410 400 417 400 422")
+	pairtestutils.AddRoundResultsStr(req, "420 400 400 426 400 427 510 400 422 400 420 400")
+	pairtestutils.AddRoundResultsStr(req, "400 495 400 430 400 426 400 410 400 417 400 422")
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+}
+
+// TestHopefulCasherGrouping checks Feature 2: in the last quarter of the
+// tournament, players who are hopeful to cash play other hopeful-to-cash
+// players, and players who aren't hopeful to cash play other non-hopeful
+// players. P0,P2,P4,P6,P8,P10 are a clean 6-0 top half (all hopeful to cash);
+// P1,P3,P5,P7,P9,P11 are a clean 0-6 bottom half (none hopeful to cash).
+func TestHopefulCasherGrouping(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              make([]int32, 12),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.05,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                4,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 440 360 430 370 420 380 410 390"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+
+	// Q4 (2 rounds left of 8): no pairing crosses the hopeful/non-hopeful line.
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	hopeful := map[int32]bool{0: true, 2: true, 4: true, 6: true, 8: true, 10: true}
+	for pi, opp := range resp.Pairings {
+		is.Equal(hopeful[int32(pi)], hopeful[opp])
+	}
+
+	// Outside Q4 (Rounds=30, same 6-round history: 24 rounds left), CC doesn't
+	// apply; confirm the pairing algorithm still succeeds and isn't required
+	// to keep the same grouping.
+	req.Rounds = 30
+	req.ControlLossActivationRound = 30
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+}
+
+// TestBottomSixMajorWeight checks Feature 3: in divisions of 12+ players,
+// during the last quarter, a major weight discourages hopeful-to-cash
+// players from playing players in the bottom 6 of the standings.
+func TestBottomSixMajorWeight(t *testing.T) {
+	is := is.New(t)
+
+	makeReq := func(names []int) *pb.PairRequest {
+		playerNames := make([]string, len(names))
+		for i := range playerNames {
+			playerNames[i] = fmt.Sprintf("P%d", i)
+		}
+		return &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                playerNames,
+			PlayerClasses:              make([]int32, len(names)),
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               200,
+			ControlLossThreshold:       0.25,
+			HopefulnessThreshold:       0.05,
+			AllPlayers:                 int32(len(names)),
+			ValidPlayers:               int32(len(names)),
+			Rounds:                     8,
+			PlacePrizes:                4,
+			DivisionSims:               5000,
+			ControlLossSims:            1000,
+			ControlLossActivationRound: 8,
+			Seed:                       1,
+		}
+	}
+
+	// 12 players (>= 12): P0,P2,P4,P6,P8,P10 are a clean 6-0 top half
+	// (hopeful to cash); P1,P3,P5,P7,P9,P11 are a clean 0-6 bottom half,
+	// which is also exactly the bottom 6 of the 12-player standings. No
+	// pairing crosses that line.
+	req := makeReq(make([]int, 12))
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 440 360 430 370 420 380 410 390"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	bottomSix := map[int32]bool{1: true, 3: true, 5: true, 7: true, 9: true, 11: true}
+	hopeful := map[int32]bool{0: true, 2: true, 4: true, 6: true, 8: true, 10: true}
+	for pi, opp := range resp.Pairings {
+		if hopeful[int32(pi)] {
+			is.True(!bottomSix[opp])
+		}
+	}
+
+	// Same shape of scenario, but with only 11 players (< 12): the bottom-6
+	// rule never applies, regardless of the standings shape.
+	req = makeReq(make([]int, 11))
+	req.PlacePrizes = 4
+	pairtestutils.AddNDummyRounds(req, 6)
+	res = "460 340 450 350 420 380 415 385 410 390 405"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp = cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+}
+
+// TestBottomSixHopefulOverlap regression-tests the interaction between CC's
+// hopeful-vs-hopeful rule (Feature 2) and its hopeful-vs-bottom-6 rule
+// (Feature 3) when a bottom-6 player is still (mathematically) hopeful to
+// cash. Before the fix, such a player had no non-major-penalty pairing
+// available: the hopeful-vs-hopeful rule would major-penalize pairing them
+// with a non-hopeful player, and the hopeful-vs-bottom-6 rule would
+// major-penalize pairing them with a hopeful one. The fix clamps the
+// hopeful-to-cash boundary these two rules use so the bottom 6 are never
+// counted as hopeful in divisions of 12+, giving bottom-6 players a clean
+// pairing among themselves.
+func TestBottomSixHopefulOverlap(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"},
+		PlayerClasses:              make([]int32, 13),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		// A generous HopefulnessThreshold and PlacePrizes push the hopeful-to-
+		// cash boundary deep enough to otherwise reach into the bottom 6.
+		HopefulnessThreshold:       0.2,
+		AllPlayers:                 13,
+		ValidPlayers:               13,
+		Rounds:                     8,
+		PlacePrizes:                8,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	res := "460 340 450 350 420 380 415 385 410 390 405 395 400"
+	for range 6 {
+		pairtestutils.AddRoundResultsStr(req, res)
+	}
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	// P11 (bottom 6, still hopeful under the unclamped boundary) gets a
+	// clean pairing with P9, another bottom-6 player, rather than being
+	// forced into a major-penalty pairing no matter who it plays.
+	is.Equal(resp.Pairings[11], int32(9))
+	is.Equal(resp.Pairings[9], int32(11))
+}
+
 func TestCOPWeights(t *testing.T) {
 	is := is.New(t)
 
@@ -843,11 +1180,12 @@ func TestCOPWeights(t *testing.T) {
 	// the matching is retried. In the fourth quarter (2 rounds left of 10), cashers
 	// use PC weight only (RD is suppressed).
 	//
-	// AlmostGibsonized Q4: player 4 pairs with player 7 (non-majorPenalty, no retry).
-	// Player 5 pairs with player 9 (within contender range, no retry). Player 0 pairs
-	// with player 18 via the retry: the first-pass edge (rank0, rank18) has weight
-	// >= majorPenalty, which expands LowestPossibleHopeNth for those players, and the
-	// second pass selects the same edge with a lower weight.
+	// AlmostGibsonized Q4: player 0 pairs with player 18 via the retry: the
+	// first-pass edge (rank0, rank18) has weight >= majorPenalty, which expands
+	// LowestPossibleHopeNth for those players, and the second pass selects the
+	// same edge with a lower weight. CC (hopeful-to-cash vs hopeful-to-cash,
+	// also Q4-only) then reshuffles who pairs with whom among the remaining
+	// non-majorPenalty options so hopeful cashers stay together.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
@@ -855,13 +1193,13 @@ func TestCOPWeights(t *testing.T) {
 	// whatnoloan and condorave still play (unchanged)
 	is.Equal(resp.Pairings[1], int32(3))
 	is.Equal(resp.Pairings[3], int32(1))
-	// In the fourth quarter, RD is suppressed for cashers; PC weight drives player 4
-	// to its nearest LowestPossibleHopeNth opponent (non-majorPenalty, no retry).
-	is.Equal(resp.Pairings[4], int32(7))
-	is.Equal(resp.Pairings[7], int32(4))
-	// Player 5 pairs within contender range (no retry).
-	is.Equal(resp.Pairings[5], int32(9))
-	is.Equal(resp.Pairings[14], int32(13))
+	// In the fourth quarter, RD is suppressed for cashers; PC and CC weight
+	// drive player 4 to player 9 (non-majorPenalty, no retry).
+	is.Equal(resp.Pairings[4], int32(9))
+	is.Equal(resp.Pairings[9], int32(4))
+	// Player 5 pairs with player 14 (within contender range, no retry).
+	is.Equal(resp.Pairings[5], int32(14))
+	is.Equal(resp.Pairings[14], int32(5))
 
 	// Kingston 2023 after round 15: player 0's first-pass pairing is within the
 	// contender range (non-majorPenalty), so no retry is triggered.
@@ -886,13 +1224,15 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[13], int32(17))
 	is.Equal(resp.Pairings[17], int32(13))
 
-	// In Q4 (Rounds=10), non-casher players pair by RD only.
+	// In Q4 (Rounds=10), non-casher players pair by RD (and CC, which agrees
+	// here since both are non-hopeful-to-cash) rather than crossing into the
+	// hopeful-to-cash group.
 	req = pairtestutils.CreateAlmostGibsonizedPairRequest()
 	req.Seed = 1
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(resp.Pairings[10], int32(17))
-	is.Equal(resp.Pairings[13], int32(14))
+	is.Equal(resp.Pairings[10], int32(13))
+	is.Equal(resp.Pairings[13], int32(10))
 }
 
 func TestCOPSuccess(t *testing.T) {
@@ -1139,107 +1479,43 @@ func TestInitialFontes(t *testing.T) {
 	checkSymmetric(t, resp.Pairings)
 }
 
+// TestSwiss verifies that PAIR_SWISS delegates entirely to COP: it produces
+// exactly the same pairings as calling COP directly with the same request.
+// swissPair was removed because COP's weight policies (repeats, rank/win
+// diff, etc.) subsume its simpler win/spread-diff weighting.
 func TestSwiss(t *testing.T) {
 	is := is.New(t)
 
-	// Winners play winners, losers play losers.
-	// Setup: pairings "7 6 5 4 3 2 1 0", results "400 400 400 400 0 0 0 0"
-	// → players 0-3: 1 win; players 4-7: 0 wins.
-	req := makeSimpleReq(pb.PairMethod_PAIR_SWISS, 8, 10)
-	pairtestutils.AddRoundPairingsStr(req, "7 6 5 4 3 2 1 0")
-	pairtestutils.AddRoundResultsStr(req, "400 400 400 400 0 0 0 0")
-	resp := cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	for _, pi := range []int{0, 1, 2, 3} {
-		opp := int(resp.Pairings[pi])
-		is.True(opp >= 0 && opp <= 3)
-	}
+	req := pairtestutils.CreateDefaultPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_SWISS
+	pairtestutils.AddNDummyRounds(req, 3)
+	pairtestutils.AddRoundResultsStr(req, "430 370 420 380 415 385 410 390")
+	pairtestutils.AddRoundResultsStr(req, "370 430 380 420 385 415 390 410")
+	pairtestutils.AddRoundResultsStr(req, "420 380 430 370 405 395 400 400")
 
-	// Odd player count: exactly one bye.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 5, 10)
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(countByes(resp.Pairings), 1)
+	swissResp := cop.COPPair(req)
+	is.Equal(swissResp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, swissResp.Pairings)
 
-	// Repeat avoidance with 4 players over 3 rounds.
-	// Round 1: 0 beats 1, 2 beats 3.
-	// Round 2: 2 beats 0, 1 beats 3.
-	// After 2 rounds: wins = [1,1,2,0]; played: 0-1, 2-3, 0-2, 1-3.
-	// Round 3: only repeat-free matching is 2 vs 1 and 0 vs 3.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 300")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 300 3 400 0 400 1 300")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(resp.Pairings[2], int32(1))
-	is.Equal(resp.Pairings[1], int32(2))
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
+	copReq := pairtestutils.CreateDefaultPairRequest()
+	copReq.PairMethod = pb.PairMethod_COP
+	pairtestutils.AddNDummyRounds(copReq, 3)
+	pairtestutils.AddRoundResultsStr(copReq, "430 370 420 380 415 385 410 390")
+	pairtestutils.AddRoundResultsStr(copReq, "370 430 380 420 385 415 390 410")
+	pairtestutils.AddRoundResultsStr(copReq, "420 380 430 370 405 395 400 400")
+	copReq.Seed = req.Seed
 
-	// Ties count as 1 in the doubled-win system (wins count 2, ties count 1).
-	// Round 1: 0 beats 1 (+100 spread), 2 ties 3.
-	// After R1: doubled wins = [2, 0, 1, 1]; valid pairing avoids 0-1 and 2-3 repeats.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 400")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
+	copResp := cop.COPPair(copReq)
+	is.Equal(copResp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(swissResp.Pairings, copResp.Pairings)
 
-	// Two rounds with ties; only repeat-free matching is 0 vs 3 and 1 vs 2.
-	// R1: 0 beats 1, 2 ties 3. R2: 0 ties 2, 3 beats 1.
-	// After R2 doubled wins: [3, 0, 2, 3]; played: (0,1),(2,3),(0,2),(1,3).
-	// Only remaining non-repeat matching: 0 vs 3, 1 vs 2.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 4, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 400 0 300 3 400 2 400")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 3 300 0 400 1 400")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
-	is.Equal(resp.Pairings[1], int32(2))
-	is.Equal(resp.Pairings[2], int32(1))
-
-	// Forced cross-win pairing with spread penalty selecting the better match.
-	//
-	// 6 players, 3 rounds of history constructed so that after 3 rounds:
-	//   - Every within-win-group pair has been played (9 of 15 total pairs used)
-	//   - Only two repeat-free perfect matchings remain:
-	//       M1: {0-3, 1-5, 2-4}  and  M2: {0-4, 1-3, 2-5}
-	//   - Both matchings have equal total win-diff penalty (pairs (3vs1),(2vs1),(1vs1))
-	//   - Spread penalty favours M1 because spread0≈spread3 and spread1≈spread5,
-	//     whereas M2 would pair spread0(+450) with spread4(-410) — a much larger gap.
-	//
-	// Rounds:
-	//   R1: P0 beats P1, P2 beats P3, P4 beats P5
-	//   R2: P0 beats P2, P1 beats P4, P5 beats P3
-	//   R3: P0 beats P5, P1 beats P2, P3 beats P4
-	//
-	// Final wins: P0=3, P1=2, P2=1, P3=1, P4=1, P5=1.
-	// Played pairs: (0,1),(2,3),(4,5),(0,2),(1,4),(3,5),(0,5),(1,2),(3,4).
-	// Unplayed:     (0,3),(0,4),(1,3),(1,5),(2,4),(2,5)  → exactly M1 ∪ M2 edges.
-	//
-	// Cumulative spreads: P0=+450, P1=+250, P2=+150, P3=-250, P4=-410, P5=-190.
-	// M1 total spread penalty: |450−(−250)|+|250−(−190)|−|150−(−410)| = 700+440−560 = 580
-	// M2 total spread penalty: |450−(−410)|+|250−(−250)|−|150−(−190)| = 860+500−340 = 1020
-	// Swiss minimum-weight matching selects M1.
-	req = makeSimpleReq(pb.PairMethod_PAIR_SWISS, 6, 5)
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 450 0 350 3 500 2 100 5 420 4 380")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 400 4 450 0 350 5 300 1 300 3 450")
-	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 500 2 500 1 300 4 500 3 200 0 200")
-	resp = cop.COPPair(req)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	checkSymmetric(t, resp.Pairings)
-	// M1 selected: P0 plays P3, P1 plays P5, P2 plays P4.
-	is.Equal(resp.Pairings[0], int32(3))
-	is.Equal(resp.Pairings[3], int32(0))
-	is.Equal(resp.Pairings[1], int32(5))
-	is.Equal(resp.Pairings[5], int32(1))
-	is.Equal(resp.Pairings[2], int32(4))
-	is.Equal(resp.Pairings[4], int32(2))
+	// Odd player count: exactly one bye, same as COP.
+	req = pairtestutils.CreateDefaultOddPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_SWISS
+	swissResp = cop.COPPair(req)
+	is.Equal(swissResp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, swissResp.Pairings)
+	is.Equal(countByes(swissResp.Pairings), 1)
 }
 
 func TestTeamRoundRobin(t *testing.T) {
@@ -1372,6 +1648,31 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+
+	// AUTO with 10 players and R=8 (< rrRounds=9): rounds 0-2 use Initial
+	// Fontes, and round 3 onward now uses COP directly (Swiss was removed).
+	autoNames := []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"}
+	autoReq10 := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_PAIR_AUTO,
+		PlayerNames:                autoNames,
+		PlayerClasses:              make([]int32, 10),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 10,
+		ValidPlayers:               10,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+	}
+	pairtestutils.AddNDummyRounds(autoReq10, 3)
+	resp = cop.COPPair(autoReq10)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "round 3 >= 3, using COP"))
+	is.True(!strings.Contains(resp.Log, "using Swiss"))
 }
 
 func TestCOPProf(t *testing.T) {

@@ -101,7 +101,36 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		WriteFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
+	// numCompletePairings is needed early to compute the leader/2nd win% below;
+	// it's recomputed (identically) further down alongside pairingCounts.
+	numCompletePairings := 0
+completePairingsLoop:
+	for _, roundPairings := range req.DivisionPairings {
+		for playerIdx := range roundPairings.Pairings {
+			oppIdx := int(roundPairings.Pairings[playerIdx])
+			if oppIdx == -1 {
+				break completePairingsLoop
+			}
+		}
+		numCompletePairings++
+	}
+
 	minWinsForHopeful := int(math.Round(float64(improvedFactorSimResults.TotalSims) * req.HopefulnessThreshold))
+	// If the leader and 2nd place have run away with the tournament (their
+	// combined win% exceeds 80%), other players only need half as many
+	// simulated wins to be considered hopeful contenders for 1st or 2nd.
+	halfMinWinsForHopeful := int(math.Round(float64(minWinsForHopeful) / 2.0))
+	runawayLeaders := false
+	if numPlayers >= 2 && numCompletePairings > 0 {
+		leaderWinPct := standings.GetPlayerWins(0) / float64(numCompletePairings)
+		secondWinPct := standings.GetPlayerWins(1) / float64(numCompletePairings)
+		if leaderWinPct+secondWinPct > 0.80 {
+			runawayLeaders = true
+			logsb.WriteString(fmt.Sprintf(
+				"Leader+2nd combined win%% (%.1f%%) > 80%%: halving the hopeful-for-1st/2nd bar to %d (normally %d)\n",
+				(leaderWinPct+secondWinPct)*100, halfMinWinsForHopeful, minWinsForHopeful))
+		}
+	}
 	highestRankHopefully := make([]int, numPlayers)
 	highestRankAbsolutely := make([]int, numPlayers)
 	lowestRankAbsolutely := make([]int, numPlayers)
@@ -115,7 +144,11 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 				absoluteRank = rank
 			}
 			winsSum += rankSum
-			if winsSum >= minWinsForHopeful {
+			threshold := minWinsForHopeful
+			if runawayLeaders && rank <= 1 {
+				threshold = halfMinWinsForHopeful
+			}
+			if winsSum >= threshold {
 				hopefulRank = rank
 				break
 			}
@@ -150,17 +183,6 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 
 	pairingCounts := make(map[string]int)
 	repeatCounts := make([]int, int(req.AllPlayers))
-	numCompletePairings := 0
-divisionPairingLoop:
-	for _, roundPairings := range req.DivisionPairings {
-		for playerIdx := range roundPairings.Pairings {
-			oppIdx := int(roundPairings.Pairings[playerIdx])
-			if oppIdx == -1 {
-				break divisionPairingLoop
-			}
-		}
-		numCompletePairings++
-	}
 	for roundIdx := range numCompletePairings {
 		roundPairings := req.DivisionPairings[roundIdx]
 		for playerIdx := range roundPairings.Pairings {
