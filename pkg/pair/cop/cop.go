@@ -23,9 +23,16 @@ import (
 )
 
 const (
-	timeFormat                           = "2006-01-02T15:04:05.000Z"
-	majorPenalty                         = 1e9
-	minorPenalty                         = majorPenalty / 1e3
+	timeFormat   = "2006-01-02T15:04:05.000Z"
+	majorPenalty = 1e9
+	minorPenalty = majorPenalty / 1e3
+	// hopefulCasherByeWeight is the cost of giving a hopeful-to-cash
+	// contender the bye. It's set well above 2*majorPenalty so that when the
+	// matching must choose between that and a combination of two other
+	// major-penalty violations elsewhere (e.g. two repeat byes), it picks the
+	// latter instead. Top-down byes bypass this entirely (TB force-assigns
+	// the bye), so this only matters when byes aren't top-down.
+	hopefulCasherByeWeight               = 3e9
 	byePlayerName                        = "BYE"
 	controlLossLowestContenderOnlyRounds = 4
 )
@@ -64,6 +71,11 @@ type policyArgs struct {
 	// computeDisallowedLeaderOpponent) so that KH can avoid forcing a cash
 	// prize KOTH pairing that would conflict with it.
 	disallowedLeaderOpponent int
+	// forcedContenderByePlayer is the player index forced to take the bye
+	// because PC (no bye for contenders) and BR (no repeat byes) would
+	// otherwise be in direct conflict this round, or -1 if there's no such
+	// clash. It is computed once (see computeForcedContenderBye).
+	forcedContenderByePlayer int
 }
 
 // computeDisallowedLeaderOpponent implements the odd-hopeful-contender-group
@@ -123,6 +135,49 @@ func computeTopDownByePlayer(pargs *policyArgs) int {
 			leastByes = numByes
 			byePlayer = pi
 		}
+	}
+	return byePlayer
+}
+
+// computeForcedContenderBye detects when PC (which major-penalizes giving a
+// hopeful-to-cash contender the bye) and BR (which major-penalizes giving
+// anyone a repeat bye, when AllowRepeatByes is false) are in direct conflict:
+// every player who hasn't yet had a bye is a contender, so the bye must
+// either go to a contender (a PC violation) or repeat on someone (a BR
+// violation). When that's the case, this forces the bye onto the
+// lowest-ranked such contender with the fewest prior byes - the mirror image
+// of computeTopDownByePlayer's top-down scan. Returns -1 if there's no clash
+// this round (a bye-repeat-free non-contender is available, so PC and BR
+// don't conflict), or if repeats can't be avoided regardless of who gets the
+// bye (nobody, contender or not, is bye-repeat-free).
+func computeForcedContenderBye(pargs *policyArgs) int {
+	numPlayers := len(pargs.playerNodes)
+	if pargs.req.AllowRepeatByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex ||
+		pargs.gibsonGetsBye || pargs.topDownByePlayer >= 0 {
+		return -1
+	}
+	byePlayer := -1
+	leastByes := int(pargs.req.Rounds + 1)
+	// Scan bottom-up, excluding the bye - the mirror of computeTopDownByePlayer's
+	// top-down scan, so ties favor the lower-ranked (bottom) contender.
+	for playerRankIdx := numPlayers - 2; playerRankIdx >= 0; playerRankIdx-- {
+		pi := pargs.playerNodes[playerRankIdx]
+		numByes := pargs.copdata.PairingCounts[copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)]
+		isContender := playerRankIdx <= pargs.lowestPossibleHopeCasher && !pargs.copdata.GibsonizedPlayers[playerRankIdx]
+		if numByes == 0 && !isContender {
+			// A non-contender is still bye-repeat-free; PC and BR don't conflict.
+			return -1
+		}
+		if isContender && numByes < leastByes {
+			leastByes = numByes
+			byePlayer = pi
+		}
+	}
+	// Only force the bye onto a contender if doing so actually avoids a
+	// repeat - if even the least-byed contender already has one, forcing it
+	// on them wouldn't help, so leave it to the weight policies.
+	if byePlayer < 0 || leastByes > 0 {
+		return -1
 	}
 	return byePlayer
 }
@@ -350,6 +405,18 @@ var constraintPolicies = []constraintPolicy{
 		},
 	},
 	{
+		// Forced Contender Bye: PC (no bye for contenders) and BR (no repeat
+		// byes) are in direct conflict this round, so force the bye onto the
+		// contender it picks rather than letting a repeat bye happen instead.
+		name: "CB",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.forcedContenderByePlayer < 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return [][2]int{{pargs.forcedContenderByePlayer, pkgstnd.ByePlayerIndex}}, [][2]int{}
+		},
+	},
+	{
 		// Factor 3 expansion for the 2nd-to-last round
 		name: "F3",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
@@ -359,6 +426,12 @@ var constraintPolicies = []constraintPolicy{
 			return pargs.factor3ForcedPairings, [][2]int{}
 		},
 	},
+}
+
+// isLastQuarter reports whether the tournament is in its last quarter of
+// rounds - the shared boundary the RD, PC, and CC weight policies all key off.
+func isLastQuarter(pargs *policyArgs) bool {
+	return copdatapkg.IsLastQuarter(pargs.roundPairingsRemaining, pargs.req.Rounds)
 }
 
 // hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the CC
@@ -399,7 +472,7 @@ var weightPolicies = []weightPolicy{
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
 			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
-			if pargs.roundPairingsRemaining*4 <= int(pargs.req.Rounds) &&
+			if isLastQuarter(pargs) &&
 				!pargs.copdata.GibsonizedPlayers[ri] &&
 				ri <= pargs.lowestPossibleHopeCasher {
 				return 0
@@ -430,6 +503,9 @@ var weightPolicies = []weightPolicy{
 			if pargs.copdata.GibsonizedPlayers[ri] || rjGibsonized || ri > pargs.lowestPossibleHopeCasher {
 				return 0
 			}
+			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				return hopefulCasherByeWeight
+			}
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
 			if override, ok := pargs.lowestHopeOverride[ri]; ok {
 				lowestContender = override
@@ -437,7 +513,7 @@ var weightPolicies = []weightPolicy{
 			// Check if we should apply an inverse distance penalty
 			if rj <= lowestContender || (lowestContender == ri && ri == rj-1) {
 				// Only apply PC weight in the fourth quarter.
-				if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+				if !isLastQuarter(pargs) {
 					return 0
 				}
 				// Calculate the inverse distance penalty
@@ -481,7 +557,7 @@ var weightPolicies = []weightPolicy{
 				pargs.playerNodes[rj] == pargs.disallowedLeaderOpponent {
 				return majorPenalty
 			}
-			if pargs.roundPairingsRemaining*4 > int(pargs.req.Rounds) {
+			if !isLastQuarter(pargs) {
 				return 0
 			}
 			// The bye is neither hopeful nor unhopeful to cash; leave it out
@@ -896,27 +972,6 @@ func currentRoundIndex(req *pb.PairRequest) int32 {
 	return int32(n)
 }
 
-// computePairingCounts returns a map from pairing key to number of times that pair has played,
-// counting only complete rounds (excluding any partially-prepaired last round).
-func computePairingCounts(req *pb.PairRequest) map[string]int {
-	counts := map[string]int{}
-	numDivPairings := len(req.DivisionPairings)
-	numComplete := numDivPairings
-	if numComplete > 0 && slices.Contains(req.DivisionPairings[numComplete-1].Pairings, -1) {
-		numComplete--
-	}
-	for roundIdx := range numComplete {
-		for playerIdx, oppIdx := range req.DivisionPairings[roundIdx].Pairings {
-			if int(oppIdx) > playerIdx {
-				continue
-			}
-			key := copdatapkg.GetPairingKey(playerIdx, int(oppIdx))
-			counts[key]++
-		}
-	}
-	return counts
-}
-
 // simplePairOnce runs a single round of a non-COP pairing method and returns
 // the full allPlayers-length pairings slice (bye represented as self-pairing).
 func simplePairOnce(req *pb.PairRequest, pairingMethod pb.PairingMethod, poolMembers []*entity.PoolMember, playerOrder []int, roundIdx int32, seed uint64) ([]int32, error) {
@@ -1221,6 +1276,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
 	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
+	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
 	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
@@ -1231,6 +1287,13 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	logsb.WriteString(fmt.Sprintf("Round Pairings Remaining: %d\n", pargs.roundPairingsRemaining))
 	logsb.WriteString(fmt.Sprintf("Using Unforced Bye: %t\n", addBye))
 	logsb.WriteString(fmt.Sprintf("Gibson Gets Bye: %t\n", pargs.gibsonGetsBye))
+	if pargs.forcedContenderByePlayer >= 0 {
+		logsb.WriteString(fmt.Sprintf(
+			"Forced Contender Bye: %s - every bye-repeat-free player is a hopeful-to-cash contender this round, "+
+				"so the bye is forced onto the lowest-ranked contender with the fewest prior byes instead of repeating "+
+				"a bye on someone else\n",
+			req.PlayerNames[pargs.forcedContenderByePlayer]))
+	}
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
 	logsb.WriteString("Destinys Child: ")
 	if copdata.DestinysChild >= 0 {

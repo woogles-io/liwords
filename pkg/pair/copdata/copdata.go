@@ -17,6 +17,19 @@ var (
 	standingsHeader = []string{"Rank", "Num", "Name", "Wins", "Spr"}
 )
 
+const (
+	// runawayLeadersWinPctThreshold is the combined win% for the leader and
+	// 2nd place above which other players only need half as many simulated
+	// wins to be considered hopeful contenders for 1st or 2nd.
+	runawayLeadersWinPctThreshold = 0.80
+)
+
+// IsLastQuarter reports whether roundPairingsRemaining rounds still to be
+// paired puts the tournament in its last quarter of rounds.
+func IsLastQuarter(roundPairingsRemaining int, rounds int32) bool {
+	return roundPairingsRemaining*4 <= int(rounds)
+}
+
 type PrecompData struct {
 	Standings     *pkgstnd.Standings
 	PairingCounts map[string]int
@@ -117,18 +130,25 @@ completePairingsLoop:
 
 	minWinsForHopeful := int(math.Round(float64(improvedFactorSimResults.TotalSims) * req.HopefulnessThreshold))
 	// If the leader and 2nd place have run away with the tournament (their
-	// combined win% exceeds 80%), other players only need half as many
-	// simulated wins to be considered hopeful contenders for 1st or 2nd.
+	// combined probability of finishing 1st exceeds 80%), other players only
+	// need half as many simulated wins to be considered hopeful contenders
+	// for 1st or 2nd.
+	//
+	// This must be computed from the simulated probability of finishing in
+	// 1st place (FinalRanks[...][0]/TotalSims), not from either player's
+	// actual completed-game win rate: only one player can finish 1st, so the
+	// simulated figure is a single probability bounded at 100%, while two
+	// independent win rates can each approach 100% and sum past it.
 	halfMinWinsForHopeful := int(math.Round(float64(minWinsForHopeful) / 2.0))
 	runawayLeaders := false
-	if numPlayers >= 2 && numCompletePairings > 0 {
-		leaderWinPct := standings.GetPlayerWins(0) / float64(numCompletePairings)
-		secondWinPct := standings.GetPlayerWins(1) / float64(numCompletePairings)
-		if leaderWinPct+secondWinPct > 0.80 {
+	if numPlayers >= 2 && improvedFactorSimResults.TotalSims > 0 {
+		leaderFirstPct := float64(improvedFactorSimResults.FinalRanks[0][0]) / float64(improvedFactorSimResults.TotalSims)
+		secondFirstPct := float64(improvedFactorSimResults.FinalRanks[1][0]) / float64(improvedFactorSimResults.TotalSims)
+		if leaderFirstPct+secondFirstPct > runawayLeadersWinPctThreshold {
 			runawayLeaders = true
 			logsb.WriteString(fmt.Sprintf(
-				"Leader+2nd combined win%% (%.1f%%) > 80%%: halving the hopeful-for-1st/2nd bar to %d (normally %d)\n",
-				(leaderWinPct+secondWinPct)*100, halfMinWinsForHopeful, minWinsForHopeful))
+				"Leader+2nd combined 1st-place%% (%.1f%%) > %.0f%%: halving the hopeful-for-1st/2nd bar to %d (normally %d)\n",
+				(leaderFirstPct+secondFirstPct)*100, runawayLeadersWinPctThreshold*100, halfMinWinsForHopeful, minWinsForHopeful))
 		}
 	}
 	highestRankHopefully := make([]int, numPlayers)
@@ -164,6 +184,34 @@ completePairingsLoop:
 			}
 		}
 		lowestRankAbsolutely[playerRankIdx] = lowestRank
+	}
+
+	// In the last quarter, an odd number of hopeful-to-cash players leaves one of
+	// them with no hopeful-to-cash opponent (the CC weight policy major-penalizes
+	// pairing a hopeful-to-cash player against a non-hopeful one). Fix the parity
+	// here, at the source, by promoting the highest-ranked non-hopeful player to
+	// hopeful for the lowest cash position - the same fix computeDisallowedLeaderOpponent
+	// makes for the hopeful-for-1st contender group, but folded into the data
+	// instead of layered on as a pairing constraint.
+	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
+	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
+		numHopefulToCash := 0
+		highestNonHopefulRankIdx := -1
+		for playerRankIdx, place := range highestRankHopefully {
+			if place < int(req.PlacePrizes) {
+				numHopefulToCash++
+			} else if highestNonHopefulRankIdx == -1 {
+				highestNonHopefulRankIdx = playerRankIdx
+			}
+		}
+		if numHopefulToCash%2 == 1 && highestNonHopefulRankIdx >= 0 {
+			lowestCashPlace := int(req.PlacePrizes) - 1
+			logsb.WriteString(fmt.Sprintf(
+				"Odd number of hopeful-to-cash players (%d) in the last quarter: %s (rank %d) altered from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
+				numHopefulToCash, req.PlayerNames[standings.GetPlayerIndex(highestNonHopefulRankIdx)], highestNonHopefulRankIdx+1,
+				highestRankHopefully[highestNonHopefulRankIdx]+1, lowestCashPlace+1))
+			highestRankHopefully[highestNonHopefulRankIdx] = lowestCashPlace
+		}
 	}
 
 	lowestPossibleHopeNth := make([]int, len(highestRankHopefully))

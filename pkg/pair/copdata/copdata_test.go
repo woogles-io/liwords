@@ -295,16 +295,26 @@ func hopefulnessTestReq() *pb.PairRequest {
 }
 
 // TestRunawayLeadersHalveHopefulness checks that when the leader and 2nd
-// place's combined win% exceeds 80%, other players only need half as many
-// simulated wins to be considered hopeful contenders for 1st or 2nd (Feature
-// 4). This directly shrinks/grows LowestPossibleHopeNth[0]/[1], which Feature
-// 5 (see cop_test.go) builds its odd-contender-group logic on top of.
+// place's combined simulated probability of finishing 1st exceeds 80%, other
+// players only need half as many simulated wins to be considered hopeful
+// contenders for 1st or 2nd (Feature 4). This directly shrinks/grows
+// LowestPossibleHopeNth[0]/[1], which Feature 5 (see cop_test.go) builds its
+// odd-contender-group logic on top of.
+//
+// This must be computed from FinalRanks (a true probability, bounded at
+// 100% since only one player can finish 1st), not from the leader and 2nd's
+// independent actual completed-game win rates, which can each approach 100%
+// and so can sum past it - hence testing with Rounds set so only 2 rounds
+// remain, rather than with a win% that would overstate the real chance
+// either player finishes 1st.
 func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	is := is.New(t)
 
-	// Leader (P8) and 2nd (P0) end up at 4-1 (80%) and 3.5-1.5 (70%): combined
-	// 150% > 80%, so the hopeful-for-1st/2nd bar is halved.
+	// Leader (P8) and 2nd (P0), with 2 rounds remaining, combine for an 80.2%
+	// simulated chance of finishing 1st: just over 80%, so the
+	// hopeful-for-1st/2nd bar is halved.
 	req := hopefulnessTestReq()
+	req.Rounds = 7
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 400 3 450 2 400 5 450 4 400 7 450 6 400 9 450 8 400")
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 3 400 0 450 1 400 6 400 7 400 4 400 5 400 8 400 9 400")
 	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 2 400 1 450 0 400 7 400 6 400 5 400 4 400 9 400 8 400")
@@ -315,13 +325,14 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	var logsb strings.Builder
 	copdata, pairErr := pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.True(strings.Contains(logsb.String(), "Leader+2nd combined win% (150.0%) > 80%"))
+	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
 	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 325 (normally 650)"))
-	is.Equal(copdata.LowestPossibleHopeNth[0], 6)
-	is.Equal(copdata.LowestPossibleHopeNth[1], 7)
+	is.Equal(copdata.LowestPossibleHopeNth[0], 2)
+	is.Equal(copdata.LowestPossibleHopeNth[1], 6)
 
-	// Before any rounds are played there's no win% to compute from, so the
-	// halving never triggers (guards the numCompletePairings==0 case).
+	// Before any rounds are played there's no simulation to compute a 1st-
+	// place probability from, so the halving never triggers (guards the
+	// numPlayers<2/TotalSims==0 cases).
 	req = hopefulnessTestReq()
 	copRand.Seed(1)
 	logsb.Reset()

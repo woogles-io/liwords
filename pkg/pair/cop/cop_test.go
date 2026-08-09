@@ -951,13 +951,21 @@ func TestOddHopefulContenderGroup(t *testing.T) {
 	is.Equal(resp.Pairings[7], int32(0))
 
 	// Same single-contender setup, but the leader is gibsonized (tighter
-	// GibsonSpread): the exception no longer applies, so P7 is barred from
-	// playing the leader.
+	// GibsonSpread): the exception no longer applies, so ordinarily P7 would
+	// be barred from playing the leader. With PlacePrizes=1 here, though,
+	// "hopeful to cash" and "hopeful for 1st" are the same group, so the
+	// last-quarter hopeful-to-cash parity fix in copdata.go (which promotes
+	// the highest-ranked non-hopeful player to hopeful when the group is odd)
+	// fires first and already evens out the group by making P7 hopeful too -
+	// superseding the leader-bar path here, so 0 and 7 pair freely just like
+	// the non-gibsonized case above. (See TestOddHopefulContenderGroupVsFactor3
+	// for leader-bar coverage at PlacePrizes>1, where the two mechanisms don't
+	// overlap.)
 	req.GibsonSpread = 200
 	resp = cop.COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.True(resp.Pairings[0] != int32(7))
-	is.True(resp.Pairings[7] != int32(0))
+	is.Equal(resp.Pairings[0], int32(7))
+	is.Equal(resp.Pairings[7], int32(0))
 	checkSymmetric(t, resp.Pairings)
 }
 
@@ -1128,12 +1136,12 @@ func TestBottomSixHopefulOverlap(t *testing.T) {
 	is := is.New(t)
 
 	req := &pb.PairRequest{
-		PairMethod:                 pb.PairMethod_COP,
-		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"},
-		PlayerClasses:              make([]int32, 13),
-		ClassPrizes:                []int32{2},
-		GibsonSpread:               200,
-		ControlLossThreshold:       0.25,
+		PairMethod:           pb.PairMethod_COP,
+		PlayerNames:          []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"},
+		PlayerClasses:        make([]int32, 13),
+		ClassPrizes:          []int32{2},
+		GibsonSpread:         200,
+		ControlLossThreshold: 0.25,
 		// A generous HopefulnessThreshold and PlacePrizes push the hopeful-to-
 		// cash boundary deep enough to otherwise reach into the bottom 6.
 		HopefulnessThreshold:       0.2,
@@ -1155,10 +1163,61 @@ func TestBottomSixHopefulOverlap(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 	checkSymmetric(t, resp.Pairings)
 	// P11 (bottom 6, still hopeful under the unclamped boundary) gets a
-	// clean pairing with P9, another bottom-6 player, rather than being
-	// forced into a major-penalty pairing no matter who it plays.
-	is.Equal(resp.Pairings[11], int32(9))
-	is.Equal(resp.Pairings[9], int32(11))
+	// clean pairing with another bottom-6 player (P10) rather than being
+	// forced into a major-penalty pairing no matter who it plays. (Which
+	// bottom-6 player specifically shifts with unrelated weight tuning - e.g.
+	// hopefulCasherByeWeight - since that changes who draws the bye and
+	// therefore how the remaining bottom-6 players pair off among
+	// themselves - but the pairing stays bottom-six-vs-bottom-six either way,
+	// which is what this test guards.)
+	is.Equal(resp.Pairings[11], int32(10))
+	is.Equal(resp.Pairings[10], int32(11))
+}
+
+// TestForcedContenderBye checks that when PC (no bye for contenders) and BR
+// (no repeat byes, since AllowRepeatByes=false) would otherwise be in direct
+// conflict - every bye-repeat-free player is a hopeful-to-cash contender -
+// the bye is forced onto that contender instead of repeating someone else's
+// bye. P0 wins every real game it plays and never gets a bye across 4 rounds
+// (5 players, so someone sits out every round); P1-P4 each get exactly one
+// bye in turn and finish with losing records, leaving P0 as the sole
+// contender for the 1 cash prize and the only bye-repeat-free player.
+func TestForcedContenderBye(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4"},
+		PlayerClasses:              make([]int32, 5),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               5000,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 5,
+		ValidPlayers:               5,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		DivisionSims:               5000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 8,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// R1: P1 byes; P0 beats P2, P3 beats P4.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 1 50 0 300 4 420 3 380")
+	// R2: P2 byes; P0 beats P3, P4 beats P1.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 4 380 2 50 0 300 1 420")
+	// R3: P3 byes; P0 beats P4, P1 beats P2.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 500 2 420 1 380 3 50 0 300")
+	// R4: P4 byes; P0 beats P1, P2 beats P3.
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 300 3 420 2 380 4 50")
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	checkSymmetric(t, resp.Pairings)
+	// P0 (4-0, the sole contender, and the only player without a prior bye)
+	// takes the bye rather than repeating one onto P1-P4.
+	is.Equal(resp.Pairings[0], int32(0))
 }
 
 func TestCOPWeights(t *testing.T) {
@@ -1595,7 +1654,7 @@ func TestMultiroundPairings(t *testing.T) {
 	// AUTO with R=10, P=8: floor(10/7)*7=7 RR rounds, then COP for the remaining 3.
 	autoReq := pairtestutils.CreateDefaultPairRequest()
 	autoReq.PairMethod = pb.PairMethod_PAIR_AUTO
-	rrRounds := int(autoReq.ValidPlayers) - 1 // 7
+	rrRounds := int(autoReq.ValidPlayers) - 1                    // 7
 	rrRoundsTotal := (int(autoReq.Rounds) / rrRounds) * rrRounds // 7
 	resp = cop.COPPair(autoReq)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
