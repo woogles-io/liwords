@@ -873,21 +873,24 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 	}
 }
 
-// Hypothetical 18-player, 15-round tournament: 3 rounds of Fontes-style pairings, then 12
-// rounds of COP, with simulated (random) results throughout, standard 1-game-behind timing.
-// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_Hypothetical18Player15Round
-func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
+// runHypotheticalScenario runs a hypothetical tournament of the given size: 3 rounds of
+// Fontes-style pairings, then COP for the remaining rounds, with simulated (random) results
+// throughout, standard 1-game-behind timing, and control loss activating for the last 4 rounds.
+// PlacePrizes scales with field size (4 for fields up to 20, 6 beyond that).
+func runHypotheticalScenario(t *testing.T, numPlayers, totalRounds int) {
 	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping hypothetical 18-player scenario test. Set COP_SCENARIOS=1 to run.")
+		t.Skipf("Skipping hypothetical %dp/%dr scenario test. Set COP_SCENARIOS=1 to run.", numPlayers, totalRounds)
 	}
 	is := is.New(t)
 	spreadsDist := standings.GetScoreDifferences()
 
 	const numRuns = 10
+	const fontesRounds = 3
 
-	numPlayers := 18
-	totalRounds := 15
-	fontesRounds := 3
+	placePrizes := int32(4)
+	if numPlayers > 20 {
+		placePrizes = 6
+	}
 
 	names := make([]string, numPlayers)
 	for i := range names {
@@ -898,7 +901,7 @@ func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
 	for run := 0; run < numRuns; run++ {
 		seed := time.Now().UnixNano()
 		rng := rand.New(rand.NewSource(uint64(seed)))
-		runDir := fmt.Sprintf("hypothetical18p15r_run_%02d", run+1)
+		runDir := fmt.Sprintf("hypothetical%dp%dr_run_%02d", numPlayers, totalRounds, run+1)
 
 		req := &pb.PairRequest{
 			PairMethod:                 pb.PairMethod_COP,
@@ -911,10 +914,10 @@ func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
 			AllPlayers:                 int32(numPlayers),
 			ValidPlayers:               int32(numPlayers),
 			Rounds:                     int32(totalRounds),
-			PlacePrizes:                4,
+			PlacePrizes:                placePrizes,
 			DivisionSims:               scenarioDivisionSims,
 			ControlLossSims:            scenarioControlLossSims,
-			ControlLossActivationRound: 11,
+			ControlLossActivationRound: int32(totalRounds - 4),
 			AllowRepeatByes:            false,
 			Seed:                       seed,
 		}
@@ -940,7 +943,7 @@ func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
 
 			resp := cop.COPPair(req)
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-			fmt.Printf("Hypothetical 18p/15r run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			fmt.Printf("Hypothetical %dp/%dr run %d round %d pairings: %v\n", numPlayers, totalRounds, run+1, round, resp.Pairings)
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 
 			pairings := make([]int32, numPlayers)
@@ -951,82 +954,19 @@ func TestScenarioMultiRound_Hypothetical18Player15Round(t *testing.T) {
 	}
 }
 
-// Hypothetical 26-player, 15-round tournament: 3 rounds of Fontes-style pairings, then 12
-// rounds of COP, with simulated (random) results throughout, standard 1-game-behind timing.
-// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_Hypothetical26Player15Round
-func TestScenarioMultiRound_Hypothetical26Player15Round(t *testing.T) {
-	if os.Getenv("COP_SCENARIOS") == "" {
-		t.Skip("Skipping hypothetical 26-player scenario test. Set COP_SCENARIOS=1 to run.")
-	}
-	is := is.New(t)
-	spreadsDist := standings.GetScoreDifferences()
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioHypo12p7r
+func TestScenarioHypo12p7r(t *testing.T) {
+	runHypotheticalScenario(t, 12, 7)
+}
 
-	const numRuns = 10
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioHypo18p15r
+func TestScenarioHypo18p15r(t *testing.T) {
+	runHypotheticalScenario(t, 18, 15)
+}
 
-	numPlayers := 26
-	totalRounds := 15
-	fontesRounds := 3
-
-	names := make([]string, numPlayers)
-	for i := range names {
-		names[i] = fmt.Sprintf("P%d", i)
-	}
-	classes := make([]int32, numPlayers)
-
-	for run := 0; run < numRuns; run++ {
-		seed := time.Now().UnixNano()
-		rng := rand.New(rand.NewSource(uint64(seed)))
-		runDir := fmt.Sprintf("hypothetical26p15r_run_%02d", run+1)
-
-		req := &pb.PairRequest{
-			PairMethod:                 pb.PairMethod_COP,
-			PlayerNames:                names,
-			PlayerClasses:              classes,
-			ClassPrizes:                []int32{2},
-			GibsonSpread:               scenarioGibsonSpread,
-			ControlLossThreshold:       0.30,
-			HopefulnessThreshold:       scenarioHopefulness,
-			AllPlayers:                 int32(numPlayers),
-			ValidPlayers:               int32(numPlayers),
-			Rounds:                     int32(totalRounds),
-			PlacePrizes:                6,
-			DivisionSims:               scenarioDivisionSims,
-			ControlLossSims:            scenarioControlLossSims,
-			ControlLossActivationRound: 11,
-			AllowRepeatByes:            false,
-			Seed:                       seed,
-		}
-
-		allPairings := []*pb.RoundPairings{}
-		allResults := []*pb.RoundResults{}
-
-		for r := 0; r < fontesRounds; r++ {
-			pairings := generateFontesPairings(r, numPlayers)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-
-		for round := fontesRounds + 1; round <= totalRounds; round++ {
-			req.DivisionPairings = allPairings
-			req.DivisionResults = allResults
-
-			if round == totalRounds {
-				req.GibsonSpread = scenarioLastRoundGibsonSpread
-			} else {
-				req.GibsonSpread = scenarioGibsonSpread
-			}
-
-			resp := cop.COPPair(req)
-			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-			fmt.Printf("Hypothetical 26p/15r run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
-			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
-
-			pairings := make([]int32, numPlayers)
-			copy(pairings, resp.Pairings)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-	}
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioHypo26p15r
+func TestScenarioHypo26p15r(t *testing.T) {
+	runHypotheticalScenario(t, 26, 15)
 }
 
 // Manhattan Open 2024 (or similar): 18 players, 16 rounds, PlacePrizes=2.

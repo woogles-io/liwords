@@ -385,9 +385,11 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				continue
 			}
 			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
-				if highestControlLossRankIdx == -1 || rankIdx < highestControlLossRankIdx {
-					highestControlLossRankIdx = rankIdx
-				}
+				// Ranks are scanned top-down (2nd place first), so the first
+				// rank found with a control loss is necessarily the highest
+				// (closest to 1st) one possible; no lower rank can beat it.
+				highestControlLossRankIdx = rankIdx
+				break
 			}
 		}
 	}
