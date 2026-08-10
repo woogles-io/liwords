@@ -147,8 +147,10 @@ completePairingsLoop:
 		if leaderFirstPct+secondFirstPct > runawayLeadersWinPctThreshold {
 			runawayLeaders = true
 			logsb.WriteString(fmt.Sprintf(
-				"Leader+2nd combined 1st-place%% (%.1f%%) > %.0f%%: halving the hopeful-for-1st/2nd bar to %d (normally %d)\n",
-				(leaderFirstPct+secondFirstPct)*100, runawayLeadersWinPctThreshold*100, halfMinWinsForHopeful, minWinsForHopeful))
+				"Leader+2nd combined 1st-place%% (%.1f%%) > %.0f%%: halving the hopeful-for-1st/2nd bar to %.0f%% (normally %.0f%%)\n",
+				(leaderFirstPct+secondFirstPct)*100, runawayLeadersWinPctThreshold*100,
+				float64(halfMinWinsForHopeful)/float64(improvedFactorSimResults.TotalSims)*100,
+				float64(minWinsForHopeful)/float64(improvedFactorSimResults.TotalSims)*100))
 		}
 	}
 	highestRankHopefully := make([]int, numPlayers)

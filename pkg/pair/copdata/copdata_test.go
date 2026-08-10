@@ -326,7 +326,7 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	copdata, pairErr := pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
-	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 325 (normally 650)"))
+	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 2% (normally 5%)"))
 	is.Equal(copdata.LowestPossibleHopeNth[0], 2)
 	is.Equal(copdata.LowestPossibleHopeNth[1], 6)
 

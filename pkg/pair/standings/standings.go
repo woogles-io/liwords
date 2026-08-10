@@ -360,69 +360,33 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 			}
 		}
 	} else {
-		// Perform a binary search to find the player with the lowest
-		// number of tournament wins while always winning every game in factor pairings
-		// who also always wins every tournament while always play first place and win every game.\
+		// Evaluate every candidate rank from 2nd place down to the lowest
+		// possible hopeful-for-1st contender for control loss. A binary
+		// search was tried here previously, but it relied on the
+		// vsFirst/vsFactorPair gap being monotonic across ranks, which
+		// does not always hold, so it could skip over (and miss) a real
+		// control loss.
 		allControlLosses = map[int]int{}
 		vsFirstWins = map[int]int{}
-		leftPlayerRankIdx := 1
-		rightPlayerRankIdx := lowestHopeControlLosser
 		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
-		for leftPlayerRankIdx <= rightPlayerRankIdx {
-			forcedWinnerRankIdx := (leftPlayerRankIdx + rightPlayerRankIdx) / 2
+		for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
 			vsFirstTournamentWins, vsFactorPairTournamentWins, newSims, pairErr := standings.evaluatePlayerControlLoss(
-				copRand, sims, roundsRemaining, maxFactor, pairings, forcedWinnerRankIdx, controlSimStopTime,
+				copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
 				vsFirstWins, allControlLosses,
 			)
 			if pairErr != pb.PairError_SUCCESS {
 				return nil, pairErr
 			}
 			totalSims += newSims
-			// The binary search conditions are different depending on the number of rounds remaining.
-			if roundsRemaining > controlLossWinAllVsFirstRoundsThresh {
-				if vsFirstTournamentWins < sims {
-					rightPlayerRankIdx = forcedWinnerRankIdx - 1
-				} else if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
-					rightPlayerRankIdx = forcedWinnerRankIdx - 1
-					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
-						highestControlLossRankIdx = forcedWinnerRankIdx
-					}
-				} else {
-					leftPlayerRankIdx = forcedWinnerRankIdx + 1
-				}
-			} else {
-				if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
-					rightPlayerRankIdx = forcedWinnerRankIdx - 1
-					if highestControlLossRankIdx == -1 || forcedWinnerRankIdx < highestControlLossRankIdx {
-						highestControlLossRankIdx = forcedWinnerRankIdx
-					}
-				} else {
-					leftPlayerRankIdx = forcedWinnerRankIdx + 1
-				}
+			// With many rounds remaining, control loss requires a perfect
+			// vsFirst record; otherwise a below-threshold vsFirst win rate
+			// on its own isn't evidence of a control loss.
+			if roundsRemaining > controlLossWinAllVsFirstRoundsThresh && vsFirstTournamentWins < sims {
+				continue
 			}
-
-		}
-		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
-			lowestFullWinRankIdx := -1
-			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
-				vsFirst, vsFactorPair, newSims, pairErr := standings.evaluatePlayerControlLoss(
-					copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
-					vsFirstWins, allControlLosses,
-				)
-				if pairErr != pb.PairError_SUCCESS {
-					return nil, pairErr
-				}
-				totalSims += newSims
-				if vsFirst == sims && vsFactorPair == sims {
-					lowestFullWinRankIdx = rankIdx
-				} else if lowestFullWinRankIdx != -1 {
-					break
-				}
-			}
-			if lowestFullWinRankIdx != -1 && lowestFullWinRankIdx+1 <= lowestHopeControlLosser {
-				bRankIdx := lowestFullWinRankIdx + 1
-				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
-					highestControlLossRankIdx = bRankIdx
+			if float64(vsFirstTournamentWins-vsFactorPairTournamentWins) >= req.ControlLossThreshold*float64(sims) {
+				if highestControlLossRankIdx == -1 || rankIdx < highestControlLossRankIdx {
+					highestControlLossRankIdx = rankIdx
 				}
 			}
 		}
