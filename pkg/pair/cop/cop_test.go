@@ -1294,6 +1294,41 @@ func TestCOPWeights(t *testing.T) {
 	is.Equal(resp.Pairings[13], int32(10))
 }
 
+// TestCOPFinalRoundGibsonHopefulCasherRepeat reproduces a bug reported from a
+// hypothetical 12-player/7-round scenario: in the final round, with the
+// standings leader Gibsonized and a lower-ranked player promoted to "hopeful
+// to cash" by the odd-hopeful-to-cash-players parity fix, the fourth-quarter
+// cash-contention weighting (PC/CC) forced the Gibsonized leader into an
+// unnecessary repeat pairing against the promoted hopeful casher, even though
+// a repeat-free arrangement existed for the leftover pool. isFinalRound
+// disables that cash-contention weighting in the true final round so the
+// leftover pool (everyone not already forced into a KOTH pair by KH) falls
+// back to plain rank-diff/repeat weighting instead.
+func TestCOPFinalRoundGibsonHopefulCasherRepeat(t *testing.T) {
+	is := is.New(t)
+
+	req := pairtestutils.CreateHypothetical12p7rRound7PairRequest()
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+
+	// P3 (rank 1, Gibsonized leader) pairs with P4 (rank 10) rather than
+	// repeating against P7 (rank 8, the promoted hopeful casher).
+	is.Equal(resp.Pairings[3], int32(4))
+	is.Equal(resp.Pairings[4], int32(3))
+	// KH's forced cash-prize KOTH pairs: 2v3, 4v5, 6v7 (ranks).
+	is.Equal(resp.Pairings[10], int32(2))
+	is.Equal(resp.Pairings[2], int32(10))
+	is.Equal(resp.Pairings[11], int32(0))
+	is.Equal(resp.Pairings[0], int32(11))
+	is.Equal(resp.Pairings[8], int32(1))
+	is.Equal(resp.Pairings[1], int32(8))
+	// The rest of the leftover pool also pairs repeat-free.
+	is.Equal(resp.Pairings[7], int32(5))
+	is.Equal(resp.Pairings[5], int32(7))
+	is.Equal(resp.Pairings[9], int32(6))
+	is.Equal(resp.Pairings[6], int32(9))
+}
+
 func TestCOPSuccess(t *testing.T) {
 	is := is.New(t)
 

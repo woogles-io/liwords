@@ -195,6 +195,13 @@ completePairingsLoop:
 	// hopeful for the lowest cash position - the same fix computeDisallowedLeaderOpponent
 	// makes for the hopeful-for-1st contender group, but folded into the data
 	// instead of layered on as a pairing constraint.
+	//
+	// This promotion still matters in the true final round even though CC's
+	// hopeful-vs-hopeful grouping rule is disabled there (see isFinalRound in
+	// cop.go): lowestPossibleHopeCasher, which this feeds via
+	// LowestPossibleHopeNth, is also read unconditionally (not gated by
+	// last-quarter/final-round) by the BB and computeForcedContenderBye
+	// policies in cop.go, so it must stay correct in every round.
 	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
 	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
 		numHopefulToCash := 0

@@ -1296,3 +1296,46 @@ func CreateAlbanyCSWJuly2026Round28PairRequest() *pb.PairRequest {
 	}
 	return request
 }
+
+// CreateHypothetical12p7rRound7PairRequest reproduces the exact final-round
+// (round 7 of 7) request that surfaced the fourth-quarter/final-round weight
+// bug: the Gibsonized leader (P3) was forced into a repeat pairing against a
+// hopeful casher (P7, promoted by the odd-hopeful-to-cash-players parity fix)
+// even though a repeat-free arrangement existed for the leftover pool.
+func CreateHypothetical12p7rRound7PairRequest() *pb.PairRequest {
+	request := &pb.PairRequest{
+		PairMethod:    pb.PairMethod_COP,
+		PlayerNames:   []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses: []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		DivisionPairings: []*pb.RoundPairings{
+			{Pairings: []int32{6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5}},
+			{Pairings: []int32{7, 8, 9, 10, 11, 6, 5, 0, 1, 2, 3, 4}},
+			{Pairings: []int32{8, 9, 10, 11, 5, 4, 7, 6, 0, 1, 2, 3}},
+			{Pairings: []int32{5, 2, 1, 7, 9, 0, 8, 3, 6, 4, 11, 10}},
+			{Pairings: []int32{1, 0, 3, 2, 7, 9, 11, 4, 10, 5, 8, 6}},
+			{Pairings: []int32{2, 11, 0, 10, 6, 8, 4, 9, 5, 7, 3, 1}},
+		},
+		DivisionResults: []*pb.RoundResults{
+			{Results: []int32{429, 463, 435, 436, 361, 393, 371, 337, 365, 364, 439, 407}},
+			{Results: []int32{305, 426, 481, 413, 306, 315, 485, 495, 374, 319, 387, 494}},
+			{Results: []int32{361, 401, 375, 511, 337, 463, 400, 400, 439, 399, 425, 289}},
+			{Results: []int32{460, 388, 412, 453, 415, 340, 368, 347, 432, 385, 439, 361}},
+			{Results: []int32{503, 297, 344, 456, 296, 365, 378, 504, 349, 435, 451, 422}},
+			{Results: []int32{396, 354, 404, 469, 426, 397, 374, 319, 403, 481, 331, 446}},
+		},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               250,
+		ControlLossThreshold:       0.3,
+		HopefulnessThreshold:       0.02,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     7,
+		PlacePrizes:                4,
+		DivisionSims:               100000,
+		ControlLossSims:            20000,
+		ControlLossActivationRound: 3,
+		AllowRepeatByes:            false,
+		Seed:                       1786385327033737679,
+	}
+	return request
+}

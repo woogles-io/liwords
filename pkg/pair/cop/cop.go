@@ -434,6 +434,16 @@ func isLastQuarter(pargs *policyArgs) bool {
 	return copdatapkg.IsLastQuarter(pargs.roundPairingsRemaining, pargs.req.Rounds)
 }
 
+// isFinalRound reports whether this is the tournament's true final round -
+// distinct from isLastQuarter, which covers the whole last quarter of rounds.
+// In the final round, the fourth-quarter-only cash-contention weight logic in
+// PC/CC/RD is disabled, so those policies fall back to plain rank-diff KOTH
+// weighting for everyone (including Gibsonized players and hopeful cashers)
+// in whatever pool is left after KH's forced KOTH pairings.
+func isFinalRound(pargs *policyArgs) bool {
+	return pargs.roundsRemaining == 1
+}
+
 // hopeToCashBoundary returns the hopeful-to-cash rank boundary used by the CC
 // weight policy. In divisions of 12+ players it's clamped so the bottom 6
 // are never counted as hopeful to cash, even if the normal
@@ -471,8 +481,10 @@ var weightPolicies = []weightPolicy{
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
 				rjGibsonized = pargs.copdata.GibsonizedPlayers[rj]
 			}
-			// In the fourth quarter, cashers use PC weight exclusively; zero out RD.
-			if isLastQuarter(pargs) &&
+			// In the fourth quarter (but not the final round), cashers use PC
+			// weight exclusively; zero out RD. In the final round, PC is
+			// disabled entirely (see below), so RD stays active for everyone.
+			if isLastQuarter(pargs) && !isFinalRound(pargs) &&
 				!pargs.copdata.GibsonizedPlayers[ri] &&
 				ri <= pargs.lowestPossibleHopeCasher {
 				return 0
@@ -495,6 +507,13 @@ var weightPolicies = []weightPolicy{
 		// Pair with Casher
 		name: "PC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// In the final round, cash-contention weighting is disabled
+			// entirely (Gibsonized players get no special exemption from it
+			// either) - everyone falls back to plain RD/RE weighting for
+			// whatever pool KH's forced KOTH pairings leave behind.
+			if isFinalRound(pargs) {
+				return 0
+			}
 			// rj might be the Bye, which is out of range for this array
 			rjGibsonized := false
 			if rj < len(pargs.copdata.GibsonizedPlayers) {
@@ -557,7 +576,12 @@ var weightPolicies = []weightPolicy{
 				pargs.playerNodes[rj] == pargs.disallowedLeaderOpponent {
 				return majorPenalty
 			}
-			if !isLastQuarter(pargs) {
+			// The hopeful-vs-hopeful and hopeful-vs-bottom-6 rules below are
+			// fourth-quarter-only, and are further disabled in the final
+			// round specifically (see isFinalRound), where cash-contention
+			// grouping gives way to plain RD/RE weighting for the pool left
+			// over after KH's forced KOTH pairings.
+			if !isLastQuarter(pargs) || isFinalRound(pargs) {
 				return 0
 			}
 			// The bye is neither hopeful nor unhopeful to cash; leave it out
