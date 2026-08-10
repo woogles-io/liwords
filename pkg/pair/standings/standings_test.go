@@ -293,7 +293,12 @@ func TestStandings(t *testing.T) {
 	numSims = 5000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 3, 5, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, -1)
+	// Rank 2 (0-indexed rank 1) wins every vsFirst sim but only 3743/5000
+	// vsFactorPair sims - a 25.1% gap, just over the 25% threshold. The old
+	// binary search missed this real control loss because it assumed the
+	// vsFirst/vsFactorPair gap was monotonic across ranks, which is exactly
+	// the bug the exhaustive per-rank scan (see standings.go) fixed.
+	is.Equal(simResults.HighestControlLossRankIdx, 1)
 	numSims = 1000
 }
 

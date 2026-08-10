@@ -392,6 +392,38 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				break
 			}
 		}
+		// With exactly 2 rounds remaining, a player just below a run of
+		// players who win the tournament outright regardless of who they
+		// play (vsFirst == vsFactorPair == sims) is also a control-loss
+		// candidate, even if their vsFirst/vsFactorPair gap doesn't clear
+		// the normal threshold: everyone above them is already a lock, so
+		// forcing that player to play 1st (rather than their factor-pair
+		// opponent) is the only way to test whether they're truly still in
+		// contention. All ranks were evaluated above, so this only reads
+		// cached results - it doesn't run any new sims.
+		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
+			lowestFullWinRankIdx := -1
+			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
+				vsFirst, vsFactorPair, _, pairErr := standings.evaluatePlayerControlLoss(
+					copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
+					vsFirstWins, allControlLosses,
+				)
+				if pairErr != pb.PairError_SUCCESS {
+					return nil, pairErr
+				}
+				if vsFirst == sims && vsFactorPair == sims {
+					lowestFullWinRankIdx = rankIdx
+				} else if lowestFullWinRankIdx != -1 {
+					break
+				}
+			}
+			if lowestFullWinRankIdx != -1 && lowestFullWinRankIdx+1 <= lowestHopeControlLosser {
+				bRankIdx := lowestFullWinRankIdx + 1
+				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
+					highestControlLossRankIdx = bRankIdx
+				}
+			}
+		}
 	}
 	return &SimResults{
 		FinalRanks:                results,
