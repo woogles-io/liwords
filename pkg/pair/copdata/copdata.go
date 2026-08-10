@@ -139,9 +139,14 @@ completePairingsLoop:
 	// actual completed-game win rate: only one player can finish 1st, so the
 	// simulated figure is a single probability bounded at 100%, while two
 	// independent win rates can each approach 100% and sum past it.
+	//
+	// Only applies when 1st isn't Gibsonized: once the leader is locked into
+	// 1st, there's no "runaway" race for it to speak of, so a high combined
+	// leader+2nd 1st-place% is just Gibsonization already at work, not a
+	// signal that everyone else's bar for 1st/2nd should be halved too.
 	halfMinWinsForHopeful := int(math.Round(float64(minWinsForHopeful) / 2.0))
 	runawayLeaders := false
-	if numPlayers >= 2 && improvedFactorSimResults.TotalSims > 0 {
+	if numPlayers >= 2 && improvedFactorSimResults.TotalSims > 0 && !improvedFactorSimResults.GibsonizedPlayers[0] {
 		leaderFirstPct := float64(improvedFactorSimResults.FinalRanks[0][0]) / float64(improvedFactorSimResults.TotalSims)
 		secondFirstPct := float64(improvedFactorSimResults.FinalRanks[1][0]) / float64(improvedFactorSimResults.TotalSims)
 		if leaderFirstPct+secondFirstPct > runawayLeadersWinPctThreshold {

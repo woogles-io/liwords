@@ -339,4 +339,16 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
+
+	// When 1st is Gibsonized, the leader's simulated 1st-place% is 100% by
+	// construction, so leader+2nd trivially exceeds 80% every time - but
+	// that's just Gibsonization, not a genuine "runaway leaders" race for
+	// 1st, so the halving must not trigger here either.
+	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
+	copRand.Seed(1)
+	logsb.Reset()
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(copdata.GibsonizedPlayers[0])
+	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
 }
