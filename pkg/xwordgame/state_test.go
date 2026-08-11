@@ -80,7 +80,9 @@ func TestRoundTrip15x15(t *testing.T) {
 	is.Equal(got.PlayerTurns, [MaxPlayers]uint16{19, 18})
 	is.Equal(got.TileAt(7, 9), tilemapping.MachineLetter(20|tilemapping.BlankMask))
 	is.Equal(got.TileAt(14, 14), tilemapping.MachineLetter(26))
-	is.Equal(got.Rack(0), []tilemapping.MachineLetter{1, 5, 9, 15, 21, 0, 26})
+	// Racks are stored canonically sorted, so the blank leads regardless of the
+	// order it was set in. See the note in rack.go.
+	is.Equal(got.Rack(0), []tilemapping.MachineLetter{0, 1, 5, 9, 15, 21, 26})
 	is.Equal(got.Rack(1), []tilemapping.MachineLetter{17, 22})
 	is.Equal(got.TilesRemaining(), 24)
 	is.Equal(got.LastWordsFormed, orig.LastWordsFormed)

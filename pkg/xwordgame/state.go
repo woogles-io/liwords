@@ -183,12 +183,16 @@ func (s *State) SetTileAt(row, col int, ml tilemapping.MachineLetter) {
 	s.board[row*int(s.dim)+col] = ml
 }
 
-// Rack returns a mutable view of a player's rack. The slice aliases the State.
+// Rack returns a view of a player's rack, in canonical (sorted) order. The
+// slice aliases the State; write to it only through the rack methods, which
+// maintain that order.
 func (s *State) Rack(p int) []tilemapping.MachineLetter {
 	return s.racks[p][:s.rackLens[p]]
 }
 
-// SetRack replaces a player's rack.
+// SetRack replaces a player's rack. The tiles are stored sorted, and blanks are
+// normalised to undesignated -- a blank only carries a letter while it is on the
+// board. It does not touch the bag; see AssignRack for the accounting version.
 func (s *State) SetRack(p int, tiles []tilemapping.MachineLetter) error {
 	if p < 0 || p >= MaxPlayers {
 		return fmt.Errorf("xwordgame: player index %d out of range", p)
@@ -196,8 +200,15 @@ func (s *State) SetRack(p int, tiles []tilemapping.MachineLetter) error {
 	if len(tiles) > RackTileLimit {
 		return fmt.Errorf("xwordgame: rack of %d tiles exceeds limit of %d", len(tiles), RackTileLimit)
 	}
-	copy(s.racks[p][:], tiles)
-	s.rackLens[p] = uint8(len(tiles))
+	var counts [AlphabetSize]uint8
+	for _, ml := range tiles {
+		n, err := normalizeRackTile(ml)
+		if err != nil {
+			return err
+		}
+		counts[n]++
+	}
+	s.setRackFromCounts(p, counts)
 	return nil
 }
 

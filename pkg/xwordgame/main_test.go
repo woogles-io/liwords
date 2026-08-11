@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/domino14/word-golib/config"
+	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/rs/zerolog"
 )
@@ -51,4 +52,28 @@ func testLetterDistribution(tb testing.TB, name string) *tilemapping.LetterDistr
 	}
 	ldCache[name] = ld
 	return ld
+}
+
+var (
+	lexMu    sync.Mutex
+	lexCache = map[string]Lexicon{}
+)
+
+// testLexicon loads a real KWG from the repo's checked-in lexica. Challenge
+// adjudication is only meaningful against a real word list, and word-golib's
+// kwg.Lexicon is what liwords already uses in production.
+func testLexicon(tb testing.TB, name string) Lexicon {
+	tb.Helper()
+	lexMu.Lock()
+	defer lexMu.Unlock()
+	if lex, ok := lexCache[name]; ok {
+		return lex
+	}
+	k, err := kwg.GetKWG(&testConfig, name)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	lex := kwg.Lexicon{KWG: *k}
+	lexCache[name] = lex
+	return lex
 }
