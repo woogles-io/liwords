@@ -116,11 +116,35 @@ const (
 	// FivePointPerWord pays five points for every word challenged. This is
 	// what pkg/cwgame does and what the annotator needs.
 	//
+	// It requires ChallengeParams.WordIndices to name the words. "Per word,
+	// but the caller did not say which words" has two plausible readings --
+	// every word formed, or cwgame's flat five -- so it is refused rather than
+	// guessed at. Callers that mean every word say so by listing them all.
+	//
 	// There is no "per good word" variant, because the two cannot differ: the
 	// bonus is only ever paid when the challenge fails, and a challenge only
 	// fails when every word it named was valid.
 	FivePointPerWord FivePointMode = 1
 )
+
+// LegacyFivePointMode maps pkg/cwgame's wire format onto an explicit mode.
+//
+// cwgame has no mode field. It infers per-word scoring from the presence of
+// challenged-word indices, so an event naming no words pays a flat five while
+// one naming every word pays five apiece -- the same action, scored two ways
+// (pkg/cwgame/game.go:633, commented there as "Legacy behavior"). Reproducing
+// that inference is necessary to replay historical annotated games without
+// rescoring them, but it is a property of the old wire format, not of the
+// rules, so it lives here in one named place rather than inside the engine.
+//
+// New callers should set the mode explicitly instead. Live liwords games use
+// FivePointPerPlay and never send indices at all.
+func LegacyFivePointMode(indices []uint32) FivePointMode {
+	if len(indices) > 0 {
+		return FivePointPerWord
+	}
+	return FivePointPerPlay
+}
 
 func (f FivePointMode) String() string {
 	switch f {
@@ -143,7 +167,10 @@ type Lexicon interface {
 var (
 	errChallengeInVoid    = errors.New("xwordgame: challenges are not valid under the void rule")
 	errNoWordsToChallenge = errors.New("xwordgame: there are no words to challenge")
-	errNoPrevPosition     = errors.New("xwordgame: returning a phony needs the position from before the challenged play; set ChallengeParams.Prev")
+	// ErrPerWordNeedsIndices is returned when per-word five-point scoring is
+	// asked for without naming the words it should count.
+	ErrPerWordNeedsIndices = errors.New("xwordgame: per-word five-point scoring requires ChallengeParams.WordIndices; list every word to challenge the whole play")
+	errNoPrevPosition      = errors.New("xwordgame: returning a phony needs the position from before the challenged play; set ChallengeParams.Prev")
 )
 
 // ChallengeParams are the inputs to adjudicating a challenge. The player on turn
@@ -173,7 +200,8 @@ type ChallengeParams struct {
 	// validated, FivePointMode decides how the bonus is counted. Conflating
 	// the two -- inferring per-word scoring from the presence of indices --
 	// would mean that naming every word scored differently from naming none,
-	// for the same action.
+	// for the same action. See LegacyFivePointMode for the one place that
+	// inference is still reproduced, and why.
 	WordIndices []uint32
 
 	// FivePointMode selects flat or per-word scoring under the five-point
@@ -242,6 +270,11 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 	}
 	if len(s.LastWordsFormed) == 0 {
 		return nil, errNoWordsToChallenge
+	}
+	// Only enforced where the mode has an effect, so a caller that carries one
+	// mode for a whole session is not tripped up by rules that ignore it.
+	if p.Rule == ChallengeRuleFivePoint && p.FivePointMode == FivePointPerWord && len(p.WordIndices) == 0 {
+		return nil, ErrPerWordNeedsIndices
 	}
 
 	words, err := selectChallengedWords(s.LastWordsFormed, p.WordIndices)

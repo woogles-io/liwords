@@ -181,10 +181,7 @@ func TestFivePointModes(t *testing.T) {
 		{"per-play, every word named", FivePointPerPlay, []uint32{0, 1, 2}, 5},
 		// cwgame, for the annotator.
 		{"per-word, two words named", FivePointPerWord, []uint32{1, 2}, 10},
-		// Naming every word and naming none are the same action, so they must
-		// score the same.
 		{"per-word, every word named", FivePointPerWord, []uint32{0, 1, 2}, 15},
-		{"per-word, whole play", FivePointPerWord, nil, 15},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			is := is.New(t)
@@ -203,6 +200,81 @@ func TestFivePointModes(t *testing.T) {
 			is.True(out.PlayLegal)
 			is.Equal(out.BonusPoints, tc.want)
 			is.Equal(cur.Scores[0], 120+74+tc.want)
+		})
+	}
+}
+
+// "Per word, but I will not say which words" has two plausible readings, so it
+// is refused rather than guessed at.
+func TestPerWordWithoutIndicesIsRefused(t *testing.T) {
+	is := is.New(t)
+	cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+	alph := ld.TileMapping()
+	cur.LastWordsFormed = []tilemapping.MachineWord{
+		word(t, alph, "FRIENDS"), word(t, alph, "AT"), word(t, alph, "ON"),
+	}
+	before := cur.Clone()
+
+	p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
+	p.FivePointMode = FivePointPerWord
+	_, err := cur.AdjudicateChallenge(p)
+	is.Equal(err, ErrPerWordNeedsIndices)
+	// Rejected before anything was touched.
+	is.True(cur.Equal(before))
+	t.Log(err)
+}
+
+// The mode is only meaningful under the five-point rule, so carrying it around
+// for a whole session must not trip up the rules that ignore it.
+func TestPerWordWithoutIndicesIsFineForOtherRules(t *testing.T) {
+	is := is.New(t)
+	for _, rule := range []ChallengeRule{
+		ChallengeRuleSingle, ChallengeRuleTenPoint, ChallengeRuleDouble,
+	} {
+		t.Run(rule.String(), func(t *testing.T) {
+			cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+			p := baseParams(t, rule, prev, ld)
+			p.FivePointMode = FivePointPerWord
+			_, err := cur.AdjudicateChallenge(p)
+			is.NoErr(err)
+		})
+	}
+}
+
+// Byte-exact parity with pkg/cwgame, which has no mode field and infers
+// per-word scoring from the presence of indices. These are the numbers
+// pkg/cwgame/game.go:633-639 produces for a play forming three valid words.
+func TestLegacyFivePointModeMatchesCwgame(t *testing.T) {
+	is := is.New(t)
+	is.Equal(LegacyFivePointMode(nil), FivePointPerPlay)
+	is.Equal(LegacyFivePointMode([]uint32{}), FivePointPerPlay)
+	is.Equal(LegacyFivePointMode([]uint32{0}), FivePointPerWord)
+
+	for _, tc := range []struct {
+		name    string
+		indices []uint32
+		want    int32
+	}{
+		// challengingSubset == false: "Legacy behavior: flat 5 points when
+		// challenging all".
+		{"no indices", nil, 5},
+		// challengingSubset == true: 5 * len(wordsToValidate).
+		{"one word", []uint32{1}, 5},
+		{"two words", []uint32{1, 2}, 10},
+		{"every word listed", []uint32{0, 1, 2}, 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+			alph := ld.TileMapping()
+			cur.LastWordsFormed = []tilemapping.MachineWord{
+				word(t, alph, "FRIENDS"), word(t, alph, "AT"), word(t, alph, "ON"),
+			}
+			p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
+			p.WordIndices = tc.indices
+			p.FivePointMode = LegacyFivePointMode(tc.indices)
+			out, err := cur.AdjudicateChallenge(p)
+			is.NoErr(err)
+			is.Equal(out.BonusPoints, tc.want)
 		})
 	}
 }
