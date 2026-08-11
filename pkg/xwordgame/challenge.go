@@ -27,7 +27,10 @@
 //
 // Subset challenges are supported from the start, since that is the one place
 // liwords is ahead of macondo and bolting it on later would mean revisiting
-// every call site.
+// every call site. The two engines' five-point scoring is reconciled by
+// FivePointMode rather than by picking a winner: live games keep macondo's flat
+// five, the annotator gets cwgame's per-word count, and the default is the
+// behaviour liwords has today.
 
 package xwordgame
 
@@ -95,6 +98,40 @@ func (v Variant) MatchesAnagrams() bool {
 	return v == VarWordSmog || v == VarWordSmogSuper
 }
 
+// FivePointMode selects how the five-point rule pays a wrong challenger. It is
+// the one place the two implementations this package replaces disagree on
+// scoring, so it is an explicit setting rather than something inferred.
+//
+// It applies to ChallengeRuleFivePoint and nothing else. Single, ten-point,
+// double and triple always treat the play as a single unit and pay at most
+// once, however many words were challenged.
+type FivePointMode uint8
+
+const (
+	// FivePointPerPlay pays a flat five points however many words the play
+	// formed or the challenger named. This is macondo's behaviour and what
+	// live liwords games have always done, so it is the zero value: a caller
+	// that says nothing keeps the behaviour it has today.
+	FivePointPerPlay FivePointMode = 0
+	// FivePointPerWord pays five points for every word challenged. This is
+	// what pkg/cwgame does and what the annotator needs.
+	//
+	// There is no "per good word" variant, because the two cannot differ: the
+	// bonus is only ever paid when the challenge fails, and a challenge only
+	// fails when every word it named was valid.
+	FivePointPerWord FivePointMode = 1
+)
+
+func (f FivePointMode) String() string {
+	switch f {
+	case FivePointPerPlay:
+		return "per-play"
+	case FivePointPerWord:
+		return "per-word"
+	}
+	return fmt.Sprintf("FivePointMode(%d)", uint8(f))
+}
+
 // Lexicon is the word-validity oracle. It is declared here rather than imported
 // so this package keeps its only dependency on word-golib; macondo's
 // lexicon.Lexicon satisfies it as-is.
@@ -131,7 +168,18 @@ type ChallengeParams struct {
 
 	// WordIndices optionally restricts the challenge to a subset of
 	// State.LastWordsFormed, by index. Empty means challenge every word.
+	//
+	// This is independent of FivePointMode: WordIndices decides what gets
+	// validated, FivePointMode decides how the bonus is counted. Conflating
+	// the two -- inferring per-word scoring from the presence of indices --
+	// would mean that naming every word scored differently from naming none,
+	// for the same action.
 	WordIndices []uint32
+
+	// FivePointMode selects flat or per-word scoring under the five-point
+	// rule. The zero value is macondo's flat five, which is what live liwords
+	// games do; the annotator sets FivePointPerWord.
+	FivePointMode FivePointMode
 }
 
 // ChallengeOutcome describes what a challenge did. The State has already been
@@ -265,11 +313,10 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 		case ChallengeRuleSingle:
 			out.BonusPoints = 0
 		case ChallengeRuleFivePoint:
+			// The only rule whose payout depends on the word count, and only
+			// when the caller asks for it.
 			out.BonusPoints = 5
-			if len(p.WordIndices) > 0 {
-				// Challenging a named subset pays per word. Challenging
-				// everything pays the flat five, which is what the rule has
-				// always done here.
+			if p.FivePointMode == FivePointPerWord {
 				out.BonusPoints = int32(5 * len(words))
 			}
 		case ChallengeRuleTenPoint:

@@ -164,25 +164,94 @@ func TestDoubleTurnLossIsAScorelessTurn(t *testing.T) {
 	is.Equal(cur.PlayerTurns, [MaxPlayers]uint16{6, 6})
 }
 
-func TestChallengeSubsetPaysPerWord(t *testing.T) {
+// The five-point rule is the only one whose payout varies, and it varies by
+// mode rather than by whether the caller happened to name indices.
+func TestFivePointModes(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		mode    FivePointMode
+		indices []uint32
+		want    int32
+	}{
+		// macondo, and live liwords today: the whole play, five points, once.
+		{"per-play, whole play", FivePointPerPlay, nil, 5},
+		// Naming words must not change the payout in this mode. This is the
+		// case that was wrong before: it used to pay 10.
+		{"per-play, two words named", FivePointPerPlay, []uint32{1, 2}, 5},
+		{"per-play, every word named", FivePointPerPlay, []uint32{0, 1, 2}, 5},
+		// cwgame, for the annotator.
+		{"per-word, two words named", FivePointPerWord, []uint32{1, 2}, 10},
+		// Naming every word and naming none are the same action, so they must
+		// score the same.
+		{"per-word, every word named", FivePointPerWord, []uint32{0, 1, 2}, 15},
+		{"per-word, whole play", FivePointPerWord, nil, 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+			cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+			alph := ld.TileMapping()
+			// A play that formed three words, all valid.
+			cur.LastWordsFormed = []tilemapping.MachineWord{
+				word(t, alph, "FRIENDS"), word(t, alph, "AT"), word(t, alph, "ON"),
+			}
+
+			p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
+			p.WordIndices = tc.indices
+			p.FivePointMode = tc.mode
+			out, err := cur.AdjudicateChallenge(p)
+			is.NoErr(err)
+			is.True(out.PlayLegal)
+			is.Equal(out.BonusPoints, tc.want)
+			is.Equal(cur.Scores[0], 120+74+tc.want)
+		})
+	}
+}
+
+// The default must be what live games do today, so a caller that sets no mode
+// cannot accidentally change scoring.
+func TestFivePointDefaultIsFlat(t *testing.T) {
 	is := is.New(t)
+	is.Equal(FivePointMode(0), FivePointPerPlay)
+
 	cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
 	alph := ld.TileMapping()
-	// Pretend the play formed three words, all valid.
 	cur.LastWordsFormed = []tilemapping.MachineWord{
 		word(t, alph, "FRIENDS"), word(t, alph, "AT"), word(t, alph, "ON"),
 	}
-
-	p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
-	p.WordIndices = []uint32{1, 2}
+	p := baseParams(t, ChallengeRuleFivePoint, prev, ld) // mode left unset
+	p.WordIndices = []uint32{0, 1, 2}
 	out, err := cur.AdjudicateChallenge(p)
 	is.NoErr(err)
-	is.True(out.PlayLegal)
-	is.Equal(len(out.ChallengedWords), 2)
-	// Two words challenged, ten points. Challenging all three would pay the
-	// flat five, which is the rule macondo implements and the only behaviour
-	// live games have ever seen.
-	is.Equal(out.BonusPoints, int32(10))
+	is.Equal(out.BonusPoints, int32(5))
+}
+
+// Only the five-point rule varies. Everything else pays once for the whole
+// play no matter how many words were named or which mode is set.
+func TestOtherRulesIgnoreTheWordCount(t *testing.T) {
+	for _, tc := range []struct {
+		rule ChallengeRule
+		want int32
+	}{
+		{ChallengeRuleSingle, 0},
+		{ChallengeRuleTenPoint, 10},
+	} {
+		for _, mode := range []FivePointMode{FivePointPerPlay, FivePointPerWord} {
+			t.Run(tc.rule.String()+"/"+mode.String(), func(t *testing.T) {
+				is := is.New(t)
+				cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
+				alph := ld.TileMapping()
+				cur.LastWordsFormed = []tilemapping.MachineWord{
+					word(t, alph, "FRIENDS"), word(t, alph, "AT"), word(t, alph, "ON"),
+				}
+				p := baseParams(t, tc.rule, prev, ld)
+				p.WordIndices = []uint32{0, 1, 2}
+				p.FivePointMode = mode
+				out, err := cur.AdjudicateChallenge(p)
+				is.NoErr(err)
+				is.Equal(out.BonusPoints, tc.want)
+			})
+		}
+	}
 }
 
 func TestChallengeSubsetCatchesOnlyTheNamedWords(t *testing.T) {
