@@ -10,13 +10,9 @@ p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  @include colorModed() {
-    color: m($gray-medium);
-  }
+  color: m($gray-medium);
   p {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
   .anticon {
     font-size: 24px;
@@ -38,9 +34,7 @@ p {
   border-radius: 50%;
   margin-left: 6px;
   color: white;
-  @include colorModed() {
-    background: m($timer-out-dark);
-  }
+  background: m($timer-out-dark);
 }
 
 .chat-area {
@@ -71,9 +65,7 @@ p {
 
   p.disabled-message {
     padding: 24px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
@@ -91,10 +83,8 @@ p {
   .channel-list {
     min-height: 48px;
     width: 100%;
-    @include colorModed() {
-      background: m($card-background);
-      color: m($gray-extreme);
-    }
+    background: m($card-background);
+    color: m($gray-extreme);
     & {
       font-size: 16px;
       font-weight: bold;
@@ -105,24 +95,18 @@ p {
       width: 100%;
       max-width: 500px;
       margin-bottom: 24px;
-      @include colorModed() {
-        background: m($card-background);
-        color: m($gray-extreme);
-      }
+      background: m($card-background);
+      color: m($gray-extreme);
       .ant-select-selection-placeholder {
         z-index: 1;
         font-weight: normal;
         opacity: 0.8;
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
       input,
       .ant-select-selector {
-        @include colorModed() {
-          background: m($card-background);
-          color: m($gray-extreme);
-        }
+        background: m($card-background);
+        color: m($gray-extreme);
       }
     }
 
@@ -134,9 +118,7 @@ p {
       justify-content: space-between;
       align-items: center;
       margin: 6px 0;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
       span {
         display: block;
       }
@@ -144,33 +126,25 @@ p {
     .presence {
       font-weight: bold;
       z-index: 2;
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
       span.anonymous {
         font-weight: normal;
         display: inline;
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
     }
     &.scrolling {
       padding-bottom: 12px;
       box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
-      @include colorModed() {
-        border-bottom: 1px solid m($off-background);
-      }
+      border-bottom: 1px solid m($off-background);
       .presence {
         position: absolute;
         width: 100%;
         padding: 12px 24px;
         left: 0;
         box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
-        @include colorModed() {
-          background: m($card-background);
-          border-bottom: 1px solid m($off-background);
-        }
+        background: m($card-background);
+        border-bottom: 1px solid m($off-background);
       }
     }
     .channel-listing {
@@ -191,9 +165,7 @@ p {
       }
       .listing-name {
         font-weight: 700;
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
 
       .country-flag {
@@ -206,9 +178,7 @@ p {
         .listing-preview {
           font-weight: 700;
           margin-top: 0;
-          @include colorModed() {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
         }
       }
       &:first-child {
@@ -229,9 +199,7 @@ p {
       text-overflow: ellipsis;
       line-height: 1em;
       padding-bottom: 6px;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
       @media (min-width: $screen-tablet-min) {
         max-width: 100%;
       }
@@ -255,9 +223,7 @@ p {
   .channel-list .breadcrumb {
     padding-bottom: 12px;
     margin-top: 12px;
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
   .breadcrumb.clickable {
     display: flex;
@@ -268,25 +234,19 @@ p {
     width: calc(100% - 18px);
     margin-bottom: 12px;
     &.unread {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
   }
   .anticon-setting {
     margin: 0;
     cursor: pointer;
     font-size: 18px;
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
   .unread-marker {
     font-size: 21px;
     padding: 0 6px 3px;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
 
   .chat-context {
@@ -309,10 +269,8 @@ p {
     cursor: pointer;
     line-height: 1;
     padding: 2px 7px;
-    @include colorModed() {
-      border-color: m($gray-medium);
-      color: m($gray-medium);
-    }
+    border-color: m($gray-medium);
+    color: m($gray-medium);
 
     &:disabled {
       cursor: default;
@@ -348,9 +306,7 @@ p {
       .sender {
         font-weight: 800;
         margin: 0 6px 0 0;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
       .message {
         line-height: normal;
@@ -378,9 +334,7 @@ p {
         line-height: 1.2em;
       }
       .special-sender {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
         span.user-context-menu.ant-dropdown-trigger {
           padding-right: 9px;
           margin: 0;
@@ -410,14 +364,10 @@ p {
       .sender-info {
         margin-bottom: 6px;
 
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
       .timestamp {
-        @include colorModed() {
-          color: m($secondary);
-        }
+        color: m($secondary);
         & {
           // Base visibility is driven by the "always show timestamps" pref
           // (default hidden); the :hover rule above still reveals it on hover.
@@ -432,14 +382,10 @@ p {
       }
     }
     .server-error {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
+      color: m($timer-out-dark);
     }
     .server-message {
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
     }
   }
 }
@@ -536,14 +482,10 @@ p {
   // it grows upward from the bottom over the most recent messages and
   // collapses back to one row after sending.
   resize: none;
-  @include colorModed() {
-    background: m($card-background);
-    color: m($gray-extreme);
-  }
+  background: m($card-background);
+  color: m($gray-extreme);
   &::placeholder {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 }
 

@@ -21,9 +21,7 @@
   z-index: 4;
   padding: 24px 8px 0px; // Reduced horizontal padding from 24px to 8px for more card width
   margin: -16px -8px 0px; // Adjusted margin to match padding
-  @include colorModed() {
-    background-color: m($background);
-  }
+  background-color: m($background);
   @media (min-width: $screen-tablet-min) {
     display: none;
   }
@@ -82,18 +80,14 @@
 
 .player-cards.ant-card {
   p {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
   .ant-card-body {
     padding: 0;
     width: 100%;
   }
   button.ant-btn {
-    @include colorModed() {
-      color: m($background);
-    }
+    color: m($background);
   }
   .player-card {
     padding: 5px 12px;
@@ -106,9 +100,7 @@
     }
     button {
       height: 32px;
-      @include colorModed() {
-        background-color: m($primary-dark);
-      }
+      background-color: m($primary-dark);
       & {
         margin: 3px;
         border-radius: 4px;
@@ -171,18 +163,14 @@
         font-size: 22px;
         line-height: 28px;
         align-items: flex-start;
-        @include colorModed() {
-          color: m($background);
-        }
+        color: m($background);
         & {
           font-weight: bold;
         }
         &.timer {
-          @include colorModed() {
-            background-color: m($card-background);
-            color: m($primary-dark);
-            border: 1px solid m($primary-dark);
-          }
+          background-color: m($card-background);
+          color: m($primary-dark);
+          border: 1px solid m($primary-dark);
           & {
             font-weight: 500;
             height: 32px;
@@ -271,26 +259,18 @@
     }
 
     &.on-turn {
-      @include colorModed() {
-        background: m($timer-light);
-      }
+      background: m($timer-light);
       button.ant-btn {
-        @include colorModed() {
-          background: m($timer-dark);
-        }
+        background: m($timer-dark);
         &.timer {
-          @include colorModed() {
-            background-color: m($card-background);
-            color: m($timer-dark);
-            border-color: m($timer-dark);
-          }
+          background-color: m($card-background);
+          color: m($timer-dark);
+          border-color: m($timer-dark);
         }
       }
       &.time-low {
         color: #414141; // theming outlier
-        @include colorModed() {
-          background: m($timer-low-light);
-        }
+        background: m($timer-low-light);
         p,
         .player-details {
           color: #414141; // theming outlier
@@ -301,41 +281,29 @@
         button.ant-btn {
           color: #414141; // theming outlier
 
-          @include colorModed() {
-            background: m($timer-low-dark);
-          }
+          background: m($timer-low-dark);
           &.timer {
             color: #414141; // theming outlier
             background: white; // theming outlier
-            @include colorModed() {
-              border-color: m($timer-low-dark);
-            }
+            border-color: m($timer-low-dark);
           }
         }
       }
       &.time-out {
-        @include colorModed() {
-          background: m($timer-out-light);
-        }
+        background: m($timer-out-light);
         button.ant-btn {
-          @include colorModed() {
-            background: m($timer-out-dark);
-            border-color: m($timer-out-dark);
-          }
+          background: m($timer-out-dark);
+          border-color: m($timer-out-dark);
           &.timer {
-            @include colorModed() {
-              background: m($background);
-              border-color: m($timer-out-dark);
-              color: m($timer-out-dark);
-            }
+            background: m($background);
+            border-color: m($timer-out-dark);
+            color: m($timer-out-dark);
           }
         }
       }
       &.using-time-bank {
         color: #414141; // theming outlier
-        @include colorModed() {
-          background: m($timer-low-light);
-        }
+        background: m($timer-low-light);
         p,
         .player-details {
           color: #414141; // theming outlier
@@ -346,14 +314,10 @@
         button.ant-btn {
           color: #414141; // theming outlier
 
-          @include colorModed() {
-            background: m($timer-low-dark);
-          }
+          background: m($timer-low-dark);
           &.timer {
-            @include colorModed() {
-              border-color: m($timer-low-dark);
-              color: #414141; // theming outlier - override any green
-            }
+            border-color: m($timer-low-dark);
+            color: #414141; // theming outlier - override any green
           }
         }
       }
@@ -365,9 +329,7 @@
   .player-cards.ant-card {
     .player-card {
       .player {
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
         .player-info {
           font-size: 12px;
         }

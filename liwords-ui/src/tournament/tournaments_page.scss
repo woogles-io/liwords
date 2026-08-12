@@ -21,19 +21,15 @@
   .my-tournaments-section {
     margin-top: 24px;
 
-    @include colorModed {
-      background-color: m($card-background);
-      border: 1px solid m($off-background);
-    }
+    background-color: m($card-background);
+    border: 1px solid m($off-background);
     border-radius: 8px;
     overflow: hidden;
 
     h2 {
       @include type-default;
-      @include colorModed {
-        color: themed("text");
-        background-color: m($off-background);
-      }
+      color: themed("text");
+      background-color: m($off-background);
       font-size: 18px;
       font-weight: bold;
       padding: 10px 12px;
@@ -54,9 +50,7 @@
       padding: 6px 0;
       border-bottom: 1px solid;
 
-      @include colorModed {
-        border-bottom-color: m($off-background);
-      }
+      border-bottom-color: m($off-background);
 
       &:last-child {
         border-bottom: none;
@@ -77,12 +71,10 @@
       align-items: center;
       gap: 5px;
 
-      @include colorModed {
-        color: themed("text");
+      color: themed("text");
 
-        &:hover {
-          color: themed("primary");
-        }
+      &:hover {
+        color: themed("primary");
       }
     }
 
@@ -90,18 +82,14 @@
       font-size: 12px;
       opacity: 0.7;
 
-      @include colorModed {
-        color: themed("text-secondary");
-      }
+      color: themed("text-secondary");
     }
 
     .tournament-director {
       font-size: 11px;
       font-weight: 400;
 
-      @include colorModed {
-        color: themed("text-secondary");
-      }
+      color: themed("text-secondary");
 
       &:before {
         content: "• ";
@@ -114,9 +102,7 @@
       flex-direction: column;
       gap: 3px;
 
-      @include colorModed {
-        color: themed("text-secondary");
-      }
+      color: themed("text-secondary");
     }
 
     .tournament-meta {
@@ -143,46 +129,38 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
 
-      @include colorModed {
-        &.open {
-          background-color: m($profile-game-win);
-          color: m($gray-extreme);
-        }
+      &.open {
+        background-color: m($profile-game-win);
+        color: m($gray-extreme);
+      }
 
-        &.closed {
-          background-color: m($gray-subtle);
-          color: m($gray-medium);
-        }
+      &.closed {
+        background-color: m($gray-subtle);
+        color: m($gray-medium);
+      }
 
-        &.live {
-          background-color: m($timer-out-dark);
-          color: m($white);
-        }
+      &.live {
+        background-color: m($timer-out-dark);
+        color: m($white);
       }
     }
 
     .tournament-time {
       font-size: 11px;
 
-      @include colorModed {
-        color: themed("text-secondary");
-      }
+      color: themed("text-secondary");
 
       strong {
         font-weight: 600;
 
-        @include colorModed {
-          color: themed("text");
-        }
+        color: themed("text");
       }
     }
   }
 
   .tournaments-page-content {
-    @include colorModed {
-      background-color: m($card-background);
-      border: 1px solid m($off-background);
-    }
+    background-color: m($card-background);
+    border: 1px solid m($off-background);
     border-radius: 8px;
     overflow: hidden;
   }

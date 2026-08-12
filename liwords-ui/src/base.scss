@@ -108,9 +108,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   font-style: normal;
   font-size: 14px;
   line-height: 18px;
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
+  color: m($gray-extreme);
 }
 
 @mixin type-overline {
@@ -168,18 +166,14 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     width: 100%;
     height: 64px;
     background: transparent;
-    @include colorModed() {
-      border-top: 1px solid m($off-background);
-    }
+    border-top: 1px solid m($off-background);
     li {
       cursor: pointer;
       margin: 0;
       height: 100%;
       border: 0;
-      @include colorModed() {
-        background: m($background);
-        color: m($gray-extreme);
-      }
+      background: m($background);
+      color: m($gray-extreme);
       & {
         @include type-link;
       }
@@ -188,18 +182,14 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         width: 100%;
         height: 100%;
         a:not(.ant-btn) {
-          @include colorModed() {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
         }
       }
       div {
         display: flex;
         align-items: center;
         justify-content: center;
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
         & {
           font-size: 14px;
           width: 100%;
@@ -207,29 +197,19 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
         }
       }
       &:hover div {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
       &:nth-child(2) {
-        @include colorModed() {
-          background: m($primary-light);
-        }
+        background: m($primary-light);
       }
       &:nth-child(3),
       &:only-child {
-        @include colorModed() {
-          background: m($primary-dark);
-        }
+        background: m($primary-dark);
         div {
-          @include colorModed() {
-            color: m($background);
-          }
+          color: m($background);
         }
         &:hover div {
-          @include colorModed() {
-            color: m($primary-middle);
-          }
+          color: m($primary-middle);
         }
       }
       &:first-child {
@@ -248,20 +228,14 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   .ant-tabs {
     overflow: visible;
     .ant-tabs-ink-bar {
-      @include colorModed() {
-        background: m($primary-dark);
-      }
+      background: m($primary-dark);
     }
     &.ant-tabs-top .ant-tabs-nav::before {
-      @include colorModed() {
-        border-bottom: 1px solid m($off-background);
-      }
+      border-bottom: 1px solid m($off-background);
     }
     .ant-tabs-nav {
       margin: 0;
-      @include colorModed() {
-        border-bottom: 1px solid m($off-background);
-      }
+      border-bottom: 1px solid m($off-background);
       .ant-tabs-nav-list {
         width: 100%;
         justify-content: space-evenly;
@@ -272,9 +246,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       padding: 12px 16px;
       margin: 0;
       text-transform: uppercase;
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
       .ant-tabs-tab-btn {
         @include type-link;
         letter-spacing: 0.16em;
@@ -286,9 +258,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       &:hover,
       &.ant-tabs-tab-active {
         .ant-tabs-tab-btn {
-          @include colorModed() {
-            color: m($primary-dark);
-          }
+          color: m($primary-dark);
         }
       }
     }
@@ -303,23 +273,17 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     .ant-modal-content {
       border-radius: 8px;
       font-family: "Mulish", sans-serif;
-      @include colorModed() {
-        background: m($background);
-        color: m($gray-extreme);
-      }
+      background: m($background);
+      color: m($gray-extreme);
     }
     .ant-modal-header {
       border-radius: 8px 8px 0 0;
-      @include colorModed() {
-        background: m($background);
-        color: m($gray-extreme);
-      }
+      background: m($background);
+      color: m($gray-extreme);
       .ant-modal-title {
         font-family: "Mulish", sans-serif;
         font-weight: 700;
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
     }
     .ant-modal-footer {
@@ -327,9 +291,7 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     }
     @media (max-width: $screen-mobile-min+1) {
       .ant-modal-mask {
-        @include colorModed() {
-          background: m($background);
-        }
+        background: m($background);
       }
       .ant-modal {
         margin: unset;
@@ -376,11 +338,9 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     font-weight: 800;
     transition: none;
     margin: 0 6px;
-    @include colorModed() {
-      background-color: m($background);
-      border-color: m($primary-dark);
-      color: m($primary-dark);
-    }
+    background-color: m($background);
+    border-color: m($primary-dark);
+    color: m($primary-dark);
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
     }
@@ -399,17 +359,13 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     &:visited,
     &:active {
       transition: none;
-      @include colorModed() {
-        background-color: m($background);
-        border-color: m($primary-dark);
-        color: m($primary-dark);
-      }
+      background-color: m($background);
+      border-color: m($primary-dark);
+      color: m($primary-dark);
     }
     &:disabled {
-      @include colorModed() {
-        border-color: m($gray-subtle);
-        color: m($gray-subtle);
-      }
+      border-color: m($gray-subtle);
+      color: m($gray-subtle);
     }
     &:not([disabled]):hover {
       span.key-command {
@@ -430,10 +386,8 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
   button.primary,
   a.btn-primary {
     margin: 6px 3px;
-    @include colorModed() {
-      background-color: m($button);
-      color: m($button-text);
-    }
+    background-color: m($button);
+    color: m($button-text);
     & {
       border: 0;
       outline: 0;
@@ -449,10 +403,8 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
       &:focus,
       &:visited,
       &:active {
-        @include colorModed() {
-          background: m($timer-out-dark);
-          border: m($timer-out-dark);
-        }
+        background: m($timer-out-dark);
+        border: m($timer-out-dark);
         & {
           transition: none;
         }
@@ -463,20 +415,16 @@ $point-size-desktop: calc($tile-font-size-desktop / 2.8);
     &:focus,
     &:visited,
     &:active {
-      @include colorModed() {
-        background-color: m($button);
-        color: m($button-text);
-      }
+      background-color: m($button);
+      color: m($button-text);
       & {
         transition: none;
       }
     }
     &:disabled,
     &:disabled:hover {
-      @include colorModed() {
-        background-color: m($gray-subtle);
-        color: m($background);
-      }
+      background-color: m($gray-subtle);
+      color: m($background);
     }
   }
 }

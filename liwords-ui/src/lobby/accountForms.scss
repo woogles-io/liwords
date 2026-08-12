@@ -35,19 +35,15 @@ div.account {
       flex: 1 0 100%;
       font-style: italic;
       margin: 0 0 0.75em;
-      @include colorModed() {
-        color: m($gray-subtle);
-      }
+      color: m($gray-subtle);
     }
     .full-width {
       flex: 1 0 100%;
     }
     .ant-form-item input,
     .ant-input-password {
-      @include colorModed() {
-        background: m($background);
-        color: m($gray-extreme);
-      }
+      background: m($background);
+      color: m($gray-extreme);
     }
     .only-errors .ant-form-item-control-input {
       display: none;
@@ -61,10 +57,8 @@ div.account {
     .ant-select-selector,
     .ant-select-item,
     .ant-select-dropdown {
-      @include colorModed() {
-        background: m($background);
-        color: m($gray-extreme);
-      }
+      background: m($background);
+      color: m($gray-extreme);
       & {
         z-index: 1100;
       }
@@ -211,9 +205,7 @@ div.account {
   a {
     cursor: pointer;
     letter-spacing: 0;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
     & {
       font-weight: bold;
       font-size: 14px;
@@ -222,9 +214,7 @@ div.account {
     }
     &:hover,
     &:active {
-      @include colorModed() {
-        color: m($primary-midDark);
-      }
+      color: m($primary-midDark);
     }
   }
 }

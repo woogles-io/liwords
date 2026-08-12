@@ -12,9 +12,7 @@ body {
   top: 0;
   z-index: 2;
   min-height: 60px;
-  @include colorModed() {
-    background-color: m($header);
-  }
+  background-color: m($header);
   *,
   button.link {
     @include type-default;
@@ -24,10 +22,8 @@ body {
       font-weight: bold;
       text-transform: uppercase;
     }
-    @include colorModed() {
-      color: m($primary-dark);
-      background-color: m($header);
-    }
+    color: m($primary-dark);
+    background-color: m($header);
     .anticon {
       display: inline;
       margin-left: 6px;
@@ -42,9 +38,7 @@ body {
     button.link {
       font-weight: 900;
       font-size: 14px;
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
   }
 }
@@ -62,9 +56,7 @@ body {
     padding: 12px 24px;
     a,
     p {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
       & {
         cursor: pointer;
         letter-spacing: 0.16em;
@@ -73,9 +65,7 @@ body {
       &:focus,
       &:hover,
       &:active {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
       &:active,
       &.active {
@@ -111,9 +101,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    @include colorModed() {
-      background: m($logo);
-    }
+    background: m($logo);
     & {
       border-radius: 4px;
     }
@@ -129,18 +117,14 @@ body {
     font-size: 27px;
     line-height: 35px;
     letter-spacing: 0.16em;
-    @include colorModed() {
-      color: m($logo-text);
-      background: transparent;
-    }
+    color: m($logo-text);
+    background: transparent;
   }
   /* Macondo */
 
   .site-name {
     /* Inside Auto Layout */
-    @include colorModed() {
-      color: m($logo);
-    }
+    color: m($logo);
     & {
       flex: none;
       text-transform: none;
@@ -159,8 +143,6 @@ body {
     left: 124px;
     font-size: 10px;
     background: transparent;
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
   }
 }

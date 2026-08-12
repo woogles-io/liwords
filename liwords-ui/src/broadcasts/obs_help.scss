@@ -17,9 +17,7 @@
   vertical-align: baseline;
   cursor: pointer;
 
-  @include colorModed() {
-    color: m($primary-middle);
-  }
+  color: m($primary-middle);
 
   &:hover {
     opacity: 0.7;

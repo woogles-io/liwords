@@ -8,9 +8,7 @@ footer {
     margin-top: 32px;
     padding-bottom: 48px;
   }
-  @include colorModed() {
-    background: m($footer);
-  }
+  background: m($footer);
 
   .footer-container {
     @include container;
@@ -37,28 +35,20 @@ footer {
       font-size: 15px;
       font-weight: 700;
       line-height: 27px;
-      @include colorModed() {
-        color: m($footer-text);
-      }
+      color: m($footer-text);
     }
   }
   .logo {
     align-self: flex-start;
     min-width: 66%;
     .site-icon-rect {
-      @include colorModed() {
-        background: m($footer-logo);
-      }
+      background: m($footer-logo);
     }
     .site-icon-w {
-      @include colorModed() {
-        color: m($footer-w);
-      }
+      color: m($footer-w);
     }
     .site-name {
-      @include colorModed() {
-        color: m($footer-logo);
-      }
+      color: m($footer-logo);
     }
   }
   .link-group {
@@ -77,15 +67,11 @@ footer {
       font-weight: 700;
       line-height: 32px;
       letter-spacing: 0.16em;
-      @include colorModed() {
-        color: m($footer-logo);
-      }
+      color: m($footer-logo);
     }
   }
   .anticon-heart {
-    @include colorModed() {
-      color: m($timer-out-dark);
-    }
+    color: m($timer-out-dark);
     & {
       margin-left: 4px;
     }
@@ -104,9 +90,7 @@ footer {
     .fa-discord {
       font-size: 24px;
       margin-right: 6px;
-      @include colorModed() {
-        color: m($footer-logo);
-      }
+      color: m($footer-logo);
     }
   }
   .copyright {

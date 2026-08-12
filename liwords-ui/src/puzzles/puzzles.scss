@@ -11,9 +11,7 @@
   .ant-card.puzzle-info {
     .ant-card-head .ant-card-head-title {
       padding: 18px 6px;
-      @include colorModed() {
-        color: m($secondary);
-      }
+      color: m($secondary);
       & {
         font-size: 14px;
         letter-spacing: 1.2px;
@@ -49,9 +47,7 @@
         margin: 0 0 24px;
         padding-top: 8px;
       }
-      @include colorModed() {
-        border-top: 1px solid m($gray-subtle);
-      }
+      border-top: 1px solid m($gray-subtle);
       button.ant-btn {
         margin: 3px 0;
       }
@@ -71,9 +67,7 @@
       .anticon-bulb {
         font-size: 24px;
         margin-right: 8px;
-        @include colorModed() {
-          color: m($timer-low-dark);
-        }
+        color: m($timer-low-dark);
       }
       .tentative-score {
         display: inline-block;
@@ -89,14 +83,10 @@
         cursor: pointer;
         margin-left: 0.5em;
         font-size: 18px;
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
       .anticon-eye {
-        @include colorModed() {
-          color: m($primary-midDark);
-        }
+        color: m($primary-midDark);
       }
       .ant-btn.ant-btn-primary {
         margin-bottom: 0;
@@ -145,9 +135,7 @@
       text-transform: capitalize;
     }
     .user-context-menu {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
     }
   }
 
@@ -169,9 +157,7 @@
     }
     .puzzle {
       justify-content: flex-start;
-      @include colorModed() {
-        border-left: 1px solid m($off-background);
-      }
+      border-left: 1px solid m($off-background);
     }
     i.fa-puzzle-piece {
       transform: rotate(15deg) translateX(2px) translateY(-1px);
@@ -183,14 +169,10 @@
       top: -1px;
     }
     .anticon-fall {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
+      color: m($timer-out-dark);
     }
     .anticon-rise {
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
     }
   }
 
@@ -221,9 +203,7 @@
   .ant-affix {
     // position: static !important;
     // height: auto !important;
-    @include colorModed() {
-      border-bottom: 0;
-    }
+    border-bottom: 0;
   }
   .instructions {
     font-style: italic;
@@ -250,19 +230,15 @@
     }
   }
   .tile.second-color.second-color {
-    @include colorModed() {
-      background: m($tile-background);
-      border: m($tile-border);
-    }
+    background: m($tile-background);
+    border: m($tile-border);
     @include userTile() {
       background: ut($tile-background);
       border: ut($tile-border);
     }
     &.blank p.rune {
-      @include colorModed() {
-        color: m($tile-blank-text);
-        background-color: m($tile-background-secondary);
-      }
+      color: m($tile-blank-text);
+      background-color: m($tile-background-secondary);
       @include userTile() {
         color: ut($tile-blank-text);
         background: ut($tile-background-secondary);
@@ -270,19 +246,15 @@
     }
     p.rune,
     .point-value {
-      @include colorModed() {
-        color: m($background);
-      }
+      color: m($background);
       @include userTile() {
         color: ut($tile-text);
       }
     }
   }
   .tile.tentative {
-    @include colorModed() {
-      border: 1px solid m($tile-last-background);
-      background: m($tile-last-background);
-    }
+    border: 1px solid m($tile-last-background);
+    background: m($tile-last-background);
     @include userTile() {
       border: 0px solid transparent; // Fallback if border is a gradient
       border: ut($tile-border);
@@ -290,10 +262,8 @@
     }
     &.blank {
       p.rune {
-        @include colorModed() {
-          background-color: m($tile-last-blank);
-          color: m($tile-last-background);
-        }
+        background-color: m($tile-last-blank);
+        color: m($tile-last-background);
         @include userTile() {
           color: ut($tile-blank-text); // Fallback if border is a gradient
           color: ut($tile-last-background);
@@ -303,9 +273,7 @@
     }
     p.rune,
     p.point-value {
-      @include colorModed() {
-        color: m($tile-last-text);
-      }
+      color: m($tile-last-text);
       @include userTile() {
         color: ut($tile-last-text);
       }
@@ -319,13 +287,9 @@
     font-size: 38px;
     margin-right: 9px;
     &.anticon-star {
-      @include colorModed() {
-        color: m($timer-low-dark);
-      }
+      color: m($timer-low-dark);
       &.unearned {
-        @include colorModed() {
-          color: m($gray-subtle);
-        }
+        color: m($gray-subtle);
       }
     }
   }
@@ -342,8 +306,6 @@
     font-size: 14px;
   }
   .invalid-plays {
-    @include colorModed() {
-      color: m($timer-out-dark);
-    }
+    color: m($timer-out-dark);
   }
 }
