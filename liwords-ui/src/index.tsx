@@ -7,7 +7,9 @@ import { BriefProfiles } from "./utils/brief_profiles";
 
 import "@ant-design/v5-patch-for-react-19";
 
-import "antd/dist/reset.css";
+// Must come first: declares the cascade layer order and pulls antd's reset into
+// @layer antd. Everything below is unlayered and therefore outranks it.
+import "./theme/layers.css";
 // Declares the --woogles-* design tokens on :root. Every stylesheet's m() and
 // d() calls resolve against these, so this must be loaded app-wide exactly once.
 import "./theme/tokens.scss";
