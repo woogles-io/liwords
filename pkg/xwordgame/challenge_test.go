@@ -63,6 +63,64 @@ func challengeFixture(t *testing.T, played string, score int32) (cur, prev *Stat
 	return cur, prev, ld
 }
 
+// boardFixture is an empty board with a full english bag and a real lexicon.
+func boardFixture(t *testing.T) (*State, *BoardLayout, *tilemapping.LetterDistribution, Lexicon) {
+	t.Helper()
+	layout, err := NamedLayout(CrosswordGameLayout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ld := testLetterDistribution(t, "english")
+	s, err := NewState(layout.Dim())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FillBag(ld); err != nil {
+		t.Fatal(err)
+	}
+	return s, layout, ld, testLexicon(t, "CSW21")
+}
+
+// playPlacement applies a tile play the way ApplyPlacement will once it lands,
+// and returns the position from before it. Challenge adjudication needs both,
+// and deriving LastWordsFormed from the board rather than setting it by hand is
+// the whole point of the tests that use this.
+func playPlacement(t *testing.T, s *State, layout *BoardLayout,
+	ld *tilemapping.LetterDistribution, m *Move) *State {
+	t.Helper()
+	if err := s.ErrorIfIllegalPlay(layout, m); err != nil {
+		t.Fatal(err)
+	}
+	score, words, err := s.ScoreWords(layout, ld, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prev := s.Clone()
+
+	p := int(s.OnTurn)
+	s.PlaceMoveTiles(m)
+	if err := s.TakeFromRack(p, m.Tiles); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DrawToFull(seededRand(), p); err != nil {
+		t.Fatal(err)
+	}
+	s.Scores[p] += int32(score)
+	if m.TilesPlayed() == RackTileLimit {
+		s.Bingos[p]++
+	}
+	s.ScorelessTurns = 0
+	s.PlayerTurns[p]++
+	s.TurnNum++
+	s.OnTurn = otherPlayer(s.OnTurn)
+	s.LastWordsFormed = words
+
+	if err := s.ValidateTileConservation(ld); err != nil {
+		t.Fatal(err)
+	}
+	return prev
+}
+
 func baseParams(t *testing.T, rule ChallengeRule, prev *State, ld *tilemapping.LetterDistribution) ChallengeParams {
 	t.Helper()
 	return ChallengeParams{
@@ -202,6 +260,127 @@ func TestFivePointModes(t *testing.T) {
 			is.Equal(cur.Scores[0], 120+74+tc.want)
 		})
 	}
+}
+
+// The tests above set LastWordsFormed by hand, which is how the referee
+// receives it in production but leaves the fixture's board holding a different
+// word from the one being challenged. These play a real phony and derive the
+// words from the board, so the position and the challenge actually correspond.
+
+func TestChallengeAPhonyPlayedOnTheBoard(t *testing.T) {
+	is := is.New(t)
+	s, layout, ld, lex := boardFixture(t)
+	alph := ld.TileMapping()
+
+	// FRIENDZ is not in CSW21, but it is a perfectly legal opening play as far
+	// as the board is concerned. Nothing but a challenge can take it off.
+	is.NoErr(s.AssignRack(0, word(t, alph, "FRIENDZ")))
+	rackBefore := append([]tilemapping.MachineLetter(nil), s.Rack(0)...)
+	bagBefore := s.BagCounts()
+
+	m := NewPlacementMove(7, 7, false, word(t, alph, "FRIENDZ"))
+	prev := playPlacement(t, s, layout, ld, m)
+
+	// The words under challenge came off the board, not out of the test.
+	is.Equal(len(s.LastWordsFormed), 1)
+	is.Equal(s.LastWordsFormed[0], word(t, alph, "FRIENDZ"))
+	is.True(!lex.HasWord(s.LastWordsFormed[0]))
+	is.True(!s.IsBoardEmpty())
+	is.Equal(s.Bingos[0], uint16(1))
+	scored := s.Scores[0]
+	is.True(scored > 0)
+	is.Equal(s.OnTurn, uint8(1)) // the opponent, who is about to challenge
+
+	out, err := s.AdjudicateChallenge(baseParams(t, ChallengeRuleDouble, prev, ld))
+	is.NoErr(err)
+	is.True(!out.PlayLegal)
+	is.True(out.PhonyReturned)
+	is.Equal(out.LostScore, scored)
+	is.Equal(len(out.IllegalWords), 1)
+
+	// Everything the play touched is back: board, rack, bag, score, bingo count.
+	is.True(s.IsBoardEmpty())
+	is.Equal(s.Rack(0), rackBefore)
+	is.Equal(s.BagCounts(), bagBefore)
+	is.Equal(s.Scores, [MaxPlayers]int32{0, 0})
+	is.Equal(s.Bingos[0], uint16(0))
+	is.NoErr(s.ValidateTileConservation(ld))
+}
+
+// A play whose main word is fine but which hooks a phony onto an existing word.
+// This is the case that makes subset challenges mean anything.
+func TestChallengeAPhonyCrossWord(t *testing.T) {
+	is := is.New(t)
+
+	setup := func(t *testing.T) (*State, *State, *tilemapping.LetterDistribution, Lexicon) {
+		t.Helper()
+		s, layout, ld, lex := boardFixture(t)
+		alph := ld.TileMapping()
+
+		// AT across the centre.
+		if err := s.AssignRack(0, word(t, alph, "AT")); err != nil {
+			t.Fatal(err)
+		}
+		playPlacement(t, s, layout, ld, NewPlacementMove(7, 6, false, word(t, alph, "AT")))
+
+		// AW parallel above it: valid itself, but it hooks A onto A and W onto T.
+		if err := s.AssignRack(1, word(t, alph, "AW")); err != nil {
+			t.Fatal(err)
+		}
+		prev := playPlacement(t, s, layout, ld, NewPlacementMove(6, 6, false, word(t, alph, "AW")))
+		return s, prev, ld, lex
+	}
+
+	t.Run("the board really does form one phony among three words", func(t *testing.T) {
+		s, _, ld, lex := setup(t)
+		alph := ld.TileMapping()
+		is.Equal(len(s.LastWordsFormed), 3)
+		is.Equal(s.LastWordsFormed[0], word(t, alph, "AW")) // main word
+		is.Equal(s.LastWordsFormed[1], word(t, alph, "AA")) // hook on the A
+		is.Equal(s.LastWordsFormed[2], word(t, alph, "WT")) // hook on the T
+		is.True(lex.HasWord(s.LastWordsFormed[0]))
+		is.True(lex.HasWord(s.LastWordsFormed[1]))
+		is.True(!lex.HasWord(s.LastWordsFormed[2]))
+	})
+
+	t.Run("challenging the whole play catches it", func(t *testing.T) {
+		s, prev, ld, _ := setup(t)
+		scored := s.Scores[1]
+		out, err := s.AdjudicateChallenge(baseParams(t, ChallengeRuleSingle, prev, ld))
+		is.NoErr(err)
+		is.True(!out.PlayLegal)
+		is.True(out.PhonyReturned)
+		is.Equal(out.LostScore, scored)
+		is.Equal(len(out.IllegalWords), 1)
+		// Only the AW comes off; the AT underneath stays.
+		is.Equal(s.TilesOnBoard(), 2)
+		is.NoErr(s.ValidateTileConservation(ld))
+	})
+
+	t.Run("challenging only the valid words lets the phony stand", func(t *testing.T) {
+		s, prev, ld, _ := setup(t)
+		p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
+		p.WordIndices = []uint32{0, 1} // AW and AA, not WT
+		p.FivePointMode = FivePointPerWord
+		out, err := s.AdjudicateChallenge(p)
+		is.NoErr(err)
+		is.True(out.PlayLegal)
+		is.True(!out.PhonyReturned)
+		is.Equal(out.BonusPoints, int32(10)) // two words named, per-word
+		is.Equal(s.TilesOnBoard(), 4)        // the phony is still there
+	})
+
+	t.Run("naming the phony catches it even in a subset", func(t *testing.T) {
+		s, prev, ld, _ := setup(t)
+		p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
+		p.WordIndices = []uint32{2} // just WT
+		p.FivePointMode = FivePointPerWord
+		out, err := s.AdjudicateChallenge(p)
+		is.NoErr(err)
+		is.True(!out.PlayLegal)
+		is.True(out.PhonyReturned)
+		is.Equal(s.TilesOnBoard(), 2)
+	})
 }
 
 // "Per word, but I will not say which words" has two plausible readings, so it
