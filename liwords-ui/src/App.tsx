@@ -55,6 +55,7 @@ import { Embed } from "./embed/embed";
 
 import { App as AntDApp } from "antd";
 import { ConfigProvider } from "antd";
+import { StyleProvider } from "@ant-design/cssinjs";
 import { liwordsDefaultTheme, liwordsDarkTheme } from "./themes";
 import { useUIStore, selectThemeMode } from "./stores/ui-store";
 
@@ -363,132 +364,141 @@ const App = React.memo(() => {
   if (!isCurrentLocation) return null;
 
   return (
-    <ConfigProvider theme={antdTheme}>
-      <AntDApp>
-        <div className="App">
-          {!isEmbeddedPath && (
-            <LiwordsSocket
-              key={socketId}
-              resetSocket={resetSocket}
-              setValues={setLiwordsSocketValues}
-            />
-          )}
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Lobby
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                  DISCONNECT={resetSocket}
-                />
-              }
-            />
-            <Route
-              path="tournament/:partialSlug/*"
-              element={
-                <TournamentRoom
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                />
-              }
-            />
-            <Route
-              path="club/:partialSlug/*"
-              element={
-                <TournamentRoom
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                />
-              }
-            />
-            <Route path="clubs" element={<Clubs />} />
-            <Route path="tournaments" element={<TournamentsPage />} />
-            <Route path="new-tournament" element={<TournamentWizard />} />
-            <Route path="leagues" element={<LeaguesList />} />
-            <Route path="leagues/admin" element={<LeagueAdmin />} />
-            <Route
-              path="leagues/:slug"
-              element={
-                <LeaguePage sendSocketMsg={sendMessage} sendChat={sendChat} />
-              }
-            />
-            <Route
-              path="game/:gameID"
-              element={
-                <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
-              }
-            />
-            <Route path="puzzle" element={<SinglePuzzle sendChat={sendChat} />}>
+    // `layer` wraps antd's runtime CSS-in-JS in @layer antd, whose order is
+    // declared in src/theme/layers.css. Layered CSS loses to unlayered CSS
+    // regardless of specificity, so our SCSS reliably beats antd's generated
+    // rules instead of having to out-specify them.
+    <StyleProvider layer>
+      <ConfigProvider theme={antdTheme}>
+        <AntDApp>
+          <div className="App">
+            {!isEmbeddedPath && (
+              <LiwordsSocket
+                key={socketId}
+                resetSocket={resetSocket}
+                setValues={setLiwordsSocketValues}
+              />
+            )}
+            <Routes>
               <Route
-                path=":puzzleID"
+                path="/"
+                element={
+                  <Lobby
+                    sendSocketMsg={sendMessage}
+                    sendChat={sendChat}
+                    DISCONNECT={resetSocket}
+                  />
+                }
+              />
+              <Route
+                path="tournament/:partialSlug/*"
+                element={
+                  <TournamentRoom
+                    sendSocketMsg={sendMessage}
+                    sendChat={sendChat}
+                  />
+                }
+              />
+              <Route
+                path="club/:partialSlug/*"
+                element={
+                  <TournamentRoom
+                    sendSocketMsg={sendMessage}
+                    sendChat={sendChat}
+                  />
+                }
+              />
+              <Route path="clubs" element={<Clubs />} />
+              <Route path="tournaments" element={<TournamentsPage />} />
+              <Route path="new-tournament" element={<TournamentWizard />} />
+              <Route path="leagues" element={<LeaguesList />} />
+              <Route path="leagues/admin" element={<LeagueAdmin />} />
+              <Route
+                path="leagues/:slug"
+                element={
+                  <LeaguePage sendSocketMsg={sendMessage} sendChat={sendChat} />
+                }
+              />
+              <Route
+                path="game/:gameID"
+                element={
+                  <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
+                }
+              />
+              <Route
+                path="puzzle"
                 element={<SinglePuzzle sendChat={sendChat} />}
-              />
-            </Route>
-            <Route
-              path="anno/:gameID"
-              element={
-                <GameTable
-                  sendSocketMsg={sendMessage}
-                  sendChat={sendChat}
-                  annotated
+              >
+                <Route
+                  path=":puzzleID"
+                  element={<SinglePuzzle sendChat={sendChat} />}
                 />
-              }
-            />
-
-            <Route path="embed/game/:gameID" element={<Embed />} />
-            <Route path="editor" element={<BoardEditor />}>
-              <Route path=":gameID" element={<BoardEditor />} />
-            </Route>
-            <Route path="broadcasts" element={<BroadcastsList />} />
-            <Route path="broadcasts/new" element={<CreateBroadcast />} />
-            <Route path="broadcasts/:slug/edit" element={<EditBroadcast />} />
-            <Route path="broadcasts/:slug" element={<BroadcastRoom />} />
-            <Route path="collections/:uuid" element={<CollectionViewer />}>
+              </Route>
               <Route
-                path="chapter/:chapterNumber"
-                element={<CollectionViewer />}
+                path="anno/:gameID"
+                element={
+                  <GameTable
+                    sendSocketMsg={sendMessage}
+                    sendChat={sendChat}
+                    annotated
+                  />
+                }
               />
-            </Route>
-            <Route
-              path="scrabblecam/callback"
-              element={<ScrabblecamCallbackHandler />}
-            />
-            <Route path="docs" element={<DocsIndex />} />
-            <Route path="docs/:manualId" element={<DocPage />} />
-            <Route path="docs/:manualId/:sectionId" element={<DocPage />} />
-            <Route path="about" element={<Team />} />
-            <Route path="team" element={<Team />} />
-            <Route path="terms" element={<TermsOfService />} />
-            <Route path="register" element={<Register />} />
-            <Route path="verify-email" element={<VerifyEmail />} />
-            <Route path="password">
-              <Route path="reset" element={<PasswordReset />} />
-              <Route path="new" element={<NewPassword />} />
-            </Route>
-            <Route path="profile/:username" element={<PlayerProfile />} />
-            <Route path="profile/" element={<PlayerProfile />} />
-            <Route path="settings" element={<Settings />}>
-              <Route path=":section" element={<Settings />} />
-            </Route>
-            <Route path="tile_images" element={<TileImages />}>
-              <Route path=":letterDistribution" element={<TileImages />} />
-            </Route>
-            <Route path="admin" element={<Admin />} />
-            <Route
-              path="donate"
-              element={<Navigate replace to="/settings/donate" />}
-            />
-            <Route path="donate_success" element={<DonateSuccess />} />
-            <Route
-              path="handover-signed-cookie"
-              element={<HandoverSignedCookie />}
-            />
-          </Routes>
-          {!isEmbeddedPath && <Footer />}
-        </div>
-      </AntDApp>
-    </ConfigProvider>
+
+              <Route path="embed/game/:gameID" element={<Embed />} />
+              <Route path="editor" element={<BoardEditor />}>
+                <Route path=":gameID" element={<BoardEditor />} />
+              </Route>
+              <Route path="broadcasts" element={<BroadcastsList />} />
+              <Route path="broadcasts/new" element={<CreateBroadcast />} />
+              <Route path="broadcasts/:slug/edit" element={<EditBroadcast />} />
+              <Route path="broadcasts/:slug" element={<BroadcastRoom />} />
+              <Route path="collections/:uuid" element={<CollectionViewer />}>
+                <Route
+                  path="chapter/:chapterNumber"
+                  element={<CollectionViewer />}
+                />
+              </Route>
+              <Route
+                path="scrabblecam/callback"
+                element={<ScrabblecamCallbackHandler />}
+              />
+              <Route path="docs" element={<DocsIndex />} />
+              <Route path="docs/:manualId" element={<DocPage />} />
+              <Route path="docs/:manualId/:sectionId" element={<DocPage />} />
+              <Route path="about" element={<Team />} />
+              <Route path="team" element={<Team />} />
+              <Route path="terms" element={<TermsOfService />} />
+              <Route path="register" element={<Register />} />
+              <Route path="verify-email" element={<VerifyEmail />} />
+              <Route path="password">
+                <Route path="reset" element={<PasswordReset />} />
+                <Route path="new" element={<NewPassword />} />
+              </Route>
+              <Route path="profile/:username" element={<PlayerProfile />} />
+              <Route path="profile/" element={<PlayerProfile />} />
+              <Route path="settings" element={<Settings />}>
+                <Route path=":section" element={<Settings />} />
+              </Route>
+              <Route path="tile_images" element={<TileImages />}>
+                <Route path=":letterDistribution" element={<TileImages />} />
+              </Route>
+              <Route path="admin" element={<Admin />} />
+              <Route
+                path="donate"
+                element={<Navigate replace to="/settings/donate" />}
+              />
+              <Route path="donate_success" element={<DonateSuccess />} />
+              <Route
+                path="handover-signed-cookie"
+                element={<HandoverSignedCookie />}
+              />
+            </Routes>
+            {!isEmbeddedPath && <Footer />}
+          </div>
+        </AntDApp>
+      </ConfigProvider>
+    </StyleProvider>
   );
 });
 

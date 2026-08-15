@@ -1,0 +1,32 @@
+/*
+ * Cascade layer order. This file must be imported before any other stylesheet.
+ *
+ * Layered CSS always loses to unlayered CSS, no matter how specific it is. So
+ * putting Ant Design in `@layer antd` means every rule we write beats every rule
+ * it generates, and specificity stops being a negotiation.
+ *
+ * That matters because we override antd's DOM in ~366 places. Those overrides
+ * used to carry an extra `.mode--*` class from the colorModed() mixin, which was
+ * quietly doing the work of out-specifying antd. When the token bridge removed
+ * that class, antd started winning in places it had been losing -- the board's
+ * definition popup picked up antd's dark-mode border, for one. Layers fix the
+ * whole category rather than the instances.
+ *
+ * `@layer antd, mantine;` also establishes the order for the Mantine migration:
+ * Mantine's own styles (imported later as styles.layer.css) sit above antd's and
+ * below ours.
+ *
+ * antd has two sources of CSS and both need layering:
+ *   - this reset, imported below
+ *   - its runtime CSS-in-JS, via <StyleProvider layer> in App.tsx
+ *
+ * GOTCHA: @ant-design/cssinjs is pinned to ^1.24.0 in package.json to match what
+ * antd itself depends on. StyleProvider works through React context, so if npm
+ * resolves a second copy of cssinjs, our provider and antd's consumer are
+ * different module instances and the prop silently does nothing -- no error, no
+ * warning, just unlayered CSS again. Installing a 2.x alongside antd's 1.x is
+ * exactly how that happens. src/theme/layers.test.tsx guards this.
+ */
+@layer antd, mantine;
+
+@import "antd/dist/reset.css" layer(antd);
