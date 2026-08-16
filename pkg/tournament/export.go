@@ -113,7 +113,7 @@ func exportToTSH(ctx context.Context, t *entity.Tournament, us user.Store) (stri
 			if len(split) == 2 {
 				realName = split[1] + ", " + split[0]
 			}
-			fmt.Fprintf(&sb, "%v\t%d", realName, p.Rating)
+			fmt.Fprintf(&sb, "%v %d", realName, p.Rating)
 			scores := make([]int, xhr.CurrentRound+1)
 			// Write all pairings and then scores.
 			for rd := int32(0); rd <= xhr.CurrentRound; rd++ {
