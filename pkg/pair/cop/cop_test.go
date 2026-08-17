@@ -874,6 +874,68 @@ func TestTopDownByePrecedence(t *testing.T) {
 	is.Equal(resp.Pairings[1], int32(3))
 }
 
+// TestTopDownByeTakesPrecedenceOverGibsonBye checks that top-down byes take
+// precedence over the Gibson bye. Before the fix, GB (which restricts the
+// bye to Gibsonized players once someone has clinched 1st) disabled TB
+// entirely whenever the Gibson bye applied, forcing a repeat bye onto the
+// Gibsonized leader even when a bye-free player was available. Now TB is
+// computed regardless of Gibson status, and GB defers to it.
+func TestTopDownByeTakesPrecedenceOverGibsonBye(t *testing.T) {
+	is := is.New(t)
+
+	// 3 players. P0 gets a big enough lead (and a prior bye in round 1) to
+	// clinch 1st with 1 round left. P2 gets byes in rounds 2 and 3 (allowed
+	// to repeat since these are historical, already-played rounds), so P1 is
+	// the only player with zero prior byes going into the final round.
+	buildReq := func() *pb.PairRequest {
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                []string{"P0", "P1", "P2"},
+			PlayerClasses:              []int32{0, 0, 0},
+			GibsonSpread:               50,
+			ControlLossThreshold:       0.25,
+			HopefulnessThreshold:       0.02,
+			AllPlayers:                 3,
+			ValidPlayers:               3,
+			Rounds:                     4,
+			PlacePrizes:                1,
+			DivisionSims:               10000,
+			ControlLossSims:            2000,
+			ControlLossActivationRound: 10,
+			AllowRepeatByes:            false,
+			Seed:                       1,
+		}
+		// Round 1: P0 bye. P1 beats P2 by 100.
+		pairtestutils.AddRoundPairingsStr(req, "0 2 1")
+		pairtestutils.AddRoundResultsStr(req, "50 300 200")
+		// Round 2: P2 bye. P0 crushes P1.
+		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
+		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+		// Round 3: P2 bye again. P0 crushes P1 again. Going into round 4, P0
+		// has 1 prior bye, P1 has 0, and P0 is clinched for 1st.
+		pairtestutils.AddRoundPairingsStr(req, "1 0 2")
+		pairtestutils.AddRoundResultsStr(req, "800 100 50")
+		return req
+	}
+
+	// Without TopDownByes, GB forces the bye onto the Gibsonized leader P0,
+	// repeating its round-1 bye.
+	req := buildReq()
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp.Pairings[0], int32(0))
+
+	// With TopDownByes, the bye instead goes to P1 (the only bye-free
+	// player), even though P0 is still Gibsonized for 1st.
+	req2 := buildReq()
+	req2.TopDownByes = true
+	resp2 := cop.COPPair(req2)
+	is.Equal(resp2.ErrorCode, pb.PairError_SUCCESS)
+	is.Equal(resp2.Pairings[1], int32(1))
+	is.Equal(resp2.Pairings[0], int32(2))
+	is.Equal(resp2.Pairings[2], int32(0))
+}
+
 // TestOddHopefulContenderGroup checks Feature 5: when the group of players
 // still hopeful to reach 1st is odd, the next player down is barred from
 // playing the leader; a lone hopeful contender is left alone unless the

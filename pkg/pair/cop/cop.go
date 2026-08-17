@@ -118,10 +118,12 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 // computeTopDownByePlayer determines which player (if any) should receive the
 // top-down bye: the player with the fewest previous byes, scanning from the
 // top of the standings down (ties go to the higher-ranked player). Returns -1
-// if top-down byes don't apply in this round.
+// if top-down byes don't apply in this round. Top-down byes take precedence
+// over the Gibson bye (see the "GB" policy below), so this does not defer to
+// pargs.gibsonGetsBye.
 func computeTopDownByePlayer(pargs *policyArgs) int {
 	numPlayers := len(pargs.playerNodes)
-	if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex || pargs.gibsonGetsBye {
+	if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex {
 		return -1
 	}
 	byePlayer := -1
@@ -376,7 +378,10 @@ var constraintPolicies = []constraintPolicy{
 		// Gibson Bye
 		name: "GB",
 		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
-			if !pargs.gibsonGetsBye {
+			// Top-down byes take precedence over the Gibson bye: if TB has
+			// already claimed the bye for a specific player this round, don't
+			// also disallow it from everyone else here.
+			if !pargs.gibsonGetsBye || pargs.topDownByePlayer >= 0 {
 				return [][2]int{}, [][2]int{}
 			}
 			disallowedPairings := [][2]int{}
