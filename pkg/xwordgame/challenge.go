@@ -176,14 +176,8 @@ var (
 // ChallengeParams are the inputs to adjudicating a challenge. The player on turn
 // is the challenger.
 type ChallengeParams struct {
-	// Rule is the game's challenge rule.
-	Rule ChallengeRule
-	// Lexicon validates the words. Required.
-	Lexicon Lexicon
-	// Variant selects exact-spelling or anagram matching.
-	Variant Variant
-	// LetterDistribution scores end-of-game rack adjustments. Required.
-	LetterDistribution *tilemapping.LetterDistribution
+	// Rules is the game's configuration; its Lexicon is required here.
+	Rules *Rules
 
 	// Prev is the position immediately before the challenged play. It is
 	// required only when the play might come off the board -- that is, whenever
@@ -203,11 +197,6 @@ type ChallengeParams struct {
 	// for the same action. See LegacyFivePointMode for the one place that
 	// inference is still reproduced, and why.
 	WordIndices []uint32
-
-	// FivePointMode selects flat or per-word scoring under the five-point
-	// rule. The zero value is macondo's flat five, which is what live liwords
-	// games do; the annotator sets FivePointPerWord.
-	FivePointMode FivePointMode
 }
 
 // ChallengeOutcome describes what a challenge did. The State has already been
@@ -256,24 +245,24 @@ type ChallengeOutcome struct {
 // AdjudicateChallenge settles a challenge by the player on turn against the
 // previous play, updating the State and describing what changed.
 func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error) {
-	if p.Rule == ChallengeRuleVoid {
+	if err := p.Rules.validate(); err != nil {
+		return nil, err
+	}
+	if p.Rules.ChallengeRule == ChallengeRuleVoid {
 		return nil, errChallengeInVoid
 	}
 	if s.PlayState == GameOver {
 		return nil, errGameIsOver
 	}
-	if p.Lexicon == nil {
+	if p.Rules.Lexicon == nil {
 		return nil, fmt.Errorf("xwordgame: a lexicon is required to adjudicate a challenge")
-	}
-	if p.LetterDistribution == nil {
-		return nil, fmt.Errorf("xwordgame: a letter distribution is required to adjudicate a challenge")
 	}
 	if len(s.LastWordsFormed) == 0 {
 		return nil, errNoWordsToChallenge
 	}
 	// Only enforced where the mode has an effect, so a caller that carries one
 	// mode for a whole session is not tripped up by rules that ignore it.
-	if p.Rule == ChallengeRuleFivePoint && p.FivePointMode == FivePointPerWord && len(p.WordIndices) == 0 {
+	if p.Rules.ChallengeRule == ChallengeRuleFivePoint && p.Rules.FivePointMode == FivePointPerWord && len(p.WordIndices) == 0 {
 		return nil, ErrPerWordNeedsIndices
 	}
 
@@ -281,7 +270,7 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 	if err != nil {
 		return nil, err
 	}
-	illegal := invalidWords(p.Lexicon, words, p.Variant)
+	illegal := invalidWords(p.Rules.Lexicon, words, p.Rules.Variant)
 
 	out := &ChallengeOutcome{
 		Challenger:         s.OnTurn,
@@ -294,7 +283,7 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 	}
 
 	switch {
-	case p.Rule == ChallengeRuleTriple:
+	case p.Rules.ChallengeRule == ChallengeRuleTriple:
 		// Somebody always loses outright.
 		out.TripleChallenge = true
 		out.GameOver = true
@@ -318,19 +307,19 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 		// whatever had accumulated before the phony.
 		s.ScorelessTurns++
 		res := newApplyResult()
-		if s.endIfScorelessStalemate(p.LetterDistribution, res) {
+		if s.endIfScorelessStalemate(p.Rules.LetterDistribution, res) {
 			out.GameOver = true
 			out.ScorelessPenalties = res.ScorelessPenalties
 		}
 
-	case p.Rule == ChallengeRuleDouble:
+	case p.Rules.ChallengeRule == ChallengeRuleDouble:
 		// Unsuccessful challenge, draconian variety: the challenger loses their
 		// turn. Applying it as a pass is what handles the case where the
 		// challengee had already gone out -- the pass closes the game and pays
 		// them the end-rack bonus -- and the case where this is the sixth
 		// scoreless turn.
 		out.TurnLoss = true
-		res, err := s.ApplyPass(p.LetterDistribution)
+		res, err := s.ApplyPass(p.Rules)
 		if err != nil {
 			return nil, err
 		}
@@ -342,27 +331,27 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 	default:
 		// Unsuccessful challenge under a points rule. The challenger does not
 		// lose their turn; they still have to move.
-		switch p.Rule {
+		switch p.Rules.ChallengeRule {
 		case ChallengeRuleSingle:
 			out.BonusPoints = 0
 		case ChallengeRuleFivePoint:
 			// The only rule whose payout depends on the word count, and only
 			// when the caller asks for it.
 			out.BonusPoints = 5
-			if p.FivePointMode == FivePointPerWord {
+			if p.Rules.FivePointMode == FivePointPerWord {
 				out.BonusPoints = int32(5 * len(words))
 			}
 		case ChallengeRuleTenPoint:
 			out.BonusPoints = 10
 		default:
-			return nil, fmt.Errorf("xwordgame: unknown challenge rule %d", p.Rule)
+			return nil, fmt.Errorf("xwordgame: unknown challenge rule %d", p.Rules.ChallengeRule)
 		}
 		s.Scores[out.Challengee] += out.BonusPoints
 
 		if s.PlayState == WaitingForFinalPass {
 			// The challengee had gone out and this failed challenge was the
 			// last thing standing between them and the win.
-			bonus, err := s.ApplyOutBonus(p.LetterDistribution, int(out.Challengee))
+			bonus, err := s.ApplyOutBonus(p.Rules.LetterDistribution, int(out.Challengee))
 			if err != nil {
 				return nil, err
 			}

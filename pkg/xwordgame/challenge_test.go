@@ -63,59 +63,48 @@ func challengeFixture(t *testing.T, played string, score int32) (cur, prev *Stat
 	return cur, prev, ld
 }
 
-// boardFixture is an empty board with a full english bag and a real lexicon.
-func boardFixture(t *testing.T) (*State, *BoardLayout, *tilemapping.LetterDistribution, Lexicon) {
+// testRules is a classic 15x15 english game with a real lexicon.
+func testRules(t *testing.T, rule ChallengeRule, ld *tilemapping.LetterDistribution) *Rules {
 	t.Helper()
 	layout, err := NamedLayout(CrosswordGameLayout)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return &Rules{
+		Layout:             layout,
+		LetterDistribution: ld,
+		Lexicon:            testLexicon(t, "CSW21"),
+		Variant:            VarClassic,
+		ChallengeRule:      rule,
+	}
+}
+
+// boardFixture is an empty board with a full english bag.
+func boardFixture(t *testing.T, rule ChallengeRule) (*State, *Rules) {
+	t.Helper()
 	ld := testLetterDistribution(t, "english")
-	s, err := NewState(layout.Dim())
+	r := testRules(t, rule, ld)
+	s, err := NewState(r.Layout.Dim())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.FillBag(ld); err != nil {
 		t.Fatal(err)
 	}
-	return s, layout, ld, testLexicon(t, "CSW21")
+	return s, r
 }
 
-// playPlacement applies a tile play the way ApplyPlacement will once it lands,
-// and returns the position from before it. Challenge adjudication needs both,
-// and deriving LastWordsFormed from the board rather than setting it by hand is
-// the whole point of the tests that use this.
-func playPlacement(t *testing.T, s *State, layout *BoardLayout,
-	ld *tilemapping.LetterDistribution, m *Move) *State {
+// playPlacement runs a tile play through the real state machine and returns the
+// position from before it, which challenge adjudication needs. Deriving
+// LastWordsFormed from the board rather than setting it by hand is the point of
+// the tests that use this.
+func playPlacement(t *testing.T, s *State, r *Rules, m *Move) *State {
 	t.Helper()
-	if err := s.ErrorIfIllegalPlay(layout, m); err != nil {
-		t.Fatal(err)
-	}
-	score, words, err := s.ScoreWords(layout, ld, m)
-	if err != nil {
-		t.Fatal(err)
-	}
 	prev := s.Clone()
-
-	p := int(s.OnTurn)
-	s.PlaceMoveTiles(m)
-	if err := s.TakeFromRack(p, m.Tiles); err != nil {
+	if _, err := s.ApplyPlacement(r, seededRand(), m); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.DrawToFull(seededRand(), p); err != nil {
-		t.Fatal(err)
-	}
-	s.Scores[p] += int32(score)
-	if m.TilesPlayed() == RackTileLimit {
-		s.Bingos[p]++
-	}
-	s.ScorelessTurns = 0
-	s.PlayerTurns[p]++
-	s.TurnNum++
-	s.OnTurn = otherPlayer(s.OnTurn)
-	s.LastWordsFormed = words
-
-	if err := s.ValidateTileConservation(ld); err != nil {
+	if err := s.ValidateTileConservation(r.LetterDistribution); err != nil {
 		t.Fatal(err)
 	}
 	return prev
@@ -123,13 +112,7 @@ func playPlacement(t *testing.T, s *State, layout *BoardLayout,
 
 func baseParams(t *testing.T, rule ChallengeRule, prev *State, ld *tilemapping.LetterDistribution) ChallengeParams {
 	t.Helper()
-	return ChallengeParams{
-		Rule:               rule,
-		Lexicon:            testLexicon(t, "CSW21"),
-		Variant:            VarClassic,
-		LetterDistribution: ld,
-		Prev:               prev,
-	}
+	return ChallengeParams{Rules: testRules(t, rule, ld), Prev: prev}
 }
 
 func TestSuccessfulChallengeReturnsThePhony(t *testing.T) {
@@ -252,7 +235,7 @@ func TestFivePointModes(t *testing.T) {
 
 			p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
 			p.WordIndices = tc.indices
-			p.FivePointMode = tc.mode
+			p.Rules.FivePointMode = tc.mode
 			out, err := cur.AdjudicateChallenge(p)
 			is.NoErr(err)
 			is.True(out.PlayLegal)
@@ -269,7 +252,8 @@ func TestFivePointModes(t *testing.T) {
 
 func TestChallengeAPhonyPlayedOnTheBoard(t *testing.T) {
 	is := is.New(t)
-	s, layout, ld, lex := boardFixture(t)
+	s, r := boardFixture(t, ChallengeRuleDouble)
+	ld := r.LetterDistribution
 	alph := ld.TileMapping()
 
 	// FRIENDZ is not in CSW21, but it is a perfectly legal opening play as far
@@ -279,12 +263,12 @@ func TestChallengeAPhonyPlayedOnTheBoard(t *testing.T) {
 	bagBefore := s.BagCounts()
 
 	m := NewPlacementMove(7, 7, false, word(t, alph, "FRIENDZ"))
-	prev := playPlacement(t, s, layout, ld, m)
+	prev := playPlacement(t, s, r, m)
 
 	// The words under challenge came off the board, not out of the test.
 	is.Equal(len(s.LastWordsFormed), 1)
 	is.Equal(s.LastWordsFormed[0], word(t, alph, "FRIENDZ"))
-	is.True(!lex.HasWord(s.LastWordsFormed[0]))
+	is.True(!r.Lexicon.HasWord(s.LastWordsFormed[0]))
 	is.True(!s.IsBoardEmpty())
 	is.Equal(s.Bingos[0], uint16(1))
 	scored := s.Scores[0]
@@ -314,21 +298,22 @@ func TestChallengeAPhonyCrossWord(t *testing.T) {
 
 	setup := func(t *testing.T) (*State, *State, *tilemapping.LetterDistribution, Lexicon) {
 		t.Helper()
-		s, layout, ld, lex := boardFixture(t)
+		s, r := boardFixture(t, ChallengeRuleSingle)
+		ld := r.LetterDistribution
 		alph := ld.TileMapping()
 
 		// AT across the centre.
 		if err := s.AssignRack(0, word(t, alph, "AT")); err != nil {
 			t.Fatal(err)
 		}
-		playPlacement(t, s, layout, ld, NewPlacementMove(7, 6, false, word(t, alph, "AT")))
+		playPlacement(t, s, r, NewPlacementMove(7, 6, false, word(t, alph, "AT")))
 
 		// AW parallel above it: valid itself, but it hooks A onto A and W onto T.
 		if err := s.AssignRack(1, word(t, alph, "AW")); err != nil {
 			t.Fatal(err)
 		}
-		prev := playPlacement(t, s, layout, ld, NewPlacementMove(6, 6, false, word(t, alph, "AW")))
-		return s, prev, ld, lex
+		prev := playPlacement(t, s, r, NewPlacementMove(6, 6, false, word(t, alph, "AW")))
+		return s, prev, ld, r.Lexicon
 	}
 
 	t.Run("the board really does form one phony among three words", func(t *testing.T) {
@@ -361,7 +346,7 @@ func TestChallengeAPhonyCrossWord(t *testing.T) {
 		s, prev, ld, _ := setup(t)
 		p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
 		p.WordIndices = []uint32{0, 1} // AW and AA, not WT
-		p.FivePointMode = FivePointPerWord
+		p.Rules.FivePointMode = FivePointPerWord
 		out, err := s.AdjudicateChallenge(p)
 		is.NoErr(err)
 		is.True(out.PlayLegal)
@@ -374,7 +359,7 @@ func TestChallengeAPhonyCrossWord(t *testing.T) {
 		s, prev, ld, _ := setup(t)
 		p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
 		p.WordIndices = []uint32{2} // just WT
-		p.FivePointMode = FivePointPerWord
+		p.Rules.FivePointMode = FivePointPerWord
 		out, err := s.AdjudicateChallenge(p)
 		is.NoErr(err)
 		is.True(!out.PlayLegal)
@@ -395,7 +380,7 @@ func TestPerWordWithoutIndicesIsRefused(t *testing.T) {
 	before := cur.Clone()
 
 	p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
-	p.FivePointMode = FivePointPerWord
+	p.Rules.FivePointMode = FivePointPerWord
 	_, err := cur.AdjudicateChallenge(p)
 	is.Equal(err, ErrPerWordNeedsIndices)
 	// Rejected before anything was touched.
@@ -413,7 +398,7 @@ func TestPerWordWithoutIndicesIsFineForOtherRules(t *testing.T) {
 		t.Run(rule.String(), func(t *testing.T) {
 			cur, prev, ld := challengeFixture(t, "FRIENDS", 74)
 			p := baseParams(t, rule, prev, ld)
-			p.FivePointMode = FivePointPerWord
+			p.Rules.FivePointMode = FivePointPerWord
 			_, err := cur.AdjudicateChallenge(p)
 			is.NoErr(err)
 		})
@@ -450,7 +435,7 @@ func TestLegacyFivePointModeMatchesCwgame(t *testing.T) {
 			}
 			p := baseParams(t, ChallengeRuleFivePoint, prev, ld)
 			p.WordIndices = tc.indices
-			p.FivePointMode = LegacyFivePointMode(tc.indices)
+			p.Rules.FivePointMode = LegacyFivePointMode(tc.indices)
 			out, err := cur.AdjudicateChallenge(p)
 			is.NoErr(err)
 			is.Equal(out.BonusPoints, tc.want)
@@ -496,7 +481,7 @@ func TestOtherRulesIgnoreTheWordCount(t *testing.T) {
 				}
 				p := baseParams(t, tc.rule, prev, ld)
 				p.WordIndices = []uint32{0, 1, 2}
-				p.FivePointMode = mode
+				p.Rules.FivePointMode = mode
 				out, err := cur.AdjudicateChallenge(p)
 				is.NoErr(err)
 				is.Equal(out.BonusPoints, tc.want)
@@ -722,7 +707,7 @@ func TestWordSmogAcceptsAnagrams(t *testing.T) {
 	cur2, prev2, ld2 := challengeFixture(t, "FRIENDS", 74)
 	cur2.LastWordsFormed = []tilemapping.MachineWord{word(t, alph, "SDNEIRF")}
 	p2 := baseParams(t, ChallengeRuleSingle, prev2, ld2)
-	p2.Variant = VarWordSmog
+	p2.Rules.Variant = VarWordSmog
 	out2, err := cur2.AdjudicateChallenge(p2)
 	is.NoErr(err)
 	is.True(out2.PlayLegal) // wordsmog: accepted
