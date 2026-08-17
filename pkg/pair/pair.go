@@ -426,7 +426,29 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
 				"have odd group size of %d", numberOfPlayers, groupSize)
 		}
-		groupPairings, err := GetRoundRobinPairings(groupSize, round, seed)
+
+		var groupPairings []int
+		var err error
+		if groupSize == numberOfNtiles {
+			// Standard-size N-tile group: pair with a normal round robin, as before.
+			groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+		} else {
+			// Oversized remainder group (the leftover players folded in above via
+			// remainderOffset/remainderSpacing). Rather than a full round robin,
+			// use a fixed "shirts vs skins" cross pattern: split the group into
+			// two teams by local rank parity (odds vs evens) and rotate one team
+			// against the other each round. This only avoids repeats across all
+			// numberOfNtiles-1 fontes rounds if the group is big enough
+			// (half its size >= rounds needed); otherwise fall back to round
+			// robin, which is always safe.
+			k := groupSize / 2
+			roundsNeeded := numberOfNtiles - 1
+			if k >= roundsNeeded {
+				groupPairings = getShirtsVsSkinsPairings(groupSize, round)
+			} else {
+				groupPairings, err = GetRoundRobinPairings(groupSize, round, seed)
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -454,6 +476,33 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 		}
 	}
 	return pairings, nil
+}
+
+// getShirtsVsSkinsPairings pairs an oversized Initial Fontes remainder group
+// using a fixed cross pattern instead of a round robin. Local player indices
+// are assumed to already be in rank order (0 = best local seed). Team A is
+// the even local indices (local ranks 1, 3, 5, ...) and Team B is the odd
+// local indices (local ranks 2, 4, 6, ...). Each round, Team A is paired
+// against Team B rotated by `round` positions, e.g. for a group of 6
+// (local ranks 1-6):
+//
+//	Round 0: 1v2  3v4  5v6
+//	Round 1: 1v4  3v6  5v2
+//	Round 2: 1v6  3v2  5v4
+//
+// This only avoids repeating a pairing across all of the fontes rounds if
+// groupSize/2 >= the number of rounds needed; the caller is responsible for
+// checking that before calling this function.
+func getShirtsVsSkinsPairings(groupSize int, round int) []int {
+	k := groupSize / 2
+	pairings := make([]int, groupSize)
+	for x := 0; x < k; x++ {
+		a := 2 * x
+		b := 2*((x+round)%k) + 1
+		pairings[a] = b
+		pairings[b] = a
+	}
+	return pairings
 }
 
 // GetRoundRobinPairings generates round-robin pairings for a given number of players and round

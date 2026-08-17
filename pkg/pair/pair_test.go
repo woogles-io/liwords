@@ -217,6 +217,108 @@ func TestInitialFontes(t *testing.T) {
 	}
 }
 
+func TestGetShirtsVsSkinsPairings(t *testing.T) {
+	is := is.New(t)
+
+	// Group of 6, local ranks 1-6 (0-indexed 0-5).
+	// Team A = local indices 0,2,4 (ranks 1,3,5)
+	// Team B = local indices 1,3,5 (ranks 2,4,6)
+	is.NoErr(equalPairings([]int{1, 0, 3, 2, 5, 4}, getShirtsVsSkinsPairings(6, 0))) // 1v2 3v4 5v6
+	is.NoErr(equalPairings([]int{3, 4, 5, 0, 1, 2}, getShirtsVsSkinsPairings(6, 1))) // 1v4 3v6 5v2
+	is.NoErr(equalPairings([]int{5, 2, 1, 4, 3, 0}, getShirtsVsSkinsPairings(6, 2))) // 1v6 3v2 5v4
+
+	// No pairing should repeat across the 3 available rounds.
+	seen := map[string]bool{}
+	for round := 0; round < 3; round++ {
+		pairings := getShirtsVsSkinsPairings(6, round)
+		for player, opponent := range pairings {
+			if player > opponent {
+				continue
+			}
+			key := fmt.Sprintf("%d-%d", player, opponent)
+			is.True(!seen[key])
+			seen[key] = true
+		}
+	}
+}
+
+func TestInitialFontesRemainderGroupUsesShirtsVsSkins(t *testing.T) {
+	is := is.New(t)
+
+	// 18 players, InitialFontes = 3 (numberOfNtiles = 4, i.e. quartiles).
+	// With the existing remainderOffset/remainderSpacing group-formation logic,
+	// this produces three groups of 4 and one oversized group of 6:
+	//   group 0: 0,4,9,13
+	//   group 1: 1,5,10,14
+	//   group 2: 2,7,11,16
+	//   group 3 (remainder): 3,6,8,12,15,17
+	// Group 3 (size 6, k=3) has enough capacity for all 3 fontes rounds, so it
+	// should be paired via the shirts-vs-skins cross pattern instead of round
+	// robin: Team A = {3,8,15} (local ranks 1,3,5), Team B = {6,12,17} (local
+	// ranks 2,4,6).
+	round0, err := getInitialFontesPairings(18, 4, 0, 0)
+	is.NoErr(err)
+	is.Equal(round0[3], 6)
+	is.Equal(round0[8], 12)
+	is.Equal(round0[15], 17)
+
+	round1, err := getInitialFontesPairings(18, 4, 1, 0)
+	is.NoErr(err)
+	is.Equal(round1[3], 12)
+	is.Equal(round1[8], 17)
+	is.Equal(round1[6], 15)
+
+	round2, err := getInitialFontesPairings(18, 4, 2, 0)
+	is.NoErr(err)
+	is.Equal(round2[3], 17)
+	is.Equal(round2[6], 8)
+	is.Equal(round2[12], 15)
+
+	// No pairing among the remainder group should repeat across the 3 rounds.
+	seen := map[string]bool{}
+	for _, pairings := range [][]int{round0, round1, round2} {
+		for _, player := range []int{3, 6, 8, 12, 15, 17} {
+			opponent := pairings[player]
+			if player > opponent {
+				continue
+			}
+			key := fmt.Sprintf("%d-%d", player, opponent)
+			is.True(!seen[key])
+			seen[key] = true
+		}
+	}
+}
+
+func TestInitialFontesGeneralizedNtiles(t *testing.T) {
+	is := is.New(t)
+
+	// numberOfNtiles = 6 (InitialFontes = 5 rounds), roundsNeeded = 5.
+	//
+	// 20 players -> remainder group of size 8, k=4 < roundsNeeded(5),
+	// so this falls back to round robin for the remainder group.
+	//
+	// 22 players -> remainder group of size 10, k=5 >= roundsNeeded(5),
+	// so this uses the shirts-vs-skins cross pattern for the remainder group.
+	for _, numberOfPlayers := range []int{20, 22} {
+		allPairings := map[string]bool{}
+		for round := 0; round < 5; round++ {
+			pairings, err := getInitialFontesPairings(numberOfPlayers, 6, round, 10)
+			is.NoErr(err)
+			for player, opponent := range pairings {
+				if opponent == -1 {
+					opponent = player
+				} else if player > opponent {
+					continue
+				}
+				key := fmt.Sprintf("%d-%d", player, opponent)
+				is.True(!allPairings[key])
+				allPairings[key] = true
+			}
+		}
+		is.Equal(len(allPairings), (numberOfPlayers*5)/2)
+	}
+}
+
 func equalPairings(s1 []int, s2 []int) error {
 	if len(s1) != len(s2) {
 		return fmt.Errorf("pairing lengths do not match: %d != %d", len(s1), len(s2))
