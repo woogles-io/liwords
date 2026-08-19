@@ -1069,6 +1069,64 @@ func TestOddHopefulContenderGroupVsFactor3(t *testing.T) {
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
 
+// TestFactor3HopefulnessUsesAtLeastNotExact regression-tests a real-world bug
+// (reported from a July 4th 2026 run, round 27): the F3 hopefulness check
+// compared each of 4th/5th/6th's chance of landing on their *exact* target
+// final rank (1st/2nd/3rd respectively) against the hopefulness threshold,
+// instead of their chance of finishing at that rank *or better*. A player who
+// is very likely to leapfrog straight past their target rank into a better
+// one - and so is genuinely hopeful for it - could have a tiny exact-rank
+// probability and incorrectly fail the check, causing F3 to be skipped when
+// it should have expanded.
+//
+// This scenario reproduces that shape: 6th place (P6) trails 4th/5th by wins
+// but is spread-competitive with 1st-3rd, so when it does crack the top 3 it
+// usually leaps to 1st or 2nd rather than landing exactly on 3rd. With
+// HopefulnessThreshold=0.10, 6th's chance of finishing *exactly* 3rd is only
+// ~4%, but its chance of finishing 3rd-or-better is ~25% - so under the old
+// exact-rank check F3 was wrongly skipped, and under the fixed cumulative
+// check it correctly expands.
+func TestFactor3HopefulnessUsesAtLeastNotExact(t *testing.T) {
+	is := is.New(t)
+
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"},
+		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.99, // effectively disable the control-loss branch
+		HopefulnessThreshold:       0.10,
+		AllPlayers:                 12,
+		ValidPlayers:               12,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               100000,
+		ControlLossSims:            2000,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	pairtestutils.AddNDummyRounds(req, 6)
+	// P0,P2,P4 (1st-3rd): win rounds 1-5, lose round 6 -> 5-1.
+	// P6,P8 (4th,5th): win rounds 1-4, lose rounds 5-6 -> 4-2, small margins.
+	// P10 (6th): win rounds 1-4, lose rounds 5-6 -> 4-2, but a much bigger
+	// margin, so it's spread-competitive with 1st-3rd despite being ranked 6th.
+	mk := func(a, b, c, d, e, f int) string {
+		return fmt.Sprintf("%d 400 %d 400 %d 400 %d 400 %d 400 %d 400", 400+a, 400+b, 400+c, 400+d, 400+e, 400+f)
+	}
+	for range 4 {
+		pairtestutils.AddRoundResultsStr(req, mk(18, 13, 8, 1, 1, 100))
+	}
+	pairtestutils.AddRoundResultsStr(req, mk(18, 13, 8, -1, -1, -100))
+	pairtestutils.AddRoundResultsStr(req, mk(-18, -13, -8, -1, -1, -100))
+
+	resp := cop.COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Factor 3 expansion:"))
+	is.True(!strings.Contains(resp.Log, "Factor 3 skipped: hopefulness"))
+}
+
 // TestHopefulCasherGrouping checks Feature 2: in the last quarter of the
 // tournament, players who are hopeful to cash play other hopeful-to-cash
 // players, and players who aren't hopeful to cash play other non-hopeful

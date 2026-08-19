@@ -932,19 +932,32 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	// can each reach 1st/2nd/3rd respectively within the hopefulness threshold.
 	minWins := int(math.Round(float64(totalSims) * float64(req.HopefulnessThreshold)))
 
-	// 4th can get 1st, 5th can get 2nd, 6th can get 3rd.
+	// 4th can reach 1st-or-better, 5th can reach 2nd-or-better, 6th can reach
+	// 3rd-or-better. Use cumulative ("at least") sims rather than the exact-rank
+	// cell, since a sim where e.g. 6th finishes 1st or 2nd is a strictly better
+	// outcome than 3rd and must also count toward being hopeful for 3rd.
 	p3 := copdata.Standings.GetPlayerIndex(3)
 	p4 := copdata.Standings.GetPlayerIndex(4)
 	p5 := copdata.Standings.GetPlayerIndex(5)
-	if factor3FinalRanks[3][0] < minWins ||
-		factor3FinalRanks[4][1] < minWins ||
-		factor3FinalRanks[5][2] < minWins {
+	atLeast := func(finalRanks []int, targetRank int) int {
+		sum := 0
+		for rank := 0; rank <= targetRank; rank++ {
+			sum += finalRanks[rank]
+		}
+		return sum
+	}
+	p3AtLeast1st := atLeast(factor3FinalRanks[3], 0)
+	p4AtLeast2nd := atLeast(factor3FinalRanks[4], 1)
+	p5AtLeast3rd := atLeast(factor3FinalRanks[5], 2)
+	if p3AtLeast1st < minWins ||
+		p4AtLeast2nd < minWins ||
+		p5AtLeast3rd < minWins {
 		logsb.WriteString(fmt.Sprintf(
-			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st:%d 5th=%s->2nd:%d 6th=%s->3rd:%d)\n",
+			"Factor 3 skipped: hopefulness threshold not met (minWins=%d 4th=%s->1st-or-better:%d 5th=%s->2nd-or-better:%d 6th=%s->3rd-or-better:%d)\n",
 			minWins,
-			req.PlayerNames[p3], factor3FinalRanks[3][0],
-			req.PlayerNames[p4], factor3FinalRanks[4][1],
-			req.PlayerNames[p5], factor3FinalRanks[5][2],
+			req.PlayerNames[p3], p3AtLeast1st,
+			req.PlayerNames[p4], p4AtLeast2nd,
+			req.PlayerNames[p5], p5AtLeast3rd,
 		))
 		return nil
 	}
