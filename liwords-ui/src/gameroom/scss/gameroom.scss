@@ -21,15 +21,11 @@ $tile-transition:
 }
 
 p.streak-win {
-  @include colorModed() {
-    color: m($timer-dark);
-  }
+  color: m($timer-dark);
 }
 
 p.streak-loss {
-  @include colorModed() {
-    color: m($primary-dark);
-  }
+  color: m($primary-dark);
 }
 
 .game-table {
@@ -123,9 +119,7 @@ p.streak-loss {
 
     button.ant-btn-icon-only {
       font-size: 16px;
-      @include colorModed() {
-        color: m($button-text);
-      }
+      color: m($button-text);
     }
 
     .controls {
@@ -144,17 +138,13 @@ p.streak-loss {
       padding: 12px;
       margin: 6px 12px 0 0;
 
-      @include colorModed() {
-        background: m($background);
-        border: 1px solid m($gray-extreme);
-        outline: 0;
-      }
+      background: m($background);
+      border: 1px solid m($gray-extreme);
+      outline: 0;
 
       &:focus {
-        @include colorModed() {
-          border: 1px solid m($primary-midDark);
-          outline: 1px solid m($primary-midDark);
-        }
+        border: 1px solid m($primary-midDark);
+        outline: 1px solid m($primary-midDark);
       }
     }
   }
@@ -175,9 +165,7 @@ p.streak-loss {
 
         button.ant-btn-icon-only {
           font-size: 16px;
-          @include colorModed() {
-            color: m($button-text);
-          }
+          color: m($button-text);
         }
       }
     }
@@ -242,9 +230,7 @@ p.streak-loss {
     font-size: 14px;
     margin-right: 6px;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .analyze-trigger,
@@ -253,10 +239,8 @@ p.streak-loss {
   }
 
   .computer-analysis-btn.legacy {
-    @include colorModed() {
-      color: m($gray-medium);
-      border-color: m($gray-subtle);
-    }
+    color: m($gray-medium);
+    border-color: m($gray-subtle);
   }
 
   .analyzer-container {
@@ -264,9 +248,7 @@ p.streak-loss {
       font-size: 28px;
       margin-bottom: 18px;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
 
     .suggestions {
@@ -286,16 +268,12 @@ p.streak-loss {
         vertical-align: top;
 
         &:hover {
-          @include colorModed() {
-            background-color: m($primary-light);
-          }
+          background-color: m($primary-light);
         }
       }
 
       tr.move-chosen:not(:hover) {
-        @include colorModed() {
-          background-color: m($primary-middle);
-        }
+        background-color: m($primary-middle);
       }
 
       td {
@@ -352,16 +330,12 @@ p.streak-loss {
       cursor: pointer;
       font-size: 12px;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
 
       &:hover {
         text-decoration: underline;
 
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
     }
   }
@@ -375,9 +349,7 @@ p.streak-loss {
     padding: 6px 0;
 
     &:not(:last-child) {
-      @include colorModed() {
-        border-bottom: 1px solid m($gray-subtle);
-      }
+      border-bottom: 1px solid m($gray-subtle);
     }
   }
 
@@ -394,10 +366,8 @@ p.streak-loss {
     flex-shrink: 0;
     position: relative;
 
-    @include colorModed() {
-      border-top: 1px solid m($gray-subtle);
-      color: m($gray-medium);
-    }
+    border-top: 1px solid m($gray-subtle);
+    color: m($gray-medium);
 
     .ca-summary-player {
       display: flex;
@@ -408,9 +378,7 @@ p.streak-loss {
     .ca-summary-name {
       font-weight: 600;
 
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
     }
 
     .ca-summary-mi {
@@ -430,14 +398,10 @@ p.streak-loss {
       font-size: 15px;
       line-height: 1;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
 
       &:hover {
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
     }
 
@@ -459,17 +423,13 @@ p.streak-loss {
   }
 
   .ca-sep {
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-phase {
     font-size: 12px;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-tag {
@@ -492,9 +452,7 @@ p.streak-loss {
     letter-spacing: 0.03em;
     min-width: 38px;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-score {
@@ -505,9 +463,7 @@ p.streak-loss {
     font-size: 11px;
     margin-top: 3px;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-elo-graph {
@@ -520,9 +476,7 @@ p.streak-loss {
     padding: 16px;
     text-align: center;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-legacy-banner {
@@ -542,10 +496,8 @@ p.streak-loss {
       line-height: 1.4;
     }
 
-    @include colorModed() {
-      background-color: rgba(180, 140, 0, 0.12);
-      color: m($gray-medium);
-    }
+    background-color: rgba(180, 140, 0, 0.12);
+    color: m($gray-medium);
   }
 
   .ca-sim-note {
@@ -553,9 +505,7 @@ p.streak-loss {
     font-size: 10px;
     font-style: italic;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .ca-enriched-section {
@@ -568,9 +518,7 @@ p.streak-loss {
       letter-spacing: 0.04em;
       margin-bottom: 4px;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
 
     table {
@@ -584,10 +532,8 @@ p.streak-loss {
         padding: 2px 5px;
         font-size: 11px;
 
-        @include colorModed() {
-          color: m($gray-medium);
-          border-bottom: 1px solid m($gray-subtle);
-        }
+        color: m($gray-medium);
+        border-bottom: 1px solid m($gray-subtle);
       }
 
       td {
@@ -596,16 +542,12 @@ p.streak-loss {
       }
 
       tr.ca-sim-played {
-        @include colorModed() {
-          background-color: rgba(0, 102, 204, 0.08);
-        }
+        background-color: rgba(0, 102, 204, 0.08);
       }
 
       tr.ca-sim-ignored {
-        @include colorModed() {
-          opacity: 0.4;
-          font-style: italic;
-        }
+        opacity: 0.4;
+        font-style: italic;
       }
     }
 
@@ -616,16 +558,12 @@ p.streak-loss {
         cursor: pointer;
 
         &:hover {
-          @include colorModed() {
-            background-color: m($off-background);
-          }
+          background-color: m($off-background);
         }
       }
 
       .ca-coord {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
 
       .ca-move-word {
@@ -641,9 +579,7 @@ p.streak-loss {
       cursor: pointer;
 
       &:hover {
-        @include colorModed() {
-          background-color: m($off-background);
-        }
+        background-color: m($off-background);
       }
     }
 
@@ -654,14 +590,10 @@ p.streak-loss {
       padding: 0 2px;
       line-height: 1;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
 
       &:hover {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
     }
 
@@ -672,9 +604,7 @@ p.streak-loss {
         font-size: 12px;
         margin-bottom: 3px;
 
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
 
       .ca-ply-table {
@@ -718,9 +648,7 @@ p.streak-loss {
         border-radius: 2px;
 
         &:hover {
-          @include colorModed() {
-            background-color: m($off-background);
-          }
+          background-color: m($off-background);
         }
       }
 
@@ -737,18 +665,14 @@ p.streak-loss {
         letter-spacing: 0.06em;
         cursor: help;
 
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
 
         &::before,
         &::after {
           content: "";
           flex: 1;
 
-          @include colorModed() {
-            border-top: 1px dashed m($gray-subtle);
-          }
+          border-top: 1px dashed m($gray-subtle);
         }
 
         &::before {
@@ -758,9 +682,7 @@ p.streak-loss {
 
       .ca-endgame-num,
       .ca-endgame-score {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
     }
 
@@ -776,9 +698,7 @@ p.streak-loss {
         cursor: pointer;
         font-size: 11px;
 
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
 
         &:hover {
           text-decoration: underline;
@@ -789,16 +709,12 @@ p.streak-loss {
         margin-top: 4px;
         padding-left: 8px;
 
-        @include colorModed() {
-          border-left: 2px solid m($gray-subtle);
-        }
+        border-left: 2px solid m($gray-subtle);
 
         .ca-endgame-alt-spread {
           font-size: 11px;
 
-          @include colorModed() {
-            color: m($gray-medium);
-          }
+          color: m($gray-medium);
         }
       }
     }
@@ -817,9 +733,7 @@ p.streak-loss {
   dt {
     font-weight: 400;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   dd {
@@ -827,9 +741,7 @@ p.streak-loss {
     text-align: right;
     white-space: nowrap;
 
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
 }
 
@@ -839,26 +751,20 @@ p.streak-loss {
   padding-top: 6px;
   font-size: 11px;
 
-  @include colorModed() {
-    border-top: 1px solid m($gray-subtle);
-    color: m($gray-medium);
-  }
+  border-top: 1px solid m($gray-subtle);
+  color: m($gray-medium);
 }
 
 .ca-run-info-empty {
   font-size: 12px;
 
-  @include colorModed() {
-    color: m($gray-medium);
-  }
+  color: m($gray-medium);
 }
 
 .definitions {
   font-family: $font-monospaced;
 
-  @include colorModed() {
-    background-color: m($card-background);
-  }
+  background-color: m($card-background);
 
   .definition-entry {
     max-width: 13em;
@@ -867,9 +773,7 @@ p.streak-loss {
       margin-top: 1em;
     }
 
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
 
     .defined-word {
       font-weight: bold;
@@ -879,9 +783,7 @@ p.streak-loss {
     }
 
     .invalid-word {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
+      color: m($timer-out-dark);
     }
   }
 }
@@ -909,10 +811,8 @@ p.streak-loss {
     z-index: 5;
     transition: $tile-transition;
 
-    @include colorModed() {
-      background: m($tile-background);
-      color: m($background);
-    }
+    background: m($tile-background);
+    color: m($background);
 
     @include userTile() {
       background: ut($tile-background);
@@ -920,9 +820,7 @@ p.streak-loss {
     }
 
     p.rune {
-      @include colorModed() {
-        color: m($background);
-      }
+      color: m($background);
 
       @include userTile() {
         background: ut($tile-background);
@@ -963,9 +861,7 @@ p.streak-loss {
   width: $board-size-mobile;
   height: $board-size-mobile;
 
-  @include colorModed() {
-    background: m($grid);
-  }
+  background: m($grid);
 
   @include userboard() {
     background: ub($grid);
@@ -991,9 +887,7 @@ p.streak-loss {
 
 .board-spaces:not(.learn-spaces) {
   // Using a box shadow that looks like a border to not mess up the grid
-  @include colorModed() {
-    box-shadow: m($board-shadow);
-  }
+  box-shadow: m($board-shadow);
 
   @include userboard() {
     background: ub($board-fill);
@@ -1019,9 +913,7 @@ p.streak-loss {
   pointer-events: none;
 
   p {
-    @include colorModed() {
-      color: m($tile-text);
-    }
+    color: m($tile-text);
   }
 }
 
@@ -1034,10 +926,8 @@ p.streak-loss {
   align-items: center;
   border: transparent 1px solid;
 
-  @include colorModed() {
-    background-color: m($background);
-    border-color: transparent transparent m($grid) m($grid);
-  }
+  background-color: m($background);
+  border-color: transparent transparent m($grid) m($grid);
 
   @include userboard() {
     opacity: ub($board-space-opacity);
@@ -1061,9 +951,7 @@ p.streak-loss {
     position: absolute;
     font-size: $tile-font-size-mobile;
 
-    @include colorModed() {
-      color: m($timer-dark);
-    }
+    color: m($timer-dark);
 
     @include userboard() {
       color: ub($board-selection-color);
@@ -1083,9 +971,7 @@ p.streak-loss {
       opacity: 0;
     }
 
-    @include colorModed() {
-      color: m($background);
-    }
+    color: m($background);
 
     @include userboard() {
       color: ub($board-bonus-text);
@@ -1126,9 +1012,7 @@ p.streak-loss {
   }
 
   &.bonus-none {
-    @include colorModed() {
-      background: m($board-empty);
-    }
+    background: m($board-empty);
 
     @include userboard() {
       background: ub($board-empty);
@@ -1136,18 +1020,14 @@ p.streak-loss {
   }
 
   &.bonus-4WS {
-    @include colorModed() {
-      background-color: m($board-qws);
-    }
+    background-color: m($board-qws);
 
     @include userboard() {
       background-color: ub($board-qws);
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: d(qws-label);
-      }
+      color: d(qws-label);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1155,9 +1035,7 @@ p.streak-loss {
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(qws-selected);
-      }
+      background-color: d(qws-selected);
 
       @include userboard() {
         background-color: blender(ub($board-qws), ub($board-empty));
@@ -1165,9 +1043,7 @@ p.streak-loss {
       }
 
       .anticon {
-        @include colorModed() {
-          color: m($timer-dark);
-        }
+        color: m($timer-dark);
 
         @include userboard() {
           color: ub($board-selection-color);
@@ -1177,18 +1053,14 @@ p.streak-loss {
   }
 
   &.bonus-3WS {
-    @include colorModed() {
-      background-color: m($board-tws);
-    }
+    background-color: m($board-tws);
 
     @include userboard() {
       background-color: ub($board-tws);
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: m($white);
-      }
+      color: m($white);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1196,10 +1068,8 @@ p.streak-loss {
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(tws-selected);
-        border-color: d(timer-light-shade);
-      }
+      background-color: d(tws-selected);
+      border-color: d(timer-light-shade);
 
       @include userboard() {
         background-color: blender(ub($board-tws), ub($board-empty));
@@ -1207,9 +1077,7 @@ p.streak-loss {
       }
 
       .anticon {
-        @include colorModed() {
-          color: d(timer-light-shade);
-        }
+        color: d(timer-light-shade);
 
         @include userboard() {
           color: ub($board-selection-color);
@@ -1219,18 +1087,14 @@ p.streak-loss {
   }
 
   &.bonus-2WS {
-    @include colorModed() {
-      background-color: m($board-dws);
-    }
+    background-color: m($board-dws);
 
     @include userboard() {
       background-color: ub($board-dws);
     }
 
     .anticon-star {
-      @include colorModed() {
-        color: m($board-tws);
-      }
+      color: m($board-tws);
 
       @include userboard() {
         color: ub($board-center-icon);
@@ -1238,9 +1102,7 @@ p.streak-loss {
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: d(tws-label);
-      }
+      color: d(tws-label);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1248,9 +1110,7 @@ p.streak-loss {
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(dws-selected);
-      }
+      background-color: d(dws-selected);
 
       @include userboard() {
         background-color: blender(ub($board-dws), ub($board-empty));
@@ -1258,9 +1118,7 @@ p.streak-loss {
       }
 
       .anticon {
-        @include colorModed() {
-          color: m($timer-dark);
-        }
+        color: m($timer-dark);
 
         @include userboard() {
           color: ub($board-selection-color);
@@ -1274,18 +1132,14 @@ p.streak-loss {
   }
 
   &.bonus-4LS {
-    @include colorModed() {
-      background-color: m($board-qls);
-    }
+    background-color: m($board-qls);
 
     @include userboard() {
       background-color: ub($board-qls);
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(qls-selected);
-      }
+      background-color: d(qls-selected);
 
       @include userboard() {
         background-color: blender(ub($board-qls), ub($board-empty));
@@ -1294,9 +1148,7 @@ p.streak-loss {
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: d(qls-label);
-      }
+      color: d(qls-label);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1305,18 +1157,14 @@ p.streak-loss {
   }
 
   &.bonus-3LS {
-    @include colorModed() {
-      background-color: m($board-tls);
-    }
+    background-color: m($board-tls);
 
     @include userboard() {
       background-color: ub($board-tls);
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: m($white);
-      }
+      color: m($white);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1324,10 +1172,8 @@ p.streak-loss {
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(tls-selected);
-        border-color: d(timer-light-shade);
-      }
+      background-color: d(tls-selected);
+      border-color: d(timer-light-shade);
 
       @include userboard() {
         background-color: blender(ub($board-tls), ub($board-empty));
@@ -1335,9 +1181,7 @@ p.streak-loss {
       }
 
       .anticon {
-        @include colorModed() {
-          color: d(timer-light-shade);
-        }
+        color: d(timer-light-shade);
 
         @include userboard() {
           color: ub($board-selection-color);
@@ -1347,18 +1191,14 @@ p.streak-loss {
   }
 
   &.bonus-2LS {
-    @include colorModed() {
-      background-color: m($board-dls);
-    }
+    background-color: m($board-dls);
 
     @include userboard() {
       background-color: ub($board-dls);
     }
 
     &.selected {
-      @include colorModed() {
-        background-color: d(dls-selected);
-      }
+      background-color: d(dls-selected);
 
       @include userboard() {
         background-color: blender(ub($board-dls), ub($board-empty));
@@ -1367,9 +1207,7 @@ p.streak-loss {
     }
 
     .bonus-label {
-      @include colorModed() {
-        color: d(tls-label);
-      }
+      color: d(tls-label);
 
       @include userboard() {
         color: ub($board-bonus-text);
@@ -1378,10 +1216,8 @@ p.streak-loss {
   }
 
   &.selected {
-    @include colorModed() {
-      border: 1px solid m($timer-dark);
-      background-color: m($timer-light);
-    }
+    border: 1px solid m($timer-dark);
+    background-color: m($timer-light);
 
     @include userboard() {
       border: 1px solid ub($board-selection-color);
@@ -1420,9 +1256,7 @@ p.streak-loss {
   padding-top: 5px;
 
   p {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
 }
 
@@ -1444,9 +1278,7 @@ p.streak-loss {
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
 
-  @include colorModed() {
-    color: m($gray-extreme);
-  }
+  color: m($gray-extreme);
 }
 
 /* Rack */
@@ -1479,9 +1311,7 @@ p.streak-loss {
   position: relative;
   left: -12px;
 
-  @include colorModed() {
-    background-color: m($background);
-  }
+  background-color: m($background);
 
   .rack {
     width: calc($tile-size-desktop * 8.5);
@@ -1526,18 +1356,16 @@ p.streak-loss {
 }
 
 .tile {
-  @include colorModed() {
-    background: m($tile-background);
-    border: m($tile-border);
-    /* TODO
-    &.tile-p0.tile-p0 {
-      background-color: #0000ff;
-    }
-    &.tile-p1.tile-p1 {
-      background-color: #ff0000;
-    }
-    */
+  background: m($tile-background);
+  border: m($tile-border);
+  /* TODO
+  &.tile-p0.tile-p0 {
+    background-color: #0000ff;
   }
+  &.tile-p1.tile-p1 {
+    background-color: #ff0000;
+  }
+  */
 
   @include userTile() {
     background: ut($tile-background);
@@ -1595,10 +1423,8 @@ p.streak-loss {
   transform: rotate(-10deg);
   font-size: calc($tile-font-size-mobile * 0.95);
 
-  @include colorModed() {
-    color: m($tile-blank-text);
-    background-color: m($tile-background-secondary);
-  }
+  color: m($tile-blank-text);
+  background-color: m($tile-background-secondary);
 
   @include userTile() {
     color: ut($tile-blank-text);
@@ -1608,20 +1434,18 @@ p.streak-loss {
 
 /* This used to be .tile.last-played, and doubling seems necessary. */
 .tile.second-color.second-color {
-  @include colorModed() {
-    border: 1px solid m($tile-last-background);
-    background: m($tile-last-background);
-    /* TODO
-    &.tile-p0 {
-      border: 1px solid m($someColor);
-      box-shadow: inset 0px 0px 0px 2px m($someColor);
-    }
-    &.tile-p1 {
-      border: 1px solid m($someColor);
-      box-shadow: inset 0px 0px 0px 2px m($someColor);;
-    }
-    */
+  border: 1px solid m($tile-last-background);
+  background: m($tile-last-background);
+  /* TODO
+  &.tile-p0 {
+    border: 1px solid m($someColor);
+    box-shadow: inset 0px 0px 0px 2px m($someColor);
   }
+  &.tile-p1 {
+    border: 1px solid m($someColor);
+    box-shadow: inset 0px 0px 0px 2px m($someColor);;
+  }
+  */
 
   @include userTile() {
     border: 0px solid transparent; // Fallback if border is a gradient
@@ -1631,10 +1455,8 @@ p.streak-loss {
 
   &.blank {
     p.rune {
-      @include colorModed() {
-        background-color: m($tile-last-blank);
-        color: m($tile-last-background);
-      }
+      background-color: m($tile-last-blank);
+      color: m($tile-last-background);
 
       @include userTile() {
         color: ut($tile-blank-text); // Fallback if border is a gradient
@@ -1646,9 +1468,7 @@ p.streak-loss {
 
   p.rune,
   p.point-value {
-    @include colorModed() {
-      color: m($tile-last-text);
-    }
+    color: m($tile-last-text);
 
     @include userTile() {
       color: ut($tile-last-text);
@@ -1657,32 +1477,28 @@ p.streak-loss {
 }
 
 .tile.tentative {
-  @include colorModed() {
-    background: m($tile-background-tertiary);
-    /* TODO
+  background: m($tile-background-tertiary);
+  /* TODO
 
-    &.tile-p0 {
-     @include colorModed() {
-        background: m($someColor);
-      }
+  &.tile-p0 {
+   @include colorModed() {
+      background: m($someColor);
     }
-    &.tile-p1 {
-           @include colorModed() {
-        background: m($someColor);
-      }
-    }
-    */
   }
+  &.tile-p1 {
+         @include colorModed() {
+      background: m($someColor);
+    }
+  }
+  */
 
   @include userTile() {
     background: ut($tile-background-tertiary);
   }
 
   &.blank p.rune {
-    @include colorModed() {
-      background-color: m($tile-background-quaternary);
-      color: m($tile-background);
-    }
+    background-color: m($tile-background-quaternary);
+    color: m($tile-background);
 
     @include userTile() {
       background-color: ut($tile-background-quaternary);
@@ -1721,9 +1537,7 @@ p.rune {
   width: 100%;
   padding-bottom: 3px;
 
-  @include colorModed() {
-    color: m($background);
-  }
+  color: m($background);
 
   @include userTile() {
     color: ut($tile-text);
@@ -1746,9 +1560,7 @@ p.rune {
   font-weight: 600;
   pointer-events: none; // Allow clicks to pass through to tile
 
-  @include colorModed() {
-    color: m($background);
-  }
+  color: m($background);
 
   @include userTile() {
     color: ut($tile-text);
@@ -1760,9 +1572,7 @@ p.rune {
   width: $tile-size-desktop;
   height: $tile-size-desktop;
 
-  @include colorModed() {
-    background: m($tile-background);
-  }
+  background: m($tile-background);
 
   @include userTile() {
     background: ut($tile-background);
@@ -1775,9 +1585,7 @@ p.rune {
   p.rune {
     font-size: $tile-font-size-desktop;
 
-    @include colorModed() {
-      color: m($background);
-    }
+    color: m($background);
 
     @include userTile() {
       color: ut($tile-text);
@@ -1792,9 +1600,7 @@ p.rune {
     opacity: 0.4;
   }
 
-  @include colorModed() {
-    background: m($tile-background);
-  }
+  background: m($tile-background);
 
   @include userTile() {
     background: ut($tile-background);
@@ -1855,11 +1661,9 @@ p.rune {
   font-size: 12px;
   font-weight: bold;
 
-  @include colorModed() {
-    background-color: m($timer-light);
-    border: 1px solid m($timer-dark);
-    color: m($timer-dark);
-  }
+  background-color: m($timer-light);
+  border: 1px solid m($timer-dark);
+  color: m($timer-dark);
 }
 
 .tile .tentative-score.tentative-score-horizontal {
@@ -1907,10 +1711,8 @@ p.rune {
       border-radius: 0 0 8px 8px;
     }
 
-    @include colorModed() {
-      background: m($primary-dark);
-      color: m($background);
-    }
+    background: m($primary-dark);
+    color: m($background);
 
     div {
       width: 50%;
@@ -1918,10 +1720,8 @@ p.rune {
       padding: 4px;
 
       &:first-child {
-        @include colorModed() {
-          background: m($primary-light);
-          color: m($gray-extreme);
-        }
+        background: m($primary-light);
+        color: m($gray-extreme);
       }
     }
   }
@@ -1978,14 +1778,10 @@ p.rune {
         width: calc(50% - 4px);
         letter-spacing: 1px;
 
-        @include colorModed() {
-          background: m($primary-dark);
-        }
+        background: m($primary-dark);
 
         &:first-child {
-          @include colorModed() {
-            background: m($primary-middle);
-          }
+          background: m($primary-middle);
         }
       }
     }
@@ -2016,14 +1812,10 @@ p.rune {
   line-height: 1.4;
   border-radius: 4px;
 
-  @include colorModed() {
-    color: m($primary-dark);
-  }
+  color: m($primary-dark);
 
   &:hover {
-    @include colorModed() {
-      background: m($primary-light);
-    }
+    background: m($primary-light);
   }
 
   .view-mode-caret {
@@ -2044,14 +1836,10 @@ p.rune {
         line-height: 2em;
       }
 
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
 
       &:hover {
-        @include colorModed() {
-          background: m($primary-light);
-        }
+        background: m($primary-light);
       }
     }
   }
@@ -2061,9 +1849,7 @@ p.rune {
   font-size: 14px;
 
   .tournament-name {
-    @include colorModed() {
-      color: m($secondary);
-    }
+    color: m($secondary);
 
     & {
       font-size: 14px;
@@ -2077,14 +1863,10 @@ p.rune {
     letter-spacing: 1.2px;
     text-transform: uppercase;
 
-    @include colorModed() {
-      color: m($primary-dark);
-    }
+    color: m($primary-dark);
 
     a {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
       text-decoration: none;
 
       &:hover {
@@ -2101,16 +1883,12 @@ p.rune {
 
   .ant-card-extra {
     .ant-btn {
-      @include colorModed() {
-        border-color: m($primary-dark);
-        color: m($primary-dark);
-      }
+      border-color: m($primary-dark);
+      color: m($primary-dark);
 
       &:hover {
-        @include colorModed() {
-          border-color: m($primary-midDark);
-          color: m($primary-midDark);
-        }
+        border-color: m($primary-midDark);
+        color: m($primary-midDark);
       }
     }
   }
@@ -2163,20 +1941,14 @@ p.rune {
     padding: 6px 16px;
     justify-content: space-between;
 
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
 
     &:hover {
-      @include colorModed() {
-        background: m($primary-light);
-      }
+      background: m($primary-light);
     }
 
     &.turn-selected {
-      @include colorModed() {
-        background: m($primary-middle);
-      }
+      background: m($primary-middle);
     }
 
     &.bingo {
@@ -2184,9 +1956,7 @@ p.rune {
         position: relative;
         margin: 0 6px;
 
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
     }
 
@@ -2205,15 +1975,11 @@ p.rune {
     .main-word {
       display: inline-block;
 
-      @include colorModed() {
-        color: m($gray-extreme);
-      }
+      color: m($gray-extreme);
 
       &.main-word-seekable {
         cursor: pointer;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
     }
 
@@ -2221,9 +1987,7 @@ p.rune {
     .time-penalty,
     .tiles-left,
     .challenge {
-      @include colorModed() {
-        color: m($timer-out-dark);
-      }
+      color: m($timer-out-dark);
 
       & {
         display: block;
@@ -2232,15 +1996,11 @@ p.rune {
     }
 
     .challenge.unsuccessful {
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
     }
 
     .end-rack-pts {
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
     }
 
     .coords-time {
@@ -2269,16 +2029,12 @@ p.rune {
 
       .challenge.successful {
         font-weight: 800;
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
 
       .challenge.unsuccessful {
         font-weight: 800;
-        @include colorModed() {
-          color: m($timer-dark);
-        }
+        color: m($timer-dark);
       }
     }
 
@@ -2290,9 +2046,7 @@ p.rune {
   .anticon-comment {
     margin: 0px 15px;
 
-    @include colorModed() {
-      color: m($gray-medium);
-    }
+    color: m($gray-medium);
   }
 
   .turn-comments {
@@ -2331,9 +2085,7 @@ p.rune {
           font-size: 14px;
           font-weight: 600;
 
-          @include colorModed() {
-            color: m($background);
-          }
+          color: m($background);
 
           a {
             .mode--default & {
@@ -2361,9 +2113,7 @@ p.rune {
         }
 
         .timeago {
-          @include colorModed() {
-            color: rgba(255, 255, 255, 0.8);
-          }
+          color: rgba(255, 255, 255, 0.8);
           & {
             padding-left: 8px;
             font-size: 12px;
@@ -2376,14 +2126,10 @@ p.rune {
           padding-left: 6px;
           font-size: 14px;
 
-          @include colorModed() {
-            color: rgba(255, 255, 255, 0.7);
-          }
+          color: rgba(255, 255, 255, 0.7);
 
           &:hover {
-            @include colorModed() {
-              color: rgba(255, 255, 255, 1);
-            }
+            color: rgba(255, 255, 255, 1);
           }
         }
       }
@@ -2408,17 +2154,13 @@ p.rune {
       border-radius: 4px;
       font-size: 14px;
 
-      @include colorModed() {
-        color: m($button);
-        background-color: m($card-background);
-        border: 1px solid m($gray-subtle);
-      }
+      color: m($button);
+      background-color: m($card-background);
+      border: 1px solid m($gray-subtle);
 
       &:hover {
-        @include colorModed() {
-          background-color: m($off-background);
-          border-color: m($gray-medium);
-        }
+        background-color: m($off-background);
+        border-color: m($gray-medium);
       }
 
       // When inside button container, remove individual margins
@@ -2428,18 +2170,14 @@ p.rune {
       }
 
       &.cancel-btn {
-        @include colorModed() {
-          color: m($gray-extreme);
-          background-color: transparent;
-          border: 1px solid m($gray-subtle);
-        }
+        color: m($gray-extreme);
+        background-color: transparent;
+        border: 1px solid m($gray-subtle);
 
         &:hover {
-          @include colorModed() {
-            background-color: m($gray-subtle);
-            color: m($gray-extreme);
-            border-color: m($gray-medium);
-          }
+          background-color: m($gray-subtle);
+          color: m($gray-extreme);
+          border-color: m($gray-medium);
         }
       }
     }
@@ -2457,9 +2195,7 @@ p.rune {
       font-size: 12px;
       font-style: italic;
       flex: 1;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
   }
 
@@ -2480,11 +2216,9 @@ p.rune {
       margin-left: 8px;
 
       &.no-comments {
-        @include colorModed() {
-          color: m($primary-dark);
-          background-color: transparent;
-          border: none; // Remove outline
-        }
+        color: m($primary-dark);
+        background-color: transparent;
+        border: none; // Remove outline
       }
 
       // Invisible placeholder for turns with comments (maintains spacing)
@@ -2495,17 +2229,13 @@ p.rune {
     }
 
     &.no-comments:not(.inline-comment-bubble):not(.two-col-bubble) {
-      @include colorModed() {
-        color: m($gray-medium);
-        background-color: transparent;
-        border: 1px solid m($gray-subtle);
-      }
+      color: m($gray-medium);
+      background-color: transparent;
+      border: 1px solid m($gray-subtle);
 
       &:hover {
-        @include colorModed() {
-          background-color: m($gray-subtle);
-          color: m($gray-extreme);
-        }
+        background-color: m($gray-subtle);
+        color: m($gray-extreme);
       }
 
       .comment-icon-subtle {
@@ -2514,11 +2244,9 @@ p.rune {
     }
 
     &.has-comments {
-      @include colorModed() {
-        color: m($primary-dark);
-        background: transparent;
-        border: none;
-      }
+      color: m($primary-dark);
+      background: transparent;
+      border: none;
 
       .comment-icon {
         font-size: 11px;
@@ -2544,9 +2272,7 @@ p.rune {
     @include type-monospace;
     position: relative;
 
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
 
     &:not(.two-col-scorecard-empty)::before {
       content: "";
@@ -2555,9 +2281,7 @@ p.rune {
       bottom: 0;
       left: 50%;
       width: 1px;
-      @include colorModed() {
-        background-color: m($gray-subtle);
-      }
+      background-color: m($gray-subtle);
     }
 
     .two-col-opening-state {
@@ -2570,10 +2294,8 @@ p.rune {
     display: flex;
     padding: 8px 0;
 
-    @include colorModed() {
-      border-bottom: 1px solid m($gray-subtle);
-      color: m($gray-extreme);
-    }
+    border-bottom: 1px solid m($gray-subtle);
+    color: m($gray-extreme);
 
     .two-col-player-name {
       flex: 1;
@@ -2594,9 +2316,7 @@ p.rune {
   .two-col-row {
     display: flex;
 
-    @include colorModed() {
-      border-bottom: 1px solid m($gray-subtle);
-    }
+    border-bottom: 1px solid m($gray-subtle);
 
     &:last-of-type {
       border-bottom: none;
@@ -2628,15 +2348,11 @@ p.rune {
     }
 
     &:hover {
-      @include colorModed() {
-        background: m($primary-light);
-      }
+      background: m($primary-light);
     }
 
     &.two-col-turn-selected {
-      @include colorModed() {
-        background: m($primary-middle);
-      }
+      background: m($primary-middle);
     }
 
     .two-col-coord {
@@ -2656,28 +2372,20 @@ p.rune {
 
       &.two-col-word-seekable {
         cursor: pointer;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
 
       .challenge.successful {
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
 
       .challenge.unsuccessful {
-        @include colorModed() {
-          color: m($timer-dark);
-        }
+        color: m($timer-dark);
       }
 
       .pass,
       .time-penalty {
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
     }
 
@@ -2694,16 +2402,12 @@ p.rune {
 
       .challenge.successful {
         font-weight: 800;
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
 
       .challenge.unsuccessful {
         font-weight: 800;
-        @include colorModed() {
-          color: m($timer-dark);
-        }
+        color: m($timer-dark);
       }
     }
 
@@ -2730,11 +2434,9 @@ p.rune {
       border-radius: 0;
 
       &.no-comments {
-        @include colorModed() {
-          color: m($primary-dark);
-          background: transparent;
-          border: none;
-        }
+        color: m($primary-dark);
+        background: transparent;
+        border: none;
       }
     }
   }
@@ -2753,10 +2455,8 @@ p.rune {
     padding: 16px;
     border-radius: 6px;
 
-    @include colorModed() {
-      background-color: m($off-background);
-      border: 1px solid m($gray-subtle);
-    }
+    background-color: m($off-background);
+    border: 1px solid m($gray-subtle);
 
     .turn-info {
       display: flex;
@@ -2787,9 +2487,7 @@ p.rune {
       .score-info {
         font-size: 12px;
 
-        @include colorModed() {
-          color: m($gray-medium);
-        }
+        color: m($gray-medium);
       }
     }
   }
@@ -2802,9 +2500,7 @@ p.rune {
       text-align: center;
       padding: 40px 20px;
 
-      @include colorModed() {
-        color: m($gray-medium);
-      }
+      color: m($gray-medium);
     }
 
     // Create proper context for comments in drawer (mimic game-table context)
@@ -2848,9 +2544,7 @@ p.rune {
               font-size: 14px;
               font-weight: 600;
 
-              @include colorModed() {
-                color: m($background);
-              }
+              color: m($background);
 
               a {
                 .mode--default & {
@@ -2877,9 +2571,7 @@ p.rune {
             }
 
             .timeago {
-              @include colorModed() {
-                color: rgba(255, 255, 255, 0.8);
-              }
+              color: rgba(255, 255, 255, 0.8);
               & {
                 padding-left: 8px;
                 font-size: 12px;
@@ -2889,17 +2581,13 @@ p.rune {
 
             .anticon-edit,
             .anticon-delete {
-              @include colorModed() {
-                color: rgba(255, 255, 255, 0.8);
-              }
+              color: rgba(255, 255, 255, 0.8);
               & {
                 cursor: pointer;
                 margin-left: 8px;
 
                 &:hover {
-                  @include colorModed() {
-                    color: rgba(255, 255, 255, 1);
-                  }
+                  color: rgba(255, 255, 255, 1);
                 }
               }
             }
@@ -2925,33 +2613,25 @@ p.rune {
           border-radius: 4px;
           font-size: 14px;
 
-          @include colorModed() {
-            color: m($button);
-            background-color: m($card-background);
-            border: 1px solid m($gray-subtle);
-          }
+          color: m($button);
+          background-color: m($card-background);
+          border: 1px solid m($gray-subtle);
 
           &:hover {
-            @include colorModed() {
-              background-color: m($primary-middle);
-              color: m($background);
-              border-color: m($primary-middle);
-            }
+            background-color: m($primary-middle);
+            color: m($background);
+            border-color: m($primary-middle);
           }
 
           &.cancel-btn {
-            @include colorModed() {
-              color: m($gray-extreme);
-              background-color: transparent;
-              border: 1px solid m($gray-subtle);
-            }
+            color: m($gray-extreme);
+            background-color: transparent;
+            border: 1px solid m($gray-subtle);
 
             &:hover {
-              @include colorModed() {
-                background-color: m($gray-subtle);
-                color: m($gray-extreme);
-                border-color: m($gray-medium);
-              }
+              background-color: m($gray-subtle);
+              color: m($gray-extreme);
+              border-color: m($gray-medium);
             }
           }
         }
@@ -2965,10 +2645,8 @@ p.rune {
     padding: 16px 0;
     margin-top: auto;
 
-    @include colorModed() {
-      background-color: m($background);
-      border-top: 1px solid m($gray-subtle);
-    }
+    background-color: m($background);
+    border-top: 1px solid m($gray-subtle);
 
     .turn-navigation {
       display: flex;
@@ -2980,9 +2658,7 @@ p.rune {
         font-size: 14px;
         font-weight: 500;
 
-        @include colorModed() {
-          color: m($gray-extreme);
-        }
+        color: m($gray-extreme);
       }
     }
   }
@@ -3069,10 +2745,8 @@ p.rune {
 .examiner-controls .ant-affix {
   transform: translateX(-6px);
 
-  @include colorModed() {
-    background-color: m($background);
-    border-bottom: 1px solid m($gray-subtle);
-  }
+  background-color: m($background);
+  border-bottom: 1px solid m($gray-subtle);
 }
 
 .end-message + .examiner-controls {
@@ -3084,9 +2758,7 @@ p.rune {
     position: static !important;
     height: auto !important;
 
-    @include colorModed() {
-      border-bottom: 0;
-    }
+    border-bottom: 0;
   }
 }
 
@@ -3103,9 +2775,7 @@ p.rune {
       height: auto !important;
       border-bottom: transparent;
 
-      @include colorModed() {
-        border-bottom: 0;
-      }
+      border-bottom: 0;
     }
   }
 }
@@ -3117,9 +2787,7 @@ p.rune {
 
   .ant-card-body {
     p {
-      @include colorModed() {
-        background-color: m($gray-extreme);
-      }
+      background-color: m($gray-extreme);
     }
   }
 }
@@ -3129,17 +2797,13 @@ p.rune {
   @include type-monospace;
 
   // from .ant-card (base.scss)
-  @include colorModed() {
-    background-color: m($card-background);
-    color: m($gray-extreme);
-  }
+  background-color: m($card-background);
+  color: m($gray-extreme);
 }
 
 .tile-images.chars.p0 {
-  @include colorModed() {
-    background: m($tile-background);
-    color: m($background);
-  }
+  background: m($tile-background);
+  color: m($background);
 
   @include userTile() {
     background: ut($tile-background);
@@ -3148,10 +2812,8 @@ p.rune {
 }
 
 .tile-images.chars.p1 {
-  @include colorModed() {
-    background: m($tile-last-background);
-    color: m($tile-last-text);
-  }
+  background: m($tile-last-background);
+  color: m($tile-last-text);
 
   @include userTile() {
     background: ut($tile-last-background);
@@ -3209,9 +2871,7 @@ p.rune {
   .rack-container {
     left: 0;
 
-    @include colorModed() {
-      background: transparent;
-    }
+    background: transparent;
   }
 
   .rack {
@@ -3471,10 +3131,8 @@ p.rune {
         line-height: 2.3em;
 
         &:hover {
-          @include colorModed() {
-            background: m($primary-light);
-            color: m($gray-extreme);
-          }
+          background: m($primary-light);
+          color: m($gray-extreme);
         }
       }
     }
@@ -3671,10 +3329,8 @@ p.rune {
   .ant-dropdown-menu,
   .ant-select-dropdown,
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-    }
+    background: m($background);
+    color: m($gray-extreme);
 
     & {
       z-index: 0;
@@ -3682,9 +3338,7 @@ p.rune {
   }
 
   .readable-text-color {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
   }
 }
 

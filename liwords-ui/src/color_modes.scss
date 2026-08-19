@@ -315,31 +315,26 @@ $derived: (
 }
 
 // ---------------------------------------------------------------------------
-// The bridge.
+// Token accessors.
 //
-// This used to emit its @content twice -- once under `.mode--default &`, once
-// under `.mode--dark &` -- with the token values baked in as literals. With
-// ~620 call sites that meant every themed rule existed twice in the shipped
-// stylesheet, nothing was overridable at runtime, and JS could not read a
-// colour.
+// There used to be a colorModed() mixin here that emitted its @content twice --
+// once under `.mode--default &`, once under `.mode--dark &` -- with values baked
+// in as literals. Values are now CSS custom properties (see
+// src/theme/tokens.scss), so there is nothing left to duplicate and the mixin is
+// gone; write declarations directly.
 //
-// Now the values are CSS custom properties, declared per mode in
-// src/theme/tokens.scss, and there is nothing left to duplicate: colorModed()
-// is a passthrough. It is kept rather than deleted so the ~620 existing call
-// sites keep compiling unchanged; a follow-up removes it mechanically.
-//
-// NB: this drops one class of specificity from every themed rule. That is
-// verified safe by scripts/cascade-diff.mjs, which compiles the whole
-// stylesheet both ways and fails if any declaration changes its winner.
+// m() and d() are kept rather than inlined to var(--woogles-*) at the call site
+// because they validate at build time: m($typoed-name) is a Sass error, whereas
+// var(--woogles-typoed-name) is silently invalid at runtime. With ~765 uses that
+// is worth the one layer of indirection.
 // ---------------------------------------------------------------------------
-@mixin colorModed() {
-  @content;
-}
 
+// A base token: m($gray-extreme) -> var(--woogles-color-gray-extreme)
 @function m($key) {
   @return var(--woogles-#{$key});
 }
 
+// A computed token from the $derived table: d(qws-selected)
 @function d($name) {
   @return var(--woogles-d-#{$name});
 }

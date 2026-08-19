@@ -19,14 +19,10 @@
   //   }
   .ant-table-thead > tr,
   .ant-table-tbody > tr {
-    @include colorModed() {
-      background: m($card-background);
-    }
+    background: m($card-background);
   }
   .ant-table-thead > tr > th {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    color: m($gray-extreme);
     & {
       font-size: 12px;
       font-weight: bold;
@@ -43,11 +39,9 @@
   .ant-table-thead > tr > th,
   .ant-table-tbody > tr > td {
     padding: 8px;
-    @include colorModed() {
-      color: m($gray-extreme);
-      border-color: m($off-background);
-      background: transparent;
-    }
+    color: m($gray-extreme);
+    border-color: m($off-background);
+    background: transparent;
     &.result {
       padding-right: 0;
     }
@@ -65,9 +59,7 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
-    @include colorModed() {
-      border-bottom: 1px solid m($off-background);
-    }
+    border-bottom: 1px solid m($off-background);
     & {
       height: 36px;
     }
@@ -96,14 +88,10 @@
       }
       &:hover,
       &.active {
-        @include colorModed() {
-          color: m($primary-dark);
-        }
+        color: m($primary-dark);
       }
       &.active {
-        @include colorModed() {
-          border-bottom: 2px solid m($primary-dark);
-        }
+        border-bottom: 2px solid m($primary-dark);
       }
     }
   }
@@ -170,19 +158,13 @@
       &.outgoing {
         position: relative;
         vertical-align: bottom;
-        @include colorModed() {
-          background-color: m($timer-low-light);
-          color: #414141;
-        }
+        background-color: m($timer-low-light);
+        color: #414141;
         &:hover {
-          @include colorModed() {
-            background-color: d(column-sorter-hover);
-          }
+          background-color: d(column-sorter-hover);
         }
         td.ant-table-column-sort {
-          @include colorModed() {
-            background-color: d(card-on-timer-low);
-          }
+          background-color: d(card-on-timer-low);
         }
         td {
           padding-top: 42px;
@@ -199,9 +181,7 @@
         }
         td.players:after {
           content: "Resume";
-          @include colorModed() {
-            color: m($black);
-          }
+          color: m($black);
           & {
             text-align: center;
             font-size: 12px;
@@ -216,19 +196,13 @@
       }
       &.outgoing {
         cursor: pointer;
-        @include colorModed() {
-          background-color: m($off-background);
+        background-color: m($off-background);
+        color: m($gray-extreme);
+        td {
           color: m($gray-extreme);
         }
-        td {
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
-        }
         &:hover {
-          @include colorModed() {
-            background-color: d(off-background-hover);
-          }
+          background-color: d(off-background-hover);
         }
         td.seeker {
           & > div {
@@ -236,9 +210,7 @@
           }
         }
         td.seeker:after {
-          @include colorModed() {
-            color: m($gray-extreme);
-          }
+          color: m($gray-extreme);
           & {
             content: "Cancel";
             text-align: center;
@@ -257,9 +229,7 @@
         opacity: 0.65;
         &:hover {
           opacity: 0.85;
-          @include colorModed() {
-            background-color: d(off-on-card);
-          }
+          background-color: d(off-on-card);
         }
       }
     }
@@ -277,10 +247,8 @@
   }
   h4 {
     @include type-default;
-    @include colorModed() {
-      color: m($list-header-text);
-      background-color: m($list-header);
-    }
+    color: m($list-header-text);
+    background-color: m($list-header);
     & {
       font-size: 22px;
       font-weight: bold;
@@ -332,9 +300,7 @@
   td.details {
     text-align: right;
     .anticon-fund {
-      @include colorModed() {
-        color: m($primary-dark);
-      }
+      color: m($primary-dark);
       & {
         font-size: 18px;
         margin-left: 6px;
@@ -344,21 +310,15 @@
       font-size: 14px;
       font-weight: bold;
       letter-spacing: 0;
-      @include colorModed() {
-        color: m($timer-dark);
-      }
+      color: m($timer-dark);
       &.mode_x2 {
-        @include colorModed() {
-          color: m($timer-out-dark);
-        }
+        color: m($timer-out-dark);
       }
       &.mode_Void {
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
-        @include colorModed() {
-          color: m($timer-low-dark);
-        }
+        color: m($timer-low-dark);
         & {
           text-transform: uppercase;
         }
@@ -368,8 +328,6 @@
   .game-count {
     margin-left: 9px;
     font-size: 14px;
-    @include colorModed() {
-      color: m($gray-subtle);
-    }
+    color: m($gray-subtle);
   }
 }

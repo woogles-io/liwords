@@ -18,7 +18,5 @@
 }
 
 .anticon-minus-circle {
-  @include colorModed() {
-    color: m($timer-out-dark);
-  }
+  color: m($timer-out-dark);
 }
