@@ -92,9 +92,19 @@ type policyArgs struct {
 // [0..LowestPossibleHopeNth[0]]. If that group's size is odd, the next player
 // down is pulled in to even it out, but is barred from playing the leader.
 //
-// Exception: if the group has exactly one player (only the leader itself)
-// and the leader isn't gibsonized, no player is added or barred - 1st and
-// 2nd are left to play each other via the usual weight policies.
+// Exception: if the raw group has exactly one player (only the leader
+// itself) and the leader isn't gibsonized, no player is added or barred -
+// 1st and 2nd are left to play each other via the usual weight policies.
+//
+// The leader (rank 0) doesn't count toward the group's pairable parity if
+// they're Gibsonized: GibsonizedPlayers[0] uniquely means "guaranteed to
+// finish 1st" (nothing beats 1st), so a Gibsonized leader has already
+// settled the race - unlike the hopeful-to-cash boundary's blanket
+// exclusion (any Gibsonized player, at whatever rank, is guaranteed to
+// cash), a Gibson lock at any other rank in this group only guarantees that
+// player won't fall below their current spot and says nothing about
+// whether they can still win outright, so only rank 0's own Gibson status
+// is excluded here, never anyone else's.
 //
 // This must run after computeTopDownByePlayer and computeForcedContenderBye
 // (both already computed by this point - see the call order in
@@ -102,7 +112,7 @@ type policyArgs struct {
 // if any: unlike LowestPossibleHopeNth[PlacePrizes-1] (the hopeful-to-cash
 // boundary), GetPrecompData never pre-promotes LowestPossibleHopeNth[0] for
 // raw parity, so there's no earlier promotion to retract here - just check
-// parity against the bye-adjusted group size directly.
+// parity against the bye-adjusted (and Gibson-adjusted) group size directly.
 func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	// Factor 3 expansion already constrains the top-6 pairings (including the
 	// leader's); applying this rule on top of it would overconstrain the matching.
@@ -118,7 +128,31 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 		return -1
 	}
 	contenderBoundary := pargs.copdata.LowestPossibleHopeNth[0]
-	groupSize := contenderBoundary + 1
+	rawGroupSize := contenderBoundary + 1
+	extraRankIdx := contenderBoundary + 1
+	// The size-1 case is handled entirely separately from the general
+	// parity check below, on purpose: even when the leader is Gibsonized, a
+	// lone raw contender (just the leader) still gets the next player
+	// pulled in and barred, to protect a genuine 2nd/3rd-place race even
+	// though 1st is already settled - it must not fall through to the
+	// general check, where subtracting the Gibsonized leader would turn
+	// this into an (incorrect) even/no-op case.
+	if rawGroupSize == 1 {
+		if !pargs.copdata.GibsonizedPlayers[0] {
+			return -1
+		}
+		if extraRankIdx >= numPlayers {
+			return -1
+		}
+		return pargs.playerNodes[extraRankIdx]
+	}
+
+	// The leader doesn't count toward the group's pairable parity if
+	// they're Gibsonized (see doc comment above).
+	groupSize := rawGroupSize
+	if pargs.copdata.GibsonizedPlayers[0] {
+		groupSize--
+	}
 
 	byeRecipient := -1
 	switch {
@@ -141,10 +175,6 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	if groupSize%2 == 0 {
 		return -1
 	}
-	if groupSize == 1 && !pargs.copdata.GibsonizedPlayers[0] {
-		return -1
-	}
-	extraRankIdx := contenderBoundary + 1
 	if extraRankIdx >= numPlayers {
 		return -1
 	}

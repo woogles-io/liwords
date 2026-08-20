@@ -140,3 +140,76 @@ func TestComputeDisallowedLeaderOpponentByeAware(t *testing.T) {
 	}
 	is.Equal(computeDisallowedLeaderOpponent(pargsWithBye), -1)
 }
+
+// TestComputeDisallowedLeaderOpponentGibsonizedLeader covers the analogous
+// bug to the hopeful-to-cash boundary's Gibson exclusion: GibsonizedPlayers[0]
+// uniquely means "guaranteed to finish 1st", so a Gibsonized leader has
+// already settled the race and shouldn't count toward the hopeful-for-1st
+// group's pairable parity - unlike the cash boundary's blanket exclusion, a
+// Gibson lock at any rank other than 0 doesn't resolve the 1st-place race
+// and must not be excluded.
+func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
+	is := is.New(t)
+
+	playerNodes := []int{0, 1, 2, 3, 4, 5}
+
+	// Raw group of 4 (ranks 0-3, even) with a Gibsonized leader: excluding
+	// the leader leaves 3 genuine contenders (odd), so the next player
+	// (rank 4) should be pulled in and barred - previously this returned -1
+	// because the raw (Gibson-blind) count looked even.
+	evenRawGibsonLeader := &policyArgs{
+		playerNodes: playerNodes,
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: []int{3},
+			GibsonizedPlayers:     []bool{true, false, false, false, false, false},
+		},
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}
+	is.Equal(computeDisallowedLeaderOpponent(evenRawGibsonLeader), playerNodes[4])
+
+	// Raw group of 3 (ranks 0-2, odd) with a Gibsonized leader: excluding
+	// the leader leaves 2 genuine contenders (even), so no extra player
+	// should be pulled in - previously this wrongly promoted rank 3 because
+	// the raw (Gibson-blind) count looked odd.
+	oddRawGibsonLeader := &policyArgs{
+		playerNodes: playerNodes,
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: []int{2},
+			GibsonizedPlayers:     []bool{true, false, false, false, false, false},
+		},
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}
+	is.Equal(computeDisallowedLeaderOpponent(oddRawGibsonLeader), -1)
+
+	// Raw group of exactly 1 (just the Gibsonized leader): preserved
+	// behavior - still bars the next player (rank 1) from playing the
+	// settled leader, to protect a genuine 2nd/3rd-place race. Naively
+	// excluding the leader here would make this a no-op (0, even).
+	soloGibsonLeader := &policyArgs{
+		playerNodes: playerNodes,
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: []int{0},
+			GibsonizedPlayers:     []bool{true, false, false, false, false, false},
+		},
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}
+	is.Equal(computeDisallowedLeaderOpponent(soloGibsonLeader), playerNodes[1])
+
+	// A non-leader Gibsonized player (rank 2, locked at rank 2-or-better)
+	// must NOT be excluded from the count: they're still a genuine
+	// contender for 1st. Raw group of 4 (even) stays even, so no extra
+	// player is pulled in - same as if nobody were Gibsonized.
+	nonLeaderGibsonized := &policyArgs{
+		playerNodes: playerNodes,
+		copdata: &copdatapkg.PrecompData{
+			LowestPossibleHopeNth: []int{3},
+			GibsonizedPlayers:     []bool{false, false, true, false, false, false},
+		},
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}
+	is.Equal(computeDisallowedLeaderOpponent(nonLeaderGibsonized), -1)
+}
