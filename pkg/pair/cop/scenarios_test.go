@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -425,6 +426,300 @@ func TestScenario8_Factor3ControlLoss2ndOr3rd(t *testing.T) {
 	fmt.Println(resp.Log)
 	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 }
+
+// Scenarios 9-16: the hopeful-to-cash contender-group parity fixes, exercised
+// as single-round tests in the penultimate round (round 7 of 8) of an 8-round,
+// 17-player, PlacePrizes=3 tournament. All eight combine:
+//   - contender group odd or even (does GetPrecompData's parity promotion fire?)
+//   - with or without TopDownByes
+//   - 1st Gibsonized or not
+//
+// Shared setup: P0-P3 form a "strong" quartet (contenders/leader), P4-P7 are
+// their weak-quartet opponents, and P8-P16 (9 players) are pure filler who
+// self-bye (lose) every one of the 6 completed rounds - always well below
+// cash contention and, crucially, already fully "used up" for repeat-bye
+// purposes. On top of that, exactly 3 of the strong quartet - whichever 3
+// end up ranked 1st/2nd/3rd in the final standings - each get one of their
+// 6 rounds converted into a bye too (with the same win/loss outcome they'd
+// already have had that round, and that round's opponent also byes). So by
+// round 7, the top 3 in the standings each already have exactly one prior
+// bye, while everyone else in the strong/weak quartets has zero. That means
+// TopDownByes' fewest-byes/top-rank tiebreak must skip the top 3 (who no
+// longer have the fewest byes) and land on the next-fewest-byes contender
+// instead - exactly the scenario the parity fixes need to handle correctly.
+// Without TopDownByes, PC's penalty against byeing a hopeful-to-cash
+// contender still generally pushes the bye onto a clearly-eliminated player.
+func contenderParityBaseRequest(topDownByes bool) *pb.PairRequest {
+	names := make([]string, 17)
+	classes := make([]int32, 17)
+	for i := range names {
+		names[i] = fmt.Sprintf("P%d", i)
+	}
+	return &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                names,
+		PlayerClasses:              classes,
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 17,
+		ValidPlayers:               17,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		TopDownByes:                topDownByes,
+		Seed:                       1,
+	}
+}
+
+// addContenderParityRoundsNotGibsonEven: P0,P2,P3 finish 6-0 (tied, so
+// nobody is Gibsonized) and are the top 3, each with a prior bye (rounds
+// 0,2,1 respectively). P1 and P5 both finish 3-3, still hopeful-to-cash - 4
+// total contenders (even), no promotion needed.
+func addContenderParityRoundsNotGibsonEven(req *pb.PairRequest) {
+	pairtestutils.AddRoundPairingsStr(req, "0 5 6 7 4 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "100 500 500 420 -50 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 3 0 1 2 7 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 500 500 100 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 2 7 0 1 6 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 -50 420 400 400 100 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 9: even contender group, not Gibsonized, without TopDownByes.
+// Without TDB, round 7's bye lands on eliminated P1, outside the group.
+func TestScenario9_ContenderParityEvenNotGibsonizedNoTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(false)
+	addContenderParityRoundsNotGibsonEven(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_9_contender_parity_even_notgibson_notdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(!strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players"))
+	is.True(!strings.Contains(resp.Log, "Contender group parity"))
+}
+
+// Scenario 10: even contender group, not Gibsonized, with TopDownByes.
+// With TDB, P0,P2,P3 (top 3) already have a bye, so the fewest-byes
+// tiebreak instead lands on P5 - still a genuine contender - flipping the
+// 4-player even group odd and requiring the boundary to extend by one
+// (promoting P1).
+func TestScenario10_ContenderParityEvenNotGibsonizedWithTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsNotGibsonEven(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_10_contender_parity_even_notgibson_tdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(!strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "extending the boundary"))
+}
+
+// addContenderParityRoundsNotGibsonOdd: P0,P2,P3 finish 6-0 (tied, not
+// Gibsonized) and are the top 3, each with a prior bye (rounds 0,1,2
+// respectively). P1 finishes 3-3, still hopeful-to-cash - 3 total
+// contenders (odd), so GetPrecompData promotes P5 to even the group at 4.
+func addContenderParityRoundsNotGibsonOdd(req *pb.PairRequest) {
+	pairtestutils.AddRoundPairingsStr(req, "0 5 6 7 4 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "100 500 500 420 -50 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 2 7 0 1 6 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 500 100 420 400 400 -50 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 3 0 1 2 7 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 500 500 100 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 380 500 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 380 500 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 380 500 420 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 11: odd contender group, not Gibsonized, without TopDownByes.
+// Without TDB, round 7's bye lands on P5 - outside the (now 4-player)
+// group - so no further adjustment beyond the precomp promotion.
+func TestScenario11_ContenderParityOddNotGibsonizedNoTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(false)
+	addContenderParityRoundsNotGibsonOdd(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_11_contender_parity_odd_notgibson_notdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players (3)"))
+	is.True(!strings.Contains(resp.Log, "Contender group parity"))
+}
+
+// Scenario 12: odd contender group, not Gibsonized, with TopDownByes.
+// With TDB, P0,P2,P3 (top 3) already have a bye, so the fewest-byes
+// tiebreak lands on P1 - which is itself the player GetPrecompData just
+// promoted to fix parity. Removing P1 from the pairing pool undoes the need
+// for that promotion, but since P1 *is* the promoted player (not a genuine
+// contender ranked above it), the fix extends the boundary further
+// (promoting P5) rather than retracting.
+func TestScenario12_ContenderParityOddNotGibsonizedWithTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsNotGibsonOdd(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_12_contender_parity_odd_notgibson_tdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players (3)"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "extending the boundary"))
+}
+
+// addContenderParityRoundsGibsonEven: P0 finishes 6-0 with a big spread
+// lead, Gibsonized; P1,P3 (each capped at 3 wins, safely below P0's floor)
+// are the next 2 highest-ranked and are the top 3 alongside P0, each with a
+// prior bye (rounds 0,2,4 respectively). P2 and their P5-P7 mirrors are
+// also still hopeful-to-cash - 6 total non-Gibsonized contenders (even), no
+// promotion needed.
+func addContenderParityRoundsGibsonEven(req *pb.PairRequest) {
+	pairtestutils.AddRoundPairingsStr(req, "0 5 6 7 4 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "100 500 500 390 -50 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 500 500 390 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 1 6 7 0 5 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 100 500 390 400 -50 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 550 400 400 400 350 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 3 0 1 2 7 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 100 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 550 400 400 400 350 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 13: even contender group, 1st Gibsonized, without TopDownByes.
+// Without TDB, the bye still lands on the Gibsonized P0 via the GB (Gibson
+// bye) policy, which doesn't consider bye history the way TDB does. Since
+// P0 was already excluded from the parity-relevant count, no adjustment
+// fires.
+func TestScenario13_ContenderParityEvenGibsonizedNoTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(false)
+	addContenderParityRoundsGibsonEven(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_13_contender_parity_even_gibson_notdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "P0   | 6.0  | 600  | Yes"))
+	is.True(!strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players"))
+	is.True(!strings.Contains(resp.Log, "Contender group parity"))
+}
+
+// Scenario 14: even contender group, 1st Gibsonized, with TopDownByes.
+// With TDB, P0,P1,P3 (top 3) already have a bye, so the fewest-byes
+// tiebreak instead lands on P2 - a genuine, non-Gibsonized contender -
+// flipping the 6-player even (Gibson-aware) group odd and requiring the
+// boundary to extend by one.
+func TestScenario14_ContenderParityEvenGibsonizedWithTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsGibsonEven(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_14_contender_parity_even_gibson_tdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "P0   | 6.0  | 600  | Yes"))
+	is.True(!strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "extending the boundary"))
+}
+
+// addContenderParityRoundsGibsonOdd: P0 finishes 6-0, Gibsonized; P1,P2
+// (each capped at 3 wins) are the next 2 highest-ranked and are the top 3
+// alongside P0, each with a prior bye (rounds 0,1,2 respectively). P3 and
+// their P4-P7 mirrors are also still hopeful-to-cash - 7 total
+// non-Gibsonized contenders (odd), so GetPrecompData promotes P16 to even
+// the group at 8.
+func addContenderParityRoundsGibsonOdd(req *pb.PairRequest) {
+	pairtestutils.AddRoundPairingsStr(req, "0 5 6 7 4 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "100 400 400 400 -50 405 405 425 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "5 1 7 4 3 0 6 2 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 100 440 430 400 400 -50 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "6 7 2 5 4 3 0 1 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 450 100 430 -50 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "7 4 5 6 1 2 3 0 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 400 400 400 405 405 425 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 450 440 430 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+	pairtestutils.AddRoundPairingsStr(req, "5 6 7 4 3 0 1 2 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 400 400 400 425 400 405 405 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 15: odd contender group, 1st Gibsonized, without TopDownByes.
+// Without TDB, the bye still lands on the Gibsonized P0 via GB, which needs
+// no further adjustment since P0 was already excluded from the count.
+func TestScenario15_ContenderParityOddGibsonizedNoTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(false)
+	addContenderParityRoundsGibsonOdd(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_15_contender_parity_odd_gibson_notdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "P0   | 6.0  | 400  | Yes"))
+	is.True(strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players (7)"))
+	is.True(!strings.Contains(resp.Log, "Contender group parity"))
+}
+
+// Scenario 16: odd contender group, 1st Gibsonized, with TopDownByes.
+// With TDB, P0,P1,P2 (top 3) already have a bye, so the fewest-byes
+// tiebreak instead lands on P3 - a genuine, non-Gibsonized contender ranked
+// above the precomp-promoted P16 - which already restores parity on the
+// raw (pre-promotion) count. This is the double-promotion bug: the fix
+// retracts P16's promotion instead of extending past it.
+func TestScenario16_ContenderParityOddGibsonizedWithTDB(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsGibsonOdd(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_16_contender_parity_odd_gibson_tdb.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "P0   | 6.0  | 400  | Yes"))
+	is.True(strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players (7)"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "retracting the earlier promotion"))
+}
+
 
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.

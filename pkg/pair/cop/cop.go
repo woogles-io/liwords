@@ -275,6 +275,15 @@ func adjustLowestPossibleHopeCasherForBye(pargs *policyArgs, playerNodes []int, 
 		// Bye recipient isn't in the hopeful-to-cash contender group; no adjustment needed.
 		return pargs.lowestPossibleHopeCasher
 	}
+	if pargs.copdata.GibsonizedPlayers[byeRank] {
+		// The bye recipient is Gibsonized, so they were never counted toward
+		// the parity-relevant contender count in the first place (see the
+		// Gibson exclusion in GetPrecompData and PC/CC) - removing them from
+		// the pairing pool via a bye doesn't change that count, so no
+		// adjustment is needed even though their rank falls within the
+		// boundary.
+		return pargs.lowestPossibleHopeCasher
+	}
 
 	promotedRankIdx := pargs.copdata.HopefulToCashPromotedPlayerRankIdx
 	if promotedRankIdx >= 0 && byeRank < promotedRankIdx {

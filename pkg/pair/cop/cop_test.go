@@ -34,7 +34,10 @@ func TestAdjustLowestPossibleHopeCasherForByeRetractsRedundantPromotion(t *testi
 
 	// Raw contender count was 3 (ranks 0-2, odd); GetPrecompData promoted
 	// rank 3 to fix parity, so the boundary going in is rank index 3.
-	copdata := &copdatapkg.PrecompData{HopefulToCashPromotedPlayerRankIdx: 3}
+	copdata := &copdatapkg.PrecompData{
+		HopefulToCashPromotedPlayerRankIdx: 3,
+		GibsonizedPlayers:                  make([]bool, numPlayers),
+	}
 
 	// Case 1: the bye recipient is a genuine contender (rank 1), ranked
 	// above the promoted player (rank 3) - the promotion is now redundant
@@ -68,7 +71,10 @@ func TestAdjustLowestPossibleHopeCasherForByeRetractsRedundantPromotion(t *testi
 	// Case 3: no promotion had fired (raw count already even), and the bye
 	// recipient is inside the group - behaves exactly as before, extending
 	// by one.
-	copdataNoPromotion := &copdatapkg.PrecompData{HopefulToCashPromotedPlayerRankIdx: -1}
+	copdataNoPromotion := &copdatapkg.PrecompData{
+		HopefulToCashPromotedPlayerRankIdx: -1,
+		GibsonizedPlayers:                  make([]bool, numPlayers),
+	}
 	pargs3 := &policyArgs{
 		req:                      req,
 		copdata:                  copdataNoPromotion,
@@ -79,6 +85,27 @@ func TestAdjustLowestPossibleHopeCasherForByeRetractsRedundantPromotion(t *testi
 	var logsb3 strings.Builder
 	newBoundary3 := adjustLowestPossibleHopeCasherForBye(pargs3, playerNodes, numPlayers, &logsb3)
 	is.Equal(newBoundary3, 3)
+
+	// Case 4: the bye recipient is Gibsonized (e.g. a Gibsonized leader
+	// trivially counted as hopeful for a lower cash place too). Gibsonized
+	// players are already excluded from the parity-relevant contender count
+	// (see GetPrecompData and PC/CC), so their removal via a bye - even
+	// though their rank falls within the boundary - needs no adjustment.
+	copdataGibsonBye := &copdatapkg.PrecompData{
+		HopefulToCashPromotedPlayerRankIdx: -1,
+		GibsonizedPlayers:                  []bool{true, false, false, false, false, false},
+	}
+	pargs4 := &policyArgs{
+		req:                      req,
+		copdata:                  copdataGibsonBye,
+		lowestPossibleHopeCasher: 3,
+		topDownByePlayer:         playerNodes[0],
+		forcedContenderByePlayer: -1,
+	}
+	var logsb4 strings.Builder
+	newBoundary4 := adjustLowestPossibleHopeCasherForBye(pargs4, playerNodes, numPlayers, &logsb4)
+	is.Equal(newBoundary4, 3)
+	is.Equal(logsb4.String(), "")
 }
 
 // TestComputeDisallowedLeaderOpponentByeAware covers the analogous bug for
