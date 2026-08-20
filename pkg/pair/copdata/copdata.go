@@ -219,6 +219,14 @@ completePairingsLoop:
 	// makes for the hopeful-for-1st contender group, but folded into the data
 	// instead of layered on as a pairing constraint.
 	//
+	// Gibsonized players don't count toward this parity check even though
+	// they may still nominally be "hopeful" for cash (e.g. a player
+	// Gibsonized for 1st is trivially hopeful for every lower place too):
+	// PC and CC (see cop.go) exclude any Gibsonized player from being
+	// treated as a pairable hopeful-to-cash contender regardless of their
+	// raw hopeful-for rank, so counting them here would under-promote and
+	// leave a genuine contender without an in-group opponent.
+	//
 	// This promotion still matters in the true final round even though CC's
 	// hopeful-vs-hopeful grouping rule is disabled there (see isFinalRound in
 	// cop.go): lowestPossibleHopeCasher, which this feeds via
@@ -232,7 +240,9 @@ completePairingsLoop:
 		highestNonHopefulRankIdx := -1
 		for playerRankIdx, place := range highestRankHopefully {
 			if place < int(req.PlacePrizes) {
-				numHopefulToCash++
+				if !improvedFactorSimResults.GibsonizedPlayers[playerRankIdx] {
+					numHopefulToCash++
+				}
 			} else if highestNonHopefulRankIdx == -1 {
 				highestNonHopefulRankIdx = playerRankIdx
 			}
@@ -240,7 +250,7 @@ completePairingsLoop:
 		if numHopefulToCash%2 == 1 && highestNonHopefulRankIdx >= 0 {
 			lowestCashPlace := int(req.PlacePrizes) - 1
 			logsb.WriteString(fmt.Sprintf(
-				"Odd number of hopeful-to-cash players (%d) in the last quarter: %s (rank %d) altered from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
+				"Odd number of non-Gibsonized hopeful-to-cash players (%d) in the last quarter: %s (rank %d) altered from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
 				numHopefulToCash, req.PlayerNames[standings.GetPlayerIndex(highestNonHopefulRankIdx)], highestNonHopefulRankIdx+1,
 				highestRankHopefully[highestNonHopefulRankIdx]+1, lowestCashPlace+1))
 			highestRankHopefully[highestNonHopefulRankIdx] = lowestCashPlace

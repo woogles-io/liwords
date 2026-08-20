@@ -125,7 +125,13 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankHopefully[rank], 1)
 		is.Equal(copdata.HighestRankAbsolutely[rank], 1)
 	}
-	is.Equal(copdata.HighestRankHopefully[6], 4)
+	// Rank 6 (index 6) is the highest-ranked non-hopeful player and gets
+	// promoted to hopeful-for-lowest-cash-place (index 1, i.e. "2nd"): with
+	// 1st (rank 0) Gibsonized, only ranks 1-5 count as genuine
+	// hopeful-to-cash contenders (5, odd), so parity requires promoting one
+	// more contender - unlike a raw (Gibson-blind) count of 6 (ranks 0-5),
+	// which would look even and need no promotion.
+	is.Equal(copdata.HighestRankHopefully[6], 1)
 	is.Equal(copdata.HighestRankAbsolutely[6], 3)
 	is.Equal(copdata.HighestRankHopefully[7], 4)
 	is.Equal(copdata.HighestRankAbsolutely[7], 3)
