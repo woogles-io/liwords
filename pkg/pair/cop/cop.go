@@ -712,7 +712,16 @@ var weightPolicies = []weightPolicy{
 				}
 				return int64(math.Pow(float64(casherDiff), 3) * 2)
 			}
-			// Apply a major penalty if the lower ranked player cannot catch the higher ranked player
+			// Apply a major penalty if the lower ranked player cannot catch
+			// the higher ranked player - except for the first rank just
+			// outside the contention window, which gets a halved major
+			// penalty instead. If COP is ever forced into a major-penalty
+			// pairing anyway (e.g. because every in-window opponent is
+			// otherwise taken), the halved weight makes it prefer reaching
+			// only one rank outside the window over reaching further.
+			if rj == lowestContender+1 {
+				return majorPenalty / 2
+			}
 			return majorPenalty
 		},
 	},
@@ -763,6 +772,14 @@ var weightPolicies = []weightPolicy{
 			riHopeful := ri <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[ri]
 			rjHopeful := rj <= hopeCasherBoundary && !pargs.copdata.GibsonizedPlayers[rj]
 			if riHopeful != rjHopeful {
+				// The first rank just outside the hopeful-to-cash boundary
+				// (ri < rj always, so this can only be rj) gets a halved
+				// major penalty instead of the full one - same rationale as
+				// PC's halved penalty for the first rank outside its
+				// contention window.
+				if rj == hopeCasherBoundary+1 {
+					return majorPenalty / 2
+				}
 				return majorPenalty
 			}
 			numPlayers := len(pargs.playerNodes)
@@ -775,6 +792,11 @@ var weightPolicies = []weightPolicy{
 				riBottomSix := ri >= bottomSixBoundary
 				rjBottomSix := rj >= bottomSixBoundary
 				if (riHopeful && rjBottomSix) || (rjHopeful && riBottomSix) {
+					// Same halving for the first rank of the bottom six -
+					// the closest to the rest of the field.
+					if ri == bottomSixBoundary || rj == bottomSixBoundary {
+						return majorPenalty / 2
+					}
 					return majorPenalty
 				}
 			}
