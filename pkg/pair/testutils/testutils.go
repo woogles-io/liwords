@@ -1282,7 +1282,7 @@ func CreateAlbanyCSWJuly2026Round28PairRequest() *pb.PairRequest {
 		PlayerClasses:              []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2},
 		ClassPrizes:                []int32{2, 2, 2},
 		GibsonSpread:               200,
-		ControlLossThreshold:       0.25,
+		ControlLossThreshold:       0.30,
 		HopefulnessThreshold:       0.1,
 		AllPlayers:                 53,
 		ValidPlayers:               53,

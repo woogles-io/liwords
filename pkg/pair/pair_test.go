@@ -246,38 +246,41 @@ func TestInitialFontesRemainderGroupUsesShirtsVsSkins(t *testing.T) {
 	is := is.New(t)
 
 	// 18 players, InitialFontes = 3 (numberOfNtiles = 4, i.e. quartiles).
-	// With the existing remainderOffset/remainderSpacing group-formation logic,
-	// this produces three groups of 4 and one oversized group of 6:
+	// With a remainder of 2, the oversized remainder group has size 6
+	// (numberOfNtiles + remainder), built from 6 mini-groups of 3 ranks each
+	// (1-3, 4-6, ..., 16-18): the worst-ranked (last) player of each mini-group
+	// is pulled into the remainder group, and the rest are distributed round
+	// robin across the other 3 standard-size groups:
 	//   group 0: 0,4,9,13
-	//   group 1: 1,5,10,14
-	//   group 2: 2,7,11,16
-	//   group 3 (remainder): 3,6,8,12,15,17
+	//   group 1: 1,6,10,15
+	//   group 2: 3,7,12,16
+	//   group 3 (remainder): 2,5,8,11,14,17
 	// Group 3 (size 6, k=3) has enough capacity for all 3 fontes rounds, so it
 	// should be paired via the shirts-vs-skins cross pattern instead of round
-	// robin: Team A = {3,8,15} (local ranks 1,3,5), Team B = {6,12,17} (local
+	// robin: Team A = {2,8,14} (local ranks 1,3,5), Team B = {5,11,17} (local
 	// ranks 2,4,6).
 	round0, err := getInitialFontesPairings(18, 4, 0, 0)
 	is.NoErr(err)
-	is.Equal(round0[3], 6)
-	is.Equal(round0[8], 12)
-	is.Equal(round0[15], 17)
+	is.Equal(round0[2], 5)
+	is.Equal(round0[8], 11)
+	is.Equal(round0[14], 17)
 
 	round1, err := getInitialFontesPairings(18, 4, 1, 0)
 	is.NoErr(err)
-	is.Equal(round1[3], 12)
+	is.Equal(round1[2], 11)
 	is.Equal(round1[8], 17)
-	is.Equal(round1[6], 15)
+	is.Equal(round1[5], 14)
 
 	round2, err := getInitialFontesPairings(18, 4, 2, 0)
 	is.NoErr(err)
-	is.Equal(round2[3], 17)
-	is.Equal(round2[6], 8)
-	is.Equal(round2[12], 15)
+	is.Equal(round2[2], 17)
+	is.Equal(round2[5], 8)
+	is.Equal(round2[11], 14)
 
 	// No pairing among the remainder group should repeat across the 3 rounds.
 	seen := map[string]bool{}
 	for _, pairings := range [][]int{round0, round1, round2} {
-		for _, player := range []int{3, 6, 8, 12, 15, 17} {
+		for _, player := range []int{2, 5, 8, 11, 14, 17} {
 			opponent := pairings[player]
 			if player > opponent {
 				continue

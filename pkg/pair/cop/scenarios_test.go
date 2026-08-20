@@ -551,41 +551,6 @@ func makeRandomResults(pairings []int32, numPlayers int, rng *rand.Rand, spreads
 	return &pb.RoundResults{Results: results}
 }
 
-// generateFontesPairings returns deterministic Fontes-style pairings for round r (0-indexed).
-func generateFontesPairings(r int, numPlayers int) []int32 {
-	pairings := make([]int32, numPlayers)
-	paired := make([]bool, numPlayers)
-	step := numPlayers/2 + r
-	for i := 0; i < numPlayers; i++ {
-		if paired[i] {
-			continue
-		}
-		j := (i + step) % numPlayers
-		startJ := j
-		for paired[j] || j == i {
-			j = (j + 1) % numPlayers
-			if j == startJ {
-				j = -1
-				break
-			}
-		}
-		if j < 0 {
-			continue
-		}
-		pairings[i] = int32(j)
-		pairings[j] = int32(i)
-		paired[i] = true
-		paired[j] = true
-	}
-	for i := 0; i < numPlayers; i++ {
-		if !paired[i] {
-			pairings[i] = int32(i)
-			paired[i] = true
-		}
-	}
-	return pairings
-}
-
 // numResultsForRound returns how many past results to include when pairing the given
 // 1-indexed round, honouring the 1-behind / 2-behind timing rule.
 func numResultsForRound(roundNum int, available int) int {
@@ -603,7 +568,7 @@ func numResultsForRound(roundNum int, available int) int {
 	return n
 }
 
-// July 4th 2026 28-game 53-player event: 3 rounds of fontes-style pairings, then 25 rounds of COP.
+// July 4th 2026 28-game 53-player event: 3 rounds of Initial Fontes, then 25 rounds of COP.
 // Uses the Division 1 player list from wordgameplayers.org/tournaments/1162.
 // Pairings simulate real-tournament timing: most rounds are paired 2 games behind
 // (before previous round finishes); rounds 1,5,9,13,17,21,25-28 use 1-game-behind results.
@@ -658,25 +623,25 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 			PlacePrizes:                10,
 			DivisionSims:               scenarioDivisionSims,
 			ControlLossSims:            scenarioControlLossSims,
+			TopDownByes:                true,
 			ControlLossActivationRound: 22,
 			AllowRepeatByes:            false,
+			InitialNonperfRounds:       int32(fontesRounds),
 			Seed:                       seed,
 		}
 
 		allPairings := []*pb.RoundPairings{}
 		allResults := []*pb.RoundResults{}
 
-		// Fontes-style pairings for the first 3 rounds.
-		for r := 0; r < fontesRounds; r++ {
-			pairings := generateFontesPairings(r, numPlayers)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-
-		// COP rounds for rounds 4–28, with real-tournament timing.
-		for round := fontesRounds + 1; round <= totalRounds; round++ {
+		// Rounds 1-3 use Initial Fontes; rounds 4-28 use COP, with real-tournament timing.
+		for round := 1; round <= totalRounds; round++ {
 			numRes := numResultsForRound(round, len(allResults))
 
+			if round <= fontesRounds {
+				req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
 			req.DivisionPairings = allPairings
 			req.DivisionResults = allResults[:numRes]
 
@@ -747,21 +712,22 @@ func TestScenarioMultiRound_July4th2026WOW(t *testing.T) {
 			ControlLossSims:            scenarioControlLossSims,
 			ControlLossActivationRound: 22,
 			AllowRepeatByes:            false,
+			InitialNonperfRounds:       int32(fontesRounds),
 			Seed:                       seed,
 		}
 
 		allPairings := []*pb.RoundPairings{}
 		allResults := []*pb.RoundResults{}
 
-		for r := 0; r < fontesRounds; r++ {
-			pairings := generateFontesPairings(r, numPlayers)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-
-		for round := fontesRounds + 1; round <= totalRounds; round++ {
+		// Rounds 1-3 use Initial Fontes; rounds 4-28 use COP, with real-tournament timing.
+		for round := 1; round <= totalRounds; round++ {
 			numRes := numResultsForRound(round, len(allResults))
 
+			if round <= fontesRounds {
+				req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
 			req.DivisionPairings = allPairings
 			req.DivisionResults = allResults[:numRes]
 
@@ -836,21 +802,22 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 			ControlLossActivationRound: 22,
 			AllowRepeatByes:            false,
 			TopDownByes:                true,
+			InitialNonperfRounds:       int32(fontesRounds),
 			Seed:                       seed,
 		}
 
 		allPairings := []*pb.RoundPairings{}
 		allResults := []*pb.RoundResults{}
 
-		for r := 0; r < fontesRounds; r++ {
-			pairings := generateFontesPairings(r, numPlayers)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-
-		for round := fontesRounds + 1; round <= totalRounds; round++ {
+		// Rounds 1-3 use Initial Fontes; rounds 4-28 use COP, with real-tournament timing.
+		for round := 1; round <= totalRounds; round++ {
 			numRes := numResultsForRound(round, len(allResults))
 
+			if round <= fontesRounds {
+				req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
 			req.DivisionPairings = allPairings
 			req.DivisionResults = allResults[:numRes]
 
@@ -874,7 +841,7 @@ func TestScenarioMultiRound_July4th2026Div2(t *testing.T) {
 }
 
 // runHypotheticalScenario runs a hypothetical tournament of the given size: 3 rounds of
-// Fontes-style pairings, then COP for the remaining rounds, with simulated (random) results
+// Initial Fontes, then COP for the remaining rounds, with simulated (random) results
 // throughout, standard 1-game-behind timing, and control loss activating for the last 4 rounds.
 // PlacePrizes scales with field size (4 for fields up to 20, 6 beyond that).
 func runHypotheticalScenario(t *testing.T, numPlayers, totalRounds int) {
@@ -919,19 +886,20 @@ func runHypotheticalScenario(t *testing.T, numPlayers, totalRounds int) {
 			ControlLossSims:            scenarioControlLossSims,
 			ControlLossActivationRound: int32(totalRounds - 4),
 			AllowRepeatByes:            false,
+			InitialNonperfRounds:       int32(fontesRounds),
 			Seed:                       seed,
 		}
 
 		allPairings := []*pb.RoundPairings{}
 		allResults := []*pb.RoundResults{}
 
-		for r := 0; r < fontesRounds; r++ {
-			pairings := generateFontesPairings(r, numPlayers)
-			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
-			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
-		}
-
-		for round := fontesRounds + 1; round <= totalRounds; round++ {
+		// Rounds 1-3 use Initial Fontes; rounds 4 onward use COP.
+		for round := 1; round <= totalRounds; round++ {
+			if round <= fontesRounds {
+				req.PairMethod = pb.PairMethod_PAIR_INITIAL_FONTES
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
 			req.DivisionPairings = allPairings
 			req.DivisionResults = allResults
 

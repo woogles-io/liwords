@@ -388,34 +388,63 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	}
 
 	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
-	remainderOffset := 0
-	remainderSpacing := 0
 
-	if numberOfRemainingPlayers != 0 {
-		remainderOffset = numberOfPlayers / (numberOfRemainingPlayers + 1)
-		remainderSpacing = numberOfPlayers / numberOfRemainingPlayers
+	pairings := make([]int, numberOfPlayers)
+	for i := range pairings {
+		pairings[i] = -2
 	}
 
-	log.Info().Int("remainderOffset", remainderOffset).Int("remainderSpacing", remainderSpacing).Msg("initial-fontes-remainder")
-
-	pairings := []int{}
 	groupings := [][]int{}
-
 	for i := 0; i < sizeOfNtiles; i++ {
 		groupings = append(groupings, []int{})
 	}
 
-	currentGroup := 0
-	for i := 0; i < numberOfPlayers; i++ {
-		if numberOfRemainingPlayers != 0 &&
-			i >= remainderOffset &&
-			(i-remainderOffset)%remainderSpacing == 0 {
-			groupings[sizeOfNtiles-1] = append(groupings[sizeOfNtiles-1], i)
-		} else {
+	if numberOfRemainingPlayers == 0 {
+		// Evenly divides into sizeOfNtiles standard-size groups; distribute
+		// players across them round robin.
+		currentGroup := 0
+		for i := 0; i < numberOfPlayers; i++ {
 			groupings[currentGroup] = append(groupings[currentGroup], i)
 			currentGroup = (currentGroup + 1) % sizeOfNtiles
 		}
-		pairings = append(pairings, -2)
+	} else {
+		// There's a remainder, so one group (the last) will be oversized by
+		// numberOfRemainingPlayers to absorb it, e.g. quartiles (numberOfNtiles=4)
+		// with a remainder of 2 produce a single oversized sextile (size 6).
+		//
+		// Rather than draw that oversized group's extra players from just the
+		// tail of the standings, spread them across the whole field: split the
+		// ranked player list into oversizedGroupSize evenly-sized mini-groups
+		// (any leftover from an uneven split is distributed across the first
+		// few mini-groups), and take the single worst-ranked player from each
+		// mini-group into the oversized group. The rest of each mini-group is
+		// distributed round robin across the other sizeOfNtiles-1 standard-size
+		// groups. E.g. 18 players, numberOfNtiles=4: 6 mini-groups of 3 ranks
+		// each (1-3, 4-6, ..., 16-18); the oversized group ends up with ranks
+		// 3, 6, 9, 12, 15, 18 - the bottom player of each mini-group.
+		oversizedGroupIdx := sizeOfNtiles - 1
+		oversizedGroupSize := numberOfNtiles + numberOfRemainingPlayers
+		numberOfMiniGroups := oversizedGroupSize
+		baseMiniGroupSize := numberOfPlayers / numberOfMiniGroups
+		extraMiniGroups := numberOfPlayers % numberOfMiniGroups
+
+		currentGroup := 0
+		playerIdx := 0
+		for m := 0; m < numberOfMiniGroups; m++ {
+			miniGroupSize := baseMiniGroupSize
+			if m < extraMiniGroups {
+				miniGroupSize++
+			}
+			for k := 0; k < miniGroupSize; k++ {
+				if k == miniGroupSize-1 {
+					groupings[oversizedGroupIdx] = append(groupings[oversizedGroupIdx], playerIdx)
+				} else {
+					groupings[currentGroup] = append(groupings[currentGroup], playerIdx)
+					currentGroup = (currentGroup + 1) % oversizedGroupIdx
+				}
+				playerIdx++
+			}
+		}
 	}
 
 	log.Info().Str("groupings", fmt.Sprint(groupings)).Msg("initial-fontes-groupings")

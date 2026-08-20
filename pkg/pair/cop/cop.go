@@ -35,6 +35,15 @@ const (
 	hopefulCasherByeWeight               = 3e9
 	byePlayerName                        = "BYE"
 	controlLossLowestContenderOnlyRounds = 4
+	// f3MinWinChanceGain is the minimum win-outright-probability gain
+	// (finishing 1st overall, compared to the baseline non-factor-3 factor
+	// pairing) that at least one of 4th/5th/6th must get from factor-3
+	// pairings for F3 to fire. Without this, F3 can trigger purely because it
+	// helps the leader (and strips destiny control from the field below)
+	// while giving none of 4th/5th/6th a meaningful shot at actually winning
+	// outright - e.g. a real case where F3 only moved a trailing player's win
+	// chance from 0.05% to 0.1%.
+	f3MinWinChanceGain = 0.02
 )
 
 var pairingMethodMap = map[pb.PairMethod]pb.PairingMethod{
@@ -86,6 +95,14 @@ type policyArgs struct {
 // Exception: if the group has exactly one player (only the leader itself)
 // and the leader isn't gibsonized, no player is added or barred - 1st and
 // 2nd are left to play each other via the usual weight policies.
+//
+// This must run after computeTopDownByePlayer and computeForcedContenderBye
+// (both already computed by this point - see the call order in
+// copMinWeightMatching), so it can account for the definite bye recipient,
+// if any: unlike LowestPossibleHopeNth[PlacePrizes-1] (the hopeful-to-cash
+// boundary), GetPrecompData never pre-promotes LowestPossibleHopeNth[0] for
+// raw parity, so there's no earlier promotion to retract here - just check
+// parity against the bye-adjusted group size directly.
 func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	// Factor 3 expansion already constrains the top-6 pairings (including the
 	// leader's); applying this rule on top of it would overconstrain the matching.
@@ -102,6 +119,25 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	}
 	contenderBoundary := pargs.copdata.LowestPossibleHopeNth[0]
 	groupSize := contenderBoundary + 1
+
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient >= 0 {
+		for pri := 0; pri <= contenderBoundary; pri++ {
+			if pargs.playerNodes[pri] == byeRecipient {
+				// The bye recipient won't need a pairing partner this round,
+				// so they don't count toward the group's pairable parity.
+				groupSize--
+				break
+			}
+		}
+	}
+
 	if groupSize%2 == 0 {
 		return -1
 	}
@@ -182,6 +218,96 @@ func computeForcedContenderBye(pargs *policyArgs) int {
 		return -1
 	}
 	return byePlayer
+}
+
+// adjustLowestPossibleHopeCasherForBye corrects the hopeful-to-cash
+// contender-group boundary once a specific player has definitively been
+// assigned the bye this round (via a top-down bye or a forced-contender
+// bye - both computed before this point). GetPrecompData's odd/even parity
+// promotion guarantees the contender group's size is even *before* any bye
+// is known, so that everyone in it can pair off within the group. If the
+// bye recipient turns out to be inside that group, removing them from the
+// pairing pool (they're paired with BYE, not a contender) makes the
+// group's *remaining* pairable size odd again.
+//
+// How that's corrected depends on whether the bye recipient is the very
+// player GetPrecompData promoted to fix a raw odd count
+// (copdata.HopefulToCashPromotedPlayerRankIdx), or a genuine contender:
+//   - If the bye recipient is a genuine contender (ranked above the
+//     promoted player, or no promotion fired at all), extend the boundary
+//     by one more rank, promoting the next player down into the group -
+//     mirroring the promotion GetPrecompData already does for the raw
+//     odd-count case.
+//   - If the bye recipient is itself the artificially-promoted player, that
+//     promotion no longer serves its purpose (the promoted player isn't
+//     pairing with anyone this round either way), so extend past them too.
+//   - If a promotion fired AND the bye recipient is a genuine contender
+//     ranked *above* the promoted player, the promotion and the bye removal
+//     cancel out: the raw (pre-promotion) contender count was odd, the
+//     promotion made it even, and the bye now removes one, making it odd
+//     again - back to exactly the raw count minus one, which is even. No
+//     promotion is needed at all, so retract GetPrecompData's promotion
+//     instead of extending further; extending on top of it would promote
+//     two extra players for a group that needed zero.
+//
+// Pure Gibson byes are not handled here because a Gibsonized player is
+// never counted as a hopeful-to-cash contender in the first place (see PC,
+// CC, computeForcedContenderBye), so their removal never affects this
+// parity.
+func adjustLowestPossibleHopeCasherForBye(pargs *policyArgs, playerNodes []int, numPlayers int, logsb *strings.Builder) int {
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	default:
+		return pargs.lowestPossibleHopeCasher
+	}
+	byeRank := -1
+	for pri := 0; pri < numPlayers; pri++ {
+		if playerNodes[pri] == byeRecipient {
+			byeRank = pri
+			break
+		}
+	}
+	if byeRank < 0 || byeRank > pargs.lowestPossibleHopeCasher {
+		// Bye recipient isn't in the hopeful-to-cash contender group; no adjustment needed.
+		return pargs.lowestPossibleHopeCasher
+	}
+
+	promotedRankIdx := pargs.copdata.HopefulToCashPromotedPlayerRankIdx
+	if promotedRankIdx >= 0 && byeRank < promotedRankIdx {
+		// The bye landed on a genuine contender, not the artificially
+		// promoted one - GetPrecompData's promotion is now redundant, so
+		// retract it instead of extending further (which would promote two
+		// extra players for a group that needed none).
+		newBoundary := promotedRankIdx - 1
+		logsb.WriteString(fmt.Sprintf(
+			"Contender group parity: %s (rank %d) is inside the hopeful-to-cash contender group "+
+				"(boundary rank %d) and is receiving the bye this round; this already restores parity "+
+				"for the raw (pre-promotion) contender count, so retracting the earlier promotion of %s, "+
+				"restoring the boundary to rank %d\n",
+			pargs.req.PlayerNames[byeRecipient], byeRank+1, pargs.lowestPossibleHopeCasher+1,
+			pargs.req.PlayerNames[playerNodes[promotedRankIdx]], newBoundary+1,
+		))
+		return newBoundary
+	}
+
+	newBoundary := pargs.lowestPossibleHopeCasher + 1
+	if newBoundary >= numPlayers {
+		// No player left to promote; leave the boundary as-is rather than
+		// running off the end of the standings.
+		return pargs.lowestPossibleHopeCasher
+	}
+	logsb.WriteString(fmt.Sprintf(
+		"Contender group parity: %s (rank %d) is inside the hopeful-to-cash contender group "+
+			"(boundary rank %d) and is receiving the bye this round, leaving an odd number of "+
+			"contenders needing an opponent; extending the boundary to rank %d (promoting %s) to restore parity\n",
+		pargs.req.PlayerNames[byeRecipient], byeRank+1, pargs.lowestPossibleHopeCasher+1,
+		newBoundary+1, pargs.req.PlayerNames[playerNodes[newBoundary]],
+	))
+	return newBoundary
 }
 
 type constraintPolicy struct {
@@ -962,6 +1088,41 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		return nil
 	}
 
+	// Even when the hopefulness threshold is met, F3 shouldn't fire if it
+	// only benefits the leader while taking destiny control away from the
+	// field: require that at least one of 4th/5th/6th gains a meaningful
+	// (>= f3MinWinChanceGain) shot at actually winning the tournament
+	// outright, compared to the baseline (non-F3) factor pairing.
+	// BaselineFinalRanks/factor3FinalRanks are both indexed by current player
+	// rank from the same standings snapshot within this pairing call, so
+	// ranks 3/4/5 line up between the two.
+	if copdata.BaselineTotalSims > 0 {
+		baseline3 := float64(copdata.BaselineFinalRanks[3][0]) / float64(copdata.BaselineTotalSims)
+		baseline4 := float64(copdata.BaselineFinalRanks[4][0]) / float64(copdata.BaselineTotalSims)
+		baseline5 := float64(copdata.BaselineFinalRanks[5][0]) / float64(copdata.BaselineTotalSims)
+		f3Win3 := float64(factor3FinalRanks[3][0]) / float64(totalSims)
+		f3Win4 := float64(factor3FinalRanks[4][0]) / float64(totalSims)
+		f3Win5 := float64(factor3FinalRanks[5][0]) / float64(totalSims)
+		gain3 := f3Win3 - baseline3
+		gain4 := f3Win4 - baseline4
+		gain5 := f3Win5 - baseline5
+		maxGain := math.Max(gain3, math.Max(gain4, gain5))
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 win-chance gain check: %s %.2f%%->%.2f%% (%+.2fpp), %s %.2f%%->%.2f%% (%+.2fpp), %s %.2f%%->%.2f%% (%+.2fpp), min required=%.2fpp\n",
+			req.PlayerNames[p3], baseline3*100, f3Win3*100, gain3*100,
+			req.PlayerNames[p4], baseline4*100, f3Win4*100, gain4*100,
+			req.PlayerNames[p5], baseline5*100, f3Win5*100, gain5*100,
+			f3MinWinChanceGain*100,
+		))
+		if maxGain < f3MinWinChanceGain {
+			logsb.WriteString(fmt.Sprintf(
+				"Factor 3 skipped: no meaningful win-chance gain (max gain %.2fpp < required %.2fpp) - would primarily help %s while reducing the field's destiny control\n",
+				maxGain*100, f3MinWinChanceGain*100, req.PlayerNames[p0],
+			))
+			return nil
+		}
+	}
+
 	logsb.WriteString(fmt.Sprintf(
 		"Factor 3 expansion: forcing %s vs %s, %s vs %s, %s vs %s\n",
 		req.PlayerNames[p0], req.PlayerNames[p3],
@@ -1317,11 +1478,18 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		factor3ForcedPairings:    factor3ForcedPairings,
 	}
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
-	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
 	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
+	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
+
+	// Now that a specific bye recipient (if any) is known, correct the
+	// contender-group boundary for their removal from the pairing pool - see
+	// adjustLowestPossibleHopeCasherForBye. This must run after both
+	// computeTopDownByePlayer and computeForcedContenderBye, since they
+	// themselves rely on the pre-adjustment boundary to pick a bye recipient.
+	pargs.lowestPossibleHopeCasher = adjustLowestPossibleHopeCasherForBye(pargs, playerNodes, numPlayers, logsb)
 
 	logsb.WriteString(fmt.Sprintf("Control Loss Sims: %d\n", req.ControlLossSims))
-	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleHopeCasher]]))
+	logsb.WriteString(fmt.Sprintf("Lowest Hopeful Casher: %s\n", req.PlayerNames[playerNodes[pargs.lowestPossibleHopeCasher]]))
 	logsb.WriteString(fmt.Sprintf("Lowest Absolute Casher: %s\n", req.PlayerNames[playerNodes[lowestPossibleAbsCasher]]))
 	logsb.WriteString(fmt.Sprintf("Number of Pairings (including prepaired): %d\n", len(req.DivisionPairings)))
 	logsb.WriteString(fmt.Sprintf("Number of Results: %d\n", len(req.DivisionResults)))

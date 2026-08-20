@@ -43,10 +43,28 @@ type PrecompData struct {
 	HighestRankAbsolutely []int
 	LowestRankAbsolutely  []int
 	LowestPossibleHopeNth []int
-	DestinysChild         int
-	GibsonGroups          []int
-	GibsonizedPlayers     []bool
-	CompletePairings      int
+	// HopefulToCashPromotedPlayerRankIdx is the rank index of the player
+	// promoted below to fix an odd hopeful-to-cash count, or -1 if no such
+	// promotion fired this round. Exposed so cop.go's
+	// adjustLowestPossibleHopeCasherForBye can tell whether the boundary it
+	// sees already includes an artificial promotion, so it can retract it
+	// instead of double-promoting when a bye also restores parity.
+	HopefulToCashPromotedPlayerRankIdx int
+	DestinysChild                      int
+	GibsonGroups                       []int
+	GibsonizedPlayers                  []bool
+	CompletePairings                   int
+
+	// BaselineFinalRanks/BaselineTotalSims are the final-rank sim results from
+	// the normal (non-factor-3) factor pairing used above to build
+	// HighestRankHopefully etc. Exposed so callers (e.g. Factor 3's
+	// win-chance-gain check) can compare a baseline win-outright probability
+	// against a factor-3 scenario without re-simulating. Both are indexed by
+	// the same player-rank ordering as the standings snapshot this
+	// PrecompData was built from, within a single pairing call - don't reuse
+	// across calls or after re-ranking.
+	BaselineFinalRanks [][]int
+	BaselineTotalSims  int
 }
 
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -208,6 +226,7 @@ completePairingsLoop:
 	// last-quarter/final-round) by the BB and computeForcedContenderBye
 	// policies in cop.go, so it must stay correct in every round.
 	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
+	hopefulToCashPromotedPlayerRankIdx := -1
 	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
 		numHopefulToCash := 0
 		highestNonHopefulRankIdx := -1
@@ -225,6 +244,7 @@ completePairingsLoop:
 				numHopefulToCash, req.PlayerNames[standings.GetPlayerIndex(highestNonHopefulRankIdx)], highestNonHopefulRankIdx+1,
 				highestRankHopefully[highestNonHopefulRankIdx]+1, lowestCashPlace+1))
 			highestRankHopefully[highestNonHopefulRankIdx] = lowestCashPlace
+			hopefulToCashPromotedPlayerRankIdx = highestNonHopefulRankIdx
 		}
 	}
 
@@ -283,17 +303,20 @@ completePairingsLoop:
 	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, vsFirstWins, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
-		Standings:             standings,
-		PairingCounts:         pairingCounts,
-		RepeatCounts:          repeatCounts,
-		HighestRankHopefully:  highestRankHopefully,
-		HighestRankAbsolutely: highestRankAbsolutely,
-		LowestRankAbsolutely:  lowestRankAbsolutely,
-		LowestPossibleHopeNth: lowestPossibleHopeNth,
-		DestinysChild:         destinysChild,
-		GibsonGroups:          improvedFactorSimResults.GibsonGroups,
-		GibsonizedPlayers:     improvedFactorSimResults.GibsonizedPlayers,
-		CompletePairings:      numCompletePairings,
+		Standings:                          standings,
+		PairingCounts:                      pairingCounts,
+		RepeatCounts:                       repeatCounts,
+		HighestRankHopefully:               highestRankHopefully,
+		HighestRankAbsolutely:              highestRankAbsolutely,
+		LowestRankAbsolutely:               lowestRankAbsolutely,
+		LowestPossibleHopeNth:              lowestPossibleHopeNth,
+		HopefulToCashPromotedPlayerRankIdx: hopefulToCashPromotedPlayerRankIdx,
+		DestinysChild:                      destinysChild,
+		GibsonGroups:                       improvedFactorSimResults.GibsonGroups,
+		GibsonizedPlayers:                  improvedFactorSimResults.GibsonizedPlayers,
+		CompletePairings:                   numCompletePairings,
+		BaselineFinalRanks:                 improvedFactorSimResults.FinalRanks,
+		BaselineTotalSims:                  improvedFactorSimResults.TotalSims,
 	}, pb.PairError_SUCCESS
 }
 
