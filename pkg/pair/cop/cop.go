@@ -693,6 +693,15 @@ var weightPolicies = []weightPolicy{
 				return 0
 			}
 			if pargs.playerNodes[rj] == pkgstnd.ByePlayerIndex {
+				// The TB constraint policy already forces this exact
+				// pairing (it disallows every other pairing for the
+				// top-down bye recipient), so this edge is the only one
+				// the matcher can pick regardless of its weight - major-
+				// penalizing it here would just trigger cop.go's Retry
+				// fallback for nothing.
+				if pargs.playerNodes[ri] == pargs.topDownByePlayer {
+					return 0
+				}
 				return hopefulCasherByeWeight
 			}
 			lowestContender := pargs.copdata.LowestPossibleHopeNth[ri]
