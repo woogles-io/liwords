@@ -125,7 +125,13 @@ func TestCOPPrecompData(t *testing.T) {
 		is.Equal(copdata.HighestRankHopefully[rank], 1)
 		is.Equal(copdata.HighestRankAbsolutely[rank], 1)
 	}
-	is.Equal(copdata.HighestRankHopefully[6], 4)
+	// Rank 6 (index 6) is the highest-ranked non-hopeful player and gets
+	// promoted to hopeful-for-lowest-cash-place (index 1, i.e. "2nd"): with
+	// 1st (rank 0) Gibsonized, only ranks 1-5 count as genuine
+	// hopeful-to-cash contenders (5, odd), so parity requires promoting one
+	// more contender - unlike a raw (Gibson-blind) count of 6 (ranks 0-5),
+	// which would look even and need no promotion.
+	is.Equal(copdata.HighestRankHopefully[6], 1)
 	is.Equal(copdata.HighestRankAbsolutely[6], 3)
 	is.Equal(copdata.HighestRankHopefully[7], 4)
 	is.Equal(copdata.HighestRankAbsolutely[7], 3)
@@ -271,4 +277,84 @@ func TestCOPPrecompData(t *testing.T) {
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
 		is.Equal(copdata.GibsonGroups[rank], 0)
 	}
+}
+
+// hopefulnessTestReq builds a 10-player COP request with no history; callers
+// add rounds to control the leader/2nd win% for TestRunawayLeadersHalveHopefulness.
+func hopefulnessTestReq() *pb.PairRequest {
+	return &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"},
+		PlayerClasses:              make([]int32, 10),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               200,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       0.05,
+		AllPlayers:                 10,
+		ValidPlayers:               10,
+		Rounds:                     10,
+		PlacePrizes:                2,
+		DivisionSims:               3000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 10,
+	}
+}
+
+// TestRunawayLeadersHalveHopefulness checks that when the leader and 2nd
+// place's combined simulated probability of finishing 1st exceeds 80%, other
+// players only need half as many simulated wins to be considered hopeful
+// contenders for 1st or 2nd (Feature 4). This directly shrinks/grows
+// LowestPossibleHopeNth[0]/[1], which Feature 5 (see cop_test.go) builds its
+// odd-contender-group logic on top of.
+//
+// This must be computed from FinalRanks (a true probability, bounded at
+// 100% since only one player can finish 1st), not from the leader and 2nd's
+// independent actual completed-game win rates, which can each approach 100%
+// and so can sum past it - hence testing with Rounds set so only 2 rounds
+// remain, rather than with a win% that would overstate the real chance
+// either player finishes 1st.
+func TestRunawayLeadersHalveHopefulness(t *testing.T) {
+	is := is.New(t)
+
+	// Leader (P8) and 2nd (P0), with 2 rounds remaining, combine for an 80.2%
+	// simulated chance of finishing 1st: just over 80%, so the
+	// hopeful-for-1st/2nd bar is halved.
+	req := hopefulnessTestReq()
+	req.Rounds = 7
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "1 500 0 400 3 450 2 400 5 450 4 400 7 450 6 400 9 450 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "2 500 3 400 0 450 1 400 6 400 7 400 4 400 5 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "3 500 2 400 1 450 0 400 7 400 6 400 5 400 4 400 9 400 8 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "4 400 5 400 6 400 7 400 0 400 1 500 2 400 3 400 8 400 9 400")
+	pairtestutils.AddRoundResultsAndPairingsStr(req, "5 400 4 400 7 400 6 400 1 400 0 500 3 400 2 400 9 400 8 400")
+
+	copRand := rand.New(rand.NewSource(1))
+	var logsb strings.Builder
+	copdata, pairErr := pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
+	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 2% (normally 5%)"))
+	is.Equal(copdata.LowestPossibleHopeNth[0], 2)
+	is.Equal(copdata.LowestPossibleHopeNth[1], 6)
+
+	// Before any rounds are played there's no simulation to compute a 1st-
+	// place probability from, so the halving never triggers (guards the
+	// numPlayers<2/TotalSims==0 cases).
+	req = hopefulnessTestReq()
+	copRand.Seed(1)
+	logsb.Reset()
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
+
+	// When 1st is Gibsonized, the leader's simulated 1st-place% is 100% by
+	// construction, so leader+2nd trivially exceeds 80% every time - but
+	// that's just Gibsonization, not a genuine "runaway leaders" race for
+	// 1st, so the halving must not trigger here either.
+	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
+	copRand.Seed(1)
+	logsb.Reset()
+	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	is.Equal(pairErr, pb.PairError_SUCCESS)
+	is.True(copdata.GibsonizedPlayers[0])
+	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
 }

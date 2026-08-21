@@ -17,6 +17,19 @@ var (
 	standingsHeader = []string{"Rank", "Num", "Name", "Wins", "Spr"}
 )
 
+const (
+	// runawayLeadersWinPctThreshold is the combined win% for the leader and
+	// 2nd place above which other players only need half as many simulated
+	// wins to be considered hopeful contenders for 1st or 2nd.
+	runawayLeadersWinPctThreshold = 0.80
+)
+
+// IsLastQuarter reports whether roundPairingsRemaining rounds still to be
+// paired puts the tournament in its last quarter of rounds.
+func IsLastQuarter(roundPairingsRemaining int, rounds int32) bool {
+	return roundPairingsRemaining*4 <= int(rounds)
+}
+
 type PrecompData struct {
 	Standings     *pkgstnd.Standings
 	PairingCounts map[string]int
@@ -30,10 +43,221 @@ type PrecompData struct {
 	HighestRankAbsolutely []int
 	LowestRankAbsolutely  []int
 	LowestPossibleHopeNth []int
-	DestinysChild         int
-	GibsonGroups          []int
-	GibsonizedPlayers     []bool
-	CompletePairings      int
+	// HopefulToCashPromotedPlayerRankIdx is the rank index of the player
+	// promoted below to fix an odd hopeful-to-cash count, or -1 if no such
+	// promotion fired this round. Exposed so cop.go's
+	// adjustLowestPossibleHopeCasherForBye can tell whether the boundary it
+	// sees already includes an artificial promotion, so it can retract it
+	// instead of double-promoting when a bye also restores parity.
+	HopefulToCashPromotedPlayerRankIdx int
+	DestinysChild                      int
+	GibsonGroups                       []int
+	GibsonizedPlayers                  []bool
+	CompletePairings                   int
+
+	// BaselineFinalRanks/BaselineTotalSims are the final-rank sim results from
+	// the normal (non-factor-3) factor pairing used above to build
+	// HighestRankHopefully etc. Exposed so callers (e.g. Factor 3's
+	// win-chance-gain check) can compare a baseline win-outright probability
+	// against a factor-3 scenario without re-simulating. Both are indexed by
+	// the same player-rank ordering as the standings snapshot this
+	// PrecompData was built from, within a single pairing call - don't reuse
+	// across calls or after re-ranking.
+	BaselineFinalRanks [][]int
+	BaselineTotalSims  int
+}
+
+// hopefulRankData bundles the sim-derived fields that a specific
+// penultimate-round pairing structure (the baseline factor pairing, or a
+// later Factor-3 expansion) determines. See computeHopefulRankData.
+type hopefulRankData struct {
+	HighestRankHopefully               []int
+	HighestRankAbsolutely              []int
+	LowestRankAbsolutely               []int
+	LowestPossibleHopeNth              []int
+	HopefulToCashPromotedPlayerRankIdx int
+}
+
+// computeHopefulRankData derives the hopeful/absolute rank boundaries used
+// throughout the RD/PC/CC/GC/BB weight policies from a final-rank
+// simulation. It's factored out of GetPrecompData so the same derivation can
+// be re-run later in the same pairing call against a different simulation -
+// specifically, when the Factor-3 penultimate-round expansion fires, its own
+// already-run simulation (which reflects the real 1v4/2v5/3v6 structure,
+// not the generic factor-2-capped structure GetPrecompData started from)
+// becomes the more accurate source for these fields. See
+// PrecompData.ApplyFactor3Sim, which calls this with the Factor-3 sim.
+func computeHopefulRankData(
+	req *pb.PairRequest,
+	standings *pkgstnd.Standings,
+	numCompletePairings int,
+	finalRanks [][]int,
+	totalSims int,
+	gibsonizedPlayers []bool,
+	logsb *strings.Builder,
+) hopefulRankData {
+	numPlayers := standings.GetNumPlayers()
+	minWinsForHopeful := int(math.Round(float64(totalSims) * req.HopefulnessThreshold))
+	// If the leader and 2nd place have run away with the tournament (their
+	// combined probability of finishing 1st exceeds 80%), other players only
+	// need half as many simulated wins to be considered hopeful contenders
+	// for 1st or 2nd.
+	//
+	// This must be computed from the simulated probability of finishing in
+	// 1st place (finalRanks[...][0]/totalSims), not from either player's
+	// actual completed-game win rate: only one player can finish 1st, so the
+	// simulated figure is a single probability bounded at 100%, while two
+	// independent win rates can each approach 100% and sum past it.
+	//
+	// Only applies when 1st isn't Gibsonized: once the leader is locked into
+	// 1st, there's no "runaway" race for it to speak of, so a high combined
+	// leader+2nd 1st-place% is just Gibsonization already at work, not a
+	// signal that everyone else's bar for 1st/2nd should be halved too.
+	halfMinWinsForHopeful := int(math.Round(float64(minWinsForHopeful) / 2.0))
+	runawayLeaders := false
+	if numPlayers >= 2 && totalSims > 0 && !gibsonizedPlayers[0] {
+		leaderFirstPct := float64(finalRanks[0][0]) / float64(totalSims)
+		secondFirstPct := float64(finalRanks[1][0]) / float64(totalSims)
+		if leaderFirstPct+secondFirstPct > runawayLeadersWinPctThreshold {
+			runawayLeaders = true
+			logsb.WriteString(fmt.Sprintf(
+				"Leader+2nd combined 1st-place%% (%.1f%%) > %.0f%%: halving the hopeful-for-1st/2nd bar to %.0f%% (normally %.0f%%)\n",
+				(leaderFirstPct+secondFirstPct)*100, runawayLeadersWinPctThreshold*100,
+				float64(halfMinWinsForHopeful)/float64(totalSims)*100,
+				float64(minWinsForHopeful)/float64(totalSims)*100))
+		}
+	}
+	highestRankHopefully := make([]int, numPlayers)
+	highestRankAbsolutely := make([]int, numPlayers)
+	lowestRankAbsolutely := make([]int, numPlayers)
+	for playerRankIdx := 0; playerRankIdx < numPlayers; playerRankIdx++ {
+		winsSum := 0
+		hopefulRank := numPlayers - 1
+		absoluteRank := numPlayers - 1
+		for rank := 0; rank < numPlayers; rank++ {
+			rankSum := finalRanks[playerRankIdx][rank]
+			if winsSum == 0 && rankSum > 0 {
+				absoluteRank = rank
+			}
+			winsSum += rankSum
+			threshold := minWinsForHopeful
+			if runawayLeaders && rank <= 1 {
+				threshold = halfMinWinsForHopeful
+			}
+			if winsSum >= threshold {
+				hopefulRank = rank
+				break
+			}
+		}
+		highestRankHopefully[playerRankIdx] = hopefulRank
+		highestRankAbsolutely[playerRankIdx] = absoluteRank
+		lowestRank := 0
+		for rank := numPlayers - 1; rank >= 0; rank-- {
+			rankSum := finalRanks[playerRankIdx][rank]
+			if rankSum > 0 {
+				lowestRank = rank
+				break
+			}
+		}
+		lowestRankAbsolutely[playerRankIdx] = lowestRank
+	}
+
+	// In the last quarter, an odd number of hopeful-to-cash players leaves one of
+	// them with no hopeful-to-cash opponent (the CC weight policy major-penalizes
+	// pairing a hopeful-to-cash player against a non-hopeful one). Fix the parity
+	// here, at the source, by promoting the highest-ranked non-hopeful player to
+	// hopeful for the lowest cash position - the same fix computeDisallowedLeaderOpponent
+	// makes for the hopeful-for-1st contender group, but folded into the data
+	// instead of layered on as a pairing constraint.
+	//
+	// Gibsonized players don't count toward this parity check even though
+	// they may still nominally be "hopeful" for cash (e.g. a player
+	// Gibsonized for 1st is trivially hopeful for every lower place too):
+	// PC and CC (see cop.go) exclude any Gibsonized player from being
+	// treated as a pairable hopeful-to-cash contender regardless of their
+	// raw hopeful-for rank, so counting them here would under-promote and
+	// leave a genuine contender without an in-group opponent.
+	//
+	// This promotion still matters in the true final round even though CC's
+	// hopeful-vs-hopeful grouping rule is disabled there (see isFinalRound in
+	// cop.go): lowestPossibleHopeCasher, which this feeds via
+	// LowestPossibleHopeNth, is also read unconditionally (not gated by
+	// last-quarter/final-round) by the BB and computeForcedContenderBye
+	// policies in cop.go, so it must stay correct in every round.
+	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
+	hopefulToCashPromotedPlayerRankIdx := -1
+	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
+		numHopefulToCash := 0
+		highestNonHopefulRankIdx := -1
+		for playerRankIdx, place := range highestRankHopefully {
+			if place < int(req.PlacePrizes) {
+				if !gibsonizedPlayers[playerRankIdx] {
+					numHopefulToCash++
+				}
+			} else if highestNonHopefulRankIdx == -1 {
+				highestNonHopefulRankIdx = playerRankIdx
+			}
+		}
+		if numHopefulToCash%2 == 1 && highestNonHopefulRankIdx >= 0 {
+			lowestCashPlace := int(req.PlacePrizes) - 1
+			logsb.WriteString(fmt.Sprintf(
+				"Odd number of non-Gibsonized hopeful-to-cash players (%d) in the last quarter: %s (rank %d) altered from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
+				numHopefulToCash, req.PlayerNames[standings.GetPlayerIndex(highestNonHopefulRankIdx)], highestNonHopefulRankIdx+1,
+				highestRankHopefully[highestNonHopefulRankIdx]+1, lowestCashPlace+1))
+			highestRankHopefully[highestNonHopefulRankIdx] = lowestCashPlace
+			hopefulToCashPromotedPlayerRankIdx = highestNonHopefulRankIdx
+		}
+	}
+
+	lowestPossibleHopeNth := make([]int, len(highestRankHopefully))
+	prevPlace := 0
+	for playerRankIdx, place := range highestRankHopefully {
+		if playerRankIdx > lowestPossibleHopeNth[place] {
+			lowestPossibleHopeNth[place] = playerRankIdx
+		}
+		for i := prevPlace + 1; i < place; i++ {
+			lowestPossibleHopeNth[i] = playerRankIdx - 1
+		}
+		prevPlace = place
+	}
+	for i := prevPlace + 1; i < len(highestRankHopefully); i++ {
+		lowestPossibleHopeNth[i] = len(highestRankHopefully) - 1
+	}
+
+	return hopefulRankData{
+		HighestRankHopefully:               highestRankHopefully,
+		HighestRankAbsolutely:              highestRankAbsolutely,
+		LowestRankAbsolutely:               lowestRankAbsolutely,
+		LowestPossibleHopeNth:              lowestPossibleHopeNth,
+		HopefulToCashPromotedPlayerRankIdx: hopefulToCashPromotedPlayerRankIdx,
+	}
+}
+
+// ApplyFactor3Sim overwrites the hopeful/absolute rank boundaries (and
+// everything downstream of them - lowestPossibleHopeCasher,
+// lowestPossibleAbsCasher, hopeToCashBoundary, etc., all read live off these
+// fields at matching time) using a Factor-3 expansion simulation instead of
+// the generic baseline one GetPrecompData used. Call this only when the
+// Factor-3 expansion actually fires (the full 1v4/2v5/3v6 structure is
+// forced) - only then does finalRanks reflect the pairing structure that's
+// actually being played this round; a single ad hoc forced pair (e.g. the
+// control-loss branch in computeFactor3ForcedPairings) doesn't warrant
+// this, since the rest of the field still isn't paired the way finalRanks
+// simulated.
+//
+// GibsonizedPlayers/GibsonGroups are deliberately left untouched: both are
+// purely analytic functions of current win/spread standings and
+// roundsRemaining/GibsonSpread (see standings.GetGibsonizedPlayers), not of
+// which pairing structure gets simulated, so there's nothing to update
+// there.
+func (pd *PrecompData) ApplyFactor3Sim(req *pb.PairRequest, finalRanks [][]int, totalSims int, logsb *strings.Builder) {
+	logsb.WriteString("Factor 3 fired: recomputing hopeful/absolute rank boundaries from the Factor-3 sim\n")
+	hrd := computeHopefulRankData(req, pd.Standings, pd.CompletePairings, finalRanks, totalSims, pd.GibsonizedPlayers, logsb)
+	pd.HighestRankHopefully = hrd.HighestRankHopefully
+	pd.HighestRankAbsolutely = hrd.HighestRankAbsolutely
+	pd.LowestRankAbsolutely = hrd.LowestRankAbsolutely
+	pd.LowestPossibleHopeNth = hrd.LowestPossibleHopeNth
+	pd.HopefulToCashPromotedPlayerRankIdx = hrd.HopefulToCashPromotedPlayerRankIdx
 }
 
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
@@ -101,66 +325,31 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 		WriteFinalRankResultsToLog(fmt.Sprintf("Improved Factor Sim Results (factor ceiling of %d)", maxFactor), improvedFactorSimResults.FinalRanks, standings, req, logsb)
 	}
 
-	minWinsForHopeful := int(math.Round(float64(improvedFactorSimResults.TotalSims) * req.HopefulnessThreshold))
-	highestRankHopefully := make([]int, numPlayers)
-	highestRankAbsolutely := make([]int, numPlayers)
-	lowestRankAbsolutely := make([]int, numPlayers)
-	for playerRankIdx := 0; playerRankIdx < numPlayers; playerRankIdx++ {
-		winsSum := 0
-		hopefulRank := numPlayers - 1
-		absoluteRank := numPlayers - 1
-		for rank := 0; rank < numPlayers; rank++ {
-			rankSum := improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
-			if winsSum == 0 && rankSum > 0 {
-				absoluteRank = rank
-			}
-			winsSum += rankSum
-			if winsSum >= minWinsForHopeful {
-				hopefulRank = rank
-				break
-			}
-		}
-		highestRankHopefully[playerRankIdx] = hopefulRank
-		highestRankAbsolutely[playerRankIdx] = absoluteRank
-		lowestRank := 0
-		for rank := numPlayers - 1; rank >= 0; rank-- {
-			rankSum := improvedFactorSimResults.FinalRanks[playerRankIdx][rank]
-			if rankSum > 0 {
-				lowestRank = rank
-				break
-			}
-		}
-		lowestRankAbsolutely[playerRankIdx] = lowestRank
-	}
-
-	lowestPossibleHopeNth := make([]int, len(highestRankHopefully))
-	prevPlace := 0
-	for playerRankIdx, place := range highestRankHopefully {
-		if playerRankIdx > lowestPossibleHopeNth[place] {
-			lowestPossibleHopeNth[place] = playerRankIdx
-		}
-		for i := prevPlace + 1; i < place; i++ {
-			lowestPossibleHopeNth[i] = playerRankIdx - 1
-		}
-		prevPlace = place
-	}
-	for i := prevPlace + 1; i < len(highestRankHopefully); i++ {
-		lowestPossibleHopeNth[i] = len(highestRankHopefully) - 1
-	}
-
-	pairingCounts := make(map[string]int)
-	repeatCounts := make([]int, int(req.AllPlayers))
+	// numCompletePairings is needed early to compute the leader/2nd win% below;
+	// it's recomputed (identically) further down alongside pairingCounts.
 	numCompletePairings := 0
-divisionPairingLoop:
+completePairingsLoop:
 	for _, roundPairings := range req.DivisionPairings {
 		for playerIdx := range roundPairings.Pairings {
 			oppIdx := int(roundPairings.Pairings[playerIdx])
 			if oppIdx == -1 {
-				break divisionPairingLoop
+				break completePairingsLoop
 			}
 		}
 		numCompletePairings++
 	}
+
+	hrd := computeHopefulRankData(req, standings, numCompletePairings,
+		improvedFactorSimResults.FinalRanks, improvedFactorSimResults.TotalSims, improvedFactorSimResults.GibsonizedPlayers,
+		logsb)
+	highestRankHopefully := hrd.HighestRankHopefully
+	highestRankAbsolutely := hrd.HighestRankAbsolutely
+	lowestRankAbsolutely := hrd.LowestRankAbsolutely
+	lowestPossibleHopeNth := hrd.LowestPossibleHopeNth
+	hopefulToCashPromotedPlayerRankIdx := hrd.HopefulToCashPromotedPlayerRankIdx
+
+	pairingCounts := make(map[string]int)
+	repeatCounts := make([]int, int(req.AllPlayers))
 	for roundIdx := range numCompletePairings {
 		roundPairings := req.DivisionPairings[roundIdx]
 		for playerIdx := range roundPairings.Pairings {
@@ -193,23 +382,46 @@ divisionPairingLoop:
 		vsFirstWins = controlLossSimResults.VsFirstWins
 		if controlLossSimResults.HighestControlLossRankIdx >= 0 {
 			destinysChild = controlLossSimResults.HighestControlLossRankIdx
+			if controlLossSimResults.ControlLossViaLockFallback {
+				lockEndRankIdx := controlLossSimResults.ControlLossLockRunEndRankIdx
+				lockedNames := make([]string, 0, lockEndRankIdx)
+				for rankIdx := 1; rankIdx <= lockEndRankIdx; rankIdx++ {
+					lockedNames = append(lockedNames, req.PlayerNames[standings.GetPlayerIndex(rankIdx)])
+				}
+				lockedRanks, be := "rank 2", "is"
+				if lockEndRankIdx > 1 {
+					lockedRanks, be = fmt.Sprintf("ranks 2-%d", lockEndRankIdx+1), "are"
+				}
+				childIdx := standings.GetPlayerIndex(destinysChild)
+				logsb.WriteString(fmt.Sprintf(
+					"Control loss: rank %d (%s) flagged via the 2-rounds-remaining lock-fallback rule, not the normal threshold check - %s (%s) %s already locked to win outright regardless of opponent (vsFirst=vsFactorPair=%d/%d sims), so rank %d is the last player whose destiny is still undecided; vs1st=%d > vsFactor=%d confirms playing 1st still helps them\n",
+					destinysChild+1, req.PlayerNames[childIdx],
+					lockedRanks, strings.Join(lockedNames, ", "), be,
+					vsFirstWins[lockEndRankIdx], int(req.ControlLossSims),
+					destinysChild+1,
+					vsFirstWins[destinysChild], allControlLosses[destinysChild],
+				))
+			}
 		}
 	}
 
 	writePrecompDataToLog("Precomp Data", improvedFactorSimResults, allControlLosses, vsFirstWins, highestRankHopefully, highestRankAbsolutely, standings, req, logsb)
 
 	return &PrecompData{
-		Standings:             standings,
-		PairingCounts:         pairingCounts,
-		RepeatCounts:          repeatCounts,
-		HighestRankHopefully:  highestRankHopefully,
-		HighestRankAbsolutely: highestRankAbsolutely,
-		LowestRankAbsolutely:  lowestRankAbsolutely,
-		LowestPossibleHopeNth: lowestPossibleHopeNth,
-		DestinysChild:         destinysChild,
-		GibsonGroups:          improvedFactorSimResults.GibsonGroups,
-		GibsonizedPlayers:     improvedFactorSimResults.GibsonizedPlayers,
-		CompletePairings:      numCompletePairings,
+		Standings:                          standings,
+		PairingCounts:                      pairingCounts,
+		RepeatCounts:                       repeatCounts,
+		HighestRankHopefully:               highestRankHopefully,
+		HighestRankAbsolutely:              highestRankAbsolutely,
+		LowestRankAbsolutely:               lowestRankAbsolutely,
+		LowestPossibleHopeNth:              lowestPossibleHopeNth,
+		HopefulToCashPromotedPlayerRankIdx: hopefulToCashPromotedPlayerRankIdx,
+		DestinysChild:                      destinysChild,
+		GibsonGroups:                       improvedFactorSimResults.GibsonGroups,
+		GibsonizedPlayers:                  improvedFactorSimResults.GibsonizedPlayers,
+		CompletePairings:                   numCompletePairings,
+		BaselineFinalRanks:                 improvedFactorSimResults.FinalRanks,
+		BaselineTotalSims:                  improvedFactorSimResults.TotalSims,
 	}, pb.PairError_SUCCESS
 }
 

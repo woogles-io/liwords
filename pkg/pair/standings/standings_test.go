@@ -273,7 +273,13 @@ func TestStandings(t *testing.T) {
 	req = pairtestutils.CreateAlbanyjuly4th2024AfterRound21PairRequest()
 	is.True(verifyreq.Verify(req) == nil)
 	standings = pkgstnd.CreateInitialStandings(req)
-	numSims = 10000
+	// This scenario evaluates 6 candidate ranks without ever finding a
+	// control loss (see below), so the control-loss scan never breaks early
+	// and runs the full worst case: 12 sim batches sharing a single 6s wall
+	// clock budget (controlSimTimeLimit in standings.go). A smaller numSims
+	// keeps this well clear of that budget under CPU contention while still
+	// leaving a wide margin on the ratio assertions below.
+	numSims = 2000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 2, 6, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	// With many rounds remaining, control loss requires vsFirstTournamentWins == sims exactly.
@@ -293,7 +299,12 @@ func TestStandings(t *testing.T) {
 	numSims = 5000
 	simResults, pairErr = standings.SimFactorPairAll(req, copRand, numSims, 3, 5, nil)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(simResults.HighestControlLossRankIdx, -1)
+	// Rank 2 (0-indexed rank 1) wins every vsFirst sim but only 3743/5000
+	// vsFactorPair sims - a 25.1% gap, just over the 25% threshold. The old
+	// binary search missed this real control loss because it assumed the
+	// vsFirst/vsFactorPair gap was monotonic across ranks, which is exactly
+	// the bug the exhaustive per-rank scan (see standings.go) fixed.
+	is.Equal(simResults.HighestControlLossRankIdx, 1)
 	numSims = 1000
 }
 
