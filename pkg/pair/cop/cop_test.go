@@ -830,6 +830,17 @@ func TestCOPConstraintPolicies(t *testing.T) {
 // the fix, KH could force a pairing for the same player TB independently
 // selected for the bye, which disallowed the bye pairing TB needed and the
 // pairing KH needed on the same edge, producing OVERCONSTRAINED.
+//
+// It also guards against a second, subtler bug in the same area: the cash
+// prize KOTH loop scans adjacent rank pairs, and originally just skipped the
+// pair containing the bye recipient without removing the recipient from the
+// scan - which silently dropped their neighbor (the player who should have
+// been their KOTH opponent) from forcing entirely, letting the neighbor fall
+// through to the general weighted matching and get paired with a player well
+// outside cash contention. Below, P8 (rank 1) is that neighbor: without the
+// fix it ends up paired with P5 (rank 7, not even hopeful to cash); with the
+// fix it correctly reaches past the byeing P0 to pair with P2 (rank 3), the
+// next real contender down.
 func TestTopDownByePrecedence(t *testing.T) {
 	is := is.New(t)
 
@@ -863,13 +874,16 @@ func TestTopDownByePrecedence(t *testing.T) {
 	// P0 (rank 2, 0 prior byes) receives the top-down bye, even though cash
 	// prize KOTH would otherwise force it to play P8 (rank 1).
 	is.Equal(resp.Pairings[0], int32(0))
-	// The rest of the field still gets KOTH-appropriate pairings.
-	is.Equal(resp.Pairings[8], int32(5))
-	is.Equal(resp.Pairings[5], int32(8))
-	is.Equal(resp.Pairings[2], int32(4))
-	is.Equal(resp.Pairings[4], int32(2))
-	is.Equal(resp.Pairings[6], int32(7))
-	is.Equal(resp.Pairings[7], int32(6))
+	// The rest of the field still gets KOTH-appropriate pairings: with P0
+	// (rank 2) removed from the scan, P8 (rank 1) reaches past it to pair
+	// with P2 (rank 3), the next real contender down, instead of being
+	// dropped from KOTH forcing entirely.
+	is.Equal(resp.Pairings[8], int32(2))
+	is.Equal(resp.Pairings[2], int32(8))
+	is.Equal(resp.Pairings[4], int32(6))
+	is.Equal(resp.Pairings[6], int32(4))
+	is.Equal(resp.Pairings[5], int32(7))
+	is.Equal(resp.Pairings[7], int32(5))
 	is.Equal(resp.Pairings[3], int32(1))
 	is.Equal(resp.Pairings[1], int32(3))
 }

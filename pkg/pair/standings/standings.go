@@ -50,10 +50,21 @@ type SimResults struct {
 	GibsonGroups              []int
 	GibsonizedPlayers         []bool
 	HighestControlLossRankIdx int
-	AllControlLosses          map[int]int
-	VsFirstWins               map[int]int
-	SegmentRoundFactors       []int
-	TotalSims                 int
+	// ControlLossViaLockFallback is true when HighestControlLossRankIdx was
+	// set by the "exactly 2 rounds remaining" fallback rule rather than by
+	// the normal vsFirst/vsFactorPair threshold check - see the comment
+	// above that rule in evenedSimFactorPairAll for why the two can produce
+	// very different-looking (and easy-to-misread) vs1st/vsFactor gaps.
+	ControlLossViaLockFallback bool
+	// ControlLossLockRunEndRankIdx is the lowest rank (closest to last) in
+	// the run of ranks above HighestControlLossRankIdx that are already a
+	// lock to win the tournament outright regardless of opponent, when
+	// ControlLossViaLockFallback is true. -1 otherwise.
+	ControlLossLockRunEndRankIdx int
+	AllControlLosses             map[int]int
+	VsFirstWins                  map[int]int
+	SegmentRoundFactors          []int
+	TotalSims                    int
 }
 
 func GetRoundsRemaining(req *pb.PairRequest) int {
@@ -338,6 +349,8 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 	playerIdxToRankIdx := standings.getPlayerIdxToRankIdxMap()
 	standings.Backup()
 	highestControlLossRankIdx := -1
+	controlLossViaLockFallback := false
+	controlLossLockRunEndRankIdx := -1
 	var allControlLosses map[int]int
 	var vsFirstWins map[int]int
 	totalSims := 0
@@ -421,20 +434,24 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 				bRankIdx := lowestFullWinRankIdx + 1
 				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
 					highestControlLossRankIdx = bRankIdx
+					controlLossViaLockFallback = true
+					controlLossLockRunEndRankIdx = lowestFullWinRankIdx
 				}
 			}
 		}
 	}
 	return &SimResults{
-		FinalRanks:                results,
-		Pairings:                  pairings,
-		GibsonGroups:              gibsonGroups,
-		GibsonizedPlayers:         gibsonizedPlayers,
-		HighestControlLossRankIdx: highestControlLossRankIdx,
-		AllControlLosses:          allControlLosses,
-		VsFirstWins:               vsFirstWins,
-		SegmentRoundFactors:       segmentRoundFactors,
-		TotalSims:                 totalSims,
+		FinalRanks:                   results,
+		Pairings:                     pairings,
+		GibsonGroups:                 gibsonGroups,
+		GibsonizedPlayers:            gibsonizedPlayers,
+		HighestControlLossRankIdx:    highestControlLossRankIdx,
+		ControlLossViaLockFallback:   controlLossViaLockFallback,
+		ControlLossLockRunEndRankIdx: controlLossLockRunEndRankIdx,
+		AllControlLosses:             allControlLosses,
+		VsFirstWins:                  vsFirstWins,
+		SegmentRoundFactors:          segmentRoundFactors,
+		TotalSims:                    totalSims,
 	}, pb.PairError_SUCCESS
 }
 

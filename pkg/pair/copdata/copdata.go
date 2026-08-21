@@ -307,6 +307,26 @@ completePairingsLoop:
 		vsFirstWins = controlLossSimResults.VsFirstWins
 		if controlLossSimResults.HighestControlLossRankIdx >= 0 {
 			destinysChild = controlLossSimResults.HighestControlLossRankIdx
+			if controlLossSimResults.ControlLossViaLockFallback {
+				lockEndRankIdx := controlLossSimResults.ControlLossLockRunEndRankIdx
+				lockedNames := make([]string, 0, lockEndRankIdx)
+				for rankIdx := 1; rankIdx <= lockEndRankIdx; rankIdx++ {
+					lockedNames = append(lockedNames, req.PlayerNames[standings.GetPlayerIndex(rankIdx)])
+				}
+				lockedRanks, be := "rank 2", "is"
+				if lockEndRankIdx > 1 {
+					lockedRanks, be = fmt.Sprintf("ranks 2-%d", lockEndRankIdx+1), "are"
+				}
+				childIdx := standings.GetPlayerIndex(destinysChild)
+				logsb.WriteString(fmt.Sprintf(
+					"Control loss: rank %d (%s) flagged via the 2-rounds-remaining lock-fallback rule, not the normal threshold check - %s (%s) %s already locked to win outright regardless of opponent (vsFirst=vsFactorPair=%d/%d sims), so rank %d is the last player whose destiny is still undecided; vs1st=%d > vsFactor=%d confirms playing 1st still helps them\n",
+					destinysChild+1, req.PlayerNames[childIdx],
+					lockedRanks, strings.Join(lockedNames, ", "), be,
+					vsFirstWins[lockEndRankIdx], int(req.ControlLossSims),
+					destinysChild+1,
+					vsFirstWins[destinysChild], allControlLosses[destinysChild],
+				))
+			}
 		}
 	}
 

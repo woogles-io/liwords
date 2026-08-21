@@ -720,6 +720,44 @@ func TestScenario16_ContenderParityOddGibsonizedWithTDB(t *testing.T) {
 	is.True(strings.Contains(resp.Log, "retracting the earlier promotion"))
 }
 
+// addContenderParityRoundsGibsonEvenFinalRound extends
+// addContenderParityRoundsGibsonEven with one more round (round 7 of 8, same
+// pattern as its round 4/6: the strong quartet keeps beating the weak
+// quartet, filler keeps self-byeing), leaving exactly 1 round remaining -
+// the final round - for Scenario 17.
+func addContenderParityRoundsGibsonEvenFinalRound(req *pb.PairRequest) {
+	addContenderParityRoundsGibsonEven(req)
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 550 400 400 400 350 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 17: 1st is Gibsonized going into the final round, and
+// TopDownByes assigns the bye to a genuine hopeful-to-cash contender rather
+// than to the Gibsonized leader (whom GB would otherwise force it onto) or
+// to an eliminated player. Builds on the Scenario 14 setup, extended by one
+// more round - P0 is Gibsonized for 1st (7-0), and by the final round P0,
+// P1, and P3 all have a prior bye, so TDB's fewest-byes/top-rank tiebreak
+// skips past all three of them and lands on P6, who is still hopeful to
+// cash. "Gibson Gets Bye: true" in the log confirms GB would otherwise have
+// forced the bye onto the Gibsonized P0; TB takes precedence instead.
+func TestScenario17_GibsonFinalRoundByeGoesToContender(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsGibsonEvenFinalRound(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_17_gibson_final_round_bye_to_contender.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1"))
+	// P0 is Gibsonized for 1st, and GB would otherwise force the bye onto them.
+	is.True(strings.Contains(resp.Log, "P0   | 7.0  | 700  | Yes"))
+	is.True(strings.Contains(resp.Log, "Gibson Gets Bye: true"))
+	// P6 - not Gibsonized, still hopeful to cash - receives the bye instead of P0.
+	is.Equal(resp.Pairings[6], int32(6))
+}
 
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
@@ -919,7 +957,7 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 			DivisionSims:               scenarioDivisionSims,
 			ControlLossSims:            scenarioControlLossSims,
 			TopDownByes:                true,
-			ControlLossActivationRound: 22,
+			ControlLossActivationRound: 24,
 			AllowRepeatByes:            false,
 			InitialNonperfRounds:       int32(fontesRounds),
 			Seed:                       seed,

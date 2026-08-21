@@ -389,23 +389,41 @@ var constraintPolicies = []constraintPolicy{
 
 			// First, compute the cash prize KOTH players
 
+			// Ranks are scanned as adjacent pairs below, and a rank that's
+			// skipped (rather than force-paired) is implicitly left for the
+			// *next* window to retry against its neighbor - which is correct
+			// for e.g. a Gibsonized player, who still plays a real game this
+			// round, just not a forced one. The top-down bye recipient is
+			// different: they have no opponent at all this round, so they
+			// must be removed from the scan entirely up front. Leaving them
+			// in would silently drop their neighbor from KOTH consideration
+			// too - e.g. rank 9 skipped against rank 10 (the bye recipient),
+			// then rank 10 skipped again against rank 11, forcing rank 11
+			// against rank 12 and leaving rank 9 unpaired by KOTH altogether,
+			// so they fall through to the general weighted matching and can
+			// end up paired with someone far outside contention.
+			rankIdxs := make([]int, 0, numPlayers)
+			for ri := 0; ri < numPlayers; ri++ {
+				if pargs.topDownByePlayer >= 0 && pargs.playerNodes[ri] == pargs.topDownByePlayer {
+					continue
+				}
+				rankIdxs = append(rankIdxs, ri)
+			}
+
 			var highestNoncontender int
-			for playerRankIdx := 0; playerRankIdx < numPlayers-1; playerRankIdx++ {
+			for k := 0; k < len(rankIdxs)-1; k++ {
+				playerRankIdx := rankIdxs[k]
 				if pargs.lowestPossibleAbsCasher < playerRankIdx {
 					highestNoncontender = playerRankIdx
 					break
 				}
+				nextRankIdx := rankIdxs[k+1]
 				pi := pargs.playerNodes[playerRankIdx]
-				pj := pargs.playerNodes[playerRankIdx+1]
+				pj := pargs.playerNodes[nextRankIdx]
 				if pi == pkgstnd.ByePlayerIndex || pj == pkgstnd.ByePlayerIndex {
 					continue
 				}
-				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[playerRankIdx+1] {
-					continue
-				}
-				// Top-down byes take precedence over cash prize KOTH: don't force
-				// a pairing that would conflict with the player selected for the bye.
-				if pi == pargs.topDownByePlayer || pj == pargs.topDownByePlayer {
+				if pargs.copdata.GibsonizedPlayers[playerRankIdx] || pargs.copdata.GibsonizedPlayers[nextRankIdx] {
 					continue
 				}
 				// The odd-hopeful-contender-group rule also takes precedence over
@@ -421,9 +439,9 @@ var constraintPolicies = []constraintPolicy{
 				forcedPairings = append(forcedPairings, [2]int{pi, pj})
 				// A pairing with pi and pj was forced, so we need to
 				// skip evaluation for player pj in the next iteration
-				// by incrementing playerRankIdx, which combined with
-				// this for loop effectively performs a playerRankIdx += 2
-				playerRankIdx++
+				// by incrementing k, which combined with this for loop
+				// effectively performs a k += 2
+				k++
 			}
 
 			// Then, compute the class prize KOTH players
