@@ -1382,7 +1382,12 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 	for rankIdx := range numStandingsPlayers {
 		pi := standings.GetPlayerIndex(rankIdx)
 		opp := int(allPlayerPairings[pi])
-		if opp < 0 {
+		// A bye is represented as either a negative opponent index or the
+		// player paired with themselves (the convention simplePairOnce uses
+		// above, matching how self-pairing is interpreted as a bye
+		// elsewhere, e.g. standings.go). Skip both so a byed player doesn't
+		// fall through and get displayed playing themselves.
+		if opp < 0 || opp == pi {
 			continue
 		}
 		oppRankIdx, oppInStandings := playerIndexToRankIdx[opp]

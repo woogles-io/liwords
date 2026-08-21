@@ -11,6 +11,57 @@ import (
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 )
 
+// TestSimplePairFinalPairingsSkipsSelfPairedBye covers a display bug in
+// simplePair's "Final Pairings" table: simplePairOnce represents a bye as
+// the player paired with themselves (allPlayerPairings[pi] == pi), matching
+// the self-pairing bye convention used elsewhere (e.g. standings.go), but
+// the table-building loop only recognized negative opponent indices as a
+// bye. A byed player fell through undetected and got displayed as if
+// playing themselves. Initial Fontes with an odd player count always
+// produces exactly one bye (via the addBye padding in
+// getInitialFontesPairings), so this reliably exercises the bug.
+func TestSimplePairFinalPairingsSkipsSelfPairedBye(t *testing.T) {
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_PAIR_INITIAL_FONTES,
+		PlayerNames:                testPlayerNames(9),
+		PlayerClasses:              make([]int32, 9),
+		AllPlayers:                 9,
+		ValidPlayers:               9,
+		Rounds:                     8,
+		PlacePrizes:                1,
+		GibsonSpread:               200,
+		HopefulnessThreshold:       0.02,
+		DivisionSims:               1000,
+		ControlLossSims:            1000,
+		ControlLossActivationRound: 6,
+		InitialNonperfRounds:       3,
+		Seed:                       1,
+	}
+	resp := COPPair(req)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+
+	inFinalPairings := false
+	for _, line := range strings.Split(resp.Log, "\n") {
+		if strings.Contains(line, "Final Pairings") {
+			inFinalPairings = true
+			continue
+		}
+		if !inFinalPairings || !strings.Contains(line, "|") {
+			continue
+		}
+		fields := strings.Split(line, "|")
+		if len(fields) < 6 {
+			continue
+		}
+		name1 := strings.TrimSpace(fields[0])
+		name2 := strings.TrimSpace(fields[3])
+		if name1 != "" && name1 != "Player" && name1 == name2 {
+			t.Errorf("player shown playing themselves in Final Pairings (byed player not skipped): %s", line)
+		}
+	}
+}
+
 func testPlayerNames(n int) []string {
 	names := make([]string, n)
 	for i := range names {
