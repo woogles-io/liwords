@@ -1021,7 +1021,10 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 		}
 	}
 
-	factor3ForcedPairings := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	factor3ForcedPairings, factor3FinalRanks, factor3TotalSims := computeFactor3ForcedPairings(req, copdata, copRand, logsb)
+	if factor3FinalRanks != nil {
+		copdata.ApplyFactor3Sim(req, factor3FinalRanks, factor3TotalSims, logsb)
+	}
 	pairings, resp := copMinWeightMatching(req, copdata, factor3ForcedPairings, logsb)
 
 	if resp != nil {
@@ -1040,17 +1043,27 @@ func copMethodPair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse
 // would lose control of their destiny under factor-3 (compared to playing 1st
 // directly); if so, only the affected player is paired against 1st. Otherwise it
 // checks whether 4th/5th/6th can each reach 1st/2nd/3rd within the hopefulness
-// threshold, and if so returns the three factor-3 forced pairs. Returns nil when
-// no forced pairings are needed.
-func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) [][2]int {
+// threshold, and if so returns the three factor-3 forced pairs. Returns nil
+// forced pairings when none are needed.
+//
+// The second and third return values are the Factor-3 simulation's
+// FinalRanks/TotalSims, non-nil only when the full 1v4/2v5/3v6 expansion
+// actually fires (the last return statement below) - the caller should feed
+// these into copdata.ApplyFactor3Sim so the rest of the round's pairing
+// weights are computed against the pairing structure that's actually being
+// played, not the generic baseline one GetPrecompData started from. The
+// control-loss branch's single forced pair doesn't get this treatment: it
+// doesn't lock in the full factor-3 structure the simulation assumed, so
+// that simulation isn't an accurate stand-in for the rest of the field.
+func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.PrecompData, copRand *rand.Rand, logsb *strings.Builder) ([][2]int, [][]int, int) {
 	if pkgstnd.GetRoundsRemaining(req) != 2 {
 		logsb.WriteString("Factor 3 skipped: not 2 rounds remaining\n")
-		return nil
+		return nil, nil, 0
 	}
 	numPlayers := copdata.Standings.GetNumPlayers()
 	if numPlayers < 6 {
 		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: fewer than 6 players (%d)\n", numPlayers))
-		return nil
+		return nil, nil, 0
 	}
 
 	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
@@ -1088,11 +1101,11 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 	factor3FinalRanks, totalSims, err := copdata.Standings.RunSimsWithPairings(copRand, int(req.DivisionSims), 2, f3Pairings)
 	if err != pb.PairError_SUCCESS {
 		logsb.WriteString(fmt.Sprintf("Factor 3 skipped: sim error %v\n", err))
-		return nil
+		return nil, nil, 0
 	}
 	if totalSims == 0 {
 		logsb.WriteString("Factor 3 skipped: zero sims completed\n")
-		return nil
+		return nil, nil, 0
 	}
 	copdatapkg.WriteFinalRankResultsToLog("Factor 3 Sim Results", factor3FinalRanks, copdata.Standings, req, logsb)
 
@@ -1138,7 +1151,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 				"Factor 3 control loss: rank %d %s loses control, forcing %s vs %s\n",
 				rankIdx+1, req.PlayerNames[pIdx], req.PlayerNames[p0], req.PlayerNames[pIdx],
 			))
-			return [][2]int{{p0, pIdx}}
+			return [][2]int{{p0, pIdx}}, nil, 0
 		}
 	}
 
@@ -1173,7 +1186,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 			req.PlayerNames[p4], p4AtLeast2nd,
 			req.PlayerNames[p5], p5AtLeast3rd,
 		))
-		return nil
+		return nil, nil, 0
 	}
 
 	// Even when the hopefulness threshold is met, F3 shouldn't fire if it
@@ -1207,7 +1220,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 				"Factor 3 skipped: no meaningful win-chance gain (max gain %.2fpp < required %.2fpp) - would primarily help %s while reducing the field's destiny control\n",
 				maxGain*100, f3MinWinChanceGain*100, req.PlayerNames[p0],
 			))
-			return nil
+			return nil, nil, 0
 		}
 	}
 
@@ -1217,7 +1230,7 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		req.PlayerNames[p1], req.PlayerNames[p4],
 		req.PlayerNames[p2], req.PlayerNames[p5],
 	))
-	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}
+	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}, factor3FinalRanks, totalSims
 }
 
 // extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
