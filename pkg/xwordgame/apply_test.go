@@ -93,6 +93,10 @@ func TestApplyPlacementGoingOut(t *testing.T) {
 		is.Equal(passRes.EndRackBonus, int32(44))
 		is.Equal(passRes.EndRackBonusPlayer, int8(0))
 		is.Equal(s.PlayState, GameOver)
+		// The turn still flips. It means nothing once the game is over, but
+		// macondo flips here and a byte-level state comparison would report a
+		// divergence that is not one. Caught by the bridge parity test.
+		is.Equal(s.OnTurn, uint8(0))
 	})
 
 	t.Run("under void the game ends immediately", func(t *testing.T) {

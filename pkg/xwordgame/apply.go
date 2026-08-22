@@ -334,6 +334,11 @@ func (s *State) ApplyPass(r *Rules) (*ApplyResult, error) {
 		res.GameOver = true
 		res.EndRackBonus = bonus
 		res.EndRackBonusPlayer = int8(out)
+		// The turn still passes. Whose turn it is means nothing once the game
+		// is over, but macondo flips here -- its playMove flips unconditionally
+		// unless the scoreless rule ended the game -- and ApplyScorelessPenalties
+		// already matches that. Agreeing keeps the shadow comparison quiet.
+		s.OnTurn = otherPlayer(s.OnTurn)
 		s.TurnNum++
 		s.LastWordsFormed = nil
 		return res, nil
