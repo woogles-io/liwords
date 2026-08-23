@@ -80,6 +80,12 @@ type policyArgs struct {
 	// computeDisallowedLeaderOpponent) so that KH can avoid forcing a cash
 	// prize KOTH pairing that would conflict with it.
 	disallowedLeaderOpponent int
+	// forcedLeaderVsThird is the player index of "3rd" (rank index 2) when
+	// the leader's 1st-place contention has narrowed to exactly the leader
+	// plus one other hopeful player, and that other player is taking this
+	// round's bye - leaving the leader with no hopeful opponent at all. See
+	// computeForcedLeaderVsThird. -1 when this special case doesn't apply.
+	forcedLeaderVsThird int
 	// forcedContenderByePlayer is the player index forced to take the bye
 	// because PC (no bye for contenders) and BR (no repeat byes) would
 	// otherwise be in direct conflict this round, or -1 if there's no such
@@ -90,6 +96,56 @@ type policyArgs struct {
 	// effect this round: exactly 4 players are still hopeful contenders for
 	// 1st in the 2nd-to-last round, and Factor 3 didn't fire.
 	top4LockActive bool
+}
+
+// computeForcedLeaderVsThird handles the size-2 case of the "hopeful for
+// 1st" contender group specially, ahead of - and instead of - the general
+// odd-group-parity rule in computeDisallowedLeaderOpponent: when the leader
+// (rank 0) and exactly one other player (rank 1) are the only players still
+// hopeful for 1st place, and rank 1 is receiving this round's bye, the
+// leader has no hopeful opponent left to play at all this round. Rather
+// than let the general rule promote rank 2 into the group and then bar the
+// leader from playing them - handing the leader an arbitrary weaker
+// opponent instead - force the leader onto rank 2 directly, the strongest
+// opponent actually available (see the "L3" constraint policy and the CC
+// weight policy's matching early-out).
+//
+// Like computeDisallowedLeaderOpponent, this defers entirely to Factor 3,
+// and must run after computeTopDownByePlayer and computeForcedContenderBye
+// so the definite bye recipient, if any, is known.
+func computeForcedLeaderVsThird(pargs *policyArgs) int {
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	if pargs.copdata.LowestPossibleHopeNth[0] != 1 {
+		return -1
+	}
+	// A gibsonized leader has already settled the race (see the doc comment
+	// on computeDisallowedLeaderOpponent), so rank 1 sitting out doesn't
+	// leave the leader without a hopeful opponent in the same sense - fall
+	// through to the general rule instead.
+	if pargs.copdata.GibsonizedPlayers[0] {
+		return -1
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 3 {
+		return -1
+	}
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient < 0 || pargs.playerNodes[1] != byeRecipient {
+		return -1
+	}
+	return pargs.playerNodes[2]
 }
 
 // computeDisallowedLeaderOpponent implements the odd-hopeful-contender-group
@@ -122,6 +178,13 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 	// Factor 3 expansion already constrains the top-6 pairings (including the
 	// leader's); applying this rule on top of it would overconstrain the matching.
 	if len(pargs.factor3ForcedPairings) > 0 {
+		return -1
+	}
+	// computeForcedLeaderVsThird handles the narrower size-2 case of this
+	// same group on its own terms - forcing the leader onto 3rd instead of
+	// barring 3rd from the leader - so defer to it entirely rather than
+	// competing over the same edge.
+	if pargs.forcedLeaderVsThird >= 0 {
 		return -1
 	}
 	numPlayers := len(pargs.playerNodes)
@@ -695,6 +758,20 @@ var constraintPolicies = []constraintPolicy{
 			return [][2]int{}, disallowedPairings
 		},
 	},
+	{
+		// Leader vs 3rd: when only the leader and one other player are
+		// still hopeful for 1st, and that other player is receiving this
+		// round's bye, force the leader to play 3rd instead of leaving it
+		// to the general odd-hopeful-contender-group bar - see
+		// computeForcedLeaderVsThird.
+		name: "L3",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if pargs.forcedLeaderVsThird < 0 {
+				return [][2]int{}, [][2]int{}
+			}
+			return [][2]int{{pargs.playerNodes[0], pargs.forcedLeaderVsThird}}, [][2]int{}
+		},
+	},
 }
 
 // isLastQuarter reports whether the tournament is in its last quarter of
@@ -854,8 +931,20 @@ var weightPolicies = []weightPolicy{
 		//     it in here as a major penalty instead means it can never
 		//     combine with the other two rules to leave a player with no
 		//     legal pairing at all.
+		//   - Leader vs 3rd (any round): the size-2 exception to the rule
+		//     above - see computeForcedLeaderVsThird - is the mirror image:
+		//     that edge is forced, not barred, so it must be exempted from
+		//     every major penalty below (not just the leader-opponent one)
+		//     or the L3 constraint policy would force an edge this policy
+		//     then major-penalizes anyway.
 		name: "CC",
 		handler: func(pargs *policyArgs, ri int, rj int) int64 {
+			// Leader vs 3rd: this edge is forced by the L3 constraint
+			// policy, so it must never be penalized here.
+			if ri == 0 && pargs.forcedLeaderVsThird >= 0 &&
+				pargs.playerNodes[rj] == pargs.forcedLeaderVsThird {
+				return 0
+			}
 			// Odd hopeful-contender-group for 1st: bar the added player from
 			// playing the leader (rank 0). This applies in every round, not
 			// just the fourth quarter.
@@ -1666,6 +1755,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	}
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
 	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
+	pargs.forcedLeaderVsThird = computeForcedLeaderVsThird(pargs)
 	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
 	pargs.top4LockActive = computeTop4LockActive(pargs)
 
@@ -1698,6 +1788,14 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				"and Factor 3 did not fire - all 4 are barred from playing outside this group this round\n",
 			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
 			req.PlayerNames[playerNodes[2]], req.PlayerNames[playerNodes[3]]))
+	}
+	if pargs.forcedLeaderVsThird >= 0 {
+		logsb.WriteString(fmt.Sprintf(
+			"Forced Leader vs 3rd: only %s and %s are still hopeful for 1st, and %s is receiving this round's bye, "+
+				"leaving %s without a hopeful opponent - forcing %s to play %s instead of barring the pairing\n",
+			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]], req.PlayerNames[playerNodes[1]],
+			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[0]],
+			req.PlayerNames[pargs.forcedLeaderVsThird]))
 	}
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
 	logsb.WriteString("Destinys Child: ")

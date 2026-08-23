@@ -2132,6 +2132,7 @@ func TestComputeDisallowedLeaderOpponentByeAware(t *testing.T) {
 		copdata:                  copdata,
 		topDownByePlayer:         -1,
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(pargsNoBye), playerNodes[3])
 
@@ -2142,6 +2143,7 @@ func TestComputeDisallowedLeaderOpponentByeAware(t *testing.T) {
 		copdata:                  copdata,
 		topDownByePlayer:         playerNodes[2],
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(pargsWithBye), -1)
 }
@@ -2170,6 +2172,7 @@ func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
 		},
 		topDownByePlayer:         -1,
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(evenRawGibsonLeader), playerNodes[4])
 
@@ -2185,6 +2188,7 @@ func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
 		},
 		topDownByePlayer:         -1,
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(oddRawGibsonLeader), -1)
 
@@ -2200,6 +2204,7 @@ func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
 		},
 		topDownByePlayer:         -1,
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(soloGibsonLeader), playerNodes[1])
 
@@ -2215,6 +2220,7 @@ func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
 		},
 		topDownByePlayer:         -1,
 		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      -1,
 	}
 	is.Equal(computeDisallowedLeaderOpponent(nonLeaderGibsonized), -1)
 }
@@ -2321,4 +2327,171 @@ func TestTop4LockConstraint(t *testing.T) {
 	for _, dp := range disallowed {
 		is.True(wantDisallowed[dp])
 	}
+}
+
+// TestComputeForcedLeaderVsThird covers the size-2 exception to the
+// odd-hopeful-contender-group rule: when the leader and exactly one other
+// player are hopeful for 1st, and that other player is receiving this
+// round's bye, the leader is forced onto 3rd instead of being left without
+// a hopeful opponent.
+func TestComputeForcedLeaderVsThird(t *testing.T) {
+	is := is.New(t)
+
+	playerNodes := []int{0, 1, 2, 3, 4}
+	baseCopdata := &copdatapkg.PrecompData{
+		LowestPossibleHopeNth: []int{1}, // group is ranks 0-1 (size 2)
+		GibsonizedPlayers:     []bool{false, false, false, false, false},
+	}
+
+	// Rank 1 (the only other hopeful-for-1st player) receives the top-down
+	// bye: forces the leader onto rank 2.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+	}), playerNodes[2])
+
+	// Same, but via the forced contender bye instead of the top-down bye.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: playerNodes[1],
+	}), playerNodes[2])
+
+	// No bye at all this round: doesn't activate.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}), -1)
+
+	// The bye lands somewhere other than rank 1: doesn't activate.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         playerNodes[2],
+		forcedContenderByePlayer: -1,
+	}), -1)
+
+	// More than 2 players hopeful for 1st: doesn't activate, defers to the
+	// general odd-hopeful-contender-group rule instead.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{2}, GibsonizedPlayers: baseCopdata.GibsonizedPlayers},
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+	}), -1)
+
+	// Only the leader is hopeful for 1st (size 1): doesn't activate.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{0}, GibsonizedPlayers: baseCopdata.GibsonizedPlayers},
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+	}), -1)
+
+	// Gibsonized leader: the race is already settled, so this defers to the
+	// general rule rather than treating rank 1's bye as leaving the leader
+	// without a hopeful opponent.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{1}, GibsonizedPlayers: []bool{true, false, false, false, false}},
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+	}), -1)
+
+	// Factor 3 already fired: defers to it entirely.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+		factor3ForcedPairings:    [][2]int{{0, 2}},
+	}), -1)
+
+	// No rank 2 to promote (too few players): doesn't activate.
+	shortPlayerNodes := []int{0, 1}
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              shortPlayerNodes,
+		copdata:                  baseCopdata,
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+	}), -1)
+}
+
+// TestComputeDisallowedLeaderOpponentDefersToForcedLeaderVsThird verifies
+// that computeDisallowedLeaderOpponent steps aside entirely - rather than
+// also barring the same edge - whenever computeForcedLeaderVsThird's
+// size-2 exception applies.
+func TestComputeDisallowedLeaderOpponentDefersToForcedLeaderVsThird(t *testing.T) {
+	is := is.New(t)
+
+	playerNodes := []int{0, 1, 2, 3, 4}
+	copdata := &copdatapkg.PrecompData{
+		LowestPossibleHopeNth: []int{1},
+		GibsonizedPlayers:     []bool{false, false, false, false, false},
+	}
+	is.Equal(computeDisallowedLeaderOpponent(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  copdata,
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
+		forcedLeaderVsThird:      playerNodes[2],
+	}), -1)
+}
+
+// TestForcedLeaderVsThirdConstraint verifies the "L3" constraint policy
+// itself: once forcedLeaderVsThird is set, it forces exactly the leader-vs-3rd
+// pairing and nothing else.
+func TestForcedLeaderVsThirdConstraint(t *testing.T) {
+	is := is.New(t)
+
+	var l3Policy constraintPolicy
+	for _, cp := range constraintPolicies {
+		if cp.name == "L3" {
+			l3Policy = cp
+		}
+	}
+	is.True(l3Policy.handler != nil)
+
+	playerNodes := []int{10, 11, 12, 13, 14}
+
+	forced, disallowed := l3Policy.handler(&policyArgs{playerNodes: playerNodes, forcedLeaderVsThird: -1})
+	is.Equal(len(forced), 0)
+	is.Equal(len(disallowed), 0)
+
+	forced, disallowed = l3Policy.handler(&policyArgs{playerNodes: playerNodes, forcedLeaderVsThird: playerNodes[2]})
+	is.Equal(len(disallowed), 0)
+	is.Equal(len(forced), 1)
+	is.Equal(forced[0], [2]int{playerNodes[0], playerNodes[2]})
+}
+
+// TestCCWeightExemptsForcedLeaderVsThird verifies the CC weight policy
+// returns 0 - not a major penalty - for the edge that L3 forces, even
+// though it would otherwise fall inside the fourth-quarter hopeful-vs-
+// non-hopeful cash-contention major penalty.
+func TestCCWeightExemptsForcedLeaderVsThird(t *testing.T) {
+	is := is.New(t)
+
+	var ccPolicy weightPolicy
+	for _, wp := range weightPolicies {
+		if wp.name == "CC" {
+			ccPolicy = wp
+		}
+	}
+	is.True(ccPolicy.handler != nil)
+
+	playerNodes := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	pargs := &policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{GibsonizedPlayers: make([]bool, len(playerNodes))},
+		req:                      &pb.PairRequest{Rounds: 10},
+		roundPairingsRemaining:   1, // last quarter
+		disallowedLeaderOpponent: -1,
+		forcedLeaderVsThird:      playerNodes[2],
+	}
+	is.Equal(ccPolicy.handler(pargs, 0, 2), int64(0))
 }
