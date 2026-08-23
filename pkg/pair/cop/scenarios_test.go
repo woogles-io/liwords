@@ -759,6 +759,88 @@ func TestScenario17_GibsonFinalRoundByeGoesToContender(t *testing.T) {
 	is.Equal(resp.Pairings[6], int32(6))
 }
 
+// addContenderParityRoundsGibsonEvenFinalRoundKeepingParity extends
+// addContenderParityRoundsGibsonEven with a different round 7 than
+// addContenderParityRoundsGibsonEvenFinalRound (Scenario 17's): P7, who
+// would otherwise fall out of contention with only 1 round left (see
+// Scenario 17's log), instead wins its round 7 game, keeping all 6
+// non-Gibsonized players from addContenderParityRoundsGibsonEven's raw
+// contender group naturally hopeful to cash with the final round still
+// ahead - reproducing Scenario 14's "even, no promotion needed" shape one
+// round later, for Scenario 18.
+func addContenderParityRoundsGibsonEvenFinalRoundKeepingParity(req *pb.PairRequest) {
+	addContenderParityRoundsGibsonEven(req)
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "500 390 380 370 400 400 400 430 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// addContenderParityRoundsGibsonOddFinalRound extends
+// addContenderParityRoundsGibsonOdd with one more round (round 7 of 8, same
+// pattern as round 5: the strong quartet keeps beating the weak quartet,
+// filler keeps self-byeing), leaving exactly 1 round remaining - the final
+// round - for Scenario 19.
+func addContenderParityRoundsGibsonOddFinalRound(req *pb.PairRequest) {
+	addContenderParityRoundsGibsonOdd(req)
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3 8 9 10 11 12 13 14 15 16")
+	pairtestutils.AddRoundResultsStr(req, "460 450 440 430 400 400 400 400 -50 -50 -50 -50 -50 -50 -50 -50 -50")
+}
+
+// Scenario 18: same setup as Scenario 14 (even contender group, 1st
+// Gibsonized, with TopDownByes), but with only the final round remaining
+// instead of 2 - via addContenderParityRoundsGibsonEvenFinalRoundKeepingParity
+// rather than Scenario 17's addContenderParityRoundsGibsonEvenFinalRound, so
+// the raw contender group stays a naturally-hopeful, no-promotion-needed 6
+// (Scenario 14's shape) instead of shrinking to Scenario 17's 5-plus-promotion.
+// adjustLowestPossibleHopeCasherForBye is read unconditionally regardless of
+// round count (see its doc comment), so the same boundary-extension fix from
+// Scenario 14 must still fire here, one round later, even though CC's
+// fourth-quarter hopeful-grouping rule itself is disabled in the final round.
+func TestScenario18_ContenderParityEvenGibsonizedWithTDBFinalRound(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsGibsonEvenFinalRoundKeepingParity(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_18_contender_parity_even_gibson_tdb_final_round.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1"))
+	is.True(strings.Contains(resp.Log, "P0   | 7.0  | 700  | Yes"))
+	is.True(!strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "extending the boundary"))
+}
+
+// Scenario 19: same setup as Scenario 16 (odd contender group, 1st
+// Gibsonized, with TopDownByes - the double-promotion bug's retraction
+// fix), extended by one more round so only the final round remains instead
+// of 2. With only 1 round left, fewer players remain naturally hopeful to
+// cash than in Scenario 16 (3 vs. 7 - a real, expected effect of having one
+// fewer round to close the gap), but the raw count is still odd, so the same
+// promotion-then-retraction shape from Scenario 16 still fires here too.
+func TestScenario19_ContenderParityOddGibsonizedWithTDBFinalRound(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := contenderParityBaseRequest(true)
+	addContenderParityRoundsGibsonOddFinalRound(req)
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_19_contender_parity_odd_gibson_tdb_final_round.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Rounds Remaining: 1"))
+	is.True(strings.Contains(resp.Log, "P0   | 7.0  | 460  | Yes"))
+	// With only 1 round left (vs. 2 in Scenario 16), fewer players remain
+	// naturally hopeful to cash - here 3, down from Scenario 16's 7 - but the
+	// group is still odd, so the same promotion/retraction shape still fires.
+	is.True(strings.Contains(resp.Log, "Odd number of non-Gibsonized hopeful-to-cash players (3)"))
+	is.True(strings.Contains(resp.Log, "Contender group parity"))
+	is.True(strings.Contains(resp.Log, "retracting the earlier promotion"))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
@@ -987,6 +1069,101 @@ func TestScenarioMultiRound_July4th2026(t *testing.T) {
 			resp := cop.COPPair(req)
 			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
+			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+
+			pairings := make([]int32, numPlayers)
+			copy(pairings, resp.Pairings)
+			allPairings = append(allPairings, &pb.RoundPairings{Pairings: pairings})
+			allResults = append(allResults, makeRandomResults(pairings, numPlayers, rng, spreadsDist))
+		}
+	}
+}
+
+// TestScenarioMultiRound_July4th2026RandomStart is identical to
+// TestScenarioMultiRound_July4th2026 except that rounds 1-22 are paired
+// randomly (PAIR_RANDOM) instead of Initial Fontes + COP - simulating a
+// standings-blind start - with real COP pairing only kicking in at round 23.
+// Run with: COP_SCENARIOS=1 go test -run TestScenarioMultiRound_July4th2026RandomStart
+func TestScenarioMultiRound_July4th2026RandomStart(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Skipping July 4th 2026 random-start scenario test. Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	spreadsDist := standings.GetScoreDifferences()
+
+	const numRuns = 10
+
+	numPlayers := 53
+	totalRounds := 28
+	randomRounds := 22
+
+	names := []string{
+		"Wellington Jighere", "Nigel Richards", "Will Anderson", "Dave Wiegand",
+		"Adam Logan", "Josh Sokol", "Eta Karo", "Matthew Tunnicliffe",
+		"Joshua Castellano", "Enoch Nwali", "Matthew O'Connor", "Rob Robinsky",
+		"Austin Shin", "Kevin Fraley", "Noah Slatkoff", "Jason Keller",
+		"Thomas Reinke", "Edgar Odongkara", "Sammy Okosagah", "Charles Reinke",
+		"Lukeman Owolabi", "Brian Po", "Olawale Fashina", "Chukwudi Ehibudu",
+		"Rasheed Balogun", "Samuel Anikoh", "Chris Lipe", "Robert Linn",
+		"Jason Carney", "Joel Wapnick", "Jared Robinson", "Laurie Cohen",
+		"Anthony Ikolo", "Oshevire Avwenagha", "Amit Chakrabarti", "Mohammad Sulaiman",
+		"Scott Jackson", "Marlon Hill", "Akeem Adekunle", "Dipo Akanbi",
+		"Jason Ubeika", "Niel Gan", "Bharath Balakrishnan", "Femi Awowade",
+		"Mark Francillon", "Daniel Blake", "Osikhena Ojior", "Greg Harper",
+		"Zachary Dang", "Collins Okafor", "Tijan Jeng", "Ayotunde Adeyeri",
+		"Fidelis Olotu",
+	}
+	classes := make([]int32, numPlayers)
+
+	for run := 0; run < numRuns; run++ {
+		seed := time.Now().UnixNano()
+		rng := rand.New(rand.NewSource(uint64(seed)))
+		runDir := fmt.Sprintf("july4th2026_random_start_run_%02d", run+1)
+
+		req := &pb.PairRequest{
+			PairMethod:                 pb.PairMethod_COP,
+			PlayerNames:                names,
+			PlayerClasses:              classes,
+			ClassPrizes:                []int32{2},
+			GibsonSpread:               scenarioGibsonSpread,
+			ControlLossThreshold:       0.30,
+			HopefulnessThreshold:       scenarioHopefulness,
+			AllPlayers:                 int32(numPlayers),
+			ValidPlayers:               int32(numPlayers),
+			Rounds:                     int32(totalRounds),
+			PlacePrizes:                10,
+			DivisionSims:               scenarioDivisionSims,
+			ControlLossSims:            scenarioControlLossSims,
+			TopDownByes:                true,
+			ControlLossActivationRound: 24,
+			AllowRepeatByes:            false,
+			Seed:                       seed,
+		}
+
+		allPairings := []*pb.RoundPairings{}
+		allResults := []*pb.RoundResults{}
+
+		// Rounds 1-22 are paired randomly; rounds 23-28 use COP, with real-tournament timing.
+		for round := 1; round <= totalRounds; round++ {
+			numRes := numResultsForRound(round, len(allResults))
+
+			if round <= randomRounds {
+				req.PairMethod = pb.PairMethod_PAIR_RANDOM
+			} else {
+				req.PairMethod = pb.PairMethod_COP
+			}
+			req.DivisionPairings = allPairings
+			req.DivisionResults = allResults[:numRes]
+
+			if round == totalRounds {
+				req.GibsonSpread = scenarioLastRoundGibsonSpread
+			} else {
+				req.GibsonSpread = scenarioGibsonSpread
+			}
+
+			resp := cop.COPPair(req)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+			fmt.Printf("July 4th 2026 random-start run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
 
 			pairings := make([]int32, numPlayers)

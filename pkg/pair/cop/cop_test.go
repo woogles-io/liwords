@@ -2218,3 +2218,107 @@ func TestComputeDisallowedLeaderOpponentGibsonizedLeader(t *testing.T) {
 	}
 	is.Equal(computeDisallowedLeaderOpponent(nonLeaderGibsonized), -1)
 }
+
+// TestComputeTop4LockActive covers the top-4-must-play-each-other policy:
+// with 2 rounds remaining, Factor 3 not applying, and exactly 4 hopeful
+// contenders for 1st (LowestPossibleHopeNth[0] == 3), the policy should
+// activate - and should stay off whenever any of those conditions doesn't
+// hold, or when the bye lands inside the top 4 and leaves only 3 of them to
+// pair off.
+func TestComputeTop4LockActive(t *testing.T) {
+	is := is.New(t)
+
+	playerNodes := []int{0, 1, 2, 3, 4, 5, 6}
+	baseCopdata := &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{3}}
+
+	// All conditions met: activates.
+	is.True(computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		roundsRemaining:          2,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}))
+
+	// Factor 3 already fired: defers to it, doesn't also activate.
+	is.True(!computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		roundsRemaining:          2,
+		factor3ForcedPairings:    [][2]int{{0, 3}},
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}))
+
+	// Not the 2nd-to-last round: doesn't activate.
+	is.True(!computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		roundsRemaining:          3,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}))
+
+	// Group of hopeful-for-1st contenders isn't exactly 4 (here, 3): doesn't activate.
+	is.True(!computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{2}},
+		roundsRemaining:          2,
+		topDownByePlayer:         -1,
+		forcedContenderByePlayer: -1,
+	}))
+
+	// The bye lands on one of the top 4 (rank 3), leaving only 3 of them to
+	// pair off: doesn't activate.
+	is.True(!computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		roundsRemaining:          2,
+		topDownByePlayer:         playerNodes[3],
+		forcedContenderByePlayer: -1,
+	}))
+
+	// The bye lands outside the top 4 (rank 4): still activates.
+	is.True(computeTop4LockActive(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  baseCopdata,
+		roundsRemaining:          2,
+		topDownByePlayer:         playerNodes[4],
+		forcedContenderByePlayer: -1,
+	}))
+}
+
+// TestTop4LockConstraint verifies the "T4" constraint policy itself: once
+// top4LockActive is set, it disallows every pairing between one of the top 4
+// (ranks 0-3) and anyone outside that group, without forcing any specific
+// matchup among the four.
+func TestTop4LockConstraint(t *testing.T) {
+	is := is.New(t)
+
+	var t4Policy constraintPolicy
+	for _, cp := range constraintPolicies {
+		if cp.name == "T4" {
+			t4Policy = cp
+		}
+	}
+	is.True(t4Policy.handler != nil)
+
+	playerNodes := []int{10, 11, 12, 13, 14, 15, 16}
+
+	forced, disallowed := t4Policy.handler(&policyArgs{playerNodes: playerNodes, top4LockActive: false})
+	is.Equal(len(forced), 0)
+	is.Equal(len(disallowed), 0)
+
+	forced, disallowed = t4Policy.handler(&policyArgs{playerNodes: playerNodes, top4LockActive: true})
+	is.Equal(len(forced), 0)
+	wantDisallowed := map[[2]int]bool{}
+	for pri := 0; pri <= 3; pri++ {
+		for prj := 4; prj < len(playerNodes); prj++ {
+			wantDisallowed[[2]int{playerNodes[pri], playerNodes[prj]}] = true
+		}
+	}
+	is.Equal(len(disallowed), len(wantDisallowed))
+	for _, dp := range disallowed {
+		is.True(wantDisallowed[dp])
+	}
+}

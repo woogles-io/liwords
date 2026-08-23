@@ -85,6 +85,11 @@ type policyArgs struct {
 	// otherwise be in direct conflict this round, or -1 if there's no such
 	// clash. It is computed once (see computeForcedContenderBye).
 	forcedContenderByePlayer int
+	// top4LockActive reports whether the top-4-must-play-each-other policy
+	// (see computeTop4LockActive and the "T4" constraint policy) is in
+	// effect this round: exactly 4 players are still hopeful contenders for
+	// 1st in the 2nd-to-last round, and Factor 3 didn't fire.
+	top4LockActive bool
 }
 
 // computeDisallowedLeaderOpponent implements the odd-hopeful-contender-group
@@ -179,6 +184,62 @@ func computeDisallowedLeaderOpponent(pargs *policyArgs) int {
 		return -1
 	}
 	return pargs.playerNodes[extraRankIdx]
+}
+
+// computeTop4LockActive implements the top-4-must-play-each-other policy: in
+// the 2nd-to-last round, if exactly 4 players are still hopeful contenders
+// for 1st (LowestPossibleHopeNth[0] == 3) and Factor 3 didn't fire, ranks
+// 0-3 are barred from playing anyone outside that group of four (see the
+// "T4" constraint policy below), forcing all four to play each other this
+// round. Which specific matchups result - 1v2 & 3v4, 1v3 & 2v4, or 1v4 &
+// 2v3 - is left entirely to the normal weight policies (RD, repeats, etc.)
+// to decide; this only restricts the pool they choose from.
+//
+// Like computeDisallowedLeaderOpponent, this defers entirely to Factor 3
+// when it fires: F3 already constrains the top-6 pairings (which include
+// all of the top 4), so layering this rule on top would overconstrain the
+// matching.
+//
+// This must run after computeTopDownByePlayer and computeForcedContenderBye
+// (both already computed by this point - see the call order in
+// copMinWeightMatching), so that a bye landing inside the top 4 - leaving
+// only 3 of them to pair off - can be detected and the policy skipped
+// rather than forcing an impossible 3-player group.
+func computeTop4LockActive(pargs *policyArgs) bool {
+	if len(pargs.factor3ForcedPairings) > 0 {
+		return false
+	}
+	if pargs.roundsRemaining != 2 {
+		return false
+	}
+	if pargs.copdata.LowestPossibleHopeNth[0] != 3 {
+		return false
+	}
+	numPlayers := len(pargs.playerNodes)
+	// Do not consider the bye as a player in this case
+	if numPlayers > 0 && pargs.playerNodes[numPlayers-1] == pkgstnd.ByePlayerIndex {
+		numPlayers--
+	}
+	if numPlayers < 4 {
+		return false
+	}
+	byeRecipient := -1
+	switch {
+	case pargs.topDownByePlayer >= 0:
+		byeRecipient = pargs.topDownByePlayer
+	case pargs.forcedContenderByePlayer >= 0:
+		byeRecipient = pargs.forcedContenderByePlayer
+	}
+	if byeRecipient >= 0 {
+		for pri := 0; pri <= 3; pri++ {
+			if pargs.playerNodes[pri] == byeRecipient {
+				// One of the top 4 is sitting out this round, leaving only 3
+				// to pair off - locking them together is impossible, so skip.
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // computeTopDownByePlayer determines which player (if any) should receive the
@@ -612,6 +673,26 @@ var constraintPolicies = []constraintPolicy{
 				return [][2]int{}, [][2]int{}
 			}
 			return pargs.factor3ForcedPairings, [][2]int{}
+		},
+	},
+	{
+		// Top 4 lock: in the 2nd-to-last round, when exactly 4 players are
+		// still hopeful contenders for 1st and Factor 3 didn't fire, bar all
+		// of them from playing anyone outside that group - see
+		// computeTop4LockActive.
+		name: "T4",
+		handler: func(pargs *policyArgs) ([][2]int, [][2]int) {
+			if !pargs.top4LockActive {
+				return [][2]int{}, [][2]int{}
+			}
+			disallowedPairings := [][2]int{}
+			numPlayers := len(pargs.playerNodes)
+			for pri := 0; pri <= 3; pri++ {
+				for prj := 4; prj < numPlayers; prj++ {
+					disallowedPairings = append(disallowedPairings, [2]int{pargs.playerNodes[pri], pargs.playerNodes[prj]})
+				}
+			}
+			return [][2]int{}, disallowedPairings
 		},
 	},
 }
@@ -1586,6 +1667,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	pargs.topDownByePlayer = computeTopDownByePlayer(pargs)
 	pargs.forcedContenderByePlayer = computeForcedContenderBye(pargs)
 	pargs.disallowedLeaderOpponent = computeDisallowedLeaderOpponent(pargs)
+	pargs.top4LockActive = computeTop4LockActive(pargs)
 
 	// Now that a specific bye recipient (if any) is known, correct the
 	// contender-group boundary for their removal from the pairing pool - see
@@ -1609,6 +1691,13 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 				"so the bye is forced onto the lowest-ranked contender with the fewest prior byes instead of repeating "+
 				"a bye on someone else\n",
 			req.PlayerNames[pargs.forcedContenderByePlayer]))
+	}
+	if pargs.top4LockActive {
+		logsb.WriteString(fmt.Sprintf(
+			"Top 4 Lock: exactly 4 players are hopeful contenders for 1st (%s, %s, %s, %s) with 2 rounds remaining "+
+				"and Factor 3 did not fire - all 4 are barred from playing outside this group this round\n",
+			req.PlayerNames[playerNodes[0]], req.PlayerNames[playerNodes[1]],
+			req.PlayerNames[playerNodes[2]], req.PlayerNames[playerNodes[3]]))
 	}
 	logsb.WriteString(fmt.Sprintf("Prepaired Round (0 for none): %d\n", pargs.prepairedRoundIdx+1))
 	logsb.WriteString("Destinys Child: ")
