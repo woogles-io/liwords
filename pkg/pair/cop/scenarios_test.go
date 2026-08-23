@@ -841,6 +841,72 @@ func TestScenario19_ContenderParityOddGibsonizedWithTDBFinalRound(t *testing.T) 
 	is.True(strings.Contains(resp.Log, "retracting the earlier promotion"))
 }
 
+// Scenario 20: control loss forces 1st vs 3rd, while the bye lands on 4th -
+// a clearly non-contending player well behind 3rd - via TopDownByes' fewest-
+// byes tiebreak. 1st, 2nd, and 3rd (P0, P1, P2) are close in wins/spread and
+// each already have one prior bye; 4th (P3) has none, so TDB picks P3 for
+// the bye this round even though it's not the CL destiny-child. Checks that
+// CL's forced-pairing-with-1st logic and TB's bye assignment coexist without
+// conflict when the two land on different players.
+func TestScenario20_ControlLossWithByeOnFarBehindFourth(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"},
+		PlayerClasses:              make([]int32, 7),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.05,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 4,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	// Round 1: P0 byes (win). P1 beats P4, P2 beats P5, P6 beats P3.
+	// (P0, P1, P2 each get exactly one prior bye across rounds 1-3, so
+	// TopDownByes' fewest-byes tiebreak skips them this round; P3 never
+	// byes, so it's the pick.)
+	pairtestutils.AddRoundPairingsStr(req, "0 4 5 6 1 2 3")
+	pairtestutils.AddRoundResultsStr(req, "50 455 420 400 400 400 415")
+	// Round 2: P1 byes (win). P0 beats P4, P2 beats P6, P5 beats P3.
+	pairtestutils.AddRoundPairingsStr(req, "4 1 6 5 0 3 2")
+	pairtestutils.AddRoundResultsStr(req, "460 50 430 400 400 415 400")
+	// Round 3: P2 byes (win). P0 beats P5, P1 beats P6, P4 beats P3.
+	pairtestutils.AddRoundPairingsStr(req, "5 6 2 4 3 0 1")
+	pairtestutils.AddRoundResultsStr(req, "460 420 50 400 406 400 400")
+	// Round 4: P4 byes (loss). P0 beats P6, P1 beats P5, P3 beats P2.
+	pairtestutils.AddRoundPairingsStr(req, "6 5 3 2 4 1 0")
+	pairtestutils.AddRoundResultsStr(req, "460 420 400 420 -50 400 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_20_control_loss_bye_on_far_behind_fourth.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// P0, P1, P2 are 1st-3rd, close together; P3 is a clear step behind them
+	// (2 fewer wins, ~100pt worse spread than P2).
+	is.True(strings.Contains(resp.Log, "P0   | 4.0  | 230"))
+	is.True(strings.Contains(resp.Log, "P1   | 4.0  | 145"))
+	is.True(strings.Contains(resp.Log, "P2   | 3.0  | 80"))
+	is.True(strings.Contains(resp.Log, "P3   | 1.0  | -16"))
+	// Control loss flags P2 (0-indexed rank 2, "3rd") - not P1 ("2nd") - as
+	// the destiny child, so CL forces 1st (P0) vs 3rd (P2) instead of 1st vs 2nd.
+	is.True(strings.Contains(resp.Log, "Destinys Child: P2"))
+	is.Equal(resp.Pairings[0], int32(2))
+	is.Equal(resp.Pairings[2], int32(0))
+	// P3 (4th, well behind 3rd) receives the bye via TopDownByes, even though
+	// it isn't the destiny child CL is protecting.
+	is.Equal(resp.Pairings[3], int32(3))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
@@ -1091,7 +1157,7 @@ func TestScenarioMultiRound_July4th2026RandomStart(t *testing.T) {
 	is := is.New(t)
 	spreadsDist := standings.GetScoreDifferences()
 
-	const numRuns = 10
+	const numRuns = 1000000000
 
 	numPlayers := 53
 	totalRounds := 28
@@ -1162,9 +1228,9 @@ func TestScenarioMultiRound_July4th2026RandomStart(t *testing.T) {
 			}
 
 			resp := cop.COPPair(req)
-			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 			fmt.Printf("July 4th 2026 random-start run %d round %d pairings: %v\n", run+1, round, resp.Pairings)
 			writeScenarioLog(t, fmt.Sprintf("%s/round_%02d.log", runDir, round), resp.Log)
+			is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
 
 			pairings := make([]int32, numPlayers)
 			copy(pairings, resp.Pairings)
