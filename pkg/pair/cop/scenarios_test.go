@@ -907,6 +907,161 @@ func TestScenario20_ControlLossWithByeOnFarBehindFourth(t *testing.T) {
 	is.Equal(resp.Pairings[3], int32(3))
 }
 
+// Scenario 21: class prize KOTH with no bye involved. 30 players in 3
+// classes (P0-P1 unclassed cash leaders, P2-P5 class B, P6-P7 class C,
+// P8-P29 unclassed filler), only 2 overall cash prizes, and 2 class prizes
+// each for classes B and C, with 1 round remaining. P0/P1 each have 3 wins
+// (they beat a fresh filler every round); P2, P3, and P4 each have exactly
+// 1 win (P2 over P7, P3 over P5, P4 over P5 again) and otherwise only ties,
+// putting all 3 in a tied "1 win" tier that's a full win behind P0/P1 (so
+// they can't threaten the 2 cash places) but clearly ahead of every filler
+// (who nets 0 or -1). The class KOTH rule force-pairs P2 and P3 - class B's
+// top 2, tied on wins - for the last class B prize; P4 (also tied on wins,
+// but 3rd in class rank via spread) and both class C players are far enough
+// behind their neighbors that nobody else gets pulled in.
+func TestScenario21_ClassPrizeKOTH(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod: pb.PairMethod_COP,
+		PlayerNames: []string{
+			"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9",
+			"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P17", "P18", "P19",
+			"P20", "P21", "P22", "P23", "P24", "P25", "P26", "P27", "P28", "P29",
+		},
+		PlayerClasses: []int32{
+			0, 0, 1, 1, 1, 1, 2, 2, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		ClassPrizes:                []int32{2, 2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 30,
+		ValidPlayers:               30,
+		Rounds:                     4,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 2,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// Round 1: P0 beats P8, P1 beats P9 (both +600); P2 beats P7 (+100), P3
+	// beats P5 (+90) - these double as P7's and P5's 1st losses; P4 and P6
+	// tie fillers; everyone else ties.
+	pairtestutils.AddRoundPairingsStr(req,
+		"8 9 7 5 16 3 17 2 0 1 11 10 13 12 15 14 4 6 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 500 490 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+	// Round 2: P0 beats P10, P1 beats P11 (both +600); P4 beats P5 (+80,
+	// P5's 2nd loss) and P6 beats P7 (+70, P7's 2nd loss) - putting P5 and
+	// P7 3 wins behind their class neighbors (P4 and P6), well past the
+	// 1-round-remaining catch-up threshold regardless of spread; P2 and P3
+	// tie fillers; everyone else ties.
+	pairtestutils.AddRoundPairingsStr(req,
+		"10 11 14 15 5 4 7 6 9 8 0 1 13 12 2 3 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 480 400 470 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+	// Round 3: P0 beats P12, P1 beats P13 (both +600, reaching 3 wins - a
+	// full win ahead of P2/P3/P4's 1 win, so none of them can catch the 2
+	// cash places); everyone else ties.
+	pairtestutils.AddRoundPairingsStr(req,
+		"12 13 3 2 5 4 7 6 9 8 11 10 0 1 15 14 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_21_class_prize_koth.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Cash prize KOTH: P0 and P1 (the only 2 hopeful for the 2 cash places)
+	// play each other.
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	// Class B prize KOTH: P2 and P3 - class B's top 2, tied on wins - are
+	// force-paired for the last of class B's 2 prizes.
+	is.Equal(resp.Pairings[2], int32(3))
+	is.Equal(resp.Pairings[3], int32(2))
+}
+
+// Scenario 22: same setup as Scenario 21, except P2 (class B's top player)
+// receives a top-down bye this round - engineered by giving P0 and P1 a
+// prior bye each (round 1) while P2 (and everyone else still playing) has
+// none. The class prize KOTH rule must now work around P2's bye: instead of
+// dropping the class B forced pairing entirely (the pre-fix behavior), it
+// should skip P2 and force P3 vs P4 - the top 2 and 3 remaining class B
+// players - together instead.
+func TestScenario22_ClassPrizeKOTHWorksAroundTopDownBye(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod: pb.PairMethod_COP,
+		PlayerNames: []string{
+			"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9",
+			"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P17", "P18", "P19",
+			"P20", "P21", "P22", "P23", "P24", "P25", "P26", "P27", "P28", "P29",
+		},
+		PlayerClasses: []int32{
+			0, 0, 1, 1, 1, 1, 2, 2, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		ClassPrizes:                []int32{2, 2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 30,
+		ValidPlayers:               29,
+		RemovedPlayers:             []int32{29},
+		TopDownByes:                true,
+		Rounds:                     4,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 2,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// Round 1: identical to Scenario 21's round 1, except P0 and P1 take
+	// byes (worth the same +600 as their round-1 win there) instead of
+	// playing P8/P9, who tie each other instead. This gives P0 and P1 each
+	// one prior bye, while P2 (and everyone else still playing) has none;
+	// TopDownByes' fewest-byes scan will pick P2 for this round's bye over
+	// P0/P1 as a result.
+	pairtestutils.AddRoundPairingsStr(req,
+		"0 1 7 5 16 3 17 2 9 8 11 10 13 12 15 14 4 6 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"600 600 500 490 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+	// Rounds 2-3: identical to Scenario 21's rounds 2-3.
+	pairtestutils.AddRoundPairingsStr(req,
+		"10 11 14 15 5 4 7 6 9 8 0 1 13 12 2 3 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 480 400 470 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+	pairtestutils.AddRoundPairingsStr(req,
+		"12 13 3 2 5 4 7 6 9 8 11 10 0 1 15 14 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_22_class_prize_koth_with_bye.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Cash prize KOTH: P0 and P1 still play each other.
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	// P2 receives this round's top-down bye instead of playing for the
+	// class B prize.
+	is.Equal(resp.Pairings[2], int32(2))
+	// Class B prize KOTH works around P2's bye: P3 and P4 - the top 2 and 3
+	// remaining class B players - are force-paired instead of P2 and P3.
+	is.Equal(resp.Pairings[3], int32(4))
+	is.Equal(resp.Pairings[4], int32(3))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds

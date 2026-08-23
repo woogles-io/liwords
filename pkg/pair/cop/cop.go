@@ -591,11 +591,19 @@ var constraintPolicies = []constraintPolicy{
 				playerToCatch := -1
 				KOTHCumeGibsonSpread := int(pargs.req.GibsonSpread * 2)
 				for {
-					for ri < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx {
+					// Top-down byes take precedence over class prize KOTH: the bye
+					// recipient (if in this class) has no opponent at all this
+					// round, so they're skipped from the scan entirely - just like
+					// the cash-prize KOTH scan above - and the algorithm works
+					// around them, forcing the next two available class contenders
+					// together instead of dropping the forced pairing altogether.
+					for ri < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[ri]]) != classIdx ||
+						pargs.playerNodes[ri] == pargs.topDownByePlayer) {
 						ri++
 					}
 					rj := ri + 1
-					for rj < numPlayers && int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx {
+					for rj < numPlayers && (int(pargs.req.PlayerClasses[pargs.playerNodes[rj]]) != classIdx ||
+						pargs.playerNodes[rj] == pargs.topDownByePlayer) {
 						rj++
 					}
 					if rj >= numPlayers {
@@ -617,11 +625,7 @@ var constraintPolicies = []constraintPolicy{
 					} else if playerToCatch >= 0 && !pargs.copdata.Standings.CanCatch(1, KOTHCumeGibsonSpread, playerToCatch, rj) {
 						break
 					}
-					// Top-down byes take precedence over class prize KOTH: don't force
-					// a pairing that would conflict with the player selected for the bye.
-					if pargs.playerNodes[ri] != pargs.topDownByePlayer && pargs.playerNodes[rj] != pargs.topDownByePlayer {
-						forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
-					}
+					forcedPairings = append(forcedPairings, [2]int{pargs.playerNodes[ri], pargs.playerNodes[rj]})
 					numPlayersAhead += 2
 					ri = rj + 1
 				}
