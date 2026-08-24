@@ -2376,22 +2376,34 @@ func TestComputeForcedLeaderVsThird(t *testing.T) {
 		forcedContenderByePlayer: -1,
 	}), -1)
 
-	// More than 2 players hopeful for 1st: doesn't activate, defers to the
-	// general odd-hopeful-contender-group rule instead.
+	// Exactly 3 players hopeful for 1st (rank 3 already in the group):
+	// still activates - rank 2's bye leaves the leader without their
+	// strongest hopeful opponent regardless.
 	is.Equal(computeForcedLeaderVsThird(&policyArgs{
 		playerNodes:              playerNodes,
 		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{2}, GibsonizedPlayers: baseCopdata.GibsonizedPlayers},
 		topDownByePlayer:         playerNodes[1],
 		forcedContenderByePlayer: -1,
+	}), playerNodes[2])
+
+	// More than 3 players hopeful for 1st: doesn't activate, defers to the
+	// general odd-hopeful-contender-group rule instead.
+	is.Equal(computeForcedLeaderVsThird(&policyArgs{
+		playerNodes:              playerNodes,
+		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{3}, GibsonizedPlayers: baseCopdata.GibsonizedPlayers},
+		topDownByePlayer:         playerNodes[1],
+		forcedContenderByePlayer: -1,
 	}), -1)
 
-	// Only the leader is hopeful for 1st (size 1): doesn't activate.
+	// Only the leader is hopeful for 1st (size 1): still activates - rank 2
+	// isn't even in the hopeful group, but their bye still leaves the
+	// leader without their strongest available opponent.
 	is.Equal(computeForcedLeaderVsThird(&policyArgs{
 		playerNodes:              playerNodes,
 		copdata:                  &copdatapkg.PrecompData{LowestPossibleHopeNth: []int{0}, GibsonizedPlayers: baseCopdata.GibsonizedPlayers},
 		topDownByePlayer:         playerNodes[1],
 		forcedContenderByePlayer: -1,
-	}), -1)
+	}), playerNodes[2])
 
 	// Gibsonized leader: the race is already settled, so this defers to the
 	// general rule rather than treating rank 1's bye as leaving the leader
