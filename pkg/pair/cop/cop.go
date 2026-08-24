@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"math"
 	"slices"
+	"strconv"
 
 	"golang.org/x/exp/rand"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -1599,7 +1600,7 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 		if !oppInStandings || oppRankIdx < rankIdx {
 			continue
 		}
-		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(divisionPlayerData, rankIdx, oppRankIdx))
+		pairingsLogMx = append(pairingsLogMx, getMatchupStrArray(divisionPlayerData, rankIdx, oppRankIdx, req.PlayerClasses))
 	}
 	copdatapkg.WriteStringDataToLog("Final Pairings", matchupHeader, pairingsLogMx, logsb)
 
@@ -1856,7 +1857,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 
 		for rankIdxI := 0; rankIdxI < numPlayerNodes; rankIdxI++ {
 			for rankIdxJ := rankIdxI + 1; rankIdxJ < numPlayerNodes; rankIdxJ++ {
-				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ)
+				pairingDataRow := getMatchupStrArray(divisionPlayerData, rankIdxI, rankIdxJ, req.PlayerClasses)
 				pairKey := copdatapkg.GetPairingKey(playerNodes[rankIdxI], playerNodes[rankIdxJ])
 				disallowReason, disallowPair := disallowedPairs[pairKey]
 				// Pairing selected bool placeholder
@@ -1985,7 +1986,7 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 		if oppRankIdx < playerRankIdx {
 			continue
 		}
-		pairingsLogMxRow := getMatchupStrArray(divisionPlayerData, playerRankIdx, oppRankIdx)
+		pairingsLogMxRow := getMatchupStrArray(divisionPlayerData, playerRankIdx, oppRankIdx, req.PlayerClasses)
 		playerIdx := playerNodes[playerRankIdx]
 		oppIdx := playerNodes[oppRankIdx]
 		pairingsLogMxRow = append(pairingsLogMxRow, fmt.Sprintf("%d", copdata.PairingCounts[copdatapkg.GetPairingKey(playerIdx, oppIdx)]))
@@ -2069,15 +2070,34 @@ func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, 
 	return allPlayerPairings, nil
 }
 
-func getPlayerRecordStrArray(playerData []string) []string {
+// classLetter renders a player's class (0-indexed: 0 is the top, unprized
+// class) as a letter - 0 is "A", 1 is "B", and so on - or "" if playerIdx is
+// out of range (e.g. the request has no PlayerClasses at all).
+func classLetter(playerClasses []int32, playerIdx int) string {
+	if playerIdx < 0 || playerIdx >= len(playerClasses) {
+		return ""
+	}
+	return string(rune('A') + rune(playerClasses[playerIdx]))
+}
+
+func getPlayerRecordStrArray(playerData []string, playerClasses []int32) []string {
 	if playerData[2] == byePlayerName {
 		return []string{byePlayerName, "", ""}
 	}
-	return []string{fmt.Sprintf("%s (#%s) %s", playerData[0], playerData[1], playerData[2]), playerData[3], playerData[4]}
+	// playerData[1] is the player's 1-indexed number (see
+	// standings.StringDataForPlayer); reuse it to look up their class
+	// rather than threading a separate player index through every caller.
+	classSuffix := ""
+	if playerNum, err := strconv.Atoi(playerData[1]); err == nil {
+		if letter := classLetter(playerClasses, playerNum-1); letter != "" {
+			classSuffix = "/" + letter
+		}
+	}
+	return []string{fmt.Sprintf("%s (#%s%s) %s", playerData[0], playerData[1], classSuffix, playerData[2]), playerData[3], playerData[4]}
 }
 
-func getMatchupStrArray(divisionPlayerData [][]string, i int, j int) []string {
-	return append(getPlayerRecordStrArray(divisionPlayerData[i]), getPlayerRecordStrArray(divisionPlayerData[j])...)
+func getMatchupStrArray(divisionPlayerData [][]string, i int, j int, playerClasses []int32) []string {
+	return append(getPlayerRecordStrArray(divisionPlayerData[i], playerClasses), getPlayerRecordStrArray(divisionPlayerData[j], playerClasses)...)
 }
 
 func setDisallowPairs(disallowedPairs map[string]string, playerIdx int, oppIdx int, policyName string) {

@@ -1062,6 +1062,85 @@ func TestScenario22_ClassPrizeKOTHWorksAroundTopDownBye(t *testing.T) {
 	is.Equal(resp.Pairings[4], int32(3))
 }
 
+// Scenario 23: same setup as Scenario 21/22, except the top-down bye goes
+// to P3 - class B's *second*-highest player, not its top player - engineered
+// by giving P0, P1, and P2 each a prior bye (round 1) while P3 has none.
+// (A 4th, neutral-scored bye for P29 keeps round 1's player count even,
+// since 3 real byes alone would leave an odd number of players to pair up.)
+// P7's round-1 loss, previously delivered by P2, is rerouted through a
+// low-spread filler (P18) so it doesn't depend on P2 being available to
+// play. The class prize KOTH rule must skip P3 (not P2 this time) and force
+// P2 vs P4 - class B's top and third-ranked players - together instead.
+func TestScenario23_ClassPrizeKOTHWorksAroundBothTopDownByeAndSecondRankedByePlayer(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod: pb.PairMethod_COP,
+		PlayerNames: []string{
+			"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9",
+			"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P17", "P18", "P19",
+			"P20", "P21", "P22", "P23", "P24", "P25", "P26", "P27", "P28", "P29",
+		},
+		PlayerClasses: []int32{
+			0, 0, 1, 1, 1, 1, 2, 2, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		ClassPrizes:                []int32{2, 2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 30,
+		ValidPlayers:               29,
+		RemovedPlayers:             []int32{29},
+		TopDownByes:                true,
+		Rounds:                     4,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 2,
+		AllowRepeatByes:            false,
+		Seed:                       1,
+	}
+	// Round 1: P0, P1, and P2 take byes (P2's worth +100, matching its
+	// round-1 win in Scenario 21/22); P29 also takes a neutral (0-score, so
+	// no-op) bye purely to keep the round's player count even. P3 still
+	// beats P5 (+90), unaffected. P18 beats P7 (+30) in place of P2's usual
+	// win over P7 - still enough of a gap (P7 nets 2 full losses across
+	// rounds 1-2, same as Scenario 21/22) to keep P7 well out of catching
+	// P6, its class C neighbor. Everyone else ties.
+	pairtestutils.AddRoundPairingsStr(req,
+		"0 1 2 5 16 3 17 18 9 8 11 10 13 12 15 14 4 6 7 28 21 20 23 22 25 24 27 26 19 29")
+	pairtestutils.AddRoundResultsStr(req,
+		"600 600 100 490 400 400 400 400 400 400 400 400 400 400 400 400 400 400 430 400 400 400 400 400 400 400 400 400 400 0")
+	// Rounds 2-3: identical to Scenario 21/22's rounds 2-3.
+	pairtestutils.AddRoundPairingsStr(req,
+		"10 11 14 15 5 4 7 6 9 8 0 1 13 12 2 3 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 480 400 470 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+	pairtestutils.AddRoundPairingsStr(req,
+		"12 13 3 2 5 4 7 6 9 8 11 10 0 1 15 14 17 16 19 18 21 20 23 22 25 24 27 26 29 28")
+	pairtestutils.AddRoundResultsStr(req,
+		"1000 1000 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_23_class_prize_koth_second_ranked_bye.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Cash prize KOTH: P0 and P1 still play each other.
+	is.Equal(resp.Pairings[0], int32(1))
+	is.Equal(resp.Pairings[1], int32(0))
+	// P3 - class B's 2nd-highest player - receives this round's top-down
+	// bye, ahead of P4 and every filler, since P0, P1, and P2 already have
+	// one each.
+	is.Equal(resp.Pairings[3], int32(3))
+	// Class B prize KOTH works around P3's bye: P2 and P4 - class B's top
+	// and 3rd-ranked players - are force-paired instead of P2 and P3.
+	is.Equal(resp.Pairings[2], int32(4))
+	is.Equal(resp.Pairings[4], int32(2))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
