@@ -1141,6 +1141,136 @@ func TestScenario23_ClassPrizeKOTHWorksAroundBothTopDownByeAndSecondRankedByePla
 	is.Equal(resp.Pairings[4], int32(2))
 }
 
+// Scenario 24: control loss's destiny child would be the exact same player
+// TopDownByes assigns this round's bye to - the real-world conflict fixed by
+// ComputeTopDownByeRankIdx (see cop.go's computeTopDownByePlayer and
+// copdata.go's control-loss search). Identical standings to Scenario 20 (P0,
+// P1, P2 close together, P3 a clear step behind), except the bye history is
+// rearranged so P2 - not P3 - has zero prior byes, making P2 the TopDownByes
+// pick this round. Without skipping P2 in the destiny-child search, CL would
+// bar the leader from everyone except P2, while TB simultaneously bars the
+// leader from playing P2 (who's on bye instead) - leaving the leader with no
+// legal opponent at all (OVERCONSTRAINED, as in the July 4th 2026 random-start
+// run 11 round 26 log). With the fix, the search skips P2 and finds no other
+// candidate close enough to flag (P3 is too far behind to be hopeful for
+// 1st), so control loss simply doesn't fire this round.
+func TestScenario24_ControlLossDestinyChildIsTopDownByeRecipient(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"},
+		PlayerClasses:              make([]int32, 7),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.05,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 4,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	// Round 1: P0 byes (win). P1 beats P4, P2 beats P5, P6 beats P3.
+	pairtestutils.AddRoundPairingsStr(req, "0 4 5 6 1 2 3")
+	pairtestutils.AddRoundResultsStr(req, "50 455 420 400 400 400 415")
+	// Round 2: P1 byes (win). P0 beats P4, P2 beats P6, P5 beats P3.
+	pairtestutils.AddRoundPairingsStr(req, "4 1 6 5 0 3 2")
+	pairtestutils.AddRoundResultsStr(req, "460 50 430 400 400 415 400")
+	// Round 3: P3 byes (loss, -6) instead of P2 (who plays P4 for the same
+	// +50 margin P2's Scenario-20 bye would have given it) - the only change
+	// from Scenario 20's setup, so P2 ends up with zero prior byes and P3
+	// has one, while every player's final win/spread record is unchanged.
+	pairtestutils.AddRoundPairingsStr(req, "5 6 4 3 2 0 1")
+	pairtestutils.AddRoundResultsStr(req, "460 420 450 -6 400 400 400")
+	// Round 4: P4 byes (loss). P0 beats P6, P1 beats P5, P3 beats P2.
+	pairtestutils.AddRoundPairingsStr(req, "6 5 3 2 4 1 0")
+	pairtestutils.AddRoundResultsStr(req, "460 420 400 420 -50 400 400")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_24_control_loss_destiny_child_is_tdb_recipient.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// Same final standings as Scenario 20.
+	is.True(strings.Contains(resp.Log, "P0   | 4.0  | 230"))
+	is.True(strings.Contains(resp.Log, "P1   | 4.0  | 145"))
+	is.True(strings.Contains(resp.Log, "P2   | 3.0  | 80"))
+	is.True(strings.Contains(resp.Log, "P3   | 1.0  | -16"))
+	// The destiny-child search excludes P2 (it's getting this round's bye).
+	is.True(strings.Contains(resp.Log, "Control loss: excluding rank 3 (P2)"))
+	// P3 isn't a genuine contender, so with P2 excluded, control loss finds
+	// nobody to flag.
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	// P2 (not P3, unlike Scenario 20) receives the bye via TopDownByes.
+	is.Equal(resp.Pairings[2], int32(2))
+}
+
+// Scenario 25: top-down byes take precedence over Factor 3 the same way they
+// take precedence over control loss (Scenario 24) - the real-world conflict
+// fixed in computeFactor3ForcedPairings. Same setup as Scenario 7 (12 players
+// close enough in wins/spread to trigger Factor 3's 1v4/2v5/3v6 expansion in
+// the 2nd-to-last round), plus a 13th filler player who absorbs every
+// historical bye, leaving P0-P11 tied at zero prior byes - so TopDownByes'
+// tiebreak (ties go to the higher-ranked player) picks P0, the leader and
+// top of the Factor 3 group itself. Without the fix, Factor 3 would force P0
+// vs P3 while TopDownByes simultaneously forces P0 vs BYE - a direct
+// conflict leaving P0 (and, via the same unpaired-parity cascade as
+// Scenario 24's real-world case, others) with no legal pairing at all
+// (OVERCONSTRAINED, as in the July 4th 2026 random-start run 13 round 27
+// log). With the fix, Factor 3 is canceled outright this round instead.
+func TestScenario25_TopDownByeTakesPrecedenceOverFactor3(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"},
+		PlayerClasses:              make([]int32, 13),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.25,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 13,
+		ValidPlayers:               13,
+		Rounds:                     8,
+		PlacePrizes:                3,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 6,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	// Same 6 rounds as Scenario 7 (AddNDummyRounds pairs P0vP1, P2vP3, P4vP5,
+	// P6vP7, P8vP9, P10vP11; P12, the 13th/odd player, self-byes every round
+	// with a losing score, so it never threatens the standings and absorbs
+	// all 6 rounds' worth of byes, leaving P0-P11 with none).
+	pairtestutils.AddNDummyRounds(req, 6)
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400 -50")
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400 -50")
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400 -50")
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400 -50")
+	pairtestutils.AddRoundResultsStr(req, "420 400 412 400 408 400 404 400 402 400 401 400 -50")
+	// R6: odd players win
+	pairtestutils.AddRoundResultsStr(req, "400 420 400 412 400 408 400 404 400 402 400 401 -50")
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_25_topdownbye_precedence_over_factor3.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Factor 3 skipped: rank 1 (P0) is in the top 6"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	// P0 receives the bye via TopDownByes rather than being forced into a
+	// Factor 3 pairing.
+	is.Equal(resp.Pairings[0], int32(0))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds

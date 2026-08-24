@@ -3,6 +3,7 @@ package copdata
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"golang.org/x/exp/rand"
 
@@ -302,12 +303,82 @@ func (pd *PrecompData) ApplyFactor3Sim(req *pb.PairRequest, finalRanks [][]int, 
 	pd.HopefulToCashPromotedPlayerRankIdx = hrd.HopefulToCashPromotedPlayerRankIdx
 }
 
+// ExtractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
+// (where oppIdx == playerIdx means bye), the count of forced byes, and the prepaired round index.
+// Players not in this map are unpaired and should be assigned by the pairing method.
+func ExtractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
+	prepairedPlayerIndexes := map[int]int{}
+	numForcedByes := 0
+	prepairedRoundIdx := -1
+	numDivPairings := len(req.DivisionPairings)
+	removedPlayersSet := map[int]bool{}
+	for _, idx := range req.RemovedPlayers {
+		removedPlayersSet[int(idx)] = true
+	}
+	if numDivPairings > 0 {
+		if slices.Contains(req.DivisionPairings[numDivPairings-1].Pairings, -1) {
+			prepairedRoundIdx = numDivPairings - 1
+		}
+		if prepairedRoundIdx >= 0 {
+			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
+				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] || removedPlayersSet[int(oppIdx)] {
+					continue
+				}
+				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
+				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
+				if playerIdx == int(oppIdx) {
+					numForcedByes++
+				}
+			}
+		}
+	}
+	return prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx
+}
+
+// ComputeTopDownByeRankIdx determines which player rank (if any) will
+// receive this round's top-down bye: the player with the fewest previous
+// byes, scanning from the top of the standings down (ties go to the
+// higher-ranked player). Returns -1 if top-down byes don't apply this round
+// - either req.TopDownByes is off, or the round doesn't need an
+// added/unforced bye at all (an even number of players once forced-bye
+// prepairs are accounted for).
+//
+// This mirrors cop.go's computeTopDownByePlayer (the "TB" constraint policy,
+// which actually forces the bye pairing) exactly, but is computed here, up
+// front, so GetPrecompData can exclude this rank from the control-loss
+// search below: a player sitting out this round via the bye isn't playing
+// anyone, so they can't be usefully flagged as the destiny child CL forces
+// 1st to play - doing so would conflict with the bye's own forced pairing
+// and leave 1st with no legal opponent at all.
+func ComputeTopDownByeRankIdx(req *pb.PairRequest, standings *pkgstnd.Standings, pairingCounts map[string]int) int {
+	if !req.TopDownByes {
+		return -1
+	}
+	numPlayers := standings.GetNumPlayers()
+	_, numForcedByes, _ := ExtractPrepairedPlayers(req)
+	if (numPlayers-numForcedByes)%2 == 0 {
+		return -1
+	}
+	byeRankIdx := -1
+	leastByes := int(req.Rounds + 1)
+	for rankIdx := 0; rankIdx < numPlayers; rankIdx++ {
+		pi := standings.GetPlayerIndex(rankIdx)
+		pairingKey := GetPairingKey(pi, pkgstnd.ByePlayerIndex)
+		numByes := pairingCounts[pairingKey]
+		if numByes < leastByes {
+			leastByes = numByes
+			byeRankIdx = rankIdx
+		}
+	}
+	return byeRankIdx
+}
+
 func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Builder) (*PrecompData, pb.PairError) {
 	standings := pkgstnd.CreateInitialStandings(req)
 
 	// Use the initial results to get a tighter bound on the maximum factor
 	initialFactor := pkgstnd.GetRoundsRemaining(req)
-	initialSimResults, pairErr := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, -1, nil)
+	initialSimResults, pairErr := standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), initialFactor, -1, nil, -1)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -354,7 +425,7 @@ func GetPrecompData(req *pb.PairRequest, copRand *rand.Rand, logsb *strings.Buil
 	// Only re-sim with the improved bound if it actually makes the max factor smaller
 	// for the highest gibson group.
 	if maxFactor*2 < numPlayersInhighestNongibsonGroup {
-		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), maxFactor, -1, initialSimResults.SegmentRoundFactors)
+		improvedFactorSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.DivisionSims), maxFactor, -1, initialSimResults.SegmentRoundFactors, -1)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}
@@ -416,7 +487,14 @@ completePairingsLoop:
 	var vsFirstWins map[int]int
 	destinysChild := -1
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 && maxFactor > 0 {
-		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil)
+		topDownByeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts)
+		if topDownByeRankIdx >= 0 {
+			logsb.WriteString(fmt.Sprintf(
+				"Control loss: excluding rank %d (%s) from the destiny-child search - top-down byes will assign them this round's bye, so they aren't playing anyone and can't be usefully forced to play 1st\n",
+				topDownByeRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(topDownByeRankIdx)],
+			))
+		}
+		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil, topDownByeRankIdx)
 		if pairErr != pb.PairError_SUCCESS {
 			return nil, pairErr
 		}

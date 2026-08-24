@@ -242,7 +242,15 @@ func (standings *Standings) Sort() {
 }
 
 // Assumes the standings are already sorted
-func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+// skipRankIdx, when >= 0, is a rank the control-loss search (only active
+// when lowestHopeControlLosser >= 0) must never select as the destiny
+// child - namely, whoever is receiving this round's top-down bye. A player
+// sitting out via the bye isn't playing anyone this round, so forcing 1st
+// to play them (the whole point of flagging a destiny child) makes no
+// sense, and would conflict with the bye's own forced pairing - see
+// copdata.ComputeTopDownByeRankIdx. Pass -1 when there's no such player, or
+// when lowestHopeControlLosser < 0 (skipRankIdx is ignored in that case).
+func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int, skipRankIdx int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	roundsRemaining := GetRoundsRemaining(req)
 	evenerPlayerAdded := false
@@ -260,7 +268,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 		evenerPlayerAdded = true
 	}
 
-	simResults, pairErr := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, lowestHopeControlLosser, prevSegmentRoundFactors)
+	simResults, pairErr := standings.evenedSimFactorPairAll(req, copRand, sims, maxFactor, lowestHopeControlLosser, prevSegmentRoundFactors, skipRankIdx)
 	if pairErr != pb.PairError_SUCCESS {
 		return nil, pairErr
 	}
@@ -277,7 +285,7 @@ func (standings *Standings) SimFactorPairAll(req *pb.PairRequest, copRand *rand.
 	return simResults, pb.PairError_SUCCESS
 }
 
-func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int) (*SimResults, pb.PairError) {
+func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand *rand.Rand, sims int, maxFactor int, lowestHopeControlLosser int, prevSegmentRoundFactors []int, skipRankIdx int) (*SimResults, pb.PairError) {
 	numPlayers := standings.GetNumPlayers()
 	results := make([][]int, numPlayers)
 	for i := range results {
@@ -383,6 +391,14 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		vsFirstWins = map[int]int{}
 		controlSimStopTime := time.Now().UnixNano() + int64(controlSimTimeLimit)*1e9
 		for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
+			if rankIdx == skipRankIdx {
+				// This rank is sitting out this round via the top-down bye -
+				// see the skipRankIdx doc comment on SimFactorPairAll. Never
+				// flag them as the destiny child; keep searching further
+				// down for a genuine control-loss candidate who's actually
+				// playing this round.
+				continue
+			}
 			vsFirstTournamentWins, vsFactorPairTournamentWins, newSims, pairErr := standings.evaluatePlayerControlLoss(
 				copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
 				vsFirstWins, allControlLosses,
@@ -417,6 +433,9 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 		if highestControlLossRankIdx == -1 && roundsRemaining == 2 {
 			lowestFullWinRankIdx := -1
 			for rankIdx := 1; rankIdx <= lowestHopeControlLosser; rankIdx++ {
+				if rankIdx == skipRankIdx {
+					continue
+				}
 				vsFirst, vsFactorPair, _, pairErr := standings.evaluatePlayerControlLoss(
 					copRand, sims, roundsRemaining, maxFactor, pairings, rankIdx, controlSimStopTime,
 					vsFirstWins, allControlLosses,
@@ -430,12 +449,27 @@ func (standings *Standings) evenedSimFactorPairAll(req *pb.PairRequest, copRand 
 					break
 				}
 			}
-			if lowestFullWinRankIdx != -1 && lowestFullWinRankIdx+1 <= lowestHopeControlLosser {
+			if lowestFullWinRankIdx != -1 {
 				bRankIdx := lowestFullWinRankIdx + 1
-				if vsFirstWins[bRankIdx] > allControlLosses[bRankIdx] {
-					highestControlLossRankIdx = bRankIdx
-					controlLossViaLockFallback = true
-					controlLossLockRunEndRankIdx = lowestFullWinRankIdx
+				// Also skip the bye recipient here: they can't be the
+				// control-loss candidate immediately below the locked run
+				// either, for the same reason as above.
+				for bRankIdx == skipRankIdx {
+					bRankIdx++
+				}
+				if bRankIdx <= lowestHopeControlLosser {
+					vsFirst, vsFactorPair, _, pairErr := standings.evaluatePlayerControlLoss(
+						copRand, sims, roundsRemaining, maxFactor, pairings, bRankIdx, controlSimStopTime,
+						vsFirstWins, allControlLosses,
+					)
+					if pairErr != pb.PairError_SUCCESS {
+						return nil, pairErr
+					}
+					if vsFirst > vsFactorPair {
+						highestControlLossRankIdx = bRankIdx
+						controlLossViaLockFallback = true
+						controlLossLockRunEndRankIdx = lowestFullWinRankIdx
+					}
 				}
 			}
 		}

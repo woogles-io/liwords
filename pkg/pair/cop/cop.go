@@ -316,24 +316,18 @@ func computeTop4LockActive(pargs *policyArgs) bool {
 // if top-down byes don't apply in this round. Top-down byes take precedence
 // over the Gibson bye (see the "GB" policy below), so this does not defer to
 // pargs.gibsonGetsBye.
+//
+// This delegates to copdatapkg.ComputeTopDownByeRankIdx, which GetPrecompData
+// also calls (before this function ever runs) so the control-loss search can
+// exclude this same rank from being flagged as the destiny child - see that
+// function's doc comment. Both call sites must agree on who gets the bye, so
+// the computation lives in one place.
 func computeTopDownByePlayer(pargs *policyArgs) int {
-	numPlayers := len(pargs.playerNodes)
-	if !pargs.req.TopDownByes || pargs.playerNodes[numPlayers-1] != pkgstnd.ByePlayerIndex {
+	byeRankIdx := copdatapkg.ComputeTopDownByeRankIdx(pargs.req, pargs.copdata.Standings, pargs.copdata.PairingCounts)
+	if byeRankIdx < 0 {
 		return -1
 	}
-	byePlayer := -1
-	leastByes := int(pargs.req.Rounds + 1)
-	// Use numPlayers - 1 to exclude the bye
-	for playerRankIdx := range numPlayers - 1 {
-		pi := pargs.playerNodes[playerRankIdx]
-		pairingKey := copdatapkg.GetPairingKey(pi, pkgstnd.ByePlayerIndex)
-		numByes := pargs.copdata.PairingCounts[pairingKey]
-		if numByes < leastByes {
-			leastByes = numByes
-			byePlayer = pi
-		}
-	}
-	return byePlayer
+	return pargs.copdata.Standings.GetPlayerIndex(byeRankIdx)
 }
 
 // computeForcedContenderBye detects when PC (which major-penalizes giving a
@@ -1254,6 +1248,21 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		return nil, nil, 0
 	}
 
+	// Top-down byes take precedence over Factor 3: if this round's bye
+	// recipient is one of the top 6 (the group F3 forces into 0v3/1v4/2v5
+	// pairings), F3 can't fire at all - the bye recipient can't be forced
+	// into one of those pairings (they're not playing anyone this round),
+	// and reshaping the structure around them would no longer be the
+	// 1v4/2v5/3v6 expansion the control-loss/hopefulness checks below
+	// actually simulated, so cancel F3 outright rather than patch around it.
+	if topDownByeRankIdx := copdatapkg.ComputeTopDownByeRankIdx(req, copdata.Standings, copdata.PairingCounts); topDownByeRankIdx >= 0 && topDownByeRankIdx < 6 {
+		logsb.WriteString(fmt.Sprintf(
+			"Factor 3 skipped: rank %d (%s) is in the top 6 and would receive this round's top-down bye, which takes precedence over Factor 3\n",
+			topDownByeRankIdx+1, req.PlayerNames[copdata.Standings.GetPlayerIndex(topDownByeRankIdx)],
+		))
+		return nil, nil, 0
+	}
+
 	// Build factor-3 pairings for the penultimate round (ranks 0v3, 1v4, 2v5,
 	// then factor M/2 for the remaining players) plus KOTH for the final round.
 	// pairingsLen is rounded up to even so simRound can always iterate in pairs
@@ -1419,38 +1428,6 @@ func computeFactor3ForcedPairings(req *pb.PairRequest, copdata *copdatapkg.Preco
 		req.PlayerNames[p2], req.PlayerNames[p5],
 	))
 	return [][2]int{{p0, p3}, {p1, p4}, {p2, p5}}, factor3FinalRanks, totalSims
-}
-
-// extractPrepairedPlayers returns a map of playerIdx -> oppIdx for all prepaired players
-// (where oppIdx == playerIdx means bye), the count of forced byes, and the prepaired round index.
-// Players not in this map are unpaired and should be assigned by the pairing method.
-func extractPrepairedPlayers(req *pb.PairRequest) (map[int]int, int, int) {
-	prepairedPlayerIndexes := map[int]int{}
-	numForcedByes := 0
-	prepairedRoundIdx := -1
-	numDivPairings := len(req.DivisionPairings)
-	removedPlayersSet := map[int]bool{}
-	for _, idx := range req.RemovedPlayers {
-		removedPlayersSet[int(idx)] = true
-	}
-	if numDivPairings > 0 {
-		if slices.Contains(req.DivisionPairings[numDivPairings-1].Pairings, -1) {
-			prepairedRoundIdx = numDivPairings - 1
-		}
-		if prepairedRoundIdx >= 0 {
-			for playerIdx, oppIdx := range req.DivisionPairings[prepairedRoundIdx].Pairings {
-				if int(oppIdx) < playerIdx || removedPlayersSet[playerIdx] || removedPlayersSet[int(oppIdx)] {
-					continue
-				}
-				prepairedPlayerIndexes[playerIdx] = int(oppIdx)
-				prepairedPlayerIndexes[int(oppIdx)] = playerIdx
-				if playerIdx == int(oppIdx) {
-					numForcedByes++
-				}
-			}
-		}
-	}
-	return prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx
 }
 
 // currentRoundIndex returns the index of the round being paired.
@@ -1704,7 +1681,7 @@ func restoreAutoPairReqFields(req *pb.PairRequest, origMethod pb.PairMethod, ori
 }
 
 func copMinWeightMatching(req *pb.PairRequest, copdata *copdatapkg.PrecompData, factor3ForcedPairings [][2]int, logsb *strings.Builder) ([]int32, *pb.PairResponse) {
-	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := extractPrepairedPlayers(req)
+	prepairedPlayerIndexes, numForcedByes, prepairedRoundIdx := copdatapkg.ExtractPrepairedPlayers(req)
 
 	for playerIdx, oppIdx := range prepairedPlayerIndexes {
 		if oppIdx < playerIdx {
