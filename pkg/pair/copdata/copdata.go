@@ -488,39 +488,53 @@ completePairingsLoop:
 	destinysChild := -1
 	if numCompletePairings >= int(req.ControlLossActivationRound) && !improvedFactorSimResults.GibsonizedPlayers[0] && initialFactor > 1 && maxFactor > 0 {
 		topDownByeRankIdx := ComputeTopDownByeRankIdx(req, standings, pairingCounts)
-		if topDownByeRankIdx >= 0 {
+		if topDownByeRankIdx == 0 {
+			// The leader themselves is receiving this round's top-down bye,
+			// so they aren't playing anyone at all this round - control
+			// loss's entire premise (force the leader to play a specific
+			// opponent) doesn't apply regardless of who the destiny child
+			// would otherwise be. Top-down byes take precedence: skip
+			// control loss outright rather than let CL later disallow every
+			// pairing for the leader (who TB has already forced onto BYE).
 			logsb.WriteString(fmt.Sprintf(
-				"Control loss: excluding rank %d (%s) from the destiny-child search - top-down byes will assign them this round's bye, so they aren't playing anyone and can't be usefully forced to play 1st\n",
-				topDownByeRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(topDownByeRankIdx)],
+				"Control loss skipped: rank 1 (%s) is receiving this round's top-down bye, so there's no opponent to force them to play\n",
+				req.PlayerNames[standings.GetPlayerIndex(0)],
 			))
-		}
-		controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil, topDownByeRankIdx)
-		if pairErr != pb.PairError_SUCCESS {
-			return nil, pairErr
-		}
-		allControlLosses = controlLossSimResults.AllControlLosses
-		vsFirstWins = controlLossSimResults.VsFirstWins
-		if controlLossSimResults.HighestControlLossRankIdx >= 0 {
-			destinysChild = controlLossSimResults.HighestControlLossRankIdx
-			if controlLossSimResults.ControlLossViaLockFallback {
-				lockEndRankIdx := controlLossSimResults.ControlLossLockRunEndRankIdx
-				lockedNames := make([]string, 0, lockEndRankIdx)
-				for rankIdx := 1; rankIdx <= lockEndRankIdx; rankIdx++ {
-					lockedNames = append(lockedNames, req.PlayerNames[standings.GetPlayerIndex(rankIdx)])
-				}
-				lockedRanks, be := "rank 2", "is"
-				if lockEndRankIdx > 1 {
-					lockedRanks, be = fmt.Sprintf("ranks 2-%d", lockEndRankIdx+1), "are"
-				}
-				childIdx := standings.GetPlayerIndex(destinysChild)
+		} else {
+			if topDownByeRankIdx >= 0 {
 				logsb.WriteString(fmt.Sprintf(
-					"Control loss: rank %d (%s) flagged via the 2-rounds-remaining lock-fallback rule, not the normal threshold check - %s (%s) %s already locked to win outright regardless of opponent (vsFirst=vsFactorPair=%d/%d sims), so rank %d is the last player whose destiny is still undecided; vs1st=%d > vsFactor=%d confirms playing 1st still helps them\n",
-					destinysChild+1, req.PlayerNames[childIdx],
-					lockedRanks, strings.Join(lockedNames, ", "), be,
-					vsFirstWins[lockEndRankIdx], int(req.ControlLossSims),
-					destinysChild+1,
-					vsFirstWins[destinysChild], allControlLosses[destinysChild],
+					"Control loss: excluding rank %d (%s) from the destiny-child search - top-down byes will assign them this round's bye, so they aren't playing anyone and can't be usefully forced to play 1st\n",
+					topDownByeRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(topDownByeRankIdx)],
 				))
+			}
+			controlLossSimResults, pairErr = standings.SimFactorPairAll(req, copRand, int(req.ControlLossSims), maxFactor, lowestPossibleHopeNth[0], nil, topDownByeRankIdx)
+			if pairErr != pb.PairError_SUCCESS {
+				return nil, pairErr
+			}
+			allControlLosses = controlLossSimResults.AllControlLosses
+			vsFirstWins = controlLossSimResults.VsFirstWins
+			if controlLossSimResults.HighestControlLossRankIdx >= 0 {
+				destinysChild = controlLossSimResults.HighestControlLossRankIdx
+				if controlLossSimResults.ControlLossViaLockFallback {
+					lockEndRankIdx := controlLossSimResults.ControlLossLockRunEndRankIdx
+					lockedNames := make([]string, 0, lockEndRankIdx)
+					for rankIdx := 1; rankIdx <= lockEndRankIdx; rankIdx++ {
+						lockedNames = append(lockedNames, req.PlayerNames[standings.GetPlayerIndex(rankIdx)])
+					}
+					lockedRanks, be := "rank 2", "is"
+					if lockEndRankIdx > 1 {
+						lockedRanks, be = fmt.Sprintf("ranks 2-%d", lockEndRankIdx+1), "are"
+					}
+					childIdx := standings.GetPlayerIndex(destinysChild)
+					logsb.WriteString(fmt.Sprintf(
+						"Control loss: rank %d (%s) flagged via the 2-rounds-remaining lock-fallback rule, not the normal threshold check - %s (%s) %s already locked to win outright regardless of opponent (vsFirst=vsFactorPair=%d/%d sims), so rank %d is the last player whose destiny is still undecided; vs1st=%d > vsFactor=%d confirms playing 1st still helps them\n",
+						destinysChild+1, req.PlayerNames[childIdx],
+						lockedRanks, strings.Join(lockedNames, ", "), be,
+						vsFirstWins[lockEndRankIdx], int(req.ControlLossSims),
+						destinysChild+1,
+						vsFirstWins[destinysChild], allControlLosses[destinysChild],
+					))
+				}
 			}
 		}
 	}

@@ -1271,6 +1271,62 @@ func TestScenario25_TopDownByeTakesPrecedenceOverFactor3(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(0))
 }
 
+// Scenario 26: the leader themselves (rank 0) is this round's top-down bye
+// recipient - the real-world conflict fixed by skipping control loss
+// entirely in that case. P0, P2, and P4 all finish 4-0 (P0 with the best
+// spread) and never bye across 4 rounds (AddNDummyRounds always pairs them
+// against P1/P3/P5), while P6 - the odd 7th player - self-byes every round
+// instead, so going into round 5, P0 is tied with everyone but P6 at zero
+// prior byes; TopDownByes' tiebreak (ties go to the higher-ranked player)
+// picks P0. Without the fix, control loss would still try to force P0 to
+// play a specific opponent (P2 or P4) while TopDownByes simultaneously
+// forces P0 vs BYE - leaving P0 with no legal pairing at all
+// (OVERCONSTRAINED, as in the July 4th 2026 random-start run 175 round 25
+// log, where the leader Edgar Odongkara was the bye recipient). With the
+// fix, control loss is skipped outright since the leader isn't playing
+// anyone this round.
+func TestScenario26_TopDownByeRecipientIsTheLeader(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := &pb.PairRequest{
+		PairMethod:                 pb.PairMethod_COP,
+		PlayerNames:                []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6"},
+		PlayerClasses:              make([]int32, 7),
+		ClassPrizes:                []int32{2},
+		GibsonSpread:               scenarioGibsonSpread,
+		ControlLossThreshold:       0.05,
+		HopefulnessThreshold:       scenarioHopefulness,
+		AllPlayers:                 7,
+		ValidPlayers:               7,
+		Rounds:                     8,
+		PlacePrizes:                2,
+		DivisionSims:               scenarioDivisionSims,
+		ControlLossSims:            scenarioControlLossSims,
+		ControlLossActivationRound: 4,
+		AllowRepeatByes:            false,
+		TopDownByes:                true,
+		Seed:                       1,
+	}
+	// AddNDummyRounds pairs P0vP1, P2vP3, P4vP5 every round; P6 (the odd 7th
+	// player) self-byes every round instead, so only P6 ever accumulates a
+	// bye across rounds 1-4 - P0, P2, and P4 (the eventual top 3) never do.
+	pairtestutils.AddNDummyRounds(req, 4)
+	for range 4 {
+		pairtestutils.AddRoundResultsStr(req, "420 400 410 400 405 400 -50")
+	}
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_26_topdownbye_recipient_is_leader.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	is.True(strings.Contains(resp.Log, "Control loss skipped: rank 1 (P0)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: (none)"))
+	// P0 receives the bye via TopDownByes rather than being forced into a
+	// control-loss pairing.
+	is.Equal(resp.Pairings[0], int32(0))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
