@@ -1062,7 +1062,16 @@ var weightPolicies = []weightPolicy{
 			if timesPlayed > 0 {
 				multiplier = (1 << timesPlayed) - 1
 			}
-			return int64(multiplier) * unitWeight
+			weight := int64(multiplier) * unitWeight
+			// 1st vs 2nd gets an unconditional extra tenth of a repeat's
+			// weight (regardless of timesPlayed), nudging the matching away
+			// from pairing them together unless doing so is otherwise
+			// favorable - without outright forbidding it the way a major
+			// penalty would.
+			if ri == 0 && rj == 1 {
+				weight += unitWeight / 10
+			}
+			return weight
 		},
 	},
 	{
