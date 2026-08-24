@@ -1327,6 +1327,38 @@ func TestScenario26_TopDownByeRecipientIsTheLeader(t *testing.T) {
 	is.Equal(resp.Pairings[0], int32(0))
 }
 
+// Scenario 27: same real-world round as
+// CreateJuly4th2026RandomStartRun305AfterRound24PairRequest (July 4th 2026
+// random-start run 305, round 25 - where the control-loss destiny-child
+// search correctly excluded Lukeman Owolabi, this round's top-down bye
+// recipient, and paired successfully), except Lukeman Owolabi has one fewer
+// win: round 24's Lukeman-vs-Daniel-Blake result (a 477-323 Lukeman win) is
+// flipped into a 323-477 loss, dropping Lukeman from 16 to 15 wins.
+func TestScenario27_July4th2026Run305Round25LukemanOneFewerWin(t *testing.T) {
+	if os.Getenv("COP_SCENARIOS") == "" {
+		t.Skip("Set COP_SCENARIOS=1 to run.")
+	}
+	is := is.New(t)
+	req := pairtestutils.CreateJuly4th2026RandomStartRun305AfterRound24PairRequest()
+
+	lukemanIdx := 20
+	danielBlakeIdx := 45
+	lastRound := req.DivisionResults[len(req.DivisionResults)-1]
+	is.Equal(lastRound.Results[lukemanIdx], int32(477))
+	is.Equal(lastRound.Results[danielBlakeIdx], int32(323))
+	lastRound.Results[lukemanIdx], lastRound.Results[danielBlakeIdx] = lastRound.Results[danielBlakeIdx], lastRound.Results[lukemanIdx]
+
+	resp := cop.COPPair(req)
+	writeScenarioLog(t, "scenario_27_july4th2026_run305_round25_lukeman_one_fewer_win.log", resp.Log)
+	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
+	// The extra loss drops Lukeman Owolabi from rank 4 (16 wins) to rank 6
+	// (15 wins) - Robert Linn (also 15 wins, better spread) takes rank 4 and
+	// becomes the new top-down bye recipient instead.
+	is.True(strings.Contains(resp.Log, "Lukeman Owolabi      | 15.0 | -178"))
+	is.True(strings.Contains(resp.Log, "Control loss: excluding rank 4 (Robert Linn)"))
+	is.True(strings.Contains(resp.Log, "Destinys Child: Eta Karo"))
+}
+
 // Albany CSW ME 2025: show what COP would have paired for rounds 17-32, given the actual
 // historical results for all prior rounds. Each round uses only real data.
 // Run with: COP_SCENARIOS=1 go test -run TestAlbanyCSW2025ME_Last16Rounds
