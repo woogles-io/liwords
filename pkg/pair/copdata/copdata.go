@@ -162,67 +162,25 @@ func computeHopefulRankData(
 		lowestRankAbsolutely[playerRankIdx] = lowestRank
 	}
 
-	// In the last quarter, an odd number of hopeful-to-cash players leaves one of
-	// them with no hopeful-to-cash opponent (the CC weight policy major-penalizes
-	// pairing a hopeful-to-cash player against a non-hopeful one). Fix the parity
-	// here, at the source, by promoting the highest-ranked non-hopeful player to
-	// hopeful for the lowest cash position - the same fix computeDisallowedLeaderOpponent
-	// makes for the hopeful-for-1st contender group, but folded into the data
-	// instead of layered on as a pairing constraint.
-	//
-	// Gibsonized players don't count toward this parity check even though
-	// they may still nominally be "hopeful" for cash (e.g. a player
-	// Gibsonized for 1st is trivially hopeful for every lower place too):
-	// PC and CC (see cop.go) exclude any Gibsonized player from being
-	// treated as a pairable hopeful-to-cash contender regardless of their
-	// raw hopeful-for rank, so counting them here would under-promote and
-	// leave a genuine contender without an in-group opponent.
-	//
-	// This promotion still matters in the true final round even though CC's
-	// hopeful-vs-hopeful grouping rule is disabled there (see isFinalRound in
-	// cop.go): lowestPossibleHopeCasher, which this feeds via
-	// LowestPossibleHopeNth, is also read unconditionally (not gated by
-	// last-quarter/final-round) by the BB and computeForcedContenderBye
-	// policies in cop.go, so it must stay correct in every round.
+	// See hopefulToCashExtensionRankIdx for the last-quarter hopeful-to-cash
+	// parity fix applied here.
 	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
 	hopefulToCashPromotedPlayerRankIdx := -1
 	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
-		numHopefulToCash := 0
-		highestNonHopefulRankIdx := -1
-		for playerRankIdx, place := range highestRankHopefully {
-			if place < int(req.PlacePrizes) {
-				if !gibsonizedPlayers[playerRankIdx] {
-					numHopefulToCash++
-				}
-			} else if highestNonHopefulRankIdx == -1 {
-				highestNonHopefulRankIdx = playerRankIdx
-			}
-		}
-		if numHopefulToCash%2 == 1 && highestNonHopefulRankIdx >= 0 {
+		if extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, int(req.PlacePrizes)); extendedRankIdx >= 0 {
 			lowestCashPlace := int(req.PlacePrizes) - 1
 			logsb.WriteString(fmt.Sprintf(
-				"Odd number of non-Gibsonized hopeful-to-cash players (%d) in the last quarter: %s (rank %d) altered from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
-				numHopefulToCash, req.PlayerNames[standings.GetPlayerIndex(highestNonHopefulRankIdx)], highestNonHopefulRankIdx+1,
-				highestRankHopefully[highestNonHopefulRankIdx]+1, lowestCashPlace+1))
-			highestRankHopefully[highestNonHopefulRankIdx] = lowestCashPlace
-			hopefulToCashPromotedPlayerRankIdx = highestNonHopefulRankIdx
+				"Odd number of non-Gibsonized players inside the hopeful-to-cash window in the last quarter: "+
+					"extending the window to rank %d, altering %s from hopeful-for-%d to hopeful-for-%d "+
+					"(lowest cash position)\n",
+				extendedRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(extendedRankIdx)],
+				highestRankHopefully[extendedRankIdx]+1, lowestCashPlace+1))
+			highestRankHopefully[extendedRankIdx] = lowestCashPlace
+			hopefulToCashPromotedPlayerRankIdx = extendedRankIdx
 		}
 	}
 
-	lowestPossibleHopeNth := make([]int, len(highestRankHopefully))
-	prevPlace := 0
-	for playerRankIdx, place := range highestRankHopefully {
-		if playerRankIdx > lowestPossibleHopeNth[place] {
-			lowestPossibleHopeNth[place] = playerRankIdx
-		}
-		for i := prevPlace + 1; i < place; i++ {
-			lowestPossibleHopeNth[i] = playerRankIdx - 1
-		}
-		prevPlace = place
-	}
-	for i := prevPlace + 1; i < len(highestRankHopefully); i++ {
-		lowestPossibleHopeNth[i] = len(highestRankHopefully) - 1
-	}
+	lowestPossibleHopeNth := computeLowestPossibleHopeNth(highestRankHopefully)
 
 	return hopefulRankData{
 		HighestRankHopefully:               highestRankHopefully,
@@ -231,6 +189,89 @@ func computeHopefulRankData(
 		LowestPossibleHopeNth:              lowestPossibleHopeNth,
 		HopefulToCashPromotedPlayerRankIdx: hopefulToCashPromotedPlayerRankIdx,
 	}
+}
+
+// computeLowestPossibleHopeNth derives, for each place N, the rank index of
+// the worst-ranked player still hopeful for Nth or better - i.e. the rank
+// window CC/PC actually pair against (see hopeCasherBoundary and
+// riHopeful/rjHopeful in cop.go, which just check ri <= boundary).
+// computeHopefulRankData calls this twice: once on the raw hopefulRanks to
+// find the natural (pre-promotion) window for hopefulToCashExtensionRankIdx,
+// and again after any promotion to produce the final returned value.
+func computeLowestPossibleHopeNth(hopefulRanks []int) []int {
+	lowestPossibleHopeNth := make([]int, len(hopefulRanks))
+	prevPlace := 0
+	for playerRankIdx, place := range hopefulRanks {
+		if playerRankIdx > lowestPossibleHopeNth[place] {
+			lowestPossibleHopeNth[place] = playerRankIdx
+		}
+		for i := prevPlace + 1; i < place; i++ {
+			lowestPossibleHopeNth[i] = playerRankIdx - 1
+		}
+		prevPlace = place
+	}
+	for i := prevPlace + 1; i < len(hopefulRanks); i++ {
+		lowestPossibleHopeNth[i] = len(hopefulRanks) - 1
+	}
+	return lowestPossibleHopeNth
+}
+
+// hopefulToCashExtensionRankIdx implements the last-quarter hopeful-to-cash
+// parity fix: an odd number of hopeful-to-cash players leaves one of them
+// with no hopeful-to-cash opponent (the CC weight policy major-penalizes
+// pairing a hopeful-to-cash player against a non-hopeful one), so extend the
+// window by one rank to restore parity - the same fix
+// computeDisallowedLeaderOpponent makes for the hopeful-for-1st contender
+// group, but folded into the data instead of layered on as a pairing
+// constraint. Returns the rank index to extend the window to (promoting
+// that player to hopeful for the lowest cash position), or -1 if no
+// extension is needed or possible.
+//
+// The relevant parity is the WINDOW's (ranks 1..naturalBoundary), not a
+// headcount of individually hopeful-for-cash players: CC/PC treat every
+// rank inside the window as part of the hopeful group via a plain
+// ri <= boundary check, regardless of whether that specific player is
+// individually hopeful for cash - so a "gap" player inside the window (not
+// themselves hopeful, but ranked above another player who independently is,
+// extending the window past them) is still grouped as hopeful. Checking a
+// scattered headcount of only the individually hopeful players - as this
+// used to do - can find an odd count and promote a gap player whose own
+// status the window's parity never actually depended on, since a further
+// independently-hopeful player was already extending the window past the
+// gap regardless. That leaves downstream bye-adjustment logic
+// (adjustLowestPossibleHopeCasherForBye in cop.go), which assumes a
+// recorded promotion IS the window boundary, retracting past that further
+// genuinely-hopeful player when it later undoes a promotion it thinks is
+// redundant - reintroducing the very parity problem the promotion was
+// meant to prevent.
+//
+// Gibsonized players don't count toward this parity check even though they
+// may still nominally be "hopeful" for cash (e.g. a player Gibsonized for
+// 1st is trivially hopeful for every lower place too): PC and CC (see
+// cop.go) exclude any Gibsonized player from being treated as a pairable
+// hopeful-to-cash contender regardless of their raw hopeful-for rank, so
+// counting them here would under-promote and leave a genuine contender
+// without an in-group opponent.
+//
+// This promotion still matters in the true final round even though CC's
+// hopeful-vs-hopeful grouping rule is disabled there (see isFinalRound in
+// cop.go): lowestPossibleHopeCasher, which this feeds via
+// LowestPossibleHopeNth, is also read unconditionally (not gated by
+// last-quarter/final-round) by the BB and computeForcedContenderBye
+// policies in cop.go, so it must stay correct in every round.
+func hopefulToCashExtensionRankIdx(highestRankHopefully []int, gibsonizedPlayers []bool, placePrizes int) int {
+	naturalBoundary := computeLowestPossibleHopeNth(highestRankHopefully)[placePrizes-1]
+	numHopefulToCash := 0
+	for playerRankIdx := 0; playerRankIdx <= naturalBoundary; playerRankIdx++ {
+		if !gibsonizedPlayers[playerRankIdx] {
+			numHopefulToCash++
+		}
+	}
+	extendedRankIdx := naturalBoundary + 1
+	if numHopefulToCash%2 == 1 && extendedRankIdx < len(highestRankHopefully) {
+		return extendedRankIdx
+	}
+	return -1
 }
 
 // ApplyFactor3Sim overwrites the hopeful/absolute rank boundaries (and
