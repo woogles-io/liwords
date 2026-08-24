@@ -63,7 +63,13 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i, _ := range members.PoolMembers {
 		playerIndexes = append(playerIndexes, i)
 	}
-	source := rand.NewPCG(members.Seed, 0)
+	// Unlike round robin (which derives each round's pairings by rotating a
+	// single seed-derived order, so it doesn't need the seed itself to vary)
+	// random pairing has no such structure to guarantee variety across
+	// rounds - it must fold the round number into the seed itself, or every
+	// round pairs identically whenever called with the same base seed (as
+	// happens when the same request is reused round after round).
+	source := rand.NewPCG(members.Seed, uint64(members.RoundControls.Round))
 	rng := rand.New(source)
 	rng.Shuffle(len(playerIndexes),
 		func(i, j int) {
