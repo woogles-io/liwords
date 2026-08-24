@@ -167,13 +167,13 @@ func computeHopefulRankData(
 	roundPairingsRemaining := int(req.Rounds) - numCompletePairings
 	hopefulToCashPromotedPlayerRankIdx := -1
 	if IsLastQuarter(roundPairingsRemaining, req.Rounds) {
-		if extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, int(req.PlacePrizes)); extendedRankIdx >= 0 {
+		numHopefulToCash, extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, int(req.PlacePrizes))
+		if extendedRankIdx >= 0 {
 			lowestCashPlace := int(req.PlacePrizes) - 1
 			logsb.WriteString(fmt.Sprintf(
-				"Odd number of non-Gibsonized players inside the hopeful-to-cash window in the last quarter: "+
-					"extending the window to rank %d, altering %s from hopeful-for-%d to hopeful-for-%d "+
-					"(lowest cash position)\n",
-				extendedRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(extendedRankIdx)],
+				"Odd number of non-Gibsonized hopeful-to-cash players (%d) in the last quarter: extending the "+
+					"window to rank %d, altering %s from hopeful-for-%d to hopeful-for-%d (lowest cash position)\n",
+				numHopefulToCash, extendedRankIdx+1, req.PlayerNames[standings.GetPlayerIndex(extendedRankIdx)],
 				highestRankHopefully[extendedRankIdx]+1, lowestCashPlace+1))
 			highestRankHopefully[extendedRankIdx] = lowestCashPlace
 			hopefulToCashPromotedPlayerRankIdx = extendedRankIdx
@@ -259,19 +259,20 @@ func computeLowestPossibleHopeNth(hopefulRanks []int) []int {
 // LowestPossibleHopeNth, is also read unconditionally (not gated by
 // last-quarter/final-round) by the BB and computeForcedContenderBye
 // policies in cop.go, so it must stay correct in every round.
-func hopefulToCashExtensionRankIdx(highestRankHopefully []int, gibsonizedPlayers []bool, placePrizes int) int {
+// Returns the natural window's non-Gibsonized headcount alongside the
+// extension decision so callers can log it without recomputing it.
+func hopefulToCashExtensionRankIdx(highestRankHopefully []int, gibsonizedPlayers []bool, placePrizes int) (numHopefulToCash int, extendedRankIdx int) {
 	naturalBoundary := computeLowestPossibleHopeNth(highestRankHopefully)[placePrizes-1]
-	numHopefulToCash := 0
 	for playerRankIdx := 0; playerRankIdx <= naturalBoundary; playerRankIdx++ {
 		if !gibsonizedPlayers[playerRankIdx] {
 			numHopefulToCash++
 		}
 	}
-	extendedRankIdx := naturalBoundary + 1
+	extendedRankIdx = naturalBoundary + 1
 	if numHopefulToCash%2 == 1 && extendedRankIdx < len(highestRankHopefully) {
-		return extendedRankIdx
+		return numHopefulToCash, extendedRankIdx
 	}
-	return -1
+	return numHopefulToCash, -1
 }
 
 // ApplyFactor3Sim overwrites the hopeful/absolute rank boundaries (and

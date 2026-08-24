@@ -40,7 +40,7 @@ func TestHopefulToCashExtensionRankIdx_ScatteredGapDoesntBreakWindowParity(t *te
 	}
 
 	// No extension should fire: the window (30 players) is already even.
-	if extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes); extendedRankIdx != -1 {
+	if _, extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes); extendedRankIdx != -1 {
 		t.Fatalf("got extension to rank index %d, want -1: an already-even window (driven by a player past the gap) must not be extended", extendedRankIdx)
 	}
 
@@ -55,7 +55,7 @@ func TestHopefulToCashExtensionRankIdx_ScatteredGapDoesntBreakWindowParity(t *te
 	for i := 27; i < numPlayers; i++ {
 		oddWindow[i] = nonHopeful
 	}
-	if extendedRankIdx := hopefulToCashExtensionRankIdx(oddWindow, gibsonizedPlayers, placePrizes); extendedRankIdx != 27 {
+	if _, extendedRankIdx := hopefulToCashExtensionRankIdx(oddWindow, gibsonizedPlayers, placePrizes); extendedRankIdx != 27 {
 		t.Fatalf("got extension to rank index %d, want 27: a genuinely odd, unbroken window should extend to the very next rank", extendedRankIdx)
 	}
 }
@@ -80,7 +80,10 @@ func TestHopefulToCashExtensionRankIdx_GibsonizedPlayersExcluded(t *testing.T) {
 	gibsonizedPlayers := make([]bool, numPlayers)
 	gibsonizedPlayers[2] = true
 
-	extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes)
+	numHopefulToCash, extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes)
+	if numHopefulToCash != 5 {
+		t.Fatalf("got numHopefulToCash = %d, want 5 (the Gibsonized player at rank 2 shouldn't count)", numHopefulToCash)
+	}
 	if extendedRankIdx != 6 {
 		t.Fatalf("got %d, want 6 (a Gibsonized player inside the window should make an otherwise-even window odd)", extendedRankIdx)
 	}
