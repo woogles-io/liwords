@@ -1,4 +1,4 @@
-package copdata_test
+package copdata
 
 import (
 	"os"
@@ -6,9 +6,8 @@ import (
 	"testing"
 
 	"github.com/matryer/is"
-	pkgcopdata "github.com/woogles-io/liwords/pkg/pair/copdata"
-	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pkgstnd "github.com/woogles-io/liwords/pkg/pair/standings"
+	pairtestutils "github.com/woogles-io/liwords/pkg/pair/testutils"
 	pb "github.com/woogles-io/liwords/rpc/api/proto/ipc"
 	"golang.org/x/exp/rand"
 )
@@ -24,12 +23,12 @@ func TestCOPPrecompData(t *testing.T) {
 
 	var logsb strings.Builder
 	var req *pb.PairRequest
-	var copdata *pkgcopdata.PrecompData
+	var copdata *PrecompData
 	var pairErr pb.PairError
 
 	// Empty division
 	req = pairtestutils.CreateDefaultPairRequest()
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for _, count := range copdata.PairingCounts {
 		is.Equal(count, 0)
@@ -50,7 +49,7 @@ func TestCOPPrecompData(t *testing.T) {
 
 	// Empty division
 	req = pairtestutils.CreateDefaultOddPairRequest()
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for _, count := range copdata.PairingCounts {
 		is.Equal(count, 0)
@@ -75,44 +74,44 @@ func TestCOPPrecompData(t *testing.T) {
 	copRand.Seed(1)
 	// 1st is gibsonized, so control loss should not be used
 	// even though it's set to true in the request
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 23)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 14)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 7)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 22)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 1)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 20)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 21)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 25)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 0)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 3)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 4)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(3, 6)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 25)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 15)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 9)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 27)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 5)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 22)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 20)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 18)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 17)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 10)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 4)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 2)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 21)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 0)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 1)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 3)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 6)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 7)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 8)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 11)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 12)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 13)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 14)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 16)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 23)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 14)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 7)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 22)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 1)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 20)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 21)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 25)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 0)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 3)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 4)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(3, 6)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 25)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 15)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 9)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 27)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 5)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 22)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 20)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 18)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 17)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 10)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 4)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 2)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 21)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 0)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 1)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 3)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 6)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 7)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 8)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 11)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 12)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 13)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 14)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 16)], 0)
 	for _, count := range copdata.PairingCounts {
 		is.True(count < 2)
 	}
@@ -147,16 +146,16 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany3rdGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 0)], 2)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 1)], 0)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 2)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 3)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 4)], 2)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 5)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 6)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(1, 7)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 0)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 1)], 0)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 2)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 3)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 4)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 5)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 6)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(1, 7)], 1)
 	is.Equal(copdata.RepeatCounts[1], 2)
 	is.Equal(copdata.GibsonGroups[0], 1)
 	is.Equal(copdata.GibsonGroups[1], 1)
@@ -170,15 +169,15 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbanyCSWAfterRound24PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 25)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 29)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 9)], 1)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 4)], 2)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 6)], 2)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 10)], 2)
-	is.Equal(copdata.PairingCounts[pkgcopdata.GetPairingKey(0, 1)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 25)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 29)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 9)], 1)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 4)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 6)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 10)], 2)
+	is.Equal(copdata.PairingCounts[GetPairingKey(0, 1)], 2)
 	is.Equal(copdata.RepeatCounts[0], 4)
 	is.Equal(copdata.RepeatCounts[2], 3)
 	is.Equal(copdata.RepeatCounts[25], 7)
@@ -202,7 +201,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	for rank := 0; rank < 4; rank++ {
 		is.Equal(copdata.GibsonGroups[rank], 1)
@@ -216,7 +215,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 26
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	is.Equal(copdata.GibsonGroups[0], 0)
@@ -231,7 +230,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateAlbany1stAnd4thAnd8thGibsonizedAfterRound25PairRequest()
 	req.ControlLossActivationRound = 25
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	is.Equal(copdata.GibsonGroups[0], 0)
@@ -250,7 +249,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.ControlLossActivationRound = 15
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
@@ -261,7 +260,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req.ControlLossActivationRound = 12
 	req.ControlLossThreshold = 0.5
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, -1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
@@ -271,7 +270,7 @@ func TestCOPPrecompData(t *testing.T) {
 	req = pairtestutils.CreateBellevilleCSWAfterRound12PairRequest()
 	req.ControlLossActivationRound = 12
 	copRand.Seed(1)
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.Equal(copdata.DestinysChild, 1)
 	for rank := 0; rank < len(copdata.GibsonGroups); rank++ {
@@ -329,7 +328,7 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 
 	copRand := rand.New(rand.NewSource(1))
 	var logsb strings.Builder
-	copdata, pairErr := pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr := GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.True(strings.Contains(logsb.String(), "Leader+2nd combined 1st-place% (80.2%) > 80%"))
 	is.True(strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar to 2% (normally 5%)"))
@@ -342,7 +341,7 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	req = hopefulnessTestReq()
 	copRand.Seed(1)
 	logsb.Reset()
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
 
@@ -353,8 +352,95 @@ func TestRunawayLeadersHalveHopefulness(t *testing.T) {
 	req = pairtestutils.CreateAlbany1stAnd4thGibsonizedAfterRound25PairRequest()
 	copRand.Seed(1)
 	logsb.Reset()
-	copdata, pairErr = pkgcopdata.GetPrecompData(req, copRand, &logsb)
+	copdata, pairErr = GetPrecompData(req, copRand, &logsb)
 	is.Equal(pairErr, pb.PairError_SUCCESS)
 	is.True(copdata.GibsonizedPlayers[0])
 	is.True(!strings.Contains(logsb.String(), "halving the hopeful-for-1st/2nd bar"))
+}
+
+// TestHopefulToCashExtensionRankIdx_ScatteredGapDoesntBreakWindowParity
+// reproduces the real-tournament bug this function fixes: a "gap" player
+// (not individually hopeful for cash) sitting between two hopeful stretches,
+// where a further player beyond the gap is independently hopeful and
+// already extends the window past it. The scattered headcount of
+// individually-hopeful players (28 contiguous + 1 further = 29) is odd, but
+// the actual window (ranks 1-30, driven by the further player) is already
+// even, so no extension should fire.
+func TestHopefulToCashExtensionRankIdx_ScatteredGapDoesntBreakWindowParity(t *testing.T) {
+	const numPlayers = 40
+	const placePrizes = 10
+	const lowestCashPlace = placePrizes - 1 // 0-indexed "10th"
+	const nonHopeful = numPlayers - 1       // the "never reaches within range" sentinel GetPrecompData uses
+
+	// Ranks 0-27 (28 players): all hopeful for a cash place.
+	// Rank 28 (the "gap", like Daniel Blake): not hopeful.
+	// Rank 29 (like Jason Ubeika): hopeful again, independently extending
+	// the window past the gap.
+	// Ranks 30+: filler, not hopeful, irrelevant to the window.
+	highestRankHopefully := make([]int, numPlayers)
+	for i := 0; i < 28; i++ {
+		highestRankHopefully[i] = lowestCashPlace
+	}
+	highestRankHopefully[28] = nonHopeful
+	highestRankHopefully[29] = lowestCashPlace
+	for i := 30; i < numPlayers; i++ {
+		highestRankHopefully[i] = nonHopeful
+	}
+	gibsonizedPlayers := make([]bool, numPlayers)
+
+	// The natural (pre-extension) window already reaches rank 30 (index 29)
+	// because of the independently-hopeful player beyond the gap.
+	naturalBoundary := computeLowestPossibleHopeNth(highestRankHopefully)[lowestCashPlace]
+	if naturalBoundary != 29 {
+		t.Fatalf("natural boundary = %d, want 29 (should already reach the independently-hopeful player at rank 30)", naturalBoundary)
+	}
+
+	// No extension should fire: the window (30 players) is already even.
+	if _, extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes); extendedRankIdx != -1 {
+		t.Fatalf("got extension to rank index %d, want -1: an already-even window (driven by a player past the gap) must not be extended", extendedRankIdx)
+	}
+
+	// Sanity check the fixed baseline against a genuinely odd, unbroken
+	// window (27 contiguous hopeful players, no independently-hopeful
+	// player beyond it): extension should fire, targeting the very next
+	// rank (27).
+	oddWindow := make([]int, numPlayers)
+	for i := 0; i < 27; i++ {
+		oddWindow[i] = lowestCashPlace
+	}
+	for i := 27; i < numPlayers; i++ {
+		oddWindow[i] = nonHopeful
+	}
+	if _, extendedRankIdx := hopefulToCashExtensionRankIdx(oddWindow, gibsonizedPlayers, placePrizes); extendedRankIdx != 27 {
+		t.Fatalf("got extension to rank index %d, want 27: a genuinely odd, unbroken window should extend to the very next rank", extendedRankIdx)
+	}
+}
+
+// TestHopefulToCashExtensionRankIdx_GibsonizedPlayersExcluded verifies
+// Gibsonized players inside the window don't count toward the parity check.
+func TestHopefulToCashExtensionRankIdx_GibsonizedPlayersExcluded(t *testing.T) {
+	const numPlayers = 20
+	const placePrizes = 10
+	const lowestCashPlace = placePrizes - 1
+	const nonHopeful = numPlayers - 1
+
+	// 6 hopeful players, one of them (rank 2) Gibsonized - so only 5 count
+	// toward parity: odd, so the window should extend by one rank (to 6).
+	highestRankHopefully := make([]int, numPlayers)
+	for i := 0; i < 6; i++ {
+		highestRankHopefully[i] = lowestCashPlace
+	}
+	for i := 6; i < numPlayers; i++ {
+		highestRankHopefully[i] = nonHopeful
+	}
+	gibsonizedPlayers := make([]bool, numPlayers)
+	gibsonizedPlayers[2] = true
+
+	numHopefulToCash, extendedRankIdx := hopefulToCashExtensionRankIdx(highestRankHopefully, gibsonizedPlayers, placePrizes)
+	if numHopefulToCash != 5 {
+		t.Fatalf("got numHopefulToCash = %d, want 5 (the Gibsonized player at rank 2 shouldn't count)", numHopefulToCash)
+	}
+	if extendedRankIdx != 6 {
+		t.Fatalf("got %d, want 6 (a Gibsonized player inside the window should make an otherwise-even window odd)", extendedRankIdx)
+	}
 }
