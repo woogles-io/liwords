@@ -74,6 +74,22 @@ func Verify(req *pb.PairRequest) *pb.PairResponse {
 		}
 	}
 
+	// Verify AUTO pairing method usage
+	if req.PairMethod == pb.PairMethod_PAIR_AUTO {
+		if len(req.DivisionPairings) > 0 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE,
+				ErrorMessage: fmt.Sprintf("AUTO pairing method cannot be used when division pairings exist (%d)", len(req.DivisionPairings)),
+			}
+		}
+		if len(req.DivisionResults) > 0 {
+			return &pb.PairResponse{
+				ErrorCode:    pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE,
+				ErrorMessage: fmt.Sprintf("AUTO pairing method cannot be used when division results exist (%d)", len(req.DivisionResults)),
+			}
+		}
+	}
+
 	// Verify division pairings
 	pairingsLength := len(req.DivisionPairings)
 	if pairingsLength > int(req.Rounds) {

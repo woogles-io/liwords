@@ -269,6 +269,23 @@ func TestCOPErrors(t *testing.T) {
 	req.ControlLossActivationRound = -1
 	resp = COPPair(req)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_CONTROL_LOSS_ACTIVATION_ROUND)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_AUTO
+	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
+	resp = verifyreq.Verify(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_AUTO
+	pairtestutils.AddRoundResultsStr(req, "400 300 250 400 300 425 200 500")
+	resp = verifyreq.Verify(req)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
+
+	req = pairtestutils.CreateDefaultPairRequest()
+	req.PairMethod = pb.PairMethod_PAIR_AUTO
+	resp = verifyreq.Verify(req)
+	is.True(resp == nil)
 }
 
 func TestCOPConstraintPolicies(t *testing.T) {
@@ -1836,11 +1853,11 @@ func TestMultiroundPairings(t *testing.T) {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
 
-	// After the RR rounds are complete, auto should use COP for the remaining rounds.
+	// AUTO can only be used at the very start of a tournament, before any
+	// pairings or results exist; once pairings exist, it must be rejected.
 	pairtestutils.AddNDummyRounds(autoReq, rrRoundsTotal)
 	resp = COPPair(autoReq)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(len(resp.Pairings), numPlayers)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
 
 	// AUTO with R=14, P=8: floor(14/7)*7=14 RR rounds, no COP remainder.
 	autoReq = pairtestutils.CreateDefaultPairRequest()
@@ -1867,8 +1884,7 @@ func TestMultiroundPairings(t *testing.T) {
 	}
 	pairtestutils.AddNDummyRounds(autoReq, rrRoundsTotal)
 	resp = COPPair(autoReq)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.Equal(len(resp.Pairings), numPlayers)
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
 
 	// AUTO with R < P-1 should produce 3 initial-fontes rounds.
 	autoReq = pairtestutils.CreateDefaultPairRequest()
@@ -1902,9 +1918,7 @@ func TestMultiroundPairings(t *testing.T) {
 	}
 	pairtestutils.AddNDummyRounds(autoReq10, 3)
 	resp = COPPair(autoReq10)
-	is.Equal(resp.ErrorCode, pb.PairError_SUCCESS)
-	is.True(strings.Contains(resp.Log, "round 3 >= 3, using COP"))
-	is.True(!strings.Contains(resp.Log, "using Swiss"))
+	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
 }
 
 func TestCOPProf(t *testing.T) {
