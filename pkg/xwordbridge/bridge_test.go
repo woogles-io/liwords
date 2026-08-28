@@ -11,6 +11,7 @@ import (
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	macondomove "github.com/domino14/macondo/move"
+	"github.com/domino14/word-golib/kwg"
 	"github.com/domino14/word-golib/tilemapping"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -23,8 +24,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-const testLexicon = "CSW21"
-
 func testConfig(t *testing.T) *macondoconfig.Config {
 	t.Helper()
 	cfg := macondoconfig.DefaultConfig()
@@ -34,13 +33,123 @@ func testConfig(t *testing.T) *macondoconfig.Config {
 	return cfg
 }
 
+// parityConfig is one board/distribution/lexicon/variant combination to run the
+// differential against.
+//
+// Woogles is not an english-only 15x15 server: it runs 21x21 super boards with
+// 200-tile bags, nine letter distributions, and the wordsmog variant. A
+// differential that has only ever seen classic english CSW21 cannot support a
+// claim about any of them.
+type parityConfig struct {
+	name          string
+	macondoLayout string
+	xwordLayout   string
+	dist          string
+	lexicon       string
+	variant       xwordgame.Variant
+	rule          macondopb.ChallengeRule
+	seeds         int
+	minPlays      int
+	minRejected   int
+}
+
+// parityConfigs covers every distribution shipped in data/letterdistributions,
+// both board sizes, and both variants.
+//
+// The minPlays/minRejected floors are calibrated from observed runs with
+// margin. They exist so a configuration that silently stops exercising anything
+// -- as the VOID case originally did, landing zero plays and zero rejections --
+// fails instead of passing quietly.
+//
+// Most run under DOUBLE, where the lexicon is not consulted at play time, so
+// random plays actually land and the state machine gets exercised. The VOID
+// entries are the opposite: almost nothing lands, and what they prove is that
+// we refuse exactly the plays macondo refuses -- including under wordsmog,
+// where validity means "is an anagram of a word" rather than "is a word".
+var parityConfigs = []parityConfig{
+	{name: "classic-english", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "english", lexicon: "CSW21",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 30, minPlays: 200},
+	{name: "classic-english-nwl", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "english", lexicon: "NWL23",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 10, minPlays: 50},
+
+	// 21x21, 200 tiles. The board is nearly twice the width and the bag twice
+	// the size, so racks refill for far longer and games run much deeper.
+	{name: "super-english", macondoLayout: macondoboard.SuperCrosswordGameLayout,
+		xwordLayout: xwordgame.SuperCrosswordGameLayout, dist: "english_super", lexicon: "CSW21",
+		variant: xwordgame.VarClassicSuper, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 16, minPlays: 100},
+
+	// Distributions with alphabets larger than english's 26 -- norwegian and
+	// polish reach tile 32. A blank designated as one of those letters only
+	// occurs if the generator knows the real alphabet size, which is why
+	// randomPlacementFromRack takes maxLtr rather than assuming 26.
+	{name: "french", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "french", lexicon: "FRA24",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "german", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "german", lexicon: "RD29",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "norwegian", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "norwegian", lexicon: "NSF25",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "polish", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "polish", lexicon: "OSPS52",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "spanish", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "spanish", lexicon: "FILE2017",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "catalan", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "catalan", lexicon: "DISC2",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+	{name: "slovene", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "slovene", lexicon: "SLV26",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_DOUBLE,
+		seeds: 8, minPlays: 40},
+
+	{name: "void-english", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "english", lexicon: "CSW21",
+		variant: xwordgame.VarClassic, rule: macondopb.ChallengeRule_VOID,
+		seeds: 40, minRejected: 200},
+	{name: "void-wordsmog", macondoLayout: macondoboard.CrosswordGameLayout,
+		xwordLayout: xwordgame.CrosswordGameLayout, dist: "english", lexicon: "CSW21",
+		variant: xwordgame.VarWordSmog, rule: macondopb.ChallengeRule_VOID,
+		seeds: 30, minRejected: 200},
+	{name: "void-super", macondoLayout: macondoboard.SuperCrosswordGameLayout,
+		xwordLayout: xwordgame.SuperCrosswordGameLayout, dist: "english_super", lexicon: "CSW21",
+		variant: xwordgame.VarClassicSuper, rule: macondopb.ChallengeRule_VOID,
+		seeds: 14, minRejected: 50},
+}
+
+// maxTile is the highest real tile in a distribution. Blanks are designated as
+// some letter when they go on the board, and which letters are reachable
+// depends on the alphabet, not on english.
+func maxTile(ld *tilemapping.LetterDistribution) tilemapping.MachineLetter {
+	var maxLtr tilemapping.MachineLetter
+	for ml, ct := range ld.Distribution() {
+		if ct > 0 && ml > 0 {
+			maxLtr = tilemapping.MachineLetter(ml)
+		}
+	}
+	return maxLtr
+}
+
 // newGamePair builds a macondo game and the xwordgame view of it.
-func newGamePair(t *testing.T, rule macondopb.ChallengeRule) (*macondogame.Game, *xwordgame.State, *xwordgame.Rules) {
+func newGamePair(t *testing.T, pc parityConfig) (*macondogame.Game, *xwordgame.State, *xwordgame.Rules) {
 	t.Helper()
 	cfg := testConfig(t)
 	mrules, err := macondogame.NewBasicGameRules(
-		cfg, testLexicon, macondoboard.CrosswordGameLayout, "english",
-		macondogame.CrossScoreOnly, "")
+		cfg, pc.lexicon, pc.macondoLayout, pc.dist,
+		macondogame.CrossScoreOnly, macondogame.Variant(pc.variant))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,37 +161,47 @@ func newGamePair(t *testing.T, rule macondopb.ChallengeRule) (*macondogame.Game,
 		t.Fatal(err)
 	}
 	g.StartGame()
-	g.SetChallengeRule(rule)
+	g.SetChallengeRule(pc.rule)
 
 	s, err := StateFromGame(g)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	layout, err := xwordgame.NamedLayout(xwordgame.CrosswordGameLayout)
+	layout, err := xwordgame.NamedLayout(pc.xwordLayout)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cr, err := ChallengeRuleFromMacondo(rule)
+	cr, err := ChallengeRuleFromMacondo(pc.rule)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ld, err := tilemapping.GetDistribution(cfg.WGLConfig(), "english")
+	ld, err := tilemapping.GetDistribution(cfg.WGLConfig(), pc.dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Load the lexicon the way macondo does, with the distribution -- the
+	// mapping from letters to tiles is distribution-specific.
+	k, err := kwg.GetKWG(cfg.WGLConfig(), pc.lexicon, kwg.WithDistribution(pc.dist))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return g, s, &xwordgame.Rules{
 		Layout:             layout,
 		LetterDistribution: ld,
-		Variant:            xwordgame.VarClassic,
+		Lexicon:            kwg.Lexicon{KWG: *k},
+		Variant:            pc.variant,
 		ChallengeRule:      cr,
 	}
 }
 
+// englishClassic is the configuration the non-differential tests use.
+var englishClassic = parityConfigs[0]
+
 // A freshly started game must translate exactly.
 func TestStateFromGameAtStart(t *testing.T) {
 	is := is.New(t)
-	g, s, r := newGamePair(t, macondopb.ChallengeRule_DOUBLE)
+	g, s, r := newGamePair(t, englishClassic)
 
 	is.Equal(s.Dim(), 15)
 	is.True(s.IsBoardEmpty())
@@ -147,7 +266,7 @@ func TestEnumConversions(t *testing.T) {
 // refused rather than silently mistranslated.
 func TestTransposedBoardIsRefused(t *testing.T) {
 	is := is.New(t)
-	g, _, _ := newGamePair(t, macondopb.ChallengeRule_DOUBLE)
+	g, _, _ := newGamePair(t, englishClassic)
 
 	g.Board().Transpose()
 	_, err := StateFromGame(g)
@@ -161,7 +280,7 @@ func TestTransposedBoardIsRefused(t *testing.T) {
 
 func TestCompareReportsEveryDivergence(t *testing.T) {
 	is := is.New(t)
-	g, s, _ := newGamePair(t, macondopb.ChallengeRule_DOUBLE)
+	g, s, _ := newGamePair(t, englishClassic)
 
 	// Break several unrelated things at once. A real root cause usually shows
 	// up in more than one field, and the set is the diagnosis.
@@ -203,30 +322,19 @@ func TestCompareReportsEveryDivergence(t *testing.T) {
 // Racks are resynced from macondo after each move so the next move is played
 // from an identical position.
 func TestStateMachineParityAgainstMacondo(t *testing.T) {
-	is := is.New(t)
-
-	// Under VOID the lexicon vets every play, and a random arrangement of rack
-	// tiles is essentially never a word -- so that subtest lands almost no
-	// plays. What it does exercise, thousands of times, is that we refuse
-	// exactly the plays macondo refuses. The expectations below say so
-	// explicitly rather than letting a subtest quietly measure nothing.
-	for _, tc := range []struct {
-		rule                  macondopb.ChallengeRule
-		minPlays, minRejected int
-	}{
-		{macondopb.ChallengeRule_DOUBLE, 200, 0},
-		{macondopb.ChallengeRule_VOID, 0, 200},
-	} {
-		rule := tc.rule
-		t.Run(rule.String(), func(t *testing.T) {
+	for _, pc := range parityConfigs {
+		t.Run(pc.name, func(t *testing.T) {
+			t.Parallel()
 			plays, exchanges, passes, games, endings, rejected := 0, 0, 0, 0, 0, 0
 
-			for seed := range 40 {
+			for seed := range pc.seeds {
 				rng := rand.New(rand.NewPCG(uint64(seed), 2024))
-				g, s, r := newGamePair(t, rule)
+				g, s, r := newGamePair(t, pc)
 				alph := r.LetterDistribution.TileMapping()
+				maxLtr := maxTile(r.LetterDistribution)
 
-				for turn := 0; turn < 120 && s.PlayState != xwordgame.GameOver; turn++ {
+				maxTurns := 8 * s.Dim() * s.Dim() / 15
+				for turn := 0; turn < maxTurns && s.PlayState != xwordgame.GameOver; turn++ {
 					// Probe: ask both engines about a candidate neither has
 					// vetted, and require them to agree. The move actually
 					// played below is pre-filtered through our own
@@ -234,7 +342,7 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 					// nothing rejected would otherwise ever reach macondo.
 					// Under VOID this is where the lexicon check is compared;
 					// under DOUBLE it covers geometric illegality.
-					if probe := randomPlacementFromRack(s, rng); probe != nil &&
+					if probe := randomPlacementFromRack(s, rng, maxLtr); probe != nil &&
 						s.PlayState == xwordgame.Playing {
 						_, ourProbeErr := s.ValidateMove(r, probe)
 						mp, err := macondoProbeMove(g, probe, alph)
@@ -251,7 +359,7 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 						}
 					}
 
-					m := randomLegalMove(s, r, rng)
+					m := randomLegalMove(s, r, rng, maxLtr)
 					switch m.Type {
 					case xwordgame.MoveTypePlay:
 						plays++
@@ -322,6 +430,16 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 					if err := s.ValidateTileConservation(r.LetterDistribution); err != nil {
 						t.Fatalf("seed %d turn %d: %v", seed, turn, err)
 					}
+					// Every reachable position must survive the wire format.
+					// This is the cheapest place to cover that across all nine
+					// distributions and both board sizes at once.
+					var decoded xwordgame.State
+					if err := decoded.Decode(s.Encode()); err != nil {
+						t.Fatalf("seed %d turn %d: decoding our own snapshot: %v", seed, turn, err)
+					}
+					if !decoded.Equal(s) {
+						t.Fatalf("seed %d turn %d: snapshot did not round trip", seed, turn)
+					}
 
 					if res.GameOver {
 						// Nothing follows, and the scores now hold two
@@ -347,13 +465,21 @@ func TestStateMachineParityAgainstMacondo(t *testing.T) {
 					games++
 				}
 			}
-			t.Logf("%d games finished (%d endgame adjustments verified); %d plays, %d rejected, %d exchanges, %d passes",
-				games, endings, plays, rejected, exchanges, passes)
-			is.True(plays >= tc.minPlays)
-			is.True(rejected >= tc.minRejected)
-			is.True(exchanges > 5)
-			is.True(games > 10)
-			is.True(endings == games)
+			t.Logf("%s: %d/%d games finished (%d endgame adjustments verified); %d plays, %d rejected, %d exchanges, %d passes",
+				pc.name, games, pc.seeds, endings, plays, rejected, exchanges, passes)
+			if plays < pc.minPlays {
+				t.Errorf("only %d plays landed, wanted at least %d -- this configuration is not measuring what it claims",
+					plays, pc.minPlays)
+			}
+			if rejected < pc.minRejected {
+				t.Errorf("only %d plays were rejected, wanted at least %d", rejected, pc.minRejected)
+			}
+			if games != pc.seeds {
+				t.Errorf("%d of %d games did not reach a conclusion", pc.seeds-games, pc.seeds)
+			}
+			if endings != games {
+				t.Errorf("%d games ended but only %d endgame adjustments were verified", games, endings)
+			}
 		})
 	}
 }
@@ -471,13 +597,14 @@ func macondoScore(g *macondogame.Game, m *xwordgame.Move, ld *tilemapping.Letter
 }
 
 // randomLegalMove prefers a tile play, falls back to an exchange, then a pass.
-func randomLegalMove(s *xwordgame.State, r *xwordgame.Rules, rng *rand.Rand) *xwordgame.Move {
+func randomLegalMove(s *xwordgame.State, r *xwordgame.Rules, rng *rand.Rand,
+	maxLtr tilemapping.MachineLetter) *xwordgame.Move {
 	if s.PlayState == xwordgame.WaitingForFinalPass {
 		return xwordgame.NewPassMove()
 	}
 	if rng.IntN(12) > 0 {
 		for range 12 {
-			m := randomPlacementFromRack(s, rng)
+			m := randomPlacementFromRack(s, rng, maxLtr)
 			if m == nil {
 				break
 			}
@@ -499,7 +626,8 @@ func randomLegalMove(s *xwordgame.State, r *xwordgame.Rules, rng *rand.Rand) *xw
 	return xwordgame.NewPassMove()
 }
 
-func randomPlacementFromRack(s *xwordgame.State, rng *rand.Rand) *xwordgame.Move {
+func randomPlacementFromRack(s *xwordgame.State, rng *rand.Rand,
+	maxLtr tilemapping.MachineLetter) *xwordgame.Move {
 	p := int(s.OnTurn)
 	rack := s.Rack(p)
 	if len(rack) == 0 {
@@ -531,7 +659,8 @@ func randomPlacementFromRack(s *xwordgame.State, rng *rand.Rand) *xwordgame.Move
 		ml := avail[used]
 		used++
 		if ml == 0 {
-			ml = tilemapping.MachineLetter(1+rng.IntN(26)) | tilemapping.BlankMask
+			// Designated from the distribution's real alphabet, not english's.
+			ml = tilemapping.MachineLetter(1+rng.IntN(int(maxLtr))) | tilemapping.BlankMask
 		}
 		tiles = append(tiles, ml)
 	}

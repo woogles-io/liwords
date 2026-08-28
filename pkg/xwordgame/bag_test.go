@@ -97,6 +97,72 @@ func TestDrawCanReachEveryTile(t *testing.T) {
 
 // The central rule: a player must not be able to draw back the tiles they just
 // exchanged. Enforced by drawing before returning.
+// FillBag has to hold every distribution we ship, not just english's 26
+// letters. Norwegian and polish reach tile 32, and dropping the tiles above 26
+// would still leave a bag that looks plausible.
+func TestFillBagAcrossDistributions(t *testing.T) {
+	is := is.New(t)
+	for _, tc := range []struct {
+		name       string
+		wantTiles  int
+		wantMaxLtr tilemapping.MachineLetter
+	}{
+		{"english", 100, 26},
+		{"english_super", 200, 26},
+		{"french", 102, 26},
+		{"german", 102, 29},
+		{"norwegian", 100, 32},
+		{"polish", 100, 32},
+		{"spanish", 100, 28},
+		{"catalan", 100, 26},
+		{"slovene", 100, 29},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ld := testLetterDistribution(t, tc.name)
+			s, err := NewState(15)
+			is.NoErr(err)
+			is.NoErr(s.FillBag(ld))
+
+			is.Equal(s.TilesRemaining(), tc.wantTiles)
+			// The highest tile in the distribution must actually be in the bag.
+			is.True(s.BagCount(tc.wantMaxLtr) > 0)
+			// And nothing above it.
+			for ml := int(tc.wantMaxLtr) + 1; ml < AlphabetSize; ml++ {
+				is.Equal(s.BagCount(tilemapping.MachineLetter(ml)), 0)
+			}
+			// Every count matches the distribution, tile for tile.
+			for ml, ct := range ld.Distribution() {
+				is.Equal(s.BagCount(tilemapping.MachineLetter(ml)), int(ct))
+			}
+			is.NoErr(s.ValidateTileConservation(ld))
+
+			// Filling replaces rather than accumulates.
+			is.NoErr(s.FillBag(ld))
+			is.Equal(s.TilesRemaining(), tc.wantTiles)
+		})
+	}
+}
+
+// Filling clears whatever was in the bag first. Re-filling with the same
+// distribution would not notice -- the counts are assigned, not added -- but
+// switching to a distribution with a smaller alphabet would leave the high
+// tiles of the previous one behind.
+func TestFillBagClearsTheOldDistribution(t *testing.T) {
+	is := is.New(t)
+	polish := testLetterDistribution(t, "polish")   // reaches tile 32
+	english := testLetterDistribution(t, "english") // stops at 26
+
+	s, err := NewState(15)
+	is.NoErr(err)
+	is.NoErr(s.FillBag(polish))
+	is.True(s.BagCount(32) > 0)
+
+	is.NoErr(s.FillBag(english))
+	is.Equal(s.BagCount(32), 0)
+	is.Equal(s.TilesRemaining(), 100)
+	is.NoErr(s.ValidateTileConservation(english))
+}
+
 func TestExchangeCannotReturnTheSameTiles(t *testing.T) {
 	is := is.New(t)
 	// The bag holds only tile 2. The player exchanges three of tile 1, so if
