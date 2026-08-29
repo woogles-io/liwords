@@ -28,7 +28,9 @@ func (s *State) ApplyReturnedPhony(r *Rules, prev *State) (*ApplyResult, error) 
 	if err := r.validate(); err != nil {
 		return nil, err
 	}
-	tmp := &ChallengeOutcome{Challengee: otherPlayer(s.OnTurn)}
+	// The challenger is on turn when they challenge, and stays there.
+	challenger := s.OnTurn
+	tmp := &ChallengeOutcome{Challengee: otherPlayer(challenger)}
 	if err := s.returnPhony(prev, tmp); err != nil {
 		return nil, err
 	}
@@ -39,6 +41,7 @@ func (s *State) ApplyReturnedPhony(r *Rules, prev *State) (*ApplyResult, error) 
 	// Score carries what the challengee gave back, which is the one number a
 	// caller needs that the position no longer shows.
 	res.Score = tmp.LostScore
+	res.TimeAttributedTo = int8(challenger)
 	s.endIfScorelessStalemate(r.LetterDistribution, res)
 	s.LastWordsFormed = nil
 	return res, nil
@@ -58,6 +61,9 @@ func (s *State) ApplyChallengeBonus(r *Rules, challengee int, bonus int32) (*App
 		return nil, fmt.Errorf("xwordgame: player index %d out of range", challengee)
 	}
 	res := newApplyResult()
+	// A failed challenge is still the challenger's action, so it is their clock
+	// that ran, even though the points go to the other player.
+	res.TimeAttributedTo = int8(otherPlayer(uint8(challengee)))
 	s.Scores[challengee] += bonus
 
 	if s.PlayState == WaitingForFinalPass {

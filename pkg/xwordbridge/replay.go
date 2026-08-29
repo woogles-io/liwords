@@ -208,13 +208,11 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 		}
 		// A time penalty is not something this package can regenerate: xwordgame
 		// models the position, not the clock, so the log is the only source for
-		// it. It adjusts a score without being a turn -- the player who ran low
-		// still owes a move -- so nothing else about the position changes.
+		// how large it was and when it happened.
 		if evt.Type == macondopb.GameEvent_TIME_PENALTY {
-			if int(evt.PlayerIndex) >= xwordgame.MaxPlayers {
-				return res, fmt.Errorf("event %d: player index %d out of range", i, evt.PlayerIndex)
+			if _, err := s.ApplyTimePenalty(r, int(evt.PlayerIndex), abs32(evt.LostScore)); err != nil {
+				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
 			}
-			s.Scores[evt.PlayerIndex] -= abs32(evt.LostScore)
 			res.Applied++
 			continue
 		}

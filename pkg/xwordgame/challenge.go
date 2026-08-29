@@ -240,6 +240,15 @@ type ChallengeOutcome struct {
 	EndRackBonus       int32
 	EndRackBonusPlayer int8
 	ScorelessPenalties *[MaxPlayers]int32
+
+	// TimeAttributedTo is the player whose clock this challenge should be
+	// charged to: the challenger, in every case, including the DOUBLE rule
+	// where the referee spends their turn for them.
+	//
+	// This is what pkg/gameplay/game.go:437 currently works out by flipping the
+	// player on turn, recording the time and flipping back, because macondo
+	// synthesises the turn loss without knowing clocks exist.
+	TimeAttributedTo int8
 }
 
 // AdjudicateChallenge settles a challenge by the player on turn against the
@@ -275,6 +284,7 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 	out := &ChallengeOutcome{
 		Challenger:         s.OnTurn,
 		Challengee:         otherPlayer(s.OnTurn),
+		TimeAttributedTo:   int8(s.OnTurn),
 		PlayLegal:          len(illegal) == 0,
 		ChallengedWords:    words,
 		IllegalWords:       illegal,

@@ -68,6 +68,19 @@ type ApplyResult struct {
 
 	// GameOver reports whether this move ended the game.
 	GameOver bool
+	// Winner is set only when the ending itself decided who won, rather than
+	// the score deciding it -- a timeout, currently. It is -1 otherwise.
+	Winner int8
+
+	// TimeAttributedTo is the player whose clock this move should be charged
+	// to, or -1 if none.
+	//
+	// It is nearly always the player who was on turn, and saying so explicitly
+	// is what makes the referee-generated moves safe. macondo synthesises an
+	// unsuccessful-challenge turn loss with no notion of a clock, which is why
+	// pkg/gameplay/game.go:437 has to flip the player on turn, record the time
+	// and flip back. A caller reading this field does not have to.
+	TimeAttributedTo int8
 
 	// EndRackBonus is the two-times-the-opponent's-rack bonus awarded to the
 	// player who went out, and EndRackBonusPlayer is who received it.
@@ -82,7 +95,7 @@ type ApplyResult struct {
 }
 
 func newApplyResult() *ApplyResult {
-	return &ApplyResult{EndRackBonusPlayer: -1}
+	return &ApplyResult{EndRackBonusPlayer: -1, Winner: -1, TimeAttributedTo: -1}
 }
 
 // ValidateMove reports whether the player on turn may make this move, and for a
@@ -194,6 +207,7 @@ func (s *State) ApplyPlacement(r *Rules, rng Rand, m *Move) (*ApplyResult, error
 	res := newApplyResult()
 	res.Score = int32(score)
 	res.WordsFormed = words
+	res.TimeAttributedTo = int8(p)
 
 	s.PlaceMoveTiles(m)
 	// Only the fresh tiles come off the rack. m.Tiles is the play's whole span,
@@ -271,6 +285,7 @@ func (s *State) ApplyExchange(r *Rules, rng Rand, m *Move) (*ApplyResult, error)
 
 	p := int(s.OnTurn)
 	res := newApplyResult()
+	res.TimeAttributedTo = int8(p)
 
 	// Copy the tiles before touching the rack. A caller can reasonably build an
 	// exchange straight from State.Rack, whose slice aliases the rack storage;
@@ -321,6 +336,7 @@ func (s *State) ApplyPass(r *Rules) (*ApplyResult, error) {
 		return nil, errGameIsOver
 	}
 	res := newApplyResult()
+	res.TimeAttributedTo = int8(s.OnTurn)
 
 	if s.PlayState == WaitingForFinalPass {
 		// The opponent played out their rack and this pass confirms it. The
