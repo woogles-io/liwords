@@ -8,11 +8,14 @@ package xwordbridge
 // whatever the last several years put in them.
 //
 // The corpus is not in the repository -- it is production game data, including
-// player nicknames. Point XWORDGAME_CORPUS at a directory holding
-// live_games.tsv (uuid, base64 history, game_request, game_end_reason) and the
-// test runs; without it the test skips, so CI stays green without prod access.
+// player nicknames. Point XWORDGAME_CORPUS at a directory holding any of the
+// files below and the test runs; without it the test skips, so CI stays green
+// without prod access. Columns are uuid, base64 history, game_request,
+// game_end_reason.
 //
-// Export it with:
+// live_games.tsv -- everything not yet archived, so mostly games in progress.
+// This is the set that matters for the migration, since these are the positions
+// that have to survive the cutover.
 //
 //	./bin/proddb -q -c "\copy (
 //	  WITH live AS (SELECT DISTINCT game_uuid FROM game_turns)
@@ -20,6 +23,22 @@ package xwordbridge
 //	  FROM live JOIN games g ON g.uuid = live.game_uuid
 //	  WHERE g.history IS NOT NULL AND octet_length(g.history) > 0
 //	) TO '/path/to/corpus/live_games.tsv'"
+//
+// finished_games.tsv -- a random sample of completed games, which exercise the
+// endings that in-progress games never reach: going out, the six-scoreless
+// stalemate, timeouts, resignations. Archiving keeps the history bytea on the
+// row, so these come from the database rather than S3.
+//
+// TABLESAMPLE is what makes the sample cheap: it reads a fraction of the pages,
+// where ORDER BY random() would sort all 12.6M rows of a 67GB table. 0.09% is
+// roughly 11k rows, trimmed to 10k.
+//
+//	./bin/proddb -q -c "\copy (
+//	  SELECT uuid, encode(history,'base64'), game_request::text, game_end_reason
+//	  FROM games TABLESAMPLE SYSTEM (0.09)
+//	  WHERE game_end_reason <> 0 AND history IS NOT NULL AND octet_length(history) > 0
+//	  LIMIT 10000
+//	) TO '/path/to/corpus/finished_games.tsv'"
 
 import (
 	"bufio"
@@ -47,19 +66,38 @@ type corpusGame struct {
 	endReason int
 }
 
+// corpusFiles are the exports the test will read, in order. Any that are
+// missing are simply skipped.
+var corpusFiles = []string{"live_games.tsv", "finished_games.tsv"}
+
 func loadCorpus(t *testing.T) []corpusGame {
 	t.Helper()
 	dir := os.Getenv("XWORDGAME_CORPUS")
 	if dir == "" {
-		t.Skip("set XWORDGAME_CORPUS to a directory containing live_games.tsv")
+		t.Skip("set XWORDGAME_CORPUS to a directory containing a corpus export")
 	}
-	f, err := os.Open(filepath.Join(dir, "live_games.tsv"))
+	var games []corpusGame
+	for _, name := range corpusFiles {
+		n := readCorpusFile(t, filepath.Join(dir, name), &games)
+		if n > 0 {
+			t.Logf("%s: %d games", name, n)
+		}
+	}
+	if len(games) == 0 {
+		t.Skipf("no corpus files found in %s", dir)
+	}
+	return games
+}
+
+// readCorpusFile appends the games in one export, returning how many it added.
+func readCorpusFile(t *testing.T, path string, games *[]corpusGame) int {
+	t.Helper()
+	f, err := os.Open(path)
 	if err != nil {
-		t.Skipf("corpus not readable: %v", err)
+		return 0
 	}
 	defer f.Close()
-
-	var games []corpusGame
+	before := len(*games)
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 1<<20), 1<<24)
 	for sc.Scan() {
@@ -79,15 +117,12 @@ func loadCorpus(t *testing.T) []corpusGame {
 		if len(cols) > 3 {
 			cg.endReason, _ = strconv.Atoi(strings.TrimSpace(cols[3]))
 		}
-		games = append(games, cg)
+		*games = append(*games, cg)
 	}
 	if err := sc.Err(); err != nil {
-		t.Fatalf("reading corpus: %v", err)
+		t.Fatalf("reading %s: %v", path, err)
 	}
-	if len(games) == 0 {
-		t.Skip("corpus is empty")
-	}
-	return games
+	return len(*games) - before
 }
 
 // rulesForHistory builds both engines' rules from what the history records.
@@ -130,6 +165,7 @@ func rulesForHistory(t *testing.T, hist *macondopb.GameHistory) (*xwordgame.Rule
 		LetterDistribution: ld,
 		Variant:            xwordgame.Variant(variant),
 		ChallengeRule:      cr,
+		ExchangeLimit:      xwordgame.ExchangeLimitForLexicon(hist.Lexicon),
 	}
 	if hist.Lexicon != "" {
 		if k, err := kwg.GetKWG(cfg.WGLConfig(), hist.Lexicon, kwg.WithDistribution(distName)); err == nil {
@@ -196,6 +232,12 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 			continue
 		}
 
+		if why := checkPlayState(res.State, cg); why != "" {
+			diverged++
+			note(fields, why, cg.uuid)
+			continue
+		}
+
 		divs := comparableDivergences(res.State, theirs, cg)
 		if len(divs) == 0 {
 			matched++
@@ -242,6 +284,24 @@ func TestCorpusOneGame(t *testing.T) {
 		for i, e := range cg.hist.Events {
 			t.Logf("  evt %2d p%d %-28s rack=%-9q played=%q score=%d cume=%d",
 				i, e.PlayerIndex, e.Type, e.Rack, e.PlayedTiles, e.Score, e.Cumulative)
+		}
+
+		// Replay one event at a time so the tile accounting is visible; a
+		// surprising bag count is usually the replay's fault, not the game's.
+		for n := 1; n <= len(cg.hist.Events); n++ {
+			partial := &macondopb.GameHistory{}
+			proto.Merge(partial, cg.hist)
+			partial.Events = cg.hist.Events[:n]
+			partial.LastKnownRacks = nil
+			pr, perr := ReplayHistory(partial, r, nil)
+			if perr != nil {
+				t.Logf("  after %2d events: %v", n, perr)
+				break
+			}
+			t.Logf("  after %2d events: board=%3d racks=%d/%d bag=%3d total=%3d",
+				n, pr.State.TilesOnBoard(), pr.State.RackLen(0), pr.State.RackLen(1),
+				pr.State.TilesRemaining(),
+				pr.State.TilesOnBoard()+pr.State.RackLen(0)+pr.State.RackLen(1)+pr.State.TilesRemaining())
 		}
 
 		res, err := ReplayHistory(cg.hist, r, nil)
@@ -322,7 +382,20 @@ func lastMeaningfulEvent(hist *macondopb.GameHistory) macondopb.GameEvent_Type {
 //     player on turn after every event it processes, including a time penalty,
 //     which is not a turn -- the penalised player still owes a move.
 //
-//   - playState, when the ending was not move-driven. See moveDrivenEnding.
+//   - onTurn and scorelessTurns once the game is over. Neither means anything
+//     in a finished position -- nobody is on turn and no further turn can be
+//     scoreless -- and macondo's reconstruction disagrees with its own live
+//     play on both: PlayToTurn advances the player after the end-of-game events
+//     it appends, and PlayTurn increments the scoreless counter on the final
+//     pass where playMove deliberately does not.
+//
+//   - playState, always. macondo's reconstruction never runs end-of-game logic
+//     -- PlayTurn says so outright, relying on the end-rack events to carry the
+//     score changes -- so a game that ended on six scoreless turns comes back as
+//     PLAYING. That is the May 2026 bug almost exactly. Rather than compare
+//     against a reference that is known wrong here, the play state is checked
+//     directly against the database's game_end_reason, which is ground truth;
+//     see checkPlayState.
 //
 // The first three are macondo reconstruction bugs, all of the same shape as the
 // one that caused the May 2026 incident: state that live play maintains and
@@ -338,12 +411,41 @@ func comparableDivergences(ours, theirs *xwordgame.State, cg corpusGame) []Diver
 			continue
 		case d.Field == "onTurn" && lastEvt == macondopb.GameEvent_TIME_PENALTY:
 			continue
-		case d.Field == "playState" && !moveDrivenEnding(cg.endReason):
+		case d.Field == "playState":
+			continue
+		case (d.Field == "onTurn" || d.Field == "scorelessTurns") &&
+			ours.PlayState == xwordgame.GameOver:
 			continue
 		}
 		out = append(out, d)
 	}
 	return out
+}
+
+// checkPlayState holds the replayed play state against the database rather than
+// against macondo, and returns a description of the mismatch or "".
+//
+// This is the assertion the whole project is about: a game that ended must come
+// back ended, and a game still in progress must not come back finished. Getting
+// it backwards for 944 correspondence games is what started all this.
+//
+// Only move-driven endings are checked. A timeout, resignation, abort,
+// cancellation, forfeit or adjudication is imposed from outside the event log,
+// so a position replayed from moves alone genuinely cannot know about it -- that
+// is what GameEndReason is for.
+func checkPlayState(ours *xwordgame.State, cg corpusGame) string {
+	if !moveDrivenEnding(cg.endReason) {
+		return ""
+	}
+	over := ours.PlayState == xwordgame.GameOver
+	switch {
+	case cg.endReason == 0 && over:
+		return "playState: finished a game the database says is still in progress"
+	case cg.endReason != 0 && !over:
+		return "playState: did not finish a game the database says ended (reason " +
+			strconv.Itoa(cg.endReason) + ")"
+	}
+	return ""
 }
 
 // fieldShape collapses board[7,9] to board[] and rack[0] to rack[] so the

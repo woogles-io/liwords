@@ -185,6 +185,13 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 	if rng == nil {
 		rng = deterministicRand{}
 	}
+	// These moves were accepted by the referee that actually ran, under the
+	// lexicon and exchange rules of their day. Re-deciding either now would
+	// reject moves that really happened; see Rules.TrustRecordedPlays.
+	trusted := *r
+	trusted.TrustRecordedPlays = true
+	r = &trusted
+
 	alph := r.LetterDistribution.TileMapping()
 
 	s, err := xwordgame.NewState(r.Layout.Dim())
@@ -312,6 +319,17 @@ func replayChallengeOutcome(s *xwordgame.State, r *xwordgame.Rules,
 
 	res.Challenges++
 
+	// Under the triple rule the challenge itself decides the game, whichever
+	// way it went: the outcome functions below apply the points and the board,
+	// but ending it is the rule's doing, not theirs.
+	if r.ChallengeRule == xwordgame.ChallengeRuleTriple {
+		defer func() {
+			if s.PlayState != xwordgame.GameOver {
+				s.EndGameByRule()
+			}
+		}()
+	}
+
 	switch evt.Type {
 	case macondopb.GameEvent_PHONY_TILES_RETURNED:
 		// The challenge succeeded: the play comes off and the challenger, who
@@ -401,6 +419,19 @@ func seatMover(s *xwordgame.State, rng xwordgame.Rand, mover int, rack tilemappi
 // mover's rack before their own play.
 func assignFinalRacks(s *xwordgame.State, hist *macondopb.GameHistory,
 	alph *tilemapping.TileMapping) error {
+
+	// Nothing to put back means nothing to take out. A history without
+	// last-known racks -- a partial replay, or an old export -- should keep the
+	// racks the replay computed rather than have them emptied into the bag.
+	known := false
+	for _, str := range hist.LastKnownRacks {
+		if str != "" {
+			known = true
+		}
+	}
+	if !known {
+		return nil
+	}
 
 	// Clear both first: whichever player did not move last is holding stand-in
 	// tiles from seatMover, and those have to go back before the real ones can

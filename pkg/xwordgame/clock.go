@@ -67,8 +67,6 @@ func (s *State) ApplyTimeout(r *Rules, player int) (*ApplyResult, error) {
 	res.Winner = int8(otherPlayer(uint8(player)))
 	res.TimeAttributedTo = int8(player)
 
-	s.PlayState = GameOver
-	// A game that ended on the clock has nothing left to challenge.
-	s.LastWordsFormed = nil
+	s.endGame()
 	return res, nil
 }

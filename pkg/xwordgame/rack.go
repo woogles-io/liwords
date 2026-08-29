@@ -264,7 +264,7 @@ func (s *State) ApplyOutBonus(ld *tilemapping.LetterDistribution, out int) (int3
 	}
 	pts := s.RackScoreFor(ld, 1-out) * 2
 	s.Scores[out] += pts
-	s.PlayState = GameOver
+	s.endGame()
 	return pts, nil
 }
 
@@ -278,7 +278,7 @@ func (s *State) ApplyOutBonus(ld *tilemapping.LetterDistribution, out int) (int3
 // between the two engines quiet.
 func (s *State) ApplyScorelessPenalties(ld *tilemapping.LetterDistribution) [MaxPlayers]int32 {
 	var penalties [MaxPlayers]int32
-	s.PlayState = GameOver
+	s.endGame()
 
 	p := int(s.OnTurn)
 	penalties[p] = s.RackScoreFor(ld, p)
@@ -291,6 +291,21 @@ func (s *State) ApplyScorelessPenalties(ld *tilemapping.LetterDistribution) [Max
 	s.Scores[p] -= penalties[p]
 
 	return penalties
+}
+
+// EndGameByRule ends a game because a rule says so rather than because the
+// score does -- a triple challenge, most obviously. Scores are left alone; who
+// won is the caller's to record, since the position no longer implies it.
+func (s *State) EndGameByRule() {
+	s.endGame()
+}
+
+// endGame marks the game over and drops the challengeable play with it.
+// Nothing can be challenged once a game has ended, and a finished position that
+// still advertises one would be inviting a challenge that cannot happen.
+func (s *State) endGame() {
+	s.PlayState = GameOver
+	s.LastWordsFormed = nil
 }
 
 // otherPlayer returns the opponent's index.

@@ -156,7 +156,7 @@ func (s *State) ValidateMove(r *Rules, m *Move) ([]tilemapping.MachineWord, erro
 		if err != nil {
 			return nil, err
 		}
-		if r.ChallengeRule == ChallengeRuleVoid {
+		if r.ChallengeRule == ChallengeRuleVoid && !r.TrustRecordedPlays {
 			// Under void there is no challenge to catch a phony, so the
 			// referee refuses it up front.
 			if r.Lexicon == nil {
@@ -248,6 +248,11 @@ func (s *State) ApplyPlacement(r *Rules, rng Rand, m *Move) (*ApplyResult, error
 	// why this path does not check it.
 	s.ScorelessTurns = 0
 
+	// Set before the endgame check below, not after: going out under the void
+	// rule ends the game there and clearing the challengeable play is part of
+	// ending it. Assigning afterwards would put it straight back.
+	s.LastWordsFormed = words
+
 	if s.rackLens[p] == 0 {
 		res.WentOut = true
 		if r.ChallengeRule != ChallengeRuleVoid {
@@ -270,7 +275,6 @@ func (s *State) ApplyPlacement(r *Rules, rng Rand, m *Move) (*ApplyResult, error
 	// WaitingForFinalPass it has to: the opponent is the one who must act.
 	s.OnTurn = otherPlayer(s.OnTurn)
 	s.TurnNum++
-	s.LastWordsFormed = words
 	return res, nil
 }
 
