@@ -50,17 +50,29 @@ type ReplayResult struct {
 	Challenges int
 }
 
-// isDerivedEvent reports whether an event is a referee output rather than a
-// player action. These are skipped as inputs: the state machine emits the
-// equivalent itself, and feeding them back in would double-count.
+// isDerivedEvent reports whether an event is something the state machine emits
+// for itself when it ends a game, and which therefore must not be fed back in.
+//
+// The challenge outcomes are deliberately NOT in this list. liwords never
+// records a CHALLENGE action -- only its consequence -- so PHONY_TILES_RETURNED
+// and CHALLENGE_BONUS are the only evidence a challenge happened, and skipping
+// them would leave the phony on the board and the bonus unpaid.
 func isDerivedEvent(t macondopb.GameEvent_Type) bool {
 	switch t {
-	case macondopb.GameEvent_CHALLENGE_BONUS,
-		macondopb.GameEvent_PHONY_TILES_RETURNED,
-		macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS,
-		macondopb.GameEvent_END_RACK_PTS,
-		macondopb.GameEvent_END_RACK_PENALTY,
-		macondopb.GameEvent_TIME_PENALTY:
+	case macondopb.GameEvent_END_RACK_PTS,
+		macondopb.GameEvent_END_RACK_PENALTY:
+		return true
+	}
+	return false
+}
+
+// isChallengeOutcome reports whether an event records the result of a challenge
+// rather than a player's move.
+func isChallengeOutcome(t macondopb.GameEvent_Type) bool {
+	switch t {
+	case macondopb.GameEvent_PHONY_TILES_RETURNED,
+		macondopb.GameEvent_CHALLENGE_BONUS,
+		macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
 		return true
 	}
 	return false
@@ -194,6 +206,28 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 			res.Regenerated++
 			continue
 		}
+		// A time penalty is not something this package can regenerate: xwordgame
+		// models the position, not the clock, so the log is the only source for
+		// it. It adjusts a score without being a turn -- the player who ran low
+		// still owes a move -- so nothing else about the position changes.
+		if evt.Type == macondopb.GameEvent_TIME_PENALTY {
+			if int(evt.PlayerIndex) >= xwordgame.MaxPlayers {
+				return res, fmt.Errorf("event %d: player index %d out of range", i, evt.PlayerIndex)
+			}
+			s.Scores[evt.PlayerIndex] -= abs32(evt.LostScore)
+			res.Applied++
+			continue
+		}
+
+		if isChallengeOutcome(evt.Type) {
+			if err := replayChallengeOutcome(s, r, evt, prev, res); err != nil {
+				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
+			}
+			// The challenge consumed the challengeable play either way.
+			prev = nil
+			continue
+		}
+
 		before := s.Clone()
 		if err := replayOne(s, r, rng, evt, alph, prev, res); err != nil {
 			return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
@@ -265,6 +299,56 @@ func replayOne(s *xwordgame.State, r *xwordgame.Rules, rng xwordgame.Rand,
 	}
 	res.Applied++
 	return nil
+}
+
+// replayChallengeOutcome applies a challenge whose verdict the log already
+// records.
+//
+// It deliberately does not re-adjudicate. These games were played under the
+// lexicon of their day, and lexicons change -- re-deciding an old challenge
+// against today's word list would produce a position the game never reached.
+// The log is authoritative for what happened; xwordgame is authoritative for
+// what that does to the position.
+func replayChallengeOutcome(s *xwordgame.State, r *xwordgame.Rules,
+	evt *macondopb.GameEvent, prev *xwordgame.State, res *ReplayResult) error {
+
+	res.Challenges++
+
+	switch evt.Type {
+	case macondopb.GameEvent_PHONY_TILES_RETURNED:
+		// The challenge succeeded: the play comes off and the challenger, who
+		// is already on turn, keeps it.
+		if prev == nil {
+			return errors.New("a phony was returned but no play preceded it")
+		}
+		if _, err := s.ApplyReturnedPhony(r, prev); err != nil {
+			return err
+		}
+		res.Applied++
+		return nil
+
+	case macondopb.GameEvent_CHALLENGE_BONUS:
+		// The challenge failed under a points rule. The bonus is taken from the
+		// event rather than recomputed from the rule, because the five-point
+		// rule has been scored two different ways over the years and the log
+		// records which one this game actually used.
+		if _, err := s.ApplyChallengeBonus(r, int(evt.PlayerIndex), evt.Bonus); err != nil {
+			return err
+		}
+		res.Applied++
+		return nil
+
+	case macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+		// The challenge failed under the double rule, so the challenger
+		// forfeits their turn. The state transition is a pass; only the event
+		// the caller would write differs.
+		if _, err := s.ApplyPass(r); err != nil {
+			return err
+		}
+		res.Applied++
+		return nil
+	}
+	return fmt.Errorf("%w: %s", ErrUnsupportedEvent, evt.Type)
 }
 
 // seatMover installs the rack the log recorded for the player about to move,
@@ -341,6 +425,14 @@ func assignFinalRacks(s *xwordgame.State, hist *macondopb.GameHistory,
 		}
 	}
 	return nil
+}
+
+// abs32 normalises a penalty that may be recorded as either sign.
+func abs32(v int32) int32 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
 
 func rulesOK(r *xwordgame.Rules) error {

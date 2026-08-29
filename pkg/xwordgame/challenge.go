@@ -299,15 +299,15 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 
 	case !out.PlayLegal:
 		// Successful challenge: the play comes off and the challenger keeps the
-		// turn they were already on.
-		if err := s.returnPhony(p.Prev, out); err != nil {
+		// turn they were already on. Shared with the replay path so there is
+		// one copy of the transition.
+		res, err := s.ApplyReturnedPhony(p.Rules, p.Prev)
+		if err != nil {
 			return nil, err
 		}
-		// The challengee's forfeited turn counts as scoreless, on top of
-		// whatever had accumulated before the phony.
-		s.ScorelessTurns++
-		res := newApplyResult()
-		if s.endIfScorelessStalemate(p.Rules.LetterDistribution, res) {
+		out.PhonyReturned = true
+		out.LostScore = res.Score
+		if res.GameOver {
 			out.GameOver = true
 			out.ScorelessPenalties = res.ScorelessPenalties
 		}
@@ -346,19 +346,13 @@ func (s *State) AdjudicateChallenge(p ChallengeParams) (*ChallengeOutcome, error
 		default:
 			return nil, fmt.Errorf("xwordgame: unknown challenge rule %d", p.Rules.ChallengeRule)
 		}
-		s.Scores[out.Challengee] += out.BonusPoints
-
-		if s.PlayState == WaitingForFinalPass {
-			// The challengee had gone out and this failed challenge was the
-			// last thing standing between them and the win.
-			bonus, err := s.ApplyOutBonus(p.Rules.LetterDistribution, int(out.Challengee))
-			if err != nil {
-				return nil, err
-			}
-			out.GameOver = true
-			out.EndRackBonus = bonus
-			out.EndRackBonusPlayer = int8(out.Challengee)
+		res, err := s.ApplyChallengeBonus(p.Rules, int(out.Challengee), out.BonusPoints)
+		if err != nil {
+			return nil, err
 		}
+		out.GameOver = res.GameOver
+		out.EndRackBonus = res.EndRackBonus
+		out.EndRackBonusPlayer = res.EndRackBonusPlayer
 	}
 
 	// The words are spent either way: they cannot be challenged twice.

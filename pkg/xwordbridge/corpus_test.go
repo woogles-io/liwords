@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -41,8 +42,9 @@ import (
 )
 
 type corpusGame struct {
-	uuid string
-	hist *macondopb.GameHistory
+	uuid      string
+	hist      *macondopb.GameHistory
+	endReason int
 }
 
 func loadCorpus(t *testing.T) []corpusGame {
@@ -73,7 +75,11 @@ func loadCorpus(t *testing.T) []corpusGame {
 		if err := proto.Unmarshal(raw, hist); err != nil {
 			continue
 		}
-		games = append(games, corpusGame{uuid: cols[0], hist: hist})
+		cg := corpusGame{uuid: cols[0], hist: hist}
+		if len(cols) > 3 {
+			cg.endReason, _ = strconv.Atoi(strings.TrimSpace(cols[3]))
+		}
+		games = append(games, cg)
 	}
 	if err := sc.Err(); err != nil {
 		t.Fatalf("reading corpus: %v", err)
@@ -190,7 +196,7 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 			continue
 		}
 
-		divs := comparableDivergences(res.State, theirs)
+		divs := comparableDivergences(res.State, theirs, cg)
 		if len(divs) == 0 {
 			matched++
 			continue
@@ -263,27 +269,76 @@ func TestCorpusOneGame(t *testing.T) {
 	t.Fatalf("game %s not in corpus", want)
 }
 
-// comparableDivergences drops the one field a macondo history reconstruction
-// cannot be held to.
+// moveDrivenEnding reports whether a game's ending is implied by its own moves.
 //
-// macondo maintains per-player turn counts during live play -- playMove
-// increments players[i].turns for placements, passes and exchanges alike -- but
-// its reconstruction path, PlayTurn, increments it *only* in the exchange
-// branch. A game rebuilt from history therefore reports a turn count equal to
-// the number of exchanges in it, which is why the first corpus run showed a
-// turns[] divergence in essentially every game with our (correct) count on one
-// side and near-zero on the other.
+// A game that timed out, was resigned, aborted, cancelled, force-forfeited or
+// adjudicated had its ending imposed from outside the event log. xwordgame
+// models the position the moves produce; those endings live in liwords'
+// GameEndReason, which is the correct division -- so a play state derived from
+// the log genuinely should not match one stamped on by an external ruling.
+func moveDrivenEnding(endReason int) bool {
+	switch endReason {
+	case 0, // NONE, still playing
+		2, // STANDARD, someone went out
+		3, // CONSECUTIVE_ZEROES
+		6: // TRIPLE_CHALLENGE
+		return true
+	}
+	return false
+}
+
+// lastMeaningfulEvent returns the type of the last event that moves a game
+// along, ignoring the end-of-game bookkeeping macondo appends.
+func lastMeaningfulEvent(hist *macondopb.GameHistory) macondopb.GameEvent_Type {
+	for i := len(hist.Events) - 1; i >= 0; i-- {
+		if t := hist.Events[i].Type; !isDerivedEvent(t) {
+			return t
+		}
+	}
+	return macondopb.GameEvent_TILE_PLACEMENT_MOVE
+}
+
+// comparableDivergences drops the fields a macondo *history reconstruction*
+// cannot be held to. Each exclusion is narrow and has a reason; none of them
+// apply to the live-game differential in bridge_test.go, which drives a real
+// macondo game and compares every field including these.
 //
-// That is a macondo bug of exactly the kind this project exists to remove:
-// state that live play maintains and reconstruction silently does not. It is
-// not excluded from CompareStates generally -- the differential in
-// bridge_test.go drives a *live* macondo game, where the counter is maintained,
-// and compares it successfully. It is excluded only here, where the reference
-// is a reconstruction.
-func comparableDivergences(ours, theirs *xwordgame.State) []Divergence {
+//   - turns[]: macondo maintains per-player turn counts during live play --
+//     playMove increments players[i].turns for placements, passes and exchanges
+//     alike -- but PlayTurn, the reconstruction path, increments it only in the
+//     exchange branch. A rebuilt game reports a turn count equal to its number
+//     of exchanges.
+//
+//   - lastWordsFormed, unless the last move was a tile placement: macondo
+//     clears this field on a phony return, a challenge bonus and game start,
+//     but never on a pass or an exchange, in either the live or the
+//     reconstruction path. So after a pass it still believes the play before it
+//     is challengeable -- and ChallengeEvent's only guard is that the list is
+//     non-empty, so it would adjudicate a challenge against a play from two
+//     turns ago. We clear it, which is what the rules say: only the
+//     immediately preceding play can be challenged.
+//
+//   - onTurn, when the last event was not a move: PlayToTurn advances the
+//     player on turn after every event it processes, including a time penalty,
+//     which is not a turn -- the penalised player still owes a move.
+//
+//   - playState, when the ending was not move-driven. See moveDrivenEnding.
+//
+// The first three are macondo reconstruction bugs, all of the same shape as the
+// one that caused the May 2026 incident: state that live play maintains and
+// rebuilding silently does not.
+func comparableDivergences(ours, theirs *xwordgame.State, cg corpusGame) []Divergence {
+	lastEvt := lastMeaningfulEvent(cg.hist)
 	var out []Divergence
 	for _, d := range CompareStates(ours, theirs) {
-		if strings.HasPrefix(d.Field, "turns[") {
+		switch {
+		case strings.HasPrefix(d.Field, "turns["):
+			continue
+		case d.Field == "lastWordsFormed" && lastEvt != macondopb.GameEvent_TILE_PLACEMENT_MOVE:
+			continue
+		case d.Field == "onTurn" && lastEvt == macondopb.GameEvent_TIME_PENALTY:
+			continue
+		case d.Field == "playState" && !moveDrivenEnding(cg.endReason):
 			continue
 		}
 		out = append(out, d)
