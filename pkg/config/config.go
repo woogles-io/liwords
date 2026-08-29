@@ -70,6 +70,15 @@ type Config struct {
 	// Phase 2 migration flags
 	DualWriteTurns bool // write events to game_turns alongside history bytea
 	ShadowTurns    bool // shadow-compare turns-based reconstruction against history bytea on every Get
+
+	// Phase 3 migration flags: moving live game state out of the history proto
+	// and into an xwordgame snapshot on ongoing_games. Each stage is
+	// independently revertible, and nothing reads the snapshot for a gameplay
+	// decision until the final cutover -- so with these off, or with any of
+	// them failing, macondo remains authoritative and games are unaffected.
+	// See docs/mikado/liwords_referee.md.
+	ShadowXwordState bool // derive an xwordgame snapshot on save and compare it against macondo
+	WriteXwordState  bool // additionally persist the snapshot to ongoing_games (never read)
 }
 
 type ctxKey string
@@ -93,6 +102,8 @@ func (c *Config) Load(args []string) error {
 	fs.BoolVar(&c.QuitAfterMigration, "quit-after-migration", false, "quit after running migrations (for dedicated migration tasks)")
 	fs.BoolVar(&c.DualWriteTurns, "dual-write-turns", false, "dual-write game events to game_turns alongside history bytea (migration phase 2)")
 	fs.BoolVar(&c.ShadowTurns, "shadow-turns", false, "shadow-compare turns-based reconstruction against history bytea on every Get (migration phase 2)")
+	fs.BoolVar(&c.ShadowXwordState, "shadow-xword-state", false, "derive an xwordgame snapshot on every save and compare it against macondo (migration phase 3)")
+	fs.BoolVar(&c.WriteXwordState, "write-xword-state", false, "persist the xwordgame snapshot to ongoing_games; never read back (migration phase 3)")
 
 	fs.StringVar(&c.DBHost, "db-host", "", "the database host")
 	fs.StringVar(&c.DBPort, "db-port", "", "the database port")

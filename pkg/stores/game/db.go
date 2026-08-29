@@ -936,7 +936,8 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	}
 
 	g.LastUpdatedAt = time.UnixMilli(g.TimerModule().Now())
-	return s.queries.UpdateGame(ctx, models.UpdateGameParams{
+
+	if err := s.queries.UpdateGame(ctx, models.UpdateGameParams{
 		UpdatedAt:        pgtype.Timestamptz{Time: g.LastUpdatedAt, Valid: true},
 		Player0ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[0]), Valid: true},
 		Player1ID:        pgtype.Int4{Int32: int32(g.PlayerDBIDs[1]), Valid: true},
@@ -959,7 +960,17 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		SeasonID:         seasonID,
 		LeagueDivisionID: leagueDivisionID,
 		LastKnownRacks:   g.History().LastKnownRacks,
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Mirror the live position into ongoing_games, after the write that
+	// actually matters has succeeded. Hung off Set rather than its twelve call
+	// sites so no write path can forget it, and it deliberately cannot return
+	// an error: macondo stays authoritative until the cutover, so a snapshot
+	// problem is a log line, never a failed move. See ongoing.go.
+	s.maybeWriteOngoingGame(ctx, g)
+	return nil
 }
 
 // UpdateTimers writes only the timers column for a game (e.g. after add-time).

@@ -34,77 +34,6 @@ func (q *Queries) CountOngoingGames(ctx context.Context) (int32, error) {
 	return column_1, err
 }
 
-const createOngoingGame = `-- name: CreateOngoingGame :exec
-INSERT INTO ongoing_games (
-    game_uuid, state, play_state, on_turn,
-    lexicon, letter_distribution, board_layout, variant, challenge_rule,
-    player0_id, player1_id,
-    timers, meta_events, ready_flag, started,
-    game_mode, game_type, tournament_id,
-    league_id, season_id, league_division_id,
-    created_at, updated_at
-) VALUES (
-    $1, $2, $3, $4,
-    $5, $6, $7, $8, $9,
-    $10, $11,
-    $12, $13, $14, $15,
-    $16, $17, $18,
-    $19, $20, $21,
-    now(), now()
-)
-`
-
-type CreateOngoingGameParams struct {
-	GameUuid           string
-	State              []byte
-	PlayState          int16
-	OnTurn             pgtype.Int2
-	Lexicon            string
-	LetterDistribution string
-	BoardLayout        string
-	Variant            string
-	ChallengeRule      int16
-	Player0ID          int32
-	Player1ID          int32
-	Timers             []byte
-	MetaEvents         []byte
-	ReadyFlag          int64
-	Started            bool
-	GameMode           int16
-	GameType           int16
-	TournamentID       pgtype.Text
-	LeagueID           pgtype.UUID
-	SeasonID           pgtype.UUID
-	LeagueDivisionID   pgtype.UUID
-}
-
-func (q *Queries) CreateOngoingGame(ctx context.Context, arg CreateOngoingGameParams) error {
-	_, err := q.db.Exec(ctx, createOngoingGame,
-		arg.GameUuid,
-		arg.State,
-		arg.PlayState,
-		arg.OnTurn,
-		arg.Lexicon,
-		arg.LetterDistribution,
-		arg.BoardLayout,
-		arg.Variant,
-		arg.ChallengeRule,
-		arg.Player0ID,
-		arg.Player1ID,
-		arg.Timers,
-		arg.MetaEvents,
-		arg.ReadyFlag,
-		arg.Started,
-		arg.GameMode,
-		arg.GameType,
-		arg.TournamentID,
-		arg.LeagueID,
-		arg.SeasonID,
-		arg.LeagueDivisionID,
-	)
-	return err
-}
-
 const deleteOngoingGame = `-- name: DeleteOngoingGame :exec
 DELETE FROM ongoing_games WHERE game_uuid = $1
 `
@@ -117,7 +46,7 @@ func (q *Queries) DeleteOngoingGame(ctx context.Context, gameUuid string) error 
 }
 
 const getOngoingGame = `-- name: GetOngoingGame :one
-SELECT game_uuid, state, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at FROM ongoing_games WHERE game_uuid = $1
+SELECT game_uuid, state, prev_state, play_state, on_turn, lexicon, letter_distribution, board_layout, variant, challenge_rule, player0_id, player1_id, timers, meta_events, ready_flag, started, game_mode, game_type, tournament_id, league_id, season_id, league_division_id, created_at, updated_at FROM ongoing_games WHERE game_uuid = $1
 `
 
 // Loading a live game: one row, no join, no jsonb proto parsing. The rules
@@ -128,6 +57,7 @@ func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingG
 	err := row.Scan(
 		&i.GameUuid,
 		&i.State,
+		&i.PrevState,
 		&i.PlayState,
 		&i.OnTurn,
 		&i.Lexicon,
@@ -154,13 +84,14 @@ func (q *Queries) GetOngoingGame(ctx context.Context, gameUuid string) (OngoingG
 }
 
 const getOngoingGameState = `-- name: GetOngoingGameState :one
-SELECT state, play_state, on_turn, updated_at
+SELECT state, prev_state, play_state, on_turn, updated_at
 FROM ongoing_games
 WHERE game_uuid = $1
 `
 
 type GetOngoingGameStateRow struct {
 	State     []byte
+	PrevState []byte
 	PlayState int16
 	OnTurn    pgtype.Int2
 	UpdatedAt pgtype.Timestamptz
@@ -171,6 +102,7 @@ func (q *Queries) GetOngoingGameState(ctx context.Context, gameUuid string) (Get
 	var i GetOngoingGameStateRow
 	err := row.Scan(
 		&i.State,
+		&i.PrevState,
 		&i.PlayState,
 		&i.OnTurn,
 		&i.UpdatedAt,
@@ -585,38 +517,6 @@ func (q *Queries) SetOngoingGameStarted(ctx context.Context, arg SetOngoingGameS
 	return err
 }
 
-const updateOngoingGameAfterMove = `-- name: UpdateOngoingGameAfterMove :exec
-UPDATE ongoing_games
-SET state = $1,
-    play_state = $2,
-    on_turn = $3,
-    timers = $4,
-    updated_at = now()
-WHERE game_uuid = $5
-`
-
-type UpdateOngoingGameAfterMoveParams struct {
-	State     []byte
-	PlayState int16
-	OnTurn    pgtype.Int2
-	Timers    []byte
-	GameUuid  string
-}
-
-// Every move goes through here. The columns written are deliberately all
-// unindexed so the UPDATE stays HOT -- see the note in the ongoing_games
-// migration.
-func (q *Queries) UpdateOngoingGameAfterMove(ctx context.Context, arg UpdateOngoingGameAfterMoveParams) error {
-	_, err := q.db.Exec(ctx, updateOngoingGameAfterMove,
-		arg.State,
-		arg.PlayState,
-		arg.OnTurn,
-		arg.Timers,
-		arg.GameUuid,
-	)
-	return err
-}
-
 const updateOngoingGameMetaEvents = `-- name: UpdateOngoingGameMetaEvents :exec
 UPDATE ongoing_games
 SET meta_events = $1, updated_at = now()
@@ -646,5 +546,120 @@ type UpdateOngoingGameTimersParams struct {
 
 func (q *Queries) UpdateOngoingGameTimers(ctx context.Context, arg UpdateOngoingGameTimersParams) error {
 	_, err := q.db.Exec(ctx, updateOngoingGameTimers, arg.Timers, arg.GameUuid)
+	return err
+}
+
+const upsertOngoingGame = `-- name: UpsertOngoingGame :exec
+INSERT INTO ongoing_games (
+    game_uuid, state, prev_state, play_state, on_turn,
+    lexicon, letter_distribution, board_layout, variant, challenge_rule,
+    player0_id, player1_id,
+    timers, meta_events, ready_flag, started,
+    game_mode, game_type, tournament_id,
+    league_id, season_id, league_division_id,
+    created_at, updated_at
+) VALUES (
+    $1, $2, NULL, $3, $4,
+    $5, $6, $7, $8, $9,
+    $10, $11,
+    $12, $13, $14, $15,
+    $16, $17, $18,
+    $19, $20, $21,
+    now(), now()
+)
+ON CONFLICT (game_uuid) DO UPDATE SET
+    state = EXCLUDED.state,
+    -- Rotate the previous position in without an extra round trip:
+    -- ongoing_games.state here is the row as it stood before this statement,
+    -- which is exactly the position before the move being written.
+    --
+    -- Guarded on the state actually changing, because Set is called more than
+    -- once per move on some paths (meta events, timer writes, the pre-bot save
+    -- for correspondence games). A second identical write must not rotate the
+    -- post-move position into prev_state and destroy the real one.
+    --
+    -- has_challengeable_play is len(LastWordsFormed) > 0 read off the new
+    -- snapshot, so the caller does not have to know which move was played:
+    -- non-NULL prev_state and a non-empty words list mean the same thing.
+    prev_state = CASE
+        WHEN ongoing_games.state IS NOT DISTINCT FROM EXCLUDED.state
+            THEN ongoing_games.prev_state
+        WHEN $22::boolean THEN ongoing_games.state
+        ELSE NULL
+    END,
+    play_state = EXCLUDED.play_state,
+    on_turn = EXCLUDED.on_turn,
+    timers = EXCLUDED.timers,
+    meta_events = EXCLUDED.meta_events,
+    ready_flag = EXCLUDED.ready_flag,
+    started = EXCLUDED.started,
+    updated_at = now()
+`
+
+type UpsertOngoingGameParams struct {
+	GameUuid             string
+	State                []byte
+	PlayState            int16
+	OnTurn               pgtype.Int2
+	Lexicon              string
+	LetterDistribution   string
+	BoardLayout          string
+	Variant              string
+	ChallengeRule        int16
+	Player0ID            int32
+	Player1ID            int32
+	Timers               []byte
+	MetaEvents           []byte
+	ReadyFlag            int64
+	Started              bool
+	GameMode             int16
+	GameType             int16
+	TournamentID         pgtype.Text
+	LeagueID             pgtype.UUID
+	SeasonID             pgtype.UUID
+	LeagueDivisionID     pgtype.UUID
+	HasChallengeablePlay bool
+}
+
+// The single write path for a live game's position. Everything a save changes
+// goes through this one statement, so there is no second query that could
+// manage prev_state differently -- or forget to.
+//
+// It is also the reason no backfill is needed.
+//
+// A game already in progress when this code deploys has no row here. Rather
+// than migrating 12M rows, the snapshot is derived from the in-memory macondo
+// game and upserted the first time the game is saved: new games and in-flight
+// games take the identical path, and a game that is never touched again never
+// needs converting.
+//
+// The rules columns are immutable, so ON CONFLICT deliberately does not rewrite
+// them -- if they ever disagreed with the row that exists, the existing row is
+// the one the game has actually been played under.
+func (q *Queries) UpsertOngoingGame(ctx context.Context, arg UpsertOngoingGameParams) error {
+	_, err := q.db.Exec(ctx, upsertOngoingGame,
+		arg.GameUuid,
+		arg.State,
+		arg.PlayState,
+		arg.OnTurn,
+		arg.Lexicon,
+		arg.LetterDistribution,
+		arg.BoardLayout,
+		arg.Variant,
+		arg.ChallengeRule,
+		arg.Player0ID,
+		arg.Player1ID,
+		arg.Timers,
+		arg.MetaEvents,
+		arg.ReadyFlag,
+		arg.Started,
+		arg.GameMode,
+		arg.GameType,
+		arg.TournamentID,
+		arg.LeagueID,
+		arg.SeasonID,
+		arg.LeagueDivisionID,
+		arg.HasChallengeablePlay,
+	)
 	return err
 }
