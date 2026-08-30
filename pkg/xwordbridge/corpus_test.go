@@ -188,11 +188,11 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	t.Logf("corpus: %d games", len(games))
 
 	var (
-		matched, skipped, replayFailed, diverged int
-		totalEvents, totalChallenges             int
-		reasons                                  = map[string]int{}
-		fields                                   = map[string]int{}
-		examples                                 = map[string]string{}
+		matched, skipped, replayFailed, diverged, incomplete int
+		totalEvents, totalChallenges                         int
+		reasons                                              = map[string]int{}
+		fields                                               = map[string]int{}
+		examples                                             = map[string]string{}
 	)
 	note := func(m map[string]int, key, uuid string) {
 		m[key]++
@@ -232,15 +232,20 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 			continue
 		}
 
-		if why := checkPlayState(res.State, cg); why != "" {
-			diverged++
-			note(fields, why, cg.uuid)
-			continue
-		}
-
 		divs := comparableDivergences(res.State, theirs, cg)
+		if why := checkPlayState(res.State, cg); why != "" {
+			divs = append(divs, Divergence{Field: why})
+		}
 		if len(divs) == 0 {
 			matched++
+			continue
+		}
+		// Some games simply cannot be rebuilt from their events. That is the
+		// premise of the whole migration, so those are counted separately
+		// rather than treated as engine failures.
+		if why := logCannotExpress(cg, res.State); why != "" {
+			incomplete++
+			note(reasons, why, cg.uuid)
 			continue
 		}
 		diverged++
@@ -249,14 +254,35 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		}
 	}
 
-	t.Logf("matched %d, diverged %d, replay-failed %d, skipped %d (of %d)",
-		matched, diverged, replayFailed, skipped, len(games))
+	t.Logf("matched %d, log-incomplete %d, diverged %d, replay-failed %d, skipped %d (of %d)",
+		matched, incomplete, diverged, replayFailed, skipped, len(games))
 	t.Logf("%d events applied, %d challenges adjudicated", totalEvents, totalChallenges)
 	report(t, "replay/setup failures", reasons, examples)
 	report(t, "divergent fields", fields, examples)
 
 	if matched == 0 {
 		t.Fatal("no game replayed to a matching position")
+	}
+	// Every game must either agree or fall into one of the known shapes the log
+	// cannot express -- except for a small, named residue.
+	//
+	// The residue is three games where the six-scoreless-turn stalemate is
+	// triggered by a returned phony, and the end-rack penalty is charged
+	// against a rack that differs from the one the log's end-rack event names.
+	// The final racks agree, so this is confined to the moment the penalty is
+	// taken. It looks like the same information gap as the exchange case
+	// already classified above, but that has not been demonstrated, so it is
+	// counted as a divergence rather than explained away.
+	const knownResidue = 3
+	if diverged > knownResidue {
+		t.Errorf("%d games diverged, more than the %d known unexplained",
+			diverged, knownResidue)
+	}
+	// And those shapes are supposed to be rare. If the share grows, either
+	// something regressed or a new kind of unrepresentable game appeared.
+	if incomplete*100 > len(games) {
+		t.Errorf("%d of %d games are log-incomplete, over the 1%% expected",
+			incomplete, len(games))
 	}
 }
 
@@ -444,6 +470,52 @@ func checkPlayState(ours *xwordgame.State, cg corpusGame) string {
 	case cg.endReason != 0 && !over:
 		return "playState: did not finish a game the database says ended (reason " +
 			strconv.Itoa(cg.endReason) + ")"
+	}
+	return ""
+}
+
+// logCannotExpress names the shapes of game whose ending is simply not in the
+// event log, returning "" for anything else.
+//
+// These are not engine failures. They are the argument for the migration: a
+// position that cannot be rebuilt from the events is a position that has to be
+// stored, and inferring one anyway is what corrupted 944 games.
+func logCannotExpress(cg corpusGame, ours *xwordgame.State) string {
+	events := cg.hist.Events
+
+	// A triple challenge that the challenger lost writes nothing at all.
+	// macondo's ChallengeEvent sets the winner and ends the game without
+	// appending an event, so the log of such a game is indistinguishable from
+	// one that is simply still in progress.
+	if cg.endReason == 6 {
+		for _, e := range events {
+			if isChallengeOutcome(e.Type) {
+				return ""
+			}
+		}
+		return "log-incomplete: triple challenge leaves no event"
+	}
+
+	// A player went out under a challenge rule, so the position is correctly
+	// waiting for the opponent to pass or challenge -- but no such event was
+	// ever recorded, and the game is marked finished.
+	if cg.endReason == 2 && ours.PlayState == xwordgame.WaitingForFinalPass {
+		return "log-incomplete: went out with no final pass recorded"
+	}
+
+	// The stalemate was triggered by an exchange, and the tiles drawn in it are
+	// revealed only by the end-rack event that follows -- too late to charge the
+	// penalty against them. Every other stalemate is handled by reading those
+	// racks ahead of the triggering move.
+	if cg.endReason == 3 {
+		for i, e := range events {
+			if e.Type != macondopb.GameEvent_EXCHANGE {
+				continue
+			}
+			if i+1 < len(events) && events[i+1].Type == macondopb.GameEvent_END_RACK_PENALTY {
+				return "log-incomplete: stalemate on an exchange hides the drawn tiles"
+			}
+		}
 	}
 	return ""
 }

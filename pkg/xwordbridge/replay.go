@@ -203,6 +203,12 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 	}
 
 	res := &ReplayResult{State: s}
+	// The most recent rack the log recorded for each player. An event only ever
+	// names the mover's rack, so this is the best evidence available about the
+	// opponent -- and near the end of a game, where the bag is empty and racks
+	// stop changing, it is exact. That matters because the scoreless-turn
+	// penalty is charged against both racks at once.
+	var lastRack [xwordgame.MaxPlayers]tilemapping.MachineWord
 	// The position before the most recent move, which a challenge needs in
 	// order to take a phony off the board. Replay knows it exactly: it is where
 	// this machine was one move ago, so there is nothing to reconstruct.
@@ -224,6 +230,25 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 			continue
 		}
 
+		// The end-rack events that follow a game-ending move carry each player's
+		// final rack, and that is rack information the log does not otherwise
+		// provide: an ordinary event names only the mover's rack, so the
+		// opponent's is a guess by the time a stalemate charges both of them.
+		// Read it before applying the move that triggers the ending -- the
+		// penalty itself is still ours to compute, which is the part under test.
+		for j := i + 1; j < len(hist.Events); j++ {
+			nxt := hist.Events[j]
+			if nxt.Type != macondopb.GameEvent_END_RACK_PENALTY &&
+				nxt.Type != macondopb.GameEvent_END_RACK_PTS {
+				break
+			}
+			if int(nxt.PlayerIndex) < xwordgame.MaxPlayers && nxt.Rack != "" {
+				if mw, err := tilemapping.ToMachineWord(nxt.Rack, alph); err == nil {
+					lastRack[nxt.PlayerIndex] = mw
+				}
+			}
+		}
+
 		if isChallengeOutcome(evt.Type) {
 			if err := replayChallengeOutcome(s, r, evt, prev, res); err != nil {
 				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
@@ -234,7 +259,7 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 		}
 
 		before := s.Clone()
-		if err := replayOne(s, r, rng, evt, alph, prev, res); err != nil {
+		if err := replayOne(s, r, rng, evt, alph, prev, res, &lastRack); err != nil {
 			return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
 		}
 		// Only a tile placement leaves something challengeable behind, which is
@@ -257,7 +282,8 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 // replayOne applies a single player event.
 func replayOne(s *xwordgame.State, r *xwordgame.Rules, rng xwordgame.Rand,
 	evt *macondopb.GameEvent, alph *tilemapping.TileMapping,
-	prev *xwordgame.State, res *ReplayResult) error {
+	prev *xwordgame.State, res *ReplayResult,
+	lastRack *[xwordgame.MaxPlayers]tilemapping.MachineWord) error {
 
 	// The event log is authoritative for whose turn it was; trusting our own
 	// counter here would hide an ordering bug rather than surface it.
@@ -274,9 +300,10 @@ func replayOne(s *xwordgame.State, r *xwordgame.Rules, rng xwordgame.Rand,
 		if err != nil {
 			return fmt.Errorf("parsing rack %q: %w", evt.Rack, err)
 		}
-		if err := seatMover(s, rng, int(evt.PlayerIndex), rack); err != nil {
+		if err := seatMover(s, rng, int(evt.PlayerIndex), rack, *lastRack); err != nil {
 			return fmt.Errorf("seating rack %q: %w", evt.Rack, err)
 		}
+		lastRack[evt.PlayerIndex] = append(tilemapping.MachineWord(nil), rack...)
 	}
 
 	m, err := MoveFromEvent(s, evt, alph)
@@ -385,7 +412,9 @@ func replayChallengeOutcome(s *xwordgame.State, r *xwordgame.Rules,
 // What this preserves is the part that matters: rack sizes and the bag count.
 // Going out, the exchange minimum and the endgame all turn on those, and all
 // three would break if the opponent's tiles were simply left in the bag.
-func seatMover(s *xwordgame.State, rng xwordgame.Rand, mover int, rack tilemapping.MachineWord) error {
+func seatMover(s *xwordgame.State, rng xwordgame.Rand, mover int, rack tilemapping.MachineWord,
+	lastRack [xwordgame.MaxPlayers]tilemapping.MachineWord) error {
+
 	opp := 1 - mover
 
 	oppSize := s.RackLen(opp)
@@ -395,20 +424,35 @@ func seatMover(s *xwordgame.State, rng xwordgame.Rand, mover int, rack tilemappi
 	if err := s.AssignRack(mover, rack); err != nil {
 		return err
 	}
-	if oppSize > 0 {
-		if _, err := s.DrawToFull(rng, opp); err != nil {
+	if oppSize == 0 {
+		return nil
+	}
+
+	// Prefer the last rack the log recorded for the opponent over an invented
+	// one. It can be stale -- they may have drawn since -- but it is real, and
+	// once the bag is empty it is exact. The scoreless-turn penalty is charged
+	// against this rack, so inventing it silently gets the final scores wrong;
+	// that is how a Q went missing from a 2021 endgame.
+	if want := lastRack[opp]; len(want) == oppSize {
+		if err := s.AssignRack(opp, want); err == nil {
+			return nil
+		}
+		// The bag cannot supply it, so the opponent has drawn since. Fall
+		// through to a stand-in, which at least keeps the sizes right.
+	}
+
+	if _, err := s.DrawToFull(rng, opp); err != nil {
+		return err
+	}
+	// DrawToFull tops up to a full rack; trim back to the size the opponent
+	// actually held.
+	if extra := s.RackLen(opp) - oppSize; extra > 0 {
+		spare := append(tilemapping.MachineWord(nil), s.Rack(opp)[:extra]...)
+		if err := s.TakeFromRack(opp, spare); err != nil {
 			return err
 		}
-		// DrawToFull tops up to a full rack; trim back to the size the
-		// opponent actually held.
-		if extra := s.RackLen(opp) - oppSize; extra > 0 {
-			spare := append(tilemapping.MachineWord(nil), s.Rack(opp)[:extra]...)
-			if err := s.TakeFromRack(opp, spare); err != nil {
-				return err
-			}
-			if err := s.PutBack(spare); err != nil {
-				return err
-			}
+		if err := s.PutBack(spare); err != nil {
+			return err
 		}
 	}
 	return nil
