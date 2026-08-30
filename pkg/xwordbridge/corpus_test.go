@@ -194,10 +194,14 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		fields                                               = map[string]int{}
 		examples                                             = map[string]string{}
 	)
+	ids := map[string][]string{}
 	note := func(m map[string]int, key, uuid string) {
 		m[key]++
 		if _, ok := examples[key]; !ok {
 			examples[key] = uuid
+		}
+		if len(ids[key]) < 40 {
+			ids[key] = append(ids[key], uuid)
 		}
 	}
 
@@ -260,20 +264,25 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	report(t, "replay/setup failures", reasons, examples)
 	report(t, "divergent fields", fields, examples)
 
+	// Small buckets are worth listing outright: with a handful of games the
+	// identifiers are more use than the count.
+	for _, m := range []map[string]int{reasons, fields} {
+		for k, n := range m {
+			if n <= 40 {
+				t.Logf("  ids[%s]: %s", k, strings.Join(ids[k], " "))
+			}
+		}
+	}
+
 	if matched == 0 {
 		t.Fatal("no game replayed to a matching position")
 	}
 	// Every game must either agree or fall into one of the known shapes the log
 	// cannot express -- except for a small, named residue.
 	//
-	// The residue is three games where the six-scoreless-turn stalemate is
-	// triggered by a returned phony, and the end-rack penalty is charged
-	// against a rack that differs from the one the log's end-rack event names.
-	// The final racks agree, so this is confined to the moment the penalty is
-	// taken. It looks like the same information gap as the exchange case
-	// already classified above, but that has not been demonstrated, so it is
-	// counted as a divergence rather than explained away.
-	const knownResidue = 3
+	// There is no residue: the games that used to be here were end-of-game
+	// adjustments we recomputed instead of reading, and they are now read.
+	const knownResidue = 0
 	if diverged > knownResidue {
 		t.Errorf("%d games diverged, more than the %d known unexplained",
 			diverged, knownResidue)
@@ -408,6 +417,11 @@ func lastMeaningfulEvent(hist *macondopb.GameHistory) macondopb.GameEvent_Type {
 //     player on turn after every event it processes, including a time penalty,
 //     which is not a turn -- the penalised player still owes a move.
 //
+//   - lastWordsFormed once the game is over. Nothing can be challenged in a
+//     finished game, so we clear it; macondo ends a game in PlayToTurn without
+//     clearing, and reports a challengeable play in a position where no
+//     challenge is possible. Same bug as the pass/exchange case above.
+//
 //   - onTurn and scorelessTurns once the game is over. Neither means anything
 //     in a finished position -- nobody is on turn and no further turn can be
 //     scoreless -- and macondo's reconstruction disagrees with its own live
@@ -439,8 +453,8 @@ func comparableDivergences(ours, theirs *xwordgame.State, cg corpusGame) []Diver
 			continue
 		case d.Field == "playState":
 			continue
-		case (d.Field == "onTurn" || d.Field == "scorelessTurns") &&
-			ours.PlayState == xwordgame.GameOver:
+		case (d.Field == "onTurn" || d.Field == "scorelessTurns" ||
+			d.Field == "lastWordsFormed") && ours.PlayState == xwordgame.GameOver:
 			continue
 		}
 		out = append(out, d)

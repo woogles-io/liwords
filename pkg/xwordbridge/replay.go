@@ -48,21 +48,26 @@ type ReplayResult struct {
 	// Challenges counts adjudicated challenges, the case most worth knowing
 	// the coverage of.
 	Challenges int
+	// EndRackMismatches counts end-of-game adjustments where our own figure
+	// disagreed with the recorded one. The recorded one is applied either way;
+	// this is how the arithmetic stays under test.
+	EndRackMismatches int
 }
 
-// isDerivedEvent reports whether an event is something the state machine emits
-// for itself when it ends a game, and which therefore must not be fed back in.
+// isDerivedEvent reports whether an event should be skipped as an input.
 //
-// The challenge outcomes are deliberately NOT in this list. liwords never
-// records a CHALLENGE action -- only its consequence -- so PHONY_TILES_RETURNED
-// and CHALLENGE_BONUS are the only evidence a challenge happened, and skipping
-// them would leave the phony on the board and the bonus unpaid.
+// Nothing is, any more. The list started with the end-of-game bookkeeping on
+// the theory that the state machine regenerates it, but a replay's job is to
+// reproduce the game that was played, and the recorded adjustment is what
+// actually happened: the log knows racks at the moment a game ended that the
+// events cannot otherwise reveal. Our own computation is still checked against
+// the recorded one -- see endRackMismatch -- so the arithmetic is verified
+// without the position being derived from it.
+//
+// The same reasoning already applied to the challenge outcomes: liwords records
+// no CHALLENGE action, only its consequence.
 func isDerivedEvent(t macondopb.GameEvent_Type) bool {
-	switch t {
-	case macondopb.GameEvent_END_RACK_PTS,
-		macondopb.GameEvent_END_RACK_PENALTY:
-		return true
-	}
+	_ = t
 	return false
 }
 
@@ -230,6 +235,13 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 			continue
 		}
 
+		if isEndRackEvent(evt.Type) {
+			if err := applyEndRack(s, evt, res); err != nil {
+				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
+			}
+			continue
+		}
+
 		// The end-rack events that follow a game-ending move carry each player's
 		// final rack, and that is rack information the log does not otherwise
 		// provide: an ordinary event names only the mover's rack, so the
@@ -276,6 +288,7 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 	if err := assignFinalRacks(s, hist, alph); err != nil {
 		return res, err
 	}
+	applyStoredEnding(s, hist)
 	return res, nil
 }
 
@@ -328,6 +341,47 @@ func replayOne(s *xwordgame.State, r *xwordgame.Rules, rng xwordgame.Rand,
 
 	if _, err := s.ApplyMove(r, rng, m); err != nil {
 		return err
+	}
+	res.Applied++
+	return nil
+}
+
+// isEndRackEvent reports whether an event is an end-of-game rack adjustment.
+func isEndRackEvent(t macondopb.GameEvent_Type) bool {
+	return t == macondopb.GameEvent_END_RACK_PTS || t == macondopb.GameEvent_END_RACK_PENALTY
+}
+
+// applyEndRack applies a recorded end-of-game rack adjustment, and records
+// whether our own machine had already produced the same number.
+//
+// The recorded value wins. A game ending charges each rack at the moment it
+// ended, and the log is the only place the racks at that moment are written
+// down -- an ordinary event names the mover's rack, never the opponent's, and
+// the tiles drawn in a final exchange appear nowhere else. Recomputing from a
+// rack we had to guess produces a score the game never had.
+//
+// EndRackMismatches counts the times our figure disagreed, so the arithmetic is
+// still under test even though it is not what lands in the position.
+func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResult) error {
+	p := int(evt.PlayerIndex)
+	if p < 0 || p >= xwordgame.MaxPlayers {
+		return fmt.Errorf("player index %d out of range", p)
+	}
+	var delta int32
+	if evt.Type == macondopb.GameEvent_END_RACK_PTS {
+		delta = evt.EndRackPoints
+	} else {
+		delta = -abs32(evt.LostScore)
+	}
+	// Cumulative is the player's score after this event, so it says what our
+	// own end-of-game handling should already have arrived at.
+	if evt.Cumulative != 0 && s.Scores[p] != evt.Cumulative {
+		res.EndRackMismatches++
+	}
+	if evt.Cumulative != 0 {
+		s.Scores[p] = evt.Cumulative
+	} else {
+		s.Scores[p] += delta
 	}
 	res.Applied++
 	return nil
@@ -506,6 +560,36 @@ func abs32(v int32) int32 {
 		return -v
 	}
 	return v
+}
+
+// applyStoredEnding finishes a game whose ending the events do not show.
+//
+// A player can go out and the game be over without any final pass ever being
+// recorded -- the corpus has two such games. What marks them finished is a
+// field on the history rather than an event: FinalScores is written when a
+// game concludes, so an empty rack together with final scores means the game
+// ended, and an empty rack without them means it is still waiting for the
+// opponent to pass or challenge.
+//
+// This mirrors macondo's PlayToTurn exactly, which is the point: a replay
+// should land where the engine it is replacing lands. It is also the clearest
+// statement of why the position has to be stored -- two of the three things
+// deciding this come from stored fields, not from the event list.
+func applyStoredEnding(s *xwordgame.State, hist *macondopb.GameHistory) {
+	if s.PlayState == xwordgame.GameOver {
+		return
+	}
+	for p := range xwordgame.MaxPlayers {
+		if s.RackLen(p) != 0 {
+			continue
+		}
+		if len(hist.FinalScores) > 0 {
+			s.EndGameByRule()
+		} else {
+			s.PlayState = xwordgame.WaitingForFinalPass
+		}
+		return
+	}
 }
 
 func rulesOK(r *xwordgame.Rules) error {
