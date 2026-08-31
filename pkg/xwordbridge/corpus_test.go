@@ -188,11 +188,12 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	t.Logf("corpus: %d games", len(games))
 
 	var (
-		matched, skipped, replayFailed, diverged, incomplete int
-		totalEvents, totalChallenges                         int
-		reasons                                              = map[string]int{}
-		fields                                               = map[string]int{}
-		examples                                             = map[string]string{}
+		matched, skipped, replayFailed, diverged, incomplete, endRackWrong int
+		totalEvents, totalChallenges                                       int
+		reasons                                                            = map[string]int{}
+		fields                                                             = map[string]int{}
+		mismatches                                                         = map[string]int{}
+		examples                                                           = map[string]string{}
 	)
 	ids := map[string][]string{}
 	note := func(m map[string]int, key, uuid string) {
@@ -221,6 +222,13 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		}
 		totalEvents += res.Applied
 		totalChallenges += res.Challenges
+		if res.EndRackRackUnknown > 0 {
+			note(mismatches, "rack we charged was not the rack the log names (replay limit)", cg.uuid)
+		}
+		if res.EndRackArithmeticWrong > 0 {
+			endRackWrong++
+			note(mismatches, "knew the rack and still got the number wrong (REAL BUG)", cg.uuid)
+		}
 
 		// macondo's own reconstruction of the same history, as the reference.
 		mg, err := macondogame.NewFromHistory(cg.hist, mrules, len(cg.hist.Events))
@@ -261,12 +269,19 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	t.Logf("matched %d, log-incomplete %d, diverged %d, replay-failed %d, skipped %d (of %d)",
 		matched, incomplete, diverged, replayFailed, skipped, len(games))
 	t.Logf("%d events applied, %d challenges adjudicated", totalEvents, totalChallenges)
+	// The one number the replay cannot hide behind. Live play has no recorded
+	// end-of-game adjustment to read, so anywhere our own figure disagrees with
+	// the log is a position we would get wrong for real.
+	if endRackWrong > 0 {
+		t.Errorf("%d games where we knew the rack and still computed the wrong end-of-game adjustment", endRackWrong)
+	}
 	report(t, "replay/setup failures", reasons, examples)
 	report(t, "divergent fields", fields, examples)
+	report(t, "end-of-game arithmetic mismatches", mismatches, examples)
 
 	// Small buckets are worth listing outright: with a handful of games the
 	// identifiers are more use than the count.
-	for _, m := range []map[string]int{reasons, fields} {
+	for _, m := range []map[string]int{reasons, fields, mismatches} {
 		for k, n := range m {
 			if n <= 40 {
 				t.Logf("  ids[%s]: %s", k, strings.Join(ids[k], " "))

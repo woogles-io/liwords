@@ -48,10 +48,14 @@ type ReplayResult struct {
 	// Challenges counts adjudicated challenges, the case most worth knowing
 	// the coverage of.
 	Challenges int
-	// EndRackMismatches counts end-of-game adjustments where our own figure
-	// disagreed with the recorded one. The recorded one is applied either way;
-	// this is how the arithmetic stays under test.
-	EndRackMismatches int
+	// EndRackRackUnknown counts end-of-game adjustments our figure got wrong
+	// because we did not know the rack being charged. This is a limit of
+	// replaying a log, not a defect: live play knows both racks.
+	EndRackRackUnknown int
+	// EndRackArithmeticWrong counts the ones where we knew the rack and still
+	// produced the wrong number. These are real defects -- live play would get
+	// them wrong too -- and the count is expected to be zero.
+	EndRackArithmeticWrong int
 }
 
 // isDerivedEvent reports whether an event should be skipped as an input.
@@ -236,7 +240,7 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 		}
 
 		if isEndRackEvent(evt.Type) {
-			if err := applyEndRack(s, evt, res); err != nil {
+			if err := applyEndRack(s, evt, res, alph); err != nil {
 				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
 			}
 			continue
@@ -362,7 +366,8 @@ func isEndRackEvent(t macondopb.GameEvent_Type) bool {
 //
 // EndRackMismatches counts the times our figure disagreed, so the arithmetic is
 // still under test even though it is not what lands in the position.
-func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResult) error {
+func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResult,
+	alph *tilemapping.TileMapping) error {
 	p := int(evt.PlayerIndex)
 	if p < 0 || p >= xwordgame.MaxPlayers {
 		return fmt.Errorf("player index %d out of range", p)
@@ -375,8 +380,20 @@ func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResul
 	}
 	// Cumulative is the player's score after this event, so it says what our
 	// own end-of-game handling should already have arrived at.
+	//
+	// When it does not, distinguish the two possible causes, because only one
+	// of them matters for live play. If the rack we charged differs from the
+	// one the log names, we simply did not know the tiles -- an ordinary event
+	// never reveals the opponent's rack, and a final exchange's draw is
+	// invisible until this event. Live play knows both racks exactly, so that
+	// gap cannot happen there. If the racks agree and the number still does
+	// not, the arithmetic is wrong, and live play would get it wrong too.
 	if evt.Cumulative != 0 && s.Scores[p] != evt.Cumulative {
-		res.EndRackMismatches++
+		if evt.Rack != "" && !sameRack(s, p, evt.Rack, alph) {
+			res.EndRackRackUnknown++
+		} else {
+			res.EndRackArithmeticWrong++
+		}
 	}
 	if evt.Cumulative != 0 {
 		s.Scores[p] = evt.Cumulative
@@ -590,6 +607,34 @@ func applyStoredEnding(s *xwordgame.State, hist *macondopb.GameHistory) {
 		}
 		return
 	}
+}
+
+// sameRack reports whether player p holds exactly the rack the log names.
+func sameRack(s *xwordgame.State, p int, recorded string, alph *tilemapping.TileMapping) bool {
+	mw, err := tilemapping.ToMachineWord(recorded, alph)
+	if err != nil {
+		return false
+	}
+	have := s.Rack(p)
+	if len(have) != len(mw) {
+		return false
+	}
+	// Racks are stored sorted, so sort the recorded one to match.
+	want := append(tilemapping.MachineWord(nil), mw...)
+	for i := 1; i < len(want); i++ {
+		for j := i; j > 0 && want[j] < want[j-1]; j-- {
+			want[j], want[j-1] = want[j-1], want[j]
+		}
+	}
+	for i := range want {
+		if want[i].IsBlanked() {
+			want[i] = 0
+		}
+		if have[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func rulesOK(r *xwordgame.Rules) error {
