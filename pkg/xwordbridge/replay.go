@@ -25,6 +25,35 @@ package xwordbridge
 // the mover's rack before their play, never the tiles they drew afterwards. So
 // each event's recorded rack is assigned before the move is applied, which is
 // exactly the information the log does carry.
+//
+// # Reading proto3 scalars
+//
+// proto3 gives scalars no presence: a field set to zero and a field never set
+// are the same bits and the same Go value. So `x != 0` is a value test, never a
+// "was this recorded" test, and using it as the latter is what caused the May
+// 2026 incident -- an unset PlayState reading as PLAYING -- and caused a bug
+// here, where a rack penalty that took a player to exactly zero was applied
+// twice because zero was mistaken for "no total recorded".
+//
+// Every remaining comparison against a zero value in this file is a value test
+// or is safe because the domain excludes the zero:
+//
+//   - evt.Exchanged == "" and evt.Rack == "": a player who is moving holds
+//     tiles, and an end-rack event names the rack being counted, so an empty
+//     string really does mean unrecorded. exchangedTiles falls back to
+//     NumTilesFromRack, where zero is likewise impossible for a real exchange.
+//   - LastKnownRacks entries: an empty entry is ambiguous -- a player who went
+//     out genuinely has no tiles -- so assignFinalRacks clears both racks first
+//     and then assigns only the non-empty ones. Skipping an empty entry leaves
+//     that player empty, which is the right answer either way.
+//   - hist.PlayState: compared against GAME_OVER by name, never against zero.
+//     Its zero value is PLAYING, so a history that never set it reads as a game
+//     in progress; applyStoredEnding therefore also consults FinalScores, and
+//     the corpus test reports a record whose two signals disagree.
+//   - evt.Bonus is passed through unguarded, because a single-rule challenge
+//     bonus is legitimately zero.
+//   - evt.Row, evt.Column and evt.PlayerIndex are used directly: zero is a real
+//     coordinate and a real player.
 
 import (
 	"errors"
@@ -52,6 +81,10 @@ type ReplayResult struct {
 	// because we did not know the rack being charged. This is a limit of
 	// replaying a log, not a defect: live play knows both racks.
 	EndRackRackUnknown int
+	// EndRackZeroCumulative counts end-of-game adjustments that leave a player
+	// on exactly zero. Reading a proto zero as an absent field only goes wrong
+	// in that case, so this is how rare the trap is.
+	EndRackZeroCumulative int
 	// EndRackArithmeticWrong counts the ones where we knew the rack and still
 	// produced the wrong number. These are real defects -- live play would get
 	// them wrong too -- and the count is expected to be zero.
@@ -239,6 +272,14 @@ func ReplayHistory(hist *macondopb.GameHistory, r *xwordgame.Rules, rng xwordgam
 			continue
 		}
 
+		// A move recorded after the game ended is bookkeeping, not a move. The
+		// commonest is the final pass appearing after the end-rack bonus it
+		// actually preceded.
+		if s.PlayState == xwordgame.GameOver && !isEndRackEvent(evt.Type) {
+			res.Regenerated++
+			continue
+		}
+
 		if isEndRackEvent(evt.Type) {
 			if err := applyEndRack(s, evt, res, alph); err != nil {
 				return res, fmt.Errorf("event %d (%s): %w", i, evt.Type, err)
@@ -372,34 +413,39 @@ func applyEndRack(s *xwordgame.State, evt *macondopb.GameEvent, res *ReplayResul
 	if p < 0 || p >= xwordgame.MaxPlayers {
 		return fmt.Errorf("player index %d out of range", p)
 	}
-	var delta int32
-	if evt.Type == macondopb.GameEvent_END_RACK_PTS {
-		delta = evt.EndRackPoints
-	} else {
-		delta = -abs32(evt.LostScore)
-	}
-	// Cumulative is the player's score after this event, so it says what our
-	// own end-of-game handling should already have arrived at.
-	//
-	// When it does not, distinguish the two possible causes, because only one
+	// Cumulative is the player's score after this event. It is used directly
+	// rather than added to, and notably it is NOT guarded on being non-zero:
+	// zero is a perfectly ordinary score. Treating a proto zero value as "field
+	// absent" is precisely the mistake that caused the May 2026 incident, where
+	// an unset PlayState read as PLAYING -- and it bit again here, on a game
+	// whose final rack penalty took a player from 8 to exactly 0. Guarding on
+	// it made the penalty apply twice, to -8.
+	// It also says what our own end-of-game handling should already have
+	// arrived at. When it does not, distinguish the two possible causes, because only one
 	// of them matters for live play. If the rack we charged differs from the
 	// one the log names, we simply did not know the tiles -- an ordinary event
 	// never reveals the opponent's rack, and a final exchange's draw is
 	// invisible until this event. Live play knows both racks exactly, so that
 	// gap cannot happen there. If the racks agree and the number still does
 	// not, the arithmetic is wrong, and live play would get it wrong too.
-	if evt.Cumulative != 0 && s.Scores[p] != evt.Cumulative {
+	if evt.Cumulative == 0 {
+		res.EndRackZeroCumulative++
+	}
+	if s.Scores[p] != evt.Cumulative {
 		if evt.Rack != "" && !sameRack(s, p, evt.Rack, alph) {
 			res.EndRackRackUnknown++
 		} else {
 			res.EndRackArithmeticWrong++
 		}
 	}
-	if evt.Cumulative != 0 {
-		s.Scores[p] = evt.Cumulative
-	} else {
-		s.Scores[p] += delta
-	}
+	s.Scores[p] = evt.Cumulative
+	// An end-rack adjustment is only ever written when a game concludes, so
+	// seeing one means the game is over -- and saying so matters, because the
+	// log does not always put it last. Some games record the going-out play,
+	// then the end-rack bonus, and only then the pass that confirmed it. Left
+	// in WAITING_FOR_FINAL_PASS, that trailing pass would make our own state
+	// machine pay the same bonus a second time.
+	s.EndGameByRule()
 	res.Applied++
 	return nil
 }

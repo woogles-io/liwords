@@ -63,6 +63,13 @@ func (s *State) TilesOnBoard() int {
 //
 // Ported from macondo board.go:801.
 func (s *State) ErrorIfIllegalPlay(layout *BoardLayout, m *Move) error {
+	return s.errorIfIllegalPlay(layout, m, false)
+}
+
+// errorIfIllegalPlay is ErrorIfIllegalPlay with the option to waive the rules
+// that constrain what is allowed rather than where tiles land. See
+// Rules.TrustRecordedPlays.
+func (s *State) errorIfIllegalPlay(layout *BoardLayout, m *Move, trusted bool) error {
 	if m.Type != MoveTypePlay {
 		return fmt.Errorf("xwordgame: expected a tile placement, got %s", m.Type)
 	}
@@ -123,7 +130,7 @@ func (s *State) ErrorIfIllegalPlay(layout *BoardLayout, m *Move) error {
 	if !placedATile {
 		return errors.New("your play must place a new tile")
 	}
-	if len(m.Tiles) < 2 {
+	if len(m.Tiles) < 2 && !trusted {
 		return errors.New("your play must include at least two letters")
 	}
 	// The span must cover the whole main word: no tile may abut either end.

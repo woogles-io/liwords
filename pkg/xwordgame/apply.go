@@ -149,7 +149,7 @@ func (s *State) ValidateMove(r *Rules, m *Move) ([]tilemapping.MachineWord, erro
 		if played <= RackTileLimit && !s.RackHas(int(s.OnTurn), m.PlayedTiles(buf[:0])) {
 			return nil, fmt.Errorf("xwordgame: your play contained a tile that is not on your rack")
 		}
-		if err := s.ErrorIfIllegalPlay(r.Layout, m); err != nil {
+		if err := s.errorIfIllegalPlay(r.Layout, m, r.TrustRecordedPlays); err != nil {
 			return nil, err
 		}
 		words, err := s.FormedWords(m)

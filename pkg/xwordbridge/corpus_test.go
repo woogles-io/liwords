@@ -42,7 +42,9 @@ package xwordbridge
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/base64"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -67,8 +69,14 @@ type corpusGame struct {
 }
 
 // corpusFiles are the exports the test will read, in order. Any that are
-// missing are simply skipped.
-var corpusFiles = []string{"live_games.tsv", "finished_games.tsv"}
+// missing are simply skipped. A .gz suffix is read transparently, which is how
+// the large samples are kept: 100k games is a few hundred megabytes of base64
+// and compresses to a fraction of that.
+var corpusFiles = []string{
+	"live_games.tsv",
+	"finished_games.tsv",
+	"random_100k.tsv.gz",
+}
 
 func loadCorpus(t *testing.T) []corpusGame {
 	t.Helper()
@@ -98,7 +106,17 @@ func readCorpusFile(t *testing.T, path string, games *[]corpusGame) int {
 	}
 	defer f.Close()
 	before := len(*games)
-	sc := bufio.NewScanner(f)
+
+	var src io.Reader = f
+	if strings.HasSuffix(path, ".gz") {
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			t.Fatalf("reading %s: %v", path, err)
+		}
+		defer gz.Close()
+		src = gz
+	}
+	sc := bufio.NewScanner(src)
 	sc.Buffer(make([]byte, 0, 1<<20), 1<<24)
 	for sc.Scan() {
 		cols := strings.Split(sc.Text(), "\t")
@@ -188,12 +206,13 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	t.Logf("corpus: %d games", len(games))
 
 	var (
-		matched, skipped, replayFailed, diverged, endRackWrong int
-		totalEvents, totalChallenges                           int
-		reasons                                                = map[string]int{}
-		fields                                                 = map[string]int{}
-		mismatches                                             = map[string]int{}
-		examples                                               = map[string]string{}
+		matched, skipped, replayFailed, diverged, endRackWrong, inconsistent int
+		zeroCumulative                                                       int
+		totalEvents, totalChallenges                                         int
+		reasons                                                              = map[string]int{}
+		fields                                                               = map[string]int{}
+		mismatches                                                           = map[string]int{}
+		examples                                                             = map[string]string{}
 	)
 	ids := map[string][]string{}
 	note := func(m map[string]int, key, uuid string) {
@@ -222,6 +241,7 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		}
 		totalEvents += res.Applied
 		totalChallenges += res.Challenges
+		zeroCumulative += res.EndRackZeroCumulative
 		if res.EndRackRackUnknown > 0 {
 			note(mismatches, "rack we charged was not the rack the log names (replay limit)", cg.uuid)
 		}
@@ -246,7 +266,18 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 
 		divs := comparableDivergences(res.State, theirs, cg)
 		if why := checkPlayState(res.State, cg); why != "" {
-			divs = append(divs, Divergence{Field: why})
+			// An archived history that contradicts the games table cannot be
+			// reconciled by any replayer: the record disagrees with itself.
+			// Count it as a data inconsistency rather than an engine failure,
+			// but count it, because the number is worth watching.
+			if cg.hist.PlayState != macondopb.PlayState_GAME_OVER &&
+				len(cg.hist.FinalScores) == 0 {
+				inconsistent++
+				note(mismatches, "history says still playing, games table says ended", cg.uuid)
+				continue
+			} else {
+				divs = append(divs, Divergence{Field: why})
+			}
 		}
 		if len(divs) == 0 {
 			matched++
@@ -258,9 +289,13 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 		}
 	}
 
-	t.Logf("matched %d, diverged %d, replay-failed %d, skipped %d (of %d)",
-		matched, diverged, replayFailed, skipped, len(games))
+	t.Logf("matched %d, diverged %d, replay-failed %d, skipped %d, self-contradictory %d (of %d)",
+		matched, diverged, replayFailed, skipped, inconsistent, len(games))
 	t.Logf("%d events applied, %d challenges adjudicated", totalEvents, totalChallenges)
+	// How often a game ends with a player on exactly zero. That is the only
+	// condition under which reading a proto zero as "field absent" goes wrong
+	// here, and it explains why the bug showed up in a single game.
+	t.Logf("%d end-of-game adjustments landed on a score of exactly zero", zeroCumulative)
 	// The one number the replay cannot hide behind. Live play has no recorded
 	// end-of-game adjustment to read, so anywhere our own figure disagrees with
 	// the log is a position we would get wrong for real.
@@ -296,7 +331,7 @@ func TestCorpusReplayMatchesMacondo(t *testing.T) {
 	}
 	// Everything is expected to load except games macondo itself cannot open,
 	// which are the reference here and so cannot be compared against.
-	if want := len(games) - skipped - replayFailed; matched != want {
+	if want := len(games) - skipped - replayFailed - inconsistent; matched != want {
 		t.Errorf("%d games matched, expected %d", matched, want)
 	}
 }

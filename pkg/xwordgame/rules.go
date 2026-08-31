@@ -71,11 +71,17 @@ type Rules struct {
 	// change: the corpus has a 2021 ECWL game whose SEZ is not in today's ECWL.
 	// Re-deciding it now would reject a play that really happened.
 	//
-	// It covers the lexicon and nothing else. Everything that depends on the
-	// position rather than on a word list -- geometry, rack contents, the
-	// exchange minimum, every state transition -- is still checked, because
-	// those are what a replay exists to verify. In particular the exchange
-	// minimum is a rule to be modelled, not a check to skip; see
+	// It also skips the two-letter minimum for a play. Woogles accepted
+	// one-letter openings in early 2021 -- the corpus has a game whose first
+	// move was a single O -- and a replay that refuses to open such a game is
+	// less useful than one that reproduces it. Waiving the rule cannot corrupt
+	// a position: a one-tile play puts exactly one tile in one place.
+	//
+	// Everything that decides *where tiles land* is still checked -- bounds,
+	// played-through squares matching the board, contact with existing tiles,
+	// covering the centre, rack contents, every state transition -- because
+	// those are what a replay exists to verify. The exchange minimum is not
+	// skipped either: it is a rule to be modelled, not a check to waive; see
 	// ExchangeLimitForLexicon.
 	//
 	// Never set this for live play.
