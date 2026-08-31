@@ -581,31 +581,36 @@ func abs32(v int32) int32 {
 
 // applyStoredEnding finishes a game whose ending the events do not show.
 //
-// A player can go out and the game be over without any final pass ever being
-// recorded -- the corpus has two such games. What marks them finished is a
-// field on the history rather than an event: FinalScores is written when a
-// game concludes, so an empty rack together with final scores means the game
-// ended, and an empty rack without them means it is still waiting for the
-// opponent to pass or challenge.
+// Some endings leave no trace in the event list at all. A triple challenge the
+// challenger lost is the clearest: macondo's ChallengeEvent sets the winner and
+// ends the game without appending anything, so the events are indistinguishable
+// from a game still in progress. A player can also go out and the game be over
+// with no final pass ever recorded. The corpus has both.
 //
-// This mirrors macondo's PlayToTurn exactly, which is the point: a replay
-// should land where the engine it is replacing lands. It is also the clearest
-// statement of why the position has to be stored -- two of the three things
-// deciding this come from stored fields, not from the event list.
+// What marks these finished is stored fields rather than events. FinalScores is
+// written only when a game concludes, and PlayState is written alongside it, so
+// either one saying so is enough.
+//
+// macondo does not read its own history.PlayState here -- PlayToTurn re-derives
+// the state from whether a rack is empty, which is why it reports a finished
+// triple challenge as still playing. Reading what was stored is both simpler
+// and right, and it is the same principle the migration rests on: the position
+// is recorded, not inferred.
 func applyStoredEnding(s *xwordgame.State, hist *macondopb.GameHistory) {
 	if s.PlayState == xwordgame.GameOver {
 		return
 	}
-	for p := range xwordgame.MaxPlayers {
-		if s.RackLen(p) != 0 {
-			continue
-		}
-		if len(hist.FinalScores) > 0 {
-			s.EndGameByRule()
-		} else {
-			s.PlayState = xwordgame.WaitingForFinalPass
-		}
+	if hist.PlayState == macondopb.PlayState_GAME_OVER || len(hist.FinalScores) > 0 {
+		s.EndGameByRule()
 		return
+	}
+	// Not over, but a player is out of tiles, so the game is waiting on the
+	// opponent to pass or challenge.
+	for p := range xwordgame.MaxPlayers {
+		if s.RackLen(p) == 0 {
+			s.PlayState = xwordgame.WaitingForFinalPass
+			return
+		}
 	}
 }
 
