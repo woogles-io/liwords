@@ -347,6 +347,74 @@ func TestSixScorelessTurnsEndsTheGame(t *testing.T) {
 	is.NoErr(s.ValidateTileConservation(r.LetterDistribution))
 }
 
+// The two endings that a replay of a log cannot get right, proven correct here
+// where the racks are known.
+//
+// In both, the move that ends the game also changes the rack it is charged
+// against -- an exchange draws replacements, a returned phony restores the
+// pre-play rack -- and an event log does not reveal those tiles until the
+// end-rack event, which arrives after the penalty is due. Live play has no such
+// gap: the racks are in the position the whole time. That is the difference
+// between the 15 corpus games whose scores have to be read and a live game that
+// simply computes them.
+// drainBagOntoBoard empties the bag onto the board, so a test can reach a
+// near-empty bag without destroying tiles and tripping the conservation check.
+func drainBagOntoBoard(t *testing.T, s *State) {
+	t.Helper()
+	var buf []tilemapping.MachineLetter
+	buf, _ = s.DrawAtMost(seededRand(), s.TilesRemaining(), buf)
+	i := 0
+	for _, ml := range buf {
+		if ml == 0 {
+			// A blank only exists on the board with a letter assigned to it.
+			ml = 1 | tilemapping.BlankMask
+		}
+		for i < s.Dim()*s.Dim() && s.HasLetter(i/s.Dim(), i%s.Dim()) {
+			i++
+		}
+		if i >= s.Dim()*s.Dim() {
+			t.Fatal("ran out of board")
+		}
+		s.SetTileAt(i/s.Dim(), i%s.Dim(), ml)
+		i++
+	}
+}
+
+func TestStalemateChargesTheRealRackAfterAnExchange(t *testing.T) {
+	is := is.New(t)
+	s, r := boardFixture(t, ChallengeRuleDouble)
+	alph := r.LetterDistribution.TileMapping()
+
+	// Draw the bag down to exactly what the exchange needs, so the tiles drawn
+	// back are forced and the expected penalty is unambiguous. The surplus goes
+	// onto the board rather than into the void, which is both how a real
+	// endgame arrives here and what keeps the tiles conserved.
+	is.NoErr(s.AssignRack(0, word(t, alph, "AEIOU")))
+	is.NoErr(s.AssignRack(1, word(t, alph, "JOT"))) // 8+1+1 = 10
+	is.NoErr(s.RemoveFromBag(word(t, alph, "QI")))  // hold these back
+	drainBagOntoBoard(t, s)
+	is.NoErr(s.PutBack(word(t, alph, "QI")))
+	is.Equal(s.TilesRemaining(), 2)
+
+	s.ScorelessTurns = MaxScorelessTurns - 1
+	s.Scores = [MaxPlayers]int32{300, 280}
+	r.ExchangeLimit = 1
+
+	// Player 0 exchanges two vowels and necessarily draws the Q and the I, so
+	// the rack the penalty is charged against is not the one they held when the
+	// move began. A replay reading only the events could not know this.
+	res, err := s.ApplyExchange(r, seededRand(), NewExchangeMove(word(t, alph, "AE")))
+	is.NoErr(err)
+	is.True(res.GameOver)
+	is.True(res.ScorelessPenalties != nil)
+
+	// Post-exchange rack is IOUQI: 1+1+1+10+1 = 14, not the 3 the pre-exchange
+	// AEIOU would have cost.
+	is.Equal(*res.ScorelessPenalties, [MaxPlayers]int32{14, 10})
+	is.Equal(s.Scores, [MaxPlayers]int32{286, 270})
+	is.NoErr(s.ValidateTileConservation(r.LetterDistribution))
+}
+
 // A tile play resets the counter, so a stalemate cannot creep up across plays.
 func TestATilePlayResetsTheScorelessCounter(t *testing.T) {
 	is := is.New(t)
