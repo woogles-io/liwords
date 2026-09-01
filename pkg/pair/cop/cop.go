@@ -1604,7 +1604,16 @@ func simplePair(req *pb.PairRequest, logsb *strings.Builder) *pb.PairResponse {
 		N := max(int(req.InitialNonperfRounds), 1)
 		multiroundPairings = append(multiroundPairings, allPlayerPairings...)
 		for roundIdx := 1; roundIdx < N; roundIdx++ {
-			rp, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, currentRound+int32(roundIdx), uint64(req.Seed)+uint64(roundIdx))
+			// The seed must stay the same for every round of the schedule.
+			// GetRoundRobinPairings shuffles the players with the seed alone
+			// and then derives each round by rotating that one ordering, so
+			// the rounds only compose into a round robin if they all share a
+			// seed and differ only in the round. Varying the seed reshuffles
+			// the base ordering and yields a round from an unrelated round
+			// robin each time, which repeats some pairings and omits others.
+			// Initial Fontes pairs each of its groups with the same function
+			// and so has the same requirement.
+			rp, err := simplePairOnce(req, pairingMethod, poolMembers, playerOrder, currentRound+int32(roundIdx), uint64(req.Seed))
 			if err != nil {
 				return &pb.PairResponse{
 					ErrorCode:    pb.PairError_SIMPLE_PAIRING_FAILED,

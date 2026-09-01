@@ -1574,6 +1574,54 @@ func checkSymmetric(t *testing.T, pairings []int32) {
 	}
 }
 
+// countMultiroundMeetings counts how many times each pair of players meets
+// across every round in a multiround pairings slice, keyed as "lo-hi". Byes
+// are not counted.
+func countMultiroundMeetings(multiroundPairings []int32, numPlayers int) map[string]int {
+	meetings := map[string]int{}
+	for round := 0; round < len(multiroundPairings)/numPlayers; round++ {
+		block := multiroundPairings[round*numPlayers : (round+1)*numPlayers]
+		for player, opp := range block {
+			if opp < 0 || int(opp) <= player {
+				continue // bye, or already counted from the other side
+			}
+			meetings[fmt.Sprintf("%d-%d", player, opp)]++
+		}
+	}
+	return meetings
+}
+
+// checkNoRepeatedPairings verifies that no two players meet twice across the
+// rounds of a multiround pairings slice. Use it for schedules that cover less
+// than a full round robin cycle, such as initial fontes.
+func checkNoRepeatedPairings(t *testing.T, multiroundPairings []int32, numPlayers int) {
+	t.Helper()
+	for pair, count := range countMultiroundMeetings(multiroundPairings, numPlayers) {
+		if count > 1 {
+			t.Errorf("players %s meet %d times across %d rounds, expected at most once",
+				pair, count, len(multiroundPairings)/numPlayers)
+		}
+	}
+}
+
+// checkCompleteRoundRobin verifies that the rounds of a multiround pairings
+// slice form the given number of complete round robin cycles: every pair of
+// players meets exactly once per cycle.
+func checkCompleteRoundRobin(t *testing.T, multiroundPairings []int32, numPlayers int, cycles int) {
+	t.Helper()
+	meetings := countMultiroundMeetings(multiroundPairings, numPlayers)
+	expectedPairs := numPlayers * (numPlayers - 1) / 2
+	if len(meetings) != expectedPairs {
+		t.Errorf("%d distinct pairings across %d rounds, expected %d",
+			len(meetings), len(multiroundPairings)/numPlayers, expectedPairs)
+	}
+	for pair, count := range meetings {
+		if count != cycles {
+			t.Errorf("players %s meet %d times, expected %d", pair, count, cycles)
+		}
+	}
+}
+
 // countByes returns the number of players paired with themselves (byes).
 func countByes(pairings []int32) int {
 	n := 0
@@ -1812,8 +1860,9 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
-	// Round robin should produce distinct schedules across rounds.
-	is.True(resp.MultiroundPairings[0] != resp.MultiroundPairings[numPlayers])
+	// Round robin should produce distinct schedules across rounds: three
+	// rounds of an eight player cycle must not repeat a pairing.
+	checkNoRepeatedPairings(t, resp.MultiroundPairings, numPlayers)
 
 	// With existing pairings, multiround_pairings is a copy of pairings.
 	pairtestutils.AddRoundPairingsStr(req, "4 5 6 7 0 1 2 3")
@@ -1840,6 +1889,7 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+	checkNoRepeatedPairings(t, resp.MultiroundPairings, numPlayers)
 
 	// AUTO with R=10, P=8: floor(10/7)*7=7 RR rounds, then COP for the remaining 3.
 	autoReq := pairtestutils.CreateDefaultPairRequest()
@@ -1852,6 +1902,7 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < rrRoundsTotal; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+	checkCompleteRoundRobin(t, resp.MultiroundPairings, numPlayers, rrRoundsTotal/rrRounds)
 
 	// AUTO can only be used at the very start of a tournament, before any
 	// pairings or results exist; once pairings exist, it must be rejected.
@@ -1870,6 +1921,7 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < rrRoundsTotal; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+	checkCompleteRoundRobin(t, resp.MultiroundPairings, numPlayers, rrRoundsTotal/rrRounds)
 
 	// AUTO with R=17, P=8: floor(17/7)*7=14 RR rounds, then COP for rounds 14-16.
 	autoReq = pairtestutils.CreateDefaultPairRequest()
@@ -1882,6 +1934,7 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < rrRoundsTotal; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+	checkCompleteRoundRobin(t, resp.MultiroundPairings, numPlayers, rrRoundsTotal/rrRounds)
 	pairtestutils.AddNDummyRounds(autoReq, rrRoundsTotal)
 	resp = COPPair(autoReq)
 	is.Equal(resp.ErrorCode, pb.PairError_INVALID_AUTO_PAIRING_METHOD_USAGE)
@@ -1896,6 +1949,7 @@ func TestMultiroundPairings(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		checkSymmetric(t, resp.MultiroundPairings[i*numPlayers:(i+1)*numPlayers])
 	}
+	checkNoRepeatedPairings(t, resp.MultiroundPairings, numPlayers)
 
 	// AUTO with 10 players and R=8 (< rrRounds=9): rounds 0-2 use Initial
 	// Fontes, and round 3 onward now uses COP directly (Swiss was removed).
