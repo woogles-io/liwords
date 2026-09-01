@@ -17,6 +17,7 @@ package game
 
 import (
 	"context"
+	"sync/atomic"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/word-golib/tilemapping"
@@ -34,8 +35,10 @@ import (
 // maybeWriteOngoingGame derives an xwordgame snapshot of g and, depending on
 // configuration, compares it against macondo and persists it.
 //
-// It never returns an error. Callers are on the move path; a snapshot problem
-// must not become a player-visible failure.
+// It never returns an error and never panics. Callers are on the move path, so
+// a snapshot problem must not become a player-visible failure -- and "returns
+// no error" is not the same promise as "cannot bring down the request", which
+// is why the recover is here rather than trusted to nil checks upstream.
 func (s *DBStore) maybeWriteOngoingGame(ctx context.Context, g *entity.Game) {
 	cfg, err := config.Ctx(ctx)
 	if err != nil || (!cfg.ShadowXwordState && !cfg.WriteXwordState) {
@@ -43,12 +46,28 @@ func (s *DBStore) maybeWriteOngoingGame(ctx context.Context, g *entity.Game) {
 	}
 	log := zerolog.Ctx(ctx)
 
+	// Read the id up front, and defensively: a game malformed enough to panic
+	// the code below is malformed enough to panic GameID(), and a panic raised
+	// inside a recover handler is not recovered -- it takes the process down.
+	// The first version of this did exactly that.
+	gid := safeGameID(g)
+
+	defer func() {
+		if r := recover(); r != nil {
+			// Deliberately swallowed. This is shadow work; macondo remains
+			// authoritative and the move has already been written.
+			logBounded(log.Error().Interface("panic", r).Str("gameID", gid),
+				&panicCount, "ongoing-game-panic")
+		}
+	}()
+
 	// A finished game is not ongoing. Removing the row is what ends its life
 	// here; the archive path reads game_turns, not this table.
 	if g.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		if cfg.WriteXwordState {
-			if err := s.queries.DeleteOngoingGame(ctx, g.GameID()); err != nil {
-				log.Err(err).Str("gameID", g.GameID()).Msg("ongoing-game-delete-error")
+			if err := s.queries.DeleteOngoingGame(ctx, gid); err != nil {
+				logBounded(log.Err(err).Str("gameID", gid),
+					&deleteErrCount, "ongoing-game-delete-error")
 			}
 		}
 		return
@@ -58,7 +77,8 @@ func (s *DBStore) maybeWriteOngoingGame(ctx context.Context, g *entity.Game) {
 	if err != nil {
 		// Expected for games this package cannot yet represent, and for a board
 		// read mid-transposition. Neither is a reason to fail a move.
-		log.Warn().Err(err).Str("gameID", g.GameID()).Msg("ongoing-game-snapshot-skipped")
+		logBounded(log.Warn().Err(err).Str("gameID", gid),
+			&snapshotSkipCount, "ongoing-game-snapshot-skipped")
 		return
 	}
 
@@ -71,11 +91,13 @@ func (s *DBStore) maybeWriteOngoingGame(ctx context.Context, g *entity.Game) {
 
 	params, err := upsertParamsFor(g, state)
 	if err != nil {
-		log.Warn().Err(err).Str("gameID", g.GameID()).Msg("ongoing-game-params-skipped")
+		logBounded(log.Warn().Err(err).Str("gameID", gid),
+			&paramsSkipCount, "ongoing-game-params-skipped")
 		return
 	}
 	if err := s.queries.UpsertOngoingGame(ctx, params); err != nil {
-		log.Err(err).Str("gameID", g.GameID()).Msg("ongoing-game-upsert-error")
+		logBounded(log.Err(err).Str("gameID", gid),
+			&upsertErrCount, "ongoing-game-upsert-error")
 	}
 }
 
@@ -92,7 +114,8 @@ func (s *DBStore) checkSnapshot(ctx context.Context, g *entity.Game, state *xwor
 	gid := g.GameID()
 
 	if err := state.Validate(); err != nil {
-		log.Error().Err(err).Str("gameID", gid).Msg("xword-shadow-invalid-state")
+		logBounded(log.Error().Err(err).Str("gameID", gid),
+			&invalidStateCount, "xword-shadow-invalid-state")
 		return
 	}
 
@@ -102,7 +125,8 @@ func (s *DBStore) checkSnapshot(ctx context.Context, g *entity.Game, state *xwor
 	// it has been played on for weeks.
 	if ld := s.letterDistributionFor(g); ld != nil {
 		if err := state.ValidateTileConservation(ld); err != nil {
-			log.Error().Err(err).Str("gameID", gid).Msg("xword-shadow-tiles-not-conserved")
+			logBounded(log.Error().Err(err).Str("gameID", gid),
+				&notConservedCount, "xword-shadow-tiles-not-conserved")
 		}
 	}
 
@@ -110,13 +134,15 @@ func (s *DBStore) checkSnapshot(ctx context.Context, g *entity.Game, state *xwor
 	// makes a round trip, which is precisely what persisting it will do.
 	var decoded xwordgame.State
 	if err := decoded.Decode(state.Encode()); err != nil {
-		log.Error().Err(err).Str("gameID", gid).Msg("xword-shadow-decode-failed")
+		logBounded(log.Error().Err(err).Str("gameID", gid),
+			&decodeFailCount, "xword-shadow-decode-failed")
 		return
 	}
 	if !decoded.Equal(state) {
-		log.Error().Str("gameID", gid).Uint64("digest", state.Digest()).
-			Uint64("decodedDigest", decoded.Digest()).
-			Msg("xword-shadow-round-trip-mismatch")
+		logBounded(log.Error().Str("gameID", gid).
+			Uint64("digest", state.Digest()).
+			Uint64("decodedDigest", decoded.Digest()),
+			&roundTripCount, "xword-shadow-round-trip-mismatch")
 	}
 }
 
@@ -125,6 +151,9 @@ func (s *DBStore) checkSnapshot(ctx context.Context, g *entity.Game, state *xwor
 // Returns nil rather than an error: a missing distribution means one check is
 // skipped, not that anything is wrong with the game.
 func (s *DBStore) letterDistributionFor(g *entity.Game) *tilemapping.LetterDistribution {
+	if s == nil || s.cfg == nil || s.cfg.MacondoConfig() == nil {
+		return nil
+	}
 	name := "english"
 	if req := g.GameReq; req != nil && req.GameRequest != nil &&
 		req.Rules != nil && req.Rules.LetterDistributionName != "" {
@@ -135,6 +164,57 @@ func (s *DBStore) letterDistributionFor(g *entity.Game) *tilemapping.LetterDistr
 		return nil
 	}
 	return ld
+}
+
+// safeGameID reads a game's id without trusting it not to panic.
+func safeGameID(g *entity.Game) (id string) {
+	defer func() {
+		if recover() != nil {
+			id = "<unreadable>"
+		}
+	}()
+	if g == nil {
+		return "<nil>"
+	}
+	return g.GameID()
+}
+
+// Counters for the bounded logger below. A fixed set of package-level atomics,
+// not a map: nothing here grows with the number of games, and each process
+// counting its own occurrences is exactly what is wanted from logs.
+var (
+	panicCount        atomic.Uint64
+	snapshotSkipCount atomic.Uint64
+	paramsSkipCount   atomic.Uint64
+	upsertErrCount    atomic.Uint64
+	deleteErrCount    atomic.Uint64
+	invalidStateCount atomic.Uint64
+	notConservedCount atomic.Uint64
+	decodeFailCount   atomic.Uint64
+	roundTripCount    atomic.Uint64
+)
+
+const (
+	// logBurst is how many of each kind to log before thinning out.
+	logBurst = 50
+	// logEvery is the sampling interval after the burst.
+	logEvery = 500
+)
+
+// logBounded emits an event with a running count, thinning out after the first
+// logBurst so a systemic failure cannot flood the logs.
+//
+// The point of shadow mode is to find out what breaks on real traffic, so the
+// first occurrences are all logged. But a bug that fires on every move would
+// otherwise emit one line per move across every game on the server, and the
+// resulting volume would be its own incident. The count rides on every line, so
+// the scale is visible even when the lines are not.
+func logBounded(e *zerolog.Event, counter *atomic.Uint64, msg string) {
+	n := counter.Add(1)
+	if n > logBurst && n%logEvery != 0 {
+		return
+	}
+	e.Uint64("occurrence", n).Msg(msg)
 }
 
 // upsertParamsFor builds the row for a live game.
